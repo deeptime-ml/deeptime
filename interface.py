@@ -22,10 +22,13 @@ class ReaderInterface(Transformer):
         self._itraj = 0
 
         # lengths and dims
-        # NOTE: children have to make sure, they set these attributes in their ctor 
+        # NOTE: children have to make sure, they set these attributes in their ctor
         self._ntraj = -1
         self._ndim = -1
         self._lengths = []
+
+        # storage for arrays (used in _add_array_to_storage)
+        self._data = []
 
     def number_of_trajectories(self):
         """
@@ -75,9 +78,7 @@ class ReaderInterface(Transformer):
         :return:
             the total number of frames, over all trajectories
         """
-        # FIXME: in case of 1 traj, this returns 1!!!
         if stride == 1:
-            #self._logger.debug("self._lengths= %s " % self._lengths)
             return np.sum(self._lengths)
         else:
             return sum(self.trajectory_lengths(stride))
@@ -91,8 +92,10 @@ class ReaderInterface(Transformer):
         return self._ndim
 
     def _add_array_to_storage(self, array):
-        # checks shapes, eg convert them (2d), raise if not possible
-        # after checks passed, add array to self._data
+        """
+        checks shapes, eg convert them (2d), raise if not possible
+        after checks passed, add array to self._data
+        """
 
         if array.ndim == 1:
             array = np.atleast_2d(array).T
