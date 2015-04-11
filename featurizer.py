@@ -23,6 +23,7 @@ def _describe_atom(topology, index):
     :param index:
     :return:
     """
+    assert isinstance(index, int)
     at = topology.atom(index)
     return "%s %i %s %i" % (at.residue.name, at.residue.index, at.name, at.index)
 
@@ -319,11 +320,13 @@ class BackboneTorsionFeature(object):
 
     def describe(self):
         top = self.topology
-        labels_phi = ["PHI %s" % _describe_atom(top, ires)
-                      for ires in self._phi_inds]
+        labels_phi = ["PHI %s" % _describe_atom(top, i)
+                      for ires in self._phi_inds
+                      for i in ires]
 
-        labels_psi = ["PSI %s" % _describe_atom(top, ires)
-                      for ires in self._psi_inds]
+        labels_psi = ["PSI %s" % _describe_atom(top, i)
+                      for ires in self._psi_inds
+                      for i in ires]
 
         return labels_phi + labels_psi
 
