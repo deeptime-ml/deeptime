@@ -61,4 +61,4 @@ class WriterCSV(Transformer):
         if last_chunk:
             log.debug("closing file")
             self.fh.close()
-            return True # finished
+            return True  # finished

@@ -41,9 +41,7 @@ class FeatureReader(ReaderInterface):
 
     >>> reader = FeatureReader('mytraj.xtc', 'my_structure.pdb')
     >>> reader.featurizer.add_backbone_torsions()
-    >>> chunks = []
-    >>> for _, X in reader:
-    ...     chunks.append(X)
+    >>> X = reader.get_output()
 
     """
 
@@ -152,7 +150,7 @@ class FeatureReader(ReaderInterface):
         return 0
 
     def _map_to_memory(self, stride=1):
-        #TODO: stride is currently not implemented
+        # TODO: stride is currently not implemented
         if stride > 1: 
             raise NotImplementedError('stride option for FeatureReader._map_to_memory is currently not implemented')
 
@@ -216,9 +214,7 @@ class FeatureReader(ReaderInterface):
                 adv_chunk = self._mditer2.next()
             except StopIteration:
                 # When _mditer2 ran over the trajectory end, return empty chunks.
-                adv_chunk = mdtraj.Trajectory(
-                              np.empty((0, shape[1], shape[2]), np.float32),
-                              chunk.topology)
+                adv_chunk = mdtraj.Trajectory(np.empty((0, shape[1], shape[2]), np.float32), chunk.topology)
 
         self._t += shape[0]
 

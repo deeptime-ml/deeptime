@@ -2,6 +2,7 @@ from pyemma.coordinates.data import FeatureReader as _FeatureReader
 import mdtraj as md
 import os
 
+
 def create_file_reader(input_files, topology, featurizer):
     r"""
     Creates a (possibly featured) file reader by a number of input files and either a topology file or a featurizer.
@@ -15,9 +16,9 @@ def create_file_reader(input_files, topology, featurizer):
         A featurizer. If given, the topology file can be None.
     :return: Returns the reader.
     """
-    if isinstance(input_files, basestring) or (
-        isinstance(input_files, (list, tuple)) and (any(isinstance(item, basestring) for item in input_files) or len(input_files) is 0)
-    ):
+    if isinstance(input_files, basestring) \
+            or (isinstance(input_files, (list, tuple))
+                and (any(isinstance(item, basestring) for item in input_files) or len(input_files) is 0)):
         reader = None
         # check: if single string create a one-element list
         if isinstance(input_files, basestring):
