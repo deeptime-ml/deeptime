@@ -4,9 +4,6 @@ import numpy as np
 
 from pyemma.coordinates.data.interface import ReaderInterface
 
-# TODO: consider having this with an underlying loader, since we might now want
-# everyting in memory!
-
 
 class DataInMemory(ReaderInterface):
 
@@ -55,7 +52,7 @@ class DataInMemory(ReaderInterface):
             filenames to read from
         """
         # import here to avoid cyclic import
-        from pyemma.coordinates.data.file_reader import NumPyFileReader
+        from pyemma.coordinates.data.numpy_filereader import NumPyFileReader
 
         reader = NumPyFileReader(files)
         data = reader.get_output()
