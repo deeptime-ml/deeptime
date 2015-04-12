@@ -77,7 +77,7 @@ class FeatureReader(ReaderInterface):
 
         # cache size
         self.in_memory = False
-        self.Y = None
+        self._Y = None
 
         self.__set_dimensions_and_lenghts()
         self._parametrized = True
@@ -109,7 +109,7 @@ class FeatureReader(ReaderInterface):
 
         :return:
         """
-        return "Feature reader, features = ", self.featurizer.describe()
+        return ["Feature reader with following features"] + self.featurizer.describe()
 
     def parametrize(self, stride=1):
         """
@@ -171,7 +171,7 @@ class FeatureReader(ReaderInterface):
                 last_chunk = (
                     last_chunk_in_traj and itraj >= self.number_of_trajectories() - 1)
                 # write
-                self.Y[itraj][t:t + L] = y
+                self._Y[itraj][t:t + L] = y
                 # increment time
                 t += L
             # increment trajectory
