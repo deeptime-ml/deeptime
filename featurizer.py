@@ -488,7 +488,8 @@ class MDFeaturizer(object):
     def _check_indices(self, pair_inds, pair_n=2):
         """ensure pairs are valid (shapes, all atom indices available?, etc.) 
         """
-        pair_inds = np.array(pair_inds)
+
+        pair_inds = np.array(pair_inds).astype(dtype=np.int, casting='safe')
 
         if pair_inds.ndim != 2:
             raise ValueError("pair indices has to be a matrix.")
@@ -592,6 +593,7 @@ class MDFeaturizer(object):
             The default is set with Angstrom distances in mind.
             Make sure that you know whether your coordinates are in Angstroms or nanometers when setting this threshold.
         """
+        atom_pairs = self._check_indices(atom_pairs)
         f = ContactFeature(self.topology, atom_pairs, threshold, periodic)
         self.__add_feature(f)
 
@@ -629,7 +631,7 @@ class MDFeaturizer(object):
             If True, angles will be computed in degrees.
 
         """
-
+        indexes = self._check_indices(indexes, pair_n=4)
         f = DihedralFeature(self.topology, indexes, deg=deg)
         self.__add_feature(f)
 
