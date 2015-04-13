@@ -68,7 +68,7 @@ class NumPyFileReader(ReaderInterface):
                 self._fh.close()
 
         self._logger.debug("opening file %s" % filename)
-        self._fh = open(filename)
+        self._fh = open(filename, 'rb')
 
         if filename.endswith('.npy'):
             x = np.load(filename, mmap_mode=self.mmap_mode)

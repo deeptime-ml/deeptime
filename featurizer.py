@@ -173,8 +173,8 @@ class DistanceFeature(object):
 
     def __hash__(self):
         hash_value = _hash_numpy_array(self.distance_indexes)
-        hash_value |= hash(self.top)
-        hash_value |= hash(self.prefix_label)
+        hash_value ^= hash(self.top)
+        hash_value ^= hash(self.prefix_label)
         return hash_value
 
     def __eq__(self, other):
