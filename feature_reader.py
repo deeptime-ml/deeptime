@@ -230,6 +230,13 @@ class FeatureReader(ReaderInterface):
             # we open self._mditer2 only if requested due lag parameter!
             self._curr_lag = 0
 
+        if (self._t >= self.trajectory_length(self._itraj, stride=stride) and
+                self._itraj == len(self.trajfiles) - 1):
+            if __debug__:
+                self._logger.debug('closing last trajectory "%s"'
+                                   % self.trajfiles[self._itraj])
+            self._mditer.close()
+
         # map data
         if lag == 0:
             if len(self.featurizer.active_features) == 0:
