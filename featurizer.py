@@ -515,8 +515,8 @@ class MDFeaturizer(object):
 
     def add_selection(self, indexes):
         """
-        Adds the selected atom coordinates to the feature list.
-        The coordinates are flattened as follows: [x1, y1, z1, x2, y2, z2, ...]
+        Adds the coordinates of the selected atom indexes to the feature list.
+        The coordinates of the selection [1, 2, ...] are flattened as follows: [x1, y1, z1, x2, y2, z2, ...]
 
         Parameters
         ----------
