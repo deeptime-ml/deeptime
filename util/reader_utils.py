@@ -1,5 +1,5 @@
-from pyemma.coordinates.data.file_reader import NumPyFileReader as _NumPyFileReader
-from pyemma.coordinates.data.file_reader import CSVReader as _CSVReader
+from pyemma.coordinates.data.numpy_filereader import NumPyFileReader as _NumPyFileReader
+from pyemma.coordinates.data.py_csv_reader import PyCSVReader as _CSVReader
 from pyemma.coordinates.data import FeatureReader as _FeatureReader
 import mdtraj as md
 import os
