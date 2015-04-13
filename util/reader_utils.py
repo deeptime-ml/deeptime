@@ -1,3 +1,5 @@
+from pyemma.coordinates.data.file_reader import NumPyFileReader as _NumPyFileReader
+from pyemma.coordinates.data.file_reader import CSVReader as _CSVReader
 from pyemma.coordinates.data import FeatureReader as _FeatureReader
 import mdtraj as md
 import os
@@ -57,16 +59,14 @@ def create_file_reader(input_files, topology, featurizer):
                     if not featurizer and not topology:
                         raise ValueError("The input files were MD files which makes it mandatory to have either a "
                                          "featurizer or a topology file.")
-                    if not topology:
-                        # we have a featurizer
-                        reader = _FeatureReader(input_list, featurizer=featurizer)
-                    else:
-                        # we have a topology file
-                        reader = _FeatureReader(input_list, topologyfile=topology)
+
+                    reader = _FeatureReader(input_list, featurizer=featurizer, topologyfile=topology)
                 else:
-                    # TODO: CASE 1.2: file types are raw data files
-                    # TODO: create raw data reader from file names
-                    pass
+                    #if suffix in ['.npy', '.npz']:
+                    #    reader = _NumPyFileReader(input_list)
+                    #elif suffix in ['.csv', '.dat']:
+                    #    reader = _CSVReader(input_list)
+                    raise NotImplementedError("Support for raw file formats such as .npy and .csv not yet implemented.")
         else:
             raise ValueError("Not all elements in the input list were of the type %s!" % suffix)
     else:
