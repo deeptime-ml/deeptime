@@ -47,7 +47,8 @@ def create_file_reader(input_files, topology, featurizer):
                     err_msg += "File %s did not exist or was no file" % item
                     all_exist = False
             if not all_exist:
-                raise ValueError("Some of the given input files were directories or did not exist:\n" + err_msg)
+                raise ValueError("Some of the given input files were directories"
+                                 " or did not exist:\n%s" % err_msg)
 
             if all_exist:
                 from mdtraj.formats.registry import _FormatRegistry

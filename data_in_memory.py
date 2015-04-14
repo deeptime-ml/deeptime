@@ -37,7 +37,7 @@ class DataInMemory(ReaderInterface):
         else:
             raise ValueError("supply 2d ndarray, list of 2d ndarray"
                              " or list of filenames storing 2d arrays."
-                             "Your input was %s" % str(data))
+                             " Your input was %s" % str(data))
 
         self.__set_dimensions_and_lenghts()
         self._parametrized = True
