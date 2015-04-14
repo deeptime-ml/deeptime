@@ -25,9 +25,12 @@ class _csv_chunked_numpy_iterator:
 
         self.line = 0
 
+        # file handle and name
+        self.fh = None
+        self.f = None
+
         # skip header in first row
         if header == 0:
-            print "skipping header"
             self.reader.next()
             self.line = 1
 
@@ -62,6 +65,7 @@ class _csv_chunked_numpy_iterator:
         if len(lines) > 0:
             return self._convert_to_np_chunk(lines)
 
+        self.fh.close()
         raise StopIteration
 
 
@@ -92,6 +96,7 @@ class PyCSVReader(ReaderInterface):
             self._skip = 0
 
         self._current_lag = 0
+        self._lagged_iter_finished = False
 
         self.__set_dimensions_and_lenghts()
         self._parametrized = True
@@ -147,6 +152,7 @@ class PyCSVReader(ReaderInterface):
         # to reopen files
         self._iter = None
         self._iter_lagged = None
+        self._lagged_iter_finished = False
 
     def _open_file(self, skip=0, stride=1, lagged=False):
         fn = self._filenames[self._itraj]
@@ -161,21 +167,18 @@ class PyCSVReader(ReaderInterface):
         if reader and reader.f == fn:
             return
 
-        self._logger.debug("survived already open check")
-
         if self._has_header[self._itraj]:
             # set first line to be interpreted as header(labels)
             header = 0
         else:
             header = None
 
-        skip = (self._skip + skip) * stride
-        self._logger.debug("effective skip = %i; stride=%i" % (skip, stride))
+        skip = (self._skip + skip)
         nt = self._lengths[self._itraj]
-        # TODO: is this valid or even needed?
+
         if self._has_header[self._itraj]:
-            self._logger.debug("incrementing nt, since we have a header")
             nt += 1
+            skip += 1
 
         # calculate an index set, which rows to skip (includes stride)
         skiprows = None
@@ -187,55 +190,19 @@ class PyCSVReader(ReaderInterface):
         if stride > 1:
             all_frames = np.arange(nt)
             if skiprows is not None:
-                wanted_frames = np.arange(skip-1, nt, stride)
+                wanted_frames = np.arange(skip, nt, stride)
             else:
                 wanted_frames = np.arange(0, nt, stride)
             skiprows = np.setdiff1d(
                 all_frames, wanted_frames, assume_unique=True)
 
-            #np.testing.assert_equal( x[lag::stride], np.arange(nt)[np.arange(lag, nt, stride)] )
-#             wanted_indices = np.arange(skip, nt, stride)
-#             all_frames = np.arange(nt)
-#             skiprows = np.setdiff1d(
-#                 all_frames, wanted_indices, assume_unique=True)
-
-#         if stride > 1:
-#             all_frames = np.arange(nt)
-#             stridden_rows_to_skip = np.arange(0, nt, stride)
-#             skiprows = np.setdiff1d(
-#                 all_frames, stridden_rows_to_skip, assume_unique=True)
-#             self._logger.debug("stridden_rows to omit:\n%s" % skiprows)
-#
-#         if skip > 0:
-#             self._logger.debug("skip: %i" % skip)
-# lag_inds_to_skip = np.zeros(nt)
-# lag_inds_to_skip[:skip] = np.arange(skip)
-# #
-# self._logger.debug("lag inds to skip:\n%s" % lag_inds_to_skip)
-# if skiprows is not None:
-# skiprows = np.union1d(skiprows, lag_inds_to_skip)
-# else:
-# skiprows = lag_inds_to_skip
-# if skiprows is not None: # we have stride already.
-# skiprows[:skip] = np.arange(skip)
-# skiprows -= skip-1 # shift everything by skip to left
-# lag_inds_to_skip = np.zeros(nt)
-# lag_inds_to_skip[:skip] = np.arange(skip-1)
-# skiprows=np.union1d(skiprows, lag_inds_to_skip)
-#             else:
-#                 skiprows = np.arange(skip-1)
-
-        if __debug__:
-            if isinstance(skiprows, np.ndarray):
-                self._logger.debug("effective skiprows:\n%s\n%s" %
-                                   (skiprows, str(skiprows.shape)))
-        self._logger.debug("header: %s" % header)
         try:
             fh = open(fn)
             reader = _csv_chunked_numpy_iterator(
                 csv.reader(fh, dialect=self._dialects[self._itraj]),
                 chunksize=self.chunksize, skiprows=skiprows, header=header)
             reader.f = fn
+            reader.fh = fh
         except EnvironmentError:
             self._logger.exception()
             raise
@@ -267,8 +234,13 @@ class PyCSVReader(ReaderInterface):
         if lag == 0:
             return X
         else:
+            # Note: this ugly hack is needed, since the caller of this method
+            # may try to request lagged chunks repeatedly.
             try:
+                if self._lagged_iter_finished:
+                    raise StopIteration
                 Y = self._iter_lagged.get_chunk()
             except StopIteration:
+                self._lagged_iter_finished = True
                 Y = np.empty(0)
             return X, Y
