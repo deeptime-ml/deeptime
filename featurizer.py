@@ -126,8 +126,11 @@ class SelectionFeature(object):
         self.prefix_label = "ATOM:"
 
     def describe(self):
-        labels = ["%s%s" % (self.prefix_label, _describe_atom(self.top, i))
-                  for i in self.indexes]
+        labels = []
+        for i in self.indexes:
+            labels.append("%s%s x" % (self.prefix_label, _describe_atom(self.top, i)))
+            labels.append("%s%s y" % (self.prefix_label, _describe_atom(self.top, i)))
+            labels.append("%s%s z" % (self.prefix_label, _describe_atom(self.top, i)))
         return labels
 
     @property
