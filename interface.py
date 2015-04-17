@@ -1,4 +1,3 @@
-
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Free University
 # Berlin, 14195 Berlin, Germany.
 # All rights reserved.
@@ -134,3 +133,13 @@ class ReaderInterface(Transformer):
             array = np.reshape(array, shape_2d)
 
         self._data.append(array)
+
+    # handle abstract methods and special cases
+    def map(self, X):
+        raise NotImplementedError("a read can not map data, it is a data source")
+
+    def _map_array(self, X):
+        pass
+
+    def _param_add_data(self, *args, **kwargs):
+        pass

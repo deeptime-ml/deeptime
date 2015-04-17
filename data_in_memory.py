@@ -1,4 +1,3 @@
-
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Free University
 # Berlin, 14195 Berlin, Germany.
 # All rights reserved.
@@ -82,6 +81,9 @@ class DataInMemory(ReaderInterface):
         reader = NumPyFileReader(files)
         data = reader.get_output()
         return cls(data)
+
+    def describe(self):
+        return "[DataInMemory array shapes: %s]" % [np.shape(x) for x in self._data]
 
     def __set_dimensions_and_lenghts(self):
         # number of trajectories/data sets

@@ -1,4 +1,3 @@
-
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Free University
 # Berlin, 14195 Berlin, Germany.
 # All rights reserved.
@@ -23,7 +22,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__author__ = 'noe'
+__author__ = 'noe, marscher'
 
 import numpy as np
 import mdtraj

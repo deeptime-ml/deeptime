@@ -68,8 +68,6 @@ class NumPyFileReader(ReaderInterface):
         # current file handle
         self._fh = None
 
-        self.next_ignore = 0
-
         self.__set_dimensions_and_lenghts()
 
         self._parametrized = True
@@ -80,7 +78,9 @@ class NumPyFileReader(ReaderInterface):
         if self._fh is not None:
             self._fh.close()
 
-        self.next_ignore = 0
+    def describe(self):
+        return "[NumpyFileReader arrays with shape %s]" % [np.shape(x)
+                                                           for x in self._data]
 
     def __load_file(self, filename):
         assert filename in self._filenames

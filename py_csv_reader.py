@@ -1,4 +1,3 @@
-
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Free University
 # Berlin, 14195 Berlin, Germany.
 # All rights reserved.
@@ -125,6 +124,9 @@ class PyCSVReader(ReaderInterface):
 
         self.__set_dimensions_and_lenghts()
         self._parametrized = True
+
+    def describe(self):
+        return "[CSVReader files=%s]" % self._filenames
 
     def __set_dimensions_and_lenghts(self):
         # number of trajectories/data sets

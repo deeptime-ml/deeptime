@@ -1,4 +1,3 @@
-
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Free University
 # Berlin, 14195 Berlin, Germany.
 # All rights reserved.
@@ -28,7 +27,6 @@ Created on 22.01.2015
 
 @author: marscher
 '''
-from pyemma.util.log import getLogger
 
 import numpy as np
 from pyemma.coordinates.transform.transformer import Transformer
@@ -58,6 +56,9 @@ class WriterCSV(Transformer):
 
     def dimension(self):
         return self.data_producer.dimension()
+
+    def _map_array(self, X):
+        pass
 
     def _reset(self, stride=1):
         try:
