@@ -25,7 +25,7 @@
 
 r"""
 ===============================================================================
-io - IO Utilities (:mod:`pyemma.coordinates.data`)
+data - Data and input/output utilities (:mod:`pyemma.coordinates.data`)
 ===============================================================================
 
 .. currentmodule: pyemma.coordinates.data
@@ -49,6 +49,6 @@ Reader
     DataInMemory - used if data is already available in mem
 
 """
-from feature_reader import FeatureReader
-from featurizer import MDFeaturizer, CustomFeature
-from data_in_memory import DataInMemory
+from .feature_reader import FeatureReader
+from .featurizer import MDFeaturizer, CustomFeature
+from .data_in_memory import DataInMemory

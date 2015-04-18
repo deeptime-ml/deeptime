@@ -79,10 +79,12 @@ def _hash_numpy_array(x):
 class CustomFeature(object):
 
     """
-    A CustomFeature is the base class for all self defined features. You shall
-    calculate your quantities in map method and return it as an ndarray.
+    A CustomFeature is the base class for user-defined features. If you want to
+    implement a new fancy feature, derive from this class, calculate the quantity
+    of interest in the map method and return it as an ndarray.
 
-    If you simply want to call a function with arguments, you do not need to derive.
+    If you have defined a map function that should be classed, you don't need to derive a class, but you
+    can simply pass a function to the constructor of this class
 
 
     Parameters
@@ -94,15 +96,12 @@ class CustomFeature(object):
 
     Examples
     --------
-    We use a FeatureReader to read MD-trajectories and add a CustomFeature to
-    transform coordinates:
+    We define a feature that transforms all coordinates by :math:`1 / x^2`:
 
-    >>> reader = FeatureReader(...)
+    >>> from pyemma.coordinates import load
+    >>>
     >>> my_feature = CustomFeature(lambda x: 1.0 / x**2)
-    >>> reader.featurizer.add_custom_feature(my_feature, output_dimension=3)
-
-    Now a pipeline using this reader will apply the :math:`1 / x^2` transform on
-    every frame being red.
+    >>> X2 = load('traj.xtc', my_feature)
 
     """
 
