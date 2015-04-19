@@ -490,7 +490,7 @@ class MDFeaturizer(object):
         sel : ndarray((n), dtype=int)
             array with selected atom indexes
 
-        Returns
+        Return:
         -------
         sel : ndarray((m,2), dtype=int)
             m x 2 array with all pair indexes between different atoms that are at least 3 indexes apart,
