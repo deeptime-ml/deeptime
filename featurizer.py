@@ -118,7 +118,7 @@ class CustomFeature(object):
         return ["override me to get proper description!"]
 
     def map(self, traj):
-        feature = self._func(traj, self._args, self._kwargs)
+        feature = self._func(traj, *self._args, **self._kwargs)
         if not isinstance(feature, np.ndarray):
             raise ValueError("your function should return a NumPy array!")
         return feature
