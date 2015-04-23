@@ -71,8 +71,8 @@ def _catch_unhashable(x):
 def _hash_numpy_array(x):
     x.flags.writeable = False
     hash_value = hash(x.shape)
-    hash_value |= hash(x.strides)
-    hash_value |= hash(x.data)
+    hash_value ^= hash(x.strides)
+    hash_value ^= hash(x.data)
     return hash_value
 
 
@@ -98,10 +98,13 @@ class CustomFeature(object):
     --------
     We define a feature that transforms all coordinates by :math:`1 / x^2`:
 
-    >>> from pyemma.coordinates import load
-    >>>
-    >>> my_feature = CustomFeature(lambda x: 1.0 / x**2)
-    >>> X2 = load('traj.xtc', my_feature)
+    >>> from pyemma.coordinates import source
+    # define a function which transforms the coordinates of the trajectory object
+    >>> my_feature = CustomFeature(lambda x: 1.0 / x.xyz**2)
+    >>> reader = load('traj.xtc', top='my_topology.pdb')
+    # pass the feature to the featurizer and transform the data
+    >>> reader.featurizer.add_custom_feature(my_feature)
+    >>> data = reader.get_output()
 
     """
 
@@ -115,7 +118,9 @@ class CustomFeature(object):
             self.dimension = 0
 
     def describe(self):
-        return ["override me to get proper description!"]
+        return ["CustomFeature calling %s with args %s" % (str(self._func),
+                                                           str(self._args) +
+                                                           str(self._kwargs))]
 
     def map(self, traj):
         feature = self._func(traj, *self._args, **self._kwargs)
@@ -128,7 +133,7 @@ class CustomFeature(object):
         # if key contains numpy arrays, we hash their data arrays
         key = tuple(map(_catch_unhashable, self._args) +
                     map(_catch_unhashable, sorted(self._kwargs.items())))
-        hash_value |= hash(key)
+        hash_value ^= hash(key)
         return hash_value
 
     def __eq__(self, other):
@@ -152,9 +157,12 @@ class SelectionFeature(object):
     def describe(self):
         labels = []
         for i in self.indexes:
-            labels.append("%s%s x" % (self.prefix_label, _describe_atom(self.top, i)))
-            labels.append("%s%s y" % (self.prefix_label, _describe_atom(self.top, i)))
-            labels.append("%s%s z" % (self.prefix_label, _describe_atom(self.top, i)))
+            labels.append("%s%s x" %
+                          (self.prefix_label, _describe_atom(self.top, i)))
+            labels.append("%s%s y" %
+                          (self.prefix_label, _describe_atom(self.top, i)))
+            labels.append("%s%s z" %
+                          (self.prefix_label, _describe_atom(self.top, i)))
         return labels
 
     @property
@@ -167,8 +175,8 @@ class SelectionFeature(object):
 
     def __hash__(self):
         hash_value = hash(self.top)
-        hash_value |= _hash_numpy_array(self.indexes)
-        hash_value |= hash(self.prefix_label)
+        hash_value ^= _hash_numpy_array(self.indexes)
+        hash_value ^= hash(self.prefix_label)
 
         return hash_value
 
@@ -240,7 +248,7 @@ class ContactFeature(DistanceFeature):
 
     def __hash__(self):
         hash_value = DistanceFeature.__hash__(self)
-        hash_value |= hash(self.threshold)
+        hash_value ^= hash(self.threshold)
         return hash_value
 
 
@@ -274,8 +282,8 @@ class AngleFeature(object):
 
     def __hash__(self):
         hash_value = _hash_numpy_array(self.angle_indexes)
-        hash_value |= hash(self.top)
-        hash_value |= hash(self.deg)
+        hash_value ^= hash(self.top)
+        hash_value ^= hash(self.deg)
 
         return hash_value
 
@@ -313,8 +321,8 @@ class DihedralFeature(object):
 
     def __hash__(self):
         hash_value = _hash_numpy_array(self.dih_indexes)
-        hash_value |= hash(self.top)
-        hash_value |= hash(self.deg)
+        hash_value ^= hash(self.top)
+        hash_value ^= hash(self.deg)
 
         return hash_value
 
@@ -374,8 +382,8 @@ class BackboneTorsionFeature(object):
 
     def __hash__(self):
         hash_value = _hash_numpy_array(self._phi_inds)
-        hash_value |= _hash_numpy_array(self._psi_inds)
-        hash_value |= hash(self.topology)
+        hash_value ^= _hash_numpy_array(self._psi_inds)
+        hash_value ^= hash(self.topology)
 
         return hash_value
 
@@ -702,6 +710,30 @@ class MDFeaturizer(object):
 
         self.__add_feature(feature)
 
+    def add_custom_func(self, func, dim, desc='', *args, **kwargs):
+        """ adds a user defined function to extract features
+
+        Parameters
+        ----------
+        func : function
+            a user-defined function, which accepts mdtraj.Trajectory object as
+            first parameter and as many optional and named arguments as desired.
+            Has to return a numpy.ndarray
+        dim : int
+            output dimension of function
+        desc : str
+            description of your feature function
+        args : list
+            positional arguments passed to func
+        kwargs : dictionary
+            named arguments passed to func
+
+        """
+        f = CustomFeature(func, args, kwargs)
+        f.dimension = dim
+
+        self.add_custom_feature(f)
+
     def dimension(self):
         """ current dimension due to selected features
 
@@ -748,6 +780,29 @@ class MDFeaturizer(object):
         # TODO: consider parallel evaluation computation here, this effort is
         # only worth it, if computation time dominates memory transfers
         for f in self.active_features:
-            feature_vec.append(f.map(traj).astype(np.float32))
+            # perform sanity checks for custom feature input
+            if isinstance(f, CustomFeature):
+                # NOTE: casting=safe raises in numpy>=1.9
+                vec = f.map(traj).astype(np.float32, casting='safe')
 
-        return np.hstack(feature_vec)
+                if not isinstance(vec, np.ndarray):
+                    raise ValueError('Your custom feature %s did not return'
+                                     ' a numpy.ndarray!' % str(f.describe()))
+                if not np.ndim == 2:
+                    raise ValueError('Your custom feature %s did not return'
+                                     ' a 2d array. Shape was %s'
+                                     % (str(f.describe()),
+                                        str(vec.shape)))
+                if not vec.shape[0] == traj.xyz.shape[0]:
+                    raise ValueError('Your custom feature %s did not return'
+                                     ' as many frames as it received!'
+                                     'Input was %i, output was %i'
+                                     % (str(f.describe()),
+                                        traj.xyz.shape[0],
+                                        vec.shape[0]))
+            else:
+                vec = f.map(traj).astype(np.float32)
+            feature_vec.append(vec)
+
+        stack = np.hstack(feature_vec)
+        return stack
