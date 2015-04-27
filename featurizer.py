@@ -1,4 +1,3 @@
-
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Free University
 # Berlin, 14195 Berlin, Germany.
 # All rights reserved.
@@ -788,7 +787,7 @@ class MDFeaturizer(object):
                 if not isinstance(vec, np.ndarray):
                     raise ValueError('Your custom feature %s did not return'
                                      ' a numpy.ndarray!' % str(f.describe()))
-                if not np.ndim == 2:
+                if not vec.ndim == 2:
                     raise ValueError('Your custom feature %s did not return'
                                      ' a 2d array. Shape was %s'
                                      % (str(f.describe()),
