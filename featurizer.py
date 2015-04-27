@@ -803,5 +803,8 @@ class MDFeaturizer(object):
                 vec = f.map(traj).astype(np.float32)
             feature_vec.append(vec)
 
-        stack = np.hstack(feature_vec)
-        return stack
+        if len(feature_vec) > 1:
+            res = np.hstack(feature_vec)
+        else:
+            res = feature_vec[0]
+        return res
