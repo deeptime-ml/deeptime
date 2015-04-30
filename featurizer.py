@@ -725,8 +725,7 @@ class MDFeaturizer(object):
             named arguments passed to func
 
         """
-        f = CustomFeature(func, args, kwargs)
-        f.dimension = dim
+        f = CustomFeature(func, args, kwargs, dim=dim)
 
         self.add_custom_feature(f)
 
