@@ -765,6 +765,10 @@ class MDFeaturizer(object):
             new_shape = (s[0], s[1] * s[2])
             return traj.xyz.reshape(new_shape)
 
+        # handle empty chunks (which might occur due to time lagged access
+        if traj.xyz.shape[0] == 0:
+            return np.empty((0, self.dimension()))
+
         # TODO: define preprocessing step (RMSD etc.)
 
         # otherwise build feature vector.
@@ -777,6 +781,8 @@ class MDFeaturizer(object):
             if isinstance(f, CustomFeature):
                 # NOTE: casting=safe raises in numpy>=1.9
                 vec = f.map(traj).astype(np.float32, casting='safe')
+                if vec.shape[0] == 0:
+                    vec = np.empty((0, f.dimension))
 
                 if not isinstance(vec, np.ndarray):
                     raise ValueError('Your custom feature %s did not return'
