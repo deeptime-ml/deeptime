@@ -118,8 +118,8 @@ class FeatureReader(ReaderInterface):
         self._ntraj = len(self.trajfiles)
         # basic statistics
         for traj in self.trajfiles:
-            sum_frames = sum(t.n_frames for t in self._create_iter(traj))
-            self._lengths.append(sum_frames)
+            with mdtraj.open(traj, mode='r') as fh:
+                self._lengths.append(len(fh))
 
         # number of trajectories/data sets
         if self._ntraj == 0:
@@ -175,7 +175,7 @@ class FeatureReader(ReaderInterface):
 
     def _map_to_memory(self, stride=1):
         # TODO: stride is currently not implemented
-        if stride > 1: 
+        if stride > 1:
             raise NotImplementedError('stride option for FeatureReader._map_to_memory is currently not implemented')
 
         self._reset()
