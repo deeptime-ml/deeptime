@@ -30,6 +30,8 @@ import mdtraj
 from pyemma.coordinates.util import patches
 from pyemma.coordinates.data.interface import ReaderInterface
 from pyemma.coordinates.data.featurizer import MDFeaturizer
+from pyemma.coordinates.data.traj_info_cache import TrajectoryInfoCache
+from pyemma.util.config import conf_values
 
 __all__ = ['FeatureReader']
 
@@ -103,6 +105,10 @@ class FeatureReader(ReaderInterface):
         self.in_memory = False
         self._Y = None
 
+        # lookups pre-computed lengths
+        fn = conf_values['pyemma']['traj_len_cache_file']
+        self._traj_info_cache = TrajectoryInfoCache(fn)
+
         self.__set_dimensions_and_lenghts()
         self._parametrized = True
 
@@ -118,8 +124,7 @@ class FeatureReader(ReaderInterface):
         self._ntraj = len(self.trajfiles)
         # basic statistics
         for traj in self.trajfiles:
-            sum_frames = sum(t.n_frames for t in self._create_iter(traj))
-            self._lengths.append(sum_frames)
+            self._lengths.append(self._traj_info_cache[traj])
 
         # number of trajectories/data sets
         if self._ntraj == 0:
@@ -175,7 +180,7 @@ class FeatureReader(ReaderInterface):
 
     def _map_to_memory(self, stride=1):
         # TODO: stride is currently not implemented
-        if stride > 1: 
+        if stride > 1:
             raise NotImplementedError('stride option for FeatureReader._map_to_memory is currently not implemented')
 
         self._reset()
