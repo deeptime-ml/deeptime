@@ -225,14 +225,16 @@ class CustomFeature(object):
     --------
     We define a feature that transforms all coordinates by :math:`1 / x^2`:
 
-    >>> from pyemma.coordinates import source
+    >>> from pyemma.coordinates import source, get_test_data
+    >>> inp = get_test_data()
 
     Define a function which transforms the coordinates of the trajectory object:
     >>> my_feature = CustomFeature(lambda x: 1.0 / x.xyz**2)
-    >>> reader = pyemma.coordinates.load('traj.xtc', top='my_topology.pdb') # doctest: +SKIP
-    # pass the feature to the featurizer and transform the data
-    >>> reader.featurizer.add_custom_feature(my_feature) # doctest: +SKIP
-    >>> data = reader.get_output() # doctest: +SKIP
+    >>> reader = source(inp['trajs'][0], top=inp['top'])
+
+    pass the feature to the featurizer and transform the data
+    >>> reader.featurizer.add_custom_feature(my_feature)
+    >>> data = reader.get_output()
 
     """
 
