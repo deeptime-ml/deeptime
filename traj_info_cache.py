@@ -76,10 +76,6 @@ class _TrajectoryInfoCache(object):
         self._database[key] = self.__format_value(filename, n_frames)
         self._write_protector.release()
 
-    def __del__(self):
-        if not isinstance(self._database, dict):
-            self._database.close()
-
 
 # singleton pattern
 cfg_dir = conf_values['pyemma']['cfg_dir']
