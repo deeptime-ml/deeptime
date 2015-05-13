@@ -101,30 +101,19 @@ class FeatureReader(ReaderInterface):
         # time lagged iterator
         self._mditer2 = None
 
-        # cache size
-        self.in_memory = False
-        self._Y = None
-
-        # lookups pre-computed lengths
-        fn = conf_values['pyemma']['traj_len_cache_file']
-        self._traj_info_cache = TrajectoryInfoCache(fn)
-
         self.__set_dimensions_and_lenghts()
         self._parametrized = True
 
-    # @classmethod
-    # def init_from_featurizer(cls, trajectories, featurizer):
-    #     if not isinstance(featurizer, MDFeaturizer):
-    #         raise ValueError("given featurizer is not of type Featurizer, but is %s"
-    #                          % type(featurizer))
-    #     cls.featurizer = featurizer
-    #     return cls(trajectories, featurizer.topologyfile)
-
     def __set_dimensions_and_lenghts(self):
         self._ntraj = len(self.trajfiles)
-        # basic statistics
-        for traj in self.trajfiles:
-            self._lengths.append(self._traj_info_cache[traj])
+        # lookups pre-computed lengths, or compute it on the fly and store it in db.
+        if conf_values['pyemma']['use_trajectory_lengths_cache'] == 'True':
+            for traj in self.trajfiles:
+                self._lengths.append(TrajectoryInfoCache[traj])
+        else:
+            for traj in self.trajfiles:
+                with mdtraj.open(traj, mode='r') as fh:
+                    self._lengths.append(len(fh))
 
         # number of trajectories/data sets
         if self._ntraj == 0:
@@ -156,7 +145,7 @@ class FeatureReader(ReaderInterface):
         :return:
         """
         if len(self.featurizer.active_features) == 0:
-            # special case: cartesion coordinates
+            # special case: Cartesian coordinates
             return self.featurizer.topology.n_atoms * 3
         else:
             # general case

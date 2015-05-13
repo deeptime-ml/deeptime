@@ -7,11 +7,12 @@ import anydbm
 import os
 import mdtraj
 from threading import Semaphore
+from pyemma.util.config import conf_values
 
 __all__ = ('TrajectoryInfoCache')
 
 
-class TrajectoryInfoCache(object):
+class _TrajectoryInfoCache(object):
 
     """ stores trajectory lengths associated to a file based hash (mtime, name, 1mb of data)
 
@@ -20,6 +21,11 @@ class TrajectoryInfoCache(object):
     database_filename : str (optional)
         if given the cache is being made persistent to this file. Otherwise the
         cache is lost after the process has finished.
+
+    Notes
+    -----
+    Do not instantiate this yourself, but use the instance provided by this
+    module.
 
     """
 
@@ -73,3 +79,9 @@ class TrajectoryInfoCache(object):
     def __del__(self):
         if not isinstance(self._database, dict):
             self._database.close()
+
+
+# singleton pattern
+cfg_dir = conf_values['pyemma']['cfg_dir']
+filename = os.path.join(cfg_dir, "trajlen_cache")
+TrajectoryInfoCache = _TrajectoryInfoCache(filename)
