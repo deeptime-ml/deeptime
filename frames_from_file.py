@@ -1,4 +1,3 @@
-
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Free University
 # Berlin, 14195 Berlin, Germany.
 # All rights reserved.
@@ -30,7 +29,8 @@ from logging import info
 __all__ = ['frames_from_file']
 
 
-def frames_from_file(file_name, pdbfile, frames, chunksize=int(1e5), verbose=False):
+def frames_from_file(file_name, pdbfile, frames, chunksize=100,
+                     verbose=False, stride=1, **kwargs):
     r"""Reads one "file_name" molecular trajectory and returns an mdtraj trajectory object 
         containing only the specified "frames" in the specified order.
 
@@ -40,10 +40,10 @@ def frames_from_file(file_name, pdbfile, frames, chunksize=int(1e5), verbose=Fal
 
     Parameters
     ----------
-    file_name: str. 
+    file_name: str.
         Absolute path to the molecular trajectory file, ex. trajout.xtc 
 
-    pdb_file : str. 
+    pdb_file : str.
         Absolute path to the molecular trajectory file that can be used as topology by mdtraj
 
     frames : ndarray of shape (n_frames, ) and integer type
@@ -54,13 +54,16 @@ def frames_from_file(file_name, pdbfile, frames, chunksize=int(1e5), verbose=Fal
         "frames" need not be monotonous or unique, i.e, arrays like
         [3, 1, 4, 1, 5, 9, 9, 9, 9, 3000, 0, 0, 1] are welcome 
 
-    verbose: boolean. 
+    verbose: boolean.
         Level of verbosity while looking for "frames". Useful when using "chunksize" with large trajectories.
         It provides the no. of frames accumulated for every chunk.
+    stride : int (default=1)
+        consider only every n'th frame.
 
     Returns
-    -------            
-    traj : an md trajectory object containig the frames specificed in "frames", in the order specified in "frames" 
+    -------
+    traj : an md trajectory object containig the frames specified in "frames",
+           in the order specified in "frames".
     """
 
     traj = None
@@ -69,8 +72,10 @@ def frames_from_file(file_name, pdbfile, frames, chunksize=int(1e5), verbose=Fal
     # Because the trajectory is streamed "chronologically", but "frames" can have any arbitrary order
     # we store that order in "orig_order" to reshuffle the traj at the end
     orig_order = frames.argsort().argsort()
+    sorted_frames = np.sort(frames)
 
-    for jj, traj_chunk in enumerate(md.iterload(file_name, top=pdbfile, chunk=chunksize)):
+    for jj, traj_chunk in enumerate(md.iterload(file_name, top=pdbfile,
+                                                chunk=chunksize, stride=stride)):
 
         # Create an indexing array for this trajchunk
         i_idx = jj*chunksize
@@ -78,7 +83,7 @@ def frames_from_file(file_name, pdbfile, frames, chunksize=int(1e5), verbose=Fal
         chunk_frames = np.arange(i_idx, f_idx+1)[:traj_chunk.n_frames]
 
         # Frames that appear more than one time will be kept
-        good_frames = np.hstack([np.argwhere(ff == chunk_frames).squeeze() for ff in np.sort(frames)])
+        good_frames = np.hstack([np.argwhere(ff == chunk_frames).squeeze() for ff in sorted_frames])
 
         # Append the good frames of this chunk
         if np.size(good_frames) > 0:
