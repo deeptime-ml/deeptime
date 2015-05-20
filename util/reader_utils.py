@@ -30,7 +30,7 @@ import mdtraj as md
 import os
 
 
-def create_file_reader(input_files, topology, featurizer):
+def create_file_reader(input_files, topology, featurizer, chunk_size=100):
     r"""
     Creates a (possibly featured) file reader by a number of input files and either a topology file or a featurizer.
     Parameters
@@ -41,6 +41,8 @@ def create_file_reader(input_files, topology, featurizer):
         A topology file. If given, the featurizer argument can be None.
     :param featurizer:
         A featurizer. If given, the topology file can be None.
+    :param chunk_size:
+        The chunk size with which the corresponding reader gets initialized.
     :return: Returns the reader.
     """
     if isinstance(input_files, basestring) \
@@ -86,13 +88,14 @@ def create_file_reader(input_files, topology, featurizer):
                         raise ValueError("The input files were MD files which makes it mandatory to have either a "
                                          "featurizer or a topology file.")
 
-                    reader = _FeatureReader(input_list, featurizer=featurizer, topologyfile=topology)
+                    reader = _FeatureReader(input_list, featurizer=featurizer, topologyfile=topology,
+                                            chunksize=chunk_size)
                 else:
                     if suffix in ['.npy', '.npz']:
-                        reader = _NumPyFileReader(input_list)
+                        reader = _NumPyFileReader(input_list, chunksize=chunk_size)
                     # otherwise we assume that given files are ascii tabulated data
                     else:
-                        reader = _CSVReader(input_list)
+                        reader = _CSVReader(input_list, chunksize=chunk_size)
         else:
             raise ValueError("Not all elements in the input list were of the type %s!" % suffix)
     else:
