@@ -75,14 +75,12 @@ def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
     assert isinstance(file_name, str), "input file_name must be a string, got %s instead"%type(file_name)
     assert isinstance(pdbfile, str), "input pdbfile must be a string, got %s instead" % type(pdbfile)
 
-
     traj = None
     cum_frames = 0
 
     # Because the trajectory is streamed "chronologically", but "frames" can have any arbitrary order
     # we store that order in "orig_order" to reshuffle the traj at the end
     orig_order = frames.argsort().argsort()
-
     sorted_frames = np.sort(frames)
 
     for jj, traj_chunk in enumerate(md.iterload(file_name, top=pdbfile,
@@ -90,7 +88,7 @@ def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
 
         # Create an indexing array for this trajchunk
         i_idx = jj*chunksize
-        f_idx = i_idx+(chunksize)-1
+        f_idx = i_idx+chunksize-1
         chunk_frames = np.arange(i_idx, f_idx+1)[:traj_chunk.n_frames]
 
         # Frames that appear more than one time will be kept
