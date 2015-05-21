@@ -26,7 +26,9 @@
 from pyemma.coordinates.data.numpy_filereader import NumPyFileReader as _NumPyFileReader
 from pyemma.coordinates.data.py_csv_reader import PyCSVReader as _CSVReader
 from pyemma.coordinates.data import FeatureReader as _FeatureReader
+from numpy import vstack
 import mdtraj as md
+import numpy as np
 import os
 
 
@@ -115,3 +117,58 @@ def single_traj_from_n_files(file_list, top):
             traj = traj.join(md.load(ff, top=top))
 
     return traj
+
+def save_traj_w_md_load_frame(reader, sets):
+    # Creates a single trajectory object from a "sets" array via md.load_frames
+    traj = None
+    for file_idx, frame_idx in vstack(sets):
+        if traj is None:
+            traj = md.load_frame(reader.trajfiles[file_idx], frame_idx, reader.topfile)
+        else:
+            traj = traj.join(md.load_frame(reader.trajfiles[file_idx], frame_idx, reader.topfile))
+    return traj
+
+
+def compare_coords_md_trajectory_objects(traj1, traj2, atom = None, eps = 1e-6, mess = False ):
+    # Compares the coordinates of "atom" for all frames in traj1 and traj2
+    # Returns a boolean found_diff and an errmsg informing where
+    assert isinstance(traj1, md.Trajectory)
+    assert isinstance(traj2, md.Trajectory)
+    assert traj1.n_frames == traj2.n_frames
+    assert traj2.n_atoms == traj2.n_atoms
+
+    R = np.zeros((2, traj1.n_frames, 3))
+    if atom is None:
+        atom_index = np.random.randint(0, high = traj1.n_atoms)
+    else:
+        atom_index = atom
+
+    # Artificially mess the the coordinates
+    if mess:
+        traj1.xyz [0, atom_index, 2] += 10*eps
+
+    for ii, traj in enumerate([traj1, traj2]):
+        R[ii, :] = traj.xyz[:, atom_index]
+
+    # Compare the R-trajectories among themselves
+    found_diff = False
+    first_diff = None
+    errmsg = ''
+
+    for ii, iR in enumerate(R):
+    # Norm of the difference vector
+        norm_diff = np.sqrt(((iR - R) ** 2).sum(2))
+
+        # Any differences?
+        if (norm_diff > eps).any():
+            first_diff = np.argwhere(norm_diff > eps)[0]
+            found_diff = True
+            errmsg = "Delta R_%u at frame %u: [%2.1e, %2.1e]" % (atom_index, first_diff[1],
+                                                                 norm_diff[0, first_diff[1]],
+                                                                 norm_diff[1, first_diff[1]])
+            errmsg2 = "\nThe position of atom %u differs by > %2.1e for the same frame between trajectories" % (
+                atom_index, eps)
+            errmsg += errmsg2
+            break
+
+    return found_diff, errmsg

@@ -29,8 +29,8 @@ from logging import info
 __all__ = ['frames_from_file']
 
 
-def frames_from_file(file_name, pdbfile, frames, chunksize=100,
-                     verbose=False, stride=1, **kwargs):
+def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
+                     stride = 1, verbose = False, **kwargs):
     r"""Reads one "file_name" molecular trajectory and returns an mdtraj trajectory object 
         containing only the specified "frames" in the specified order.
 
@@ -57,14 +57,24 @@ def frames_from_file(file_name, pdbfile, frames, chunksize=100,
     verbose: boolean.
         Level of verbosity while looking for "frames". Useful when using "chunksize" with large trajectories.
         It provides the no. of frames accumulated for every chunk.
-    stride : int (default=1)
-        consider only every n'th frame.
+
+    stride  : integer, default is 1
+        This parameter informs :py:func:`save_traj` about the stride used in :py:obj:`indexes`. Typically, :py:obj:`indexes`
+        contains frame-indexes that match exactly the frames of the files contained in :py:obj:`traj_inp.trajfiles`.
+        However, in certain situations, that might not be the case. Examples are cases in which a stride value != 1
+        was used when reading/featurizing/transforming/discretizing the files contained in :py:obj:`traj_inp.trajfiles`.
 
     Returns
     -------
-    traj : an md trajectory object containig the frames specified in "frames",
+    traj : an md trajectory object containing the frames specified in "frames",
            in the order specified in "frames".
     """
+
+    assert isinstance(frames, np.ndarray), "input frames frames must be a numpy ndarray, got %s instead "%type(frames)
+    assert np.ndim(frames) == 1, "input frames frames must have ndim = 1, got np.ndim = %u instead "%np.ndim(frames)
+    assert isinstance(file_name, str), "input file_name must be a string, got %s instead"%type(file_name)
+    assert isinstance(pdbfile, str), "input pdbfile must be a string, got %s instead" % type(pdbfile)
+
 
     traj = None
     cum_frames = 0
@@ -72,6 +82,7 @@ def frames_from_file(file_name, pdbfile, frames, chunksize=100,
     # Because the trajectory is streamed "chronologically", but "frames" can have any arbitrary order
     # we store that order in "orig_order" to reshuffle the traj at the end
     orig_order = frames.argsort().argsort()
+
     sorted_frames = np.sort(frames)
 
     for jj, traj_chunk in enumerate(md.iterload(file_name, top=pdbfile,
@@ -79,7 +90,7 @@ def frames_from_file(file_name, pdbfile, frames, chunksize=100,
 
         # Create an indexing array for this trajchunk
         i_idx = jj*chunksize
-        f_idx = i_idx+chunksize-1
+        f_idx = i_idx+(chunksize)-1
         chunk_frames = np.arange(i_idx, f_idx+1)[:traj_chunk.n_frames]
 
         # Frames that appear more than one time will be kept
@@ -106,6 +117,9 @@ def frames_from_file(file_name, pdbfile, frames, chunksize=100,
     if (frames > chunk_frames[-1]).any():
         raise Exception('Cannot provide frames %s for trajectory %s with n_frames = %u'
                         % (frames[frames > chunk_frames[-1]], file_name, chunk_frames[-1]))
+
+    if stride != 1:
+        info('A stride value of = %u was parsed, interpreting "indexes" accordingly.'%stride)
 
     # Trajectory coordinates are is returned "reshuffled"
     return traj[orig_order]
