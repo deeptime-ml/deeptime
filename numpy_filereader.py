@@ -1,4 +1,3 @@
-
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Free University
 # Berlin, 14195 Berlin, Germany.
 # All rights reserved.
@@ -22,20 +21,20 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 '''
 Created on 07.04.2015
 
 @author: marscher
 '''
 import numpy as np
+import functools
 
 from pyemma.coordinates.data.interface import ReaderInterface
 
 
 class NumPyFileReader(ReaderInterface):
 
-    """reads NumPy files in chunks. Supports .npy and .npz files
+    """reads NumPy files in chunks. Supports .npy files
 
     Parameters
     ----------
@@ -56,17 +55,14 @@ class NumPyFileReader(ReaderInterface):
         self._filenames = filenames
 
         for f in self._filenames:
-            if not (f.endswith('.npy') or f.endswith('.npz')):
+            if not f.endswith('.npy'):
                 raise ValueError('given file "%s" is not supported'
-                                 ' by this reader' % f)
+                                 ' by this reader. Since it does end with .npy' % f)
 
         self.mmap_mode = mmap_mode
 
-        # current storage, holds mmapped arrays
-        self._data = []
-
-        # current file handle
-        self._fh = None
+        # currently opened array
+        self._array = None
 
         self.__set_dimensions_and_lenghts()
 
@@ -75,60 +71,76 @@ class NumPyFileReader(ReaderInterface):
     def _reset(self, stride=1):
         self._t = 0
         self._itraj = 0
-        if self._fh is not None:
-            self._fh.close()
+        self._close_file()
 
     def describe(self):
         return "[NumpyFileReader arrays with shape %s]" % [np.shape(x)
                                                            for x in self._data]
 
+    def __reshape(self, array):
+        """
+        checks shapes, eg convert them (2d), raise if not possible
+        after checks passed, add array to self._data
+        """
+
+        if array.ndim == 1:
+            array = np.atleast_2d(array).T
+        elif array.ndim == 2:
+            pass
+        else:
+            shape = array.shape
+            # hold first dimension, multiply the rest
+            shape_2d = (shape[0],
+                        functools.reduce(lambda x, y: x * y, shape[1:]))
+            array = np.reshape(array, shape_2d)
+        return array
+
     def __load_file(self, filename):
-        assert filename in self._filenames
-
-        if self._fh is not None:
-            # name already open?
-            if self._fh.name == filename:
-                return
-            else:
-                self._fh.close()
-
+        self._close_file()
         self._logger.debug("opening file %s" % filename)
-        self._fh = open(filename, 'rb')
 
         if filename.endswith('.npy'):
             x = np.load(filename, mmap_mode=self.mmap_mode)
-            self._add_array_to_storage(x)
-
-        # in this case the file might contain several arrays
-        elif filename.endswith('.npz'):
-            # closes file handle
-            npz_file = np.load(self._fh, mmap_mode=self.mmap_mode)
-            for _, arr in npz_file.items():
-                self._add_array_to_storage(arr)
+            arr = self.__reshape(x)
         else:
-            raise ValueError("given file '%s' is not a NumPy array. Make sure it has"
-                             " either an .npy or .npz extension" % filename)
+            raise ValueError("given file '%s' is not a NumPy array. Make sure"
+                             " it has a .npy extension" % filename)
+        self._array = arr
+        return arr
+
+    def _close_file(self):
+        if self._array is None:
+            return
+
+        if self._array is not None:
+            if __debug__:
+                self._logger.debug("delete filehandle")
+            del self._array
+            self._array = None
 
     def __set_dimensions_and_lenghts(self):
+        ndims = []
         for f in self._filenames:
-            self.__load_file(f)
-
-        self._lengths += [np.shape(x)[0] for x in self._data]
+            array = self.__load_file(f)
+            self._lengths.append(np.shape(array)[0])
+            ndims.append(np.shape(array)[1])
+            self._close_file()
 
         # ensure all trajs have same dim
-        ndims = [np.shape(x)[1] for x in self._data]
         if not np.unique(ndims).size == 1:
             raise ValueError("input data has different dimensions!"
                              "Dimensions are = %s" % ndims)
 
         self._ndim = ndims[0]
 
-        self._ntraj = len(self._data)
+        self._ntraj = len(self._filenames)
 
     def _next_chunk(self, lag=0, stride=1):
 
         if (self._t >= self.trajectory_length(self._itraj, stride=stride) and
                 self._itraj < len(self._filenames) - 1):
+            if __debug__:
+                self._logger.debug("reached bounds of array, open next.")
             # close file handles and open new ones
             self._t = 0
             self._itraj += 1
@@ -136,8 +148,10 @@ class NumPyFileReader(ReaderInterface):
             # we open self._mditer2 only if requested due lag parameter!
             self._curr_lag = 0
 
+        if self._array is None:
+            self.__load_file(self._filenames[self._itraj])
         traj_len = self._lengths[self._itraj]
-        traj = self._data[self._itraj]
+        traj = self._array
 
         # complete trajectory mode
         if self._chunksize == 0:
