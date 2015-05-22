@@ -100,10 +100,6 @@ class FeatureReader(ReaderInterface):
         # time lagged iterator
         self._mditer2 = None
 
-        # cache size
-        self.in_memory = False
-        self._Y = None
-
         self.__set_dimensions_and_lenghts()
         self._parametrized = True
 
@@ -154,22 +150,6 @@ class FeatureReader(ReaderInterface):
         else:
             # general case
             return self.featurizer.dimension()
-
-    def _get_memory_per_frame(self):
-        """
-        Returns the memory requirements per frame, in bytes
-
-        :return:
-        """
-        return 4 * self.dimension()
-
-    def _get_constant_memory(self):
-        """
-        Returns the constant memory requirements, in bytes
-
-        :return:
-        """
-        return 0
 
     def _map_to_memory(self, stride=1):
         # TODO: stride is currently not implemented
