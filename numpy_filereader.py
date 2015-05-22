@@ -30,6 +30,8 @@ import numpy as np
 import functools
 
 from pyemma.coordinates.data.interface import ReaderInterface
+from pyemma.util.progressbar._impl import ProgressBar
+from pyemma.util.progressbar.gui import show_progressbar
 
 
 class NumPyFileReader(ReaderInterface):
@@ -56,8 +58,8 @@ class NumPyFileReader(ReaderInterface):
 
         for f in self._filenames:
             if not f.endswith('.npy'):
-                raise ValueError('given file "%s" is not supported'
-                                 ' by this reader. Since it does end with .npy' % f)
+                raise ValueError('given file "%s" is not supported by this'
+                                 ' reader. Since it does end with .npy' % f)
 
         self.mmap_mode = mmap_mode
 
@@ -80,7 +82,7 @@ class NumPyFileReader(ReaderInterface):
     def __reshape(self, array):
         """
         checks shapes, eg convert them (2d), raise if not possible
-        after checks passed, add array to self._data
+        after checks passed, set self._array and return it.
         """
 
         if array.ndim == 1:
@@ -112,19 +114,24 @@ class NumPyFileReader(ReaderInterface):
         if self._array is None:
             return
 
-        if self._array is not None:
-            if __debug__:
-                self._logger.debug("delete filehandle")
-            del self._array
-            self._array = None
+        if __debug__:
+            self._logger.debug("delete filehandle")
+        del self._array
+        self._array = None
 
     def __set_dimensions_and_lenghts(self):
         ndims = []
+        n = len(self._filenames)
+        pg = ProgressBar(n, description="get lengths/dim")
+        pg.eta_every = 1
+
         for f in self._filenames:
             array = self.__load_file(f)
             self._lengths.append(np.shape(array)[0])
             ndims.append(np.shape(array)[1])
             self._close_file()
+            pg.numerator += 1
+            show_progressbar(pg)
 
         # ensure all trajs have same dim
         if not np.unique(ndims).size == 1:
@@ -171,7 +178,7 @@ class NumPyFileReader(ReaderInterface):
                 self._itraj += 1
                 self._t = 0
                 # if time index scope ran out of len of current trajectory, open next file.
-                if self._itraj <= self.number_of_trajectories() -1:
+                if self._itraj <= self.number_of_trajectories() - 1:
                     self.__load_file(self._filenames[self._itraj])
                 # we open self._mditer2 only if requested due lag parameter!
                 self._curr_lag = 0
