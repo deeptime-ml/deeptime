@@ -21,12 +21,11 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-__author__ = 'noe, marscher'
-
 import numpy as np
 
 from pyemma.coordinates.data.interface import ReaderInterface
+
+__author__ = 'noe, marscher'
 
 
 class DataInMemory(ReaderInterface):
@@ -34,7 +33,7 @@ class DataInMemory(ReaderInterface):
     r"""
     multi-dimensional data fully stored in memory.
 
-    Used to pass arbitrary coordinates to pipeline. Data is being flattened to 
+    Used to pass arbitrary coordinates to pipeline. Data is being flattened to
     two dimensions to ensure it is compatible.
 
     Parameters
@@ -59,8 +58,7 @@ class DataInMemory(ReaderInterface):
             for d in data:
                 self._add_array_to_storage(d)
         else:
-            raise ValueError("supply 2d ndarray, list of 2d ndarray"
-                             " or list of filenames storing 2d arrays."
+            raise ValueError("Please supply numpy.ndarray, or list/tuple of ndarray."
                              " Your input was %s" % str(data))
 
         self.__set_dimensions_and_lenghts()
