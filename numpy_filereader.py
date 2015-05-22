@@ -137,19 +137,10 @@ class NumPyFileReader(ReaderInterface):
 
     def _next_chunk(self, lag=0, stride=1):
 
-        if (self._t >= self.trajectory_length(self._itraj, stride=stride) and
-                self._itraj < len(self._filenames) - 1):
-            if __debug__:
-                self._logger.debug("reached bounds of array, open next.")
-            # close file handles and open new ones
-            self._t = 0
-            self._itraj += 1
-            self.__load_file(self._filenames[self._itraj])
-            # we open self._mditer2 only if requested due lag parameter!
-            self._curr_lag = 0
-
+        # if no file is open currently, open current index.
         if self._array is None:
             self.__load_file(self._filenames[self._itraj])
+
         traj_len = self._lengths[self._itraj]
         traj = self._array
 
@@ -168,14 +159,22 @@ class NumPyFileReader(ReaderInterface):
             upper_bound = min(
                 self._t + (self._chunksize + 1) * stride, traj_len)
             slice_x = slice(self._t, upper_bound, stride)
+
             X = traj[slice_x]
 
             last_t = self._t
             self._t = upper_bound
 
             if self._t >= traj_len:
+                if __debug__:
+                    self._logger.debug("reached bounds of array, open next.")
                 self._itraj += 1
                 self._t = 0
+                # if time index scope ran out of len of current trajectory, open next file.
+                if self._itraj <= self.number_of_trajectories() -1:
+                    self.__load_file(self._filenames[self._itraj])
+                # we open self._mditer2 only if requested due lag parameter!
+                self._curr_lag = 0
 
             if lag == 0:
                 return X
