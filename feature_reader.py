@@ -21,9 +21,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-__author__ = 'noe, marscher'
-
 import numpy as np
 import mdtraj
 
@@ -32,6 +29,7 @@ from pyemma.coordinates.data.interface import ReaderInterface
 from pyemma.coordinates.data.featurizer import MDFeaturizer
 from pyemma.util.config import conf_values
 
+__author__ = 'noe, marscher'
 __all__ = ['FeatureReader']
 
 
@@ -73,9 +71,8 @@ class FeatureReader(ReaderInterface):
     def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
         assert (topologyfile is not None) or (featurizer is not None), \
             "Needs either a topology file or a featurizer for instantiation"
-        # init with chunksize 100
+
         super(FeatureReader, self).__init__(chunksize=chunksize)
-        self.data_producer = self
 
         # files
         if isinstance(trajectories, basestring):

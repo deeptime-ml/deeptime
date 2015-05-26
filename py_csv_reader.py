@@ -100,7 +100,6 @@ class PyCSVReader(ReaderInterface):
 
         """
         super(PyCSVReader, self).__init__(chunksize=chunksize)
-        self.data_producer = self
 
         if not isinstance(filenames, (tuple, list)):
             filenames = [filenames]

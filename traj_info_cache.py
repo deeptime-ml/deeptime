@@ -11,7 +11,7 @@ from pyemma.util.config import conf_values
 
 __all__ = ('TrajectoryInfoCache')
 
-
+# TODO: add complete shape info to use this also for numpy/csv files
 class _TrajectoryInfoCache(object):
 
     """ stores trajectory lengths associated to a file based hash (mtime, name, 1mb of data)

@@ -21,7 +21,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 '''
 Created on 09.04.2015
 
@@ -58,6 +57,9 @@ class ReaderInterface(Transformer):
     def data_producer(self, value):
         self._logger.warning("tried to set data_producer in reader, which makes"
                              " no sense.")
+        import inspect
+        res = inspect.getouterframes(inspect.currentframe())[1]
+        self._logger.debug(str(res))
 
     def number_of_trajectories(self):
         """
