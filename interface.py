@@ -38,8 +38,8 @@ class ReaderInterface(Transformer):
 
     def __init__(self, chunksize=100):
         super(ReaderInterface, self).__init__(chunksize=chunksize)
-        # TODO: think about if this should be none or self
-        self.data_producer = self
+        # needs to be set, to ensure some getters of Transformer will work.
+        self._data_producer = self
 
         # internal counters
         self._t = 0
@@ -53,6 +53,11 @@ class ReaderInterface(Transformer):
 
         # storage for arrays (used in _add_array_to_storage)
         self._data = []
+
+    @Transformer.data_producer.setter
+    def data_producer(self, value):
+        self._logger.warning("tried to set data_producer in reader, which makes"
+                             " no sense.")
 
     def number_of_trajectories(self):
         """
@@ -136,10 +141,10 @@ class ReaderInterface(Transformer):
 
     # handle abstract methods and special cases
     def map(self, X):
-        raise NotImplementedError("a read can not map data, it is a data source")
+        raise NotImplementedError("a reader can not map data, it is a data source")
 
     def _map_array(self, X):
-        pass
+        raise NotImplementedError("a reader can not map data, it is a data source")
 
     def _param_add_data(self, *args, **kwargs):
-        pass
+        raise NotImplementedError("a reader is not meant to be parameterized by data")
