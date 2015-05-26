@@ -126,15 +126,6 @@ class FeatureReader(ReaderInterface):
         """
         return ["Feature reader with following features"] + self.featurizer.describe()
 
-    def parametrize(self, stride=1):
-        """
-        Parametrizes this transformer
-
-        :return:
-        """
-        if self.in_memory:
-            self._map_to_memory(stride=stride)
-
     def dimension(self):
         """
         Returns the number of output dimensions
@@ -147,34 +138,6 @@ class FeatureReader(ReaderInterface):
         else:
             # general case
             return self.featurizer.dimension()
-
-    def _map_to_memory(self, stride=1):
-        # TODO: stride is currently not implemented
-        if stride > 1:
-            raise NotImplementedError('stride option for FeatureReader._map_to_memory is currently not implemented')
-
-        self._reset()
-        # iterate over trajectories
-        last_chunk = False
-        itraj = 0
-        while not last_chunk:
-            last_chunk_in_traj = False
-            t = 0
-            while not last_chunk_in_traj:
-                y = self._next_chunk()
-                assert y is not None
-                L = np.shape(y)[0]
-                # last chunk in traj?
-                last_chunk_in_traj = (t + L >= self.trajectory_length(itraj))
-                # last chunk?
-                last_chunk = (
-                    last_chunk_in_traj and itraj >= self.number_of_trajectories() - 1)
-                # write
-                self._Y[itraj][t:t + L] = y
-                # increment time
-                t += L
-            # increment trajectory
-            itraj += 1
 
     def _create_iter(self, filename, skip=0, stride=1):
         return patches.iterload(filename, chunk=self.chunksize,

@@ -150,3 +150,7 @@ class ReaderInterface(Transformer):
 
     def _param_add_data(self, *args, **kwargs):
         raise NotImplementedError("a reader is not meant to be parameterized by data")
+
+    def parametrize(self, stride=1):
+        if self.in_memory:
+            self._map_to_memory(stride)
