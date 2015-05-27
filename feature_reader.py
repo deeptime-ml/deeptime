@@ -220,3 +220,7 @@ class FeatureReader(ReaderInterface):
                 X = self.featurizer.map(chunk)
                 Y = self.featurizer.map(adv_chunk)
             return X, Y
+
+    def parametrize(self, stride=1):
+        if self.in_memory:
+            self._map_to_memory(stride)

@@ -270,3 +270,7 @@ class PyCSVReader(ReaderInterface):
                 self._lagged_iter_finished = True
                 Y = np.empty(0)
             return X, Y
+
+    def parametrize(self, stride=1):
+        if self.in_memory:
+            self._map_to_memory(stride)
