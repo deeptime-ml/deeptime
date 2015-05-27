@@ -24,10 +24,11 @@
 
 import mdtraj as md
 import numpy as np
-from logging import info
+from pyemma.util.log import getLogger
 
 __all__ = ['frames_from_file']
 
+log = getLogger(__name__)
 
 def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
                      stride = 1, verbose = False, **kwargs):
@@ -104,7 +105,7 @@ def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
         cum_frames += np.size(good_frames)
 
         if verbose:
-            info('chunk %u of traj has size %u, indices %6u...%6u. Accumulated frames %u'
+            log.info('chunk %u of traj has size %u, indices %6u...%6u. Accumulated frames %u'
                  % (jj, traj_chunk.n_frames, chunk_frames[0], chunk_frames[-1], cum_frames))
 
         # Check if we can already stop iterating
@@ -116,8 +117,8 @@ def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
         raise Exception('Cannot provide frames %s for trajectory %s with n_frames = %u'
                         % (frames[frames > chunk_frames[-1]], file_name, chunk_frames[-1]))
 
-    if stride != 1:
-        info('A stride value of = %u was parsed, interpreting "indexes" accordingly.'%stride)
+    if stride != 1 and verbose:
+        log.info('A stride value of = %u was parsed, interpreting "indexes" accordingly.'%stride)
 
     # Trajectory coordinates are is returned "reshuffled"
     return traj[orig_order]
