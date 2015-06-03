@@ -94,9 +94,9 @@ class ReaderInterface(Transformer):
             running through them with a step size of `stride`
 
         :return:
-            list containing length of each trajectory
+            numpy array containing length of each trajectory
         """
-        return [(l - 1) // stride + 1 for l in self._lengths]
+        return np.array([(l - 1) // stride + 1 for l in self._lengths], dtype=int)
 
     def n_frames_total(self, stride=1):
         """
