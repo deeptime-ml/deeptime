@@ -386,6 +386,65 @@ class BackboneTorsionFeature(object):
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
 
+class MinRmsdFeature(object):
+
+    def __init__(self, ref, ref_frame=0, atom_indices=None, topology=None, precentered=False):
+
+        assert isinstance(ref_frame, int), "ref_frame has to be of type integer, and not %s"%type(ref_frame)
+
+        # Will be needing the hashed input parameter
+        self.__hashed_input__ = hash(ref)
+
+        # Types of inputs
+        #1. Filename+top
+        if isinstance(ref,str):
+            # Store the filename
+            self.name = ref[:]
+            ref = mdtraj.load_frame(ref, ref_frame, top=topology)
+            # mdtraj is pretty good handling exceptions, we're not checking for types or anything here
+
+        #2. md.Trajectory object
+        elif isinstance(ref,mdtraj.Trajectory):
+            self.name = ref.__repr__()[:]
+        else:
+            raise TypeError("input reference has to be either a filename or an mdtraj.Trajectory object, and "
+                            "not of %s"%type(ref))
+
+        self.ref = ref
+        self.ref_frame = ref_frame
+        self.atom_indices = atom_indices
+        self.precentered = precentered
+
+    def describe(self):
+        label = "minrmsd to frame %u of %s" % (self.ref_frame, self.name)
+        if self.precentered:
+            label +=', precentered=True'
+        if self.atom_indices is not None:
+            label +=', subset of atoms  '
+        return [label]
+
+    @property
+    def dimension(self):
+        # This is just to comply with any other method asking for the dimension property
+        return 1
+
+    def map(self, traj):
+        return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
+
+    def __hash__(self):
+        hash_value  = hash(self.__hashed_input__)
+        # TODO: identical md.Trajectory objects have different hashes need a way to differentiate them here
+        hash_value ^= hash(self.ref_frame)
+        if self.atom_indices is None:
+            hash_value ^= _hash_numpy_array(np.arange(self.ref.n_atoms))
+        else:
+            hash_value ^= _hash_numpy_array(np.array(self.atom_indices))
+        hash_value ^= hash(self.precentered)
+
+        return hash_value
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 class MDFeaturizer(object):
 
@@ -705,6 +764,39 @@ class MDFeaturizer(object):
                 raise ValueError("map exists but is not a method")
 
         self.__add_feature(feature)
+
+    def add_minrmsd_to_ref(self, ref, ref_frame=0, atom_indices=None, precentered=False):
+        r"""
+        Adds the minimum root-mean-square-deviation (minrmsd) with respect to a reference structure to the feature list.
+
+        Parameters
+        ----------
+        ref:
+            Reference structure for computing the minrmsd. Can be of two types:
+
+                1. :py:obj:`mdtraj.Trajectory` object
+                2. filename for mdtraj to load. In this case, only the :py:obj:`ref_frame` of that file will be used.
+
+        ref_frame: integer, default=0
+            Reference frame of the filename specified in :py:obj:`ref`.
+            This parameter has no effect if :py:obj:`ref` is not a filename.
+
+        atom_indices: array_like, default=None
+            Atoms that will be used for:
+
+                1. aligning the target and reference geometries.
+                2. computing rmsd after the alignment.
+            If left to None, all atoms of :py:obj:`ref` will be used.
+
+        precentered: bool, default=False
+            Use this boolean at your own risk to let mdtraj know that the target conformations are **already**
+            centered at the origin, i.e., their (uniformly weighted) center of mass lies at the origin.
+            This will speed up the computation of the rmsd.
+        """
+
+        f = MinRmsdFeature(ref, ref_frame=ref_frame, atom_indices=atom_indices, topology=self.topology,
+                           precentered=precentered)
+        self.__add_feature(f)
 
     def add_custom_func(self, func, dim, desc='', *args, **kwargs):
         """ adds a user defined function to extract features
