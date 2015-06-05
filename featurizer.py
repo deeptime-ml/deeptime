@@ -68,10 +68,14 @@ def _catch_unhashable(x):
 
 
 def _hash_numpy_array(x):
+    if x is None:
+        return hash(None)
     x.flags.writeable = False
     hash_value = hash(x.shape)
     hash_value ^= hash(x.strides)
     hash_value ^= hash(x.data)
+    x.flags.writeable = True
+
     return hash_value
 
 
