@@ -128,7 +128,7 @@ class DataInMemory(ReaderInterface):
         # chunked mode
         else:
             upper_bound = min(
-                self._t + (self._chunksize + 1) * stride, traj_len)
+                self._t + self._chunksize * stride, traj_len)
             slice_x = slice(self._t, upper_bound, stride)
 
             X = traj[slice_x]
@@ -143,7 +143,7 @@ class DataInMemory(ReaderInterface):
             else:
                 # its okay to return empty chunks
                 upper_bound = min(
-                    self._t + (lag + self._chunksize + 1) * stride, traj_len)
+                    self._t + stride * (lag + self._chunksize), traj_len)
                 slice_y = slice(self._t + lag, upper_bound, stride)
                 self._t += X.shape[0]
 
