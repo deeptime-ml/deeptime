@@ -145,7 +145,7 @@ class DataInMemory(ReaderInterface):
                 upper_bound = min(
                     self._t + stride * (lag + self._chunksize), traj_len)
                 slice_y = slice(self._t + lag, upper_bound, stride)
-                self._t += X.shape[0]
+                self._t = upper_bound
 
                 if self._t >= traj_len:
                     self._itraj += 1
