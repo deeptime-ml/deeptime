@@ -133,22 +133,19 @@ class DataInMemory(ReaderInterface):
 
             X = traj[slice_x]
 
-            if lag == 0:
-                self._t = upper_bound
+            if lag!=0:
+                 upper_bound_Y = min(
+                     self._t + (lag + self._chunksize) * stride, traj_len)
+                 slice_y = slice(self._t + lag*stride, upper_bound_Y, stride)
+                 Y = traj[slice_y]
 
-                if upper_bound >= traj_len:
-                    self._itraj += 1
-                    self._t = 0
+            self._t = upper_bound
+
+            if upper_bound >= traj_len:
+                 self._itraj += 1
+                 self._t = 0
+                 
+            if lag==0:
                 return X
-            else:
-                # its okay to return empty chunks
-                upper_bound = min(
-                    self._t + stride * (lag + self._chunksize), traj_len)
-                slice_y = slice(self._t + lag, upper_bound, stride)
-                self._t = upper_bound
-
-                if self._t >= traj_len:
-                    self._itraj += 1
-                    self._t = 0
-                Y = traj[slice_y]
-                return X, Y
+            else: 
+                return (X, Y)
