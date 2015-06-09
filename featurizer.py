@@ -30,6 +30,8 @@ from mdtraj.geometry.dihedral import _get_indices_phi, \
 
 import numpy as np
 import warnings
+from itertools import combinations as _combinations
+from pyemma.util.types import is_iterable_of_int  as _is_iterable_of_int
 
 from pyemma.util.log import getLogger
 from pyemma.util.annotators import deprecated
@@ -622,16 +624,29 @@ class MDFeaturizer(object):
     def distances(self, atom_pairs):
         return self.add_distances(atom_pairs)
 
-    def add_distances(self, atom_pairs, periodic=True):
-        """
-        Adds the distances between the given pairs of atoms to the feature list.
+    def add_distances(self, indices, periodic=True):
+        r"""
+        Adds the distances between pairs of atoms to the feature list.
 
         Parameters
         ----------
-        atom_pairs : ndarray((n, 2), dtype=int)
-            n x 2 array with pairs of atoms between which the distances shall be computed
+        indices : can be of two types:
+
+                ndarray((n, 2), dtype=int):
+                    n x 2 array with the pairs of atoms between which the distances shall be computed
+
+                iterable of integers (either list or ndarray(n, dtype=int)):
+                    indices (**not pairs of indices**) of the atoms between which the distances shall be computed.
+                    Note that this is different from the output of :py:func:`pairs` in that this **does not** exclude
+                    1-2 neighbors.
 
         """
+
+        if _is_iterable_of_int(indices):
+            atom_pairs = np.array(list(_combinations(indices, 2)))
+        else:
+            atom_pairs = indices
+
         atom_pairs = self._check_indices(atom_pairs)
         f = DistanceFeature(self.topology, atom_pairs, periodic=periodic)
         self.__add_feature(f)
