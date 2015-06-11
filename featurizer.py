@@ -448,16 +448,15 @@ class MinRmsdFeature(object):
 
 class MDFeaturizer(object):
 
-    """extracts features from MD trajectories.
-
-    Parameters
-    ----------
-
-    topfile : str
-        a path to a topology file (pdb etc.)
-    """
-
     def __init__(self, topfile):
+        """extracts features from MD trajectories.
+
+        Parameters
+        ----------
+
+        topfile : str
+            a path to a topology file (pdb etc.)
+        """
         self.topologyfile = topfile
         self.topology = (mdtraj.load(topfile)).topology
         self.active_features = []
