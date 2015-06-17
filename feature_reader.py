@@ -27,7 +27,7 @@ import mdtraj
 from pyemma.coordinates.util import patches
 from pyemma.coordinates.data.interface import ReaderInterface
 from pyemma.coordinates.data.featurizer import MDFeaturizer
-from pyemma.util.config import conf_values
+from pyemma import config
 
 __author__ = 'noe, marscher'
 __all__ = ['FeatureReader']
@@ -103,7 +103,7 @@ class FeatureReader(ReaderInterface):
     def __set_dimensions_and_lenghts(self):
         self._ntraj = len(self.trajfiles)
         # lookups pre-computed lengths, or compute it on the fly and store it in db.
-        if conf_values['pyemma']['use_trajectory_lengths_cache'] == 'True':
+        if config['use_trajectory_lengths_cache'] == 'True':
             from pyemma.coordinates.data.traj_info_cache import TrajectoryInfoCache
             for traj in self.trajfiles:
                 self._lengths.append(TrajectoryInfoCache[traj])
@@ -168,7 +168,7 @@ class FeatureReader(ReaderInterface):
                 # lag time or trajectory index changed, so open lagged iterator
                 if __debug__:
                     self._logger.debug("open time lagged iterator for traj %i with lag %i"
-                                       % (self._itraj, self._curr_lag))
+                                       % (self._itraj, lag))
                 self._curr_lag = lag
                 self._mditer2 = self._create_iter(self.trajfiles[self._itraj],
                                                   skip=self._curr_lag*stride, stride=stride) 
