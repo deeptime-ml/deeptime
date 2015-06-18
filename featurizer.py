@@ -30,6 +30,9 @@ from mdtraj.geometry.dihedral import _get_indices_phi, \
 
 import numpy as np
 import warnings
+from itertools import combinations as _combinations
+from itertools import product as _product
+from pyemma.util.types import is_iterable_of_int  as _is_iterable_of_int
 
 from pyemma.util.log import getLogger
 from pyemma.util.annotators import deprecated
@@ -68,12 +71,60 @@ def _catch_unhashable(x):
 
 
 def _hash_numpy_array(x):
+    if x is None:
+        return hash(None)
     x.flags.writeable = False
     hash_value = hash(x.shape)
     hash_value ^= hash(x.strides)
     hash_value ^= hash(x.data)
+    x.flags.writeable = True
+
     return hash_value
 
+def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
+    r"""For input of pairwise type (distances, inverse distances, contacts) checks the
+        type of input the user gave and reformats it so that :py:func:`DistanceFeature`,
+        :py:func:`InverseDistanceFeature`, and ContactFeature can work.
+
+        In case the input isn't already a list of distances, this function will:
+            - sort the indices1 array
+            - check for duplicates within the indices1 array
+            - sort the indices2 array
+            - check for duplicates within the indices2 array
+            - check for duplicates between the indices1 and indices2 array
+            - if indices2 is     None, produce a list of pairs of indices in indices1, or
+            - if indices2 is not None, produce a list of pairs of (i,j) where i comes from indices1, and j from indices2
+
+        """
+
+
+    if _is_iterable_of_int(indices1):
+        MDlogger.warning('The 1D arrays input for %s have been sorted, and '
+                         'index duplicates have been eliminated.\n'
+                         'Check the output of describe() to see the actual order of the features'%fname)
+
+        # Eliminate duplicates and sort
+        indices1 = np.unique(indices1)
+
+        # Intra-group distances
+        if indices2 is None:
+            atom_pairs = np.array(list(_combinations(indices1, 2)))
+
+        # Inter-group distances
+        elif _is_iterable_of_int(indices2):
+
+            # Eliminate duplicates and sort
+            indices2 = np.unique(indices2)
+
+            # Eliminate duplicates between indices1 and indices1
+            uniqs = np.in1d(indices2, indices1, invert=True)
+            indices2 = indices2[uniqs]
+            atom_pairs = np.asarray(list(_product(indices1, indices2)))
+
+    else:
+        atom_pairs = indices1
+
+    return atom_pairs
 
 class CustomFeature(object):
 
@@ -621,16 +672,35 @@ class MDFeaturizer(object):
     def distances(self, atom_pairs):
         return self.add_distances(atom_pairs)
 
-    def add_distances(self, atom_pairs, periodic=True):
-        """
-        Adds the distances between the given pairs of atoms to the feature list.
+    def add_distances(self, indices, periodic=True, indices2 = None):
+        r"""
+        Adds the distances between atoms to the feature list.
 
         Parameters
         ----------
-        atom_pairs : ndarray((n, 2), dtype=int)
-            n x 2 array with pairs of atoms between which the distances shall be computed
+        indices : can be of two types:
 
+                ndarray((n, 2), dtype=int):
+                    n x 2 array with the pairs of atoms between which the distances shall be computed
+
+                iterable of integers (either list or ndarray(n, dtype=int)):
+                    indices (**not pairs of indices**) of the atoms between which the distances shall be computed.
+                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this **does not** exclude
+                    1-2 neighbors.
+
+        indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
+                    Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
+                    only the distances between the atoms in :py:obj:`indices` and :py:obj:`indices2` will be computed.
+
+
+        .. note::
+            When using the *iterable of integers* input, :py:obj:`indices` and :py:obj:`indices2`
+            will be sorted numerically and made unique before converting them to a pairlist.
+            Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
+
+        atom_pairs = _parse_pairwise_input(indices, indices2, self._logger, fname='add_distances()')
+
         atom_pairs = self._check_indices(atom_pairs)
         f = DistanceFeature(self.topology, atom_pairs, periodic=periodic)
         self.__add_feature(f)
@@ -651,16 +721,36 @@ class MDFeaturizer(object):
     def inverse_distances(self, atom_pairs):
         return self.add_inverse_distances(atom_pairs)
 
-    def add_inverse_distances(self, atom_pairs, periodic=True):
+    def add_inverse_distances(self, indices, periodic=True, indices2=None):
         """
-        Adds the inverse distances between the given pairs of atoms to the feature list.
+        Adds the inverse distances between atoms to the feature list.
 
         Parameters
         ----------
-        atom_pairs : ndarray((n,2), dtype=int)
-            n x 2 array with pairs of atoms between which the inverse distances shall be computed
+        indices : can be of two types:
+
+                ndarray((n, 2), dtype=int):
+                    n x 2 array with the pairs of atoms between which the inverse distances shall be computed
+
+                iterable of integers (either list or ndarray(n, dtype=int)):
+                    indices (**not pairs of indices**) of the atoms between which the inverse distances shall be computed.
+                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this **does not** exclude
+                    1-2 neighbors.
+
+        indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
+                    Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
+                    only the inverse distances between the atoms in :py:obj:`indices` and :py:obj:`indices2` will be computed.
+
+
+        .. note::
+            When using the *iterable of integers* input, :py:obj:`indices` and :py:obj:`indices2`
+            will be sorted numerically and made unique before converting them to a pairlist.
+            Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
 
         """
+
+        atom_pairs = _parse_pairwise_input(indices, indices2, self._logger, fname='add_inverse_distances()')
+
         atom_pairs = self._check_indices(atom_pairs)
         f = InverseDistanceFeature(self.topology, atom_pairs, periodic=True)
         self.__add_feature(f)
@@ -669,19 +759,40 @@ class MDFeaturizer(object):
     def contacts(self, atom_pairs):
         return self.add_contacts(atom_pairs)
 
-    def add_contacts(self, atom_pairs, threshold=5.0, periodic=True):
-        """
-        Adds the set of contacts to the feature list
+    def add_contacts(self, indices, indices2=None, threshold=5.0, periodic=True):
+        r"""
+        Adds the contacts to the feature list.
 
         Parameters
         ----------
-        atom_pairs : ndarray((n, 2), dtype=int)
-            n x 2 array of pairs of atoms to compute contacts between
+        indices : can be of two types:
+
+                ndarray((n, 2), dtype=int):
+                    n x 2 array with the pairs of atoms between which the contacts shall be computed
+
+                iterable of integers (either list or ndarray(n, dtype=int)):
+                    indices (**not pairs of indices**) of the atoms between which the contacts shall be computed.
+                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this **does not** exclude
+                    1-2 neighbors.
+
+        indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
+                    Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
+                    only the contacts between the atoms in :py:obj:`indices` and :py:obj:`indices2` will be computed.
+
         threshold : float, optional, default = 5.0
             distances below this threshold will result in a feature 1.0, distances above will result in 0.0.
             The default is set with Angstrom distances in mind.
             Make sure that you know whether your coordinates are in Angstroms or nanometers when setting this threshold.
+
+
+        .. note::
+            When using the *iterable of integers* input, :py:obj:`indices` and :py:obj:`indices2`
+            will be sorted numerically and made unique before converting them to a pairlist.
+            Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
+
+        atom_pairs = _parse_pairwise_input(indices, indices2, self._logger, fname='add_contacts()')
+
         atom_pairs = self._check_indices(atom_pairs)
         f = ContactFeature(self.topology, atom_pairs, threshold, periodic)
         self.__add_feature(f)
