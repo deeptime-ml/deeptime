@@ -21,9 +21,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-__author__ = 'Frank Noe, Martin Scherer'
-
+# -*- coding: uft-8 -*-
 import mdtraj
 from mdtraj.geometry.dihedral import _get_indices_phi, \
     _get_indices_psi, compute_dihedrals
@@ -33,10 +31,13 @@ import warnings
 from itertools import combinations as _combinations
 from itertools import product as _product
 from pyemma.util.types import is_iterable_of_int  as _is_iterable_of_int
+import functools
 
 from pyemma.util.log import getLogger
 from pyemma.util.annotators import deprecated
 
+
+__author__ = 'Frank Noe, Martin Scherer'
 __all__ = ['MDFeaturizer',
            'CustomFeature',
            ]
@@ -308,23 +309,35 @@ class AngleFeature(object):
         self.cossin = cossin
 
     def describe(self):
-        labels = ["ANGLE: %s - %s - %s " %
-                  (_describe_atom(self.top, triple[0]),
-                   _describe_atom(self.top, triple[1]),
-                   _describe_atom(self.top, triple[2]))
-                  for triple in self.angle_indexes
-                  ]
+        if self.cossin:
+            labels = ["ANGLE: COS(x), SIN(x), x := <(%s, %s, %s)" %
+                      (_describe_atom(self.top, triple[0]),
+                       _describe_atom(self.top, triple[1]),
+                       _describe_atom(self.top, triple[2]))
+                      for triple in self.angle_indexes
+                      ]
+        else:
+            labels = ["ANGLE: %s - %s - %s " %
+                      (_describe_atom(self.top, triple[0]),
+                       _describe_atom(self.top, triple[1]),
+                       _describe_atom(self.top, triple[2]))
+                      for triple in self.angle_indexes
+                      ]
 
         return labels
 
     @property
     def dimension(self):
-        return self.angle_indexes.shape[0]
+        dim = self.angle_indexes.shape[0]
+        if self.cossin:
+            dim *= 2
+        return dim
 
     def map(self, traj):
         rad = mdtraj.compute_angles(traj, self.angle_indexes)
         if self.cossin:
-            rad = np.hstack(np.cos(rad), np.sin(rad))
+            rad = np.dstack((np.cos(rad), np.sin(rad)))
+            rad = rad.reshape(functools.reduce(lambda x, y: x*y, rad.shape),)
         if self.deg:
             return np.rad2deg(rad)
         else:
@@ -350,23 +363,36 @@ class DihedralFeature(object):
         self.cossin = cossin
 
     def describe(self):
-        labels = ["DIH: %s - %s - %s - %s " %
-                  (_describe_atom(self.top, quad[0]),
-                   _describe_atom(self.top, quad[1]),
-                   _describe_atom(self.top, quad[2]),
-                   _describe_atom(self.top, quad[3]))
-                  for quad in self.dih_indexes
-                  ]
+        if self.cossin:
+            labels = ["DIH: COS(x), SIN(x), x := <(%s -  %s - %s - %s)" %
+                      (_describe_atom(self.top, quad[0]),
+                       _describe_atom(self.top, quad[1]),
+                       _describe_atom(self.top, quad[2]),
+                       _describe_atom(self.top, quad[3]))
+                      for quad in self.dih_indexes
+                      ]
+        else:
+            labels = ["DIH: %s - %s - %s - %s " %
+                      (_describe_atom(self.top, quad[0]),
+                       _describe_atom(self.top, quad[1]),
+                       _describe_atom(self.top, quad[2]),
+                       _describe_atom(self.top, quad[3]))
+                      for quad in self.dih_indexes
+                      ]
         return labels
 
     @property
     def dimension(self):
-        return self.dih_indexes.shape[0]
+        dim = self.dih_indexes.shape[0]
+        if self.cossin:
+            dim *= 2
+        return dim
 
     def map(self, traj):
         rad = mdtraj.compute_dihedrals(traj, self.dih_indexes)
         if self.cossin:
-            rad = np.hstack(np.cos(rad), np.sin(rad))
+            rad = np.dstack((np.cos(rad), np.sin(rad)))
+            rad = rad.reshape(functools.reduce(lambda x, y: x*y, rad.shape),)
         if self.deg:
             return np.rad2deg(rad)
         else:
@@ -406,16 +432,26 @@ class BackboneTorsionFeature(object):
         self._psi_inds = indices
 
         self._dim = len(self._phi_inds) + len(self._psi_inds)
+        if self.cossin:
+            self._dim *= 2
 
     def describe(self):
         top = self.topology
-        labels_phi = ["PHI %s" % _describe_atom(top, i)
-                      for ires in self._phi_inds
-                      for i in ires]
+        if self.cossin:
+            labels_phi = ["COS(PHI), SIN(PHI); PHI=%s" % _describe_atom(top, i)
+                          for ires in self._phi_inds
+                          for i in ires]
+            labels_psi = ["COS(PSI), SIN(PSI); PSI=%s" % _describe_atom(top, i)
+                          for ires in self._phi_inds
+                          for i in ires]
+        else:
+            labels_phi = ["PHI %s" % _describe_atom(top, i)
+                          for ires in self._phi_inds
+                          for i in ires]
 
-        labels_psi = ["PSI %s" % _describe_atom(top, i)
-                      for ires in self._psi_inds
-                      for i in ires]
+            labels_psi = ["PSI %s" % _describe_atom(top, i)
+                          for ires in self._psi_inds
+                          for i in ires]
 
         return labels_phi + labels_psi
 
@@ -430,7 +466,8 @@ class BackboneTorsionFeature(object):
         y2 = compute_dihedrals(traj, self._psi_inds).astype(np.float32)
         rad = np.hstack((y1, y2))
         if self.cossin:
-            rad = np.hstack(np.cos(rad), np.sin(rad))
+            rad = np.dstack((np.cos(rad), np.sin(rad)))
+            rad = rad.reshape(functools.reduce(lambda x, y: x*y, rad.shape),)
         if self.deg:
             return np.rad2deg(rad)
         else:
