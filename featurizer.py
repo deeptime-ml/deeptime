@@ -39,7 +39,6 @@ from pyemma.util.annotators import deprecated
 
 __author__ = 'Frank Noe, Martin Scherer'
 __all__ = ['MDFeaturizer',
-           'CustomFeature',
            ]
 
 
@@ -51,6 +50,12 @@ def _get_indices_chi1(traj):
 
     indices = np.vstack(x for x in indices if x.size)[id_sort]
     return id_sort, indices
+
+# this is needed for get_indices functions, since they expect a Trajectory,
+# not a Topology
+class fake_traj():
+    def __init__(self, top):
+        self.top = top
 
 
 def _describe_atom(topology, index):
@@ -415,6 +420,7 @@ class DihedralFeature(object):
         hash_value = _hash_numpy_array(self.dih_indexes)
         hash_value ^= hash(self.top)
         hash_value ^= hash(self.deg)
+        hash_value ^= hash(self.cossin)
 
         return hash_value
 
@@ -422,28 +428,12 @@ class DihedralFeature(object):
         return hash(self) == hash(other)
 
 
-class BackboneTorsionFeature(object):
+class BackboneTorsionFeature(DihedralFeature):
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False):
-        self.topology = topology
-        self.deg = deg
-        self.cossin = cossin
-
-        # this is needed for get_indices functions, since they expect a Trajectory,
-        # not a Topology
-        class fake_traj():
-
-            def __init__(self, top):
-                self.top = top
-
         ft = fake_traj(topology)
         _, indices = _get_indices_phi(ft)
-        self._phi_inds = indices
 
-        _, indices = _get_indices_psi(ft)
-        self._psi_inds = indices
-
-        ###########
         if not selstr:
             self._phi_inds = indices
         else:
@@ -457,19 +447,17 @@ class BackboneTorsionFeature(object):
             self._psi_inds = indices[np.in1d(indices[:, 1],
                                              topology.select(selstr), assume_unique=True)]
 
-        ##########
-
-        self._dim = len(self._phi_inds) + len(self._psi_inds)
-        if self.cossin:
-            self._dim *= 2
+        dih_indexes = np.vstack((self._psi_inds, self._psi_inds))
+        super(BackboneTorsionFeature, self).__init__(topology, dih_indexes,
+                                                     deg=deg, cossin=cossin)
 
     def describe(self):
-        top = self.topology
+        top = self.top
         getlbl = lambda at: "%i %s %i " % (
             at.residue.chain.index, at.residue.name, at.residue.resSeq)
 
         if self.cossin:
-            sin_cos = ("COS(PHI) %s", "SIN(PHI) %s")
+            sin_cos = ("COS(PHI %s)", "SIN(PHI %s)")
             labels_phi = [s % getlbl(top.atom(ires[1])) for ires in self._phi_inds
                           for s in sin_cos]
             labels_psi = [s % getlbl(top.atom(ires[1])) for ires in self._psi_inds
@@ -482,99 +470,35 @@ class BackboneTorsionFeature(object):
 
         return labels_phi + labels_psi
 
-    @property
-    def dimension(self):
-        return self._dim
 
-    def map(self, traj):
-        y1 = compute_dihedrals(traj, self._phi_inds).astype(np.float32)
-        y2 = compute_dihedrals(traj, self._psi_inds).astype(np.float32)
-        rad = np.hstack((y1, y2))
-        if self.cossin:
-            rad = np.dstack((np.cos(rad), np.sin(rad)))
-            rad = rad.reshape(functools.reduce(lambda x, y: x * y, rad.shape),)
-        if self.deg:
-            return np.rad2deg(rad)
-        else:
-            return rad
-
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self._phi_inds)
-        hash_value ^= _hash_numpy_array(self._psi_inds)
-        hash_value ^= hash(self.topology)
-
-        return hash_value
-
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
-
-
-class Chi1TorsionFeature(object):
-    # TODO: maybe consider this as a special case of DihedralFeature?
+class Chi1TorsionFeature(DihedralFeature):
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False):
-        self.topology = topology
-        self.deg = deg
-        self.cossin = cossin
-
-        # this is needed for get_indices functions, since they expect a Trajectory,
-        # not a Topology
-        class fake_traj():
-
-            def __init__(self, top):
-                self.top = top
-
         ft = fake_traj(topology)
         _, indices = _get_indices_chi1(ft)
         if not selstr:
-            self._chi1_inds = indices
+            dih_indexes = indices
         else:
-            self._chi1_inds = indices[np.in1d(indices[:, 1],
-                                              topology.select(selstr),
-                                              assume_unique=True)]
-
-        self._dim = len(self._chi1_inds)
-        if self.cossin:
-            self._dim *= 2
+            dih_indexes = indices[np.in1d(indices[:, 1],
+                                          topology.select(selstr),
+                                          assume_unique=True)]
+        super(Chi1TorsionFeature, self).__init__(topology, dih_indexes,
+                                                 deg=deg, cossin=cossin)
 
     def describe(self):
-        top = self.topology
+        top = self.top
         getlbl = lambda at: "%i %s %i " \
             % (at.residue.chain.index, at.residue.name, at.residue.resSeq)
         if self.cossin:
             cossin = ("COS(CHI1 %s)", "SIN(CHI1 %s)")
             labels_chi1 = [s % getlbl(top.atom(ires[1]))
-                           for ires in self._chi1_inds
+                           for ires in self.dih_indexes
                            for s in cossin]
         else:
             labels_chi1 = ["CHI1" + getlbl(top.atom(ires[1]))
-                           for ires in self._chi1_inds]
+                           for ires in self.dih_indexes]
 
         return labels_chi1
-
-    @property
-    def dimension(self):
-        return self._dim
-
-    def map(self, traj):
-        rad = compute_dihedrals(traj, self._chi1_inds).astype(np.float32)
-
-        if self.cossin:
-            rad = np.dstack((np.cos(rad), np.sin(rad)))
-            rad = rad.reshape(
-                functools.reduce(lambda x, y: x * y, rad.shape), )
-        if self.deg:
-            rad = np.rad2deg(rad)
-        return rad
-
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self._chi1_inds)
-        hash_value ^= hash(self.topology)
-
-        return hash_value
-
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
 
 
 class MinRmsdFeature(object):
