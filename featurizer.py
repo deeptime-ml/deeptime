@@ -301,10 +301,11 @@ class ContactFeature(DistanceFeature):
 
 class AngleFeature(object):
 
-    def __init__(self, top, angle_indexes, deg=False):
+    def __init__(self, top, angle_indexes, deg=False, cossin=False):
         self.top = top
         self.angle_indexes = np.array(angle_indexes)
         self.deg = deg
+        self.cossin = cossin
 
     def describe(self):
         labels = ["ANGLE: %s - %s - %s " %
@@ -322,6 +323,8 @@ class AngleFeature(object):
 
     def map(self, traj):
         rad = mdtraj.compute_angles(traj, self.angle_indexes)
+        if self.cossin:
+            rad = np.hstack(np.cos(rad), np.sin(rad))
         if self.deg:
             return np.rad2deg(rad)
         else:
@@ -340,10 +343,11 @@ class AngleFeature(object):
 
 class DihedralFeature(object):
 
-    def __init__(self, top, dih_indexes, deg=False):
+    def __init__(self, top, dih_indexes, deg=False, cossin=False):
         self.top = top
         self.dih_indexes = np.array(dih_indexes)
         self.deg = deg
+        self.cossin = cossin
 
     def describe(self):
         labels = ["DIH: %s - %s - %s - %s " %
@@ -361,6 +365,8 @@ class DihedralFeature(object):
 
     def map(self, traj):
         rad = mdtraj.compute_dihedrals(traj, self.dih_indexes)
+        if self.cossin:
+            rad = np.hstack(np.cos(rad), np.sin(rad))
         if self.deg:
             return np.rad2deg(rad)
         else:
@@ -380,9 +386,10 @@ class DihedralFeature(object):
 class BackboneTorsionFeature(object):
     # TODO: maybe consider this as a special case of DihedralFeature?
 
-    def __init__(self, topology, deg=False):
+    def __init__(self, topology, deg=False, cossin=False):
         self.topology = topology
         self.deg = deg
+        self.cossin = cossin
 
         # this is needed for get_indices functions, since they expect a Trajectory,
         # not a Topology
@@ -422,6 +429,8 @@ class BackboneTorsionFeature(object):
         y1 = compute_dihedrals(traj, self._phi_inds).astype(np.float32)
         y2 = compute_dihedrals(traj, self._psi_inds).astype(np.float32)
         rad = np.hstack((y1, y2))
+        if self.cossin:
+            rad = np.hstack(np.cos(rad), np.sin(rad))
         if self.deg:
             return np.rad2deg(rad)
         else:
@@ -437,29 +446,32 @@ class BackboneTorsionFeature(object):
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
 
+
 class MinRmsdFeature(object):
 
     def __init__(self, ref, ref_frame=0, atom_indices=None, topology=None, precentered=False):
 
-        assert isinstance(ref_frame, int), "ref_frame has to be of type integer, and not %s"%type(ref_frame)
+        assert isinstance(
+            ref_frame, int), "ref_frame has to be of type integer, and not %s" % type(ref_frame)
 
         # Will be needing the hashed input parameter
         self.__hashed_input__ = hash(ref)
 
         # Types of inputs
-        #1. Filename+top
-        if isinstance(ref,str):
+        # 1. Filename+top
+        if isinstance(ref, str):
             # Store the filename
             self.name = ref[:]
             ref = mdtraj.load_frame(ref, ref_frame, top=topology)
-            # mdtraj is pretty good handling exceptions, we're not checking for types or anything here
+            # mdtraj is pretty good handling exceptions, we're not checking for
+            # types or anything here
 
-        #2. md.Trajectory object
-        elif isinstance(ref,mdtraj.Trajectory):
+        # 2. md.Trajectory object
+        elif isinstance(ref, mdtraj.Trajectory):
             self.name = ref.__repr__()[:]
         else:
-            raise TypeError("input reference has to be either a filename or an mdtraj.Trajectory object, and "
-                            "not of %s"%type(ref))
+            raise TypeError("input reference has to be either a filename or "
+                            "a mdtraj.Trajectory object, and not of %s" % type(ref))
 
         self.ref = ref
         self.ref_frame = ref_frame
@@ -469,22 +481,22 @@ class MinRmsdFeature(object):
     def describe(self):
         label = "minrmsd to frame %u of %s" % (self.ref_frame, self.name)
         if self.precentered:
-            label +=', precentered=True'
+            label += ', precentered=True'
         if self.atom_indices is not None:
-            label +=', subset of atoms  '
+            label += ', subset of atoms  '
         return [label]
 
     @property
     def dimension(self):
-        # This is just to comply with any other method asking for the dimension property
-        return 1
+        return self.ref.n_atoms
 
     def map(self, traj):
         return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
 
     def __hash__(self):
-        hash_value  = hash(self.__hashed_input__)
-        # TODO: identical md.Trajectory objects have different hashes need a way to differentiate them here
+        hash_value = hash(self.__hashed_input__)
+        # TODO: identical md.Trajectory objects have different hashes need a
+        # way to differentiate them here
         hash_value ^= hash(self.ref_frame)
         if self.atom_indices is None:
             hash_value ^= _hash_numpy_array(np.arange(self.ref.n_atoms))
@@ -496,6 +508,7 @@ class MinRmsdFeature(object):
 
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
+
 
 class MDFeaturizer(object):
 
@@ -757,8 +770,8 @@ class MDFeaturizer(object):
         self.__add_feature(f)
 
     @deprecated
-    def contacts(self, atom_pairs):
-        return self.add_contacts(atom_pairs)
+    def contacts(self, *args):
+        return self.add_contacts(args)
 
     def add_contacts(self, indices, indices2=None, threshold=5.0, periodic=True):
         r"""
@@ -799,10 +812,10 @@ class MDFeaturizer(object):
         self.__add_feature(f)
 
     @deprecated
-    def angles(self, indexes):
-        return self.add_angles(indexes)
+    def angles(self, *args):
+        return self.add_angles(args)
 
-    def add_angles(self, indexes, deg=False):
+    def add_angles(self, indexes, deg=False, cossin=False):
         """
         Adds the list of angles to the feature list
 
@@ -813,13 +826,17 @@ class MDFeaturizer(object):
         deg : bool, optional, default = False
             If False (default), angles will be computed in radians.
             If True, angles will be computed in degrees.
+        cossin : bool, optional, default = False
+            If True, each angle will be returned as a pair of (sin(x), cos(x)).
+            This is useful, if you calculate the mean (e.g TICA/PCA, clustering)
+            in that space.
 
         """
         indexes = self._check_indices(indexes, pair_n=3)
-        f = AngleFeature(self.topology, indexes, deg=deg)
+        f = AngleFeature(self.topology, indexes, deg=deg, cossin=cossin)
         self.__add_feature(f)
 
-    def add_dihedrals(self, indexes, deg=False):
+    def add_dihedrals(self, indexes, deg=False, cossin=False):
         """
         Adds the list of dihedrals to the feature list
 
@@ -830,17 +847,21 @@ class MDFeaturizer(object):
         deg : bool, optional, default = False
             If False (default), angles will be computed in radians.
             If True, angles will be computed in degrees.
+        cossin : bool, optional, default = False
+            If True, each angle will be returned as a pair of (sin(x), cos(x)).
+            This is useful, if you calculate the mean (e.g TICA/PCA, clustering)
+            in that space.
 
         """
         indexes = self._check_indices(indexes, pair_n=4)
-        f = DihedralFeature(self.topology, indexes, deg=deg)
+        f = DihedralFeature(self.topology, indexes, deg=deg, cossin=cossin)
         self.__add_feature(f)
 
     @deprecated
-    def backbone_torsions(self):
-        return self.add_backbone_torsions()
+    def backbone_torsions(self, *args):
+        return self.add_backbone_torsions(args)
 
-    def add_backbone_torsions(self, deg=False):
+    def add_backbone_torsions(self, deg=False, cossin=False):
         """
         Adds all backbone phi/psi angles to the feature list.
 
@@ -849,9 +870,13 @@ class MDFeaturizer(object):
         deg : bool, optional, default = False
             If False (default), angles will be computed in radians.
             If True, angles will be computed in degrees.
+        cossin : bool, optional, default = False
+            If True, each angle will be returned as a pair of (sin(x), cos(x)).
+            This is useful, if you calculate the mean (e.g TICA/PCA, clustering)
+            in that space.
 
         """
-        f = BackboneTorsionFeature(self.topology, deg=deg)
+        f = BackboneTorsionFeature(self.topology, deg=deg, cossin=cossin)
         self.__add_feature(f)
 
     def add_custom_feature(self, feature):
