@@ -123,29 +123,28 @@ class DataInMemory(ReaderInterface):
             if lag == 0:
                 return X
             else:
-                Y = traj[lag * stride:traj_len:stride]
-                return (X, Y)
+                Y = traj[lag::stride]
+                return X, Y
         # chunked mode
         else:
-            upper_bound = min(
-                self._t + self._chunksize * stride, traj_len)
+            upper_bound = min(self._t + self._chunksize * stride, traj_len)
             slice_x = slice(self._t, upper_bound, stride)
 
             X = traj[slice_x]
 
-            if lag!=0:
-                 upper_bound_Y = min(
-                     self._t + (lag + self._chunksize) * stride, traj_len)
-                 slice_y = slice(self._t + lag*stride, upper_bound_Y, stride)
-                 Y = traj[slice_y]
+            if lag != 0:
+                upper_bound_Y = min(
+                     self._t + lag + self._chunksize * stride, traj_len)
+                slice_y = slice(self._t + lag, upper_bound_Y, stride)
+                Y = traj[slice_y]
 
             self._t = upper_bound
 
             if upper_bound >= traj_len:
-                 self._itraj += 1
-                 self._t = 0
-                 
-            if lag==0:
+                self._itraj += 1
+                self._t = 0
+
+            if lag == 0:
                 return X
-            else: 
-                return (X, Y)
+            else:
+                return X, Y
