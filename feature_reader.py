@@ -143,6 +143,15 @@ class FeatureReader(ReaderInterface):
         return patches.iterload(filename, chunk=self.chunksize,
                                 top=self.topfile, skip=skip, stride=stride)
 
+    def _close(self):
+        try:
+            if self._mditer:
+                self._mditer.close()
+            if self._mditer2:
+                self._mditer2.close()
+        except:
+            self._logger.exception("something went wrong closing file handles")
+
     def _reset(self, stride=1):
         """
         resets the chunk reader
@@ -185,9 +194,8 @@ class FeatureReader(ReaderInterface):
             if __debug__:
                 self._logger.debug('closing current trajectory "%s"'
                                    % self.trajfiles[self._itraj])
-            self._mditer.close()
-            if self._curr_lag != 0:
-                self._mditer2.close()
+            self._close()
+
             self._t = 0
             self._itraj += 1
             self._mditer = self._create_iter(self.trajfiles[self._itraj], stride=stride)

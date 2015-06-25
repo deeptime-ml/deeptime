@@ -73,7 +73,7 @@ class NumPyFileReader(ReaderInterface):
     def _reset(self, stride=1):
         self._t = 0
         self._itraj = 0
-        self._close_file()
+        self._close()
 
     def describe(self):
         return "[NumpyFileReader arrays with shape %s]" % [np.shape(x)
@@ -98,7 +98,7 @@ class NumPyFileReader(ReaderInterface):
         return array
 
     def __load_file(self, filename):
-        self._close_file()
+        self._close()
         self._logger.debug("opening file %s" % filename)
 
         if filename.endswith('.npy'):
@@ -110,7 +110,7 @@ class NumPyFileReader(ReaderInterface):
         self._array = arr
         return arr
 
-    def _close_file(self):
+    def _close(self):
         if self._array is None:
             return
 
@@ -129,7 +129,7 @@ class NumPyFileReader(ReaderInterface):
             array = self.__load_file(f)
             self._lengths.append(np.shape(array)[0])
             ndims.append(np.shape(array)[1])
-            self._close_file()
+            self._close()
             pg.numerator += 1
             show_progressbar(pg)
 

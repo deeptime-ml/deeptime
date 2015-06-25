@@ -64,12 +64,18 @@ class _csv_chunked_numpy_iterator:
     def __iter__(self):
         return self
 
+    def close(self):
+        self.fh.close()
+
     def _convert_to_np_chunk(self, list_of_strings):
         stack_of_strings = np.vstack(list_of_strings)
         result = stack_of_strings.astype(float)
         return result
 
     def next(self):
+        if not self.fh:
+            raise StopIteration
+
         lines = []
 
         for row in self.reader:
@@ -237,6 +243,11 @@ class PyCSVReader(ReaderInterface):
             self._iter = reader
         else:
             self._iter_lagged = reader
+
+    def _close(self):
+        # invalidate iterator
+        if self._iter:
+            self._iter.close()
 
     def _next_chunk(self, lag=0, stride=1):
         if self._iter is None:
