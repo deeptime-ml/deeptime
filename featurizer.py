@@ -21,25 +21,41 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-__author__ = 'Frank Noe, Martin Scherer'
-
+# -*- coding: uft-8 -*-
 import mdtraj
 from mdtraj.geometry.dihedral import _get_indices_phi, \
-    _get_indices_psi, compute_dihedrals
+    _get_indices_psi, compute_dihedrals, _atom_sequence, CHI1_ATOMS
 
 import numpy as np
 import warnings
-from itertools import combinations as _combinations
+from itertools import combinations as _combinations, count
 from itertools import product as _product
-from pyemma.util.types import is_iterable_of_int  as _is_iterable_of_int
+from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
+import functools
 
 from pyemma.util.log import getLogger
 from pyemma.util.annotators import deprecated
 
+
+__author__ = 'Frank Noe, Martin Scherer'
 __all__ = ['MDFeaturizer',
-           'CustomFeature',
            ]
+
+
+def _get_indices_chi1(traj):
+    rids, indices = zip(*(_atom_sequence(traj, atoms) for atoms in CHI1_ATOMS))
+    id_sort = np.argsort(np.concatenate(rids))
+    if not any(x.size for x in indices):
+        return np.empty(shape=(0, 4), dtype=np.int)
+
+    indices = np.vstack(x for x in indices if x.size)[id_sort]
+    return id_sort, indices
+
+# this is needed for get_indices functions, since they expect a Trajectory,
+# not a Topology
+class fake_traj():
+    def __init__(self, top):
+        self.top = top
 
 
 def _describe_atom(topology, index):
@@ -81,6 +97,7 @@ def _hash_numpy_array(x):
 
     return hash_value
 
+
 def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
     r"""For input of pairwise type (distances, inverse distances, contacts) checks the
         type of input the user gave and reformats it so that :py:func:`DistanceFeature`,
@@ -97,11 +114,10 @@ def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
 
         """
 
-
     if _is_iterable_of_int(indices1):
         MDlogger.warning('The 1D arrays input for %s have been sorted, and '
                          'index duplicates have been eliminated.\n'
-                         'Check the output of describe() to see the actual order of the features'%fname)
+                         'Check the output of describe() to see the actual order of the features' % fname)
 
         # Eliminate duplicates and sort
         indices1 = np.unique(indices1)
@@ -125,6 +141,7 @@ def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
         atom_pairs = indices1
 
     return atom_pairs
+
 
 class CustomFeature(object):
 
@@ -301,27 +318,43 @@ class ContactFeature(DistanceFeature):
 
 class AngleFeature(object):
 
-    def __init__(self, top, angle_indexes, deg=False):
+    def __init__(self, top, angle_indexes, deg=False, cossin=False):
         self.top = top
         self.angle_indexes = np.array(angle_indexes)
         self.deg = deg
+        self.cossin = cossin
 
     def describe(self):
-        labels = ["ANGLE: %s - %s - %s " %
-                  (_describe_atom(self.top, triple[0]),
-                   _describe_atom(self.top, triple[1]),
-                   _describe_atom(self.top, triple[2]))
-                  for triple in self.angle_indexes
-                  ]
+        self.top
 
+        if self.cossin:
+            sin_cos = ("ANGLE: COS(%s - %s - %s)",
+                       "ANGLE: SIN(%s - %s - %s)")
+            labels = [s % (_describe_atom(self.top, triple[0]),
+                           _describe_atom(self.top, triple[1]),
+                           _describe_atom(self.top, triple[2]))
+                      for triple in self.angle_indexes
+                      for s in sin_cos]
+        else:
+            labels = ["ANGLE: %s - %s - %s " %
+                      (_describe_atom(self.top, triple[0]),
+                       _describe_atom(self.top, triple[1]),
+                       _describe_atom(self.top, triple[2]))
+                      for triple in self.angle_indexes]
         return labels
 
     @property
     def dimension(self):
-        return self.angle_indexes.shape[0]
+        dim = self.angle_indexes.shape[0]
+        if self.cossin:
+            dim *= 2
+        return dim
 
     def map(self, traj):
         rad = mdtraj.compute_angles(traj, self.angle_indexes)
+        if self.cossin:
+            rad = np.dstack((np.cos(rad), np.sin(rad)))
+            rad = rad.reshape(functools.reduce(lambda x, y: x * y, rad.shape),)
         if self.deg:
             return np.rad2deg(rad)
         else:
@@ -340,27 +373,44 @@ class AngleFeature(object):
 
 class DihedralFeature(object):
 
-    def __init__(self, top, dih_indexes, deg=False):
+    def __init__(self, top, dih_indexes, deg=False, cossin=False):
         self.top = top
         self.dih_indexes = np.array(dih_indexes)
         self.deg = deg
+        self.cossin = cossin
+        self._dim = self.dih_indexes.shape[0]
+        if self.cossin:
+            self._dim *= 2
 
     def describe(self):
-        labels = ["DIH: %s - %s - %s - %s " %
-                  (_describe_atom(self.top, quad[0]),
-                   _describe_atom(self.top, quad[1]),
-                   _describe_atom(self.top, quad[2]),
-                   _describe_atom(self.top, quad[3]))
-                  for quad in self.dih_indexes
-                  ]
+        if self.cossin:
+            sin_cos = (
+                "DIH: COS(%s -  %s - %s - %s)", "DIH: SIN(%s -  %s - %s - %s)")
+            labels = [s %
+                      (_describe_atom(self.top, quad[0]),
+                       _describe_atom(self.top, quad[1]),
+                       _describe_atom(self.top, quad[2]),
+                       _describe_atom(self.top, quad[3]))
+                      for quad in self.dih_indexes
+                      for s in sin_cos]
+        else:
+            labels = ["DIH: %s - %s - %s - %s " %
+                      (_describe_atom(self.top, quad[0]),
+                       _describe_atom(self.top, quad[1]),
+                       _describe_atom(self.top, quad[2]),
+                       _describe_atom(self.top, quad[3]))
+                      for quad in self.dih_indexes]
         return labels
 
     @property
     def dimension(self):
-        return self.dih_indexes.shape[0]
+        return self._dim
 
     def map(self, traj):
         rad = mdtraj.compute_dihedrals(traj, self.dih_indexes)
+        if self.cossin:
+            rad = np.dstack((np.cos(rad), np.sin(rad)))
+            rad = rad.reshape(functools.reduce(lambda x, y: x * y, rad.shape),)
         if self.deg:
             return np.rad2deg(rad)
         else:
@@ -370,6 +420,7 @@ class DihedralFeature(object):
         hash_value = _hash_numpy_array(self.dih_indexes)
         hash_value ^= hash(self.top)
         hash_value ^= hash(self.deg)
+        hash_value ^= hash(self.cossin)
 
         return hash_value
 
@@ -377,89 +428,104 @@ class DihedralFeature(object):
         return hash(self) == hash(other)
 
 
-class BackboneTorsionFeature(object):
-    # TODO: maybe consider this as a special case of DihedralFeature?
+class BackboneTorsionFeature(DihedralFeature):
 
-    def __init__(self, topology, deg=False):
-        self.topology = topology
-        self.deg = deg
-
-        # this is needed for get_indices functions, since they expect a Trajectory,
-        # not a Topology
-        class fake_traj():
-
-            def __init__(self, top):
-                self.top = top
-
+    def __init__(self, topology, selstr=None, deg=False, cossin=False):
         ft = fake_traj(topology)
         _, indices = _get_indices_phi(ft)
-        self._phi_inds = indices
 
-        _, indices = _get_indices_psi(ft)
-        self._psi_inds = indices
+        if not selstr:
+            self._phi_inds = indices
+        else:
+            self._phi_inds = indices[np.in1d(indices[:, 1],
+                                             topology.select(selstr), assume_unique=True)]
 
-        self._dim = len(self._phi_inds) + len(self._psi_inds)
+            _, indices = _get_indices_psi(ft)
+        if not selstr:
+            self._psi_inds = indices
+        else:
+            self._psi_inds = indices[np.in1d(indices[:, 1],
+                                             topology.select(selstr), assume_unique=True)]
+
+        dih_indexes = np.vstack((self._psi_inds, self._psi_inds))
+        super(BackboneTorsionFeature, self).__init__(topology, dih_indexes,
+                                                     deg=deg, cossin=cossin)
 
     def describe(self):
-        top = self.topology
-        labels_phi = ["PHI %s" % _describe_atom(top, i)
-                      for ires in self._phi_inds
-                      for i in ires]
+        top = self.top
+        getlbl = lambda at: "%i %s %i " % (
+            at.residue.chain.index, at.residue.name, at.residue.resSeq)
 
-        labels_psi = ["PSI %s" % _describe_atom(top, i)
-                      for ires in self._psi_inds
-                      for i in ires]
+        if self.cossin:
+            sin_cos = ("COS(PHI %s)", "SIN(PHI %s)")
+            labels_phi = [s % getlbl(top.atom(ires[1])) for ires in self._phi_inds
+                          for s in sin_cos]
+            labels_psi = [s % getlbl(top.atom(ires[1])) for ires in self._psi_inds
+                          for s in sin_cos]
+        else:
+            labels_phi = [
+                "PHI %s" % getlbl(top.atom(ires[1])) for ires in self._phi_inds]
+            labels_psi = [
+                "PSI %s" % getlbl(top.atom(ires[1])) for ires in self._psi_inds]
 
         return labels_phi + labels_psi
 
-    @property
-    def dimension(self):
-        return self._dim
 
-    def map(self, traj):
-        # TODO: can we merge phi_inds and psi_inds to only call
-        # compute_dihedrals once?
-        y1 = compute_dihedrals(traj, self._phi_inds).astype(np.float32)
-        y2 = compute_dihedrals(traj, self._psi_inds).astype(np.float32)
-        rad = np.hstack((y1, y2))
-        if self.deg:
-            return np.rad2deg(rad)
+class Chi1TorsionFeature(DihedralFeature):
+
+    def __init__(self, topology, selstr=None, deg=False, cossin=False):
+        ft = fake_traj(topology)
+        _, indices = _get_indices_chi1(ft)
+        if not selstr:
+            dih_indexes = indices
         else:
-            return rad
+            dih_indexes = indices[np.in1d(indices[:, 1],
+                                          topology.select(selstr),
+                                          assume_unique=True)]
+        super(Chi1TorsionFeature, self).__init__(topology, dih_indexes,
+                                                 deg=deg, cossin=cossin)
 
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self._phi_inds)
-        hash_value ^= _hash_numpy_array(self._psi_inds)
-        hash_value ^= hash(self.topology)
+    def describe(self):
+        top = self.top
+        getlbl = lambda at: "%i %s %i " \
+            % (at.residue.chain.index, at.residue.name, at.residue.resSeq)
+        if self.cossin:
+            cossin = ("COS(CHI1 %s)", "SIN(CHI1 %s)")
+            labels_chi1 = [s % getlbl(top.atom(ires[1]))
+                           for ires in self.dih_indexes
+                           for s in cossin]
+        else:
+            labels_chi1 = ["CHI1" + getlbl(top.atom(ires[1]))
+                           for ires in self.dih_indexes]
 
-        return hash_value
+        return labels_chi1
 
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
 
 class MinRmsdFeature(object):
 
     def __init__(self, ref, ref_frame=0, atom_indices=None, topology=None, precentered=False):
 
-        assert isinstance(ref_frame, int), "ref_frame has to be of type integer, and not %s"%type(ref_frame)
+        assert isinstance(
+            ref_frame, int), "ref_frame has to be of type integer, and not %s" % type(ref_frame)
 
         # Will be needing the hashed input parameter
         self.__hashed_input__ = hash(ref)
 
         # Types of inputs
-        #1. Filename+top
-        if isinstance(ref,str):
+        # 1. Filename+top
+        if isinstance(ref, str):
             # Store the filename
             self.name = ref[:]
             ref = mdtraj.load_frame(ref, ref_frame, top=topology)
-            # mdtraj is pretty good handling exceptions, we're not checking for types or anything here
+            # mdtraj is pretty good handling exceptions, we're not checking for
+            # types or anything here
 
-        #2. md.Trajectory object
-        elif isinstance(ref,mdtraj.Trajectory):
+        # 2. md.Trajectory object
+        elif isinstance(ref, mdtraj.Trajectory):
             self.name = ref.__repr__()[:]
         else:
-            raise TypeError("input reference has to be either a filename or an mdtraj.Trajectory object, and "
-                            "not of %s"%type(ref))
+            raise TypeError("input reference has to be either a filename or "
+                            "a mdtraj.Trajectory object, and not of %s" % type(ref))
 
         self.ref = ref
         self.ref_frame = ref_frame
@@ -469,22 +535,22 @@ class MinRmsdFeature(object):
     def describe(self):
         label = "minrmsd to frame %u of %s" % (self.ref_frame, self.name)
         if self.precentered:
-            label +=', precentered=True'
+            label += ', precentered=True'
         if self.atom_indices is not None:
-            label +=', subset of atoms  '
+            label += ', subset of atoms  '
         return [label]
 
     @property
     def dimension(self):
-        # This is just to comply with any other method asking for the dimension property
-        return 1
+        return self.ref.n_atoms
 
     def map(self, traj):
         return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
 
     def __hash__(self):
-        hash_value  = hash(self.__hashed_input__)
-        # TODO: identical md.Trajectory objects have different hashes need a way to differentiate them here
+        hash_value = hash(self.__hashed_input__)
+        # TODO: identical md.Trajectory objects have different hashes need a
+        # way to differentiate them here
         hash_value ^= hash(self.ref_frame)
         if self.atom_indices is None:
             hash_value ^= _hash_numpy_array(np.arange(self.ref.n_atoms))
@@ -497,14 +563,17 @@ class MinRmsdFeature(object):
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
 
+
 class MDFeaturizer(object):
+
+    _ids = count(0)
 
     def __init__(self, topfile):
         """extracts features from MD trajectories.
 
         Parameters
         ----------
-
+        
         topfile : str
             a path to a topology file (pdb etc.)
         """
@@ -512,8 +581,16 @@ class MDFeaturizer(object):
         self.topology = (mdtraj.load(topfile)).topology
         self.active_features = []
         self._dim = 0
-        self._logger = getLogger("%s[%s]" %
-                                 (self.__class__.__name__, hex(id(self))))
+        self._create_logger()
+
+    def _create_logger(self):
+        count = self._ids.next()
+        i = self.__module__.rfind(".")
+        j = self.__module__.find(".") + 1
+        package = self.__module__[j:i]
+        name = "%s.%s[%i]" % (package, self.__class__.__name__, count)
+        self._name = name
+        self._logger = getLogger(name)
 
     def __add_feature(self, f):
         if f not in self.active_features:
@@ -672,7 +749,7 @@ class MDFeaturizer(object):
     def distances(self, atom_pairs):
         return self.add_distances(atom_pairs)
 
-    def add_distances(self, indices, periodic=True, indices2 = None):
+    def add_distances(self, indices, periodic=True, indices2=None):
         r"""
         Adds the distances between atoms to the feature list.
 
@@ -699,7 +776,8 @@ class MDFeaturizer(object):
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
 
-        atom_pairs = _parse_pairwise_input(indices, indices2, self._logger, fname='add_distances()')
+        atom_pairs = _parse_pairwise_input(
+            indices, indices2, self._logger, fname='add_distances()')
 
         atom_pairs = self._check_indices(atom_pairs)
         f = DistanceFeature(self.topology, atom_pairs, periodic=periodic)
@@ -749,15 +827,16 @@ class MDFeaturizer(object):
 
         """
 
-        atom_pairs = _parse_pairwise_input(indices, indices2, self._logger, fname='add_inverse_distances()')
+        atom_pairs = _parse_pairwise_input(
+            indices, indices2, self._logger, fname='add_inverse_distances()')
 
         atom_pairs = self._check_indices(atom_pairs)
         f = InverseDistanceFeature(self.topology, atom_pairs, periodic=True)
         self.__add_feature(f)
 
     @deprecated
-    def contacts(self, atom_pairs):
-        return self.add_contacts(atom_pairs)
+    def contacts(self, *args):
+        return self.add_contacts(args)
 
     def add_contacts(self, indices, indices2=None, threshold=5.0, periodic=True):
         r"""
@@ -791,17 +870,18 @@ class MDFeaturizer(object):
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
 
-        atom_pairs = _parse_pairwise_input(indices, indices2, self._logger, fname='add_contacts()')
+        atom_pairs = _parse_pairwise_input(
+            indices, indices2, self._logger, fname='add_contacts()')
 
         atom_pairs = self._check_indices(atom_pairs)
         f = ContactFeature(self.topology, atom_pairs, threshold, periodic)
         self.__add_feature(f)
 
     @deprecated
-    def angles(self, indexes):
-        return self.add_angles(indexes)
+    def angles(self, *args):
+        return self.add_angles(args)
 
-    def add_angles(self, indexes, deg=False):
+    def add_angles(self, indexes, deg=False, cossin=False):
         """
         Adds the list of angles to the feature list
 
@@ -812,13 +892,17 @@ class MDFeaturizer(object):
         deg : bool, optional, default = False
             If False (default), angles will be computed in radians.
             If True, angles will be computed in degrees.
+        cossin : bool, optional, default = False
+            If True, each angle will be returned as a pair of (sin(x), cos(x)).
+            This is useful, if you calculate the mean (e.g TICA/PCA, clustering)
+            in that space.
 
         """
         indexes = self._check_indices(indexes, pair_n=3)
-        f = AngleFeature(self.topology, indexes, deg=deg)
+        f = AngleFeature(self.topology, indexes, deg=deg, cossin=cossin)
         self.__add_feature(f)
 
-    def add_dihedrals(self, indexes, deg=False):
+    def add_dihedrals(self, indexes, deg=False, cossin=False):
         """
         Adds the list of dihedrals to the feature list
 
@@ -829,28 +913,58 @@ class MDFeaturizer(object):
         deg : bool, optional, default = False
             If False (default), angles will be computed in radians.
             If True, angles will be computed in degrees.
+        cossin : bool, optional, default = False
+            If True, each angle will be returned as a pair of (sin(x), cos(x)).
+            This is useful, if you calculate the mean (e.g TICA/PCA, clustering)
+            in that space.
 
         """
         indexes = self._check_indices(indexes, pair_n=4)
-        f = DihedralFeature(self.topology, indexes, deg=deg)
+        f = DihedralFeature(self.topology, indexes, deg=deg, cossin=cossin)
         self.__add_feature(f)
 
     @deprecated
-    def backbone_torsions(self):
-        return self.add_backbone_torsions()
+    def backbone_torsions(self, *args):
+        return self.add_backbone_torsions(args)
 
-    def add_backbone_torsions(self, deg=False):
+    def add_backbone_torsions(self, selstr=None, deg=False, cossin=False):
         """
-        Adds all backbone phi/psi angles to the feature list.
-
+        Adds all backbone phi/psi angles or the ones specified in selstr to the feature list.
         Parameters
         ----------
+        selstr : str, optional, default = ""
+            selection string specifying the atom selection used to specify a specific set of backbone angles
+            If "" (default), all chi1 angles found in the topology will be computed
         deg : bool, optional, default = False
             If False (default), angles will be computed in radians.
             If True, angles will be computed in degrees.
-
+        cossin : bool, optional, default = False
+            If True, each angle will be returned as a pair of (sin(x), cos(x)).
+            This is useful, if you calculate the mean (e.g TICA/PCA, clustering)
+            in that space.
         """
-        f = BackboneTorsionFeature(self.topology, deg=deg)
+        f = BackboneTorsionFeature(
+            self.topology, selstr=selstr, deg=deg, cossin=cossin)
+        self.__add_feature(f)
+
+    def add_chi1_torsions(self, selstr="", deg=False, cossin=False):
+        """
+        Adds all chi1 angles or the ones specified in selstr to the feature list.
+        Parameters
+        ----------
+        selstr : str, optional, default = ""
+            selection string specifying the atom selection used to specify a specific set of backbone angles
+            If "" (default), all chi1 angles found in the topology will be computed
+        deg : bool, optional, default = False
+            If False (default), angles will be computed in radians.
+            If True, angles will be computed in degrees.
+        cossin : bool, optional, default = False
+            If True, each angle will be returned as a pair of (sin(x), cos(x)).
+            This is useful, if you calculate the mean (e.g TICA/PCA, clustering)
+            in that space.
+        """
+        f = Chi1TorsionFeature(
+            self.topology, selstr=selstr, deg=deg, cossin=cossin)
         self.__add_feature(f)
 
     def add_custom_feature(self, feature):
