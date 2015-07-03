@@ -30,8 +30,8 @@ __all__ = ['frames_from_file']
 
 log = getLogger(__name__)
 
-def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
-                     stride = 1, verbose = False, **kwargs):
+def frames_from_file(file_name, topology, frames, chunksize = 100,
+                     stride = 1, verbose = False):
     r"""Reads one "file_name" molecular trajectory and returns an mdtraj trajectory object 
         containing only the specified "frames" in the specified order.
 
@@ -44,8 +44,8 @@ def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
     file_name: str.
         Absolute path to the molecular trajectory file, ex. trajout.xtc 
 
-    pdb_file : str.
-        Absolute path to the molecular trajectory file that can be used as topology by mdtraj
+    topology : str, mdtraj.Trajectory, or mdtraj.Topology
+        Topology information to load the molecular trajectroy file in :py:obj:`file_name`
 
     frames : ndarray of shape (n_frames, ) and integer type
         Contains the frame indices to be retrieved from "file_name". There is no restriction as to what 
@@ -74,7 +74,9 @@ def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
     assert isinstance(frames, np.ndarray), "input frames frames must be a numpy ndarray, got %s instead "%type(frames)
     assert np.ndim(frames) == 1, "input frames frames must have ndim = 1, got np.ndim = %u instead "%np.ndim(frames)
     assert isinstance(file_name, str), "input file_name must be a string, got %s instead"%type(file_name)
-    assert isinstance(pdbfile, str), "input pdbfile must be a string, got %s instead" % type(pdbfile)
+    assert isinstance(topology, (str, md.Trajectory, md.Topology)), "input topology must of one of type: " \
+                                                                    "str, mdtraj.Trajectory, or mdtraj.Topology. " \
+                                                                    "Got %s instead" % type(topology)
 
     traj = None
     cum_frames = 0
@@ -84,7 +86,7 @@ def frames_from_file(file_name, pdbfile, frames, chunksize = 100,
     orig_order = frames.argsort().argsort()
     sorted_frames = np.sort(frames)
 
-    for jj, traj_chunk in enumerate(md.iterload(file_name, top=pdbfile,
+    for jj, traj_chunk in enumerate(md.iterload(file_name, top=topology,
                                                 chunk=chunksize, stride=stride)):
 
         # Create an indexing array for this trajchunk
