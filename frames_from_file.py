@@ -25,13 +25,14 @@
 import mdtraj as md
 import numpy as np
 from pyemma.util.log import getLogger
-
+from pyemma.coordinates.data.util.reader_utils import copy_traj_attributes as _copy_traj_attributes, \
+    preallocate_empty_trajectory as _preallocate_empty_trajectory, enforce_top as _enforce_top
 __all__ = ['frames_from_file']
 
 log = getLogger(__name__)
 
 def frames_from_file(file_name, top, frames, chunksize = 100,
-                     stride = 1, verbose = False):
+                     stride = 1, verbose = False, copy_not_join=False):
     r"""Reads one "file_name" molecular trajectory and returns an mdtraj trajectory object 
         containing only the specified "frames" in the specified order.
 
@@ -65,6 +66,14 @@ def frames_from_file(file_name, top, frames, chunksize = 100,
         However, in certain situations, that might not be the case. Examples are cases in which a stride value != 1
         was used when reading/featurizing/transforming/discretizing the files contained in :py:obj:`traj_inp.trajfiles`.
 
+    copy_not_join : boolean, default is False
+        This parameter decides how geometry objects are appended onto one another. If left to False, mdtraj's own
+        :py:obj:`join` method will be used, which is the recommended method. However, for some combinations of
+        py:obj:`chunksizes` and :py:obj:`frames` this might be not very effective. If one sets :py:obj:`copy_not_join`
+        to True, the returned :py:obj:`traj` is preallocated and the important attributes (currently traj.xyz, traj.time,
+         traj.unit_lengths, traj.unit_angles) are broadcasted onto it.
+
+
     Returns
     -------
     traj : an md trajectory object containing the frames specified in "frames",
@@ -77,8 +86,16 @@ def frames_from_file(file_name, top, frames, chunksize = 100,
     assert isinstance(top, (str, md.Trajectory, md.Topology)), "input topology must of one of type: " \
                                                                     "str, mdtraj.Trajectory, or mdtraj.Topology. " \
                                                                     "Got %s instead" % type(top)
+    # Enforce topology to be a md.Topology object
+    top = _enforce_top(top)
 
-    traj = None
+    # Prepare the trajectory object
+    if copy_not_join:
+        traj = _preallocate_empty_trajectory(top, frames.shape[0])
+    else:
+        traj = None
+
+    # Prepare the running number of accumulated frames
     cum_frames = 0
 
     # Because the trajectory is streamed "chronologically", but "frames" can have any arbitrary order
@@ -97,14 +114,17 @@ def frames_from_file(file_name, top, frames, chunksize = 100,
         # Frames that appear more than one time will be kept
         good_frames = np.hstack([np.argwhere(ff == chunk_frames).squeeze() for ff in sorted_frames])
 
-        # Append the good frames of this chunk
+        # Keep the good frames of this chunk
         if np.size(good_frames) > 0:
-            if traj is None:
+
+            if copy_not_join:   # => traj has been already preallocated, see above
+                traj = _copy_traj_attributes(traj, traj_chunk[good_frames], cum_frames)
+            elif traj is None: # => copy_not_join is False AND 1st run
                 traj = traj_chunk[good_frames]
-            else:
+            else: # => copy_not_join is False AND we're not on the 1st run
                 traj = traj.join(traj_chunk[good_frames])
 
-        cum_frames += np.size(good_frames)
+            cum_frames += np.size(good_frames)
 
         if verbose:
             log.info('chunk %u of traj has size %u, indices %6u...%6u. Accumulated frames %u'

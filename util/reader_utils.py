@@ -118,6 +118,50 @@ def single_traj_from_n_files(file_list, top):
 
     return traj
 
+def copy_traj_attributes(target, origin, start):
+    """ Inserts certain attributes of origin into target
+    :param target: target trajectory object
+    :param origin: origin trajectory object
+    :param start: :py:obj:`origin` attributes will be inserted in :py:obj:`target` starting at this index
+    :return: target: the md trajectory with the attributes of :py:obj:`origin` inserted
+    """
+
+    # The list of copied attributes can be extended here with time
+    # Or perhaps ask the mdtraj guys to implement something similar?
+
+    target._xyz[start:start+origin.n_frames] = origin._xyz
+    target._unitcell_lengths[start:start+origin.n_frames] = origin._unitcell_lengths
+    target._unitcell_angles[start:start+origin.n_frames] = origin._unitcell_angles
+    target._time[start:start+origin.n_frames] = origin._time
+
+    return target
+
+def preallocate_empty_trajectory(top, n_frames=1):
+    """
+
+    :param top: md.Topology object to be mimicked in shape
+    :param n_frames: desired number of frames of the empty trajectory
+    :return: empty_traj: empty md.Trajectory object with n_frames
+    """
+    return md.Trajectory(np.zeros((n_frames,top.n_atoms,3)),
+                         top,
+                         time=np.zeros(n_frames),
+                         unitcell_lengths=np.zeros((n_frames,3)),
+                         unitcell_angles=np.zeros((n_frames ,3))
+                         )
+def enforce_top(top):
+    if isinstance(top,str):
+        top = md.load(top).top
+    elif isinstance(top, md.Trajectory):
+        top = top.top
+    elif isinstance(top, md.Topology):
+        pass
+    else:
+        raise TypeError('element %u of the reference list is not of type str, md.Trajectory, or md.Topology, but %s'%
+                        type(top))
+    return top
+
+
 def save_traj_w_md_load_frame(reader, sets):
     # Creates a single trajectory object from a "sets" array via md.load_frames
     traj = None
