@@ -83,7 +83,10 @@ class ReaderInterface(Transformer):
         :return:
             length of trajectory
         """
-        return (self._lengths[itraj] - 1) // int(stride) + 1
+        if isinstance(stride, dict):
+            return 0 if itraj not in stride.keys() else len(stride[itraj])
+        else:
+            return (self._lengths[itraj] - 1) // int(stride) + 1
 
     def trajectory_lengths(self, stride=1):
         """
@@ -96,7 +99,12 @@ class ReaderInterface(Transformer):
         :return:
             numpy array containing length of each trajectory
         """
-        return np.array([(l - 1) // stride + 1 for l in self._lengths], dtype=int)
+        if isinstance(stride, dict):
+            return np.array(
+                [self.trajectory_length(itraj, stride) for itraj in xrange(0, self.number_of_trajectories())],
+                dtype=int)
+        else:
+            return np.array([(l - 1) // stride + 1 for l in self._lengths], dtype=int)
 
     def n_frames_total(self, stride=1):
         """
