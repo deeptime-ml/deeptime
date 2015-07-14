@@ -117,6 +117,8 @@ class ReaderInterface(Transformer):
         :return:
             the total number of frames, over all trajectories
         """
+        if isinstance(stride, dict):
+            return sum([len(x) for x in stride.values()])
         if stride == 1:
             return np.sum(self._lengths)
         else:
