@@ -157,8 +157,7 @@ class FeatureReader(ReaderInterface):
         if len(self.trajfiles) >= 1:
             self._t = 0
             if isinstance(stride, dict):
-                self._mditer = self._create_iter(self.trajfiles[0], stride=1,
-                                                 atom_indices=stride[0] if 0 in stride.keys() else [])
+                self._mditer = self._create_iter(self.trajfiles[0], stride=stride[stride.keys()[0]] if stride else [])
             else:
                 self._mditer = self._create_iter(self.trajfiles[0], stride=stride)
 
@@ -204,8 +203,9 @@ class FeatureReader(ReaderInterface):
             self._t = 0
             self._itraj += 1
             if isinstance(stride, dict):
-                indices = stride[self._itraj] if self._itraj in stride.keys() else []
-                self._mditer = self._create_iter(self.trajfiles[self._itraj], atom_indices=indices)
+                while self._itraj not in stride.keys() and self._itraj < self.number_of_trajectories():
+                    self._itraj += 1
+                self._mditer = self._create_iter(self.trajfiles[self._itraj], stride=stride[self._itraj])
             else:
                 self._mditer = self._create_iter(self.trajfiles[self._itraj], stride=stride)
             # we open self._mditer2 only if requested due lag parameter!
