@@ -135,9 +135,9 @@ class FeatureReader(ReaderInterface):
             # general case
             return self.featurizer.dimension()
 
-    def _create_iter(self, filename, skip=0, stride=1):
+    def _create_iter(self, filename, skip=0, stride=1, atom_indices=None):
         return patches.iterload(filename, chunk=self.chunksize,
-                                top=self.topfile, skip=skip, stride=stride)
+                                top=self.topfile, skip=skip, stride=stride, atom_indices=atom_indices)
 
     def _close(self):
         try:
@@ -156,7 +156,11 @@ class FeatureReader(ReaderInterface):
         self._curr_lag = 0
         if len(self.trajfiles) >= 1:
             self._t = 0
-            self._mditer = self._create_iter(self.trajfiles[0], stride=stride)
+            if isinstance(stride, dict):
+                self._mditer = self._create_iter(self.trajfiles[0], stride=1,
+                                                 atom_indices=stride[0] if 0 in stride.keys() else [])
+            else:
+                self._mditer = self._create_iter(self.trajfiles[0], stride=stride)
 
     def _next_chunk(self, lag=0, stride=1):
         """
@@ -199,7 +203,11 @@ class FeatureReader(ReaderInterface):
 
             self._t = 0
             self._itraj += 1
-            self._mditer = self._create_iter(self.trajfiles[self._itraj], stride=stride)
+            if isinstance(stride, dict):
+                indices = stride[self._itraj] if self._itraj in stride.keys() else []
+                self._mditer = self._create_iter(self.trajfiles[self._itraj], atom_indices=indices)
+            else:
+                self._mditer = self._create_iter(self.trajfiles[self._itraj], stride=stride)
             # we open self._mditer2 only if requested due lag parameter!
             self._curr_lag = 0
 
