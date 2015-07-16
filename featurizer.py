@@ -447,7 +447,7 @@ class BackboneTorsionFeature(DihedralFeature):
             self._psi_inds = indices[np.in1d(indices[:, 1],
                                              topology.select(selstr), assume_unique=True)]
 
-        dih_indexes = np.vstack((self._psi_inds, self._psi_inds))
+        dih_indexes = np.vstack((self._phi_inds, self._psi_inds))
         super(BackboneTorsionFeature, self).__init__(topology, dih_indexes,
                                                      deg=deg, cossin=cossin)
 
