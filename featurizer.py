@@ -410,11 +410,12 @@ class DihedralFeature(object):
         rad = mdtraj.compute_dihedrals(traj, self.dih_indexes)
         if self.cossin:
             rad = np.dstack((np.cos(rad), np.sin(rad)))
-            rad = rad.reshape(functools.reduce(lambda x, y: x * y, rad.shape),)
+            rad = rad.reshape(rad.shape[0], rad.shape[1]*rad.shape[2])
+        # convert to degrees
         if self.deg:
-            return np.rad2deg(rad)
-        else:
-            return rad
+            rad = np.rad2deg(rad)
+
+        return rad
 
     def __hash__(self):
         hash_value = _hash_numpy_array(self.dih_indexes)
@@ -440,14 +441,17 @@ class BackboneTorsionFeature(DihedralFeature):
             self._phi_inds = indices[np.in1d(indices[:, 1],
                                              topology.select(selstr), assume_unique=True)]
 
-            _, indices = _get_indices_psi(ft)
+        _, indices = _get_indices_psi(ft)
         if not selstr:
             self._psi_inds = indices
         else:
             self._psi_inds = indices[np.in1d(indices[:, 1],
                                              topology.select(selstr), assume_unique=True)]
 
-        dih_indexes = np.vstack((self._phi_inds, self._psi_inds))
+        # alternate phi, psi pairs (phi_1, psi_1, ..., phi_n, psi_n)
+        dih_indexes = np.array(list(phi_psi for phi_psi in
+                                    zip(self._phi_inds, self._psi_inds))).reshape(-1, 4)
+
         super(BackboneTorsionFeature, self).__init__(topology, dih_indexes,
                                                      deg=deg, cossin=cossin)
 
