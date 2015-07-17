@@ -29,12 +29,11 @@ Created on 07.04.2015
 import numpy as np
 import functools
 
+from pyemma._base.progress import ProgressReporter
 from pyemma.coordinates.data.interface import ReaderInterface
-from pyemma.util.progressbar._impl import ProgressBar
-from pyemma.util.progressbar.gui import show_progressbar
 
 
-class NumPyFileReader(ReaderInterface):
+class NumPyFileReader(ReaderInterface, ProgressReporter):
 
     """reads NumPy files in chunks. Supports .npy files
 
@@ -122,16 +121,14 @@ class NumPyFileReader(ReaderInterface):
     def __set_dimensions_and_lenghts(self):
         ndims = []
         n = len(self._filenames)
-        pg = ProgressBar(n, description="get lengths/dim")
-        pg.eta_every = 1
+        self._progress_register(n, description="get lengths/dim")
 
         for f in self._filenames:
             array = self.__load_file(f)
             self._lengths.append(np.shape(array)[0])
             ndims.append(np.shape(array)[1])
             self._close()
-            pg.numerator += 1
-            show_progressbar(pg)
+            self._progress_update(1)
 
         # ensure all trajs have same dim
         if not np.unique(ndims).size == 1:
