@@ -118,17 +118,15 @@ class DataInMemory(ReaderInterface):
         # complete trajectory mode
         if self._chunksize == 0:
             if isinstance(stride, dict):
-                if self._itraj not in stride.keys() or not stride[self._itraj]:
-                    # modify shape such that empty array is really just empty.
-                    s = list(traj.shape); s[0] = 0
-                    X = np.empty(shape=tuple(s), dtype=traj.dtype)
-                else:
-                    X = traj[np.array(stride[self._itraj])]
+                X = self._data[self._itraj][np.array(stride[self._itraj])]
                 self._itraj += 1
+                # skip trajs which are not included in stride
+                while (self._itraj not in stride.keys() or not stride[self._itraj]) and self._itraj < self.number_of_trajectories():
+                    self._itraj += 1
                 if lag == 0:
                     return X
                 else:
-                    Xtau = traj[np.array(stride[self._itraj][lag:])]
+                    Xtau = self._data[self._itraj-1][np.array(stride[self._itraj-1][lag:])]
                     return X, Xtau
             else:
                 X = traj[::stride]
@@ -141,20 +139,21 @@ class DataInMemory(ReaderInterface):
         # chunked mode
         else:
             if isinstance(stride, dict):
-                if self._itraj not in stride.keys() or not stride[self._itraj][self._t:min(self._t + self.chunksize, traj_len)]:
-                    # modify shape such that empty array is really just empty.
-                    s = list(traj.shape); s[0] = 0
-                    Y0 = np.empty(shape=tuple(s), dtype=traj.dtype)
-                else:
-                    Y0 = traj[np.array(stride[self._itraj][self._t:min(self._t + self.chunksize, traj_len)])]
+                Y0 = self._data[self._itraj][np.array(stride[self._itraj][self._t:min(self._t + self.chunksize, traj_len)])]
+                if lag != 0:
+                    Ytau = self._data[self._itraj][np.array(stride[self._itraj][lag + self._t:min(lag + self._t + self.chunksize, traj_len)])]
                 self._t += self.chunksize
-                if self._t >= traj_len:
+                if self._t >= self.trajectory_length(itraj=self._itraj, stride=stride):
+                    self._itraj += 1
+                    self._t = 0
+
+                # skip trajs which are not included in stride
+                while (self._itraj not in stride.keys() or not stride[self._itraj][self._t:min(self._t + self.chunksize, traj_len)]) and self._itraj < self.number_of_trajectories():
                     self._itraj += 1
                     self._t = 0
                 if lag == 0:
                     return Y0
                 else:
-                    Ytau = traj[np.array(stride[self._itraj][lag + self._t:min(lag + self._t + self.chunksize, traj_len)])]
                     return Y0, Ytau
             else:
                 upper_bound = min(self._t + self._chunksize * stride, traj_len)
