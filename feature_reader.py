@@ -180,12 +180,17 @@ class FeatureReader(ReaderInterface):
                                        % (self._itraj, lag))
                 self._curr_lag = lag
                 self._mditer2 = self._create_iter(self.trajfiles[self._itraj],
-                                                  skip=self._curr_lag, stride=stride)
+                                                  skip=self._curr_lag,
+                                                  stride=stride)
             try:
                 adv_chunk = self._mditer2.next()
             except StopIteration:
                 # When _mditer2 ran over the trajectory end, return empty chunks.
                 adv_chunk = mdtraj.Trajectory(np.empty((0, shape[1], shape[2]), np.float32), chunk.topology)
+            except RuntimeError as e:
+                if "seek error" in str(e):
+                    raise RuntimeError("Trajectory %s too short for lag time %i" %
+                                       (self.trajfiles[self._itraj], lag))
 
         self._t += shape[0]
 
