@@ -58,7 +58,7 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
         for f in self._filenames:
             if not f.endswith('.npy'):
                 raise ValueError('given file "%s" is not supported by this'
-                                 ' reader. Since it does end with .npy' % f)
+                                 ' reader, since it does not end with .npy' % f)
 
         self.mmap_mode = mmap_mode
 
@@ -148,25 +148,51 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
         traj_len = self._lengths[self._itraj]
         traj = self._array
 
+        # if stride by dict, update traj length accordingly
+        if isinstance(stride, dict):
+            traj_len = self.trajectory_length(self._itraj, stride=stride)
+
         # complete trajectory mode
         if self._chunksize == 0:
-            X = traj[::stride]
-            self._itraj += 1
+            if isinstance(stride, dict):
+                X = traj[np.array(stride[self._itraj])]
+                self._itraj += 1
+
+                # skip the trajs that are not in the stride dict
+                while self._itraj < self.number_of_trajectories() \
+                        and (self._itraj not in stride.keys() or not stride[self._itraj]):
+                    self._itraj += 1
+                self._array = None
+            else:
+                X = traj[::stride]
+                self._itraj += 1
 
             if lag == 0:
                 return X
             else:
-                Y = traj[lag::stride]
+                if isinstance(stride, dict):
+                    lagged_stride = stride[self._itraj][lag + 0:min(lag, traj_len)]
+                    if lagged_stride:
+                        Y = traj[np.array(lagged_stride)]
+                    else:
+                        s = list(traj.shape); s[0] = 0
+                        Y = np.empty(shape=tuple(s), dtype=traj.dtype)
+                else:
+                    Y = traj[lag::stride]
                 return X, Y
+
         # chunked mode
         else:
-            upper_bound = min(self._t + self._chunksize * stride, traj_len)
-            slice_x = slice(self._t, upper_bound, stride)
-            X = traj[slice_x]
+            if isinstance(stride, dict):
+                X = traj[np.array(stride[self._itraj][self._t:min(self._t + self.chunksize, traj_len)])]
+                upper_bound = min(self._t + self.chunksize, traj_len)
+            else:
+                upper_bound = min(self._t + self._chunksize * stride, traj_len)
+                slice_x = slice(self._t, upper_bound, stride)
+                X = traj[slice_x]
 
             if lag != 0:
-                upper_bound_Y = min(
-                     self._t + lag + self._chunksize * stride, traj_len)
+                upper_bound_Y = min(self._t + lag + self._chunksize * stride, traj_len)
                 slice_y = slice(self._t + lag, upper_bound_Y, stride)
                 Y = traj[slice_y]
 
@@ -178,6 +204,12 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
                     self._logger.debug("reached bounds of array, open next.")
                 self._itraj += 1
                 self._t = 0
+
+                # if we have a dictionary, skip trajectories that are not in the key set
+                while isinstance(stride, dict) and self._itraj < self.number_of_trajectories() \
+                        and (self._itraj not in stride.keys() or not stride[self._itraj]):
+                    self._itraj += 1
+
                 # if time index scope ran out of len of current trajectory, open next file.
                 if self._itraj <= self.number_of_trajectories() - 1:
                     self.__load_file(self._filenames[self._itraj])
