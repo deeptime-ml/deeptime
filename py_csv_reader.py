@@ -38,9 +38,11 @@ class _csv_chunked_numpy_iterator:
     returns numpy arrays by combining multiple lines to chunks
     """
 
-    def __init__(self, reader, chunksize=1, skiprows=None, header=None):
+    def __init__(self, reader, chunksize=1, skiprows=None, header=None, stride=None, itraj=None):
         self.reader = reader
         self.chunksize = chunksize
+        self._stride = stride
+        self._itraj = itraj
 
         if isinstance(skiprows, int):
             skiprows = np.arange(skiprows)
@@ -85,7 +87,11 @@ class _csv_chunked_numpy_iterator:
                 continue
 
             self.line += 1
-            lines.append(row)
+            if isinstance(self._stride, dict):
+                for i in xrange(0, self._stride[self._itraj].count(self.line-1)):
+                    lines.append(row)
+            else:
+                lines.append(row)
             if self.line % self.chunksize == 0:
                 result = self._convert_to_np_chunk(lines)
                 del lines[:]
@@ -149,7 +155,7 @@ class PyCSVReader(ReaderInterface):
                     self._lengths.append(sum(1 for _ in fh))
                     fh.seek(0)
                     # determine if file has header here:
-                    sample = fh.read(1024)
+                    sample = fh.read(2048)
                     self._dialects[ii] = csv.Sniffer().sniff(sample)
                     self._has_header[ii] = csv.Sniffer().has_header(sample)
                     # if we have a header subtract it from total length
@@ -219,7 +225,10 @@ class PyCSVReader(ReaderInterface):
             skiprows = np.zeros(nt)
             skiprows[:skip] = np.arange(skip)
 
-        if stride > 1:
+        if isinstance(stride, dict):
+            all_frames = np.arange(nt)
+            skiprows = np.setdiff1d(all_frames, stride[self._itraj], assume_unique=True)
+        elif stride > 1:
             all_frames = np.arange(nt)
             if skiprows is not None:
                 wanted_frames = np.arange(skip, nt, stride)
@@ -232,7 +241,7 @@ class PyCSVReader(ReaderInterface):
             fh = open(fn)
             reader = _csv_chunked_numpy_iterator(
                 csv.reader(fh, dialect=self._dialects[self._itraj]),
-                chunksize=self.chunksize, skiprows=skiprows, header=header)
+                chunksize=self.chunksize, skiprows=skiprows, header=header, stride=stride, itraj=self._itraj)
             reader.f = fn
             reader.fh = fh
         except EnvironmentError:
@@ -253,20 +262,23 @@ class PyCSVReader(ReaderInterface):
         if self._iter is None:
             self._open_file(stride=stride)
 
-        if (self._t >= self.trajectory_length(self._itraj, stride=stride) and
-                self._itraj < len(self._filenames) - 1):
-            # close file handles and open new ones
-            self._t = 0
-            self._itraj += 1
-
-            self._open_file(stride=stride)
-
         if lag != self._current_lag:
             self._current_lag = lag
             self._open_file(skip=lag, stride=stride, lagged=True)
 
         X = self._iter.get_chunk()
         self._t += X.shape[0]
+
+        if (self._t >= self.trajectory_length(self._itraj, stride=stride) and
+                    self._itraj < len(self._filenames) - 1):
+            # close file handles and open new ones
+            self._t = 0
+            self._itraj += 1
+
+            while isinstance(stride, dict) and (self._itraj not in stride.keys() or not stride[self._itraj]):
+                self._itraj += 1
+
+            self._open_file(stride=stride)
 
         if lag == 0:
             return X
