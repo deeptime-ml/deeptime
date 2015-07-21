@@ -354,10 +354,11 @@ class InverseDistanceFeature(DistanceFeature):
 
 class ResidueMinDistanceFeature(DistanceFeature):
 
-    def __init__(self, top, contacts, scheme, ignore_nonprotein):
+    def __init__(self, top, contacts, scheme, ignore_nonprotein, threshold):
         self.top = top
         self.contacts = contacts
         self.scheme = scheme
+        self.threshold = threshold
         self.prefix_label = "RES_DIST (%s)"%scheme
 
         # mdtraj.compute_contacts might ignore part of the user input (if it is contradictory) and
@@ -378,15 +379,25 @@ class ResidueMinDistanceFeature(DistanceFeature):
         return labels
 
     def map(self, traj):
-        return mdtraj.compute_contacts(traj, contacts=self.contacts, scheme=self.scheme)[0]
+        # We let mdtraj compute the contacts with the input scheme
+        D = mdtraj.compute_contacts(traj, contacts=self.contacts, scheme=self.scheme)[0]
+        res = np.zeros_like(D)
+        # Do we want binary?
+        if self.threshold is not None:
+            I = np.argwhere(D <= self.threshold)
+            res[I[:, 0], I[:, 1]] = 1.0
+        else:
+            res = D
+        return res
 
 class GroupMinDistanceFeature(DistanceFeature):
 
-    def __init__(self, top, group_pairs, distance_list, group_identifiers):
+    def __init__(self, top, group_pairs, distance_list, group_identifiers, threshold):
         self.top = top
         self.group_identifiers = group_identifiers
         self.distance_list = distance_list
         self.prefix_label = "GROUP_MINDIST"
+        self.threshold = threshold
         self.distance_indexes = group_pairs
 
     def describe(self):
@@ -400,12 +411,19 @@ class GroupMinDistanceFeature(DistanceFeature):
         # All needed distances
         Dall = mdtraj.compute_distances(traj, self.distance_list)
         # Just the minimas
-        Dargmin = np.zeros((traj.n_frames,self.dimension))
+        Dmin = np.zeros((traj.n_frames,self.dimension))
+        res = np.zeros_like(Dmin)
         # Compute the min groupwise
         for ii, (gi, gf) in enumerate(self.group_identifiers):
-            Dargmin[:, ii] =  Dall[:,gi:gf].min(1)
+            Dmin[:, ii] =  Dall[:,gi:gf].min(1)
+        # Do we want binary?
+        if self.threshold is not None:
+            I = np.argwhere(Dmin <= self.threshold)
+            res[I[:, 0], I[:, 1]] = 1.0
+        else:
+            res = Dmin
 
-        return Dargmin
+        return res
 
 class ContactFeature(DistanceFeature):
 
@@ -993,7 +1011,8 @@ class MDFeaturizer(object):
     def add_residue_mindist(self,
                             residue_pairs='all',
                             scheme='closest-heavy',
-                            ignore_nonprotein=True):
+                            ignore_nonprotein=True,
+                            threshold=None):
         r"""
         Adds the minimum distance between residues to the feature list. See below how
         the minimum distance can be defined.
@@ -1009,12 +1028,14 @@ class MDFeaturizer(object):
                 n x 2 array with the pairs residues for which distances will be computed
 
         scheme : 'ca', 'closest', 'closest-heavy', default is closest-heavy
-                Has effect only if :py:obj:`group_def` ='residues'. Within a residue, determines the sub-group atoms
-                that will be considered when computing distances
+                Within a residue, determines the sub-group atoms that will be considered when computing distances
 
         ignore_nonprotein : boolean, default True
                 Ignore residues that are not of protein type (e.g. water molecules, post-traslational modifications etc)
 
+        threshold : float, optional, default is None
+            distances below this threshold (in nm) will result in a feature 1.0, distances above will result in 0.0. If
+            left to None, the numerical value will be returned
 
         .. note::
             Using :py:obj:`scheme` = 'closest' or 'closest-heavy' with :py:obj:`residue pairs` = 'all'
@@ -1027,12 +1048,13 @@ class MDFeaturizer(object):
             self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
                                  "very time consuming. Consider reducing the residue pairs")
 
-        f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein)
+        f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein, threshold)
         self.__add_feature(f)
 
     def add_group_mindist(self,
                             group_definitions,
                             group_pairs='all',
+                            threshold=None,
                             ):
         r"""
         Adds the minimum distance between groups of atoms to the feature list. If the groups of
@@ -1051,13 +1073,18 @@ class MDFeaturizer(object):
 
             ndarray((n, 2), dtype=int):
                 n x 2 array with the pairs of groups for which the minimum distances will be computed.
+
+        threshold : float, optional, default is None
+            distances below this threshold (in nm) will result in a feature 1.0, distances above will result in 0.0. If
+            left to None, the numerical value will be returned
+
         """
 
         # Some thorough input checking and reformatting
         __, group_pairs, distance_list, group_identifiers = _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
         distance_list = self._check_indices(distance_list)
 
-        f = GroupMinDistanceFeature(self.topology, group_pairs, distance_list, group_identifiers)
+        f = GroupMinDistanceFeature(self.topology, group_pairs, distance_list, group_identifiers, threshold)
         self.__add_feature(f)
 
     @deprecated
