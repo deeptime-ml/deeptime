@@ -38,10 +38,10 @@ class _csv_chunked_numpy_iterator:
     returns numpy arrays by combining multiple lines to chunks
     """
 
-    def __init__(self, reader, chunksize=1, skiprows=None, header=None, stride=None, itraj=None):
+    def __init__(self, reader, chunksize=1, skiprows=None, header=None, context=None, itraj=None):
         self.reader = reader
         self.chunksize = chunksize
-        self._stride = stride
+        self._ctx = context
         self._itraj = itraj
 
         if isinstance(skiprows, int):
@@ -87,8 +87,8 @@ class _csv_chunked_numpy_iterator:
                 continue
 
             self.line += 1
-            if isinstance(self._stride, dict):
-                for i in xrange(0, self._stride[self._itraj].count(self.line-1)):
+            if not self._ctx.uniform_stride:
+                for i in xrange(0, self._ctx.ra_indices_for_traj(self._itraj).tolist().count(self.line-1)):
                     lines.append(row)
             else:
                 lines.append(row)
@@ -184,7 +184,7 @@ class PyCSVReader(ReaderInterface):
         else:
             self._ndim = dim
 
-    def _reset(self, stride=1):
+    def _reset(self, context=None):
         self._t = 0
         self._itraj = 0
         # to reopen files
@@ -192,7 +192,7 @@ class PyCSVReader(ReaderInterface):
         self._iter_lagged = None
         self._lagged_iter_finished = False
 
-    def _open_file(self, skip=0, stride=1, lagged=False):
+    def _open_file(self, skip, context=None, lagged=False):
         fn = self._filenames[self._itraj]
         self._logger.debug("opening file %s" % fn)
 
@@ -225,15 +225,15 @@ class PyCSVReader(ReaderInterface):
             skiprows = np.zeros(nt)
             skiprows[:skip] = np.arange(skip)
 
-        if isinstance(stride, dict):
+        if not context.uniform_stride:
             all_frames = np.arange(nt)
-            skiprows = np.setdiff1d(all_frames, stride[self._itraj], assume_unique=True)
-        elif stride > 1:
+            skiprows = np.setdiff1d(all_frames, context.ra_indices_for_traj(self._itraj), assume_unique=True)
+        elif context.stride > 1:
             all_frames = np.arange(nt)
             if skiprows is not None:
-                wanted_frames = np.arange(skip, nt, stride)
+                wanted_frames = np.arange(skip, nt, context.stride)
             else:
-                wanted_frames = np.arange(0, nt, stride)
+                wanted_frames = np.arange(0, nt, context.stride)
             skiprows = np.setdiff1d(
                 all_frames, wanted_frames, assume_unique=True)
 
@@ -241,7 +241,7 @@ class PyCSVReader(ReaderInterface):
             fh = open(fn)
             reader = _csv_chunked_numpy_iterator(
                 csv.reader(fh, dialect=self._dialects[self._itraj]),
-                chunksize=self.chunksize, skiprows=skiprows, header=header, stride=stride, itraj=self._itraj)
+                chunksize=self.chunksize, skiprows=skiprows, header=header, context=context, itraj=self._itraj)
             reader.f = fn
             reader.fh = fh
         except EnvironmentError:
@@ -258,29 +258,30 @@ class PyCSVReader(ReaderInterface):
         if self._iter:
             self._iter.close()
 
-    def _next_chunk(self, lag=0, stride=1):
-        if self._iter is None:
-            self._open_file(stride=stride)
+    def _next_chunk(self, ctx):
 
-        if lag != self._current_lag:
-            self._current_lag = lag
-            self._open_file(skip=lag, stride=stride, lagged=True)
+        if self._iter is None:
+            self._open_file(0, context=ctx)
+
+        if ctx.lag != self._current_lag:
+            self._current_lag = ctx.lag
+            self._open_file(ctx.lag, context=ctx, lagged=True)
 
         X = self._iter.get_chunk()
         self._t += X.shape[0]
 
-        if (self._t >= self.trajectory_length(self._itraj, stride=stride) and
+        if (self._t >= self.trajectory_length(self._itraj, stride=ctx.stride) and
                     self._itraj < len(self._filenames) - 1):
             # close file handles and open new ones
             self._t = 0
             self._itraj += 1
 
-            while isinstance(stride, dict) and (self._itraj not in stride.keys() or not stride[self._itraj]):
+            while not ctx.uniform_stride and self._itraj not in ctx.traj_keys:
                 self._itraj += 1
 
-            self._open_file(stride=stride)
+            self._open_file(0, context=ctx)
 
-        if lag == 0:
+        if ctx.lag == 0:
             return X
         else:
             # Note: this ugly hack is needed, since the caller of this method

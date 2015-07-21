@@ -139,7 +139,7 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
 
         self._ntraj = len(self._filenames)
 
-    def _next_chunk(self, lag=0, stride=1):
+    def _next_chunk(self, context=None):
 
         # if no file is open currently, open current index.
         if self._array is None:
@@ -149,51 +149,46 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
         traj = self._array
 
         # if stride by dict, update traj length accordingly
-        if isinstance(stride, dict):
-            traj_len = self.trajectory_length(self._itraj, stride=stride)
+        if not context.uniform_stride:
+            traj_len = context.ra_trajectory_length(self._itraj)
 
         # complete trajectory mode
         if self._chunksize == 0:
-            if isinstance(stride, dict):
-                X = traj[np.array(stride[self._itraj])]
+            if not context.uniform_stride:
+                X = traj[context.ra_indices_for_traj(self._itraj)]
                 self._itraj += 1
 
                 # skip the trajs that are not in the stride dict
                 while self._itraj < self.number_of_trajectories() \
-                        and (self._itraj not in stride.keys() or not stride[self._itraj]):
+                        and (self._itraj not in context.traj_keys):
                     self._itraj += 1
                 self._array = None
             else:
-                X = traj[::stride]
+                X = traj[::context.stride]
                 self._itraj += 1
 
-            if lag == 0:
+            if context.lag == 0:
                 return X
             else:
-                if isinstance(stride, dict):
-                    lagged_stride = stride[self._itraj][lag + 0:min(lag, traj_len)]
-                    if lagged_stride:
-                        Y = traj[np.array(lagged_stride)]
-                    else:
-                        s = list(traj.shape); s[0] = 0
-                        Y = np.empty(shape=tuple(s), dtype=traj.dtype)
+                if not context.uniform_stride:
+                    raise ValueError("Requested lagged data but was in random access mode. This is not supported.")
                 else:
-                    Y = traj[lag::stride]
+                    Y = traj[context.lag::context.stride]
                 return X, Y
 
         # chunked mode
         else:
-            if isinstance(stride, dict):
-                X = traj[np.array(stride[self._itraj][self._t:min(self._t + self.chunksize, traj_len)])]
+            if not context.uniform_stride:
+                X = traj[context.ra_indices_for_traj(self._itraj)[self._t:min(self._t + self.chunksize, traj_len)]]
                 upper_bound = min(self._t + self.chunksize, traj_len)
             else:
-                upper_bound = min(self._t + self._chunksize * stride, traj_len)
-                slice_x = slice(self._t, upper_bound, stride)
+                upper_bound = min(self._t + self._chunksize * context.stride, traj_len)
+                slice_x = slice(self._t, upper_bound, context.stride)
                 X = traj[slice_x]
 
-            if lag != 0:
-                upper_bound_Y = min(self._t + lag + self._chunksize * stride, traj_len)
-                slice_y = slice(self._t + lag, upper_bound_Y, stride)
+            if context.lag != 0:
+                upper_bound_Y = min(self._t + context.lag + self._chunksize * context.stride, traj_len)
+                slice_y = slice(self._t + context.lag, upper_bound_Y, context.stride)
                 Y = traj[slice_y]
 
             # set new time position
@@ -206,15 +201,15 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
                 self._t = 0
 
                 # if we have a dictionary, skip trajectories that are not in the key set
-                while isinstance(stride, dict) and self._itraj < self.number_of_trajectories() \
-                        and (self._itraj not in stride.keys() or not stride[self._itraj]):
+                while not context.uniform_stride and self._itraj < self.number_of_trajectories() \
+                        and (self._itraj not in context.traj_keys):
                     self._itraj += 1
 
                 # if time index scope ran out of len of current trajectory, open next file.
                 if self._itraj <= self.number_of_trajectories() - 1:
                     self.__load_file(self._filenames[self._itraj])
 
-            if lag == 0:
+            if context.lag == 0:
                 return X
             else:
                 return X, Y
