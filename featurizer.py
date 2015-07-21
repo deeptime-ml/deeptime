@@ -464,6 +464,7 @@ class BackboneTorsionFeature(DihedralFeature):
             sin_cos = ("COS(PHI %s)", "SIN(PHI %s)")
             labels_phi = [s % getlbl(top.atom(ires[1])) for ires in self._phi_inds
                           for s in sin_cos]
+            sin_cos = ("COS(PSI %s)", "SIN(PSI %s)")
             labels_psi = [s % getlbl(top.atom(ires[1])) for ires in self._psi_inds
                           for s in sin_cos]
         else:
@@ -933,12 +934,14 @@ class MDFeaturizer(object):
 
     def add_backbone_torsions(self, selstr=None, deg=False, cossin=False):
         """
-        Adds all backbone phi/psi angles or the ones specified in selstr to the feature list.
+        Adds all backbone phi/psi angles or the ones specified in :obj:`selstr` to the feature list.
+
         Parameters
         ----------
+
         selstr : str, optional, default = ""
             selection string specifying the atom selection used to specify a specific set of backbone angles
-            If "" (default), all chi1 angles found in the topology will be computed
+            If "" (default), all phi/psi angles found in the topology will be computed
         deg : bool, optional, default = False
             If False (default), angles will be computed in radians.
             If True, angles will be computed in degrees.
@@ -953,9 +956,11 @@ class MDFeaturizer(object):
 
     def add_chi1_torsions(self, selstr="", deg=False, cossin=False):
         """
-        Adds all chi1 angles or the ones specified in selstr to the feature list.
+        Adds all chi1 angles or the ones specified in :obj:`selstr` to the feature list.
+
         Parameters
         ----------
+
         selstr : str, optional, default = ""
             selection string specifying the atom selection used to specify a specific set of backbone angles
             If "" (default), all chi1 angles found in the topology will be computed
