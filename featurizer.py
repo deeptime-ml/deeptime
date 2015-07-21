@@ -546,7 +546,7 @@ class MinRmsdFeature(object):
 
     @property
     def dimension(self):
-        return self.ref.n_atoms
+        return 1
 
     def map(self, traj):
         return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
