@@ -90,6 +90,9 @@ class FeatureReader(ReaderInterface):
             self.featurizer = featurizer
             self.topfile = featurizer.topologyfile
 
+        # Check that the topology and the files in the filelist can actually work together
+        self._assert_toptraj_consistency()
+
         # iteration
         self._mditer = None
         # current lag time
@@ -232,3 +235,11 @@ class FeatureReader(ReaderInterface):
     def parametrize(self, stride=1):
         if self.in_memory:
             self._map_to_memory(stride)
+
+    def _assert_toptraj_consistency(self):
+        r""" Check if the topology and the trajfiles of the reader have the same n_atoms"""
+        with mdtraj.open(self.trajfiles[0],'r') as fh:
+            xyz, __, __, __ = fh.read(n_frames=1)
+        assert xyz.shape[1] == self.featurizer.topology.n_atoms, "Mismatch in the number of atoms between the topology" \
+                                                                " and the first trajectory file, %u vs %u"% \
+                                                                (self.featurizer.topology.n_atoms, xyz.shape[1])
