@@ -54,17 +54,10 @@ class FeatureReader(ReaderInterface):
 
     Iterator access:
 
-    >>> reader = FeatureReader('mytraj.xtc', 'my_structure.pdb')
-    >>> chunks = []
-    >>> for itraj, X in reader:
-    >>>     chunks.append(X)
-
-
-    Extract backbone torsion angles of protein during feature reading:
-
-    >>> reader = FeatureReader('mytraj.xtc', 'my_structure.pdb')
-    >>> reader.featurizer.add_backbone_torsions()
-    >>> X = reader.get_output()
+    >>> reader = FeatureReader('mytraj.xtc', 'my_structure.pdb') # doctest: +SKIP
+    >>> chunks = [] # doctest: +SKIP
+    >>> for itraj, X in reader: # doctest: +SKIP
+    ...     chunks.append(X) # doctest: +SKIP
 
     """
 
