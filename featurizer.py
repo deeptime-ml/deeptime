@@ -53,7 +53,7 @@ def _get_indices_chi1(traj):
 
 # this is needed for get_indices functions, since they expect a Trajectory,
 # not a Topology
-class fake_traj():
+class fake_traj(object):
     def __init__(self, top):
         self.top = top
 
