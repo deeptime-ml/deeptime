@@ -93,10 +93,10 @@ class FeatureReader(ReaderInterface):
         # time lagged iterator
         self._mditer2 = None
 
-        self.__set_dimensions_and_lenghts()
+        self.__set_dimensions_and_lengths()
         self._parametrized = True
 
-    def __set_dimensions_and_lenghts(self):
+    def __set_dimensions_and_lengths(self):
         self._ntraj = len(self.trajfiles)
         # lookups pre-computed lengths, or compute it on the fly and store it in db.
         if config['use_trajectory_lengths_cache'] == 'True':
