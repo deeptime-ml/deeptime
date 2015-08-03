@@ -53,7 +53,7 @@ def _get_indices_chi1(traj):
 
 # this is needed for get_indices functions, since they expect a Trajectory,
 # not a Topology
-class fake_traj():
+class fake_traj(object):
     def __init__(self, top):
         self.top = top
 
@@ -69,7 +69,6 @@ def _describe_atom(topology, index):
     assert isinstance(index, int)
     at = topology.atom(index)
     return "%s %i %s %i" % (at.residue.name, at.residue.index, at.name, at.index)
-
 
 def _catch_unhashable(x):
     if hasattr(x, '__getitem__'):
@@ -142,6 +141,67 @@ def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
 
     return atom_pairs
 
+def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
+    r"""For input of group type (add_group_mindist), prepare the array of pairs of indices
+        and groups so that :py:func:`MinDistanceFeature` can work
+
+        This function will:
+            - check the input types
+            - sort the 1D arrays of each entry of group_definitions
+            - check for duplicates within each group_definition
+            - produce the list of pairs for all needed distances
+            - produce a list that maps each entry in the pairlist to a given group of distances
+        """
+
+    assert isinstance(group_definitions, list), "group_definitions has to be of type list, not %s"%type(group_definitions)
+    # Handle the special case of just one group
+    if len(group_definitions) == 1:
+        group_pairs = np.array([0,0], ndmin=2)
+
+    # Sort the elements within each group
+    new_groups = []
+    for igroup in group_definitions:
+        assert np.ndim(igroup) == 1, "The elements of the groups definition have to be of dim 1, not %u"%np.ndim(igroup)
+        new_groups.append(np.unique(igroup))
+
+    # Check for group duplicates
+    for ii, igroup in enumerate(new_groups[:-1]):
+        for jj, jgroup in enumerate(new_groups[ii+1:]):
+            if len(igroup) == len(jgroup):
+                assert not np.allclose(igroup, jgroup), "Some group definitions appear to be duplicated, e.g %u and %u"%(ii,ii+jj+1)
+
+    # Create and/or check the pair-list
+    if group_pairs == 'all':
+        new_pairs = np.array(list(_combinations(np.arange(len(group_definitions)), 2)))
+    else:
+        assert isinstance(group_pairs, np.ndarray)
+        assert group_pairs.shape[1] == 2
+        assert group_pairs.max() <= len(new_groups), "Cannot ask for group nr. %u if group_definitions only " \
+                                                    "contains %u groups"%(group_pairs.max(), len(new_groups))
+        assert group_pairs.min() >= 0, "Group pairs contains negative group indices"
+
+        new_pairs = np.zeros_like(group_pairs, dtype='int')
+        for ii, ipair in enumerate(group_pairs):
+            if ipair[0] == ipair[1]:
+                MDlogger.warning("%s will compute the mindist of group %u with itself. Is this wanted? "%(mname, ipair[0]))
+            new_pairs[ii,:] = np.sort(ipair)
+
+    # Create the large list of distances that will be computed, and an array containing group identfiers
+    # of the distances that actually characterize a pair of groups
+    group_distance_indexes = []
+    group_distance_identifiers = np.zeros_like(new_pairs)
+    b = 0
+    for ii, pair in enumerate(new_pairs):
+        if pair[0] != pair[1]:
+            group_distance_indexes.append(list(_product(new_groups[pair[0]],
+                                                        new_groups[pair[1]])))
+        else:
+            group_distance_indexes.append(list(_combinations(new_groups[pair[0]], 2)))
+
+        group_distance_identifiers[ii,:] = [b, b+len(group_distance_indexes[ii])]
+        b += len(group_distance_indexes[ii])
+
+    return new_groups, new_pairs, np.vstack(group_distance_indexes), group_distance_identifiers
 
 class CustomFeature(object):
 
@@ -293,6 +353,78 @@ class InverseDistanceFeature(DistanceFeature):
 
     # does not need own hash impl, since we take prefix label into account
 
+class ResidueMinDistanceFeature(DistanceFeature):
+
+    def __init__(self, top, contacts, scheme, ignore_nonprotein, threshold):
+        self.top = top
+        self.contacts = contacts
+        self.scheme = scheme
+        self.threshold = threshold
+        self.prefix_label = "RES_DIST (%s)"%scheme
+
+        # mdtraj.compute_contacts might ignore part of the user input (if it is contradictory) and
+        # produce a warning. I think it is more robust to let it run once on a dummy trajectory to
+        # see what the actual size of the output is:
+        dummy_traj = mdtraj.Trajectory(np.zeros((top.n_atoms, 3)), top)
+        dummy_dist, dummy_pairs = mdtraj.compute_contacts(dummy_traj, contacts=contacts,
+                                                          scheme=scheme,
+                                                          ignore_nonprotein=ignore_nonprotein)
+        self._dimension = dummy_dist.shape[1]
+        self.distance_indexes = dummy_pairs
+
+    def describe(self):
+        labels = ["%s %s - %s" % (self.prefix_label,
+                                  self.top.residue(pair[0]),
+                                  self.top.residue(pair[1]))
+                  for pair in self.distance_indexes]
+        return labels
+
+    def map(self, traj):
+        # We let mdtraj compute the contacts with the input scheme
+        D = mdtraj.compute_contacts(traj, contacts=self.contacts, scheme=self.scheme)[0]
+        res = np.zeros_like(D)
+        # Do we want binary?
+        if self.threshold is not None:
+            I = np.argwhere(D <= self.threshold)
+            res[I[:, 0], I[:, 1]] = 1.0
+        else:
+            res = D
+        return res
+
+class GroupMinDistanceFeature(DistanceFeature):
+
+    def __init__(self, top, group_pairs, distance_list, group_identifiers, threshold):
+        self.top = top
+        self.group_identifiers = group_identifiers
+        self.distance_list = distance_list
+        self.prefix_label = "GROUP_MINDIST"
+        self.threshold = threshold
+        self.distance_indexes = group_pairs
+
+    def describe(self):
+        labels = ["%s %s - %s" % (self.prefix_label,
+                                  pair[0],
+                                  pair[1])
+                  for pair in self.distance_indexes]
+        return labels
+
+    def map(self, traj):
+        # All needed distances
+        Dall = mdtraj.compute_distances(traj, self.distance_list)
+        # Just the minimas
+        Dmin = np.zeros((traj.n_frames,self.dimension))
+        res = np.zeros_like(Dmin)
+        # Compute the min groupwise
+        for ii, (gi, gf) in enumerate(self.group_identifiers):
+            Dmin[:, ii] =  Dall[:,gi:gf].min(1)
+        # Do we want binary?
+        if self.threshold is not None:
+            I = np.argwhere(Dmin <= self.threshold)
+            res[I[:, 0], I[:, 1]] = 1.0
+        else:
+            res = Dmin
+
+        return res
 
 class ContactFeature(DistanceFeature):
 
@@ -326,7 +458,6 @@ class AngleFeature(object):
         self.cossin = cossin
 
     def describe(self):
-        self.top
 
         if self.cossin:
             sin_cos = ("ANGLE: COS(%s - %s - %s)",
@@ -465,6 +596,7 @@ class BackboneTorsionFeature(DihedralFeature):
             sin_cos = ("COS(PHI %s)", "SIN(PHI %s)")
             labels_phi = [s % getlbl(top.atom(ires[1])) for ires in self._phi_inds
                           for s in sin_cos]
+            sin_cos = ("COS(PSI %s)", "SIN(PSI %s)")
             labels_psi = [s % getlbl(top.atom(ires[1])) for ires in self._psi_inds
                           for s in sin_cos]
         else:
@@ -547,7 +679,7 @@ class MinRmsdFeature(object):
 
     @property
     def dimension(self):
-        return self.ref.n_atoms
+        return 1
 
     def map(self, traj):
         return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
@@ -766,8 +898,8 @@ class MDFeaturizer(object):
                     n x 2 array with the pairs of atoms between which the distances shall be computed
 
                 iterable of integers (either list or ndarray(n, dtype=int)):
-                    indices (**not pairs of indices**) of the atoms between which the distances shall be computed.
-                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this **does not** exclude
+                    indices (not pairs of indices) of the atoms between which the distances shall be computed.
+                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this does not exclude
                     1-2 neighbors.
 
         indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
@@ -776,7 +908,7 @@ class MDFeaturizer(object):
 
 
         .. note::
-            When using the *iterable of integers* input, :py:obj:`indices` and :py:obj:`indices2`
+            When using the iterable of integers input, :py:obj:`indices` and :py:obj:`indices2`
             will be sorted numerically and made unique before converting them to a pairlist.
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
@@ -816,9 +948,9 @@ class MDFeaturizer(object):
                     n x 2 array with the pairs of atoms between which the inverse distances shall be computed
 
                 iterable of integers (either list or ndarray(n, dtype=int)):
-                    indices (**not pairs of indices**) of the atoms between which the inverse distances shall be computed.
-                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this **does not** exclude
-                    1-2 neighbors.
+                    indices (not pairs of indices) of the atoms between which the inverse distances shall be computed.
+                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs`
+                    in that this does not exclude 1-2 neighbors.
 
         indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
                     Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
@@ -855,8 +987,8 @@ class MDFeaturizer(object):
                     n x 2 array with the pairs of atoms between which the contacts shall be computed
 
                 iterable of integers (either list or ndarray(n, dtype=int)):
-                    indices (**not pairs of indices**) of the atoms between which the contacts shall be computed.
-                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this **does not** exclude
+                    indices (not pairs of indices) of the atoms between which the contacts shall be computed.
+                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this does not exclude
                     1-2 neighbors.
 
         indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
@@ -880,6 +1012,85 @@ class MDFeaturizer(object):
 
         atom_pairs = self._check_indices(atom_pairs)
         f = ContactFeature(self.topology, atom_pairs, threshold, periodic)
+        self.__add_feature(f)
+
+    def add_residue_mindist(self,
+                            residue_pairs='all',
+                            scheme='closest-heavy',
+                            ignore_nonprotein=True,
+                            threshold=None):
+        r"""
+        Adds the minimum distance between residues to the feature list. See below how
+        the minimum distance can be defined.
+
+        Parameters
+        ----------
+        residue_pairs : can be of two types:
+
+            'all'
+                Computes distances between all pairs of residues excluding first and second neighbors
+
+            ndarray((n, 2), dtype=int):
+                n x 2 array with the pairs residues for which distances will be computed
+
+        scheme : 'ca', 'closest', 'closest-heavy', default is closest-heavy
+                Within a residue, determines the sub-group atoms that will be considered when computing distances
+
+        ignore_nonprotein : boolean, default True
+                Ignore residues that are not of protein type (e.g. water molecules, post-traslational modifications etc)
+
+        threshold : float, optional, default is None
+            distances below this threshold (in nm) will result in a feature 1.0, distances above will result in 0.0. If
+            left to None, the numerical value will be returned
+
+        .. note::
+            Using :py:obj:`scheme` = 'closest' or 'closest-heavy' with :py:obj:`residue pairs` = 'all'
+            will compute nearly all interatomic distances, for every frame, before extracting the closest pairs.
+            This can be very time consuming. Those schemes are intended to be used with a subset of residues chosen
+            via :py:obj:`residue_pairs`.
+        """
+
+        if scheme != 'ca' and residue_pairs == 'all':
+            self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
+                                 "very time consuming. Consider reducing the residue pairs")
+
+        f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein, threshold)
+        self.__add_feature(f)
+
+    def add_group_mindist(self,
+                            group_definitions,
+                            group_pairs='all',
+                            threshold=None,
+                            ):
+        r"""
+        Adds the minimum distance between groups of atoms to the feature list. If the groups of
+        atoms are identical to residues, use :py:obj:`add_residue_mindist <pyemma.coordinates.data.featurizer.MDFeaturizer.add_residue_mindist>`.
+
+        Parameters
+        ----------
+
+        group_definition : list of 1D-arrays/iterables containing the group definitions via atom indices.
+            If there is only one group_definition, it is assumed the minimum distance within this group (excluding the
+            self-distance) is wanted. In this case, :py:obj:`group_pairs` is ignored.
+
+        group_pairs :  Can be of two types:
+            'all'
+                Computes minimum distances between all pairs of groups contained in the group definitions
+
+            ndarray((n, 2), dtype=int):
+                n x 2 array with the pairs of groups for which the minimum distances will be computed.
+
+        threshold : float, optional, default is None
+            distances below this threshold (in nm) will result in a feature 1.0, distances above will result in 0.0. If
+            left to None, the numerical value will be returned
+
+        """
+
+        # Some thorough input checking and reformatting
+        __, group_pairs, distance_list, group_identifiers = _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
+        distance_list = self._check_indices(distance_list)
+
+        f = GroupMinDistanceFeature(self.topology, group_pairs, distance_list, group_identifiers, threshold)
         self.__add_feature(f)
 
     @deprecated
@@ -934,12 +1145,14 @@ class MDFeaturizer(object):
 
     def add_backbone_torsions(self, selstr=None, deg=False, cossin=False):
         """
-        Adds all backbone phi/psi angles or the ones specified in selstr to the feature list.
+        Adds all backbone phi/psi angles or the ones specified in :obj:`selstr` to the feature list.
+
         Parameters
         ----------
+
         selstr : str, optional, default = ""
             selection string specifying the atom selection used to specify a specific set of backbone angles
-            If "" (default), all chi1 angles found in the topology will be computed
+            If "" (default), all phi/psi angles found in the topology will be computed
         deg : bool, optional, default = False
             If False (default), angles will be computed in radians.
             If True, angles will be computed in degrees.
@@ -954,9 +1167,11 @@ class MDFeaturizer(object):
 
     def add_chi1_torsions(self, selstr="", deg=False, cossin=False):
         """
-        Adds all chi1 angles or the ones specified in selstr to the feature list.
+        Adds all chi1 angles or the ones specified in :obj:`selstr` to the feature list.
+
         Parameters
         ----------
+
         selstr : str, optional, default = ""
             selection string specifying the atom selection used to specify a specific set of backbone angles
             If "" (default), all chi1 angles found in the topology will be computed
@@ -1018,7 +1233,7 @@ class MDFeaturizer(object):
             If left to None, all atoms of :py:obj:`ref` will be used.
 
         precentered: bool, default=False
-            Use this boolean at your own risk to let mdtraj know that the target conformations are **already**
+            Use this boolean at your own risk to let mdtraj know that the target conformations are already
             centered at the origin, i.e., their (uniformly weighted) center of mass lies at the origin.
             This will speed up the computation of the rmsd.
         """
