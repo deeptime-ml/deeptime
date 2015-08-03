@@ -808,23 +808,31 @@ class MDFeaturizer(object):
         return self.topology.select("mass >= 2")
 
     @staticmethod
-    def pairs(sel):
+    def pairs(sel, excluded_neighbors=2):
         """
-        Creates all pairs between indexes, except for 1 and 2-neighbors
+        Creates all pairs between indexes. Will except closest neighbors up to :py:obj:`excluded_neighbors`
+        (default is to exclude 1-2 and 1-3 and neighbors). The self-pair (i,i) is always excluded
 
         Parameters
         ----------
         sel : ndarray((n), dtype=int)
             array with selected atom indexes
 
-        Return:
+        excluded_neighbors: int, default = 2
+            number of neighbors that will be excluded when creating the pairs
+
+        Returns
         -------
         sel : ndarray((m,2), dtype=int)
-            m x 2 array with all pair indexes between different atoms that are at least 3 indexes apart,
-            i.e. if i is the index of an atom, the pairs [i,i-2], [i,i-1], [i,i], [i,i+1], [i,i+2], will
-            not be in sel. Moreover, the list is non-redundant, i.e. if [i,j] is in sel, then [j,i] is not.
+            m x 2 array with all pair indexes between different atoms that are at least :obj:`excluded_neighbors`
+            indexes apart, i.e. if i is the index of an atom, the pairs [i,i-n], [i,i-1], [i,i], [i,i+1], [i,i+n], will
+            not be in :py:obj:`sel` (n=excluded_neighbors). Moreover, the list is non-redundant,
+            i.e. if [i,j] is in sel, then [j,i] is not.
 
         """
+
+        assert isinstance(excluded_neighbors,int)
+
         p = []
         for i in range(len(sel)):
             for j in range(i + 1, len(sel)):
@@ -835,7 +843,7 @@ class MDFeaturizer(object):
                     I = sel[j]
                     J = sel[i]
                 # exclude 1 and 2 neighbors
-                if (J > I + 2):
+                if (J > I + excluded_neighbors):
                     p.append([I, J])
         return np.array(p)
 
