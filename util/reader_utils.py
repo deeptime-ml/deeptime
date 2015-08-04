@@ -23,9 +23,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pyemma.coordinates.data.numpy_filereader import NumPyFileReader as _NumPyFileReader
-from pyemma.coordinates.data.py_csv_reader import PyCSVReader as _CSVReader
-from pyemma.coordinates.data import FeatureReader as _FeatureReader
 from numpy import vstack
 import mdtraj as md
 import numpy as np
@@ -47,6 +44,10 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
         The chunk size with which the corresponding reader gets initialized.
     :return: Returns the reader.
     """
+    from pyemma.coordinates.data.numpy_filereader import NumPyFileReader as _NumPyFileReader
+    from pyemma.coordinates.data.py_csv_reader import PyCSVReader as _CSVReader
+    from pyemma.coordinates.data import FeatureReader as _FeatureReader
+
     if isinstance(input_files, basestring) \
             or (isinstance(input_files, (list, tuple))
                 and (any(isinstance(item, basestring) for item in input_files) or len(input_files) is 0)):
@@ -118,6 +119,7 @@ def single_traj_from_n_files(file_list, top):
 
     return traj
 
+
 def copy_traj_attributes(target, origin, start):
     """ Inserts certain attributes of origin into target
     :param target: target trajectory object
@@ -136,6 +138,7 @@ def copy_traj_attributes(target, origin, start):
 
     return target
 
+
 def preallocate_empty_trajectory(top, n_frames=1):
     """
 
@@ -149,6 +152,8 @@ def preallocate_empty_trajectory(top, n_frames=1):
                          unitcell_lengths=np.zeros((n_frames,3)),
                          unitcell_angles=np.zeros((n_frames ,3))
                          )
+
+
 def enforce_top(top):
     if isinstance(top,str):
         top = md.load(top).top

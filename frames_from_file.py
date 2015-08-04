@@ -31,8 +31,9 @@ __all__ = ['frames_from_file']
 
 log = getLogger(__name__)
 
-def frames_from_file(file_name, top, frames, chunksize = 100,
-                     stride = 1, verbose = False, copy_not_join=False):
+
+def frames_from_file(file_name, top, frames, chunksize=100,
+                     stride=1, verbose=False, copy_not_join=False):
     r"""Reads one "file_name" molecular trajectory and returns an mdtraj trajectory object 
         containing only the specified "frames" in the specified order.
 
@@ -108,8 +109,8 @@ def frames_from_file(file_name, top, frames, chunksize = 100,
 
         # Create an indexing array for this trajchunk
         i_idx = jj*chunksize
-        f_idx = i_idx+chunksize-1
-        chunk_frames = np.arange(i_idx, f_idx+1)[:traj_chunk.n_frames]
+        f_idx = i_idx+chunksize
+        chunk_frames = np.arange(i_idx, f_idx)[:traj_chunk.n_frames]
 
         # Frames that appear more than one time will be kept
         good_frames = np.hstack([np.argwhere(ff == chunk_frames).squeeze() for ff in sorted_frames])
