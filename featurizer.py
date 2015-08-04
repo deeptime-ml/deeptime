@@ -907,8 +907,6 @@ class MDFeaturizer(object):
 
                 iterable of integers (either list or ndarray(n, dtype=int)):
                     indices (not pairs of indices) of the atoms between which the distances shall be computed.
-                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this does not exclude
-                    1-2 neighbors.
 
         indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
                     Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
@@ -934,7 +932,7 @@ class MDFeaturizer(object):
 
     def add_distances_ca(self, periodic=True):
         """
-        Adds the distances between all Ca's (except for 1- and 2-neighbors) to the feature list.
+        Adds the distances between all Ca's to the feature list.
 
         """
         distance_indexes = self.pairs(self.select_Ca())
@@ -957,8 +955,6 @@ class MDFeaturizer(object):
 
                 iterable of integers (either list or ndarray(n, dtype=int)):
                     indices (not pairs of indices) of the atoms between which the inverse distances shall be computed.
-                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs`
-                    in that this does not exclude 1-2 neighbors.
 
         indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
                     Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
@@ -996,8 +992,6 @@ class MDFeaturizer(object):
 
                 iterable of integers (either list or ndarray(n, dtype=int)):
                     indices (not pairs of indices) of the atoms between which the contacts shall be computed.
-                    Note that this will produce a pairlist different from the pairlist produced by :py:func:`pairs` in that this does not exclude
-                    1-2 neighbors.
 
         indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
                     Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
