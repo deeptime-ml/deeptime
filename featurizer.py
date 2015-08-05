@@ -1244,7 +1244,7 @@ class MDFeaturizer(object):
                            precentered=precentered)
         self.__add_feature(f)
 
-    def add_custom_func(self, func, dim, desc='', *args, **kwargs):
+    def add_custom_func(self, func, dim, *args, **kwargs):
         """ adds a user defined function to extract features
 
         Parameters
@@ -1254,16 +1254,14 @@ class MDFeaturizer(object):
             first parameter and as many optional and named arguments as desired.
             Has to return a numpy.ndarray
         dim : int
-            output dimension of function
-        desc : str
-            description of your feature function
-        args : list
-            positional arguments passed to func
+            output dimension of :py:obj:`function`
+        args : any number of positional arguments
+            these have to be in the same order as :py:obj:`func` is expecting them
         kwargs : dictionary
             named arguments passed to func
 
         """
-        f = CustomFeature(func, args, kwargs, dim=dim)
+        f = CustomFeature(func, dim=dim, *args, **kwargs)
 
         self.add_custom_feature(f)
 
