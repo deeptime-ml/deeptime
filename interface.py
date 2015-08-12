@@ -26,6 +26,8 @@ Created on 09.04.2015
 
 @author: marscher
 '''
+
+from __future__ import absolute_import
 from pyemma.coordinates.transform.transformer import Transformer
 import numpy as np
 import functools
@@ -102,7 +104,7 @@ class ReaderInterface(Transformer):
         """
         if isinstance(stride, np.ndarray):
             return np.array(
-                [self.trajectory_length(itraj, stride) for itraj in xrange(0, self.number_of_trajectories())],
+                [self.trajectory_length(itraj, stride) for itraj in range(0, self.number_of_trajectories())],
                 dtype=int)
         else:
             return np.array([(l - 1) // stride + 1 for l in self._lengths], dtype=int)

@@ -3,6 +3,8 @@ Created on 30.04.2015
 
 @author: marscher
 '''
+
+from __future__ import absolute_import
 import anydbm
 import os
 import mdtraj

@@ -23,6 +23,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
+from __future__ import absolute_import
 from numpy import vstack
 import mdtraj as md
 import numpy as np
@@ -84,7 +86,7 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
                 from mdtraj.formats.registry import _FormatRegistry
 
                 # CASE 1.1: file types are MD files
-                if suffix in _FormatRegistry.loaders.keys():
+                if suffix in list(_FormatRegistry.loaders.keys()):
                     # check: do we either have a featurizer or a topology file name? If not: raise ValueError.
                     # create a MD reader with file names and topology
                     if not featurizer and not topology:

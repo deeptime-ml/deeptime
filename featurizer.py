@@ -22,6 +22,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -*- coding: uft-8 -*-
+
+from __future__ import absolute_import
 import mdtraj
 from mdtraj.geometry.dihedral import _get_indices_phi, \
     _get_indices_psi, compute_dihedrals, _atom_sequence, CHI1_ATOMS
@@ -892,7 +894,7 @@ class MDFeaturizer(object):
 
         """
         # TODO: add possibility to align to a reference structure
-        self.add_selection(range(self.topology.n_atoms))
+        self.add_selection(list(range(self.topology.n_atoms)))
 
     def add_selection(self, indexes):
         """

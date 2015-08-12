@@ -27,6 +27,8 @@ Created on 11.04.2015
 
 @author: marscher
 '''
+
+from __future__ import absolute_import
 from pyemma.coordinates.data.interface import ReaderInterface
 import numpy as np
 import csv
@@ -88,7 +90,7 @@ class _csv_chunked_numpy_iterator:
 
             self.line += 1
             if not self._ctx.uniform_stride:
-                for i in xrange(0, self._ctx.ra_indices_for_traj(self._itraj).tolist().count(self.line-1)):
+                for i in range(0, self._ctx.ra_indices_for_traj(self._itraj).tolist().count(self.line-1)):
                     lines.append(row)
             else:
                 lines.append(row)
