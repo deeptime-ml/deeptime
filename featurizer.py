@@ -35,6 +35,8 @@ from itertools import product as _product
 from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
 import functools
 
+
+from pyemma._ext.six import PY3
 from pyemma.util.log import getLogger
 #from pyemma.util.annotators import deprecated
 
@@ -68,7 +70,7 @@ def _describe_atom(topology, index):
     :param index:
     :return:
     """
-    assert isinstance(index, int)
+    #assert isinstance(index, int)
     at = topology.atom(index)
     return "%s %i %s %i" % (at.residue.name, at.residue.index, at.name, at.index)
 
@@ -86,17 +88,23 @@ def _catch_unhashable(x):
 
     return x
 
-
-def _hash_numpy_array(x):
-    if x is None:
-        return hash(None)
-    x.flags.writeable = False
-    hash_value = hash(x.shape)
-    hash_value ^= hash(x.strides)
-    hash_value ^= hash(x.data)
-    x.flags.writeable = True
-
-    return hash_value
+if PY3:
+    def _hash_numpy_array(x):
+        hash_value = hash(x.shape)
+        hash_value ^= hash(x.strides)
+        hash_value ^= hash(x.data.tobytes())
+        return hash_value
+else:
+    def _hash_numpy_array(x):
+        writeable = x.flags.writeable
+        try:
+            x.flags.writeable = False
+            hash_value = hash(x.shape)
+            hash_value ^= hash(x.strides)
+            hash_value ^= hash(x.data)
+        finally:
+            x.flags.writeable = writeable
+        return hash_value
 
 
 def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
@@ -205,6 +213,7 @@ def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
 
     return new_groups, new_pairs, np.vstack(group_distance_indexes), group_distance_identifiers
 
+
 class CustomFeature(object):
 
     """
@@ -270,8 +279,8 @@ class CustomFeature(object):
     def __hash__(self):
         hash_value = hash(self._func)
         # if key contains numpy arrays, we hash their data arrays
-        key = tuple(map(_catch_unhashable, self._args) +
-                    map(_catch_unhashable, sorted(self._kwargs.items())))
+        key = tuple(list(map(_catch_unhashable, self._args)) +
+                    list(map(_catch_unhashable, sorted(self._kwargs.items()))))
         hash_value ^= hash(key)
         return hash_value
 
@@ -735,7 +744,7 @@ class MDFeaturizer(object):
         self._create_logger()
 
     def _create_logger(self):
-        count = self._ids.next()
+        count = next(self._ids)
         i = self.__module__.rfind(".")
         j = self.__module__.find(".") + 1
         package = self.__module__[j:i]

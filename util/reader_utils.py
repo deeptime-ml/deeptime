@@ -22,13 +22,14 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
 from __future__ import absolute_import
+
 from numpy import vstack
 import mdtraj as md
 import numpy as np
 import os
+
+from pyemma._ext.six import string_types
 
 
 def create_file_reader(input_files, topology, featurizer, chunk_size=100):
@@ -50,14 +51,14 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
     from pyemma.coordinates.data.py_csv_reader import PyCSVReader as _CSVReader
     from pyemma.coordinates.data import FeatureReader as _FeatureReader
 
-    if isinstance(input_files, basestring) \
+    if isinstance(input_files, string_types) \
             or (isinstance(input_files, (list, tuple))
-                and (any(isinstance(item, basestring) for item in input_files) or len(input_files) is 0)):
+                and (any(isinstance(item, string_types) for item in input_files) or len(input_files) is 0)):
         reader = None
         # check: if single string create a one-element list
-        if isinstance(input_files, basestring):
+        if isinstance(input_files, string_types):
             input_list = [input_files]
-        elif len(input_files) > 0 and all(isinstance(item, basestring) for item in input_files):
+        elif len(input_files) > 0 and all(isinstance(item, string_types) for item in input_files):
             input_list = input_files
         else:
             if len(input_files) is 0:

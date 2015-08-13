@@ -59,11 +59,11 @@ class _csv_chunked_numpy_iterator:
 
         # skip header in first row
         if header == 0:
-            self.reader.next()
+            next(self.reader)
             self.line = 1
 
     def get_chunk(self):
-        return self.next()
+        return next(self)
 
     def __iter__(self):
         return self
@@ -105,6 +105,9 @@ class _csv_chunked_numpy_iterator:
 
         self.fh.close()
         raise StopIteration
+
+    def __next__(self):
+        return self.next()
 
 
 class PyCSVReader(ReaderInterface):

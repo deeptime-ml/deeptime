@@ -5,7 +5,12 @@ Created on 30.04.2015
 '''
 
 from __future__ import absolute_import
-import anydbm
+from pyemma._ext.six import PY2
+if PY2:
+    import anydbm
+else:
+    import dbm as anydbm
+
 import os
 import mdtraj
 from threading import Semaphore

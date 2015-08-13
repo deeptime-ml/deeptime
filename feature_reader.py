@@ -25,7 +25,7 @@
 from __future__ import absolute_import
 import numpy as np
 import mdtraj
-
+from pyemma._ext.six import string_types
 from pyemma.coordinates.util import patches
 from pyemma.coordinates.data.interface import ReaderInterface
 from pyemma.coordinates.data.featurizer import MDFeaturizer
@@ -84,7 +84,7 @@ class FeatureReader(ReaderInterface):
         super(FeatureReader, self).__init__(chunksize=chunksize)
 
         # files
-        if isinstance(trajectories, basestring):
+        if isinstance(trajectories, string_types):
             trajectories = [trajectories]
         self.trajfiles = trajectories
         self.topfile = topologyfile
@@ -187,7 +187,7 @@ class FeatureReader(ReaderInterface):
 
         :return: a feature mapped vector X, or (X, Y) if lag > 0
         """
-        chunk = self._mditer.next()
+        chunk = next(self._mditer)
         shape = chunk.xyz.shape
 
         if context.lag > 0:
@@ -203,7 +203,7 @@ class FeatureReader(ReaderInterface):
                                                   skip=self._curr_lag,
                                                   stride=context.stride)
             try:
-                adv_chunk = self._mditer2.next()
+                adv_chunk = next(self._mditer2)
             except StopIteration:
                 # When _mditer2 ran over the trajectory end, return empty chunks.
                 adv_chunk = mdtraj.Trajectory(np.empty((0, shape[1], shape[2]), np.float32), chunk.topology)
