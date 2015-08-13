@@ -5,7 +5,7 @@ Created on 30.04.2015
 '''
 
 from __future__ import absolute_import
-from pyemma._ext.six import PY2
+from six import PY2
 if PY2:
     import anydbm
 else:

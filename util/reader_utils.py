@@ -29,7 +29,7 @@ import mdtraj as md
 import numpy as np
 import os
 
-from pyemma._ext.six import string_types
+from six import string_types
 
 
 def create_file_reader(input_files, topology, featurizer, chunk_size=100):

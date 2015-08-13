@@ -25,7 +25,7 @@
 from __future__ import absolute_import
 import numpy as np
 import mdtraj
-from pyemma._ext.six import string_types
+from six import string_types
 from pyemma.coordinates.util import patches
 from pyemma.coordinates.data.interface import ReaderInterface
 from pyemma.coordinates.data.featurizer import MDFeaturizer

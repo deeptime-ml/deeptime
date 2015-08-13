@@ -36,7 +36,7 @@ from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
 import functools
 
 
-from pyemma._ext.six import PY3
+from six import PY3
 from pyemma.util.log import getLogger
 #from pyemma.util.annotators import deprecated
 from six.moves import map
