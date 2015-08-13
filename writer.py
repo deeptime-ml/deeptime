@@ -73,7 +73,7 @@ class WriterCSV(Transformer):
             pass
 
         try:
-            self._fh = open(self.filename, 'w')
+            self._fh = open(self.filename, 'wb')
         except EnvironmentError:
             self._logger.exception('could not open file "%s" for writing.')
             raise

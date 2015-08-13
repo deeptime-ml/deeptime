@@ -31,6 +31,7 @@ from __future__ import absolute_import
 from pyemma.coordinates.transform.transformer import Transformer
 import numpy as np
 import functools
+from six.moves import range
 
 
 class ReaderInterface(Transformer):

@@ -39,6 +39,9 @@ import functools
 from pyemma._ext.six import PY3
 from pyemma.util.log import getLogger
 #from pyemma.util.annotators import deprecated
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 __author__ = 'Frank Noe, Martin Scherer'
@@ -47,7 +50,7 @@ __all__ = ['MDFeaturizer',
 
 
 def _get_indices_chi1(traj):
-    rids, indices = zip(*(_atom_sequence(traj, atoms) for atoms in CHI1_ATOMS))
+    rids, indices = list(zip(*(_atom_sequence(traj, atoms) for atoms in CHI1_ATOMS)))
     id_sort = np.argsort(np.concatenate(rids))
     if not any(x.size for x in indices):
         return np.empty(shape=(0, 4), dtype=np.int)

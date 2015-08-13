@@ -32,6 +32,7 @@ from __future__ import absolute_import
 from pyemma.coordinates.data.interface import ReaderInterface
 import numpy as np
 import csv
+from six.moves import range
 
 
 class _csv_chunked_numpy_iterator:
@@ -76,7 +77,7 @@ class _csv_chunked_numpy_iterator:
         result = stack_of_strings.astype(float)
         return result
 
-    def next(self):
+    def __next__(self):
         if not self.fh:
             raise StopIteration
 
@@ -106,8 +107,8 @@ class _csv_chunked_numpy_iterator:
         self.fh.close()
         raise StopIteration
 
-    def __next__(self):
-        return self.next()
+    def next(self):
+        return self.__next__()
 
 
 class PyCSVReader(ReaderInterface):
