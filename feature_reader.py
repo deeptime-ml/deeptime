@@ -51,11 +51,11 @@ class FeatureReader(ReaderInterface):
 
     Examples
     --------
-    >>> from pyemma.coordinates import get_test_data
+    >>> from pyemma.datasets import get_bpti_test_data
 
     Iterator access:
 
-    >>> reader = FeatureReader(get_test_data()['trajs'], get_test_data()['top'])
+    >>> reader = FeatureReader(get_bpti_test_data()['trajs'], get_bpti_test_data()['top'])
 
     Optionally set a chunksize
 
