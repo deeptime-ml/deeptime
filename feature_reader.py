@@ -58,15 +58,18 @@ class FeatureReader(ReaderInterface):
     >>> reader = FeatureReader(get_test_data()['trajs'], get_test_data()['top'])
 
     Optionally set a chunksize
+
     >>> reader.chunksize = 300
 
     Store chunks by their trajectory index
+
     >>> chunks = {i : [] for i in xrange(reader.number_of_trajectories())}
     >>> for itraj, X in reader:
     ...     chunks[itraj].append(X)
 
 
     Calculate some distances of protein during feature reading:
+
     >>> reader.featurizer.add_distances([[0, 3], [10, 15]])
     >>> X = reader.get_output()
 
