@@ -229,17 +229,20 @@ class CustomFeature(object):
     --------
     We define a feature that transforms all coordinates by :math:`1 / x^2`:
 
-    >>> from pyemma.coordinates import source, get_test_data
-    >>> inp = get_test_data()
+    >>> from pyemma.coordinates import source
+    >>> from pyemma.datasets import get_bpti_test_data
+    >>> inp = get_bpti_test_data()
 
     Define a function which transforms the coordinates of the trajectory object.
     Note that you need to define the output dimension, which we pass directly in
     the feature construction. The trajectory contains 58 atoms, so the output
     dimension will be 3 * 58 = 174:
-    >>> my_feature = CustomFeature(lambda x: (1.0 / x.xyz**2), dim=174)
+    
+    >>> my_feature = CustomFeature(lambda x: (1.0 / x.xyz**2).reshape(-1, 174), dim=174)
     >>> reader = source(inp['trajs'][0], top=inp['top'])
 
     pass the feature to the featurizer and transform the data
+    
     >>> reader.featurizer.add_custom_feature(my_feature)
     >>> data = reader.get_output()
 
