@@ -110,6 +110,17 @@ else:
             x.flags.writeable = writeable
         return hash_value
 
+def hash_top(top):
+    if not PY3:
+        return hash(top)
+    else:
+        # this is a temporary workaround for py3
+        hash_value = hash(top.n_atoms)
+        hash_value ^= hash(tuple(top.atoms))
+        hash_value ^= hash(tuple(top.residues))
+        hash_value ^= hash(tuple(top.bonds))
+        return hash_value
+
 
 def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
     r"""For input of pairwise type (distances, inverse distances, contacts) checks the
@@ -326,9 +337,9 @@ class SelectionFeature(object):
         return np.reshape(traj.xyz[:, self.indexes, :], newshape)
 
     def __hash__(self):
-        hash_value = hash(self.top)
+        hash_value = hash(self.prefix_label)
+        hash_value ^= hash_top(self.top)
         hash_value ^= _hash_numpy_array(self.indexes)
-        hash_value ^= hash(self.prefix_label)
 
         return hash_value
 
@@ -360,7 +371,7 @@ class DistanceFeature(object):
 
     def __hash__(self):
         hash_value = _hash_numpy_array(self.distance_indexes)
-        hash_value ^= hash(self.top)
+        hash_value ^= hash_top(self.top)
         hash_value ^= hash(self.prefix_label)
         return hash_value
 
@@ -521,7 +532,7 @@ class AngleFeature(object):
 
     def __hash__(self):
         hash_value = _hash_numpy_array(self.angle_indexes)
-        hash_value ^= hash(self.top)
+        hash_value ^= hash_top(self.top)
         hash_value ^= hash(self.deg)
 
         return hash_value
@@ -578,7 +589,7 @@ class DihedralFeature(object):
 
     def __hash__(self):
         hash_value = _hash_numpy_array(self.dih_indexes)
-        hash_value ^= hash(self.top)
+        hash_value ^= hash_top(self.top)
         hash_value ^= hash(self.deg)
         hash_value ^= hash(self.cossin)
 
