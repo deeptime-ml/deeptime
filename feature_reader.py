@@ -65,7 +65,7 @@ class FeatureReader(ReaderInterface):
 
     Store chunks by their trajectory index
 
-    >>> chunks = {i : [] for i in xrange(reader.number_of_trajectories())}
+    >>> chunks = {i : [] for i in range(reader.number_of_trajectories())}
     >>> for itraj, X in reader:
     ...     chunks[itraj].append(X)
 
