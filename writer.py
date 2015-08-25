@@ -29,7 +29,6 @@ Created on 22.01.2015
 '''
 
 from __future__ import absolute_import
-from six import PY3
 
 import numpy as np
 from pyemma.coordinates.transform.transformer import Transformer
@@ -74,7 +73,7 @@ class WriterCSV(Transformer):
             pass
 
         try:
-            self._fh = open(self.filename, 'w', newline='') if PY3 else open(self.filename, 'wb')
+            self._fh = open(self.filename, 'wb')
         except EnvironmentError:
             self._logger.exception('could not open file "%s" for writing.')
             raise
