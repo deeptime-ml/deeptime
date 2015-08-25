@@ -34,7 +34,7 @@ from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
 import functools
 
 from pyemma.util.log import getLogger
-from pyemma.util.annotators import deprecated
+#from pyemma.util.annotators import deprecated
 
 
 __author__ = 'Frank Noe, Martin Scherer'
@@ -909,10 +909,6 @@ class MDFeaturizer(object):
         f = SelectionFeature(self.topology, indexes)
         self.__add_feature(f)
 
-    @deprecated
-    def distances(self, atom_pairs):
-        return self.add_distances(atom_pairs)
-
     def add_distances(self, indices, periodic=True, indices2=None):
         r"""
         Adds the distances between atoms to the feature list.
@@ -945,10 +941,6 @@ class MDFeaturizer(object):
         f = DistanceFeature(self.topology, atom_pairs, periodic=periodic)
         self.__add_feature(f)
 
-    @deprecated
-    def distancesCa(self):
-        return self.add_distances_ca()
-
     def add_distances_ca(self, periodic=True):
         """
         Adds the distances between all Ca's to the feature list.
@@ -956,10 +948,6 @@ class MDFeaturizer(object):
         """
         distance_indexes = self.pairs(self.select_Ca())
         self.add_distances(distance_indexes, periodic=periodic)
-
-    @deprecated
-    def inverse_distances(self, atom_pairs):
-        return self.add_inverse_distances(atom_pairs)
 
     def add_inverse_distances(self, indices, periodic=True, indices2=None):
         """
@@ -993,10 +981,6 @@ class MDFeaturizer(object):
         atom_pairs = self._check_indices(atom_pairs)
         f = InverseDistanceFeature(self.topology, atom_pairs, periodic=True)
         self.__add_feature(f)
-
-    @deprecated
-    def contacts(self, *args):
-        return self.add_contacts(args)
 
     def add_contacts(self, indices, indices2=None, threshold=5.0, periodic=True):
         r"""
@@ -1114,10 +1098,6 @@ class MDFeaturizer(object):
         f = GroupMinDistanceFeature(self.topology, group_pairs, distance_list, group_identifiers, threshold)
         self.__add_feature(f)
 
-    @deprecated
-    def angles(self, *args):
-        return self.add_angles(args)
-
     def add_angles(self, indexes, deg=False, cossin=False):
         """
         Adds the list of angles to the feature list
@@ -1159,10 +1139,6 @@ class MDFeaturizer(object):
         indexes = self._check_indices(indexes, pair_n=4)
         f = DihedralFeature(self.topology, indexes, deg=deg, cossin=cossin)
         self.__add_feature(f)
-
-    @deprecated
-    def backbone_torsions(self, *args):
-        return self.add_backbone_torsions(args)
 
     def add_backbone_torsions(self, selstr=None, deg=False, cossin=False):
         """
