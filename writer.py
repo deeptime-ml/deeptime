@@ -74,8 +74,7 @@ class WriterCSV(Transformer):
             pass
 
         try:
-            mode = 'w' if PY3 else 'wb'
-            self._fh = open(self.filename, mode)
+            self._fh = open(self.filename, 'w', newline='') if PY3 else open(self.filename, 'wb')
         except EnvironmentError:
             self._logger.exception('could not open file "%s" for writing.')
             raise
