@@ -961,7 +961,7 @@ class MDFeaturizer(object):
     @staticmethod
     def pairs(sel, excluded_neighbors=0):
         """
-        Creates all pairs between indexes. Will except closest neighbors up to :py:obj:`excluded_neighbors`
+        Creates all pairs between indexes. Will exclude closest neighbors up to :py:obj:`excluded_neighbors`
         The self-pair (i,i) is always excluded
 
         Parameters
@@ -1073,12 +1073,29 @@ class MDFeaturizer(object):
         f = DistanceFeature(self.topology, atom_pairs, periodic=periodic)
         self.__add_feature(f)
 
-    def add_distances_ca(self, periodic=True):
+    def add_distances_ca(self, periodic=True, excluded_Ca_neighbors=2):
         """
         Adds the distances between all Ca's to the feature list.
 
+        Parameters
+        ----------
+        periodic : boolean, default is True
+            Use the minimum image convetion when computing distances
+
+        excluded_Ca_neighbors : int, default is 2
+            Number of exclusions when compiling the list of pairs.
+
         """
-        distance_indexes = self.pairs(self.select_Ca())
+
+        ca_at_idxs = self.select_Ca()
+        # For every ca_atom, get its residue index
+        ca_res_idxs = [self.topology.atom(ca).residue.index for ca in ca_at_idxs]
+        # Since there is one Ca per resiue, we compile the
+        # pairlist and the neigbor exclusion using residue idxs
+        # that gets translated back to actual ca_at_idxs:
+        distance_indexes = self.pairs(ca_res_idxs, excluded_neighbors=excluded_Ca_neighbors)
+        distance_indexes = ca_at_idxs[distance_indexes]
+
         self.add_distances(distance_indexes, periodic=periodic)
 
     def add_inverse_distances(self, indices, periodic=True, indices2=None):
