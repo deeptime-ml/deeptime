@@ -1073,7 +1073,7 @@ class MDFeaturizer(object):
         f = DistanceFeature(self.topology, atom_pairs, periodic=periodic)
         self.__add_feature(f)
 
-    def add_distances_ca(self, periodic=True, excluded_Ca_neighbors=2):
+    def add_distances_ca(self, periodic=True, excluded_neighbors=2):
         """
         Adds the distances between all Ca's to the feature list.
 
@@ -1082,7 +1082,7 @@ class MDFeaturizer(object):
         periodic : boolean, default is True
             Use the minimum image convetion when computing distances
 
-        excluded_Ca_neighbors : int, default is 2
+        excluded_neighbors : int, default is 2
             Number of exclusions when compiling the list of pairs.
 
         """
@@ -1093,7 +1093,7 @@ class MDFeaturizer(object):
         # Since there is one Ca per resiue, we compile the
         # pairlist and the neigbor exclusion using residue idxs
         # that gets translated back to actual ca_at_idxs:
-        distance_indexes = self.pairs(ca_res_idxs, excluded_neighbors=excluded_Ca_neighbors)
+        distance_indexes = self.pairs(ca_res_idxs, excluded_neighbors=excluded_neighbors)
         distance_indexes = ca_at_idxs[distance_indexes]
 
         self.add_distances(distance_indexes, periodic=periodic)
