@@ -25,12 +25,14 @@ import numpy as np
 import warnings
 from itertools import combinations as _combinations, count
 from itertools import product as _product
+from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
 import functools
 
 
 from six import PY3
 from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
-from pyemma.util.log import getLogger
+from pyemma._base.logging import instance_name, create_logger
+
 from pyemma.util.annotators import deprecated
 from six.moves import map
 from six.moves import range
@@ -802,6 +804,7 @@ class MinRmsdFeature(object):
 
 class MDFeaturizer(object):
 
+    # counting instances, incremented by name property.
     _ids = count(0)
 
     def __init__(self, topfile):
@@ -817,16 +820,23 @@ class MDFeaturizer(object):
         self.topology = (mdtraj.load(topfile)).topology
         self.active_features = []
         self._dim = 0
-        self._create_logger()
 
-    def _create_logger(self):
-        count = next(self._ids)
-        i = self.__module__.rfind(".")
-        j = self.__module__.find(".") + 1
-        package = self.__module__[j:i]
-        name = "%s.%s[%i]" % (package, self.__class__.__name__, count)
-        self._name = name
-        self._logger = getLogger(name)
+    @property
+    def name(self):
+        try:
+            return self._name
+        except AttributeError:
+            self._name = instance_name(self, next(self._ids))
+            return self._name
+
+    @property
+    def _logger(self):
+        """ The logger for this Estimator """
+        try:
+            return self._logger_instance
+        except AttributeError:
+            create_logger(self)
+            return self._logger_instance
 
     def __add_feature(self, f):
         # perform sanity checks
