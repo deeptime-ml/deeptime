@@ -1,5 +1,3 @@
-# -*- coding: uft-8 -*-
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group
