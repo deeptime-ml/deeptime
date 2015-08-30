@@ -32,14 +32,13 @@ import numpy as np
 import warnings
 from itertools import combinations as _combinations, count
 from itertools import product as _product
-from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
 import functools
 
 
 from six import PY3
 from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
 from pyemma.util.log import getLogger
-#from pyemma.util.annotators import deprecated
+from pyemma.util.annotators import deprecated
 from six.moves import map
 from six.moves import range
 from six.moves import zip
@@ -285,7 +284,14 @@ class CustomFeature(object):
                                                            str(self._args) +
                                                            str(self._kwargs))]
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         feature = self._func(traj, *self._args, **self._kwargs)
         if not isinstance(feature, np.ndarray):
             raise ValueError("your function should return a NumPy array!")
@@ -332,7 +338,14 @@ class SelectionFeature(object):
     def dimension(self):
         return 3 * self.indexes.shape[0]
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         newshape = (traj.xyz.shape[0], 3 * self.indexes.shape[0])
         return np.reshape(traj.xyz[:, self.indexes, :], newshape)
 
@@ -366,7 +379,14 @@ class DistanceFeature(object):
     def dimension(self):
         return self.distance_indexes.shape[0]
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         return mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
 
     def __hash__(self):
@@ -386,7 +406,14 @@ class InverseDistanceFeature(DistanceFeature):
             self, top, distance_indexes, periodic=periodic)
         self.prefix_label = "INVDIST:"
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         return 1.0 / mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
 
     # does not need own hash impl, since we take prefix label into account
@@ -417,7 +444,14 @@ class ResidueMinDistanceFeature(DistanceFeature):
                   for pair in self.distance_indexes]
         return labels
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         # We let mdtraj compute the contacts with the input scheme
         D = mdtraj.compute_contacts(traj, contacts=self.contacts, scheme=self.scheme)[0]
         res = np.zeros_like(D)
@@ -446,7 +480,14 @@ class GroupMinDistanceFeature(DistanceFeature):
                   for pair in self.distance_indexes]
         return labels
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         # All needed distances
         Dall = mdtraj.compute_distances(traj, self.distance_list)
         # Just the minimas
@@ -472,7 +513,14 @@ class ContactFeature(DistanceFeature):
         self.threshold = threshold
         self.periodic = periodic
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         dists = mdtraj.compute_distances(
             traj, self.distance_indexes, periodic=self.periodic)
         res = np.zeros(
@@ -496,7 +544,6 @@ class AngleFeature(object):
         self.cossin = cossin
 
     def describe(self):
-
         if self.cossin:
             sin_cos = ("ANGLE: COS(%s - %s - %s)",
                        "ANGLE: SIN(%s - %s - %s)")
@@ -520,7 +567,14 @@ class AngleFeature(object):
             dim *= 2
         return dim
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         rad = mdtraj.compute_angles(traj, self.angle_indexes)
         if self.cossin:
             rad = np.dstack((np.cos(rad), np.sin(rad)))
@@ -576,7 +630,14 @@ class DihedralFeature(object):
     def dimension(self):
         return self._dim
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         rad = mdtraj.compute_dihedrals(traj, self.dih_indexes)
         if self.cossin:
             rad = np.dstack((np.cos(rad), np.sin(rad)))
@@ -719,7 +780,14 @@ class MinRmsdFeature(object):
     def dimension(self):
         return 1
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
 
     def __hash__(self):
@@ -1298,7 +1366,14 @@ class MDFeaturizer(object):
         dim = sum(f.dimension for f in self.active_features)
         return dim
 
+    @deprecated
     def map(self, traj):
+        r"""Deprecated: use transform(traj)
+
+        """
+        return self.transform(traj)
+
+    def transform(self, traj):
         """
         Maps an mdtraj Trajectory object to the selected output features
 
@@ -1337,7 +1412,7 @@ class MDFeaturizer(object):
             # perform sanity checks for custom feature input
             if isinstance(f, CustomFeature):
                 # NOTE: casting=safe raises in numpy>=1.9
-                vec = f.map(traj).astype(np.float32, casting='safe')
+                vec = f.transform(traj).astype(np.float32, casting='safe')
                 if vec.shape[0] == 0:
                     vec = np.empty((0, f.dimension))
 
@@ -1357,7 +1432,7 @@ class MDFeaturizer(object):
                                         traj.xyz.shape[0],
                                         vec.shape[0]))
             else:
-                vec = f.map(traj).astype(np.float32)
+                vec = f.transform(traj).astype(np.float32)
             feature_vec.append(vec)
 
         if len(feature_vec) > 1:

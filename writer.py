@@ -59,7 +59,7 @@ class WriterCSV(Transformer):
     def dimension(self):
         return self.data_producer.dimension()
 
-    def _map_array(self, X):
+    def _transform_array(self, X):
         pass
 
     def _reset(self, stride=1):

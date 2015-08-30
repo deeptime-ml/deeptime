@@ -251,7 +251,7 @@ class FeatureReader(ReaderInterface):
                 shape_2d = (shape[0], shape[1] * shape[2])
                 return chunk.xyz.reshape(shape_2d)
             else:
-                return self.featurizer.map(chunk)
+                return self.featurizer.transform(chunk)
         else:
             if len(self.featurizer.active_features) == 0:
                 shape_Y = adv_chunk.xyz.shape
@@ -259,8 +259,8 @@ class FeatureReader(ReaderInterface):
                 X = chunk.xyz.reshape((shape[0], shape[1] * shape[2]))
                 Y = adv_chunk.xyz.reshape((shape_Y[0], shape_Y[1] * shape_Y[2]))
             else:
-                X = self.featurizer.map(chunk)
-                Y = self.featurizer.map(adv_chunk)
+                X = self.featurizer.transform(chunk)
+                Y = self.featurizer.transform(adv_chunk)
             return X, Y
 
     def parametrize(self, stride=1):
