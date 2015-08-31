@@ -803,6 +803,7 @@ class MinRmsdFeature(object):
 
 
 class MDFeaturizer(object):
+    r"""Extracts features from MD trajectories."""
 
     # counting instances, incremented by name property.
     _ids = count(0)
