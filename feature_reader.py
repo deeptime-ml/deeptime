@@ -264,8 +264,8 @@ class FeatureReader(ReaderInterface):
 
     def _assert_toptraj_consistency(self):
         r""" Check if the topology and the trajfiles of the reader have the same n_atoms"""
-        with mdtraj.open(self.trajfiles[0],'r') as fh:
-            xyz, __, __, __ = fh.read(n_frames=1)
-        assert xyz.shape[1] == self.featurizer.topology.n_atoms, "Mismatch in the number of atoms between the topology" \
-                                                                " and the first trajectory file, %u vs %u"% \
-                                                                (self.featurizer.topology.n_atoms, xyz.shape[1])
+        traj = mdtraj.load_frame(self.trajfiles[0], index=0, top=self.topfile)
+        desired_n_atoms = self.featurizer.topology.n_atoms
+        assert traj.xyz.shape[1] == desired_n_atoms, "Mismatch in the number of atoms between the topology" \
+                                                     " and the first trajectory file, %u vs %u"% \
+                                                     (desired_n_atoms, traj.xyz.shape[1])
