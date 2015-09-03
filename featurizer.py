@@ -808,7 +808,7 @@ class MDFeaturizer(object):
     # counting instances, incremented by name property.
     _ids = count(0)
 
-    def __init__(self, topology):
+    def __init__(self, topfile):
         """extracts features from MD trajectories.
 
        Parameters
@@ -818,11 +818,11 @@ class MDFeaturizer(object):
            a path to a topology file (pdb etc.) or an mdtraj Topology() object
        """
         self.topologyfile = None
-        if type(topology) is str:
-            self.topology = (mdtraj.load(topology)).topology
-            self.topologyfile = topology
+        if type(topfile) is str:
+            self.topology = (mdtraj.load(topfile)).topology
+            self.topologyfile = topfile
         else:
-            self.topology = topology
+            self.topology = topfile
         self.active_features = []
         self._dim = 0
 
