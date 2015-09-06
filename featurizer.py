@@ -814,11 +814,15 @@ class MDFeaturizer(object):
        Parameters
        ----------
 
-       topfile : str
-           a path to a topology file (pdb etc.)
+       topfile : str or mdtraj.Topology
+           a path to a topology file (pdb etc.) or an mdtraj Topology() object
        """
-        self.topologyfile = topfile
-        self.topology = (mdtraj.load(topfile)).topology
+        self.topologyfile = None
+        if type(topfile) is str:
+            self.topology = (mdtraj.load(topfile)).topology
+            self.topologyfile = topfile
+        else:
+            self.topology = topfile
         self.active_features = []
         self._dim = 0
 
