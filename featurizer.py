@@ -475,19 +475,22 @@ class ResidueMinDistanceFeature(DistanceFeature):
 
 class GroupMinDistanceFeature(DistanceFeature):
 
-    def __init__(self, top, group_pairs, distance_list, group_identifiers, threshold):
+    def __init__(self, top, group_definitions, group_pairs, distance_list, group_identifiers, threshold):
         self.top = top
         self.group_identifiers = group_identifiers
         self.distance_list = distance_list
+        self.group_definitions = group_definitions
         self.prefix_label = "GROUP_MINDIST"
         self.threshold = threshold
         self.distance_indexes = group_pairs
 
     def describe(self):
-        labels = ["%s %s - %s" % (self.prefix_label,
-                                  pair[0],
-                                  pair[1])
-                  for pair in self.distance_indexes]
+        labels = ["%s %u--%u: [%s...%s]--[%s...%s]" % (self.prefix_label, pair[0], pair[1],
+                                                       _describe_atom(self.top, self.group_definitions[pair[0]][0 ]),
+                                                       _describe_atom(self.top, self.group_definitions[pair[0]][-1]),
+                                                       _describe_atom(self.top, self.group_definitions[pair[1]][0]),
+                                                       _describe_atom(self.top, self.group_definitions[pair[1]][-1])
+                                                       ) for pair in self.distance_indexes]
         return labels
 
     @deprecated
@@ -1209,10 +1212,10 @@ class MDFeaturizer(object):
         """
 
         # Some thorough input checking and reformatting
-        __, group_pairs, distance_list, group_identifiers = _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
+        group_definitions, group_pairs, distance_list, group_identifiers = _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
         distance_list = self._check_indices(distance_list)
 
-        f = GroupMinDistanceFeature(self.topology, group_pairs, distance_list, group_identifiers, threshold)
+        f = GroupMinDistanceFeature(self.topology, group_definitions, group_pairs, distance_list, group_identifiers, threshold)
         self.__add_feature(f)
 
     def add_angles(self, indexes, deg=False, cossin=False):
