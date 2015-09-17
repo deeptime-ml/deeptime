@@ -70,7 +70,7 @@ def _describe_atom(topology, index):
     """
     #assert isinstance(index, int)
     at = topology.atom(index)
-    return "%s %i %s %i" % (at.residue.name, at.residue.index, at.name, at.index)
+    return "%s %i %s %i" % (at.residue.name, at.residue.resSeq, at.name, at.index)
 
 def _catch_unhashable(x):
     if hasattr(x, '__getitem__'):
