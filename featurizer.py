@@ -170,6 +170,22 @@ def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
             - check for duplicates within each group_definition
             - produce the list of pairs for all needed distances
             - produce a list that maps each entry in the pairlist to a given group of distances
+
+    Returns
+    --------
+        parsed_group_definitions: list
+            List of of 1D arrays containing sorted, unique atom indices
+
+        parsed_group_pairs: numpy.ndarray
+            (N,2)-numpy array containing pairs of indices that represent pairs
+             of groups for which the inter-group distance-pairs will be generated
+
+        distance_pairs: numpy.ndarray
+            (M,2)-numpy array with all the distance-pairs needed (regardless of their group)
+
+        group_membership: numpy.ndarray
+            (N,2)-numpy array mapping each pair in distance_pairs to their associated group pair
+
         """
 
     assert isinstance(group_definitions, list), "group_definitions has to be of type list, not %s"%type(group_definitions)
@@ -178,50 +194,49 @@ def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
         group_pairs = np.array([0,0], ndmin=2)
 
     # Sort the elements within each group
-    new_groups = []
+    parsed_group_definitions = []
     for igroup in group_definitions:
         assert np.ndim(igroup) == 1, "The elements of the groups definition have to be of dim 1, not %u"%np.ndim(igroup)
-        new_groups.append(np.unique(igroup))
+        parsed_group_definitions.append(np.unique(igroup))
 
     # Check for group duplicates
-    for ii, igroup in enumerate(new_groups[:-1]):
-        for jj, jgroup in enumerate(new_groups[ii+1:]):
+    for ii, igroup in enumerate(parsed_group_definitions[:-1]):
+        for jj, jgroup in enumerate(parsed_group_definitions[ii+1:]):
             if len(igroup) == len(jgroup):
                 assert not np.allclose(igroup, jgroup), "Some group definitions appear to be duplicated, e.g %u and %u"%(ii,ii+jj+1)
 
     # Create and/or check the pair-list
     if group_pairs == 'all':
-        new_pairs = np.array(list(_combinations(np.arange(len(group_definitions)), 2)))
+        parsed_group_pairs = np.array(list(_combinations(np.arange(len(group_definitions)), 2)))
     else:
         assert isinstance(group_pairs, np.ndarray)
         assert group_pairs.shape[1] == 2
-        assert group_pairs.max() <= len(new_groups), "Cannot ask for group nr. %u if group_definitions only " \
-                                                    "contains %u groups"%(group_pairs.max(), len(new_groups))
+        assert group_pairs.max() <= len(parsed_group_definitions), "Cannot ask for group nr. %u if group_definitions only " \
+                                                    "contains %u groups"%(group_pairs.max(), len(parsed_group_definitions))
         assert group_pairs.min() >= 0, "Group pairs contains negative group indices"
 
-        new_pairs = np.zeros_like(group_pairs, dtype='int')
+        parsed_group_pairs = np.zeros_like(group_pairs, dtype='int')
         for ii, ipair in enumerate(group_pairs):
             if ipair[0] == ipair[1]:
                 MDlogger.warning("%s will compute the mindist of group %u with itself. Is this wanted? "%(mname, ipair[0]))
-            new_pairs[ii,:] = np.sort(ipair)
+            parsed_group_pairs[ii,:] = np.sort(ipair)
 
     # Create the large list of distances that will be computed, and an array containing group identfiers
     # of the distances that actually characterize a pair of groups
-    group_distance_indexes = []
-    group_distance_identifiers = np.zeros_like(new_pairs)
+    distance_pairs = []
+    group_membership = np.zeros_like(parsed_group_pairs)
     b = 0
-    for ii, pair in enumerate(new_pairs):
+    for ii, pair in enumerate(parsed_group_pairs):
         if pair[0] != pair[1]:
-            group_distance_indexes.append(list(_product(new_groups[pair[0]],
-                                                        new_groups[pair[1]])))
+            distance_pairs.append(list(_product(parsed_group_definitions[pair[0]],
+                                                        parsed_group_definitions[pair[1]])))
         else:
-            group_distance_indexes.append(list(_combinations(new_groups[pair[0]], 2)))
+            distance_pairs.append(list(_combinations(parsed_group_definitions[pair[0]], 2)))
 
-        group_distance_identifiers[ii,:] = [b, b+len(group_distance_indexes[ii])]
-        b += len(group_distance_indexes[ii])
+        group_membership[ii,:] = [b, b+len(distance_pairs[ii])]
+        b += len(distance_pairs[ii])
 
-    return new_groups, new_pairs, np.vstack(group_distance_indexes), group_distance_identifiers
-
+    return parsed_group_definitions, parsed_group_pairs, np.vstack(distance_pairs), group_membership
 
 class CustomFeature(object):
 
