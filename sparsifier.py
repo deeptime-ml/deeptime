@@ -58,5 +58,5 @@ class Sparsifier(Transformer):
                              % (self.data_producer.dimension() - self.dimension()))
         self._varying_indices = np.array(self._varying_indices, dtype=int)
 
-    def _map_array(self, X):
+    def _transform_array(self, X):
         return X[:, self._varying_indices]
