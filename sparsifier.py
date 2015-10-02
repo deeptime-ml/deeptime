@@ -9,8 +9,22 @@ from pyemma.coordinates.transform.transformer import Transformer
 
 
 class Sparsifier(Transformer):
+    r""" The Sparsifier checks its data source for constant features and removes them during transformation.
+
+    Parameters
+    ----------
+    rtol : float
+        relative tolerance to compare for constant features
+
+    Notes
+    -----
+    The usage of the Sparsifier is recommended for contact features in MD data. Contacts which are never formed or
+    never brake are being eliminated. This speeds-up further calculations.
+
+    """
 
     def __init__(self, rtol=1e-2):
+
         Transformer.__init__(self)
         self._varying_indices = None
         self._first_frame = None
@@ -19,6 +33,10 @@ class Sparsifier(Transformer):
     @property
     def rtol(self):
         return self._rtol
+
+    @rtol.setter
+    def rtol(self, value):
+        self._rtol = value
 
     def _param_init(self):
         # TODO: determine if final data_producer is a feature_reader and if so
@@ -58,7 +76,6 @@ class Sparsifier(Transformer):
         self._parametrized = True
         self._logger.warning("Detected and eliminated %i constant features"
                              % (self.data_producer.dimension() - self.dimension()))
-        self._varying_indices = np.array(self._varying_indices, dtype=int)
 
     def _transform_array(self, X):
         return X[:, self._varying_indices]
