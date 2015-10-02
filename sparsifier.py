@@ -10,11 +10,11 @@ from pyemma.coordinates.transform.transformer import Transformer
 
 class Sparsifier(Transformer):
 
-    def __init__(self):
+    def __init__(self, rtol=1e-2):
         Transformer.__init__(self)
         self._varying_indices = None
         self._first_frame = None
-        self._rtol = 1e-2
+        self._rtol = rtol
 
     @property
     def rtol(self):
@@ -27,7 +27,7 @@ class Sparsifier(Transformer):
         self._varying_indices = []
 
     def describe(self):
-        return self.__class__.__name__
+        return self.__class__.__name__ + 'dim: %i' % self.dimension() if self._parametrized else ''
 
     def dimension(self):
         if not self._parametrized:
@@ -49,8 +49,10 @@ class Sparsifier(Transformer):
             var_inds = np.unique(close_cols)
             self._varying_indices = np.union1d(var_inds, self._varying_indices)
 
-        else:
-            return True
+            if last_chunk:
+                return True
+
+        return False
 
     def _param_finish(self):
         self._parametrized = True
