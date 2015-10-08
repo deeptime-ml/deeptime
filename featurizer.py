@@ -1102,7 +1102,7 @@ class MDFeaturizer(object):
         f = InverseDistanceFeature(self.topology, atom_pairs, periodic=True)
         self.__add_feature(f)
 
-    def add_contacts(self, indices, indices2=None, threshold=.5, periodic=True):
+    def add_contacts(self, indices, indices2=None, threshold=0.3, periodic=True):
         r"""
         Adds the contacts to the feature list.
 
@@ -1120,9 +1120,9 @@ class MDFeaturizer(object):
                     Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
                     only the contacts between the atoms in :py:obj:`indices` and :py:obj:`indices2` will be computed.
 
-        threshold : float, optional, default = .5
+        threshold : float, optional, default = .3
             distances below this threshold (in nm) will result in a feature 1.0, distances above will result in 0.0.
-            The default is set to .5 nm (5 Angstrom)
+            The default is set to .3 nm (3 Angstrom)
 
         .. note::
             When using the *iterable of integers* input, :py:obj:`indices` and :py:obj:`indices2`
