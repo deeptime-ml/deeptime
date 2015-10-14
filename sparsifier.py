@@ -45,7 +45,8 @@ class Sparsifier(Transformer):
         self._varying_indices = []
 
     def describe(self):
-        return self.__class__.__name__ + 'dim: %i' % self.dimension() if self._parametrized else ''
+        return self.__class__.__name__ + 'dim: %s' % str(self.dimension()) if \
+            self._parametrized else 'super-unknown'
 
     def dimension(self):
         if not self._parametrized:
@@ -73,6 +74,7 @@ class Sparsifier(Transformer):
         return False
 
     def _param_finish(self):
+        self._varying_indices = np.array(self._varying_indices, dtype=int)
         self._parametrized = True
         self._logger.warning("Detected and eliminated %i constant features"
                              % (self.data_producer.dimension() - self.dimension()))
