@@ -52,6 +52,9 @@ class ReaderInterface(Transformer):
         # storage for arrays (used in _add_array_to_storage)
         self._data = []
 
+        # number of initially skipped frames, regardless of lag, no lag or chunk size
+        self._skip = 0
+
     @Transformer.data_producer.setter
     def data_producer(self, value):
         self._logger.warning("tried to set data_producer in reader, which makes"
@@ -59,6 +62,16 @@ class ReaderInterface(Transformer):
         import inspect
         res = inspect.getouterframes(inspect.currentframe())[1]
         self._logger.debug(str(res))
+
+    @property
+    def _skip(self):
+        # TODO implement and test this for all readers
+        return self._skip
+
+    @_skip.setter
+    def _skip(self, value):
+        # TODO implement and test this for all readers
+        self._skip = value
 
     @property
     def chunksize(self):
