@@ -54,11 +54,15 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
             input_list = [input_files]
         elif len(input_files) > 0 and all(isinstance(item, string_types) for item in input_files):
             input_list = input_files
+        elif len(input_files) > 0 and any(isinstance(item, (list, tuple)) for item in input_files):
+            input_list = input_files
+            pass #TODO
         else:
             if len(input_files) is 0:
                 raise ValueError("The passed input list should not be empty.")
             else:
-                raise ValueError("The passed list did not exclusively contain strings.")
+                raise ValueError("The passed list did not exclusively contain strings or was a list of lists "
+                                 "(fragmented trajectory).")
 
         _, suffix = os.path.splitext(input_list[0])
 
