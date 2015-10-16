@@ -53,7 +53,7 @@ class ReaderInterface(Transformer):
         self._data = []
 
         # number of initially skipped frames, regardless of lag, no lag or chunk size
-        self._skip = 0
+        self.__skip = 0
 
     @Transformer.data_producer.setter
     def data_producer(self, value):
@@ -66,12 +66,12 @@ class ReaderInterface(Transformer):
     @property
     def _skip(self):
         # TODO implement and test this for all readers
-        return self._skip
+        return self.__skip
 
     @_skip.setter
     def _skip(self, value):
         # TODO implement and test this for all readers
-        self._skip = value
+        self.__skip = value
 
     @property
     def chunksize(self):
@@ -111,7 +111,7 @@ class ReaderInterface(Transformer):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
         else:
-            return (self._lengths[itraj] - 1) // int(stride) + 1
+            return (self._lengths[itraj] - 1) // int(stride) + 1 - self._skip
 
     def trajectory_lengths(self, stride=1):
         """
@@ -129,7 +129,7 @@ class ReaderInterface(Transformer):
                 [self.trajectory_length(itraj, stride) for itraj in range(0, self.number_of_trajectories())],
                 dtype=int)
         else:
-            return np.array([(l - 1) // stride + 1 for l in self._lengths], dtype=int)
+            return np.array([(l - 1) // stride + 1 - self._skip for l in self._lengths], dtype=int)
 
     def n_frames_total(self, stride=1):
         """

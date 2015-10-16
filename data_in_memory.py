@@ -112,6 +112,9 @@ class DataInMemory(ReaderInterface):
         traj_len = self._lengths[self._itraj]
         traj = self._data[self._itraj]
 
+        # only apply _skip at the beginning of each trajectory
+        skip = self._skip if self._t == 0 else 0
+
         # complete trajectory mode
         if self.chunksize == 0:
             if not ctx.uniform_stride:
@@ -125,12 +128,12 @@ class DataInMemory(ReaderInterface):
                 else:
                     raise ValueError("Random access with lag not supported")
             else:
-                X = traj[::ctx.stride]
+                X = traj[skip::ctx.stride]
                 self._itraj += 1
                 if ctx.lag == 0:
                     return X
                 else:
-                    Y = traj[ctx.lag::ctx.stride]
+                    Y = traj[skip+ctx.lag::ctx.stride]
                     return X, Y
         # chunked mode
         else:
@@ -155,15 +158,15 @@ class DataInMemory(ReaderInterface):
                     self._t = 0
                 return Y0
             else:
-                upper_bound = min(self._t + self.chunksize * ctx.stride, traj_len)
-                slice_x = slice(self._t, upper_bound, ctx.stride)
+                upper_bound = min(skip + self._t + self.chunksize * ctx.stride, traj_len)
+                slice_x = slice(skip + self._t, upper_bound, ctx.stride)
 
                 X = traj[slice_x]
 
                 if ctx.lag != 0:
                     upper_bound_Y = min(
-                         self._t + ctx.lag + self.chunksize * ctx.stride, traj_len)
-                    slice_y = slice(self._t + ctx.lag, upper_bound_Y, ctx.stride)
+                        skip + self._t + ctx.lag + self.chunksize * ctx.stride, traj_len)
+                    slice_y = slice(skip + self._t + ctx.lag, upper_bound_Y, ctx.stride)
                     Y = traj[slice_y]
 
                 self._t = upper_bound
