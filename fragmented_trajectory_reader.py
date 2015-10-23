@@ -62,13 +62,35 @@ class FragmentedTrajectoryReader(ReaderInterface):
                     out = r.get_output(stride=ctx.stride)[0]
                     X = np.vstack((X, out)) if X is not None else out
                     # if stride doesn't divide length, one has to offset the next trajectory
-                    #overlap = ctx.stride - (((self._reader_lengths[idx] - overlap) % ctx.stride) + 1)
-                    overlap = ctx.stride * ((self._reader_lengths[idx] - overlap - 1) // ctx.stride + 1) - self._reader_lengths[idx] - overlap
+                    overlap = self._calculate_new_overlap(ctx.stride, self._reader_lengths[idx], overlap)
                 self._itraj += 1
                 return X
 
-#    def trajectory_lengths(self, stride=1):
-#        return np.array([(self._lengths[0] - 1) // stride + 1 - self._skip], dtype=int)
+    @staticmethod
+    def _calculate_new_overlap(stride, traj_len, skip):
+        """
+        Given two trajectories T_1 and T_2, this function calculates for the first trajectory an overlap, i.e.,
+        a skip parameter for T_2 such that the trajectory fragments T_1 and T_2 appear as one under the given stride.
+
+        Idea for deriving the formula: It is
+
+        K = ((traj_len - skip - 1) // stride + 1) = #(data points in trajectory of length (traj_len - skip)).
+
+        Therefore, the first point's position that is not contained in T_1 anymore is given by
+
+        pos = s * K.
+
+        Thus the needed skip of T_2 such that the same stride parameter makes T_1 and T_2 "look as one" is
+
+        overlap = pos - traj_len.
+
+        :param stride: the (global) stride parameter
+        :param traj_len: length of T_1
+        :param skip: skip of T_1
+        :return: skip of T_2
+        """
+        overlap = stride * ((traj_len - skip - 1) // stride + 1) - traj_len - skip
+        return overlap
 
     def parametrize(self, stride=1):
         for reader in self._readers:
