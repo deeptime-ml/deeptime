@@ -200,7 +200,9 @@ class FeatureReader(ReaderInterface):
                     self.trajfiles[self._itraj], stride=context.ra_indices_for_traj(self._itraj)
                 )
             else:
-                self._mditer = self._create_iter(self.trajfiles[0], stride=context.stride if context else 1)
+                self._mditer = self._create_iter(
+                    self.trajfiles[0], stride=context.stride if context else 1, skip=self._skip
+                )
 
     def _next_chunk(self, context=None):
         """
@@ -222,7 +224,7 @@ class FeatureReader(ReaderInterface):
                                        % (self._itraj, context.lag))
                 self._curr_lag = context.lag
                 self._mditer2 = self._create_iter(self.trajfiles[self._itraj],
-                                                  skip=self._curr_lag,
+                                                  skip=self._curr_lag + self._skip,
                                                   stride=context.stride)
             try:
                 adv_chunk = next(self._mditer2)
@@ -252,7 +254,7 @@ class FeatureReader(ReaderInterface):
                     self.trajfiles[self._itraj], stride=context.ra_indices_for_traj(self._itraj)
                 )
             else:
-                self._mditer = self._create_iter(self.trajfiles[self._itraj], stride=context.stride)
+                self._mditer = self._create_iter(self.trajfiles[self._itraj], skip=self._skip, stride=context.stride)
             # we open self._mditer2 only if requested due lag parameter!
             self._curr_lag = 0
 

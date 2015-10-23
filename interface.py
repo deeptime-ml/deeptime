@@ -111,7 +111,7 @@ class ReaderInterface(Transformer):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
         else:
-            return (self._lengths[itraj] - 1) // int(stride) + 1 - self._skip
+            return (self._lengths[itraj] - self._skip - 1) // int(stride) + 1
 
     def trajectory_lengths(self, stride=1):
         """
@@ -129,7 +129,7 @@ class ReaderInterface(Transformer):
                 [self.trajectory_length(itraj, stride) for itraj in range(0, self.number_of_trajectories())],
                 dtype=int)
         else:
-            return np.array([(l - 1) // stride + 1 - self._skip for l in self._lengths], dtype=int)
+            return np.array([(l - self._skip - 1) // stride + 1 for l in self._lengths], dtype=int)
 
     def n_frames_total(self, stride=1):
         """
