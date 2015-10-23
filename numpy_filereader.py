@@ -145,6 +145,9 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
         traj_len = self._lengths[self._itraj]
         traj = self._array
 
+        # skip only if complete trajectory mode or first chunk
+        skip = self._skip if self.chunksize == 0 or self._t == 0 else 0
+
         # if stride by dict, update traj length accordingly
         if not context.uniform_stride:
             traj_len = context.ra_trajectory_length(self._itraj)
@@ -161,7 +164,7 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
                     self._itraj += 1
                 self._array = None
             else:
-                X = traj[::context.stride]
+                X = traj[skip::context.stride]
                 self._itraj += 1
 
             if context.lag == 0:
@@ -170,7 +173,7 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
                 if not context.uniform_stride:
                     raise ValueError("Requested lagged data but was in random access mode. This is not supported.")
                 else:
-                    Y = traj[context.lag::context.stride]
+                    Y = traj[context.lag + skip::context.stride]
                 return X, Y
 
         # chunked mode
@@ -179,13 +182,13 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
                 X = traj[context.ra_indices_for_traj(self._itraj)[self._t:min(self._t + self.chunksize, traj_len)]]
                 upper_bound = min(self._t + self.chunksize, traj_len)
             else:
-                upper_bound = min(self._t + self.chunksize * context.stride, traj_len)
-                slice_x = slice(self._t, upper_bound, context.stride)
+                upper_bound = min(skip + self._t + self.chunksize * context.stride, traj_len)
+                slice_x = slice(skip + self._t, upper_bound, context.stride)
                 X = traj[slice_x]
 
             if context.lag != 0:
-                upper_bound_Y = min(self._t + context.lag + self.chunksize * context.stride, traj_len)
-                slice_y = slice(self._t + context.lag, upper_bound_Y, context.stride)
+                upper_bound_Y = min(skip + self._t + context.lag + self.chunksize * context.stride, traj_len)
+                slice_y = slice(skip + self._t + context.lag, upper_bound_Y, context.stride)
                 Y = traj[slice_y]
 
             # set new time position
