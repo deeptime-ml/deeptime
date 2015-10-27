@@ -30,7 +30,10 @@ else:
     import dbm as anydbm
 
 import os
+import numpy as np
 import mdtraj
+
+from mdtraj.formats.registry import _FormatRegistry as md_registry
 from threading import Semaphore
 from pyemma.util.config import conf_values
 
@@ -72,8 +75,15 @@ class _TrajectoryInfoCache(object):
         return int(result)
 
     def __determine_len(self, filename):
-        with mdtraj.open(filename) as fh:
-            return len(fh)
+        _, ext = os.path.splitext(filename)
+        if ext in md_registry.loaders:
+            with mdtraj.open(filename) as fh:
+                return len(fh)
+        elif ext in ('.npy'):
+            x = np.load(filename, mmap_mode='r')
+            return len(x)
+        else:
+            raise ValueError('file %s is unsupported.')
 
     def __format_value(self, filename, length):
         return str(length)
