@@ -1,6 +1,4 @@
 from pyemma.coordinates.data.interface import ReaderInterface
-
-from six import string_types
 from pyemma.coordinates.api import source
 
 import numpy as np
@@ -46,6 +44,8 @@ class FragmentedTrajectoryReader(ReaderInterface):
             reader._reset(context)
             reader._skip = 0
         self._skip = 0
+        self._itraj = 0
+        self._t = 0
 
     def _next_chunk(self, ctx):
         if self._itraj > 0:
@@ -55,16 +55,30 @@ class FragmentedTrajectoryReader(ReaderInterface):
             if not ctx.uniform_stride:
                 raise ValueError("fragmented trajectory implemented for random access")
             else:
-                X = None
-                overlap = skip
-                for idx, r in enumerate(self._readers):
-                    r._skip = overlap
-                    out = r.get_output(stride=ctx.stride)[0]
-                    X = np.vstack((X, out)) if X is not None else out
-                    # if stride doesn't divide length, one has to offset the next trajectory
-                    overlap = self._calculate_new_overlap(ctx.stride, self._reader_lengths[idx], overlap)
                 self._itraj += 1
-                return X
+                X = self._read_full(ctx, skip)
+                if ctx.lag == 0:
+                    return X
+                else:
+                    Y = self._read_full(ctx, skip + ctx.lag)
+                    return X, Y
+        else:
+            if not ctx.uniform_stride:
+                raise ValueError("fragmented trajectory implemented for random access")
+            else:
+                expected_length = min(self.chunksize, sum(self.trajectory_lengths(ctx.stride)))
+                # todo
+
+    def _read_full(self, ctx, skip):
+        X = None
+        overlap = skip
+        for idx, r in enumerate(self._readers):
+            r._skip = overlap
+            out = r.get_output(stride=ctx.stride)[0]
+            X = np.vstack((X, out)) if X is not None else out
+            # if stride doesn't divide length, one has to offset the next trajectory
+            overlap = self._calculate_new_overlap(ctx.stride, self._reader_lengths[idx], overlap)
+        return X
 
     @staticmethod
     def _calculate_new_overlap(stride, traj_len, skip):
@@ -78,7 +92,7 @@ class FragmentedTrajectoryReader(ReaderInterface):
 
         Therefore, the first point's position that is not contained in T_1 anymore is given by
 
-        pos = s * K.
+        pos = skip + s * K.
 
         Thus the needed skip of T_2 such that the same stride parameter makes T_1 and T_2 "look as one" is
 
@@ -89,7 +103,7 @@ class FragmentedTrajectoryReader(ReaderInterface):
         :param skip: skip of T_1
         :return: skip of T_2
         """
-        overlap = stride * ((traj_len - skip - 1) // stride + 1) - traj_len - skip
+        overlap = stride * ((traj_len - skip - 1) // stride + 1) - traj_len + skip
         return overlap
 
     def parametrize(self, stride=1):
@@ -107,6 +121,6 @@ class FragmentedTrajectoryReader(ReaderInterface):
         prevLen = 0
         for readerIndex, len in enumerate(self._cumulative_lengths):
             if prevLen <= index < len:
-                return (readerIndex, index - prevLen)
+                return readerIndex, index - prevLen
             prevLen = len
         raise ValueError("Requested index %s was out of bounds [0,%s)" % (index, self._cumulative_lengths[-1]))
