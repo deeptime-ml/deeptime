@@ -60,6 +60,7 @@ class FragmentedTrajectoryReader(ReaderInterface):
                 if ctx.lag == 0:
                     return X
                 else:
+                    self._t = 0
                     Y = self._read_full(ctx, skip + ctx.lag)
                     return X, Y
         else:
@@ -70,14 +71,21 @@ class FragmentedTrajectoryReader(ReaderInterface):
                 # todo
 
     def _read_full(self, ctx, skip):
-        X = None
         overlap = skip
+        self._skip = overlap
+        ndim = len(np.zeros(self._readers[0].dimension())[0::])
+        length = sum(self.trajectory_lengths(ctx.stride))
+        X = np.empty((length, ndim), dtype=self.output_type())
         for idx, r in enumerate(self._readers):
             r._skip = overlap
-            out = r.get_output(stride=ctx.stride)[0]
-            X = np.vstack((X, out)) if X is not None else out
             # if stride doesn't divide length, one has to offset the next trajectory
             overlap = self._calculate_new_overlap(ctx.stride, self._reader_lengths[idx], overlap)
+            r.chunksize = min(length, r.trajectory_length(0, ctx.stride))
+            for itraj, data in r.iterator(stride=ctx.stride):
+                L = data.shape[0]
+                if L > 0:
+                    X[self._t:self._t + L, :] = data[:]
+                self._t += L
         return X
 
     @staticmethod
