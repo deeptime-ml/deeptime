@@ -15,28 +15,31 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 from __future__ import absolute_import
-import mdtraj
-from mdtraj.geometry.dihedral import _get_indices_phi, \
-    _get_indices_psi, compute_dihedrals, _atom_sequence, CHI1_ATOMS
 
 import numpy as np
 import warnings
-from itertools import combinations as _combinations, count
-from itertools import product as _product
-from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
+from itertools import count
 import functools
+
+import mdtraj
+from mdtraj.geometry.dihedral import (_get_indices_phi,
+                                      _get_indices_psi,
+                                      _atom_sequence,
+                                      CHI1_ATOMS,
+                                      )
+
+from pyemma.util.indices import (combinations as _combinations,
+                                 product as _product,
+                                 )
+from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
 
 
 from six import PY3
-from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
-from pyemma._base.logging import instance_name, create_logger
+from six.moves import map, range, zip
 
+from pyemma._base.logging import instance_name, create_logger
 from pyemma.util.annotators import deprecated
-from six.moves import map
-from six.moves import range
-from six.moves import zip
 
 
 __author__ = 'Frank Noe, Martin Scherer'
@@ -72,6 +75,7 @@ def _describe_atom(topology, index):
     at = topology.atom(index)
     return "%s %i %s %i" % (at.residue.name, at.residue.resSeq, at.name, at.index)
 
+
 def _catch_unhashable(x):
     if hasattr(x, '__getitem__'):
         res = list(x)
@@ -104,6 +108,7 @@ else:
             x.flags.writeable = writeable
         return hash_value
 
+
 def hash_top(top):
     if not PY3:
         return hash(top)
@@ -114,6 +119,9 @@ def hash_top(top):
         hash_value ^= hash(tuple(top.residues))
         hash_value ^= hash(tuple(top.bonds))
         return hash_value
+
+
+
 
 
 def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
@@ -142,7 +150,7 @@ def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
 
         # Intra-group distances
         if indices2 is None:
-            atom_pairs = np.array(list(_combinations(indices1, 2)))
+            atom_pairs = _combinations(indices1, 2)
 
         # Inter-group distances
         elif _is_iterable_of_int(indices2):
@@ -153,12 +161,13 @@ def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
             # Eliminate duplicates between indices1 and indices1
             uniqs = np.in1d(indices2, indices1, invert=True)
             indices2 = indices2[uniqs]
-            atom_pairs = np.asarray(list(_product(indices1, indices2)))
+            atom_pairs = _product(indices1, indices2)
 
     else:
         atom_pairs = indices1
 
     return atom_pairs
+
 
 def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
     r"""For input of group type (add_group_mindist), prepare the array of pairs of indices
@@ -207,7 +216,7 @@ def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
 
     # Create and/or check the pair-list
     if group_pairs == 'all':
-        parsed_group_pairs = np.array(list(_combinations(np.arange(len(group_definitions)), 2)))
+        parsed_group_pairs = _combinations(np.arange(len(group_definitions)), 2)
     else:
         assert isinstance(group_pairs, np.ndarray)
         assert group_pairs.shape[1] == 2
@@ -228,15 +237,17 @@ def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
     b = 0
     for ii, pair in enumerate(parsed_group_pairs):
         if pair[0] != pair[1]:
-            distance_pairs.append(list(_product(parsed_group_definitions[pair[0]],
-                                                        parsed_group_definitions[pair[1]])))
+            distance_pairs.append(_product(parsed_group_definitions[pair[0]],
+                                           parsed_group_definitions[pair[1]]))
         else:
-            distance_pairs.append(list(_combinations(parsed_group_definitions[pair[0]], 2)))
+            parsed = parsed_group_definitions[pair[0]]
+            distance_pairs.append(_combinations(parsed, 2))
 
-        group_membership[ii,:] = [b, b+len(distance_pairs[ii])]
+        group_membership[ii, :] = [b, b + len(distance_pairs[ii])]
         b += len(distance_pairs[ii])
 
     return parsed_group_definitions, parsed_group_pairs, np.vstack(distance_pairs), group_membership
+
 
 class CustomFeature(object):
 
@@ -517,6 +528,7 @@ class GroupMinDistanceFeature(DistanceFeature):
             res = Dmin
 
         return res
+
 
 class ContactFeature(DistanceFeature):
 
@@ -1463,4 +1475,5 @@ class MDFeaturizer(object):
             res = np.hstack(feature_vec)
         else:
             res = feature_vec[0]
+
         return res
