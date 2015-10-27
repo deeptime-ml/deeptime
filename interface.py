@@ -34,9 +34,10 @@ class ReaderInterface(Transformer):
     """
 
     def __init__(self, chunksize=100):
-        super(ReaderInterface, self).__init__(chunksize=chunksize)
+        super(ReaderInterface, self).__init__()
         # needs to be set, to ensure some getters of Transformer will work.
         self._data_producer = self
+        self.chunksize = chunksize
 
         # internal counters
         self._t = 0
@@ -58,6 +59,18 @@ class ReaderInterface(Transformer):
         import inspect
         res = inspect.getouterframes(inspect.currentframe())[1]
         self._logger.debug(str(res))
+
+    @property
+    def chunksize(self):
+        """chunksize defines how much data is being processed at once."""
+        return self._cs
+
+    @chunksize.setter
+    def chunksize(self, size):
+        if not size >= 0:
+            raise ValueError("chunksize has to be positive")
+
+        self._cs = int(size)
 
     def number_of_trajectories(self):
         """

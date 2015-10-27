@@ -150,7 +150,7 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
             traj_len = context.ra_trajectory_length(self._itraj)
 
         # complete trajectory mode
-        if self._chunksize == 0:
+        if self.chunksize == 0:
             if not context.uniform_stride:
                 X = traj[context.ra_indices_for_traj(self._itraj)]
                 self._itraj += 1
@@ -179,12 +179,12 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
                 X = traj[context.ra_indices_for_traj(self._itraj)[self._t:min(self._t + self.chunksize, traj_len)]]
                 upper_bound = min(self._t + self.chunksize, traj_len)
             else:
-                upper_bound = min(self._t + self._chunksize * context.stride, traj_len)
+                upper_bound = min(self._t + self.chunksize * context.stride, traj_len)
                 slice_x = slice(self._t, upper_bound, context.stride)
                 X = traj[slice_x]
 
             if context.lag != 0:
-                upper_bound_Y = min(self._t + context.lag + self._chunksize * context.stride, traj_len)
+                upper_bound_Y = min(self._t + context.lag + self.chunksize * context.stride, traj_len)
                 slice_y = slice(self._t + context.lag, upper_bound_Y, context.stride)
                 Y = traj[slice_y]
 

@@ -113,7 +113,7 @@ class DataInMemory(ReaderInterface):
         traj = self._data[self._itraj]
 
         # complete trajectory mode
-        if self._chunksize == 0:
+        if self.chunksize == 0:
             if not ctx.uniform_stride:
                 X = self._data[self._itraj][ctx.ra_indices_for_traj(self._itraj)]
                 self._itraj += 1
@@ -155,14 +155,14 @@ class DataInMemory(ReaderInterface):
                     self._t = 0
                 return Y0
             else:
-                upper_bound = min(self._t + self._chunksize * ctx.stride, traj_len)
+                upper_bound = min(self._t + self.chunksize * ctx.stride, traj_len)
                 slice_x = slice(self._t, upper_bound, ctx.stride)
 
                 X = traj[slice_x]
 
                 if ctx.lag != 0:
                     upper_bound_Y = min(
-                         self._t + ctx.lag + self._chunksize * ctx.stride, traj_len)
+                         self._t + ctx.lag + self.chunksize * ctx.stride, traj_len)
                     slice_y = slice(self._t + ctx.lag, upper_bound_Y, ctx.stride)
                     Y = traj[slice_y]
 
