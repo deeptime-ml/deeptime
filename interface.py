@@ -94,7 +94,7 @@ class ReaderInterface(Transformer):
         """
         return self._ntraj
 
-    def trajectory_length(self, itraj, stride=1):
+    def trajectory_length(self, itraj, stride=1, skip=None):
         """
         Returns the length of trajectory
 
@@ -111,7 +111,7 @@ class ReaderInterface(Transformer):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
         else:
-            return (self._lengths[itraj] - self._skip - 1) // int(stride) + 1
+            return (self._lengths[itraj] - (self._skip if skip is None else skip) - 1) // int(stride) + 1
 
     def trajectory_lengths(self, stride=1):
         """
