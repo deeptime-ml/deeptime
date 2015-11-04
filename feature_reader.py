@@ -25,6 +25,7 @@ import six
 from pyemma.coordinates.util import patches
 from pyemma.coordinates.data.interface import ReaderInterface
 from pyemma.coordinates.data.featurizer import MDFeaturizer
+from pyemma.coordinates.transform import Transformer
 from pyemma import config
 
 __author__ = 'noe, marscher'
@@ -203,6 +204,13 @@ class FeatureReader(ReaderInterface):
                 self._mditer = self._create_iter(
                     self.trajfiles[0], stride=context.stride if context else 1, skip=self._skip
                 )
+
+    @Transformer.chunksize.setter
+    def chunksize(self, size):
+        if hasattr(self, '_mditer') and self._mditer is not None:
+            self._mditer._chunksize = size
+        Transformer.chunksize.fset(self, size)
+
 
     def _next_chunk(self, context=None):
         """
