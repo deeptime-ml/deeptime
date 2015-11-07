@@ -23,10 +23,9 @@ from itertools import count
 import functools
 
 import mdtraj
-from mdtraj.geometry.dihedral import (_get_indices_phi,
-                                      _get_indices_psi,
-                                      _atom_sequence,
-                                      CHI1_ATOMS,
+from mdtraj.geometry.dihedral import (indices_phi,
+                                      indices_psi,
+                                      indices_chi1,
                                       )
 
 from pyemma.util.indices import (combinations as _combinations,
@@ -45,22 +44,6 @@ from pyemma.util.annotators import deprecated
 __author__ = 'Frank Noe, Martin Scherer'
 __all__ = ['MDFeaturizer',
            ]
-
-
-def _get_indices_chi1(traj):
-    rids, indices = list(zip(*(_atom_sequence(traj, atoms) for atoms in CHI1_ATOMS)))
-    id_sort = np.argsort(np.concatenate(rids))
-    if not any(x.size for x in indices):
-        return np.empty(shape=(0, 4), dtype=np.int)
-
-    indices = np.vstack(x for x in indices if x.size)[id_sort]
-    return id_sort, indices
-
-# this is needed for get_indices functions, since they expect a Trajectory,
-# not a Topology
-class fake_traj(object):
-    def __init__(self, top):
-        self.top = top
 
 
 def _describe_atom(topology, index):
@@ -688,8 +671,7 @@ class DihedralFeature(object):
 class BackboneTorsionFeature(DihedralFeature):
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False):
-        ft = fake_traj(topology)
-        _, indices = _get_indices_phi(ft)
+        indices = indices_phi(topology)
 
         if not selstr:
             self._phi_inds = indices
@@ -697,7 +679,7 @@ class BackboneTorsionFeature(DihedralFeature):
             self._phi_inds = indices[np.in1d(indices[:, 1],
                                              topology.select(selstr), assume_unique=True)]
 
-        _, indices = _get_indices_psi(ft)
+        indices = indices_psi(topology)
         if not selstr:
             self._psi_inds = indices
         else:
@@ -735,8 +717,7 @@ class BackboneTorsionFeature(DihedralFeature):
 class Chi1TorsionFeature(DihedralFeature):
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False):
-        ft = fake_traj(topology)
-        _, indices = _get_indices_chi1(ft)
+        indices = indices_chi1(topology)
         if not selstr:
             dih_indexes = indices
         else:
