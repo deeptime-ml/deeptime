@@ -31,7 +31,7 @@ from mdtraj.geometry.dihedral import (indices_phi,
 from pyemma.util.indices import (combinations as _combinations,
                                  product as _product,
                                  )
-from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
+from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int, is_string as _is_string
 
 
 from six import PY3
@@ -198,8 +198,9 @@ def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
                 assert not np.allclose(igroup, jgroup), "Some group definitions appear to be duplicated, e.g %u and %u"%(ii,ii+jj+1)
 
     # Create and/or check the pair-list
-    if group_pairs == 'all':
-        parsed_group_pairs = _combinations(np.arange(len(group_definitions)), 2)
+    if _is_string(group_pairs):
+        if group_pairs == 'all':
+            parsed_group_pairs = _combinations(np.arange(len(group_definitions)), 2)
     else:
         assert isinstance(group_pairs, np.ndarray)
         assert group_pairs.shape[1] == 2
@@ -1163,9 +1164,10 @@ class MDFeaturizer(Loggable):
             via :py:obj:`residue_pairs`.
         """
 
-        if scheme != 'ca' and residue_pairs == 'all':
-            self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
-                                 "very time consuming. Consider reducing the residue pairs")
+        if scheme != 'ca' and _is_string(residue_pairs):
+            if residue_pairs == 'all':
+                self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
+                                     "very time consuming. Consider reducing the residue pairs")
 
         f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein, threshold)
         self.__add_feature(f)
