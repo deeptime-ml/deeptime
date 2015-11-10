@@ -29,7 +29,6 @@ from pyemma import config
 __author__ = 'noe, marscher'
 __all__ = ['FeatureReader']
 
-
 class FeatureReader(ReaderInterface):
 
     """
@@ -109,16 +108,39 @@ class FeatureReader(ReaderInterface):
 
     def __set_dimensions_and_lengths(self):
         self._ntraj = len(self.trajfiles)
-        # lookups pre-computed lengths, or compute it on the fly and store it in db.
-        if config['use_trajectory_lengths_cache'] == 'True':
-            from pyemma.coordinates.data.traj_info_cache import TrajectoryInfoCache
-            for traj in self.trajfiles:
-                self._lengths.append(TrajectoryInfoCache[traj])
-        else:
-            for traj in self.trajfiles:
-                with mdtraj.open(traj, mode='r') as fh:
-                    self._lengths.append(len(fh))
 
+        # workaround NotImplementedError __len__ for xyz files
+        # Github issue: markovmodel/pyemma#621
+        from mock import patch
+        from mdtraj.formats import XYZTrajectoryFile
+        def _make_len_func(top):
+            def _len_xyz(self):
+                assert isinstance(self, XYZTrajectoryFile)
+                assert hasattr(self, '_filename'), "structual change in xyzfile class!"
+                import warnings
+                from pyemma.util.exceptions import EfficiencyWarning
+                warnings.warn("reading all of your data,"
+                              " just to determine number of frames." +
+                              " Happens only once, because this is cached." 
+                              if config['use_trajectory_lengths_cache'] else "", EfficiencyWarning)
+                # obtain len by reading whole file!
+                mditer = mdtraj.iterload(self._filename, top=top)
+                return sum(t.n_frames for t in mditer)
+            return _len_xyz
+
+        f = _make_len_func(self.topfile)
+
+        # lookups pre-computed lengths, or compute it on the fly and store it in db.
+        with patch.object(XYZTrajectoryFile, '__len__', f):
+            if config['use_trajectory_lengths_cache'] == 'True':
+                from pyemma.coordinates.data.traj_info_cache import TrajectoryInfoCache
+                for traj in self.trajfiles:
+                    self._lengths.append(TrajectoryInfoCache[traj])
+            else:
+                for traj in self.trajfiles:
+                    with mdtraj.open(traj, mode='r') as fh:
+                        self._lengths.append(len(fh))
+                        
         # number of trajectories/data sets
         if self._ntraj == 0:
             raise ValueError("no valid data")
@@ -204,7 +226,7 @@ class FeatureReader(ReaderInterface):
                 adv_chunk = mdtraj.Trajectory(np.empty((0, shape[1], shape[2]), np.float32), chunk.topology)
             except RuntimeError as e:
                 if "seek error" in str(e):
-                    raise RuntimeError("Trajectory %s too short for lag time %i" %
+                    raise RuntimeError("Trajectory %s too short for lag time %i" % 
                                        (self.trajfiles[self._itraj], context.lag))
 
         self._t += shape[0]
@@ -267,5 +289,5 @@ class FeatureReader(ReaderInterface):
         traj = mdtraj.load_frame(self.trajfiles[0], index=0, top=self.topfile)
         desired_n_atoms = self.featurizer.topology.n_atoms
         assert traj.xyz.shape[1] == desired_n_atoms, "Mismatch in the number of atoms between the topology" \
-                                                     " and the first trajectory file, %u vs %u"% \
+                                                     " and the first trajectory file, %u vs %u" % \
                                                      (desired_n_atoms, traj.xyz.shape[1])
