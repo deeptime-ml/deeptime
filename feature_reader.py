@@ -205,11 +205,11 @@ class FeatureReader(ReaderInterface):
                     self.trajfiles[0], stride=context.stride if context else 1, skip=self._skip
                 )
 
-    @Transformer.chunksize.setter
+    @ReaderInterface.chunksize.setter
     def chunksize(self, size):
         if hasattr(self, '_mditer') and self._mditer is not None:
             self._mditer._chunksize = size
-        Transformer.chunksize.fset(self, size)
+        ReaderInterface.chunksize.fset(self, size)
 
 
     def _next_chunk(self, context=None):
