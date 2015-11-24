@@ -202,9 +202,9 @@ class FragmentedTrajectoryReader(ReaderInterface):
         if self._itraj > self._ntraj:
             self._reset(ctx)
         if not self._it:
-            self._it = _FragmentedTrajectoryIterator(self, self._readers[self._itraj], self._chunksize, ctx.stride, self._skip)
+            self._it = _FragmentedTrajectoryIterator(self, self._readers[self._itraj], self.chunksize, ctx.stride, self._skip)
         if ctx.lag > 0 and not self._it_lagged:
-            self._it_lagged = _FragmentedTrajectoryIterator(self, self._readers_lagged[self._itraj], self._chunksize,
+            self._it_lagged = _FragmentedTrajectoryIterator(self, self._readers_lagged[self._itraj], self.chunksize,
                                                             ctx.stride, self._skip + ctx.lag)
         if not ctx.uniform_stride:
             raise ValueError("fragmented trajectory implemented for random access")
