@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 import numpy as np
 import warnings
-from itertools import count
 import functools
 
 import mdtraj
@@ -38,7 +37,7 @@ from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int
 from six import PY3
 from six.moves import map, range, zip
 
-from pyemma._base.logging import instance_name, create_logger
+from pyemma._base.logging import Loggable
 from pyemma.util.annotators import deprecated
 
 
@@ -814,11 +813,8 @@ class MinRmsdFeature(object):
         return self.__hash__() == other.__hash__()
 
 
-class MDFeaturizer(object):
+class MDFeaturizer(Loggable):
     r"""Extracts features from MD trajectories."""
-
-    # counting instances, incremented by name property.
-    _ids = count(0)
 
     def __init__(self, topfile):
         """extracts features from MD trajectories.
@@ -837,23 +833,6 @@ class MDFeaturizer(object):
             self.topology = topfile
         self.active_features = []
         self._dim = 0
-
-    @property
-    def name(self):
-        try:
-            return self._name
-        except AttributeError:
-            self._name = instance_name(self, next(self._ids))
-            return self._name
-
-    @property
-    def _logger(self):
-        """ The logger for this Estimator """
-        try:
-            return self._logger_instance
-        except AttributeError:
-            create_logger(self)
-            return self._logger_instance
 
     def __add_feature(self, f):
         # perform sanity checks
