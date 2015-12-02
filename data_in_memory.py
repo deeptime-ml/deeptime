@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -18,15 +17,15 @@
 
 
 from __future__ import absolute_import
+
 import numpy as np
 
-from pyemma.coordinates.data.interface import ReaderInterface
+from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
 
 __author__ = 'noe, marscher'
 
 
-class DataInMemory(ReaderInterface):
-
+class DataInMemory(DataSource):
     r"""
     multi-dimensional data fully stored in memory.
 
@@ -41,11 +40,11 @@ class DataInMemory(ReaderInterface):
         arrays.
     """
 
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False):
+        return DataInMemoryIterator(self, skip, chunk, stride, return_trajindex)
+
     def __init__(self, data, chunksize=5000):
         super(DataInMemory, self).__init__(chunksize=chunksize)
-
-        # storage
-        self._data = []
 
         if not isinstance(data, (list, tuple)):
             data = [data]
@@ -58,8 +57,24 @@ class DataInMemory(ReaderInterface):
             raise ValueError("Please supply numpy.ndarray, or list/tuple of ndarray."
                              " Your input was %s" % str(data))
 
-        self.__set_dimensions_and_lenghts()
-        self._parametrized = True
+        self._set_dimensions_and_lenghts()
+
+    def _set_dimensions_and_lenghts(self):
+        # number of trajectories/data sets
+        self._ntraj = len(self.data)
+        if self.ntraj == 0:
+            raise ValueError("no valid data")
+
+        # this works since everything is flattened to 2d
+        self._lengths = [np.shape(d)[0] for d in self.data]
+
+        # ensure all trajs have same dim
+        ndims = [np.shape(x)[1] for x in self.data]
+        if not np.unique(ndims).size == 1:
+            raise ValueError("input data has different dimensions!"
+                             "Dimensions are = %s" % ndims)
+
+        self._ndim = ndims[0]
 
     @classmethod
     def load_from_files(cls, files):
@@ -78,96 +93,59 @@ class DataInMemory(ReaderInterface):
         return cls(data)
 
     def describe(self):
-        return "[DataInMemory array shapes: %s]" % [np.shape(x) for x in self._data]
+        return "[DataInMemory array shapes: %s]" % [np.shape(x) for x in self.data]
 
-    def __set_dimensions_and_lenghts(self):
-        # number of trajectories/data sets
-        self._ntraj = len(self._data)
-        if self._ntraj == 0:
-            raise ValueError("no valid data")
 
-        # this works since everything is flattened to 2d
-        self._lengths = [np.shape(d)[0] for d in self._data]
+class DataInMemoryIterator(DataSourceIterator):
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+        super(DataInMemoryIterator, self).__init__(data_source, skip, chunk, stride, return_trajindex)
 
-        # ensure all trajs have same dim
-        ndims = [np.shape(x)[1] for x in self._data]
-        if not np.unique(ndims).size == 1:
-            raise ValueError("input data has different dimensions!"
-                             "Dimensions are = %s" % ndims)
-
-        self._ndim = ndims[0]
-
-    def _reset(self, context=None):
-        """Resets the data producer
-        """
-        self._itraj = 0
-        self._t = 0
-
-    def _next_chunk(self, ctx):
-        # finished once with all trajectories? so _reset the pointer to allow
-        # multi-pass
-        if self._itraj >= self._ntraj:
-            self._reset()
+    def next_chunk(self):
+        if self.current_trajindex >= self._data_source.ntraj:
+            raise StopIteration()
 
         traj_len = self._lengths[self._itraj]
-        traj = self._data[self._itraj]
+        traj = self._data_source.data[self._itraj]
 
         # only apply _skip at the beginning of each trajectory
-        skip = self._skip if self._t == 0 else 0
+        skip = self.skip if self._t == 0 else 0
 
         # complete trajectory mode
         if self.chunksize == 0:
-            if not ctx.uniform_stride:
-                X = self._data[self._itraj][ctx.ra_indices_for_traj(self._itraj)]
+            if not self.uniform_stride:
+                chunk = self._data_source.data[self._itraj][self.ra_indices_for_traj(self._itraj)]
                 self._itraj += 1
                 # skip trajs which are not included in stride
-                while self._itraj not in ctx.traj_keys and self._itraj < self.number_of_trajectories():
+                while self._itraj not in self.traj_keys and self._itraj < self.number_of_trajectories():
                     self._itraj += 1
-                if ctx.lag == 0:
-                    return X
-                else:
-                    raise ValueError("Random access with lag not supported")
+                return chunk
             else:
-                X = traj[skip::ctx.stride]
+                chunk = traj[skip::self.stride]
                 self._itraj += 1
-                if ctx.lag == 0:
-                    return X
-                else:
-                    Y = traj[skip+ctx.lag::ctx.stride]
-                    return X, Y
+                return chunk
         # chunked mode
         else:
-            if not ctx.uniform_stride:
-                Y0 = self._data[self._itraj][
-                    ctx.ra_indices_for_traj(self._itraj)[self._t:min(
-                        self._t + self.chunksize, ctx.ra_trajectory_length(self._itraj)
+            if not self.uniform_stride:
+                random_access_chunk = self._data_source.data[self._itraj][
+                    self.ra_indices_for_traj(self._itraj)[self._t:min(
+                        self._t + self.chunksize, self.ra_trajectory_length(self._itraj)
                     )]
                 ]
-                if ctx.lag != 0:
-                    raise ValueError("Random access with lag not supported")
-
                 self._t += self.chunksize
-                if self._t >= ctx.ra_trajectory_length(self._itraj):
+                if self._t >= self.ra_trajectory_length(self._itraj):
                     self._itraj += 1
                     self._t = 0
 
                 # skip trajs which are not included in stride
-                while (self._itraj not in ctx.traj_keys or self._t >= ctx.ra_trajectory_length(self._itraj)) \
+                while (self._itraj not in self.traj_keys or self._t >= self.ra_trajectory_length(self._itraj)) \
                         and self._itraj < self.number_of_trajectories():
                     self._itraj += 1
                     self._t = 0
-                return Y0
+                return random_access_chunk
             else:
-                upper_bound = min(skip + self._t + self.chunksize * ctx.stride, traj_len)
-                slice_x = slice(skip + self._t, upper_bound, ctx.stride)
-
-                X = traj[slice_x]
-
-                if ctx.lag != 0:
-                    upper_bound_Y = min(
-                        skip + self._t + ctx.lag + self.chunksize * ctx.stride, traj_len)
-                    slice_y = slice(skip + self._t + ctx.lag, upper_bound_Y, ctx.stride)
-                    Y = traj[slice_y]
+                upper_bound = min(skip + self._t + self.chunksize * self.stride, traj_len)
+                slice_x = slice(skip + self._t, upper_bound, self.stride)
+                chunk = traj[slice_x]
 
                 self._t = upper_bound
 
@@ -175,7 +153,4 @@ class DataInMemory(ReaderInterface):
                     self._itraj += 1
                     self._t = 0
 
-                if ctx.lag == 0:
-                    return X
-                else:
-                    return X, Y
+                return chunk

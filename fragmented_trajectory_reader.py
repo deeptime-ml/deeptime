@@ -212,18 +212,18 @@ class FragmentedTrajectoryReader(ReaderInterface):
             self._it.ctx = ctx
             X = next(self._it, None)
             self._t += X.shape[0]
-            remove_it = False
+            remove_lagged_iterator = False
             if self._t >= self.trajectory_length(self._itraj, stride=ctx.stride):
                 self._itraj += 1
                 self._it = None
                 self._t = 0
-                remove_it = True
+                remove_lagged_iterator = True
             if ctx.lag == 0:
                 return X
             else:
                 self._it_lagged.ctx = ctx
                 Y = next(self._it_lagged, None)
-                if remove_it:
+                if remove_lagged_iterator:
                     self._it_lagged = None
                 return X, Y
 
