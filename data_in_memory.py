@@ -60,7 +60,6 @@ class DataInMemory(ReaderInterface):
 
         self.__set_dimensions_and_lenghts()
         self._parametrized = True
-        self._logger.info("hi from data in mem")
 
     @classmethod
     def load_from_files(cls, files):
