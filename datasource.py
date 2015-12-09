@@ -3,9 +3,9 @@ from abc import ABCMeta, abstractmethod
 
 import six
 import numpy as np
+from math import ceil
 
 from pyemma.coordinates.data.iterable import Iterable
-from pyemma.util.annotators import deprecated
 
 
 class DataSource(Iterable):
@@ -19,7 +19,6 @@ class DataSource(Iterable):
         self._ntraj = 0
         self._lengths = []
 
-    @deprecated("legacy code")
     def dimension(self):
         return self.ndim
 
@@ -62,7 +61,7 @@ class DataSource(Iterable):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
         else:
-            return (self._lengths[itraj] - (self._skip if skip is None else skip) - 1) // int(stride) + 1
+            return (self._lengths[itraj] - (0 if skip is None else skip) - 1) // int(stride) + 1
 
     def trajectory_lengths(self, stride=1, skip=0):
         """
@@ -120,27 +119,84 @@ class DataSource(Iterable):
 
         self.data.append(array)
 
+    def get_output(self, dimensions=slice(0, None), stride=1, skip=0):
+        if isinstance(dimensions, int):
+            ndim = 1
+            dimensions = slice(dimensions, dimensions + 1)
+        elif isinstance(dimensions, list):
+            ndim = len(np.zeros(self.ndim)[dimensions])
+        elif isinstance(dimensions, np.ndarray):
+            assert dimensions.ndim == 1, 'dimension indices can\'t have more than one dimension'
+            ndim = len(np.zeros(self.ndim)[dimensions])
+        elif isinstance(dimensions, slice):
+            ndim = len(np.zeros(self.ndim)[dimensions])
+        else:
+            raise ValueError('unsupported type (%s) of \"dimensions\"' % type(dimensions))
+
+        assert ndim > 0, "ndim was zero in %s" % self.__class__.__name__
+
+        # create iterator
+        it = self._create_iterator(skip=skip, chunk=0, stride=stride, return_trajindex=True)
+
+        # allocate memory
+        try:
+            trajs = [np.empty((l, ndim), dtype=self.output_type())
+                     for l in it.trajectory_lengths()]
+        except MemoryError:
+            self._logger.exception("Could not allocate enough memory to map all data."
+                                   " Consider using a larger stride.")
+            return
+
+        if __debug__:
+            self._logger.debug("get_output(): dimensions=%s" % str(dimensions))
+            self._logger.debug("get_output(): created output trajs with shapes: %s"
+                               % [x.shape for x in trajs])
+        # fetch data
+        last_itraj = -1
+        t = 0  # first time point
+
+        self._progress_register(it._n_chunks(),
+                                description='getting output of %s' % self.__class__.__name__,
+                                stage=1)
+
+        for itraj, chunk in it:
+            if itraj != last_itraj:
+                last_itraj = itraj
+                t = 0  # reset time to 0 for new trajectory
+            L = chunk.shape[0]
+            if L > 0:
+                trajs[itraj][t:t + L, :] = chunk[:, dimensions]
+            t += L
+
+            # update progress
+            self._progress_update(1, stage=1)
+
+        return trajs
+
 
 class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         self._data_source = data_source
         self._skip = skip
         self._chunk = chunk
-        self.__init_stride(stride)
         self._return_trajindex = return_trajindex
         self._itraj = 0
         self._t = 0
+        self.__init_stride(stride)
 
     def __init_stride(self, stride):
         self._stride = stride
-        if isinstance(stride, np.ndarray):
-            keys = stride[:, 0]
+        if isinstance(self.stride, np.ndarray):
+            keys = self.stride[:, 0]
             self._trajectory_keys, self._trajectory_lengths = np.unique(keys, return_counts=True)
         else:
             self._trajectory_keys = None
-        self._uniform_stride = DataSourceIterator.is_uniform_stride(stride)
+        self._uniform_stride = DataSourceIterator.is_uniform_stride(self.stride)
         if not self.uniform_stride and not self.is_stride_sorted():
             raise ValueError("Currently only sorted arrays allowed for random access")
+        if self._trajectory_keys is not None:
+            # fast forward to first itraj with data
+            self._itraj = min(self._trajectory_keys)
 
     def ra_indices_for_traj(self, traj):
         """
@@ -149,7 +205,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         :return: a Nx1 - np.array of the indices corresponding to the trajectory index
         """
         assert not self.uniform_stride, "requested random access indices, but is in uniform stride mode"
-        return self._stride[self._stride[:, 0] == traj][:, 1] if traj in self.traj_keys else np.array([])
+        return np.squeeze(self._stride[self._stride[:, 0] == traj][:, 1] if traj in self.traj_keys else np.array([]))
 
     def ra_trajectory_length(self, traj):
         assert not self.uniform_stride, "requested random access trajectory length, but is in uniform stride mode"
@@ -166,6 +222,31 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
                     # traj indices were not sorted
                     return False
         return True
+
+    def _n_chunks(self, stride=None):
+        """ rough estimate of how many chunks will be processed """
+        stride = stride if stride is not None else self.stride
+        if self.chunksize != 0:
+            if not DataSourceIterator.is_uniform_stride(stride):
+                chunks = ceil(len(stride[:, 0]) / float(self.chunksize))
+            else:
+                chunks = sum([ceil(l / float(self.chunksize))
+                              for l in self.trajectory_lengths()])
+        else:
+            chunks = 1
+        return int(chunks)
+
+    def number_of_trajectories(self):
+        return self._data_source.number_of_trajectories()
+
+    def trajectory_length(self):
+        return self._data_source.trajectory_length(self.current_trajindex, self.stride, self.skip)
+
+    def trajectory_lengths(self):
+        return self._data_source.trajectory_lengths(self.stride, self.skip)
+
+    def n_frames_total(self):
+        return self._data_source.n_frames_total(self.stride)
 
     @property
     def current_trajindex(self):
@@ -241,7 +322,12 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self.next()
 
     def next(self):
+        if self.return_traj_index:
+            return self.current_trajindex, self.next_chunk()
         return self.next_chunk()
+
+    def __iter__(self):
+        return self
 
 # class PipelineStage(DataSource):
 #     def __init__(self, data_source, transformer):
