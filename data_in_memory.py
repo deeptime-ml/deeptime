@@ -104,7 +104,7 @@ class DataInMemoryIterator(DataSourceIterator):
         if self.current_trajindex >= self._data_source.ntraj:
             raise StopIteration()
 
-        traj_len = self._lengths[self._itraj]
+        traj_len = self._data_source._lengths[self._itraj]
         traj = self._data_source.data[self._itraj]
 
         # only apply _skip at the beginning of each trajectory

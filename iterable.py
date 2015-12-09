@@ -1,8 +1,17 @@
 from abc import ABCMeta, abstractmethod
 import six
+import numpy as np
+from itertools import count
+
+from pyemma._base.logging import create_logger, instance_name
+from pyemma._base.progress import ProgressReporter
 
 
-class Iterable(six.with_metaclass(ABCMeta)):
+class Iterable(six.with_metaclass(ABCMeta, ProgressReporter)):
+
+    # counting transformer instances, incremented by name property.
+    _ids = count(0)
+
     def __init__(self, chunksize=100):
         self._default_chunksize = chunksize
         if self.default_chunksize < 0:
@@ -12,7 +21,27 @@ class Iterable(six.with_metaclass(ABCMeta)):
     def default_chunksize(self):
         return self._default_chunksize
 
-    def iterator(self, lag=0, chunk=None, stride=1, return_trajindex=False):
+    @property
+    def _logger(self):
+        if not hasattr(self, '_logger_instance'):
+            create_logger(self)
+        return self._logger_instance
+
+    @property
+    def chunksize(self):
+        return self._default_chunksize
+
+    @chunksize.setter
+    def chunksize(self, value):
+        self._default_chunksize = value
+
+    @property
+    def name(self):
+        if not hasattr(self, '_name'):
+            self._name = instance_name(self, next(self._ids))
+        return self._name
+
+    def iterator(self, lag=0, chunk=None, stride=1, return_trajindex=True):
         chunk = chunk if chunk is not None else self.default_chunksize
         it = self._create_iterator(skip=0, chunk=chunk, stride=stride, return_trajindex=return_trajindex)
         if lag > 0:
@@ -21,7 +50,7 @@ class Iterable(six.with_metaclass(ABCMeta)):
         return it
 
     @abstractmethod
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
         """
         Should be implemented by non-abstract subclasses. Creates an instance-independent iterator.
         :param skip: How many frames to skip before streaming.
@@ -31,6 +60,10 @@ class Iterable(six.with_metaclass(ABCMeta)):
         :return: a chunk of data if return_trajindex is False, otherwise a tuple of (trajindex, data).
         """
         pass
+
+    def output_type(self):
+        r""" By default transformers return single precision floats. """
+        return np.float32
 
 
 class LaggedIterator(object):
