@@ -515,11 +515,21 @@ class GroupMinDistanceFeature(DistanceFeature):
 
 class ContactFeature(DistanceFeature):
 
-    def __init__(self, top, distance_indexes, threshold=5.0, periodic=True):
+    def __init__(self, top, distance_indexes, threshold=5.0, periodic=True, count_contacts=False):
         DistanceFeature.__init__(self, top, distance_indexes)
         self.prefix_label = "CONTACT:"
+        if count_contacts:
+            self.prefix_label="counted "+self.prefix_label
         self.threshold = threshold
         self.periodic = periodic
+        self.count_contacts = count_contacts
+
+    @property
+    def dimension(self):
+        if self.count_contacts:
+            return 1
+        else:
+            return self.distance_indexes.shape[0]
 
     @deprecated
     def map(self, traj):
@@ -535,11 +545,16 @@ class ContactFeature(DistanceFeature):
             (len(traj), self.distance_indexes.shape[0]), dtype=np.float32)
         I = np.argwhere(dists <= self.threshold)
         res[I[:, 0], I[:, 1]] = 1.0
-        return res
+        if self.count_contacts:
+            return res.sum(1, keepdims=True)
+        else:
+            return res
 
     def __hash__(self):
         hash_value = DistanceFeature.__hash__(self)
         hash_value ^= hash(self.threshold)
+        if self.count_contacts:
+            hash_value += 1
         return hash_value
 
 
@@ -1092,7 +1107,7 @@ class MDFeaturizer(Loggable):
         f = InverseDistanceFeature(self.topology, atom_pairs, periodic=True)
         self.__add_feature(f)
 
-    def add_contacts(self, indices, indices2=None, threshold=0.3, periodic=True):
+    def add_contacts(self, indices, indices2=None, threshold=0.3, periodic=True, count_contacts=False):
         r"""
         Adds the contacts to the feature list.
 
@@ -1114,6 +1129,13 @@ class MDFeaturizer(Loggable):
             distances below this threshold (in nm) will result in a feature 1.0, distances above will result in 0.0.
             The default is set to .3 nm (3 Angstrom)
 
+        periodic : boolean, default True
+            use the minimum image convention if unitcell information is available
+
+        count_contacts : boolean, default False
+            If set to true, this feature will return the number of formed contacts (and not feature values with either 1.0 or 0)
+            The ouput of this feature will be of shape (Nt,1), and not (Nt, nr_of_contacts)
+
         .. note::
             When using the *iterable of integers* input, :py:obj:`indices` and :py:obj:`indices2`
             will be sorted numerically and made unique before converting them to a pairlist.
@@ -1124,7 +1146,7 @@ class MDFeaturizer(Loggable):
             indices, indices2, self._logger, fname='add_contacts()')
 
         atom_pairs = self._check_indices(atom_pairs)
-        f = ContactFeature(self.topology, atom_pairs, threshold, periodic)
+        f = ContactFeature(self.topology, atom_pairs, threshold, periodic, count_contacts)
         self.__add_feature(f)
 
     def add_residue_mindist(self,
