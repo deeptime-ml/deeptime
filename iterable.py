@@ -181,6 +181,7 @@ class LaggedIterator(object):
         itraj = None
         if self._return_trajindex:
             itraj, data = data
+        data_lagged = self._it_lagged.next()
         if data.shape[0] > data_lagged.shape[0]:
             # data chunk is bigger, truncate it to match data_lagged's shape
             data = data[:data_lagged.shape[0]]
