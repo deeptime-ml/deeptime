@@ -20,7 +20,8 @@
 from __future__ import absolute_import
 import numpy as np
 import mdtraj
-from six import string_types
+import six
+#from six import string_types
 from pyemma.coordinates.util import patches
 from pyemma.coordinates.data.interface import ReaderInterface
 from pyemma.coordinates.data.featurizer import MDFeaturizer
@@ -78,7 +79,7 @@ class FeatureReader(ReaderInterface):
         super(FeatureReader, self).__init__(chunksize=chunksize)
 
         # files
-        if isinstance(trajectories, string_types):
+        if isinstance(trajectories, six.string_types):
             trajectories = [trajectories]
         self.trajfiles = trajectories
         self.topfile = topologyfile
@@ -111,7 +112,10 @@ class FeatureReader(ReaderInterface):
 
         # workaround NotImplementedError __len__ for xyz files
         # Github issue: markovmodel/pyemma#621
-        from mock import patch
+        if six.PY2:
+            from mock import patch
+        else:
+            from unittest.mock import patch
         from mdtraj.formats import XYZTrajectoryFile
         def _make_len_func(top):
             def _len_xyz(self):
@@ -121,8 +125,9 @@ class FeatureReader(ReaderInterface):
                 from pyemma.util.exceptions import EfficiencyWarning
                 warnings.warn("reading all of your data,"
                               " just to determine number of frames." +
-                              " Happens only once, because this is cached." 
-                              if config['use_trajectory_lengths_cache'] else "", EfficiencyWarning)
+                              " Happens only once, because this is cached."
+                              if config['use_trajectory_lengths_cache'] else "",
+                              EfficiencyWarning)
                 # obtain len by reading whole file!
                 mditer = mdtraj.iterload(self._filename, top=top)
                 return sum(t.n_frames for t in mditer)
@@ -140,7 +145,7 @@ class FeatureReader(ReaderInterface):
                 for traj in self.trajfiles:
                     with mdtraj.open(traj, mode='r') as fh:
                         self._lengths.append(len(fh))
-                        
+
         # number of trajectories/data sets
         if self._ntraj == 0:
             raise ValueError("no valid data")
