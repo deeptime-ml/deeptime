@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -17,101 +16,134 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-'''
+"""
 Created on 11.04.2015
 
 @author: marscher
-'''
+"""
 
 from __future__ import absolute_import
-from pyemma.coordinates.data.interface import ReaderInterface
-import numpy as np
+
 import csv
+
+import numpy as np
 from six.moves import range
 
+from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
 
-class _csv_chunked_numpy_iterator:
 
-    """
-    returns numpy arrays by combining multiple lines to chunks
-    """
-
-    def __init__(self, reader, chunksize=1, skiprows=None, header=None, context=None, itraj=None):
-        self.reader = reader
-        self.chunksize = chunksize
-        self._ctx = context
-        self._itraj = itraj
-
-        if isinstance(skiprows, int):
-            skiprows = np.arange(skiprows)
-        self.skiprows = (np.empty(0) if skiprows is None
-                         else np.unique(skiprows))
-
+class PyCSVIterator(DataSourceIterator):
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, mapping_fct=None):
+        super(PyCSVIterator, self).__init__(data_source, skip=skip, chunk=chunk,
+                                            stride=stride, return_trajindex=return_trajindex, mapping_fct=mapping_fct)
+        self._open_file()
+        if isinstance(self._skip_rows, int):
+            self._skip_rows = np.arange(self._skip_rows)
+        self._skip_rows = (np.empty(0) if self._skip_rows is None
+                           else np.unique(self._skip_rows))
         self.line = 0
-
-        # file handle and name
-        self.fh = None
-        self.f = None
-
-        # skip header in first row
-        if header == 0:
-            next(self.reader)
-            self.line = 1
-
-    def get_chunk(self):
-        return next(self)
-
-    def __iter__(self):
-        return self
+        self._reader = csv.reader(self._file_handle,
+                                  dialect=self._data_source._dialects[self._itraj])
 
     def close(self):
-        self.fh.close()
+        if self._file_handle is not None:
+            self._file_handle.close()
+        raise StopIteration()
 
-    def _convert_to_np_chunk(self, list_of_strings):
-        stack_of_strings = np.vstack(list_of_strings)
-        result = stack_of_strings.astype(float)
-        return result
-
-    def __next__(self):
-        if not self.fh:
-            raise StopIteration
-
+    def next_chunk(self):
+        if not self._file_handle or self._itraj >= self.number_of_trajectories():
+            self.close()
+        traj_len = self.trajectory_lengths()[self._itraj]
         lines = []
-
-        for row in self.reader:
-            if self.line in self.skiprows:
-                # print "skip line", self.line
+        for row in self._reader:
+            if self.line in self._skip_rows:
                 self.line += 1
                 continue
 
             self.line += 1
-            if not self._ctx.uniform_stride:
-                for i in range(0, self._ctx.ra_indices_for_traj(self._itraj).tolist().count(self.line-1)):
+            if not self.uniform_stride:
+                for i in range(0, self._ctx.ra_indices_for_traj(self._itraj).tolist().count(self.line - 1)):
                     lines.append(row)
             else:
                 lines.append(row)
-            if self.line % self.chunksize == 0:
+            if self.chunksize != 0 and self.line % self.chunksize == 0:
                 result = self._convert_to_np_chunk(lines)
                 del lines[:]
+                if self._t >= traj_len:
+                    self._next_traj()
                 return result
 
+        self._next_traj()
         # last chunk
         if len(lines) > 0:
-            return self._convert_to_np_chunk(lines)
+            result = self._convert_to_np_chunk(lines)
+            del lines[:]
+            return result
 
-        self.fh.close()
-        raise StopIteration
+    def _next_traj(self):
+        self._itraj += 1
+        if self._itraj < self.number_of_trajectories():
+            # close current file handle
+            self._file_handle.close()
+            # open next one
+            self._open_file()
+            # reset line counter
+            self.line = 0
+            # reset time counter
+            self._t = 0
+            # get new reader
+            self._reader = csv.reader(self._file_handle, dialect=self._data_source._dialects[self._itraj])
 
-    def next(self):
-        return self.__next__()
+    def _convert_to_np_chunk(self, list_of_strings):
+        self._t += len(list_of_strings)
+        stack_of_strings = np.vstack(list_of_strings)
+        result = stack_of_strings.astype(float)
+        return result
+
+    def _open_file(self):
+        fn = self._data_source._filenames[self._itraj]
+
+        # only apply _skip property at the beginning of the trajectory
+        skip = self._data_source._skip + self.skip if self._t == 0 else 0
+        nt = self._data_source._lengths[self._itraj]
+
+        if self._data_source._has_header[self._itraj]:
+            nt += 1
+            skip += 1
+
+        # calculate an index set, which rows to skip (includes stride)
+        skip_rows = []
+
+        if skip > 0:
+            skip_rows = np.zeros(nt)
+            skip_rows[:skip] = np.arange(skip)
+
+        if not self.uniform_stride:
+            all_frames = np.arange(nt)
+            skip_rows = np.setdiff1d(all_frames, self.ra_indices_for_traj(self._itraj), assume_unique=True)
+        elif self.stride > 1:
+            all_frames = np.arange(nt)
+            if skip_rows is not None:
+                wanted_frames = np.arange(skip, nt, self.stride)
+            else:
+                wanted_frames = np.arange(0, nt, self.stride)
+            skip_rows = np.setdiff1d(
+                    all_frames, wanted_frames, assume_unique=True)
+
+        self._skip_rows = skip_rows
+        try:
+            fh = open(fn)
+            self._file_handle = fh
+        except EnvironmentError:
+            self._logger.exception()
+            raise
 
 
-class PyCSVReader(ReaderInterface):
+class PyCSVReader(DataSource):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, mapping_fct=None):
+        return PyCSVIterator(self, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex, mapping_fct=mapping_fct)
 
     def __init__(self, filenames, chunksize=1000, **kwargs):
-        """
-
-        """
         super(PyCSVReader, self).__init__(chunksize=chunksize)
 
         if not isinstance(filenames, (tuple, list)):
@@ -122,8 +154,6 @@ class PyCSVReader(ReaderInterface):
 
         self._dialects = [None] * len(self._filenames)
 
-        self._kwargs = {}
-
         # user wants to skip lines, so we need to remember this for lagged
         # access
         if kwargs.get('skip'):
@@ -131,11 +161,7 @@ class PyCSVReader(ReaderInterface):
         else:
             self._skip = 0
 
-        self._current_lag = 0
-        self._lagged_iter_finished = False
-
         self.__set_dimensions_and_lenghts()
-        self._parametrized = True
 
     def describe(self):
         return "[CSVReader files=%s]" % self._filenames
@@ -175,7 +201,7 @@ class PyCSVReader(ReaderInterface):
             except EnvironmentError:
                 self._logger.exception()
                 self._logger.error(
-                    "removing %s from list, since it caused an error" % f)
+                        "removing %s from list, since it caused an error" % f)
                 self._filenames.remove(f)
 
         # check all files have same dimensions
@@ -183,120 +209,7 @@ class PyCSVReader(ReaderInterface):
             self._logger.error("got different dims: %s" % ndims)
             raise ValueError("input files have different dims")
         else:
-            self._ndim = dim
-
-    def _reset(self, context=None):
-        self._t = 0
-        self._itraj = 0
-        # to reopen files
-        self._iter = None
-        self._iter_lagged = None
-        self._lagged_iter_finished = False
-
-    def _open_file(self, skip, context=None, lagged=False):
-        fn = self._filenames[self._itraj]
-        self._logger.debug("opening file %s" % fn)
-
-        # do not open same file
-        if not lagged:
-            reader = self._iter
-        else:
-            reader = self._iter_lagged
-
-        if reader and reader.f == fn:
-            return
-
-        if self._has_header[self._itraj]:
-            # set first line to be interpreted as header(labels)
-            header = 0
-        else:
-            header = None
-
-        # only apply _skip property at the beginning of the trajectory
-        skip = skip + self._skip if self._t == 0 else 0
-        nt = self._lengths[self._itraj]
-
-        if self._has_header[self._itraj]:
-            nt += 1
-            skip += 1
-
-        # calculate an index set, which rows to skip (includes stride)
-        skiprows = None
-
-        if skip > 0:
-            skiprows = np.zeros(nt)
-            skiprows[:skip] = np.arange(skip)
-
-        if not context.uniform_stride:
-            all_frames = np.arange(nt)
-            skiprows = np.setdiff1d(all_frames, context.ra_indices_for_traj(self._itraj), assume_unique=True)
-        elif context.stride > 1:
-            all_frames = np.arange(nt)
-            if skiprows is not None:
-                wanted_frames = np.arange(skip, nt, context.stride)
-            else:
-                wanted_frames = np.arange(0, nt, context.stride)
-            skiprows = np.setdiff1d(
-                all_frames, wanted_frames, assume_unique=True)
-
-        try:
-            fh = open(fn)
-            reader = _csv_chunked_numpy_iterator(
-                csv.reader(fh, dialect=self._dialects[self._itraj]),
-                chunksize=self.chunksize, skiprows=skiprows, header=header, context=context, itraj=self._itraj)
-            reader.f = fn
-            reader.fh = fh
-        except EnvironmentError:
-            self._logger.exception()
-            raise
-
-        if not lagged:
-            self._iter = reader
-        else:
-            self._iter_lagged = reader
-
-    def _close(self):
-        # invalidate iterator
-        if self._iter:
-            self._iter.close()
-
-    def _next_chunk(self, ctx):
-
-        if self._iter is None:
-            self._open_file(0, context=ctx)
-
-        if ctx.lag != self._current_lag:
-            self._current_lag = ctx.lag
-            self._open_file(ctx.lag, context=ctx, lagged=True)
-
-        X = self._iter.get_chunk()
-        self._t += X.shape[0]
-
-        if (self._t >= self.trajectory_length(self._itraj, stride=ctx.stride) and
-                    self._itraj < len(self._filenames) - 1):
-            # close file handles and open new ones
-            self._t = 0
-            self._itraj += 1
-            self._iter = None
-
-            while not ctx.uniform_stride and self._itraj not in ctx.traj_keys:
-                self._itraj += 1
-
-            self._open_file(0, context=ctx)
-
-        if ctx.lag == 0:
-            return X
-        else:
-            # Note: this ugly hack is needed, since the caller of this method
-            # may try to request lagged chunks repeatedly.
-            try:
-                if self._lagged_iter_finished:
-                    raise StopIteration
-                Y = self._iter_lagged.get_chunk()
-            except StopIteration:
-                self._lagged_iter_finished = True
-                Y = np.empty(0)
-            return X, Y
+            self._ndim = ndims[0]
 
     def parametrize(self, stride=1):
         if self.in_memory:

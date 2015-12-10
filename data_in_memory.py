@@ -97,12 +97,16 @@ class DataInMemory(DataSource):
 
 
 class DataInMemoryIterator(DataSourceIterator):
+
+    def close(self):
+        raise StopIteration()
+
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         super(DataInMemoryIterator, self).__init__(data_source, skip, chunk, stride, return_trajindex)
 
     def next_chunk(self):
         if self.current_trajindex >= self._data_source.ntraj:
-            raise StopIteration()
+            self.close()
 
         traj_len = self._data_source._lengths[self._itraj]
         traj = self._data_source.data[self._itraj]

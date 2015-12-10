@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -18,21 +17,20 @@
 
 
 from __future__ import absolute_import
-import numpy as np
+
 import mdtraj
 import six
-#from six import string_types
-from pyemma.coordinates.util import patches
-from pyemma.coordinates.data.interface import ReaderInterface
-from pyemma.coordinates.data.featurizer import MDFeaturizer
-from pyemma.coordinates.transform import Transformer
+
 from pyemma import config
+from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
+from pyemma.coordinates.data.featurizer import MDFeaturizer
+from pyemma.coordinates.util import patches
 
 __author__ = 'noe, marscher'
 __all__ = ['FeatureReader']
 
-class FeatureReader(ReaderInterface):
 
+class FeatureReader(DataSource):
     """
     Reads features from MD data.
 
@@ -98,15 +96,7 @@ class FeatureReader(ReaderInterface):
         # Check that the topology and the files in the filelist can actually work together
         self._assert_toptraj_consistency()
 
-        # iteration
-        self._mditer = None
-        # current lag time
-        self._curr_lag = 0
-        # time lagged iterator
-        self._mditer2 = None
-
         self.__set_dimensions_and_lengths()
-        self._parametrized = True
 
     def __set_dimensions_and_lengths(self):
         self._ntraj = len(self.trajfiles)
@@ -132,6 +122,7 @@ class FeatureReader(ReaderInterface):
                 # obtain len by reading whole file!
                 mditer = mdtraj.iterload(self._filename, top=top)
                 return sum(t.n_frames for t in mditer)
+
             return _len_xyz
 
         f = _make_len_func(self.topfile)
@@ -151,7 +142,10 @@ class FeatureReader(ReaderInterface):
         if self._ntraj == 0:
             raise ValueError("no valid data")
 
-        # note: dimension is a custom impl in this class
+            # note: dimension is a custom impl in this class
+
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, mapping_fct=None):
+        return FeatureReaderIterator(self, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex, mapping_fct=mapping_fct)
 
     def describe(self):
         """
@@ -174,45 +168,29 @@ class FeatureReader(ReaderInterface):
             # general case
             return self.featurizer.dimension()
 
-    def _create_iter(self, filename, skip=0, stride=1, atom_indices=None):
-        return patches.iterload(filename, chunk=self.chunksize,
-                                top=self.topfile, skip=skip, stride=stride, atom_indices=atom_indices)
-
-    def _close(self):
-        try:
-            if self._mditer:
-                self._mditer.close()
-            if self._mditer2:
-                self._mditer2.close()
-        except:
-            self._logger.exception("something went wrong closing file handles")
-
-    def _reset(self, context=None):
-        """
-        resets the chunk reader
-        """
-        self._itraj = 0
-        self._curr_lag = 0
-        if len(self.trajfiles) >= 1:
-            self._t = 0
-            if context and not context.uniform_stride:
-                self._itraj = min(context.traj_keys)
-                self._mditer = self._create_iter(
-                    self.trajfiles[self._itraj], stride=context.ra_indices_for_traj(self._itraj)
-                )
-            else:
-                self._mditer = self._create_iter(
-                    self.trajfiles[0], stride=context.stride if context else 1, skip=self._skip
-                )
-
-    @ReaderInterface.chunksize.setter
-    def chunksize(self, size):
-        if hasattr(self, '_mditer') and self._mditer is not None:
-            self._mditer._chunksize = size
-        ReaderInterface.chunksize.fset(self, size)
+    def _assert_toptraj_consistency(self):
+        r""" Check if the topology and the trajfiles of the reader have the same n_atoms"""
+        traj = mdtraj.load_frame(self.trajfiles[0], index=0, top=self.topfile)
+        desired_n_atoms = self.featurizer.topology.n_atoms
+        assert traj.xyz.shape[1] == desired_n_atoms, "Mismatch in the number of atoms between the topology" \
+                                                     " and the first trajectory file, %u vs %u" % \
+                                                     (desired_n_atoms, traj.xyz.shape[1])
 
 
-    def _next_chunk(self, context=None):
+class FeatureReaderIterator(DataSourceIterator):
+
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+        super(FeatureReaderIterator, self).__init__(
+                data_source, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex
+        )
+        self._mditer = self._create_iter(data_source.trajfiles[self._itraj], skip=self.skip, stride=self.stride)
+
+    def close(self):
+        if self._mditer is not None:
+            self._mditer.close()
+        raise StopIteration()
+
+    def next_chunk(self):
         """
         gets the next chunk. If lag > 0, we open another iterator with same chunk
         size and advance it by one, as soon as this method is called with a lag > 0.
@@ -222,87 +200,44 @@ class FeatureReader(ReaderInterface):
         chunk = next(self._mditer)
         shape = chunk.xyz.shape
 
-        if context.lag > 0:
-            if not context.uniform_stride:
-                raise ValueError("random access stride with lag not supported")
-            if self._curr_lag == 0:
-                # lag time or trajectory index changed, so open lagged iterator
-                if __debug__:
-                    self._logger.debug("open time lagged iterator for traj %i with lag %i"
-                                       % (self._itraj, context.lag))
-                self._curr_lag = context.lag
-                self._mditer2 = self._create_iter(self.trajfiles[self._itraj],
-                                                  skip=self._curr_lag + self._skip,
-                                                  stride=context.stride)
-            try:
-                adv_chunk = next(self._mditer2)
-            except StopIteration:
-                # When _mditer2 ran over the trajectory end, return empty chunks.
-                adv_chunk = mdtraj.Trajectory(np.empty((0, shape[1], shape[2]), np.float32), chunk.topology)
-            except RuntimeError as e:
-                if "seek error" in str(e):
-                    raise RuntimeError("Trajectory %s too short for lag time %i" % 
-                                       (self.trajfiles[self._itraj], context.lag))
-
         self._t += shape[0]
 
-        if (self._t >= self.trajectory_length(self._itraj, stride=context.stride) and
-                self._itraj < len(self.trajfiles) - 1):
+        if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.trajfiles) - 1:
             if __debug__:
-                self._logger.debug('closing current trajectory "%s"'
-                                   % self.trajfiles[self._itraj])
-            self._close()
+                # self._logger.debug('closing current trajectory "%s"' % self.trajfiles[self._itraj])
+                pass
+            self._mditer.close()
 
             self._t = 0
             self._itraj += 1
-            if not context.uniform_stride:
-                while self._itraj not in context.traj_keys and self._itraj < self.number_of_trajectories():
+            if not self.uniform_stride:
+                while self._itraj not in self.traj_keys and self._itraj < self.number_of_trajectories():
                     self._itraj += 1
                 self._mditer = self._create_iter(
-                    self.trajfiles[self._itraj], stride=context.ra_indices_for_traj(self._itraj)
+                        self.trajfiles[self._itraj], stride=self.ra_indices_for_traj(self._itraj)
                 )
             else:
-                self._mditer = self._create_iter(self.trajfiles[self._itraj], skip=self._skip, stride=context.stride)
-            # we open self._mditer2 only if requested due lag parameter!
-            self._curr_lag = 0
+                self._mditer = self._create_iter(
+                        self._data_source.trajfiles[self._itraj], skip=self._skip, stride=self.stride
+                )
 
-        if not context.uniform_stride:
-            traj_len = context.ra_trajectory_length(self._itraj)
+        if not self.uniform_stride:
+            traj_len = self.ra_trajectory_length(self._itraj)
         else:
-            traj_len = self.trajectory_length(self._itraj)
-        if self._t >= traj_len and self._itraj == len(self.trajfiles) - 1:
+            traj_len = self.trajectory_length()
+        if self._t >= traj_len and self._itraj == len(self._data_source.trajfiles) - 1:
             if __debug__:
-                self._logger.debug('closing last trajectory "%s"' % self.trajfiles[self._itraj])
+                # self._logger.debug('closing last trajectory "%s"' % self.trajfiles[self._itraj])
+                pass
             self._mditer.close()
-            if self._curr_lag != 0:
-                self._mditer2.close()
 
         # map data
-        if context.lag == 0:
-            if len(self.featurizer.active_features) == 0:
-                shape_2d = (shape[0], shape[1] * shape[2])
-                return chunk.xyz.reshape(shape_2d)
-            else:
-                return self.featurizer.transform(chunk)
+        if len(self._data_source.featurizer.active_features) == 0:
+            shape_2d = (shape[0], shape[1] * shape[2])
+            return chunk.xyz.reshape(shape_2d)
         else:
-            if len(self.featurizer.active_features) == 0:
-                shape_Y = adv_chunk.xyz.shape
+            return self._data_source.featurizer.transform(chunk)
 
-                X = chunk.xyz.reshape((shape[0], shape[1] * shape[2]))
-                Y = adv_chunk.xyz.reshape((shape_Y[0], shape_Y[1] * shape_Y[2]))
-            else:
-                X = self.featurizer.transform(chunk)
-                Y = self.featurizer.transform(adv_chunk)
-            return X, Y
-
-    def parametrize(self, stride=1):
-        if self.in_memory:
-            self._map_to_memory(stride)
-
-    def _assert_toptraj_consistency(self):
-        r""" Check if the topology and the trajfiles of the reader have the same n_atoms"""
-        traj = mdtraj.load_frame(self.trajfiles[0], index=0, top=self.topfile)
-        desired_n_atoms = self.featurizer.topology.n_atoms
-        assert traj.xyz.shape[1] == desired_n_atoms, "Mismatch in the number of atoms between the topology" \
-                                                     " and the first trajectory file, %u vs %u" % \
-                                                     (desired_n_atoms, traj.xyz.shape[1])
+    def _create_iter(self, filename, skip=0, stride=1, atom_indices=None):
+        return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.topfile,
+                                skip=skip, stride=stride, atom_indices=atom_indices)
