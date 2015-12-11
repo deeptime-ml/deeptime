@@ -144,8 +144,9 @@ class FeatureReader(DataSource):
 
             # note: dimension is a custom impl in this class
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, mapping_fct=None):
-        return FeatureReaderIterator(self, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex, mapping_fct=mapping_fct)
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
+        return FeatureReaderIterator(self, skip=skip, chunk=chunk, stride=stride,
+                                     return_trajindex=return_trajindex)
 
     def describe(self):
         """
