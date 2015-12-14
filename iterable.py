@@ -1,15 +1,12 @@
 from abc import ABCMeta, abstractmethod
 import six
 import numpy as np
-from itertools import count
 
-from pyemma._base.logging import create_logger, instance_name
+from pyemma._base.logging import Loggable
 from pyemma._base.progress import ProgressReporter
 
-class Iterable(six.with_metaclass(ABCMeta, ProgressReporter)):
 
-    # counting transformer instances, incremented by name property.
-    _ids = count(0)
+class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
     def __init__(self, chunksize=100):
         self._default_chunksize = chunksize
@@ -31,24 +28,12 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter)):
         return self._default_chunksize
 
     @property
-    def _logger(self):
-        if not hasattr(self, '_logger_instance'):
-            create_logger(self)
-        return self._logger_instance
-
-    @property
     def chunksize(self):
         return self._default_chunksize
 
     @chunksize.setter
     def chunksize(self, value):
         self._default_chunksize = value
-
-    @property
-    def name(self):
-        if not hasattr(self, '_name'):
-            self._name = instance_name(self, next(self._ids))
-        return self._name
 
     @property
     def in_memory(self):
