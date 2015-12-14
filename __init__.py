@@ -50,7 +50,6 @@ from .featurizer import MDFeaturizer, CustomFeature
 from .data_in_memory import DataInMemory
 from .numpy_filereader import NumPyFileReader
 from .py_csv_reader import PyCSVReader
-from .interface import ReaderInterface
 
 # util func
 from .util.reader_utils import create_file_reader

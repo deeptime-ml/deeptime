@@ -1,10 +1,11 @@
-from pyemma.coordinates.data.interface import ReaderInterface
+from copy import copy
+from itertools import chain
+
 from pyemma.coordinates.api import source
 
-from itertools import chain
-from copy import copy
-
 import numpy as np
+from pyemma.coordinates.data.datasource import DataSource
+
 
 class _FragmentedTrajectoryIterator(object):
     def __init__(self, fragmented_reader, readers, chunksize, stride, skip):
@@ -141,7 +142,7 @@ class _FragmentedTrajectoryIterator(object):
         return overlap
 
 
-class FragmentedTrajectoryReader(ReaderInterface):
+class FragmentedTrajectoryReader(DataSource):
     def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
         # sanity checks
         assert isinstance(trajectories, (list, tuple)), "input trajectories should be of list or tuple type"

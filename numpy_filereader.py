@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -15,7 +14,6 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 '''
 Created on 07.04.2015
 
@@ -23,14 +21,16 @@ Created on 07.04.2015
 '''
 
 from __future__ import absolute_import
-import numpy as np
+
 import functools
 
 from pyemma._base.progress import ProgressReporter
-from pyemma.coordinates.data.interface import ReaderInterface
+
+import numpy as np
+from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
 
 
-class NumPyFileReader(ReaderInterface, ProgressReporter):
+class NumPyFileReader(DataSource, ProgressReporter):
 
     """reads NumPy files in chunks. Supports .npy files
 
@@ -63,19 +63,15 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
         self._array = None
 
         self.__set_dimensions_and_lenghts()
-
-        self._parametrized = True
-
-    def _reset(self, stride=1):
-        self._t = 0
-        self._itraj = 0
-        self._close()
+        
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False):
+        return NPYIterator(self, skip, chunk, stride, return_trajindex)
 
     def describe(self):
         return "[NumpyFileReader arrays with shape %s]" % [np.shape(x)
                                                            for x in self._data]
 
-    def __reshape(self, array):
+    def _reshape(self, array):
         """
         checks shapes, eg convert them (2d), raise if not possible
         after checks passed, set self._array and return it.
@@ -93,13 +89,14 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
             array = np.reshape(array, shape_2d)
         return array
 
-    def __load_file(self, filename):
+    def _load_file(self, itraj):
         self._close()
+        filename = self._filenames[itraj]
         self._logger.debug("opening file %s" % filename)
 
         if filename.endswith('.npy'):
             x = np.load(filename, mmap_mode=self.mmap_mode)
-            arr = self.__reshape(x)
+            arr = self._reshape(x)
         else:
             raise ValueError("given file '%s' is not a NumPy array. Make sure"
                              " it has a .npy extension" % filename)
@@ -120,8 +117,8 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
         n = len(self._filenames)
         self._progress_register(n, description="get lengths/dim")
 
-        for f in self._filenames:
-            array = self.__load_file(f)
+        for ii, f in enumerate(self._filenames):
+            array = self._load_file(ii)
             self._lengths.append(np.shape(array)[0])
             ndims.append(np.shape(array)[1])
             self._close()
@@ -136,17 +133,29 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
 
         self._ntraj = len(self._filenames)
 
-    def _next_chunk(self, context=None):
+
+class NPYIterator(DataSourceIterator):
+    
+    def close(self):
+        self._data_source._close()
+        raise StopIteration()
+
+    def next_chunk(self):
+        if self.current_trajindex >= self._data_source.ntraj:
+            self.close()
+
+        # TODO: :refactor
+        context = self
 
         # if no file is open currently, open current index.
         if self._array is None:
-            self.__load_file(self._filenames[self._itraj])
+            self._array = self._data_source._load_file(self._itraj)
 
-        traj_len = self._lengths[self._itraj]
+        traj_len = len(self._array)
         traj = self._array
 
         # skip only if complete trajectory mode or first chunk
-        skip = self._skip if self.chunksize == 0 or self._t == 0 else 0
+        skip = self.skip if self.chunksize == 0 or self._t == 0 else 0
 
         # if stride by dict, update traj length accordingly
         if not context.uniform_stride:
@@ -167,14 +176,7 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
                 X = traj[skip::context.stride]
                 self._itraj += 1
 
-            if context.lag == 0:
-                return X
-            else:
-                if not context.uniform_stride:
-                    raise ValueError("Requested lagged data but was in random access mode. This is not supported.")
-                else:
-                    Y = traj[context.lag + skip::context.stride]
-                return X, Y
+            return X
 
         # chunked mode
         else:
@@ -185,11 +187,6 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
                 upper_bound = min(skip + self._t + self.chunksize * context.stride, traj_len)
                 slice_x = slice(skip + self._t, upper_bound, context.stride)
                 X = traj[slice_x]
-
-            if context.lag != 0:
-                upper_bound_Y = min(skip + self._t + context.lag + self.chunksize * context.stride, traj_len)
-                slice_y = slice(skip + self._t + context.lag, upper_bound_Y, context.stride)
-                Y = traj[slice_y]
 
             # set new time position
             self._t = upper_bound
@@ -207,9 +204,6 @@ class NumPyFileReader(ReaderInterface, ProgressReporter):
 
                 # if time index scope ran out of len of current trajectory, open next file.
                 if self._itraj <= self.number_of_trajectories() - 1:
-                    self.__load_file(self._filenames[self._itraj])
+                    self._data_source._load_file(self._itraj)
 
-            if context.lag == 0:
-                return X
-            else:
-                return X, Y
+            return X

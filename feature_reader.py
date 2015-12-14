@@ -219,7 +219,7 @@ class FeatureReaderIterator(DataSourceIterator):
                 )
             else:
                 self._mditer = self._create_iter(
-                        self._data_source.trajfiles[self._itraj], skip=self._skip, stride=self.stride
+                        self._data_source.trajfiles[self._itraj], skip=self.skip, stride=self.stride
                 )
 
         if not self.uniform_stride:
