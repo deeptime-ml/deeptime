@@ -269,6 +269,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self.next()
 
     def next(self):
+        # we have to obtain the current index before invoking next_chunk (which increments itraj)
         itraj = self.current_trajindex
         X = self.next_chunk()
         if self.return_traj_index:
