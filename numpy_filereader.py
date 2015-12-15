@@ -59,13 +59,11 @@ class NumPyFileReader(DataSource, ProgressReporter):
 
         self.mmap_mode = mmap_mode
 
-        # currently opened array
-        self._array = None
-
         self.__set_dimensions_and_lenghts()
-        
+
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False):
-        return NPYIterator(self, skip, chunk, stride, return_trajindex)
+        return NPYIterator(self, skip=skip, chunk=chunk, stride=stride, 
+                           return_trajindex=return_trajindex)
 
     def describe(self):
         return "[NumpyFileReader arrays with shape %s]" % [np.shape(x)
@@ -90,7 +88,7 @@ class NumPyFileReader(DataSource, ProgressReporter):
         return array
 
     def _load_file(self, itraj):
-        self._close()
+        #self._close()
         filename = self._filenames[itraj]
         self._logger.debug("opening file %s" % filename)
 
@@ -100,17 +98,8 @@ class NumPyFileReader(DataSource, ProgressReporter):
         else:
             raise ValueError("given file '%s' is not a NumPy array. Make sure"
                              " it has a .npy extension" % filename)
-        self._array = arr
+        #self._array = arr
         return arr
-
-    def _close(self):
-        if self._array is None:
-            return
-
-        if __debug__:
-            self._logger.debug("delete filehandle")
-        del self._array
-        self._array = None
 
     def __set_dimensions_and_lenghts(self):
         ndims = []
@@ -121,7 +110,7 @@ class NumPyFileReader(DataSource, ProgressReporter):
             array = self._load_file(ii)
             self._lengths.append(np.shape(array)[0])
             ndims.append(np.shape(array)[1])
-            self._close()
+#            self._close()
             self._progress_update(1)
 
         # ensure all trajs have same dim
@@ -135,21 +124,34 @@ class NumPyFileReader(DataSource, ProgressReporter):
 
 
 class NPYIterator(DataSourceIterator):
-    
+
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+        super(NPYIterator, self).__init__(data_source=data_source, skip=skip,
+                                          chunk=chunk, stride=stride,
+                                          return_trajindex=return_trajindex)
+
+        self._last_itraj = -1
+
     def close(self):
-        self._data_source._close()
+        self._close_filehandle()
         raise StopIteration()
+
+    def _close_filehandle(self):
+        if not hasattr(self, '_array') or self._array is None:
+            return
+        del self._array
+        self._array = None
+
+    def _open_filehandle(self):
+        self._array = self._data_source._load_file(self._itraj)
 
     def next_chunk(self):
         if self.current_trajindex >= self._data_source.ntraj:
             self.close()
 
-        # TODO: :refactor
-        context = self
-
-        # if no file is open currently, open current index.
-        if self._array is None:
-            self._array = self._data_source._load_file(self._itraj)
+        if self.current_trajindex != self._last_itraj:
+            self._close_filehandle()
+            self._open_filehandle()
 
         traj_len = len(self._array)
         traj = self._array
@@ -158,52 +160,50 @@ class NPYIterator(DataSourceIterator):
         skip = self.skip if self.chunksize == 0 or self._t == 0 else 0
 
         # if stride by dict, update traj length accordingly
-        if not context.uniform_stride:
-            traj_len = context.ra_trajectory_length(self._itraj)
+        if not self.uniform_stride:
+            traj_len = self.ra_trajectory_length(self._itraj)
 
         # complete trajectory mode
         if self.chunksize == 0:
-            if not context.uniform_stride:
-                X = traj[context.ra_indices_for_traj(self._itraj)]
+            if not self.uniform_stride:
+                X = traj[self.ra_indices_for_traj(self._itraj)]
                 self._itraj += 1
 
                 # skip the trajs that are not in the stride dict
                 while self._itraj < self.number_of_trajectories() \
-                        and (self._itraj not in context.traj_keys):
+                        and (self._itraj not in self.traj_keys):
                     self._itraj += 1
-                self._array = None
+
             else:
-                X = traj[skip::context.stride]
+                X = traj[skip::self.stride]
                 self._itraj += 1
 
             return X
 
         # chunked mode
         else:
-            if not context.uniform_stride:
-                X = traj[context.ra_indices_for_traj(self._itraj)[self._t:min(self._t + self.chunksize, traj_len)]]
+            if not self.uniform_stride:
+                X = traj[self.ra_indices_for_traj(self._itraj)[self._t:min(self._t + self.chunksize, traj_len)]]
                 upper_bound = min(self._t + self.chunksize, traj_len)
             else:
-                upper_bound = min(skip + self._t + self.chunksize * context.stride, traj_len)
-                slice_x = slice(skip + self._t, upper_bound, context.stride)
+                upper_bound = min(skip + self._t + self.chunksize * self.stride, traj_len)
+                slice_x = slice(skip + self._t, upper_bound, self.stride)
                 X = traj[slice_x]
 
             # set new time position
             self._t = upper_bound
 
             if self._t >= traj_len:
-                if __debug__:
-                    self._logger.debug("reached bounds of array, open next.")
                 self._itraj += 1
                 self._t = 0
 
                 # if we have a dictionary, skip trajectories that are not in the key set
-                while not context.uniform_stride and self._itraj < self.number_of_trajectories() \
-                        and (self._itraj not in context.traj_keys):
+                while not self.uniform_stride and self._itraj < self.number_of_trajectories() \
+                        and (self._itraj not in self.traj_keys):
                     self._itraj += 1
 
                 # if time index scope ran out of len of current trajectory, open next file.
                 if self._itraj <= self.number_of_trajectories() - 1:
-                    self._data_source._load_file(self._itraj)
+                    self._array = self._data_source._load_file(self._itraj)
 
             return X
