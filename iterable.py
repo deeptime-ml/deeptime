@@ -172,11 +172,6 @@ class LaggedIterator(object):
         return self.next()
 
     def next(self):
-        try:
-            data_lagged = self._it_lagged.next()
-        except StopIteration:
-            self._it.close()
-            raise
         data = self._it.next()
         itraj = None
         if self._return_trajindex:
