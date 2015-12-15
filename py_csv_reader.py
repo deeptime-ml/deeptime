@@ -33,9 +33,10 @@ from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
 
 
 class PyCSVIterator(DataSourceIterator):
-    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, mapping_fct=None):
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         super(PyCSVIterator, self).__init__(data_source, skip=skip, chunk=chunk,
-                                            stride=stride, return_trajindex=return_trajindex, mapping_fct=mapping_fct)
+                                            stride=stride,
+                                            return_trajindex=return_trajindex)
         self._open_file()
         if isinstance(self._skip_rows, int):
             self._skip_rows = np.arange(self._skip_rows)
@@ -62,7 +63,7 @@ class PyCSVIterator(DataSourceIterator):
 
             self.line += 1
             if not self.uniform_stride:
-                for i in range(0, self._ctx.ra_indices_for_traj(self._itraj).tolist().count(self.line - 1)):
+                for i in range(0, self.ra_indices_for_traj(self._itraj).tolist().count(self.line - 1)):
                     lines.append(row)
             else:
                 lines.append(row)
@@ -211,7 +212,3 @@ class PyCSVReader(DataSource):
             raise ValueError("input files have different dims")
         else:
             self._ndim = ndims[0]
-
-    def parametrize(self, stride=1):
-        if self.in_memory:
-            self._map_to_memory(stride)
