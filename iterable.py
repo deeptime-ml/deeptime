@@ -81,7 +81,8 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             return LaggedIterator(it, it_lagged, return_trajindex)
         return it
 
-    def get_output(self, dimensions=slice(0, None), stride=1, skip=0):
+    # TODO: stride handling not ready random access (output trajs shape not valid)
+    def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=0):
         if isinstance(dimensions, int):
             ndim = 1
             dimensions = slice(dimensions, dimensions + 1)
@@ -100,9 +101,15 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         # create iterator
         if self.in_memory:
             from pyemma.coordinates.data.data_in_memory import DataInMemory
-            it = DataInMemory(self._Y)._create_iterator(skip=skip, chunk=0, stride=stride, return_trajindex=True)
+            it = DataInMemory(self._Y)._create_iterator(skip=skip, chunk=chunk,
+                                                        stride=stride, return_trajindex=True)
         else:
-            it = self._create_iterator(skip=skip, chunk=0, stride=stride, return_trajindex=True)
+            it = self._create_iterator(skip=skip, chunk=chunk, stride=stride, return_trajindex=True)
+
+
+        if not it.is_uniform_stride(stride): # random access, determine dimension?
+            pass
+            #ndim = 
 
         # allocate memory
         try:
@@ -126,10 +133,11 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                                 stage=1)
 
         for itraj, chunk in it:
+            assert chunk is not None
             if itraj != last_itraj:
                 last_itraj = itraj
                 t = 0  # reset time to 0 for new trajectory
-            L = chunk.shape[0]
+            L = len(chunk)
             if L > 0:
                 trajs[itraj][t:t + L, :] = chunk[:, dimensions]
             t += L
@@ -164,6 +172,12 @@ class LaggedIterator(object):
         self._it = it
         self._it_lagged = it_lagged
         self._return_trajindex = return_trajindex
+
+    def _n_chunks(self, stride):
+        if hasattr(self._it, '_n_chunks') and hasattr(self._it_lagged, '_n_chunks'):
+            return min(self._it._n_chunks(stride), self._it_lagged._n_chunks(stride))
+
+        raise NotImplemented
 
     def __iter__(self):
         return self
