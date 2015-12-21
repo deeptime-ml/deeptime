@@ -86,12 +86,9 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         if isinstance(dimensions, int):
             ndim = 1
             dimensions = slice(dimensions, dimensions + 1)
-        elif isinstance(dimensions, list):
-            ndim = len(np.zeros(self.ndim)[dimensions])
-        elif isinstance(dimensions, np.ndarray):
-            assert dimensions.ndim == 1, 'dimension indices can\'t have more than one dimension'
-            ndim = len(np.zeros(self.ndim)[dimensions])
-        elif isinstance(dimensions, slice):
+        elif isinstance(dimensions, (list, np.ndarray, tuple, slice)):
+            if hasattr(dimensions, 'ndim') and dimensions.ndim > 1:
+                raise ValueError('dimension indices can\'t have more than one dimension')
             ndim = len(np.zeros(self.ndim)[dimensions])
         else:
             raise ValueError('unsupported type (%s) of \"dimensions\"' % type(dimensions))
@@ -99,13 +96,14 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         assert ndim > 0, "ndim was zero in %s" % self.__class__.__name__
 
         # create iterator
-        if self.in_memory:
+        if self.in_memory and not self._mapping_to_mem_active:
             from pyemma.coordinates.data.data_in_memory import DataInMemory
+            assert self._Y is not None
+            #assert self._estimated
             it = DataInMemory(self._Y)._create_iterator(skip=skip, chunk=chunk,
                                                         stride=stride, return_trajindex=True)
         else:
             it = self._create_iterator(skip=skip, chunk=chunk, stride=stride, return_trajindex=True)
-
 
         if not it.is_uniform_stride(stride): # random access, determine dimension?
             pass
@@ -113,6 +111,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
         # allocate memory
         try:
+            # TODO: avoid having a copy here, if Y is already filled
             trajs = [np.empty((l, ndim), dtype=self.output_type())
                      for l in it.trajectory_lengths()]
         except MemoryError:
@@ -139,6 +138,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                 t = 0  # reset time to 0 for new trajectory
             L = len(chunk)
             if L > 0:
+                assert len(trajs[itraj]) > 0
                 trajs[itraj][t:t + L, :] = chunk[:, dimensions]
             t += L
 
