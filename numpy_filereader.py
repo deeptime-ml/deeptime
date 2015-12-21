@@ -132,6 +132,10 @@ class NPYIterator(DataSourceIterator):
 
         self._last_itraj = -1
 
+    def reset(self):
+        DataSourceIterator.reset(self)
+        self._last_itraj = -1
+
     def close(self):
         self._close_filehandle()
         raise StopIteration()

@@ -6,9 +6,11 @@ import numpy as np
 from math import ceil
 
 from pyemma.coordinates.data.iterable import Iterable
+from pyemma._base.logging import Loggable
 
 
 class DataSource(Iterable):
+
     def __init__(self, chunksize=100):
         super(DataSource, self).__init__(chunksize)
         self._lengths = []
@@ -114,6 +116,7 @@ class DataSource(Iterable):
 
 
 class IteratorContext(object):
+
     def __init__(self, stride=1, skip=0, chunk=0):
         self.skip = skip
         self.chunk = chunk
@@ -137,7 +140,7 @@ class IteratorContext(object):
         :return: a Nx1 - np.array of the indices corresponding to the trajectory index
         """
         assert not self.uniform_stride, "requested random access indices, but is in uniform stride mode"
-        return self.stride[self.stride[:, 0] == traj][:, 1] if traj in self.traj_keys else np.array([])
+        return self.stride[self.stride[:, 0] == traj][:, 1] if traj in self.traj_keys else None
 
     def ra_trajectory_length(self, traj):
         assert not self.uniform_stride, "requested random access trajectory length, but is in uniform stride mode"
@@ -161,6 +164,7 @@ class IteratorContext(object):
 
 
 class DataSourceIterator(six.with_metaclass(ABCMeta)):
+
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         self._data_source = data_source
         self.context = IteratorContext(stride=stride, skip=skip, chunk=chunk)
@@ -210,6 +214,10 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     @abstractmethod
     def close(self):
         pass
+
+    def reset(self):
+        self._t = 0
+        self._itraj = 0
 
     @property
     def current_trajindex(self):
@@ -261,6 +269,20 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def is_uniform_stride(stride):
         return IteratorContext.is_uniform_stride(stride)
 
+    @property
+    def last_chunk(self):
+        pass
+
+    @property
+    def last_chunk_in_traj(self):
+        #                 # last chunk in traj?
+        traj_len = self.trajectory_length(
+            self.current_trajindex, stride=self.context.stride)
+        last_chunk_in_traj = (self._t + L >= traj_len)
+#                 # last chunk?
+        last_chunk = (
+            last_chunk_in_traj and self.current_trajindex >= self.number_of_trajectories() - 1)
+
     @abstractmethod
     def next_chunk(self):
         pass
@@ -270,9 +292,12 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def next(self):
         # we have to obtain the current index before invoking next_chunk (which increments itraj)
+        # if self.is_uniform_stride(self.stride):
         itraj = self.current_trajindex
         X = self.next_chunk()
         if self.return_traj_index:
+            #if not self.is_uniform_stride(self.stride):
+            #    itraj = self.current_trajindex
             return itraj, X
         return X
 
