@@ -81,6 +81,8 @@ class PyCSVIterator(DataSourceIterator):
             del lines[:]
             return result
 
+        self.close()
+
     def _next_traj(self):
         self._itraj += 1
         while not self.uniform_stride and self._itraj not in self.traj_keys \
