@@ -140,7 +140,7 @@ class IteratorContext(object):
         :return: a Nx1 - np.array of the indices corresponding to the trajectory index
         """
         assert not self.uniform_stride, "requested random access indices, but is in uniform stride mode"
-        return self.stride[self.stride[:, 0] == traj][:, 1] if traj in self.traj_keys else None
+        return self.stride[self.stride[:, 0] == traj][:, 1] if traj in self.traj_keys else np.array([])
 
     def ra_trajectory_length(self, traj):
         assert not self.uniform_stride, "requested random access trajectory length, but is in uniform stride mode"
