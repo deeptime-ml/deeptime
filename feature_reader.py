@@ -184,7 +184,7 @@ class FeatureReaderIterator(DataSourceIterator):
         super(FeatureReaderIterator, self).__init__(
                 data_source, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex
         )
-        self._mditer = self._create_iter(data_source.trajfiles[self._itraj], skip=self.skip, stride=self.stride)
+        self._create_mditer()
 
     def close(self):
         if self._mditer is not None:
@@ -211,16 +211,7 @@ class FeatureReaderIterator(DataSourceIterator):
 
             self._t = 0
             self._itraj += 1
-            if not self.uniform_stride:
-                while self._itraj not in self.traj_keys and self._itraj < self.number_of_trajectories():
-                    self._itraj += 1
-                self._mditer = self._create_iter(
-                        self.trajfiles[self._itraj], stride=self.ra_indices_for_traj(self._itraj)
-                )
-            else:
-                self._mditer = self._create_iter(
-                        self._data_source.trajfiles[self._itraj], skip=self.skip, stride=self.stride
-                )
+            self._create_mditer()
 
         if not self.uniform_stride:
             traj_len = self.ra_trajectory_length(self._itraj)
@@ -239,6 +230,18 @@ class FeatureReaderIterator(DataSourceIterator):
         else:
             return self._data_source.featurizer.transform(chunk)
 
-    def _create_iter(self, filename, skip=0, stride=1, atom_indices=None):
+    def _create_mditer(self):
+        if not self.uniform_stride:
+            while self._itraj not in self.traj_keys and self._itraj < self.number_of_trajectories():
+                self._itraj += 1
+            self._mditer = self._create_patched_iter(
+                    self._data_source.trajfiles[self._itraj], stride=self.ra_indices_for_traj(self._itraj)
+            )
+        else:
+            self._mditer = self._create_patched_iter(
+                    self._data_source.trajfiles[self._itraj], skip=self.skip, stride=self.stride
+            )
+
+    def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):
         return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.topfile,
                                 skip=skip, stride=stride, atom_indices=atom_indices)

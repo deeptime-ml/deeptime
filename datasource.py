@@ -6,7 +6,6 @@ import numpy as np
 from math import ceil
 
 from pyemma.coordinates.data.iterable import Iterable
-from pyemma._base.logging import Loggable
 
 
 class DataSource(Iterable):
@@ -52,6 +51,8 @@ class DataSource(Iterable):
         :return:
             length of trajectory
         """
+        if itraj >= self._ntraj:
+            return 0
         if isinstance(stride, np.ndarray):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
@@ -171,6 +172,10 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         self._return_trajindex = return_trajindex
         self._itraj = 0
         self._t = 0
+        if not self.uniform_stride:
+            # skip trajs which are not included in stride
+            while self._itraj not in self.traj_keys and self._itraj < self.number_of_trajectories():
+                self._itraj += 1
 
     def ra_indices_for_traj(self, traj):
         """
@@ -218,6 +223,10 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def reset(self):
         self._t = 0
         self._itraj = 0
+
+    @property
+    def pos(self):
+        return self._t
 
     @property
     def current_trajindex(self):
@@ -271,17 +280,11 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     @property
     def last_chunk(self):
-        pass
+        return self.current_trajindex >= self.number_of_trajectories() and self.last_chunk_in_traj
 
     @property
     def last_chunk_in_traj(self):
-        #                 # last chunk in traj?
-        traj_len = self.trajectory_length(
-            self.current_trajindex, stride=self.context.stride)
-        last_chunk_in_traj = (self._t + L >= traj_len)
-#                 # last chunk?
-        last_chunk = (
-            last_chunk_in_traj and self.current_trajindex >= self.number_of_trajectories() - 1)
+        return self._t + self.chunksize >= self.trajectory_length()
 
     @abstractmethod
     def next_chunk(self):

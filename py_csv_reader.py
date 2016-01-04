@@ -63,7 +63,7 @@ class PyCSVIterator(DataSourceIterator):
 
             self.line += 1
             if not self.uniform_stride:
-                for i in range(0, self.ra_indices_for_traj(self._itraj).tolist().count(self.line - 1)):
+                for _ in range(0, self.ra_indices_for_traj(self._itraj).tolist().count(self.line - 1)):
                     lines.append(row)
             else:
                 lines.append(row)
@@ -83,6 +83,9 @@ class PyCSVIterator(DataSourceIterator):
 
     def _next_traj(self):
         self._itraj += 1
+        while not self.uniform_stride and self._itraj not in self.traj_keys \
+                and self._itraj < self.number_of_trajectories():
+            self._itraj += 1
         if self._itraj < self.number_of_trajectories():
             # close current file handle
             self._file_handle.close()
