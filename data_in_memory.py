@@ -20,12 +20,13 @@ from __future__ import absolute_import
 
 import numpy as np
 
-from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
+from pyemma.coordinates.data.datasource import DataSourceIterator
+from pyemma.coordinates.data.reader_interface import Reader
 
 __author__ = 'noe, marscher'
 
 
-class DataInMemory(DataSource):
+class DataInMemory(Reader):
     r"""
     multi-dimensional data fully stored in memory.
 

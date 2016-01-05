@@ -24,13 +24,14 @@ from __future__ import absolute_import
 
 import functools
 
-from pyemma._base.progress import ProgressReporter
-
 import numpy as np
-from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
+
+from pyemma._base.progress import ProgressReporter
+from pyemma.coordinates.data.datasource import DataSourceIterator
+from pyemma.coordinates.data.reader_interface import Reader
 
 
-class NumPyFileReader(DataSource, ProgressReporter):
+class NumPyFileReader(Reader, ProgressReporter):
 
     """reads NumPy files in chunks. Supports .npy files
 
