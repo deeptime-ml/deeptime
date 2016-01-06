@@ -29,8 +29,7 @@ import csv
 import numpy as np
 from six.moves import range
 
-from pyemma.coordinates.data.datasource import DataSourceIterator
-from pyemma.coordinates.data.reader_interface import Reader
+from pyemma.coordinates.data.datasource import DataSourceIterator, DataSource
 
 
 class PyCSVIterator(DataSourceIterator):
@@ -146,13 +145,14 @@ class PyCSVIterator(DataSourceIterator):
             raise
 
 
-class PyCSVReader(Reader):
+class PyCSVReader(DataSource):
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
         return PyCSVIterator(self, skip=skip, chunk=chunk, stride=stride,
                              return_trajindex=return_trajindex)
 
     def __init__(self, filenames, chunksize=1000, **kwargs):
         super(PyCSVReader, self).__init__(chunksize=chunksize)
+        self._is_reader = True
 
         if not isinstance(filenames, (tuple, list)):
             filenames = [filenames]

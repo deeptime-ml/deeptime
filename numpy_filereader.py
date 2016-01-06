@@ -27,11 +27,10 @@ import functools
 import numpy as np
 
 from pyemma._base.progress import ProgressReporter
-from pyemma.coordinates.data.datasource import DataSourceIterator
-from pyemma.coordinates.data.reader_interface import Reader
+from pyemma.coordinates.data.datasource import DataSourceIterator, DataSource
 
 
-class NumPyFileReader(Reader, ProgressReporter):
+class NumPyFileReader(DataSource, ProgressReporter):
 
     """reads NumPy files in chunks. Supports .npy files
 
@@ -48,6 +47,7 @@ class NumPyFileReader(Reader, ProgressReporter):
 
     def __init__(self, filenames, chunksize=1000, mmap_mode='r'):
         super(NumPyFileReader, self).__init__(chunksize=chunksize)
+        self._is_reader = True
 
         if not isinstance(filenames, (list, tuple)):
             filenames = [filenames]

@@ -20,13 +20,12 @@ from __future__ import absolute_import
 
 import numpy as np
 
-from pyemma.coordinates.data.datasource import DataSourceIterator
-from pyemma.coordinates.data.reader_interface import Reader
+from pyemma.coordinates.data.datasource import DataSourceIterator, DataSource
 
 __author__ = 'noe, marscher'
 
 
-class DataInMemory(Reader):
+class DataInMemory(DataSource):
     r"""
     multi-dimensional data fully stored in memory.
 
@@ -46,6 +45,7 @@ class DataInMemory(Reader):
 
     def __init__(self, data, chunksize=5000):
         super(DataInMemory, self).__init__(chunksize=chunksize)
+        self._is_reader = True
 
         if not isinstance(data, (list, tuple)):
             data = [data]

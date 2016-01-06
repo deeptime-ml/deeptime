@@ -18,11 +18,21 @@ class DataSource(Iterable):
         # following properties have to be set in subclass
         self._ntraj = 0
         self._lengths = []
+        self._is_reader = False
 
     @property
     def ntraj(self):
         __doc__ = self.number_of_trajectories.__doc__
         return self._ntraj
+
+    @property
+    def is_random_accessible(self):
+        from pyemma.coordinates.data.random_accessible import RandomAccessibleDataSource
+        return isinstance(self, RandomAccessibleDataSource)
+
+    @property
+    def is_reader(self):
+        return self._is_reader
 
     @property
     def data(self):
@@ -120,7 +130,7 @@ class DataSource(Iterable):
         self.data.append(array)
 
 
-class IteratorModel(object):
+class IteratorState(object):
 
     def __init__(self, stride=1, skip=0, chunk=0, return_trajindex=False, ntraj=0):
         self.skip = skip
@@ -130,7 +140,7 @@ class IteratorModel(object):
         self.pos = 0
         self.__init_stride(stride)
 
-        if not IteratorModel.is_uniform_stride(stride):
+        if not IteratorState.is_uniform_stride(stride):
             # skip trajs which are not included in stride
             while self.itraj not in self.traj_keys and self.itraj < ntraj:
                 self.itraj += 1
@@ -142,7 +152,7 @@ class IteratorModel(object):
             self.traj_keys, self.trajectory_lengths = np.unique(keys, return_counts=True)
         else:
             self.traj_keys = None
-        self.uniform_stride = IteratorModel.is_uniform_stride(stride)
+        self.uniform_stride = IteratorState.is_uniform_stride(stride)
         if not self.uniform_stride and not self.is_stride_sorted():
             raise ValueError("Currently only sorted arrays allowed for random access")
 
@@ -180,7 +190,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         self._data_source = data_source
-        self.model = IteratorModel(stride=stride, skip=skip, chunk=chunk,
+        self.state = IteratorState(stride=stride, skip=skip, chunk=chunk,
                                    return_trajindex=return_trajindex, ntraj=self.number_of_trajectories())
 
     def ra_indices_for_traj(self, traj):
@@ -189,13 +199,13 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         :param traj: a trajectory file index
         :return: a Nx1 - np.array of the indices corresponding to the trajectory index
         """
-        return self.model.ra_indices_for_traj(traj)
+        return self.state.ra_indices_for_traj(traj)
 
     def ra_trajectory_length(self, traj):
-        return self.model.ra_trajectory_length(traj)
+        return self.state.ra_trajectory_length(traj)
 
     def is_stride_sorted(self):
-        return self.model.is_stride_sorted()
+        return self.state.is_stride_sorted()
 
     def _n_chunks(self, stride=None):
         """ rough estimate of how many chunks will be processed """
@@ -240,65 +250,65 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     @property
     def skip(self):
-        return self.model.skip
+        return self.state.skip
 
     @property
     def _t(self):
-        return self.model.pos
+        return self.state.pos
 
     @_t.setter
     def _t(self, value):
-        self.model.pos = value
+        self.state.pos = value
 
     @property
     def _itraj(self):
-        return self.model.itraj
+        return self.state.itraj
 
     @_itraj.setter
     def _itraj(self, value):
-        self.model.itraj = value
+        self.state.itraj = value
 
     @skip.setter
     def skip(self, value):
-        self.model.skip = value
+        self.state.skip = value
 
     @property
     def chunksize(self):
-        return self.model.chunk
+        return self.state.chunk
 
     @chunksize.setter
     def chunksize(self, value):
         if not value >= 0:
             raise ValueError("chunksize has to be positive")
-        self.model.chunk = value
+        self.state.chunk = value
 
     @property
     def stride(self):
-        return self.model.stride
+        return self.state.stride
 
     @stride.setter
     def stride(self, value):
-        self.model.stride = value
+        self.state.stride = value
 
     @property
     def return_traj_index(self):
-        return self.model.return_trajindex
+        return self.state.return_trajindex
 
     @property
     def traj_keys(self):
-        return self.model.traj_keys
+        return self.state.traj_keys
 
     @property
     def uniform_stride(self):
-        return self.model.uniform_stride
+        return self.state.uniform_stride
 
     @return_traj_index.setter
     def return_traj_index(self, value):
-        self.model.return_trajindex = value
+        self.state.return_trajindex = value
 
     @staticmethod
     def is_uniform_stride(stride):
-        return IteratorModel.is_uniform_stride(stride)
+        return IteratorState.is_uniform_stride(stride)
 
     def last_chunk(self, itraj):
         return itraj == self.number_of_trajectories() - 1 and self.last_chunk_in_traj(itraj)

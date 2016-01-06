@@ -22,16 +22,15 @@ import mdtraj
 import six
 
 from pyemma import config
-from pyemma.coordinates.data.datasource import DataSourceIterator
+from pyemma.coordinates.data.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data.featurizer import MDFeaturizer
-from pyemma.coordinates.data.reader_interface import Reader
 from pyemma.coordinates.util import patches
 
 __author__ = 'noe, marscher'
 __all__ = ['FeatureReader']
 
 
-class FeatureReader(Reader):
+class FeatureReader(DataSource):
     """
     Reads features from MD data.
 
@@ -77,6 +76,7 @@ class FeatureReader(Reader):
             "Needs either a topology file or a featurizer for instantiation"
 
         super(FeatureReader, self).__init__(chunksize=chunksize)
+        self._is_reader = True
 
         # files
         if isinstance(trajectories, six.string_types):
