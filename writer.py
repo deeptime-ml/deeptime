@@ -28,14 +28,17 @@ from __future__ import absolute_import
 import numpy as np
 from pyemma.coordinates.transform.transformer import Transformer
 
+# TODO: this should be either a new type (data_consumer, eg. end point) or
+# deleted
+
 
 class WriterCSV(Transformer):
 
     '''
-    shall write to csv files
+    write to csv files via numpy
     '''
 
-    def __init__(self, filename):
+    def __init__(self, filename, stride=1):
         '''
         Constructor
         '''
@@ -44,6 +47,7 @@ class WriterCSV(Transformer):
         # filename should be obtained from source trajectory filename,
         # eg suffix it to given filename
         self.filename = filename
+        self.stride = stride
         self._last_frame = False
 
         self._reset()
@@ -53,9 +57,6 @@ class WriterCSV(Transformer):
 
     def dimension(self):
         return self.data_producer.dimension()
-
-    def _transform_array(self, X):
-        pass
 
     def _reset(self, stride=1):
         try:
@@ -73,9 +74,13 @@ class WriterCSV(Transformer):
             self._logger.exception('could not open file "%s" for writing.')
             raise
 
-    def _param_add_data(self, X, itraj, t, first_chunk, last_chunk_in_traj, last_chunk, ipass, Y=None, stride=1):
-        np.savetxt(self._fh, X)
-        if last_chunk:
-            self._logger.debug("closing file")
-            self._fh.close()
-            return True  # finished
+    def _transform_array(self, X):
+        raise
+
+    def _estimate(self, iterable, **kw):
+        it = iterable.iterator(stride=self.stride, return_trajindex=False)
+        for X in it:
+            np.savetxt(self._fh, X)
+        self._fh.close()
+
+        return self
