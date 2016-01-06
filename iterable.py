@@ -82,7 +82,6 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             return LaggedIterator(it, it_lagged, return_trajindex)
         return it
 
-    # TODO: stride handling not ready random access (output trajs shape not valid)
     def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=0):
         if isinstance(dimensions, int):
             ndim = 1
@@ -100,15 +99,10 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         if self.in_memory and not self._mapping_to_mem_active:
             from pyemma.coordinates.data.data_in_memory import DataInMemory
             assert self._Y is not None
-            #assert self._estimated
             it = DataInMemory(self._Y)._create_iterator(skip=skip, chunk=chunk,
                                                         stride=stride, return_trajindex=True)
         else:
             it = self._create_iterator(skip=skip, chunk=chunk, stride=stride, return_trajindex=True)
-
-        if not it.is_uniform_stride(stride): # random access, determine dimension?
-            pass
-            #ndim = 
 
         # allocate memory
         try:
