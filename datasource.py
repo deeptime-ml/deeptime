@@ -214,8 +214,8 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             if not DataSourceIterator.is_uniform_stride(stride):
                 chunks = ceil(len(stride[:, 0]) / float(self.chunksize))
             else:
-                chunks = sum([ceil(l / float(self.chunksize))
-                              for l in self.trajectory_lengths()])
+                chunks = sum((ceil(l / float(self.chunksize))
+                              for l in self.trajectory_lengths()))
         else:
             chunks = 1
         return int(chunks)
@@ -328,12 +328,9 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def next(self):
         # we have to obtain the current index before invoking next_chunk (which increments itraj)
-        # if self.is_uniform_stride(self.stride):
         itraj = self.current_trajindex
         X = self.next_chunk()
         if self.return_traj_index:
-            #if not self.is_uniform_stride(self.stride):
-            #    itraj = self.current_trajindex
             return itraj, X
         return X
 
