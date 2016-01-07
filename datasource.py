@@ -137,7 +137,8 @@ class IteratorState(object):
         self.chunk = chunk
         self.return_trajindex = return_trajindex
         self.itraj = 0
-        self.pos = 0
+        self._t = 0
+        self._pos = 0
         self.__init_stride(stride)
 
         if not IteratorState.is_uniform_stride(stride):
@@ -192,6 +193,8 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         self._data_source = data_source
         self.state = IteratorState(stride=stride, skip=skip, chunk=chunk,
                                    return_trajindex=return_trajindex, ntraj=self.number_of_trajectories())
+        self._pos = 0
+        self._last_chunk_in_traj = False
 
     def ra_indices_for_traj(self, traj):
         """
@@ -242,7 +245,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     @property
     def pos(self):
-        return self._t
+        return self.state._t
 
     @property
     def current_trajindex(self):
@@ -254,11 +257,11 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     @property
     def _t(self):
-        return self.state.pos
+        return self.state._t
 
     @_t.setter
     def _t(self, value):
-        self.state.pos = value
+        self.state._t = value
 
     @property
     def _itraj(self):
@@ -315,7 +318,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def last_chunk_in_traj(self, itraj):
         if self.chunksize > 0:
-            return self._t + self.chunksize >= self._data_source.trajectory_length(itraj, self.stride, self.skip)
+            return self._last_chunk_in_traj
         else:
             return True
 
@@ -329,7 +332,18 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def next(self):
         # we have to obtain the current index before invoking next_chunk (which increments itraj)
         itraj = self.current_trajindex
-        X = self.next_chunk()
+        try:
+            X = self.next_chunk()
+        except StopIteration:
+            self._last_chunk_in_traj = True
+            raise
+        if itraj != self.current_trajindex:
+            self.state._pos = 0
+            self._last_chunk_in_traj = True
+        else:
+            self.state._pos += len(X)
+            length = self._data_source.trajectory_length(itraj=itraj, stride=self.stride, skip=self.skip)
+            self._last_chunk_in_traj = self.state._pos >= length
         if self.return_traj_index:
             return itraj, X
         return X
