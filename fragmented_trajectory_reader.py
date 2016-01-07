@@ -4,7 +4,7 @@ from itertools import chain
 from pyemma.coordinates.api import source
 
 import numpy as np
-from pyemma.coordinates.data.datasource import DataSource
+from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
 
 
 class _FragmentedTrajectoryIterator(object):
@@ -27,20 +27,9 @@ class _FragmentedTrajectoryIterator(object):
         # current reader index
         self._reader_at = 0
         self._done = False
-        self._ctx = None
 
     def __iter__(self):
         return self
-
-    @property
-    def ctx(self):
-        return self._ctx
-
-    @ctx.setter
-    def ctx(self, value):
-        ctx_copy = copy(value)
-        ctx_copy.lag = 0
-        self._ctx = ctx_copy
 
     def __next__(self):
         skip = self._skip if self._t == 0 else 0
@@ -50,17 +39,17 @@ class _FragmentedTrajectoryIterator(object):
         else:
             # first chunk
             if self._reader_at == 0 and self._t == 0:
-                self._reader_it = self._readers[self._reader_at].iterator(self._stride)
+                self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
                 self._reader_overlap = skip
-            self._readers[self._reader_at]._skip = self._reader_overlap
+            self._reader_it.skip = self._reader_overlap
             # set original chunksize
-            self._readers[self._reader_at].chunksize = self._chunksize
+            self._reader_it.chunksize = self._chunksize
             # chunk is contained in current reader
             if self._readers[self._reader_at].trajectory_length(0, self._stride, self._skip if
                     self._reader_at == 0 else 0) - self._reader_t - self._chunksize > 0:
                 self._t += self._chunksize
                 self._reader_t += self._chunksize
-                X = self._readers[self._reader_at]._next_chunk(self.ctx)
+                X = next(self._reader_it)
                 return X
             # chunk has to be collected from subsequent readers
             else:
@@ -72,7 +61,7 @@ class _FragmentedTrajectoryIterator(object):
                     # reader has data left:
                     if self._readers[self._reader_at].trajectory_length(0, self._stride, self._skip if
                             self._reader_at == 0 else 0) - self._reader_t > 0:
-                        chunk = self._readers[self._reader_at]._next_chunk(self.ctx)
+                        chunk = next(self._reader_it)
                         L = chunk.shape[0]
                         X[read:read + L, :] = chunk[:]
                         read += L
@@ -81,13 +70,13 @@ class _FragmentedTrajectoryIterator(object):
                     if read < expected_length:
                         self._reader_at += 1
                         self._reader_t = 0
-                        self._reader_it = self._readers[self._reader_at].iterator(self._stride)
+                        self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
                         self._reader_overlap = self._calculate_new_overlap(self._stride,
                                                                            self._reader_lengths[self._reader_at - 1],
                                                                            self._reader_overlap)
-                        self._readers[self._reader_at]._skip = self._reader_overlap
+                        self._reader_it.skip = self._reader_overlap
                         if expected_length - read > 0:
-                            self._readers[self._reader_at].chunksize = expected_length - read
+                            self._reader_it.chunksize = expected_length - read
                 self._t += read
                 return X
 
@@ -101,11 +90,11 @@ class _FragmentedTrajectoryIterator(object):
         length = sum(self._traj_lengths(self._stride))
         X = np.empty((length, ndim), dtype=self._frag_reader.output_type())
         for idx, r in enumerate(self._readers):
-            r._skip = overlap
+            _skip = overlap
             # if stride doesn't divide length, one has to offset the next trajectory
             overlap = self._calculate_new_overlap(self._stride, self._reader_lengths[idx], overlap)
-            r.chunksize = min(length, r.trajectory_length(0, self._stride))
-            for itraj, data in r.iterator(stride=self._stride):
+            chunksize = min(length, r.trajectory_length(0, self._stride))
+            for itraj, data in r._create_iterator(stride=self._stride, skip=_skip, chunk=chunksize, return_trajindex=True):
                 L = data.shape[0]
                 if L > 0:
                     X[self._t:self._t + L, :] = data[:]
@@ -142,7 +131,40 @@ class _FragmentedTrajectoryIterator(object):
         return overlap
 
 
+class FragmentIterator(DataSourceIterator):
+
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+        super(FragmentIterator, self).__init__(data_source, skip=skip, chunk=chunk,
+                                               stride=stride, return_trajindex=return_trajindex)
+        self._it = None
+        self._itraj = 0
+
+    def next_chunk(self):
+        if self._it is None:
+            if self._itraj < self.number_of_trajectories():
+                self._it = _FragmentedTrajectoryIterator(self._data_source, self._data_source._readers[self._itraj],
+                                                         self.chunksize, self.stride, self.skip)
+            else:
+                raise StopIteration()
+
+        if not self.uniform_stride:
+            raise ValueError("fragmented trajectory implemented for random access")
+        else:
+            X = next(self._it, None)
+            self._t += X.shape[0]
+            if self._t >= self._data_source.trajectory_length(self._itraj, stride=self.stride):
+                self._itraj += 1
+                self._it = None
+                self._t = 0
+            return X
+
+    def close(self):
+        for reader in self._readers:
+            reader._close()
+
+
 class FragmentedTrajectoryReader(DataSource):
+
     def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
         # sanity checks
         assert isinstance(trajectories, (list, tuple)), "input trajectories should be of list or tuple type"
@@ -160,9 +182,6 @@ class FragmentedTrajectoryReader(DataSource):
         # store readers
         self._readers = [[source(input_item, features=featurizer, top=topologyfile, chunk_size=chunksize)
                           for input_item in trajectories[itraj]] for itraj in range(0, self._ntraj)]
-        # store lagged (lazy) readers
-        self._readers_lagged = [[source(input_item, features=featurizer, top=topologyfile, chunk_size=chunksize)
-                                 for input_item in trajectories[itraj]] for itraj in range(0, self._ntraj)]
         # lengths array per reader
         self._reader_lengths = [[reader.trajectory_length(0, 1)
                                  for reader in self._readers[itraj]] for itraj in range(0, self._ntraj)]
@@ -174,65 +193,15 @@ class FragmentedTrajectoryReader(DataSource):
         self._trajectories = trajectories
         # reader iterator
         self._it = None
-        # lagged reader iterator
-        self._it_lagged = None
+
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
+        return FragmentIterator(self, skip, chunk, stride, return_trajindex)
 
     def describe(self):
         return "[FragmentedTrajectoryReader files=%s]" % self._trajectories
 
     def dimension(self):
         return self._readers[0][0].dimension()
-
-    def _close(self):
-        for reader in chain(self._readers, self._readers_lagged):
-            reader._close()
-
-    def _reset(self, context=None):
-        super(FragmentedTrajectoryReader, self)._reset(context)
-        for itraj in range(0, self._ntraj):
-            for reader in chain(self._readers[itraj], self._readers_lagged[itraj]):
-                reader._reset(context)
-                reader._skip = 0
-        self._skip = 0
-        self._itraj = 0
-        self._t = 0
-        self._it = None
-        self._it_lagged = None
-
-    def _next_chunk(self, ctx):
-        if self._itraj > self._ntraj:
-            self._reset(ctx)
-        if not self._it:
-            self._it = _FragmentedTrajectoryIterator(self, self._readers[self._itraj], self.chunksize, ctx.stride, self._skip)
-        if ctx.lag > 0 and not self._it_lagged:
-            self._it_lagged = _FragmentedTrajectoryIterator(self, self._readers_lagged[self._itraj], self.chunksize,
-                                                            ctx.stride, self._skip + ctx.lag)
-        if not ctx.uniform_stride:
-            raise ValueError("fragmented trajectory implemented for random access")
-        else:
-            self._it.ctx = ctx
-            X = next(self._it, None)
-            self._t += X.shape[0]
-            remove_lagged_iterator = False
-            if self._t >= self.trajectory_length(self._itraj, stride=ctx.stride):
-                self._itraj += 1
-                self._it = None
-                self._t = 0
-                remove_lagged_iterator = True
-            if ctx.lag == 0:
-                return X
-            else:
-                self._it_lagged.ctx = ctx
-                Y = next(self._it_lagged, None)
-                if remove_lagged_iterator:
-                    self._it_lagged = None
-                return X, Y
-
-    def parametrize(self, stride=1):
-        for itraj in range(0, self._ntraj):
-            for reader in self._readers[itraj]:
-                reader.parametrize(stride)
-        self._parametrized = True
 
     def _index_to_reader_index(self, index, itraj):
         """
