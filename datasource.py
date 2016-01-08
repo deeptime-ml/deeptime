@@ -139,23 +139,10 @@ class IteratorState(object):
         self.itraj = 0
         self._t = 0
         self._pos = 0
-        self.__init_stride(stride)
-
-        if not IteratorState.is_uniform_stride(stride):
-            # skip trajs which are not included in stride
-            while self.itraj not in self.traj_keys and self.itraj < ntraj:
-                self.itraj += 1
-
-    def __init_stride(self, stride):
-        self.stride = stride
-        if isinstance(stride, np.ndarray):
-            keys = stride[:, 0]
-            self.traj_keys, self.trajectory_lengths = np.unique(keys, return_counts=True)
-        else:
-            self.traj_keys = None
-        self.uniform_stride = IteratorState.is_uniform_stride(stride)
-        if not self.uniform_stride and not self.is_stride_sorted():
-            raise ValueError("Currently only sorted arrays allowed for random access")
+        self.stride = None
+        self.uniform_stride = False
+        self.traj_keys = None
+        self.trajectory_lengths = None
 
     def ra_indices_for_traj(self, traj):
         """
@@ -191,10 +178,26 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         self._data_source = data_source
-        self.state = IteratorState(stride=stride, skip=skip, chunk=chunk,
+        self.state = IteratorState(skip=skip, chunk=chunk,
                                    return_trajindex=return_trajindex, ntraj=self.number_of_trajectories())
+        self.__init_stride(stride)
         self._pos = 0
         self._last_chunk_in_traj = False
+
+    def __init_stride(self, stride):
+        self.state.stride = stride
+        if isinstance(stride, np.ndarray):
+            keys = stride[:, 0]
+            self.state.traj_keys, self.state.trajectory_lengths = np.unique(keys, return_counts=True)
+        else:
+            self.state.traj_keys = None
+        self.state.uniform_stride = IteratorState.is_uniform_stride(stride)
+        if not IteratorState.is_uniform_stride(stride):
+            if self._data_source.needs_sorted_ra_stride and not self.state.is_stride_sorted():
+                raise ValueError("For this data source, currently only sorted arrays allowed for random access")
+            # skip trajs which are not included in stride
+            while self.state.itraj not in self.state.traj_keys and self.state.itraj < self._data_source.ntraj:
+                self.state.itraj += 1
 
     def ra_indices_for_traj(self, traj):
         """
@@ -330,6 +333,11 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self.next()
 
     def next(self):
+        # first chunk at all, skip prepending trajectories that are not considered in random access
+        if self._t == 0 and self._itraj == 0 and not self.uniform_stride:
+            while (self._itraj not in self.traj_keys or self._t >= self.ra_trajectory_length(self._itraj)) \
+                    and self._itraj < self.number_of_trajectories():
+                self._itraj += 1
         # we have to obtain the current index before invoking next_chunk (which increments itraj)
         itraj = self.current_trajindex
         try:

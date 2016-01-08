@@ -15,6 +15,11 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         self._in_memory = False
         # should be set in subclass
         self._ndim = 0
+        self._needs_sorted_random_access_stride = True
+
+    @property
+    def needs_sorted_ra_stride(self):
+        return self._needs_sorted_random_access_stride
 
     def dimension(self):
         return self._ndim
