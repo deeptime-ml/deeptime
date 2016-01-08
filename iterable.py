@@ -124,10 +124,11 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             self._logger.debug("get_output(): created output trajs with shapes: %s"
                                % [x.shape for x in trajs])
         # fetch data
+        # TODO: replace t with iter.pos, once it is stable
         last_itraj = -1
         t = 0  # first time point
 
-        self._progress_register(it._n_chunks(),
+        self._progress_register(it._n_chunks,
                                 description='getting output of %s' % self.__class__.__name__,
                                 stage=1)
 
@@ -173,11 +174,11 @@ class LaggedIterator(object):
         self._it_lagged = it_lagged
         self._return_trajindex = return_trajindex
 
-    def _n_chunks(self, stride):
-        if hasattr(self._it, '_n_chunks') and hasattr(self._it_lagged, '_n_chunks'):
-            return min(self._it._n_chunks(stride), self._it_lagged._n_chunks(stride))
-
-        raise NotImplemented
+    @property
+    def _n_chunks(self):
+        n1 = self._it._n_chunks
+        n2 = self._it_lagged._n_chunks
+        return min(n1, n2)
 
     def __iter__(self):
         return self

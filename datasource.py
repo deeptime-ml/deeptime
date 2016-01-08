@@ -87,12 +87,14 @@ class DataSource(Iterable):
         :return:
             numpy array containing length of each trajectory
         """
+        n = self.number_of_trajectories()
         if isinstance(stride, np.ndarray):
-            return np.array(
-                    [self.trajectory_length(itraj, stride) for itraj in range(0, self.number_of_trajectories())],
-                    dtype=int)
+            return np.fromiter((self.trajectory_length(itraj, stride)
+                                for itraj in range(n)),
+                               dtype=int, count=n)
         else:
-            return np.array([(l - skip - 1) // stride + 1 for l in self._lengths], dtype=int)
+            return np.fromiter(((l - skip - 1) // stride + 1 for l in self._lengths),
+                               dtype=int, count=n)
 
     def n_frames_total(self, stride=1):
         """
@@ -213,12 +215,12 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def is_stride_sorted(self):
         return self.state.is_stride_sorted()
 
-    def _n_chunks(self, stride=None):
+    @property
+    def _n_chunks(self):
         """ rough estimate of how many chunks will be processed """
-        stride = stride if stride is not None else self.stride
         if self.chunksize != 0:
-            if not DataSourceIterator.is_uniform_stride(stride):
-                chunks = ceil(len(stride[:, 0]) / float(self.chunksize))
+            if not DataSourceIterator.is_uniform_stride(self.stride):
+                chunks = ceil(len(self.stride[:, 0]) / float(self.chunksize))
             else:
                 chunks = sum((ceil(l / float(self.chunksize))
                               for l in self.trajectory_lengths()))
@@ -326,6 +328,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             return True
 
     @abstractmethod
+    # TODO: this should be private
     def next_chunk(self):
         pass
 
