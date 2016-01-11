@@ -139,7 +139,7 @@ class FragmentIterator(DataSourceIterator):
         self._it = None
         self._itraj = 0
 
-    def next_chunk(self):
+    def _next_chunk(self):
         if self._it is None:
             if self._itraj < self.number_of_trajectories():
                 self._it = _FragmentedTrajectoryIterator(self._data_source, self._data_source._readers[self._itraj],

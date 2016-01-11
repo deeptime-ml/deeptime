@@ -124,24 +124,16 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             self._logger.debug("get_output(): created output trajs with shapes: %s"
                                % [x.shape for x in trajs])
         # fetch data
-        # TODO: replace t with iter.pos, once it is stable
-        last_itraj = -1
-        t = 0  # first time point
-
         self._progress_register(it._n_chunks,
                                 description='getting output of %s' % self.__class__.__name__,
                                 stage=1)
 
         for itraj, chunk in it:
             assert chunk is not None
-            if itraj != last_itraj:
-                last_itraj = itraj
-                t = 0  # reset time to 0 for new trajectory
             L = len(chunk)
             if L > 0:
                 assert len(trajs[itraj]) > 0
-                trajs[itraj][t:t + L, :] = chunk[:, dimensions]
-            t += L
+                trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
 
             # update progress
             self._progress_update(1, stage=1)

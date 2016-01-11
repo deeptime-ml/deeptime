@@ -139,8 +139,10 @@ class IteratorState(object):
         self.chunk = chunk
         self.return_trajindex = return_trajindex
         self.itraj = 0
+        self._current_itraj = 0
         self._t = 0
         self._pos = 0
+        self._pos_adv = 0
         self.stride = None
         self.uniform_stride = False
         self.traj_keys = None
@@ -232,7 +234,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self._data_source.number_of_trajectories()
 
     def trajectory_length(self):
-        return self._data_source.trajectory_length(self.current_trajindex, self.stride, self.skip)
+        return self._data_source.trajectory_length(self._itraj, self.stride, self.skip)
 
     def trajectory_lengths(self):
         return self._data_source.trajectory_lengths(self.stride, self.skip)
@@ -245,91 +247,223 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         pass
 
     def reset(self):
+        """
+        Method allowing to reset the iterator so that it can iterare from beginning on again.
+        """
         self._t = 0
         self._itraj = 0
 
     @property
     def pos(self):
-        return self.state._t
+        """
+        Gives the current position in the current trajectory.
+        Returns
+        -------
+        int
+            The current iterator's position in the current trajectory.
+        """
+        return self.state._pos
 
     @property
     def current_trajindex(self):
-        return self._itraj
+        """
+        Gives the current iterator's trajectory index.
+        Returns
+        -------
+        int
+            The current iterator's trajectory index.
+        """
+        return self.state._current_itraj
 
     @property
     def skip(self):
+        """
+        Returns the skip value, i.e., the number of frames that are being omitted at the beginning of each
+        trajectory.
+        Returns
+        -------
+        int
+            The skip value.
+        """
         return self.state.skip
 
     @property
     def _t(self):
+        """
+        Reader-internal property that tracks the upcoming iterator position. Should not be used within iterator loop.
+        Returns
+        -------
+        int
+            The upcoming iterator position.
+        """
         return self.state._t
 
     @_t.setter
     def _t(self, value):
+        """
+        Reader-internal property that tracks the upcoming iterator position.
+        Parameters
+        ----------
+        value : int
+            The upcoming iterator position.
+        """
         self.state._t = value
 
     @property
     def _itraj(self):
+        """
+        Reader-internal property that tracks the upcoming trajectory index. Should not be used within iterator loop.
+        Returns
+        -------
+        int
+            The upcoming trajectory index.
+        """
         return self.state.itraj
 
     @_itraj.setter
     def _itraj(self, value):
+        """
+        Reader-internal property that tracks the upcoming trajectory index. Should not be used within iterator loop.
+        Parameters
+        ----------
+        value : int
+            The upcoming trajectory index.
+        """
         self.state.itraj = value
 
     @skip.setter
     def skip(self, value):
+        """
+        Sets the skip parameter. This can be used to skip the first n frames of the next trajectory in the iterator.
+        Parameters
+        ----------
+        value : int
+            The new skip parameter.
+        """
         self.state.skip = value
 
     @property
     def chunksize(self):
+        """
+        The current chunksize of the iterator. Can be changed dynamically during iteration.
+        Returns
+        -------
+        int
+            The current chunksize of the iterator.
+        """
         return self.state.chunk
 
     @chunksize.setter
     def chunksize(self, value):
+        """
+        Sets the current chunksize of the iterator. Can be changed dynamically during iteration.
+        Parameters
+        ----------
+        value : int
+            The chunksize of the iterator. Required to be non-negative.
+        """
         if not value >= 0:
-            raise ValueError("chunksize has to be positive")
+            raise ValueError("chunksize has to be non-negative")
         self.state.chunk = value
 
     @property
     def stride(self):
+        """
+        Gives the current stride parameter.
+        Returns
+        -------
+        int
+            The current stride parameter.
+        """
         return self.state.stride
 
     @stride.setter
     def stride(self, value):
+        """
+        Sets the stride parameter.
+        Parameters
+        ----------
+        value : int
+            The new stride parameter.
+        """
         self.state.stride = value
 
     @property
     def return_traj_index(self):
+        """
+        Property that gives information whether the trajectory index gets returned during the iteration.
+        Returns
+        -------
+        bool
+            True if the trajectory index should be returned, otherwise False.
+        """
         return self.state.return_trajindex
 
     @property
     def traj_keys(self):
+        """
+        Random access property returning the trajectory indices that were handed in.
+        Returns
+        -------
+        list
+            Trajectories that are used in random access.
+        """
         return self.state.traj_keys
 
     @property
     def uniform_stride(self):
+        """
+        Boolean property that tells if the stride argument was integral (i.e., uniform stride) or a random access
+        dictionary.
+        Returns
+        -------
+        bool
+            True if the stride argument was integral, otherwise False.
+        """
         return self.state.uniform_stride
 
     @return_traj_index.setter
     def return_traj_index(self, value):
+        """
+        Setter for return_traj_index, determining if the trajectory index gets returned in the iteration loop.
+        Parameters
+        ----------
+        value : bool
+            True if it should be returned, otherwise False
+        """
         self.state.return_trajindex = value
 
     @staticmethod
     def is_uniform_stride(stride):
         return IteratorState.is_uniform_stride(stride)
 
-    def last_chunk(self, itraj):
-        return itraj == self.number_of_trajectories() - 1 and self.last_chunk_in_traj(itraj)
+    @property
+    def last_chunk(self):
+        """
+        Property returning if the current chunk is the last chunk before the iterator terminates.
+        Returns
+        -------
+        bool
+            True if the iterator terminates after the current chunk, otherwise False
+        """
+        return self.current_trajindex == self.number_of_trajectories() - 1 and self.last_chunk_in_traj
 
-    def last_chunk_in_traj(self, itraj):
+    @property
+    def last_chunk_in_traj(self):
+        """
+        Property returning if the current chunk is the last chunk before the iterator terminates or the next trajectory.
+        Returns
+        -------
+        bool
+            True if the next chunk either belongs to a new trajectory or the iterator terminates.
+        """
         if self.chunksize > 0:
             return self._last_chunk_in_traj
         else:
             return True
 
     @abstractmethod
-    # TODO: this should be private
-    def next_chunk(self):
+    def _next_chunk(self):
         pass
 
     def __next__(self):
@@ -342,21 +476,23 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
                     and self._itraj < self.number_of_trajectories():
                 self._itraj += 1
         # we have to obtain the current index before invoking next_chunk (which increments itraj)
-        itraj = self.current_trajindex
+        self.state._current_itraj = self._itraj
+        self.state._pos = self.state._pos_adv
         try:
-            X = self.next_chunk()
+            X = self._next_chunk()
         except StopIteration:
             self._last_chunk_in_traj = True
             raise
-        if itraj != self.current_trajindex:
-            self.state._pos = 0
+        if self.state._current_itraj != self._itraj:
+            self.state._pos_adv = 0
             self._last_chunk_in_traj = True
         else:
-            self.state._pos += len(X)
-            length = self._data_source.trajectory_length(itraj=itraj, stride=self.stride, skip=self.skip)
-            self._last_chunk_in_traj = self.state._pos >= length
+            self.state._pos_adv += len(X)
+            length = self._data_source.trajectory_length(itraj=self.state._current_itraj,
+                                                         stride=self.stride, skip=self.skip)
+            self._last_chunk_in_traj = self.state._pos_adv >= length
         if self.return_traj_index:
-            return itraj, X
+            return self.state._current_itraj, X
         return X
 
     def __iter__(self):

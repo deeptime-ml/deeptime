@@ -51,7 +51,7 @@ class PyCSVIterator(DataSourceIterator):
             self._file_handle.close()
         raise StopIteration()
 
-    def next_chunk(self):
+    def _next_chunk(self):
         if not self._file_handle or self._itraj >= self.number_of_trajectories():
             self.close()
         traj_len = self.trajectory_lengths()[self._itraj]

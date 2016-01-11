@@ -192,7 +192,7 @@ class FeatureReaderIterator(DataSourceIterator):
             self._mditer.close()
         raise StopIteration()
 
-    def next_chunk(self):
+    def _next_chunk(self):
         """
         gets the next chunk. If lag > 0, we open another iterator with same chunk
         size and advance it by one, as soon as this method is called with a lag > 0.

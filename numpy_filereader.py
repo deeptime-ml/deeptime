@@ -150,11 +150,11 @@ class NPYIterator(DataSourceIterator):
     def _open_filehandle(self):
         self._array = self._data_source._load_file(self._itraj)
 
-    def next_chunk(self):
-        if self.current_trajindex >= self._data_source.ntraj:
+    def _next_chunk(self):
+        if self._itraj >= self._data_source.ntraj:
             self.close()
 
-        if self.current_trajindex != self._last_itraj:
+        if self._itraj != self._last_itraj:
             self._close_filehandle()
             self._open_filehandle()
 
