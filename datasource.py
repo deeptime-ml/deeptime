@@ -227,7 +227,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
                 chunks = sum((ceil(l / float(self.chunksize))
                               for l in self.trajectory_lengths()))
         else:
-            chunks = 1
+            chunks = self.number_of_trajectories()
         return int(chunks)
 
     def number_of_trajectories(self):
