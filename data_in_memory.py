@@ -18,10 +18,13 @@
 
 from __future__ import absolute_import
 
+import numbers
+
 import numpy as np
 
 from pyemma.coordinates.data.datasource import DataSourceIterator
-from pyemma.coordinates.data.random_accessible import RandomAccessibleDataSource
+from pyemma.coordinates.data.random_accessible import RandomAccessibleDataSource, CuboidRandomAccessStrategy, \
+    LinearRandomAccessStrategy, LinearItrajRandomAccessStrategy
 
 __author__ = 'noe, marscher'
 
@@ -47,6 +50,9 @@ class DataInMemory(RandomAccessibleDataSource):
     def __init__(self, data, chunksize=5000):
         super(DataInMemory, self).__init__(chunksize=chunksize)
         self._is_reader = True
+
+        self._cuboid_random_access_strategy = DataInMemoryCuboidRandomAccessStrategy(self)
+        self._ra_jagged = DataInMemoryJaggedRandomAccessStrategy(self)
 
         if not isinstance(data, (list, tuple)):
             data = [data]
@@ -98,8 +104,23 @@ class DataInMemory(RandomAccessibleDataSource):
         return "[DataInMemory array shapes: %s]" % [np.shape(x) for x in self.data]
 
 
-class DataInMemoryIterator(DataSourceIterator):
+class DataInMemoryCuboidRandomAccessStrategy(CuboidRandomAccessStrategy):
+    def _get_itraj_random_accessible(self, itrajs, frames, dims):
+        dims = [dims] if isinstance(dims, numbers.Integral) else dims
+        itrajs = self._get_indices(itrajs, self._source.ntraj)
+        frames = self._get_indices(frames, min(self._source.trajectory_lengths(1, 0)[itrajs]))
+        if isinstance(dims, (list, tuple)):
+            return np.array([self._source.data[itraj][frames] for itraj in itrajs])[:, :, dims]
+        return np.array([self._source.data[itraj][frames, dims] for itraj in itrajs])
 
+
+class DataInMemoryJaggedRandomAccessStrategy(CuboidRandomAccessStrategy):
+    def _get_itraj_random_accessible(self, itrajs, frames, dims):
+        itrajs = self._get_indices(itrajs, self._source.ntraj)
+        return [self._source.data[itraj][frames, dims] for itraj in itrajs]
+
+
+class DataInMemoryIterator(DataSourceIterator):
     def close(self):
         raise StopIteration()
 
@@ -134,7 +155,7 @@ class DataInMemoryIterator(DataSourceIterator):
             if not self.uniform_stride:
                 random_access_chunk = self._data_source.data[self._itraj][
                     self.ra_indices_for_traj(self._itraj)[self._t:min(
-                        self._t + self.chunksize, self.ra_trajectory_length(self._itraj)
+                            self._t + self.chunksize, self.ra_trajectory_length(self._itraj)
                     )]
                 ]
                 self._t += self.chunksize

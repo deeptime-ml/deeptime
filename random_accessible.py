@@ -12,7 +12,7 @@ class RandomAccessibleDataSource(DataSource):
     def __init__(self, chunksize=100):
         super(RandomAccessibleDataSource, self).__init__(chunksize)
         self._needs_sorted_random_access_stride = False
-        self._default_random_access_strategy = DefaultRandomAccessStrategy(self)
+        self._cuboid_random_access_strategy = CuboidRandomAccessStrategy(self)
         self._ra_linear_strategy = LinearRandomAccessStrategy(self)
         self._ra_linear_itraj_strategy = LinearItrajRandomAccessStrategy(self)
         self._ra_jagged = JaggedRandomAccessStrategy(self)
@@ -33,7 +33,7 @@ class RandomAccessibleDataSource(DataSource):
 
         :return: Returns an object that allows access by slices in the described manner.
         """
-        return self._default_random_access_strategy
+        return self._cuboid_random_access_strategy
 
     @property
     def ra_itraj_jagged(self):
@@ -98,7 +98,7 @@ class RandomAccessStrategy(six.with_metaclass(ABCMeta)):
         return max(elems)
 
 
-class DefaultRandomAccessStrategy(RandomAccessStrategy):
+class CuboidRandomAccessStrategy(RandomAccessStrategy):
     def _handle_slice(self, idx):
         idx = np.index_exp[idx]
         itrajs, frames, dims = None, None, None
@@ -141,14 +141,14 @@ class DefaultRandomAccessStrategy(RandomAccessStrategy):
         return data
 
 
-class JaggedRandomAccessStrategy(DefaultRandomAccessStrategy):
+class JaggedRandomAccessStrategy(CuboidRandomAccessStrategy):
 
     def _get_itraj_random_accessible(self, itrajs, frames, dims):
         itrajs = self._get_indices(itrajs, self._source.ntraj)
-        return [self._source._default_random_access_strategy[itraj, frames, dims][0] for itraj in itrajs]
+        return [self._source._cuboid_random_access_strategy[itraj, frames, dims][0] for itraj in itrajs]
 
 
-class LinearItrajRandomAccessStrategy(DefaultRandomAccessStrategy):
+class LinearItrajRandomAccessStrategy(CuboidRandomAccessStrategy):
     def _get_itraj_random_accessible(self, itrajs, frames, dims):
         itrajs = self._get_indices(itrajs, self._source.ntraj)
         frames = self._get_indices(frames, sum(self._source.trajectory_lengths()[itrajs]))
