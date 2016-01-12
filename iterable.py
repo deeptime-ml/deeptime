@@ -184,6 +184,8 @@ class LaggedIterator(object):
 
         while itraj < itraj_lag:
             itraj, data = self._it.next()
+        while itraj_lag < itraj:
+            itraj_lag, data_lagged = self._it_lagged.next()
         assert itraj == itraj_lag
 
         if data.shape[0] > data_lagged.shape[0]:

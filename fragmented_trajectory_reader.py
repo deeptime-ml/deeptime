@@ -57,7 +57,7 @@ class _FragmentedTrajectoryIterator(object):
                 expected_length = min(self._chunksize, sum(self._traj_lengths(self._stride)) - self._t)
                 X = np.empty((expected_length, ndim), dtype=self._frag_reader.output_type())
                 read = 0
-                while read < expected_length:
+                while read < expected_length or expected_length == 0:
                     # reader has data left:
                     if self._readers[self._reader_at].trajectory_length(0, self._stride, self._skip if
                             self._reader_at == 0 else 0) - self._reader_t > 0:
@@ -67,9 +67,11 @@ class _FragmentedTrajectoryIterator(object):
                         read += L
                         self._reader_t += L
                     # need new reader
-                    if read < expected_length:
+                    if read < expected_length or expected_length == 0:
                         self._reader_at += 1
                         self._reader_t = 0
+                        if len(self._readers) <= self._reader_at:
+                            raise StopIteration()
                         self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
                         self._reader_overlap = self._calculate_new_overlap(self._stride,
                                                                            self._reader_lengths[self._reader_at - 1],
@@ -151,6 +153,8 @@ class FragmentIterator(DataSourceIterator):
             raise ValueError("fragmented trajectory implemented for random access")
         else:
             X = next(self._it, None)
+            if X is None:
+                raise StopIteration()
             self._t += X.shape[0]
             if self._t >= self._data_source.trajectory_length(self._itraj, stride=self.stride):
                 self._itraj += 1

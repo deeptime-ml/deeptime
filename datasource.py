@@ -469,7 +469,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def __next__(self):
         return self.next()
 
-    def next(self):
+    def _it_next(self):
         # first chunk at all, skip prepending trajectories that are not considered in random access
         if self._t == 0 and self._itraj == 0 and not self.uniform_stride:
             while (self._itraj not in self.traj_keys or self._t >= self.ra_trajectory_length(self._itraj)) \
@@ -493,6 +493,14 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             self._last_chunk_in_traj = self.state._pos_adv >= length
         if self.return_traj_index:
             return self.state._current_itraj, X
+        return X
+
+    def next(self):
+        X = self._it_next()
+        while X is not None and (
+                (not self.return_traj_index and len(X) == 0) or (self.return_traj_index and len(X[1]) == 0)
+        ):
+            X = self._it_next()
         return X
 
     def __iter__(self):
