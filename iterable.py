@@ -77,7 +77,8 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         chunk = chunk if chunk is not None else self.default_chunksize
         it = self._create_iterator(skip=0, chunk=chunk, stride=stride, return_trajindex=return_trajindex)
         if lag > 0:
-            it_lagged = self._create_iterator(skip=lag, chunk=chunk, stride=stride, return_trajindex=False)
+            it.return_traj_index = True
+            it_lagged = self._create_iterator(skip=lag, chunk=chunk, stride=stride, return_trajindex=True)
             return LaggedIterator(it, it_lagged, return_trajindex)
         return it
 
@@ -186,11 +187,13 @@ class LaggedIterator(object):
         return self.next()
 
     def next(self):
-        data = self._it.next()
-        itraj = None
-        if self._return_trajindex:
-            itraj, data = data
-        data_lagged = self._it_lagged.next()
+        itraj, data = self._it.next()
+        itraj_lag, data_lagged = self._it_lagged.next()
+
+        while itraj < itraj_lag:
+            itraj, data = self._it.next()
+        assert itraj == itraj_lag
+
         if data.shape[0] > data_lagged.shape[0]:
             # data chunk is bigger, truncate it to match data_lagged's shape
             data = data[:data_lagged.shape[0]]

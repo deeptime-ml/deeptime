@@ -56,7 +56,7 @@ class DataSource(Iterable):
             length of trajectory
         """
         if itraj >= self._ntraj:
-            return 0
+            raise IndexError
         if isinstance(stride, np.ndarray):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
