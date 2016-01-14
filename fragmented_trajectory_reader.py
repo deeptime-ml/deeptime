@@ -1,10 +1,7 @@
-from copy import copy
-from itertools import chain
-
 from pyemma.coordinates.api import source
 
 import numpy as np
-from pyemma.coordinates.data.datasource import DataSource, DataSourceIterator
+from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
 
 
 class _FragmentedTrajectoryIterator(object):

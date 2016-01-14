@@ -26,31 +26,25 @@ Created on 22.01.2015
 from __future__ import absolute_import
 
 import numpy as np
-from pyemma.coordinates.transform.transformer import Transformer
-
-# TODO: this should be either a new type (data_consumer, eg. end point) or
-# deleted
+from pyemma.coordinates.transform.transformer import StreamingTransformer
 
 
-class WriterCSV(Transformer):
+class WriterCSV(StreamingTransformer):
 
     '''
     write to csv files via numpy
     '''
 
     def __init__(self, filename, stride=1):
-        '''
-        Constructor
-        '''
         super(WriterCSV, self).__init__()
 
         # filename should be obtained from source trajectory filename,
         # eg suffix it to given filename
         self.filename = filename
         self.stride = stride
-        self._last_frame = False
 
-        self._reset()
+    def _transform_array(self, X):
+        pass
 
     def describe(self):
         return "[Writer filename='%s']" % self.filename
@@ -58,29 +52,10 @@ class WriterCSV(Transformer):
     def dimension(self):
         return self.data_producer.dimension()
 
-    def _reset(self, stride=1):
-        try:
-            self._fh.close()
-            self._logger.debug('closed file')
-        except EnvironmentError:
-            self._logger.exception('during close')
-        except AttributeError:
-            # no file handle exists yet
-            pass
-
-        try:
-            self._fh = open(self.filename, 'wb')
-        except EnvironmentError:
-            self._logger.exception('could not open file "%s" for writing.')
-            raise
-
-    def _transform_array(self, X):
-        raise
-
     def _estimate(self, iterable, **kw):
-        it = iterable.iterator(stride=self.stride, return_trajindex=False)
-        for X in it:
-            np.savetxt(self._fh, X)
-        self._fh.close()
+        with open(self.filename, 'wb') as fh:
+            it = iterable.iterator(stride=self.stride, return_trajindex=False)
+            for X in it:
+                np.savetxt(fh, X)
 
         return self

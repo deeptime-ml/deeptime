@@ -27,7 +27,7 @@ import functools
 import numpy as np
 
 from pyemma._base.progress import ProgressReporter
-from pyemma.coordinates.data.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 
 
 class NumPyFileReader(DataSource, ProgressReporter):

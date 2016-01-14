@@ -22,7 +22,7 @@ import mdtraj
 import six
 
 from pyemma import config
-from pyemma.coordinates.data.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data.featurizer import MDFeaturizer
 from pyemma.coordinates.util import patches
 
@@ -131,7 +131,7 @@ class FeatureReader(DataSource):
         # lookups pre-computed lengths, or compute it on the fly and store it in db.
         with patch.object(XYZTrajectoryFile, '__len__', f):
             if config['use_trajectory_lengths_cache'] == 'True':
-                from pyemma.coordinates.data.traj_info_cache import TrajectoryInfoCache
+                from pyemma.coordinates.data.util.traj_info_cache import TrajectoryInfoCache
                 for traj in self.trajfiles:
                     self._lengths.append(TrajectoryInfoCache[traj])
             else:

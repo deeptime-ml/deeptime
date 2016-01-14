@@ -5,13 +5,13 @@ import six
 import numpy as np
 from math import ceil
 
-from pyemma.coordinates.data.iterable import Iterable
+from pyemma.coordinates.data._base.iterable import Iterable
 
 
 class DataSource(Iterable):
 
     def __init__(self, chunksize=100):
-        super(DataSource, self).__init__(chunksize)
+        super(DataSource, self).__init__(chunksize=chunksize)
         self._lengths = []
         # storage for arrays (used in _add_array_to_storage)
         self._data = []
@@ -27,7 +27,7 @@ class DataSource(Iterable):
 
     @property
     def is_random_accessible(self):
-        from pyemma.coordinates.data.random_accessible import RandomAccessibleDataSource
+        from pyemma.coordinates.data._base.random_accessible import RandomAccessibleDataSource
         return isinstance(self, RandomAccessibleDataSource)
 
     @property

@@ -22,9 +22,12 @@ import numbers
 
 import numpy as np
 
-from pyemma.coordinates.data.datasource import DataSourceIterator
-from pyemma.coordinates.data.random_accessible import RandomAccessibleDataSource, CuboidRandomAccessStrategy, \
-    LinearRandomAccessStrategy, LinearItrajRandomAccessStrategy
+from pyemma.coordinates.data._base.datasource import DataSourceIterator
+from pyemma.coordinates.data._base.random_accessible import (RandomAccessibleDataSource,
+                                                             CuboidRandomAccessStrategy,
+                                                             LinearRandomAccessStrategy,
+                                                             LinearItrajRandomAccessStrategy,
+                                                             )
 
 __author__ = 'noe, marscher'
 

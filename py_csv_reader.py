@@ -29,7 +29,7 @@ import csv
 import numpy as np
 from six.moves import range
 
-from pyemma.coordinates.data.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 
 
 class PyCSVIterator(DataSourceIterator):
