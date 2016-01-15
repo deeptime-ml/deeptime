@@ -5,7 +5,7 @@ import numbers
 
 import six
 
-from pyemma.coordinates.data.datasource import DataSource
+from pyemma.coordinates.data._base.datasource import DataSource
 
 
 class RandomAccessibleDataSource(DataSource):
