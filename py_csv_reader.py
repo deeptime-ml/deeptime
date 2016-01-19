@@ -69,10 +69,6 @@ class _csv_chunked_numpy_iterator:
 
     def _convert_to_np_chunk(self, list_of_strings):
         list_of_strings = [s for s in list_of_strings if len(s) > 0]
-        assert len(list_of_strings) == self.reader.dimension(), \
-            "wrong number of elements in file %s, line %i" \
-            % (self._data_source._filenames[self._itraj], self._t)
-        self._t += len(list_of_strings)
         stack_of_strings = np.vstack(list_of_strings)
         result = stack_of_strings.astype(float)
         return result
