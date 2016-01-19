@@ -68,8 +68,10 @@ class _csv_chunked_numpy_iterator:
         self.fh.close()
 
     def _convert_to_np_chunk(self, list_of_strings):
-        list_of_strings = [s for s in list_of_strings if len(s) > 0]
         stack_of_strings = np.vstack(list_of_strings)
+        # filter double delimiter values (empty strings)
+        inds = stack_of_strings != ''
+        stack_of_strings = stack_of_strings[inds].reshape(len(stack_of_strings), -1)
         result = stack_of_strings.astype(float)
         return result
 
