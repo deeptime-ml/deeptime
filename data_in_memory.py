@@ -22,17 +22,13 @@ import numbers
 
 import numpy as np
 
-from pyemma.coordinates.data._base.datasource import DataSourceIterator
-from pyemma.coordinates.data._base.random_accessible import (RandomAccessibleDataSource,
-                                                             CuboidRandomAccessStrategy,
-                                                             LinearRandomAccessStrategy,
-                                                             LinearItrajRandomAccessStrategy,
-                                                             )
+from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 
 __author__ = 'noe, marscher'
 
 
-class DataInMemory(RandomAccessibleDataSource):
+class DataInMemory(DataSource):
     r"""
     multi-dimensional data fully stored in memory.
 
@@ -53,9 +49,12 @@ class DataInMemory(RandomAccessibleDataSource):
     def __init__(self, data, chunksize=5000):
         super(DataInMemory, self).__init__(chunksize=chunksize)
         self._is_reader = True
+        self._is_random_accessible = True
 
-        self._cuboid_random_access_strategy = DataInMemoryCuboidRandomAccessStrategy(self)
-        self._ra_jagged = DataInMemoryJaggedRandomAccessStrategy(self)
+        self._ra_cuboid = DataInMemoryCuboidRandomAccessStrategy(self, 3)
+        self._ra_jagged = DataInMemoryJaggedRandomAccessStrategy(self, 3)
+        self._ra_linear_strategy = DataInMemoryLinearRandomAccessStrategy(self, 2)
+        self._ra_linear_itraj_strategy = DataInMemoryLinearItrajRandomAccessStrategy(self, 3)
 
         if not isinstance(data, (list, tuple)):
             data = [data]
@@ -107,20 +106,94 @@ class DataInMemory(RandomAccessibleDataSource):
         return "[DataInMemory array shapes: %s]" % [np.shape(x) for x in self.data]
 
 
-class DataInMemoryCuboidRandomAccessStrategy(CuboidRandomAccessStrategy):
+class DataInMemoryCuboidRandomAccessStrategy(RandomAccessStrategy):
+    def _handle_slice(self, idx):
+        idx = np.index_exp[idx]
+        itrajs, frames, dims = None, None, None
+        if isinstance(idx, (list, tuple)):
+            if len(idx) == 1:
+                itrajs, frames, dims = idx[0], slice(None, None, None), slice(None, None, None)
+            if len(idx) == 2:
+                itrajs, frames, dims = idx[0], idx[1], slice(None, None, None)
+            if len(idx) == 3:
+                itrajs, frames, dims = idx[0], idx[1], idx[2]
+            if len(idx) > 3 or len(idx) == 0:
+                raise IndexError("invalid slice by %s" % idx)
+        return self._get_itraj_random_accessible(itrajs, frames, dims)
+
     def _get_itraj_random_accessible(self, itrajs, frames, dims):
         dims = [dims] if isinstance(dims, numbers.Integral) else dims
         itrajs = self._get_indices(itrajs, self._source.ntraj)
         frames = self._get_indices(frames, min(self._source.trajectory_lengths(1, 0)[itrajs]))
         if isinstance(dims, (list, tuple)):
-            return np.array([self._source.data[itraj][frames] for itraj in itrajs])[:, :, dims]
-        return np.array([self._source.data[itraj][frames, dims] for itraj in itrajs])
+            return np.array(
+                    [self._source.data[itraj][frames] for itraj in itrajs],
+                    dtype=self._source.output_type()
+            )[:, :, dims]
+        return np.array([self._source.data[itraj][frames, dims] for itraj in itrajs], dtype=self._source.output_type())
 
 
-class DataInMemoryJaggedRandomAccessStrategy(CuboidRandomAccessStrategy):
+class DataInMemoryJaggedRandomAccessStrategy(DataInMemoryCuboidRandomAccessStrategy):
     def _get_itraj_random_accessible(self, itrajs, frames, dims):
         itrajs = self._get_indices(itrajs, self._source.ntraj)
         return [self._source.data[itraj][frames, dims] for itraj in itrajs]
+
+
+class DataInMemoryLinearRandomAccessStrategy(RandomAccessStrategy):
+    def _handle_slice(self, idx):
+        idx = np.index_exp[idx]
+        frames, dims = None, None
+        if isinstance(idx, (tuple, list)):
+            if len(idx) == 1:
+                frames, dims = idx[0], slice(None, None, None)
+            if len(idx) == 2:
+                frames, dims = idx[0], idx[1]
+            if len(idx) > 2:
+                raise IndexError("Slice was more than two-dimensional, not supported.")
+
+        cumsum = np.cumsum(self._source.trajectory_lengths())
+        if not isinstance(frames, (list, np.ndarray)):
+            frames = self._get_indices(frames, cumsum[-1])
+        dims = self._get_indices(dims, self._source.ndim)
+
+        nframes = len(frames)
+        ndims = len(dims)
+
+        data = np.empty((nframes, ndims), dtype=self._source.output_type())
+
+        from pyemma.coordinates.clustering import UniformTimeClustering
+        for i, x in enumerate(frames):
+            traj, idx = UniformTimeClustering._idx_to_traj_idx(x, cumsum)
+            data[i, :] = self._source.data[traj][idx, dims]
+        return data
+
+
+class DataInMemoryLinearItrajRandomAccessStrategy(DataInMemoryCuboidRandomAccessStrategy):
+    def _get_itraj_random_accessible(self, itrajs, frames, dims):
+        itrajs = self._get_indices(itrajs, self._source.ntraj)
+        frames = self._get_indices(frames, sum(self._source.trajectory_lengths()[itrajs]))
+        dims = self._get_indices(dims, self._source.ndim)
+
+        nframes = len(frames)
+        ndims = len(dims)
+
+        if max(dims) > self._source.ndim:
+            raise IndexError("Data only has %s dimensions, wanted to slice by dimension %s."
+                             % (self._source.ndim, max(dims)))
+
+        cumsum = np.cumsum(self._source.trajectory_lengths()[itrajs])
+        data = np.empty((nframes, ndims), dtype=self._source.output_type())
+
+        from pyemma.coordinates.clustering import UniformTimeClustering
+        for i, x in enumerate(frames):
+            traj, idx = self._map_to_absolute_traj_idx(UniformTimeClustering._idx_to_traj_idx(x, cumsum), itrajs)
+            data[i, :] = self._source.data[traj][idx, dims]
+
+        return data
+
+    @staticmethod
+    def _map_to_absolute_traj_idx(cumsum_idx, itrajs):
+        return itrajs[cumsum_idx[0]], cumsum_idx[1]
 
 
 class DataInMemoryIterator(DataSourceIterator):

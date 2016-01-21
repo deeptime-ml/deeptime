@@ -20,9 +20,11 @@ from __future__ import absolute_import
 
 import mdtraj
 import six
+import numpy as np
 
 from pyemma import config
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data.featurizer import MDFeaturizer
 from pyemma.coordinates.util import patches
 
@@ -83,6 +85,14 @@ class FeatureReader(DataSource):
             trajectories = [trajectories]
         self.trajfiles = trajectories
         self.topfile = topologyfile
+
+        self._is_random_accessible = all(
+                [trajfile.endswith((".h5", ".dcd", ".binpos", ".nc")) for trajfile in self.trajfiles]
+        )
+        self._ra_cuboid = FeatureReaderCuboidRandomAccessStrategy(self, 3)
+        self._ra_jagged = FeatureReaderJaggedRandomAccessStrategy(self, 3)
+        self._ra_linear_strategy = FeatureReaderLinearRandomAccessStrategy(self, 2)
+        self._ra_linear_itraj_strategy = FeatureReaderLinearItrajRandomAccessStrategyFeatureReader(self, 3)
 
         # featurizer
         if topologyfile and featurizer:
@@ -179,8 +189,134 @@ class FeatureReader(DataSource):
                                                      (desired_n_atoms, traj.xyz.shape[1])
 
 
-class FeatureReaderIterator(DataSourceIterator):
+class FeatureReaderCuboidRandomAccessStrategy(RandomAccessStrategy):
+    def _handle_slice(self, idx):
+        idx = np.index_exp[idx]
+        itrajs, frames, dims = None, None, None
+        if isinstance(idx, (list, tuple)):
+            if len(idx) == 1:
+                itrajs, frames, dims = idx[0], slice(None, None, None), slice(None, None, None)
+            if len(idx) == 2:
+                itrajs, frames, dims = idx[0], idx[1], slice(None, None, None)
+            if len(idx) == 3:
+                itrajs, frames, dims = idx[0], idx[1], idx[2]
+            if len(idx) > 3 or len(idx) == 0:
+                raise IndexError("invalid slice by %s" % idx)
+        return self._get_itraj_random_accessible(itrajs, frames, dims)
 
+    def _get_itraj_random_accessible(self, itrajs, frames, dims):
+        itrajs = self._get_indices(itrajs, self._source.ntraj)
+        frames = self._get_indices(frames, min(self._source.trajectory_lengths(1, 0)[itrajs]))
+        dims = self._get_indices(dims, self._source.ndim)
+
+        ntrajs = len(itrajs)
+        nframes = len(frames)
+        ndims = len(dims)
+
+        frames_orig = frames.argsort().argsort()
+        frames_sorted = np.sort(frames)
+
+        itraj_orig = itrajs.argsort().argsort()
+        itraj_sorted = np.sort(itrajs)
+        itrajs_unique, itrajs_count = np.unique(itraj_sorted, return_counts=True)
+
+        if max(dims) > self._source.ndim:
+            raise IndexError("Data only has %s dimensions, wanted to slice by dimension %s."
+                             % (self._source.ndim, max(dims)))
+
+        ra_indices = np.empty((len(itrajs_unique) * nframes, 2), dtype=int)
+        for idx, itraj in enumerate(itrajs_unique):
+            ra_indices[idx * nframes: (idx + 1) * nframes, 0] = itraj * np.ones(nframes, dtype=int)
+            ra_indices[idx * nframes: (idx + 1) * nframes, 1] = frames_sorted
+
+        data = np.empty((ntrajs, nframes, ndims))
+
+        count = 0
+        for X in self._source.iterator(stride=ra_indices, lag=0, chunk=0, return_trajindex=False):
+            for _ in range(0, itrajs_count[itraj_orig[count]]):
+                data[itraj_orig[count], :, :] = X[frames_orig][:, dims]
+                count += 1
+
+        return data
+
+
+class FeatureReaderJaggedRandomAccessStrategy(FeatureReaderCuboidRandomAccessStrategy):
+    def _get_itraj_random_accessible(self, itrajs, frames, dims):
+        itrajs = self._get_indices(itrajs, self._source.ntraj)
+        return [self._source._ra_cuboid[itraj, frames, dims][0] for itraj in itrajs]
+
+
+class FeatureReaderLinearItrajRandomAccessStrategyFeatureReader(FeatureReaderCuboidRandomAccessStrategy):
+    def _get_itraj_random_accessible(self, itrajs, frames, dims):
+        itrajs = self._get_indices(itrajs, self._source.ntraj)
+        frames = self._get_indices(frames, sum(self._source.trajectory_lengths()[itrajs]))
+        dims = self._get_indices(dims, self._source.ndim)
+
+        nframes = len(frames)
+        ndims = len(dims)
+
+        if max(dims) > self._source.ndim:
+            raise IndexError("Data only has %s dimensions, wanted to slice by dimension %s."
+                             % (self._source.ndim, max(dims)))
+
+        cumsum = np.cumsum(self._source.trajectory_lengths()[itrajs])
+
+        from pyemma.coordinates.clustering import UniformTimeClustering
+        ra = np.array([self._map_to_absolute_traj_idx(UniformTimeClustering._idx_to_traj_idx(x, cumsum), itrajs)
+                       for x in frames])
+
+        indices = np.lexsort((ra[:, 1], ra[:, 0]))
+        ra = ra[indices]
+
+        data = np.empty((nframes, ndims), dtype=self._source.output_type())
+
+        curr = 0
+        for X in self._source.iterator(stride=ra, lag=0, chunk=0, return_trajindex=False):
+            L = len(X)
+            data[indices[curr:curr + L]] = X
+            curr += L
+
+        return data
+
+    def _map_to_absolute_traj_idx(self, cumsum_idx, itrajs):
+        return itrajs[cumsum_idx[0]], cumsum_idx[1]
+
+
+class FeatureReaderLinearRandomAccessStrategy(RandomAccessStrategy):
+    def _handle_slice(self, idx):
+        idx = np.index_exp[idx]
+        frames, dims = None, None
+        if isinstance(idx, (tuple, list)):
+            if len(idx) == 1:
+                frames, dims = idx[0], slice(None, None, None)
+            if len(idx) == 2:
+                frames, dims = idx[0], idx[1]
+            if len(idx) > 2:
+                raise IndexError("Slice was more than two-dimensional, not supported.")
+
+        cumsum = np.cumsum(self._source.trajectory_lengths())
+        frames = self._get_indices(frames, cumsum[-1])
+        dims = self._get_indices(dims, self._source.ndim)
+
+        nframes = len(frames)
+        ndims = len(dims)
+
+        frames_order = frames.argsort().argsort()
+        frames_sorted = np.sort(frames)
+
+        from pyemma.coordinates.clustering import UniformTimeClustering
+        ra_stride = np.array([UniformTimeClustering._idx_to_traj_idx(x, cumsum) for x in frames_sorted])
+        data = np.empty((nframes, ndims), dtype=self._source.output_type())
+
+        offset = 0
+        for X in self._source.iterator(stride=ra_stride, lag=0, chunk=0, return_trajindex=False):
+            L = len(X)
+            data[offset:offset + L, :] = X[:, dims]
+            offset += L
+        return data[frames_order]
+
+
+class FeatureReaderIterator(DataSourceIterator):
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         super(FeatureReaderIterator, self).__init__(
                 data_source, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex
@@ -235,9 +371,10 @@ class FeatureReaderIterator(DataSourceIterator):
         if not self.uniform_stride:
             while self._itraj not in self.traj_keys and self._itraj < self.number_of_trajectories():
                 self._itraj += 1
-            self._mditer = self._create_patched_iter(
-                    self._data_source.trajfiles[self._itraj], stride=self.ra_indices_for_traj(self._itraj)
-            )
+            if self._itraj < self._data_source.ntraj:
+                self._mditer = self._create_patched_iter(
+                        self._data_source.trajfiles[self._itraj], stride=self.ra_indices_for_traj(self._itraj)
+                )
         else:
             self._mditer = self._create_patched_iter(
                     self._data_source.trajfiles[self._itraj], skip=self.skip, stride=self.stride

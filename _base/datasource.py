@@ -1,18 +1,40 @@
+# This file is part of PyEMMA.
+#
+# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
+#
+# PyEMMA is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import functools
 from abc import ABCMeta, abstractmethod
-
-import six
-import numpy as np
 from math import ceil
 
+import numpy as np
+import six
+
 from pyemma.coordinates.data._base.iterable import Iterable
+from pyemma.coordinates.data._base.random_accessible import TrajectoryRandomAccessible
 
 
-class DataSource(Iterable):
+class DataSource(Iterable, TrajectoryRandomAccessible):
+    """
+    Superclass for all pipeline elements. It inherits "Iterable", therefore serves as an iterator factory over the
+    data it holds. The difference to Iterable is that DataSource is specialized for trajectories, whereas the concept
+    of trajectories is generally unknown for Iterable.
+    """
 
     def __init__(self, chunksize=100):
         super(DataSource, self).__init__(chunksize=chunksize)
-        self._lengths = []
         # storage for arrays (used in _add_array_to_storage)
         self._data = []
         # following properties have to be set in subclass
@@ -26,20 +48,33 @@ class DataSource(Iterable):
         return self._ntraj
 
     @property
-    def is_random_accessible(self):
-        from pyemma.coordinates.data._base.random_accessible import RandomAccessibleDataSource
-        return isinstance(self, RandomAccessibleDataSource)
-
-    @property
     def is_reader(self):
+        """
+        Property telling if this data source is a reader or not.
+        Returns
+        -------
+        bool: True if this data source is a reader and False otherwise
+        """
         return self._is_reader
 
     @property
     def data(self):
+        """
+        Property that returns the data that was hold in storage (data in memory mode).
+        Returns
+        -------
+        list : The stored data.
+        """
         return self._data
 
     @property
     def data_producer(self):
+        """
+        The data producer for this data source object (can be another data source object).
+        Returns
+        -------
+        This data source's data producer.
+        """
         return self
 
     def number_of_trajectories(self):
@@ -133,20 +168,24 @@ class DataSource(Iterable):
 
 
 class IteratorState(object):
+    """
+    State class holding all the relevant information of an iterator's state.
+    """
 
     def __init__(self, stride=1, skip=0, chunk=0, return_trajindex=False, ntraj=0):
         self.skip = skip
         self.chunk = chunk
         self.return_trajindex = return_trajindex
         self.itraj = 0
-        self._current_itraj = 0
-        self._t = 0
-        self._pos = 0
-        self._pos_adv = 0
+        self.current_itraj = 0
+        self.t = 0
+        self.pos = 0
+        self.pos_adv = 0
         self.stride = None
         self.uniform_stride = False
         self.traj_keys = None
         self.trajectory_lengths = None
+        self.ra_indices_for_traj_dict = {}
 
     def ra_indices_for_traj(self, traj):
         """
@@ -155,7 +194,10 @@ class IteratorState(object):
         :return: a Nx1 - np.array of the indices corresponding to the trajectory index
         """
         assert not self.uniform_stride, "requested random access indices, but is in uniform stride mode"
-        return self.stride[self.stride[:, 0] == traj][:, 1] if traj in self.traj_keys else np.array([])
+        if traj in self.traj_keys:
+            return self.ra_indices_for_traj_dict[traj]
+        else:
+            return np.array([])
 
     def ra_trajectory_length(self, traj):
         assert not self.uniform_stride, "requested random access trajectory length, but is in uniform stride mode"
@@ -179,7 +221,9 @@ class IteratorState(object):
 
 
 class DataSourceIterator(six.with_metaclass(ABCMeta)):
-
+    """
+    Abstract class for any data source iterator.
+    """
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         self._data_source = data_source
         self.state = IteratorState(skip=skip, chunk=chunk,
@@ -193,12 +237,15 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         if isinstance(stride, np.ndarray):
             keys = stride[:, 0]
             self.state.traj_keys, self.state.trajectory_lengths = np.unique(keys, return_counts=True)
+            self.state.ra_indices_for_traj_dict = {}
+            for traj in self.state.traj_keys:
+                self.state.ra_indices_for_traj_dict[traj] = self.state.stride[self.state.stride[:, 0] == traj][:, 1]
         else:
             self.state.traj_keys = None
         self.state.uniform_stride = IteratorState.is_uniform_stride(stride)
         if not IteratorState.is_uniform_stride(stride):
-            if self._data_source.needs_sorted_ra_stride and not self.state.is_stride_sorted():
-                raise ValueError("For this data source, currently only sorted arrays allowed for random access")
+            if not self.state.is_stride_sorted():
+                raise ValueError("Only sorted arrays allowed for iterator pseudo random access")
             # skip trajs which are not included in stride
             while self.state.itraj not in self.state.traj_keys and self.state.itraj < self._data_source.ntraj:
                 self.state.itraj += 1
@@ -262,7 +309,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         int
             The current iterator's position in the current trajectory.
         """
-        return self.state._pos
+        return self.state.pos
 
     @property
     def current_trajindex(self):
@@ -273,7 +320,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         int
             The current iterator's trajectory index.
         """
-        return self.state._current_itraj
+        return self.state.current_itraj
 
     @property
     def skip(self):
@@ -296,7 +343,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         int
             The upcoming iterator position.
         """
-        return self.state._t
+        return self.state.t
 
     @_t.setter
     def _t(self, value):
@@ -307,7 +354,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         value : int
             The upcoming iterator position.
         """
-        self.state._t = value
+        self.state.t = value
 
     @property
     def _itraj(self):
@@ -386,7 +433,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         value : int
             The new stride parameter.
         """
-        self.state.stride = value
+        self.__init_stride(value)
 
     @property
     def return_traj_index(self):
@@ -476,23 +523,26 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
                     and self._itraj < self.number_of_trajectories():
                 self._itraj += 1
         # we have to obtain the current index before invoking next_chunk (which increments itraj)
-        self.state._current_itraj = self._itraj
-        self.state._pos = self.state._pos_adv
+        self.state.current_itraj = self._itraj
+        self.state.pos = self.state.pos_adv
         try:
             X = self._next_chunk()
         except StopIteration:
             self._last_chunk_in_traj = True
             raise
-        if self.state._current_itraj != self._itraj:
-            self.state._pos_adv = 0
+        if self.state.current_itraj != self._itraj:
+            self.state.pos_adv = 0
             self._last_chunk_in_traj = True
         else:
-            self.state._pos_adv += len(X)
-            length = self._data_source.trajectory_length(itraj=self.state._current_itraj,
-                                                         stride=self.stride, skip=self.skip)
-            self._last_chunk_in_traj = self.state._pos_adv >= length
+            self.state.pos_adv += len(X)
+            if self.uniform_stride:
+                length = self._data_source.trajectory_length(itraj=self.state.current_itraj,
+                                                             stride=self.stride, skip=self.skip)
+            else:
+                length = self.ra_trajectory_length(self.state.current_itraj)
+            self._last_chunk_in_traj = self.state.pos_adv >= length
         if self.return_traj_index:
-            return self.state._current_itraj, X
+            return self.state.current_itraj, X
         return X
 
     def next(self):

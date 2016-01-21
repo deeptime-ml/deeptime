@@ -1,3 +1,20 @@
+# This file is part of PyEMMA.
+#
+# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
+#
+# PyEMMA is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from abc import ABCMeta, abstractmethod
 import six
 import numpy as np
@@ -16,11 +33,6 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         self._in_memory = False
         # should be set in subclass
         self._ndim = 0
-        self._needs_sorted_random_access_stride = True
-
-    @property
-    def needs_sorted_ra_stride(self):
-        return self._needs_sorted_random_access_stride
 
     def dimension(self):
         return self._ndim

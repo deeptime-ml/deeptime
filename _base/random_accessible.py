@@ -5,17 +5,32 @@ import numbers
 
 import six
 
-from pyemma.coordinates.data._base.datasource import DataSource
+
+class NotRandomAccessibleException(Exception):
+    pass
 
 
-class RandomAccessibleDataSource(DataSource):
-    def __init__(self, chunksize=100):
-        super(RandomAccessibleDataSource, self).__init__(chunksize)
-        self._needs_sorted_random_access_stride = False
-        self._cuboid_random_access_strategy = CuboidRandomAccessStrategy(self)
-        self._ra_linear_strategy = LinearRandomAccessStrategy(self)
-        self._ra_linear_itraj_strategy = LinearItrajRandomAccessStrategy(self)
-        self._ra_jagged = JaggedRandomAccessStrategy(self)
+class TrajectoryRandomAccessible(object):
+    def __init__(self):
+        self._ra_cuboid = NotImplementedRandomAccessStrategy(self)
+        self._ra_linear_strategy = NotImplementedRandomAccessStrategy(self)
+        self._ra_linear_itraj_strategy = NotImplementedRandomAccessStrategy(self)
+        self._ra_jagged = NotImplementedRandomAccessStrategy(self)
+        self._is_random_accessible = False
+
+    @property
+    def is_random_accessible(self):
+        """
+        Check if self._is_random_accessible is set to true and if all the random access strategies are implemented.
+        Returns
+        -------
+        bool : Returns True if random accessible via strategies and False otherwise.
+        """
+        return self._is_random_accessible and \
+               not isinstance(self.ra_itraj_cuboid, NotImplementedRandomAccessStrategy) and \
+               not isinstance(self.ra_linear, NotImplementedRandomAccessStrategy) and \
+               not isinstance(self.ra_itraj_jagged, NotImplementedRandomAccessStrategy) and \
+               not isinstance(self.ra_itraj_linear, NotImplementedRandomAccessStrategy)
 
     @property
     def ra_itraj_cuboid(self):
@@ -33,7 +48,9 @@ class RandomAccessibleDataSource(DataSource):
 
         :return: Returns an object that allows access by slices in the described manner.
         """
-        return self._cuboid_random_access_strategy
+        if not self._is_random_accessible:
+            raise NotRandomAccessibleException()
+        return self._ra_cuboid
 
     @property
     def ra_itraj_jagged(self):
@@ -42,6 +59,8 @@ class RandomAccessibleDataSource(DataSource):
 
         :return: Returns an object that allows access by slices in the described manner.
         """
+        if not self._is_random_accessible:
+            raise NotRandomAccessibleException()
         return self._ra_jagged
 
     @property
@@ -54,6 +73,8 @@ class RandomAccessibleDataSource(DataSource):
 
         :return: Returns an object that allows access by slices in the described manner.
         """
+        if not self._is_random_accessible:
+            raise NotRandomAccessibleException()
         return self._ra_linear_strategy
 
     @property
@@ -65,16 +86,33 @@ class RandomAccessibleDataSource(DataSource):
 
         :return: A 2D array of the sliced data containing [frames, dims].
         """
+        if not self._is_random_accessible:
+            raise NotRandomAccessibleException()
         return self._ra_linear_itraj_strategy
 
 
 class RandomAccessStrategy(six.with_metaclass(ABCMeta)):
-    def __init__(self, source):
+    """
+    Abstract parent class for all random access strategies. It holds its corresponding data source and
+    implements `__getitem__` as well as `__getslice__`, which both get delegated to `_handle_slice`.
+    """
+    def __init__(self, source, max_slice_dimension=-1):
         self._source = source
+        self._max_slice_dimension = max_slice_dimension
 
     @abstractmethod
     def _handle_slice(self, idx):
         pass
+
+    @property
+    def max_slice_dimension(self):
+        """
+        Property that returns how many dimensions the slice can have.
+        Returns
+        -------
+        int : the maximal slice dimension
+        """
+        return self._max_slice_dimension
 
     def __getitem__(self, idx):
         return self._handle_slice(idx)
@@ -85,11 +123,14 @@ class RandomAccessStrategy(six.with_metaclass(ABCMeta)):
 
     def _get_indices(self, item, length):
         if isinstance(item, slice):
-            item = range(*item.indices(length))
-        else:
-            item = np.arange(0, length)[item]
-            if isinstance(item, numbers.Integral):
-                item = [item]
+            item = np.array(range(*item.indices(length)))
+        elif not isinstance(item, np.ndarray):
+            if isinstance(item, list):
+                item = np.array(item)
+            else:
+                item = np.arange(0, length)[item]
+                if isinstance(item, numbers.Integral):
+                    item = np.array([item])
         return item
 
     def _max(self, elems):
@@ -98,114 +139,6 @@ class RandomAccessStrategy(six.with_metaclass(ABCMeta)):
         return max(elems)
 
 
-class CuboidRandomAccessStrategy(RandomAccessStrategy):
+class NotImplementedRandomAccessStrategy(RandomAccessStrategy):
     def _handle_slice(self, idx):
-        idx = np.index_exp[idx]
-        itrajs, frames, dims = None, None, None
-        if isinstance(idx, (list, tuple)):
-            if len(idx) == 1:
-                itrajs, frames, dims = idx[0], slice(None, None, None), slice(None, None, None)
-            if len(idx) == 2:
-                itrajs, frames, dims = idx[0], idx[1], slice(None, None, None)
-            if len(idx) == 3:
-                itrajs, frames, dims = idx[0], idx[1], idx[2]
-            if len(idx) > 3 or len(idx) == 0:
-                raise IndexError("invalid slice by %s" % idx)
-        return self._get_itraj_random_accessible(itrajs, frames, dims)
-
-    def _get_itraj_random_accessible(self, itrajs, frames, dims):
-        itrajs = self._get_indices(itrajs, self._source.ntraj)
-        frames = self._get_indices(frames, min(self._source.trajectory_lengths(1, 0)[itrajs]))
-        dims = self._get_indices(dims, self._source.ndim)
-
-        ntrajs = len(itrajs)
-        nframes = len(frames)
-        ndims = len(dims)
-
-        if max(dims) > self._source.ndim:
-            raise IndexError("Data only has %s dimensions, wanted to slice by dimension %s."
-                             % (self._source.ndim, max(dims)))
-
-        ra_indices = np.empty((ntrajs * nframes, 2), dtype=int)
-        for idx, itraj in enumerate(itrajs):
-            ra_indices[idx * nframes: (idx + 1) * nframes, 0] = itraj * np.ones(nframes, dtype=int)
-            ra_indices[idx * nframes: (idx + 1) * nframes, 1] = frames
-
-        data = np.empty((ntrajs, nframes, ndims))
-
-        count = 0
-        for X in self._source.iterator(stride=ra_indices, lag=0, chunk=0, return_trajindex=False):
-            data[count, :, :] = X[:, dims]
-            count += 1
-
-        return data
-
-
-class JaggedRandomAccessStrategy(CuboidRandomAccessStrategy):
-
-    def _get_itraj_random_accessible(self, itrajs, frames, dims):
-        itrajs = self._get_indices(itrajs, self._source.ntraj)
-        return [self._source._cuboid_random_access_strategy[itraj, frames, dims][0] for itraj in itrajs]
-
-
-class LinearItrajRandomAccessStrategy(CuboidRandomAccessStrategy):
-    def _get_itraj_random_accessible(self, itrajs, frames, dims):
-        itrajs = self._get_indices(itrajs, self._source.ntraj)
-        frames = self._get_indices(frames, sum(self._source.trajectory_lengths()[itrajs]))
-        dims = self._get_indices(dims, self._source.ndim)
-
-        nframes = len(frames)
-        ndims = len(dims)
-
-        if max(dims) > self._source.ndim:
-            raise IndexError("Data only has %s dimensions, wanted to slice by dimension %s."
-                             % (self._source.ndim, max(dims)))
-
-        cumsum = np.cumsum(self._source.trajectory_lengths()[itrajs])
-        from pyemma.coordinates.clustering import UniformTimeClustering
-        ra = np.array([self._map_to_absolute_traj_idx(UniformTimeClustering._idx_to_traj_idx(x, cumsum), itrajs)
-                       for x in frames])
-
-        data = np.empty((nframes, ndims))
-
-        count = 0
-        for X in self._source.iterator(stride=ra, lag=0, chunk=0, return_trajindex=False):
-            L = len(X)
-            data[count:count + L, :] = X[:, dims]
-            count += L
-
-        return data
-
-    def _map_to_absolute_traj_idx(self, cumsum_idx, itrajs):
-        return itrajs[cumsum_idx[0]], cumsum_idx[1]
-
-
-class LinearRandomAccessStrategy(RandomAccessStrategy):
-    def _handle_slice(self, idx):
-        idx = np.index_exp[idx]
-        frames, dims = None, None
-        if isinstance(idx, (tuple, list)):
-            if len(idx) == 1:
-                frames, dims = idx[0], slice(None, None, None)
-            if len(idx) == 2:
-                frames, dims = idx[0], idx[1]
-            if len(idx) > 2:
-                raise IndexError("Slice was more than two-dimensional, not supported.")
-
-        cumsum = np.cumsum(self._source.trajectory_lengths())
-        frames = self._get_indices(frames, cumsum[-1])
-        dims = self._get_indices(dims, self._source.ndim)
-
-        nframes = len(frames)
-        ndims = len(dims)
-
-        from pyemma.coordinates.clustering import UniformTimeClustering
-        ra_stride = np.array([UniformTimeClustering._idx_to_traj_idx(x, cumsum) for x in frames])
-        data = np.empty((nframes, ndims))
-
-        offset = 0
-        for X in self._source.iterator(stride=ra_stride, lag=0, chunk=0, return_trajindex=False):
-            L = len(X)
-            data[offset:offset + L, :] = X[:, dims]
-            offset += L
-        return data
+        raise NotImplementedError("Requested random access strategy is not implemented for the current data source.")
