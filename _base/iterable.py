@@ -77,6 +77,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             self._logger.debug("clear memory")
         assert self.in_memory, "tried to delete in memory results which are not set"
         self._Y = None
+        self._Y_source = None
 
     def _map_to_memory(self, stride=1):
         r"""Maps results to memory. Will be stored in attribute :attr:`_Y`."""
@@ -84,6 +85,8 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         assert self._in_memory
         self._mapping_to_mem_active = True
         self._Y = self.get_output(stride=stride)
+        from pyemma.coordinates.data import DataInMemory
+        self._Y_source = DataInMemory(self._Y)
         self._mapping_to_mem_active = False
 
     def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True):
