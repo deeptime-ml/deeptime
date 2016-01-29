@@ -39,6 +39,7 @@ from six.moves import map, range, zip
 
 from pyemma._base.logging import Loggable
 from pyemma.util.annotators import deprecated
+import six
 
 
 __author__ = 'Frank Noe, Martin Scherer'
@@ -846,11 +847,14 @@ class MDFeaturizer(Loggable):
            a path to a topology file (pdb etc.) or an mdtraj Topology() object
        """
         self.topologyfile = None
-        if type(topfile) is str:
+        if isinstance(topfile, six.string_types):
             self.topology = (mdtraj.load(topfile)).topology
             self.topologyfile = topfile
-        else:
+        elif isinstance(topfile, mdtraj.Topology):
             self.topology = topfile
+        else:
+            raise ValueError("no valid topfile arg: type was %s, "
+                             "but only string or mdtraj.Topology allowed." % type(topfile))
         self.active_features = []
         self._dim = 0
 
