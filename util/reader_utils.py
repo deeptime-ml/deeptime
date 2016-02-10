@@ -41,20 +41,21 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
         The chunk size with which the corresponding reader gets initialized.
     :return: Returns the reader.
     """
-    from pyemma.coordinates.data.numpy_filereader import NumPyFileReader as _NumPyFileReader
-    from pyemma.coordinates.data.py_csv_reader import PyCSVReader as _CSVReader
-    from pyemma.coordinates.data import FeatureReader as _FeatureReader
-    from pyemma.coordinates.data.fragmented_trajectory_reader import FragmentedTrajectoryReader as _FragmentedReader
+    from pyemma.coordinates.data.numpy_filereader import NumPyFileReader
+    from pyemma.coordinates.data.py_csv_reader import PyCSVReader
+    from pyemma.coordinates.data import FeatureReader
+    from pyemma.coordinates.data.fragmented_trajectory_reader import FragmentedTrajectoryReader
 
     # fragmented trajectories
-    if isinstance(input_files, (list, tuple)) and len(input_files) > 0 and \
-            any(isinstance(item, (list, tuple)) for item in input_files):
-        return _FragmentedReader(input_files, topology, chunk_size, featurizer)
+    if (isinstance(input_files, (list, tuple)) and len(input_files) > 0 and
+            any(isinstance(item, (list, tuple)) for item in input_files)):
+        return FragmentedTrajectoryReader(input_files, topology, chunk_size, featurizer)
 
     # normal trajectories
-    if isinstance(input_files, string_types) \
+    if (isinstance(input_files, string_types)
             or (isinstance(input_files, (list, tuple))
-                and (any(isinstance(item, string_types) for item in input_files) or len(input_files) is 0)):
+                and (any(isinstance(item, string_types) for item in input_files) 
+                     or len(input_files) is 0))):
         reader = None
         # check: if single string create a one-element list
         if isinstance(input_files, string_types):
@@ -96,14 +97,14 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
                         raise ValueError("The input files were MD files which makes it mandatory to have either a "
                                          "featurizer or a topology file.")
 
-                    reader = _FeatureReader(input_list, featurizer=featurizer, topologyfile=topology,
-                                            chunksize=chunk_size)
+                    reader = FeatureReader(input_list, featurizer=featurizer, topologyfile=topology,
+                                           chunksize=chunk_size)
                 else:
                     if suffix in ['.npy', '.npz']:
-                        reader = _NumPyFileReader(input_list, chunksize=chunk_size)
+                        reader = NumPyFileReader(input_list, chunksize=chunk_size)
                     # otherwise we assume that given files are ascii tabulated data
                     else:
-                        reader = _CSVReader(input_list, chunksize=chunk_size)
+                        reader = PyCSVReader(input_list, chunksize=chunk_size)
         else:
             raise ValueError("Not all elements in the input list were of the type %s!" % suffix)
     else:
@@ -160,7 +161,7 @@ def preallocate_empty_trajectory(top, n_frames=1):
 
 
 def enforce_top(top):
-    if isinstance(top,str):
+    if isinstance(top, string_types):
         top = md.load(top).top
     elif isinstance(top, md.Trajectory):
         top = top.top
@@ -177,13 +178,13 @@ def save_traj_w_md_load_frame(reader, sets):
     traj = None
     for file_idx, frame_idx in vstack(sets):
         if traj is None:
-            traj = md.load_frame(reader.trajfiles[file_idx], frame_idx, reader.topfile)
+            traj = md.load_frame(reader.filenames[file_idx], frame_idx, reader.topfile)
         else:
-            traj = traj.join(md.load_frame(reader.trajfiles[file_idx], frame_idx, reader.topfile))
+            traj = traj.join(md.load_frame(reader.filenames[file_idx], frame_idx, reader.topfile))
     return traj
 
 
-def compare_coords_md_trajectory_objects(traj1, traj2, atom = None, eps = 1e-6, mess = False ):
+def compare_coords_md_trajectory_objects(traj1, traj2, atom=None, eps=1e-6, mess=False):
     # Compares the coordinates of "atom" for all frames in traj1 and traj2
     # Returns a boolean found_diff and an errmsg informing where
     assert isinstance(traj1, md.Trajectory)

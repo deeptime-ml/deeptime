@@ -18,16 +18,19 @@
 
 from __future__ import absolute_import
 
-import mdtraj
-import six
-import numpy as np
-
 from pyemma import config
 from pyemma._base.logging import Loggable
-from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
-from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data.featurizer import MDFeaturizer
 from pyemma.coordinates.util import patches
+from pyemma.util.annotators import deprecated
+import mdtraj
+import six
+
+from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
+from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
+import numpy as np
+
 
 __author__ = 'noe, marscher'
 __all__ = ['FeatureReader']
@@ -82,11 +85,8 @@ class FeatureReader(DataSource):
         super(FeatureReader, self).__init__(chunksize=chunksize)
         self._is_reader = True
 
-        # files
-        if isinstance(trajectories, six.string_types):
-            trajectories = [trajectories]
-        self.trajfiles = trajectories
         self.topfile = topologyfile
+        self.filenames = trajectories
 
         self._is_random_accessible = all(
                 [trajfile.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
@@ -110,11 +110,12 @@ class FeatureReader(DataSource):
         # Check that the topology and the files in the filelist can actually work together
         self._assert_toptraj_consistency()
 
-        self.__set_dimensions_and_lengths()
+    @property
+    @deprecated('Please use "filenames" property.')
+    def trajfiles(self):
+        return self.filenames
 
-    def __set_dimensions_and_lengths(self):
-        self._ntraj = len(self.trajfiles)
-
+    def _get_traj_info(self, filename):
         # workaround NotImplementedError __len__ for xyz files
         # Github issue: markovmodel/pyemma#621
         if six.PY2:
@@ -143,20 +144,13 @@ class FeatureReader(DataSource):
 
         # lookups pre-computed lengths, or compute it on the fly and store it in db.
         with patch.object(XYZTrajectoryFile, '__len__', f):
-            if config['use_trajectory_lengths_cache'] == 'True':
-                from pyemma.coordinates.data.util.traj_info_cache import TrajectoryInfoCache
-                for traj in self.trajfiles:
-                    self._lengths.append(TrajectoryInfoCache[traj])
-            else:
-                for traj in self.trajfiles:
-                    with mdtraj.open(traj, mode='r') as fh:
-                        self._lengths.append(len(fh))
+            with mdtraj.open(filename, mode='r') as fh:
+                length = len(fh)
+                frame = fh.read(1)[0]
+                ndim = np.shape(frame)[1]
+                offsets = fh.offsets if hasattr(fh, 'offsets') else []
 
-        # number of trajectories/data sets
-        if self._ntraj == 0:
-            raise ValueError("no valid data")
-
-            # note: dimension is a custom impl in this class
+        return TrajInfo(ndim, length, offsets)
 
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
         return FeatureReaderIterator(self, skip=skip, chunk=chunk, stride=stride,
@@ -184,8 +178,8 @@ class FeatureReader(DataSource):
             return self.featurizer.dimension()
 
     def _assert_toptraj_consistency(self):
-        r""" Check if the topology and the trajfiles of the reader have the same n_atoms"""
-        traj = mdtraj.load_frame(self.trajfiles[0], index=0, top=self.topfile)
+        r""" Check if the topology and the filenames of the reader have the same n_atoms"""
+        traj = mdtraj.load_frame(self.filenames[0], index=0, top=self.topfile)
         desired_n_atoms = self.featurizer.topology.n_atoms
         assert traj.xyz.shape[1] == desired_n_atoms, "Mismatch in the number of atoms between the topology" \
                                                      " and the first trajectory file, %u vs %u" % \
@@ -328,7 +322,7 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
 
     def close(self):
         if self._mditer is not None:
-            self._logger.debug('closing current trajectory "%s"' % self._data_source.trajfiles[self._itraj])
+            self._logger.debug('closing current trajectory "%s"' % self._data_source.filenames[self._itraj])
             self._mditer.close()
 
     def _next_chunk(self):
@@ -343,7 +337,7 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
 
         self._t += shape[0]
 
-        if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.trajfiles) - 1:
+        if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.filenames) - 1:
             self.close()
 
             self._t = 0
@@ -354,7 +348,7 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
             traj_len = self.ra_trajectory_length(self._itraj)
         else:
             traj_len = self.trajectory_length()
-        if self._t >= traj_len and self._itraj == len(self._data_source.trajfiles) - 1:
+        if self._t >= traj_len and self._itraj == len(self._data_source.filenames) - 1:
             self.close()
 
         # map data
@@ -370,11 +364,11 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
                 self._itraj += 1
             if self._itraj < self._data_source.ntraj:
                 self._mditer = self._create_patched_iter(
-                        self._data_source.trajfiles[self._itraj], stride=self.ra_indices_for_traj(self._itraj)
+                        self._data_source.filenames[self._itraj], stride=self.ra_indices_for_traj(self._itraj)
                 )
         else:
             self._mditer = self._create_patched_iter(
-                    self._data_source.trajfiles[self._itraj], skip=self.skip, stride=self.stride
+                    self._data_source.filenames[self._itraj], skip=self.skip, stride=self.stride
             )
 
     def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):

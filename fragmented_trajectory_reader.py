@@ -1,5 +1,3 @@
-from pyemma.coordinates.api import source
-
 import numpy as np
 from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
 
@@ -173,6 +171,19 @@ class FragmentIterator(DataSourceIterator):
 
 
 class FragmentedTrajectoryReader(DataSource):
+    """
+    Parameters
+    ----------
+    trajectories: list or tuple
+        ....
+
+    topologyfile, str, default None
+    
+    chunksize: int, default 100
+    
+    featurizer: MDFeaturizer, default None
+    
+    """
 
     def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
         # sanity checks
@@ -189,8 +200,20 @@ class FragmentedTrajectoryReader(DataSource):
         # number of trajectories
         self._ntraj = len(trajectories)
         # store readers
+        from pyemma.coordinates.api import source
+
         self._readers = [[source(input_item, features=featurizer, top=topologyfile, chunk_size=chunksize)
                           for input_item in trajectories[itraj]] for itraj in range(0, self._ntraj)]
+
+        self._reader_by_filename = {}
+        for r in self._readers:
+            for itraj_r in r:
+                for filename in itraj_r.filenames:
+                    if filename in self._reader_by_filename:
+                        self._reader_by_filename[filename].append(itraj_r)
+                    else:
+                        self._reader_by_filename[filename] = [itraj_r]
+
         # lengths array per reader
         self._reader_lengths = [[reader.trajectory_length(0, 1)
                                  for reader in self._readers[itraj]] for itraj in range(0, self._ntraj)]
@@ -200,8 +223,6 @@ class FragmentedTrajectoryReader(DataSource):
         self._cumulative_lengths = [np.cumsum(self._reader_lengths[itraj]) for itraj in range(0, self._ntraj)]
         # store trajectory files
         self._trajectories = trajectories
-        # reader iterator
-        self._it = None
 
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
         return FragmentIterator(self, skip, chunk, stride, return_trajindex)
@@ -225,3 +246,9 @@ class FragmentedTrajectoryReader(DataSource):
                 return readerIndex, index - prev_len
             prev_len = length
         raise ValueError("Requested index %s was out of bounds [0,%s)" % (index, self._cumulative_lengths[itraj][-1]))
+
+    def _get_traj_info(self, filename):
+        # get info for a fragment from specific reader
+        #reader = filter( lambda x: filename in x,r for itraj in range(0, self._ntraj))
+        reader = self._reader_by_filename[filename]
+        return reader._get_traj_info(filename)

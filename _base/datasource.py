@@ -23,6 +23,9 @@ import six
 
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.coordinates.data._base.random_accessible import TrajectoryRandomAccessible
+from pyemma.util import config
+from six import string_types
+import os
 
 
 class DataSource(Iterable, TrajectoryRandomAccessible):
@@ -38,12 +41,98 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         # following properties have to be set in subclass
         self._ntraj = 0
         self._lengths = []
+        self._offsets = []
+        self._filenames = None
         self._is_reader = False
 
     @property
     def ntraj(self):
         __doc__ = self.number_of_trajectories.__doc__
         return self._ntraj
+
+    @property
+    def filenames(self):
+        """ Property which returns a list of filenames the data is originally from.
+        Returns
+        -------
+        list of str : list of filenames if data is originating from a file based reader
+        """
+        if self._is_reader:
+            assert self._filenames is not None
+            return self._filenames
+        else:
+            return self.data_producer.filenames
+
+    @filenames.setter
+    def filenames(self, filename_list):
+
+        if isinstance(filename_list, string_types):
+            filename_list = [filename_list]
+
+        uniq = set(filename_list)
+        if len(uniq) != len(filename_list):
+            self.logger.warning("duplicate files/arrays detected")
+            filename_list = list(uniq)
+
+        from pyemma.coordinates.data.data_in_memory import DataInMemory
+
+        if self._is_reader:
+            if isinstance(self, DataInMemory):
+                import warnings
+                warnings.warn('filenames are not being used for DataInMemory')
+                return
+
+            self._ntraj = len(filename_list)
+            if self._ntraj == 0:
+                raise ValueError("empty file list")
+
+            # validate files
+            for f in filename_list:
+                try:
+                    stat = os.stat(f)
+                except EnvironmentError:
+                    self.logger.exception('Error during access of file "%s"' % f)
+                    raise ValueError('could not read file "%s"' % f)
+
+                if not os.path.isfile(f): # can be true for symlinks to directories
+                    raise ValueError('"%s" is not a valid file')
+
+                if stat.st_size == 0:
+                    raise ValueError('file "%s" is empty' % f)
+
+            # number of trajectories/data sets
+            self._filenames = filename_list
+            # determine len and dim via cache lookup,
+            lengths = []
+            offsets = []
+            ndims = []
+            # avoid cyclic imports
+            from pyemma.coordinates.data.util.traj_info_cache import TrajectoryInfoCache
+            if len(filename_list) > 3:
+                self._progress_register(len(filename_list), 'Obtaining file info')
+            for filename in filename_list:
+                if config['use_trajectory_lengths_cache'] == 'True':
+                    info = TrajectoryInfoCache.instance()[filename, self]
+                else:
+                    info = self._get_traj_info(filename)
+                lengths.append(info.length)
+                offsets.append(info.offsets)
+                ndims.append(info.ndim)
+                if len(filename_list) > 3:
+                    self._progress_update(1)
+
+            # ensure all trajs have same dim
+            if not np.unique(ndims).size == 1:
+                raise ValueError("input data has different dimensions!"
+                                 " Dimensions are = %s" % zip(filename_list, ndims))
+
+            self._ndim = ndims[0]
+            self._lengths = lengths
+            self._offsets = offsets
+
+        else:
+            # propate this until we finally have a a reader?
+            self.data_producer.filenames = filename_list
 
     @property
     def is_reader(self):
@@ -143,7 +232,7 @@ class IteratorState(object):
     State class holding all the relevant information of an iterator's state.
     """
 
-    def __init__(self, stride=1, skip=0, chunk=0, return_trajindex=False, ntraj=0):
+    def __init__(self, stride=1, skip=0, chunk=0, return_trajindex=False, ntraj=0, cols=None):
         self.skip = skip
         self.chunk = chunk
         self.return_trajindex = return_trajindex
@@ -157,6 +246,7 @@ class IteratorState(object):
         self.traj_keys = None
         self.trajectory_lengths = None
         self.ra_indices_for_traj_dict = {}
+        self.cols = cols
 
     def ra_indices_for_traj(self, traj):
         """
@@ -195,10 +285,12 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     """
     Abstract class for any data source iterator.
     """
-    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         self._data_source = data_source
         self.state = IteratorState(skip=skip, chunk=chunk,
-                                   return_trajindex=return_trajindex, ntraj=self.number_of_trajectories())
+                                   return_trajindex=return_trajindex,
+                                   ntraj=self.number_of_trajectories(),
+                                   cols=cols)
         self.__init_stride(stride)
         self._pos = 0
         self._last_chunk_in_traj = False
@@ -292,6 +384,10 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             The current iterator's trajectory index.
         """
         return self.state.current_itraj
+
+    @property
+    def use_cols(self):
+        return self.state.cols
 
     @property
     def skip(self):
@@ -487,6 +583,11 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def __next__(self):
         return self.next()
 
+    def _use_cols(self, X):
+        if self.use_cols:
+            return X[self._cols]
+        return X
+
     def _it_next(self):
         # first chunk at all, skip prepending trajectories that are not considered in random access
         if self._t == 0 and self._itraj == 0 and not self.uniform_stride:
@@ -497,7 +598,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         self.state.current_itraj = self._itraj
         self.state.pos = self.state.pos_adv
         try:
-            X = self._next_chunk()
+            X = self._use_cols(self._next_chunk())
         except StopIteration:
             self._last_chunk_in_traj = True
             raise

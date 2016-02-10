@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -15,7 +14,6 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 '''
 Created on 30.04.2015
 
@@ -23,24 +21,91 @@ Created on 30.04.2015
 '''
 
 from __future__ import absolute_import
+
 from six import PY2
+from threading import Semaphore
+import os
+
+from pyemma.util.config import conf_values
+from logging import getLogger
+import numpy as np
+
+logger = getLogger(__name__)
+
 if PY2:
     import anydbm
 else:
     import dbm as anydbm
 
-import os
-import numpy as np
-import mdtraj
+try:
+    from cStringIO import StringIO as BytesIO
+except ImportError:
+    from io import BytesIO
 
-from mdtraj.formats.registry import _FormatRegistry as md_registry
-from threading import Semaphore
-from pyemma.util.config import conf_values
+__all__ = ('TrajectoryInfoCache', 'TrajInfo')
 
-__all__ = ('TrajectoryInfoCache')
 
-# TODO: add complete shape info to use this also for numpy/csv files
-class _TrajectoryInfoCache(object):
+class UnknownDBFormatException(KeyError):
+    pass
+
+
+class TrajInfo(object):
+
+    def __init__(self, ndim=0, length=0, offsets=[]):
+        self._ndim = ndim
+        self._length = length
+        self._offsets = offsets
+
+        self._version = 1
+        self._hash = -1
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def ndim(self):
+        return self._ndim
+
+    @property
+    def length(self):
+        return self._length
+
+    @property
+    def offsets(self):
+        return self._offsets
+
+    @offsets.setter
+    def offsets(self, value):
+        self._offsets = np.asarray(value, dtype=np.int64)
+
+    @property
+    def hash(self):
+        return self._hash
+
+
+def create_traj_info(db_val):
+    fh = BytesIO(str.encode(db_val))
+    try:
+        arr = np.load(fh)['data']
+        info = TrajInfo()
+        header = arr[0]
+
+        version = header['data_format_version']
+        info._version = version
+        if version == 1:
+            info._hash = header['filehash']
+            info._ndim = arr[1]
+            info._length = arr[2]
+            info._offsets = arr[3]
+        else:
+            raise ValueError("unknown version %s" % version)
+        return info
+    except Exception as ex:
+        raise UnknownDBFormatException(ex)
+
+
+class TrajectoryInfoCache(object):
 
     """ stores trajectory lengths associated to a file based hash (mtime, name, 1mb of data)
 
@@ -56,39 +121,61 @@ class _TrajectoryInfoCache(object):
     module.
 
     """
+    _instance = None
+
+    @staticmethod
+    def instance():
+        if TrajectoryInfoCache._instance is None:
+            # singleton pattern
+            cfg_dir = conf_values['pyemma']['cfg_dir']
+            filename = os.path.join(cfg_dir, "trajlen_cache")
+            TrajectoryInfoCache._instance = TrajectoryInfoCache(filename)
+        return TrajectoryInfoCache._instance
 
     def __init__(self, database_filename=None):
         if database_filename is not None:
             self._database = anydbm.open(database_filename, flag="c")
         else:
             self._database = {}
+
+        self._database['db_version'] = '1'
         self._write_protector = Semaphore()
 
-    def __getitem__(self, filename):
-        key = self.__get_file_hash(filename)
+    def __getitem__(self, filename_reader_tuple):
+        filename, reader = filename_reader_tuple
+        key = self._get_file_hash(filename)
         result = None
         try:
             result = self._database[key]
+            info = create_traj_info(result)
+        # handle cache misses and not interpreteable results by re-computation.
+        # Note: this also handles UnknownDBFormatExceptions!
         except KeyError:
-            result = self.__determine_len(filename)
-            self.__setitem__(filename, result, key=key)
-        return int(result)
+            info = reader._get_traj_info(filename)
+            # store info in db
+            result = self.__setitem__(filename, info)
 
-    def __determine_len(self, filename):
-        _, ext = os.path.splitext(filename)
-        if ext in md_registry.loaders:
-            with mdtraj.open(filename) as fh:
-                return len(fh)
-        elif ext in ('.npy'):
-            x = np.load(filename, mmap_mode='r')
-            return len(x)
-        else:
-            raise ValueError('file %s is unsupported.')
+        return info
 
-    def __format_value(self, filename, length):
-        return str(length)
+    def __format_value(self, traj_info):
+        fh = BytesIO()
 
-    def __get_file_hash(self, filename):
+        header = {'data_format_version': 1,
+                  'filehash': traj_info.hash,  # back reference to file by hash
+                  }
+
+        array = np.empty(4, dtype=object)
+
+        array[0] = header
+        array[1] = traj_info.ndim
+        array[2] = traj_info.length
+        array[3] = traj_info.offsets
+
+        np.savez_compressed(fh, data=array)
+        fh.seek(0)
+        return fh.read()
+
+    def _get_file_hash(self, filename):
         statinfo = os.stat(filename)
 
         # only remember file name without path, to re-identify it when its
@@ -104,15 +191,14 @@ class _TrajectoryInfoCache(object):
         hash_value ^= hash(data)
         return str(hash_value)
 
-    def __setitem__(self, filename, n_frames, key=None):
-        if not key:
-            key = self.__get_file_hash(filename)
+    def __setitem__(self, filename, traj_info):
+        dbval = self.__format_value(traj_info)
+
         self._write_protector.acquire()
-        self._database[key] = self.__format_value(filename, n_frames)
+        self._database[str(traj_info.hash)] = dbval
         self._write_protector.release()
 
+        return dbval
 
-# singleton pattern
-cfg_dir = conf_values['pyemma']['cfg_dir']
-filename = os.path.join(cfg_dir, "trajlen_cache")
-TrajectoryInfoCache = _TrajectoryInfoCache(filename)
+    def clear(self):
+        self._database.clear()

@@ -24,13 +24,12 @@ from __future__ import absolute_import
 
 import functools
 
+from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
 import numpy as np
 
-from pyemma._base.progress import ProgressReporter
-from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 
-
-class NumPyFileReader(DataSource, ProgressReporter):
+class NumPyFileReader(DataSource):
 
     """reads NumPy files in chunks. Supports .npy files
 
@@ -51,16 +50,14 @@ class NumPyFileReader(DataSource, ProgressReporter):
 
         if not isinstance(filenames, (list, tuple)):
             filenames = [filenames]
-        self._filenames = filenames
 
-        for f in self._filenames:
+        for f in filenames:
             if not f.endswith('.npy'):
                 raise ValueError('given file "%s" is not supported by this'
                                  ' reader, since it does not end with .npy' % f)
 
         self.mmap_mode = mmap_mode
-
-        self.__set_dimensions_and_lenghts()
+        self.filenames = filenames
 
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False):
         return NPYIterator(self, skip=skip, chunk=chunk, stride=stride, 
@@ -100,25 +97,12 @@ class NumPyFileReader(DataSource, ProgressReporter):
                              " it has a .npy extension" % filename)
         return arr
 
-    def __set_dimensions_and_lenghts (self):
-        ndims = []
-        n = len(self._filenames)
-        self._progress_register(n, description="get lengths/dim")
+    def _get_traj_info(self, filename):
+        idx = self.filenames.index(filename)
+        array = self._load_file(idx)
+        length, ndim = np.shape(array)
 
-        for ii, f in enumerate(self._filenames):
-            array = self._load_file(ii)
-            self._lengths.append(np.shape(array)[0])
-            ndims.append(np.shape(array)[1])
-            self._progress_update(1)
-
-        # ensure all trajs have same dim
-        if not np.unique(ndims).size == 1:
-            raise ValueError("input data has different dimensions!"
-                             "Dimensions are = %s" % ndims)
-
-        self._ndim = ndims[0]
-
-        self._ntraj = len(self._filenames)
+        return TrajInfo(ndim, length)
 
 
 class NPYIterator(DataSourceIterator):

@@ -43,11 +43,12 @@ class DataInMemory(DataSource):
         dimension and coordinates/features in second dimension or a list of this
         arrays.
     """
+    IN_MEMORY_FILENAME = '<in_memory_file>'
 
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False):
         return DataInMemoryIterator(self, skip, chunk, stride, return_trajindex)
 
-    def __init__(self, data, chunksize=5000):
+    def __init__(self, data, chunksize=5000, **kw):
         super(DataInMemory, self).__init__(chunksize=chunksize)
         self._is_reader = True
         self._is_random_accessible = True
@@ -72,6 +73,7 @@ class DataInMemory(DataSource):
                              " Your input was %s" % str(data))
 
         self._set_dimensions_and_lenghts()
+        self._filenames = [DataInMemory.IN_MEMORY_FILENAME] * self._ntraj
 
     @property
     def data(self):
