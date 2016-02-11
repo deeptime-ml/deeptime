@@ -89,7 +89,6 @@ class NumPyFileReader(DataSource, ProgressReporter):
         return array
 
     def _load_file(self, itraj):
-        #self._close()
         filename = self._filenames[itraj]
         self._logger.debug("opening file %s" % filename)
 
@@ -99,10 +98,9 @@ class NumPyFileReader(DataSource, ProgressReporter):
         else:
             raise ValueError("given file '%s' is not a NumPy array. Make sure"
                              " it has a .npy extension" % filename)
-        #self._array = arr
         return arr
 
-    def __set_dimensions_and_lenghts(self):
+    def __set_dimensions_and_lenghts (self):
         ndims = []
         n = len(self._filenames)
         self._progress_register(n, description="get lengths/dim")
@@ -111,7 +109,6 @@ class NumPyFileReader(DataSource, ProgressReporter):
             array = self._load_file(ii)
             self._lengths.append(np.shape(array)[0])
             ndims.append(np.shape(array)[1])
-#            self._close()
             self._progress_update(1)
 
         # ensure all trajs have same dim

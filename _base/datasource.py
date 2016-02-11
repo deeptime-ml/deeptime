@@ -555,3 +555,14 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def __iter__(self):
         return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            self.close()
+        except StopIteration:
+            pass
+        return False # propagate exceptions
+

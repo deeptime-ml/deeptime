@@ -134,6 +134,11 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             self._logger.exception("Could not allocate enough memory to map all data."
                                    " Consider using a larger stride.")
             return
+        finally:
+            try:
+                it.close()
+            except StopIteration:
+                pass
 
         if __debug__:
             self._logger.debug("get_output(): dimensions=%s" % str(dimensions))
@@ -143,16 +148,21 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         self._progress_register(it._n_chunks,
                                 description='getting output of %s' % self.__class__.__name__,
                                 stage=1)
+        try:
+            for itraj, chunk in it:
+                assert chunk is not None
+                L = len(chunk)
+                if L > 0:
+                    assert len(trajs[itraj]) > 0
+                    trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
 
-        for itraj, chunk in it:
-            assert chunk is not None
-            L = len(chunk)
-            if L > 0:
-                assert len(trajs[itraj]) > 0
-                trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
-
-            # update progress
-            self._progress_update(1, stage=1)
+                # update progress
+                self._progress_update(1, stage=1)
+        finally:
+            try:
+                it.close()
+            except StopIteration:
+                pass
 
         return trajs
 
