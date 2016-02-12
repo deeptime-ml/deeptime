@@ -93,7 +93,7 @@ class FeatureReader(DataSource):
         self._ra_cuboid = FeatureReaderCuboidRandomAccessStrategy(self, 3)
         self._ra_jagged = FeatureReaderJaggedRandomAccessStrategy(self, 3)
         self._ra_linear_strategy = FeatureReaderLinearRandomAccessStrategy(self, 2)
-        self._ra_linear_itraj_strategy = FeatureReaderLinearItrajRandomAccessStrategyFeatureReader(self, 3)
+        self._ra_linear_itraj_strategy = FeatureReaderLinearItrajRandomAccessStrategy(self, 3)
 
         # featurizer
         if topologyfile and featurizer:
@@ -247,7 +247,7 @@ class FeatureReaderJaggedRandomAccessStrategy(FeatureReaderCuboidRandomAccessStr
         return [self._source._ra_cuboid[itraj, frames, dims][0] for itraj in itrajs]
 
 
-class FeatureReaderLinearItrajRandomAccessStrategyFeatureReader(FeatureReaderCuboidRandomAccessStrategy):
+class FeatureReaderLinearItrajRandomAccessStrategy(FeatureReaderCuboidRandomAccessStrategy):
     def _get_itraj_random_accessible(self, itrajs, frames, dims):
         itrajs = self._get_indices(itrajs, self._source.ntraj)
         frames = self._get_indices(frames, sum(self._source.trajectory_lengths()[itrajs]))
