@@ -69,6 +69,7 @@ class _FragmentedTrajectoryIterator(object):
                         self._reader_t = 0
                         if len(self._readers) <= self._reader_at:
                             raise StopIteration()
+                        self._reader_it.close()
                         self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
                         self._reader_overlap = self._calculate_new_overlap(self._stride,
                                                                            self._reader_lengths[self._reader_at - 1],
@@ -93,11 +94,13 @@ class _FragmentedTrajectoryIterator(object):
             # if stride doesn't divide length, one has to offset the next trajectory
             overlap = self._calculate_new_overlap(self._stride, self._reader_lengths[idx], overlap)
             chunksize = min(length, r.trajectory_length(0, self._stride))
-            for itraj, data in r._create_iterator(stride=self._stride, skip=_skip, chunk=chunksize, return_trajindex=True):
-                L = data.shape[0]
-                if L > 0:
-                    X[self._t:self._t + L, :] = data[:]
-                self._t += L
+            it = r._create_iterator(stride=self._stride, skip=_skip, chunk=chunksize, return_trajindex=True)
+            with it:
+                for itraj, data in it:
+                    L = data.shape[0]
+                    if L > 0:
+                        X[self._t:self._t + L, :] = data[:]
+                    self._t += L
         return X
 
     def _traj_lengths(self, stride):
@@ -129,6 +132,10 @@ class _FragmentedTrajectoryIterator(object):
         overlap = stride * ((traj_len - skip - 1) // stride + 1) - traj_len + skip
         return overlap
 
+    def close(self):
+        if hasattr(self, '_reader_it'):
+            self._reader_it.close()
+
 
 class FragmentIterator(DataSourceIterator):
 
@@ -155,13 +162,14 @@ class FragmentIterator(DataSourceIterator):
             self._t += X.shape[0]
             if self._t >= self._data_source.trajectory_length(self._itraj, stride=self.stride):
                 self._itraj += 1
+                self._it.close()
                 self._it = None
                 self._t = 0
             return X
 
     def close(self):
-        for reader in self._readers:
-            reader._close()
+        if self._it is not None:
+            self._it.close()
 
 
 class FragmentedTrajectoryReader(DataSource):

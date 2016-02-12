@@ -23,6 +23,7 @@ import six
 import numpy as np
 
 from pyemma import config
+from pyemma._base.logging import Loggable
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data.featurizer import MDFeaturizer
@@ -316,7 +317,7 @@ class FeatureReaderLinearRandomAccessStrategy(RandomAccessStrategy):
         return data[frames_order]
 
 
-class FeatureReaderIterator(DataSourceIterator):
+class FeatureReaderIterator(DataSourceIterator, Loggable):
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         super(FeatureReaderIterator, self).__init__(
                 data_source, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex
@@ -325,8 +326,8 @@ class FeatureReaderIterator(DataSourceIterator):
 
     def close(self):
         if self._mditer is not None:
+            self._logger.debug('closing current trajectory "%s"' % self._data_source.trajfiles[self._itraj])
             self._mditer.close()
-        raise StopIteration()
 
     def _next_chunk(self):
         """
@@ -341,10 +342,7 @@ class FeatureReaderIterator(DataSourceIterator):
         self._t += shape[0]
 
         if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.trajfiles) - 1:
-            if __debug__:
-                # self._logger.debug('closing current trajectory "%s"' % self.trajfiles[self._itraj])
-                pass
-            self._mditer.close()
+            self.close()
 
             self._t = 0
             self._itraj += 1
@@ -355,10 +353,7 @@ class FeatureReaderIterator(DataSourceIterator):
         else:
             traj_len = self.trajectory_length()
         if self._t >= traj_len and self._itraj == len(self._data_source.trajfiles) - 1:
-            if __debug__:
-                # self._logger.debug('closing last trajectory "%s"' % self.trajfiles[self._itraj])
-                pass
-            self._mditer.close()
+            self.close()
 
         # map data
         if len(self._data_source.featurizer.active_features) == 0:
@@ -381,5 +376,6 @@ class FeatureReaderIterator(DataSourceIterator):
             )
 
     def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):
+        self._logger.debug("opening trajectory \"%s\"" % filename)
         return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.topfile,
                                 skip=skip, stride=stride, atom_indices=atom_indices)

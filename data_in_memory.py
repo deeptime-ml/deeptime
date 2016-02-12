@@ -198,14 +198,14 @@ class DataInMemoryLinearItrajRandomAccessStrategy(DataInMemoryCuboidRandomAccess
 
 class DataInMemoryIterator(DataSourceIterator):
     def close(self):
-        raise StopIteration()
+        pass
 
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
         super(DataInMemoryIterator, self).__init__(data_source, skip, chunk, stride, return_trajindex)
 
     def _next_chunk(self):
         if self._itraj >= self._data_source.ntraj:
-            self.close()
+            raise StopIteration()
 
         traj_len = self._data_source._lengths[self._itraj]
         traj = self._data_source.data[self._itraj]

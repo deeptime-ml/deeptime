@@ -560,9 +560,6 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        try:
-            self.close()
-        except StopIteration:
-            pass
-        return False # propagate exceptions
+        self.close()
+        return False
 

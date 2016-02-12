@@ -125,30 +125,25 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         else:
             it = self._create_iterator(skip=skip, chunk=chunk, stride=stride, return_trajindex=True)
 
-        # allocate memory
-        try:
-            # TODO: avoid having a copy here, if Y is already filled
-            trajs = [np.empty((l, ndim), dtype=self.output_type())
-                     for l in it.trajectory_lengths()]
-        except MemoryError:
-            self._logger.exception("Could not allocate enough memory to map all data."
-                                   " Consider using a larger stride.")
-            return
-        finally:
+        with it:
+            # allocate memory
             try:
-                it.close()
-            except StopIteration:
-                pass
+                # TODO: avoid having a copy here, if Y is already filled
+                trajs = [np.empty((l, ndim), dtype=self.output_type())
+                         for l in it.trajectory_lengths()]
+            except MemoryError:
+                self._logger.exception("Could not allocate enough memory to map all data."
+                                       " Consider using a larger stride.")
+                return
 
-        if __debug__:
-            self._logger.debug("get_output(): dimensions=%s" % str(dimensions))
-            self._logger.debug("get_output(): created output trajs with shapes: %s"
-                               % [x.shape for x in trajs])
-        # fetch data
-        self._progress_register(it._n_chunks,
-                                description='getting output of %s' % self.__class__.__name__,
-                                stage=1)
-        try:
+            if __debug__:
+                self._logger.debug("get_output(): dimensions=%s" % str(dimensions))
+                self._logger.debug("get_output(): created output trajs with shapes: %s"
+                                   % [x.shape for x in trajs])
+            # fetch data
+            self._progress_register(it._n_chunks,
+                                    description='getting output of %s' % self.__class__.__name__,
+                                    stage=1)
             for itraj, chunk in it:
                 assert chunk is not None
                 L = len(chunk)
@@ -158,11 +153,6 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
                 # update progress
                 self._progress_update(1, stage=1)
-        finally:
-            try:
-                it.close()
-            except StopIteration:
-                pass
 
         return trajs
 
@@ -221,3 +211,11 @@ class LaggedIterator(object):
         if self._return_trajindex:
             return itraj, data, data_lagged
         return data, data_lagged
+
+    def __enter__(self):
+        self._it.__enter__()
+        self._it_lagged.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._it.__exit__(exc_type, exc_val, exc_tb)
+        self._it_lagged.__exit__(exc_type, exc_val, exc_tb)

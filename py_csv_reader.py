@@ -49,11 +49,11 @@ class PyCSVIterator(DataSourceIterator):
     def close(self):
         if self._file_handle is not None:
             self._file_handle.close()
-        raise StopIteration()
 
     def _next_chunk(self):
         if not self._file_handle or self._itraj >= self.number_of_trajectories():
             self.close()
+            raise StopIteration()
         traj_len = self.trajectory_lengths()[self._itraj]
         lines = []
         for row in self._reader:

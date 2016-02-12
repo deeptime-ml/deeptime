@@ -136,7 +136,6 @@ class NPYIterator(DataSourceIterator):
 
     def close(self):
         self._close_filehandle()
-        raise StopIteration()
 
     def _close_filehandle(self):
         if not hasattr(self, '_array') or self._array is None:
@@ -150,6 +149,7 @@ class NPYIterator(DataSourceIterator):
     def _next_chunk(self):
         if self._itraj >= self._data_source.ntraj:
             self.close()
+            raise StopIteration()
 
         if self._itraj != self._last_itraj:
             self._close_filehandle()
