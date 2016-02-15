@@ -73,7 +73,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             self._in_memory = op_in_mem
 
     def _clear_in_memory(self):
-        if __debug__:
+        if self._logger_is_active(10):
             self._logger.debug("clear memory")
         assert self.in_memory, "tried to delete in memory results which are not set"
         self._Y = None
@@ -81,7 +81,8 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
     def _map_to_memory(self, stride=1):
         r"""Maps results to memory. Will be stored in attribute :attr:`_Y`."""
-        self._logger.debug("mapping to mem")
+        if self._logger_is_active(10):
+            self._logger.debug("mapping to mem")
         assert self._in_memory
         self._mapping_to_mem_active = True
         self._Y = self.get_output(stride=stride)
@@ -112,7 +113,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                 raise ValueError('dimension indices can\'t have more than one dimension')
             ndim = len(np.zeros(self.ndim)[dimensions])
         else:
-            raise ValueError('unsupported type (%s) of \"dimensions\"' % type(dimensions))
+            raise ValueError('unsupported type (%s) of "dimensions"' % type(dimensions))
 
         assert ndim > 0, "ndim was zero in %s" % self.__class__.__name__
 
@@ -136,7 +137,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                                        " Consider using a larger stride.")
                 return
 
-            if __debug__:
+            if self._logger_is_active(10):
                 self._logger.debug("get_output(): dimensions=%s" % str(dimensions))
                 self._logger.debug("get_output(): created output trajs with shapes: %s"
                                    % [x.shape for x in trajs])
@@ -145,16 +146,62 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                                     description='getting output of %s' % self.__class__.__name__,
                                     stage=1)
             for itraj, chunk in it:
-                assert chunk is not None
                 L = len(chunk)
                 if L > 0:
-                    assert len(trajs[itraj]) > 0
                     trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
 
                 # update progress
                 self._progress_update(1, stage=1)
 
         return trajs
+
+    def write_to_csv(self, filename, stride=1, chunksize=100, **kw):
+        """ write all data to csv with numpy.savetxt
+
+        Parameters
+        ----------
+        filename : str
+            filename string, which may contain placeholders {itraj} and {stride}:
+
+            * itraj will be replaced by trajetory index
+            * stride is stride argument of this method
+        stride: int
+            omit every n'th frame
+        chunksize: int
+            how many frames to process at once
+        kw : dict
+            named arguments passed into numpy.savetxt (header, seperator etc.)
+
+        Example
+        -------
+        Assume you want to save features calculated by some FeatureReader to ASCII:
+        >>> import numpy as np, pyemma
+        >>> from pyemma.util.files import TemporaryDirectory
+        >>> import os
+        >>> data = [np.random.random((10,3))] * 3
+        >>> reader = pyemma.coordinates.source(data)
+        >>> filename = "distances_{itraj}.dat"
+        >>> with TemporaryDirectory() as td:
+        ...    os.chdir(td)
+        ...    reader.write_to_csv(filename, header='', delim=';')
+        ...    print(os.listdir('.'))
+        ['distances_2.dat', 'distances_1.dat', 'distances_0.dat']
+        """
+        filename = filename.replace('{stride}', str(stride))
+        f = None
+        with self.iterator(stride, chunk=chunksize, return_trajindex=False) as it:
+            self._progress_register(it._n_chunks, "saving to csv")
+            oldtraj = -1
+            for X in it:
+                if oldtraj != it.current_trajindex:
+                    if f is not None:
+                        f.close()
+                    f = open(filename.replace('{itraj}', str(it.current_trajindex)), 'wb')
+                np.savetxt(f, X)
+                self._progress_update(1, 0)
+        if f is not None:
+            f.close()
+        self._progress_force_finish(0)
 
     @abstractmethod
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
