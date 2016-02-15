@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import functools
 from abc import ABCMeta, abstractmethod
 from math import ceil
 
@@ -35,8 +34,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
 
     def __init__(self, chunksize=100):
         super(DataSource, self).__init__(chunksize=chunksize)
-        # storage for arrays (used in _add_array_to_storage)
-        self._data = []
+
         # following properties have to be set in subclass
         self._ntraj = 0
         self._lengths = []
@@ -56,16 +54,6 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         bool: True if this data source is a reader and False otherwise
         """
         return self._is_reader
-
-    @property
-    def data(self):
-        """
-        Property that returns the data that was hold in storage (data in memory mode).
-        Returns
-        -------
-        list : The stored data.
-        """
-        return self._data
 
     @property
     def data_producer(self):
@@ -148,23 +136,6 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
             return np.sum(self._lengths)
         else:
             return sum(self.trajectory_lengths(stride))
-
-    def _add_array_to_storage(self, array):
-        """
-        checks shapes, eg convert them (2d), raise if not possible
-        after checks passed, add array to self._data
-        """
-        if array.ndim == 1:
-            array = np.atleast_2d(array).T
-        elif array.ndim == 2:
-            pass
-        else:
-            shape = array.shape
-            # hold first dimension, multiply the rest
-            shape_2d = (shape[0], functools.reduce(lambda x, y: x * y, shape[1:]))
-            array = np.reshape(array, shape_2d)
-
-        self.data.append(array)
 
 
 class IteratorState(object):

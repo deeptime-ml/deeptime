@@ -24,6 +24,7 @@ import numpy as np
 
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
+import functools
 
 __author__ = 'noe, marscher'
 
@@ -59,6 +60,9 @@ class DataInMemory(DataSource):
         if not isinstance(data, (list, tuple)):
             data = [data]
 
+        # storage for arrays (used in _add_array_to_storage)
+        self._data = []
+
         # everything is an array
         if all(isinstance(d, np.ndarray) for d in data):
             for d in data:
@@ -68,6 +72,33 @@ class DataInMemory(DataSource):
                              " Your input was %s" % str(data))
 
         self._set_dimensions_and_lenghts()
+
+    @property
+    def data(self):
+        """
+        Property that returns the data that was hold in storage (data in memory mode).
+        Returns
+        -------
+        list : The stored data.
+        """
+        return self._data
+
+    def _add_array_to_storage(self, array):
+        """
+        checks shapes, eg convert them (2d), raise if not possible
+        after checks passed, add array to self._data
+        """
+        if array.ndim == 1:
+            array = np.atleast_2d(array).T
+        elif array.ndim == 2:
+            pass
+        else:
+            shape = array.shape
+            # hold first dimension, multiply the rest
+            shape_2d = (shape[0], functools.reduce(lambda x, y: x * y, shape[1:]))
+            array = np.reshape(array, shape_2d)
+
+        self.data.append(array)
 
     def _set_dimensions_and_lenghts(self):
         # number of trajectories/data sets
