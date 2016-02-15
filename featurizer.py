@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -31,7 +30,7 @@ from mdtraj.geometry.dihedral import (indices_phi,
 from pyemma.util.indices import (combinations as _combinations,
                                  product as _product,
                                  )
-from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int, is_string as _is_string
+from pyemma.util.types import is_iterable_of_int, is_string
 
 
 from six import PY3
@@ -105,9 +104,6 @@ def hash_top(top):
         return hash_value
 
 
-
-
-
 def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
     r"""For input of pairwise type (distances, inverse distances, contacts) checks the
         type of input the user gave and reformats it so that :py:func:`DistanceFeature`,
@@ -124,7 +120,7 @@ def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
 
         """
 
-    if _is_iterable_of_int(indices1):
+    if is_iterable_of_int(indices1):
         MDlogger.warning('The 1D arrays input for %s have been sorted, and '
                          'index duplicates have been eliminated.\n'
                          'Check the output of describe() to see the actual order of the features' % fname)
@@ -137,7 +133,7 @@ def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
             atom_pairs = _combinations(indices1, 2)
 
         # Inter-group distances
-        elif _is_iterable_of_int(indices2):
+        elif is_iterable_of_int(indices2):
 
             # Eliminate duplicates and sort
             indices2 = np.unique(indices2)
@@ -199,7 +195,7 @@ def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
                 assert not np.allclose(igroup, jgroup), "Some group definitions appear to be duplicated, e.g %u and %u"%(ii,ii+jj+1)
 
     # Create and/or check the pair-list
-    if _is_string(group_pairs):
+    if is_string(group_pairs):
         if group_pairs == 'all':
             parsed_group_pairs = _combinations(np.arange(len(group_definitions)), 2)
     else:
@@ -322,11 +318,11 @@ class SelectionFeature(object):
     The coordinates are flattened as follows: [x1, y1, z1, x2, y2, z2, ...]
 
     """
-    # TODO: Needs an orientation option
-
     def __init__(self, top, indexes):
         self.top = top
         self.indexes = np.array(indexes)
+        if len(self.indexes) == 0:
+            raise ValueError("empty indices")
         self.prefix_label = "ATOM:"
 
     def describe(self):
@@ -371,6 +367,8 @@ class DistanceFeature(object):
     def __init__(self, top, distance_indexes, periodic=True):
         self.top = top
         self.distance_indexes = np.array(distance_indexes)
+        if len(self.distance_indexes) == 0:
+            raise ValueError("empty indices")
         self.prefix_label = "DIST:"
         self.periodic = periodic
 
@@ -565,6 +563,8 @@ class AngleFeature(object):
     def __init__(self, top, angle_indexes, deg=False, cossin=False, periodic=True):
         self.top = top
         self.angle_indexes = np.array(angle_indexes)
+        if len(self.angle_indexes) == 0:
+            raise ValueError("empty indices")
         self.deg = deg
         self.cossin = cossin
         self.periodic = periodic
@@ -626,6 +626,8 @@ class DihedralFeature(object):
     def __init__(self, top, dih_indexes, deg=False, cossin=False, periodic=True):
         self.top = top
         self.dih_indexes = np.array(dih_indexes)
+        if len(dih_indexes) == 0:
+            raise ValueError("empty indices")
         self.deg = deg
         self.cossin = cossin
         self.periodic = periodic
@@ -1194,7 +1196,7 @@ class MDFeaturizer(Loggable):
             via :py:obj:`residue_pairs`.
         """
 
-        if scheme != 'ca' and _is_string(residue_pairs):
+        if scheme != 'ca' and is_string(residue_pairs):
             if residue_pairs == 'all':
                 self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
                                      "very time consuming. Consider reducing the residue pairs")
