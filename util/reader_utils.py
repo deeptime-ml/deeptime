@@ -44,7 +44,14 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
     from pyemma.coordinates.data.numpy_filereader import NumPyFileReader as _NumPyFileReader
     from pyemma.coordinates.data.py_csv_reader import PyCSVReader as _CSVReader
     from pyemma.coordinates.data import FeatureReader as _FeatureReader
+    from pyemma.coordinates.data.fragmented_trajectory_reader import FragmentedTrajectoryReader as _FragmentedReader
 
+    # fragmented trajectories
+    if isinstance(input_files, (list, tuple)) and len(input_files) > 0 and \
+            any(isinstance(item, (list, tuple)) for item in input_files):
+        return _FragmentedReader(input_files, topology, chunk_size, featurizer)
+
+    # normal trajectories
     if isinstance(input_files, string_types) \
             or (isinstance(input_files, (list, tuple))
                 and (any(isinstance(item, string_types) for item in input_files) or len(input_files) is 0)):
@@ -58,7 +65,8 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
             if len(input_files) is 0:
                 raise ValueError("The passed input list should not be empty.")
             else:
-                raise ValueError("The passed list did not exclusively contain strings.")
+                raise ValueError("The passed list did not exclusively contain strings or was a list of lists "
+                                 "(fragmented trajectory).")
 
         _, suffix = os.path.splitext(input_list[0])
 
