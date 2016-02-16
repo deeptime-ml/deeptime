@@ -1,3 +1,19 @@
+# This file is part of PyEMMA.
+#
+# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
+#
+# PyEMMA is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 Created on 15.02.2016
 
@@ -21,6 +37,7 @@ class DistanceFeature(Feature):
             raise ValueError("empty indices")
         self.prefix_label = "DIST:"
         self.periodic = periodic
+        self._dim = len(distance_indexes)
 
     def describe(self):
         labels = ["%s %s - %s" % (self.prefix_label,
@@ -29,10 +46,6 @@ class DistanceFeature(Feature):
                   for pair in self.distance_indexes]
         return labels
 
-    @property
-    def dimension(self):
-        return self.distance_indexes.shape[0]
-
     def transform(self, traj):
         return mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
 
@@ -40,6 +53,8 @@ class DistanceFeature(Feature):
         hash_value = _hash_numpy_array(self.distance_indexes)
         hash_value ^= hash_top(self.top)
         hash_value ^= hash(self.prefix_label)
+        if hasattr(self, 'periodic'):
+            hash_value ^= hash(self.periodic)
         return hash_value
 
 
@@ -72,7 +87,7 @@ class ResidueMinDistanceFeature(DistanceFeature):
         dummy_dist, dummy_pairs = mdtraj.compute_contacts(dummy_traj, contacts=contacts,
                                                           scheme=scheme,
                                                           ignore_nonprotein=ignore_nonprotein)
-        self._dimension = dummy_dist.shape[1]
+        self._dim = dummy_dist.shape[1]
         self.distance_indexes = dummy_pairs
 
     def describe(self):
@@ -105,6 +120,7 @@ class GroupMinDistanceFeature(DistanceFeature):
         self.prefix_label = "GROUP_MINDIST"
         self.threshold = threshold
         self.distance_indexes = group_pairs
+        self._dim = len(group_pairs) # TODO: validate
 
     def describe(self):
         labels = ["%s %u--%u: [%s...%s]--[%s...%s]" % (self.prefix_label, pair[0], pair[1],
@@ -137,12 +153,11 @@ class GroupMinDistanceFeature(DistanceFeature):
 class ContactFeature(DistanceFeature):
 
     def __init__(self, top, distance_indexes, threshold=5.0, periodic=True, count_contacts=False):
-        DistanceFeature.__init__(self, top, distance_indexes)
+        DistanceFeature.__init__(self, top, distance_indexes, periodic=periodic)
         self.prefix_label = "CONTACT:"
         if count_contacts:
             self.prefix_label="counted "+self.prefix_label
         self.threshold = threshold
-        self.periodic = periodic
         self.count_contacts = count_contacts
 
     @property
@@ -165,7 +180,7 @@ class ContactFeature(DistanceFeature):
             return res
 
     def __hash__(self):
-        hash_value = DistanceFeature.__hash__(self)
+        hash_value = super(ContactFeature, self).__hash__()
         hash_value ^= hash(self.threshold)
         if self.count_contacts:
             hash_value += 1

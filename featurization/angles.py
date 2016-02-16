@@ -1,3 +1,19 @@
+# This file is part of PyEMMA.
+#
+# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
+#
+# PyEMMA is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 Created on 15.02.2016
 
@@ -9,7 +25,6 @@ from mdtraj.geometry.dihedral import (indices_phi,
                                       indices_psi,
                                       indices_chi1,
                                       )
-from pyemma.util.annotators import deprecated
 import mdtraj
 
 from pyemma.coordinates.data.featurization._base import Feature
@@ -28,6 +43,9 @@ class AngleFeature(Feature):
         self.deg = deg
         self.cossin = cossin
         self.periodic = periodic
+        self._dim = len(self.angle_indexes)
+        if cossin:
+            self._dim *= 2
 
     def describe(self):
         if self.cossin:
@@ -46,13 +64,6 @@ class AngleFeature(Feature):
                       for triple in self.angle_indexes]
         return labels
 
-    @property
-    def dimension(self):
-        dim = self.angle_indexes.shape[0]
-        if self.cossin:
-            dim *= 2
-        return dim
-
     def transform(self, traj):
         rad = mdtraj.compute_angles(traj, self.angle_indexes, self.periodic)
         if self.cossin:
@@ -67,24 +78,19 @@ class AngleFeature(Feature):
         hash_value = _hash_numpy_array(self.angle_indexes)
         hash_value ^= hash_top(self.top)
         hash_value ^= hash(self.deg)
+        hash_value ^= hash(self.cossin)
 
         return hash_value
 
 
-class DihedralFeature(object):
+class DihedralFeature(AngleFeature):
 
     def __init__(self, top, dih_indexes, deg=False, cossin=False, periodic=True):
-        self.top = top
-        self.dih_indexes = np.array(dih_indexes)
-        if len(dih_indexes) == 0:
-            raise ValueError("empty indices")
-        self.deg = deg
-        self.cossin = cossin
-        self.periodic = periodic
-        self._dim = self.dih_indexes.shape[0]
-        if self.cossin:
-            self._dim *= 2
-
+        super(DihedralFeature, self).__init__(top=top,
+                                              angle_indexes=dih_indexes,
+                                              deg=deg,
+                                              cossin=cossin,
+                                              periodic=periodic)
     def describe(self):
         if self.cossin:
             sin_cos = (
@@ -94,7 +100,7 @@ class DihedralFeature(object):
                        _describe_atom(self.top, quad[1]),
                        _describe_atom(self.top, quad[2]),
                        _describe_atom(self.top, quad[3]))
-                      for quad in self.dih_indexes
+                      for quad in self.angle_indexes
                       for s in sin_cos]
         else:
             labels = ["DIH: %s - %s - %s - %s " %
@@ -102,15 +108,11 @@ class DihedralFeature(object):
                        _describe_atom(self.top, quad[1]),
                        _describe_atom(self.top, quad[2]),
                        _describe_atom(self.top, quad[3]))
-                      for quad in self.dih_indexes]
+                      for quad in self.angle_indexes]
         return labels
 
-    @property
-    def dimension(self):
-        return self._dim
-
     def transform(self, traj):
-        rad = mdtraj.compute_dihedrals(traj, self.dih_indexes, self.periodic)
+        rad = mdtraj.compute_dihedrals(traj, self.angle_indexes, self.periodic)
         if self.cossin:
             rad = np.dstack((np.cos(rad), np.sin(rad)))
             rad = rad.reshape(rad.shape[0], rad.shape[1]*rad.shape[2])
@@ -119,17 +121,6 @@ class DihedralFeature(object):
             rad = np.rad2deg(rad)
 
         return rad
-
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self.dih_indexes)
-        hash_value ^= hash_top(self.top)
-        hash_value ^= hash(self.deg)
-        hash_value ^= hash(self.cossin)
-
-        return hash_value
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
 
 
 class BackboneTorsionFeature(DihedralFeature):
@@ -200,10 +191,10 @@ class Chi1TorsionFeature(DihedralFeature):
         if self.cossin:
             cossin = ("COS(CHI1 %s)", "SIN(CHI1 %s)")
             labels_chi1 = [s % getlbl(top.atom(ires[1]))
-                           for ires in self.dih_indexes
+                           for ires in self.angle_indexes
                            for s in cossin]
         else:
             labels_chi1 = ["CHI1" + getlbl(top.atom(ires[1]))
-                           for ires in self.dih_indexes]
+                           for ires in self.angle_indexes]
 
         return labels_chi1

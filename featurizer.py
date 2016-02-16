@@ -20,7 +20,6 @@ from __future__ import absolute_import
 import warnings
 
 from pyemma._base.logging import Loggable
-from pyemma.util.annotators import deprecated
 from pyemma.util.types import is_string
 import mdtraj
 import six
@@ -623,7 +622,6 @@ class MDFeaturizer(Loggable):
             named arguments passed to func
 
         """
-        from .featurization.misc import CustomFeature
         f = CustomFeature(func, dim=dim, *args, **kwargs)
 
         self.add_custom_feature(f)
@@ -639,13 +637,6 @@ class MDFeaturizer(Loggable):
         """
         dim = sum(f.dimension for f in self.active_features)
         return dim
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
 
     def transform(self, traj):
         """

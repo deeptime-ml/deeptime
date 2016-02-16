@@ -1,10 +1,28 @@
+# This file is part of PyEMMA.
+#
+# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
+#
+# PyEMMA is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import six
 '''
 Created on 15.02.2016
 
 @author: marscher
 '''
-from pyemma.coordinates.data.featurization.util import _catch_unhashable,\
-    _describe_atom, hash_top, _hash_numpy_array
+from pyemma.coordinates.data.featurization.util import (_catch_unhashable,
+                                                        _describe_atom,
+                                                        hash_top, _hash_numpy_array)
 import numpy as np
 import mdtraj
 from pyemma.coordinates.data.featurization._base import Feature
@@ -59,11 +77,11 @@ class CustomFeature(Feature):
         self._func = func
         self._args = args
         self._kwargs = kwargs
-        self.dimension = kwargs.pop('dim', 0)
+        self._dim = kwargs.pop('dim', 0)
 
     def describe(self):
         return ["CustomFeature calling %s with args %s" % (str(self._func),
-                                                           str(self._args) +
+                                                           str(self._args) + 
                                                            str(self._kwargs))]
 
     def transform(self, traj):
@@ -75,7 +93,7 @@ class CustomFeature(Feature):
     def __hash__(self):
         hash_value = hash(self._func)
         # if key contains numpy arrays, we hash their data arrays
-        key = tuple(list(map(_catch_unhashable, self._args)) +
+        key = tuple(list(map(_catch_unhashable, self._args)) + 
                     list(map(_catch_unhashable, sorted(self._kwargs.items()))))
         hash_value ^= hash(key)
         return hash_value
@@ -98,11 +116,11 @@ class SelectionFeature(Feature):
     def describe(self):
         labels = []
         for i in self.indexes:
-            labels.append("%s%s x" %
+            labels.append("%s%s x" % 
                           (self.prefix_label, _describe_atom(self.top, i)))
-            labels.append("%s%s y" %
+            labels.append("%s%s y" % 
                           (self.prefix_label, _describe_atom(self.top, i)))
-            labels.append("%s%s z" %
+            labels.append("%s%s z" % 
                           (self.prefix_label, _describe_atom(self.top, i)))
         return labels
 
@@ -134,7 +152,7 @@ class MinRmsdFeature(Feature):
 
         # Types of inputs
         # 1. Filename+top
-        if isinstance(ref, str):
+        if isinstance(ref, six.string_types):
             # Store the filename
             self.name = ref[:]
             ref = mdtraj.load_frame(ref, ref_frame, top=topology)
