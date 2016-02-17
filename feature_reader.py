@@ -73,6 +73,7 @@ class FeatureReader(DataSource):
     >>> X = reader.get_output()
 
     """
+    SUPPORTED_RANDOM_ACCESS_FORMATS = (".h5", ".dcd", ".binpos", ".nc", ".xtc", ".trr")
 
     def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
         assert (topologyfile is not None) or (featurizer is not None), \
@@ -88,7 +89,8 @@ class FeatureReader(DataSource):
         self.topfile = topologyfile
 
         self._is_random_accessible = all(
-                [trajfile.endswith((".h5", ".dcd", ".binpos", ".nc")) for trajfile in self.trajfiles]
+                [trajfile.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
+                 for trajfile in self.trajfiles]
         )
         self._ra_cuboid = FeatureReaderCuboidRandomAccessStrategy(self, 3)
         self._ra_jagged = FeatureReaderJaggedRandomAccessStrategy(self, 3)
