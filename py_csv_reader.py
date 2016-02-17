@@ -231,7 +231,7 @@ class PyCSVReader(DataSource):
                 if i >= len(offsets):
                     offsets = np.resize(offsets, int(ceil(len(offsets)*1.2)))
             offsets = offsets[:i]
-            length = len(offsets)
+            length = len(offsets) - 1
             fh.seek(0)
 
             if not self._delimiters[idx]:
