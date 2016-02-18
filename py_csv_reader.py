@@ -178,8 +178,11 @@ class PyCSVReader(DataSource):
         provide a default value for missing data:
         ``converters = {3: lambda s: float(s.strip() or 0)}``.
 
+    Notes
+    -----
+    For reading files with only one column, one needs to specify a delimter...
     """
-    DEFAULT_OPEN_MODE = 'rtU' # read, text, unified-newlines (always \n)
+    DEFAULT_OPEN_MODE = 'r' # read, text, unified-newlines (always \n)
 
     def __init__(self, filenames, chunksize=1000, delimiters=None, comments='#',
                  converters=None, **kwargs):
@@ -229,7 +232,7 @@ class PyCSVReader(DataSource):
         reading files with Unix-style line-endings. Use binary mode ('rb') to
         circumvent this problem.
         """
-        with open(filename, 'rUt') as fh:
+        with open(filename, self.DEFAULT_OPEN_MODE) as fh:
             # approx by filesize / (first line + 20%)
             size = new_size(os.stat(filename).st_size / len(fh.readline()))
             assert size > 0
@@ -237,7 +240,7 @@ class PyCSVReader(DataSource):
             offsets = np.empty(size, dtype=np.int64)
             offsets[0] = 0
             i = 1
-            for _ in fh:  # for line in fh
+            while fh.readline():
                 offsets[i] = fh.tell()
                 i += 1
                 if i >= len(offsets):
@@ -246,11 +249,17 @@ class PyCSVReader(DataSource):
             length = len(offsets) - 1
             fh.seek(0)
 
-            if not self._delimiters[idx]:
+            # auto detect delimiter with csv.Sniffer
+            if self._delimiters[idx] is None:
                 # determine delimiter
                 sample = fh.read(2048)
                 sniffer = csv.Sniffer()
-                self._dialects[idx] = sniffer.sniff(sample)
+                try:
+                    self._dialects[idx] = sniffer.sniff(sample)
+                except csv.Error as e:
+                    s = ('During handling of file "%s" follwing error occured:'
+                         ' "%s". Sample was "%s"' % (filename, e, sample))
+                    raise RuntimeError(s)
                 if sniffer.has_header(sample):
                     self._skip[idx] += 1
                     length -= 1
@@ -267,9 +276,7 @@ class PyCSVReader(DataSource):
                 # determine header
                 hdr = False
                 for line in fh:
-                    if line == '':
-                        break
-                    if line[0] == self._comments[idx]:
+                    if line.startswith(self._comments[idx]):
                         hdr += 1
                         continue
 
