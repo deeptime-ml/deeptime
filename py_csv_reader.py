@@ -143,7 +143,8 @@ class PyCSVIterator(DataSourceIterator):
 
         self._skip_rows = skip_rows
         try:
-            fh = open(self._data_source.filenames[self._itraj])
+            fh = open(self._data_source.filenames[self._itraj],
+                      mode=self._data_source.DEFAULT_OPEN_MODE)
             self._file_handle = fh
         except EnvironmentError:
             self._logger.exception()
@@ -178,6 +179,8 @@ class PyCSVReader(DataSource):
         ``converters = {3: lambda s: float(s.strip() or 0)}``.
 
     """
+    DEFAULT_OPEN_MODE = 'rtU' # read, text, unified-newlines (always \n)
+
     def __init__(self, filenames, chunksize=1000, delimiters=None, comments='#',
                  converters=None, **kwargs):
         super(PyCSVReader, self).__init__(chunksize=chunksize)
@@ -226,7 +229,7 @@ class PyCSVReader(DataSource):
         reading files with Unix-style line-endings. Use binary mode ('rb') to
         circumvent this problem.
         """
-        with open(filename, 'rb') as fh:
+        with open(filename, 'rUt') as fh:
             # approx by filesize / (first line + 20%)
             size = new_size(os.stat(filename).st_size / len(fh.readline()))
             assert size > 0
@@ -255,16 +258,15 @@ class PyCSVReader(DataSource):
                 class custom_dialect(csv.Dialect):
                     delimiter = self._delimiters[idx]
                     quotechar = '"'
-                    # TODO: this may cause problems if newline is only \r or \n
-                    lineterminator = '\r\n'
+                    # lets enforce \n because we use text mode with 'U' (unified newline)
+                    lineterminator = '\n'
                     quoting = csv.QUOTE_MINIMAL
                 d = custom_dialect()
                 d.delimiter = self._delimiters[idx]
 
                 # determine header
                 hdr = False
-                while True:
-                    line = fh.readline()
+                for line in fh:
                     if line == '':
                         break
                     if line[0] == self._comments[idx]:
@@ -280,27 +282,6 @@ class PyCSVReader(DataSource):
             r = csv.reader(fh, dialect=self._dialects[idx])
             for _ in range(self._skip[idx]+1):
                 line = next(r)
-            try:
-                # determine file length
-                with open(f) as fh:
-                    # count rows
-                    self._lengths.append(sum(1 for _ in fh))
-                    fh.seek(0)
-                    # determine if file has header here:
-                    sample = fh.read(2048)
-                    self._dialects[ii] = csv.Sniffer().sniff(sample)
-                    self._has_header[ii] = csv.Sniffer().has_header(sample)
-                    # if we have a header subtract it from total length
-                    if self._has_header[ii]:
-                        self._lengths[-1] -= 1
-                    fh.seek(0)
-                    r = csv.reader(fh, dialect=self._dialects[ii])
-                    if self._has_header[ii]:
-                        next(r)
-                    line = next(r)
-                    arr = np.array(line).astype(float)
-                    dim = arr.squeeze().shape[0]
-                    ndims.append(dim)
 
             try:
                 arr = np.array(line).astype(float)
