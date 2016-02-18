@@ -89,8 +89,8 @@ class FeatureReader(DataSource):
         self.filenames = trajectories
 
         self._is_random_accessible = all(
-                [trajfile.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
-                 for trajfile in self.trajfiles]
+                [f.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
+                 for f in self.filenames]
         )
         self._ra_cuboid = FeatureReaderCuboidRandomAccessStrategy(self, 3)
         self._ra_jagged = FeatureReaderJaggedRandomAccessStrategy(self, 3)
