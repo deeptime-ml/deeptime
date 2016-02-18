@@ -155,17 +155,24 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
         return trajs
 
-    def write_to_csv(self, filename, stride=1, chunksize=100, **kw):
+    def write_to_csv(self, filename=None, extension='.dat', overwrite=False, stride=1, chunksize=100, **kw):
         """ write all data to csv with numpy.savetxt
 
         Parameters
         ----------
-        filename : str
+        filename : str, optional
             filename string, which may contain placeholders {itraj} and {stride}:
 
             * itraj will be replaced by trajetory index
             * stride is stride argument of this method
-        stride: int
+
+            If filename is not given, it is being tried to obtain the filenames
+            from the data source of this iterator.
+        extension : str, optional, default='.dat'
+            filename extension of created files
+        overwrite : bool, optional, default=False
+            shall existing files be overwritten? If a file exists, this method will raise.
+        stride : int
             omit every n'th frame
         chunksize: int
             how many frames to process at once
@@ -187,7 +194,36 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         ...    print(os.listdir('.'))
         ['distances_2.dat', 'distances_1.dat', 'distances_0.dat']
         """
-        filename = filename.replace('{stride}', str(stride))
+        import os
+        if not filename:
+            assert hasattr(self, 'filenames')
+            #    raise RuntimeError("could not determine filenames")
+            filenames = []
+            for f in self.filenames:
+                base, _ = os.path.split(f)
+                filenames.append(base+extension)
+        elif isinstance(filename, six.string_types):
+            filename = filename.replace('{stride}', str(stride))
+            filenames = [filename.replace('{itraj}', str(itraj)) for itraj
+                         in range(self.number_of_trajectories())]
+        else:
+            raise TypeError("filename should be str or None")
+
+        # check files before starting to write
+        import errno
+        for f in filenames:
+            try:
+                st = os.stat(f)
+                raise OSError(errno.EEXIST)
+            except OSError as e:
+                print e.errno
+                if e.errno == errno.EEXIST:
+                    if overwrite:  continue
+                elif e.errno == errno.ENOENT:
+                    continue
+                raise
+            else:
+                continue
         f = None
         with self.iterator(stride, chunk=chunksize, return_trajindex=False) as it:
             self._progress_register(it._n_chunks, "saving to csv")
@@ -196,7 +232,9 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                 if oldtraj != it.current_trajindex:
                     if f is not None:
                         f.close()
-                    f = open(filename.replace('{itraj}', str(it.current_trajindex)), 'wb')
+                    fn = filenames[it.current_trajindex]
+                    self.logger.debug("opening file %s for writing csv.")
+                    f = open(fn, 'wb')
                 np.savetxt(f, X)
                 self._progress_update(1, 0)
         if f is not None:

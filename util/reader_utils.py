@@ -26,7 +26,7 @@ import os
 from six import string_types
 
 
-def create_file_reader(input_files, topology, featurizer, chunk_size=100):
+def create_file_reader(input_files, topology, featurizer, chunk_size=100, **kw):
     r"""
     Creates a (possibly featured) file reader by a number of input files and either a topology file or a featurizer.
     Parameters
@@ -104,7 +104,7 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100):
                         reader = NumPyFileReader(input_list, chunksize=chunk_size)
                     # otherwise we assume that given files are ascii tabulated data
                     else:
-                        reader = PyCSVReader(input_list, chunksize=chunk_size)
+                        reader = PyCSVReader(input_list, chunksize=chunk_size, **kw)
         else:
             raise ValueError("Not all elements in the input list were of the type %s!" % suffix)
     else:
