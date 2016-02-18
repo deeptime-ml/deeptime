@@ -217,7 +217,7 @@ class PyCSVReader(DataSource):
 
     def _get_traj_info(self, filename):
         idx = self.filenames.index(filename)
-        with open(filename, 'rt') as fh:
+        with open(filename, 'r+b') as fh:
             # approx by filesize / (first line + 20%)
             size = int(os.stat(filename).st_size / len(fh.readline()) * 1.2)
             assert size > 0
