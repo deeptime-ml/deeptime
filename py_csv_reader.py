@@ -217,19 +217,28 @@ class PyCSVReader(DataSource):
 
     def _get_traj_info(self, filename):
         idx = self.filenames.index(filename)
-        with open(filename, 'r+b') as fh:
+
+        def new_size(x):
+            return int(ceil(x * 1.2))
+        # how to handle mode?
+        """
+        On Windows, tell() can return illegal values (after an fgets()) when
+        reading files with Unix-style line-endings. Use binary mode ('rb') to
+        circumvent this problem.
+        """
+        with open(filename, 'rb') as fh:
             # approx by filesize / (first line + 20%)
-            size = int(os.stat(filename).st_size / len(fh.readline()) * 1.2)
+            size = new_size(os.stat(filename).st_size / len(fh.readline()))
             assert size > 0
             fh.seek(0)
             offsets = np.empty(size, dtype=np.int64)
             offsets[0] = 0
             i = 1
-            while fh.readline():
+            for _ in fh:  # for line in fh
                 offsets[i] = fh.tell()
                 i += 1
                 if i >= len(offsets):
-                    offsets = np.resize(offsets, int(ceil(len(offsets)*1.2)))
+                    offsets = np.resize(offsets, new_size(len(offsets)))
             offsets = offsets[:i]
             length = len(offsets) - 1
             fh.seek(0)
@@ -246,6 +255,7 @@ class PyCSVReader(DataSource):
                 class custom_dialect(csv.Dialect):
                     delimiter = self._delimiters[idx]
                     quotechar = '"'
+                    # TODO: this may cause problems if newline is only \r or \n
                     lineterminator = '\r\n'
                     quoting = csv.QUOTE_MINIMAL
                 d = custom_dialect()
