@@ -201,7 +201,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             #    raise RuntimeError("could not determine filenames")
             filenames = []
             for f in self.filenames:
-                base, _ = os.path.split(f)
+                base, _ = os.path.splitext(f)
                 filenames.append(base+extension)
         elif isinstance(filename, six.string_types):
             filename = filename.replace('{stride}', str(stride))
@@ -209,7 +209,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                          in range(self.number_of_trajectories())]
         else:
             raise TypeError("filename should be str or None")
-
+        print("filenames", filenames)
         # check files before starting to write
         import errno
         for f in filenames:
