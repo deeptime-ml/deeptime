@@ -155,7 +155,8 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
         return trajs
 
-    def write_to_csv(self, filename=None, extension='.dat', overwrite=False, stride=1, chunksize=100, **kw):
+    def write_to_csv(self, filename=None, extension='.dat', overwrite=False,
+                     stride=1, chunksize=100, **kw):
         """ write all data to csv with numpy.savetxt
 
         Parameters
@@ -216,9 +217,9 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                 st = os.stat(f)
                 raise OSError(errno.EEXIST)
             except OSError as e:
-                print e.errno
                 if e.errno == errno.EEXIST:
-                    if overwrite:  continue
+                    if overwrite:
+                        continue
                 elif e.errno == errno.ENOENT:
                     continue
                 raise

@@ -21,7 +21,6 @@ Created on 11.04.2015
 """
 
 from __future__ import absolute_import
-
 from math import ceil
 import csv
 import os
