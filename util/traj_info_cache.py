@@ -122,6 +122,7 @@ class TrajectoryInfoCache(object):
 
     """
     _instance = None
+    DB_VERSION = '1'
 
     @staticmethod
     def instance():
@@ -134,12 +135,31 @@ class TrajectoryInfoCache(object):
 
     def __init__(self, database_filename=None):
         if database_filename is not None:
-            self._database = anydbm.open(database_filename, flag="c")
+            try:
+                self._database = anydbm.open(database_filename, flag="c")
+            except anydbm.error as e:
+                try:
+                    os.unlink(database_filename)
+                    self._database = anydbm.open(database_filename, flag="n")
+                    # persist file right now, since it was broken
+                    self._set_curr_db_version(TrajectoryInfoCache.DB_VERSION)
+                    self._database.sync()
+                except OSError:
+                    raise RuntimeError('corrupted database in "%s" could not be deleted'
+                                       % os.path.abspath(database_filename))
         else:
             self._database = {}
 
-        self._database['db_version'] = '1'
+        self._set_curr_db_version(TrajectoryInfoCache.DB_VERSION)
         self._write_protector = Semaphore()
+
+    @property
+    def current_db_version(self):
+        return self._current_db_version
+
+    def _set_curr_db_version(self, val):
+        self._database['db_version'] = val
+        self._current_db_version = val
 
     def __getitem__(self, filename_reader_tuple):
         filename, reader = filename_reader_tuple
