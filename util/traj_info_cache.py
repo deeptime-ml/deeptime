@@ -131,6 +131,13 @@ class TrajectoryInfoCache(object):
             cfg_dir = conf_values['pyemma']['cfg_dir']
             filename = os.path.join(cfg_dir, "trajlen_cache")
             TrajectoryInfoCache._instance = TrajectoryInfoCache(filename)
+            import atexit
+
+            @atexit.register
+            def write_at_exit():
+                if hasattr(TrajectoryInfoCache._instance._database, 'sync'):
+                    TrajectoryInfoCache._instance._database.sync()
+
         return TrajectoryInfoCache._instance
 
     def __init__(self, database_filename=None):
@@ -174,6 +181,11 @@ class TrajectoryInfoCache(object):
             info = reader._get_traj_info(filename)
             # store info in db
             result = self.__setitem__(filename, info)
+
+            # save forcefully now
+            if hasattr(self._database, 'sync'):
+                logger.debug("sync db after adding new entry")
+                self._database.sync()
 
         return info
 
