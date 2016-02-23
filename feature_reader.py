@@ -84,6 +84,9 @@ class FeatureReader(DataSource):
 
         super(FeatureReader, self).__init__(chunksize=chunksize)
         self._is_reader = True
+        from distutils.version import LooseVersion
+        if LooseVersion(mdtraj.version.version) < LooseVersion('1.6.1'):
+            xtc_trr_random_accessible = True
 
         self.topfile = topologyfile
         self.filenames = trajectories
@@ -91,7 +94,8 @@ class FeatureReader(DataSource):
         self._is_random_accessible = all(
                 [f.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
                  for f in self.filenames]
-        )
+        ) and xtc_trr_random_accessible
+
         self._ra_cuboid = FeatureReaderCuboidRandomAccessStrategy(self, 3)
         self._ra_jagged = FeatureReaderJaggedRandomAccessStrategy(self, 3)
         self._ra_linear_strategy = FeatureReaderLinearRandomAccessStrategy(self, 2)
@@ -152,9 +156,9 @@ class FeatureReader(DataSource):
 
         return TrajInfo(ndim, length, offsets)
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         return FeatureReaderIterator(self, skip=skip, chunk=chunk, stride=stride,
-                                     return_trajindex=return_trajindex)
+                                     return_trajindex=return_trajindex, cols=cols)
 
     def describe(self):
         """
@@ -314,9 +318,11 @@ class FeatureReaderLinearRandomAccessStrategy(RandomAccessStrategy):
 
 
 class FeatureReaderIterator(DataSourceIterator, Loggable):
-    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
+        # TODO: optimize cols access (eg. omit features, before calculating em
         super(FeatureReaderIterator, self).__init__(
-                data_source, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex
+                data_source, skip=skip, chunk=chunk, stride=stride,
+                return_trajindex=return_trajindex, cols=cols
         )
         self._create_mditer()
 

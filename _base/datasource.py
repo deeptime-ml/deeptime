@@ -584,8 +584,8 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self.next()
 
     def _use_cols(self, X):
-        if self.use_cols:
-            return X[self._cols]
+        if self.use_cols is not None:
+            return X[:, self.use_cols]
         return X
 
     def _it_next(self):

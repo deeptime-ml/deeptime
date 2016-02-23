@@ -45,8 +45,8 @@ class DataInMemory(DataSource):
     """
     IN_MEMORY_FILENAME = '<in_memory_file>'
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False):
-        return DataInMemoryIterator(self, skip, chunk, stride, return_trajindex)
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
+        return DataInMemoryIterator(self, skip, chunk, stride, return_trajindex, cols)
 
     def __init__(self, data, chunksize=5000, **kw):
         super(DataInMemory, self).__init__(chunksize=chunksize)
@@ -233,8 +233,9 @@ class DataInMemoryIterator(DataSourceIterator):
     def close(self):
         pass
 
-    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
-        super(DataInMemoryIterator, self).__init__(data_source, skip, chunk, stride, return_trajindex)
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
+        super(DataInMemoryIterator, self).__init__(data_source, skip, chunk,
+                                                   stride, return_trajindex, cols)
 
     def _next_chunk(self):
         if self._itraj >= self._data_source.ntraj:

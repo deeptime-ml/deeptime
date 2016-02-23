@@ -90,17 +90,19 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         self._Y_source = DataInMemory(self._Y)
         self._mapping_to_mem_active = False
 
-    def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True):
+    def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True, cols=None):
         if self.in_memory:
             from pyemma.coordinates.data.data_in_memory import DataInMemory
             return DataInMemory(self._Y).iterator(
                     lag=lag, chunk=chunk, stride=stride, return_trajindex=return_trajindex
             )
         chunk = chunk if chunk is not None else self.default_chunksize
-        it = self._create_iterator(skip=0, chunk=chunk, stride=stride, return_trajindex=return_trajindex)
+        it = self._create_iterator(skip=0, chunk=chunk, stride=stride,
+                                   return_trajindex=return_trajindex, cols=cols)
         if lag > 0:
             it.return_traj_index = True
-            it_lagged = self._create_iterator(skip=lag, chunk=chunk, stride=stride, return_trajindex=True)
+            it_lagged = self._create_iterator(skip=lag, chunk=chunk, stride=stride,
+                                              return_trajindex=True, cols=cols)
             return LaggedIterator(it, it_lagged, return_trajindex)
         return it
 
@@ -243,7 +245,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         self._progress_force_finish(0)
 
     @abstractmethod
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         """
         Should be implemented by non-abstract subclasses. Creates an instance-independent iterator.
         :param skip: How many frames to skip before streaming.

@@ -32,10 +32,12 @@ import numpy as np
 
 
 class PyCSVIterator(DataSourceIterator):
-    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
+        # do not pass cols, because we want to handle in this impl, not in DataSourceIterator
         super(PyCSVIterator, self).__init__(data_source, skip=skip, chunk=chunk,
                                             stride=stride,
                                             return_trajindex=return_trajindex)
+        self._custom_cols = cols
         self._open_file()
         if isinstance(self._skip_rows, int):
             self._skip_rows = np.arange(self._skip_rows)
@@ -101,6 +103,8 @@ class PyCSVIterator(DataSourceIterator):
 
     def _convert_to_np_chunk(self, list_of_strings):
         stack_of_strings = np.vstack(list_of_strings)
+        if self._custom_cols:
+            stack_of_strings = stack_of_strings[:, self._custom_cols]
         del list_of_strings[:]
         try:
             result = stack_of_strings.astype(float)
@@ -209,9 +213,9 @@ class PyCSVReader(DataSource):
             return arg
         return [arg]*n
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         return PyCSVIterator(self, skip=skip, chunk=chunk, stride=stride,
-                             return_trajindex=return_trajindex)
+                             return_trajindex=return_trajindex, cols=cols)
 
     def _get_dialect(self, itraj):
         fn_idx = self.filenames.index(self.filenames[itraj])

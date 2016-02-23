@@ -137,9 +137,10 @@ class _FragmentedTrajectoryIterator(object):
 
 class FragmentIterator(DataSourceIterator):
 
-    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         super(FragmentIterator, self).__init__(data_source, skip=skip, chunk=chunk,
-                                               stride=stride, return_trajindex=return_trajindex)
+                                               stride=stride, return_trajindex=return_trajindex,
+                                               cols=cols)
         self._it = None
         self._itraj = 0
 
@@ -186,6 +187,8 @@ class FragmentedTrajectoryReader(DataSource):
     """
 
     def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
+        super(FragmentedTrajectoryReader, self).__init__()
+        self._is_reader = True
         # sanity checks
         assert isinstance(trajectories, (list, tuple)), "input trajectories should be of list or tuple type"
         # if it contains no further list: treat as single trajectory
@@ -223,9 +226,10 @@ class FragmentedTrajectoryReader(DataSource):
         self._cumulative_lengths = [np.cumsum(self._reader_lengths[itraj]) for itraj in range(0, self._ntraj)]
         # store trajectory files
         self._trajectories = trajectories
+        self._filenames = trajectories
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True):
-        return FragmentIterator(self, skip, chunk, stride, return_trajindex)
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
+        return FragmentIterator(self, skip, chunk, stride, return_trajindex, cols=cols)
 
     def describe(self):
         return "[FragmentedTrajectoryReader files=%s]" % self._trajectories

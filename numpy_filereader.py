@@ -59,9 +59,9 @@ class NumPyFileReader(DataSource):
         self.mmap_mode = mmap_mode
         self.filenames = filenames
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         return NPYIterator(self, skip=skip, chunk=chunk, stride=stride, 
-                           return_trajindex=return_trajindex)
+                           return_trajindex=return_trajindex, cols=cols)
 
     def describe(self):
         return "[NumpyFileReader arrays with shape %s]" % [np.shape(x)
@@ -107,10 +107,11 @@ class NumPyFileReader(DataSource):
 
 class NPYIterator(DataSourceIterator):
 
-    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False):
+    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=False):
         super(NPYIterator, self).__init__(data_source=data_source, skip=skip,
                                           chunk=chunk, stride=stride,
-                                          return_trajindex=return_trajindex)
+                                          return_trajindex=return_trajindex,
+                                          cols=cols)
 
         self._last_itraj = -1
 
