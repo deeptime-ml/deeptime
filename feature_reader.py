@@ -84,17 +84,18 @@ class FeatureReader(DataSource):
 
         super(FeatureReader, self).__init__(chunksize=chunksize)
         self._is_reader = True
-        from distutils.version import LooseVersion
-        if LooseVersion(mdtraj.version.version) < LooseVersion('1.6.1'):
-            xtc_trr_random_accessible = True
-
         self.topfile = topologyfile
         self.filenames = trajectories
 
         self._is_random_accessible = all(
-                [f.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
-                 for f in self.filenames]
-        ) and xtc_trr_random_accessible
+            (f.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
+                 for f in self.filenames)
+        )
+        # check we have at least mdtraj-1.6.1 to efficiently seek xtc, trr formats
+        if any(f.endswith('.xtc') or f.endswith('.trr') for f in trajectories):
+            from distutils.version import LooseVersion
+            xtc_trr_random_accessible = True if LooseVersion(mdtraj.version.version) >= LooseVersion('1.6.1') else False
+            self._is_random_accessible &= xtc_trr_random_accessible
 
         self._ra_cuboid = FeatureReaderCuboidRandomAccessStrategy(self, 3)
         self._ra_jagged = FeatureReaderJaggedRandomAccessStrategy(self, 3)
