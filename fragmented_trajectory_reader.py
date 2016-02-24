@@ -175,9 +175,8 @@ class FragmentedTrajectoryReader(DataSource):
     """
     Parameters
     ----------
-    trajectories: list or tuple
-        ....
-
+    trajectories: nested list or nested tuple, 1 level depth
+    
     topologyfile, str, default None
     
     chunksize: int, default 100
@@ -187,8 +186,6 @@ class FragmentedTrajectoryReader(DataSource):
     """
 
     def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
-        super(FragmentedTrajectoryReader, self).__init__()
-        self._is_reader = True
         # sanity checks
         assert isinstance(trajectories, (list, tuple)), "input trajectories should be of list or tuple type"
         # if it contains no further list: treat as single trajectory
@@ -200,6 +197,7 @@ class FragmentedTrajectoryReader(DataSource):
         assert len(trajectories) > 0, "no input trajectories provided"
         # call super
         super(FragmentedTrajectoryReader, self).__init__(chunksize=chunksize)
+        self._is_reader = True
         # number of trajectories
         self._ntraj = len(trajectories)
         # store readers
@@ -207,6 +205,18 @@ class FragmentedTrajectoryReader(DataSource):
 
         self._readers = [[source(input_item, features=featurizer, top=topologyfile, chunk_size=chunksize)
                           for input_item in trajectories[itraj]] for itraj in range(0, self._ntraj)]
+
+        # check all readers have same dimension
+        if not len(set(itraj_r.ndim for r in self._readers for itraj_r in r)) == 1:
+            # lookup the evil reader:
+            last_dim = -1
+            for r in self._readers:
+                for itraj_r in r:
+                    if last_dim == -1:
+                        last_dim = itraj_r.ndim
+                    if itraj_r.ndim != last_dim:
+                        raise ValueError("%s has different dimension (%i) than expected (%i)"
+                                         % (itraj_r.describe(), itraj_r.ndim, last_dim))
 
         self._reader_by_filename = {}
         for r in self._readers:
@@ -253,6 +263,5 @@ class FragmentedTrajectoryReader(DataSource):
 
     def _get_traj_info(self, filename):
         # get info for a fragment from specific reader
-        #reader = filter( lambda x: filename in x,r for itraj in range(0, self._ntraj))
         reader = self._reader_by_filename[filename]
         return reader._get_traj_info(filename)

@@ -89,7 +89,7 @@ class FeatureReader(DataSource):
 
         self._is_random_accessible = all(
             (f.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
-                 for f in self.filenames)
+             for f in self.filenames)
         )
         # check we have at least mdtraj-1.6.1 to efficiently seek xtc, trr formats
         if any(f.endswith('.xtc') or f.endswith('.trr') for f in trajectories):
@@ -323,8 +323,10 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
         # TODO: optimize cols access (eg. omit features, before calculating em
         super(FeatureReaderIterator, self).__init__(
                 data_source, skip=skip, chunk=chunk, stride=stride,
-                return_trajindex=return_trajindex, cols=cols
+                return_trajindex=return_trajindex,
+                cols=cols
         )
+        #self._cols = cols
         self._create_mditer()
 
     def close(self):
