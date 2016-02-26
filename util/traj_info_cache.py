@@ -51,10 +51,13 @@ class UnknownDBFormatException(KeyError):
 
 class TrajInfo(object):
 
-    def __init__(self, ndim=0, length=0, offsets=[]):
+    def __init__(self, ndim=0, length=0, offsets=None):
         self._ndim = ndim
         self._length = length
-        self._offsets = offsets
+        if offsets is None:
+            self._offsets = []
+        else:
+            self._offsets = offsets
 
         self._version = 1
         self._hash = -1
@@ -80,7 +83,7 @@ class TrajInfo(object):
         self._offsets = np.asarray(value, dtype=np.int64)
 
     @property
-    def hash(self):
+    def hash_value(self):
         return self._hash
 
 
@@ -193,7 +196,7 @@ class TrajectoryInfoCache(object):
         fh = BytesIO()
 
         header = {'data_format_version': 1,
-                  'filehash': traj_info.hash,  # back reference to file by hash
+                  'filehash': traj_info.hash_value,  # back reference to file by hash
                   }
 
         array = np.empty(4, dtype=object)
@@ -227,7 +230,7 @@ class TrajectoryInfoCache(object):
         dbval = self.__format_value(traj_info)
 
         self._write_protector.acquire()
-        self._database[str(traj_info.hash)] = dbval
+        self._database[str(traj_info.hash_value)] = dbval
         self._write_protector.release()
 
         return dbval
