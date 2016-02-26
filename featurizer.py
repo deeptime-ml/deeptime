@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -18,820 +17,22 @@
 
 from __future__ import absolute_import
 
-import numpy as np
 import warnings
-import functools
-
-import mdtraj
-from mdtraj.geometry.dihedral import (indices_phi,
-                                      indices_psi,
-                                      indices_chi1,
-                                      )
-
-from pyemma.util.indices import (combinations as _combinations,
-                                 product as _product,
-                                 )
-from pyemma.util.types import is_iterable_of_int as _is_iterable_of_int, is_string as _is_string
-
-
-from six import PY3
-from six.moves import map, range, zip
 
 from pyemma._base.logging import Loggable
-from pyemma.util.annotators import deprecated
+from pyemma.util.types import is_string
+import mdtraj
 import six
+
+from pyemma.coordinates.data.featurization.util import (_parse_pairwise_input,
+    _parse_groupwise_input)
+
+from .featurization.misc import CustomFeature
+import numpy as np
 
 
 __author__ = 'Frank Noe, Martin Scherer'
-__all__ = ['MDFeaturizer',
-           ]
-
-
-def _describe_atom(topology, index):
-    """
-    Returns a string describing the given atom
-
-    :param topology:
-    :param index:
-    :return:
-    """
-    #assert isinstance(index, int)
-    at = topology.atom(index)
-    return "%s %i %s %i" % (at.residue.name, at.residue.resSeq, at.name, at.index)
-
-
-def _catch_unhashable(x):
-    if hasattr(x, '__getitem__'):
-        res = list(x)
-        for i, value in enumerate(x):
-            if isinstance(value, np.ndarray):
-                res[i] = _hash_numpy_array(value)
-            else:
-                res[i] = value
-        return tuple(res)
-    elif isinstance(x, np.ndarray):
-        return _hash_numpy_array(x)
-
-    return x
-
-if PY3:
-    def _hash_numpy_array(x):
-        hash_value = hash(x.shape)
-        hash_value ^= hash(x.strides)
-        hash_value ^= hash(x.data.tobytes())
-        return hash_value
-else:
-    def _hash_numpy_array(x):
-        writeable = x.flags.writeable
-        try:
-            x.flags.writeable = False
-            hash_value = hash(x.shape)
-            hash_value ^= hash(x.strides)
-            hash_value ^= hash(x.data)
-        finally:
-            x.flags.writeable = writeable
-        return hash_value
-
-
-def hash_top(top):
-    if not PY3:
-        return hash(top)
-    else:
-        # this is a temporary workaround for py3
-        hash_value = hash(top.n_atoms)
-        hash_value ^= hash(tuple(top.atoms))
-        hash_value ^= hash(tuple(top.residues))
-        hash_value ^= hash(tuple(top.bonds))
-        return hash_value
-
-
-
-
-
-def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):
-    r"""For input of pairwise type (distances, inverse distances, contacts) checks the
-        type of input the user gave and reformats it so that :py:func:`DistanceFeature`,
-        :py:func:`InverseDistanceFeature`, and ContactFeature can work.
-
-        In case the input isn't already a list of distances, this function will:
-            - sort the indices1 array
-            - check for duplicates within the indices1 array
-            - sort the indices2 array
-            - check for duplicates within the indices2 array
-            - check for duplicates between the indices1 and indices2 array
-            - if indices2 is     None, produce a list of pairs of indices in indices1, or
-            - if indices2 is not None, produce a list of pairs of (i,j) where i comes from indices1, and j from indices2
-
-        """
-
-    if _is_iterable_of_int(indices1):
-        MDlogger.warning('The 1D arrays input for %s have been sorted, and '
-                         'index duplicates have been eliminated.\n'
-                         'Check the output of describe() to see the actual order of the features' % fname)
-
-        # Eliminate duplicates and sort
-        indices1 = np.unique(indices1)
-
-        # Intra-group distances
-        if indices2 is None:
-            atom_pairs = _combinations(indices1, 2)
-
-        # Inter-group distances
-        elif _is_iterable_of_int(indices2):
-
-            # Eliminate duplicates and sort
-            indices2 = np.unique(indices2)
-
-            # Eliminate duplicates between indices1 and indices1
-            uniqs = np.in1d(indices2, indices1, invert=True)
-            indices2 = indices2[uniqs]
-            atom_pairs = _product(indices1, indices2)
-
-    else:
-        atom_pairs = indices1
-
-    return atom_pairs
-
-
-def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
-    r"""For input of group type (add_group_mindist), prepare the array of pairs of indices
-        and groups so that :py:func:`MinDistanceFeature` can work
-
-        This function will:
-            - check the input types
-            - sort the 1D arrays of each entry of group_definitions
-            - check for duplicates within each group_definition
-            - produce the list of pairs for all needed distances
-            - produce a list that maps each entry in the pairlist to a given group of distances
-
-    Returns
-    --------
-        parsed_group_definitions: list
-            List of of 1D arrays containing sorted, unique atom indices
-
-        parsed_group_pairs: numpy.ndarray
-            (N,2)-numpy array containing pairs of indices that represent pairs
-             of groups for which the inter-group distance-pairs will be generated
-
-        distance_pairs: numpy.ndarray
-            (M,2)-numpy array with all the distance-pairs needed (regardless of their group)
-
-        group_membership: numpy.ndarray
-            (N,2)-numpy array mapping each pair in distance_pairs to their associated group pair
-
-        """
-
-    assert isinstance(group_definitions, list), "group_definitions has to be of type list, not %s"%type(group_definitions)
-    # Handle the special case of just one group
-    if len(group_definitions) == 1:
-        group_pairs = np.array([0,0], ndmin=2)
-
-    # Sort the elements within each group
-    parsed_group_definitions = []
-    for igroup in group_definitions:
-        assert np.ndim(igroup) == 1, "The elements of the groups definition have to be of dim 1, not %u"%np.ndim(igroup)
-        parsed_group_definitions.append(np.unique(igroup))
-
-    # Check for group duplicates
-    for ii, igroup in enumerate(parsed_group_definitions[:-1]):
-        for jj, jgroup in enumerate(parsed_group_definitions[ii+1:]):
-            if len(igroup) == len(jgroup):
-                assert not np.allclose(igroup, jgroup), "Some group definitions appear to be duplicated, e.g %u and %u"%(ii,ii+jj+1)
-
-    # Create and/or check the pair-list
-    if _is_string(group_pairs):
-        if group_pairs == 'all':
-            parsed_group_pairs = _combinations(np.arange(len(group_definitions)), 2)
-    else:
-        assert isinstance(group_pairs, np.ndarray)
-        assert group_pairs.shape[1] == 2
-        assert group_pairs.max() <= len(parsed_group_definitions), "Cannot ask for group nr. %u if group_definitions only " \
-                                                    "contains %u groups"%(group_pairs.max(), len(parsed_group_definitions))
-        assert group_pairs.min() >= 0, "Group pairs contains negative group indices"
-
-        parsed_group_pairs = np.zeros_like(group_pairs, dtype='int')
-        for ii, ipair in enumerate(group_pairs):
-            if ipair[0] == ipair[1]:
-                MDlogger.warning("%s will compute the mindist of group %u with itself. Is this wanted? "%(mname, ipair[0]))
-            parsed_group_pairs[ii,:] = np.sort(ipair)
-
-    # Create the large list of distances that will be computed, and an array containing group identfiers
-    # of the distances that actually characterize a pair of groups
-    distance_pairs = []
-    group_membership = np.zeros_like(parsed_group_pairs)
-    b = 0
-    for ii, pair in enumerate(parsed_group_pairs):
-        if pair[0] != pair[1]:
-            distance_pairs.append(_product(parsed_group_definitions[pair[0]],
-                                           parsed_group_definitions[pair[1]]))
-        else:
-            parsed = parsed_group_definitions[pair[0]]
-            distance_pairs.append(_combinations(parsed, 2))
-
-        group_membership[ii, :] = [b, b + len(distance_pairs[ii])]
-        b += len(distance_pairs[ii])
-
-    return parsed_group_definitions, parsed_group_pairs, np.vstack(distance_pairs), group_membership
-
-
-class CustomFeature(object):
-
-    """
-    A CustomFeature is the base class for user-defined features. If you want to
-    implement a new fancy feature, derive from this class, calculate the quantity
-    of interest in the map method and return it as an ndarray.
-
-    If you have defined a map function that should be classed, you don't need to derive a class, but you
-    can simply pass a function to the constructor of this class
-
-
-    Parameters
-    ----------
-    func : function
-        will be invoked with given args and kwargs on mapping traj
-    args : list of positional args (optional) passed to func
-    kwargs : named arguments (optional) passed to func
-
-    Notes
-    -----
-    Your passed in function will get a mdtraj.Trajectory object as first argument.
-
-    Examples
-    --------
-    We define a feature that transforms all coordinates by :math:`1 / x^2`:
-
-    >>> from pyemma.coordinates import source
-    >>> from pyemma.datasets import get_bpti_test_data
-    >>> inp = get_bpti_test_data()
-
-    Define a function which transforms the coordinates of the trajectory object.
-    Note that you need to define the output dimension, which we pass directly in
-    the feature construction. The trajectory contains 58 atoms, so the output
-    dimension will be 3 * 58 = 174:
-
-    >>> my_feature = CustomFeature(lambda x: (1.0 / x.xyz**2).reshape(-1, 174), dim=174)
-    >>> reader = source(inp['trajs'][0], top=inp['top'])
-
-    pass the feature to the featurizer and transform the data
-
-    >>> reader.featurizer.add_custom_feature(my_feature)
-    >>> data = reader.get_output()
-
-    """
-
-    def __init__(self, func=None, *args, **kwargs):
-        self._func = func
-        self._args = args
-        self._kwargs = kwargs
-        self.dimension = kwargs.pop('dim', 0)
-
-    def describe(self):
-        return ["CustomFeature calling %s with args %s" % (str(self._func),
-                                                           str(self._args) +
-                                                           str(self._kwargs))]
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        feature = self._func(traj, *self._args, **self._kwargs)
-        if not isinstance(feature, np.ndarray):
-            raise ValueError("your function should return a NumPy array!")
-        return feature
-
-    def __hash__(self):
-        hash_value = hash(self._func)
-        # if key contains numpy arrays, we hash their data arrays
-        key = tuple(list(map(_catch_unhashable, self._args)) +
-                    list(map(_catch_unhashable, sorted(self._kwargs.items()))))
-        hash_value ^= hash(key)
-        return hash_value
-
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
-
-
-class SelectionFeature(object):
-
-    """
-    Just provide the cartesian coordinates of a selection of atoms (could be simply all atoms).
-    The coordinates are flattened as follows: [x1, y1, z1, x2, y2, z2, ...]
-
-    """
-    # TODO: Needs an orientation option
-
-    def __init__(self, top, indexes):
-        self.top = top
-        self.indexes = np.array(indexes)
-        self.prefix_label = "ATOM:"
-
-    def describe(self):
-        labels = []
-        for i in self.indexes:
-            labels.append("%s%s x" %
-                          (self.prefix_label, _describe_atom(self.top, i)))
-            labels.append("%s%s y" %
-                          (self.prefix_label, _describe_atom(self.top, i)))
-            labels.append("%s%s z" %
-                          (self.prefix_label, _describe_atom(self.top, i)))
-        return labels
-
-    @property
-    def dimension(self):
-        return 3 * self.indexes.shape[0]
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        newshape = (traj.xyz.shape[0], 3 * self.indexes.shape[0])
-        return np.reshape(traj.xyz[:, self.indexes, :], newshape)
-
-    def __hash__(self):
-        hash_value = hash(self.prefix_label)
-        hash_value ^= hash_top(self.top)
-        hash_value ^= _hash_numpy_array(self.indexes)
-
-        return hash_value
-
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
-
-
-class DistanceFeature(object):
-
-    def __init__(self, top, distance_indexes, periodic=True):
-        self.top = top
-        self.distance_indexes = np.array(distance_indexes)
-        self.prefix_label = "DIST:"
-        self.periodic = periodic
-
-    def describe(self):
-        labels = ["%s %s - %s" % (self.prefix_label,
-                                  _describe_atom(self.top, pair[0]),
-                                  _describe_atom(self.top, pair[1]))
-                  for pair in self.distance_indexes]
-        return labels
-
-    @property
-    def dimension(self):
-        return self.distance_indexes.shape[0]
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        return mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
-
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self.distance_indexes)
-        hash_value ^= hash_top(self.top)
-        hash_value ^= hash(self.prefix_label)
-        return hash_value
-
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
-
-
-class InverseDistanceFeature(DistanceFeature):
-
-    def __init__(self, top, distance_indexes, periodic=True):
-        DistanceFeature.__init__(
-            self, top, distance_indexes, periodic=periodic)
-        self.prefix_label = "INVDIST:"
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        return 1.0 / mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
-
-    # does not need own hash impl, since we take prefix label into account
-
-class ResidueMinDistanceFeature(DistanceFeature):
-
-    def __init__(self, top, contacts, scheme, ignore_nonprotein, threshold):
-        self.top = top
-        self.contacts = contacts
-        self.scheme = scheme
-        self.threshold = threshold
-        self.prefix_label = "RES_DIST (%s)"%scheme
-
-        # mdtraj.compute_contacts might ignore part of the user input (if it is contradictory) and
-        # produce a warning. I think it is more robust to let it run once on a dummy trajectory to
-        # see what the actual size of the output is:
-        dummy_traj = mdtraj.Trajectory(np.zeros((top.n_atoms, 3)), top)
-        dummy_dist, dummy_pairs = mdtraj.compute_contacts(dummy_traj, contacts=contacts,
-                                                          scheme=scheme,
-                                                          ignore_nonprotein=ignore_nonprotein)
-        self._dimension = dummy_dist.shape[1]
-        self.distance_indexes = dummy_pairs
-
-    def describe(self):
-        labels = ["%s %s - %s" % (self.prefix_label,
-                                  self.top.residue(pair[0]),
-                                  self.top.residue(pair[1]))
-                  for pair in self.distance_indexes]
-        return labels
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        # We let mdtraj compute the contacts with the input scheme
-        D = mdtraj.compute_contacts(traj, contacts=self.contacts, scheme=self.scheme)[0]
-        res = np.zeros_like(D)
-        # Do we want binary?
-        if self.threshold is not None:
-            I = np.argwhere(D <= self.threshold)
-            res[I[:, 0], I[:, 1]] = 1.0
-        else:
-            res = D
-        return res
-
-class GroupMinDistanceFeature(DistanceFeature):
-
-    def __init__(self, top, group_definitions, group_pairs, distance_list, group_identifiers, threshold):
-        self.top = top
-        self.group_identifiers = group_identifiers
-        self.distance_list = distance_list
-        self.group_definitions = group_definitions
-        self.prefix_label = "GROUP_MINDIST"
-        self.threshold = threshold
-        self.distance_indexes = group_pairs
-
-    def describe(self):
-        labels = ["%s %u--%u: [%s...%s]--[%s...%s]" % (self.prefix_label, pair[0], pair[1],
-                                                       _describe_atom(self.top, self.group_definitions[pair[0]][0 ]),
-                                                       _describe_atom(self.top, self.group_definitions[pair[0]][-1]),
-                                                       _describe_atom(self.top, self.group_definitions[pair[1]][0]),
-                                                       _describe_atom(self.top, self.group_definitions[pair[1]][-1])
-                                                       ) for pair in self.distance_indexes]
-        return labels
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        # All needed distances
-        Dall = mdtraj.compute_distances(traj, self.distance_list)
-        # Just the minimas
-        Dmin = np.zeros((traj.n_frames,self.dimension))
-        res = np.zeros_like(Dmin)
-        # Compute the min groupwise
-        for ii, (gi, gf) in enumerate(self.group_identifiers):
-            Dmin[:, ii] =  Dall[:,gi:gf].min(1)
-        # Do we want binary?
-        if self.threshold is not None:
-            I = np.argwhere(Dmin <= self.threshold)
-            res[I[:, 0], I[:, 1]] = 1.0
-        else:
-            res = Dmin
-
-        return res
-
-
-class ContactFeature(DistanceFeature):
-
-    def __init__(self, top, distance_indexes, threshold=5.0, periodic=True, count_contacts=False):
-        DistanceFeature.__init__(self, top, distance_indexes)
-        self.prefix_label = "CONTACT:"
-        if count_contacts:
-            self.prefix_label="counted "+self.prefix_label
-        self.threshold = threshold
-        self.periodic = periodic
-        self.count_contacts = count_contacts
-
-    @property
-    def dimension(self):
-        if self.count_contacts:
-            return 1
-        else:
-            return self.distance_indexes.shape[0]
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        dists = mdtraj.compute_distances(
-            traj, self.distance_indexes, periodic=self.periodic)
-        res = np.zeros(
-            (len(traj), self.distance_indexes.shape[0]), dtype=np.float32)
-        I = np.argwhere(dists <= self.threshold)
-        res[I[:, 0], I[:, 1]] = 1.0
-        if self.count_contacts:
-            return res.sum(1, keepdims=True)
-        else:
-            return res
-
-    def __hash__(self):
-        hash_value = DistanceFeature.__hash__(self)
-        hash_value ^= hash(self.threshold)
-        if self.count_contacts:
-            hash_value += 1
-        return hash_value
-
-
-class AngleFeature(object):
-
-    def __init__(self, top, angle_indexes, deg=False, cossin=False, periodic=True):
-        self.top = top
-        self.angle_indexes = np.array(angle_indexes)
-        self.deg = deg
-        self.cossin = cossin
-        self.periodic = periodic
-
-    def describe(self):
-        if self.cossin:
-            sin_cos = ("ANGLE: COS(%s - %s - %s)",
-                       "ANGLE: SIN(%s - %s - %s)")
-            labels = [s % (_describe_atom(self.top, triple[0]),
-                           _describe_atom(self.top, triple[1]),
-                           _describe_atom(self.top, triple[2]))
-                      for triple in self.angle_indexes
-                      for s in sin_cos]
-        else:
-            labels = ["ANGLE: %s - %s - %s " %
-                      (_describe_atom(self.top, triple[0]),
-                       _describe_atom(self.top, triple[1]),
-                       _describe_atom(self.top, triple[2]))
-                      for triple in self.angle_indexes]
-        return labels
-
-    @property
-    def dimension(self):
-        dim = self.angle_indexes.shape[0]
-        if self.cossin:
-            dim *= 2
-        return dim
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        rad = mdtraj.compute_angles(traj, self.angle_indexes, self.periodic)
-        if self.cossin:
-            rad = np.dstack((np.cos(rad), np.sin(rad)))
-            rad = rad.reshape(functools.reduce(lambda x, y: x * y, rad.shape),)
-        if self.deg:
-            return np.rad2deg(rad)
-        else:
-            return rad
-
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self.angle_indexes)
-        hash_value ^= hash_top(self.top)
-        hash_value ^= hash(self.deg)
-
-        return hash_value
-
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
-
-
-class DihedralFeature(object):
-
-    def __init__(self, top, dih_indexes, deg=False, cossin=False, periodic=True):
-        self.top = top
-        self.dih_indexes = np.array(dih_indexes)
-        self.deg = deg
-        self.cossin = cossin
-        self.periodic = periodic
-        self._dim = self.dih_indexes.shape[0]
-        if self.cossin:
-            self._dim *= 2
-
-    def describe(self):
-        if self.cossin:
-            sin_cos = (
-                "DIH: COS(%s -  %s - %s - %s)", "DIH: SIN(%s -  %s - %s - %s)")
-            labels = [s %
-                      (_describe_atom(self.top, quad[0]),
-                       _describe_atom(self.top, quad[1]),
-                       _describe_atom(self.top, quad[2]),
-                       _describe_atom(self.top, quad[3]))
-                      for quad in self.dih_indexes
-                      for s in sin_cos]
-        else:
-            labels = ["DIH: %s - %s - %s - %s " %
-                      (_describe_atom(self.top, quad[0]),
-                       _describe_atom(self.top, quad[1]),
-                       _describe_atom(self.top, quad[2]),
-                       _describe_atom(self.top, quad[3]))
-                      for quad in self.dih_indexes]
-        return labels
-
-    @property
-    def dimension(self):
-        return self._dim
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        rad = mdtraj.compute_dihedrals(traj, self.dih_indexes, self.periodic)
-        if self.cossin:
-            rad = np.dstack((np.cos(rad), np.sin(rad)))
-            rad = rad.reshape(rad.shape[0], rad.shape[1]*rad.shape[2])
-        # convert to degrees
-        if self.deg:
-            rad = np.rad2deg(rad)
-
-        return rad
-
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self.dih_indexes)
-        hash_value ^= hash_top(self.top)
-        hash_value ^= hash(self.deg)
-        hash_value ^= hash(self.cossin)
-
-        return hash_value
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-
-class BackboneTorsionFeature(DihedralFeature):
-
-    def __init__(self, topology, selstr=None, deg=False, cossin=False, periodic=True):
-        indices = indices_phi(topology)
-
-        if not selstr:
-            self._phi_inds = indices
-        else:
-            self._phi_inds = indices[np.in1d(indices[:, 1],
-                                             topology.select(selstr), assume_unique=True)]
-
-        indices = indices_psi(topology)
-        if not selstr:
-            self._psi_inds = indices
-        else:
-            self._psi_inds = indices[np.in1d(indices[:, 1],
-                                             topology.select(selstr), assume_unique=True)]
-
-        # alternate phi, psi pairs (phi_1, psi_1, ..., phi_n, psi_n)
-        dih_indexes = np.array(list(phi_psi for phi_psi in
-                                    zip(self._phi_inds, self._psi_inds))).reshape(-1, 4)
-
-        super(BackboneTorsionFeature, self).__init__(topology, dih_indexes,
-                                                     deg=deg, cossin=cossin,
-                                                     periodic=periodic)
-
-    def describe(self):
-        top = self.top
-        getlbl = lambda at: "%i %s %i " % (
-            at.residue.chain.index, at.residue.name, at.residue.resSeq)
-
-        if self.cossin:
-            sin_cos = ("COS(PHI %s)", "SIN(PHI %s)")
-            labels_phi = [s % getlbl(top.atom(ires[1])) for ires in self._phi_inds
-                          for s in sin_cos]
-            sin_cos = ("COS(PSI %s)", "SIN(PSI %s)")
-            labels_psi = [s % getlbl(top.atom(ires[1])) for ires in self._psi_inds
-                          for s in sin_cos]
-        else:
-            labels_phi = [
-                "PHI %s" % getlbl(top.atom(ires[1])) for ires in self._phi_inds]
-            labels_psi = [
-                "PSI %s" % getlbl(top.atom(ires[1])) for ires in self._psi_inds]
-
-        return labels_phi + labels_psi
-
-
-class Chi1TorsionFeature(DihedralFeature):
-
-    def __init__(self, topology, selstr=None, deg=False, cossin=False, periodic=True):
-        indices = indices_chi1(topology)
-        if not selstr:
-            dih_indexes = indices
-        else:
-            dih_indexes = indices[np.in1d(indices[:, 1],
-                                          topology.select(selstr),
-                                          assume_unique=True)]
-        super(Chi1TorsionFeature, self).__init__(topology, dih_indexes,
-                                                 deg=deg, cossin=cossin,
-                                                 periodic=periodic)
-
-    def describe(self):
-        top = self.top
-        getlbl = lambda at: "%i %s %i " \
-            % (at.residue.chain.index, at.residue.name, at.residue.resSeq)
-        if self.cossin:
-            cossin = ("COS(CHI1 %s)", "SIN(CHI1 %s)")
-            labels_chi1 = [s % getlbl(top.atom(ires[1]))
-                           for ires in self.dih_indexes
-                           for s in cossin]
-        else:
-            labels_chi1 = ["CHI1" + getlbl(top.atom(ires[1]))
-                           for ires in self.dih_indexes]
-
-        return labels_chi1
-
-
-class MinRmsdFeature(object):
-
-    def __init__(self, ref, ref_frame=0, atom_indices=None, topology=None, precentered=False):
-
-        assert isinstance(
-            ref_frame, int), "ref_frame has to be of type integer, and not %s" % type(ref_frame)
-
-        # Will be needing the hashed input parameter
-        self.__hashed_input__ = hash(ref)
-
-        # Types of inputs
-        # 1. Filename+top
-        if isinstance(ref, str):
-            # Store the filename
-            self.name = ref[:]
-            ref = mdtraj.load_frame(ref, ref_frame, top=topology)
-            # mdtraj is pretty good handling exceptions, we're not checking for
-            # types or anything here
-
-        # 2. md.Trajectory object
-        elif isinstance(ref, mdtraj.Trajectory):
-            self.name = ref.__repr__()[:]
-        else:
-            raise TypeError("input reference has to be either a filename or "
-                            "a mdtraj.Trajectory object, and not of %s" % type(ref))
-
-        self.ref = ref
-        self.ref_frame = ref_frame
-        self.atom_indices = atom_indices
-        self.precentered = precentered
-
-    def describe(self):
-        label = "minrmsd to frame %u of %s" % (self.ref_frame, self.name)
-        if self.precentered:
-            label += ', precentered=True'
-        if self.atom_indices is not None:
-            label += ', subset of atoms  '
-        return [label]
-
-    @property
-    def dimension(self):
-        return 1
-
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
-    def transform(self, traj):
-        return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
-
-    def __hash__(self):
-        hash_value = hash(self.__hashed_input__)
-        # TODO: identical md.Trajectory objects have different hashes need a
-        # way to differentiate them here
-        hash_value ^= hash(self.ref_frame)
-        if self.atom_indices is None:
-            hash_value ^= _hash_numpy_array(np.arange(self.ref.n_atoms))
-        else:
-            hash_value ^= _hash_numpy_array(np.array(self.atom_indices))
-        hash_value ^= hash(self.precentered)
-
-        return hash_value
-
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
+__all__ = ['MDFeaturizer']
 
 
 class MDFeaturizer(Loggable):
@@ -1023,6 +224,7 @@ class MDFeaturizer(Loggable):
 
         """
         # TODO: add possibility to align to a reference structure
+        from .featurization.misc import SelectionFeature
         f = SelectionFeature(self.topology, indexes)
         self.__add_feature(f)
 
@@ -1050,6 +252,8 @@ class MDFeaturizer(Loggable):
             will be sorted numerically and made unique before converting them to a pairlist.
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
+        from .featurization.distances import DistanceFeature
+        from .featurization.util import _parse_pairwise_input
 
         atom_pairs = _parse_pairwise_input(
             indices, indices2, self._logger, fname='add_distances()')
@@ -1108,7 +312,7 @@ class MDFeaturizer(Loggable):
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
 
         """
-
+        from .featurization.distances import InverseDistanceFeature
         atom_pairs = _parse_pairwise_input(
             indices, indices2, self._logger, fname='add_inverse_distances()')
 
@@ -1150,7 +354,7 @@ class MDFeaturizer(Loggable):
             will be sorted numerically and made unique before converting them to a pairlist.
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
-
+        from .featurization.distances import ContactFeature
         atom_pairs = _parse_pairwise_input(
             indices, indices2, self._logger, fname='add_contacts()')
 
@@ -1193,8 +397,8 @@ class MDFeaturizer(Loggable):
             This can be very time consuming. Those schemes are intended to be used with a subset of residues chosen
             via :py:obj:`residue_pairs`.
         """
-
-        if scheme != 'ca' and _is_string(residue_pairs):
+        from .featurization.distances import ResidueMinDistanceFeature
+        if scheme != 'ca' and is_string(residue_pairs):
             if residue_pairs == 'all':
                 self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
                                      "very time consuming. Consider reducing the residue pairs")
@@ -1230,7 +434,7 @@ class MDFeaturizer(Loggable):
             left to None, the numerical value will be returned
 
         """
-
+        from .featurization.distances import GroupMinDistanceFeature
         # Some thorough input checking and reformatting
         group_definitions, group_pairs, distance_list, group_identifiers = _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
         distance_list = self._check_indices(distance_list)
@@ -1259,6 +463,7 @@ class MDFeaturizer(Loggable):
             using the minimum image convention.
 
         """
+        from .featurization.angles import AngleFeature
         indexes = self._check_indices(indexes, pair_n=3)
         f = AngleFeature(self.topology, indexes, deg=deg, cossin=cossin,
                          periodic=periodic)
@@ -1285,6 +490,7 @@ class MDFeaturizer(Loggable):
             using the minimum image convention.
 
         """
+        from .featurization.angles import DihedralFeature
         indexes = self._check_indices(indexes, pair_n=4)
         f = DihedralFeature(self.topology, indexes, deg=deg, cossin=cossin,
                             periodic=periodic)
@@ -1312,6 +518,7 @@ class MDFeaturizer(Loggable):
             information, we will treat dihedrals that cross periodic images
             using the minimum image convention.
         """
+        from .featurization.angles import BackboneTorsionFeature
         f = BackboneTorsionFeature(
             self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic)
         self.__add_feature(f)
@@ -1338,6 +545,7 @@ class MDFeaturizer(Loggable):
             information, we will treat dihedrals that cross periodic images
             using the minimum image convention.
         """
+        from .featurization.angles import Chi1TorsionFeature
         f = Chi1TorsionFeature(
             self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic)
         self.__add_feature(f)
@@ -1392,7 +600,7 @@ class MDFeaturizer(Loggable):
             centered at the origin, i.e., their (uniformly weighted) center of mass lies at the origin.
             This will speed up the computation of the rmsd.
         """
-
+        from .featurization.misc import MinRmsdFeature
         f = MinRmsdFeature(ref, ref_frame=ref_frame, atom_indices=atom_indices, topology=self.topology,
                            precentered=precentered)
         self.__add_feature(f)
@@ -1430,13 +638,6 @@ class MDFeaturizer(Loggable):
         dim = sum(f.dimension for f in self.active_features)
         return dim
 
-    @deprecated
-    def map(self, traj):
-        r"""Deprecated: use transform(traj)
-
-        """
-        return self.transform(traj)
-
     def transform(self, traj):
         """
         Maps an mdtraj Trajectory object to the selected output features
@@ -1464,8 +665,6 @@ class MDFeaturizer(Loggable):
         # handle empty chunks (which might occur due to time lagged access
         if traj.xyz.shape[0] == 0:
             return np.empty((0, self.dimension()))
-
-        # TODO: define preprocessing step (RMSD etc.)
 
         # otherwise build feature vector.
         feature_vec = []
