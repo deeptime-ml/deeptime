@@ -20,7 +20,7 @@ from __future__ import absolute_import
 
 from pyemma import config
 from pyemma._base.logging import Loggable
-from pyemma.coordinates.data.featurizer import MDFeaturizer
+from pyemma.coordinates.data.featurization.featurizer import MDFeaturizer
 from pyemma.coordinates.util import patches
 from pyemma.util.annotators import deprecated
 import mdtraj
