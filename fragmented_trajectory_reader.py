@@ -238,6 +238,11 @@ class FragmentedTrajectoryReader(DataSource):
         self._trajectories = trajectories
         self._filenames = trajectories
 
+    @property
+    def filenames_flat(self):
+        flat_readers = itertools.chain.from_iterable(self._readers)
+        return [f for flat_reader in flat_readers for f in flat_reader.filenames]
+
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         return FragmentIterator(self, skip, chunk, stride, return_trajindex, cols=cols)
 

@@ -15,18 +15,56 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-
 from __future__ import absolute_import
+
 import mdtraj as md
 import numpy as np
 from pyemma.util.log import getLogger
 from pyemma.coordinates.data.util.reader_utils import copy_traj_attributes as _copy_traj_attributes, \
     preallocate_empty_trajectory as _preallocate_empty_trajectory, enforce_top as _enforce_top
+from mdtraj.core.trajectory import Trajectory
 __all__ = ['frames_from_file']
 
 log = getLogger(__name__)
+
+
+def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=False, copy_not_join=None):
+    from pyemma.coordinates import source
+    # Enforce topology to be a md.Topology object
+    top = _enforce_top(top)
+    reader = source(files, top=top)
+    stride = int(stride)
+
+    if stride != 1:
+        frames[:, 1] *= int(stride)
+        if verbose:
+            log.info('A stride value of = %u was parsed, '
+                     'interpreting "indexes" accordingly.' % stride)
+
+    # sort by file and frame index
+    sort_inds = np.lexsort((frames[:, 1], frames[:, 0]))
+    sorted_inds = frames[sort_inds]
+    assert len(sorted_inds) == len(frames)
+
+    for u in np.unique(sorted_inds[:, 0]):
+        largest_ind_in_traj = np.max(sorted_inds[sorted_inds == u])
+        if reader.trajectory_length(u) < largest_ind_in_traj:
+            raise ValueError("largest specified index (%i * stride=%i * %i=%i) "
+                             "is larger than trajectory length '%s' = %i"
+                             (largest_ind_in_traj/stride, largest_ind_in_traj/stride,
+                              stride, largest_ind_in_traj, reader.filenames[u],
+                              reader.trajectory_length(u)))
+
+    collected_frames = []
+    with reader.iterator(chunk=chunksize, stride=sorted_inds, return_trajindex=False) as it:
+        for x in it:
+            collected_frames.append(x)
+
+    collected_frames = np.vstack(collected_frames)
+    collected_frames = collected_frames[sort_inds.argsort()]
+    collected_frames = collected_frames.reshape(-1, top.n_atoms, 3)
+
+    return Trajectory(collected_frames, top)
 
 
 def frames_from_file(file_name, top, frames, chunksize=100,
