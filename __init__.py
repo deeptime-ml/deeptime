@@ -46,7 +46,7 @@ Reader
 
 """
 from .feature_reader import FeatureReader
-from .featurizer import MDFeaturizer, CustomFeature
+from .featurization.featurizer import MDFeaturizer, CustomFeature
 from .data_in_memory import DataInMemory
 from .numpy_filereader import NumPyFileReader
 from .py_csv_reader import PyCSVReader

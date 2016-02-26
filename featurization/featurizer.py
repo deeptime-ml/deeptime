@@ -25,9 +25,9 @@ import mdtraj
 import six
 
 from pyemma.coordinates.data.featurization.util import (_parse_pairwise_input,
-    _parse_groupwise_input)
+                                                        _parse_groupwise_input)
 
-from .featurization.misc import CustomFeature
+from .misc import CustomFeature
 import numpy as np
 
 
@@ -224,7 +224,7 @@ class MDFeaturizer(Loggable):
 
         """
         # TODO: add possibility to align to a reference structure
-        from .featurization.misc import SelectionFeature
+        from .misc import SelectionFeature
         f = SelectionFeature(self.topology, indexes)
         self.__add_feature(f)
 
@@ -252,8 +252,7 @@ class MDFeaturizer(Loggable):
             will be sorted numerically and made unique before converting them to a pairlist.
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
-        from .featurization.distances import DistanceFeature
-        from .featurization.util import _parse_pairwise_input
+        from .distances import DistanceFeature
 
         atom_pairs = _parse_pairwise_input(
             indices, indices2, self._logger, fname='add_distances()')
@@ -312,7 +311,7 @@ class MDFeaturizer(Loggable):
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
 
         """
-        from .featurization.distances import InverseDistanceFeature
+        from .distances import InverseDistanceFeature
         atom_pairs = _parse_pairwise_input(
             indices, indices2, self._logger, fname='add_inverse_distances()')
 
@@ -354,7 +353,7 @@ class MDFeaturizer(Loggable):
             will be sorted numerically and made unique before converting them to a pairlist.
             Please look carefully at the output of :py:func:`describe()` to see what features exactly have been added.
         """
-        from .featurization.distances import ContactFeature
+        from .distances import ContactFeature
         atom_pairs = _parse_pairwise_input(
             indices, indices2, self._logger, fname='add_contacts()')
 
@@ -397,7 +396,7 @@ class MDFeaturizer(Loggable):
             This can be very time consuming. Those schemes are intended to be used with a subset of residues chosen
             via :py:obj:`residue_pairs`.
         """
-        from .featurization.distances import ResidueMinDistanceFeature
+        from .distances import ResidueMinDistanceFeature
         if scheme != 'ca' and is_string(residue_pairs):
             if residue_pairs == 'all':
                 self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
@@ -434,9 +433,10 @@ class MDFeaturizer(Loggable):
             left to None, the numerical value will be returned
 
         """
-        from .featurization.distances import GroupMinDistanceFeature
+        from .distances import GroupMinDistanceFeature
         # Some thorough input checking and reformatting
-        group_definitions, group_pairs, distance_list, group_identifiers = _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
+        group_definitions, group_pairs, distance_list, group_identifiers = \
+            _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
         distance_list = self._check_indices(distance_list)
 
         f = GroupMinDistanceFeature(self.topology, group_definitions, group_pairs, distance_list, group_identifiers, threshold)
@@ -463,7 +463,7 @@ class MDFeaturizer(Loggable):
             using the minimum image convention.
 
         """
-        from .featurization.angles import AngleFeature
+        from .angles import AngleFeature
         indexes = self._check_indices(indexes, pair_n=3)
         f = AngleFeature(self.topology, indexes, deg=deg, cossin=cossin,
                          periodic=periodic)
@@ -490,7 +490,7 @@ class MDFeaturizer(Loggable):
             using the minimum image convention.
 
         """
-        from .featurization.angles import DihedralFeature
+        from .angles import DihedralFeature
         indexes = self._check_indices(indexes, pair_n=4)
         f = DihedralFeature(self.topology, indexes, deg=deg, cossin=cossin,
                             periodic=periodic)
@@ -518,7 +518,7 @@ class MDFeaturizer(Loggable):
             information, we will treat dihedrals that cross periodic images
             using the minimum image convention.
         """
-        from .featurization.angles import BackboneTorsionFeature
+        from .angles import BackboneTorsionFeature
         f = BackboneTorsionFeature(
             self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic)
         self.__add_feature(f)
@@ -545,7 +545,7 @@ class MDFeaturizer(Loggable):
             information, we will treat dihedrals that cross periodic images
             using the minimum image convention.
         """
-        from .featurization.angles import Chi1TorsionFeature
+        from .angles import Chi1TorsionFeature
         f = Chi1TorsionFeature(
             self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic)
         self.__add_feature(f)
@@ -600,7 +600,7 @@ class MDFeaturizer(Loggable):
             centered at the origin, i.e., their (uniformly weighted) center of mass lies at the origin.
             This will speed up the computation of the rmsd.
         """
-        from .featurization.misc import MinRmsdFeature
+        from .misc import MinRmsdFeature
         f = MinRmsdFeature(ref, ref_frame=ref_frame, atom_indices=atom_indices, topology=self.topology,
                            precentered=precentered)
         self.__add_feature(f)
