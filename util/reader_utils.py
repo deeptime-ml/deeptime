@@ -168,8 +168,8 @@ def enforce_top(top):
     elif isinstance(top, md.Topology):
         pass
     else:
-        raise TypeError('element %u of the reference list is not of type str, md.Trajectory, or md.Topology, but %s'%
-                        type(top))
+        raise TypeError('element %s of the reference list is not of type'
+                        'str, md.Trajectory, or md.Topology, but %s' % (top, type(top)))
     return top
 
 
@@ -189,7 +189,7 @@ def compare_coords_md_trajectory_objects(traj1, traj2, atom=None, eps=1e-6, mess
     # Returns a boolean found_diff and an errmsg informing where
     assert isinstance(traj1, md.Trajectory)
     assert isinstance(traj2, md.Trajectory)
-    assert traj1.n_frames == traj2.n_frames
+    assert traj1.n_frames == traj2.n_frames, "%i != %i" % (traj1.n_frames, traj2.n_frames)
     assert traj2.n_atoms == traj2.n_atoms
 
     R = np.zeros((2, traj1.n_frames, 3))
