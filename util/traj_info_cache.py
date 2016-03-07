@@ -153,8 +153,9 @@ class TrajectoryInfoCache(object):
                     self._database = anydbm.open(database_filename, flag="n")
                     # persist file right now, since it was broken
                     self._set_curr_db_version(TrajectoryInfoCache.DB_VERSION)
-                    print ("database type: %s" % type(self._database))
-                    self._database.sync()
+                    # close and re-open to ensure file exists
+                    self._database.close()
+                    self._database = anydbm.open(database_filename, flag="w")
                 except OSError:
                     raise RuntimeError('corrupted database in "%s" could not be deleted'
                                        % os.path.abspath(database_filename))
