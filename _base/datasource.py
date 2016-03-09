@@ -238,6 +238,7 @@ class IteratorState(object):
         self.return_trajindex = return_trajindex
         self.itraj = 0
         self.current_itraj = 0
+        self.ntraj = ntraj
         self.t = 0
         self.pos = 0
         self.pos_adv = 0

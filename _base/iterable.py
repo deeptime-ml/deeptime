@@ -73,7 +73,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             self._in_memory = op_in_mem
 
     def _clear_in_memory(self):
-        if self._logger_is_active(10):
+        if self._logger_is_active(self._loglevel_DEBUG):
             self._logger.debug("clear memory")
         assert self.in_memory, "tried to delete in memory results which are not set"
         self._Y = None
@@ -81,7 +81,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
     def _map_to_memory(self, stride=1):
         r"""Maps results to memory. Will be stored in attribute :attr:`_Y`."""
-        if self._logger_is_active(10):
+        if self._logger_is_active(self._loglevel_DEBUG):
             self._logger.debug("mapping to mem")
         assert self._in_memory
         self._mapping_to_mem_active = True
@@ -139,7 +139,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                                        " Consider using a larger stride.")
                 return
 
-            if self._logger_is_active(10):
+            if self._logger_is_active(self._loglevel_DEBUG):
                 self._logger.debug("get_output(): dimensions=%s" % str(dimensions))
                 self._logger.debug("get_output(): created output trajs with shapes: %s"
                                    % [x.shape for x in trajs])
