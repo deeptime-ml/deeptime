@@ -26,7 +26,7 @@ from six import PY2
 from threading import Semaphore
 import os
 
-from pyemma.util.config import conf_values
+from pyemma.util import config
 from logging import getLogger
 import numpy as np
 
@@ -131,14 +131,14 @@ class TrajectoryInfoCache(object):
     def instance():
         if TrajectoryInfoCache._instance is None:
             # singleton pattern
-            cfg_dir = conf_values['pyemma']['cfg_dir']
-            filename = os.path.join(cfg_dir, "trajlen_cache")
+            filename = os.path.join(config.cfg_dir, "trajlen_cache")
             TrajectoryInfoCache._instance = TrajectoryInfoCache(filename)
-            import atexit
 
-            @atexit.register
-            def write_at_exit():
-                if hasattr(TrajectoryInfoCache._instance._database, 'sync'):
+            # sync db to hard drive at exit.
+            if hasattr(TrajectoryInfoCache._instance._database, 'sync'):
+                import atexit
+                @atexit.register
+                def write_at_exit():
                     TrajectoryInfoCache._instance._database.sync()
 
         return TrajectoryInfoCache._instance
