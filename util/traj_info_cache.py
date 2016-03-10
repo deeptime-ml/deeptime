@@ -86,6 +86,14 @@ class TrajInfo(object):
     def hash_value(self):
         return self._hash
 
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__)
+            and self.version == other.version
+            and self.ndim == other.ndim
+            and self.length == other.length
+            and np.all(self.offsets == other.offsets)
+            )
+
 
 def create_traj_info(db_val):
     fh = BytesIO(str.encode(db_val))
@@ -144,6 +152,7 @@ class TrajectoryInfoCache(object):
         return TrajectoryInfoCache._instance
 
     def __init__(self, database_filename=None):
+        self.database_filename = database_filename
         if database_filename is not None:
             try:
                 self._database = anydbm.open(database_filename, flag="c")
