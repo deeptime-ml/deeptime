@@ -22,22 +22,24 @@ Created on 30.04.2015
 
 from __future__ import absolute_import
 
-from six import PY2
-from threading import Semaphore
+from io import BytesIO
+from logging import getLogger
 import os
+from threading import Semaphore
 
 from pyemma.util import config
-from logging import getLogger
+import six
+
 import numpy as np
+
 
 logger = getLogger(__name__)
 
-if PY2:
+if six.PY2:
     import anydbm
 else:
     import dbm as anydbm
 
-from io import BytesIO
 
 __all__ = ('TrajectoryInfoCache', 'TrajInfo')
 
@@ -98,7 +100,10 @@ class TrajInfo(object):
 
 
 def create_traj_info(db_val):
-    fh = BytesIO(str.encode(db_val))
+    assert isinstance(db_val, (six.string_types, bytes))
+    if six.PY3 and isinstance(db_val, six.string_types):
+        db_val = bytes(db_val.encode('utf-8', errors='ignore'))
+    fh = BytesIO(db_val)
     try:
         arr = np.load(fh)['data']
         info = TrajInfo()
