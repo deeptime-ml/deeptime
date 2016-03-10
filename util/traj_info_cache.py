@@ -37,10 +37,7 @@ if PY2:
 else:
     import dbm as anydbm
 
-try:
-    from cStringIO import StringIO as BytesIO
-except ImportError:
-    from io import BytesIO
+from io import BytesIO
 
 __all__ = ('TrajectoryInfoCache', 'TrajInfo')
 
