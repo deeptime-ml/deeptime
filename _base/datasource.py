@@ -111,7 +111,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
             if len(filename_list) > 3:
                 self._progress_register(len(filename_list), 'Obtaining file info')
             for filename in filename_list:
-                if config['use_trajectory_lengths_cache'] == 'True':
+                if config.use_trajectory_lengths_cache:
                     info = TrajectoryInfoCache.instance()[filename, self]
                 else:
                     info = self._get_traj_info(filename)
