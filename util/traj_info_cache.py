@@ -85,10 +85,15 @@ class TrajInfo(object):
     @property
     def hash_value(self):
         return self._hash
+    
+    @hash_value.setter
+    def hash_value(self, val):
+        self._hash = val
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__)
             and self.version == other.version
+            and self.hash_value == other.hash_value
             and self.ndim == other.ndim
             and self.length == other.length
             and np.all(self.offsets == other.offsets)
@@ -187,12 +192,13 @@ class TrajectoryInfoCache(object):
         key = self._get_file_hash(filename)
         result = None
         try:
-            result = self._database[key]
+            result = str(self._database[key])
             info = create_traj_info(result)
         # handle cache misses and not interpreteable results by re-computation.
         # Note: this also handles UnknownDBFormatExceptions!
         except KeyError:
             info = reader._get_traj_info(filename)
+            info.hash_value = key
             # store info in db
             result = self.__setitem__(filename, info)
 
@@ -204,6 +210,7 @@ class TrajectoryInfoCache(object):
         return info
 
     def __format_value(self, traj_info):
+        assert traj_info.hash_value != -1
         fh = BytesIO()
 
         header = {'data_format_version': 1,
