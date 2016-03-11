@@ -99,7 +99,6 @@ class TrajInfo(object):
 def create_traj_info(db_val):
     assert isinstance(db_val, (six.string_types, bytes))
     if six.PY3 and isinstance(db_val, six.string_types):
-        logger.warn("db_val is str, converting to utf8 bytes")
         db_val = bytes(db_val.encode('utf-8', errors='ignore'))
     fh = BytesIO(db_val)
 
