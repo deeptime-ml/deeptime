@@ -29,16 +29,13 @@ from threading import Semaphore
 
 from pyemma.util import config
 import six
-
 import numpy as np
-
+if six.PY2:
+    import dumbdbm
+else:
+    from dbm import dumb as dumbdbm
 
 logger = getLogger(__name__)
-
-if six.PY2:
-    import anydbm
-else:
-    import dbm as anydbm
 
 
 __all__ = ('TrajectoryInfoCache', 'TrajInfo')
@@ -84,26 +81,28 @@ class TrajInfo(object):
     @property
     def hash_value(self):
         return self._hash
-    
+
     @hash_value.setter
     def hash_value(self, val):
         self._hash = val
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__)
-            and self.version == other.version
-            and self.hash_value == other.hash_value
-            and self.ndim == other.ndim
-            and self.length == other.length
-            and np.all(self.offsets == other.offsets)
-            )
+                and self.version == other.version
+                and self.hash_value == other.hash_value
+                and self.ndim == other.ndim
+                and self.length == other.length
+                and np.all(self.offsets == other.offsets)
+                )
 
 
 def create_traj_info(db_val):
     assert isinstance(db_val, (six.string_types, bytes))
     if six.PY3 and isinstance(db_val, six.string_types):
+        logger.warn("db_val is str, converting to utf8 bytes")
         db_val = bytes(db_val.encode('utf-8', errors='ignore'))
     fh = BytesIO(db_val)
+
     try:
         arr = np.load(fh)['data']
         info = TrajInfo()
@@ -162,16 +161,16 @@ class TrajectoryInfoCache(object):
         self.database_filename = database_filename
         if database_filename is not None:
             try:
-                self._database = anydbm.open(database_filename, flag="c")
-            except anydbm.error as e:
+                self._database = dumbdbm.open(database_filename, flag="c")
+            except dumbdbm.error as e:
                 try:
                     os.unlink(database_filename)
-                    self._database = anydbm.open(database_filename, flag="n")
+                    self._database = dumbdbm.open(database_filename, flag="n")
                     # persist file right now, since it was broken
                     self._set_curr_db_version(TrajectoryInfoCache.DB_VERSION)
                     # close and re-open to ensure file exists
                     self._database.close()
-                    self._database = anydbm.open(database_filename, flag="w")
+                    self._database = dumbdbm.open(database_filename, flag="w")
                 except OSError:
                     raise RuntimeError('corrupted database in "%s" could not be deleted'
                                        % os.path.abspath(database_filename))
