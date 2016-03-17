@@ -376,7 +376,9 @@ class MDFeaturizer(Loggable):
                             threshold=None):
         r"""
         Adds the minimum distance between residues to the feature list. See below how
-        the minimum distance can be defined.
+        the minimum distance can be defined. If the topology generated out of :py:obj:`topfile`
+        contains information on periodic boundary conditions, the minimum image convention
+        will be used when computing distances.
 
         Parameters
         ----------
@@ -403,6 +405,8 @@ class MDFeaturizer(Loggable):
             will compute nearly all interatomic distances, for every frame, before extracting the closest pairs.
             This can be very time consuming. Those schemes are intended to be used with a subset of residues chosen
             via :py:obj:`residue_pairs`.
+
+
         """
         from .distances import ResidueMinDistanceFeature
         if scheme != 'ca' and is_string(residue_pairs):
