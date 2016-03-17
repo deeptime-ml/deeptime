@@ -242,6 +242,10 @@ class MDFeaturizer(Loggable):
                 iterable of integers (either list or ndarray(n, dtype=int)):
                     indices (not pairs of indices) of the atoms between which the distances shall be computed.
 
+        periodic : optional, boolean, default is True
+            If periodic is True and the trajectory contains unitcell information,
+            distances will be computed under the minimum image convention.
+
         indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
                     Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
                     only the distances between the atoms in :py:obj:`indices` and :py:obj:`indices2` will be computed.
@@ -300,6 +304,10 @@ class MDFeaturizer(Loggable):
                 iterable of integers (either list or ndarray(n, dtype=int)):
                     indices (not pairs of indices) of the atoms between which the inverse distances shall be computed.
 
+        periodic : optional, boolean, default is True
+            If periodic is True and the trajectory contains unitcell information,
+            distances will be computed under the minimum image convention.
+
         indices2: iterable of integers (either list or ndarray(n, dtype=int)), optional:
                     Only has effect if :py:obj:`indices` is an iterable of integers. Instead of the above behaviour,
                     only the inverse distances between the atoms in :py:obj:`indices` and :py:obj:`indices2` will be computed.
@@ -316,7 +324,7 @@ class MDFeaturizer(Loggable):
             indices, indices2, self._logger, fname='add_inverse_distances()')
 
         atom_pairs = self._check_indices(atom_pairs)
-        f = InverseDistanceFeature(self.topology, atom_pairs, periodic=True)
+        f = InverseDistanceFeature(self.topology, atom_pairs, periodic=periodic)
         self.__add_feature(f)
 
     def add_contacts(self, indices, indices2=None, threshold=0.3, periodic=True, count_contacts=False):
