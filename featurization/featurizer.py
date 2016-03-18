@@ -275,14 +275,19 @@ class MDFeaturizer(Loggable):
 
         """
 
-        ca_at_idxs = self.select_Ca()
-        # For every ca_atom, get its residue index
-        ca_res_idxs = [self.topology.atom(ca).residue.index for ca in ca_at_idxs]
-        # Since there is one Ca per resiue, we compile the
-        # pairlist and the neigbor exclusion using residue idxs
-        # that gets translated back to actual ca_at_idxs:
-        distance_indexes = self.pairs(ca_res_idxs, excluded_neighbors=excluded_neighbors)
-        distance_indexes = ca_at_idxs[distance_indexes]
+        # Atom indices for CAs
+        at_idxs_ca = self.select_Ca()
+        # Residue indices for residues contatinig CAs
+        res_idxs_ca = [self.topology.atom(ca).residue.index for ca in at_idxs_ca]
+        # Pairs of those residues, with possibility to exclude neighbors
+        res_idxs_ca_pairs = self.pairs(res_idxs_ca, excluded_neighbors=excluded_neighbors)
+        # Mapping back pairs of residue indices to pairs of CA indices
+        distance_indexes = []
+        for ri, rj in res_idxs_ca_pairs:
+            distance_indexes.append([self.topology.residue(ri).atom('CA').index,
+                                     self.topology.residue(rj).atom('CA').index
+                                     ])
+        distance_indexes = np.array(distance_indexes)
 
         self.add_distances(distance_indexes, periodic=periodic)
 
