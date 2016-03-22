@@ -276,6 +276,9 @@ class LaggedIterator(object):
         n2 = self._it_lagged._n_chunks
         return min(n1, n2)
 
+    def __len__(self):
+        return min(self._it.trajectory_lengths(), self._it_lagged.trajectory_lengths())
+
     def __iter__(self):
         return self
 
