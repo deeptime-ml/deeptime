@@ -275,7 +275,7 @@ class MDFeaturizer(Loggable):
             Use the minimum image convetion when computing distances
 
         excluded_neighbors : int, default is 2
-            Number of exclusions when compiling the list of pairs. We two CA-atoms are considered
+            Number of exclusions when compiling the list of pairs. Two CA-atoms are considered
             neighbors if they belong to adjacent residues.
 
         """
