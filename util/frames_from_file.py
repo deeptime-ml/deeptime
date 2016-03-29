@@ -19,7 +19,7 @@ from __future__ import absolute_import
 
 import mdtraj as md
 import numpy as np
-from pyemma.util.log import getLogger
+from logging import getLogger
 from pyemma.coordinates.data.util.reader_utils import copy_traj_attributes as _copy_traj_attributes, \
     preallocate_empty_trajectory as _preallocate_empty_trajectory, enforce_top as _enforce_top
 from mdtraj.core.trajectory import Trajectory
