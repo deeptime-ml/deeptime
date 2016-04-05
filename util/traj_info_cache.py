@@ -187,6 +187,15 @@ class TrajectoryInfoCache(object):
         self._database['db_version'] = val
         self._current_db_version = val
 
+    def _handle_csv(self, reader, filename, length):
+        # this is maybe a bit ugly, but so far we do not store the dialect of csv files in
+        # the database, so we need to re-do this step in case of a cache hit.
+        from pyemma.coordinates.data import PyCSVReader
+        if not isinstance(reader, PyCSVReader):
+            return
+        with open(filename, PyCSVReader.DEFAULT_OPEN_MODE) as fh:
+            reader._determine_dialect(fh, length)
+
     def __getitem__(self, filename_reader_tuple):
         filename, reader = filename_reader_tuple
         key = self._get_file_hash(filename)
@@ -194,7 +203,10 @@ class TrajectoryInfoCache(object):
         try:
             result = str(self._database[key])
             info = create_traj_info(result)
-        # handle cache misses and not interpreteable results by re-computation.
+
+            self._handle_csv(reader, filename, info.length)
+
+        # handle cache misses and not interpretable results by re-computation.
         # Note: this also handles UnknownDBFormatExceptions!
         except KeyError:
             info = reader._get_traj_info(filename)
