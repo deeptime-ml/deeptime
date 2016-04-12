@@ -237,7 +237,6 @@ class IteratorState(object):
         self.chunk = chunk
         self.return_trajindex = return_trajindex
         self.itraj = 0
-        self.current_itraj = 0
         self.ntraj = ntraj
         self.t = 0
         self.pos = 0
@@ -444,6 +443,8 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         value : int
             The upcoming trajectory index.
         """
+        if value > self.state.ntraj:  # we never want to increase this value larger than ntraj.
+            raise StopIteration()
         self.state.itraj = value
 
     @skip.setter
