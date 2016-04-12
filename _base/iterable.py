@@ -186,6 +186,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         Example
         -------
         Assume you want to save features calculated by some FeatureReader to ASCII:
+        
         >>> import numpy as np, pyemma
         >>> from pyemma.util.files import TemporaryDirectory
         >>> import os
