@@ -323,6 +323,7 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
 
             self._t = 0
             self._itraj += 1
+            self.logger.debug("incremented _itraj. Current value: %s" % self._itraj)
             self._create_mditer()
 
         if not self.uniform_stride:
