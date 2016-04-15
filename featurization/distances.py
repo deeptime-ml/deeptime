@@ -73,19 +73,20 @@ class InverseDistanceFeature(DistanceFeature):
 
 class ResidueMinDistanceFeature(DistanceFeature):
 
-    def __init__(self, top, contacts, scheme, ignore_nonprotein, threshold):
+    def __init__(self, top, contacts, scheme, ignore_nonprotein, threshold, periodic):
         self.top = top
         self.contacts = contacts
         self.scheme = scheme
         self.threshold = threshold
         self.prefix_label = "RES_DIST (%s)"%scheme
+        self.periodic = periodic
 
         # mdtraj.compute_contacts might ignore part of the user input (if it is contradictory) and
         # produce a warning. I think it is more robust to let it run once on a dummy trajectory to
         # see what the actual size of the output is:
         dummy_traj = mdtraj.Trajectory(np.zeros((top.n_atoms, 3)), top)
         dummy_dist, dummy_pairs = mdtraj.compute_contacts(dummy_traj, contacts=contacts,
-                                                          scheme=scheme,
+                                                          scheme=scheme, periodic=periodic,
                                                           ignore_nonprotein=ignore_nonprotein)
         self._dim = dummy_dist.shape[1]
         self.distance_indexes = dummy_pairs
@@ -99,7 +100,7 @@ class ResidueMinDistanceFeature(DistanceFeature):
 
     def transform(self, traj):
         # We let mdtraj compute the contacts with the input scheme
-        D = mdtraj.compute_contacts(traj, contacts=self.contacts, scheme=self.scheme)[0]
+        D = mdtraj.compute_contacts(traj, contacts=self.contacts, scheme=self.scheme, periodic=self.periodic)[0]
         res = np.zeros_like(D)
         # Do we want binary?
         if self.threshold is not None:
@@ -112,7 +113,7 @@ class ResidueMinDistanceFeature(DistanceFeature):
 
 class GroupMinDistanceFeature(DistanceFeature):
 
-    def __init__(self, top, group_definitions, group_pairs, distance_list, group_identifiers, threshold):
+    def __init__(self, top, group_definitions, group_pairs, distance_list, group_identifiers, threshold, periodic):
         self.top = top
         self.group_identifiers = group_identifiers
         self.distance_list = distance_list
@@ -120,6 +121,7 @@ class GroupMinDistanceFeature(DistanceFeature):
         self.prefix_label = "GROUP_MINDIST"
         self.threshold = threshold
         self.distance_indexes = group_pairs
+        self.periodic = periodic
         self._dim = len(group_pairs) # TODO: validate
 
     def describe(self):
@@ -133,7 +135,7 @@ class GroupMinDistanceFeature(DistanceFeature):
 
     def transform(self, traj):
         # All needed distances
-        Dall = mdtraj.compute_distances(traj, self.distance_list)
+        Dall = mdtraj.compute_distances(traj, self.distance_list, periodic=self.periodic)
         # Just the minimas
         Dmin = np.zeros((traj.n_frames,self.dimension))
         res = np.zeros_like(Dmin)
