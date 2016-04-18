@@ -157,6 +157,8 @@ class TrajectoryInfoCache(object):
         return TrajectoryInfoCache._instance
 
     def __init__(self, database_filename=None):
+        # for now we disable traj info cache persistence!
+        database_filename = None
         self.database_filename = database_filename
         if database_filename is not None:
             try:
