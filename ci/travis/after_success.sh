@@ -15,8 +15,9 @@ pushd .
 cd $HOME/miniconda/conda-bld
 FILES=*/${PACKAGENAME}-dev-*.tar.bz2
 for filename in $FILES; do
-    anaconda -t $BINSTAR_TOKEN remove --force ${ORGNAME}/${PACKAGENAME}-dev/${filename}
     anaconda -t $BINSTAR_TOKEN upload --force -u ${ORGNAME} -p ${PACKAGENAME}-dev ${filename}
 done
 popd
 
+# call cleanup
+python dev_pkgs_del_old.py
