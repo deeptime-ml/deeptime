@@ -20,4 +20,4 @@ done
 popd
 
 # call cleanup
-python dev_pkgs_del_old.py
+python devtools/ci/travis/dev_pkgs_del_old.py
