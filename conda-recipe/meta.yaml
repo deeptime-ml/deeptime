@@ -1,0 +1,62 @@
+package:
+  name: pyemma-dev
+  #version: 0 
+source:
+  path: ../..
+
+build:
+  preserve_egg_dir: True
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - cython >=0.20
+
+    - bhmm >=0.6,<0.7
+    - joblib >0.8.4
+    - matplotlib
+    - mdtraj >=1.6
+    - mock
+    - funcsigs
+    - msmtools
+    - thermotools >=0.1.14
+    - nose
+    - numpy x.x 
+    - pyyaml
+    - scipy
+    - six
+    - psutil >=3.1.1
+    - decorator >=4.0.0
+
+  run:
+    - python
+    - setuptools
+    - bhmm >=0.6,<0.7
+    - joblib >0.8.4
+    - matplotlib
+    - mdtraj >=1.6
+    - mock
+    - funcsigs
+    - msmtools
+    - thermotools >=0.1.14
+    - numpy x.x
+    - pyyaml
+    - scipy
+    - six
+    - psutil >=3.1.1
+    - decorator >=4.0.0
+
+test:
+  requires:
+    - nose
+    - coverage ==4
+  imports:
+    - pyemma
+
+about:
+  home: http://emma-project.org
+  license: GNU Lesser Public License v3+
+  summary: "EMMA: Emma's Markov Model Algorithms"
+
+
