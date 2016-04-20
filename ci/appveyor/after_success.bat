@@ -1,8 +1,7 @@
-% Deploy to binstar
-conda install --yes anaconda-client jinja2
-cd %PYTHON%\conda-bld
-for %%filename in (*\%PACKAGENAME%-dev-*.tar.bz2) do (
-    echo "removing file %%~filename"
-    anaconda -t %BINSTAR_TOKEN% remove --force %ORGNAME%\%PACKAGENAME%-dev\%%~filename
+conda install --yes -q anaconda-client jinja2
+cd %PYTHON_MINICONDA%\conda-bld
+dir /s /b %PACKAGENAME%-dev-*.tar.bz2 > files.txt
+for /F %%filename in (files.txt) do (
+    echo "uploading file %%~filename"
     anaconda -t %BINSTAR_TOKEN% upload --force -u %ORGNAME% -p %PACKAGENAME%-dev %%~filename
 )
