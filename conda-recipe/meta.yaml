@@ -20,7 +20,7 @@ requirements:
     - mock
     - funcsigs
     - msmtools
-    - thermotools >=0.1.14,<0.2
+    - thermotools >=0.2.0
     - nose
     - numpy x.x 
     - pyyaml
@@ -39,7 +39,7 @@ requirements:
     - mock
     - funcsigs
     - msmtools
-    - thermotools >=0.1.14,<0.2
+    - thermotools >=0.2.0
     - numpy x.x
     - pyyaml
     - scipy
