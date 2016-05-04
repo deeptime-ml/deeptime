@@ -1,7 +1,7 @@
 """
 Cleanup old development builds on Anaconda.org
  
-Assumes one has set two environment variables:
+Assumes one has set 4 environment variables:
 
 1. BINSTAR_TOKEN: token to authenticate with anaconda.org
 2. DEV_BUILD_N_KEEP: int, how many builds to keep, delete oldest first.
@@ -17,10 +17,10 @@ from pkg_resources import parse_version
 from operator import getitem
 import os
 
-token = os.getenv['BINSTAR_TOKEN']
-org = os.getenv['ORGNAME']
-pkg = os.getenv['PACKAGENAME']
-n_keep = int(os.getenv('DEV_BUILD_N_KEEP'))
+token = os.environ['BINSTAR_TOKEN']
+org = os.environ['ORGNAME']
+pkg = os.environ['PACKAGENAME']
+n_keep = int(os.getenv('DEV_BUILD_N_KEEP', 10))
 
 b = get_server_api(token=token)
 package = b.package(org, pkg)
