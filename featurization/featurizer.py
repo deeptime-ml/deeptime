@@ -379,7 +379,8 @@ class MDFeaturizer(Loggable):
                             residue_pairs='all',
                             scheme='closest-heavy',
                             ignore_nonprotein=True,
-                            threshold=None):
+                            threshold=None,
+                            periodic=True):
         r"""
         Adds the minimum distance between residues to the feature list. See below how
         the minimum distance can be defined. If the topology generated out of :py:obj:`topfile`
@@ -406,6 +407,11 @@ class MDFeaturizer(Loggable):
             distances below this threshold (in nm) will result in a feature 1.0, distances above will result in 0.0. If
             left to None, the numerical value will be returned
 
+        periodic : bool, optional, default = True
+            If `periodic` is True and the trajectory contains unitcell
+            information, we will treat dihedrals that cross periodic images
+            using the minimum image convention.
+
         .. note::
             Using :py:obj:`scheme` = 'closest' or 'closest-heavy' with :py:obj:`residue pairs` = 'all'
             will compute nearly all interatomic distances, for every frame, before extracting the closest pairs.
@@ -420,13 +426,14 @@ class MDFeaturizer(Loggable):
                 self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
                                      "very time consuming. Consider reducing the residue pairs")
 
-        f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein, threshold)
+        f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein, threshold, periodic)
         self.__add_feature(f)
 
     def add_group_mindist(self,
                             group_definitions,
                             group_pairs='all',
                             threshold=None,
+                            periodic=True,
                             ):
         r"""
         Adds the minimum distance between groups of atoms to the feature list. If the groups of
@@ -450,6 +457,11 @@ class MDFeaturizer(Loggable):
             distances below this threshold (in nm) will result in a feature 1.0, distances above will result in 0.0. If
             left to None, the numerical value will be returned
 
+        periodic : bool, optional, default = True
+            If `periodic` is True and the trajectory contains unitcell
+            information, we will treat dihedrals that cross periodic images
+            using the minimum image convention.
+
         """
         from .distances import GroupMinDistanceFeature
         # Some thorough input checking and reformatting
@@ -457,7 +469,7 @@ class MDFeaturizer(Loggable):
             _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
         distance_list = self._check_indices(distance_list)
 
-        f = GroupMinDistanceFeature(self.topology, group_definitions, group_pairs, distance_list, group_identifiers, threshold)
+        f = GroupMinDistanceFeature(self.topology, group_definitions, group_pairs, distance_list, group_identifiers, threshold, periodic)
         self.__add_feature(f)
 
     def add_angles(self, indexes, deg=False, cossin=False, periodic=True):
