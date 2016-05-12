@@ -41,6 +41,15 @@ class _FragmentedTrajectoryIterator(object):
         # current reader index
         self._reader_at = 0
         self._done = False
+        self._ra_indices = None
+
+    @property
+    def ra_indices(self):
+        return self._ra_indices
+
+    @ra_indices.setter
+    def ra_indices(self, value):
+        self._ra_indices = value
 
     def __iter__(self):
         return self
@@ -53,14 +62,20 @@ class _FragmentedTrajectoryIterator(object):
         else:
             # first chunk
             if self._reader_at == 0 and self._t == 0:
-                self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
                 self._reader_overlap = skip
-            self._reader_it.skip = self._reader_overlap
+                if self.ra_indices is not None:
+                    self._fragment_indices = self.__get_ra_index_indices()
+                    self._reader_it = self._readers[self._reader_at].iterator(
+                        self.__get_ifrag_ra_indices(self._fragment_indices, 0), return_trajindex=False
+                    )
+                else:
+                    self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
+            if self.ra_indices is None:
+                self._reader_it.skip = self._reader_overlap
             # set original chunksize
             self._reader_it.chunksize = self._chunksize
             # chunk is contained in current reader
-            if self._readers[self._reader_at].trajectory_length(0, self._stride, self._skip if
-                    self._reader_at == 0 else 0) - self._reader_t - self._chunksize > 0:
+            if self.__chunk_contained_in_current_reader():
                 self._t += self._chunksize
                 self._reader_t += self._chunksize
                 X = next(self._reader_it)
@@ -68,13 +83,13 @@ class _FragmentedTrajectoryIterator(object):
             # chunk has to be collected from subsequent readers
             else:
                 ndim = len(np.zeros(self._readers[0].dimension())[0::])
-                expected_length = min(self._chunksize, sum(self._traj_lengths(self._stride)) - self._t)
+                expected_length = self.__get_chunk_expected_length()
                 X = np.empty((expected_length, ndim), dtype=self._frag_reader.output_type())
                 read = 0
                 while read < expected_length or expected_length == 0:
                     # reader has data left:
-                    if self._readers[self._reader_at].trajectory_length(0, self._stride, self._skip if
-                            self._reader_at == 0 else 0) - self._reader_t > 0:
+                    reader_trajlen = self.__get_reader_trajlen()
+                    if reader_trajlen - self._reader_t > 0:
                         chunk = next(self._reader_it)
                         L = chunk.shape[0]
                         X[read:read + L, :] = chunk[:]
@@ -87,41 +102,110 @@ class _FragmentedTrajectoryIterator(object):
                         if len(self._readers) <= self._reader_at:
                             raise StopIteration()
                         self._reader_it.close()
-                        self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
-                        self._reader_overlap = self._calculate_new_overlap(self._stride,
-                                                                           self._reader_lengths[self._reader_at - 1],
-                                                                           self._reader_overlap)
-                        self._reader_it.skip = self._reader_overlap
+                        if self.ra_indices is not None:
+                            self._reader_it = self._readers[self._reader_at].iterator(
+                                self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at),
+                                return_trajindex=False
+                            )
+                        else:
+                            self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
+                            self._reader_overlap = self._calculate_new_overlap(self._stride,
+                                                                               self._reader_lengths[self._reader_at - 1],
+                                                                               self._reader_overlap)
+                            self._reader_it.skip = self._reader_overlap
                         if expected_length - read > 0:
                             self._reader_it.chunksize = expected_length - read
                 self._t += read
                 return X
 
+    def __get_reader_trajlen(self):
+        if self.ra_indices is not None:
+            reader_trajlen = self._readers[self._reader_at].trajectory_length(
+                0,
+                self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at),
+                self._skip if self._reader_at == 0 else 0
+            )
+        else:
+            reader_trajlen = self._readers[self._reader_at].trajectory_length(
+                0, self._stride,
+                self._skip if self._reader_at == 0 else 0
+            )
+        return reader_trajlen
+
+    def __get_chunk_expected_length(self):
+        if self.ra_indices is not None:
+            expected_length = min(self._chunksize, len(self.ra_indices) - self._t)
+        else:
+            expected_length = min(self._chunksize, sum(self._traj_lengths(self._stride)) - self._t)
+        return expected_length
+
+    def __chunk_contained_in_current_reader(self):
+        trajlen = self.__get_reader_trajlen()
+        return trajlen - self._reader_t - self._chunksize > 0
+
     def next(self):
         return self.__next__()
 
     def _read_full(self, skip):
-        overlap = skip
-        self._skip = overlap
-        ndim = len(np.zeros(self._readers[0].dimension())[0::])
-        length = sum(self._traj_lengths(self._stride))
-        X = np.empty((length, ndim), dtype=self._frag_reader.output_type())
-        for idx, r in enumerate(self._readers):
-            _skip = overlap
-            # if stride doesn't divide length, one has to offset the next trajectory
-            overlap = self._calculate_new_overlap(self._stride, self._reader_lengths[idx], overlap)
-            chunksize = min(length, r.trajectory_length(0, self._stride))
-            it = r._create_iterator(stride=self._stride, skip=_skip, chunk=chunksize, return_trajindex=True)
-            with it:
-                for itraj, data in it:
-                    L = data.shape[0]
-                    if L > 0:
-                        X[self._t:self._t + L, :] = data[:]
-                    self._t += L
-        return X
+        if self._ra_indices is not None:
+            fragment_indices = self.__get_ra_index_indices()
+            ndim = len(np.zeros(self._readers[0].dimension())[0::])
+            length = len(self.ra_indices)
+            X = np.empty((length, ndim), dtype=self._frag_reader.output_type())
+            L = 0
+            for ifrag, r in enumerate(self._readers):
+                indices = self.__get_ifrag_ra_indices(fragment_indices, ifrag)
+                if len(indices) > 0:
+                    ifrag_data = None
+                    for ifrag_data in r.iterator(chunk=0, stride=indices, return_trajindex=False):
+                        pass
+                    l = ifrag_data.shape[0]
+                    X[L:L+l, :] = ifrag_data[:]
+                    L += l
+            return X
+        else:
+            overlap = skip
+            self._skip = overlap
+            ndim = len(np.zeros(self._readers[0].dimension())[0::])
+            length = sum(self._traj_lengths(self._stride))
+            X = np.empty((length, ndim), dtype=self._frag_reader.output_type())
+            for idx, r in enumerate(self._readers):
+                _skip = overlap
+                # if stride doesn't divide length, one has to offset the next trajectory
+                overlap = self._calculate_new_overlap(self._stride, self._reader_lengths[idx], overlap)
+                chunksize = min(length, r.trajectory_length(0, self._stride))
+                it = r._create_iterator(stride=self._stride, skip=_skip, chunk=chunksize, return_trajindex=True)
+                with it:
+                    for itraj, data in it:
+                        L = data.shape[0]
+                        if L > 0:
+                            X[self._t:self._t + L, :] = data[:]
+                        self._t += L
+            return X
+
+    def __get_ifrag_ra_indices(self, fragment_indices, ifrag):
+        offset = self._cumulative_lengths[ifrag - 1] if ifrag > 0 else 0
+        ra = self.ra_indices[fragment_indices[ifrag]] - offset
+        indices = np.zeros((len(ra), 2), dtype=int)
+        indices[:, 1] = ra.squeeze()
+        return indices
+
+    def __get_ra_index_indices(self):
+        """
+        Returns a list containing indices of the ra_index array, which correspond to the separate trajectory fragments,
+        i.e., ra_indices[fragment_indices[itraj]] are the ra indices for itraj (plus some offset by
+        cumulative length)
+        """
+        fragment_indices = []
+        for idx, cumlen in enumerate(self._cumulative_lengths):
+            cumlen_prev = self._cumulative_lengths[idx - 1] if idx > 0 else 0
+            fragment_indices.append([np.argwhere(
+                np.logical_and(self.ra_indices >= cumlen_prev, self.ra_indices < cumlen)
+            )])
+        return fragment_indices
 
     def _traj_lengths(self, stride):
-        return np.array([(l - (self._skip) - 1) // stride + 1 for idx, l in enumerate(self._lengths)], dtype=int)
+        return np.array([(l - self._skip - 1) // stride + 1 for l in self._lengths], dtype=int)
 
     @staticmethod
     def _calculate_new_overlap(stride, traj_len, skip):
@@ -168,22 +252,21 @@ class FragmentIterator(DataSourceIterator):
             if self._itraj < self.number_of_trajectories():
                 self._it = _FragmentedTrajectoryIterator(self._data_source, self._data_source._readers[self._itraj],
                                                          self.chunksize, self.stride, self.skip)
+                if not self.uniform_stride:
+                    self._it.ra_indices = self.ra_indices_for_traj(self._itraj)
             else:
                 raise StopIteration()
 
-        if not self.uniform_stride:
-            raise ValueError("fragmented trajectory implemented for random access")
-        else:
-            X = next(self._it, None)
-            if X is None:
-                raise StopIteration()
-            self._t += X.shape[0]
-            if self._t >= self._data_source.trajectory_length(self._itraj, stride=self.stride):
-                self._itraj += 1
-                self._it.close()
-                self._it = None
-                self._t = 0
-            return X
+        X = next(self._it, None)
+        if X is None:
+            raise StopIteration()
+        self._t += X.shape[0]
+        if self._t >= self._data_source.trajectory_length(self._itraj, stride=self.stride):
+            self._itraj += 1
+            self._it.close()
+            self._it = None
+            self._t = 0
+        return X
 
     def close(self):
         if self._it is not None:
