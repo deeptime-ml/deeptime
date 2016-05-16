@@ -26,7 +26,7 @@ import os
 from six import string_types
 
 
-def create_file_reader(input_files, topology, featurizer, chunk_size=100, **kw):
+def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw):
     r"""
     Creates a (possibly featured) file reader by a number of input files and either a topology file or a featurizer.
     Parameters
@@ -87,10 +87,10 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=100, **kw):
                                  " or did not exist:\n%s" % err_msg)
 
             if all_exist:
-                from mdtraj.formats.registry import _FormatRegistry
+                from mdtraj.formats.registry import FormatRegistry
 
                 # CASE 1.1: file types are MD files
-                if suffix in list(_FormatRegistry.loaders.keys()):
+                if suffix in list(FormatRegistry.loaders.keys()):
                     # check: do we either have a featurizer or a topology file name? If not: raise ValueError.
                     # create a MD reader with file names and topology
                     if not featurizer and not topology:
@@ -136,11 +136,12 @@ def copy_traj_attributes(target, origin, start):
 
     # The list of copied attributes can be extended here with time
     # Or perhaps ask the mdtraj guys to implement something similar?
+    stop = start+origin.n_frames
 
-    target._xyz[start:start+origin.n_frames] = origin._xyz
-    target._unitcell_lengths[start:start+origin.n_frames] = origin._unitcell_lengths
-    target._unitcell_angles[start:start+origin.n_frames] = origin._unitcell_angles
-    target._time[start:start+origin.n_frames] = origin._time
+    target.xyz[start:stop] = origin.xyz
+    target.unitcell_lengths[start:stop] = origin.unitcell_lengths
+    target.unitcell_angles[start:stop] = origin.unitcell_angles
+    target.time[start:stop] = origin.time
 
     return target
 
@@ -152,11 +153,15 @@ def preallocate_empty_trajectory(top, n_frames=1):
     :param n_frames: desired number of frames of the empty trajectory
     :return: empty_traj: empty md.Trajectory object with n_frames
     """
-    return md.Trajectory(np.zeros((n_frames,top.n_atoms,3)),
+    # to assign via [] operator to Trajectory objects
+    from pyemma.coordinates.util.patches import trajectory_set_item
+    md.Trajectory.__setitem__ = trajectory_set_item
+
+    return md.Trajectory(np.zeros((n_frames, top.n_atoms, 3)),
                          top,
                          time=np.zeros(n_frames),
-                         unitcell_lengths=np.zeros((n_frames,3)),
-                         unitcell_angles=np.zeros((n_frames ,3))
+                         unitcell_lengths=np.zeros((n_frames, 3)),
+                         unitcell_angles=np.zeros((n_frames, 3))
                          )
 
 

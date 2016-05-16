@@ -58,6 +58,7 @@ class MDFeaturizer(Loggable):
                              "but only string or mdtraj.Topology allowed." % type(topfile))
         self.active_features = []
         self._dim = 0
+        self._showed_warning_empty_feature_list = False
 
     def __add_feature(self, f):
         # perform sanity checks
@@ -686,8 +687,10 @@ class MDFeaturizer(Loggable):
         """
         # if there are no features selected, return given trajectory
         if len(self.active_features) == 0:
-            warnings.warn("You have no features selected."
-                          " Returning plain coordinates.")
+            if not self._showed_warning_empty_feature_list:
+                warnings.warn("You have no features selected."
+                              " Returning plain coordinates.")
+                self._showed_warning_empty_feature_list = True
             s = traj.xyz.shape
             new_shape = (s[0], s[1] * s[2])
             return traj.xyz.reshape(new_shape)

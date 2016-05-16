@@ -18,13 +18,10 @@
 
 from __future__ import absolute_import
 
-from pyemma import config
-from pyemma._base.logging import Loggable
 from pyemma.coordinates.data.featurization.featurizer import MDFeaturizer
 from pyemma.coordinates.util import patches
 from pyemma.util.annotators import deprecated
 import mdtraj
-import six
 
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
@@ -50,6 +47,12 @@ class FeatureReader(DataSource):
 
     topologyfile: string
         path to topology file (e.g. pdb)
+
+    chunksize: int
+        how many frames to process in one batch.
+
+    featurizer: MDFeaturizer
+        a preconstructed featurizer
 
     Examples
     --------
@@ -86,6 +89,7 @@ class FeatureReader(DataSource):
         self._is_reader = True
         self.topfile = topologyfile
         self.filenames = trajectories
+        self._return_traj_obj = False
 
         self._is_random_accessible = all(
             (f.endswith(FeatureReader.SUPPORTED_RANDOM_ACCESS_FORMATS)
@@ -290,7 +294,7 @@ class FeatureReaderLinearRandomAccessStrategy(RandomAccessStrategy):
         return data[frames_order]
 
 
-class FeatureReaderIterator(DataSourceIterator, Loggable):
+class FeatureReaderIterator(DataSourceIterator):
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         # TODO: optimize cols access (eg. omit features, before calculating em
         super(FeatureReaderIterator, self).__init__(
@@ -302,8 +306,7 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
         self._create_mditer()
 
     def close(self):
-        if self._mditer is not None:
-            #self._logger.debug('closing current trajectory "%s"' % self._data_source.filenames[self.current_trajindex])
+        if hasattr(self, '_mditer') and self._mditer is not None:
             self._mditer.close()
 
     def _next_chunk(self):
@@ -323,7 +326,6 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
 
             self._t = 0
             self._itraj += 1
-            self.logger.debug("incremented _itraj. Current value: %s" % self._itraj)
             self._create_mditer()
 
         if not self.uniform_stride:
@@ -333,12 +335,20 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
         if self._t >= traj_len and self._itraj == len(self._data_source.filenames) - 1:
             self.close()
 
-        # map data
-        if len(self._data_source.featurizer.active_features) == 0:
-            shape_2d = (shape[0], shape[1] * shape[2])
-            return chunk.xyz.reshape(shape_2d)
+        # 3 cases:
+        # --------
+        # 1. raw mdtraj.Trajectory objects
+        # 2. plain reshaped coordinates
+        # 3. extracted features
+        if self._data_source._return_traj_obj:
+            return chunk
         else:
-            return self._data_source.featurizer.transform(chunk)
+            # map data
+            if len(self._data_source.featurizer.active_features) == 0:
+                shape_2d = (shape[0], shape[1] * shape[2])
+                return chunk.xyz.reshape(shape_2d)
+            else:
+                return self._data_source.featurizer.transform(chunk)
 
     def _create_mditer(self):
         if not self.uniform_stride:
@@ -354,6 +364,5 @@ class FeatureReaderIterator(DataSourceIterator, Loggable):
             )
 
     def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):
-        self._logger.debug("opening trajectory \"%s\"" % filename)
         return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.topfile,
                                 skip=skip, stride=stride, atom_indices=atom_indices)

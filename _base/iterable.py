@@ -25,7 +25,7 @@ from pyemma._base.progress import ProgressReporter
 
 class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
-    def __init__(self, chunksize=100):
+    def __init__(self, chunksize=1000):
         super(Iterable, self).__init__()
         self._default_chunksize = chunksize
         if self.default_chunksize < 0:
