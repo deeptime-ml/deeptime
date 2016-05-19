@@ -16,7 +16,7 @@ requirements:
     - bhmm >=0.6,<0.7
     - joblib >0.8.4
     - matplotlib
-    - mdtraj >=1.6
+    - mdtraj >=1.7
     - mock
     - funcsigs
     - msmtools
@@ -35,7 +35,7 @@ requirements:
     - bhmm >=0.6,<0.7
     - joblib >0.8.4
     - matplotlib
-    - mdtraj >=1.6
+    - mdtraj >=1.7
     - mock
     - funcsigs
     - msmtools
