@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # author: marscher
 # purpose: update version.json file on new software release.
 from __future__ import print_function
