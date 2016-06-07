@@ -36,7 +36,10 @@ def _describe_atom(topology, index):
     :return:
     """
     at = topology.atom(index)
-    return "%s %i %s %i" % (at.residue.name, at.residue.resSeq, at.name, at.index)
+    if topology.n_chains > 1:
+        return "%s %i %s %i %i" % (at.residue.name, at.residue.resSeq, at.name, at.index, at.residue.chain.index )
+    else:
+        return "%s %i %s %i"    % (at.residue.name, at.residue.resSeq, at.name, at.index)
 
 
 def _catch_unhashable(x):
