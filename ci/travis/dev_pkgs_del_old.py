@@ -32,7 +32,7 @@ sorted_by_version = sorted(package['releases'],
                           )
 to_delete = []
 
-while len(sorted_by_version) > N_KEEP:
+while len(sorted_by_version) > n_keep:
     to_delete.append(sorted_by_version.pop())
 
 # remove old releases from anaconda.org 
