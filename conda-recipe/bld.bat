@@ -6,5 +6,4 @@ if not defined APPVEYOR (
     cmd /E:ON /V:ON /C %APPVEYOR_BUILD_FOLDER%\devtools\ci\appveyor\run_with_env.cmd "%PYTHON%" setup.py install
 )
 set build_status=%ERRORLEVEL%
-"%PYTHON%" devtools\conda-recipe\dev_version.py
 if %build_status% == 1 exit 1
