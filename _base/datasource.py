@@ -123,8 +123,19 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
 
             # ensure all trajs have same dim
             if not np.unique(ndims).size == 1:
-                raise ValueError("input data has different dimensions!"
-                                 " Dimensions are = %s" % zip(filename_list, ndims))
+                # group files by their dimensions to give user indicator
+                ndims = np.array(ndims)
+                filename_list = np.asarray(filename_list)
+                sort_inds = np.argsort(ndims)
+                import itertools, operator
+                res = {}
+                for dim, files in itertools.groupby(zip(ndims[sort_inds], filename_list[sort_inds]),
+                                                    operator.itemgetter(0)):
+                    res[dim] = list(f[1] for f in files)
+
+                raise ValueError("Input data has different dimensions ({dims})!"
+                                 " Files grouped by dimensions: {groups}".format(dims=res.keys(),
+                                                                                  groups=res))
 
             self._ndim = ndims[0]
             self._lengths = lengths
