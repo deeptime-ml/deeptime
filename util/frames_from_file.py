@@ -23,7 +23,6 @@ from logging import getLogger
 import mdtraj as md
 import numpy as np
 
-from pyemma._base.progress import ProgressReporter
 from pyemma.coordinates import source
 from pyemma.coordinates.data import FeatureReader
 from pyemma.coordinates.data.fragmented_trajectory_reader import FragmentedTrajectoryReader
@@ -123,14 +122,10 @@ def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=Fals
                 _r._return_traj_obj = True
 
     it = reader.iterator(chunk=chunksize, stride=sorted_inds, return_trajindex=False)
-    reporter = ProgressReporter()
-    reporter._progress_register(it._n_chunks, description="collecting frames")
     collected_frames = []
     with it:
         for x in it:
             collected_frames.append(x)
-            reporter._progress_update(1)
-    reporter._progress_force_finish()
 
     dest = _preallocate_empty_trajectory(top, len(frames))
     i = 0
