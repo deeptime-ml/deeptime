@@ -20,6 +20,7 @@ Created on 15.02.2016
 @author: marscher
 '''
 import functools
+import itertools
 
 from mdtraj.geometry.dihedral import (indices_phi,
                                       indices_psi,
@@ -91,6 +92,7 @@ class DihedralFeature(AngleFeature):
                                               deg=deg,
                                               cossin=cossin,
                                               periodic=periodic)
+
     def describe(self):
         if self.cossin:
             sin_cos = (
@@ -151,23 +153,28 @@ class BackboneTorsionFeature(DihedralFeature):
 
     def describe(self):
         top = self.top
-        getlbl = lambda at: "%i %s %i " % (
-            at.residue.chain.index, at.residue.name, at.residue.resSeq)
+        getlbl = lambda at: "%i %s %i" % (at.residue.chain.index, at.residue.name, at.residue.resSeq)
 
         if self.cossin:
             sin_cos = ("COS(PHI %s)", "SIN(PHI %s)")
-            labels_phi = [s % getlbl(top.atom(ires[1])) for ires in self._phi_inds
-                          for s in sin_cos]
+            labels_phi = [(sin_cos[0] % getlbl(top.atom(ires[1])),
+                           sin_cos[1] % getlbl(top.atom(ires[1]))
+                           ) for ires in self._phi_inds]
             sin_cos = ("COS(PSI %s)", "SIN(PSI %s)")
-            labels_psi = [s % getlbl(top.atom(ires[1])) for ires in self._psi_inds
-                          for s in sin_cos]
+            labels_psi = [(sin_cos[0] % getlbl(top.atom(ires[1])),
+                           sin_cos[1] % getlbl(top.atom(ires[1]))) for ires in self._psi_inds
+                        ]
+            # produce the same ordering as the given indices (phi_1, psi_1, ..., phi_n, psi_n)
+            # or (cos(phi_1), sin(phi_1), cos(psi_1), sin(psi_1), ..., cos(phi_n), sin(phi_n), cos(psi_n), sin(psi_n))
+            res = list(itertools.chain.from_iterable(
+                itertools.chain.from_iterable(zip(labels_phi, labels_psi))))
         else:
             labels_phi = [
                 "PHI %s" % getlbl(top.atom(ires[1])) for ires in self._phi_inds]
             labels_psi = [
                 "PSI %s" % getlbl(top.atom(ires[1])) for ires in self._psi_inds]
-
-        return labels_phi + labels_psi
+            res = list(itertools.chain.from_iterable(zip(labels_phi, labels_psi)))
+        return res
 
 
 class Chi1TorsionFeature(DihedralFeature):
