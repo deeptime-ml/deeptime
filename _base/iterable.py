@@ -106,7 +106,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             return LaggedIterator(it, it_lagged, return_trajindex)
         return it
 
-    def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=0):
+    def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=None):
         if isinstance(dimensions, int):
             ndim = 1
             dimensions = slice(dimensions, dimensions + 1)
@@ -118,6 +118,9 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             raise ValueError('unsupported type (%s) of "dimensions"' % type(dimensions))
 
         assert ndim > 0, "ndim was zero in %s" % self.__class__.__name__
+
+        if chunk is None:
+            chunk = self.chunksize
 
         # create iterator
         if self.in_memory and not self._mapping_to_mem_active:
