@@ -22,18 +22,16 @@ Created on 30.04.2015
 
 from __future__ import absolute_import
 
+import hashlib
+import os
+import sys
+import warnings
 from io import BytesIO
 from logging import getLogger
-import os
-from threading import Semaphore
+
+import numpy as np
 
 from pyemma.util import config
-import six
-import numpy as np
-if six.PY2:
-    import dumbdbm
-else:
-    from dbm import dumb as dumbdbm
 
 logger = getLogger(__name__)
 
@@ -57,6 +55,7 @@ class TrajInfo(object):
 
         self._version = 1
         self._hash = -1
+        self._abs_path = None
 
     @property
     def version(self):
@@ -86,6 +85,21 @@ class TrajInfo(object):
     def hash_value(self, val):
         self._hash = val
 
+    @property
+    def abs_path(self):
+        return self._abs_path
+
+    @abs_path.setter
+    def abs_path(self, val):
+        self._abs_path = val
+
+    def offsets_to_bytes(self):
+        assert self.hash_value != -1
+        fh = BytesIO()
+        np.savez_compressed(fh, offsets=self.offsets)
+        fh.seek(0)
+        return fh.read()
+
     def __eq__(self, other):
         return (isinstance(other, self.__class__)
                 and self.version == other.version
@@ -95,30 +109,9 @@ class TrajInfo(object):
                 and np.all(self.offsets == other.offsets)
                 )
 
-
-def create_traj_info(db_val):
-    assert isinstance(db_val, (six.string_types, bytes))
-    if six.PY3 and isinstance(db_val, six.string_types):
-        db_val = bytes(db_val.encode('utf-8', errors='ignore'))
-    fh = BytesIO(db_val)
-
-    try:
-        arr = np.load(fh)['data']
-        info = TrajInfo()
-        header = arr[0]
-
-        version = header['data_format_version']
-        info._version = version
-        if version == 1:
-            info._hash = header['filehash']
-            info._ndim = arr[1]
-            info._length = arr[2]
-            info._offsets = arr[3]
-        else:
-            raise ValueError("unknown version %s" % version)
-        return info
-    except Exception as ex:
-        raise UnknownDBFormatException(ex)
+    def __str__(self):
+        return "[TrajInfo hash={hash}, len={len}, dim={dim}, path={path}". \
+            format(hash=self.hash_value, len=self.length, dim=self.ndim, path=self.abs_path)
 
 
 class TrajectoryInfoCache(object):
@@ -138,56 +131,41 @@ class TrajectoryInfoCache(object):
 
     """
     _instance = None
-    DB_VERSION = '1'
+    DB_VERSION = 2
 
     @staticmethod
     def instance():
+        """ :returns the TrajectoryInfoCache singleton instance"""
         if TrajectoryInfoCache._instance is None:
             # singleton pattern
-            filename = os.path.join(config.cfg_dir, "trajlen_cache")
+            filename = os.path.join(config.cfg_dir, "traj_info.sqlite3")
             TrajectoryInfoCache._instance = TrajectoryInfoCache(filename)
-
-            # sync db to hard drive at exit.
-            if hasattr(TrajectoryInfoCache._instance._database, 'sync'):
-                import atexit
-                @atexit.register
-                def write_at_exit():
-                    TrajectoryInfoCache._instance._database.sync()
 
         return TrajectoryInfoCache._instance
 
     def __init__(self, database_filename=None):
-        # for now we disable traj info cache persistence!
-        database_filename = None
         self.database_filename = database_filename
-        if database_filename is not None:
-            try:
-                self._database = dumbdbm.open(database_filename, flag="c")
-            except dumbdbm.error as e:
-                try:
-                    os.unlink(database_filename)
-                    self._database = dumbdbm.open(database_filename, flag="n")
-                    # persist file right now, since it was broken
-                    self._set_curr_db_version(TrajectoryInfoCache.DB_VERSION)
-                    # close and re-open to ensure file exists
-                    self._database.close()
-                    self._database = dumbdbm.open(database_filename, flag="w")
-                except OSError:
-                    raise RuntimeError('corrupted database in "%s" could not be deleted'
-                                       % os.path.abspath(database_filename))
-        else:
-            self._database = {}
 
-        self._set_curr_db_version(TrajectoryInfoCache.DB_VERSION)
-        self._write_protector = Semaphore()
+        # have no filename, use in memory sqlite db
+        # have no sqlite module, use dict
+        # have sqlite and file, create db with given filename
+
+        try:
+            import sqlite3
+            from pyemma.coordinates.data.util.traj_info_backends import SqliteDB
+            self._database = SqliteDB(self.database_filename)
+        except ImportError:
+            warnings.warn("sqlite3 package not available, persistant storage of trajectory info not possible!")
+            from pyemma.coordinates.data.util.traj_info_backends import DictDB
+            self._database = DictDB()
 
     @property
     def current_db_version(self):
-        return self._current_db_version
+        return self._database.db_version
 
-    def _set_curr_db_version(self, val):
-        self._database['db_version'] = val
-        self._current_db_version = val
+    @property
+    def num_entries(self):
+        return self._database.num_entries
 
     def _handle_csv(self, reader, filename, length):
         # this is maybe a bit ugly, but so far we do not store the dialect of csv files in
@@ -200,47 +178,31 @@ class TrajectoryInfoCache(object):
 
     def __getitem__(self, filename_reader_tuple):
         filename, reader = filename_reader_tuple
-        key = self._get_file_hash(filename)
-        result = None
+        abs_path = os.path.abspath(filename)
+        key = self._get_file_hash_v2(filename)
         try:
-            result = str(self._database[key])
-            info = create_traj_info(result)
-
+            info = self._database.get(key)
+            if not isinstance(info, TrajInfo):
+                raise KeyError()
             self._handle_csv(reader, filename, info.length)
-
+            # if path has changed, update it
+            if not info.abs_path == abs_path:
+                info.abs_path = abs_path
+                self._database.update(info)
         # handle cache misses and not interpretable results by re-computation.
         # Note: this also handles UnknownDBFormatExceptions!
         except KeyError:
             info = reader._get_traj_info(filename)
             info.hash_value = key
+            info.abs_path = abs_path
             # store info in db
-            result = self.__setitem__(filename, info)
+            self.__setitem__(info)
 
             # save forcefully now
             if hasattr(self._database, 'sync'):
-                logger.debug("sync db after adding new entry")
                 self._database.sync()
 
         return info
-
-    def __format_value(self, traj_info):
-        assert traj_info.hash_value != -1
-        fh = BytesIO()
-
-        header = {'data_format_version': 1,
-                  'filehash': traj_info.hash_value,  # back reference to file by hash
-                  }
-
-        array = np.empty(4, dtype=object)
-
-        array[0] = header
-        array[1] = traj_info.ndim
-        array[2] = traj_info.length
-        array[3] = traj_info.offsets
-
-        np.savez_compressed(fh, data=array)
-        fh.seek(0)
-        return fh.read()
 
     def _get_file_hash(self, filename):
         statinfo = os.stat(filename)
@@ -258,14 +220,28 @@ class TrajectoryInfoCache(object):
         hash_value ^= hash(data)
         return str(hash_value)
 
-    def __setitem__(self, filename, traj_info):
-        dbval = self.__format_value(traj_info)
+    def _get_file_hash_v2(self, filename):
+        statinfo = os.stat(filename)
+        # now read the first megabyte and hash it
+        with open(filename, mode='rb') as fh:
+            data = fh.read(1024)
 
-        self._write_protector.acquire()
-        self._database[str(traj_info.hash_value)] = dbval
-        self._write_protector.release()
+        if sys.version_info > (3,):
+            long = int
 
-        return dbval
+        hasher = hashlib.md5()
+        hasher.update(os.path.basename(filename).encode('utf-8'))
+        hasher.update(str(statinfo.st_mtime).encode('ascii'))
+        hasher.update(str(statinfo.st_size).encode('ascii'))
+        hasher.update(data)
+        return hasher.hexdigest()
+
+    def __setitem__(self, traj_info):
+        self._database.set(traj_info)
 
     def clear(self):
         self._database.clear()
+
+    def close(self):
+        """ you most likely never want to call this! """
+        self._database.close()

@@ -142,7 +142,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
             self._offsets = offsets
 
         else:
-            # propate this until we finally have a a reader?
+            # propagate this until we finally have a a reader
             self.data_producer.filenames = filename_list
 
     @property

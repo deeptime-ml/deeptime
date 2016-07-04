@@ -87,7 +87,7 @@ class NumPyFileReader(DataSource):
 
     def _load_file(self, itraj):
         filename = self._filenames[itraj]
-        self._logger.debug("opening file %s" % filename)
+        #self._logger.debug("opening file %s" % filename)
 
         if filename.endswith('.npy'):
             x = np.load(filename, mmap_mode=self.mmap_mode)
