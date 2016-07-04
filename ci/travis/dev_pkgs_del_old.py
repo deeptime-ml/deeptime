@@ -39,7 +39,5 @@ while len(sorted_by_version) > n_keep:
 for rel in to_delete:
     spec = rel['full_name']
     version = rel['version']
-    for dist in rel['distributions']:
-        b.remove_dist(org, package_name=pkg, release=version, basename=dist)
-        print("removed file %s" % dist)
-
+    b.remove_version(org, pkg, version)
+    print("removed version:", version)
