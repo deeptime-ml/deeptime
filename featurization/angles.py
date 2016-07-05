@@ -70,7 +70,7 @@ class AngleFeature(Feature):
         if self.cossin:
             rad = np.dstack((np.cos(rad), np.sin(rad)))
             rad = rad.reshape(functools.reduce(lambda x, y: x * y, rad.shape),)
-        if self.deg:
+        if self.deg and not self.cossin:
             return np.rad2deg(rad)
         else:
             return rad
@@ -119,7 +119,7 @@ class DihedralFeature(AngleFeature):
             rad = np.dstack((np.cos(rad), np.sin(rad)))
             rad = rad.reshape(rad.shape[0], rad.shape[1]*rad.shape[2])
         # convert to degrees
-        if self.deg:
+        if self.deg and not self.cossin:
             rad = np.rad2deg(rad)
 
         return rad
