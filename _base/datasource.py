@@ -233,7 +233,8 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
 
         Returns
         -------
-        int : n_frames_total
+        n_frames_total : int
+            total number of frames.
         """
         if isinstance(stride, np.ndarray):
             return stride.shape[0]
