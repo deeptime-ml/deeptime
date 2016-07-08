@@ -166,27 +166,28 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         return self
 
     def number_of_trajectories(self):
-        """
-        Returns the number of trajectories
+        r""" Returns the number of trajectories.
 
-        :return:
-            number of trajectories
+        Returns
+        -------
+            int : number of trajectories
         """
         return self._ntraj
 
     def trajectory_length(self, itraj, stride=1, skip=None):
-        """
-        Returns the length of trajectory
+        r"""Returns the length of trajectory of the requested index.
 
-        :param itraj:
+        Parameters
+        ----------
+        itraj : int
             trajectory index
-        :param stride:
-            return value is the number of frames in trajectory when
-            running through it with a step size of `stride`
-        :param skip:
-            skip parameter
-        :return:
-            length of trajectory
+        stride : int
+            return value is the number of frames in the trajectory when
+            running through it with a step size of `stride`.
+
+        Returns
+        -------
+        int : length of trajectory
         """
         if itraj >= self._ntraj:
             raise IndexError("given index (%s) exceeds number of data sets (%s)."
@@ -198,18 +199,19 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
             return (self._lengths[itraj] - (0 if skip is None else skip) - 1) // int(stride) + 1
 
     def trajectory_lengths(self, stride=1, skip=0):
-        """
-        Returns the length of each trajectory
+        r""" Returns the length of each trajectory.
 
-        :param stride:
-            return value is the number of frames in trajectories when
-            running through them with a step size of `stride`
-        :param skip:
-            return value is the number of frames in trajectories when
-            skipping the first "skip" frames (plus stride)
+        Parameters
+        ----------
+        stride : int
+            return value is the number of frames of the trajectories when
+            running through them with a step size of `stride`.
+        skip : int
+            skip parameter
 
-        :return:
-            numpy array containing length of each trajectory
+        Returns
+        -------
+        array(dtype=int) : containing length of each trajectory
         """
         n = self.number_of_trajectories()
         if isinstance(stride, np.ndarray):
@@ -221,15 +223,17 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
                                dtype=int, count=n)
 
     def n_frames_total(self, stride=1):
-        """
-        Returns the total number of frames, over all trajectories
+        r"""Returns total number of frames.
 
-        :param stride:
+        Parameters
+        ----------
+        stride : int
             return value is the number of frames in trajectories when
-            running through them with a step size of `stride`
+            running through them with a step size of `stride`.
 
-        :return:
-            the total number of frames, over all trajectories
+        Returns
+        -------
+        int : n_frames_total
         """
         if isinstance(stride, np.ndarray):
             return stride.shape[0]

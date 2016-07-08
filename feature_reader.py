@@ -18,21 +18,22 @@
 
 from __future__ import absolute_import
 
-from pyemma.coordinates.data.featurization.featurizer import MDFeaturizer
-from pyemma.coordinates.util import patches
-from pyemma.util.annotators import deprecated
 import mdtraj
+import numpy as np
 
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
+from pyemma.coordinates.data.featurization.featurizer import MDFeaturizer
 from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
-import numpy as np
+from pyemma.coordinates.util import patches
+from pyemma.util.annotators import deprecated, fix_docs
 
 
 __author__ = 'noe, marscher'
 __all__ = ['FeatureReader']
 
 
+@fix_docs
 class FeatureReader(DataSource):
     """
     Reads features from MD data.

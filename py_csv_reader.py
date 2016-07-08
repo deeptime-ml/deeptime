@@ -21,19 +21,21 @@ Created on 11.04.2015
 """
 
 from __future__ import absolute_import
-from math import ceil
+
 import csv
 import os
+from math import ceil
 
+import numpy as np
 import six
+from six.moves import range
 
-from pyemma._base.logging import Loggable
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
-from six.moves import range
-import numpy as np
+from pyemma.util.annotators import fix_docs
 
 
+@fix_docs
 class PyCSVIterator(DataSourceIterator):
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         # do not pass cols, because we want to handle in this impl, not in DataSourceIterator

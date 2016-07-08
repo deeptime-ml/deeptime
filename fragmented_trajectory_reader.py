@@ -21,8 +21,10 @@ import numpy as np
 
 from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
 from pyemma.coordinates.data.util.reader_utils import preallocate_empty_trajectory
+from pyemma.util.annotators import fix_docs
 
 
+@fix_docs
 class _FragmentedTrajectoryIterator(object):
     def __init__(self, fragmented_reader, readers, chunksize, stride, skip):
         # global time variable

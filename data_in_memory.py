@@ -18,17 +18,19 @@
 
 from __future__ import absolute_import
 
+import functools
 import numbers
 
 import numpy as np
 
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
-import functools
+from pyemma.util.annotators import fix_docs
 
 __author__ = 'noe, marscher'
 
 
+@fix_docs
 class DataInMemory(DataSource):
     r"""
     multi-dimensional data fully stored in memory.
