@@ -116,11 +116,12 @@ class GroupMinDistanceFeature(DistanceFeature):
     def __init__(self, top, group_definitions, group_pairs, distance_list, group_identifiers, threshold, periodic):
         self.top = top
         self.group_identifiers = group_identifiers
-        self.distance_list = distance_list
         self.group_definitions = group_definitions
         self.prefix_label = "GROUP_MINDIST"
         self.threshold = threshold
-        self.distance_indexes = group_pairs
+        self.group_pairs = group_pairs
+        self.distance_indexes = distance_list
+
         self.periodic = periodic
         self._dim = len(group_pairs) # TODO: validate
 
@@ -130,12 +131,12 @@ class GroupMinDistanceFeature(DistanceFeature):
                                                        _describe_atom(self.top, self.group_definitions[pair[0]][-1]),
                                                        _describe_atom(self.top, self.group_definitions[pair[1]][0]),
                                                        _describe_atom(self.top, self.group_definitions[pair[1]][-1])
-                                                       ) for pair in self.distance_indexes]
+                                                       ) for pair in self.group_pairs]
         return labels
 
     def transform(self, traj):
         # All needed distances
-        Dall = mdtraj.compute_distances(traj, self.distance_list, periodic=self.periodic)
+        Dall = mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
         # Just the minimas
         Dmin = np.zeros((traj.n_frames,self.dimension))
         res = np.zeros_like(Dmin)
