@@ -19,10 +19,10 @@ Created on 15.02.2016
 
 @author: marscher
 '''
-from pyemma.util.annotators import deprecated
+from pyemma._base.serialization.serialization import SerializableMixIn
 
 
-class Feature(object):
+class Feature(SerializableMixIn):
 
     @property
     def dimension(self):
@@ -33,9 +33,24 @@ class Feature(object):
         assert isinstance(val, int)
         self._dim = val
 
-    @deprecated('use transform(traj)')
-    def map(self, traj):
-        return self.transform(traj)
-
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
+
+    def __getstate__(self):
+        import copy
+        res = copy.copy(self.__dict__)
+        top = res.pop('top', None)
+        if top and top.fname:
+            res['topologyfile'] = top.fname
+
+        return res
+
+    def __setstate__(self, state):
+        tf = state.pop('topologyfile', None)
+        if tf:
+            import mdtraj
+            self.top = mdtraj.load(tf).topology
+        self.__dict__.update(state)
+
+    def __repr__(self):
+        return str(self.describe())

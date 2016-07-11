@@ -47,18 +47,29 @@ class MDFeaturizer(Loggable):
        topfile : str or mdtraj.Topology
            a path to a topology file (pdb etc.) or an mdtraj Topology() object
        """
-        self.topologyfile = None
-        if isinstance(topfile, six.string_types):
-            self.topology = (mdtraj.load(topfile)).topology
-            self.topologyfile = topfile
-        elif isinstance(topfile, mdtraj.Topology):
-            self.topology = topfile
-        else:
-            raise ValueError("no valid topfile arg: type was %s, "
-                             "but only string or mdtraj.Topology allowed." % type(topfile))
+        self.topology = None
+        self.topologyfile = topfile
         self.active_features = []
         self._dim = 0
         self._showed_warning_empty_feature_list = False
+
+    @property
+    def topologyfile(self):
+        return self._topologyfile
+
+    @topologyfile.setter
+    def topologyfile(self, topfile):
+        self._topologyfile = topfile
+        if isinstance(topfile, six.string_types):
+            self.topology = (mdtraj.load(topfile)).topology
+            self.topology.fname = topfile
+            self._topologyfile = topfile
+        elif isinstance(topfile, mdtraj.Topology):
+            self.topology = topfile
+            self.topology.fname = None
+        else:
+            raise ValueError("no valid topfile arg: type was %s, "
+                             "but only string or mdtraj.Topology allowed." % type(topfile))
 
     def __add_feature(self, f):
         # perform sanity checks
@@ -73,6 +84,14 @@ class MDFeaturizer(Loggable):
         else:
             self._logger.warning("tried to re-add the same feature %s"
                                  % f.__class__.__name__)
+
+    def __getstate__(self):
+        res = {'topologyfile': self.topologyfile, 'active_features': self.active_features}
+        return res
+
+    def __setstate__(self, state):
+        self.topologyfile = state['topologyfile']
+        self.active_features = state['active_features']
 
     def describe(self):
         """
@@ -595,11 +614,11 @@ class MDFeaturizer(Loggable):
             raise ValueError("Dimension has to be positive. "
                              "Please override dimension attribute in feature!")
 
-        if not hasattr(feature, 'map'):
-            raise ValueError("no map method in given feature")
+        if not hasattr(feature, 'transform'):
+            raise ValueError("no 'transform' method in given feature")
         else:
-            if not callable(getattr(feature, 'map')):
-                raise ValueError("map exists but is not a method")
+            if not callable(getattr(feature, 'transform')):
+                raise ValueError("transform of given feature is not a method")
 
         self.__add_feature(feature)
 
