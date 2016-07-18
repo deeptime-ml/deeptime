@@ -31,13 +31,16 @@ sorted_by_version = sorted(package['releases'],
                            reverse=True
                           )
 to_delete = []
+n = len(sorted_by_versions)
 
-while len(sorted_by_version) > n_keep:
+while n > n_keep:
     to_delete.append(sorted_by_version.pop())
+
+print("Currently have {n} versions online. Going to remove {x}.".format(n=n, x=len(to_delete)))
 
 # remove old releases from anaconda.org 
 for rel in to_delete:
     spec = rel['full_name']
     version = rel['version']
-    b.remove_version(org, pkg, version)
-    print("removed version:", version)
+    b.remove_release(org, pkg, version)
+

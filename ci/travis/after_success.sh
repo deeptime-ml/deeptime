@@ -22,5 +22,8 @@ for filename in $FILES; do
 done
 popd
 
-# call cleanup
-python devtools/ci/travis/dev_pkgs_del_old.py
+# call cleanup only for py35, numpy111
+if [[ "$CONDA_PY" == "3.5" && "$CONDA_NPY" == "111" ]]; then
+    python devtools/ci/travis/dev_pkgs_del_old.py
+fi
+
