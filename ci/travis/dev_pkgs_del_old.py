@@ -12,10 +12,11 @@ author: Martin K. Scherer
 data: 20.4.16
 """
 from __future__ import print_function, absolute_import
+
+import os
+
 from binstar_client.utils import get_server_api
 from pkg_resources import parse_version
-from operator import getitem
-import os
 
 token = os.environ['BINSTAR_TOKEN']
 org = os.environ['ORGNAME']
@@ -31,16 +32,15 @@ sorted_by_version = sorted(package['releases'],
                            reverse=True
                           )
 to_delete = []
-n = len(sorted_by_versions)
+print("Currently have {n} versions online. Going to remove {x}.".
+      format(n=len(sorted_by_version), x=len(sorted_by_version) - n_keep))
 
-while n > n_keep:
+while len(sorted_by_version) > n_keep:
     to_delete.append(sorted_by_version.pop())
 
-print("Currently have {n} versions online. Going to remove {x}.".format(n=n, x=len(to_delete)))
 
 # remove old releases from anaconda.org 
 for rel in to_delete:
-    spec = rel['full_name']
     version = rel['version']
+    print("removing {version}".format(version=version))
     b.remove_release(org, pkg, version)
-
