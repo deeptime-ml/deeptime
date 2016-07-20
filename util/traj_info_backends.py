@@ -198,8 +198,8 @@ class SqliteDB(AbstractDB):
                      "VALUES (?, ?, ?, ?, ?, ?, ?)", values)
         try:
              self._database.execute(*statement)
-        except sqlite3.IntegrityError:
-            logger.exception()
+        except sqlite3.IntegrityError as ie:
+            logger.exception("insert failed: %s " % ie)
             return
         self._database.commit()
 
