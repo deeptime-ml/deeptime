@@ -306,9 +306,25 @@ class FeatureReaderIterator(DataSourceIterator):
         #self._cols = cols
         self._create_mditer()
 
-    @DataSourceIterator.chunksize.setter
-    def chunksize(self, val):
-        self._mditer._chunksize = int(val)
+    @property
+    def chunksize(self):
+        return self.state.chunk
+
+    @chunksize.setter
+    def chunksize(self, value):
+        self.state.chunk = value
+        if hasattr(self, '_mditer'):
+            self._mditer._chunksize = int(value)
+
+    @property
+    def skip(self):
+        return self.state.skip
+
+    @skip.setter
+    def skip(self, value):
+        self.state.skip = value
+        if hasattr(self, '_mditer'):
+            self._mditer._skip = value
 
     def close(self):
         if hasattr(self, '_mditer') and self._mditer is not None:

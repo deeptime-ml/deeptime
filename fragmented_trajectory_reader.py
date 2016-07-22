@@ -24,7 +24,6 @@ from pyemma.coordinates.data.util.reader_utils import preallocate_empty_trajecto
 from pyemma.util.annotators import fix_docs
 
 
-@fix_docs
 class _FragmentedTrajectoryIterator(object):
     def __init__(self, fragmented_reader, readers, chunksize, stride, skip):
         # global time variable
@@ -123,6 +122,7 @@ class _FragmentedTrajectoryIterator(object):
                             )
                         else:
                             self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
+                            self._reader_it.skip = skip
                             self._reader_overlap = self._calculate_new_overlap(self._stride,
                                                                                self._reader_lengths[self._reader_at - 1],
                                                                                self._reader_overlap)
@@ -197,7 +197,7 @@ class _FragmentedTrajectoryIterator(object):
                 _skip = overlap
                 # if stride doesn't divide length, one has to offset the next trajectory
                 overlap = self._calculate_new_overlap(self._stride, self._reader_lengths[idx], overlap)
-                chunksize = min(length, r.trajectory_length(0, self._stride))
+                chunksize = min(length, r.trajectory_length(0, self._stride, skip=_skip))
                 it = r._create_iterator(stride=self._stride, skip=_skip, chunk=chunksize, return_trajindex=True)
                 with it:
                     for itraj, data in it:
@@ -263,6 +263,9 @@ class _FragmentedTrajectoryIterator(object):
 
 
 class FragmentIterator(DataSourceIterator):
+    """
+    outer iterator, which encapsulates _FragmentedTrajectoryIterator
+    """
 
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         super(FragmentIterator, self).__init__(data_source, skip=skip, chunk=chunk,
@@ -285,7 +288,7 @@ class FragmentIterator(DataSourceIterator):
         if X is None:
             raise StopIteration()
         self._t += len(X)
-        if self._t >= self._data_source.trajectory_length(self._itraj, stride=self.stride):
+        if self._t >= self._data_source.trajectory_length(self._itraj, stride=self.stride, skip=self.skip):
             self._itraj += 1
             self._it.close()
             self._it = None
@@ -300,6 +303,7 @@ class FragmentIterator(DataSourceIterator):
             self._it.close()
 
 
+@fix_docs
 class FragmentedTrajectoryReader(DataSource):
     """
     Parameters
@@ -308,7 +312,7 @@ class FragmentedTrajectoryReader(DataSource):
     
     topologyfile, str, default None
     
-    chunksize: int, default 100
+    chunksize: int, default 1000
     
     featurizer: MDFeaturizer, default None
     
@@ -366,6 +370,10 @@ class FragmentedTrajectoryReader(DataSource):
         # store trajectory files
         self._trajectories = trajectories
         self._filenames = trajectories
+
+        # random-accessible
+        #self._is_random_accessible = all(r._is_random_accessible for r in self._readers[itraj]
+        #                                 for itraj in range(0, self._ntraj))
 
     @property
     def filenames_flat(self):

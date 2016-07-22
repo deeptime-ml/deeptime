@@ -29,6 +29,8 @@ from pyemma.coordinates.data.featurization.util import (_parse_pairwise_input,
 
 from .misc import CustomFeature
 import numpy as np
+from pyemma.coordinates.util.patches import load_topology_cached
+from mdtraj import load_topology as load_topology_uncached
 
 
 __author__ = 'Frank Noe, Martin Scherer'
@@ -38,15 +40,18 @@ __all__ = ['MDFeaturizer']
 class MDFeaturizer(Loggable):
     r"""Extracts features from MD trajectories."""
 
-    def __init__(self, topfile):
-        """extracts features from MD trajectories.
+    def __init__(self, topfile, use_cache=True):
+       """extracts features from MD trajectories.
 
        Parameters
        ----------
 
        topfile : str or mdtraj.Topology
            a path to a topology file (pdb etc.) or an mdtraj Topology() object
+       use_cache : boolean, default=True
+           cache already loaded topologies, if file contents match.
        """
+        self.use_cached_topology = use_cache
         self.topology = None
         self.topologyfile = topfile
         self.active_features = []
@@ -61,7 +66,7 @@ class MDFeaturizer(Loggable):
     def topologyfile(self, topfile):
         self._topologyfile = topfile
         if isinstance(topfile, six.string_types):
-            self.topology = (mdtraj.load(topfile)).topology
+            self.topology = load_topology_cached(topfile) if self.use_cached_topology else load_topology_uncached(topfile)
             self.topology.fname = topfile
             self._topologyfile = topfile
         elif isinstance(topfile, mdtraj.Topology):
