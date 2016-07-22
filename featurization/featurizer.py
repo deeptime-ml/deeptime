@@ -40,18 +40,18 @@ __all__ = ['MDFeaturizer']
 class MDFeaturizer(Loggable):
     r"""Extracts features from MD trajectories."""
 
-    def __init__(self, topfile, use_cache=True):
-       """extracts features from MD trajectories.
+    def __init__(self, topfile, use_topology_cache=True):
+        """extracts features from MD trajectories.
 
-       Parameters
-       ----------
+        Parameters
+        ----------
 
-       topfile : str or mdtraj.Topology
+        topfile : str or mdtraj.Topology
            a path to a topology file (pdb etc.) or an mdtraj Topology() object
-       use_cache : boolean, default=True
+        use_topology_cache : boolean, default=True
            cache already loaded topologies, if file contents match.
-       """
-        self.use_cached_topology = use_cache
+        """
+        self.use_cached_topology = use_topology_cache
         self.topology = None
         self.topologyfile = topfile
         self.active_features = []
