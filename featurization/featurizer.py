@@ -51,7 +51,7 @@ class MDFeaturizer(Loggable):
         use_topology_cache : boolean, default=True
            cache already loaded topologies, if file contents match.
         """
-        self.use_cached_topology = use_topology_cache
+        self.use_topology_cache = use_topology_cache
         self.topology = None
         self.topologyfile = topfile
         self.active_features = []
@@ -66,7 +66,8 @@ class MDFeaturizer(Loggable):
     def topologyfile(self, topfile):
         self._topologyfile = topfile
         if isinstance(topfile, six.string_types):
-            self.topology = load_topology_cached(topfile) if self.use_cached_topology else load_topology_uncached(topfile)
+            self.topology = load_topology_cached(topfile) if self.use_topology_cache \
+                else load_topology_uncached(topfile)
             self.topology.fname = topfile
             self._topologyfile = topfile
         elif isinstance(topfile, mdtraj.Topology):
