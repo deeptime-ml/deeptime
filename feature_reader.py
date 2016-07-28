@@ -347,8 +347,8 @@ class FeatureReaderIterator(DataSourceIterator):
         try:
             chunk = next(self._mditer)
         except StopIteration as si:
-            # TODO: why we have to return something here? This makes no sense, but is somehow required by LaggedIterator/Iterable
-            if "too short" in si.message and self._itraj < self._data_source.ntraj - 1:
+            # TODO: why do we have to return something here? This makes no sense, but is somehow required by LaggedIterator/Iterable
+            if si.args and "too short" in si.args[0] and self._itraj < self._data_source.ntraj - 1:
                 self._next_file()
                 return np.empty(0)
             else:
