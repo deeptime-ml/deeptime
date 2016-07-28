@@ -249,7 +249,7 @@ class IteratorState(object):
     State class holding all the relevant information of an iterator's state.
     """
 
-    def __init__(self, stride=1, skip=0, chunk=0, return_trajindex=False, ntraj=0, cols=None):
+    def __init__(self, skip=0, chunk=0, return_trajindex=False, ntraj=0, cols=None):
         self.skip = skip
         self.chunk = chunk
         self.return_trajindex = return_trajindex
@@ -465,7 +465,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             The upcoming trajectory index.
         """
         if value > self.state.ntraj:  # we never want to increase this value larger than ntraj.
-            raise StopIteration()
+            raise StopIteration("out of files bound")
         self.state.itraj = value
 
     @skip.setter

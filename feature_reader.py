@@ -330,6 +330,13 @@ class FeatureReaderIterator(DataSourceIterator):
         if hasattr(self, '_mditer') and self._mditer is not None:
             self._mditer.close()
 
+    def _next_file(self):
+        self.close()
+
+        self._t = 0
+        self._itraj += 1
+        self._create_mditer()
+
     def _next_chunk(self):
         """
         gets the next chunk. If lag > 0, we open another iterator with same chunk
@@ -337,17 +344,22 @@ class FeatureReaderIterator(DataSourceIterator):
 
         :return: a feature mapped vector X, or (X, Y) if lag > 0
         """
-        chunk = next(self._mditer)
+        try:
+            chunk = next(self._mditer)
+        except StopIteration as si:
+            # TODO: why we have to return something here? This makes no sense, but is somehow required by LaggedIterator/Iterable
+            if "too short" in si.message and self._itraj < self._data_source.ntraj - 1:
+                self._next_file()
+                return np.empty(0)
+            else:
+                raise
+
         shape = chunk.xyz.shape
 
         self._t += shape[0]
 
         if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.filenames) - 1:
-            self.close()
-
-            self._t = 0
-            self._itraj += 1
-            self._create_mditer()
+            self._next_file()
 
         if not self.uniform_stride:
             traj_len = self.ra_trajectory_length(self._itraj)
@@ -362,14 +374,15 @@ class FeatureReaderIterator(DataSourceIterator):
         # 2. plain reshaped coordinates
         # 3. extracted features
         if self._data_source._return_traj_obj:
-            return chunk
+            res = chunk
         else:
             # map data
             if len(self._data_source.featurizer.active_features) == 0:
                 shape_2d = (shape[0], shape[1] * shape[2])
-                return chunk.xyz.reshape(shape_2d)
+                res = chunk.xyz.reshape(shape_2d)
             else:
-                return self._data_source.featurizer.transform(chunk)
+                res = self._data_source.featurizer.transform(chunk)
+        return res
 
     def _create_mditer(self):
         if not self.uniform_stride:
