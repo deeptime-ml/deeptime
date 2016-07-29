@@ -347,10 +347,12 @@ class FeatureReaderIterator(DataSourceIterator):
         try:
             chunk = next(self._mditer)
         except StopIteration as si:
-            # TODO: why do we have to return something here? This makes no sense, but is somehow required by LaggedIterator/Iterable
+            """ in case the underlying mdtraj iterator raises StopIteration (eg. seek failed),
+                we have to return an empty iterable, so that LaggedIterator will continue to process.
+            """
             if si.args and "too short" in si.args[0] and self._itraj < self._data_source.ntraj - 1:
                 self._next_file()
-                return np.empty(0)
+                return ()
             else:
                 raise
 
