@@ -82,7 +82,7 @@ class FeatureReader(DataSource):
     """
     SUPPORTED_RANDOM_ACCESS_FORMATS = (".h5", ".dcd", ".binpos", ".nc", ".xtc", ".trr")
 
-    def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
+    def __init__(self, trajectories, topologyfile=None, chunksize=1000, featurizer=None):
         assert (topologyfile is not None) or (featurizer is not None), \
             "Needs either a topology file or a featurizer for instantiation"
 
@@ -398,7 +398,14 @@ class FeatureReaderIterator(DataSourceIterator):
             self._mditer = self._create_patched_iter(
                     self._data_source.filenames[self._itraj], skip=self.skip, stride=self.stride
             )
+        self._closed = False
 
     def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):
         return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.topfile,
                                 skip=skip, stride=stride, atom_indices=atom_indices)
+
+    def reset(self):
+        super(FeatureReaderIterator, self).reset()
+        # re-create the underlying mditer
+        self.close()
+        self._create_mditer()
