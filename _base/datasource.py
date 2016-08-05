@@ -379,7 +379,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def reset(self):
         """
-        Method allowing to reset the iterator so that it can iterare from beginning on again.
+        Method allowing to reset the iterator so that it can iteration from beginning on again.
         """
         self._t = 0
         self._itraj = 0
