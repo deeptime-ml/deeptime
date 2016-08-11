@@ -56,6 +56,11 @@ class PyCSVIterator(DataSourceIterator):
         if self._file_handle is not None:
             self._file_handle.close()
 
+    def reset(self):
+        super(PyCSVIterator, self).reset()
+        self._itraj = -1
+        self._next_traj()
+
     def _next_chunk(self):
         if not self._file_handle or self._itraj >= self.number_of_trajectories():
             self.close()
