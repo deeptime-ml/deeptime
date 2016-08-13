@@ -163,16 +163,17 @@ class MDFeaturizer(Loggable):
         exclusions.append("(name == H)")
         exclusions.append("(resname == VAL and name == CG)")
         exclusions.append("(resname == LEU and name == CD)")
-        exclusions.append("(resname == PHE and (name == CD or name == CE))")
-        exclusions.append("(resname == TYR and (name == CD or name == CE))")
-        exclusions.append("(resname == GLU and (name == OD1 or name == OD2))")
-        exclusions.append("(resname == ASP and (name == OG1 or name == OG2))")
-        exclusions.append("(resname == HIS and (name == ND1 or name == NE2))")
-        exclusions.append("(resname == ARG and (name == NH1 or name == NH2))")
+        exclusions.append("(resname == PHE and name == CD) or (resname == PHE and name == CE)")
+        exclusions.append("(resname == TYR and name == CD) or (resname == TYR and name == CE)")
+        exclusions.append("(resname == GLU and name == OD1) or (resname == GLU and name == OD2)")
+        exclusions.append("(resname == ASP and name == OG1) or (resname == ASP and name == OG2)")
+        exclusions.append("(resname == HIS and name == ND1) or (resname == HIS and name == NE2)")
+        exclusions.append("(resname == ARG and name == NH1) or (resname == ARG and name == NH2)")
         
-        exclusion_string = 'or '.join(exclusions)
-        
-        return self.topology.select('not (' + exclusion_string + ')')
+        exclusion_string = ' or '.join(exclusions)
+        selection_string = 'not (' + exclusion_string + ')'
+    
+        return self.topology.select(selection_string)
     
     @staticmethod
     def pairs(sel, excluded_neighbors=0):
