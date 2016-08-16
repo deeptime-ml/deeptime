@@ -360,14 +360,14 @@ class FeatureReaderIterator(DataSourceIterator):
 
         self._t += shape[0]
 
-        if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.filenames) - 1:
+        if self._t >= self.trajectory_length() and self._itraj < self._data_source.ntraj - 1:
             self._next_file()
 
         if not self.uniform_stride:
             traj_len = self.ra_trajectory_length(self._itraj)
         else:
             traj_len = self.trajectory_length()
-        if self._t >= traj_len and self._itraj == len(self._data_source.filenames) - 1:
+        if self._t >= traj_len and self._itraj == self._data_source.ntraj - 1:
             self.close()
 
         # 3 cases:
