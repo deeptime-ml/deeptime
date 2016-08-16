@@ -35,7 +35,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
     of trajectories is generally unknown for Iterable.
     """
 
-    def __init__(self, chunksize=1000):
+    def __init__(self, chunksize=1000, skip=0):
         super(DataSource, self).__init__(chunksize=chunksize)
 
         # following properties have to be set in subclass
@@ -44,6 +44,20 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         self._offsets = []
         self._filenames = None
         self._is_reader = False
+        self.skip = skip
+
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
+        """
+        Creates an instance-independent iterator.
+
+        :param skip: How many frames to skip before streaming.
+        :param chunk: The chunksize.
+        :param stride: Take only every stride'th frame.
+        :param return_trajindex: take the trajindex into account
+        :return: a chunk of data if return_trajindex is False, otherwise a tuple of (trajindex, data).
+        """
+        offset = self.skip + skip
+        return self._create_iterator_impl(offset, chunk, stride, return_trajindex, cols)
 
     @property
     def ntraj(self):
@@ -174,6 +188,15 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         """
         return self._ntraj
 
+    @property
+    def skip(self):
+        """ skip the first n data points of each data set. """
+        return self._skip
+
+    @skip.setter
+    def skip(self, value):
+        self._skip = int(value)
+
     def trajectory_length(self, itraj, stride=1, skip=None):
         r"""Returns the length of trajectory of the requested index.
 
@@ -196,7 +219,8 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
         else:
-            return (self._lengths[itraj] - (0 if skip is None else skip) - 1) // int(stride) + 1
+            offset = self.skip if skip is None else self.skip + skip
+            return (self._lengths[itraj] - offset - 1) // int(stride) + 1
 
     def trajectory_lengths(self, stride=1, skip=0):
         r""" Returns the length of each trajectory.
@@ -219,7 +243,8 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
                                 for itraj in range(n)),
                                dtype=int, count=n)
         else:
-            return np.fromiter(((l - skip - 1) // stride + 1 for l in self._lengths),
+            offset = self.skip + skip
+            return np.fromiter(((l - offset - 1) // stride + 1 for l in self._lengths),
                                dtype=int, count=n)
 
     def n_frames_total(self, stride=1):
@@ -360,14 +385,25 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             chunks = self.number_of_trajectories()
         return int(chunks)
 
+    def dimension(self):
+        return self._data_source.dimension()
+
     def number_of_trajectories(self):
         return self._data_source.number_of_trajectories()
-
     def trajectory_length(self):
-        return self._data_source.trajectory_length(self._itraj, self.stride, self.skip)
+        return self._data_source.trajectory_length(self._itraj, stride=self.stride,
+                                                    skip=self.skip)
 
-    def trajectory_lengths(self):
-        return self._data_source.trajectory_lengths(self.stride, self.skip)
+    def trajectory_lengths(self, ):
+        return self._data_source.trajectory_lengths(stride=self.stride,
+                                                    skip=self.skip)
+    # def trajectory_length(self, stride=None, skip=None):
+    #     return self._data_source.trajectory_length(self.stride if stride is None else stride,
+    #                                                 self.skip if skip is None else skip)
+    #
+    # def trajectory_lengths(self, stride=None, skip=None):
+    #     return self._data_source.trajectory_lengths(self.stride if stride is None else stride,
+    #                                                 self.skip if skip is None else skip)
 
     def n_frames_total(self):
         return self._data_source.n_frames_total(self.stride)
