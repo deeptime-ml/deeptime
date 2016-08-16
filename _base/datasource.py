@@ -390,20 +390,14 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def number_of_trajectories(self):
         return self._data_source.number_of_trajectories()
+
     def trajectory_length(self):
         return self._data_source.trajectory_length(self._itraj, stride=self.stride,
                                                     skip=self.skip)
 
-    def trajectory_lengths(self, ):
+    def trajectory_lengths(self):
         return self._data_source.trajectory_lengths(stride=self.stride,
                                                     skip=self.skip)
-    # def trajectory_length(self, stride=None, skip=None):
-    #     return self._data_source.trajectory_length(self.stride if stride is None else stride,
-    #                                                 self.skip if skip is None else skip)
-    #
-    # def trajectory_lengths(self, stride=None, skip=None):
-    #     return self._data_source.trajectory_lengths(self.stride if stride is None else stride,
-    #                                                 self.skip if skip is None else skip)
 
     def n_frames_total(self):
         return self._data_source.n_frames_total(self.stride)
