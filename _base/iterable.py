@@ -104,7 +104,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         stride : int, default=1
             Take only every stride'th frame.
         lag: int, default=0
-            how many frame to omit for each file.
+            return a paired iterator, the first will start at t=0, while the second will start at t=lag.
         chunk: int, default=None
             How many frames to process at once. If not given obtain the chunk size
             from the source.
