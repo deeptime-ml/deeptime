@@ -137,9 +137,9 @@ class PyCSVIterator(DataSourceIterator):
         return result
 
     def _open_file(self):
-        # only apply _skip property at the beginning of the trajectory
-        skip = self._data_source._skip[self._itraj] + self.skip if self._t == 0 else 0
-        nt = self._data_source._skip[self._itraj] + self._data_source._lengths[self._itraj]
+        # only apply _skip_lines property at the beginning of the trajectory
+        skip = self._data_source._skip_lines[self._itraj] + self.skip if self._t == 0 else 0
+        nt = self._data_source._skip_lines[self._itraj] + self._data_source._lengths[self._itraj]
 
         # calculate an index set, which rows to skip (includes stride)
         skip_rows = np.empty(0)
@@ -241,7 +241,7 @@ class PyCSVReader(DataSource):
         # self._has_headers = [False] * n
         self._dialects = [None] * n
 
-        self._skip = np.zeros(n, dtype=int)
+        self._skip_lines = np.zeros(n, dtype=int)
         # invoke filename setter
         self.filenames = filenames
 
@@ -254,7 +254,7 @@ class PyCSVReader(DataSource):
             return arg
         return [arg] * n
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
+    def _create_iterator_impl(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         return PyCSVIterator(self, skip=skip, chunk=chunk, stride=stride,
                              return_trajindex=return_trajindex, cols=cols)
 
@@ -332,7 +332,7 @@ class PyCSVReader(DataSource):
         length -= skip
 
         self._dialects[idx] = dialect
-        self._skip[idx] = skip
+        self._skip_lines[idx] = skip
 
         return dialect, length, skip
 

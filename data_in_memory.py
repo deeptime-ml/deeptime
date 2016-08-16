@@ -47,7 +47,7 @@ class DataInMemory(DataSource):
     """
     IN_MEMORY_FILENAME = '<in_memory_file>'
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
+    def _create_iterator_impl(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         return DataInMemoryIterator(self, skip, chunk, stride, return_trajindex, cols)
 
     def __init__(self, data, chunksize=5000, **kw):
