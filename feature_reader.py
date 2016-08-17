@@ -350,7 +350,7 @@ class FeatureReaderIterator(DataSourceIterator):
             """ in case the underlying mdtraj iterator raises StopIteration (eg. seek failed),
                 we have to return an empty iterable, so that LaggedIterator will continue to process.
             """
-            if si.args and "too short" in si.args[0] and self._itraj < self._data_source.ntraj - 1:
+            if si.args and ("eof" in si.args[0] or "too short" in si.args[0]) and self._itraj < self._data_source.ntraj - 1:
                 self._next_file()
                 return ()
             else:
