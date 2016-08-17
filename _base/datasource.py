@@ -15,17 +15,16 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 from abc import ABCMeta, abstractmethod
 from math import ceil
 
 import numpy as np
 import six
-
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.coordinates.data._base.random_accessible import TrajectoryRandomAccessible
 from pyemma.util import config
 from six import string_types
-import os
 
 
 class DataSource(Iterable, TrajectoryRandomAccessible):
