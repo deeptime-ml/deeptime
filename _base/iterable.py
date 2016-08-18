@@ -96,7 +96,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         self._Y_source = DataInMemory(self._Y)
         self._mapping_to_mem_active = False
 
-    def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True, cols=None):
+    def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True, cols=None, skip=0):
         """ creates an iterator to stream over the (transformed) data.
 
         If your data is too large to fit into memory and you want to incrementally compute
@@ -117,6 +117,8 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             a chunk of data if return_trajindex is False, otherwise a tuple of (trajindex, data).
         cols: array like, default=None
             return only the given columns.
+        skip: int, default=0
+            skip 'n' first frames of each trajectory.
 
         Returns
         -------
@@ -142,14 +144,14 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         if self.in_memory:
             from pyemma.coordinates.data.data_in_memory import DataInMemory
             return DataInMemory(self._Y).iterator(
-                    lag=lag, chunk=chunk, stride=stride, return_trajindex=return_trajindex
+                    lag=lag, chunk=chunk, stride=stride, return_trajindex=return_trajindex, skip=skip
             )
         chunk = chunk if chunk is not None else self.default_chunksize
-        it = self._create_iterator(skip=0, chunk=chunk, stride=stride,
+        it = self._create_iterator(skip=skip, chunk=chunk, stride=stride,
                                    return_trajindex=return_trajindex, cols=cols)
         if lag > 0:
             it.return_traj_index = True
-            it_lagged = self._create_iterator(skip=lag, chunk=chunk, stride=stride,
+            it_lagged = self._create_iterator(skip=skip+lag, chunk=chunk, stride=stride,
                                               return_trajindex=True, cols=cols)
             return LaggedIterator(it, it_lagged, return_trajindex)
         return it
