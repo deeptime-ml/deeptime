@@ -134,7 +134,7 @@ class FeatureReader(DataSource):
 
         return TrajInfo(ndim, length, offsets)
 
-    def _create_iterator_impl(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         return FeatureReaderIterator(self, skip=skip, chunk=chunk, stride=stride,
                                      return_trajindex=return_trajindex, cols=cols)
 
@@ -350,7 +350,7 @@ class FeatureReaderIterator(DataSourceIterator):
             """ in case the underlying mdtraj iterator raises StopIteration (eg. seek failed),
                 we have to return an empty iterable, so that LaggedIterator will continue to process.
             """
-            if si.args and ("eof" in si.args[0] or "too short" in si.args[0]) and self._itraj < self._data_source.ntraj - 1:
+            if si.args and "too short" in si.args[0] and self._itraj < self._data_source.ntraj - 1:
                 self._next_file()
                 return ()
             else:
@@ -360,14 +360,14 @@ class FeatureReaderIterator(DataSourceIterator):
 
         self._t += shape[0]
 
-        if self._t >= self.trajectory_length() and self._itraj < self._data_source.ntraj - 1:
+        if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.filenames) - 1:
             self._next_file()
 
         if not self.uniform_stride:
             traj_len = self.ra_trajectory_length(self._itraj)
         else:
             traj_len = self.trajectory_length()
-        if self._t >= traj_len and self._itraj == self._data_source.ntraj - 1:
+        if self._t >= traj_len and self._itraj == len(self._data_source.filenames) - 1:
             self.close()
 
         # 3 cases:

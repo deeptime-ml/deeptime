@@ -34,11 +34,6 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         # should be set in subclass
         self._ndim = 0
 
-    def _create_iterator(self, skip=0, chunk=None, stride=1, return_trajindex=True, cols=None):
-        offset = self.skip + skip
-        return self._create_iterator_impl(skip=offset, chunk=chunk, stride=stride,
-                                          return_trajindex=return_trajindex, cols=cols)
-
     def dimension(self):
         return self._ndim
 
@@ -109,7 +104,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         stride : int, default=1
             Take only every stride'th frame.
         lag: int, default=0
-            return a paired iterator, the first will start at t=0, while the second will start at t=lag.
+            how many frame to omit for each file.
         chunk: int, default=None
             How many frames to process at once. If not given obtain the chunk size
             from the source.
@@ -322,7 +317,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         self._progress_force_finish(0)
 
     @abstractmethod
-    def _create_iterator_impl(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         """
         Should be implemented by non-abstract subclasses. Creates an instance-independent iterator.
         :param skip: How many frames to skip before streaming.

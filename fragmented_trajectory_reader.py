@@ -386,7 +386,7 @@ class FragmentedTrajectoryReader(DataSource):
             res = res[0]
         return res
 
-    def _create_iterator_impl(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         return FragmentIterator(self, skip, chunk, stride, return_trajindex, cols=cols)
 
     def describe(self):

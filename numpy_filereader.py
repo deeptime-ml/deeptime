@@ -62,7 +62,7 @@ class NumPyFileReader(DataSource):
         self.mmap_mode = mmap_mode
         self.filenames = filenames
 
-    def _create_iterator_impl(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
+    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         return NPYIterator(self, skip=skip, chunk=chunk, stride=stride, 
                            return_trajindex=return_trajindex, cols=cols)
 
