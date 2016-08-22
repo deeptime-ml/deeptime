@@ -137,8 +137,11 @@ class TrajectoryInfoCache(object):
     def instance():
         """ :returns the TrajectoryInfoCache singleton instance"""
         if TrajectoryInfoCache._instance is None:
-            # singleton pattern
-            filename = os.path.join(config.cfg_dir, "traj_info.sqlite3")
+            # if we do not have a configuration director yet, we do not want to store
+            if not config.cfg_dir:
+                filename = None
+            else:
+                filename = os.path.join(config.cfg_dir, "traj_info.sqlite3")
             TrajectoryInfoCache._instance = TrajectoryInfoCache(filename)
 
         return TrajectoryInfoCache._instance
