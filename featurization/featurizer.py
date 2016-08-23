@@ -153,9 +153,7 @@ class MDFeaturizer(Loggable):
             array with selected atom indexes
 
         """
-        if symmetry_related:
-            return self.topology.select("mass >= 2")
-        else:
+        if exclude_symmetry_related:
             exclusions = []
         
             exclusions.append("mass < 2")
@@ -172,6 +170,8 @@ class MDFeaturizer(Loggable):
             selection_string = 'not (' + exclusion_string + ')'
         
             return self.topology.select(selection_string)
+        else:
+            return self.topology.select("mass >= 2")
     
     @staticmethod
     def pairs(sel, excluded_neighbors=0):
