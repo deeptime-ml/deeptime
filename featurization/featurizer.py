@@ -137,9 +137,15 @@ class MDFeaturizer(Loggable):
         """
         return self.topology.select("backbone and (name C or name CA or name N)")
 
-    def select_Heavy(self):
+    def select_Heavy(self, exclude_symmetry_related=False):
         """
-        Returns the indexes of all heavy atoms (Mass >= 2)
+        Returns the indexes of all heavy atoms (Mass >= 2),
+        optionally excluding symmetry-related heavy atoms.
+        
+        Parameters
+        ----------
+        exclude_symmetry_related : boolean, default=False
+            if True, exclude symmetry-related heavy atoms.
 
         Returns
         -------
@@ -147,33 +153,25 @@ class MDFeaturizer(Loggable):
             array with selected atom indexes
 
         """
-        return self.topology.select("mass >= 2")
-    
-    def select_non_symmetry_related_heavy_atoms(self):
-        """
-        Returns the indexes of all non-symmetry-related heavy atoms
+        if symmetry_related:
+            return self.topology.select("mass >= 2")
+        else:
+            exclusions = []
         
-        Returns
-        -------
-        indexes : ndarray((n), dtype=int)
-          array with selected atom indexes
-        """
-        exclusions = []
+            exclusions.append("mass < 2")
+            exclusions.append("(resname == VAL and name == CG)")
+            exclusions.append("(resname == LEU and name == CD)")
+            exclusions.append("(resname == PHE and name == CD) or (resname == PHE and name == CE)")
+            exclusions.append("(resname == TYR and name == CD) or (resname == TYR and name == CE)")
+            exclusions.append("(resname == GLU and name == OD1) or (resname == GLU and name == OD2)")
+            exclusions.append("(resname == ASP and name == OG1) or (resname == ASP and name == OG2)")
+            exclusions.append("(resname == HIS and name == ND1) or (resname == HIS and name == NE2)")
+            exclusions.append("(resname == ARG and name == NH1) or (resname == ARG and name == NH2)")
+            
+            exclusion_string = ' or '.join(exclusions)
+            selection_string = 'not (' + exclusion_string + ')'
         
-        exclusions.append("(name == H)")
-        exclusions.append("(resname == VAL and name == CG)")
-        exclusions.append("(resname == LEU and name == CD)")
-        exclusions.append("(resname == PHE and name == CD) or (resname == PHE and name == CE)")
-        exclusions.append("(resname == TYR and name == CD) or (resname == TYR and name == CE)")
-        exclusions.append("(resname == GLU and name == OD1) or (resname == GLU and name == OD2)")
-        exclusions.append("(resname == ASP and name == OG1) or (resname == ASP and name == OG2)")
-        exclusions.append("(resname == HIS and name == ND1) or (resname == HIS and name == NE2)")
-        exclusions.append("(resname == ARG and name == NH1) or (resname == ARG and name == NH2)")
-        
-        exclusion_string = ' or '.join(exclusions)
-        selection_string = 'not (' + exclusion_string + ')'
-    
-        return self.topology.select(selection_string)
+            return self.topology.select(selection_string)
     
     @staticmethod
     def pairs(sel, excluded_neighbors=0):
