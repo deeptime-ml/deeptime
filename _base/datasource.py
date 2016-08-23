@@ -222,7 +222,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
             return np.fromiter(((l - skip - 1) // stride + 1 for l in self._lengths),
                                dtype=int, count=n)
 
-    def n_frames_total(self, stride=1):
+    def n_frames_total(self, stride=1, skip=0):
         r"""Returns total number of frames.
 
         Parameters
@@ -230,7 +230,8 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         stride : int
             return value is the number of frames in trajectories when
             running through them with a step size of `stride`.
-
+        skip : int, default=0
+            skip the first initial n frames per trajectory.
         Returns
         -------
         n_frames_total : int
@@ -238,10 +239,8 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         """
         if isinstance(stride, np.ndarray):
             return stride.shape[0]
-        if stride == 1:
-            return np.sum(self._lengths)
-        else:
-            return sum(self.trajectory_lengths(stride))
+
+        return sum(self.trajectory_lengths(stride=stride, skip=skip))
 
 
 class IteratorState(object):
@@ -249,7 +248,7 @@ class IteratorState(object):
     State class holding all the relevant information of an iterator's state.
     """
 
-    def __init__(self, stride=1, skip=0, chunk=0, return_trajindex=False, ntraj=0, cols=None):
+    def __init__(self, skip=0, chunk=0, return_trajindex=False, ntraj=0, cols=None):
         self.skip = skip
         self.chunk = chunk
         self.return_trajindex = return_trajindex
@@ -315,6 +314,8 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def __init_stride(self, stride):
         self.state.stride = stride
         if isinstance(stride, np.ndarray):
+            # shift frame indices by skip
+            self.state.stride[:, 1] += self.state.skip
             keys = stride[:, 0]
             if keys.max() >= self.number_of_trajectories():
                 raise ValueError("provided too large trajectory index in stride argument (given max index: %s, "
@@ -370,7 +371,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self._data_source.trajectory_lengths(self.stride, self.skip)
 
     def n_frames_total(self):
-        return self._data_source.n_frames_total(self.stride)
+        return self._data_source.n_frames_total(stride=self.stride, skip=self.skip)
 
     @abstractmethod
     def close(self):
@@ -379,7 +380,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     def reset(self):
         """
-        Method allowing to reset the iterator so that it can iterare from beginning on again.
+        Method allowing to reset the iterator so that it can iteration from beginning on again.
         """
         self._t = 0
         self._itraj = 0
@@ -465,7 +466,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             The upcoming trajectory index.
         """
         if value > self.state.ntraj:  # we never want to increase this value larger than ntraj.
-            raise StopIteration()
+            raise StopIteration("out of files bound")
         self.state.itraj = value
 
     @skip.setter

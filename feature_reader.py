@@ -82,7 +82,7 @@ class FeatureReader(DataSource):
     """
     SUPPORTED_RANDOM_ACCESS_FORMATS = (".h5", ".dcd", ".binpos", ".nc", ".xtc", ".trr")
 
-    def __init__(self, trajectories, topologyfile=None, chunksize=100, featurizer=None):
+    def __init__(self, trajectories, topologyfile=None, chunksize=1000, featurizer=None):
         assert (topologyfile is not None) or (featurizer is not None), \
             "Needs either a topology file or a featurizer for instantiation"
 
@@ -330,6 +330,13 @@ class FeatureReaderIterator(DataSourceIterator):
         if hasattr(self, '_mditer') and self._mditer is not None:
             self._mditer.close()
 
+    def _next_file(self):
+        self.close()
+
+        self._t = 0
+        self._itraj += 1
+        self._create_mditer()
+
     def _next_chunk(self):
         """
         gets the next chunk. If lag > 0, we open another iterator with same chunk
@@ -337,17 +344,24 @@ class FeatureReaderIterator(DataSourceIterator):
 
         :return: a feature mapped vector X, or (X, Y) if lag > 0
         """
-        chunk = next(self._mditer)
+        try:
+            chunk = next(self._mditer)
+        except StopIteration as si:
+            """ in case the underlying mdtraj iterator raises StopIteration (eg. seek failed),
+                we have to return an empty iterable, so that LaggedIterator will continue to process.
+            """
+            if si.args and "too short" in si.args[0] and self._itraj < self._data_source.ntraj - 1:
+                self._next_file()
+                return ()
+            else:
+                raise
+
         shape = chunk.xyz.shape
 
         self._t += shape[0]
 
         if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.filenames) - 1:
-            self.close()
-
-            self._t = 0
-            self._itraj += 1
-            self._create_mditer()
+            self._next_file()
 
         if not self.uniform_stride:
             traj_len = self.ra_trajectory_length(self._itraj)
@@ -362,14 +376,15 @@ class FeatureReaderIterator(DataSourceIterator):
         # 2. plain reshaped coordinates
         # 3. extracted features
         if self._data_source._return_traj_obj:
-            return chunk
+            res = chunk
         else:
             # map data
             if len(self._data_source.featurizer.active_features) == 0:
                 shape_2d = (shape[0], shape[1] * shape[2])
-                return chunk.xyz.reshape(shape_2d)
+                res = chunk.xyz.reshape(shape_2d)
             else:
-                return self._data_source.featurizer.transform(chunk)
+                res = self._data_source.featurizer.transform(chunk)
+        return res
 
     def _create_mditer(self):
         if not self.uniform_stride:
@@ -383,7 +398,14 @@ class FeatureReaderIterator(DataSourceIterator):
             self._mditer = self._create_patched_iter(
                     self._data_source.filenames[self._itraj], skip=self.skip, stride=self.stride
             )
+        self._closed = False
 
     def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):
         return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.topfile,
                                 skip=skip, stride=stride, atom_indices=atom_indices)
+
+    def reset(self):
+        super(FeatureReaderIterator, self).reset()
+        # re-create the underlying mditer
+        self.close()
+        self._create_mditer()

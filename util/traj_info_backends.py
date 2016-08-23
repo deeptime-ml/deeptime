@@ -205,15 +205,16 @@ class SqliteDB(AbstractDB):
 
         self._update_time_stamp(hash_value=traj_info.hash_value)
 
-        current_size = os.stat(self.filename).st_size
-        if (self.num_entries >= config.traj_info_max_entries or
-                # current_size is in bytes, while traj_info_max_size is in MB
-                1.*current_size / 1024**2 >= config.traj_info_max_size):
-            logger.info("Cleaning database because it has too much entries or is too large.\n"
-                        "Entries: %s. Size: %.2fMB. Configured max_entires: %s. Max_size: %sMB"
-                        % (self.num_entries, (current_size*1.0 / 1024**2),
-                           config.traj_info_max_entries, config.traj_info_max_size))
-            self._clean(n=self.clean_n_entries)
+        if self.filename is not None:
+            current_size = os.stat(self.filename).st_size
+            if (self.num_entries >= config.traj_info_max_entries or
+                    # current_size is in bytes, while traj_info_max_size is in MB
+                    1.*current_size / 1024**2 >= config.traj_info_max_size):
+                logger.info("Cleaning database because it has too much entries or is too large.\n"
+                            "Entries: %s. Size: %.2fMB. Configured max_entires: %s. Max_size: %sMB"
+                            % (self.num_entries, (current_size*1.0 / 1024**2),
+                               config.traj_info_max_entries, config.traj_info_max_size))
+                self._clean(n=self.clean_n_entries)
 
     def get(self, key):
         cursor = self._database.execute("SELECT * FROM traj_info WHERE hash=?", (key,))
@@ -231,12 +232,15 @@ class SqliteDB(AbstractDB):
         database has to be locked for updates and multiple processes want to write,
         each process has to wait until the lock has been released.
 
-        By default the LRU databases will be stored in a sub directory "tra_info_usage"
+        By default the LRU databases will be stored in a sub directory "traj_info_usage"
         lying next to the main database.
 
         :param key: hash of the TrajInfo instance
         :return: str, database path
         """
+        if not self.filename:
+            return None
+
         from pyemma.util.files import mkdir_p
         hash_value_long = int(key, 16)
         # bin hash to one of either 10 different databases
@@ -250,6 +254,9 @@ class SqliteDB(AbstractDB):
         """ timestamps are being stored distributed over several lru databases.
         The timestamp is a time.time() snapshot (float), which are seconds since epoch."""
         db_name = self._database_from_key(hash_value)
+        if not db_name:
+            db_name=':memory:'
+
         import sqlite3
 
         with sqlite3.connect(db_name) as conn:
