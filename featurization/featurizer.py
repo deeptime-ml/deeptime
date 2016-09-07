@@ -57,6 +57,8 @@ class MDFeaturizer(Loggable):
             self.topologyfile = topfile
         elif isinstance(topfile, mdtraj.Topology):
             self.topology = topfile
+        elif isinstance(topfile, mdtraj.Trajectory):
+            self.topology = topfile.topology
         else:
             raise ValueError("no valid topfile arg: type was %s, "
                              "but only string or mdtraj.Topology allowed." % type(topfile))
