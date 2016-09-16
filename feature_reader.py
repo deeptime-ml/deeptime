@@ -161,8 +161,9 @@ class FeatureReader(DataSource):
 
     def _assert_toptraj_consistency(self):
         r""" Check if the topology and the filenames of the reader have the same n_atoms"""
-        traj = mdtraj.load_frame(self.filenames[0], index=0, top=self.topfile)
-        desired_n_atoms = self.featurizer.topology.n_atoms
+        top = self.featurizer.topology
+        traj = mdtraj.load_frame(self.filenames[0], index=0, top=top)
+        desired_n_atoms = top.n_atoms
         assert traj.xyz.shape[1] == desired_n_atoms, "Mismatch in the number of atoms between the topology" \
                                                      " and the first trajectory file, %u vs %u" % \
                                                      (desired_n_atoms, traj.xyz.shape[1])
@@ -401,7 +402,7 @@ class FeatureReaderIterator(DataSourceIterator):
         self._closed = False
 
     def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):
-        return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.topfile,
+        return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.featurizer.topology,
                                 skip=skip, stride=stride, atom_indices=atom_indices)
 
     def reset(self):
