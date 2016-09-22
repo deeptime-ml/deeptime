@@ -351,7 +351,7 @@ class LaggedIterator(object):
         return min(n1, n2)
 
     def __len__(self):
-        return min(self._it.trajectory_lengths(), self._it_lagged.trajectory_lengths())
+        return min(self._it.trajectory_lengths().min(), self._it_lagged.trajectory_lengths().min())
 
     def __iter__(self):
         return self
