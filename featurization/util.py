@@ -76,15 +76,9 @@ else:
 
 
 def hash_top(top):
-    if not PY3:
-        return hash(top)
-    else:
-        # this is a temporary workaround for py3
-        hash_value = hash(top.n_atoms)
-        hash_value ^= hash(tuple(top.atoms))
-        hash_value ^= hash(tuple(top.residues))
-        hash_value ^= hash(tuple(top.bonds))
-        return hash_value
+    hash_value = hash(tuple(top.atoms))
+    hash_value ^= hash(tuple(top.bonds))
+    return hash_value
 
 
 def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):

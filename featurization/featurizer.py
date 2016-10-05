@@ -20,6 +20,7 @@ from __future__ import absolute_import
 import warnings
 
 from pyemma._base.logging import Loggable
+from pyemma._base.serialization.serialization import SerializableMixIn
 from pyemma.util.types import is_string
 import mdtraj
 import six
@@ -37,8 +38,13 @@ __author__ = 'Frank Noe, Martin Scherer'
 __all__ = ['MDFeaturizer']
 
 
-class MDFeaturizer(Loggable):
+class MDFeaturizer(SerializableMixIn, Loggable):
     r"""Extracts features from MD trajectories."""
+    _serialize_version = 0
+    _serialize_fields = ('use_topology_cache',
+                         'topologyfile',
+                         'active_features',
+                         )
 
     def __init__(self, topfile, use_topology_cache=True):
         """extracts features from MD trajectories.
@@ -55,7 +61,6 @@ class MDFeaturizer(Loggable):
         self.topology = None
         self.topologyfile = topfile
         self.active_features = []
-        self._dim = 0
         self._showed_warning_empty_feature_list = False
 
     @property
@@ -92,14 +97,6 @@ class MDFeaturizer(Loggable):
         else:
             self._logger.warning("tried to re-add the same feature %s"
                                  % f.__class__.__name__)
-
-    def __getstate__(self):
-        res = {'topologyfile': self.topologyfile, 'active_features': self.active_features}
-        return res
-
-    def __setstate__(self, state):
-        self.topologyfile = state['topologyfile']
-        self.active_features = state['active_features']
 
     def describe(self):
         """
