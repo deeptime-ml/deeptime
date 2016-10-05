@@ -46,7 +46,7 @@ requirements:
     - numpy x.x
     - pyyaml
     - scipy
-    - six >= 1.10
+    - six >=1.10
     - psutil >=3.1.1
     - decorator >=4.0.0
     - progress_reporter
