@@ -198,6 +198,18 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         else:
             return (self._lengths[itraj] - (0 if skip is None else skip) - 1) // int(stride) + 1
 
+    def n_chunks(self, chunksize, stride=1, skip=0):
+        """ rough estimate of how many chunks will be processed """
+        if chunksize != 0:
+            if not DataSourceIterator.is_uniform_stride(stride):
+                chunks = ceil(len(stride[:, 0]) / float(chunksize))
+            else:
+                chunks = sum((ceil(l / float(chunksize))
+                              for l in self.trajectory_lengths(stride=stride, skip=skip)))
+        else:
+            chunks = self.ntraj
+        return int(chunks)
+
     def trajectory_lengths(self, stride=1, skip=0):
         r""" Returns the length of each trajectory.
 
@@ -263,6 +275,7 @@ class IteratorState(object):
         self.trajectory_lengths = None
         self.ra_indices_for_traj_dict = {}
         self.cols = cols
+        self.current_itraj = 0
 
     def ra_indices_for_traj(self, traj):
         """
@@ -351,15 +364,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     @property
     def _n_chunks(self):
         """ rough estimate of how many chunks will be processed """
-        if self.chunksize != 0:
-            if not DataSourceIterator.is_uniform_stride(self.stride):
-                chunks = ceil(len(self.stride[:, 0]) / float(self.chunksize))
-            else:
-                chunks = sum((ceil(l / float(self.chunksize))
-                              for l in self.trajectory_lengths()))
-        else:
-            chunks = self.number_of_trajectories()
-        return int(chunks)
+        return self._data_source.n_chunks(self.chunksize, stride=self.stride, skip=self.skip)
 
     def number_of_trajectories(self):
         return self._data_source.number_of_trajectories()
