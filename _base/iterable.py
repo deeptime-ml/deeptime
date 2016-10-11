@@ -367,7 +367,7 @@ class LaggedIterator(object):
 
     def next(self):
         while (self._it.current_trajindex not in self._sufficent_long_trajectories
-               and self._it.ntraj > self._it.current_trajindex):
+               and self._it.number_of_trajectories() > self._it.current_trajindex):
             self._it.state._itraj += 1
             self._overlap = None
 
