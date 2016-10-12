@@ -27,6 +27,7 @@ import functools
 import numpy as np
 
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data.data_in_memory import DataInMemoryIterator
 from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
 from pyemma.util.annotators import fix_docs
 
@@ -108,92 +109,27 @@ class NumPyFileReader(DataSource):
         return TrajInfo(ndim, length)
 
 
-class NPYIterator(DataSourceIterator):
+class NPYIterator(DataInMemoryIterator):
 
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=False):
         super(NPYIterator, self).__init__(data_source=data_source, skip=skip,
                                           chunk=chunk, stride=stride,
                                           return_trajindex=return_trajindex,
                                           cols=cols)
-
-        self._last_itraj = -1
-
-    def reset(self):
-        DataSourceIterator.reset(self)
-        self._last_itraj = -1
+        self._select_file(0)
 
     def close(self):
-        self._close_filehandle()
-
-    def _close_filehandle(self):
-        if not hasattr(self, '_array') or self._array is None:
+        if not hasattr(self, 'data') or self.data is None:
             return
-        del self._array
-        self._array = None
+        del self.data
+        self.data = None
 
-    def _open_filehandle(self):
-        self._array = self._data_source._load_file(self._itraj)
+    def _select_file(self, itraj):
+        self.close()
+        self._t = 0
+        self._itraj = itraj
+        if itraj < self.number_of_trajectories():
+            self.data = self._data_source._load_file(itraj)
 
     def _next_chunk(self):
-        if self._itraj >= self._data_source.ntraj:
-            self.close()
-            raise StopIteration()
-
-        if self._itraj != self._last_itraj:
-            self._close_filehandle()
-            self._open_filehandle()
-
-        traj_len = len(self._array)
-        traj = self._array
-
-        # skip only if complete trajectory mode or first chunk
-        skip = self.skip if self.chunksize == 0 or self._t == 0 else 0
-
-        # if stride by dict, update traj length accordingly
-        if not self.uniform_stride:
-            traj_len = self.ra_trajectory_length(self._itraj)
-
-        # complete trajectory mode
-        if self.chunksize == 0:
-            if not self.uniform_stride:
-                X = traj[self.ra_indices_for_traj(self._itraj)]
-                self._itraj += 1
-
-                # skip the trajs that are not in the stride dict
-                while self._itraj < self.number_of_trajectories() \
-                        and (self._itraj not in self.traj_keys):
-                    self._itraj += 1
-
-            else:
-                X = traj[skip::self.stride]
-                self._itraj += 1
-
-            return X
-
-        # chunked mode
-        else:
-            if not self.uniform_stride:
-                X = traj[self.ra_indices_for_traj(self._itraj)[self._t:min(self._t + self.chunksize, traj_len)]]
-                upper_bound = min(self._t + self.chunksize, traj_len)
-            else:
-                upper_bound = min(skip + self._t + self.chunksize * self.stride, traj_len)
-                slice_x = slice(skip + self._t, upper_bound, self.stride)
-                X = traj[slice_x]
-
-            # set new time position
-            self._t = upper_bound
-
-            if self._t >= traj_len:
-                self._itraj += 1
-                self._t = 0
-
-                # if we have a dictionary, skip trajectories that are not in the key set
-                while not self.uniform_stride and self._itraj < self.number_of_trajectories() \
-                        and (self._itraj not in self.traj_keys):
-                    self._itraj += 1
-
-                # if time index scope ran out of len of current trajectory, open next file.
-                if self._itraj <= self.number_of_trajectories() - 1:
-                    self._array = self._data_source._load_file(self._itraj)
-
-            return X
+        return self._next_chunk_impl(self.data)

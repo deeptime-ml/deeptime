@@ -369,11 +369,15 @@ class LaggedIterator(object):
         return self.next()
 
     def next(self):
+        itraj_changed = False
         while (self._it._itraj not in self._sufficently_long_trajectories
                and self._it.number_of_trajectories() > self._it.current_trajindex):
-            # todo: here we need some abstract next_file method in data source iterator, as, e.g., the feature reader needs to instantiate a new patches md iterator
             self._it._itraj += 1
             self._overlap = None
+            itraj_changed = True
+        # ensure file next handle gets opened.
+        if itraj_changed:
+            self._it._select_file(self._it._itraj)
 
         if self._overlap is None:
             with attribute(self._it, 'chunksize', self._lag):
@@ -383,10 +387,11 @@ class LaggedIterator(object):
 
             itraj, data_lagged = self._it.next()
             frag = data_lagged[:min(self._it.chunksize - self._lag, len(data_lagged)), :]
-            data = np.concatenate((self._overlap[::self._actual_stride], frag[(self._actual_stride - self._lag)%self._actual_stride::self._actual_stride]), axis=0)
+            data = np.concatenate((self._overlap[::self._actual_stride],
+                                   frag[(self._actual_stride - self._lag)%self._actual_stride::self._actual_stride]), axis=0)
             data_lagged = data_lagged[::self._actual_stride]
 
-            self._overlap = data[min(self._it.chunksize - self._lag * self._actual_stride, len(data_lagged))-1:, :]
+            self._overlap = data[min(self._it.chunksize - self._lag * self._actual_stride, len(data_lagged)):, :]
 
         if self._it._last_chunk_in_traj:
             self._overlap = None
@@ -401,7 +406,6 @@ class LaggedIterator(object):
         if self._return_trajindex:
             return itraj, data, data_lagged
         return data, data_lagged
-
 
     def __enter__(self):
         self._it.__enter__()

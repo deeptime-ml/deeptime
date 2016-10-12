@@ -235,16 +235,20 @@ class DataInMemoryIterator(DataSourceIterator):
     def close(self):
         pass
 
+    def _select_file(self, itraj):
+        self._itraj = itraj
+        self._t = 0
+
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         super(DataInMemoryIterator, self).__init__(data_source, skip, chunk,
                                                    stride, return_trajindex, cols)
 
-    def _next_chunk(self):
+    def _next_chunk_impl(self, data):
         if self._itraj >= self._data_source.ntraj:
+            self.close()
             raise StopIteration()
 
-        traj_len = self._data_source._lengths[self._itraj]
-        traj = self._data_source.data[self._itraj]
+        traj_len = self._data_source.trajectory_length(self._itraj)
 
         # only apply _skip at the beginning of each trajectory
         skip = self.skip if self._t == 0 else 0
@@ -252,20 +256,20 @@ class DataInMemoryIterator(DataSourceIterator):
         # complete trajectory mode
         if self.chunksize == 0:
             if not self.uniform_stride:
-                chunk = self._data_source.data[self._itraj][self.ra_indices_for_traj(self._itraj)]
+                chunk = data[self.ra_indices_for_traj(self._itraj)]
                 self._itraj += 1
                 # skip trajs which are not included in stride
                 while self._itraj not in self.traj_keys and self._itraj < self.number_of_trajectories():
                     self._itraj += 1
                 return chunk
             else:
-                chunk = traj[skip::self.stride]
+                chunk = data[skip::self.stride]
                 self._itraj += 1
                 return chunk
         # chunked mode
         else:
             if not self.uniform_stride:
-                random_access_chunk = self._data_source.data[self._itraj][
+                random_access_chunk = data[
                     self.ra_indices_for_traj(self._itraj)[self._t:min(
                             self._t + self.chunksize, self.ra_trajectory_length(self._itraj)
                     )]
@@ -273,23 +277,28 @@ class DataInMemoryIterator(DataSourceIterator):
                 self._t += self.chunksize
                 if self._t >= self.ra_trajectory_length(self._itraj):
                     self._itraj += 1
-                    self._t = 0
+                    self._select_file(self._itraj)
 
                 # skip trajs which are not included in stride
                 while (self._itraj not in self.traj_keys or self._t >= self.ra_trajectory_length(self._itraj)) \
                         and self._itraj < self.number_of_trajectories():
                     self._itraj += 1
-                    self._t = 0
+                    self._select_file(self._itraj)
                 return random_access_chunk
             else:
                 upper_bound = min(skip + self._t + self.chunksize * self.stride, traj_len)
                 slice_x = slice(skip + self._t, upper_bound, self.stride)
-                chunk = traj[slice_x]
+                chunk = data[slice_x]
 
                 self._t = upper_bound
 
                 if upper_bound >= traj_len:
                     self._itraj += 1
-                    self._t = 0
+                    self._select_file(self._itraj)
 
                 return chunk
+
+    def _next_chunk(self):
+        if self._itraj >= self.number_of_trajectories():
+            raise StopIteration()
+        return self._next_chunk_impl(self._data_source.data[self._itraj])

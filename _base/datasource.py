@@ -391,12 +391,22 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         """ closes the reader"""
         pass
 
+    @abstractmethod
+    def _select_file(self, itraj):
+        """ opens the next file defined by itraj.
+
+        Parameters
+        ----------
+        itraj : int
+            index of trajectory to open.
+        """
+        pass
+
     def reset(self):
         """
         Method allowing to reset the iterator so that it can iteration from beginning on again.
         """
-        self._t = 0
-        self._itraj = 0
+        self._select_file(0)
 
     @property
     def pos(self):
@@ -631,6 +641,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             while (self._itraj not in self.traj_keys or self._t >= self.ra_trajectory_length(self._itraj)) \
                     and self._itraj < self.number_of_trajectories():
                 self._itraj += 1
+            self._select_file(self._itraj)
         # we have to obtain the current index before invoking next_chunk (which increments itraj)
         self.state.current_itraj = self._itraj
         self.state.pos = self.state.pos_adv

@@ -56,11 +56,6 @@ class PyCSVIterator(DataSourceIterator):
         if self._file_handle is not None:
             self._file_handle.close()
 
-    def reset(self):
-        super(PyCSVIterator, self).reset()
-        self._itraj = -1
-        self._next_traj()
-
     def _next_chunk(self):
         if not self._file_handle or self._itraj >= self.number_of_trajectories():
             self.close()
@@ -83,10 +78,12 @@ class PyCSVIterator(DataSourceIterator):
                 result = self._convert_to_np_chunk(lines)
                 del lines[:]  # free some space
                 if self._t >= traj_len:
-                    self._next_traj()
+                    self._itraj += 1
+                    self._select_file(self._itraj)
                 return result
 
-        self._next_traj()
+        self._itraj += 1
+        self._select_file(self._itraj)
         # last chunk
         if len(lines) > 0:
             result = self._convert_to_np_chunk(lines)
@@ -94,8 +91,8 @@ class PyCSVIterator(DataSourceIterator):
 
         self.close()
 
-    def _next_traj(self):
-        self._itraj += 1
+    def _select_file(self, itraj):
+        self._itraj = itraj
         while not self.uniform_stride and self._itraj not in self.traj_keys \
                 and self._itraj < self.number_of_trajectories():
             self._itraj += 1
