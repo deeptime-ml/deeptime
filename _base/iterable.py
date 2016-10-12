@@ -143,14 +143,13 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                     lag=lag, chunk=chunk, stride=stride, return_trajindex=return_trajindex, skip=skip
             )
         chunk = chunk if chunk is not None else self.default_chunksize
-        it = self._create_iterator(skip=skip, chunk=chunk, stride=1,
-                                   return_trajindex=return_trajindex, cols=cols)
         if lag > 0:
+            it = self._create_iterator(skip=skip, chunk=chunk, stride=1,
+                                       return_trajindex=return_trajindex, cols=cols)
             it.return_traj_index = True
-            #it_lagged = self._create_iterator(skip=skip+lag, chunk=chunk, stride=stride,
-            #                                  return_trajindex=True, cols=cols)
             return LaggedIterator(it, lag, return_trajindex, stride)
-        return it
+        return self._create_iterator(skip=skip, chunk=chunk, stride=stride,
+                                     return_trajindex=return_trajindex, cols=cols)
 
     def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=None):
         """Maps all input data of this transformer and returns it as an array or list of arrays
@@ -347,9 +346,9 @@ class LaggedIterator(object):
         self._return_trajindex = return_trajindex
         self._overlap = None
         self._actual_stride = actual_stride
-        self._sufficent_long_trajectories = [i for i, x in
-                                             enumerate(self._it._data_source.trajectory_lengths(1, 0))
-                                             if x > lag]
+        self._sufficently_long_trajectories = [i for i, x in
+                                               enumerate(self._it._data_source.trajectory_lengths(1, 0))
+                                               if x > lag]
 
     @property
     def _n_chunks(self):
@@ -370,8 +369,9 @@ class LaggedIterator(object):
         return self.next()
 
     def next(self):
-        while (self._it.current_trajindex not in self._sufficent_long_trajectories
+        while (self._it._itraj not in self._sufficently_long_trajectories
                and self._it.number_of_trajectories() > self._it.current_trajindex):
+            # todo: here we need some abstract next_file method in data source iterator, as, e.g., the feature reader needs to instantiate a new patches md iterator
             self._it._itraj += 1
             self._overlap = None
 
