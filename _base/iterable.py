@@ -21,6 +21,7 @@ import numpy as np
 
 from pyemma._base.logging import Loggable
 from pyemma._base.progress import ProgressReporter
+from pyemma.util.contexts import attribute
 
 
 class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
@@ -345,19 +346,21 @@ class LaggedIterator(object):
         assert isinstance(lag, int)
         self._return_trajindex = return_trajindex
         self._overlap = None
-        self._sufficent_long_trajectories = [i for i, x in
-                                             enumerate(self._it.trajectory_lengths()) if x > lag]
         self._actual_stride = actual_stride
+        self._sufficent_long_trajectories = [i for i, x in
+                                             enumerate(self._it._data_source.trajectory_lengths(1, 0))
+                                             if x > lag]
 
     @property
     def _n_chunks(self):
-        n1 = self._it._n_chunks
-        n2 = self._it._data_source.n_chunks(self._it.chunksize, stride=self._it.stride, skip=self._lag)
+        cs = self._it.chunksize
+        n1 = self._it._data_source.n_chunks(cs, stride=self._actual_stride, skip=self._lag)
+        n2 = self._it._data_source.n_chunks(cs, stride=self._actual_stride, skip=0)
         return min(n1, n2)
 
     def __len__(self):
-        n1 = self._it.trajectory_lengths().min()
-        n2 = self._it._data_source.trajectory_lengths(self._it._itraj, self._it.stride, self._lag).min()
+        n1 = self._it._data_source.trajectory_lengths(self._actual_stride, 0).min()
+        n2 = self._it._data_source.trajectory_lengths(self._actual_stride, self._lag).min()
         return min(n1, n2)
 
     def __iter__(self):
@@ -373,21 +376,17 @@ class LaggedIterator(object):
             self._overlap = None
 
         if self._overlap is None:
-            orig_cs = self._it.chunksize
-            self._it.chunksize = self._lag
-            _, self._overlap = self._it.next()
-            self._it.chunksize = orig_cs
+            with attribute(self._it, 'chunksize', self._lag):
+                _, self._overlap = self._it.next()
 
-        self._it.chunksize = self._it.chunksize * self._actual_stride
+        with attribute(self._it, 'chunksize', self._it.chunksize * self._actual_stride):
 
-        itraj, data_lagged = self._it.next()
-        frag = data_lagged[:min(self._it.chunksize - self._lag, len(data_lagged)), :]
-        data = np.concatenate((self._overlap[::self._actual_stride], frag[(self._actual_stride - self._lag)%self._actual_stride::self._actual_stride]), axis=0)
-        data_lagged = data_lagged[::self._actual_stride]
+            itraj, data_lagged = self._it.next()
+            frag = data_lagged[:min(self._it.chunksize - self._lag, len(data_lagged)), :]
+            data = np.concatenate((self._overlap[::self._actual_stride], frag[(self._actual_stride - self._lag)%self._actual_stride::self._actual_stride]), axis=0)
+            data_lagged = data_lagged[::self._actual_stride]
 
-        self._overlap = data[min(self._it.chunksize - self._lag * self._actual_stride, len(data_lagged)):, :]
-
-        self._it.chunksize = self._it.chunksize // self._actual_stride
+            self._overlap = data[min(self._it.chunksize - self._lag * self._actual_stride, len(data_lagged))-1:, :]
 
         if self._it._last_chunk_in_traj:
             self._overlap = None

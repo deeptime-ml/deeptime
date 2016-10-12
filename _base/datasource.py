@@ -262,7 +262,7 @@ class IteratorState(object):
 
     def __init__(self, skip=0, chunk=0, return_trajindex=False, ntraj=0, cols=None):
         self.skip = skip
-        self.chunk = chunk
+        self._chunk = chunk
         self.return_trajindex = return_trajindex
         self.itraj = 0
         self.ntraj = ntraj
@@ -276,6 +276,14 @@ class IteratorState(object):
         self.ra_indices_for_traj_dict = {}
         self.cols = cols
         self.current_itraj = 0
+
+    @property
+    def chunk(self):
+        return self._chunk
+
+    @chunk.setter
+    def chunk(self, value):
+        self._chunk = value
 
     def ra_indices_for_traj(self, traj):
         """
