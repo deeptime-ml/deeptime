@@ -286,6 +286,12 @@ class FragmentIterator(DataSourceIterator):
         else:
             self._it = None
 
+    @DataSourceIterator.chunksize.setter
+    def chunksize(self, value):
+        self.state.chunk = value
+        if self._it is not None:
+            self._it._chunksize = value
+
     def reset(self):
         self._select_file(0)
 

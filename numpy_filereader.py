@@ -116,20 +116,24 @@ class NPYIterator(DataInMemoryIterator):
                                           chunk=chunk, stride=stride,
                                           return_trajindex=return_trajindex,
                                           cols=cols)
-        self._select_file(0)
 
     def close(self):
         if not hasattr(self, 'data') or self.data is None:
             return
+        # delete the memmap to close it.
+        # https://docs.scipy.org/doc/numpy-1.10.1/reference/generated/numpy.memmap.html
         del self.data
         self.data = None
 
     def _select_file(self, itraj):
-        self.close()
-        self._t = 0
-        self._itraj = itraj
-        if itraj < self.number_of_trajectories():
-            self.data = self._data_source._load_file(itraj)
+        if self._selected_itraj != itraj:
+            self._first_file_opened = True
+            self.close()
+            self._t = 0
+            self._itraj = itraj
+            self._selected_itraj = self._itraj
+            if itraj < self.number_of_trajectories():
+                self.data = self._data_source._load_file(itraj)
 
     def _next_chunk(self):
         return self._next_chunk_impl(self.data)
