@@ -78,9 +78,7 @@ class _FragmentedTrajectoryIterator(object):
                 self._reader_overlap = skip
                 if self.ra_indices is not None:
                     self._fragment_indices = self.__get_ra_index_indices()
-                    self._reader_it = self._readers[self._reader_at].iterator(
-                        self.__get_ifrag_ra_indices(self._fragment_indices, 0), return_trajindex=False
-                    )
+                    self._reader_it = self._select_next_ra_iterator()
                 else:
                     self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
             if self.ra_indices is None:
@@ -116,10 +114,7 @@ class _FragmentedTrajectoryIterator(object):
                             raise StopIteration()
                         self._reader_it.close()
                         if self.ra_indices is not None:
-                            self._reader_it = self._readers[self._reader_at].iterator(
-                                self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at),
-                                return_trajindex=False
-                            )
+                            self._reader_it = self._select_next_ra_iterator()
                         else:
                             self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
                             self._reader_it.skip = skip
@@ -131,6 +126,13 @@ class _FragmentedTrajectoryIterator(object):
                             self._reader_it.chunksize = expected_length - read
                 self._t += read
                 return X
+
+    def _select_next_ra_iterator(self):
+        ra_indices = self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at)
+        while len(ra_indices) == 0:
+            self._reader_at += 1
+            ra_indices = self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at)
+        return self._readers[self._reader_at].iterator(ra_indices, return_trajindex=False)
 
     def __get_reader_trajlen(self):
         if self.ra_indices is not None:
