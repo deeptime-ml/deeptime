@@ -304,8 +304,8 @@ class FeatureReaderIterator(DataSourceIterator):
                 return_trajindex=return_trajindex,
                 cols=cols
         )
-        #self._cols = cols
-        self._create_mditer()
+        self._selected_itraj = -1
+        self._select_file(0)
 
     @property
     def chunksize(self):
@@ -332,11 +332,12 @@ class FeatureReaderIterator(DataSourceIterator):
             self._mditer.close()
 
     def _select_file(self, itraj):
-        self.close()
-
-        self._t = 0
-        self._itraj = itraj
-        self._create_mditer()
+        if itraj != self._selected_itraj:
+            self.close()
+            self._t = 0
+            self._itraj = itraj
+            self._selected_itraj = itraj
+            self._create_mditer()
 
     def _next_chunk(self):
         """

@@ -147,14 +147,14 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             it = self._create_iterator(skip=skip, chunk=chunk, stride=1,
                                        return_trajindex=return_trajindex, cols=cols)
             it.return_traj_index = True
-            return LaggedIterator(it, lag, return_trajindex, stride)
+            return _LaggedIterator(it, lag, return_trajindex, stride)
         elif lag > 0:
             it = self._create_iterator(skip=skip, chunk=chunk, stride=stride,
                                        return_trajindex=return_trajindex, cols=cols)
             it.return_traj_index = True
             it_lagged = self._create_iterator(skip=skip + lag, chunk=chunk, stride=stride,
                                               return_trajindex=True, cols=cols)
-            return LegacyLaggedIterator(it, it_lagged, return_trajindex)
+            return _LegacyLaggedIterator(it, it_lagged, return_trajindex)
         return self._create_iterator(skip=skip, chunk=chunk, stride=stride,
                                      return_trajindex=return_trajindex, cols=cols)
 
@@ -345,7 +345,22 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         return self.iterator()
 
 
-class LaggedIterator(object):
+class _LaggedIterator(object):
+    """ _LaggedIterator
+
+    avoids double IO, by switching the chunksize on the given Iterable instance and
+    remember an overlap.
+
+    Parameters
+    ----------
+    it: instance of Iterable (stride=1)
+    lag : int
+        lag time
+    actual_stride: int
+        stride
+    return_trajindex: bool
+        whether to return the current trajectory index during iteration (itraj).
+    """
     def __init__(self, it, lag, return_trajindex, actual_stride):
         self._it = it
         self._lag = lag
@@ -424,9 +439,9 @@ class LaggedIterator(object):
         self._it.__exit__(exc_type, exc_val, exc_tb)
 
 
-class LegacyLaggedIterator(object):
-    """
-    uses two iterators to build time-lagged chunks.
+class _LegacyLaggedIterator(object):
+    """ _LegacyLaggedIterator uses two iterators to build time-lagged chunks.
+
     Parameters
     ----------
     it: Iterable, skip=0
