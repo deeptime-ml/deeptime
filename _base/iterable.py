@@ -21,6 +21,7 @@ import numpy as np
 
 from pyemma._base.logging import Loggable
 from pyemma._base.progress import ProgressReporter
+from pyemma.util.contexts import attribute
 
 
 class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
@@ -139,17 +140,23 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         if self.in_memory:
             from pyemma.coordinates.data.data_in_memory import DataInMemory
             return DataInMemory(self._Y).iterator(
-                    lag=lag, chunk=chunk, stride=stride, return_trajindex=return_trajindex, skip=skip
+                lag=lag, chunk=chunk, stride=stride, return_trajindex=return_trajindex, skip=skip
             )
         chunk = chunk if chunk is not None else self.default_chunksize
-        it = self._create_iterator(skip=skip, chunk=chunk, stride=stride,
-                                   return_trajindex=return_trajindex, cols=cols)
-        if lag > 0:
+        if 0 < lag <= chunk:
+            it = self._create_iterator(skip=skip, chunk=chunk, stride=1,
+                                       return_trajindex=return_trajindex, cols=cols)
             it.return_traj_index = True
-            it_lagged = self._create_iterator(skip=skip+lag, chunk=chunk, stride=stride,
+            return _LaggedIterator(it, lag, return_trajindex, stride)
+        elif lag > 0:
+            it = self._create_iterator(skip=skip, chunk=chunk, stride=stride,
+                                       return_trajindex=return_trajindex, cols=cols)
+            it.return_traj_index = True
+            it_lagged = self._create_iterator(skip=skip + lag, chunk=chunk, stride=stride,
                                               return_trajindex=True, cols=cols)
-            return LaggedIterator(it, it_lagged, return_trajindex)
-        return it
+            return _LegacyLaggedIterator(it, it_lagged, return_trajindex)
+        return self._create_iterator(skip=skip, chunk=chunk, stride=stride,
+                                     return_trajindex=return_trajindex, cols=cols)
 
     def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=None):
         """Maps all input data of this transformer and returns it as an array or list of arrays
@@ -276,7 +283,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             filenames = []
             for f in self.filenames:
                 base, _ = os.path.splitext(f)
-                filenames.append(base+extension)
+                filenames.append(base + extension)
         elif isinstance(filename, six.string_types):
             filename = filename.replace('{stride}', str(stride))
             filenames = [filename.replace('{itraj}', str(itraj)) for itraj
@@ -338,7 +345,110 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         return self.iterator()
 
 
-class LaggedIterator(object):
+class _LaggedIterator(object):
+    """ _LaggedIterator
+
+    avoids double IO, by switching the chunksize on the given Iterable instance and
+    remember an overlap.
+
+    Parameters
+    ----------
+    it: instance of Iterable (stride=1)
+    lag : int
+        lag time
+    actual_stride: int
+        stride
+    return_trajindex: bool
+        whether to return the current trajectory index during iteration (itraj).
+    """
+    def __init__(self, it, lag, return_trajindex, actual_stride):
+        self._it = it
+        self._lag = lag
+        assert isinstance(lag, int)
+        self._return_trajindex = return_trajindex
+        self._overlap = None
+        self._actual_stride = actual_stride
+        self._sufficently_long_trajectories = [i for i, x in
+                                               enumerate(self._it._data_source.trajectory_lengths(1, 0))
+                                               if x > lag]
+
+    @property
+    def _n_chunks(self):
+        cs = self._it.chunksize
+        n1 = self._it._data_source.n_chunks(cs, stride=self._actual_stride, skip=self._lag)
+        n2 = self._it._data_source.n_chunks(cs, stride=self._actual_stride, skip=0)
+        return min(n1, n2)
+
+    def __len__(self):
+        n1 = self._it._data_source.trajectory_lengths(self._actual_stride, 0).min()
+        n2 = self._it._data_source.trajectory_lengths(self._actual_stride, self._lag).min()
+        return min(n1, n2)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def next(self):
+        itraj_changed = False
+        while (self._it._itraj not in self._sufficently_long_trajectories
+               and self._it.number_of_trajectories() > self._it.current_trajindex):
+            self._it._itraj += 1
+            self._overlap = None
+            itraj_changed = True
+        # ensure file next handle gets opened.
+        if itraj_changed:
+            self._it._select_file(self._it._itraj)
+
+        if self._overlap is None:
+            with attribute(self._it, 'chunksize', self._lag):
+                _, self._overlap = self._it.next()
+                self._overlap = self._overlap[::self._actual_stride]
+
+        with attribute(self._it, 'chunksize', self._it.chunksize * self._actual_stride):
+
+            itraj, data_lagged = self._it.next()
+            frag = data_lagged[:min(self._it.chunksize - self._lag, len(data_lagged)), :]
+            data = np.concatenate((self._overlap, frag[(self._actual_stride - self._lag)
+                                                       % self._actual_stride::self._actual_stride]), axis=0)
+
+            offset = min(self._it.chunksize - self._lag, len(data_lagged))
+            self._overlap = data_lagged[offset::self._actual_stride, :]
+
+            data_lagged = data_lagged[::self._actual_stride]
+
+        if self._it._last_chunk_in_traj:
+            self._overlap = None
+
+        if data.shape[0] > data_lagged.shape[0]:
+            # data chunk is bigger, truncate it to match data_lagged's shape
+            data = data[:data_lagged.shape[0]]
+        elif data.shape[0] < data_lagged.shape[0]:
+            raise RuntimeError("chunk was smaller than time-lagged chunk (%s < %s), that should not happen!"
+                               % (data.shape[0], data_lagged.shape[0]))
+
+        if self._return_trajindex:
+            return itraj, data, data_lagged
+        return data, data_lagged
+
+    def __enter__(self):
+        self._it.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._it.__exit__(exc_type, exc_val, exc_tb)
+
+
+class _LegacyLaggedIterator(object):
+    """ _LegacyLaggedIterator uses two iterators to build time-lagged chunks.
+
+    Parameters
+    ----------
+    it: Iterable, skip=0
+    it_lagged: Iterable, skip=lag
+    return_trajindex: bool
+        whether to return the current trajectory index during iteration (itraj).
+    """
     def __init__(self, it, it_lagged, return_trajindex):
         self._it = it
         self._it_lagged = it_lagged

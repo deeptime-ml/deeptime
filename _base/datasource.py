@@ -198,6 +198,18 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         else:
             return (self._lengths[itraj] - (0 if skip is None else skip) - 1) // int(stride) + 1
 
+    def n_chunks(self, chunksize, stride=1, skip=0):
+        """ rough estimate of how many chunks will be processed """
+        if chunksize != 0:
+            if not DataSourceIterator.is_uniform_stride(stride):
+                chunks = ceil(len(stride[:, 0]) / float(chunksize))
+            else:
+                chunks = sum((ceil(l / float(chunksize))
+                              for l in self.trajectory_lengths(stride=stride, skip=skip)))
+        else:
+            chunks = self.ntraj
+        return int(chunks)
+
     def trajectory_lengths(self, stride=1, skip=0):
         r""" Returns the length of each trajectory.
 
@@ -250,7 +262,7 @@ class IteratorState(object):
 
     def __init__(self, skip=0, chunk=0, return_trajindex=False, ntraj=0, cols=None):
         self.skip = skip
-        self.chunk = chunk
+        self._chunk = chunk
         self.return_trajindex = return_trajindex
         self.itraj = 0
         self.ntraj = ntraj
@@ -263,6 +275,15 @@ class IteratorState(object):
         self.trajectory_lengths = None
         self.ra_indices_for_traj_dict = {}
         self.cols = cols
+        self.current_itraj = 0
+
+    @property
+    def chunk(self):
+        return self._chunk
+
+    @chunk.setter
+    def chunk(self, value):
+        self._chunk = value
 
     def ra_indices_for_traj(self, traj):
         """
@@ -351,15 +372,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     @property
     def _n_chunks(self):
         """ rough estimate of how many chunks will be processed """
-        if self.chunksize != 0:
-            if not DataSourceIterator.is_uniform_stride(self.stride):
-                chunks = ceil(len(self.stride[:, 0]) / float(self.chunksize))
-            else:
-                chunks = sum((ceil(l / float(self.chunksize))
-                              for l in self.trajectory_lengths()))
-        else:
-            chunks = self.number_of_trajectories()
-        return int(chunks)
+        return self._data_source.n_chunks(self.chunksize, stride=self.stride, skip=self.skip)
 
     def number_of_trajectories(self):
         return self._data_source.number_of_trajectories()
@@ -378,12 +391,22 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         """ closes the reader"""
         pass
 
+    @abstractmethod
+    def _select_file(self, itraj):
+        """ opens the next file defined by itraj.
+
+        Parameters
+        ----------
+        itraj : int
+            index of trajectory to open.
+        """
+        pass
+
     def reset(self):
         """
         Method allowing to reset the iterator so that it can iteration from beginning on again.
         """
-        self._t = 0
-        self._itraj = 0
+        self._select_file(0)
 
     @property
     def pos(self):
@@ -618,6 +641,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             while (self._itraj not in self.traj_keys or self._t >= self.ra_trajectory_length(self._itraj)) \
                     and self._itraj < self.number_of_trajectories():
                 self._itraj += 1
+            self._select_file(self._itraj)
         # we have to obtain the current index before invoking next_chunk (which increments itraj)
         self.state.current_itraj = self._itraj
         self.state.pos = self.state.pos_adv
