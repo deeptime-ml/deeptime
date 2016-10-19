@@ -671,6 +671,14 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
                 (not self.return_traj_index and len(X) == 0) or (self.return_traj_index and len(X[1]) == 0)
         ):
             X = self._it_next()
+        if config.coordinates_check_output:
+            array = X if not self.return_traj_index else X[1]
+            if not np.all(np.isfinite(array)):
+                # determine position
+                start = self.pos
+                msg = "Found invalid values in chunk in trajectory index {itraj} at chunk [{start}, {stop}]" \
+                    .format(itraj=self.current_trajindex, start=start, stop=start+len(array))
+                raise InvalidDataInStreamException(msg)
         return X
 
     def __iter__(self):
@@ -683,3 +691,6 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         self.close()
         return False
 
+
+class InvalidDataInStreamException(Exception):
+    """Data stream contained NaN or (+/-) infinity"""
