@@ -14,17 +14,18 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import six
 '''
 Created on 15.02.2016
 
 @author: marscher
 '''
+import numpy as np
+import mdtraj
+import six
+from itertools import count
 from pyemma.coordinates.data.featurization.util import (_catch_unhashable,
                                                         _describe_atom,
                                                         hash_top, _hash_numpy_array)
-import numpy as np
-import mdtraj
 from pyemma.coordinates.data.featurization._base import Feature
 
 
@@ -72,17 +73,37 @@ class CustomFeature(Feature):
     >>> data = reader.get_output()
 
     """
+    _id = count(0)
 
     def __init__(self, func=None, *args, **kwargs):
         self._func = func
         self._args = args
         self._kwargs = kwargs
         self._dim = kwargs.pop('dim', 0)
+        desc = kwargs.pop('description', [])
+        if isinstance(desc, six.string_types):
+            desc = [desc]
+        self.id = next(CustomFeature._id)
+        if not desc:
+            desc = ["CustomFeature[{id}][0] calling {func} with args {pos_args}, {kwargs}%".format(
+                id=self.id,
+                func=self._func,
+                pos_args=self._args,
+                kwargs=self._kwargs)]
+            if self.dimension > 1:
+                desc.extend(('CustomFeature[{id}][{i}]'.format(id=self.id, i=i) for i in range(1, self.dimension)))
+        elif desc and not (len(desc) == self._dim or len(desc) == 1):
+            raise ValueError("to avoid confusion, ensure the lengths of 'description' "
+                             "list matches dimension - or give a single element which will be repeated."
+                             "Input was {}".format(desc))
+
+        if len(desc) == 1:
+            desc *= self.dimension
+
+        self._desc = desc
 
     def describe(self):
-        return ["CustomFeature calling %s with args %s" % (str(self._func),
-                                                           str(self._args) + 
-                                                           str(self._kwargs))]
+        return self._desc
 
     def transform(self, traj):
         feature = self._func(traj, *self._args, **self._kwargs)
