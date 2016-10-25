@@ -85,11 +85,11 @@ class CustomFeature(Feature):
             desc = [desc]
         self.id = next(CustomFeature._id)
         if not desc:
-            desc = ["CustomFeature[{id}][0] calling {func} with args {pos_args}, {kwargs}%".format(
+            arg_str = "{args}, {kw}" if self._kwargs else "{args}"
+            desc = ["CustomFeature[{id}][0] calling {func} with args {arg_str}".format(
                 id=self.id,
                 func=self._func,
-                pos_args=self._args,
-                kwargs=self._kwargs)]
+                arg_str=arg_str, args=self._args, kw=self._kwargs)]
             if self.dimension > 1:
                 desc.extend(('CustomFeature[{id}][{i}]'.format(id=self.id, i=i) for i in range(1, self.dimension)))
         elif desc and not (len(desc) == self._dim or len(desc) == 1):
