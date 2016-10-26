@@ -211,7 +211,7 @@ class _FragmentedTrajectoryIterator(object):
 
     def __get_ifrag_ra_indices(self, fragment_indices, ifrag):
         offset = self._cumulative_lengths[ifrag - 1] if ifrag > 0 else 0
-        ra = self.ra_indices[fragment_indices[ifrag]] - offset
+        ra = self.ra_indices[fragment_indices[ifrag-1]] - offset
         indices = np.zeros((len(ra), 2), dtype=int)
         indices[:, 1] = ra.squeeze()
         return indices
@@ -328,13 +328,13 @@ class FragmentedTrajectoryReader(DataSource):
     Parameters
     ----------
     trajectories: nested list or nested tuple, 1 level depth
-    
+
     topologyfile, str, default None
-    
+
     chunksize: int, default 1000
-    
+
     featurizer: MDFeaturizer, default None
-    
+
     """
 
     def __init__(self, trajectories, topologyfile=None, chunksize=1000, featurizer=None):
