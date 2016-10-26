@@ -110,7 +110,7 @@ class _FragmentedTrajectoryIterator(object):
                     if read < expected_length or expected_length == 0:
                         self._reader_at += 1
                         self._reader_t = 0
-                        if self._reader_at >= len(self._readers)-1:
+                        if self._reader_at >= len(self._readers):
                             print("stop because out of b")
                             raise StopIteration()
                         self._reader_it.close()
