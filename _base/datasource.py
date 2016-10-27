@@ -24,6 +24,7 @@ import six
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.coordinates.data._base.random_accessible import TrajectoryRandomAccessible
 from pyemma.util import config
+from pyemma.util.annotators import deprecated
 from six import string_types
 import os
 
@@ -385,9 +386,14 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self.state.is_stride_sorted()
 
     @property
-    def _n_chunks(self):
+    def n_chunks(self):
         """ rough estimate of how many chunks will be processed """
         return self._data_source.n_chunks(self.chunksize, stride=self.stride, skip=self.skip)
+
+    @property
+    @deprecated("use n_chunks")
+    def _n_chunks(self):
+        return self.n_chunks
 
     def number_of_trajectories(self):
         return self._data_source.number_of_trajectories()
