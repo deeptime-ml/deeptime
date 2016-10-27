@@ -57,16 +57,6 @@ class _FragmentedTrajectoryIterator(object):
     def __iter__(self):
         return self
 
-    def _allocate_chunk(self, expected_length, ndim):
-        if (hasattr(self._reader_it._data_source, '_return_traj_obj') and
-                self._reader_it._data_source._return_traj_obj):
-            X = preallocate_empty_trajectory(n_frames=expected_length,
-                                             top=self._reader_it._data_source.featurizer.topology)
-        else:
-            X = np.empty((expected_length, ndim), dtype=self._frag_reader.output_type())
-
-        return X
-
     def __next__(self):
         skip = self._skip if self._t == 0 else 0
         if self._chunksize == 0:
@@ -110,7 +100,7 @@ class _FragmentedTrajectoryIterator(object):
                     if read < expected_length or expected_length == 0:
                         self._reader_at += 1
                         self._reader_t = 0
-                        if len(self._readers) <= self._reader_at:
+                        if self._reader_at >= len(self._readers):
                             raise StopIteration()
                         self._reader_it.close()
                         if self.ra_indices is not None:
@@ -128,10 +118,14 @@ class _FragmentedTrajectoryIterator(object):
                 return X
 
     def _select_next_ra_iterator(self):
+        assert self._reader_at < len(self._readers)
         ra_indices = self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at)
         while len(ra_indices) == 0:
             self._reader_at += 1
-            ra_indices = self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at)
+            if self._reader_at < len(self._readers):
+                ra_indices = self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at)
+            else:
+                raise RuntimeError("This should not happen as the loop is supposed to be terminated in __next__.")
         return self._readers[self._reader_at].iterator(ra_indices, return_trajindex=False)
 
     def __get_reader_trajlen(self):
@@ -210,8 +204,10 @@ class _FragmentedTrajectoryIterator(object):
             return X
 
     def __get_ifrag_ra_indices(self, fragment_indices, ifrag):
+        assert ifrag < len(self._readers)
         offset = self._cumulative_lengths[ifrag - 1] if ifrag > 0 else 0
-        ra = self.ra_indices[fragment_indices[ifrag]] - offset
+        frag_inds = fragment_indices[ifrag]
+        ra = self.ra_indices[frag_inds] - offset
         indices = np.zeros((len(ra), 2), dtype=int)
         indices[:, 1] = ra.squeeze()
         return indices
@@ -328,13 +324,13 @@ class FragmentedTrajectoryReader(DataSource):
     Parameters
     ----------
     trajectories: nested list or nested tuple, 1 level depth
-    
+
     topologyfile, str, default None
-    
+
     chunksize: int, default 1000
-    
+
     featurizer: MDFeaturizer, default None
-    
+
     """
 
     def __init__(self, trajectories, topologyfile=None, chunksize=1000, featurizer=None):

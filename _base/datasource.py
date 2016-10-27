@@ -24,6 +24,7 @@ import six
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.coordinates.data._base.random_accessible import TrajectoryRandomAccessible
 from pyemma.util import config
+from pyemma.util.annotators import deprecated
 from six import string_types
 import os
 
@@ -135,7 +136,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
 
                 raise ValueError("Input data has different dimensions ({dims})!"
                                  " Files grouped by dimensions: {groups}".format(dims=res.keys(),
-                                                                                  groups=res))
+                                                                                 groups=res))
 
             self._ndim = ndims[0]
             self._lengths = lengths
@@ -165,14 +166,22 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         """
         return self
 
-    def number_of_trajectories(self):
+    def number_of_trajectories(self, stride=None):
         r""" Returns the number of trajectories.
+
+        Parameters
+        ----------
+        stride: None (default) or np.ndarray
 
         Returns
         -------
             int : number of trajectories
         """
-        return self._ntraj
+        if not IteratorState.is_uniform_stride(stride):
+            n = len(np.unique(stride[:, 0]))
+        else:
+            n = self._ntraj
+        return n
 
     def trajectory_length(self, itraj, stride=1, skip=None):
         r"""Returns the length of trajectory of the requested index.
@@ -184,6 +193,8 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         stride : int
             return value is the number of frames in the trajectory when
             running through it with a step size of `stride`.
+        skip: int or None
+            skip n frames.
 
         Returns
         -------
@@ -192,23 +203,27 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         if itraj >= self._ntraj:
             raise IndexError("given index (%s) exceeds number of data sets (%s)."
                              " Zero based indexing!" % (itraj, self._ntraj))
-        if isinstance(stride, np.ndarray):
+        if not IteratorState.is_uniform_stride(stride):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
         else:
             return (self._lengths[itraj] - (0 if skip is None else skip) - 1) // int(stride) + 1
 
     def n_chunks(self, chunksize, stride=1, skip=0):
-        """ rough estimate of how many chunks will be processed """
+        """ how many chunks an iterator of this sourcde will output, starting (eg. after calling reset())
+
+        Parameters
+        ----------
+        chunksize
+        stride
+        skip
+        """
         if chunksize != 0:
-            if not DataSourceIterator.is_uniform_stride(stride):
-                chunks = ceil(len(stride[:, 0]) / float(chunksize))
-            else:
-                chunks = sum((ceil(l / float(chunksize))
-                              for l in self.trajectory_lengths(stride=stride, skip=skip)))
+            chunks = sum((ceil(l / float(chunksize))
+                          for l in self.trajectory_lengths(stride=stride, skip=skip)))
         else:
-            chunks = self.ntraj
-        return int(chunks)
+            chunks = self.number_of_trajectories(stride)
+        return chunks
 
     def trajectory_lengths(self, stride=1, skip=0):
         r""" Returns the length of each trajectory.
@@ -225,8 +240,9 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         -------
         array(dtype=int) : containing length of each trajectory
         """
-        n = self.number_of_trajectories()
-        if isinstance(stride, np.ndarray):
+        n = self.ntraj
+
+        if not IteratorState.is_uniform_stride(stride):
             return np.fromiter((self.trajectory_length(itraj, stride)
                                 for itraj in range(n)),
                                dtype=int, count=n)
@@ -249,8 +265,8 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         n_frames_total : int
             total number of frames.
         """
-        if isinstance(stride, np.ndarray):
-            return stride.shape[0]
+        if not IteratorState.is_uniform_stride(stride):
+            return len(stride)
 
         return sum(self.trajectory_lengths(stride=stride, skip=skip))
 
@@ -370,9 +386,14 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         return self.state.is_stride_sorted()
 
     @property
-    def _n_chunks(self):
+    def n_chunks(self):
         """ rough estimate of how many chunks will be processed """
         return self._data_source.n_chunks(self.chunksize, stride=self.stride, skip=self.skip)
+
+    @property
+    @deprecated("use n_chunks")
+    def _n_chunks(self):
+        return self.n_chunks
 
     def number_of_trajectories(self):
         return self._data_source.number_of_trajectories()
@@ -690,6 +711,14 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
         return False
+
+    def __repr__(self):
+        return "[{name} chunk={chunk}, stride={stride}, skip={skip}]".format(
+            name=self.__class__.__name__,
+            chunk=self.chunksize,
+            stride=self.stride,
+            skip=self.skip
+        )
 
 
 class InvalidDataInStreamException(Exception):
