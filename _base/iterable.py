@@ -15,10 +15,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
 from abc import ABCMeta, abstractmethod
 import six
 import numpy as np
-import numbers
 
 from pyemma._base.logging import Loggable
 from pyemma._base.progress import ProgressReporter
@@ -273,10 +273,10 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         >>> reader = pyemma.coordinates.source(data)
         >>> filename = "distances_{itraj}.dat"
         >>> with TemporaryDirectory() as td:
-        ...    os.chdir(td)
-        ...    reader.write_to_csv(filename, header='', delimiter=';')
-        ...    print(os.listdir('.'))
-        ['distances_2.dat', 'distances_1.dat', 'distances_0.dat']
+        ...    out = os.path.join(td, filename)
+        ...    reader.write_to_csv(out, header='', delimiter=';')
+        ...    print(sorted(os.listdir(td)))
+        ['distances_0.dat', 'distances_1.dat', 'distances_2.dat']
         """
         import os
         if not filename:

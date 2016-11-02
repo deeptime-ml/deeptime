@@ -219,8 +219,8 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         skip
         """
         if chunksize != 0:
-            chunks = sum((ceil(l / float(chunksize))
-                          for l in self.trajectory_lengths(stride=stride, skip=skip)))
+            chunks = int(sum((ceil(l / float(chunksize))
+                          for l in self.trajectory_lengths(stride=stride, skip=skip))))
         else:
             chunks = self.number_of_trajectories(stride)
         return chunks
