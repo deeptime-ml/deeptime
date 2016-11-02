@@ -14,7 +14,6 @@ requirements:
     - python
     - setuptools
     - cython >=0.20
-
     - bhmm >=0.6,<0.7
     - joblib >0.8.4
     - matplotlib
@@ -53,8 +52,9 @@ requirements:
 
 test:
   requires:
-    - nose
-    - coverage ==4
+    - pytest 
+    - pytest-cov
+    - pytest-xdist
   imports:
     - pyemma
 

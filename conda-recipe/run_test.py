@@ -1,50 +1,42 @@
-
-import subprocess
+import tempfile
 import os
 import sys
+import pytest
 import shutil
-import re
-
-src_dir = os.getenv('SRC_DIR')
 
 test_pkg = 'pyemma'
 cover_pkg = test_pkg
+
+junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', '.'), 'junit.xml')
+
+if os.getenv('CONDA_BUILD', False):
+    pytest_cfg = os.path.join(os.getenv('RECIPE_DIR'), '../..', 'setup.cfg')
+else:
+    pytest_cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../setup.cfg')
+
+# chdir to an path outside of conda-bld, which is known to persist the build phase
+run_dir = tempfile.mkdtemp()
+os.chdir(run_dir)
 
 # matplotlib headless backend
 with open('matplotlibrc', 'w') as fh:
     fh.write('backend: Agg')
 
+pytest_args = ("-v --pyargs {test_pkg} "
+               "--cov={cover_pkg} "
+               "--cov-report=xml "
+               "--doctest-modules "
+               "-n 2 "# -p no:xdist" # disable xdist in favour of coverage plugin
+               "--junit-xml={junit_xml} "
+               "-c {pytest_cfg} "
+               .format(test_pkg=test_pkg, cover_pkg=cover_pkg,
+                       junit_xml=junit_xml, pytest_cfg=pytest_cfg)
+               .split(' '))
+print("args:", pytest_args)
+res = pytest.main(pytest_args)
 
-def coverage_report():
-    fn = '.coverage'
-    assert os.path.exists(fn)
-    build_dir = os.getenv('TRAVIS_BUILD_DIR')
-    dest = os.path.join(build_dir, fn)
-    print( "copying coverage report to", dest)
-    shutil.copy(fn, dest)
-    assert os.path.exists(dest)
-
-    # fix paths in .coverage file
-    with open(dest, 'r') as fh:
-        data = fh.read()
-    match= '"/.+?/miniconda/envs/_test/lib/python.+?/site-packages/.+?/({test_pkg}/.+?)"'.format(test_pkg=test_pkg)
-    repl = '"%s/\\1"' % build_dir
-    data = re.sub(match, repl, data)
-    os.unlink(dest)
-    with open(dest, 'w+') as fh:
-       fh.write(data)
-
-nose_run = "nosetests {test_pkg} -vv" \
-           " --with-coverage --cover-inclusive --cover-package={cover_pkg}" \
-           " --with-doctest --doctest-options=+NORMALIZE_WHITESPACE,+ELLIPSIS" \
-           .format(test_pkg=test_pkg, cover_pkg=cover_pkg).split(' ')
-
-res = subprocess.call(nose_run)
-
-
-# move .coverage file to git clone on Travis CI
-if os.getenv('TRAVIS', False):
-   coverage_report()
+# copy it to home, so we can process it with codecov etc.
+shutil.copy('coverage.xml', os.path.expanduser('~/'))
 
 sys.exit(res)
 
