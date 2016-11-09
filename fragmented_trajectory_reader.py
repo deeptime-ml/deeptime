@@ -57,16 +57,6 @@ class _FragmentedTrajectoryIterator(object):
     def __iter__(self):
         return self
 
-    def _allocate_chunk(self, expected_length, ndim):
-        if (hasattr(self._reader_it._data_source, '_return_traj_obj') and
-                self._reader_it._data_source._return_traj_obj):
-            X = preallocate_empty_trajectory(n_frames=expected_length,
-                                             top=self._reader_it._data_source.featurizer.topology)
-        else:
-            X = np.empty((expected_length, ndim), dtype=self._frag_reader.output_type())
-
-        return X
-
     def __next__(self):
         skip = self._skip if self._t == 0 else 0
         if self._chunksize == 0:
@@ -78,9 +68,7 @@ class _FragmentedTrajectoryIterator(object):
                 self._reader_overlap = skip
                 if self.ra_indices is not None:
                     self._fragment_indices = self.__get_ra_index_indices()
-                    self._reader_it = self._readers[self._reader_at].iterator(
-                        self.__get_ifrag_ra_indices(self._fragment_indices, 0), return_trajindex=False
-                    )
+                    self._reader_it = self._select_next_ra_iterator()
                 else:
                     self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
             if self.ra_indices is None:
@@ -112,14 +100,11 @@ class _FragmentedTrajectoryIterator(object):
                     if read < expected_length or expected_length == 0:
                         self._reader_at += 1
                         self._reader_t = 0
-                        if len(self._readers) <= self._reader_at:
+                        if self._reader_at >= len(self._readers):
                             raise StopIteration()
                         self._reader_it.close()
                         if self.ra_indices is not None:
-                            self._reader_it = self._readers[self._reader_at].iterator(
-                                self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at),
-                                return_trajindex=False
-                            )
+                            self._reader_it = self._select_next_ra_iterator()
                         else:
                             self._reader_it = self._readers[self._reader_at].iterator(self._stride, return_trajindex=False)
                             self._reader_it.skip = skip
@@ -131,6 +116,17 @@ class _FragmentedTrajectoryIterator(object):
                             self._reader_it.chunksize = expected_length - read
                 self._t += read
                 return X
+
+    def _select_next_ra_iterator(self):
+        assert self._reader_at < len(self._readers)
+        ra_indices = self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at)
+        while len(ra_indices) == 0:
+            self._reader_at += 1
+            if self._reader_at < len(self._readers):
+                ra_indices = self.__get_ifrag_ra_indices(self._fragment_indices, self._reader_at)
+            else:
+                raise RuntimeError("This should not happen as the loop is supposed to be terminated in __next__.")
+        return self._readers[self._reader_at].iterator(ra_indices, return_trajindex=False)
 
     def __get_reader_trajlen(self):
         if self.ra_indices is not None:
@@ -208,8 +204,10 @@ class _FragmentedTrajectoryIterator(object):
             return X
 
     def __get_ifrag_ra_indices(self, fragment_indices, ifrag):
+        assert ifrag < len(self._readers)
         offset = self._cumulative_lengths[ifrag - 1] if ifrag > 0 else 0
-        ra = self.ra_indices[fragment_indices[ifrag]] - offset
+        frag_inds = fragment_indices[ifrag]
+        ra = self.ra_indices[frag_inds] - offset
         indices = np.zeros((len(ra), 2), dtype=int)
         indices[:, 1] = ra.squeeze()
         return indices
@@ -274,13 +272,31 @@ class FragmentIterator(DataSourceIterator):
         self._it = None
         self._itraj = 0
 
+    def _select_file(self, itraj):
+        self.close()
+        self._t = 0
+        self._itraj = itraj
+        if itraj < self.number_of_trajectories():
+            self._it = _FragmentedTrajectoryIterator(self._data_source, self._data_source._readers[itraj],
+                                                     self.chunksize, self.stride, self.skip)
+            if not self.uniform_stride:
+                self._it.ra_indices = self.ra_indices_for_traj(self._itraj)
+        else:
+            self._it = None
+
+    @DataSourceIterator.chunksize.setter
+    def chunksize(self, value):
+        self.state.chunk = value
+        if self._it is not None:
+            self._it._chunksize = value
+
+    def reset(self):
+        self._select_file(0)
+
     def _next_chunk(self):
         if self._it is None:
             if self._itraj < self.number_of_trajectories():
-                self._it = _FragmentedTrajectoryIterator(self._data_source, self._data_source._readers[self._itraj],
-                                                         self.chunksize, self.stride, self.skip)
-                if not self.uniform_stride:
-                    self._it.ra_indices = self.ra_indices_for_traj(self._itraj)
+                self._select_file(0)
             else:
                 raise StopIteration()
 
@@ -290,12 +306,11 @@ class FragmentIterator(DataSourceIterator):
         self._t += len(X)
         if self._t >= self._data_source.trajectory_length(self._itraj, stride=self.stride, skip=self.skip):
             self._itraj += 1
-            self._it.close()
-            self._it = None
-            self._t = 0
+            self._select_file(self._itraj)
         while (not self.uniform_stride) and (self._itraj not in self.traj_keys or self._t >= self.ra_trajectory_length(self._itraj)) \
                 and self._itraj < self.number_of_trajectories():
             self._itraj += 1
+            self._select_file(self._itraj)
         return X
 
     def close(self):
@@ -309,13 +324,13 @@ class FragmentedTrajectoryReader(DataSource):
     Parameters
     ----------
     trajectories: nested list or nested tuple, 1 level depth
-    
+
     topologyfile, str, default None
-    
+
     chunksize: int, default 1000
-    
+
     featurizer: MDFeaturizer, default None
-    
+
     """
 
     def __init__(self, trajectories, topologyfile=None, chunksize=1000, featurizer=None):

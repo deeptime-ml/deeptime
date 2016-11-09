@@ -20,7 +20,6 @@ from __future__ import absolute_import
 import itertools
 from logging import getLogger
 
-import mdtraj as md
 import numpy as np
 
 from pyemma.coordinates import source
@@ -29,7 +28,6 @@ from pyemma.coordinates.data.fragmented_trajectory_reader import FragmentedTraje
 from pyemma.coordinates.data.util.reader_utils import (copy_traj_attributes as _copy_traj_attributes,
                                                        preallocate_empty_trajectory as _preallocate_empty_trajectory,
                                                        enforce_top as _enforce_top)
-from pyemma.util.annotators import deprecated
 
 __all__ = ['frames_from_files']
 
@@ -53,6 +51,7 @@ def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=Fals
     # Enforce topology to be a md.Topology object
     if reader is None:
         top = _enforce_top(top)
+        reader_given = False
     else:
         if not reader.number_of_trajectories():
             raise ValueError("need at least one trajectory file in reader.")
@@ -62,6 +61,7 @@ def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=Fals
             top = reader.featurizer.topology
         else:
             raise ValueError("unsupported reader (only md readers).")
+        reader_given = True
 
     stride = int(stride)
     frames = np.array(frames)
@@ -74,7 +74,7 @@ def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=Fals
             frames = np.insert(np.atleast_2d(frames), 0, np.zeros_like(frames), axis=0).T
 
     if stride != 1:
-        frames[:, 1] *= int(stride)
+        frames[:, 1] *= stride
         if verbose:
             log.info('A stride value of = %u was parsed, '
                      'interpreting "indexes" accordingly.' % stride)
@@ -100,97 +100,47 @@ def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=Fals
 
     # sanity check of indices
     for itraj in inds_to_check:
-        inds_by_traj = sorted_inds[sorted_inds[:, 0] == itraj]
+        inds_by_traj = sorted_inds[sorted_inds[:, 0] == itraj][:, 1]
+        assert inds_by_traj.ndim == 1
         largest_ind_in_traj = np.max(inds_by_traj)
         length = reader.trajectory_length(itraj)
-        if length < largest_ind_in_traj:
-            raise ValueError("largest specified index (%i * stride=%i * %i=%i) "
-                             "is larger than trajectory length '%s' = %i" %
-                             (largest_ind_in_traj/stride, largest_ind_in_traj/stride,
-                              stride, largest_ind_in_traj, reader.filenames[itraj],
-                              length))
+        if largest_ind_in_traj >= length:
+            raise ValueError("largest specified index ({largest_without_stride} * stride="
+                             "{largest_without_stride} * {stride}={largest}) "
+                             "is larger than trajectory length '{filename}' = {length}".format(
+                                largest_without_stride=largest_ind_in_traj / stride,
+                                stride=stride,
+                                largest=largest_ind_in_traj,
+                                filename=reader.filenames[itraj],
+                                length=length))
+
+    def set_reader_return_traj_objects(reader, flag):
+        if isinstance(reader, FeatureReader):
+            reader._return_traj_obj = flag
+        elif isinstance(reader, FragmentedTrajectoryReader):
+            for file in reader.filenames_flat:
+                r = reader.reader_by_filename(file)
+                if isinstance(r, FeatureReader):
+                    r = [r]
+                for _r in r:
+                    _r._return_traj_obj = flag
 
     # we want the FeatureReader to return mdtraj.Trajectory objects
-    if isinstance(reader, FeatureReader):
-        reader._return_traj_obj = True
-    elif isinstance(reader, FragmentedTrajectoryReader):
-        for file in reader.filenames_flat:
-            r = reader.reader_by_filename(file)
-            if isinstance(r, FeatureReader):
-                r = [r]
-            for _r in r:
-                _r._return_traj_obj = True
+    set_reader_return_traj_objects(reader, True)
 
-    it = reader.iterator(chunk=chunksize, stride=sorted_inds, return_trajindex=False)
-    collected_frames = []
-    with it:
-        for x in it:
-            collected_frames.append(x)
-
-    dest = _preallocate_empty_trajectory(top, len(frames))
-    i = 0
-    for chunk in collected_frames:
-        _copy_traj_attributes(dest, chunk, i)
-        i += len(chunk)
-    dest = dest.slice(sort_inds.argsort(), copy=False)
+    try:
+        it = reader.iterator(chunk=chunksize, stride=sorted_inds, return_trajindex=False)
+        with it:
+            collected_frames = [f for f in it]
+        dest = _preallocate_empty_trajectory(top, len(frames))
+        t = 0
+        for chunk in collected_frames:
+            _copy_traj_attributes(dest, chunk, t)
+            t += len(chunk)
+        # reshuffle the indices of the final trajectory object to obtain the desired order
+        dest = dest.slice(sort_inds.argsort(), copy=False)
+    finally:
+        # in any case we want to reset the reader to its previous state (return features, instead of md.Trajectory)
+        if reader_given:
+            set_reader_return_traj_objects(reader, False)
     return dest
-
-
-@deprecated("use_frames_from_files")
-def frames_from_file(file_name, top, frames, chunksize=100,
-                     stride=1, verbose=False, copy_not_join=False):
-    r"""Reads one "file_name" molecular trajectory and returns an mdtraj trajectory object 
-        containing only the specified "frames" in the specified order.
-
-    Extracts the specified sequence of time/trajectory indexes from the input loader
-    and saves it in a molecular dynamics trajectory. The output format will be determined
-    by the outfile name.
-
-    Parameters
-    ----------
-    file_name: str.
-        Absolute path to the molecular trajectory file, ex. trajout.xtc 
-
-    top : str, mdtraj.Trajectory, or mdtraj.Topology
-        Topology information to load the molecular trajectroy file in :py:obj:`file_name`
-
-    frames : ndarray of shape (n_frames, ) and integer type
-        Contains the frame indices to be retrieved from "file_name". There is no restriction as to what 
-        this array has to look like other than:
-             - positive integers
-             - <= the total number of frames in "file_name".
-        "frames" need not be monotonous or unique, i.e, arrays like
-        [3, 1, 4, 1, 5, 9, 9, 9, 9, 3000, 0, 0, 1] are welcome 
-
-    verbose: boolean.
-        Level of verbosity while looking for "frames". Useful when using "chunksize" with large trajectories.
-        It provides the no. of frames accumulated for every chunk.
-
-    stride  : integer, default is 1
-        This parameter informs :py:func:`save_traj` about the stride used in :py:obj:`indexes`. Typically, :py:obj:`indexes`
-        contains frame-indexes that match exactly the frames of the files contained in :py:obj:`traj_inp.trajfiles`.
-        However, in certain situations, that might not be the case. Examples are cases in which a stride value != 1
-        was used when reading/featurizing/transforming/discretizing the files contained in :py:obj:`traj_inp.trajfiles`.
-
-    copy_not_join : boolean, default is False
-        This parameter decides how geometry objects are appended onto one another. If left to False, mdtraj's own
-        :py:obj:`join` method will be used, which is the recommended method. However, for some combinations of
-        py:obj:`chunksizes` and :py:obj:`frames` this might be not very effective. If one sets :py:obj:`copy_not_join`
-        to True, the returned :py:obj:`traj` is preallocated and the important attributes (currently traj.xyz, traj.time,
-         traj.unit_lengths, traj.unit_angles) are broadcasted onto it.
-
-
-    Returns
-    -------
-    traj : an md trajectory object containing the frames specified in "frames",
-           in the order specified in "frames".
-    """
-
-    assert isinstance(frames, np.ndarray), "input frames frames must be a numpy ndarray, got %s instead "%type(frames)
-    assert np.ndim(frames) == 1, "input frames frames must have ndim = 1, got np.ndim = %u instead "%np.ndim(frames)
-    assert isinstance(file_name, str), "input file_name must be a string, got %s instead"%type(file_name)
-    assert isinstance(top, (str, md.Trajectory, md.Topology)), "input topology must of one of type: " \
-                                                                    "str, mdtraj.Trajectory, or mdtraj.Topology. " \
-                                                                    "Got %s instead" % type(top)
-
-    return frames_from_files([file_name], top, frames, chunksize, stride, verbose)

@@ -304,8 +304,8 @@ class FeatureReaderIterator(DataSourceIterator):
                 return_trajindex=return_trajindex,
                 cols=cols
         )
-        #self._cols = cols
-        self._create_mditer()
+        self._selected_itraj = -1
+        self._select_file(0)
 
     @property
     def chunksize(self):
@@ -331,12 +331,13 @@ class FeatureReaderIterator(DataSourceIterator):
         if hasattr(self, '_mditer') and self._mditer is not None:
             self._mditer.close()
 
-    def _next_file(self):
-        self.close()
-
-        self._t = 0
-        self._itraj += 1
-        self._create_mditer()
+    def _select_file(self, itraj):
+        if itraj != self._selected_itraj:
+            self.close()
+            self._t = 0
+            self._itraj = itraj
+            self._selected_itraj = itraj
+            self._create_mditer()
 
     def _next_chunk(self):
         """
@@ -352,7 +353,8 @@ class FeatureReaderIterator(DataSourceIterator):
                 we have to return an empty iterable, so that LaggedIterator will continue to process.
             """
             if si.args and "too short" in si.args[0] and self._itraj < self._data_source.ntraj - 1:
-                self._next_file()
+                self._itraj += 1
+                self._select_file(self._itraj)
                 return ()
             else:
                 raise
@@ -362,7 +364,8 @@ class FeatureReaderIterator(DataSourceIterator):
         self._t += shape[0]
 
         if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.filenames) - 1:
-            self._next_file()
+            self._itraj += 1
+            self._select_file(self._itraj)
 
         if not self.uniform_stride:
             traj_len = self.ra_trajectory_length(self._itraj)
@@ -405,8 +408,3 @@ class FeatureReaderIterator(DataSourceIterator):
         return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.featurizer.topology,
                                 skip=skip, stride=stride, atom_indices=atom_indices)
 
-    def reset(self):
-        super(FeatureReaderIterator, self).reset()
-        # re-create the underlying mditer
-        self.close()
-        self._create_mditer()

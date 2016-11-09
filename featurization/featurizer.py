@@ -692,13 +692,19 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         func : function
             a user-defined function, which accepts mdtraj.Trajectory object as
             first parameter and as many optional and named arguments as desired.
-            Has to return a numpy.ndarray
+            Has to return a numpy.ndarray ndim=2.
         dim : int
             output dimension of :py:obj:`function`
         args : any number of positional arguments
             these have to be in the same order as :py:obj:`func` is expecting them
         kwargs : dictionary
             named arguments passed to func
+
+        Notes
+        -----
+        You can pass a description list to describe the output of your function by element,
+        by passing a list of strings with the same lengths as dimensions.
+        Alternatively a single element list or str will be expanded to match the output dimension.
 
         """
         f = CustomFeature(func, dim=dim, *args, **kwargs)
