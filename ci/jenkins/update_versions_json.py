@@ -18,6 +18,7 @@ parse.__hash__ = hash_
 
 def make_version_dict(URL, version, url_prefix='v', latest=False):
     return {'version': version,
+            'display': version,
             # git tags : vx.y.z
             'url': URL + '/' + url_prefix + version,
             'latest': latest}
@@ -67,7 +68,9 @@ def main(argv=None):
     versions.append(make_version_dict(URL, 'devel', '', False))
 
     if args.verbose:
-        print ("new versions json:", versions)
+        print("new versions json:")
+        json.dump(versions, sys.stdout, indent=1)
+        print()
 
     if args.latest:
         print(find_latest(versions)['version'])
@@ -75,7 +78,7 @@ def main(argv=None):
 
     if args.output:
         with open(args.output, 'w') as v:
-            json.dump(versions, v)
+            json.dump(versions, v, indent=1)
             v.flush()
 
 if __name__ == '__main__':
