@@ -104,10 +104,9 @@ class Transformer(six.with_metaclass(ABCMeta, TransformerMixin)):
         pass
 
 
-@fix_docs
-class StreamingTransformer(Transformer, StreamingEstimator, DataSource, NotifyOnChangesMixIn):
+class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
-    r""" Basis class for pipelined Transformers, which perform also estimation.
+    r""" Basis class for pipelined Transformers.
 
     Parameters
     ----------
@@ -116,6 +115,7 @@ class StreamingTransformer(Transformer, StreamingEstimator, DataSource, NotifyOn
 
     """
     def __init__(self, chunksize=1000):
+        print("hi from streaming transformer")
         super(StreamingTransformer, self).__init__(chunksize=chunksize)
         self._estimated = False
         self._data_producer = None
@@ -183,6 +183,7 @@ class StreamingTransformer(Transformer, StreamingEstimator, DataSource, NotifyOn
         super(StreamingTransformer, self).estimate(X, **kwargs)
         if self.in_memory and not self._mapping_to_mem_active:
             self._map_to_memory()
+        return self
 
     @deprecated('use fit or estimate')
     def parametrize(self, stride=1):
@@ -217,6 +218,11 @@ class StreamingTransformer(Transformer, StreamingEstimator, DataSource, NotifyOn
 
     def n_frames_total(self, stride=1, skip=0):
         return self.data_producer.n_frames_total(stride=stride, skip=skip)
+
+
+class StreamingEstimationTransformer(StreamingTransformer, StreamingEstimator):
+    """ Basis class for pipelined Transformers, which perform also estimation. """
+    pass
 
 
 class StreamingTransformerIterator(DataSourceIterator):
