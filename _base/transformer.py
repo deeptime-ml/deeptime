@@ -179,6 +179,11 @@ class StreamingTransformer(Transformer, StreamingEstimator, DataSource, NotifyOn
 
         return super(StreamingTransformer, self).get_output(dimensions, stride, skip, chunk)
 
+    def estimate(self, X, **kwargs):
+        super(StreamingTransformer, self).estimate(X, **kwargs)
+        if self.in_memory and not self._mapping_to_mem_active:
+            self._map_to_memory()
+
     @deprecated('use fit or estimate')
     def parametrize(self, stride=1):
         if self._data_producer is None:
