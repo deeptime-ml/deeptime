@@ -115,7 +115,6 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
     """
     def __init__(self, chunksize=1000):
-        print("hi from streaming transformer")
         super(StreamingTransformer, self).__init__(chunksize=chunksize)
         self._estimated = False
         self._data_producer = None
