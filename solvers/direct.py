@@ -63,7 +63,7 @@ def spd_inv_split(W, epsilon=1e-10, method='QR'):
         L = 1./_np.sqrt(W[0,0])
     else:
         if method.lower() == 'qr':
-            from variational import eig_qr
+            from .eig_qr.eig_qr import eig_qr
             s, V = eig_qr(W)
         # compute the Eigenvalues of C0 using Schur factorization
         elif method.lower() == 'schur':
