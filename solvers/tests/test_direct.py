@@ -5,6 +5,15 @@ from .. import direct
 
 __author__ = 'noe'
 
+
+def sort_by_norm_and_imag_sign(evals, evecs):
+    arr = np.zeros((len(evals),), dtype=[('mag', np.float64), ('sign', np.float64)])
+    arr['mag'] = np.abs(evals)
+    arr['sign'] = np.sign((np.imag(evals)))
+    I = np.argsort(arr, order=['mag', 'sign'])[::-1]
+    return evals[I], evecs[:, I]
+
+
 class TestDirect(unittest.TestCase):
 
     @classmethod
@@ -43,10 +52,11 @@ class TestDirect(unittest.TestCase):
         import scipy
         for Ct in [Ct_sym, Ct_nonsym]:
             v0, R0 = scipy.linalg.eig(Ct, C0)
-            v0, R0 = direct.sort_by_norm(v0, R0)
+            v0, R0 = sort_by_norm_and_imag_sign(v0, R0)
             for method in ['QR', 'schur']:
                 # Test correctness
                 v, R = direct.eig_corr(C0, Ct, method=method)
+                v, R = sort_by_norm_and_imag_sign(v, R)
                 np.testing.assert_allclose(v0, v)  # eigenvalues equal?
                 # eigenvectors equivalent?
                 for i in range(R0.shape[1]):
