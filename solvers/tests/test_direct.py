@@ -47,13 +47,13 @@ class TestDirect(unittest.TestCase):
             for method in ['QR', 'schur']:
                 # Test correctness
                 v, R = direct.eig_corr(C0, Ct, method=method)
-                assert np.allclose(v0, v)  # eigenvalues equal?
+                np.testing.assert_allclose(v0, v)  # eigenvalues equal?
                 # eigenvectors equivalent?
                 for i in range(R0.shape[1]):
-                    assert np.allclose(R0[:, i] / R0[0, i], R[:, i] / R[0, i])
+                    np.testing.assert_allclose(R0[:, i] / R0[0, i], R[:, i] / R[0, i])
                 # Test if eigenpair diagonalizes the Koopman matrix
                 K = np.dot(np.linalg.inv(C0), Ct)
-                assert np.allclose(K, R.dot(np.diag(v)).dot(np.linalg.inv(R)))
+                np.testing.assert_allclose(K, R.dot(np.diag(v)).dot(np.linalg.inv(R)))
 
 
 if __name__ == "__main__":
