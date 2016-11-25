@@ -31,7 +31,7 @@ def sort_by_norm(evals, evecs):
     return evals2, evecs2
 
 
-def spd_inv_split(W, epsilon=1e-10, method='QR'):
+def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
     """
     Compute :math:`W^{-1} = L L^T` of the symmetric positive-definite matrix :math:`W`.
 
@@ -49,6 +49,9 @@ def spd_inv_split(W, epsilon=1e-10, method='QR'):
 
         * 'QR': QR-based robust eigenvalue decomposition of W
         * 'schur': Schur decomposition of W
+
+     canonical_signs : boolean, default = False
+        Fix signs in L, s. t. the largest element of in every row of L is positive.
 
     Returns
     -------
@@ -87,6 +90,13 @@ def spd_inv_split(W, epsilon=1e-10, method='QR'):
         m = n - _np.searchsorted(evnorms[::-1], epsilon)
         Vm = V[:, 0:m]
         sm = s[0:m]
+
+        if canonical_signs:
+            # enforce canonical eigenvector signs
+            for j in range(m):
+                jj = _np.argmax(_np.abs(Vm[:, j]))
+                Vm[:, j] *= _np.sign(Vm[jj, j])
+
         L = _np.dot(Vm, _np.diag(1.0/_np.sqrt(sm)))
 
     # return split
