@@ -62,14 +62,16 @@ class Moments(object):
     def mean_y(self):
         return self.sy / self.w
 
-    @property
-    def covar(self):
+    def covar(self, bessels_correction):
         """ Returns M / (w-1)
 
         Careful: The normalization w-1 assumes that we have counts as weights.
 
         """
-        return self.Mxy/ (self.w-1)
+        if bessels_correction:
+            return self.Mxy/ (self.w-1)
+        else:
+            return self.Mxy / self.w
 
 
 class MomentsStorage(object):
@@ -306,14 +308,14 @@ class RunningCovar(object):
     def moments_YY(self):
         return self.storage_YY.moments.Mxy
 
-    def cov_XX(self):
-        return self.storage_XX.moments.covar
+    def cov_XX(self, bessels_correction):
+        return self.storage_XX.moments.covar(bessels_correction=bessels_correction)
 
-    def cov_XY(self):
-        return self.storage_XY.moments.covar
+    def cov_XY(self, bessels_correction):
+        return self.storage_XY.moments.covar(bessels_correction=bessels_correction)
 
-    def cov_YY(self):
-        return self.storage_YY.moments.covar
+    def cov_YY(self, bessels_correction):
+        return self.storage_YY.moments.covar(bessels_correction=bessels_correction)
 
 
 def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=False, sparse_mode='auto',
