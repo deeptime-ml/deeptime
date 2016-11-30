@@ -125,11 +125,15 @@ def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=Fals
                 for _r in r:
                     _r._return_traj_obj = flag
 
-    # we want the FeatureReader to return mdtraj.Trajectory objects
-    set_reader_return_traj_objects(reader, True)
-
     try:
+        # If the reader got passed in, it could have the data already mapped to memory.
+        # In this case, we cannot force it to return trajectory objects, so we have to re-create it.
+        if reader.in_memory:
+            reader = source(reader.filenames, top=top, chunk_size=chunksize)
+        # we want the FeatureReader to return mdtraj.Trajectory objects
+        set_reader_return_traj_objects(reader, True)
         it = reader.iterator(chunk=chunksize, stride=sorted_inds, return_trajindex=False)
+
         with it:
             collected_frames = [f for f in it]
         dest = _preallocate_empty_trajectory(top, len(frames))
