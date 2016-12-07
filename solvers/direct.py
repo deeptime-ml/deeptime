@@ -149,7 +149,7 @@ def eig_corr(C0, Ct, epsilon=1e-10, method='QR', sign_maxelement=False):
         The first m generalized eigenvectors, as a column matrix.
 
     """
-    L = spd_inv_split(C0, epsilon=epsilon, method=method)
+    L = spd_inv_split(C0, epsilon=epsilon, method=method, canonical_signs=True)
     Ct_trans = _np.dot(_np.dot(L.T, Ct), L)
 
     # solve the symmetric eigenvalue problem in the new basis
