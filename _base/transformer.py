@@ -178,12 +178,6 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
         return super(StreamingTransformer, self).get_output(dimensions, stride, skip, chunk)
 
-    def estimate(self, X, **kwargs):
-        super(StreamingTransformer, self).estimate(X, **kwargs)
-        if self.in_memory and not self._mapping_to_mem_active:
-            self._map_to_memory()
-        return self
-
     @deprecated('use fit or estimate')
     def parametrize(self, stride=1):
         if self._data_producer is None:
@@ -221,7 +215,12 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
 class StreamingEstimationTransformer(StreamingTransformer, StreamingEstimator):
     """ Basis class for pipelined Transformers, which perform also estimation. """
-    pass
+
+    def estimate(self, X, **kwargs):
+        super(StreamingEstimationTransformer, self).estimate(X, **kwargs)
+        if self.in_memory and not self._mapping_to_mem_active:
+            self._map_to_memory()
+        return self
 
 
 class StreamingTransformerIterator(DataSourceIterator):
