@@ -29,7 +29,7 @@ requirements:
     - six
     - psutil >=3.1.1
     - decorator >=4.0.0
-    - progress_reporter
+    - progress_reporter <=1.2
 
   run:
     - python
@@ -48,7 +48,7 @@ requirements:
     - six >=1.10
     - psutil >=3.1.1
     - decorator >=4.0.0
-    - progress_reporter
+    - progress_reporter <=1.2
 
 test:
   requires:
