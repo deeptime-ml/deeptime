@@ -26,7 +26,7 @@ pytest_args = ("-v --pyargs {test_pkg} "
                "--cov={cover_pkg} "
                "--cov-report=xml "
                "--doctest-modules "
-               "-n 2 "# -p no:xdist" # disable xdist in favour of coverage plugin
+               #"-n 2 "# -p no:xdist" # disable xdist in favour of coverage plugin
                "--junit-xml={junit_xml} "
                "-c {pytest_cfg} "
                .format(test_pkg=test_pkg, cover_pkg=cover_pkg,
