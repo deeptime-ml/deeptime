@@ -10,7 +10,7 @@ cover_pkg = test_pkg
 junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', '.'), 'junit.xml')
 
 if os.getenv('CONDA_BUILD', False):
-    print "CONDA_BUILD detected."
+    print("CONDA_BUILD detected.")
     pytest_cfg = os.path.join(os.getenv('RECIPE_DIR'), '../..', 'setup.cfg')
 else:
     pytest_cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../setup.cfg')
