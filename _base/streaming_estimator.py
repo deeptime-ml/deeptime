@@ -37,13 +37,15 @@ class StreamingEstimator(Estimator):
         self._chunksize = chunksize
 
     def estimate(self, X, **kwargs):
+        # ensure the input is able to provide a stream
         if not isinstance(X, Iterable):
             if isinstance(X, np.ndarray) or \
-                    (isinstance(X, (list, tuple)) and len(X) > 0 and all([isinstance(x, np.ndarray) for x in X])):
+                    (isinstance(X, (list, tuple)) and len(X) > 0 and all((isinstance(x, np.ndarray) for x in X))):
                 X = DataInMemory(X, self.chunksize)
             else:
                 raise ValueError("no np.ndarray or non-empty list of np.ndarrays given")
-
+        # Because we want to use pipelining methods like get_output, we have to set a data producer.
+        self.data_producer = X
         # run estimation
         try:
             super(StreamingEstimator, self).estimate(X, **kwargs)
