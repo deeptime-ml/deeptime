@@ -58,6 +58,7 @@ class FeatureReader(DataSource):
     Examples
     --------
     >>> from pyemma.datasets import get_bpti_test_data
+    >>> from pyemma.util.contexts import settings
 
     Iterator access:
 
@@ -77,7 +78,8 @@ class FeatureReader(DataSource):
     Calculate some distances of protein during feature reading:
 
     >>> reader.featurizer.add_distances([[0, 3], [10, 15]])
-    >>> X = reader.get_output()
+    >>> with settings(show_progress_bars=False):
+    ...    X = reader.get_output()
 
     """
     SUPPORTED_RANDOM_ACCESS_FORMATS = (".h5", ".dcd", ".binpos", ".nc", ".xtc", ".trr")
