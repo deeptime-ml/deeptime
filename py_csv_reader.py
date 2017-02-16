@@ -35,7 +35,6 @@ from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
 from pyemma.util.annotators import fix_docs
 
 
-@fix_docs
 class PyCSVIterator(DataSourceIterator):
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         # do not pass cols, because we want to handle in this impl, not in DataSourceIterator
@@ -184,6 +183,7 @@ def _dialect_to_str(dialect):
     return str(s.read())
 
 
+@fix_docs
 class PyCSVReader(DataSource):
     r""" Reader for tabulated ASCII data
 

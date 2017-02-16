@@ -29,7 +29,7 @@ from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data._base.streaming_estimator import StreamingEstimator
 from pyemma.coordinates.util.change_notification import (inform_children_upon_change,
                                                          NotifyOnChangesMixIn)
-from pyemma.util.annotators import fix_docs, deprecated
+from pyemma.util.annotators import deprecated
 from six.moves import range
 
 
@@ -188,6 +188,7 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
     @deprecated('use fit or estimate')
     def parametrize(self, stride=1):
+        """ DEPRECATED: please use fit() or estimate()."""
         if self._data_producer is None:
             raise RuntimeError(
                 "This estimator has no data source given, giving up.")
