@@ -7,54 +7,38 @@ source:
   path: ../..
 
 build:
-  preserve_egg_dir: True
+  script: python -B setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
-    - python
-    - setuptools
     - cython >=0.20
-    - bhmm >=0.6,<0.7
-    - joblib >0.8.4
-    - matplotlib
-    - mdtraj >=1.7
-    - mock
-    - funcsigs
-    - msmtools >=1.1.3
-    - thermotools >=0.2.3
-    - nose
-    - numpy x.x 
-    - pyyaml
-    - scipy
-    - six
-    - psutil >=3.1.1
-    - decorator >=4.0.0
-    - progress_reporter <=1.2
-
-  run:
-    - python
-    - setuptools
-    - bhmm >=0.6,<0.7
-    - joblib >0.8.4
-    - matplotlib
-    - mdtraj >=1.7
-    - mock
-    - funcsigs
-    - msmtools >=1.1.3
-    - thermotools >=0.2.3
+    - mdtraj >=1.8
     - numpy x.x
+    - python
+    - scipy
+    - setuptools
+  run:
+    - bhmm >=0.6,<0.7
+    - decorator >=4.0.0
+    - joblib >0.8.4
+    - matplotlib
+    - mdtraj >=1.7
+    - mock
+    - msmtools >=1.2
+    - numpy x.x
+    - progress_reporter <=1.2
+    - psutil >=3.1.1
+    - python
     - pyyaml
     - scipy
+    - setuptools
     - six >=1.10
-    - psutil >=3.1.1
-    - decorator >=4.0.0
-    - progress_reporter <=1.2
+    - thermotools >=0.2.3
 
 test:
   requires:
     - pytest 
     - pytest-cov
-    #- pytest-xdist
   imports:
     - pyemma
 
