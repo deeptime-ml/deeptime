@@ -7,12 +7,13 @@ source:
   path: ../..
 
 build:
+  preserve_egg_dir: True
   script: python -B setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
-    - cython >=0.20
-    - mdtraj >=1.8
+    - cython
+    - mdtraj
     - numpy x.x
     - python
     - scipy
@@ -22,7 +23,7 @@ requirements:
     - decorator >=4.0.0
     - joblib >0.8.4
     - matplotlib
-    - mdtraj >=1.7
+    - mdtraj
     - mock
     - msmtools >=1.2
     - numpy x.x
