@@ -28,7 +28,7 @@ requirements:
     - msmtools >=1.2
     - numpy x.x
     - progress_reporter <=1.2
-    - psutil >=3.1.1
+    - psutil >3.1
     - python
     - pyyaml
     - scipy
