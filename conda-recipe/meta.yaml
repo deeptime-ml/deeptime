@@ -8,7 +8,6 @@ source:
 
 build:
   preserve_egg_dir: True
-  script: python -B setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
