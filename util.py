@@ -3,7 +3,11 @@
 
 __author__ = 'noe'
 
+import numpy as _np
 
+class ZeroRankError(_np.linalg.LinAlgError):
+    """Input matrix has rank zero."""
+    pass
 
 def features_to_basis(infiles, basisset, outfiles):
     """Reads input files

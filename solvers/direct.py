@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 import numpy as _np
+from ..util import ZeroRankError as _ZeroRankError
+
 __author__ = 'noe'
 
 
@@ -88,6 +90,8 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
         evnorms = _np.abs(s)
         n = _np.shape(evnorms)[0]
         m = n - _np.searchsorted(evnorms[::-1], epsilon)
+        if m == 0:
+            raise _ZeroRankError('All eigenvalues are smaller than %g, rank reduction would discard all dimensions.'%epsilon)
         Vm = V[:, 0:m]
         sm = s[0:m]
 
