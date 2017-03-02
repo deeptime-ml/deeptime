@@ -2,9 +2,11 @@ package:
   name: pyemma-dev
   # version number: [base tag]+[commits-upstream]_[git_hash]
   # eg. v2.0+0_g8824162
-  version: {{ GIT_DESCRIBE_TAG[1:] + '+' +GIT_BUILD_STR}}
+  version: {{ GIT_DESCRIBE_TAG[1:] + '+' + GIT_BUILD_STR}}
 source:
   path: ../..
+  # borked:
+  #git_url: ../../
 
 build:
   preserve_egg_dir: True
@@ -36,6 +38,9 @@ requirements:
     - thermotools >=0.2.5
 
 test:
+  source_files:
+    - setup.cfg
+    - versioneer.py
   requires:
     - pytest 
     - pytest-cov
