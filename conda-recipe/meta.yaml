@@ -5,7 +5,7 @@ package:
   version: {{ GIT_DESCRIBE_TAG[1:] + '+' + GIT_BUILD_STR}}
 source:
   path: ../..
-  # borked:
+  # borked, but preferable, because it creates a "clean" working copy locally.
   #git_url: ../../
 
 build:
@@ -39,17 +39,15 @@ requirements:
 
 test:
   source_files:
+    - conftest.py
     - setup.cfg
-    - versioneer.py
+  files:
+    - matplotlibrc
   requires:
     - pytest 
     - pytest-cov
-  imports:
-    - pyemma
 
 about:
   home: http://emma-project.org
   license: GNU Lesser Public License v3+
   summary: "EMMA: Emma's Markov Model Algorithms"
-
-
