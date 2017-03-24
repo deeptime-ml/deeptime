@@ -267,12 +267,13 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         Assume you want to save features calculated by some FeatureReader to ASCII:
         
         >>> import numpy as np, pyemma
-        >>> from pyemma.util.files import TemporaryDirectory
         >>> import os
+        >>> from pyemma.util.files import TemporaryDirectory
+        >>> from pyemma.util.contexts import settings
         >>> data = [np.random.random((10,3))] * 3
         >>> reader = pyemma.coordinates.source(data)
         >>> filename = "distances_{itraj}.dat"
-        >>> with TemporaryDirectory() as td:
+        >>> with TemporaryDirectory() as td, settings(show_progress_bars=False):
         ...    out = os.path.join(td, filename)
         ...    reader.write_to_csv(out, header='', delimiter=';')
         ...    print(sorted(os.listdir(td)))

@@ -21,6 +21,7 @@ Created on 15.02.2016
 '''
 from pyemma.util.indices import (combinations,
                                  product)
+from pyemma.util.numeric import _hash_numpy_array
 from pyemma.util.types import is_iterable_of_int, is_string
 from six import PY3
 
@@ -55,25 +56,6 @@ def _catch_unhashable(x):
         return _hash_numpy_array(x)
 
     return x
-
-if PY3:
-    def _hash_numpy_array(x):
-        hash_value = hash(x.shape)
-        hash_value ^= hash(x.strides)
-        hash_value ^= hash(x.data.tobytes())
-        return hash_value
-else:
-    def _hash_numpy_array(x):
-        writeable = x.flags.writeable
-        try:
-            x.flags.writeable = False
-            hash_value = hash(x.shape)
-            hash_value ^= hash(x.strides)
-            hash_value ^= hash(x.data)
-        finally:
-            x.flags.writeable = writeable
-        return hash_value
-
 
 def hash_top(top):
     hash_value = hash(tuple(top.atoms))

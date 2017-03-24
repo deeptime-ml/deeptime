@@ -69,7 +69,7 @@ class AngleFeature(Feature):
         rad = mdtraj.compute_angles(traj, self.angle_indexes, self.periodic)
         if self.cossin:
             rad = np.dstack((np.cos(rad), np.sin(rad)))
-            rad = rad.reshape(functools.reduce(lambda x, y: x * y, rad.shape),)
+            rad = rad.reshape(rad.shape[0], rad.shape[1]*rad.shape[2])
         if self.deg and not self.cossin:
             return np.rad2deg(rad)
         else:
