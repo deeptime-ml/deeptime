@@ -28,7 +28,7 @@ requirements:
     - mock
     - msmtools >=1.2
     - numpy x.x
-    - progress_reporter <=1.2
+    - progress_reporter
     - psutil >3.1
     - python
     - pyyaml
