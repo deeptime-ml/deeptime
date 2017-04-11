@@ -30,6 +30,7 @@ import numpy as np
 import six
 from six.moves import range
 
+from pyemma._base.serialization.serialization import _SerializableBase
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
 from pyemma.util.annotators import fix_docs
@@ -184,7 +185,7 @@ def _dialect_to_str(dialect):
 
 
 @fix_docs
-class PyCSVReader(DataSource):
+class PyCSVReader(DataSource, _SerializableBase):
     r""" Reader for tabulated ASCII data
 
     This class uses numpy to interpret string data to array data.
@@ -411,3 +412,8 @@ class PyCSVReader(DataSource):
             ndim = PyCSVReader._get_dimension(fh, dialect, skip)
 
         return TrajInfo(ndim, length, offsets)
+
+    def __reduce__(self):
+        # serialize only the constructor arguments.
+        return PyCSVReader, (self.filenames, self.chunksize,
+                             self._delimiters[0], self._comments[0])

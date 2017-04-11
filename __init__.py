@@ -43,6 +43,7 @@ Reader
     NumPyFileReader - reads numpy files
     PyCSVReader - reads tabulated ascii files
     DataInMemory - used if data is already available in mem
+    FragmentedTrajectoryReader
 
 """
 from .feature_reader import FeatureReader
@@ -50,6 +51,7 @@ from .featurization.featurizer import MDFeaturizer, CustomFeature
 from .data_in_memory import DataInMemory
 from .numpy_filereader import NumPyFileReader
 from .py_csv_reader import PyCSVReader
+from .fragmented_trajectory_reader import FragmentedTrajectoryReader
 
 # util func
 from .util.reader_utils import create_file_reader

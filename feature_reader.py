@@ -21,6 +21,7 @@ from __future__ import absolute_import
 import mdtraj
 import numpy as np
 
+from pyemma._base.serialization.serialization import _SerializableBase
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data.featurization.featurizer import MDFeaturizer
@@ -34,7 +35,7 @@ __all__ = ['FeatureReader']
 
 
 @fix_docs
-class FeatureReader(DataSource):
+class FeatureReader(DataSource, _SerializableBase):
     """
     Reads features from MD data.
 
@@ -169,6 +170,10 @@ class FeatureReader(DataSource):
         assert traj.xyz.shape[1] == desired_n_atoms, "Mismatch in the number of atoms between the topology" \
                                                      " and the first trajectory file, %u vs %u" % \
                                                      (desired_n_atoms, traj.xyz.shape[1])
+
+    def __reduce__(self):
+        # serialize only the constructor arguments.
+        return FeatureReader, (self.filenames, None, self.chunksize, self.featurizer)
 
 
 class FeatureReaderCuboidRandomAccessStrategy(RandomAccessStrategy):
