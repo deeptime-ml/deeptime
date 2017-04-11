@@ -321,17 +321,18 @@ class FragmentIterator(DataSourceIterator):
 
 @fix_docs
 class FragmentedTrajectoryReader(DataSource, _SerializableBase):
-    """
+    """ Reader for fragmented trajectory data eg. (traj0_part0.xtc, traj_0_part1.xtc, ... )
+    
     Parameters
     ----------
     trajectories: nested list or nested tuple, 1 level depth
-
+        grouped trajectory parts, eg.:
+        [['traj1_0.xtc', 'traj1_1.xtc'], 'traj2_full.xtc'], ['traj3_0.xtc, ...]]
     topologyfile, str, default None
 
     chunksize: int, default 1000
 
     featurizer: MDFeaturizer, default None
-
     """
 
     def __init__(self, trajectories, topologyfile=None, chunksize=1000, featurizer=None):
