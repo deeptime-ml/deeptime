@@ -60,6 +60,8 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
     @property
     def in_memory(self):
         r"""are results stored in memory?"""
+        if not hasattr(self, '_in_memory'):
+            self._in_memory = False
         return self._in_memory
 
     @in_memory.setter
@@ -67,7 +69,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         r"""
         If set to True, the output will be stored in memory.
         """
-        old_state = self._in_memory
+        old_state = self.in_memory
         if not old_state and op_in_mem:
             self._in_memory = op_in_mem
             self._Y = []
