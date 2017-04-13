@@ -29,13 +29,13 @@ from pyemma.coordinates.data.featurization._base import Feature
 
 
 class DistanceFeature(Feature):
+    prefix_label = "DIST:"
 
     def __init__(self, top, distance_indexes, periodic=True):
         self.top = top
         self.distance_indexes = np.array(distance_indexes)
         if len(self.distance_indexes) == 0:
             raise ValueError("empty indices")
-        self.prefix_label = "DIST:"
         self.periodic = periodic
         self._dim = len(distance_indexes)
 
@@ -57,13 +57,21 @@ class DistanceFeature(Feature):
             hash_value ^= hash(self.periodic)
         return hash_value
 
+    def __reduce__(self):
+        self._ensure_topfile()
+        return DistanceFeature, (self.top.fname, self.distance_indexes, self.periodic)
+
 
 class InverseDistanceFeature(DistanceFeature):
+    prefix_label = "INVDIST:"
 
     def __init__(self, top, distance_indexes, periodic=True):
-        DistanceFeature.__init__(
-            self, top, distance_indexes, periodic=periodic)
-        self.prefix_label = "INVDIST:"
+        DistanceFeature.__init__(self, top, distance_indexes, periodic=periodic)
+
+    def __reduce__(self):
+        # TODO: this should not be neccessary...
+        self._ensure_topfile()
+        return InverseDistanceFeature, (self.top.fname, self.distance_indexes, self.periodic)
 
     def transform(self, traj):
         return 1.0 / mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
@@ -80,16 +88,22 @@ class ResidueMinDistanceFeature(DistanceFeature):
         self.threshold = threshold
         self.prefix_label = "RES_DIST (%s)"%scheme
         self.periodic = periodic
+        self.ignore_nonprotein = ignore_nonprotein
 
         # mdtraj.compute_contacts might ignore part of the user input (if it is contradictory) and
         # produce a warning. I think it is more robust to let it run once on a dummy trajectory to
         # see what the actual size of the output is:
-        dummy_traj = mdtraj.Trajectory(np.zeros((top.n_atoms, 3)), top)
+        dummy_traj = mdtraj.Trajectory(np.zeros((self.top.n_atoms, 3)), self.top)
         dummy_dist, dummy_pairs = mdtraj.compute_contacts(dummy_traj, contacts=contacts,
                                                           scheme=scheme, periodic=periodic,
                                                           ignore_nonprotein=ignore_nonprotein)
         self._dim = dummy_dist.shape[1]
         self.distance_indexes = dummy_pairs
+
+    def __reduce__(self):
+        self._ensure_topfile()
+        return ResidueMinDistanceFeature, (self.top.fname, self.contacts, self.scheme,
+                                           self.ignore_nonprotein, self.threshold, self.periodic)
 
     def describe(self):
         labels = ["%s %s - %s" % (self.prefix_label,
@@ -112,18 +126,24 @@ class ResidueMinDistanceFeature(DistanceFeature):
 
 
 class GroupMinDistanceFeature(DistanceFeature):
+    prefix_label = "GROUP_MINDIST"
 
     def __init__(self, top, group_definitions, group_pairs, distance_list, group_identifiers, threshold, periodic):
         self.top = top
         self.group_identifiers = group_identifiers
         self.group_definitions = group_definitions
-        self.prefix_label = "GROUP_MINDIST"
         self.threshold = threshold
         self.group_pairs = group_pairs
         self.distance_indexes = distance_list
 
         self.periodic = periodic
         self._dim = len(group_pairs) # TODO: validate
+
+    def __reduce__(self):
+        self._ensure_topfile()
+        return GroupMinDistanceFeature, (self.top.fname, self.group_definitions,
+                                         self.group_pairs, self.distance_indexes, self.group_identifiers,
+                                         self.threshold, self.periodic)
 
     def describe(self):
         labels = ["%s %u--%u: [%s...%s]--[%s...%s]" % (self.prefix_label, pair[0], pair[1],
@@ -154,14 +174,18 @@ class GroupMinDistanceFeature(DistanceFeature):
 
 
 class ContactFeature(DistanceFeature):
+    prefix_label = "CONTACT:"
 
     def __init__(self, top, distance_indexes, threshold=5.0, periodic=True, count_contacts=False):
         DistanceFeature.__init__(self, top, distance_indexes, periodic=periodic)
-        self.prefix_label = "CONTACT:"
         if count_contacts:
             self.prefix_label="counted "+self.prefix_label
         self.threshold = threshold
         self.count_contacts = count_contacts
+
+    def __reduce__(self):
+        self._ensure_topfile()
+        return ContactFeature, (self.top.fname, self.distance_indexes, self.threshold, self.periodic, self.count_contacts)
 
     @property
     def dimension(self):

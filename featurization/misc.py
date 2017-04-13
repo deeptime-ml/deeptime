@@ -30,7 +30,6 @@ from pyemma.coordinates.data.featurization._base import Feature
 
 
 class CustomFeature(Feature):
-
     """
     A CustomFeature is the base class for user-defined features. If you want to
     implement a new fancy feature, derive from this class, calculate the quantity
@@ -73,6 +72,7 @@ class CustomFeature(Feature):
     >>> data = reader.get_output()
 
     """
+    _serialize_version = 0
     _id = count(0)
 
     def __init__(self, func=None, *args, **kwargs):
@@ -133,6 +133,10 @@ class SelectionFeature(Feature):
         if len(self.indexes) == 0:
             raise ValueError("empty indices")
         self.prefix_label = "ATOM:"
+
+    def __reduce__(self):
+        self._ensure_topfile()
+        return SelectionFeature, (self.top.fname, self.indexes)
 
     def describe(self):
         labels = []

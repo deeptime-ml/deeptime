@@ -48,6 +48,11 @@ class AngleFeature(Feature):
         if cossin:
             self._dim *= 2
 
+    def __reduce__(self):
+        self._ensure_topfile()
+        return AngleFeature, (self.top.fname, self.angle_indexes,
+                              self.deg, self.cossin, self.periodic)
+
     def describe(self):
         if self.cossin:
             sin_cos = ("ANGLE: COS(%s - %s - %s)",
@@ -128,28 +133,33 @@ class DihedralFeature(AngleFeature):
 class BackboneTorsionFeature(DihedralFeature):
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False, periodic=True):
-        indices = indices_phi(topology)
+        self.top = topology
+        indices = indices_phi(self.top)
+        self.selstr = selstr
 
         if not selstr:
             self._phi_inds = indices
         else:
             self._phi_inds = indices[np.in1d(indices[:, 1],
-                                             topology.select(selstr), assume_unique=True)]
+                                             self.top.select(selstr), assume_unique=True)]
 
-        indices = indices_psi(topology)
+        indices = indices_psi(self.top)
         if not selstr:
             self._psi_inds = indices
         else:
             self._psi_inds = indices[np.in1d(indices[:, 1],
-                                             topology.select(selstr), assume_unique=True)]
+                                             self.top.select(selstr), assume_unique=True)]
 
         # alternate phi, psi pairs (phi_1, psi_1, ..., phi_n, psi_n)
         dih_indexes = np.array(list(phi_psi for phi_psi in
                                     zip(self._phi_inds, self._psi_inds))).reshape(-1, 4)
 
-        super(BackboneTorsionFeature, self).__init__(topology, dih_indexes,
+        super(BackboneTorsionFeature, self).__init__(self.top, dih_indexes,
                                                      deg=deg, cossin=cossin,
                                                      periodic=periodic)
+    def __reduce__(self):
+        self._ensure_topfile()
+        return BackboneTorsionFeature, (self.top.fname, self.selstr, self.deg, self.cossin, self.periodic)
 
     def describe(self):
         top = self.top
@@ -180,16 +190,23 @@ class BackboneTorsionFeature(DihedralFeature):
 class Chi1TorsionFeature(DihedralFeature):
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False, periodic=True):
-        indices = indices_chi1(topology)
+        self.top = topology
+        self.selstr = selstr
+        indices = indices_chi1(self.top)
         if not selstr:
             dih_indexes = indices
         else:
             dih_indexes = indices[np.in1d(indices[:, 1],
-                                          topology.select(selstr),
+                                          self.top.select(selstr),
                                           assume_unique=True)]
-        super(Chi1TorsionFeature, self).__init__(topology, dih_indexes,
+        super(Chi1TorsionFeature, self).__init__(self.top, dih_indexes,
                                                  deg=deg, cossin=cossin,
                                                  periodic=periodic)
+
+    def __reduce__(self):
+        self._ensure_topfile()
+        return Chi1TorsionFeature, (self.top.fname, self.selstr,
+                                    self.deg, self.cossin, self.periodic)
 
     def describe(self):
         top = self.top

@@ -19,10 +19,7 @@ Created on 15.02.2016
 
 @author: marscher
 '''
-from pyemma._base.serialization.serialization import SerializableMixIn
-
-
-class Feature(SerializableMixIn):
+class Feature(object):
 
     @property
     def dimension(self):
@@ -33,24 +30,24 @@ class Feature(SerializableMixIn):
         assert isinstance(val, int)
         self._dim = val
 
+    @property
+    def top(self):
+        return self._top
+
+    @top.setter
+    def top(self, value):
+        import mdtraj
+        if isinstance(value, str):
+            value = mdtraj.load(value).top
+        assert isinstance(value, mdtraj.Topology)
+        self._top = value
+
+    def _ensure_topfile(self):
+        if not hasattr(self.top, 'fname') or self.top.fname is None:
+            raise ValueError("not file name for topology available")
+
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
-
-    def __getstate__(self):
-        import copy
-        res = copy.copy(self.__dict__)
-        top = res.pop('top', None)
-        if top and top.fname:
-            res['topologyfile'] = top.fname
-
-        return res
-
-    def __setstate__(self, state):
-        tf = state.pop('topologyfile', None)
-        if tf:
-            import mdtraj
-            self.top = mdtraj.load(tf).topology
-        self.__dict__.update(state)
 
     def __repr__(self):
         return str(self.describe())
