@@ -19,6 +19,8 @@ Created on 15.02.2016
 
 @author: marscher
 '''
+import six
+
 class Feature(object):
 
     @property
@@ -37,7 +39,7 @@ class Feature(object):
     @top.setter
     def top(self, value):
         import mdtraj
-        if isinstance(value, str):
+        if isinstance(value, six.string_types):
             value = mdtraj.load(value).top
         assert isinstance(value, mdtraj.Topology)
         self._top = value
