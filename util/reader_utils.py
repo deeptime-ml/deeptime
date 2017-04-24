@@ -69,6 +69,7 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
                 raise ValueError("The passed list did not exclusively contain strings or was a list of lists "
                                  "(fragmented trajectory).")
 
+        # TODO: this does not handle suffixes like .xyz.gz (rare)
         _, suffix = os.path.splitext(input_list[0])
 
         # check: do all files have the same file type? If not: raise ValueError.
