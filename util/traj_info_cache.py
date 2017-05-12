@@ -195,7 +195,11 @@ class TrajectoryInfoCache(object):
         # handle cache misses and not interpretable results by re-computation.
         # Note: this also handles UnknownDBFormatExceptions!
         except KeyError:
-            info = reader._get_traj_info(filename)
+            try:
+                info = reader._get_traj_info(filename)
+            except BaseException as e:
+                raise IOError('Could not obtain info for file {f}. '
+                              'Original error was {e}'.format(f=filename, e=e))
             info.hash_value = key
             info.abs_path = abs_path
             # store info in db
