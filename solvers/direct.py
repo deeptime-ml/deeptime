@@ -33,6 +33,136 @@ def sort_by_norm(evals, evecs):
     return evals2, evecs2
 
 
+def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
+    """ Rank-reduced eigenvalue decomposition of symmetric positive definite matrix.
+
+    Removes all negligible eigenvalues
+
+    Returns
+    -------
+    s : ndarray(k)
+        k non-negligible eigenvalues, sorted by descending norms
+
+    V : ndarray(n, k)
+        k leading eigenvectors
+
+    """
+    # check input
+    assert _np.allclose(W.T, W), 'W is not a symmetric matrix'
+
+    if method.lower() == 'qr':
+        from .eig_qr.eig_qr import eig_qr
+        s, V = eig_qr(W)
+    # compute the Eigenvalues of C0 using Schur factorization
+    elif method.lower() == 'schur':
+        from scipy.linalg import schur
+        S, V = schur(W)
+        s = _np.diag(S)
+    else:
+        raise ValueError('method not implemented: ' + method)
+
+    s, V = sort_by_norm(s, V) # sort them
+
+    # determine the cutoff. We know that C0 is an spd matrix,
+    # so we select the truncation threshold such that everything that is negative vanishes
+    evmin = _np.min(s)
+    if evmin < 0:
+        epsilon = max(epsilon, -evmin + 1e-16)
+
+    # determine effective rank m and perform low-rank approximations.
+    evnorms = _np.abs(s)
+    n = _np.shape(evnorms)[0]
+    m = n - _np.searchsorted(evnorms[::-1], epsilon)
+    if m == 0:
+        raise _ZeroRankError('All eigenvalues are smaller than %g, rank reduction would discard all dimensions.'%epsilon)
+    Vm = V[:, 0:m]
+    sm = s[0:m]
+
+    if canonical_signs:
+        # enforce canonical eigenvector signs
+        for j in range(m):
+            jj = _np.argmax(_np.abs(Vm[:, j]))
+            Vm[:, j] *= _np.sign(Vm[jj, j])
+
+    return sm, Vm
+
+
+def spd_inv(W, epsilon=1e-10, method='QR', canonical_signs=False):
+    """
+    Compute matrix inverse of symmetric positive-definite matrix :math:`W`.
+
+    by first reducing W to a low-rank approximation that is truly spd.
+
+    Parameters
+    ----------
+    W : ndarray((m,m), dtype=float)
+        Symmetric positive-definite (spd) matrix.
+    epsilon : float
+        Truncation parameter. Eigenvalues with norms smaller than this cutoff will
+        be removed.
+    method : str
+        Method to perform the decomposition of :math:`W` before inverting. Options are:
+
+        * 'QR': QR-based robust eigenvalue decomposition of W
+        * 'schur': Schur decomposition of W
+
+     canonical_signs : boolean, default = False
+        Fix signs in L, s. t. the largest element of in every row of L is positive.
+
+    Returns
+    -------
+    L : ndarray((n, r))
+        Matrix :math:`L` from the decomposition :math:`W^{-1} = L L^T`.
+
+    """
+    if (_np.shape(W)[0] == 1):
+        Winv = 1./W[0,0]
+    else:
+        sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
+        Winv = _np.dot(Vm, _np.diag(1.0 / sm)).dot(Vm.T)
+
+    # return split
+    return Winv
+
+
+def spd_inv_sqrt(W, epsilon=1e-10, method='QR', canonical_signs=False):
+    """
+    Computes :math:`W^{-1/2}` of symmetric positive-definite matrix :math:`W`.
+
+    by first reducing W to a low-rank approximation that is truly spd.
+
+    Parameters
+    ----------
+    W : ndarray((m,m), dtype=float)
+        Symmetric positive-definite (spd) matrix.
+    epsilon : float
+        Truncation parameter. Eigenvalues with norms smaller than this cutoff will
+        be removed.
+    method : str
+        Method to perform the decomposition of :math:`W` before inverting. Options are:
+
+        * 'QR': QR-based robust eigenvalue decomposition of W
+        * 'schur': Schur decomposition of W
+
+     canonical_signs : boolean, default = False
+        Fix signs in L, s. t. the largest element of in every row of L is positive.
+
+    Returns
+    -------
+    L : ndarray((n, r))
+        Matrix :math:`L` from the decomposition :math:`W^{-1} = L L^T`.
+
+    """
+    if (_np.shape(W)[0] == 1):
+        Winv = 1./_np.sqrt(W[0,0])
+    else:
+        sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
+        Winv = _np.dot(Vm, _np.diag(1.0 / _np.sqrt(sm))).dot(Vm.T)
+
+    # return split
+    return Winv
+
+
 def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
     """
     Compute :math:`W^{-1} = L L^T` of the symmetric positive-definite matrix :math:`W`.
@@ -61,46 +191,10 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
         Matrix :math:`L` from the decomposition :math:`W^{-1} = L L^T`.
 
     """
-    # check input
-    assert _np.allclose(W.T, W), 'C0 is not a symmetric matrix'
-
     if (_np.shape(W)[0] == 1):
         L = 1./_np.sqrt(W[0,0])
     else:
-        if method.lower() == 'qr':
-            from .eig_qr.eig_qr import eig_qr
-            s, V = eig_qr(W)
-        # compute the Eigenvalues of C0 using Schur factorization
-        elif method.lower() == 'schur':
-            from scipy.linalg import schur
-            S, V = schur(W)
-            s = _np.diag(S)
-        else:
-            raise ValueError('method not implemented: ' + method)
-
-        s, V = sort_by_norm(s, V) # sort them
-
-        # determine the cutoff. We know that C0 is an spd matrix,
-        # so we select the truncation threshold such that everything that is negative vanishes
-        evmin = _np.min(s)
-        if evmin < 0:
-            epsilon = max(epsilon, -evmin + 1e-16)
-
-        # determine effective rank m and perform low-rank approximations.
-        evnorms = _np.abs(s)
-        n = _np.shape(evnorms)[0]
-        m = n - _np.searchsorted(evnorms[::-1], epsilon)
-        if m == 0:
-            raise _ZeroRankError('All eigenvalues are smaller than %g, rank reduction would discard all dimensions.'%epsilon)
-        Vm = V[:, 0:m]
-        sm = s[0:m]
-
-        if canonical_signs:
-            # enforce canonical eigenvector signs
-            for j in range(m):
-                jj = _np.argmax(_np.abs(Vm[:, j]))
-                Vm[:, j] *= _np.sign(Vm[jj, j])
-
+        sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
         L = _np.dot(Vm, _np.diag(1.0/_np.sqrt(sm)))
 
     # return split
