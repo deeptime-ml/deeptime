@@ -38,6 +38,9 @@ requirements:
     - thermotools >=0.2.5
 
 test:
+  commands:
+  # enable the reporting of Python warning
+    - pip install pytest-warnings
   source_files:
     - conftest.py
     - setup.cfg
