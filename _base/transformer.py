@@ -186,15 +186,6 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
         return super(StreamingTransformer, self).get_output(dimensions, stride, skip, chunk)
 
-    @deprecated('use fit or estimate')
-    def parametrize(self, stride=1):
-        """ DEPRECATED: please use fit() or estimate()."""
-        if self._data_producer is None:
-            raise RuntimeError(
-                "This estimator has no data source given, giving up.")
-
-        return self.estimate(self.data_producer, stride=stride)
-
     @property
     def chunksize(self):
         """chunksize defines how much data is being processed at once."""
