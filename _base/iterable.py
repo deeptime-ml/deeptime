@@ -35,7 +35,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
         self._in_memory = False
         self._mapping_to_mem_active = False
-        self._Y = []
+        self._Y = None
         self._Y_source = None
         # should be set in subclass
         self._ndim = 0
