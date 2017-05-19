@@ -34,6 +34,9 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         if self.default_chunksize < 0:
             raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
         self._in_memory = False
+        self._mapping_to_mem_active = False
+        self._Y = []
+        self._Y_source = None
         # should be set in subclass
         self._ndim = 0
 
@@ -79,20 +82,21 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
     def _clear_in_memory(self):
         if self._logger_is_active(self._loglevel_DEBUG):
             self._logger.debug("clear memory")
-        assert self.in_memory, "tried to delete in memory results which are not set"
-        self._Y = None
+        self._Y = []
         self._Y_source = None
 
     def _map_to_memory(self, stride=1):
         r"""Maps results to memory. Will be stored in attribute :attr:`_Y`."""
         if self._logger_is_active(self._loglevel_DEBUG):
             self._logger.debug("mapping to mem")
-        assert self._in_memory
+
         self._mapping_to_mem_active = True
-        self._Y = self.get_output(stride=stride)
-        from pyemma.coordinates.data import DataInMemory
-        self._Y_source = DataInMemory(self._Y)
-        self._mapping_to_mem_active = False
+        try:
+            self._Y = self.get_output(stride=stride)
+            from pyemma.coordinates.data import DataInMemory
+            self._Y_source = DataInMemory(self._Y)
+        finally:
+            self._mapping_to_mem_active = False
 
     def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True, cols=None, skip=0):
         """ creates an iterator to stream over the (transformed) data.
@@ -307,8 +311,6 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                 elif e.errno == errno.ENOENT:
                     continue
                 raise
-            else:
-                continue
         f = None
         with self.iterator(stride, chunk=chunksize, return_trajindex=False) as it:
             self._progress_register(it.n_chunks, "saving to csv")
