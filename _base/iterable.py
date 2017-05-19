@@ -69,12 +69,12 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         """
         old_state = self._in_memory
         if not old_state and op_in_mem:
-            self._in_memory = op_in_mem
             self._Y = []
             self._map_to_memory()
         elif not op_in_mem and old_state:
             self._clear_in_memory()
-            self._in_memory = op_in_mem
+
+        self._in_memory = op_in_mem
 
     def _clear_in_memory(self):
         if self._logger_is_active(self._loglevel_DEBUG):
