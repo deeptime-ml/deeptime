@@ -72,18 +72,16 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         """
         old_state = self._in_memory
         if not old_state and op_in_mem:
-            self._Y = []
             self._map_to_memory()
         elif not op_in_mem and old_state:
             self._clear_in_memory()
 
-        self._in_memory = op_in_mem
-
     def _clear_in_memory(self):
         if self._logger_is_active(self._loglevel_DEBUG):
             self._logger.debug("clear memory")
-        self._Y = []
+        self._Y = None
         self._Y_source = None
+        self._in_memory = False
 
     def _map_to_memory(self, stride=1):
         r"""Maps results to memory. Will be stored in attribute :attr:`_Y`."""
@@ -97,6 +95,8 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             self._Y_source = DataInMemory(self._Y)
         finally:
             self._mapping_to_mem_active = False
+
+        self._in_memory = True
 
     def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True, cols=None, skip=0):
         """ creates an iterator to stream over the (transformed) data.
