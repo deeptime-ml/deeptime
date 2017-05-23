@@ -1,0 +1,18 @@
+package:
+  name: pyemma-doc
+  # version number: [base tag]+[commits-upstream]_[git_hash]
+  # eg. v2.0+0_g8824162
+  version: {{ GIT_DESCRIBE_TAG[1:] + '+' + GIT_BUILD_STR}}
+source:
+  path: ../..
+  # borked, but preferable, because it creates a "clean" working copy locally.
+  #git_url: ../../
+
+requirements:
+  build:
+    - pyemma-dev =={{ GIT_DESCRIBE_TAG[1:] + '+' + GIT_BUILD_STR}}
+    - nbconvert 
+    - sphinx ==1.5.5
+    - ipython
+    - ipywidgets <6
+    - sphinx_rtd_theme 
