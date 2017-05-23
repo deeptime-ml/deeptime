@@ -1,7 +1,7 @@
 rm pyemma -r
 
 pyemma_version=`python -c "import pyemma as e; print(e.version)"` 
-export BUILD_DIR=${PREFIX}/${pyemma_version}
+export BUILD_DIR=${PREFIX}/v${pyemma_version}
 
 cd doc
 pip install -r requirements-build-doc.txt
