@@ -16,7 +16,7 @@ class TestRunningMoments(unittest.TestCase):
         # Chunk size:
         cls.L = 1000
         # Number of chunks:
-        cls.nchunks = cls.T / cls.L
+        cls.nchunks = cls.T // cls.L
         # Set a lag time for time-lagged tests:
         #cls.lag = 50
         # Weights references:
