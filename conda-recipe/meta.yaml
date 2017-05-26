@@ -10,6 +10,8 @@ source:
 
 build:
   preserve_egg_dir: True
+  script_env:
+   - CIRCLE_TEST_REPORTS
 
 requirements:
   build:
