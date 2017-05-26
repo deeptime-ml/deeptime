@@ -6,7 +6,7 @@ import pytest
 test_pkg = 'pyemma'
 cover_pkg = test_pkg
 
-junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', '.'), 'junit.xml')
+junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', '.'), 'reports', 'junit.xml')
 
 
 pytest_args = ("-v --pyargs {test_pkg} "
