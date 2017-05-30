@@ -23,7 +23,6 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 import six
 
-from pyemma._base.logging import Loggable
 from pyemma._ext.sklearn.base import TransformerMixin
 from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
 from pyemma.coordinates.data._base.iterable import Iterable
@@ -31,7 +30,6 @@ from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data._base.streaming_estimator import StreamingEstimator
 from pyemma.coordinates.util.change_notification import (inform_children_upon_change,
                                                          NotifyOnChangesMixIn)
-from pyemma.util.annotators import deprecated
 from six.moves import range
 
 
