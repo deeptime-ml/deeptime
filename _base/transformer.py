@@ -22,6 +22,8 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 import six
+
+from pyemma._base.logging import Loggable
 from pyemma._ext.sklearn.base import TransformerMixin
 from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
 from pyemma.coordinates.data._base.iterable import Iterable
@@ -229,7 +231,7 @@ class StreamingTransformerIterator(DataSourceIterator):
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         super(StreamingTransformerIterator, self).__init__(
             data_source, return_trajindex=return_trajindex)
-        self._it = self._data_source.data_producer._create_iterator(
+        self._it = self._data_source.data_producer.iterator(
             skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex, cols=cols
         )
         self.state = self._it.state
