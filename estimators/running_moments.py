@@ -41,8 +41,10 @@ class Moments(object):
         w1 = self.w
         w2 = other.w
         w = w1 + w2
-        dsx = (w2/w1) * self.sx - other.sx
-        dsy = (w2/w1) * self.sy - other.sy
+        # TODO: if a weight is very close to zero, this raises DivisionByZeroError
+        q = w2 / w1# if w1 > 0 else 0
+        dsx = q * self.sx - other.sx
+        dsy = q * self.sy - other.sy
         # update
         self.w = w1 + w2
         self.sx = self.sx + other.sx
@@ -238,8 +240,8 @@ class RunningCovar(object):
             if isinstance(weights, numbers.Real):
                 weights = weights * np.ones(T, dtype=float)
             # Check appropriate length if weights is an array:
-            elif isinstance(weights, np.ndarray):
-                assert weights.shape[0] == T, 'weights and X must have equal length'
+            elif isinstance(weights, np.ndarray) and weights.shape[0] != T:
+                raise ValueError('weights and X must have equal length')
             else:
                 raise TypeError('weights is of type %s, must be a number or ndarray'%(type(weights)))
         # estimate and add to storage
