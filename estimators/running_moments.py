@@ -41,8 +41,7 @@ class Moments(object):
         w1 = self.w
         w2 = other.w
         w = w1 + w2
-        # TODO: if a weight is very close to zero, this raises DivisionByZeroError
-        q = w2 / w1# if w1 > 0 else 0
+        q = w2 / w1 if w1 > 0 else 0
         dsx = q * self.sx - other.sx
         dsy = q * self.sy - other.sy
         # update
