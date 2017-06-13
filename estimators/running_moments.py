@@ -240,10 +240,11 @@ class RunningCovar(object):
             if isinstance(weights, numbers.Real):
                 weights = weights * np.ones(T, dtype=float)
             # Check appropriate length if weights is an array:
-            elif isinstance(weights, np.ndarray) and weights.shape[0] != T:
-                raise ValueError('weights and X must have equal length')
+            elif isinstance(weights, np.ndarray):
+                if len(weights) != T:
+                    raise ValueError('weights and X must have equal length')
             else:
-                raise TypeError('weights is of type %s, must be a number or ndarray'%(type(weights)))
+                raise TypeError('weights is of type %s, must be a number or ndarray' % (type(weights)))
         # estimate and add to storage
         if self.compute_XX and not self.compute_XY:
             w, s_X, C_XX = moments_XX(X, remove_mean=self.remove_mean, weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data)
