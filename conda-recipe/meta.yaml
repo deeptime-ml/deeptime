@@ -51,6 +51,7 @@ test:
   requires:
     - pytest 
     - pytest-cov
+    - pytest-faulthandler
 
 about:
   home: http://emma-project.org
