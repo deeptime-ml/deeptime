@@ -41,7 +41,8 @@ class Moments(object):
         w1 = self.w
         w2 = other.w
         w = w1 + w2
-        q = w2 / w1 if w1 > 0 else 0
+        # TODO: fix this div by zero error
+        q = w2 / w1
         dsx = q * self.sx - other.sx
         dsy = q * self.sy - other.sy
         # update
@@ -241,7 +242,7 @@ class RunningCovar(object):
             # Check appropriate length if weights is an array:
             elif isinstance(weights, np.ndarray):
                 if len(weights) != T:
-                    raise ValueError('weights and X must have equal length')
+                    raise ValueError('weights and X must have equal length. Was {} and {} respectively.'.format(len(weights), len(X)))
             else:
                 raise TypeError('weights is of type %s, must be a number or ndarray' % (type(weights)))
         # estimate and add to storage
