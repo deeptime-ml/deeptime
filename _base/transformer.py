@@ -122,6 +122,11 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
         super(StreamingTransformer, self).__init__(chunksize=chunksize)
         self.data_producer = None
         self._Y_source = None
+        self._estimated = True # this class should only transform data and need no estimation.
+
+    @abstractmethod
+    def dimension(self):
+        pass
 
     @property
     # overload of DataSource
@@ -180,12 +185,6 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
         return StreamingTransformerIterator(self, skip=skip, chunk=chunk, stride=stride,
                                             return_trajindex=return_trajindex, cols=cols)
 
-    def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=None):
-        if not self._estimated:
-            self.estimate(self.data_producer, stride=stride)
-
-        return super(StreamingTransformer, self).get_output(dimensions, stride, skip, chunk)
-
     @property
     def chunksize(self):
         """chunksize defines how much data is being processed at once."""
@@ -214,6 +213,10 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
 
 class StreamingEstimationTransformer(StreamingTransformer, StreamingEstimator):
+    def __init__(self):
+        super(StreamingEstimationTransformer, self).__init__()
+        self._estimated = False
+
     """ Basis class for pipelined Transformers, which perform also estimation. """
     def estimate(self, X, **kwargs):
         super(StreamingEstimationTransformer, self).estimate(X, **kwargs)
@@ -222,6 +225,12 @@ class StreamingEstimationTransformer(StreamingTransformer, StreamingEstimator):
         if self.in_memory and not self._mapping_to_mem_active:
             self._map_to_memory()
         return self
+
+    def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=None):
+        if not self._estimated:
+            self.estimate(self.data_producer, stride=stride)
+
+        return super(StreamingTransformer, self).get_output(dimensions, stride, skip, chunk)
 
 
 class StreamingTransformerIterator(DataSourceIterator):
