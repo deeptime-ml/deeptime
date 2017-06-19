@@ -358,17 +358,17 @@ class SqliteDB(AbstractDB):
 
         sql_compatible_ids = SqliteDB._format_tuple_for_sql(ids)
 
-        stmnt = "DELETE FROM traj_info WHERE hash in (%s)" % sql_compatible_ids
-        cur = self._database.execute(stmnt)
-        self._database.commit()
-        assert cur.rowcount == len(ids), "deleted not as many rows(%s) as desired(%s)" %(cur.rowcount, len(ids))
+        with self._database as c:
+            c.execute("DELETE FROM traj_info WHERE hash in (%s)" % sql_compatible_ids)
 
-        # iterate over all LRU databases and delete those ids, we've just deleted from the main db.
-        age_by_hash.sort(key=itemgetter(2))
-        for db, values in itertools.groupby(age_by_hash, key=itemgetter(2)):
-            values = tuple(v[0] for v in values)
-            with sqlite3.connect(db, timeout=self.lru_timeout) as conn:
-                    stmnt = "DELETE FROM usage WHERE hash IN (%s)" \
-                            % SqliteDB._format_tuple_for_sql(values)
-                    curr = conn.execute(stmnt)
-                    assert curr.rowcount == len(values), curr.rowcount
+            # iterate over all LRU databases and delete those ids, we've just deleted from the main db.
+            # Do this within the same execution block of the main database, because we do not want the entry to be deleted,
+            # in case of a subsequent failure.
+            age_by_hash.sort(key=itemgetter(2))
+            for db, values in itertools.groupby(age_by_hash, key=itemgetter(2)):
+                values = tuple(v[0] for v in values)
+                with sqlite3.connect(db, timeout=self.lru_timeout) as conn:
+                        stmnt = "DELETE FROM usage WHERE hash IN (%s)" \
+                                % SqliteDB._format_tuple_for_sql(values)
+                        curr = conn.execute(stmnt)
+                        assert curr.rowcount == len(values), curr.rowcount
