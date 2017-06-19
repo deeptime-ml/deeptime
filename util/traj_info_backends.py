@@ -283,9 +283,10 @@ class SqliteDB(AbstractDB):
                 # if there are many jobs to write to same database at same time, the timeout could be hit
                 logger.debug('could not update LRU info for db %s', db_name)
 
-        import threading
-        threading.Thread(target=_update).start()
-
+        # this could lead to another (rare) race condition during cleaning...
+        #import threading
+        #threading.Thread(target=_update).start()
+        _update()
 
     @staticmethod
     def _create_traj_info(row):
