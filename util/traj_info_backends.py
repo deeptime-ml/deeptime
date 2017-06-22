@@ -119,9 +119,11 @@ class SqliteDB(AbstractDB):
         # Converts TEXT to np.array when selecting
         sqlite3.register_converter("NPARRAY", convert_array)
         self._database = sqlite3.connect(filename if filename is not None else ":memory:",
-                                         detect_types=sqlite3.PARSE_DECLTYPES, timeout=1000*1000,
+                                         detect_types=sqlite3.PARSE_DECLTYPES, timeout=5,
                                          isolation_level=None)
         self.filename = filename
+
+        self.lru_timeout = 5.0 # python sqlite3 specifies timeout in seconds instead of milliseconds.
 
         try:
             cursor = self._database.execute("select num from version")
@@ -148,8 +150,8 @@ class SqliteDB(AbstractDB):
 
     def _create_new_db(self):
         # assumes self.database is a sqlite3.Connection
-        create_version_table = "CREATE TABLE version (num INTEGER PRIMARY KEY);"
-        create_info_table = """CREATE TABLE traj_info(
+        create_version_table = "CREATE TABLE IF NOT EXISTS version (num INTEGER PRIMARY KEY);"
+        create_info_table = """CREATE TABLE IF NOT EXISTS  traj_info(
             hash VARCHAR(64) PRIMARY KEY,
             length INTEGER,
             ndim INTEGER,
@@ -176,8 +178,13 @@ class SqliteDB(AbstractDB):
 
     @db_version.setter
     def db_version(self, val):
-        self._database.execute("insert into version VALUES (?)", [val])
-        self._database.commit()
+        import sqlite3
+        with self._database:
+            try:
+                self._database.execute("insert into version VALUES (?)", [val])
+            except sqlite3.IntegrityError:
+                pass
+       # self._database.commit()
 
     @property
     def num_entries(self):
@@ -197,11 +204,11 @@ class SqliteDB(AbstractDB):
         statement = ("INSERT INTO traj_info (hash, length, ndim, offsets, abs_path, version, lru_db)"
                      "VALUES (?, ?, ?, ?, ?, ?, ?)", values)
         try:
-             self._database.execute(*statement)
+            with self._database as c:
+                c.execute(*statement)
         except sqlite3.IntegrityError as ie:
             logger.exception("insert failed: %s " % ie)
             return
-        self._database.commit()
 
         self._update_time_stamp(hash_value=traj_info.hash_value)
 
@@ -257,20 +264,29 @@ class SqliteDB(AbstractDB):
         if not db_name:
             db_name=':memory:'
 
-        import sqlite3
+        def _update():
+            import sqlite3
+            try:
+                with sqlite3.connect(db_name, timeout=self.lru_timeout) as conn:
+                    """ last_read is a result of time.time()"""
+                    conn.execute('CREATE TABLE IF NOT EXISTS usage '
+                                 '(hash VARCHAR(32), last_read FLOAT)')
+                    conn.commit()
+                    cur = conn.execute('select * from usage where hash=?', (hash_value,))
+                    row = cur.fetchone()
+                    if not row:
+                        conn.execute("insert into usage(hash, last_read) values(?, ?)", (hash_value, time.time()))
+                    else:
+                        conn.execute("update usage set last_read=? where hash=?", (time.time(), hash_value))
+                    conn.commit()
+            except sqlite3.OperationalError:
+                # if there are many jobs to write to same database at same time, the timeout could be hit
+                logger.debug('could not update LRU info for db %s', db_name)
 
-        with sqlite3.connect(db_name) as conn:
-            """ last_read is a result of time.time()"""
-            conn.execute('CREATE TABLE IF NOT EXISTS usage '
-                         '(hash VARCHAR(32), last_read FLOAT)')
-            conn.commit()
-            cur = conn.execute('select * from usage where hash=?', (hash_value,))
-            row = cur.fetchone()
-            if not row:
-                conn.execute("insert into usage(hash, last_read) values(?, ?)", (hash_value, time.time()))
-            else:
-                conn.execute("update usage set last_read=? where hash=?", (time.time(), hash_value))
-            conn.commit()
+        # this could lead to another (rare) race condition during cleaning...
+        #import threading
+        #threading.Thread(target=_update).start()
+        _update()
 
     @staticmethod
     def _create_traj_info(row):
@@ -324,10 +340,8 @@ class SqliteDB(AbstractDB):
 
         # debug: distribution
         len_by_db = {os.path.basename(db): len(hashs_by_db[db]) for db in hashs_by_db.keys()}
-        logger.debug("distribution of lru: %s" % str(len_by_db))
+        logger.debug("distribution of lru: %s", str(len_by_db))
         ### end dbg
-
-        self.lru_timeout = 1000 #1 sec
 
         # collect timestamps from databases
         for db in hashs_by_db.keys():
@@ -345,17 +359,17 @@ class SqliteDB(AbstractDB):
 
         sql_compatible_ids = SqliteDB._format_tuple_for_sql(ids)
 
-        stmnt = "DELETE FROM traj_info WHERE hash in (%s)" % sql_compatible_ids
-        cur = self._database.execute(stmnt)
-        self._database.commit()
-        assert cur.rowcount == len(ids), "deleted not as many rows(%s) as desired(%s)" %(cur.rowcount, len(ids))
+        with self._database as c:
+            c.execute("DELETE FROM traj_info WHERE hash in (%s)" % sql_compatible_ids)
 
-        # iterate over all LRU databases and delete those ids, we've just deleted from the main db.
-        age_by_hash.sort(key=itemgetter(2))
-        for db, values in itertools.groupby(age_by_hash, key=itemgetter(2)):
-            values = tuple(v[0] for v in values)
-            with sqlite3.connect(db, timeout=self.lru_timeout) as conn:
-                    stmnt = "DELETE FROM usage WHERE hash IN (%s)" \
-                            % SqliteDB._format_tuple_for_sql(values)
-                    curr = conn.execute(stmnt)
-                    assert curr.rowcount == len(values), curr.rowcount
+            # iterate over all LRU databases and delete those ids, we've just deleted from the main db.
+            # Do this within the same execution block of the main database, because we do not want the entry to be deleted,
+            # in case of a subsequent failure.
+            age_by_hash.sort(key=itemgetter(2))
+            for db, values in itertools.groupby(age_by_hash, key=itemgetter(2)):
+                values = tuple(v[0] for v in values)
+                with sqlite3.connect(db, timeout=self.lru_timeout) as conn:
+                        stmnt = "DELETE FROM usage WHERE hash IN (%s)" \
+                                % SqliteDB._format_tuple_for_sql(values)
+                        curr = conn.execute(stmnt)
+                        assert curr.rowcount == len(values), curr.rowcount
