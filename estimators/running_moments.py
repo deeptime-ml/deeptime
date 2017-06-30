@@ -246,7 +246,7 @@ class RunningCovar(object):
             else:
                 raise TypeError('weights is of type %s, must be a number or ndarray' % (type(weights)))
         # estimate and add to storage
-        if self.compute_XX and not self.compute_XY:
+        if self.compute_XX and not self.compute_XY and not self.compute_YY:
             w, s_X, C_XX = moments_XX(X, remove_mean=self.remove_mean, weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data)
             self.storage_XX.store(Moments(w, s_X, s_X, C_XX))
         elif self.compute_XX and self.compute_XY and not self.compute_YY:
