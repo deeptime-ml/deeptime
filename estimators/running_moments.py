@@ -249,7 +249,7 @@ class RunningCovar(object):
         if self.compute_XX and not self.compute_XY:
             w, s_X, C_XX = moments_XX(X, remove_mean=self.remove_mean, weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data)
             self.storage_XX.store(Moments(w, s_X, s_X, C_XX))
-        elif self.compute_XX and self.compute_XY:
+        elif self.compute_XX and self.compute_XY and not self.compute_YY:
             assert Y is not None
             w, s_X, s_Y, C_XX, C_XY = moments_XXXY(X, Y, remove_mean=self.remove_mean, symmetrize=self.symmetrize,
                                                    weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data)
@@ -262,9 +262,9 @@ class RunningCovar(object):
             w, s, C = moments_block(X, Y, remove_mean=self.remove_mean,
                                     sparse_mode=self.sparse_mode, modify_data=self.modify_data)
             # make copy in order to get independently mergeable moments
-            self.storage_XX.store(Moments(w, s[0], s[0], C[0, 0]))
-            self.storage_XY.store(Moments(w, s[0], s[1], C[0, 1]))
-            self.storage_YY.store(Moments(w, s[1], s[1], C[1, 1]))
+            self.storage_XX.store(Moments(w, s[0], s[0], C[0][0]))
+            self.storage_XY.store(Moments(w, s[0], s[1], C[0][1]))
+            self.storage_YY.store(Moments(w, s[1], s[1], C[1][1]))
 
     def sum_X(self):
         if self.compute_XX:

@@ -81,28 +81,28 @@ class TestRunningMoments(unittest.TestCase):
         cc = running_moments.RunningCovar(remove_mean=False)
         for i in range(0, self.T, self.L):
             cc.add(self.X[i:i+self.L])
-        assert np.allclose(cc.weight_XX(), self.T)
-        assert np.allclose(cc.sum_X(), self.sx)
-        assert np.allclose(cc.moments_XX(), self.Mxx)
+        np.testing.assert_allclose(cc.weight_XX(), self.T)
+        np.testing.assert_allclose(cc.sum_X(), self.sx)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx)
 
     def test_XX_meanfree(self):
         # many passes
         cc = running_moments.RunningCovar(remove_mean=True)
         for i in range(0, self.T, self.L):
             cc.add(self.X[i:i+self.L])
-        assert np.allclose(cc.weight_XX(), self.T)
-        assert np.allclose(cc.sum_X(), self.sx)
-        assert np.allclose(cc.moments_XX(), self.Mxx0)
+        np.testing.assert_allclose(cc.weight_XX(), self.T)
+        np.testing.assert_allclose(cc.sum_X(), self.sx)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx0)
 
     def test_XXXY_withmean(self):
         # many passes
         cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
         for i in range(0, self.T, self.L):
             cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
-        assert np.allclose(cc.weight_XY(), self.T)
-        assert np.allclose(cc.sum_X(), self.sx)
-        assert np.allclose(cc.moments_XX(), self.Mxx)
-        assert np.allclose(cc.moments_XY(), self.Mxy)
+        np.testing.assert_allclose(cc.weight_XY(), self.T)
+        np.testing.assert_allclose(cc.sum_X(), self.sx)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy)
 
     def test_XXXY_meanfree(self):
         # many passes
@@ -110,10 +110,10 @@ class TestRunningMoments(unittest.TestCase):
         L = 1000
         for i in range(0, self.X.shape[0], L):
             cc.add(self.X[i:i+L], self.Y[i:i+L])
-        assert np.allclose(cc.weight_XY(), self.T)
-        assert np.allclose(cc.sum_X(), self.sx)
-        assert np.allclose(cc.moments_XX(), self.Mxx0)
-        assert np.allclose(cc.moments_XY(), self.Mxy0)
+        np.testing.assert_allclose(cc.weight_XY(), self.T)
+        np.testing.assert_allclose(cc.sum_X(), self.sx)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx0)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy0)
 
     def test_XXXY_weighted_withmean(self):
         # many passes
@@ -123,10 +123,10 @@ class TestRunningMoments(unittest.TestCase):
             iY = self.Y[i:i+self.L, :]
             iwe = self.weights[i:i+self.L]
             cc.add(iX, iY, weights=iwe)
-        assert np.allclose(cc.weight_XY(), self.wesum)
-        assert np.allclose(cc.sum_X(), self.sx_w)
-        assert np.allclose(cc.moments_XX(), self.Mxx_w)
-        assert np.allclose(cc.moments_XY(), self.Mxy_w)
+        np.testing.assert_allclose(cc.weight_XY(), self.wesum)
+        np.testing.assert_allclose(cc.sum_X(), self.sx_w)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx_w)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy_w)
 
     def test_XXXY_weighted_meanfree(self):
         # many passes
@@ -136,30 +136,30 @@ class TestRunningMoments(unittest.TestCase):
             iY = self.Y[i:i+self.L, :]
             iwe = self.weights[i:i+self.L]
             cc.add(iX, iY, weights=iwe)
-        assert np.allclose(cc.weight_XY(), self.wesum)
-        assert np.allclose(cc.sum_X(), self.sx_w)
-        assert np.allclose(cc.moments_XX(), self.Mxx0_w)
-        assert np.allclose(cc.moments_XY(), self.Mxy0_w)
+        np.testing.assert_allclose(cc.weight_XY(), self.wesum)
+        np.testing.assert_allclose(cc.sum_X(), self.sx_w)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_w)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_w)
 
     def test_XXXY_sym_withmean(self):
         # many passes
         cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
         for i in range(0, self.T, self.L):
             cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
-        assert np.allclose(cc.weight_XY(), 2*self.T)
-        assert np.allclose(cc.sum_X(), self.s_sym)
-        assert np.allclose(cc.moments_XX(), self.Mxx_sym)
-        assert np.allclose(cc.moments_XY(), self.Mxy_sym)
+        np.testing.assert_allclose(cc.weight_XY(), 2*self.T)
+        np.testing.assert_allclose(cc.sum_X(), self.s_sym)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx_sym)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy_sym)
 
     def test_XXXY_sym_meanfree(self):
         # many passes
         cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
         for i in range(0, self.T, self.L):
             cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
-        assert np.allclose(cc.weight_XY(), 2*self.T)
-        assert np.allclose(cc.sum_X(), self.s_sym)
-        assert np.allclose(cc.moments_XX(), self.Mxx0_sym)
-        assert np.allclose(cc.moments_XY(), self.Mxy0_sym)
+        np.testing.assert_allclose(cc.weight_XY(), 2*self.T)
+        np.testing.assert_allclose(cc.sum_X(), self.s_sym)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_sym)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_sym)
 
     def test_XXXY_weighted_sym_withmean(self):
         # many passes
@@ -167,10 +167,10 @@ class TestRunningMoments(unittest.TestCase):
         for i in range(0, self.T, self.L):
             iwe = self.weights[i:i+self.L]
             cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], weights=iwe)
-        assert np.allclose(cc.weight_XY(), 2 * self.wesum)
-        assert np.allclose(cc.sum_X(), self.s_sym_w)
-        assert np.allclose(cc.moments_XX(), self.Mxx_sym_w)
-        assert np.allclose(cc.moments_XY(), self.Mxy_sym_w)
+        np.testing.assert_allclose(cc.weight_XY(), 2 * self.wesum)
+        np.testing.assert_allclose(cc.sum_X(), self.s_sym_w)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx_sym_w)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy_sym_w)
 
     def test_XXXY_weighted_sym_meanfree(self):
         # many passes
@@ -178,10 +178,23 @@ class TestRunningMoments(unittest.TestCase):
         for i in range(0, self.T, self.L):
             iwe = self.weights[i:i+self.L]
             cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], weights=iwe)
-        assert np.allclose(cc.weight_XY(), 2*self.wesum)
-        assert np.allclose(cc.sum_X(), self.s_sym_w)
-        assert np.allclose(cc.moments_XX(), self.Mxx0_sym_w)
-        assert np.allclose(cc.moments_XY(), self.Mxy0_sym_w)
+        np.testing.assert_allclose(cc.weight_XY(), 2*self.wesum)
+        np.testing.assert_allclose(cc.sum_X(), self.s_sym_w)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_sym_w)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_sym_w)
+
+    def test_XXYY_meanfree(self):
+        # many passes
+        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True)
+        L = 1000
+        for i in range(0, self.X.shape[0], L):
+            cc.add(self.X[i:i+L], self.Y[i:i+L])
+        np.testing.assert_allclose(cc.weight_XY(), self.T)
+        np.testing.assert_allclose(cc.sum_X(), self.sx)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx0)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy0)
+        np.testing.assert_allclose(cc.moments_YY(), self.Myy0)
+
 
 if __name__ == "__main__":
     unittest.main()
