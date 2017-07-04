@@ -4,6 +4,7 @@
 void _subtract_row_double(double* X, double* row, int M, int N);
 void _subtract_row_float(double* X, double* row, int M, int N);
 void _subtract_row_double_copy(double* X0, double* X, double* row, int M, int N);
+void _subtract_row_float_copy(float* X0, float* X, float* row, int M, int N);
 int* _bool_to_list(int* b, int N, int nnz);
 void _variable_cols_char(int* cols, char* X, int M, int N, int min_constant);
 void _variable_cols_int(int* cols, int* X, int M, int N, int min_constant);
