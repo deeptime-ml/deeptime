@@ -141,6 +141,7 @@ class MomentsStorage(object):
             M = self.storage.pop()
             self.storage[-1].combine(M, mean_free=self.remove_mean)
         # print 'return first element'
+        assert len(self.storage) == 1
         return self.storage[0]
 
 
