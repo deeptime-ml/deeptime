@@ -10,6 +10,8 @@ source:
 
 build:
   preserve_egg_dir: True
+  script_env:
+   - CIRCLE_TEST_REPORTS
 
 requirements:
   build:
@@ -38,6 +40,9 @@ requirements:
     - thermotools >=0.2.5
 
 test:
+  commands:
+  # enable the reporting of Python warning
+    - pip install pytest-warnings
   source_files:
     - conftest.py
     - setup.cfg
@@ -46,6 +51,7 @@ test:
   requires:
     - pytest 
     - pytest-cov
+    - pytest-faulthandler
 
 about:
   home: http://emma-project.org
