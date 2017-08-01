@@ -19,6 +19,7 @@ requirements:
     - mdtraj
     - numpy x.x
     - pybind11
+    - gcc
     - python
     - scipy
     - setuptools
