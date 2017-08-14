@@ -29,7 +29,7 @@ class H5Reader(DataSource):
     chunksize: int
     """
 
-    def __init__(self, filenames, selection='/*', chunksize=5000):
+    def __init__(self, filenames, selection='/*', chunksize=5000, **kw):
         super(H5Reader, self).__init__(chunksize=chunksize)
 
         self._is_reader = True
