@@ -167,9 +167,6 @@ class H5Iterator(DataInMemoryIterator):
                                          return_trajindex=return_trajindex,
                                          cols=cols)
 
-    #def data(self, itraj):
-    #    return self._data_source._load_file(itraj)
-
     def close(self):
         if hasattr(self, '_fh'):
             self._fh.close()
