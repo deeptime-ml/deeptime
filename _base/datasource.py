@@ -116,9 +116,19 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
                     info = TrajectoryInfoCache.instance()[filename, self]
                 else:
                     info = self._get_traj_info(filename)
-                lengths.append(info.length)
-                offsets.append(info.offsets)
-                ndims.append(info.ndim)
+                # nested data set support.
+                if hasattr(info, 'children'):
+                    lengths.append(info.length)
+                    offsets.append(info.offsets)
+                    ndims.append(info.ndim)
+                    for c in info.children:
+                        lengths.append(c.length)
+                        offsets.append(c.offsets)
+                        ndims.append(c.ndim)
+                else:
+                    lengths.append(info.length)
+                    offsets.append(info.offsets)
+                    ndims.append(info.ndim)
                 if len(filename_list) > 3:
                     self._progress_update(1)
 
@@ -247,8 +257,9 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
                                 for itraj in range(n)),
                                dtype=int, count=n)
         else:
-            return np.fromiter(((l - skip - 1) // stride + 1 for l in self._lengths),
+            x= np.fromiter(((l - skip - 1) // stride + 1 for l in self._lengths),
                                dtype=int, count=n)
+            return x
 
     def n_frames_total(self, stride=1, skip=0):
         r"""Returns total number of frames.
