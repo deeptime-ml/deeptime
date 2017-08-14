@@ -37,7 +37,7 @@ requirements:
     - scipy
     - setuptools
     - six >=1.10
-    - thermotools >=0.2.5
+    - thermotools >=0.2.6
 
 test:
   commands:
@@ -49,7 +49,8 @@ test:
   files:
     - matplotlibrc
   requires:
-    - pytest 
+    - h5py
+    - pytest
     - pytest-cov
     - pytest-faulthandler
 
