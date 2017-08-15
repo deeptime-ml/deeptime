@@ -91,8 +91,15 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
                 from mdtraj.formats.registry import FormatRegistry
                 # we need to check for h5 first, because of mdtraj custom HDF5 traj format (which is deprecated).
                 if suffix in ['.h5', '.hdf5']:
-                    from pyemma.coordinates.data.h5_reader import H5Reader
-                    reader = H5Reader(filenames=input_files, chunksize=chunk_size, **kw)
+                    # TODO: inspect if it is a mdtraj h5 file, eg. has the given attributes
+                    try:
+                        from mdtraj.formats import HDF5TrajectoryFile
+                        HDF5TrajectoryFile(input_list[0])
+                        reader = FeatureReader(input_list, featurizer=featurizer, topologyfile=topology,
+                                               chunksize=chunk_size)
+                    except:
+                        from pyemma.coordinates.data.h5_reader import H5Reader
+                        reader = H5Reader(filenames=input_files, chunk_size=chunk_size, **kw)
                 # CASE 1.1: file types are MD files
                 elif suffix in list(FormatRegistry.loaders.keys()):
                     # check: do we either have a featurizer or a topology file name? If not: raise ValueError.

@@ -26,11 +26,11 @@ class H5Reader(DataSource):
         The default selection will match all groups and all data sets.
         All selections have to begin with the root node '/'.
 
-    chunksize: int
+    chunk_size: int
     """
 
-    def __init__(self, filenames, selection='/*', chunksize=5000, **kw):
-        super(H5Reader, self).__init__(chunksize=chunksize)
+    def __init__(self, filenames, selection='/*', chunk_size=5000, **kw):
+        super(H5Reader, self).__init__(chunksize=chunk_size)
 
         self._is_reader = True
         self._is_random_accessible = True
