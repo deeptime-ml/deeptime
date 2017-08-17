@@ -12,6 +12,7 @@ build:
   preserve_egg_dir: True
   script_env:
    - CIRCLE_TEST_REPORTS
+   - OMP_NUM_THREADS
 
 requirements:
   build:
