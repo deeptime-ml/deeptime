@@ -68,8 +68,8 @@ class NumPyFileReader(DataSource):
                            return_trajindex=return_trajindex, cols=cols)
 
     def describe(self):
-        return "[NumpyFileReader arrays with shape %s]" % [np.shape(x)
-                                                           for x in self._data]
+        shapes = [(x, self.ndim) for x in self.trajectory_lengths()]
+        return "[NumpyFileReader arrays with shapes: {}]".format(shapes)
 
     def _reshape(self, array):
         """
