@@ -185,14 +185,3 @@ class H5Iterator(DataInMemoryIterator):
 
     def _next_chunk(self):
         return self._next_chunk_impl(self.data)
-
-
-if __name__ == '__main__':
-    files = ['/group/ag_cmb/marscher/feature_sel/A3D-1-protein-048.dcd_dist_ca.h5',
-             '/group/ag_cmb/marscher/feature_sel/A3D-1-protein-050.dcd_dist_ca.h5']
-    reader = H5Reader(files, selection='/dist_ca')
-
-    out = reader.get_output()
-    print(len(out))
-    for o in out:
-        print(o.shape)
