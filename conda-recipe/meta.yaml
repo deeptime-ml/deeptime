@@ -17,7 +17,7 @@ build:
 requirements:
   build:
     - cython
-    - gcc # [linux]
+    - gcc # [linux or osx]
     - mdtraj
     - numpy x.x
     - pybind11
@@ -28,7 +28,7 @@ requirements:
     - bhmm >=0.6,<0.7
     - decorator >=4.0.0
     - joblib >0.8.4
-    - libgcc # [linux]
+    - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
     - mock
