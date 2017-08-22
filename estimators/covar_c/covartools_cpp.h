@@ -29,14 +29,14 @@ int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
     // by default all 0 (constant)
     for (j = 0; j < N; j++)
         cols[j] = false;
-    const bool tolerance_check = tol != 0.0;
 
     // go through all rows in order to confirm constant candidates
     for (i = 0; i < M; i++) {
         ro = i * N;
         for (j = 0; j < N; j++) {
             if (cols[j] == 0) {
-                if (tolerance_check) {
+                // note: the compiler will eliminate this branch, if dtype != (float, double)
+                if (std::is_floating_point<dtype>::value) {
                     diff = std::abs(X[j] - X[ro + j]);
                     if (diff >= tol) {
                         cols[j] = true;
