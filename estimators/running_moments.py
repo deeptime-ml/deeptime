@@ -1,9 +1,9 @@
-__author__ = 'noe'
-
 import warnings
 import numbers
 import numpy as np
 from .moments import moments_XX, moments_XXXY, moments_block
+
+__author__ = 'noe'
 
 
 class Moments(object):
