@@ -16,78 +16,50 @@ namespace py = pybind11;
 
 */
 template<typename dtype>
-int _variable_cols(py::array_t<int, py::array::c_style> &np_cols,
+int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
                    const py::array_t<dtype, py::array::c_style> &np_X,
-                   std::size_t M, std::size_t N, std::size_t min_constant) {
-    // compare first and last row to get constant candidates
-    std::size_t i, j;
-    std::size_t ro;
-    std::size_t nconstant = N;  // current number of constant columns
-
-    auto cols = np_cols.template mutable_data(0);
-    auto X = np_X.template data(0);
-
-    // by default all 0 (constant)
-    for (j = 0; j < N; j++)
-        cols[j] = 0;
-
-    // go through all rows in order to confirm constant candidates
-    for (i = 0; i < M; i++) {
-        ro = i * N;
-        for (j = 0; j < N; j++) {
-            if (X[j] != X[ro + j]) {
-                if (cols[j] == 0) {
-                    cols[j] = 1;
-                    nconstant--;
-                    // are constant columns below threshold? Then interrupt.
-                    if (nconstant < min_constant)
-                        return 0;
-                    // do we have 0 constant columns? Then we can stop regularly.
-                    if (nconstant == 0)
-                        return 1;
-                }
-            }
-        }
-    }
-
-    return 1;
-}
-
-
-template<typename dtype>
-int _variable_cols_approx(py::array_t<int, py::array::c_style> &np_cols,
-                          const py::array_t<dtype, py::array::c_style> &np_X,
-                          std::size_t M, std::size_t N, dtype tol, std::size_t min_constant) {
+                   std::size_t M, std::size_t N, dtype tol=0, std::size_t min_constant=0) {
     // compare first and last row to get constant candidates
     std::size_t i, j;
     std::size_t ro;
     dtype diff;
     std::size_t nconstant = N;  // current number of constant columns
-    auto cols = np_cols.template mutable_data(0);
+    auto cols = np_cols.mutable_data(0);
     auto X = np_X.template data(0);
     // by default all 0 (constant)
     for (j = 0; j < N; j++)
-        cols[j] = 0;
+        cols[j] = false;
+    const bool tolerance_check = tol != 0.0;
 
     // go through all rows in order to confirm constant candidates
     for (i = 0; i < M; i++) {
         ro = i * N;
         for (j = 0; j < N; j++) {
-            diff = X[j] - X[ro + j];
-            if (diff > tol || -diff > tol) {
-                if (cols[j] == 0) {
-                    cols[j] = 1;
-                    nconstant--;
-                    // are constant columns below threshold? Then interrupt.
-                    if (nconstant < min_constant)
-                        return 0;
-                    // do we have 0 constant columns? Then we can stop regularly.
-                    if (nconstant == 0)
-                        return 1;
+            if (cols[j] == 0) {
+                if (tolerance_check) {
+                    diff = std::abs(X[j] - X[ro + j]);
+                    if (diff >= tol) {
+                        cols[j] = true;
+                        nconstant--;
+                        // are constant columns below threshold? Then interrupt.
+                        if (nconstant < min_constant)
+                            return 0;
+                        // do we have 0 constant columns? Then we can stop regularly.
+                        if (nconstant == 0)
+                            return 1;
+                    }
+                } else {
+                    if (X[j] != X[ro + j]) {
+                        cols[j] = true;
+                        nconstant--;
+                        if (nconstant < min_constant)
+                            return 0;
+                        if (nconstant == 0)
+                            return 1;
+                    }
                 }
             }
         }
     }
-
     return 1;
 }

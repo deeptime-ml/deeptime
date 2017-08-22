@@ -4,8 +4,6 @@ from pyemma._ext.variational.estimators.covar_c._covartools import (variable_col
                                                                     variable_cols_int,
                                                                     variable_cols_long,
                                                                     variable_cols_char,
-                                                                    variable_cols_approx_float,
-                                                                    variable_cols_approx_double,
                                                                     )
 
 
@@ -36,32 +34,26 @@ def variable_cols(X, tol=0.0, min_constant=0):
     """
     if X is None:
         return None
-    M, N = X.shape
+    m, n = X.shape
 
     # prepare column array
-    cols = numpy.zeros(N, dtype=numpy.int32, order='C')
+    cols = numpy.zeros(n, dtype=numpy.bool, order='C')
 
     if X.dtype == numpy.float64:
-        if tol == 0.0:
-            completed = variable_cols_double(cols, X, M, N, min_constant)
-        else:
-            completed = variable_cols_approx_double(cols, X, M, N, tol, min_constant)
+        completed = variable_cols_double(cols, X, m, n, tol, min_constant)
     elif X.dtype == numpy.float32:
-        if tol == 0.0:
-            completed = variable_cols_float(cols, X, M, N, min_constant)
-        else:
-            completed = variable_cols_approx_float(cols, X, M, N, tol, min_constant)
+        completed = variable_cols_float(cols, X, m, n, tol, min_constant)
     elif X.dtype == numpy.int32:
-        completed = variable_cols_int(cols, X, M, N, min_constant)
+        completed = variable_cols_int(cols, X, m, n, 0, min_constant)
     elif X.dtype == numpy.int64:
-        completed = variable_cols_long(cols, X, M, N, min_constant)
+        completed = variable_cols_long(cols, X, m, n, 0, min_constant)
     elif X.dtype == numpy.bool:
-        completed = variable_cols_char(cols, X, M, N, min_constant)
+        completed = variable_cols_char(cols, X, m, n, 0, min_constant)
     else:
         raise TypeError('unsupported type of X: '+str(X.dtype))
 
     # if interrupted, return all ones. Otherwise return the variable columns as bool array
     if completed == 0:
         return numpy.ones_like(cols, dtype=numpy.bool)
-    else:
-        return numpy.array(cols, dtype=numpy.bool)
+
+    return cols
