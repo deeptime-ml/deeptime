@@ -195,7 +195,7 @@ class _FragmentedTrajectoryIterator(object):
                 # if stride doesn't divide length, one has to offset the next trajectory
                 overlap = self._calculate_new_overlap(self._stride, self._reader_lengths[idx], overlap)
                 chunksize = min(length, r.trajectory_length(0, self._stride, skip=_skip))
-                it = r._create_iterator(stride=self._stride, skip=_skip, chunk=chunksize, return_trajindex=True)
+                it = r.iterator(stride=self._stride, skip=_skip, chunk=chunksize, return_trajindex=True)
                 with it:
                     for itraj, data in it:
                         L = len(data)

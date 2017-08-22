@@ -1,3 +1,4 @@
+
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -114,7 +115,7 @@ class CustomFeature(Feature):
     def __hash__(self):
         hash_value = hash(self._func)
         # if key contains numpy arrays, we hash their data arrays
-        key = tuple(list(map(_catch_unhashable, self._args)) + 
+        key = tuple(list(map(_catch_unhashable, self._args)) +
                     list(map(_catch_unhashable, sorted(self._kwargs.items()))))
         hash_value ^= hash(key)
         return hash_value
@@ -141,11 +142,11 @@ class SelectionFeature(Feature):
     def describe(self):
         labels = []
         for i in self.indexes:
-            labels.append("%s%s x" % 
+            labels.append("%s%s x" %
                           (self.prefix_label, _describe_atom(self.top, i)))
-            labels.append("%s%s y" % 
+            labels.append("%s%s y" %
                           (self.prefix_label, _describe_atom(self.top, i)))
-            labels.append("%s%s z" % 
+            labels.append("%s%s z" %
                           (self.prefix_label, _describe_atom(self.top, i)))
         return labels
 

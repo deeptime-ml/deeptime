@@ -69,6 +69,7 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
                 raise ValueError("The passed list did not exclusively contain strings or was a list of lists "
                                  "(fragmented trajectory).")
 
+        # TODO: this does not handle suffixes like .xyz.gz (rare)
         _, suffix = os.path.splitext(input_list[0])
 
         # check: do all files have the same file type? If not: raise ValueError.
@@ -88,9 +89,19 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
 
             if all_exist:
                 from mdtraj.formats.registry import FormatRegistry
-
+                # we need to check for h5 first, because of mdtraj custom HDF5 traj format (which is deprecated).
+                if suffix in ['.h5', '.hdf5']:
+                    # TODO: inspect if it is a mdtraj h5 file, eg. has the given attributes
+                    try:
+                        from mdtraj.formats import HDF5TrajectoryFile
+                        HDF5TrajectoryFile(input_list[0])
+                        reader = FeatureReader(input_list, featurizer=featurizer, topologyfile=topology,
+                                               chunksize=chunk_size)
+                    except:
+                        from pyemma.coordinates.data.h5_reader import H5Reader
+                        reader = H5Reader(filenames=input_files, chunk_size=chunk_size, **kw)
                 # CASE 1.1: file types are MD files
-                if suffix in list(FormatRegistry.loaders.keys()):
+                elif suffix in list(FormatRegistry.loaders.keys()):
                     # check: do we either have a featurizer or a topology file name? If not: raise ValueError.
                     # create a MD reader with file names and topology
                     if not featurizer and not topology:

@@ -22,6 +22,7 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 import six
+
 from pyemma._ext.sklearn.base import TransformerMixin
 from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
 from pyemma.coordinates.data._base.iterable import Iterable
@@ -29,7 +30,6 @@ from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data._base.streaming_estimator import StreamingEstimator
 from pyemma.coordinates.util.change_notification import (inform_children_upon_change,
                                                          NotifyOnChangesMixIn)
-from pyemma.util.annotators import deprecated
 from six.moves import range
 
 
@@ -122,6 +122,11 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
         super(StreamingTransformer, self).__init__(chunksize=chunksize)
         self.data_producer = None
         self._Y_source = None
+        self._estimated = True # this class should only transform data and need no estimation.
+
+    @abstractmethod
+    def dimension(self):
+        pass
 
     @property
     # overload of DataSource
@@ -180,21 +185,6 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
         return StreamingTransformerIterator(self, skip=skip, chunk=chunk, stride=stride,
                                             return_trajindex=return_trajindex, cols=cols)
 
-    def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=None):
-        if not self._estimated:
-            self.estimate(self.data_producer, stride=stride)
-
-        return super(StreamingTransformer, self).get_output(dimensions, stride, skip, chunk)
-
-    @deprecated('use fit or estimate')
-    def parametrize(self, stride=1):
-        """ DEPRECATED: please use fit() or estimate()."""
-        if self._data_producer is None:
-            raise RuntimeError(
-                "This estimator has no data source given, giving up.")
-
-        return self.estimate(self.data_producer, stride=stride)
-
     @property
     def chunksize(self):
         """chunksize defines how much data is being processed at once."""
@@ -223,6 +213,10 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
 
 class StreamingEstimationTransformer(StreamingTransformer, StreamingEstimator):
+    def __init__(self):
+        super(StreamingEstimationTransformer, self).__init__()
+        self._estimated = False
+
     """ Basis class for pipelined Transformers, which perform also estimation. """
     def estimate(self, X, **kwargs):
         super(StreamingEstimationTransformer, self).estimate(X, **kwargs)
@@ -232,13 +226,19 @@ class StreamingEstimationTransformer(StreamingTransformer, StreamingEstimator):
             self._map_to_memory()
         return self
 
+    def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=None):
+        if not self._estimated:
+            self.estimate(self.data_producer, stride=stride)
+
+        return super(StreamingTransformer, self).get_output(dimensions, stride, skip, chunk)
+
 
 class StreamingTransformerIterator(DataSourceIterator):
 
     def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         super(StreamingTransformerIterator, self).__init__(
             data_source, return_trajindex=return_trajindex)
-        self._it = self._data_source.data_producer._create_iterator(
+        self._it = self._data_source.data_producer.iterator(
             skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex, cols=cols
         )
         self.state = self._it.state
