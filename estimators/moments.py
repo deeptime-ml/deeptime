@@ -351,13 +351,10 @@ def _center(X, w, s, mask=None, const=None, inplace=True):
     """
     xmean = s / float(w)
     if mask is None:
-        X = covartools.subtract_row(X, xmean, inplace=inplace)
+        X = np.subtract(X, xmean, out=X if inplace else None)
     else:
-        X = covartools.subtract_row(X, xmean[mask], inplace=inplace)
-        if inplace:
-            const = np.subtract(const, xmean[~mask], const)
-        else:
-            const = np.subtract(const, xmean[~mask])
+        X = np.subtract(X, xmean[mask], out=X if inplace else None)
+        const = np.subtract(const, xmean[~mask], const if inplace else None)
 
     return X, const
 
@@ -542,7 +539,7 @@ def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0
 
 
 def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='auto', sparse_tol=0.0):
-    """ Computes the first two unnormalized moments of X
+    r""" Computes the first two unnormalized moments of X
 
     Computes :math:`s = \sum_t x_t` and :math:`C = X^\top X` while exploiting
     zero or constant columns in the data matrix.
@@ -609,7 +606,7 @@ def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mod
 
 def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
                  modify_data=False, sparse_mode='auto', sparse_tol=0.0):
-    """ Computes the first two unnormalized moments of X and Y
+    r""" Computes the first two unnormalized moments of X and Y
 
     If symmetrize is False, computes
 

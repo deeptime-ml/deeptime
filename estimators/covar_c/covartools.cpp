@@ -20,13 +20,5 @@ PYBIND11_PLUGIN(_covartools) {
     m.def("variable_cols_double", &_variable_cols<double>);
     m.def("variable_cols_approx_float", &_variable_cols_approx<float>);
     m.def("variable_cols_approx_double", &_variable_cols_approx<double>);
-
-    // ================================================
-    // Row subtraction
-    // ================================================
-    m.def("subtract_row_float", &_subtract_row<float>);
-    m.def("subtract_row_double", &_subtract_row<double>);
-    m.def("subtract_row_float_copy", &_subtract_row_copy<float>);
-    m.def("subtract_row_double_copy", &_subtract_row_copy<double>);
     return m.ptr();
 }

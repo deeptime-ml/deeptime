@@ -6,10 +6,6 @@ from pyemma._ext.variational.estimators.covar_c._covartools import (variable_col
                                                                     variable_cols_char,
                                                                     variable_cols_approx_float,
                                                                     variable_cols_approx_double,
-                                                                    subtract_row_double_copy,
-                                                                    subtract_row_float,
-                                                                    subtract_row_float_copy,
-                                                                    subtract_row_double
                                                                     )
 
 
@@ -69,42 +65,3 @@ def variable_cols(X, tol=0.0, min_constant=0):
         return numpy.ones_like(cols, dtype=numpy.bool)
     else:
         return numpy.array(cols, dtype=numpy.bool)
-
-
-def subtract_row(X, row, inplace=False):
-    """ Subtracts given row from each row of array
-
-    Parameters
-    ----------
-    X : ndarray (M, N)
-        Matrix whose rows will be shifted.
-    row : ndarray (N)
-        Row vector that will be subtracted from each row of X.
-    inplace : bool
-        True: X will be changed. False: A copy of X will be created and X will remain unchanged.
-
-    Returns
-    -------
-    X0 : ndarray (M, N)
-        The row-shifted data
-
-    """
-    M, N = X.shape
-    # check for empty inputs
-    if M == 0 or N == 0:
-        return X
-
-    if X.dtype == numpy.float64 and row.dtype == numpy.float64:
-        if inplace:
-            subtract_row_double(X, row, M, N)
-        else:
-            X = subtract_row_double_copy(X, row, M, N)
-    elif X.dtype == numpy.float32 and row.dtype == numpy.float32:
-        if inplace:
-            subtract_row_float(X, row, M, N)
-        else:
-            X = subtract_row_float_copy(X, row, M, N)
-    else:
-        raise TypeError('unsupported or inconsistent types: '+str(X.dtype)+' '+str(row.dtype))
-
-    return X
