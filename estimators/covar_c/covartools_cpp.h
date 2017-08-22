@@ -18,10 +18,11 @@ namespace py = pybind11;
 template<typename dtype>
 int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
                    const py::array_t<dtype, py::array::c_style> &np_X,
-                   std::size_t M, std::size_t N, float tol=0, std::size_t min_constant=0) {
+                   float tol=0, std::size_t min_constant=0) {
     // compare first and last row to get constant candidates
     std::size_t i, j;
     std::size_t ro;
+    std::size_t M = np_X.shape(0), N = np_X.shape(1);
     dtype diff;
     std::size_t nconstant = N;  // current number of constant columns
     auto cols = np_cols.mutable_data(0);
