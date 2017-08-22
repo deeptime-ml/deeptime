@@ -12,12 +12,15 @@ build:
   preserve_egg_dir: True
   script_env:
    - CIRCLE_TEST_REPORTS
+   - OMP_NUM_THREADS
 
 requirements:
   build:
     - cython
+    - gcc # [linux or osx]
     - mdtraj
     - numpy x.x
+    - pybind11
     - python
     - scipy
     - setuptools
@@ -25,6 +28,7 @@ requirements:
     - bhmm >=0.6,<0.7
     - decorator >=4.0.0
     - joblib >0.8.4
+    - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
     - mock
@@ -37,7 +41,7 @@ requirements:
     - scipy
     - setuptools
     - six >=1.10
-    - thermotools >=0.2.5
+    - thermotools >=0.2.6
 
 test:
   source_files:
@@ -46,8 +50,10 @@ test:
   files:
     - matplotlibrc
   requires:
-    - pytest 
+    - h5py
+    - pytest
     - pytest-cov
+    - pytest-faulthandler
 
 about:
   home: http://emma-project.org
