@@ -18,7 +18,7 @@ namespace py = pybind11;
 template<typename dtype>
 int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
                    const py::array_t<dtype, py::array::c_style> &np_X,
-                   std::size_t M, std::size_t N, dtype tol=0, std::size_t min_constant=0) {
+                   std::size_t M, std::size_t N, float tol=0, std::size_t min_constant=0) {
     // compare first and last row to get constant candidates
     std::size_t i, j;
     std::size_t ro;
