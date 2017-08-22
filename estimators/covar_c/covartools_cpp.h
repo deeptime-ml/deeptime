@@ -35,7 +35,7 @@ int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
     for (i = 0; i < M; i++) {
         ro = i * N;
         for (j = 0; j < N; j++) {
-            if (cols[j] == 0) {
+            if (! cols[j]) {
                 // note: the compiler will eliminate this branch, if dtype != (float, double)
                 if (std::is_floating_point<dtype>::value) {
                     diff = std::abs(X[j] - X[ro + j]);
