@@ -25,7 +25,7 @@ int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
     dtype diff;
     std::size_t nconstant = N;  // current number of constant columns
     auto cols = np_cols.mutable_data(0);
-    auto X = np_X.template data(0);
+    auto X = np_X.data(0);
     // by default all 0 (constant)
     for (j = 0; j < N; j++)
         cols[j] = false;
