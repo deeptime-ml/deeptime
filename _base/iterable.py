@@ -217,24 +217,28 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                 # TODO: avoid having a copy here, if Y is already filled
                 trajs = [np.empty((l, ndim), dtype=self.output_type())
                          for l in it.trajectory_lengths()]
+                for t in trajs:
+                    t[:] = np.nan
+                assert all(len(t) > 0 for t in trajs)
             except MemoryError:
-                self._logger.exception("Could not allocate enough memory to map all data."
+                self.logger.exception("Could not allocate enough memory to map all data."
                                        " Consider using a larger stride.")
                 return
 
             if self._logger_is_active(self._loglevel_DEBUG):
-                self._logger.debug("get_output(): dimensions=%s" % str(dimensions))
-                self._logger.debug("get_output(): created output trajs with shapes: %s"
+                self.logger.debug("get_output(): dimensions=%s" % str(dimensions))
+                self.logger.debug("get_output(): created output trajs with shapes: %s"
                                    % [x.shape for x in trajs])
+                self.logger.debug("nchunks :%s, chunksize=%s" % (it.n_chunks, it.chunksize))
             # fetch data
-            self.logger.debug("nchunks :%s, chunksize=%s" % (it.n_chunks, it.chunksize))
             self._progress_register(it.n_chunks,
                                     description='getting output of %s' % self.__class__.__name__,
                                     stage=1)
             for itraj, chunk in it:
+                print(itraj, chunk.shape, it.pos)
                 L = len(chunk)
-                if L > 0:
-                    trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
+                assert L
+                trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
 
                 # update progress
                 self._progress_update(1, stage=1)
@@ -269,7 +273,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
         Example
         -------
         Assume you want to save features calculated by some FeatureReader to ASCII:
-        
+
         >>> import numpy as np, pyemma
         >>> import os
         >>> from pyemma.util.files import TemporaryDirectory

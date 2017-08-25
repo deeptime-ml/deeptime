@@ -680,7 +680,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
             X = self._use_cols(self._next_chunk())
         except StopIteration:
             self._last_chunk_in_traj = True
-            raise
+            raise StopIteration('eof')
         if self.state.current_itraj != self._itraj:
             self.state.pos_adv = 0
             self._last_chunk_in_traj = True
