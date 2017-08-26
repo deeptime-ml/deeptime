@@ -217,13 +217,16 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                 # TODO: avoid having a copy here, if Y is already filled
                 trajs = [np.empty((l, ndim), dtype=self.output_type())
                          for l in it.trajectory_lengths()]
-                for t in trajs:
-                    t[:] = np.nan
                 assert all(len(t) > 0 for t in trajs)
             except MemoryError:
                 self.logger.exception("Could not allocate enough memory to map all data."
                                        " Consider using a larger stride.")
                 return
+
+            from pyemma import config
+            if config.coordinates_check_output:
+                for t in trajs:
+                    t[:] = np.nan
 
             if self._logger_is_active(self._loglevel_DEBUG):
                 self.logger.debug("get_output(): dimensions=%s" % str(dimensions))
@@ -235,13 +238,16 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                                     description='getting output of %s' % self.__class__.__name__,
                                     stage=1)
             for itraj, chunk in it:
-                print(itraj, chunk.shape, it.pos)
                 L = len(chunk)
                 assert L
                 trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
 
                 # update progress
                 self._progress_update(1, stage=1)
+
+        if config.coordinates_check_output:
+            for t in trajs:
+                assert np.all(np.isfinite(t))
 
         return trajs
 

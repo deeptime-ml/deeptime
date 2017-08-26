@@ -25,23 +25,26 @@ class Joiner(DataSource):
         self._is_reader = True
         self._ndim = sum(s.ndim for s in sources)
         self._ntraj = min(s.ntraj for s in sources)
-
+        import itertools
+        for pair in itertools.combinations((s.trajectory_lengths() for s in sources), 2):
+            if np.any(pair[0] != pair[1]):
+                raise ValueError("currently only implemented for matching datasets.")
         self._lengths = sources[0].trajectory_lengths()
 
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
-        return _JoiningIterator(self.sources, skip=skip, chunk=chunk, stride=stride, return_trajindex=return_trajindex, cols=cols)
+        return _JoiningIterator(self, self.sources, skip=skip, chunk=chunk, stride=stride,
+                                return_trajindex=return_trajindex, cols=cols)
 
 
 class _JoiningIterator(DataSourceIterator):
 
-    def __init__(self, sources, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
-        super(_JoiningIterator, self).__init__(sources[0], skip, chunk,
+    def __init__(self, src, sources, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
+        super(_JoiningIterator, self).__init__(src, skip, chunk,
                                                stride, return_trajindex, cols)
         self._iterators = [s.iterator(skip=skip, chunk=chunk, stride=stride,
                                       return_trajindex=return_trajindex, cols=cols)
                            for s in sources]
         self._selected_itraj = -1
-        #self._select_file(0)
         self.sources = sources
 
     def close(self):
@@ -52,23 +55,17 @@ class _JoiningIterator(DataSourceIterator):
         # if one iterator raises stop iteration, this is propagated.
         chunks = []
         for it in self._iterators:
-            try:
-                if it.return_traj_index:
-                    itraj, X = next(it)
-                    assert itraj == self._itraj
-                else:
-                    X = next(it)
-                chunks.append(X)
-            except StopIteration as si:
-                if si.args and 'eof' in si.args[0]:
-                    pass
-                else:
-                    raise
+            if it.return_traj_index:
+                itraj, X = next(it)
+                assert itraj == self._itraj
+            else:
+                X = next(it)
+            chunks.append(X)
 
         res = np.hstack(chunks)
         self._t += len(res)
 
-        if self._t >= self.trajectory_length() and self._itraj < len(self._data_source.filenames) - 1:
+        if self._t >= self.trajectory_length() and self._itraj < self._data_source.ntraj -1:
             self._itraj += 1
             self._select_file(self._itraj)
 
@@ -76,12 +73,6 @@ class _JoiningIterator(DataSourceIterator):
 
     def _select_file(self, itraj):
         if itraj != self._selected_itraj:
-            print("select next file:", itraj)
-            for it in self._iterators:
-                if itraj != it._selected_itraj:
-                    it._select_file(itraj)
-
             self._t = 0
             self._itraj = itraj
             self._selected_itraj = itraj
-            self.close()
