@@ -25,6 +25,9 @@ class Joiner(DataSource):
         self._is_reader = True
         self._ndim = sum(s.ndim for s in sources)
         self._ntraj = min(s.ntraj for s in sources)
+        self._filenames = []
+        for s in sources:
+            self._filenames += s.filenames
         import itertools
         for pair in itertools.combinations((s.trajectory_lengths() for s in sources), 2):
             if np.any(pair[0] != pair[1]):
