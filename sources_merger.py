@@ -12,7 +12,7 @@ class SourcesMerger(DataSource):
 
     Parameters
     ----------
-    sources : list
+    sources : list, tuple
         list of DataSources (Readers, StreamingTransformers etc.) to combine for streaming access.
 
     chunk: int
