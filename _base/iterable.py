@@ -217,7 +217,6 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
                 # TODO: avoid having a copy here, if Y is already filled
                 trajs = [np.empty((l, ndim), dtype=self.output_type())
                          for l in it.trajectory_lengths()]
-                assert all(len(t) > 0 for t in trajs)
             except MemoryError:
                 self.logger.exception("Could not allocate enough memory to map all data."
                                        " Consider using a larger stride.")
