@@ -1,12 +1,11 @@
 import numpy as np
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
-import itertools
 
 __author__ = 'marscher'
 
 
-class Joiner(DataSource):
-    """ combines multiple data sources to stream from.
+class SourcesMerger(DataSource):
+    """ Combines multiple data sources to stream from.
 
     Note that you are responsible you only join matching (meaningful) data sets. If one trajectory is for instance
     shorter than the another, the longer one will be truncated during iteration.
@@ -20,7 +19,7 @@ class Joiner(DataSource):
         chunk size to use for underlying iterators.
     """
     def __init__(self, sources, chunk=5000):
-        super(Joiner, self).__init__(chunksize=chunk)
+        super(SourcesMerger, self).__init__(chunksize=chunk)
         self.sources = sources
         self._is_reader = True
         self._ndim = sum(s.ndim for s in sources)
