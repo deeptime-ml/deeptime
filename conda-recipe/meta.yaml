@@ -27,6 +27,7 @@ requirements:
   run:
     - bhmm >=0.6,<0.7
     - decorator >=4.0.0
+    - h5py
     - joblib >0.8.4
     - libgcc # [linux or osx]
     - matplotlib
@@ -53,7 +54,6 @@ test:
   files:
     - matplotlibrc
   requires:
-    - h5py
     - pytest
     - pytest-cov
     - pytest-faulthandler
