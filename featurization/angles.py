@@ -98,6 +98,11 @@ class DihedralFeature(AngleFeature):
                                               cossin=cossin,
                                               periodic=periodic)
 
+    def __reduce__(self):
+        self._ensure_topfile()
+        return DihedralFeature, (self.top.fname, self.angle_indexes,
+                              self.deg, self.cossin, self.periodic)
+
     def describe(self):
         if self.cossin:
             sin_cos = (

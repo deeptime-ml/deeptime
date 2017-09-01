@@ -69,7 +69,6 @@ class InverseDistanceFeature(DistanceFeature):
         DistanceFeature.__init__(self, top, distance_indexes, periodic=periodic)
 
     def __reduce__(self):
-        # TODO: this should not be neccessary...
         self._ensure_topfile()
         return InverseDistanceFeature, (self.top.fname, self.distance_indexes, self.periodic)
 
