@@ -34,20 +34,17 @@ requirements:
     - mock
     - msmtools >=1.2
     - numpy x.x
+    - pathos
     - progress_reporter
     - psutil >3.1
     - python
     - pyyaml
-    - pathos
     - scipy
     - setuptools
     - six >=1.10
     - thermotools >=0.2.6
 
 test:
-  commands:
-  # enable the reporting of Python warning
-    - pip install pytest-warnings
   source_files:
     - conftest.py
     - setup.cfg
