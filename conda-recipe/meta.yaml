@@ -29,6 +29,7 @@ requirements:
     - decorator >=4.0.0
     - h5py
     - joblib >0.8.4
+    - jsonpickle
     - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
@@ -46,9 +47,6 @@ requirements:
     - thermotools >=0.2.6
 
 test:
-  commands:
-  # enable the reporting of Python warning
-    - pip install pytest-warnings
   source_files:
     - conftest.py
     - setup.cfg
