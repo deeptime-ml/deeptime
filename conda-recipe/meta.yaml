@@ -36,11 +36,11 @@ requirements:
     - mock
     - msmtools >=1.2
     - numpy x.x
+    - pathos
     - progress_reporter
     - psutil >3.1
     - python
     - pyyaml
-    - pathos
     - scipy
     - setuptools
     - six >=1.10
