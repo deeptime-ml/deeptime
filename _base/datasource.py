@@ -176,6 +176,28 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         """
         return self
 
+    def _data_flow_chain(self):
+        """
+        Get a list of all elements in the data flow graph.
+        The first element is the original source, the next one reads from the prior and so on and so forth.
+
+        Returns
+        -------
+        list: list of data sources
+
+        """
+        if self.data_producer is None:
+            return []
+
+        res = []
+        ds = self.data_producer
+        while not ds.is_reader:
+            res.append(ds)
+            ds = ds.data_producer
+        res.append(ds)
+        res = res[::-1]
+        return res
+
     def number_of_trajectories(self, stride=None):
         r""" Returns the number of trajectories.
 
