@@ -1,3 +1,4 @@
+from pyemma.coordinates.data._base import SerializableDataSource
 from pyemma.coordinates.data._base.datasource import DataSource
 from pyemma.coordinates.data.data_in_memory import DataInMemoryIterator
 from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
@@ -5,7 +6,7 @@ from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
 __author__ = 'marscher'
 
 
-class H5Reader(DataSource):
+class H5Reader(SerializableDataSource):
     r""" Reader for HDF5 files.
 
     The reader needs h5py and pytables installed. The first package is used for the actual file handling, while
@@ -28,6 +29,7 @@ class H5Reader(DataSource):
 
     chunk_size: int
     """
+    _serialize_version = 0
 
     def __init__(self, filenames, selection='/*', chunk_size=5000, **kw):
         super(H5Reader, self).__init__(chunksize=chunk_size)
@@ -63,6 +65,9 @@ class H5Reader(DataSource):
         if self._itraj_counter == 0:
             raise ValueError('Your provided selection did not match anything in your provided files. '
                              'Check the log output')
+
+    def __reduce__(self):
+        return H5Reader, (self.filenames, self.selection, self.chunksize)
 
     @property
     def selection(self):

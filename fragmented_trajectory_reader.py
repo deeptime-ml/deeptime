@@ -19,8 +19,8 @@ import itertools
 
 import numpy as np
 
-from pyemma._base.serialization.serialization import SerializableMixIn
-from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
+from pyemma.coordinates.data._base import SerializableDataSource
+from pyemma.coordinates.data._base.datasource import DataSourceIterator
 from pyemma.coordinates.data.util.reader_utils import preallocate_empty_trajectory
 from pyemma.util.annotators import fix_docs
 
@@ -320,9 +320,9 @@ class FragmentIterator(DataSourceIterator):
 
 
 @fix_docs
-class FragmentedTrajectoryReader(DataSource, SerializableMixIn):
+class FragmentedTrajectoryReader(SerializableDataSource):
     """ Reader for fragmented trajectory data eg. (traj0_part0.xtc, traj_0_part1.xtc, ... )
-    
+
     Parameters
     ----------
     trajectories: nested list or nested tuple, 1 level depth

@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import print_function
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, ABC
 import six
 import numpy as np
 
@@ -26,7 +26,7 @@ from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
 
-class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
+class Iterable(ABC, ProgressReporter, Loggable):
 
     def __init__(self, chunksize=1000):
         super(Iterable, self).__init__()

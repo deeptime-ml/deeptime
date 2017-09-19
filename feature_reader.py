@@ -21,8 +21,8 @@ from __future__ import absolute_import
 import mdtraj
 import numpy as np
 
-from pyemma._base.serialization.serialization import SerializableMixIn
-from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
+from pyemma.coordinates.data._base import SerializableDataSource
+from pyemma.coordinates.data._base.datasource import DataSourceIterator
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data.featurization.featurizer import MDFeaturizer
 from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
@@ -35,7 +35,7 @@ __all__ = ['FeatureReader']
 
 
 @fix_docs
-class FeatureReader(DataSource, SerializableMixIn):
+class FeatureReader(SerializableDataSource):
     """
     Reads features from MD data.
 
@@ -84,6 +84,7 @@ class FeatureReader(DataSource, SerializableMixIn):
 
     """
     SUPPORTED_RANDOM_ACCESS_FORMATS = (".h5", ".dcd", ".binpos", ".nc", ".xtc", ".trr")
+    _serialize_version = 0
 
     def __init__(self, trajectories, topologyfile=None, chunksize=1000, featurizer=None):
         assert (topologyfile is not None) or (featurizer is not None), \

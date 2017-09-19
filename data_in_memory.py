@@ -23,6 +23,7 @@ import numbers
 
 import numpy as np
 
+from pyemma.coordinates.data._base import SerializableDataSource
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.util.annotators import fix_docs
@@ -31,7 +32,7 @@ __author__ = 'noe, marscher'
 
 
 @fix_docs
-class DataInMemory(DataSource):
+class DataInMemory(SerializableDataSource):
     r"""
     multi-dimensional data fully stored in memory.
 
