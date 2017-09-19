@@ -12,6 +12,7 @@ class NotRandomAccessibleException(Exception):
 
 class TrajectoryRandomAccessible(object):
     def __init__(self):
+        super(TrajectoryRandomAccessible, self).__init__()
         self._ra_cuboid = NotImplementedRandomAccessStrategy(self)
         self._ra_linear_strategy = NotImplementedRandomAccessStrategy(self)
         self._ra_linear_itraj_strategy = NotImplementedRandomAccessStrategy(self)
