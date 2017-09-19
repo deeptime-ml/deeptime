@@ -20,7 +20,8 @@ requirements:
     - gcc # [linux or osx]
     - mdtraj
     - numpy x.x
-    - pybind11
+    # currently installed as submodule
+    #- pybind11
     - python
     - scipy
     - setuptools
@@ -28,7 +29,6 @@ requirements:
     - bhmm >=0.6,<0.7
     - decorator >=4.0.0
     - h5py
-    - joblib >0.8.4
     - jsonpickle
     - libgcc # [linux or osx]
     - matplotlib
