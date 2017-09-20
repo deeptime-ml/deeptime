@@ -96,6 +96,21 @@ class H5Reader(DataSource):
     def n_datasets(self):
         return self._itraj_counter
 
+    def _reshape(self, array, dry=False):
+        """
+        reshape given array to 2d. If dry is True, the actual reshaping is not performed.
+        returns tuple (array, shape_2d)
+        """
+        import functools, numpy as np
+        if array.ndim == 1:
+            shape = (array.shape[0], 1)
+        else:
+            # hold first dimension, multiply the rest
+            shape = (array.shape[0], functools.reduce(lambda x, y: x * y, array.shape[1:]))
+        if not dry:
+            array = np.reshape(array, shape)
+        return array, shape
+
     def _get_traj_info(self, filename):
         # noinspection PyUnresolvedReferences
         import tables
@@ -132,9 +147,8 @@ class H5Reader(DataSource):
             for m in matches:
                 path = m.string
                 h5_item = f[path]
-                assert h5_item.ndim == 2, 'only 2-dimension datasets supported'
-                ndim = h5_item.shape[1]
-                lengths = h5_item.shape[0]
+                _, shape_2d = self._reshape(h5_item, dry=True)
+                lengths, ndim = shape_2d
                 self._itraj_dataset_mapping[self._itraj_counter] = (filename, path)
                 self._itraj_counter += 1
                 children.append(TrajInfo(ndim, lengths))
@@ -184,4 +198,6 @@ class H5Iterator(DataInMemoryIterator):
                 self._fh = self.data.file
 
     def _next_chunk(self):
-        return self._next_chunk_impl(self.data)
+        X = self._next_chunk_impl(self.data)
+        X, _ = self._data_source._reshape(X, dry=False)
+        return X
