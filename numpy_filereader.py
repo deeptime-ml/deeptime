@@ -81,8 +81,6 @@ class NumPyFileReader(DataSource, SerializableMixIn):
 
         if array.ndim == 1:
             array = np.atleast_2d(array).T
-        elif array.ndim == 2:
-            pass
         else:
             shape = array.shape
             # hold first dimension, multiply the rest
