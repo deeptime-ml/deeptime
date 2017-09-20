@@ -1,4 +1,5 @@
-from pyemma.coordinates.data._base import SerializableDataSource
+from pyemma._base.serialization.serialization import SerializableMixIn
+
 from pyemma.coordinates.data._base.datasource import DataSource
 from pyemma.coordinates.data.data_in_memory import DataInMemoryIterator
 from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
@@ -6,7 +7,7 @@ from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
 __author__ = 'marscher'
 
 
-class H5Reader(SerializableDataSource):
+class H5Reader(DataSource, SerializableMixIn):
     r""" Reader for HDF5 files.
 
     The reader needs h5py and pytables installed. The first package is used for the actual file handling, while
