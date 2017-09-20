@@ -294,6 +294,7 @@ class PyCSVReader(DataSource, SerializableMixIn):
         if self._delimiters[idx] is None:
             # use a sample of three lines
             sample = ''.join(fh.readline() for _ in range(3))
+            fh.seek(0)
             sniffer = csv.Sniffer()
             try:
                 dialect = sniffer.sniff(sample)
@@ -394,7 +395,7 @@ class PyCSVReader(DataSource, SerializableMixIn):
         try:
             arr = np.array(line).astype(float)
         except ValueError as ve:
-            s = 'could not parse first line of data in file "%s"' % fh.name
+            s = 'could not parse first line of data [{ln}] in file "{f}"'.format(f=fh.name, ln=line)
             raise ValueError(s, ve)
         s = arr.squeeze().shape
         if len(s) == 1:
