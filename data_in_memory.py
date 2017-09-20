@@ -23,7 +23,7 @@ import numbers
 
 import numpy as np
 
-from _base.serialization.serialization import SerializableMixIn
+from pyemma._base.serialization.serialization import SerializableMixIn
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.util.annotators import fix_docs
