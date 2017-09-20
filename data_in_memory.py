@@ -23,6 +23,7 @@ import numbers
 
 import numpy as np
 
+from _base.serialization.serialization import SerializableMixIn
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.util.annotators import fix_docs
@@ -31,7 +32,7 @@ __author__ = 'noe, marscher'
 
 
 @fix_docs
-class DataInMemory(DataSource):
+class DataInMemory(DataSource, SerializableMixIn):
     r"""
     multi-dimensional data fully stored in memory.
 
@@ -46,6 +47,7 @@ class DataInMemory(DataSource):
         arrays.
     """
     IN_MEMORY_FILENAME = '<in_memory_file>'
+    _serialize_version = 0
 
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         return DataInMemoryIterator(self, skip, chunk, stride, return_trajindex, cols)

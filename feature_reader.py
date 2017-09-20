@@ -29,7 +29,6 @@ from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
 from pyemma.coordinates.util import patches
 from pyemma.util.annotators import deprecated, fix_docs
 
-
 __author__ = 'noe, marscher'
 __all__ = ['FeatureReader']
 
@@ -84,6 +83,7 @@ class FeatureReader(DataSource, SerializableMixIn):
 
     """
     SUPPORTED_RANDOM_ACCESS_FORMATS = (".h5", ".dcd", ".binpos", ".nc", ".xtc", ".trr")
+    _serialize_version = 0
 
     def __init__(self, trajectories, topologyfile=None, chunksize=1000, featurizer=None):
         assert (topologyfile is not None) or (featurizer is not None), \
