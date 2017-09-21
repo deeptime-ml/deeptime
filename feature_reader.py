@@ -384,17 +384,13 @@ class FeatureReaderIterator(DataSourceIterator):
         # 3 cases:
         # --------
         # 1. raw mdtraj.Trajectory objects
-        # 2. plain reshaped coordinates
+        # 2. plain reshaped coordinates (done by featurizer)
         # 3. extracted features
         if self._data_source._return_traj_obj:
             res = chunk
         else:
             # map data
-            if len(self._data_source.featurizer.active_features) == 0:
-                shape_2d = (shape[0], shape[1] * shape[2])
-                res = chunk.xyz.reshape(shape_2d)
-            else:
-                res = self._data_source.featurizer.transform(chunk)
+            res = self._data_source.featurizer.transform(chunk)
         return res
 
     def _create_mditer(self):
