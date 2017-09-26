@@ -40,7 +40,6 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         super(DataSource, self).__init__(chunksize=chunksize)
 
         # following properties have to be set in subclass
-        self._ntraj = 0
         self._lengths = []
         self._offsets = []
         self._filenames = None
@@ -48,8 +47,11 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
 
     @property
     def ntraj(self):
-        __doc__ = self.number_of_trajectories.__doc__
-        return self._ntraj
+        if self._is_reader:
+            assert hasattr(self, '_ntraj')
+            return self._ntraj
+
+        return self.data_producer.ntraj
 
     @property
     def filenames(self):
@@ -212,7 +214,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         if not IteratorState.is_uniform_stride(stride):
             n = len(np.unique(stride[:, 0]))
         else:
-            n = self._ntraj
+            n = self.ntraj
         return n
 
     def trajectory_length(self, itraj, stride=1, skip=None):
@@ -232,9 +234,9 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
         -------
         int : length of trajectory
         """
-        if itraj >= self._ntraj:
+        if itraj >= self.ntraj:
             raise IndexError("given index (%s) exceeds number of data sets (%s)."
-                             " Zero based indexing!" % (itraj, self._ntraj))
+                             " Zero based indexing!" % (itraj, self.ntraj))
         if not IteratorState.is_uniform_stride(stride):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)

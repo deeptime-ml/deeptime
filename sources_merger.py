@@ -18,12 +18,17 @@ class SourcesMerger(DataSource):
     chunk: int
         chunk size to use for underlying iterators.
     """
-    def __init__(self, sources, chunk=5000):
+    def __init__(self, sources: [list, tuple], chunk=5000):
         super(SourcesMerger, self).__init__(chunksize=chunk)
         self.sources = sources
         self._is_reader = True
         self._ndim = sum(s.ndim for s in sources)
-        self._ntraj = min(s.ntraj for s in sources)
+        ntraj = sources[0].ntraj
+        for s in sources[1:]:
+            if s.ntraj != ntraj:
+                raise ValueError('different amount of trajectories to merge: {}'
+                                 .format([(s, s.ntraj) for s in sources]))
+        self._ntraj = ntraj
         self._filenames = []
         for s in sources:
             self._filenames += s.filenames
