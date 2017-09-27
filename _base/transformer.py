@@ -199,8 +199,8 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
         self.data_producer.chunksize = int(size)
 
-    def number_of_trajectories(self):
-        return self.data_producer.number_of_trajectories()
+    def number_of_trajectories(self, stride=1):
+        return self.data_producer.number_of_trajectories(stride)
 
     def trajectory_length(self, itraj, stride=1, skip=None):
         return self.data_producer.trajectory_length(itraj, stride=stride, skip=skip)
