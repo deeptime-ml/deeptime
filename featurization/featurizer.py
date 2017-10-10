@@ -52,7 +52,7 @@ class MDFeaturizer(Loggable):
            cache already loaded topologies, if file contents match.
        """
         self.topologyfile = None
-        if isinstance(topfile, six.string_types):
+        if isinstance(topfile, str):
             self.topology = load_topology_cached(topfile) if use_cache else load_topology_uncached(topfile)
             self.topologyfile = topfile
         elif isinstance(topfile, mdtraj.Topology):
