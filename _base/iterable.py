@@ -17,7 +17,6 @@
 
 from __future__ import print_function
 from abc import ABCMeta, abstractmethod
-import six
 import numpy as np
 
 from pyemma._base.logging import Loggable
@@ -26,7 +25,7 @@ from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
 
-class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
+class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
 
     def __init__(self, chunksize=1000):
         super(Iterable, self).__init__()
@@ -300,7 +299,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
             for f in self.filenames:
                 base, _ = os.path.splitext(f)
                 filenames.append(base + extension)
-        elif isinstance(filename, six.string_types):
+        elif isinstance(filename, str):
             filename = filename.replace('{stride}', str(stride))
             filenames = [filename.replace('{itraj}', str(itraj)) for itraj
                          in range(self.number_of_trajectories())]

@@ -30,7 +30,7 @@ from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
 from pyemma.coordinates.data._base.streaming_estimator import StreamingEstimator
 from pyemma.coordinates.util.change_notification import (inform_children_upon_change,
                                                          NotifyOnChangesMixIn)
-from six.moves import range
+
 
 
 __all__ = ['Transformer', 'StreamingTransformer']

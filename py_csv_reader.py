@@ -27,8 +27,6 @@ import os
 from math import ceil
 
 import numpy as np
-import six
-from six.moves import range
 
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
@@ -226,7 +224,7 @@ class PyCSVReader(DataSource):
 
         if isinstance(filenames, (tuple, list)):
             n = len(filenames)
-        elif isinstance(filenames, six.string_types):
+        elif isinstance(filenames, str):
             n = 1
         else:
             raise TypeError("'filenames' argument has to be list, tuple or string")
