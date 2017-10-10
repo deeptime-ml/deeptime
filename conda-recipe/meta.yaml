@@ -41,7 +41,6 @@ requirements:
     - pyyaml
     - scipy
     - setuptools
-    - six >=1.10
     - thermotools >=0.2.6
 
 test:
