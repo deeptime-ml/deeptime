@@ -31,7 +31,6 @@ requirements:
     - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
-    - mock
     - msmtools >=1.2
     - numpy x.x
     - pathos
