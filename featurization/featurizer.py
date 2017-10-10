@@ -22,7 +22,6 @@ import warnings
 from pyemma._base.logging import Loggable
 from pyemma.util.types import is_string
 import mdtraj
-import six
 
 from pyemma.coordinates.data.featurization.util import (_parse_pairwise_input,
                                                         _parse_groupwise_input)

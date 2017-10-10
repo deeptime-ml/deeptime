@@ -22,7 +22,6 @@ Created on 15.02.2016
 '''
 import numpy as np
 import mdtraj
-import six
 from itertools import count
 from pyemma.coordinates.data.featurization.util import (_catch_unhashable,
                                                         _describe_atom,
