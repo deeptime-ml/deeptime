@@ -749,7 +749,6 @@ class MDFeaturizer(SerializableMixIn, Loggable):
 
         # handle empty chunks (which might occur due to time lagged access
         # TODO: this is historic, isn't it?
-        assert len(traj.xyz) > 0
         if traj.xyz.shape[0] == 0:
             return np.empty((0, self.dimension()))
 
