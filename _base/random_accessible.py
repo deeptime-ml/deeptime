@@ -3,8 +3,6 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 import numbers
 
-import six
-
 
 class NotRandomAccessibleException(Exception):
     pass
@@ -92,7 +90,7 @@ class TrajectoryRandomAccessible(object):
         return self._ra_linear_itraj_strategy
 
 
-class RandomAccessStrategy(six.with_metaclass(ABCMeta)):
+class RandomAccessStrategy(metaclass=ABCMeta):
     """
     Abstract parent class for all random access strategies. It holds its corresponding data source and
     implements `__getitem__` as well as `__getslice__`, which both get delegated to `_handle_slice`.

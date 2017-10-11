@@ -23,7 +23,6 @@ from pyemma._base.logging import Loggable
 from pyemma._base.serialization.serialization import SerializableMixIn
 from pyemma.util.types import is_string
 import mdtraj
-import six
 
 from pyemma.coordinates.data.featurization.util import (_parse_pairwise_input,
                                                         _parse_groupwise_input)
@@ -46,7 +45,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
                          'active_features',
                          )
 
-    def __init__(self, topfile, use_topology_cache=True):
+    def __init__(self, topfile, use_cache=True):
         """extracts features from MD trajectories.
 
         Parameters
@@ -54,14 +53,13 @@ class MDFeaturizer(SerializableMixIn, Loggable):
 
         topfile : str or mdtraj.Topology
            a path to a topology file (pdb etc.) or an mdtraj Topology() object
-        use_topology_cache : boolean, default=True
+        use_cache : boolean, default=True
            cache already loaded topologies, if file contents match.
         """
-        self.use_topology_cache = use_topology_cache
+        self.use_topology_cache = use_cache
         self.topology = None
         self.topologyfile = topfile
         self.active_features = []
-        self._showed_warning_empty_feature_list = False
 
     @property
     def topologyfile(self):
@@ -70,7 +68,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
     @topologyfile.setter
     def topologyfile(self, topfile):
         self._topologyfile = topfile
-        if isinstance(topfile, six.string_types):
+        if isinstance(topfile, str):
             self.topology = load_topology_cached(topfile) if self.use_topology_cache \
                 else load_topology_uncached(topfile)
             self.topology.fname = topfile
@@ -641,7 +639,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         Parameters
         ----------
         feature : object
-            an object with interface like CustomFeature (map, describe methods)
+            an object with interface like CustomFeature (transform, describe methods)
 
         """
         if feature.dimension <= 0:
@@ -649,10 +647,10 @@ class MDFeaturizer(SerializableMixIn, Loggable):
                              "Please override dimension attribute in feature!")
 
         if not hasattr(feature, 'transform'):
-            raise ValueError("no 'transform' method in given feature")
+            raise ValueError("no map method in given feature")
         else:
             if not callable(getattr(feature, 'transform')):
-                raise ValueError("transform of given feature is not a method")
+                raise ValueError("map exists but is not a method")
 
         self.__add_feature(feature)
 

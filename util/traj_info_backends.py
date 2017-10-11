@@ -29,7 +29,6 @@ from io import BytesIO
 from operator import itemgetter
 
 import numpy as np
-from six import StringIO
 
 from pyemma.coordinates.data.util.traj_info_cache import (UnknownDBFormatException,
                                                           TrajInfo,
