@@ -22,7 +22,6 @@ import warnings
 from pyemma._base.logging import Loggable
 from pyemma.util.types import is_string
 import mdtraj
-import six
 
 from pyemma.coordinates.data.featurization.util import (_parse_pairwise_input,
                                                         _parse_groupwise_input)
@@ -52,7 +51,7 @@ class MDFeaturizer(Loggable):
            cache already loaded topologies, if file contents match.
        """
         self.topologyfile = None
-        if isinstance(topfile, six.string_types):
+        if isinstance(topfile, str):
             self.topology = load_topology_cached(topfile) if use_cache else load_topology_uncached(topfile)
             self.topologyfile = topfile
         elif isinstance(topfile, mdtraj.Topology):

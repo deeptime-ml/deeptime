@@ -23,8 +23,6 @@ import mdtraj as md
 import numpy as np
 import os
 
-from six import string_types
-
 
 def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw):
     r"""
@@ -52,15 +50,15 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
         return FragmentedTrajectoryReader(input_files, topology, chunk_size, featurizer)
 
     # normal trajectories
-    if (isinstance(input_files, string_types)
+    if (isinstance(input_files, str)
             or (isinstance(input_files, (list, tuple))
-                and (any(isinstance(item, string_types) for item in input_files) 
+                and (any(isinstance(item, str) for item in input_files)
                      or len(input_files) is 0))):
         reader = None
         # check: if single string create a one-element list
-        if isinstance(input_files, string_types):
+        if isinstance(input_files, str):
             input_list = [input_files]
-        elif len(input_files) > 0 and all(isinstance(item, string_types) for item in input_files):
+        elif len(input_files) > 0 and all(isinstance(item, str) for item in input_files):
             input_list = input_files
         else:
             if len(input_files) is 0:
@@ -177,7 +175,7 @@ def preallocate_empty_trajectory(top, n_frames=1):
 
 
 def enforce_top(top):
-    if isinstance(top, string_types):
+    if isinstance(top, str):
         top = md.load(top).top
     elif isinstance(top, md.Trajectory):
         top = top.top
