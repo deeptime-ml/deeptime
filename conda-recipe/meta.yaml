@@ -31,7 +31,6 @@ requirements:
     - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
-    - mock
     - msmtools >=1.2
     - numpy x.x
     - pathos
@@ -42,7 +41,6 @@ requirements:
     - pathos
     - scipy
     - setuptools
-    - six >=1.10
     - thermotools >=0.2.6
 
 test:
