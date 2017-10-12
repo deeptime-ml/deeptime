@@ -27,7 +27,7 @@ from pyemma.coordinates.data.featurization.util import (_catch_unhashable,
                                                         _describe_atom,
                                                         hash_top, _hash_numpy_array)
 from pyemma.coordinates.data.featurization._base import Feature
-
+from .util import _atoms_in_residues
 
 class CustomFeature(Feature):
 
@@ -217,5 +217,61 @@ class MinRmsdFeature(Feature):
         else:
             hash_value ^= _hash_numpy_array(np.array(self.atom_indices))
         hash_value ^= hash(self.precentered)
+
+        return hash_value
+
+class ResidueCOMFeature(Feature):
+    def __init__(self, topology, mass_weighted=False, ref_geom=None, image_molecules=False, scheme='all'):
+
+        assert ref_geom is None or isinstance(ref_geom, mdtraj.Trajectory), "argument ref_geom has to be either " \
+                                                                            "None or and mdtraj.Trajectory, got instead %s"%type(ref_geom)
+
+        assert scheme in ['all', 'backbone', 'sidechain']
+
+        self.ref_geom = ref_geom
+        self.topology = topology
+        self.image_molecules = image_molecules
+        self.residue_indices = np.arange(topology.n_residues)
+        self.atoms_in_residues = _atoms_in_residues(topology, self.residue_indices)
+        self.atom_masses = np.array([aa.element.mass for aa in topology.atoms])
+
+        if mass_weighted:
+            self.masses_in_residues = [self.atom_masses[aa_in_rr] for aa_in_rr in self.atoms_in_residues]
+        else:
+            self.masses_in_residues = [np.ones_like(aa_in_rr) for aa_in_rr in self.atoms_in_residues]
+
+        # Prepare and store the description
+        self._describe = []
+        for res_idx, coor in zip(np.repeat(self.residue_indices, 3),
+                                 'xyz'*topology.n_residues):
+            self._describe.append('%s COM-%s (%s atoms)'%(topology.residue(res_idx), coor, scheme))
+            # TODO consider including the ref_geom and image_molecule arsg here?
+
+        self.__hashed_input__ = hash_top(topology)
+        if ref_geom is None:
+            self.__hashed_input__ ^= hash(tuple((mass_weighted, image_molecules, scheme, None)))
+        else:
+            self.__hashed_input__ ^= _hash_numpy_array(ref_geom.xyz[0])
+            # Hashing xyz instead of the top allows for different refs in the same featurizer
+
+    def describe(self):
+        return self._describe
+
+    @property
+    def dimension(self):
+        return 3*self.topology.n_residues
+
+    def transform(self, traj):
+        COM_xyz = []
+        if self.ref_geom is not None:
+            traj = traj.superpose(self.ref_geom)
+        if self.image_molecules:
+            traj = traj.image_molecules()
+        for aas, mms in zip(self.atoms_in_residues, self.masses_in_residues):
+            COM_xyz.append(np.average(traj.xyz[:, aas, ], axis=1, weights=mms))
+        return np.hstack(COM_xyz)
+
+    def __hash__(self):
+        hash_value = hash(self.__hashed_input__)
 
         return hash_value
