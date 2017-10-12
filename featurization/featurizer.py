@@ -464,6 +464,42 @@ class MDFeaturizer(Loggable):
         f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein, threshold, periodic)
         self.__add_feature(f)
 
+    def add_residue_COM(self,
+                        mass_weighted=True,
+                        ref_geom=None,
+                        image_molecules=False,
+                        scheme='all'):
+        r"""
+        Adds a per-residue center of mass (COM) in cartesian coordinates.
+        No periodic boundaries are taken into account when computing averages.
+
+        Parameters
+        ----------
+
+        mass_weighted : boolean, default is True
+            The atomic masses will be used as weights when computing averages
+
+        ref_geom : md.Trajectory, default is None
+            The coordinates can be centered to a reference geometry before computing averages.
+
+        image_molecules : boolean, default is False
+            The method traj.image_molecules will be called before computing averages. The method tries to correct
+            for molecules broken across periodic boundary conditions, but can be time consuming.
+
+        scheme : str, default is 'all'
+                What atoms contribute to the COM computation. The supported keywords are:
+                'all', 'backbone', 'sidechain'
+
+        .. note::
+            Centering (with :obj:`ref_geom`) and "imaging" the trajectories can be time consuming. Consider
+            doing that to your trajectory-files prior to the featurization.
+        """
+
+        from .misc import ResidueCOMFeature
+        f = ResidueCOMFeature(self.topology, mass_weighted=mass_weighted, ref_geom=ref_geom, image_molecules=image_molecules, scheme=scheme)
+        self.__add_feature(f)
+
+
     def add_group_mindist(self,
                             group_definitions,
                             group_pairs='all',
