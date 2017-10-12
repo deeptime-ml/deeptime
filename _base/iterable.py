@@ -348,7 +348,7 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
         :param return_trajindex: take the trajindex into account
         :return: a chunk of data if return_trajindex is False, otherwise a tuple of (trajindex, data).
         """
-        pass
+        raise NotImplementedError()
 
     def output_type(self):
         r""" By default transformers return single precision floats. """

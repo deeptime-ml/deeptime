@@ -100,7 +100,7 @@ class RandomAccessStrategy(metaclass=ABCMeta):
 
     @abstractmethod
     def _handle_slice(self, idx):
-        pass
+        raise NotImplementedError()
 
     @property
     def max_slice_dimension(self):

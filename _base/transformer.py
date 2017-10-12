@@ -40,7 +40,7 @@ class Transformer(TransformerMixin, metaclass=ABCMeta):
     @abstractmethod
     def describe(self):
         r""" Get a descriptive string representation of this class."""
-        pass
+        raise NotImplementedError()
 
     def transform(self, X):
         r"""Maps the input data through the transformer to correspondingly
@@ -99,7 +99,7 @@ class Transformer(TransformerMixin, metaclass=ABCMeta):
             input data and d is the output dimension of this transformer.
 
         """
-        pass
+        raise NotImplementedError()
 
 
 class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
@@ -123,7 +123,7 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
     @abstractmethod
     def dimension(self):
-        pass
+        raise NotImplementedError()
 
     @property
     # overload of DataSource
