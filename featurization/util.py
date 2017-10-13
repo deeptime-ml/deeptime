@@ -190,19 +190,39 @@ def _parse_groupwise_input(group_definitions, group_pairs, MDlogger, mname=''):
 
     return parsed_group_definitions, parsed_group_pairs, np.vstack(distance_pairs), group_membership
 
-def _atoms_in_residues(top, residue_idxs, subset=None):
-    r"""Return a list of ndarrays containing the atom indices in each residue of residue_idxs
+    # TODO: consider this a method of an MDFeaturizer (such as 'pairs')
+def _atoms_in_residues(top, residue_idxs, subset_of_atom_idxs=None, fallback_to_full_residue=True, MDlogger=None):
+    r"""Returns a list of ndarrays containing the atom indices in each residue of :obj:`residue_idxs`
 
     :param top: mdtraj.Topology
     :param residue_idxs: list or ndarray (ndim=1) of integers
-    :param subset : iterable of integers to which the selection has to be restricted
+    :param subset_of_atom_idxs : iterable of integers to which the selection has to be restricted
+    :param fallback_to_full_residue : it is possible that some residues don't yield any atoms with some subsets. Take
+           all atoms in that case. If False, then [] is returned for that residue
+    :param MDlogger: If provided, a warning will be issued when falling back to full residue
     :return: list of length==len(residue_idxs)) of ndarrays (ndim=1) containing the atom indices in each residue of residue_idxs
-
     """
     atoms_in_residues = []
-    if subset is None:
-        subset = np.arange(top.n_atoms)
+    if subset_of_atom_idxs is None:
+        subset_of_atom_idxs = np.arange(top.n_atoms)
+    special_residues = []
     for rr in top.residues:
         if rr.index in residue_idxs:
-            atoms_in_residues.append(np.array([aa.index for aa in rr.atoms if aa.index in subset]))
+            toappend = np.array([aa.index for aa in rr.atoms if aa.index in subset_of_atom_idxs])
+            if len(toappend) == 0:
+                special_residues.append(rr)
+                if fallback_to_full_residue:
+                    toappend = np.array([aa.index for aa in rr.atoms])
+
+            atoms_in_residues.append(toappend)
+
+    # Any special cases?
+    if len(special_residues) != 0 and hasattr(MDlogger, 'warning'):
+        if fallback_to_full_residue:
+            msg = 'the full residue'
+        else:
+            msg = '[]'
+        MDlogger.warning("These residues yielded no atoms in the subset and were returned as %s: %s " % (
+        msg, ''.join(['%s, ' % rr for rr in special_residues])[:-2]))
+
     return atoms_in_residues
