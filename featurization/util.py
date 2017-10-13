@@ -196,7 +196,7 @@ def _atoms_in_residues(top, residue_idxs, subset_of_atom_idxs=None, fallback_to_
 
     :param top: mdtraj.Topology
     :param residue_idxs: list or ndarray (ndim=1) of integers
-    :param subset_of_atom_idxs : iterable of integers to which the selection has to be restricted
+    :param subset_of_atom_idxs : iterable of atom_idxs to which the selection has to be restricted. If None, all atoms considered
     :param fallback_to_full_residue : it is possible that some residues don't yield any atoms with some subsets. Take
            all atoms in that case. If False, then [] is returned for that residue
     :param MDlogger: If provided, a warning will be issued when falling back to full residue
@@ -221,7 +221,7 @@ def _atoms_in_residues(top, residue_idxs, subset_of_atom_idxs=None, fallback_to_
         if fallback_to_full_residue:
             msg = 'the full residue'
         else:
-            msg = '[]'
+            msg = 'emtpy lists'
         MDlogger.warning("These residues yielded no atoms in the subset and were returned as %s: %s " % (
         msg, ''.join(['%s, ' % rr for rr in special_residues])[:-2]))
 
