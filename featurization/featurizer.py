@@ -468,15 +468,15 @@ class MDFeaturizer(Loggable):
 
     def add_group_COM(self, group_definitions, ref_geom=None, image_molecules=False, mass_weighted=True,):
         r"""
-        Adds a per-residue center of mass (COM) in cartesian coordinates.
-        No periodic boundaries are taken into account.
+        Adds the centers of mass (COM) in cartesian coordinates of a group or groups of atoms.
+        If these group definitions coincide directly with residues, use :obj:`add_residue_COM` instead. No periodic
+        boundaries are taken into account.
 
         Parameters
         ----------
 
         group_definitions : iterable of integers
-            List of the groups of atom indices for which the COM will be computed. The atoms are zero-indexed. If
-            these group definitions coincide directly with residues, use :obj:`add_residue_COM` instead
+            List of the groups of atom indices for which the COM will be computed. The atoms are zero-indexed.
 
         ref_geom : :obj:`mdtraj.Trajectory`, default is None
             The coordinates can be centered to a reference geometry before computing the COM.
