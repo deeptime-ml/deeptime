@@ -397,6 +397,7 @@ class MDFeaturizer(Loggable):
             If set to true, this feature will return the number of formed contacts (and not feature values with either 1.0 or 0)
             The ouput of this feature will be of shape (Nt,1), and not (Nt, nr_of_contacts)
 
+
         .. note::
             When using the *iterable of integers* input, :py:obj:`indices` and :py:obj:`indices2`
             will be sorted numerically and made unique before converting them to a pairlist.
@@ -447,6 +448,7 @@ class MDFeaturizer(Loggable):
             information, we will treat dihedrals that cross periodic images
             using the minimum image convention.
 
+
         .. note::
             Using :py:obj:`scheme` = 'closest' or 'closest-heavy' with :py:obj:`residue pairs` = 'all'
             will compute nearly all interatomic distances, for every frame, before extracting the closest pairs.
@@ -464,41 +466,84 @@ class MDFeaturizer(Loggable):
         f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein, threshold, periodic)
         self.__add_feature(f)
 
-    def add_residue_COM(self,
-                        mass_weighted=True,
-                        ref_geom=None,
-                        image_molecules=False,
-                        scheme='all'):
+    def add_group_COM(self, group_definitions, ref_geom=None, image_molecules=False, mass_weighted=True,):
         r"""
         Adds a per-residue center of mass (COM) in cartesian coordinates.
-        No periodic boundaries are taken into account when computing averages.
+        No periodic boundaries are taken into account.
 
         Parameters
         ----------
 
-        mass_weighted : boolean, default is True
-            The atomic masses will be used as weights when computing averages
+        group_definitions : iterable of integers
+            List of the groups of atom indices for which the COM will be computed. The atoms are zero-indexed. If
+            these group definitions coincide directly with residues, use :obj:`add_residue_COM` instead
 
-        ref_geom : md.Trajectory, default is None
-            The coordinates can be centered to a reference geometry before computing averages.
+        ref_geom : :obj:`mdtraj.Trajectory`, default is None
+            The coordinates can be centered to a reference geometry before computing the COM.
 
         image_molecules : boolean, default is False
             The method traj.image_molecules will be called before computing averages. The method tries to correct
-            for molecules broken across periodic boundary conditions, but can be time consuming.
+            for molecules broken across periodic boundary conditions, but can be time consuming. See
+            http://mdtraj.org/latest/api/generated/mdtraj.Trajectory.html#mdtraj.Trajectory.image_molecules
+            for more details
 
-        scheme : str, default is 'all'
-                What atoms contribute to the COM computation. The supported keywords are:
-                'all', 'backbone', 'sidechain'
+        mass_weighted : boolean, default is True
+            Set to False if you want the geometric center and not the COM
+
 
         .. note::
-            Centering (with :obj:`ref_geom`) and "imaging" the trajectories can be time consuming. Consider
-            doing that to your trajectory-files prior to the featurization.
+            Centering (with :obj:`ref_geom`) and imaging (:obj:`image_molecules=True`) the trajectories can sometimes be time consuming. Consider doing that to your trajectory-files prior to the featurization.
+        """
+
+        from .misc import GroupCOMFeature
+
+        f = GroupCOMFeature(self.topology, group_definitions , ref_geom=ref_geom, image_molecules=image_molecules, mass_weighted=mass_weighted)
+        self.__add_feature(f)
+
+    def add_residue_COM(self, residue_indices, scheme='all', ref_geom=None, image_molecules=False, mass_weighted=True,):
+        r"""
+        Adds a per-residue center of mass (COM) in cartesian coordinates.
+        No periodic boundaries are taken into account.
+
+        Parameters
+        ----------
+
+        residue_indices : iterable of integers
+            The residue indices for which the COM will be computed. These are always zero-indexed that **are not
+            necessarily** the residue sequence record of the topology (resSeq). resSeq indices start at least at 1
+            but can depend on the topology. See http://mdtraj.org/latest/atom_selection.html for more details.
+
+        scheme : str, default is 'all'
+            What atoms contribute to the COM computation. The supported keywords are:
+            'all', 'backbone', 'sidechain' . If the scheme yields no atoms for some residue, the selection
+            falls back to 'all' for that residue.
+
+        ref_geom : obj:`mdtraj.Trajectory`, default is None
+            The coordinates can be centered to a reference geometry before computing the COM.
+
+        image_molecules : boolean, default is False
+            The method traj.image_molecules will be called before computing averages. The method tries to correct
+            for molecules broken across periodic boundary conditions, but can be time consuming. See
+            http://mdtraj.org/latest/api/generated/mdtraj.Trajectory.html#mdtraj.Trajectory.image_molecules
+            for more details
+
+        mass_weighted : boolean, default is True
+            Set to False if you want the geometric center and not the COM
+
+
+        .. note::
+            Centering (with :obj:`ref_geom`) and imaging (:obj:`image_molecules=True`) the trajectories can sometimes be time consuming. Consider doing that to your trajectory-files prior to the featurization.
         """
 
         from .misc import ResidueCOMFeature
-        f = ResidueCOMFeature(self.topology, mass_weighted=mass_weighted, ref_geom=ref_geom, image_molecules=image_molecules, scheme=scheme)
-        self.__add_feature(f)
+        from pyemma.coordinates.data.featurization.util import _atoms_in_residues
+        assert scheme in ['all', 'backbone', 'sidechain']
 
+        residue_atoms = _atoms_in_residues(self.topology, residue_indices, subset_of_atom_idxs=self.topology.select(scheme), MDlogger=self.logger)
+
+        f = ResidueCOMFeature(self.topology, np.asarray(residue_indices), residue_atoms, scheme, ref_geom=ref_geom, image_molecules=image_molecules, mass_weighted=mass_weighted)
+
+        self.__add_feature(f)
 
     def add_group_mindist(self,
                             group_definitions,
