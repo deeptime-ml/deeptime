@@ -19,7 +19,7 @@ from __future__ import print_function
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
-from pyemma._base.logging import Loggable
+from pyemma._base.loggable import Loggable
 from pyemma._base.progress import ProgressReporter
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int

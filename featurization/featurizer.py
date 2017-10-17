@@ -19,7 +19,7 @@ from __future__ import absolute_import
 
 import warnings
 
-from pyemma._base.logging import Loggable
+from pyemma._base.loggable import Loggable
 from pyemma.util.types import is_string
 import mdtraj
 
