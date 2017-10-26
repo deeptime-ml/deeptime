@@ -243,6 +243,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
 
                 # update progress
                 self._progress_update(1, stage=1)
+        self._progress_force_finish(stage=1)
 
         if config.coordinates_check_output:
             for t in trajs:
