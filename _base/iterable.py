@@ -21,12 +21,12 @@ import six
 import numpy as np
 
 from pyemma._base.logging import Loggable
-from pyemma._base.progress import ProgressReporter
+from pyemma._base.progress import ProgressReporterMixin
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
 
-class Iterable(six.with_metaclass(ABCMeta, ProgressReporter, Loggable)):
+class Iterable(six.with_metaclass(ABCMeta, ProgressReporterMixin, Loggable)):
 
     def __init__(self, chunksize=1000):
         super(Iterable, self).__init__()
