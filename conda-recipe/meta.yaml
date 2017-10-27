@@ -34,7 +34,6 @@ requirements:
     - msmtools >=1.2
     - numpy x.x
     - pathos
-    - progress_reporter
     - psutil >3.1
     - python
     - pyyaml
