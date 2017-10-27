@@ -17,16 +17,15 @@
 
 from __future__ import print_function
 from abc import ABCMeta, abstractmethod
-import six
 import numpy as np
 
-from pyemma._base.logging import Loggable
+from pyemma._base.loggable import Loggable
 from pyemma._base.progress import ProgressReporterMixin
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
 
-class Iterable(six.with_metaclass(ABCMeta, ProgressReporterMixin, Loggable)):
+class Iterable(ProgressReporterMixin, Loggable, metaclass=ABCMeta):
 
     def __init__(self, chunksize=1000):
         super(Iterable, self).__init__()
@@ -301,7 +300,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporterMixin, Loggable)):
             for f in self.filenames:
                 base, _ = os.path.splitext(f)
                 filenames.append(base + extension)
-        elif isinstance(filename, six.string_types):
+        elif isinstance(filename, str):
             filename = filename.replace('{stride}', str(stride))
             filenames = [filename.replace('{itraj}', str(itraj)) for itraj
                          in range(self.number_of_trajectories())]
@@ -350,7 +349,7 @@ class Iterable(six.with_metaclass(ABCMeta, ProgressReporterMixin, Loggable)):
         :param return_trajindex: take the trajindex into account
         :return: a chunk of data if return_trajindex is False, otherwise a tuple of (trajindex, data).
         """
-        pass
+        raise NotImplementedError()
 
     def output_type(self):
         r""" By default transformers return single precision floats. """

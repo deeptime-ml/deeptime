@@ -23,7 +23,6 @@ from pyemma.util.indices import (combinations,
                                  product)
 from pyemma.util.numeric import _hash_numpy_array
 from pyemma.util.types import is_iterable_of_int, is_string
-from six import PY3
 
 import numpy as np
 
@@ -58,15 +57,12 @@ def _catch_unhashable(x):
     return x
 
 def hash_top(top):
-    if not PY3:
-        return hash(top)
-    else:
-        # this is a temporary workaround for py3
-        hash_value = hash(top.n_atoms)
-        hash_value ^= hash(tuple(top.atoms))
-        hash_value ^= hash(tuple(top.residues))
-        hash_value ^= hash(tuple(top.bonds))
-        return hash_value
+    # this is a temporary workaround for py3
+    hash_value = hash(top.n_atoms)
+    hash_value ^= hash(tuple(top.atoms))
+    hash_value ^= hash(tuple(top.residues))
+    hash_value ^= hash(tuple(top.bonds))
+    return hash_value
 
 
 def _parse_pairwise_input(indices1, indices2, MDlogger, fname=''):

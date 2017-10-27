@@ -19,13 +19,11 @@ from abc import ABCMeta, abstractmethod
 from math import ceil
 
 import numpy as np
-import six
 
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.coordinates.data._base.random_accessible import TrajectoryRandomAccessible
 from pyemma.util import config
 from pyemma.util.annotators import deprecated
-from six import string_types
 import os
 
 
@@ -69,7 +67,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
     @filenames.setter
     def filenames(self, filename_list):
 
-        if isinstance(filename_list, string_types):
+        if isinstance(filename_list, str):
             filename_list = [filename_list]
 
         uniq = set(filename_list)
@@ -346,7 +344,7 @@ class IteratorState(object):
         return True
 
 
-class DataSourceIterator(six.with_metaclass(ABCMeta)):
+class DataSourceIterator(metaclass=ABCMeta):
     """
     Abstract class for any data source iterator.
     """
@@ -359,6 +357,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         self.__init_stride(stride)
         self._pos = 0
         self._last_chunk_in_traj = False
+        super(DataSourceIterator, self).__init__()
 
     def __init_stride(self, stride):
         self.state.stride = stride
@@ -422,7 +421,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
     @abstractmethod
     def close(self):
         """ closes the reader"""
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def _select_file(self, itraj):
@@ -433,7 +432,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         itraj : int
             index of trajectory to open.
         """
-        pass
+        raise NotImplementedError()
 
     def reset(self):
         """
@@ -658,7 +657,7 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
 
     @abstractmethod
     def _next_chunk(self):
-        pass
+        raise NotImplementedError()
 
     def __next__(self):
         return self.next()

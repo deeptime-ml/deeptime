@@ -22,7 +22,6 @@ Created on 15.02.2016
 '''
 import numpy as np
 import mdtraj
-import six
 from itertools import count
 from pyemma.coordinates.data.featurization.util import (_catch_unhashable,
                                                         _describe_atom,
@@ -82,7 +81,7 @@ class CustomFeature(Feature):
         self._kwargs = kwargs
         self._dim = kwargs.pop('dim', 0)
         desc = kwargs.pop('description', [])
-        if isinstance(desc, six.string_types):
+        if isinstance(desc, str):
             desc = [desc]
         self.id = next(CustomFeature._id)
         if not desc:
@@ -174,7 +173,7 @@ class MinRmsdFeature(Feature):
 
         # Types of inputs
         # 1. Filename+top
-        if isinstance(ref, six.string_types):
+        if isinstance(ref, str):
             # Store the filename
             self.name = ref[:]
             ref = mdtraj.load_frame(ref, ref_frame, top=topology)
