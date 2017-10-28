@@ -728,7 +728,7 @@ class MDFeaturizer(Loggable):
         # if there are no features selected, return given trajectory
         if not self.active_features:
             self.add_selection(np.arange(self.topology.n_atoms))
-            warnings.warn("You have no features selected. Returning plain coordinates.")
+            warnings.warn("You have not selected any features. Returning plain coordinates.")
 
         # handle empty chunks (which might occur due to time lagged access
         # TODO: this is historic, isn't it?
