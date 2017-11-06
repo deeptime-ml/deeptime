@@ -20,12 +20,12 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from pyemma._base.loggable import Loggable
-from pyemma._base.progress import ProgressReporter
+from pyemma._base.progress import ProgressReporterMixin
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
 
-class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
+class Iterable(Loggable, metaclass=ABCMeta):
 
     def __init__(self, chunksize=1000):
         super(Iterable, self).__init__()
@@ -232,16 +232,16 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
                                    % [x.shape for x in trajs])
                 self.logger.debug("nchunks :%s, chunksize=%s" % (it.n_chunks, it.chunksize))
             # fetch data
-            self._progress_register(it.n_chunks,
-                                    description='getting output of %s' % self.__class__.__name__,
-                                    stage=1)
-            for itraj, chunk in it:
-                L = len(chunk)
-                assert L
-                trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
-
-                # update progress
-                self._progress_update(1, stage=1)
+            from pyemma._base.progress import ProgressReporter
+            pg = ProgressReporter()
+            pg.register(it.n_chunks, description='getting output of %s' % self.__class__.__name__)
+            with pg.context():
+                for itraj, chunk in it:
+                    L = len(chunk)
+                    assert L
+                    trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
+                    # update progress
+                    pg.update(1)
 
         if config.coordinates_check_output:
             for t in trajs:
@@ -320,8 +320,11 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
                     continue
                 raise
         f = None
-        with self.iterator(stride, chunk=chunksize, return_trajindex=False) as it:
-            self._progress_register(it.n_chunks, "saving to csv")
+        from pyemma._base.progress import ProgressReporter
+        pg = ProgressReporter()
+        it = self.iterator(stride, chunk=chunksize, return_trajindex=False)
+        pg.register(it.n_chunks, "saving to csv")
+        with it, pg.context():
             oldtraj = -1
             for X in it:
                 if oldtraj != it.current_trajindex:
@@ -333,10 +336,9 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
                     oldtraj = it.current_trajindex
                 np.savetxt(f, X, **kw)
                 f.flush()
-                self._progress_update(1, 0)
+                pg.update(1, 0)
         if f is not None:
             f.close()
-        self._progress_force_finish(0)
 
     @abstractmethod
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
