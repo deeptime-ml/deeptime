@@ -646,11 +646,10 @@ class MDFeaturizer(SerializableMixIn, Loggable):
             raise ValueError("Dimension has to be positive. "
                              "Please override dimension attribute in feature!")
 
-        if not hasattr(feature, 'map'):
-            raise ValueError("no map method in given feature")
-        else:
-            if not callable(getattr(feature, 'map')):
-                raise ValueError("map exists but is not a method")
+        if not hasattr(feature, 'transform'):
+            raise ValueError("no 'transform' method in given feature")
+        elif not callable(getattr(feature, 'transform')):
+            raise ValueError("'transform' attribute exists but is not a method")
 
         self.__add_feature(feature)
 

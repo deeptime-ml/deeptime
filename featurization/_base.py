@@ -1,3 +1,4 @@
+
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -46,7 +47,7 @@ class Feature(object):
 
     def _ensure_topfile(self):
         if not hasattr(self.top, 'fname') or self.top.fname is None:
-            raise ValueError("not file name for topology available")
+            raise ValueError("no file name for topology available")
 
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
