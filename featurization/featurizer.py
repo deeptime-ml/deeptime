@@ -19,7 +19,7 @@ from __future__ import absolute_import
 
 import warnings
 
-from pyemma._base.logging import Loggable
+from pyemma._base.loggable import Loggable
 from pyemma._base.serialization.serialization import SerializableMixIn
 from pyemma.util.types import is_string
 import mdtraj
@@ -639,17 +639,17 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         Parameters
         ----------
         feature : object
-            an object with interface like CustomFeature (transform, describe methods)
+            an object with interface like CustomFeature (map, describe methods)
 
         """
         if feature.dimension <= 0:
             raise ValueError("Dimension has to be positive. "
                              "Please override dimension attribute in feature!")
 
-        if not hasattr(feature, 'transform'):
+        if not hasattr(feature, 'map'):
             raise ValueError("no map method in given feature")
         else:
-            if not callable(getattr(feature, 'transform')):
+            if not callable(getattr(feature, 'map')):
                 raise ValueError("map exists but is not a method")
 
         self.__add_feature(feature)
@@ -745,7 +745,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         # if there are no features selected, return given trajectory
         if not self.active_features:
             self.add_selection(np.arange(self.topology.n_atoms))
-            warnings.warn("You have no features selected. Returning plain coordinates.")
+            warnings.warn("You have not selected any features. Returning plain coordinates.")
 
         # handle empty chunks (which might occur due to time lagged access
         # TODO: this is historic, isn't it?

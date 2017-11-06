@@ -443,7 +443,7 @@ class DataSourceIterator(metaclass=ABCMeta):
     @abstractmethod
     def close(self):
         """ closes the reader"""
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def _select_file(self, itraj):
@@ -454,7 +454,7 @@ class DataSourceIterator(metaclass=ABCMeta):
         itraj : int
             index of trajectory to open.
         """
-        pass
+        raise NotImplementedError()
 
     def reset(self):
         """
@@ -679,7 +679,7 @@ class DataSourceIterator(metaclass=ABCMeta):
 
     @abstractmethod
     def _next_chunk(self):
-        pass
+        raise NotImplementedError()
 
     def __next__(self):
         return self.next()
