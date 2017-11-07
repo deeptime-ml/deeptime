@@ -109,28 +109,30 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
             ndims = []
             # avoid cyclic imports
             from pyemma.coordinates.data.util.traj_info_cache import TrajectoryInfoCache
-            if len(filename_list) > 3:
-                self._progress_register(len(filename_list), 'Obtaining file info')
-            for filename in filename_list:
-                if config.use_trajectory_lengths_cache:
-                    info = TrajectoryInfoCache.instance()[filename, self]
-                else:
-                    info = self._get_traj_info(filename)
-                # nested data set support.
-                if hasattr(info, 'children'):
-                    lengths.append(info.length)
-                    offsets.append(info.offsets)
-                    ndims.append(info.ndim)
-                    for c in info.children:
-                        lengths.append(c.length)
-                        offsets.append(c.offsets)
-                        ndims.append(c.ndim)
-                else:
-                    lengths.append(info.length)
-                    offsets.append(info.offsets)
-                    ndims.append(info.ndim)
-                if len(filename_list) > 3:
-                    self._progress_update(1)
+            from pyemma._base.progress import ProgressReporter
+            pg = ProgressReporter()
+            pg.register(len(filename_list), 'Obtaining file info')
+            with pg.context():
+                for filename in filename_list:
+                    if config.use_trajectory_lengths_cache:
+                        info = TrajectoryInfoCache.instance()[filename, self]
+                    else:
+                        info = self._get_traj_info(filename)
+                    # nested data set support.
+                    if hasattr(info, 'children'):
+                        lengths.append(info.length)
+                        offsets.append(info.offsets)
+                        ndims.append(info.ndim)
+                        for c in info.children:
+                            lengths.append(c.length)
+                            offsets.append(c.offsets)
+                            ndims.append(c.ndim)
+                    else:
+                        lengths.append(info.length)
+                        offsets.append(info.offsets)
+                        ndims.append(info.ndim)
+                    if len(filename_list) > 3:
+                        pg.update(1)
 
             # ensure all trajs have same dim
             if not np.unique(ndims).size == 1:
