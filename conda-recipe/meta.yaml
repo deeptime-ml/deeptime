@@ -21,13 +21,12 @@ requirements:
     - mdtraj
     - numpy x.x
     - pybind11
-    - python
+    - python >=3
     - scipy
     - setuptools
   run:
     - bhmm >=0.6,<0.7
     - decorator >=4.0.0
-    - joblib >0.8.4
     - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
@@ -35,7 +34,7 @@ requirements:
     - numpy x.x
     - pathos
     - psutil >3.1
-    - python
+    - python >=3
     - pyyaml
     - scipy
     - setuptools
