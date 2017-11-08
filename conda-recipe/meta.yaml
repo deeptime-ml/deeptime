@@ -13,6 +13,7 @@ build:
   script_env:
    - CIRCLE_TEST_REPORTS
    - OMP_NUM_THREADS
+   - PYEMMA_NJOBS
   script: python -B setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
@@ -53,6 +54,7 @@ test:
     - pytest
     - pytest-cov
     - pytest-faulthandler
+    - pytest-xdist
 
 about:
   home: http://emma-project.org
