@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-test_pkg = 'pyemma.coordinates.tests.test_regspace'
+test_pkg = 'pyemma.coordinates.clustering.tests.test_regspace'
 cover_pkg = test_pkg
 
 junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', '.'), 'reports', 'junit.xml')
