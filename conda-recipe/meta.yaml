@@ -53,7 +53,7 @@ test:
     - h5py
     - pytest
     - pytest-cov
-    - pytest-faulthandler
+   #  - pytest-faulthandler
     - pytest-xdist
 
 about:

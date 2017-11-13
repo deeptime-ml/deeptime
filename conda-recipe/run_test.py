@@ -3,12 +3,12 @@ import sys
 
 import pytest
 
-test_pkg = 'pyemma'
+test_pkg = 'pyemma.coordinates.tests.test_regspace'
 cover_pkg = test_pkg
 
 junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', '.'), 'reports', 'junit.xml')
 
-njobs_args = '-p no:xdist' if os.getenv('TRAVIS') else '-n2'
+njobs_args = '-p no:xdist' # if os.getenv('TRAVIS') else '-n2'
 
 pytest_args = ("-v --pyargs {test_pkg} "
                "--cov={cover_pkg} "
