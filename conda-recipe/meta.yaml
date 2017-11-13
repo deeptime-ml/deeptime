@@ -53,6 +53,7 @@ test:
     - h5py
     - pytest
     - pytest-cov
+   # TODO: disabled until https://bugs.python.org/issue31701 is fixed.
    #  - pytest-faulthandler
     - pytest-xdist
 
