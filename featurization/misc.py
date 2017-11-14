@@ -223,12 +223,13 @@ class MinRmsdFeature(Feature):
 
 class AlignFeature(SelectionFeature):
 
-    def __init__(self, reference, indexes, atom_indices=None, ref_atom_indices=None):
+    def __init__(self, reference, indexes, atom_indices=None, ref_atom_indices=None, in_place=True):
         super(AlignFeature, self).__init__(top=reference.topology, indexes=indexes)
         self.ref = reference
         self.atom_indices = atom_indices
         self.ref_atom_indices = ref_atom_indices
         self.prefix_label = 'aligned ATOM:'
+        self.in_place = in_place
 
     def __hash__(self):
         h = super(AlignFeature, self).__hash__()
@@ -236,6 +237,8 @@ class AlignFeature(SelectionFeature):
         return h
 
     def transform(self, traj):
+        if not self.in_place:
+            traj = traj.slice(slice(None), copy=True)
         aligned = traj.superpose(reference=self.ref, atom_indices=self.atom_indices,
                                  ref_atom_indices=self.ref_atom_indices)
         # apply selection
