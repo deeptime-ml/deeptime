@@ -6,7 +6,9 @@ import pytest
 test_pkg = 'pyemma'
 cover_pkg = test_pkg
 
-junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', '.'), 'reports', 'junit.xml')
+# where to write junit xml
+junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', os.path.expanduser('~')),
+                         'reports', 'junit.xml')
 
 njobs_args = '-p no:xdist' if os.getenv('TRAVIS') else '-n2'
 
