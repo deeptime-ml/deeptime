@@ -238,16 +238,27 @@ class MDFeaturizer(Loggable):
 
         return pair_inds
 
-    def add_all(self):
+    def add_all(self, reference=None, atom_indices=None, ref_atom_indices=None):
         """
         Adds all atom coordinates to the feature list.
         The coordinates are flattened as follows: [x1, y1, z1, x2, y2, z2, ...]
 
+        Parameters
+        ----------
+        reference: mdtraj.Trajectory or None, default=None
+            if given, all data is being aligned to the given reference with Trajectory.superpose
+        atom_indices : array_like, or None
+            The indices of the atoms to superpose. If not
+            supplied, all atoms will be used.
+        ref_atom_indices : array_like, or None
+            Use these atoms on the reference structure. If not supplied,
+            the same atom indices will be used for this trajectory and the
+            reference one.
         """
-        # TODO: add possibility to align to a reference structure
-        self.add_selection(list(range(self.topology.n_atoms)))
+        self.add_selection(list(range(self.topology.n_atoms)), reference=reference,
+                           atom_indices=atom_indices, ref_atom_indices=ref_atom_indices)
 
-    def add_selection(self, indexes):
+    def add_selection(self, indexes, reference=None, atom_indices=None, ref_atom_indices=None):
         """
         Adds the coordinates of the selected atom indexes to the feature list.
         The coordinates of the selection [1, 2, ...] are flattened as follows: [x1, y1, z1, x2, y2, z2, ...]
@@ -256,11 +267,24 @@ class MDFeaturizer(Loggable):
         ----------
         indexes : ndarray((n), dtype=int)
             array with selected atom indexes
-
+        reference: mdtraj.Trajectory or None, default=None
+            if given, all data is being aligned to the given reference with Trajectory.superpose
+        atom_indices : array_like, or None
+            The indices of the atoms to superpose. If not
+            supplied, all atoms will be used.
+        ref_atom_indices : array_like, or None
+            Use these atoms on the reference structure. If not supplied,
+            the same atom indices will be used for this trajectory and the
+            reference one.
         """
-        # TODO: add possibility to align to a reference structure
-        from .misc import SelectionFeature
-        f = SelectionFeature(self.topology, indexes)
+        from .misc import SelectionFeature, AlignFeature
+        if reference is None:
+            f = SelectionFeature(self.topology, indexes)
+        else:
+            if not isinstance(reference, mdtraj.Trajectory):
+                raise ValueError('reference is not a mdtraj.Trajectory object, but {}'.format(reference))
+            f = AlignFeature(reference=reference, indexes=indexes,
+                             atom_indices=atom_indices, ref_atom_indices=ref_atom_indices)
         self.__add_feature(f)
 
     def add_distances(self, indices, periodic=True, indices2=None):

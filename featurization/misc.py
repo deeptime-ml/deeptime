@@ -219,3 +219,24 @@ class MinRmsdFeature(Feature):
         hash_value ^= hash(self.precentered)
 
         return hash_value
+
+
+class AlignFeature(SelectionFeature):
+
+    def __init__(self, reference, indexes, atom_indices=None, ref_atom_indices=None):
+        super(AlignFeature, self).__init__(top=reference.topology, indexes=indexes)
+        self.ref = reference
+        self.atom_indices = atom_indices
+        self.ref_atom_indices = ref_atom_indices
+        self.prefix_label = 'aligned ATOM:'
+
+    def __hash__(self):
+        h = super(AlignFeature, self).__hash__()
+        h ^= hash(self.ref)
+        return h
+
+    def transform(self, traj):
+        aligned = traj.superpose(reference=self.ref, atom_indices=self.atom_indices,
+                                 ref_atom_indices=self.ref_atom_indices)
+        # apply selection
+        return super(AlignFeature, self).transform(aligned)
