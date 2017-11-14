@@ -53,8 +53,8 @@ test:
     - h5py
     - pytest
     - pytest-cov
-   # TODO: disabled until https://bugs.python.org/issue31701 is fixed.
-   #  - pytest-faulthandler
+   # TODO: disabled on win64, until https://bugs.python.org/issue31701 is fixed.
+    - pytest-faulthandler # [not win64]
     - pytest-xdist
 
 about:
