@@ -56,7 +56,8 @@ test:
    # TODO: disabled on win64, until https://bugs.python.org/issue31701 is fixed.
     - pytest-faulthandler # [not win]
     - pytest-xdist
-    - pytest-sugar
+    # https://github.com/Frozenball/pytest-sugar/issues/124
+    #- pytest-sugar
 
 about:
   home: http://emma-project.org
