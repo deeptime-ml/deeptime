@@ -20,9 +20,7 @@ else # if it does not exist, we need to install miniconda
     chown -R "$USER" "$MINICONDA_DIR"
     export PATH="$MINICONDA_DIR/bin:$PATH"
     hash -r
-    conda config --set always_yes yes --set changeps1 no
-    conda config --add channels defaults
-    conda config --add channels conda-forge
+    conda config --set always_yes yes --set changeps1 no --set quiet yes
     conda install --quiet -y conda
     conda config --set auto_update_conda false
 fi
