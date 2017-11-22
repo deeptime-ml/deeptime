@@ -1,7 +1,8 @@
-# remove the source, since we depend on the built (conda) version 
+#!/usr/bin/env bash
+# remove the source, since we depend on the built (conda) version
 rm pyemma -r
 
-pyemma_version=`python -c "import pyemma as e; print(e.version)"` 
+pyemma_version=`python -c "import pyemma as e; print(e.version)"`
 export BUILD_DIR=${PREFIX}/v${pyemma_version}
 
 # disable progress bars

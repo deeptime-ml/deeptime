@@ -11,11 +11,11 @@ source:
 requirements:
   build:
     - pyemma-dev =={{ version }}
-    - nbconvert 
-    - sphinx ==1.5.5
+    - nbconvert
+    - sphinx
     - ipython
-    - ipywidgets <6
-    - sphinx_rtd_theme 
+    - ipywidgets
+    - sphinx_rtd_theme
 
 build:
   script_env:
