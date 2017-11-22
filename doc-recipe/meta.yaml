@@ -18,6 +18,7 @@ requirements:
     - sphinx_rtd_theme
 
 build:
+  noarch: generic
   script_env:
   # options for sphinx builder
     - SPHINXOPTS
