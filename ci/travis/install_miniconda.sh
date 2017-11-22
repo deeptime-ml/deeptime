@@ -22,11 +22,11 @@ else # if it does not exist, we need to install miniconda
     hash -r
     conda config --set always_yes yes \
         --set changeps1 no \
-        --set quiet yes
+        --set quiet yes \
         --add channels conda-forge \
         --set auto_update_conda false \
         --system # important to write to system cfg, otherwise we loose the changes upon cache reloading.
-    conda install --quiet -y conda
+    conda install conda
     conda config
 fi
 
