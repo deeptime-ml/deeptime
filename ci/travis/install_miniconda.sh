@@ -27,7 +27,6 @@ else # if it does not exist, we need to install miniconda
         --system # important to write to system cfg, otherwise we loose the changes upon cache reloading.
     conda config --system --add channels conda-forge
     conda install conda
-    conda config
 fi
 
 # we want to have an up to date conda-build.
