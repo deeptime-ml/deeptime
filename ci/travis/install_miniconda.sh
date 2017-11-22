@@ -20,9 +20,16 @@ else # if it does not exist, we need to install miniconda
     chown -R "$USER" "$MINICONDA_DIR"
     export PATH="$MINICONDA_DIR/bin:$PATH"
     hash -r
-    conda config --set always_yes yes --set changeps1 no --set quiet yes
+    conda config --set always_yes yes \
+        --set changeps1 no \
+        --set quiet yes
+        --add channels conda-forge \
+        --set auto_update_conda false \
+        --system # important to write to system cfg, otherwise we loose the changes upon cache reloading.
     conda install --quiet -y conda
-    conda config --set auto_update_conda false
+    conda config
 fi
 
+# we want to have an up to date conda-build.
+conda install conda-build=3
 conda info -a # for debugging
