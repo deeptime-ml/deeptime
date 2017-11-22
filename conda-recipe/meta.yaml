@@ -20,21 +20,22 @@ requirements:
     - gcc # [linux or osx]
     - mdtraj
     - numpy x.x
-    - pybind11
+    # currently installed as submodule
+    #- pybind11
     - python
     - scipy
     - setuptools
   run:
     - bhmm >=0.6,<0.7
     - decorator >=4.0.0
-    - joblib >0.8.4
+    - h5py
+    - jsonpickle
     - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
     - msmtools >=1.2
     - numpy x.x
     - pathos
-    - progress_reporter
     - psutil >3.1
     - python
     - pyyaml
@@ -42,6 +43,7 @@ requirements:
     - scipy
     - setuptools
     - thermotools >=0.2.6
+    - tqdm
 
 test:
   source_files:
@@ -50,7 +52,6 @@ test:
   files:
     - matplotlibrc
   requires:
-    - h5py
     - pytest
     - pytest-cov
     - pytest-faulthandler
