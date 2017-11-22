@@ -2,7 +2,6 @@ import os
 import sys
 
 import pytest
-sys.exit(0) # fake success
 
 test_pkg = 'pyemma'
 cover_pkg = test_pkg
