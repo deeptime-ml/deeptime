@@ -746,11 +746,6 @@ class MDFeaturizer(SerializableMixIn, Loggable):
             self.add_selection(np.arange(self.topology.n_atoms))
             warnings.warn("You have not selected any features. Returning plain coordinates.")
 
-        # handle empty chunks (which might occur due to time lagged access
-        # TODO: this is historic, isn't it?
-        if traj.xyz.shape[0] == 0:
-            return np.empty((0, self.dimension()))
-
         # otherwise build feature vector.
         feature_vec = []
 
