@@ -135,8 +135,7 @@ class SelectionFeature(Feature):
         self.prefix_label = "ATOM:"
 
     def __reduce__(self):
-        self._ensure_topfile()
-        return SelectionFeature, (self.top.fname, self.indexes)
+        return SelectionFeature, (self.top, self.indexes)
 
     def describe(self):
         labels = []

@@ -49,8 +49,7 @@ class AngleFeature(Feature):
             self._dim *= 2
 
     def __reduce__(self):
-        self._ensure_topfile()
-        return AngleFeature, (self.top.fname, self.angle_indexes,
+        return AngleFeature, (self.top, self.angle_indexes,
                               self.deg, self.cossin, self.periodic)
 
     def describe(self):
@@ -99,8 +98,7 @@ class DihedralFeature(AngleFeature):
                                               periodic=periodic)
 
     def __reduce__(self):
-        self._ensure_topfile()
-        return DihedralFeature, (self.top.fname, self.angle_indexes,
+        return DihedralFeature, (self.top, self.angle_indexes,
                               self.deg, self.cossin, self.periodic)
 
     def describe(self):
@@ -163,8 +161,7 @@ class BackboneTorsionFeature(DihedralFeature):
                                                      deg=deg, cossin=cossin,
                                                      periodic=periodic)
     def __reduce__(self):
-        self._ensure_topfile()
-        return BackboneTorsionFeature, (self.top.fname, self.selstr, self.deg, self.cossin, self.periodic)
+        return BackboneTorsionFeature, (self.top, self.selstr, self.deg, self.cossin, self.periodic)
 
     def describe(self):
         top = self.top
@@ -209,8 +206,7 @@ class Chi1TorsionFeature(DihedralFeature):
                                                  periodic=periodic)
 
     def __reduce__(self):
-        self._ensure_topfile()
-        return Chi1TorsionFeature, (self.top.fname, self.selstr,
+        return Chi1TorsionFeature, (self.top, self.selstr,
                                     self.deg, self.cossin, self.periodic)
 
     def describe(self):

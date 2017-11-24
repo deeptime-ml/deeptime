@@ -91,7 +91,6 @@ class FeatureReader(DataSource, SerializableMixIn):
 
         super(FeatureReader, self).__init__(chunksize=chunksize)
         self._is_reader = True
-        self.topfile = topologyfile
         self.filenames = trajectories
         self._return_traj_obj = False
 
@@ -118,7 +117,6 @@ class FeatureReader(DataSource, SerializableMixIn):
             self.featurizer = MDFeaturizer(topologyfile)
         else:
             self.featurizer = featurizer
-            self.topfile = featurizer.topologyfile
 
         # Check that the topology and the files in the filelist can actually work together
         self._assert_toptraj_consistency()

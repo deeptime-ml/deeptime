@@ -45,10 +45,6 @@ class Feature(object):
         assert isinstance(value, mdtraj.Topology)
         self._top = value
 
-    def _ensure_topfile(self):
-        if not hasattr(self.top, 'fname') or self.top.fname is None:
-            raise ValueError("no file name for topology available")
-
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
 
