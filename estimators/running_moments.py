@@ -90,12 +90,11 @@ class FileMoment(Moments):
 
     def __init__(self, w, sx, sy, Mxy, group):
         def _rm(_, ds_name, group, id):
-            del group[ds_name]
-            #group.file.flush()
-
+            if ds_name in group:
+                del group[ds_name]
             del FileMoment.__refs[id]
 
-        ds = group.create_dataset(str(next(self.c)), data=Mxy) #, chunks=True, shuffle=True, compression='gzip')
+        ds = group.create_dataset(str(next(self.c)), data=Mxy, chunks=True, shuffle=True, compression='gzip')
         self._ds = ds
         self._group = group
         self.w =w
