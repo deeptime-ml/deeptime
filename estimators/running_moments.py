@@ -226,6 +226,7 @@ class RunningCovar(object):
 
     """
     _c = count()
+    __refs = {}
 
     # to get the Y mean, but this is currently not stored.
     def __init__(self, compute_XX=True, compute_XY=False, compute_YY=False,
@@ -255,6 +256,15 @@ class RunningCovar(object):
         self.sparse_mode = sparse_mode
         self.modify_data = modify_data
         self.file = file
+        if file:
+            def rm(_, group, id):
+                del group.file[group.name]
+                del RunningCovar.__refs[id]
+            import weakref
+            import functools
+            cb = functools.partial(rm, group=self._group, id=id(self))
+            ref = weakref.ref(self, cb)
+            RunningCovar.__refs[id(self)] = ref
 
     @property
     def file(self):
