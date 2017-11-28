@@ -32,9 +32,9 @@ class StreamingEstimator(Estimator):
     in a streaming fashion.
     """
 
-    def __init__(self, chunksize=None):
+    def __init__(self, chunksize=1000):
         super(StreamingEstimator, self).__init__()
-        self._chunksize = chunksize
+        self.chunksize = chunksize
 
     def estimate(self, X, **kwargs):
         # ensure the input is able to provide a stream
@@ -44,6 +44,8 @@ class StreamingEstimator(Estimator):
                 X = DataInMemory(X, self.chunksize)
             else:
                 raise ValueError("no np.ndarray or non-empty list of np.ndarrays given")
+        else:
+            X.chunksize = self.chunksize
         # Because we want to use pipelining methods like get_output, we have to set a data producer.
         self.data_producer = X
         # run estimation
