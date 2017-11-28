@@ -41,7 +41,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
     r"""Extracts features from MD trajectories."""
     _serialize_version = 0
     _serialize_fields = ('use_topology_cache',
-                         'topology',
+                         'topologyfile',
                          'active_features',
                          )
 
@@ -57,23 +57,9 @@ class MDFeaturizer(SerializableMixIn, Loggable):
            cache already loaded topologies, if file contents match.
         """
         self.use_topology_cache = use_cache
+        self.topology = None
         self.topologyfile = topfile
         self.active_features = []
-
-    def __eq__(self, other):
-        if not isinstance(other, MDFeaturizer):
-            return False
-
-        return self.topology == other.topology and self.active_features == other.active_features
-    #
-    # @property
-    # def topology(self):
-    #     return self._top
-    #
-    # @topology.setter
-    # def topology(self, value):
-    #     self._top = value
-    #     self._topologyfile = None
 
     @property
     def topologyfile(self):
@@ -85,10 +71,11 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         if isinstance(topfile, str):
             self.topology = load_topology_cached(topfile) if self.use_topology_cache \
                 else load_topology_uncached(topfile)
+            self.topology.fname = topfile
             self._topologyfile = topfile
         elif isinstance(topfile, mdtraj.Topology):
             self.topology = topfile
-            self._topologyfile = None
+            self.topology.fname = None
         elif isinstance(topfile, mdtraj.Trajectory):
             self.topology = topfile.topology
         else:

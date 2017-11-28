@@ -58,7 +58,8 @@ class DistanceFeature(Feature):
         return hash_value
 
     def __reduce__(self):
-        return DistanceFeature, (self.top, self.distance_indexes, self.periodic)
+        self._ensure_topfile()
+        return DistanceFeature, (self.top.fname, self.distance_indexes, self.periodic)
 
 
 class InverseDistanceFeature(DistanceFeature):
@@ -68,7 +69,8 @@ class InverseDistanceFeature(DistanceFeature):
         DistanceFeature.__init__(self, top, distance_indexes, periodic=periodic)
 
     def __reduce__(self):
-        return InverseDistanceFeature, (self.top, self.distance_indexes, self.periodic)
+        self._ensure_topfile()
+        return InverseDistanceFeature, (self.top.fname, self.distance_indexes, self.periodic)
 
     def transform(self, traj):
         return 1.0 / mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
@@ -98,7 +100,8 @@ class ResidueMinDistanceFeature(DistanceFeature):
         self.distance_indexes = dummy_pairs
 
     def __reduce__(self):
-        return ResidueMinDistanceFeature, (self.top, self.contacts, self.scheme,
+        self._ensure_topfile()
+        return ResidueMinDistanceFeature, (self.top.fname, self.contacts, self.scheme,
                                            self.ignore_nonprotein, self.threshold, self.periodic)
 
     def describe(self):
@@ -136,7 +139,8 @@ class GroupMinDistanceFeature(DistanceFeature):
         self._dim = len(group_pairs) # TODO: validate
 
     def __reduce__(self):
-        return GroupMinDistanceFeature, (self.top, self.group_definitions,
+        self._ensure_topfile()
+        return GroupMinDistanceFeature, (self.top.fname, self.group_definitions,
                                          self.group_pairs, self.distance_indexes, self.group_identifiers,
                                          self.threshold, self.periodic)
 
@@ -179,7 +183,8 @@ class ContactFeature(DistanceFeature):
         self.count_contacts = count_contacts
 
     def __reduce__(self):
-        return ContactFeature, (self.top, self.distance_indexes, self.threshold, self.periodic, self.count_contacts)
+        self._ensure_topfile()
+        return ContactFeature, (self.top.fname, self.distance_indexes, self.threshold, self.periodic, self.count_contacts)
 
     @property
     def dimension(self):
