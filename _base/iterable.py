@@ -29,7 +29,7 @@ class Iterable(Loggable, metaclass=ABCMeta):
 
     def __init__(self, chunksize=1000):
         super(Iterable, self).__init__()
-        self._default_chunksize = chunksize
+        self._default_chunksize = chunksize if chunksize is not None else 1000
         if self.default_chunksize < 0:
             raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
         self._in_memory = False
