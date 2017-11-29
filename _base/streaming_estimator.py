@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 from pyemma._base.estimator import Estimator
 from pyemma.coordinates.data import DataInMemory
-from pyemma.coordinates.data._base import DEFAULT_CHUNKSIZE
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.util.exceptions import NotConvergedWarning
 
@@ -32,7 +31,7 @@ class StreamingEstimator(Estimator):
     in a streaming fashion.
     """
 
-    def estimate(self, X, chunksize=DEFAULT_CHUNKSIZE, **kwargs):
+    def estimate(self, X, chunksize=None, **kwargs):
         # ensure the input is able to provide a stream
         if not isinstance(X, Iterable):
             from pyemma.util import types
@@ -40,8 +39,7 @@ class StreamingEstimator(Estimator):
             X = DataInMemory(array_list, chunksize=chunksize)
         # Because we want to use pipelining methods like get_output, we have to set a data producer.
         self.data_producer = X
-        self.chunksize = chunksize
-        X.chunksize = self.chunksize
+        X.chunksize = chunksize
         # run estimation
         try:
             super(StreamingEstimator, self).estimate(X, **kwargs)
@@ -49,17 +47,3 @@ class StreamingEstimator(Estimator):
             self._logger.info(
                 "Presumably finished estimation. Message: %s" % ncw)
         return self
-
-    @property
-    def chunksize(self):
-        """chunksize defines how much data is being processed at once."""
-        return self._chunksize
-
-    @chunksize.setter
-    def chunksize(self, size):
-        if size is None:
-            size = DEFAULT_CHUNKSIZE
-        if not size >= 0:
-            raise ValueError('chunksize has to be positive')
-
-        self._chunksize = int(size)

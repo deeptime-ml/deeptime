@@ -20,10 +20,11 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from pyemma._base.loggable import Loggable
-from pyemma._base.progress import ProgressReporterMixin
-from pyemma.coordinates.data._base import DEFAULT_CHUNKSIZE
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
+
+# this is used, in case None is passed as input chunk size.
+DEFAULT_CHUNKSIZE = 5000
 
 
 class Iterable(Loggable, metaclass=ABCMeta):
@@ -58,7 +59,9 @@ class Iterable(Loggable, metaclass=ABCMeta):
 
     @chunksize.setter
     def chunksize(self, value):
-        self._default_chunksize = value
+        self._default_chunksize = value if value is not None else DEFAULT_CHUNKSIZE
+        if self.default_chunksize < 0:
+            raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
 
     @property
     def in_memory(self):
