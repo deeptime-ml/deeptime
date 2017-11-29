@@ -18,7 +18,6 @@
 
 from __future__ import absolute_import
 
-import numpy as np
 from pyemma._base.estimator import Estimator
 from pyemma.coordinates.data import DataInMemory
 from pyemma.coordinates.data._base import DEFAULT_CHUNKSIZE
@@ -32,8 +31,6 @@ class StreamingEstimator(Estimator):
     It checks the input and wraps it in a Iterable, to be able to access the data
     in a streaming fashion.
     """
-    def __init__(self, chunksize=NotImplemented):
-        super(StreamingEstimator, self).__init__()
 
     def estimate(self, X, chunksize=DEFAULT_CHUNKSIZE, **kwargs):
         # ensure the input is able to provide a stream
