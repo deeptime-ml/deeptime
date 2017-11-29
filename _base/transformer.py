@@ -23,6 +23,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from pyemma._ext.sklearn.base import TransformerMixin
+from pyemma.coordinates.data._base import DEFAULT_CHUNKSIZE
 from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
@@ -115,7 +116,7 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
         the chunksize used to batch process underlying data.
 
     """
-    def __init__(self, chunksize=1000):
+    def __init__(self, chunksize=DEFAULT_CHUNKSIZE):
         super(StreamingTransformer, self).__init__(chunksize=chunksize)
         self.data_producer = None
         self._Y_source = None
@@ -191,9 +192,13 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
     @chunksize.setter
     def chunksize(self, size):
+        if size is None:
+            from pyemma.coordinates.data._base import DEFAULT_CHUNKSIZE
+            size = DEFAULT_CHUNKSIZE
         if not size >= 0:
             raise ValueError("chunksize has to be positive")
-
+        if self.data_producer is None:
+            raise RuntimeError('cant set chunksize')
         self.data_producer.chunksize = int(size)
 
     def number_of_trajectories(self, stride=1):

@@ -21,6 +21,7 @@ from __future__ import absolute_import
 import numpy as np
 from pyemma._base.estimator import Estimator
 from pyemma.coordinates.data import DataInMemory
+from pyemma.coordinates.data._base import DEFAULT_CHUNKSIZE
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.util.exceptions import NotConvergedWarning
 
@@ -31,23 +32,19 @@ class StreamingEstimator(Estimator):
     It checks the input and wraps it in a Iterable, to be able to access the data
     in a streaming fashion.
     """
-
-    def __init__(self, chunksize=1000):
+    def __init__(self, chunksize=NotImplemented):
         super(StreamingEstimator, self).__init__()
-        self.chunksize = chunksize
 
-    def estimate(self, X, **kwargs):
+    def estimate(self, X, chunksize=DEFAULT_CHUNKSIZE, **kwargs):
         # ensure the input is able to provide a stream
         if not isinstance(X, Iterable):
-            if isinstance(X, np.ndarray) or \
-                    (isinstance(X, (list, tuple)) and len(X) > 0 and all((isinstance(x, np.ndarray) for x in X))):
-                X = DataInMemory(X, self.chunksize)
-            else:
-                raise ValueError("no np.ndarray or non-empty list of np.ndarrays given")
-        else:
-            X.chunksize = self.chunksize
+            from pyemma.util import types
+            array_list = types.ensure_traj_list(X)
+            X = DataInMemory(array_list, chunksize=chunksize)
         # Because we want to use pipelining methods like get_output, we have to set a data producer.
         self.data_producer = X
+        self.chunksize = chunksize
+        X.chunksize = self.chunksize
         # run estimation
         try:
             super(StreamingEstimator, self).estimate(X, **kwargs)
@@ -63,7 +60,9 @@ class StreamingEstimator(Estimator):
 
     @chunksize.setter
     def chunksize(self, size):
+        if size is None:
+            size = DEFAULT_CHUNKSIZE
         if not size >= 0:
-            raise ValueError("chunksize has to be positive")
+            raise ValueError('chunksize has to be positive')
 
         self._chunksize = int(size)

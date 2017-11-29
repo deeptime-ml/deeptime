@@ -20,6 +20,7 @@ from math import ceil
 
 import numpy as np
 
+from pyemma.coordinates.data._base import DEFAULT_CHUNKSIZE
 from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.coordinates.data._base.random_accessible import TrajectoryRandomAccessible
 from pyemma.util import config
@@ -34,7 +35,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
     of trajectories is generally unknown for Iterable.
     """
 
-    def __init__(self, chunksize=1000):
+    def __init__(self, chunksize=DEFAULT_CHUNKSIZE):
         super(DataSource, self).__init__(chunksize=chunksize)
 
         # following properties have to be set in subclass

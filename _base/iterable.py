@@ -21,15 +21,16 @@ import numpy as np
 
 from pyemma._base.loggable import Loggable
 from pyemma._base.progress import ProgressReporterMixin
+from pyemma.coordinates.data._base import DEFAULT_CHUNKSIZE
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
 
 class Iterable(Loggable, metaclass=ABCMeta):
 
-    def __init__(self, chunksize=1000):
+    def __init__(self, chunksize=DEFAULT_CHUNKSIZE):
         super(Iterable, self).__init__()
-        self._default_chunksize = chunksize if chunksize is not None else 1000
+        self._default_chunksize = chunksize if chunksize is not None else DEFAULT_CHUNKSIZE
         if self.default_chunksize < 0:
             raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
         self._in_memory = False
