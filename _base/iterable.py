@@ -23,17 +23,12 @@ from pyemma._base.loggable import Loggable
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
-# this is used, in case None is passed as input chunk size.
-DEFAULT_CHUNKSIZE = 5000
-
 
 class Iterable(Loggable, metaclass=ABCMeta):
 
-    def __init__(self, chunksize=DEFAULT_CHUNKSIZE):
+    def __init__(self, chunksize=None):
         super(Iterable, self).__init__()
-        self._default_chunksize = chunksize if chunksize is not None else DEFAULT_CHUNKSIZE
-        if self.default_chunksize < 0:
-            raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
+        self._default_chunksize = chunksize
         self._in_memory = False
         self._mapping_to_mem_active = False
         self._Y = None
@@ -51,17 +46,26 @@ class Iterable(Loggable, metaclass=ABCMeta):
     @property
     def default_chunksize(self):
         """ How much data will be processed at once, in case no chunksize has been provided."""
+        if self._default_chunksize is None:
+            from pyemma import config
+            from pyemma.util.units import string_to_bytes
+            max_bytes = string_to_bytes(config.default_chunksize)
+            itemsize = np.dtype(self.output_type()).itemsize
+            # TODO: consider rounding this to some cache size of CPU? e.g py-cpuinfo can obtain it.
+            max_elements = max_bytes // itemsize // self.ndim
+            self._default_chunksize = max_elements
+            assert self._default_chunksize > 0
         return self._default_chunksize
 
     @property
     def chunksize(self):
-        return self._default_chunksize
+        return self.default_chunksize
 
     @chunksize.setter
     def chunksize(self, value):
-        self._default_chunksize = value if value is not None else DEFAULT_CHUNKSIZE
         if self.default_chunksize < 0:
             raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
+        self._default_chunksize = value
 
     @property
     def in_memory(self):
@@ -151,7 +155,7 @@ class Iterable(Loggable, metaclass=ABCMeta):
             return DataInMemory(self._Y).iterator(
                 lag=lag, chunk=chunk, stride=stride, return_trajindex=return_trajindex, skip=skip
             )
-        chunk = chunk if chunk is not None else self.default_chunksize
+        chunk = chunk if chunk is not None else self.chunksize
         if 0 < lag <= chunk:
             it = self._create_iterator(skip=skip, chunk=chunk, stride=1,
                                        return_trajindex=return_trajindex, cols=cols)
