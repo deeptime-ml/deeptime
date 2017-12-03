@@ -19,19 +19,16 @@ from __future__ import print_function
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
-from pyemma._base.logging import Loggable
-from pyemma._base.progress import ProgressReporter
+from pyemma._base.loggable import Loggable
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
 
-class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
+class Iterable(Loggable, metaclass=ABCMeta):
 
-    def __init__(self, chunksize=1000):
+    def __init__(self, chunksize=None):
         super(Iterable, self).__init__()
         self._default_chunksize = chunksize
-        if self.default_chunksize < 0:
-            raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
         self._in_memory = False
         self._mapping_to_mem_active = False
         self._Y = None
@@ -49,14 +46,25 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
     @property
     def default_chunksize(self):
         """ How much data will be processed at once, in case no chunksize has been provided."""
+        if self._default_chunksize is None:
+            from pyemma import config
+            from pyemma.util.units import string_to_bytes
+            max_bytes = string_to_bytes(config.default_chunksize)
+            itemsize = np.dtype(self.output_type()).itemsize
+            # TODO: consider rounding this to some cache size of CPU? e.g py-cpuinfo can obtain it.
+            max_elements = max_bytes // itemsize // self.ndim
+            self._default_chunksize = max_elements
+            assert self._default_chunksize > 0
         return self._default_chunksize
 
     @property
     def chunksize(self):
-        return self._default_chunksize
+        return self.default_chunksize
 
     @chunksize.setter
     def chunksize(self, value):
+        if self.default_chunksize < 0:
+            raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
         self._default_chunksize = value
 
     @property
@@ -147,7 +155,7 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
             return DataInMemory(self._Y).iterator(
                 lag=lag, chunk=chunk, stride=stride, return_trajindex=return_trajindex, skip=skip
             )
-        chunk = chunk if chunk is not None else self.default_chunksize
+        chunk = chunk if chunk is not None else self.chunksize
         if 0 < lag <= chunk:
             it = self._create_iterator(skip=skip, chunk=chunk, stride=1,
                                        return_trajindex=return_trajindex, cols=cols)
@@ -232,16 +240,16 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
                                    % [x.shape for x in trajs])
                 self.logger.debug("nchunks :%s, chunksize=%s" % (it.n_chunks, it.chunksize))
             # fetch data
-            self._progress_register(it.n_chunks,
-                                    description='getting output of %s' % self.__class__.__name__,
-                                    stage=1)
-            for itraj, chunk in it:
-                L = len(chunk)
-                assert L
-                trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
-
-                # update progress
-                self._progress_update(1, stage=1)
+            from pyemma._base.progress import ProgressReporter
+            pg = ProgressReporter()
+            pg.register(it.n_chunks, description='getting output of %s' % self.__class__.__name__)
+            with pg.context():
+                for itraj, chunk in it:
+                    L = len(chunk)
+                    assert L
+                    trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
+                    # update progress
+                    pg.update(1)
 
         if config.coordinates_check_output:
             for t in trajs:
@@ -320,8 +328,11 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
                     continue
                 raise
         f = None
-        with self.iterator(stride, chunk=chunksize, return_trajindex=False) as it:
-            self._progress_register(it.n_chunks, "saving to csv")
+        from pyemma._base.progress import ProgressReporter
+        pg = ProgressReporter()
+        it = self.iterator(stride, chunk=chunksize, return_trajindex=False)
+        pg.register(it.n_chunks, "saving to csv")
+        with it, pg.context():
             oldtraj = -1
             for X in it:
                 if oldtraj != it.current_trajindex:
@@ -333,10 +344,9 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
                     oldtraj = it.current_trajindex
                 np.savetxt(f, X, **kw)
                 f.flush()
-                self._progress_update(1, 0)
+                pg.update(1, 0)
         if f is not None:
             f.close()
-        self._progress_force_finish(0)
 
     @abstractmethod
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
@@ -348,7 +358,7 @@ class Iterable(ProgressReporter, Loggable, metaclass=ABCMeta):
         :param return_trajindex: take the trajindex into account
         :return: a chunk of data if return_trajindex is False, otherwise a tuple of (trajindex, data).
         """
-        pass
+        raise NotImplementedError()
 
     def output_type(self):
         r""" By default transformers return single precision floats. """

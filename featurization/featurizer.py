@@ -19,7 +19,7 @@ from __future__ import absolute_import
 
 import warnings
 
-from pyemma._base.logging import Loggable
+from pyemma._base.loggable import Loggable
 from pyemma.util.types import is_string
 import mdtraj
 
@@ -809,12 +809,7 @@ class MDFeaturizer(Loggable):
         # if there are no features selected, return given trajectory
         if not self.active_features:
             self.add_selection(np.arange(self.topology.n_atoms))
-            warnings.warn("You have no features selected. Returning plain coordinates.")
-
-        # handle empty chunks (which might occur due to time lagged access
-        # TODO: this is historic, isn't it?
-        if traj.xyz.shape[0] == 0:
-            return np.empty((0, self.dimension()))
+            warnings.warn("You have not selected any features. Returning plain coordinates.")
 
         # otherwise build feature vector.
         feature_vec = []
