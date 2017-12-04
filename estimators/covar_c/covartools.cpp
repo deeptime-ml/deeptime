@@ -1,13 +1,12 @@
 #include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
 
 #include "covartools_cpp.h"
 
 namespace py = pybind11;
 
 
-PYBIND11_PLUGIN(_covartools) {
-    pybind11::module m("_covartools", "covariance computation utilities.");
+PYBIND11_MODULE(_covartools, m) {
+    m.doc() = "covariance computation utilities.";
 
     // ================================================
     // Check for constant columns
@@ -17,5 +16,4 @@ PYBIND11_PLUGIN(_covartools) {
     m.def("variable_cols_long", &_variable_cols<long>);
     m.def("variable_cols_float", &_variable_cols<float>);
     m.def("variable_cols_double", &_variable_cols<double>);
-    return m.ptr();
 }
