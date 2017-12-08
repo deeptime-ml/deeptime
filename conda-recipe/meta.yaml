@@ -24,7 +24,7 @@ requirements:
     - numpy x.x
     # currently installed as submodule
     #- pybind11
-    - python >=3
+    - python
     - scipy
     - setuptools
   run:
