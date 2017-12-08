@@ -1,10 +1,13 @@
 import numpy as np
+
+from pyemma._base.serialization.serialization import SerializableMixIn
 from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
 
 __author__ = 'marscher'
 
 
-class SourcesMerger(DataSource):
+class SourcesMerger(DataSource, SerializableMixIn):
+    _serialize_version = 0
     """ Combines multiple data sources to stream from.
 
     Note that you are responsible you only join matching (meaningful) data sets. If one trajectory is for instance
@@ -41,6 +44,9 @@ class SourcesMerger(DataSource):
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
         return _JoiningIterator(self, self.sources, skip=skip, chunk=chunk, stride=stride,
                                 return_trajindex=return_trajindex, cols=cols)
+
+    def __reduce__(self):
+        return SourcesMerger, (self.sources, self.chunksize)
 
 
 class _JoiningIterator(DataSourceIterator):
