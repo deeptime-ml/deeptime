@@ -1,0 +1,27 @@
+{% set version = GIT_DESCRIBE_TAG[1:] + '+' + GIT_BUILD_STR %}
+
+package:
+  name: pyemma-doc
+  # version number: [base tag]+[commits-upstream]_[git_hash]
+  # eg. v2.0+0_g8824162
+  version: {{ version }}
+source:
+  path: ../..
+
+requirements:
+  build:
+    - pyemma-dev =={{ version }}
+    - nbconvert
+    - sphinx
+    - ipython
+    - ipywidgets
+    - sphinx_rtd_theme
+
+build:
+  noarch: generic
+  script_env:
+  # options for sphinx builder
+    - SPHINXOPTS
+  # options for notebook conversion (jupyter nbconvert)
+    - nbflags
+
