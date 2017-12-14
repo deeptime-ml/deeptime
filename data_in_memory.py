@@ -52,7 +52,7 @@ class DataInMemory(DataSource, SerializableMixIn):
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         return DataInMemoryIterator(self, skip, chunk, stride, return_trajindex, cols)
 
-    def __init__(self, data, chunksize=5000, **kw):
+    def __init__(self, data, chunksize=None, **kw):
         super(DataInMemory, self).__init__(chunksize=chunksize)
         self._is_reader = True
         self._is_random_accessible = True
