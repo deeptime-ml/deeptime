@@ -27,7 +27,7 @@ import mdtraj
 from pyemma.coordinates.data.featurization.util import (_parse_pairwise_input,
                                                         _parse_groupwise_input)
 
-from .misc import CustomFeature
+from .misc import CustomFeature, DummyCustomFeature
 import numpy as np
 from pyemma.coordinates.util.patches import load_topology_cached
 from mdtraj import load_topology as load_topology_uncached
@@ -865,3 +865,17 @@ class MDFeaturizer(SerializableMixIn, Loggable):
             res = feature_vec[0]
 
         return res
+
+    def __getstate__(self):
+        # handling of custom features:
+        # these are replaced by a dummy storing description and warning to re-add after restore.
+        state = super(MDFeaturizer, self).__getstate__()
+        state_active_features = state['active_features']
+        custom_features_active = [f for f in state_active_features if isinstance(f, CustomFeature)]
+        if custom_features_active:
+            self.logger.critical('We can not save custom functions by now and probably never will. '
+                                 'Please re-add your custom function after you have restored your Featurizer.')
+            for a in custom_features_active:
+                i = state_active_features.index(a)
+                state_active_features[i] = DummyCustomFeature(a.describe())
+        return state

@@ -27,7 +27,7 @@ from pyemma.coordinates.data.featurization.util import (_catch_unhashable,
                                                         _describe_atom,
                                                         hash_top, _hash_numpy_array)
 from pyemma.coordinates.data.featurization._base import Feature
-from .util import _atoms_in_residues
+
 
 class CustomFeature(Feature):
     """
@@ -72,7 +72,6 @@ class CustomFeature(Feature):
     >>> data = reader.get_output()
 
     """
-    _serialize_version = 0
     _id = count(0)
 
     def __init__(self, func=None, *args, **kwargs):
@@ -118,6 +117,29 @@ class CustomFeature(Feature):
                     list(map(_catch_unhashable, sorted(self._kwargs.items()))))
         hash_value ^= hash(key)
         return hash_value
+
+
+class DummyCustomFeature(Feature):
+    _serialize_version = 0
+    _serialize_fields = ('description', )
+
+    def __init__(self, description):
+        self.description = description
+        self._warn()
+
+    def transform(self, _):
+        self._warn()
+        return np.empty_like((0, 0))
+
+    def dimension(self):
+        self._warn()
+        return 0
+
+    def _warn(self):
+        import warnings
+        from pyemma.util.exceptions import PyEMMA_UserWarning
+        warnings.warn('Please re-add your custom feature again! Description was: {}'.format(self.description[:30]),
+                      category=PyEMMA_UserWarning)
 
 
 class SelectionFeature(Feature):
