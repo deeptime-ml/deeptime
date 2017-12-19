@@ -14,20 +14,20 @@ build:
    - CIRCLE_TEST_REPORTS
    - OMP_NUM_THREADS
    - PYEMMA_NJOBS
-  script: python -B setup.py install --single-version-externally-managed --record record.txt
+  script: python setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
     - cython
-    - gcc # [linux or osx]
     - mdtraj
-    - numpy x.x
-    # currently installed as submodule
-    #- pybind11
-    - python
+    # actually we could build with np18, but fastcluster (dep of mdtraj, we link against) is only avail for 1.9
+    - numpy 1.9.*  # [not (win and (py35 or py36))]
+    - numpy 1.9.*  # [win and py35]
+    - numpy 1.11.*  # [win and py36]
     - python >=3
     - scipy
     - setuptools
+    - gcc # [ not win ]
   run:
     - bhmm >=0.6,<0.7
     - decorator >=4.0.0
@@ -36,7 +36,9 @@ requirements:
     - matplotlib
     - mdtraj
     - msmtools >=1.2
-    - numpy x.x
+    - numpy >=1.9  # [not (win and (py35 or py36))]
+    - numpy >=1.9  # [win and py35]
+    - numpy >=1.11  # [win and py36]
     - pathos
     - psutil >3.1
     - python >=3
