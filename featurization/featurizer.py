@@ -27,7 +27,7 @@ import mdtraj
 from pyemma.coordinates.data.featurization.util import (_parse_pairwise_input,
                                                         _parse_groupwise_input)
 
-from .misc import CustomFeature, DummyCustomFeature
+from .misc import CustomFeature
 import numpy as np
 from pyemma.coordinates.util.patches import load_topology_cached
 from mdtraj import load_topology as load_topology_uncached
@@ -41,7 +41,8 @@ class MDFeaturizer(SerializableMixIn, Loggable):
     r"""Extracts features from MD trajectories."""
     _serialize_version = 0
     _serialize_fields = ('use_topology_cache',
-                         'topologyfile',
+                         '_topologyfile',
+                         'topology',
                          'active_features',
                          )
 
@@ -71,11 +72,9 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         if isinstance(topfile, str):
             self.topology = load_topology_cached(topfile) if self.use_topology_cache \
                 else load_topology_uncached(topfile)
-            self.topology.fname = topfile
             self._topologyfile = topfile
         elif isinstance(topfile, mdtraj.Topology):
             self.topology = topfile
-            self.topology.fname = None
         elif isinstance(topfile, mdtraj.Trajectory):
             self.topology = topfile.topology
         else:
@@ -778,6 +777,8 @@ class MDFeaturizer(SerializableMixIn, Loggable):
             Has to return a numpy.ndarray ndim=2.
         dim : int
             output dimension of :py:obj:`function`
+        description: str or None
+            a message for the describe feature list.
         args : any number of positional arguments
             these have to be in the same order as :py:obj:`func` is expecting them
         kwargs : dictionary
@@ -790,9 +791,16 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         Alternatively a single element list or str will be expanded to match the output dimension.
 
         """
-        f = CustomFeature(func, dim=dim, *args, **kwargs)
-
+        description = kwargs.pop('description', None)
+        f = CustomFeature(func, dim=dim, description=description, fun_args=args, fun_kwargs=kwargs)
         self.add_custom_feature(f)
+
+    def remove_all_custom_funcs(self):
+        """ Remove all instances of CustomFeature from the active feature list.
+        """
+        custom_feats = [f for f in self.active_features if isinstance(f, CustomFeature)]
+        for f in custom_feats:
+            self.active_features.remove(f)
 
     def dimension(self):
         """ current dimension due to selected features
@@ -865,17 +873,3 @@ class MDFeaturizer(SerializableMixIn, Loggable):
             res = feature_vec[0]
 
         return res
-
-    def __getstate__(self):
-        # handling of custom features:
-        # these are replaced by a dummy storing description and warning to re-add after restore.
-        state = super(MDFeaturizer, self).__getstate__()
-        state_active_features = state['active_features']
-        custom_features_active = [f for f in state_active_features if isinstance(f, CustomFeature)]
-        if custom_features_active:
-            self.logger.critical('We can not save custom functions by now and probably never will. '
-                                 'Please re-add your custom function after you have restored your Featurizer.')
-            for a in custom_features_active:
-                i = state_active_features.index(a)
-                state_active_features[i] = DummyCustomFeature(a.describe())
-        return state

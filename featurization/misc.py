@@ -73,21 +73,25 @@ class CustomFeature(Feature):
 
     """
     _id = count(0)
+    _serialize_version = 0
+    _serialize_fields = ('_desc', 'dim')
 
-    def __init__(self, func=None, *args, **kwargs):
-        self._func = func
-        self._args = args
-        self._kwargs = kwargs
-        self._dim = kwargs.pop('dim', 0)
-        desc = kwargs.pop('description', [])
+    def __init__(self, fun, dim, description=None, fun_args=(), fun_kwargs=None):
+        if fun_kwargs is None:
+            fun_kwargs = {}
+        self._fun = fun
+        self._args = fun_args
+        self._kwargs = fun_kwargs
+        self._dim = dim
+        desc = description
         if isinstance(desc, str):
             desc = [desc]
         self.id = next(CustomFeature._id)
         if not desc:
             arg_str = "{args}, {kw}" if self._kwargs else "{args}"
-            desc = ["CustomFeature[{id}][0] calling {func} with args {arg_str}".format(
+            desc = ["CustomFeature[{id}][0] calling {fun} with args {arg_str}".format(
                 id=self.id,
-                func=self._func,
+                fun=self._fun,
                 arg_str=arg_str, args=self._args, kw=self._kwargs)]
             if self.dimension > 1:
                 desc.extend(('CustomFeature[{id}][{i}]'.format(id=self.id, i=i) for i in range(1, self.dimension)))
@@ -105,41 +109,36 @@ class CustomFeature(Feature):
         return self._desc
 
     def transform(self, traj):
-        feature = self._func(traj, *self._args, **self._kwargs)
+        feature = self._fun(traj, *self._args, **self._kwargs)
         if not isinstance(feature, np.ndarray):
             raise ValueError("your function should return a NumPy array!")
         return feature
 
     def __hash__(self):
-        hash_value = hash(self._func)
+        hash_value = hash(self._fun)
         # if key contains numpy arrays, we hash their data arrays
         key = tuple(list(map(_catch_unhashable, self._args)) +
                     list(map(_catch_unhashable, sorted(self._kwargs.items()))))
         hash_value ^= hash(key)
         return hash_value
 
-
-class DummyCustomFeature(Feature):
-    _serialize_version = 0
-    _serialize_fields = ('description', )
-
-    def __init__(self, description):
-        self.description = description
-        self._warn()
-
-    def transform(self, _):
-        self._warn()
-        return np.empty_like((0, 0))
-
-    def dimension(self):
-        self._warn()
-        return 0
-
-    def _warn(self):
+    def __getstate__(self):
         import warnings
-        from pyemma.util.exceptions import PyEMMA_UserWarning
-        warnings.warn('Please re-add your custom feature again! Description was: {}'.format(self.description[:30]),
-                      category=PyEMMA_UserWarning)
+        warnings.warn('We can not save custom functions by now and probably never will. '
+                      'Please re-add your custom function after you have restored your Featurizer.')
+        return super(CustomFeature, self).__getstate__()
+
+    def __setstate__(self, state):
+        super(CustomFeature, self).__setstate__(state)
+
+        def _warn(_):
+            raise NotImplementedError('Please re-add your custom feature again! Description was: {}\n'
+                                      '>>> featurizer.remove_all_custom_funcs()\n'
+                                      '>>> featurizer.add_custom_func(...)'
+                                      .format(self.describe()[:30]))
+        self._fun = _warn
+        self._args = ()
+        self._kwargs = {}
 
 
 class SelectionFeature(Feature):
@@ -149,16 +148,15 @@ class SelectionFeature(Feature):
     The coordinates are flattened as follows: [x1, y1, z1, x2, y2, z2, ...]
 
     """
+    _serialize_version = 0
+    _serialize_fields = ('indexes', )
+    prefix_label = "ATOM:"
+
     def __init__(self, top, indexes):
         self.top = top
         self.indexes = np.array(indexes)
         if len(self.indexes) == 0:
             raise ValueError("empty indices")
-        self.prefix_label = "ATOM:"
-
-    def __reduce__(self):
-        self._ensure_topfile()
-        return SelectionFeature, (self.top.fname, self.indexes)
 
     def describe(self):
         labels = []
@@ -188,6 +186,9 @@ class SelectionFeature(Feature):
 
 
 class MinRmsdFeature(Feature):
+
+    _serialize_version = 0
+    _serialize_fields = ('ref', 'ref_frame', 'name', 'precentered', 'atom_indices')
 
     def __init__(self, ref, ref_frame=0, atom_indices=None, topology=None, precentered=False):
 

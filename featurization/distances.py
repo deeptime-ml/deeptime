@@ -29,6 +29,9 @@ from pyemma.coordinates.data.featurization._base import Feature
 
 
 class DistanceFeature(Feature):
+    _serialize_version = 0
+    _serialize_fields = ('distance_indexes', 'periodic')
+
     prefix_label = "DIST:"
 
     def __init__(self, top, distance_indexes, periodic=True):
@@ -57,20 +60,14 @@ class DistanceFeature(Feature):
             hash_value ^= hash(self.periodic)
         return hash_value
 
-    def __reduce__(self):
-        self._ensure_topfile()
-        return DistanceFeature, (self.top.fname, self.distance_indexes, self.periodic)
-
 
 class InverseDistanceFeature(DistanceFeature):
+    _serialize_version = 0
+
     prefix_label = "INVDIST:"
 
     def __init__(self, top, distance_indexes, periodic=True):
         DistanceFeature.__init__(self, top, distance_indexes, periodic=periodic)
-
-    def __reduce__(self):
-        self._ensure_topfile()
-        return InverseDistanceFeature, (self.top.fname, self.distance_indexes, self.periodic)
 
     def transform(self, traj):
         return 1.0 / mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
@@ -79,13 +76,15 @@ class InverseDistanceFeature(DistanceFeature):
 
 
 class ResidueMinDistanceFeature(DistanceFeature):
+    _serialize_version = 0
+    _serialize_fields = ('contacts', 'scheme', 'ignore_nonprotein', 'threshold', 'prefix_label')
 
     def __init__(self, top, contacts, scheme, ignore_nonprotein, threshold, periodic):
         self.top = top
         self.contacts = contacts
         self.scheme = scheme
         self.threshold = threshold
-        self.prefix_label = "RES_DIST (%s)"%scheme
+        self.prefix_label = "RES_DIST (%s)" % scheme
         self.periodic = periodic
         self.ignore_nonprotein = ignore_nonprotein
 
@@ -98,11 +97,6 @@ class ResidueMinDistanceFeature(DistanceFeature):
                                                           ignore_nonprotein=ignore_nonprotein)
         self._dim = dummy_dist.shape[1]
         self.distance_indexes = dummy_pairs
-
-    def __reduce__(self):
-        self._ensure_topfile()
-        return ResidueMinDistanceFeature, (self.top.fname, self.contacts, self.scheme,
-                                           self.ignore_nonprotein, self.threshold, self.periodic)
 
     def describe(self):
         labels = ["%s %s - %s" % (self.prefix_label,
@@ -125,6 +119,9 @@ class ResidueMinDistanceFeature(DistanceFeature):
 
 
 class GroupMinDistanceFeature(DistanceFeature):
+    _serialize_version = 0
+    _serialize_fields = ('group_identifiers', 'group_definitions', 'threshold', 'group_pairs',
+                         'distance_indexes')
     prefix_label = "GROUP_MINDIST"
 
     def __init__(self, top, group_definitions, group_pairs, distance_list, group_identifiers, threshold, periodic):
@@ -136,17 +133,11 @@ class GroupMinDistanceFeature(DistanceFeature):
         self.distance_indexes = distance_list
 
         self.periodic = periodic
-        self._dim = len(group_pairs) # TODO: validate
-
-    def __reduce__(self):
-        self._ensure_topfile()
-        return GroupMinDistanceFeature, (self.top.fname, self.group_definitions,
-                                         self.group_pairs, self.distance_indexes, self.group_identifiers,
-                                         self.threshold, self.periodic)
+        self._dim = len(group_pairs)  # TODO: validate
 
     def describe(self):
         labels = ["%s %u--%u: [%s...%s]--[%s...%s]" % (self.prefix_label, pair[0], pair[1],
-                                                       _describe_atom(self.top, self.group_definitions[pair[0]][0 ]),
+                                                       _describe_atom(self.top, self.group_definitions[pair[0]][0]),
                                                        _describe_atom(self.top, self.group_definitions[pair[0]][-1]),
                                                        _describe_atom(self.top, self.group_definitions[pair[1]][0]),
                                                        _describe_atom(self.top, self.group_definitions[pair[1]][-1])
@@ -157,11 +148,11 @@ class GroupMinDistanceFeature(DistanceFeature):
         # All needed distances
         Dall = mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
         # Just the minimas
-        Dmin = np.zeros((traj.n_frames,self.dimension))
+        Dmin = np.zeros((traj.n_frames, self.dimension))
         res = np.zeros_like(Dmin)
         # Compute the min groupwise
         for ii, (gi, gf) in enumerate(self.group_identifiers):
-            Dmin[:, ii] = Dall[:,gi:gf].min(1)
+            Dmin[:, ii] = Dall[:, gi:gf].min(1)
         # Do we want binary?
         if self.threshold is not None:
             I = np.argwhere(Dmin <= self.threshold)
@@ -174,17 +165,15 @@ class GroupMinDistanceFeature(DistanceFeature):
 
 class ContactFeature(DistanceFeature):
     prefix_label = "CONTACT:"
+    _serialize_version = 0
+    _serialize_fields = ('distance_indexes', 'prefix_label', 'count_contacts', 'threshold')
 
     def __init__(self, top, distance_indexes, threshold=5.0, periodic=True, count_contacts=False):
         DistanceFeature.__init__(self, top, distance_indexes, periodic=periodic)
         if count_contacts:
-            self.prefix_label="counted "+self.prefix_label
+            self.prefix_label = "counted " + self.prefix_label
         self.threshold = threshold
         self.count_contacts = count_contacts
-
-    def __reduce__(self):
-        self._ensure_topfile()
-        return ContactFeature, (self.top.fname, self.distance_indexes, self.threshold, self.periodic, self.count_contacts)
 
     @property
     def dimension(self):

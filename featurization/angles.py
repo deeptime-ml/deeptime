@@ -35,6 +35,8 @@ import numpy as np
 
 
 class AngleFeature(Feature):
+    _serialize_version = 0
+    _serialize_fields = ('angle_indexes', 'deg', 'cossin', 'periodic')
 
     def __init__(self, top, angle_indexes, deg=False, cossin=False, periodic=True):
         self.top = top
@@ -47,11 +49,6 @@ class AngleFeature(Feature):
         self._dim = len(self.angle_indexes)
         if cossin:
             self._dim *= 2
-
-    def __reduce__(self):
-        self._ensure_topfile()
-        return AngleFeature, (self.top.fname, self.angle_indexes,
-                              self.deg, self.cossin, self.periodic)
 
     def describe(self):
         if self.cossin:
@@ -90,6 +87,7 @@ class AngleFeature(Feature):
 
 
 class DihedralFeature(AngleFeature):
+    _serialize_version = 0
 
     def __init__(self, top, dih_indexes, deg=False, cossin=False, periodic=True):
         super(DihedralFeature, self).__init__(top=top,
@@ -97,11 +95,6 @@ class DihedralFeature(AngleFeature):
                                               deg=deg,
                                               cossin=cossin,
                                               periodic=periodic)
-
-    def __reduce__(self):
-        self._ensure_topfile()
-        return DihedralFeature, (self.top.fname, self.angle_indexes,
-                              self.deg, self.cossin, self.periodic)
 
     def describe(self):
         if self.cossin:
@@ -136,6 +129,8 @@ class DihedralFeature(AngleFeature):
 
 
 class BackboneTorsionFeature(DihedralFeature):
+    _serialize_version = 0
+    _serialize_fields = ('selstr', '_phi_inds', '_psi_inds')
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False, periodic=True):
         self.top = topology
@@ -162,10 +157,6 @@ class BackboneTorsionFeature(DihedralFeature):
         super(BackboneTorsionFeature, self).__init__(self.top, dih_indexes,
                                                      deg=deg, cossin=cossin,
                                                      periodic=periodic)
-    def __reduce__(self):
-        self._ensure_topfile()
-        return BackboneTorsionFeature, (self.top.fname, self.selstr, self.deg, self.cossin, self.periodic)
-
     def describe(self):
         top = self.top
         getlbl = lambda at: "%i %s %i" % (at.residue.chain.index, at.residue.name, at.residue.resSeq)
@@ -193,6 +184,7 @@ class BackboneTorsionFeature(DihedralFeature):
 
 
 class Chi1TorsionFeature(DihedralFeature):
+    _serialize_version = 0
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False, periodic=True):
         self.top = topology
@@ -207,11 +199,6 @@ class Chi1TorsionFeature(DihedralFeature):
         super(Chi1TorsionFeature, self).__init__(self.top, dih_indexes,
                                                  deg=deg, cossin=cossin,
                                                  periodic=periodic)
-
-    def __reduce__(self):
-        self._ensure_topfile()
-        return Chi1TorsionFeature, (self.top.fname, self.selstr,
-                                    self.deg, self.cossin, self.periodic)
 
     def describe(self):
         top = self.top
