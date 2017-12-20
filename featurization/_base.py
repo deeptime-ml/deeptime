@@ -32,8 +32,7 @@ class Feature(SerializableMixIn):
         return self._dim
 
     @dimension.setter
-    def dimension(self, val):
-        assert isinstance(val, int)
+    def dimension(self, val: int):
         self._dim = val
 
     @property
@@ -43,6 +42,9 @@ class Feature(SerializableMixIn):
     @top.setter
     def top(self, value):
         self._top = value
+
+    def describe(self):
+        raise NotImplementedError()
 
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()

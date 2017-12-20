@@ -74,7 +74,7 @@ class CustomFeature(Feature):
     """
     _id = count(0)
     _serialize_version = 0
-    _serialize_fields = ('_desc', 'dim')
+    _serialize_fields = ('_desc', )
 
     def __init__(self, fun, dim, description=None, fun_args=(), fun_kwargs=None):
         if fun_kwargs is None:
@@ -157,6 +157,7 @@ class SelectionFeature(Feature):
         self.indexes = np.array(indexes)
         if len(self.indexes) == 0:
             raise ValueError("empty indices")
+        self.dimension = 3 * len(indexes)
 
     def describe(self):
         labels = []
@@ -168,10 +169,6 @@ class SelectionFeature(Feature):
             labels.append("%s%s z" %
                           (self.prefix_label, _describe_atom(self.top, i)))
         return labels
-
-    @property
-    def dimension(self):
-        return 3 * self.indexes.shape[0]
 
     def transform(self, traj):
         newshape = (traj.xyz.shape[0], 3 * self.indexes.shape[0])
@@ -218,6 +215,7 @@ class MinRmsdFeature(Feature):
         self.ref_frame = ref_frame
         self.atom_indices = atom_indices
         self.precentered = precentered
+        self.dimension = 1
 
     def describe(self):
         label = "minrmsd to frame %u of %s" % (self.ref_frame, self.name)
@@ -226,10 +224,6 @@ class MinRmsdFeature(Feature):
         if self.atom_indices is not None:
             label += ', subset of atoms  '
         return [label]
-
-    @property
-    def dimension(self):
-        return 1
 
     def transform(self, traj):
         return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
@@ -249,18 +243,23 @@ class MinRmsdFeature(Feature):
 
 
 class AlignFeature(SelectionFeature):
+    _serialize_version = 0
+    _serialize_fields = ('ref', 'atom_indices', 'ref_atom_indices', 'in_place')
+
+    prefix_label = 'aligned ATOM:'
 
     def __init__(self, reference, indexes, atom_indices=None, ref_atom_indices=None, in_place=True):
         super(AlignFeature, self).__init__(top=reference.topology, indexes=indexes)
         self.ref = reference
         self.atom_indices = atom_indices
         self.ref_atom_indices = ref_atom_indices
-        self.prefix_label = 'aligned ATOM:'
         self.in_place = in_place
 
     def __hash__(self):
         h = super(AlignFeature, self).__hash__()
         h ^= hash(self.ref)
+        h ^= hash(self.atom_indices)
+        h ^= hash(self.ref_atom_indices)
         return h
 
     def transform(self, traj):
@@ -273,14 +272,17 @@ class AlignFeature(SelectionFeature):
 
 
 class GroupCOMFeature(Feature):
+    _serialize_version = 0
+    _serialize_fields = ('ref_geom', 'image_molecules', 'group_definitions', 'atom_masses',
+                         'masses_in_groups', '_describe', '__hashed_input__', )
 
     def __init__(self, topology, group_definitions, ref_geom=None, image_molecules=False, mass_weighted=True):
-
-        assert ref_geom is None or isinstance(ref_geom, mdtraj.Trajectory), "argument ref_geom has to be either " \
-                                                                            "None or and mdtraj.Trajectory, got instead %s"%type(ref_geom)
+        if not (ref_geom is None or isinstance(ref_geom, mdtraj.Trajectory)):
+            raise ValueError("argument ref_geom has to be either None or and mdtraj.Trajectory,"
+                             " got instead %s" % type(ref_geom))
 
         self.ref_geom = ref_geom
-        self.topology = topology
+        self.top = topology
         self.image_molecules = image_molecules
         self.group_definitions = [np.asarray(gf) for gf in group_definitions]
         self.atom_masses = np.array([aa.element.mass for aa in topology.atoms])
@@ -304,13 +306,10 @@ class GroupCOMFeature(Feature):
         if ref_geom is not None:
             self.__hashed_input__ ^= _hash_numpy_array(ref_geom.xyz[0])
             # Hashing xyz instead of the top allows for different refs in the same featurizer
+        self.dimension = 3*len(self.group_definitions)
 
     def describe(self):
         return self._describe
-
-    @property
-    def dimension(self):
-        return 3*len(self.group_definitions)
 
     def transform(self, traj):
         # TODO: is it possible to avoid copy? Otherwise the trajectory is altered...
@@ -325,14 +324,18 @@ class GroupCOMFeature(Feature):
         return np.hstack(COM_xyz)
 
     def __hash__(self):
-        hash_value = hash(self.__hashed_input__)
+        return self.__hashed_input__
 
-        return hash_value
 
 class ResidueCOMFeature(GroupCOMFeature):
 
-    def __init__(self, topology, residue_indices, residue_atoms, scheme, ref_geom=None, image_molecules=False, mass_weighted = True):
-        GroupCOMFeature.__init__(self, topology, residue_atoms, mass_weighted=mass_weighted, ref_geom=ref_geom, image_molecules=image_molecules)
+    _serialize_version = 0
+    _serialize_fields = ('residue_indices', 'scheme')
+
+    def __init__(self, topology, residue_indices, residue_atoms, scheme, ref_geom=None, image_molecules=False,
+                 mass_weighted=True):
+        super(ResidueCOMFeature, self).__init__(topology, residue_atoms, mass_weighted=mass_weighted, ref_geom=ref_geom,
+                                                image_molecules=image_molecules)
 
         # This are the only extra attributes that residueCOMFeature should have
         self.residue_indices = residue_indices
