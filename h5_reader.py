@@ -10,8 +10,8 @@ __author__ = 'marscher'
 class H5Reader(DataSource, SerializableMixIn):
     r""" Reader for HDF5 files.
 
-    The reader needs h5py and pytables installed. The first package is used for the actual file handling, while
-    the latter is only used to import compression filters (eg. BLOSC).
+    The reader needs h5py and optionally pytables installed. The first package is used for the actual file handling,
+    while the latter is only used to import compression filters (eg. BLOSC).
 
     Parameters
     ----------
