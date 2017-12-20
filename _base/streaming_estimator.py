@@ -18,7 +18,6 @@
 
 from __future__ import absolute_import
 
-import numpy as np
 from pyemma._base.estimator import Estimator
 from pyemma.coordinates.data import DataInMemory
 from pyemma.coordinates.data._base.iterable import Iterable
@@ -32,20 +31,15 @@ class StreamingEstimator(Estimator):
     in a streaming fashion.
     """
 
-    def __init__(self, chunksize=None):
-        super(StreamingEstimator, self).__init__()
-        self._chunksize = chunksize
-
-    def estimate(self, X, **kwargs):
+    def estimate(self, X, chunksize=None, **kwargs):
         # ensure the input is able to provide a stream
         if not isinstance(X, Iterable):
-            if isinstance(X, np.ndarray) or \
-                    (isinstance(X, (list, tuple)) and len(X) > 0 and all((isinstance(x, np.ndarray) for x in X))):
-                X = DataInMemory(X, self.chunksize)
-            else:
-                raise ValueError("no np.ndarray or non-empty list of np.ndarrays given")
+            from pyemma.util import types
+            array_list = types.ensure_traj_list(X)
+            X = DataInMemory(array_list, chunksize=chunksize)
         # Because we want to use pipelining methods like get_output, we have to set a data producer.
         self.data_producer = X
+        X.chunksize = chunksize
         # run estimation
         try:
             super(StreamingEstimator, self).estimate(X, **kwargs)
@@ -53,15 +47,3 @@ class StreamingEstimator(Estimator):
             self._logger.info(
                 "Presumably finished estimation. Message: %s" % ncw)
         return self
-
-    @property
-    def chunksize(self):
-        """chunksize defines how much data is being processed at once."""
-        return self._chunksize
-
-    @chunksize.setter
-    def chunksize(self, size):
-        if not size >= 0:
-            raise ValueError("chunksize has to be positive")
-
-        self._chunksize = int(size)

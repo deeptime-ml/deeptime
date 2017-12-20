@@ -27,7 +27,7 @@ from pyemma.coordinates.data.featurization.util import (_catch_unhashable,
                                                         _describe_atom,
                                                         hash_top, _hash_numpy_array)
 from pyemma.coordinates.data.featurization._base import Feature
-
+from .util import _atoms_in_residues
 
 class CustomFeature(Feature):
 
@@ -243,3 +243,80 @@ class AlignFeature(SelectionFeature):
                                  ref_atom_indices=self.ref_atom_indices)
         # apply selection
         return super(AlignFeature, self).transform(aligned)
+
+
+class GroupCOMFeature(Feature):
+
+    def __init__(self, topology, group_definitions, ref_geom=None, image_molecules=False, mass_weighted=True):
+
+        assert ref_geom is None or isinstance(ref_geom, mdtraj.Trajectory), "argument ref_geom has to be either " \
+                                                                            "None or and mdtraj.Trajectory, got instead %s"%type(ref_geom)
+
+        self.ref_geom = ref_geom
+        self.topology = topology
+        self.image_molecules = image_molecules
+        self.group_definitions = [np.asarray(gf) for gf in group_definitions]
+        self.atom_masses = np.array([aa.element.mass for aa in topology.atoms])
+
+        if mass_weighted:
+            self.masses_in_groups = [self.atom_masses[aa_in_rr] for aa_in_rr in self.group_definitions]
+        else:
+            self.masses_in_groups = [np.ones_like(aa_in_rr) for aa_in_rr in self.group_definitions]
+
+        # Prepare and store the description
+        self._describe = []
+        for group in self.group_definitions:
+            for coor in 'xyz':
+                self._describe.append('COM-%s of atom group [%s..%s] '%(coor, group[:3], group[-3:]))
+                # TODO consider including the ref_geom and image_molecule arsg here?
+
+        self.__hashed_input__ = hash_top(topology)
+        self.__hashed_input__ ^= _hash_numpy_array(np.hstack(self.group_definitions))
+        self.__hashed_input__ ^= _hash_numpy_array(np.hstack([len(gd) for gd in self.group_definitions]))
+        self.__hashed_input__ ^= hash(tuple((mass_weighted, image_molecules)))
+        if ref_geom is not None:
+            self.__hashed_input__ ^= _hash_numpy_array(ref_geom.xyz[0])
+            # Hashing xyz instead of the top allows for different refs in the same featurizer
+
+    def describe(self):
+        return self._describe
+
+    @property
+    def dimension(self):
+        return 3*len(self.group_definitions)
+
+    def transform(self, traj):
+        # TODO: is it possible to avoid copy? Otherwise the trajectory is altered...
+        traj_copy = traj[:]
+        COM_xyz = []
+        if self.ref_geom is not None:
+            traj_copy = traj_copy.superpose(self.ref_geom)
+        if self.image_molecules:
+            traj_copy = traj_copy.image_molecules()
+        for aas, mms in zip(self.group_definitions, self.masses_in_groups):
+            COM_xyz.append(np.average(traj_copy.xyz[:, aas, ], axis=1, weights=mms))
+        return np.hstack(COM_xyz)
+
+    def __hash__(self):
+        hash_value = hash(self.__hashed_input__)
+
+        return hash_value
+
+class ResidueCOMFeature(GroupCOMFeature):
+
+    def __init__(self, topology, residue_indices, residue_atoms, scheme, ref_geom=None, image_molecules=False, mass_weighted = True):
+        GroupCOMFeature.__init__(self, topology, residue_atoms, mass_weighted=mass_weighted, ref_geom=ref_geom, image_molecules=image_molecules)
+
+        # This are the only extra attributes that residueCOMFeature should have
+        self.residue_indices = residue_indices
+        self.scheme = scheme
+
+        # Add the scheme to the hash
+        self.__hashed_input__ ^= hash(scheme)
+
+        # Overwrite the self._describe attribute, this way the method of the superclass can be used "as is"
+        self._describe = []
+        for ri in self.residue_indices:
+            for coor in 'xyz':
+                self._describe.append('%s COM-%s (%s)' % (topology.residue(ri), coor, self.scheme))
+                # TODO consider including the ref_geom and image_molecule arsg here?

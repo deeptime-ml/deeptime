@@ -34,7 +34,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
     of trajectories is generally unknown for Iterable.
     """
 
-    def __init__(self, chunksize=1000):
+    def __init__(self, chunksize=None):
         super(DataSource, self).__init__(chunksize=chunksize)
 
         # following properties have to be set in subclass

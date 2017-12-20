@@ -115,7 +115,7 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
         the chunksize used to batch process underlying data.
 
     """
-    def __init__(self, chunksize=1000):
+    def __init__(self, chunksize=None):
         super(StreamingTransformer, self).__init__(chunksize=chunksize)
         self.data_producer = None
         self._Y_source = None
@@ -191,10 +191,9 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
 
     @chunksize.setter
     def chunksize(self, size):
-        if not size >= 0:
-            raise ValueError("chunksize has to be positive")
-
-        self.data_producer.chunksize = int(size)
+        if self.data_producer is None:
+            raise RuntimeError('cant set chunksize')
+        self.data_producer.chunksize = size
 
     def number_of_trajectories(self, stride=1):
         return self.data_producer.number_of_trajectories(stride)
