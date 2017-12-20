@@ -185,7 +185,8 @@ class SelectionFeature(Feature):
 class MinRmsdFeature(Feature):
 
     _serialize_version = 0
-    _serialize_fields = ('ref', 'ref_frame', 'name', 'precentered', 'atom_indices')
+    _serialize_fields = ('ref', 'ref_frame', 'name', 'precentered', 'atom_indices',
+                         '__hashed_input__')
 
     def __init__(self, ref, ref_frame=0, atom_indices=None, topology=None, precentered=False):
 
