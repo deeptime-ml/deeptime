@@ -73,7 +73,7 @@ class CustomFeature(Feature):
 
     """
     _id = count(0)
-    _serialize_version = 0
+    __serialize_version = 0
     _serialize_fields = ('_desc', )
 
     def __init__(self, fun, dim, description=None, fun_args=(), fun_kwargs=None):
@@ -148,7 +148,7 @@ class SelectionFeature(Feature):
     The coordinates are flattened as follows: [x1, y1, z1, x2, y2, z2, ...]
 
     """
-    _serialize_version = 0
+    __serialize_version = 0
     _serialize_fields = ('indexes', )
     prefix_label = "ATOM:"
 
@@ -184,7 +184,7 @@ class SelectionFeature(Feature):
 
 class MinRmsdFeature(Feature):
 
-    _serialize_version = 0
+    __serialize_version = 0
     _serialize_fields = ('ref', 'ref_frame', 'name', 'precentered', 'atom_indices',
                          '__hashed_input__')
 
@@ -244,7 +244,7 @@ class MinRmsdFeature(Feature):
 
 
 class AlignFeature(SelectionFeature):
-    _serialize_version = 0
+    __serialize_version = 0
     _serialize_fields = ('ref', 'atom_indices', 'ref_atom_indices', 'in_place')
 
     prefix_label = 'aligned ATOM:'
@@ -273,7 +273,7 @@ class AlignFeature(SelectionFeature):
 
 
 class GroupCOMFeature(Feature):
-    _serialize_version = 0
+    __serialize_version = 0
     _serialize_fields = ('ref_geom', 'image_molecules', 'group_definitions', 'atom_masses',
                          'masses_in_groups', '_describe', '__hashed_input__', )
 
@@ -330,7 +330,7 @@ class GroupCOMFeature(Feature):
 
 class ResidueCOMFeature(GroupCOMFeature):
 
-    _serialize_version = 0
+    __serialize_version = 0
     _serialize_fields = ('residue_indices', 'scheme')
 
     def __init__(self, topology, residue_indices, residue_atoms, scheme, ref_geom=None, image_molecules=False,

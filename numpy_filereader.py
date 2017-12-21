@@ -35,7 +35,7 @@ from pyemma.util.annotators import fix_docs
 
 @fix_docs
 class NumPyFileReader(DataSource, SerializableMixIn):
-    _serialize_version = 0
+    __serialize_version = 0
 
     """reads NumPy files in chunks. Supports .npy files
 

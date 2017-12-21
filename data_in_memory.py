@@ -47,7 +47,7 @@ class DataInMemory(DataSource, SerializableMixIn):
         arrays.
     """
     IN_MEMORY_FILENAME = '<in_memory_file>'
-    _serialize_version = 0
+    __serialize_version = 0
 
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
         return DataInMemoryIterator(self, skip, chunk, stride, return_trajindex, cols)

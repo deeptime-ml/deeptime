@@ -30,7 +30,7 @@ class H5Reader(DataSource, SerializableMixIn):
 
     chunk_size: int
     """
-    _serialize_version = 0
+    __serialize_version = 0
 
     def __init__(self, filenames, selection='/*', chunk_size=5000, **kw):
         super(H5Reader, self).__init__(chunksize=chunk_size)

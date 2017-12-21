@@ -39,7 +39,7 @@ __all__ = ['MDFeaturizer']
 
 class MDFeaturizer(SerializableMixIn, Loggable):
     r"""Extracts features from MD trajectories."""
-    _serialize_version = 0
+    __serialize_version = 0
     _serialize_fields = ('use_topology_cache',
                          '_topologyfile',
                          'topology',

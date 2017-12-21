@@ -7,7 +7,7 @@ __author__ = 'marscher'
 
 
 class SourcesMerger(DataSource, SerializableMixIn):
-    _serialize_version = 0
+    __serialize_version = 0
     """ Combines multiple data sources to stream from.
 
     Note that you are responsible you only join matching (meaningful) data sets. If one trajectory is for instance

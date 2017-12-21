@@ -321,7 +321,7 @@ class FragmentIterator(DataSourceIterator):
 
 @fix_docs
 class FragmentedTrajectoryReader(DataSource, SerializableMixIn):
-    _serialize_version = 0
+    __serialize_version = 0
     """ Reader for fragmented trajectory data eg. (traj0_part0.xtc, traj_0_part1.xtc, ... )
 
     Parameters

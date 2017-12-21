@@ -217,7 +217,7 @@ class PyCSVReader(DataSource, SerializableMixIn):
     For reading files with only one column, one needs to specify a delimter...
     """
     DEFAULT_OPEN_MODE = 'r'  # read in text-mode
-    _serialize_version = 0
+    __serialize_version = 0
 
     def __init__(self, filenames, chunksize=1000, delimiters=None, comments='#',
                  converters=None, **kwargs):

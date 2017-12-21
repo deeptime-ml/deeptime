@@ -24,7 +24,7 @@ from pyemma._base.serialization.serialization import SerializableMixIn
 
 
 class Feature(SerializableMixIn):
-    _serialize_version = 0
+    __serialize_version = 0
     _serialize_fields = ('_dim', '_top')
 
     @property
