@@ -47,7 +47,10 @@ class Feature(SerializableMixIn):
         raise NotImplementedError()
 
     def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
+        if not isinstance(other, Feature):
+            return False
+        from pyemma.coordinates.data.featurization.util import hash_top
+        return self.dimension == other.dimension and hash_top(self.top) == hash_top(other.top)
 
     def __repr__(self):
         return str(self.describe())

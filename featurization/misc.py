@@ -20,13 +20,14 @@ Created on 15.02.2016
 
 @author: marscher
 '''
-import numpy as np
-import mdtraj
 from itertools import count
-from pyemma.coordinates.data.featurization.util import (_catch_unhashable,
-                                                        _describe_atom,
-                                                        hash_top, _hash_numpy_array)
+
+import mdtraj
+import numpy as np
+
 from pyemma.coordinates.data.featurization._base import Feature
+from pyemma.coordinates.data.featurization.util import (_describe_atom,
+                                                        cmp_traj)
 
 
 class CustomFeature(Feature):
@@ -77,6 +78,8 @@ class CustomFeature(Feature):
     __serialize_fields = ('_desc',)
 
     def __init__(self, fun, dim, description=None, fun_args=(), fun_kwargs=None):
+        # we set topology to None here
+        self.top = None
         if fun_kwargs is None:
             fun_kwargs = {}
         self._fun = fun
@@ -93,8 +96,8 @@ class CustomFeature(Feature):
                 id=self.id,
                 fun=self._fun,
                 arg_str=arg_str, args=self._args, kw=self._kwargs)]
-            if self.dimension > 1:
-                desc.extend(('CustomFeature[{id}][{i}]'.format(id=self.id, i=i) for i in range(1, self.dimension)))
+            #if self.dimension > 1:
+            #    desc.extend(('CustomFeature[{id}][{i}]'.format(id=self.id, i=i) for i in range(1, self.dimension)))
         elif desc and not (len(desc) == self._dim or len(desc) == 1):
             raise ValueError("to avoid confusion, ensure the lengths of 'description' "
                              "list matches dimension - or give a single element which will be repeated."
@@ -114,13 +117,11 @@ class CustomFeature(Feature):
             raise ValueError("your function should return a NumPy array!")
         return feature
 
-    def __hash__(self):
-        hash_value = hash(self._fun)
-        # if key contains numpy arrays, we hash their data arrays
-        key = tuple(list(map(_catch_unhashable, self._args)) +
-                    list(map(_catch_unhashable, sorted(self._kwargs.items()))))
-        hash_value ^= hash(key)
-        return hash_value
+    def __eq__(self, other):
+        eq = super(CustomFeature, self).__eq__(other)
+        if not eq or not isinstance(other, CustomFeature):
+            return False
+        return self._fun == other._fun and self._args == other._args and self._kwargs == other._kwargs
 
     def __getstate__(self):
         import warnings
@@ -174,27 +175,23 @@ class SelectionFeature(Feature):
         newshape = (traj.xyz.shape[0], 3 * self.indexes.shape[0])
         return np.reshape(traj.xyz[:, self.indexes, :], newshape)
 
-    def __hash__(self):
-        hash_value = hash(self.prefix_label)
-        hash_value ^= hash_top(self.top)
-        hash_value ^= _hash_numpy_array(self.indexes)
-
-        return hash_value
+    def __eq__(self, other):
+        eq = super(SelectionFeature, self).__eq__(other)
+        if not eq or not isinstance(other, SelectionFeature):
+            return False
+        return np.all(self.indexes == other.indexes)
 
 
 class MinRmsdFeature(Feature):
 
     __serialize_version = 0
-    __serialize_fields = ('ref', 'ref_frame', 'name', 'precentered', 'atom_indices',
-                         '__hashed_input__')
+    __serialize_fields = ('ref', 'ref_frame', 'name', 'precentered', 'atom_indices',)
 
     def __init__(self, ref, ref_frame=0, atom_indices=None, topology=None, precentered=False):
+        self.top = topology
 
         assert isinstance(
             ref_frame, int), "ref_frame has to be of type integer, and not %s" % type(ref_frame)
-
-        # Will be needing the hashed input parameter
-        self.__hashed_input__ = hash(ref)
 
         # Types of inputs
         # 1. Filename+top
@@ -229,18 +226,15 @@ class MinRmsdFeature(Feature):
     def transform(self, traj):
         return np.array(mdtraj.rmsd(traj, self.ref, atom_indices=self.atom_indices), ndmin=2).T
 
-    def __hash__(self):
-        hash_value = hash(self.__hashed_input__)
-        # TODO: identical md.Trajectory objects have different hashes need a
-        # way to differentiate them here
-        hash_value ^= hash(self.ref_frame)
-        if self.atom_indices is None:
-            hash_value ^= _hash_numpy_array(np.arange(self.ref.n_atoms))
-        else:
-            hash_value ^= _hash_numpy_array(np.array(self.atom_indices))
-        hash_value ^= hash(self.precentered)
+    def __eq__(self, other):
+        if not isinstance(other, MinRmsdFeature):
+            return False
 
-        return hash_value
+        return (cmp_traj(self.ref, other.ref)
+                and self.ref_frame == other.ref_frame
+                and np.all(self.atom_indices == other.atom_indices)
+                and self.precentered == other.precentered
+                )
 
 
 class AlignFeature(SelectionFeature):
@@ -256,12 +250,12 @@ class AlignFeature(SelectionFeature):
         self.ref_atom_indices = ref_atom_indices
         self.in_place = in_place
 
-    def __hash__(self):
-        h = super(AlignFeature, self).__hash__()
-        h ^= hash(self.ref)
-        h ^= hash(self.atom_indices)
-        h ^= hash(self.ref_atom_indices)
-        return h
+    def __eq__(self, other):
+        if not isinstance(other, AlignFeature):
+            return False
+        return (cmp_traj(self.ref, other.ref)
+                and np.all(self.atom_indices == other.atom_indices)
+                and self.in_place == other.in_place)
 
     def transform(self, traj):
         if not self.in_place:
@@ -275,7 +269,7 @@ class AlignFeature(SelectionFeature):
 class GroupCOMFeature(Feature):
     __serialize_version = 0
     __serialize_fields = ('ref_geom', 'image_molecules', 'group_definitions', 'atom_masses',
-                         'masses_in_groups', '_describe', '__hashed_input__',)
+                          'masses_in_groups', '_describe')
 
     def __init__(self, topology, group_definitions, ref_geom=None, image_molecules=False, mass_weighted=True):
         if not (ref_geom is None or isinstance(ref_geom, mdtraj.Trajectory)):
@@ -299,15 +293,7 @@ class GroupCOMFeature(Feature):
             for coor in 'xyz':
                 self._describe.append('COM-%s of atom group [%s..%s] '%(coor, group[:3], group[-3:]))
                 # TODO consider including the ref_geom and image_molecule arsg here?
-
-        self.__hashed_input__ = hash_top(topology)
-        self.__hashed_input__ ^= _hash_numpy_array(np.hstack(self.group_definitions))
-        self.__hashed_input__ ^= _hash_numpy_array(np.hstack([len(gd) for gd in self.group_definitions]))
-        self.__hashed_input__ ^= hash(tuple((mass_weighted, image_molecules)))
-        if ref_geom is not None:
-            self.__hashed_input__ ^= _hash_numpy_array(ref_geom.xyz[0])
-            # Hashing xyz instead of the top allows for different refs in the same featurizer
-        self.dimension = 3*len(self.group_definitions)
+        self.dimension = 3 * len(self.group_definitions)
 
     def describe(self):
         return self._describe
@@ -324,8 +310,13 @@ class GroupCOMFeature(Feature):
             COM_xyz.append(np.average(traj_copy.xyz[:, aas, ], axis=1, weights=mms))
         return np.hstack(COM_xyz)
 
-    def __hash__(self):
-        return self.__hashed_input__
+    def __eq__(self, other):
+        eq = super(GroupCOMFeature, self).__eq__(other)
+        if not eq or not isinstance(other, GroupCOMFeature):
+            return False
+        return (cmp_traj(self.ref_geom, other.ref_geom) and self.image_molecules == other.image_molecules
+                and np.all(self.group_definitions == other.group_definitions)
+        )
 
 
 class ResidueCOMFeature(GroupCOMFeature):
@@ -342,12 +333,15 @@ class ResidueCOMFeature(GroupCOMFeature):
         self.residue_indices = residue_indices
         self.scheme = scheme
 
-        # Add the scheme to the hash
-        self.__hashed_input__ ^= hash(scheme)
-
         # Overwrite the self._describe attribute, this way the method of the superclass can be used "as is"
         self._describe = []
         for ri in self.residue_indices:
             for coor in 'xyz':
                 self._describe.append('%s COM-%s (%s)' % (topology.residue(ri), coor, self.scheme))
                 # TODO consider including the ref_geom and image_molecule arsg here?
+
+    def __eq__(self, other):
+        eq = super(ResidueCOMFeature, self).__eq__(other)
+        if not eq or isinstance(other, ResidueCOMFeature):
+            return False
+        return np.all(self.residue_indices == other.residue_indices) and self.scheme == other.scheme

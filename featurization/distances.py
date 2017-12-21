@@ -22,10 +22,8 @@ Created on 15.02.2016
 import mdtraj
 import numpy as np
 
-from pyemma.coordinates.data.featurization.util import (_describe_atom,
-                                                        _hash_numpy_array,
-                                                        hash_top)
 from pyemma.coordinates.data.featurization._base import Feature
+from pyemma.coordinates.data.featurization.util import _describe_atom
 
 
 class DistanceFeature(Feature):
@@ -52,13 +50,12 @@ class DistanceFeature(Feature):
     def transform(self, traj):
         return mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
 
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self.distance_indexes)
-        hash_value ^= hash_top(self.top)
-        hash_value ^= hash(self.prefix_label)
-        if hasattr(self, 'periodic'):
-            hash_value ^= hash(self.periodic)
-        return hash_value
+    def __eq__(self, other):
+        eq = super(DistanceFeature, self).__eq__(other)
+        if not eq or not isinstance(other, DistanceFeature):
+            return False
+        return (self.periodic == other.periodic and np.all(self.distance_indexes == other.distance_indexes)
+            and self.prefix_label == other.prefix_label)
 
 
 class InverseDistanceFeature(DistanceFeature):
@@ -72,7 +69,7 @@ class InverseDistanceFeature(DistanceFeature):
     def transform(self, traj):
         return 1.0 / mdtraj.compute_distances(traj, self.distance_indexes, periodic=self.periodic)
 
-    # does not need own hash impl, since we take prefix label into account
+    # does not need own eq impl, since we take prefix label into account
 
 
 class ResidueMinDistanceFeature(DistanceFeature):
@@ -95,7 +92,7 @@ class ResidueMinDistanceFeature(DistanceFeature):
         dummy_dist, dummy_pairs = mdtraj.compute_contacts(dummy_traj, contacts=contacts,
                                                           scheme=scheme, periodic=periodic,
                                                           ignore_nonprotein=ignore_nonprotein)
-        self._dim = dummy_dist.shape[1]
+        self.dimension = dummy_dist.shape[1]
         self.distance_indexes = dummy_pairs
 
     def describe(self):
@@ -117,23 +114,32 @@ class ResidueMinDistanceFeature(DistanceFeature):
             res = D
         return res
 
+    def __eq__(self, other):
+        eq = super(ResidueMinDistanceFeature, self).__eq__(other)
+        if not eq or not isinstance(other, ResidueMinDistanceFeature):
+            return False
+        return (np.all(self.contacts == other.contacts)
+                and self.scheme == other.scheme
+                and self.periodic == other.periodic
+                and self.threshold == other.threshold
+                and self.ignore_nonprotein == other.ignore_nonprotein)
+
 
 class GroupMinDistanceFeature(DistanceFeature):
     __serialize_version = 0
     __serialize_fields = ('group_identifiers', 'group_definitions', 'threshold', 'group_pairs',
-                         'distance_indexes')
+                          'distance_indexes')
     prefix_label = "GROUP_MINDIST"
 
     def __init__(self, top, group_definitions, group_pairs, distance_list, group_identifiers, threshold, periodic):
-        self.top = top
+        super(GroupMinDistanceFeature, self).__init__(distance_indexes=distance_list, top=top)
         self.group_identifiers = group_identifiers
-        self.group_definitions = group_definitions
+        self.group_definitions = np.array(group_definitions)
         self.threshold = threshold
         self.group_pairs = group_pairs
-        self.distance_indexes = distance_list
 
         self.periodic = periodic
-        self._dim = len(group_pairs)  # TODO: validate
+        self.dimension = len(group_pairs)  # TODO: validate
 
     def describe(self):
         labels = ["%s %u--%u: [%s...%s]--[%s...%s]" % (self.prefix_label, pair[0], pair[1],
@@ -161,6 +167,16 @@ class GroupMinDistanceFeature(DistanceFeature):
             res = Dmin
 
         return res
+
+    def __eq__(self, other):
+        eq = super(GroupMinDistanceFeature, self).__eq__(other)
+        if not eq or not isinstance(other, GroupMinDistanceFeature):
+            return False
+        return (np.all(self.group_identifiers == other.group_identifiers)
+                and np.all(self.group_definitions == other.group_definitions)
+                and np.all(self.group_pairs == other.group_pairs)
+                and self.threshold == other.threshold
+                and self.periodic == other.periodic)
 
 
 class ContactFeature(DistanceFeature):
@@ -191,9 +207,9 @@ class ContactFeature(DistanceFeature):
         else:
             return res
 
-    def __hash__(self):
-        hash_value = super(ContactFeature, self).__hash__()
-        hash_value ^= hash(self.threshold)
-        if self.count_contacts:
-            hash_value += 1
-        return hash_value
+    def __eq__(self, other):
+        eq = super(ContactFeature, self).__eq__(other)
+        if not eq or not isinstance(other, ContactFeature):
+            return False
+        return (self.count_contacts == other.count_contacts
+                and self.threshold == other.threshold and self.periodic == other.periodic)

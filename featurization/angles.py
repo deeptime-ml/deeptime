@@ -19,19 +19,17 @@ Created on 15.02.2016
 
 @author: marscher
 '''
-import functools
 import itertools
 
+import mdtraj
+import numpy as np
 from mdtraj.geometry.dihedral import (indices_phi,
                                       indices_psi,
                                       indices_chi1,
                                       )
-import mdtraj
 
 from pyemma.coordinates.data.featurization._base import Feature
-from pyemma.coordinates.data.featurization.util import (_hash_numpy_array,
-                                                        hash_top, _describe_atom)
-import numpy as np
+from pyemma.coordinates.data.featurization.util import _describe_atom
 
 
 class AngleFeature(Feature):
@@ -77,13 +75,11 @@ class AngleFeature(Feature):
         else:
             return rad
 
-    def __hash__(self):
-        hash_value = _hash_numpy_array(self.angle_indexes)
-        hash_value ^= hash_top(self.top)
-        hash_value ^= hash(self.deg)
-        hash_value ^= hash(self.cossin)
-
-        return hash_value
+    def __eq__(self, other):
+        eq = super(AngleFeature, self).__eq__(other)
+        if not eq or not isinstance(other, AngleFeature):
+            return False
+        return self.cossin == other.cossin and np.all(self.angle_indexes == other.angle_indexes)
 
 
 class DihedralFeature(AngleFeature):
