@@ -36,7 +36,7 @@ import numpy as np
 
 class AngleFeature(Feature):
     __serialize_version = 0
-    _serialize_fields = ('angle_indexes', 'deg', 'cossin', 'periodic')
+    __serialize_fields = ('angle_indexes', 'deg', 'cossin', 'periodic')
 
     def __init__(self, top, angle_indexes, deg=False, cossin=False, periodic=True):
         self.top = top
@@ -130,7 +130,7 @@ class DihedralFeature(AngleFeature):
 
 class BackboneTorsionFeature(DihedralFeature):
     __serialize_version = 0
-    _serialize_fields = ('selstr', '_phi_inds', '_psi_inds')
+    __serialize_fields = ('selstr', '_phi_inds', '_psi_inds')
 
     def __init__(self, topology, selstr=None, deg=False, cossin=False, periodic=True):
         self.top = topology

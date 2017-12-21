@@ -74,7 +74,7 @@ class CustomFeature(Feature):
     """
     _id = count(0)
     __serialize_version = 0
-    _serialize_fields = ('_desc', )
+    __serialize_fields = ('_desc',)
 
     def __init__(self, fun, dim, description=None, fun_args=(), fun_kwargs=None):
         if fun_kwargs is None:
@@ -149,7 +149,7 @@ class SelectionFeature(Feature):
 
     """
     __serialize_version = 0
-    _serialize_fields = ('indexes', )
+    __serialize_fields = ('indexes',)
     prefix_label = "ATOM:"
 
     def __init__(self, top, indexes):
@@ -185,7 +185,7 @@ class SelectionFeature(Feature):
 class MinRmsdFeature(Feature):
 
     __serialize_version = 0
-    _serialize_fields = ('ref', 'ref_frame', 'name', 'precentered', 'atom_indices',
+    __serialize_fields = ('ref', 'ref_frame', 'name', 'precentered', 'atom_indices',
                          '__hashed_input__')
 
     def __init__(self, ref, ref_frame=0, atom_indices=None, topology=None, precentered=False):
@@ -245,7 +245,7 @@ class MinRmsdFeature(Feature):
 
 class AlignFeature(SelectionFeature):
     __serialize_version = 0
-    _serialize_fields = ('ref', 'atom_indices', 'ref_atom_indices', 'in_place')
+    __serialize_fields = ('ref', 'atom_indices', 'ref_atom_indices', 'in_place')
 
     prefix_label = 'aligned ATOM:'
 
@@ -274,8 +274,8 @@ class AlignFeature(SelectionFeature):
 
 class GroupCOMFeature(Feature):
     __serialize_version = 0
-    _serialize_fields = ('ref_geom', 'image_molecules', 'group_definitions', 'atom_masses',
-                         'masses_in_groups', '_describe', '__hashed_input__', )
+    __serialize_fields = ('ref_geom', 'image_molecules', 'group_definitions', 'atom_masses',
+                         'masses_in_groups', '_describe', '__hashed_input__',)
 
     def __init__(self, topology, group_definitions, ref_geom=None, image_molecules=False, mass_weighted=True):
         if not (ref_geom is None or isinstance(ref_geom, mdtraj.Trajectory)):
@@ -331,7 +331,7 @@ class GroupCOMFeature(Feature):
 class ResidueCOMFeature(GroupCOMFeature):
 
     __serialize_version = 0
-    _serialize_fields = ('residue_indices', 'scheme')
+    __serialize_fields = ('residue_indices', 'scheme')
 
     def __init__(self, topology, residue_indices, residue_atoms, scheme, ref_geom=None, image_molecules=False,
                  mass_weighted=True):

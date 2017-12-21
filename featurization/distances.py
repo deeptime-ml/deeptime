@@ -30,7 +30,7 @@ from pyemma.coordinates.data.featurization._base import Feature
 
 class DistanceFeature(Feature):
     __serialize_version = 0
-    _serialize_fields = ('distance_indexes', 'periodic')
+    __serialize_fields = ('distance_indexes', 'periodic')
 
     prefix_label = "DIST:"
 
@@ -77,7 +77,7 @@ class InverseDistanceFeature(DistanceFeature):
 
 class ResidueMinDistanceFeature(DistanceFeature):
     __serialize_version = 0
-    _serialize_fields = ('contacts', 'scheme', 'ignore_nonprotein', 'threshold', 'prefix_label')
+    __serialize_fields = ('contacts', 'scheme', 'ignore_nonprotein', 'threshold', 'prefix_label')
 
     def __init__(self, top, contacts, scheme, ignore_nonprotein, threshold, periodic):
         self.top = top
@@ -120,7 +120,7 @@ class ResidueMinDistanceFeature(DistanceFeature):
 
 class GroupMinDistanceFeature(DistanceFeature):
     __serialize_version = 0
-    _serialize_fields = ('group_identifiers', 'group_definitions', 'threshold', 'group_pairs',
+    __serialize_fields = ('group_identifiers', 'group_definitions', 'threshold', 'group_pairs',
                          'distance_indexes')
     prefix_label = "GROUP_MINDIST"
 
@@ -166,7 +166,7 @@ class GroupMinDistanceFeature(DistanceFeature):
 class ContactFeature(DistanceFeature):
     prefix_label = "CONTACT:"
     __serialize_version = 0
-    _serialize_fields = ('distance_indexes', 'prefix_label', 'count_contacts', 'threshold')
+    __serialize_fields = ('distance_indexes', 'prefix_label', 'count_contacts', 'threshold')
 
     def __init__(self, top, distance_indexes, threshold=5.0, periodic=True, count_contacts=False):
         DistanceFeature.__init__(self, top, distance_indexes, periodic=periodic)

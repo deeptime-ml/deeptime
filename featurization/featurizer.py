@@ -40,11 +40,11 @@ __all__ = ['MDFeaturizer']
 class MDFeaturizer(SerializableMixIn, Loggable):
     r"""Extracts features from MD trajectories."""
     __serialize_version = 0
-    _serialize_fields = ('use_topology_cache',
+    __serialize_fields = ('use_topology_cache',
                          '_topologyfile',
                          'topology',
                          'active_features',
-                         )
+                          )
 
     def __init__(self, topfile, use_cache=True):
         """extracts features from MD trajectories.
