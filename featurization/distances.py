@@ -174,13 +174,10 @@ class ContactFeature(DistanceFeature):
             self.prefix_label = "counted " + self.prefix_label
         self.threshold = threshold
         self.count_contacts = count_contacts
-
-    @property
-    def dimension(self):
-        if self.count_contacts:
-            return 1
+        if count_contacts:
+            self.dimension = 1
         else:
-            return self.distance_indexes.shape[0]
+            self.dimension = len(self.distance_indexes)
 
     def transform(self, traj):
         dists = mdtraj.compute_distances(
