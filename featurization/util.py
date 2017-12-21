@@ -73,7 +73,11 @@ def cmp_traj(traj_a, traj_b):
     ----------
     traj_a, traj_b: mdtraj.Trajectory
     """
-    if traj_a is None or traj_b is None:
+    if traj_a is None and traj_b is None:
+        return True
+    if traj_a is None and traj_b is not None:
+        return False
+    if traj_a is not None and traj_b is None:
         return False
     equal_top = hash_top(traj_a.top) == hash_top(traj_b.top)
     xyz_close = np.allclose(traj_a.xyz, traj_b.xyz)

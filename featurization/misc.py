@@ -229,8 +229,8 @@ class MinRmsdFeature(Feature):
     def __eq__(self, other):
         if not isinstance(other, MinRmsdFeature):
             return False
-
-        return (cmp_traj(self.ref, other.ref)
+        eq = super(MinRmsdFeature, self).__eq__(other)
+        return (eq and cmp_traj(self.ref, other.ref)
                 and self.ref_frame == other.ref_frame
                 and np.all(self.atom_indices == other.atom_indices)
                 and self.precentered == other.precentered
@@ -279,7 +279,7 @@ class GroupCOMFeature(Feature):
         self.ref_geom = ref_geom
         self.top = topology
         self.image_molecules = image_molecules
-        self.group_definitions = [np.asarray(gf) for gf in group_definitions]
+        self.group_definitions = np.array([np.asarray(gf) for gf in group_definitions])
         self.atom_masses = np.array([aa.element.mass for aa in topology.atoms])
 
         if mass_weighted:
