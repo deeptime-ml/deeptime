@@ -82,14 +82,8 @@ def cmp_traj(traj_a, traj_b):
     equal_top = hash_top(traj_a.top) == hash_top(traj_b.top)
     xyz_close = np.allclose(traj_a.xyz, traj_b.xyz)
     equal_time = np.all(traj_a.time == traj_b.time)
-    if traj_a.unitcell_angles is not None and traj_b.unitcell_angles is not None:
-        equal_unitcell_angles = np.allclose(traj_a.unitcell_angles, traj_b.unitcell_angles)
-    else:
-        equal_unitcell_angles = False
-    if traj_a.unitcell_lengths is not None and traj_b.unitcell_lengths is not None:
-        equal_unitcell_lengths = np.allclose(traj_a.unitcell_lengths, traj_b.unitcell_lengths)
-    else:
-        equal_unitcell_lengths = False
+    equal_unitcell_angles = np.array_equal(traj_a.unitcell_angles, traj_b.unitcell_angles)
+    equal_unitcell_lengths = np.array_equal(traj_a.unitcell_lengths, traj_b.unitcell_lengths)
     return np.all([equal_top, equal_time, xyz_close, equal_time, equal_unitcell_angles, equal_unitcell_lengths])
 
 
