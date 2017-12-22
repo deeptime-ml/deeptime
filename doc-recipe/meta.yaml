@@ -24,4 +24,5 @@ build:
     - SPHINXOPTS
   # options for notebook conversion (jupyter nbconvert)
     - nbflags
-
+  # cfg dir
+    - PYEMMA_CFG_DIR
