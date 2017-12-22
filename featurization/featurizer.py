@@ -585,12 +585,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
 
         self.__add_feature(f)
 
-    def add_group_mindist(self,
-                            group_definitions,
-                            group_pairs='all',
-                            threshold=None,
-                            periodic=True,
-                            ):
+    def add_group_mindist(self, group_definitions, group_pairs='all', threshold=None, periodic=True):
         r"""
         Adds the minimum distance between groups of atoms to the feature list. If the groups of
         atoms are identical to residues, use :py:obj:`add_residue_mindist <pyemma.coordinates.data.featurizer.MDFeaturizer.add_residue_mindist>`.
@@ -598,7 +593,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         Parameters
         ----------
 
-        group_definition : list of 1D-arrays/iterables containing the group definitions via atom indices.
+        group_definitions : list of 1D-arrays/iterables containing the group definitions via atom indices.
             If there is only one group_definition, it is assumed the minimum distance within this group (excluding the
             self-distance) is wanted. In this case, :py:obj:`group_pairs` is ignored.
 

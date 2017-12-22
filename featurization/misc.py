@@ -279,7 +279,7 @@ class GroupCOMFeature(Feature):
         self.ref_geom = ref_geom
         self.top = topology
         self.image_molecules = image_molecules
-        self.group_definitions = np.array([np.asarray(gf) for gf in group_definitions])
+        self.group_definitions = [np.asarray(gf) for gf in group_definitions]
         self.atom_masses = np.array([aa.element.mass for aa in topology.atoms])
 
         if mass_weighted:
@@ -315,7 +315,8 @@ class GroupCOMFeature(Feature):
         if not eq or not isinstance(other, GroupCOMFeature):
             return False
         return (cmp_traj(self.ref_geom, other.ref_geom) and self.image_molecules == other.image_molecules
-                and np.all(self.group_definitions == other.group_definitions)
+                and all(np.array_equal(g1, g2) for g1, g2 in zip(self.group_definitions, other.group_definitions))
+                and all(np.array_equal(m1, m2) for m1, m2 in zip(self.masses_in_groups, other.masses_in_groups))
         )
 
 
@@ -342,6 +343,6 @@ class ResidueCOMFeature(GroupCOMFeature):
 
     def __eq__(self, other):
         eq = super(ResidueCOMFeature, self).__eq__(other)
-        if not eq or isinstance(other, ResidueCOMFeature):
+        if not eq or not isinstance(other, ResidueCOMFeature):
             return False
         return np.all(self.residue_indices == other.residue_indices) and self.scheme == other.scheme
