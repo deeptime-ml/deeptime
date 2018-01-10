@@ -726,9 +726,36 @@ class MDFeaturizer(SerializableMixIn, Loggable):
             information, we will treat dihedrals that cross periodic images
             using the minimum image convention.
         """
-        from .angles import Chi1TorsionFeature
-        f = Chi1TorsionFeature(
-            self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic)
+        from .angles import SideChainTorsions
+        f = SideChainTorsions(
+            self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic, which='chi1')
+        self.__add_feature(f)
+
+    def add_sidechain_torsions(self, selstr=None, deg=False, cossin=False, periodic=True, which='all'):
+        """
+        Adds all side chain torsion angles or the ones specified in :obj:`selstr` to the feature list.
+
+        Parameters
+        ----------
+        selstr: str, optional, default=None
+            selection string specifying the atom selection used to specify a specific set of backbone angles
+            If "" (default), all chi1 angles found in the topology will be computed
+        deg: bool, optional, default=False
+            If False (default), angles will be computed in radians.
+            If True, angles will be computed in degrees.
+        cossin: bool, optional, default=False
+            If True, each angle will be returned as a pair of (sin(x), cos(x)).
+            This is useful, if you calculate the mean (e.g TICA/PCA, clustering)
+            in that space.
+        periodic: bool, optional, default=True
+            If `periodic` is True and the trajectory contains unitcell
+            information, we will treat dihedrals that cross periodic images
+            using the minimum image convention.
+        which: str or list of str, default='all'
+            one or combination of ('all', 'chi1', 'chi2', 'chi3', 'chi4', 'chi5')
+        """
+        from .angles import SideChainTorsions
+        f = SideChainTorsions(self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic, which=which)
         self.__add_feature(f)
 
     def add_custom_feature(self, feature):
