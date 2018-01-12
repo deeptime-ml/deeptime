@@ -21,6 +21,7 @@ import warnings
 
 from pyemma._base.loggable import Loggable
 from pyemma._base.serialization.serialization import SerializableMixIn
+from pyemma.util.annotators import deprecated
 from pyemma.util.types import is_string
 import mdtraj
 
@@ -704,6 +705,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
             self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic)
         self.__add_feature(f)
 
+    @deprecated('Please use "add_sidechain_torsions(which=[\'chi1\'])"')
     def add_chi1_torsions(self, selstr="", deg=False, cossin=False, periodic=True):
         """
         Adds all chi1 angles or the ones specified in :obj:`selstr` to the feature list.
@@ -728,7 +730,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         """
         from .angles import SideChainTorsions
         f = SideChainTorsions(
-            self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic, which='chi1')
+            self.topology, selstr=selstr, deg=deg, cossin=cossin, periodic=periodic, which=['chi1'])
         self.__add_feature(f)
 
     def add_sidechain_torsions(self, selstr=None, deg=False, cossin=False, periodic=True, which='all'):

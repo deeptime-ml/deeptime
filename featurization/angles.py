@@ -198,7 +198,7 @@ class SideChainTorsions(DihedralFeature):
         indices_dict = {k: getattr(dihedral, 'indices_%s' % k)(top) for k in which}
         valid = {k: indices_dict[k] for k in indices_dict if indices_dict[k].size > 0}
         if not valid:
-            raise ValueError('Could not determine any dihedrals for your topology!')
+            raise ValueError('Could not determine any side chain dihedrals for your topology!')
         self._prefix_label_lengths = np.array([len(indices_dict[k]) if k in which else 0 for k in self.options])
         indices = np.vstack(valid.values())
         if selstr:
