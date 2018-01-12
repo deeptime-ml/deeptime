@@ -139,12 +139,15 @@ class DataInMemory(DataSource, SerializableMixIn):
         return cls(data)
 
     def describe(self):
-        return "[DataInMemory array shapes: %s]" % [np.shape(x) for x in self.data]
+        return "DataInMemory(data={data}, chunksize={cs})".format(data=self.data, cs=self.chunksize)
 
     def __str__(self):
         return self.describe()
 
     __repr__ = __str__
+
+    def __reduce__(self):
+        return DataInMemory, (self.data, self.chunksize)
 
 
 class DataInMemoryCuboidRandomAccessStrategy(RandomAccessStrategy):
