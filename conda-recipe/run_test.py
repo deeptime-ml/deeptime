@@ -9,7 +9,8 @@ cover_pkg = test_pkg
 # where to write junit xml
 junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', os.path.expanduser('~')),
                          'reports', 'junit.xml')
-
+os.makedirs(os.path.dirname(junit_xml), exist_ok=True)
+print('junit destination:', junit_xml)
 njobs_args = '-p no:xdist' if os.getenv('TRAVIS') else '-n2'
 
 pytest_args = ("-v --pyargs {test_pkg} "
