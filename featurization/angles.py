@@ -26,7 +26,7 @@ import numpy as np
 from mdtraj.geometry.dihedral import (indices_phi,
                                       indices_psi,
                                       indices_chi1,
-                                      )
+                                      indices_omega)
 
 from pyemma.coordinates.data.featurization._base import Feature
 from pyemma.coordinates.data.featurization.util import _describe_atom
@@ -44,9 +44,9 @@ class AngleFeature(Feature):
         self.deg = deg
         self.cossin = cossin
         self.periodic = periodic
-        self._dim = len(self.angle_indexes)
+        self.dimension = len(self.angle_indexes)
         if cossin:
-            self._dim *= 2
+            self.dimension *= 2
 
     def describe(self):
         if self.cossin:
@@ -69,7 +69,7 @@ class AngleFeature(Feature):
         rad = mdtraj.compute_angles(traj, self.angle_indexes, self.periodic)
         if self.cossin:
             rad = np.dstack((np.cos(rad), np.sin(rad)))
-            rad = rad.reshape(rad.shape[0], rad.shape[1]*rad.shape[2])
+            rad = rad.reshape(rad.shape[0], rad.shape[1] * rad.shape[2])
         if self.deg and not self.cossin:
             return np.rad2deg(rad)
         else:
@@ -116,7 +116,7 @@ class DihedralFeature(AngleFeature):
         rad = mdtraj.compute_dihedrals(traj, self.angle_indexes, self.periodic)
         if self.cossin:
             rad = np.dstack((np.cos(rad), np.sin(rad)))
-            rad = rad.reshape(rad.shape[0], rad.shape[1]*rad.shape[2])
+            rad = rad.reshape(rad.shape[0], rad.shape[1] * rad.shape[2])
         # convert to degrees
         if self.deg and not self.cossin:
             rad = np.rad2deg(rad)
@@ -153,6 +153,7 @@ class BackboneTorsionFeature(DihedralFeature):
         super(BackboneTorsionFeature, self).__init__(self.top, dih_indexes,
                                                      deg=deg, cossin=cossin,
                                                      periodic=periodic)
+
     def describe(self):
         top = self.top
         getlbl = lambda at: "%i %s %i" % (at.residue.chain.index, at.residue.name, at.residue.resSeq)
@@ -165,7 +166,7 @@ class BackboneTorsionFeature(DihedralFeature):
             sin_cos = ("COS(PSI %s)", "SIN(PSI %s)")
             labels_psi = [(sin_cos[0] % getlbl(top.atom(ires[1])),
                            sin_cos[1] % getlbl(top.atom(ires[1]))) for ires in self._psi_inds
-                        ]
+                          ]
             # produce the same ordering as the given indices (phi_1, psi_1, ..., phi_n, psi_n)
             # or (cos(phi_1), sin(phi_1), cos(psi_1), sin(psi_1), ..., cos(phi_n), sin(phi_n), cos(psi_n), sin(psi_n))
             res = list(itertools.chain.from_iterable(
@@ -179,34 +180,48 @@ class BackboneTorsionFeature(DihedralFeature):
         return res
 
 
-class Chi1TorsionFeature(DihedralFeature):
+class SideChainTorsions(DihedralFeature):
     __serialize_version = 0
+    __serialize_fields = ('_prefix_label_lengths',)
+    options = ('chi1', 'chi2', 'chi3', 'chi4', 'chi5')
 
-    def __init__(self, topology, selstr=None, deg=False, cossin=False, periodic=True):
-        self.top = topology
-        self.selstr = selstr
-        indices = indices_chi1(self.top)
-        if not selstr:
-            dih_indexes = indices
-        else:
-            dih_indexes = indices[np.in1d(indices[:, 1],
-                                          self.top.select(selstr),
-                                          assume_unique=True)]
-        super(Chi1TorsionFeature, self).__init__(self.top, dih_indexes,
-                                                 deg=deg, cossin=cossin,
-                                                 periodic=periodic)
+    def __init__(self, top, selstr=None, deg=False, cossin=True, periodic=True, which='all'):
+        if not isinstance(which, (tuple, list)):
+            which = [which]
+        if not set(which).issubset(set(self.options) | {'all'}):
+            raise ValueError('Argument "which" should only contain one of {}, but was {}'
+                             .format(['all'] + list(self.options), which))
+        if 'all' in which:
+            which = self.options
+        # get all dihedral index pairs
+        from mdtraj.geometry import dihedral
+        indices_dict = {k: getattr(dihedral, 'indices_%s' % k)(top) for k in which}
+        valid = {k: indices_dict[k] for k in indices_dict if indices_dict[k].size > 0}
+        if not valid:
+            raise ValueError('Could not determine any side chain dihedrals for your topology!')
+        self._prefix_label_lengths = np.array([len(indices_dict[k]) if k in which else 0 for k in self.options])
+        indices = np.vstack(valid.values())
+        if selstr:
+            selection = top.select(selstr)
+            mask = np.in1d(indices[:, 1], selection, assume_unique=True)
+            indices = indices[mask]
+        super(SideChainTorsions, self).__init__(top=top, dih_indexes=indices, deg=deg, cossin=cossin, periodic=periodic)
 
     def describe(self):
-        top = self.top
-        getlbl = lambda at: "%i %s %i " \
-            % (at.residue.chain.index, at.residue.name, at.residue.resSeq)
-        if self.cossin:
-            cossin = ("COS(CHI1 %s)", "SIN(CHI1 %s)")
-            labels_chi1 = [s % getlbl(top.atom(ires[1]))
-                           for ires in self.angle_indexes
-                           for s in cossin]
-        else:
-            labels_chi1 = ["CHI1" + getlbl(top.atom(ires[1]))
-                           for ires in self.angle_indexes]
+        getlbl = lambda at: '%i %s %i' % (at.residue.chain.index, at.residue.name, at.residue.resSeq)
+        prefixes = []
+        for lengths, label in zip(self._prefix_label_lengths, self.options):
+            if self.cossin:
+                lengths *= 2
+            prefixes.extend([label.upper()] * lengths)
 
-        return labels_chi1
+        if self.cossin:
+            cossin = ('COS({dih} {res})', 'SIN({dih} {res})')
+            labels = [s.format(dih=prefixes[i], res=getlbl(self.top.atom(ires[1])))
+                      for i, ires in enumerate(self.angle_indexes)
+                      for s in cossin]
+        else:
+            labels = ['{dih} {res}'.format(dih=prefixes[i], res=getlbl(self.top.atom(ires[1])))
+                      for i, ires in enumerate(self.angle_indexes)]
+
+        return labels
