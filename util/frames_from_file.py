@@ -131,6 +131,9 @@ def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=Fals
             reader = source(reader.filenames, top=top, chunk_size=chunksize)
         # we want the FeatureReader to return mdtraj.Trajectory objects
         set_reader_return_traj_objects(reader, True)
+        if not reader.is_random_accessible:
+            import warnings
+            warnings.warn('The reader {} is not random-accessible. Operation is not efficient!'.format(reader))
         it = reader.iterator(chunk=chunksize, stride=sorted_inds, return_trajindex=False)
 
         with it:
