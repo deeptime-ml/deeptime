@@ -30,5 +30,5 @@ else # if it does not exist, we need to install miniconda
 fi
 
 # we want to have an up to date conda-build.
-conda install conda-build=3
+conda install conda-build=3.2
 conda info -a # for debugging
