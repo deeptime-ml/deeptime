@@ -65,7 +65,8 @@ class _JoiningIterator(DataSourceIterator):
             it.close()
 
     def _next_chunk(self):
-        # if one iterator raises stop iteration, this is propagated.
+        # This method assumes that invoking next(iterator) handles file selections properly.
+        # If one iterator raises stop iteration, this is propagated.
         chunks = []
         for it in self._iterators:
             if it.return_traj_index:
@@ -89,3 +90,8 @@ class _JoiningIterator(DataSourceIterator):
             self._t = 0
             self._itraj = itraj
             self._selected_itraj = itraj
+            if __debug__:
+                for it in self._iterators:
+                    assert it._itraj == itraj
+                    assert it._selected_itraj == itraj
+                    assert it._t == self._t

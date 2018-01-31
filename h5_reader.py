@@ -194,7 +194,6 @@ class H5Iterator(DataInMemoryIterator):
 
     def _select_file(self, itraj):
         if self._selected_itraj != itraj:
-            self._first_file_opened = True
             self.close()
             self._t = 0
             self._itraj = itraj
