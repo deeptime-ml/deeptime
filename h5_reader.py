@@ -78,8 +78,7 @@ class H5Reader(DataSource, SerializableMixIn):
     def selection(self, value):
         # 1. open all files, and check that selection matches for each file
         # 2. check that dimension are all the same for each file
-        from typing import Mapping
-        if isinstance(value, Mapping):
+        if isinstance(value, dict):
             # check if we have a wildcard
             if any(('*' in e for e in value)):
                 # TODO: expand this to match the len of filenames
@@ -135,21 +134,21 @@ class H5Reader(DataSource, SerializableMixIn):
                 if not k.startswith('/'):
                     keys[i] = '/' + k
 
-            matches = []
-            children = []
-            def name_matches_selection(name, obj):
-                nonlocal matches
+            def name_matches_selection(_, obj, matches):
                 if not isinstance(obj, h5py.Dataset):
                     return
 
                 m = re.match(sel, obj.name)
                 if m is not None:
                     matches.append(m)
-            f.visititems(name_matches_selection)
+            from functools import partial
+            matches = []
+            f.visititems(partial(name_matches_selection, matches=matches))
 
             if not matches:
                 self.logger.warning('selection "%s" did not match any group/dataset in file "%s"', sel, filename)
 
+            children = []
             for m in matches:
                 path = m.string
                 h5_item = f[path]
