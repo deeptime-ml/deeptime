@@ -35,6 +35,7 @@ requirements:
     - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
+    - mock # TODO: remove when py3k only.
     - msmtools >=1.2
     - numpy >=1.9  # [not (win and (py35 or py36))]
     - numpy >=1.9  # [win and py35]
