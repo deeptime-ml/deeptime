@@ -32,8 +32,8 @@ class Feature(SerializableMixIn):
         return self._dim
 
     @dimension.setter
-    def dimension(self, val: int):
-        self._dim = val
+    def dimension(self, val):
+        self._dim = int(val)
 
     @property
     def top(self):

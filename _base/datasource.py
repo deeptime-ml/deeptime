@@ -24,6 +24,7 @@ from pyemma.coordinates.data._base.iterable import Iterable
 from pyemma.coordinates.data._base.random_accessible import TrajectoryRandomAccessible
 from pyemma.util import config
 from pyemma.util.annotators import deprecated
+import six
 import os
 
 
@@ -370,7 +371,7 @@ class IteratorState(object):
         return True
 
 
-class DataSourceIterator(metaclass=ABCMeta):
+class DataSourceIterator(six.with_metaclass(ABCMeta)):
     """
     Abstract class for any data source iterator.
     """
