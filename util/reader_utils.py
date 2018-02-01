@@ -43,6 +43,8 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
     from pyemma.coordinates.data.py_csv_reader import PyCSVReader
     from pyemma.coordinates.data import FeatureReader
     from pyemma.coordinates.data.fragmented_trajectory_reader import FragmentedTrajectoryReader
+    import six
+    str = six.string_types
 
     # fragmented trajectories
     if (isinstance(input_files, (list, tuple)) and len(input_files) > 0 and
