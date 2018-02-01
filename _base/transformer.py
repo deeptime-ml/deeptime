@@ -16,12 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from __future__ import absolute_import
 
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-import six
 
 from pyemma._ext.sklearn.base import TransformerMixin
 from pyemma.coordinates.data._base.datasource import DataSource, DataSourceIterator
@@ -35,7 +33,7 @@ __all__ = ['Transformer', 'StreamingTransformer']
 __author__ = 'noe, marscher'
 
 
-class Transformer(six.with_metaclass(ABCMeta, TransformerMixin)):
+class Transformer(TransformerMixin, metaclass=ABCMeta):
     """ A transformer takes data and transforms it """
 
     @abstractmethod

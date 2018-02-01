@@ -21,7 +21,7 @@ class SourcesMerger(DataSource, SerializableMixIn):
     chunk: int
         chunk size to use for underlying iterators.
     """
-    def __init__(self, sources, chunk=5000):
+    def __init__(self, sources: [list, tuple], chunk=5000):
         super(SourcesMerger, self).__init__(chunksize=chunk)
         self.sources = sources
         self._is_reader = True

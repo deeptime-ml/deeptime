@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from __future__ import absolute_import
 
 from pyemma._base.estimator import Estimator
 from pyemma.coordinates.data import DataInMemory
