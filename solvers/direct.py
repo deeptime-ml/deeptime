@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import numpy as _np
 from ..util import ZeroRankError as _ZeroRankError
 
