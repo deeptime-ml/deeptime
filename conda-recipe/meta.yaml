@@ -37,9 +37,9 @@ requirements:
     - mdtraj
     - mock # TODO: remove when py3k only.
     - msmtools >=1.2
-    - numpy >=1.9  # [not (win and (py35 or py36))]
-    - numpy >=1.9  # [win and py35]
-    - numpy >=1.11  # [win and py36]
+    - numpy >=1.9,<1.14  # [not (win and (py35 or py36))]
+    - numpy >=1.9,<1.14  # [win and py35]
+    - numpy >=1.11,<1.14 # [win and py36]
     - pathos
     - psutil >3.1
     - python >=3
