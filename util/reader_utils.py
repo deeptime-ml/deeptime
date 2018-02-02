@@ -24,7 +24,7 @@ import numpy as np
 import os
 
 
-def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw):
+def create_file_reader(input_files, topology, featurizer, chunksize=None, **kw):
     r"""
     Creates a (possibly featured) file reader by a number of input files and either a topology file or a featurizer.
     Parameters
@@ -35,7 +35,7 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
         A topology file. If given, the featurizer argument can be None.
     :param featurizer:
         A featurizer. If given, the topology file can be None.
-    :param chunk_size:
+    :param chunksize:
         The chunk size with which the corresponding reader gets initialized.
     :return: Returns the reader.
     """
@@ -49,7 +49,7 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
     # fragmented trajectories
     if (isinstance(input_files, (list, tuple)) and len(input_files) > 0 and
             any(isinstance(item, (list, tuple)) for item in input_files)):
-        return FragmentedTrajectoryReader(input_files, topology, chunk_size, featurizer)
+        return FragmentedTrajectoryReader(input_files, topology, chunksize, featurizer)
 
     # normal trajectories
     if (isinstance(input_files, str)
@@ -96,10 +96,10 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
                         from mdtraj.formats import HDF5TrajectoryFile
                         HDF5TrajectoryFile(input_list[0])
                         reader = FeatureReader(input_list, featurizer=featurizer, topologyfile=topology,
-                                               chunksize=chunk_size)
+                                               chunksize=chunksize)
                     except:
                         from pyemma.coordinates.data.h5_reader import H5Reader
-                        reader = H5Reader(filenames=input_files, chunk_size=chunk_size, **kw)
+                        reader = H5Reader(filenames=input_files, chunk_size=chunksize, **kw)
                 # CASE 1.1: file types are MD files
                 elif suffix in list(FormatRegistry.loaders.keys()):
                     # check: do we either have a featurizer or a topology file name? If not: raise ValueError.
@@ -109,13 +109,13 @@ def create_file_reader(input_files, topology, featurizer, chunk_size=1000, **kw)
                                          "featurizer or a topology file.")
 
                     reader = FeatureReader(input_list, featurizer=featurizer, topologyfile=topology,
-                                           chunksize=chunk_size)
+                                           chunksize=chunksize)
                 else:
                     if suffix in ['.npy', '.npz']:
-                        reader = NumPyFileReader(input_list, chunksize=chunk_size)
+                        reader = NumPyFileReader(input_list, chunksize=chunksize)
                     # otherwise we assume that given files are ascii tabulated data
                     else:
-                        reader = PyCSVReader(input_list, chunksize=chunk_size, **kw)
+                        reader = PyCSVReader(input_list, chunksize=chunksize, **kw)
         else:
             raise ValueError("Not all elements in the input list were of the type %s!" % suffix)
     else:
