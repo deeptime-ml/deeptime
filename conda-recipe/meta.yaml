@@ -24,7 +24,7 @@ requirements:
     - numpy 1.9.*  # [not (win and (py35 or py36))]
     - numpy 1.9.*  # [win and py35]
     - numpy 1.11.*  # [win and py36]
-    - python >=3
+    - python
     - scipy
     - setuptools
     - gcc # [ not win ]
@@ -57,7 +57,6 @@ test:
   files:
     - matplotlibrc
   requires:
-    - h5py
     - pytest
     - pytest-cov
    # TODO: disabled on win64, until https://bugs.python.org/issue31701 is fixed.
