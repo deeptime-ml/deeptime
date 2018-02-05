@@ -18,10 +18,10 @@ class SourcesMerger(DataSource, SerializableMixIn):
     sources : list, tuple
         list of DataSources (Readers, StreamingTransformers etc.) to combine for streaming access.
 
-    chunk: int
+    chunk: int or None
         chunk size to use for underlying iterators.
     """
-    def __init__(self, sources, chunk=5000):
+    def __init__(self, sources, chunk=None):
         super(SourcesMerger, self).__init__(chunksize=chunk)
         self.sources = sources
         self._is_reader = True
