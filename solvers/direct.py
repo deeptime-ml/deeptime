@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import numpy as _np
 from ..util import ZeroRankError as _ZeroRankError
 
@@ -271,4 +272,3 @@ def eig_corr(C0, Ct, epsilon=1e-10, method='QR', sign_maxelement=False):
 
     # return result
     return l, R
-

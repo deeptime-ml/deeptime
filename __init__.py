@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 __author__ = 'noe'
 
 # import subpackages such that they are available after the main package import
