@@ -20,6 +20,7 @@ Created on 11.04.2015
 @author: marscher
 """
 
+from __future__ import absolute_import
 
 import csv
 import os

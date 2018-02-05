@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 import numbers
-
 import six
 
 
