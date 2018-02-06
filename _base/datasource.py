@@ -56,10 +56,12 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
 
     @property
     def filenames(self):
-        """ Property which returns a list of filenames the data is originally from.
+        """ list of file names the data is originally being read from.
+
         Returns
         -------
-        list of str : list of filenames if data is originating from a file based reader
+        names : list of str
+            list of file names at the beginning of the input chain.
         """
         if self._is_reader:
             assert self._filenames is not None
