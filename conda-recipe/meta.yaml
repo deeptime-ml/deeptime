@@ -27,12 +27,12 @@ requirements:
     - python
     - scipy
     - setuptools
-    - gcc # [ not win ]
+    - toolchain
+
   run:
     - bhmm >=0.6,<0.7
     - decorator >=4.0.0
     - h5py
-    - libgcc # [linux or osx]
     - matplotlib
     - mdtraj
     - mock # TODO: remove when py3k only.
