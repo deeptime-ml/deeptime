@@ -261,7 +261,7 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
         return trajs
 
     def write_to_csv(self, filename=None, extension='.dat', overwrite=False,
-                     stride=1, chunksize=100, **kw):
+                     stride=1, chunksize=None, **kw):
         """ write all data to csv with numpy.savetxt
 
         Parameters
@@ -280,9 +280,9 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
             shall existing files be overwritten? If a file exists, this method will raise.
         stride : int
             omit every n'th frame
-        chunksize: int
+        chunksize: int, default=None
             how many frames to process at once
-        kw : dict
+        kw : dict, optional
             named arguments passed into numpy.savetxt (header, seperator etc.)
 
         Example
@@ -350,6 +350,80 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
                 pg.update(1, 0)
         if f is not None:
             f.close()
+
+    def write_to_hdf5(self, filename, group='/', data_set_prefix='', stride=1, chunksize=None, h5_opt=None):
+        """ writes all data of this Iterable to a given HDF5 file.
+        This is equivalent of writing the result of func:`pyemma.coordinates.data._base.DataSource.get_output` to a file.
+
+        Parameters
+        ----------
+        filename: str
+            file name of output HDF5 file
+        group, str, default='/'
+            write all trajectories to this HDF5 group. The group name may not already exist in the file.
+        data_set_prefix: str, default=None
+            data set name prefix, will postfixed with the index of the trajectory.
+        stride, int, default=1
+            stride argument to iterator
+        chunksize, int, default=None
+            how many frames to process at once
+
+        h5_opt: dict
+            optional parameters for h5py.create_dataset
+
+        Notes
+        -----
+        You can pass the following via h5_opt to enable compression/filters/shuffling etc:
+
+        chunks
+            (Tuple) Chunk shape, or True to enable auto-chunking.
+        maxshape
+            (Tuple) Make the dataset resizable up to this shape.  Use None for
+            axes you want to be unlimited.
+        compression
+            (String or int) Compression strategy.  Legal values are 'gzip',
+            'szip', 'lzf'.  If an integer in range(10), this indicates gzip
+            compression level. Otherwise, an integer indicates the number of a
+            dynamically loaded compression filter.
+        compression_opts
+            Compression settings.  This is an integer for gzip, 2-tuple for
+            szip, etc. If specifying a dynamically loaded compression filter
+            number, this must be a tuple of values.
+        scaleoffset
+            (Integer) Enable scale/offset filter for (usually) lossy
+            compression of integer or floating-point data. For integer
+            data, the value of scaleoffset is the number of bits to
+            retain (pass 0 to let HDF5 determine the minimum number of
+            bits necessary for lossless compression). For floating point
+            data, scaleoffset is the number of digits after the decimal
+            place to retain; stored values thus have absolute error
+            less than 0.5*10**(-scaleoffset).
+        shuffle
+            (T/F) Enable shuffle filter. Only effective in combination with chunks.
+        fletcher32
+            (T/F) Enable fletcher32 error detection. Not permitted in
+            conjunction with the scale/offset filter.
+        fillvalue
+            (Scalar) Use this value for uninitialized parts of the dataset.
+        track_times
+            (T/F) Enable dataset creation timestamps.
+        """
+        if h5_opt is None:
+            h5_opt = {}
+        import h5py
+        from pyemma._base.progress import ProgressReporter
+        pg = ProgressReporter()
+        it = self.iterator(stride, chunk=chunksize, return_trajindex=True)
+        pg.register(it.n_chunks, 'writing output')
+        with h5py.File(filename) as f, it, pg.context():
+            g = f.create_group(group)
+            for itraj, X in it:
+                template = '{prefix}_{index}' if data_set_prefix else '{index}'
+                ds_name = template.format(prefix=data_set_prefix, index='{:04d}'.format(itraj))
+                ds = g.require_dataset(ds_name, shape=(it.trajectory_length(), self.ndim),
+                                       dtype=self.output_type(), **h5_opt)
+                ds[it.pos:] = X
+                pg.update(1)
 
     @abstractmethod
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
