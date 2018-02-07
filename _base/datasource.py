@@ -430,16 +430,11 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         """ rough estimate of how many chunks will be processed """
         return self._data_source.n_chunks(self.chunksize, stride=self.stride, skip=self.skip)
 
-    @property
-    @deprecated("use n_chunks")
-    def _n_chunks(self):
-        return self.n_chunks
-
     def number_of_trajectories(self):
         return self._data_source.number_of_trajectories()
 
     def trajectory_length(self):
-        return self._data_source.trajectory_length(self._itraj, self.stride, self.skip)
+        return self._data_source.trajectory_length(self.current_trajindex, self.stride, self.skip)
 
     def trajectory_lengths(self):
         return self._data_source.trajectory_lengths(self.stride, self.skip)
