@@ -413,7 +413,7 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
         import h5py
         from pyemma._base.progress import ProgressReporter
         pg = ProgressReporter()
-        it = self.iterator(stride, chunk=chunksize, return_trajindex=True)
+        it = self.iterator(stride=stride, chunk=chunksize, return_trajindex=True)
         pg.register(it.n_chunks, 'writing output')
         with h5py.File(filename) as f, it, pg.context():
             g = f.create_group(group)
@@ -422,7 +422,7 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
                 ds_name = template.format(prefix=data_set_prefix, index='{:04d}'.format(itraj))
                 ds = g.require_dataset(ds_name, shape=(it.trajectory_length(), self.ndim),
                                        dtype=self.output_type(), **h5_opt)
-                ds[it.pos:] = X
+                ds[it.pos:it.pos + len(X)] = X
                 pg.update(1)
 
     @abstractmethod
