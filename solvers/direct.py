@@ -125,7 +125,7 @@ def spd_inv(W, epsilon=1e-10, method='QR', canonical_signs=False):
     return Winv
 
 
-def spd_inv_sqrt(W, epsilon=1e-10, method='QR', canonical_signs=False):
+def spd_inv_sqrt(W, epsilon=1e-10, method='QR', canonical_signs=False, return_rank=False):
     """
     Computes :math:`W^{-1/2}` of symmetric positive-definite matrix :math:`W`.
 
@@ -153,14 +153,18 @@ def spd_inv_sqrt(W, epsilon=1e-10, method='QR', canonical_signs=False):
         Matrix :math:`L` from the decomposition :math:`W^{-1} = L L^T`.
 
     """
-    if (_np.shape(W)[0] == 1):
-        Winv = 1./_np.sqrt(W[0,0])
+    if _np.shape(W)[0] == 1:
+        Winv = 1./_np.sqrt(W[0, 0])
+        sm = _np.ones(1)
     else:
         sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
         Winv = _np.dot(Vm, _np.diag(1.0 / _np.sqrt(sm))).dot(Vm.T)
 
     # return split
-    return Winv
+    if return_rank:
+        return Winv, sm.shape[0]
+    else:
+        return Winv
 
 
 def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
