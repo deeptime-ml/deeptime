@@ -101,7 +101,7 @@ def create_file_reader(input_files, topology, featurizer, chunksize=None, **kw):
                         from pyemma.coordinates.data.h5_reader import H5Reader
                         reader = H5Reader(filenames=input_files, chunk_size=chunksize, **kw)
                 # CASE 1.1: file types are MD files
-                elif suffix in list(FormatRegistry.loaders.keys()):
+                elif suffix in FormatRegistry.loaders.keys():
                     # check: do we either have a featurizer or a topology file name? If not: raise ValueError.
                     # create a MD reader with file names and topology
                     if not featurizer and not topology:
