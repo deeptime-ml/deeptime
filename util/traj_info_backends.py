@@ -206,7 +206,7 @@ class SqliteDB(AbstractDB):
             with self._database as c:
                 c.execute(*statement)
         except sqlite3.IntegrityError as ie:
-            logger.exception("insert failed: %s " % ie)
+            logger.debug("insert failed: %s ", ie, exc_info=True)
             return
 
         self._update_time_stamp(hash_value=traj_info.hash_value)
