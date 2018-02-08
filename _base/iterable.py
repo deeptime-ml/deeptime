@@ -351,7 +351,8 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
         if f is not None:
             f.close()
 
-    def write_to_hdf5(self, filename, group='/', data_set_prefix='', stride=1, chunksize=None, h5_opt=None):
+    def write_to_hdf5(self, filename, group='/', data_set_prefix='', overwrite=False,
+                      stride=1, chunksize=None, h5_opt=None):
         """ writes all data of this Iterable to a given HDF5 file.
         This is equivalent of writing the result of func:`pyemma.coordinates.data._base.DataSource.get_output` to a file.
 
@@ -363,6 +364,8 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
             write all trajectories to this HDF5 group. The group name may not already exist in the file.
         data_set_prefix: str, default=None
             data set name prefix, will postfixed with the index of the trajectory.
+        overwrite: bool, default=False
+            if group and data sets already exist, shall we overwrite data?
         stride, int, default=1
             stride argument to iterator
         chunksize, int, default=None
@@ -416,10 +419,26 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
         it = self.iterator(stride=stride, chunk=chunksize, return_trajindex=True)
         pg.register(it.n_chunks, 'writing output')
         with h5py.File(filename) as f, it, pg.context():
-            g = f.create_group(group)
+            if group != '/' or group not in f:
+                g = f.create_group(group)
+            elif group == '/':
+                g = f[group]
+            elif group in f and overwrite:
+                logger.info('overwriting group "{}"'.format(group))
+                del f[group]
+                g = f.create_group(group)
+            else:
+                raise RuntimeError('Given group "{}" already exists. Choose another one.'.format(group))
             for itraj, X in it:
                 template = '{prefix}_{index}' if data_set_prefix else '{index}'
                 ds_name = template.format(prefix=data_set_prefix, index='{:04d}'.format(itraj))
+                # group can be reused, eg. was empty before now check if we overwrite something
+                if ds_name in group:
+                    if not overwrite:
+                        raise RuntimeError('Refusing to overwrite data in group "{}".'.format(group))
+                    else:
+                        del group[ds_name]
+
                 ds = g.require_dataset(ds_name, shape=(it.trajectory_length(), self.ndim),
                                        dtype=self.output_type(), **h5_opt)
                 ds[it.pos:it.pos + len(X)] = X
