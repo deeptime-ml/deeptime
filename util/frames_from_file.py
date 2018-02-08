@@ -129,7 +129,7 @@ def frames_from_files(files, top, frames, chunksize=1000, stride=1, verbose=Fals
         # If the reader got passed in, it could have the data already mapped to memory.
         # In this case, we cannot force it to return trajectory objects, so we have to re-create it.
         if reader.in_memory:
-            reader = source(reader.filenames, top=top, chunk_size=chunksize)
+            reader = source(reader.filenames, top=top, chunksize=chunksize)
         # we want the FeatureReader to return mdtraj.Trajectory objects
         set_reader_return_traj_objects(reader, True)
         if not reader.is_random_accessible:

@@ -355,7 +355,7 @@ class FragmentedTrajectoryReader(DataSource, SerializableMixIn):
         # store readers
         from pyemma.coordinates.api import source
 
-        self._readers = [[source(input_item, features=featurizer, top=topologyfile, chunk_size=chunksize)
+        self._readers = [[source(input_item, features=featurizer, top=topologyfile, chunksize=chunksize)
                           for input_item in trajectories[itraj]] for itraj in range(0, self._ntraj)]
 
         # check all readers have same dimension
