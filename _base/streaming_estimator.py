@@ -44,6 +44,6 @@ class StreamingEstimator(Estimator):
         try:
             super(StreamingEstimator, self).estimate(X, **kwargs)
         except NotConvergedWarning as ncw:
-            self._logger.info(
+            self.logger.info(
                 "Presumably finished estimation. Message: %s" % ncw)
         return self

@@ -112,7 +112,7 @@ class FeatureReader(DataSource, SerializableMixIn):
 
         # featurizer
         if topologyfile and featurizer:
-            self._logger.warning("Both a topology file and a featurizer were given as arguments. "
+            self.logger.warning("Both a topology file and a featurizer were given as arguments. "
                                  "Only featurizer gets respected in this case.")
         if not featurizer:
             self.featurizer = MDFeaturizer(topologyfile)

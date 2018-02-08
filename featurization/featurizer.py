@@ -85,7 +85,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
     def __add_feature(self, f):
         # perform sanity checks
         if f.dimension == 0:
-            self._logger.error("given an empty feature (eg. due to an empty/"
+            self.logger.error("given an empty feature (eg. due to an empty/"
                                "ineffective selection). Skipping it."
                                " Feature desc: %s" % f.describe())
             return
@@ -93,8 +93,8 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         if f not in self.active_features:
             self.active_features.append(f)
         else:
-            self._logger.warning("tried to re-add the same feature %s"
-                                 % f.__class__.__name__)
+            self.logger.warning("tried to re-add the same feature %s"
+                                % f.__class__.__name__)
 
     def describe(self):
         """
@@ -335,7 +335,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         from .distances import DistanceFeature
 
         atom_pairs = _parse_pairwise_input(
-            indices, indices2, self._logger, fname='add_distances()')
+            indices, indices2, self.logger, fname='add_distances()')
 
         atom_pairs = self._check_indices(atom_pairs)
         f = DistanceFeature(self.topology, atom_pairs, periodic=periodic)
@@ -403,7 +403,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         """
         from .distances import InverseDistanceFeature
         atom_pairs = _parse_pairwise_input(
-            indices, indices2, self._logger, fname='add_inverse_distances()')
+            indices, indices2, self.logger, fname='add_inverse_distances()')
 
         atom_pairs = self._check_indices(atom_pairs)
         f = InverseDistanceFeature(self.topology, atom_pairs, periodic=periodic)
@@ -446,7 +446,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         """
         from .distances import ContactFeature
         atom_pairs = _parse_pairwise_input(
-            indices, indices2, self._logger, fname='add_contacts()')
+            indices, indices2, self.logger, fname='add_contacts()')
 
         atom_pairs = self._check_indices(atom_pairs)
         f = ContactFeature(self.topology, atom_pairs, threshold, periodic, count_contacts)
@@ -501,7 +501,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         from .distances import ResidueMinDistanceFeature
         if scheme != 'ca' and is_string(residue_pairs):
             if residue_pairs == 'all':
-                self._logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
+                self.logger.warning("Using all residue pairs with schemes like closest or closest-heavy is "
                                      "very time consuming. Consider reducing the residue pairs")
 
         f = ResidueMinDistanceFeature(self.topology, residue_pairs, scheme, ignore_nonprotein, threshold, periodic)
@@ -618,7 +618,7 @@ class MDFeaturizer(SerializableMixIn, Loggable):
         from .distances import GroupMinDistanceFeature
         # Some thorough input checking and reformatting
         group_definitions, group_pairs, distance_list, group_identifiers = \
-            _parse_groupwise_input(group_definitions, group_pairs, self._logger, 'add_group_mindist')
+            _parse_groupwise_input(group_definitions, group_pairs, self.logger, 'add_group_mindist')
         distance_list = self._check_indices(distance_list)
 
         f = GroupMinDistanceFeature(self.topology, group_definitions, group_pairs, distance_list, group_identifiers, threshold, periodic)
