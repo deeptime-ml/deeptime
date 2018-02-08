@@ -15,7 +15,7 @@ if not os.path.exists(target_dir):
 print('junit destination:', junit_xml)
 njobs_args = '-p no:xdist' if os.getenv('TRAVIS') else '-n2'
 
-pytest_args = ("-v --pyargs {test_pkg} "
+pytest_args = ("--pyargs {test_pkg} "
                "--cov={cover_pkg} "
                "--cov-report=xml:{dest_report} "
                "--doctest-modules "
