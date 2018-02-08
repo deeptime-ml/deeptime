@@ -66,7 +66,7 @@ class NumPyFileReader(DataSource, SerializableMixIn):
         self.filenames = filenames
 
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
-        return NPYIterator(self, skip=skip, chunk=chunk, stride=stride, 
+        return NPYIterator(self, skip=skip, chunk=chunk, stride=stride,
                            return_trajindex=return_trajindex, cols=cols)
 
     def describe(self):
@@ -91,8 +91,6 @@ class NumPyFileReader(DataSource, SerializableMixIn):
 
     def _load_file(self, itraj):
         filename = self._filenames[itraj]
-        #self._logger.debug("opening file %s" % filename)
-
         if filename.endswith('.npy'):
             x = np.load(filename, mmap_mode=self.mmap_mode)
             arr = self._reshape(x)

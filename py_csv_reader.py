@@ -161,7 +161,7 @@ class PyCSVIterator(DataSourceIterator):
                       mode=self._data_source.DEFAULT_OPEN_MODE)
             self._file_handle = fh
         except EnvironmentError:
-            self._logger.exception()
+            self.logger.exception()
             raise
 
 
