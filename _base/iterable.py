@@ -21,19 +21,16 @@ import numpy as np
 import six
 
 from pyemma._base.loggable import Loggable
+from pyemma.coordinates.data._base._in_memory_mixin import InMemoryMixin
 from pyemma.util.contexts import attribute
 from pyemma.util.types import is_int
 
 
-class Iterable(six.with_metaclass(ABCMeta, Loggable)):
+class Iterable(six.with_metaclass(ABCMeta, InMemoryMixin, Loggable)):
 
     def __init__(self, chunksize=None):
         super(Iterable, self).__init__()
         self._default_chunksize = chunksize
-        self._in_memory = False
-        self._mapping_to_mem_active = False
-        self._Y = None
-        self._Y_source = None
         # should be set in subclass
         self._ndim = 0
 
@@ -67,46 +64,6 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
         if self.default_chunksize < 0:
             raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
         self._default_chunksize = value
-
-    @property
-    def in_memory(self):
-        r"""are results stored in memory?"""
-        if not hasattr(self, '_in_memory'):
-            self._in_memory = False
-        return self._in_memory
-
-    @in_memory.setter
-    def in_memory(self, op_in_mem):
-        r"""
-        If set to True, the output will be stored in memory.
-        """
-        old_state = self.in_memory
-        if not old_state and op_in_mem:
-            self._map_to_memory()
-        elif not op_in_mem and old_state:
-            self._clear_in_memory()
-
-    def _clear_in_memory(self):
-        if self._logger_is_active(self._loglevel_DEBUG):
-            self._logger.debug("clear memory")
-        self._Y = None
-        self._Y_source = None
-        self._in_memory = False
-
-    def _map_to_memory(self, stride=1):
-        r"""Maps results to memory. Will be stored in attribute :attr:`_Y`."""
-        if self._logger_is_active(self._loglevel_DEBUG):
-            self._logger.debug("mapping to mem")
-
-        self._mapping_to_mem_active = True
-        try:
-            self._Y = self.get_output(stride=stride)
-            from pyemma.coordinates.data import DataInMemory
-            self._Y_source = DataInMemory(self._Y)
-        finally:
-            self._mapping_to_mem_active = False
-
-        self._in_memory = True
 
     def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True, cols=None, skip=0):
         """ creates an iterator to stream over the (transformed) data.
@@ -173,276 +130,6 @@ class Iterable(six.with_metaclass(ABCMeta, Loggable)):
             return _LegacyLaggedIterator(it, it_lagged, return_trajindex)
         return self._create_iterator(skip=skip, chunk=chunk, stride=stride,
                                      return_trajindex=return_trajindex, cols=cols)
-
-    def get_output(self, dimensions=slice(0, None), stride=1, skip=0, chunk=None):
-        """Maps all input data of this transformer and returns it as an array or list of arrays
-
-        Parameters
-        ----------
-        dimensions : list-like of indexes or slice, default=all
-           indices of dimensions you like to keep.
-        stride : int, default=1
-           only take every n'th frame.
-        skip : int, default=0
-            initially skip n frames of each file.
-        chunk: int, default=None
-            How many frames to process at once. If not given obtain the chunk size
-            from the source.
-
-        Returns
-        -------
-        output : list of ndarray(T_i, d)
-           the mapped data, where T is the number of time steps of the input data, or if stride > 1,
-           floor(T_in / stride). d is the output dimension of this transformer.
-           If the input consists of a list of trajectories, Y will also be a corresponding list of trajectories
-
-        """
-        if isinstance(dimensions, int):
-            ndim = 1
-            dimensions = slice(dimensions, dimensions + 1)
-        elif isinstance(dimensions, (list, np.ndarray, tuple, slice)):
-            if hasattr(dimensions, 'ndim') and dimensions.ndim > 1:
-                raise ValueError('dimension indices can\'t have more than one dimension')
-            ndim = len(np.zeros(self.ndim)[dimensions])
-        else:
-            raise ValueError('unsupported type (%s) of "dimensions"' % type(dimensions))
-
-        assert ndim > 0, "ndim was zero in %s" % self.__class__.__name__
-
-        if chunk is None:
-            chunk = self.chunksize
-
-        # create iterator
-        if self.in_memory and not self._mapping_to_mem_active:
-            from pyemma.coordinates.data.data_in_memory import DataInMemory
-            assert self._Y is not None
-            it = DataInMemory(self._Y)._create_iterator(skip=skip, chunk=chunk,
-                                                        stride=stride, return_trajindex=True)
-        else:
-            it = self._create_iterator(skip=skip, chunk=chunk, stride=stride, return_trajindex=True)
-
-        with it:
-            # allocate memory
-            try:
-                # TODO: avoid having a copy here, if Y is already filled
-                trajs = [np.empty((l, ndim), dtype=self.output_type())
-                         for l in it.trajectory_lengths()]
-            except MemoryError:
-                self.logger.exception("Could not allocate enough memory to map all data."
-                                       " Consider using a larger stride.")
-                return
-
-            from pyemma import config
-            if config.coordinates_check_output:
-                for t in trajs:
-                    t[:] = np.nan
-
-            if self._logger_is_active(self._loglevel_DEBUG):
-                self.logger.debug("get_output(): dimensions=%s" % str(dimensions))
-                self.logger.debug("get_output(): created output trajs with shapes: %s"
-                                   % [x.shape for x in trajs])
-                self.logger.debug("nchunks :%s, chunksize=%s" % (it.n_chunks, it.chunksize))
-            # fetch data
-            from pyemma._base.progress import ProgressReporter
-            pg = ProgressReporter()
-            pg.register(it.n_chunks, description='getting output of %s' % self.__class__.__name__)
-            with pg.context():
-                for itraj, chunk in it:
-                    L = len(chunk)
-                    assert L
-                    trajs[itraj][it.pos:it.pos + L, :] = chunk[:, dimensions]
-                    # update progress
-                    pg.update(1)
-
-        if config.coordinates_check_output:
-            for t in trajs:
-                assert np.all(np.isfinite(t))
-
-        return trajs
-
-    def write_to_csv(self, filename=None, extension='.dat', overwrite=False,
-                     stride=1, chunksize=None, **kw):
-        """ write all data to csv with numpy.savetxt
-
-        Parameters
-        ----------
-        filename : str, optional
-            filename string, which may contain placeholders {itraj} and {stride}:
-
-            * itraj will be replaced by trajetory index
-            * stride is stride argument of this method
-
-            If filename is not given, it is being tried to obtain the filenames
-            from the data source of this iterator.
-        extension : str, optional, default='.dat'
-            filename extension of created files
-        overwrite : bool, optional, default=False
-            shall existing files be overwritten? If a file exists, this method will raise.
-        stride : int
-            omit every n'th frame
-        chunksize: int, default=None
-            how many frames to process at once
-        kw : dict, optional
-            named arguments passed into numpy.savetxt (header, seperator etc.)
-
-        Example
-        -------
-        Assume you want to save features calculated by some FeatureReader to ASCII:
-
-        >>> import numpy as np, pyemma
-        >>> import os
-        >>> from pyemma.util.files import TemporaryDirectory
-        >>> from pyemma.util.contexts import settings
-        >>> data = [np.random.random((10,3))] * 3
-        >>> reader = pyemma.coordinates.source(data)
-        >>> filename = "distances_{itraj}.dat"
-        >>> with TemporaryDirectory() as td, settings(show_progress_bars=False):
-        ...    out = os.path.join(td, filename)
-        ...    reader.write_to_csv(out, header='', delimiter=';')
-        ...    print(sorted(os.listdir(td)))
-        ['distances_0.dat', 'distances_1.dat', 'distances_2.dat']
-        """
-        import os
-        if not filename:
-            assert hasattr(self, 'filenames')
-            #    raise RuntimeError("could not determine filenames")
-            filenames = []
-            for f in self.filenames:
-                base, _ = os.path.splitext(f)
-                filenames.append(base + extension)
-        elif isinstance(filename, str):
-            filename = filename.replace('{stride}', str(stride))
-            filenames = [filename.replace('{itraj}', str(itraj)) for itraj
-                         in range(self.number_of_trajectories())]
-        else:
-            raise TypeError("filename should be str or None")
-        self.logger.debug("write_to_csv, filenames=%s" % filenames)
-        # check files before starting to write
-        import errno
-        for f in filenames:
-            try:
-                st = os.stat(f)
-                raise OSError(errno.EEXIST)
-            except OSError as e:
-                if e.errno == errno.EEXIST:
-                    if overwrite:
-                        continue
-                elif e.errno == errno.ENOENT:
-                    continue
-                raise
-        f = None
-        from pyemma._base.progress import ProgressReporter
-        pg = ProgressReporter()
-        it = self.iterator(stride, chunk=chunksize, return_trajindex=False)
-        pg.register(it.n_chunks, "saving to csv")
-        with it, pg.context():
-            oldtraj = -1
-            for X in it:
-                if oldtraj != it.current_trajindex:
-                    if f is not None:
-                        f.close()
-                    fn = filenames[it.current_trajindex]
-                    self.logger.debug("opening file %s for writing csv." % fn)
-                    f = open(fn, 'wb')
-                    oldtraj = it.current_trajindex
-                np.savetxt(f, X, **kw)
-                f.flush()
-                pg.update(1, 0)
-        if f is not None:
-            f.close()
-
-    def write_to_hdf5(self, filename, group='/', data_set_prefix='', overwrite=False,
-                      stride=1, chunksize=None, h5_opt=None):
-        """ writes all data of this Iterable to a given HDF5 file.
-        This is equivalent of writing the result of func:`pyemma.coordinates.data._base.DataSource.get_output` to a file.
-
-        Parameters
-        ----------
-        filename: str
-            file name of output HDF5 file
-        group, str, default='/'
-            write all trajectories to this HDF5 group. The group name may not already exist in the file.
-        data_set_prefix: str, default=None
-            data set name prefix, will postfixed with the index of the trajectory.
-        overwrite: bool, default=False
-            if group and data sets already exist, shall we overwrite data?
-        stride, int, default=1
-            stride argument to iterator
-        chunksize, int, default=None
-            how many frames to process at once
-
-        h5_opt: dict
-            optional parameters for h5py.create_dataset
-
-        Notes
-        -----
-        You can pass the following via h5_opt to enable compression/filters/shuffling etc:
-
-        chunks
-            (Tuple) Chunk shape, or True to enable auto-chunking.
-        maxshape
-            (Tuple) Make the dataset resizable up to this shape.  Use None for
-            axes you want to be unlimited.
-        compression
-            (String or int) Compression strategy.  Legal values are 'gzip',
-            'szip', 'lzf'.  If an integer in range(10), this indicates gzip
-            compression level. Otherwise, an integer indicates the number of a
-            dynamically loaded compression filter.
-        compression_opts
-            Compression settings.  This is an integer for gzip, 2-tuple for
-            szip, etc. If specifying a dynamically loaded compression filter
-            number, this must be a tuple of values.
-        scaleoffset
-            (Integer) Enable scale/offset filter for (usually) lossy
-            compression of integer or floating-point data. For integer
-            data, the value of scaleoffset is the number of bits to
-            retain (pass 0 to let HDF5 determine the minimum number of
-            bits necessary for lossless compression). For floating point
-            data, scaleoffset is the number of digits after the decimal
-            place to retain; stored values thus have absolute error
-            less than 0.5*10**(-scaleoffset).
-        shuffle
-            (T/F) Enable shuffle filter. Only effective in combination with chunks.
-        fletcher32
-            (T/F) Enable fletcher32 error detection. Not permitted in
-            conjunction with the scale/offset filter.
-        fillvalue
-            (Scalar) Use this value for uninitialized parts of the dataset.
-        track_times
-            (T/F) Enable dataset creation timestamps.
-        """
-        if h5_opt is None:
-            h5_opt = {}
-        import h5py
-        from pyemma._base.progress import ProgressReporter
-        pg = ProgressReporter()
-        it = self.iterator(stride=stride, chunk=chunksize, return_trajindex=True)
-        pg.register(it.n_chunks, 'writing output')
-        with h5py.File(filename) as f, it, pg.context():
-            if group != '/' or group not in f:
-                g = f.create_group(group)
-            elif group == '/':
-                g = f[group]
-            elif group in f and overwrite:
-                logger.info('overwriting group "{}"'.format(group))
-                del f[group]
-                g = f.create_group(group)
-            else:
-                raise RuntimeError('Given group "{}" already exists. Choose another one.'.format(group))
-            for itraj, X in it:
-                template = '{prefix}_{index}' if data_set_prefix else '{index}'
-                ds_name = template.format(prefix=data_set_prefix, index='{:04d}'.format(itraj))
-                # group can be reused, eg. was empty before now check if we overwrite something
-                if ds_name in group:
-                    if not overwrite:
-                        raise RuntimeError('Refusing to overwrite data in group "{}".'.format(group))
-                    else:
-                        del group[ds_name]
-
-                ds = g.require_dataset(ds_name, shape=(it.trajectory_length(), self.ndim),
-                                       dtype=self.output_type(), **h5_opt)
-                ds[it.pos:it.pos + len(X)] = X
-                pg.update(1)
 
     @abstractmethod
     def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
@@ -563,8 +250,8 @@ class _LegacyLaggedIterator(object):
 
     Parameters
     ----------
-    it: Iterable, skip=0
-    it_lagged: Iterable, skip=lag
+    it: DataSource, skip=0
+    it_lagged: DataSource, skip=lag
     return_trajindex: bool
         whether to return the current trajectory index during iteration (itraj).
     """

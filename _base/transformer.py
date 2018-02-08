@@ -119,8 +119,7 @@ class StreamingTransformer(Transformer, DataSource, NotifyOnChangesMixIn):
     def __init__(self, chunksize=None):
         super(StreamingTransformer, self).__init__(chunksize=chunksize)
         self.data_producer = None
-        self._Y_source = None
-        self._estimated = True # this class should only transform data and need no estimation.
+        self._estimated = True  # this class should only transform data and need no estimation.
 
     @abstractmethod
     def dimension(self):
