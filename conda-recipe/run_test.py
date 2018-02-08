@@ -21,7 +21,8 @@ pytest_args = ("--pyargs {test_pkg} "
                "--doctest-modules "
                "{njobs_args} "
                "--junit-xml={junit_xml} "
-               "-c {pytest_cfg}"
+               "-c {pytest_cfg} "
+               "--durations=20 "
                .format(test_pkg=test_pkg, cover_pkg=cover_pkg,
                        junit_xml=junit_xml, pytest_cfg='setup.cfg',
                        dest_report=os.path.join(os.path.expanduser('~/'), 'coverage.xml'),
