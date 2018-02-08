@@ -472,7 +472,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
                 del f[group]
                 g = f.create_group(group)
             else:
-                raise RuntimeError('Given group "{}" already exists. Choose another one.'.format(group))
+                raise ValueError('Given group "{}" already exists. Choose another one.'.format(group))
 
             # check output data sets
             data_sets = {}
@@ -482,10 +482,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
                 # group can be reused, eg. was empty before now check if we will overwrite something
                 if ds_name in g:
                     if not overwrite:
-                        raise RuntimeError('Refusing to overwrite data in group "{}".'.format(group))
-                    else:
-                        self.logger.info('overwriting dataset "{}"'.format(ds_name))
-                        del g[ds_name]
+                        raise ValueError('Refusing to overwrite data in group "{}".'.format(group))
                 else:
                     data_sets[itraj] = g.require_dataset(ds_name, shape=(self.trajectory_length(itraj=itraj, stride=stride),
                                                                          self.ndim), dtype=self.output_type(), **h5_opt)
