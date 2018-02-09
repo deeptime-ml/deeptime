@@ -57,9 +57,9 @@ test:
   files:
     - matplotlibrc
   requires:
-    - pytest
+    - pytest <3.4
     - pytest-cov
-    - coverage <4.5
+    #- coverage <4.5
    # TODO: disabled on win64, until https://bugs.python.org/issue31701 is fixed.
     - pytest-faulthandler # [not win]
     - pytest-xdist
