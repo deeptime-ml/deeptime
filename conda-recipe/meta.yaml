@@ -57,14 +57,12 @@ test:
   files:
     - matplotlibrc
   requires:
-    - py ==1.5.2
-    - pytest ==3.3
-    - pytest-forked ==0.2
-    - pytest-cov ==2.5.1
-    - coverage ==4.4.2
+    - pytest
+    - pytest-cov
+    - coverage
    # TODO: disabled on win64, until https://bugs.python.org/issue31701 is fixed.
-    - pytest-faulthandler ==1.3.1 # [not win]
-    - pytest-xdist ==1.22
+    - pytest-faulthandler # [not win]
+    - pytest-xdist
     - scikit-learn
     # https://github.com/Frozenball/pytest-sugar/issues/124
     #- pytest-sugar
