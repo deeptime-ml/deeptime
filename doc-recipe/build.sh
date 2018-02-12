@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -x
 # remove the source, since we depend on the built (conda) version
 rm pyemma -r
 
@@ -8,6 +8,8 @@ export BUILD_DIR=${PREFIX}/v${pyemma_version}
 # disable progress bars
 export PYEMMA_CFG_DIR=`mktemp -d`
 python -c "import pyemma; pyemma.config.show_progress_bars=False; pyemma.config.save()";
+# print new config
+python -c "import pyemma; print(pyemma.config)"
 
 # install requirements, which are not available in conda
 cd doc
@@ -17,9 +19,6 @@ pip install -r requirements-build-doc.txt
 if [[ -d /group/ag_cmb/pyemma_performance/unpublished ]]; then
     cp /group/ag_cmb/pyemma_performance/unpublished ./pyemma-ipython -vuR
 fi
-
-jupyter nbextension install --py --sys-prefix widgetsnbextension
-jupyter nbextension enable  --py --sys-prefix widgetsnbextension
 
 make clean
 make ipython-rst
