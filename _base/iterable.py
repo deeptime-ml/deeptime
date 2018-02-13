@@ -45,14 +45,23 @@ class Iterable(six.with_metaclass(ABCMeta, InMemoryMixin, Loggable)):
     def default_chunksize(self):
         """ How much data will be processed at once, in case no chunksize has been provided."""
         if self._default_chunksize is None:
-            from pyemma import config
-            from pyemma.util.units import string_to_bytes
-            max_bytes = string_to_bytes(config.default_chunksize)
-            itemsize = np.dtype(self.output_type()).itemsize
-            # TODO: consider rounding this to some cache size of CPU? e.g py-cpuinfo can obtain it.
-            max_elements = max_bytes // itemsize // self.ndim
-            self._default_chunksize = max_elements
-            assert self._default_chunksize > 0
+            try:
+                # some overloads of dimension can raise, eg. PCA, TICA
+                dim = self.dimension()
+            except:
+                self.logger.info('could not obtain output dimension, defaulting to chunksize=100')
+                self._default_chunksize = 100
+            else:
+                # obtain a human readable memory size from the config, convert it to bytes and calc maximum chunksize.
+                from pyemma import config
+                from pyemma.util.units import string_to_bytes
+                max_bytes = string_to_bytes(config.default_chunksize)
+                itemsize = np.dtype(self.output_type()).itemsize
+                # TODO: consider rounding this to some cache size of CPU? e.g py-cpuinfo can obtain it.
+                max_elements = max_bytes // (itemsize * self.ndim)
+                assert max_elements * self.ndim * itemsize <= max_bytes
+                self._default_chunksize = max_elements // self.ndim
+                assert self._default_chunksize >= 0, self._default_chunksize
         return self._default_chunksize
 
     @property
@@ -61,8 +70,10 @@ class Iterable(six.with_metaclass(ABCMeta, InMemoryMixin, Loggable)):
 
     @chunksize.setter
     def chunksize(self, value):
-        if self.default_chunksize < 0:
-            raise ValueError("Chunksize of %s was provided, but has to be >= 0" % self.default_chunksize)
+        if not isinstance(value, (type(None), int)):
+            raise ValueError('chunksize has to be of type: None or int')
+        if isinstance(value, int) and value < 0:
+            raise ValueError("Chunksize of %s was provided, but has to be >= 0" % value)
         self._default_chunksize = value
 
     def iterator(self, stride=1, lag=0, chunk=None, return_trajindex=True, cols=None, skip=0):

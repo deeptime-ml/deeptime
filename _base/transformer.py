@@ -167,7 +167,7 @@ class StreamingTransformer(Transformer, DataSource):
         super(StreamingTransformer, self)._clear_in_memory()
         self._set_random_access_strategies()
 
-    def _create_iterator(self, skip=0, chunk=0, stride=1, return_trajindex=True, cols=None):
+    def _create_iterator(self, skip=0, chunk=None, stride=1, return_trajindex=True, cols=None):
         return StreamingTransformerIterator(self, skip=skip, chunk=chunk, stride=stride,
                                             return_trajindex=return_trajindex, cols=cols)
 
@@ -175,13 +175,15 @@ class StreamingTransformer(Transformer, DataSource):
     def chunksize(self):
         """chunksize defines how much data is being processed at once."""
         if not self.data_producer:
-            return self._default_chunksize
+            return self.default_chunksize
         return self.data_producer.chunksize
 
     @chunksize.setter
     def chunksize(self, size):
         if self.data_producer is None:
-            raise RuntimeError('cant set chunksize')
+            if size < 0:
+                raise ValueError('chunksize has to be positive.')
+            self._default_chunksize = size
         self.data_producer.chunksize = size
 
     def number_of_trajectories(self, stride=1):
@@ -220,7 +222,7 @@ class StreamingEstimationTransformer(StreamingTransformer, StreamingEstimator):
 
 class StreamingTransformerIterator(DataSourceIterator):
 
-    def __init__(self, data_source, skip=0, chunk=0, stride=1, return_trajindex=False, cols=None):
+    def __init__(self, data_source, skip=0, chunk=None, stride=1, return_trajindex=False, cols=None):
         super(StreamingTransformerIterator, self).__init__(
             data_source, return_trajindex=return_trajindex)
         self._it = self._data_source.data_producer.iterator(
