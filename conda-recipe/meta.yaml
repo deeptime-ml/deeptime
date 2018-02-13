@@ -42,7 +42,7 @@ requirements:
     - numpy >=1.11,<1.14 # [win and py36]
     - pathos
     - psutil >3.1
-    - python >=3
+    - python
     - pyyaml
     - pathos
     - scipy
