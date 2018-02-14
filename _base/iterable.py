@@ -58,9 +58,10 @@ class Iterable(six.with_metaclass(ABCMeta, InMemoryMixin, Loggable)):
                 max_bytes = string_to_bytes(config.default_chunksize)
                 itemsize = np.dtype(self.output_type()).itemsize
                 # TODO: consider rounding this to some cache size of CPU? e.g py-cpuinfo can obtain it.
-                max_elements = max_bytes // (itemsize * self.ndim)
-                assert max_elements * self.ndim * itemsize <= max_bytes
-                self._default_chunksize = max_elements // self.ndim
+                # if one time step is already bigger than max_memory, we set the chunksize to 1.
+                max_elements = max(1, int(np.floor(max_bytes / (itemsize * self.ndim))))
+                assert max_elements * self.ndim * itemsize <= max_bytes or max_elements == 1
+                self._default_chunksize = max(1, max_elements // self.ndim)
                 assert self._default_chunksize > 0, self._default_chunksize
         return self._default_chunksize
 
