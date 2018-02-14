@@ -49,8 +49,8 @@ class Iterable(six.with_metaclass(ABCMeta, InMemoryMixin, Loggable)):
                 # some overloads of dimension can raise, eg. PCA, TICA
                 dim = self.dimension()
             except:
-                self.logger.info('could not obtain output dimension, defaulting to chunksize=100')
-                self._default_chunksize = 100
+                self.logger.info('could not obtain output dimension, defaulting to chunksize=1000')
+                self._default_chunksize = 1000
             else:
                 # obtain a human readable memory size from the config, convert it to bytes and calc maximum chunksize.
                 from pyemma import config
@@ -61,7 +61,7 @@ class Iterable(six.with_metaclass(ABCMeta, InMemoryMixin, Loggable)):
                 max_elements = max_bytes // (itemsize * self.ndim)
                 assert max_elements * self.ndim * itemsize <= max_bytes
                 self._default_chunksize = max_elements // self.ndim
-                assert self._default_chunksize >= 0, self._default_chunksize
+                assert self._default_chunksize > 0, self._default_chunksize
         return self._default_chunksize
 
     @property
