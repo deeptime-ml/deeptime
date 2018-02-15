@@ -408,6 +408,16 @@ class FeatureReaderIterator(DataSourceIterator):
         self._closed = False
 
     def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):
-        return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.featurizer.topology,
+        # we need to truncate the chunksize here, because it can overflow the actual filesys size,
+        # leading to problems in mdtraj read_as_traj
+        if self.is_uniform_stride(stride):
+            flen = self._data_source.trajectory_length(itraj=self._itraj, stride=stride, skip=skip)
+        else:
+            flen = self.ra_trajectory_length(self._itraj)
+
+        chunksize = min(self.chunksize, flen)
+        if chunksize == flen:
+            chunksize = 0
+        return patches.iterload(filename, chunk=chunksize, top=self._data_source.featurizer.topology,
                                 skip=skip, stride=stride, atom_indices=atom_indices)
 
