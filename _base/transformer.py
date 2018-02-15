@@ -179,12 +179,15 @@ class StreamingTransformer(Transformer, DataSource):
         return self.data_producer.chunksize
 
     @chunksize.setter
-    def chunksize(self, size):
+    def chunksize(self, value):
         if self.data_producer is None:
-            if size < 0:
-                raise ValueError('chunksize has to be positive.')
-            self._default_chunksize = size
-        self.data_producer.chunksize = size
+            if not isinstance(value, (type(None), int)):
+                raise ValueError('chunksize has to be of type: None or int')
+            if isinstance(value, int) and value < 0:
+                raise ValueError("Chunksize of %s was provided, but has to be >= 0" % value)
+            self._default_chunksize = value
+        else:
+            self.data_producer.chunksize = value
 
     def number_of_trajectories(self, stride=1):
         return self.data_producer.number_of_trajectories(stride)

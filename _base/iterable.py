@@ -27,6 +27,7 @@ from pyemma.util.types import is_int
 
 
 class Iterable(six.with_metaclass(ABCMeta, InMemoryMixin, Loggable)):
+    _FALLBACK_CHUNKSIZE = 1000
 
     def __init__(self, chunksize=None):
         super(Iterable, self).__init__()
@@ -41,28 +42,42 @@ class Iterable(six.with_metaclass(ABCMeta, InMemoryMixin, Loggable)):
     def ndim(self):
         return self.dimension()
 
+    @staticmethod
+    def _compute_default_cs(dim, itemsize, logger=None):
+        # obtain a human readable memory size from the config, convert it to bytes and calc maximum chunksize.
+        from pyemma import config
+        from pyemma.util.units import string_to_bytes
+        max_bytes = string_to_bytes(config.default_chunksize)
+
+        # TODO: consider rounding this to some cache size of CPU? e.g py-cpuinfo can obtain it.
+        # if one time step is already bigger than max_memory, we set the chunksize to 1.
+        max_elements = max(1, int(np.floor(max_bytes / (itemsize * dim))))
+        assert max_elements * dim * itemsize <= max_bytes or max_elements == 1
+        result = max(1, max_elements // dim)
+
+        assert result > 0
+        if logger is not None:
+            logger.debug('computed default chunksize to %s'
+                         ' to limit memory per chunk to %s', result, config.default_chunksize)
+        return result
+
     @property
     def default_chunksize(self):
-        """ How much data will be processed at once, in case no chunksize has been provided."""
+        """ How much data will be processed at once, in case no chunksize has been provided.
+
+        Notes
+        -----
+        This variable respects your setting for maximum memory in pyemma.config.default_chunksize
+        """
         if self._default_chunksize is None:
             try:
-                # some overloads of dimension can raise, eg. PCA, TICA
-                dim = self.dimension()
+                self.dimension()
+                self.output_type()
             except:
-                self.logger.info('could not obtain output dimension, defaulting to chunksize=1000')
-                self._default_chunksize = 1000
+                self._default_chunksize = Iterable._FALLBACK_CHUNKSIZE
             else:
-                # obtain a human readable memory size from the config, convert it to bytes and calc maximum chunksize.
-                from pyemma import config
-                from pyemma.util.units import string_to_bytes
-                max_bytes = string_to_bytes(config.default_chunksize)
-                itemsize = np.dtype(self.output_type()).itemsize
-                # TODO: consider rounding this to some cache size of CPU? e.g py-cpuinfo can obtain it.
-                # if one time step is already bigger than max_memory, we set the chunksize to 1.
-                max_elements = max(1, int(np.floor(max_bytes / (itemsize * self.ndim))))
-                assert max_elements * self.ndim * itemsize <= max_bytes or max_elements == 1
-                self._default_chunksize = max(1, max_elements // self.ndim)
-                assert self._default_chunksize > 0, self._default_chunksize
+                self._default_chunksize = Iterable._compute_default_cs(self.dimension(),
+                                                                       self.output_type()().itemsize, self.logger)
         return self._default_chunksize
 
     @property
