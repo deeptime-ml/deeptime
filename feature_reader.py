@@ -311,6 +311,8 @@ class FeatureReaderIterator(DataSourceIterator):
                 return_trajindex=return_trajindex,
                 cols=cols
         )
+        # set chunksize prior selecting the first file, to ensure we have a sane value for mditer...
+        self.chunksize = chunk
         self._selected_itraj = -1
         self._select_file(0)
 
@@ -320,9 +322,18 @@ class FeatureReaderIterator(DataSourceIterator):
 
     @chunksize.setter
     def chunksize(self, value):
-        self.state.chunk = value
+        # we need to truncate the chunksize here, because it can overflow the actual file size,
+        # leading to problems in mdtraj read_as_traj
+        if self.is_uniform_stride(self.stride):
+            flen = self._data_source.trajectory_length(itraj=self._itraj, stride=self.stride, skip=self.skip)
+        else:
+            flen = self.ra_trajectory_length(self._itraj)
+
+        chunksize = min(int(value), flen)
+
+        self.state.chunk = chunksize
         if hasattr(self, '_mditer'):
-            self._mditer._chunksize = int(value)
+            self._mditer._chunksize = int(chunksize)
 
     @property
     def skip(self):
@@ -408,16 +419,6 @@ class FeatureReaderIterator(DataSourceIterator):
         self._closed = False
 
     def _create_patched_iter(self, filename, skip=0, stride=1, atom_indices=None):
-        # we need to truncate the chunksize here, because it can overflow the actual filesys size,
-        # leading to problems in mdtraj read_as_traj
-        if self.is_uniform_stride(stride):
-            flen = self._data_source.trajectory_length(itraj=self._itraj, stride=stride, skip=skip)
-        else:
-            flen = self.ra_trajectory_length(self._itraj)
-
-        chunksize = min(self.chunksize, flen)
-        if chunksize == flen:
-            chunksize = 0
-        return patches.iterload(filename, chunk=chunksize, top=self._data_source.featurizer.topology,
+        return patches.iterload(filename, chunk=self.chunksize, top=self._data_source.featurizer.topology,
                                 skip=skip, stride=stride, atom_indices=atom_indices)
 
