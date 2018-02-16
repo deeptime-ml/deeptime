@@ -661,6 +661,11 @@ class DataSourceIterator(six.with_metaclass(ABCMeta)):
         self.__init_stride(stride)
         self._pos = 0
         self._last_chunk_in_traj = False
+        if not isinstance(stride, np.ndarray) and skip > 0:
+            # skip over the trajectories that are smaller than skip
+            while self.state.itraj < self._data_source.ntraj \
+                    and self._data_source.trajectory_length(self.state.itraj, self.stride, 0) <= skip:
+                self.state.itraj += 1
         super(DataSourceIterator, self).__init__()
 
     def __init_stride(self, stride):
