@@ -90,8 +90,8 @@ class _JoiningIterator(DataSourceIterator):
             self._t = 0
             self._itraj = itraj
             self._selected_itraj = itraj
-            if __debug__:
-                for it in self._iterators:
-                    assert it._itraj == itraj
-                    assert it._selected_itraj == itraj
-                    assert it._t == self._t
+            for it in self._iterators:
+                it._select_file(itraj)
+                assert it._itraj == itraj
+                assert it._selected_itraj == itraj
+                assert it._t == self._t
