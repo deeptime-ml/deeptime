@@ -246,6 +246,7 @@ class DataSource(Iterable, TrajectoryRandomAccessible):
             selection = stride[stride[:, 0] == itraj][:, 0]
             return 0 if itraj not in selection else len(selection)
         else:
+            skip = 0 if skip is None else skip
             res = (self._lengths[itraj] - skip - 1) // int(stride) + 1
             assert res >= 0
             return res
