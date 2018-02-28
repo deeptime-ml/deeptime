@@ -1,10 +1,11 @@
 import warnings
 import numbers
 import numpy as np
+
+from pyemma._base.serialization.serialization import SerializableMixIn
 from .moments import moments_XX, moments_XXXY, moments_block
 
 __author__ = 'noe'
-from itertools import count
 
 
 class Moments(object):
@@ -82,46 +83,11 @@ class Moments(object):
             return self.Mxy / self.w
 
 
-
-class FileMoment(Moments):
-
-    __refs = {}
-    c = count()
-
-    def __init__(self, w, sx, sy, Mxy, group):
-        def _rm(_, ds_name, group, id):
-            if ds_name in group:
-                del group[ds_name]
-            del FileMoment.__refs[id]
-
-        ds = group.create_dataset(str(next(self.c)), data=Mxy, chunks=True, shuffle=True, compression='gzip')
-        self._ds = ds
-        self._group = group
-        self.w =w
-        self.sx= sx
-        self.sy = sy
-        import weakref
-        import functools
-
-        callback = functools.partial(_rm, ds_name=ds.name, group=group, id=id(self))
-
-        ref = weakref.ref(self, callback)
-        FileMoment.__refs[id(self)] = ref
-
-    @property
-    def Mxy(self):
-        return self._ds[:]
-
-    @Mxy.setter
-    def Mxy(self, value):
-        self._ds[:] = value
-
-
 class MomentsStorage(object):
     """
     """
 
-    def __init__(self, nsave, remove_mean=False, rtol=1.5, file=None):
+    def __init__(self, nsave, remove_mean=False, rtol=1.5):
         """
         Parameters
         ----------
@@ -142,10 +108,6 @@ class MomentsStorage(object):
         self.storage = []
         self.rtol = rtol
         self.remove_mean = remove_mean
-        if file:
-            import h5py
-            f = h5py.File(file, mode='w')
-            self.group = f.create_group('data')
 
     def _can_merge_tail(self):
         """ Checks if the two last list elements can be merged
@@ -185,7 +147,10 @@ class MomentsStorage(object):
         return self.storage[0]
 
 
-class RunningCovar(object):
+class RunningCovar(SerializableMixIn):
+    __serialize_version = 0
+    __serialize_fields = ('storage_XX', 'storage_XY', 'storage_YY')
+
     """ Running covariance estimator
 
     Estimator object that can be fed chunks of X and Y data, and
@@ -224,13 +189,10 @@ class RunningCovar(object):
     .. [1] http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf
 
     """
-    _c = count()
-    __refs = {}
 
     # to get the Y mean, but this is currently not stored.
     def __init__(self, compute_XX=True, compute_XY=False, compute_YY=False,
-                 remove_mean=False, symmetrize=False, sparse_mode='auto', modify_data=False, nsave=5,
-                 file=None):
+                 remove_mean=False, symmetrize=False, sparse_mode='auto', modify_data=False, nsave=5):
         # check input
         if not compute_XX and not compute_XY:
             raise ValueError('One of compute_XX or compute_XY must be True.')
@@ -254,36 +216,6 @@ class RunningCovar(object):
         # flags
         self.sparse_mode = sparse_mode
         self.modify_data = modify_data
-        self.file = file
-        if file:
-            def rm(_, group, id):
-                del group.file[group.name]
-                del RunningCovar.__refs[id]
-            import weakref
-            import functools
-            cb = functools.partial(rm, group=self._group, id=id(self))
-            ref = weakref.ref(self, cb)
-            RunningCovar.__refs[id(self)] = ref
-
-    @property
-    def file(self):
-        return self._file
-
-    @file.setter
-    def file(self, value):
-        if value is None:
-            self._file = None
-        else:
-            import h5py
-            if isinstance(value, str):
-                self._file = h5py.File(value, mode='r')
-                # the count
-                c = int(repr(RunningCovar._c)[6:-1])
-                self._group = self._file
-            elif isinstance(value, h5py.File):
-                # pickle restore
-                self._file = value
-                self._group = self.file.create_group(str(next(RunningCovar._c)))
 
     def add(self, X, Y=None, weights=None):
         """
@@ -301,12 +233,6 @@ class RunningCovar(object):
             weight.
 
         """
-        if self.file is not None:
-            Moments_ = FileMoment
-            args = {'group': self._group}
-        else:
-            Moments_ = Moments
-            args = {}
         # check input
         T = X.shape[0]
         if Y is not None:
@@ -327,23 +253,23 @@ class RunningCovar(object):
         # estimate and add to storage
         if self.compute_XX and not self.compute_XY:
             w, s_X, C_XX = moments_XX(X, remove_mean=self.remove_mean, weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data)
-            self.storage_XX.store(Moments_(w, s_X, s_X, C_XX, **args))
+            self.storage_XX.store(Moments(w, s_X, s_X, C_XX, ))
         elif self.compute_XX and self.compute_XY and not self.compute_YY:
             assert Y is not None
             w, s_X, s_Y, C_XX, C_XY = moments_XXXY(X, Y, remove_mean=self.remove_mean, symmetrize=self.symmetrize,
                                                    weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data)
             # make copy in order to get independently mergeable moments
-            self.storage_XX.store(Moments_(w, s_X, s_X, C_XX, **args))
-            self.storage_XY.store(Moments_(w, s_X, s_Y, C_XY, **args))
+            self.storage_XX.store(Moments(w, s_X, s_X, C_XX, ))
+            self.storage_XY.store(Moments(w, s_X, s_Y, C_XY, ))
         else:  # compute block
             assert Y is not None
             assert not self.symmetrize
             w, s, C = moments_block(X, Y, remove_mean=self.remove_mean,
                                     sparse_mode=self.sparse_mode, modify_data=self.modify_data)
             # make copy in order to get independently mergeable moments
-            self.storage_XX.store(Moments_(w, s[0], s[0], C[0][0], **args))
-            self.storage_XY.store(Moments_(w, s[0], s[1], C[0][1], **args))
-            self.storage_YY.store(Moments_(w, s[1], s[1], C[1][1], **args))
+            self.storage_XX.store(Moments(w, s[0], s[0], C[0][0], ))
+            self.storage_XY.store(Moments(w, s[0], s[1], C[0][1], ))
+            self.storage_YY.store(Moments(w, s[1], s[1], C[1][1], ))
 
     def sum_X(self):
         if self.compute_XX:
@@ -403,16 +329,6 @@ class RunningCovar(object):
 
     def cov_YY(self, bessel):
         return self.storage_YY.moments.covar(bessel=bessel)
-
-    def __getstate__(self):
-        return dict(file=self.file,
-                    _c=RunningCovar._c,
-                    remove_mean=self.remove_mean,
-                    modify_data=self.modify_data,
-                    compute_XX=self.compute_XX,
-                    compute_XY=self.compute_XY,
-                    compute_YY=self.compute_YY,
-                    )
 
 
 def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=False, sparse_mode='auto',
