@@ -332,7 +332,7 @@ class RunningCovar(SerializableMixIn):
 
 
 def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=False, sparse_mode='auto',
-                  modify_data=False, nsave=5, file=None):
+                  modify_data=False, nsave=5):
     """ Returns a running covariance estimator
 
     Returns an estimator object that can be fed chunks of X and Y data, and
@@ -372,4 +372,4 @@ def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=Fal
 
     """
     return RunningCovar(compute_XX=xx, compute_XY=xy, compute_YY=yy, sparse_mode=sparse_mode, modify_data=modify_data,
-                        remove_mean=remove_mean, symmetrize=symmetrize, nsave=nsave, file=file)
+                        remove_mean=remove_mean, symmetrize=symmetrize, nsave=nsave)
