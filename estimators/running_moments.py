@@ -149,8 +149,9 @@ class MomentsStorage(object):
 
 class RunningCovar(SerializableMixIn):
     __serialize_version = 0
-    __serialize_fields = ('storage_XX', 'storage_XY', 'storage_YY')
-
+    __serialize_fields = ('compute_XX','compute_XY', 'compute_YY',
+                          'storage_XX', 'storage_XY', 'storage_YY',
+                          'remove_mean', 'symmetrize', 'modify_data', 'sparse_mode', 'nsave')
     """ Running covariance estimator
 
     Estimator object that can be fed chunks of X and Y data, and
