@@ -53,7 +53,11 @@ class Moments(object):
         self.sy = self.sy + other.sy
         #
         if mean_free:
-            self.Mxy += other.Mxy + (w1 / (w2 * w)) * np.outer(dsx, dsy)
+            if len(self.Mxy.shape) == 1:  # diagonal only
+                d = dsx*dsy
+            else:
+                d = np.outer(dsx, dsy)
+            self.Mxy += other.Mxy + (w1 / (w2 * w)) * d
         else:
             self.Mxy += other.Mxy
         return self
@@ -180,6 +184,10 @@ class RunningCovar(SerializableMixIn):
             * 'dense' : always use dense mode
             * 'sparse' : always use sparse mode if possible
             * 'auto' : automatic
+    column_selection: ndarray(k, dtype=int) or None
+        Indices of those columns that are to be computed. If None, all columns are computed.
+    diag_only: bool
+        If True, the computation is restricted to the diagonal entries (autocorrelations) only.
     nsave : int
         Depth of Moment storage. Moments computed from each chunk will be
         combined with Moments of similar statistical weight using the pairwise
@@ -193,7 +201,8 @@ class RunningCovar(SerializableMixIn):
 
     # to get the Y mean, but this is currently not stored.
     def __init__(self, compute_XX=True, compute_XY=False, compute_YY=False,
-                 remove_mean=False, symmetrize=False, sparse_mode='auto', modify_data=False, nsave=5):
+                 remove_mean=False, symmetrize=False, sparse_mode='auto', modify_data=False,
+                 column_selection=None, diag_only=False, nsave=5):
         # check input
         if not compute_XX and not compute_XY:
             raise ValueError('One of compute_XX or compute_XY must be True.')
@@ -201,6 +210,12 @@ class RunningCovar(SerializableMixIn):
             raise ValueError('Combining compute_YY and symmetrize=True is meaningless.')
         if symmetrize and not compute_XY:
             warnings.warn('symmetrize=True has no effect with compute_XY=False.')
+        if column_selection is not None and diag_only:
+            raise ValueError('Computing only parts of the diagonal is not supported.')
+        if diag_only and sparse_mode is not 'dense':
+            if sparse_mode is 'sparse':
+                warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
+            sparse_mode = 'dense'
         # storage
         self.compute_XX = compute_XX
         if compute_XX:
@@ -217,6 +232,10 @@ class RunningCovar(SerializableMixIn):
         # flags
         self.sparse_mode = sparse_mode
         self.modify_data = modify_data
+        # column selection
+        self.column_selection = column_selection
+        # whether to compute only matrix diagonals
+        self.diag_only = diag_only
 
     def add(self, X, Y=None, weights=None):
         """
@@ -234,6 +253,7 @@ class RunningCovar(SerializableMixIn):
             weight.
 
         """
+
         # check input
         T = X.shape[0]
         if Y is not None:
@@ -252,25 +272,47 @@ class RunningCovar(SerializableMixIn):
             else:
                 raise TypeError('weights is of type %s, must be a number or ndarray' % (type(weights)))
         # estimate and add to storage
-        if self.compute_XX and not self.compute_XY:
-            w, s_X, C_XX = moments_XX(X, remove_mean=self.remove_mean, weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data)
-            self.storage_XX.store(Moments(w, s_X, s_X, C_XX, ))
+        if self.compute_XX and not self.compute_XY and not self.compute_YY:
+            w, s_X, C_XX = moments_XX(X, remove_mean=self.remove_mean, weights=weights, sparse_mode=self.sparse_mode,
+                                      modify_data=self.modify_data, column_selection=self.column_selection,
+                                      diag_only=self.diag_only)
+            if self.column_selection is not None:
+                s_Xk = s_X[self.column_selection]
+            else:
+                s_Xk = s_X
+            self.storage_XX.store(Moments(w, s_X, s_Xk, C_XX))
         elif self.compute_XX and self.compute_XY and not self.compute_YY:
             assert Y is not None
             w, s_X, s_Y, C_XX, C_XY = moments_XXXY(X, Y, remove_mean=self.remove_mean, symmetrize=self.symmetrize,
-                                                   weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data)
+                                                   weights=weights, sparse_mode=self.sparse_mode, modify_data=self.modify_data,
+                                                   column_selection=self.column_selection, diag_only=self.diag_only)
             # make copy in order to get independently mergeable moments
-            self.storage_XX.store(Moments(w, s_X, s_X, C_XX, ))
-            self.storage_XY.store(Moments(w, s_X, s_Y, C_XY, ))
+            if self.column_selection is not None:
+                s_Xk = s_X[self.column_selection]
+                s_Yk = s_Y[self.column_selection]
+            else:
+                s_Xk = s_X
+                s_Yk = s_Y
+            self.storage_XX.store(Moments(w, s_X, s_Xk, C_XX))
+            self.storage_XY.store(Moments(w, s_X, s_Yk, C_XY))
         else:  # compute block
             assert Y is not None
             assert not self.symmetrize
             w, s, C = moments_block(X, Y, remove_mean=self.remove_mean,
-                                    sparse_mode=self.sparse_mode, modify_data=self.modify_data)
+                                    sparse_mode=self.sparse_mode, modify_data=self.modify_data,
+                                    column_selection=self.column_selection, diag_only=self.diag_only)
             # make copy in order to get independently mergeable moments
-            self.storage_XX.store(Moments(w, s[0], s[0], C[0][0], ))
-            self.storage_XY.store(Moments(w, s[0], s[1], C[0][1], ))
-            self.storage_YY.store(Moments(w, s[1], s[1], C[1][1], ))
+            if self.column_selection is not None:
+                s0k = s[0][self.column_selection]
+                s1k = s[1][self.column_selection]
+            else:
+                s0k = s[0]
+                s1k = s[1]
+            if self.compute_XX:
+                self.storage_XX.store(Moments(w, s[0], s0k, C[0][0]))
+            if self.compute_XY:
+                self.storage_XY.store(Moments(w, s[0], s1k, C[0][1]))
+            self.storage_YY.store(Moments(w, s[1], s1k, C[1][1]))
 
     def sum_X(self):
         if self.compute_XX:
@@ -333,7 +375,7 @@ class RunningCovar(SerializableMixIn):
 
 
 def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=False, sparse_mode='auto',
-                  modify_data=False, nsave=5):
+                  modify_data=False, column_selection=None, diag_only=False, nsave=5):
     """ Returns a running covariance estimator
 
     Returns an estimator object that can be fed chunks of X and Y data, and
@@ -362,6 +404,10 @@ def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=Fal
             * 'dense' : always use dense mode
             * 'sparse' : always use sparse mode if possible
             * 'auto' : automatic
+    column_selection: ndarray(k, dtype=int) or None
+        Indices of those columns that are to be computed. If None, all columns are computed.
+    diag_only: bool
+        If True, the computation is restricted to the diagonal entries (autocorrelations) only.
     nsave : int
         Depth of Moment storage. Moments computed from each chunk will be
         combined with Moments of similar statistical weight using the pairwise
@@ -373,4 +419,5 @@ def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=Fal
 
     """
     return RunningCovar(compute_XX=xx, compute_XY=xy, compute_YY=yy, sparse_mode=sparse_mode, modify_data=modify_data,
-                        remove_mean=remove_mean, symmetrize=symmetrize, nsave=nsave)
+                        remove_mean=remove_mean, symmetrize=symmetrize, column_selection=column_selection,
+                        diag_only=diag_only, nsave=nsave)

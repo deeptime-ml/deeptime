@@ -359,20 +359,47 @@ def _center(X, w, s, mask=None, const=None, inplace=True):
     return X, const
 
 
+def _filter_variable_indices(mask, column_selection):
+    """ Returns column indices restricted to the variable columns as determined by the given mask.
+
+    Parameters
+    ----------
+    mask : ndarray(N, dtype=bool)
+        Array indicating the variable columns.
+    column_selection : ndarray(k, dtype=int)
+        Column indices to be filtered and mapped.
+
+    Returns
+    -------
+    ix : ndarray(l, dtype=int)
+        Column indices restricted to the variable columns, mapped to the correct index range.
+
+    """
+    a = np.where(mask)[0]
+    b = column_selection[np.in1d(column_selection, a)]
+    return np.searchsorted(a, b)
+
+
 # ====================================================================================
 # SECOND MOMENT MATRICES / COVARIANCES
 # ====================================================================================
 
-def _M2_dense(X, Y, weights=None):
+def _M2_dense(X, Y, weights=None, diag_only=False):
     """ 2nd moment matrix using dense matrix computations.
 
     This function is encapsulated such that we can make easy modifications of the basic algorithms
 
     """
     if weights is not None:
-        return np.dot((weights[:, None] * X).T, Y)
+        if diag_only:
+            return np.sum(weights[:, None] * X * Y, axis=0)
+        else:
+            return np.dot((weights[:, None] * X).T, Y)
     else:
-        return np.dot(X.T, Y)
+        if diag_only:
+            return np.sum(X * Y, axis=0)
+        else:
+            return np.dot(X.T, Y)
 
 
 def _M2_const(Xvar, mask_X, xvarsum, xconst, Yvar, mask_Y, yvarsum, yconst, weights=None):
@@ -466,7 +493,7 @@ def _M2_sparse(Xvar, mask_X, Yvar, mask_Y, weights=None):
     return C
 
 
-def _M2_sparse_sym(Xvar, mask_X, Yvar, mask_Y, weights=None):
+def _M2_sparse_sym(Xvar, mask_X, Yvar, mask_Y, weights=None, column_selection=None):
     """ 2nd self-symmetric moment matrix exploiting zero input columns
 
     Computes X'X + Y'Y and X'Y + Y'X
@@ -474,23 +501,34 @@ def _M2_sparse_sym(Xvar, mask_X, Yvar, mask_Y, weights=None):
     """
     assert len(mask_X) == len(mask_Y), 'X and Y need to have equal sizes for symmetrization'
 
-    Cxxyy = np.zeros((len(mask_X), len(mask_Y)))
-    Cxxyy[np.ix_(mask_X, mask_X)] = _M2_dense(Xvar, Xvar, weights=weights)
-    Cxxyy[np.ix_(mask_Y, mask_Y)] += _M2_dense(Yvar, Yvar, weights=weights)
+    if column_selection is None:
+        mask_Xk = mask_X
+        mask_Yk = mask_Y
+        Xvark = Xvar
+        Yvark = Yvar
+    else:
+        mask_Xk = mask_X[column_selection]
+        mask_Yk = mask_Y[column_selection]
+        Xvark = Xvar[:, _filter_variable_indices(mask_X, column_selection)]
+        Yvark = Yvar[:, _filter_variable_indices(mask_Y, column_selection)]
 
-    Cxyyx = np.zeros((len(mask_X), len(mask_Y)))
-    Cxy = _M2_dense(Xvar, Yvar, weights=weights)
-    Cyx = _M2_dense(Yvar, Xvar, weights=weights)
-    Cxyyx[np.ix_(mask_X, mask_Y)] = Cxy
-    Cxyyx[np.ix_(mask_Y, mask_X)] += Cyx
+    Cxxyy = np.zeros((len(mask_X), len(mask_Yk)))
+    Cxxyy[np.ix_(mask_X, mask_Xk)] = _M2_dense(Xvar, Xvark, weights=weights)
+    Cxxyy[np.ix_(mask_Y, mask_Yk)] += _M2_dense(Yvar, Yvark, weights=weights)
+
+    Cxyyx = np.zeros((len(mask_X), len(mask_Yk)))
+    Cxy = _M2_dense(Xvar, Yvark, weights=weights)
+    Cyx = _M2_dense(Yvar, Xvark, weights=weights)
+    Cxyyx[np.ix_(mask_X, mask_Yk)] = Cxy
+    Cxyyx[np.ix_(mask_Y, mask_Xk)] += Cyx
 
     return Cxxyy, Cxyyx
 
 
-def _M2(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0, yconst=0, weights=None):
+def _M2(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0, yconst=0, weights=None, diag_only=False):
     """ direct (nonsymmetric) second moment matrix. Decide if we need dense, sparse, const"""
     if mask_X is None and mask_Y is None:
-        return _M2_dense(Xvar, Yvar, weights=weights)
+        return _M2_dense(Xvar, Yvar, weights=weights, diag_only=diag_only)
     else:
         # Check if one of the masks is not None, modify it and also adjust the constant columns:
         if mask_X is None:
@@ -505,12 +543,20 @@ def _M2(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0, yconst=0
         return _M2_const(Xvar, mask_X, xsum[mask_X], xconst, Yvar, mask_Y, ysum[mask_Y], yconst, weights=weights)
 
 
-def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0, yconst=0, weights=None):
+def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0, yconst=0, weights=None,
+                  column_selection=None, diag_only=False):
     """ symmetric second moment matrices. Decide if we need dense, sparse, const"""
     if mask_X is None and mask_Y is None:
-        Cxxyy = _M2_dense(Xvar, Xvar, weights=weights) + _M2_dense(Yvar, Yvar, weights=weights)
-        Cxy = _M2_dense(Xvar, Yvar, weights=weights)
-        Cyx = _M2_dense(Yvar, Xvar, weights=weights)
+        if column_selection is None:
+            Xvark = Xvar
+            Yvark = Yvar
+        else:
+            Xvark = Xvar[:, column_selection]
+            Yvark = Yvar[:, column_selection]
+        Cxxyy = _M2_dense(Xvar, Xvark, weights=weights, diag_only=diag_only) \
+                + _M2_dense(Yvar, Yvark, weights=weights, diag_only=diag_only)
+        Cxy = _M2_dense(Xvar, Yvark, weights=weights, diag_only=diag_only)
+        Cyx = _M2_dense(Yvar, Xvark, weights=weights, diag_only=diag_only)
         Cxyyx = Cxy + Cyx
     else:
         # Check if one of the masks is not None, modify it and also adjust the constant columns:
@@ -521,14 +567,34 @@ def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0
             mask_Y = np.ones(Yvar.shape[1], dtype=np.bool)
             yconst = np.ones(0, dtype=float)
         if _is_zero(xsum) and _is_zero(ysum) or _is_zero(xconst) and _is_zero(yconst):
-            Cxxyy, Cxyyx = _M2_sparse_sym(Xvar, mask_X, Yvar, mask_Y, weights=weights)
+            Cxxyy, Cxyyx = _M2_sparse_sym(Xvar, mask_X, Yvar, mask_Y, weights=weights, column_selection=column_selection)
         else:
             xvarsum = xsum[mask_X]  # to variable part
             yvarsum = ysum[mask_Y]  # to variable part
-            Cxxyy = _M2_const(Xvar, mask_X, xvarsum, xconst, Xvar, mask_X, xvarsum, xconst, weights=weights) \
-                    + _M2_const(Yvar, mask_Y, yvarsum, yconst, Yvar, mask_Y, yvarsum, yconst, weights=weights)
-            Cxy = _M2_const(Xvar, mask_X, xvarsum, xconst, Yvar, mask_Y, yvarsum, yconst, weights=weights)
-            Cyx = _M2_const(Yvar, mask_Y, yvarsum, yconst, Xvar, mask_X, xvarsum, xconst, weights=weights)
+            if column_selection is None:
+                Xvark = Xvar
+                mask_Xk = mask_X
+                xkvarsum = xvarsum
+                xkconst = xconst
+                Yvark = Yvar
+                mask_Yk = mask_Y
+                ykvarsum = yvarsum
+                ykconst = yconst
+            else:
+                Xvark = Xvar[:, _filter_variable_indices(mask_X, column_selection)]
+                mask_Xk = mask_X[column_selection]
+                xksum = xsum[column_selection]
+                xkvarsum = xksum[mask_Xk]
+                xkconst = xconst[_filter_variable_indices(~mask_X, column_selection)]
+                Yvark = Yvar[:, _filter_variable_indices(mask_Y, column_selection)]
+                mask_Yk = mask_Y[column_selection]
+                yksum = ysum[column_selection]
+                ykvarsum = yksum[mask_Yk]
+                ykconst = yconst[_filter_variable_indices(~mask_Y, column_selection)]
+            Cxxyy = _M2_const(Xvar, mask_X, xvarsum, xconst, Xvark, mask_Xk, xkvarsum, xkconst, weights=weights) \
+                    + _M2_const(Yvar, mask_Y, yvarsum, yconst, Yvark, mask_Yk, ykvarsum, ykconst, weights=weights)
+            Cxy = _M2_const(Xvar, mask_X, xvarsum, xconst, Yvark, mask_Yk, ykvarsum, ykconst, weights=weights)
+            Cyx = _M2_const(Yvar, mask_Y, yvarsum, yconst, Xvark, mask_Xk, xkvarsum, xkconst, weights=weights)
             Cxyyx = Cxy + Cyx
     return Cxxyy, Cxyyx
 
@@ -538,7 +604,8 @@ def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0
 # =================================================
 
 
-def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='auto', sparse_tol=0.0):
+def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='auto', sparse_tol=0.0,
+               column_selection=None, diag_only=False):
     r""" Computes the first two unnormalized moments of X
 
     Computes :math:`s = \sum_t x_t` and :math:`C = X^\top X` while exploiting
@@ -569,6 +636,10 @@ def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mod
         is not given) of the covariance matrix will be set to zero. If Y is
         given and max(abs(Y[:, i])) < sparse_tol, then column i of the
         covariance matrix will be set to zero.
+    column_selection: ndarray(k, dtype=int) or None
+        Indices of those columns that are to be computed. If None, all columns are computed.
+    diag_only: bool
+        If True, the computation is restricted to the diagonal entries (autocorrelations) only.
 
     Returns
     -------
@@ -583,6 +654,12 @@ def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mod
     # Check consistency of inputs:
     if weights is not None:
         assert X.shape[0] == weights.shape[0], 'X and weights_x must have equal length'
+    # diag_only is only implemented for dense mode
+    if diag_only and sparse_mode is not 'dense':
+        if sparse_mode is 'sparse':
+            import warnings
+            warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
+        sparse_mode = 'dense'
     # sparsify
     X0, mask_X, xconst = _sparsify(X, remove_mean=remove_mean, modify_data=modify_data,
                                    sparse_mode=sparse_mode, sparse_tol=sparse_tol)
@@ -599,14 +676,31 @@ def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mod
     # TODO: we could make a second const check here. If after summation not enough zeros have appeared in the
     # TODO: consts, we switch back to dense treatment here.
     # compute covariance matrix
-    C = _M2(X0, X0, mask_X=mask_X, mask_Y=mask_X, xsum=sx0_centered, xconst=xconst, ysum=sx0_centered, yconst=xconst,
-            weights=weights)
+    if column_selection is not None:
+        if is_sparse:
+            Xk = X[:, column_selection]
+            mask_Xk = mask_X[column_selection]
+            X0k = Xk[:, mask_Xk]
+            xksum = sx0_centered[column_selection]
+            xkconst = Xk[0, ~mask_Xk]
+            X0k, xkconst = _copy_convert(X0k, const=xkconst, remove_mean=remove_mean,
+                                         copy=True)
+            C = _M2(X0, X0k, mask_X=mask_X, mask_Y=mask_Xk, xsum=sx0_centered, xconst=xconst, ysum=xksum, yconst=xkconst,
+                    weights=weights)
+        else:
+            X0k = X0[:, column_selection]
+            C = _M2(X0, X0k, mask_X=mask_X, mask_Y=mask_X, xsum=sx0_centered, xconst=xconst,
+                    ysum=sx0_centered[column_selection], yconst=xconst, weights=weights)
+    else:
+        C = _M2(X0, X0, mask_X=mask_X, mask_Y=mask_X, xsum=sx0_centered, xconst=xconst, ysum=sx0_centered, yconst=xconst,
+                weights=weights, diag_only=diag_only)
     return w, sx, C
 
 
 def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
-                 modify_data=False, sparse_mode='auto', sparse_tol=0.0):
-    r""" Computes the first two unnormalized moments of X and Y
+                 modify_data=False, sparse_mode='auto', sparse_tol=0.0,
+                 column_selection=None, diag_only=False):
+    """ Computes the first two unnormalized moments of X and Y
 
     If symmetrize is False, computes
 
@@ -656,6 +750,10 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
         is not given) of the covariance matrix will be set to zero. If Y is
         given and max(abs(Y[:, i])) < sparse_tol, then column i of the
         covariance matrix will be set to zero.
+    column_selection: ndarray(k, dtype=int) or None
+        Indices of those columns that are to be computed. If None, all columns are computed.
+    diag_only: bool
+        If True, the computation is restricted to the diagonal entries (autocorrelations) only.
 
     Returns
     -------
@@ -676,6 +774,14 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
         assert Y.shape[0] == X.shape[0], 'X and Y must have equal length.'
     if weights is not None:
         assert X.shape[0] == weights.shape[0], 'X and weights_x must have equal length'
+    # diag_only is only implemented for dense mode
+    if diag_only and sparse_mode is not 'dense':
+        if sparse_mode is 'sparse':
+            import warnings
+            warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
+        sparse_mode = 'dense'
+    if diag_only and X.shape[1] != Y.shape[1]:
+        raise ValueError('Computing diagonal entries only does not make sense for rectangular covariance matrix.')
     # sparsify
     X0, mask_X, xconst, Y0, mask_Y, yconst = _sparsify_pair(X, Y, remove_mean=remove_mean, modify_data=modify_data,
                                                             symmetrize=symmetrize, sparse_mode=sparse_mode, sparse_tol=sparse_tol)
@@ -693,18 +799,50 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
 
     if symmetrize:
         Cxx, Cxy = _M2_symmetric(X0, Y0, mask_X=mask_X, mask_Y=mask_Y,
-                                 xsum=sx_centered, xconst=xconst, ysum=sy_centered, yconst=yconst, weights=weights)
+                                 xsum=sx_centered, xconst=xconst, ysum=sy_centered, yconst=yconst, weights=weights,
+                                 column_selection=column_selection, diag_only=diag_only)
     else:
-        Cxx = _M2(X0, X0, mask_X=mask_X, mask_Y=mask_X,
-                  xsum=sx_centered, xconst=xconst, ysum=sx_centered, yconst=xconst, weights=weights)
-        Cxy = _M2(X0, Y0, mask_X=mask_X, mask_Y=mask_Y,
-                  xsum=sx_centered, xconst=xconst, ysum=sy_centered, yconst=yconst, weights=weights)
+        if column_selection is not None:
+            if is_sparse:
+                Xk = X[:, column_selection]
+                mask_Xk = mask_X[column_selection]
+                X0k = Xk[:, mask_Xk]
+                xksum = sx_centered[column_selection]
+                xkconst = Xk[0, ~mask_Xk]
+                X0k, xkconst = _copy_convert(X0k, const=xkconst, remove_mean=remove_mean,
+                                             copy=True)
+
+                Yk = Y[:, column_selection]
+                mask_Yk = mask_Y[column_selection]
+                Y0k = Yk[:, mask_Yk]
+                yksum = sy_centered[column_selection]
+                ykconst = Yk[0, ~mask_Yk]
+                Y0k, ykconst = _copy_convert(Y0k, const=ykconst, remove_mean=remove_mean,
+                                             copy=True)
+
+                Cxx = _M2(X0, X0k, mask_X=mask_X, mask_Y=mask_Xk, xsum=sx_centered, xconst=xconst, ysum=xksum, yconst=xkconst,
+                        weights=weights)
+                Cxy = _M2(X0, Y0k, mask_X=mask_X, mask_Y=mask_Yk, xsum=sx_centered, xconst=xconst, ysum=yksum, yconst=ykconst,
+                        weights=weights)
+            else:
+                X0k = X0[:, column_selection]
+                Y0k = Y0[:, column_selection]
+                Cxx = _M2(X0, X0k, mask_X=mask_X, mask_Y=mask_X, xsum=sx_centered, xconst=xconst,
+                        ysum=sx_centered[column_selection], yconst=xconst, weights=weights)
+                Cxy = _M2(X0, Y0k, mask_X=mask_X, mask_Y=mask_Y, xsum=sx_centered, xconst=xconst,
+                        ysum=sy_centered[column_selection], yconst=yconst, weights=weights)
+        else:
+            Cxx = _M2(X0, X0, mask_X=mask_X, mask_Y=mask_X, xsum=sx_centered, xconst=xconst, ysum=sx_centered, yconst=xconst,
+                      weights=weights, diag_only=diag_only)
+            Cxy = _M2(X0, Y0, mask_X=mask_X, mask_Y=mask_Y, xsum=sx_centered, xconst=xconst, ysum=sy_centered, yconst=yconst,
+                      weights=weights, diag_only=diag_only)
 
     return w, sx, sy, Cxx, Cxy
 
 
 def moments_block(X, Y, remove_mean=False, modify_data=False,
-                  sparse_mode='auto', sparse_tol=0.0):
+                  sparse_mode='auto', sparse_tol=0.0,
+                  column_selection=None, diag_only=False):
     """ Computes the first two unnormalized moments of X and Y
 
     Computes
@@ -743,6 +881,10 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
         is not given) of the covariance matrix will be set to zero. If Y is
         given and max(abs(Y[:, i])) < sparse_tol, then column i of the
         covariance matrix will be set to zero.
+    column_selection: ndarray(k, dtype=int) or None
+        Indices of those columns that are to be computed. If None, all columns are computed.
+    diag_only: bool
+        If True, the computation is restricted to the diagonal entries (autocorrelations) only.
 
     Returns
     -------
@@ -755,11 +897,18 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
         C[0,0] = Cxx, C[0,1] = Cxy, C[1,0] = Cyx, C[1,1] = Cyy
 
     """
+    # diag_only is only implemented for dense mode
+    if diag_only and sparse_mode is not 'dense':
+        if sparse_mode is 'sparse':
+            import warnings
+            warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
+        sparse_mode = 'dense'
     # sparsify
     X0, mask_X, xconst = _sparsify(X, sparse_mode=sparse_mode, sparse_tol=sparse_tol)
     Y0, mask_Y, yconst = _sparsify(Y, sparse_mode=sparse_mode, sparse_tol=sparse_tol)
+    is_sparse = mask_X is not None and mask_Y is not None
     # copy / convert
-    copy = sparse_mode or (remove_mean and not modify_data)
+    copy = is_sparse or (remove_mean and not modify_data)
     X0, xconst = _copy_convert(X0, const=xconst, copy=copy)
     Y0, yconst = _copy_convert(Y0, const=yconst, copy=copy)
     # sum / center
@@ -769,14 +918,60 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
         _center(X0, w, sx, mask=mask_X, const=xconst, inplace=True)  # fast in-place centering
         _center(Y0, w, sy, mask=mask_Y, const=yconst, inplace=True)  # fast in-place centering
 
-    Cxx = _M2(X0, X0, mask_X=mask_X, mask_Y=mask_X,
-              xsum=sx_centered, xconst=xconst, ysum=sx_centered, yconst=xconst)
-    Cxy = _M2(X0, Y0, mask_X=mask_X, mask_Y=mask_Y,
-              xsum=sx_centered, xconst=xconst, ysum=sy_centered, yconst=yconst)
-    Cyy = _M2(Y0, Y0, mask_X=mask_Y, mask_Y=mask_Y,
-              xsum=sy_centered, xconst=yconst, ysum=sy_centered, yconst=yconst)
+    if column_selection is not None:
+        if is_sparse:
+            Xk = X[:, column_selection]
+            mask_Xk = mask_X[column_selection] if mask_X is not None else mask_X
+            X0k = Xk[:, mask_Xk]
+            xksum = sx_centered[column_selection]
+            xkconst = Xk[0, ~mask_Xk]
+            X0k, xkconst = _copy_convert(X0k, const=xkconst, remove_mean=remove_mean,
+                                         copy=True)
 
-    return w, [sx, sy], [[Cxx, Cxy], [Cxy.T, Cyy]]
+            Yk = Y[:, column_selection]
+            mask_Yk = mask_Y[column_selection] if mask_Y is not None else mask_Y
+            Y0k = Yk[:, mask_Yk]
+            yksum = sy_centered[column_selection]
+            ykconst = Yk[0, ~mask_Yk]
+            Y0k, ykconst = _copy_convert(Y0k, const=ykconst, remove_mean=remove_mean,
+                                         copy=True)
+
+            Cxx = _M2(X0, X0k, mask_X=mask_X, mask_Y=mask_Xk,
+                      xsum=sx_centered, xconst=xconst, ysum=xksum, yconst=xkconst)
+            Cxy = _M2(X0, Y0k, mask_X=mask_X, mask_Y=mask_Yk,
+                      xsum=sx_centered, xconst=xconst, ysum=yksum, yconst=ykconst)
+            Cyx = _M2(Y0, X0k, mask_X=mask_Y, mask_Y=mask_Xk,
+                      xsum=sy_centered, xconst=yconst, ysum=xksum, yconst=xkconst)
+            Cyy = _M2(Y0, Y0k, mask_X=mask_Y, mask_Y=mask_Yk,
+                      xsum=sy_centered, xconst=yconst, ysum=yksum, yconst=ykconst)
+        else:
+            X0k = X0[:, column_selection]
+            Y0k = Y0[:, column_selection]
+            Cxx = _M2(X0, X0k, mask_X=mask_X, mask_Y=mask_X,
+                      xsum=sx_centered, xconst=xconst,
+                      ysum=sx_centered[column_selection], yconst=xconst)
+            Cxy = _M2(X0, Y0k, mask_X=mask_X, mask_Y=mask_Y,
+                      xsum=sx_centered, xconst=xconst,
+                      ysum=sy_centered[column_selection], yconst=yconst)
+            Cyx = _M2(Y0, X0k, mask_X=mask_Y, mask_Y=mask_X,
+                      xsum=sy_centered, xconst=yconst,
+                      ysum=sx_centered[column_selection], yconst=xconst)
+            Cyy = _M2(Y0, Y0k, mask_X=mask_Y, mask_Y=mask_Y,
+                      xsum=sy_centered, xconst=yconst,
+                      ysum=sy_centered[column_selection], yconst=yconst)
+    else:
+        Cxx = _M2(X0, X0, mask_X=mask_X, mask_Y=mask_X,
+                  xsum=sx_centered, xconst=xconst, ysum=sx_centered, yconst=xconst,
+                  diag_only=diag_only)
+        Cxy = _M2(X0, Y0, mask_X=mask_X, mask_Y=mask_Y,
+                  xsum=sx_centered, xconst=xconst, ysum=sy_centered, yconst=yconst,
+                  diag_only=diag_only)
+        Cyx = Cxy.T
+        Cyy = _M2(Y0, Y0, mask_X=mask_Y, mask_Y=mask_Y,
+                  xsum=sy_centered, xconst=yconst, ysum=sy_centered, yconst=yconst,
+                  diag_only=diag_only)
+
+    return w, [sx, sy], [[Cxx, Cxy], [Cyx, Cyy]]
 
 
 def covar(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='auto', sparse_tol=0.0):

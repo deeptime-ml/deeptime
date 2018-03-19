@@ -38,6 +38,21 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
 
     Removes all negligible eigenvalues
 
+    Parameters
+    ----------
+    W : ndarray((n, n), dtype=float)
+        Symmetric positive-definite (spd) matrix.
+    epsilon : float
+        Truncation parameter. Eigenvalues with norms smaller than this cutoff will
+        be removed.
+    method : str
+        Method to perform the decomposition of :math:`W` before inverting. Options are:
+
+        * 'QR': QR-based robust eigenvalue decomposition of W
+        * 'schur': Schur decomposition of W
+    canonical_signs : boolean, default = False
+        Fix signs in V, s. t. the largest element of in every row of V is positive.
+
     Returns
     -------
     s : ndarray(k)
@@ -45,7 +60,6 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
 
     V : ndarray(n, k)
         k leading eigenvectors
-
     """
     # check input
     assert _np.allclose(W.T, W), 'W is not a symmetric matrix: diff ||W-W.T||: %s' % _np.linalg.norm(W-W.T)
@@ -87,11 +101,12 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
     return sm, Vm
 
 
-def spd_inv(W, epsilon=1e-10, method='QR', canonical_signs=False):
+def spd_inv(W, epsilon=1e-10, method='QR'):
     """
     Compute matrix inverse of symmetric positive-definite matrix :math:`W`.
 
-    by first reducing W to a low-rank approximation that is truly spd.
+    by first reducing W to a low-rank approximation that is truly spd
+    (Moore-Penrose inverse).
 
     Parameters
     ----------
@@ -106,26 +121,26 @@ def spd_inv(W, epsilon=1e-10, method='QR', canonical_signs=False):
         * 'QR': QR-based robust eigenvalue decomposition of W
         * 'schur': Schur decomposition of W
 
-     canonical_signs : boolean, default = False
-        Fix signs in L, s. t. the largest element of in every row of L is positive.
-
     Returns
     -------
     L : ndarray((n, r))
-        Matrix :math:`L` from the decomposition :math:`W^{-1} = L L^T`.
+        the Moore-Penrose inverse of the symmetric positive-definite matrix :math:`W`
 
     """
     if (_np.shape(W)[0] == 1):
+        if W[0,0] < epsilon:
+            raise _ZeroRankError(
+                'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)
         Winv = 1./W[0,0]
     else:
-        sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
+        sm, Vm = spd_eig(W, epsilon=epsilon, method=method)
         Winv = _np.dot(Vm, _np.diag(1.0 / sm)).dot(Vm.T)
 
     # return split
     return Winv
 
 
-def spd_inv_sqrt(W, epsilon=1e-10, method='QR', canonical_signs=False, return_rank=False):
+def spd_inv_sqrt(W, epsilon=1e-10, method='QR', return_rank=False):
     """
     Computes :math:`W^{-1/2}` of symmetric positive-definite matrix :math:`W`.
 
@@ -144,20 +159,20 @@ def spd_inv_sqrt(W, epsilon=1e-10, method='QR', canonical_signs=False, return_ra
         * 'QR': QR-based robust eigenvalue decomposition of W
         * 'schur': Schur decomposition of W
 
-     canonical_signs : boolean, default = False
-        Fix signs in L, s. t. the largest element of in every row of L is positive.
-
     Returns
     -------
     L : ndarray((n, r))
-        Matrix :math:`L` from the decomposition :math:`W^{-1} = L L^T`.
+        :math:`W^{-1/2}` after reduction of W to a low-rank spd matrix
 
     """
     if _np.shape(W)[0] == 1:
+        if W[0,0] < epsilon:
+            raise _ZeroRankError(
+                'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)
         Winv = 1./_np.sqrt(W[0, 0])
         sm = _np.ones(1)
     else:
-        sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
+        sm, Vm = spd_eig(W, epsilon=epsilon, method=method)
         Winv = _np.dot(Vm, _np.diag(1.0 / _np.sqrt(sm))).dot(Vm.T)
 
     # return split
@@ -196,6 +211,9 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
 
     """
     if (_np.shape(W)[0] == 1):
+        if W[0,0] < epsilon:
+            raise _ZeroRankError(
+                'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)
         L = 1./_np.sqrt(W[0,0])
     else:
         sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
