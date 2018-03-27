@@ -16,7 +16,10 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" Scikit-Time
 
+
+"""
 
 from __future__ import print_function, absolute_import
 
@@ -31,13 +34,13 @@ from setup_util import lazy_cythonize
 try:
     from setuptools import setup, Extension, find_packages
 except ImportError as ie:
-    print("PyEMMA requires setuptools. Please install it with conda or pip.")
+    print("Scikit-Time requires setuptools. Please install it with conda or pip.")
     sys.exit(1)
 
 DOCLINES = __doc__.split("\n")
 
 CLASSIFIERS = """\
-Development Status :: 5 - Production/Stable
+Development Status :: 1 - Production/Stable
 Environment :: Console
 Environment :: MacOS X
 Intended Audience :: Science/Research
@@ -223,10 +226,10 @@ metadata = dict(
     name='scikit-time',
     maintainer='Martin K. Scherer',
     maintainer_email='m.scherer@fu-berlin.de',
-    url='http://github.com/scikit-time/scikit-time',
+    url='https://github.com/scikit-time/scikit-time',
     license='LGPLv3+',
     description=DOCLINES[0],
-    long_description=open('README.rst', encoding='utf8').read(),
+    long_description=open('README.md', encoding='utf8').read(),
     version=versioneer.get_version(),
     platforms=["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"],
     classifiers=[c for c in CLASSIFIERS.split('\n') if c],
@@ -239,7 +242,7 @@ metadata = dict(
     install_requires=[
         'numpy>=1.8.0',
         'scipy>=0.11',
-        'tqdm',
+        #'tqdm',
     ],
     zip_safe=False,
 )
