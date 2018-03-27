@@ -3,7 +3,7 @@ git:
   submodules: false
   depth: 500
 os:
- - osx
+# - osx # TODO: re-enable in production
  - linux
 
 sudo: false
