@@ -1,0 +1,28 @@
+language: c
+git:
+  submodules: false
+  depth: 500
+os:
+ - osx
+ - linux
+
+sudo: false
+
+env:
+  global:
+    - MINICONDA_DIR="$HOME/miniconda"
+    - PYTHONHASHSEED=0
+    - OMP_NUM_THREADS=2
+    - MACOSX_DEPLOYMENT_TARGET=10.9
+  matrix:
+    - CONDA_PY=3.5
+    - CONDA_PY=3.6
+
+before_install:
+- source devtools/ci/travis/install_miniconda.sh
+
+script:
+- conda build -q devtools/conda-recipe
+
+after_script:
+- bash <(curl -s https://codecov.io/bash) -f $HOME/coverage.xml -e CONDA_PY
