@@ -1,5 +1,5 @@
 package:
-  name: pyemma-dev
+  name: scikit-time-dev
   # version number: [base tag]+[commits-upstream]_[git_hash]
   # eg. v2.0+0_g8824162
   version: {{ GIT_DESCRIBE_TAG[1:] + '+' + GIT_BUILD_STR}}
@@ -9,17 +9,14 @@ source:
   #git_url: ../../
 
 build:
-  preserve_egg_dir: True
   script_env:
    - CIRCLE_TEST_REPORTS
    - OMP_NUM_THREADS
-   - PYEMMA_NJOBS
   script: python setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
     - cython
-    - mdtraj
     # actually we could build with np18, but fastcluster (dep of mdtraj, we link against) is only avail for 1.9
     - numpy 1.9.*  # [not (win and (py35 or py36))]
     - numpy 1.9.*  # [win and py35]
@@ -30,33 +27,19 @@ requirements:
     - toolchain
 
   run:
-    - bhmm >=0.6,<0.7
-    - decorator >=4.0.0
-    - h5py
-    - matplotlib
-    - mdtraj
-    - mock # TODO: remove when py3k only.
-    - msmtools >=1.2
     - numpy >=1.9,<1.14  # [not (win and (py35 or py36))]
     - numpy >=1.9,<1.14  # [win and py35]
     - numpy >=1.11,<1.14 # [win and py36]
-    - pathos
-    - psutil >3.1
     - python
-    - pyyaml
-    - pathos
     - scipy
     - setuptools
     - six >=1.10
-    - thermotools >=0.2.6
-    - tqdm
+    # - tqdm
 
 test:
   source_files:
-    - conftest.py
+    #- conftest.py
     - setup.cfg
-  files:
-    - matplotlibrc
   requires:
     - pytest
     - pytest-cov
@@ -67,8 +50,3 @@ test:
     - scikit-learn
     # https://github.com/Frozenball/pytest-sugar/issues/124
     #- pytest-sugar
-
-about:
-  home: http://emma-project.org
-  license: GNU Lesser Public License v3+
-  summary: "EMMA: Emma's Markov Model Algorithms"
