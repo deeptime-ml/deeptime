@@ -19,10 +19,7 @@ import itertools
 
 import numpy as np
 
-from pyemma._base.serialization.serialization import SerializableMixIn
-from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
-from pyemma.coordinates.data.util.reader_utils import preallocate_empty_trajectory
-from pyemma.util.annotators import fix_docs
+from sktime.data._base.datasource import DataSourceIterator, DataSource
 
 
 class _FragmentedTrajectoryIterator(object):
@@ -158,12 +155,12 @@ class _FragmentedTrajectoryIterator(object):
         return self.__next__()
 
     def _allocate_chunk(self, expected_length, ndim):
-        from pyemma.coordinates.data.feature_reader import FeatureReader
-        if all(isinstance(r, FeatureReader) and r._return_traj_obj for r in self._readers):
-            X = preallocate_empty_trajectory(n_frames=expected_length,
-                                             top=self._readers[0].featurizer.topology)
-        else:
-            X = np.empty((expected_length, ndim), dtype=self._frag_reader.output_type())
+        #from pyemma.coordinates.data.feature_reader import FeatureReader
+        #if all(isinstance(r, FeatureReader) and r._return_traj_obj for r in self._readers):
+            #X = preallocate_empty_trajectory(n_frames=expected_length,
+            #                                 top=self._readers[0].featurizer.topology)
+        #else:
+        X = np.empty((expected_length, ndim), dtype=self._frag_reader.output_type())
 
         return X
 
@@ -319,8 +316,8 @@ class FragmentIterator(DataSourceIterator):
             self._it.close()
 
 
-@fix_docs
-class FragmentedTrajectoryReader(DataSource, SerializableMixIn):
+#@fix_docs
+class FragmentedTrajectoryReader(DataSource):
     __serialize_version = 0
     """ Reader for fragmented trajectory data eg. (traj0_part0.xtc, traj_0_part1.xtc, ... )
 

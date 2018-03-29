@@ -23,16 +23,14 @@ import numbers
 
 import numpy as np
 
-from pyemma._base.serialization.serialization import SerializableMixIn
-from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
-from pyemma.coordinates.data._base.random_accessible import RandomAccessStrategy
-from pyemma.util.annotators import fix_docs
+from sktime.data._base.random_accessible import RandomAccessStrategy
+from sktime.data._base.datasource import DataSource, DataSourceIterator
 
 __author__ = 'noe, marscher'
 
 
-@fix_docs
-class DataInMemory(DataSource, SerializableMixIn):
+#@fix_docs
+class DataInMemory(DataSource):
     r"""
     multi-dimensional data fully stored in memory.
 

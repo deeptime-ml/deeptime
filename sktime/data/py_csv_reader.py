@@ -28,10 +28,7 @@ from math import ceil
 
 import numpy as np
 
-from pyemma._base.serialization.serialization import SerializableMixIn
-from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
-from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
-from pyemma.util.annotators import fix_docs
+from sktime.data._base.datasource import DataSourceIterator, DataSource
 
 
 class PyCSVIterator(DataSourceIterator):
@@ -182,8 +179,8 @@ def _dialect_to_str(dialect):
     return str(s.read())
 
 
-@fix_docs
-class PyCSVReader(DataSource, SerializableMixIn):
+#@fix_docs
+class PyCSVReader(DataSource):
     r""" Reader for tabulated ASCII data
 
     This class uses numpy to interpret string data to array data.

@@ -26,15 +26,12 @@ import functools
 
 import numpy as np
 
-from pyemma._base.serialization.serialization import SerializableMixIn
-from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
-from pyemma.coordinates.data.data_in_memory import DataInMemoryIterator
-from pyemma.coordinates.data.util.traj_info_cache import TrajInfo
-from pyemma.util.annotators import fix_docs
+from sktime.data.data_in_memory import DataInMemoryIterator
+from sktime.data._base.datasource import DataSource
 
 
-@fix_docs
-class NumPyFileReader(DataSource, SerializableMixIn):
+#@fix_docs
+class NumPyFileReader(DataSource):
     __serialize_version = 0
 
     """reads NumPy files in chunks. Supports .npy files

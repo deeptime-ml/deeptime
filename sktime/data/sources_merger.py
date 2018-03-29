@@ -1,12 +1,11 @@
 import numpy as np
 
-from pyemma._base.serialization.serialization import SerializableMixIn
-from pyemma.coordinates.data._base.datasource import DataSourceIterator, DataSource
+from sktime.data._base.datasource import DataSource, DataSourceIterator
 
 __author__ = 'marscher'
 
 
-class SourcesMerger(DataSource, SerializableMixIn):
+class SourcesMerger(DataSource):
     __serialize_version = 0
     """ Combines multiple data sources to stream from.
 
