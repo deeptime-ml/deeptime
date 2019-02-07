@@ -67,7 +67,7 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
     assert _np.allclose(W.T, W), 'W is not a symmetric matrix'
 
     if method.lower() == 'qr':
-        from .eig_qr.eig_qr import eig_qr
+        from .eig_qr import eig_qr
         s, V = eig_qr(W)
     # compute the Eigenvalues of C0 using Schur factorization
     elif method.lower() == 'schur':

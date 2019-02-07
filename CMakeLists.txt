@@ -25,6 +25,6 @@ if(SKTIME_BUILD_TESTING)
     endif ()
 endif()
 
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/pybind11)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/pybind11)
 
 add_subdirectory(sktime/covariance/util/covar_c)

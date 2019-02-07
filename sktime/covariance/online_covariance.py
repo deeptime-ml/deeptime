@@ -1,6 +1,4 @@
 import numpy as np
-import numbers
-from math import log
 
 from sktime.base import Estimator
 from .util.running_moments import running_covar as running_covar
@@ -11,9 +9,20 @@ __author__ = 'paul, nueske, marscher, clonker'
 
 
 class OnlineCovarianceModel(object):
-    def __init__(self, estimator_params=None):
-        if estimator_params is not None:
-            self.__dict__.update(**estimator_params)
+    def __init__(self, compute_c00, compute_c0t, compute_ctt, remove_data_mean, reversible, bessel, sparse_mode,
+                 lagtime, ncov, column_selection, diag_only):
+
+        self.compute_c00 = compute_c00
+        self.compute_c0t = compute_c0t
+        self.compute_ctt = compute_ctt
+        self.remove_data_mean = remove_data_mean
+        self.reversible = reversible
+        self.bessel = bessel
+        self.sparse_mode = sparse_mode
+        self.lagtime = lagtime
+        self.ncov = ncov
+        self.column_selection = column_selection
+        self.diag_only = diag_only
 
         self._cov_00 = None
         self._cov_01 = None
@@ -43,7 +52,7 @@ class OnlineCovarianceModel(object):
 
     @property
     def lagged(self):
-        return self.c0t or self.ctt
+        return self.compute_c0t or self.compute_ctt
 
 
 class OnlineCovariance(Estimator):
@@ -60,10 +69,8 @@ class OnlineCovariance(Estimator):
      ctt : bool, optional, default=False
          compute instantaneous correlations over the time-shifted chunks of the data. Does not work with lag==0.
          Makes the Ctt_ attribute available.
-     remove_constant_mean : ndarray(N,), optional, default=None
-         substract a constant vector of mean values from time series.
      remove_data_mean : bool, optional, default=False
-         substract the sample mean from the time series (mean-free correlations).
+         subtract the sample mean from the time series (mean-free correlations).
      reversible : bool, optional, default=False
          symmetrize correlations.
      bessel : bool, optional, default=True
@@ -73,25 +80,8 @@ class OnlineCovariance(Estimator):
              * 'dense' : always use dense mode
              * 'auto' : automatic
              * 'sparse' : always use sparse mode if possible
-     modify_data : bool, optional, default=False
-         If remove_data_mean=True, the mean will be removed in the input data, without creating an independent copy.
-         This option is faster but should only be selected if the input data is not used elsewhere.
-     lag : int, optional, default=0
+     lagtime: int, optional, default=0
          lag time. Does not work with c0t=True or ctt=True.
-     weights : trajectory weights.
-         one of:
-             * None :    all frames have weight one.
-             * float :   all frames have the same specified weight.
-             * object:   an object that possesses a .weight(X) function in order to assign weights to every
-                         time step in a trajectory X.
-             * list of arrays: ....
-
-     stride: int, optional, default = 1
-         Use only every stride-th time step. By default, every time step is used.
-     skip : int, optional, default=0
-         skip the first initial n frames per trajectory.
-     chunksize : deprecated, default=NotImplemented
-         The chunk size should now be set during estimation.
      column_selection: ndarray(k, dtype=int) or None
          Indices of those columns that are to be computed. If None, all columns are computed.
      diag_only: bool
@@ -100,9 +90,8 @@ class OnlineCovariance(Estimator):
      """
 
     def __init__(self, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
-                 reversible=False,
-                 bessel=True, sparse_mode='auto', modify_data=False, lagtime=0, weights=None,
-                 ncov=5, column_selection=None, diag_only=False):
+                 reversible=False, bessel=True, sparse_mode='auto', lagtime=0, ncov=5, column_selection=None,
+                 diag_only=False):
 
         if (compute_c0t or compute_ctt) and lagtime == 0:
             raise ValueError("lag must be positive if compute_c0t=True or compute_ctt=True")
@@ -117,28 +106,26 @@ class OnlineCovariance(Estimator):
             sparse_mode = 'dense'
 
         self._model = OnlineCovarianceModel(
-            estimator_params=dict(compute_c00=compute_c00, compute_c0t=compute_c0t, compute_ctt=compute_ctt,
-                                  remove_data_mean=remove_data_mean, reversible=reversible,
-                                  sparse_mode=sparse_mode, modify_data=modify_data, lagtime=lagtime,
-                                  bessel=bessel,
-                                  weights=weights, ncov=ncov,
-                                  column_selection=column_selection, diag_only=diag_only))
+            compute_c00=compute_c00, compute_c0t=compute_c0t, compute_ctt=compute_ctt,
+            remove_data_mean=remove_data_mean, reversible=reversible, sparse_mode=sparse_mode,
+            lagtime=lagtime,bessel=bessel, ncov=ncov, column_selection=column_selection, diag_only=diag_only)
 
         self._rc = running_covar(xx=self._model.compute_c00, xy=self._model.compute_c0t, yy=self._model.compute_ctt,
                                  remove_mean=self._model.remove_data_mean, symmetrize=self._model.reversible,
-                                 sparse_mode=self._model.sparse_mode, modify_data=self._model.modify_data,
+                                 sparse_mode=self._model.sparse_mode, modify_data=False,
                                  column_selection=self._model.column_selection, diag_only=self._model.diag_only,
                                  nsave=ncov)
 
-    def fit(self, data, partial_fit=False):
+    def fit(self, data, n_splits=None, partial_fit=False):
+
+        if n_splits is None:
+            n_splits = int(len(data[0]) // 100 if len(data[0]) >= 1e4 else 1)
         if self._model.lagged:
             if not (isinstance(data, (list, tuple)) and len(data) == 2 and len(data[0]) == len(data[1])):
                 raise ValueError("Expected tuple of arrays of equal length!")
             x, x_lagged = data
         else:
             x, x_lagged = data, np.array([], dtype=data.dtype)
-
-        n_splits = self._model.n_splits
 
         for X, Y in zip(np.array_split(x, n_splits), np.array_split(x_lagged, n_splits)):
             assert len(X) == len(Y) or (not self._model.lagged and len(Y) == 0)
