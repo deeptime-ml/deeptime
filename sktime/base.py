@@ -21,20 +21,3 @@ class Estimator(object):
         """
         import copy
         return copy.deepcopy(self.model)
-
-
-
-
-
-
-
-trajs = ["xyz.xyz", "abc.xyz"]
-
-t = TICA()
-
-for traj in trajs:
-    for data in read_this(traj).lag(10):
-        t.partial_fit(data)
-
-estimated_model = t.copy_current_model()
-estimated_model.lagtime

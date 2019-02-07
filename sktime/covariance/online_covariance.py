@@ -9,20 +9,7 @@ __author__ = 'paul, nueske, marscher, clonker'
 
 
 class OnlineCovarianceModel(object):
-    def __init__(self, compute_c00, compute_c0t, compute_ctt, remove_data_mean, reversible, bessel, sparse_mode,
-                 lagtime, ncov, column_selection, diag_only):
-
-        self.compute_c00 = compute_c00
-        self.compute_c0t = compute_c0t
-        self.compute_ctt = compute_ctt
-        self.remove_data_mean = remove_data_mean
-        self.reversible = reversible
-        self.bessel = bessel
-        self.sparse_mode = sparse_mode
-        self.lagtime = lagtime
-        self.ncov = ncov
-        self.column_selection = column_selection
-        self.diag_only = diag_only
+    def __init__(self):
 
         self._cov_00 = None
         self._cov_01 = None
@@ -49,10 +36,6 @@ class OnlineCovarianceModel(object):
     @property
     def mean_1(self):
         return self._mean_1
-
-    @property
-    def lagged(self):
-        return self.compute_c0t or self.compute_ctt
 
 
 class OnlineCovariance(Estimator):
@@ -90,14 +73,12 @@ class OnlineCovariance(Estimator):
      """
 
     def __init__(self, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
-                 reversible=False, bessel=True, sparse_mode='auto', lagtime=0, ncov=5, column_selection=None,
+                 reversible=False, bessel=True, sparse_mode='auto', lagtime=0, ncov=5,
                  diag_only=False):
 
         if (compute_c0t or compute_ctt) and lagtime == 0:
             raise ValueError("lag must be positive if compute_c0t=True or compute_ctt=True")
 
-        if column_selection is not None and diag_only:
-            raise ValueError('Computing only parts of the diagonal is not supported.')
         if diag_only and sparse_mode is not 'dense':
             if sparse_mode is 'sparse':
                 import warnings
@@ -105,22 +86,33 @@ class OnlineCovariance(Estimator):
                               'mode.')
             sparse_mode = 'dense'
 
-        self._model = OnlineCovarianceModel(
-            compute_c00=compute_c00, compute_c0t=compute_c0t, compute_ctt=compute_ctt,
-            remove_data_mean=remove_data_mean, reversible=reversible, sparse_mode=sparse_mode,
-            lagtime=lagtime,bessel=bessel, ncov=ncov, column_selection=column_selection, diag_only=diag_only)
+        self._model = OnlineCovarianceModel()
 
-        self._rc = running_covar(xx=self._model.compute_c00, xy=self._model.compute_c0t, yy=self._model.compute_ctt,
-                                 remove_mean=self._model.remove_data_mean, symmetrize=self._model.reversible,
-                                 sparse_mode=self._model.sparse_mode, modify_data=False,
-                                 column_selection=self._model.column_selection, diag_only=self._model.diag_only,
+        self.compute_c00 = compute_c00
+        self.compute_c0t = compute_c0t
+        self.compute_ctt = compute_ctt
+        self.remove_data_mean = remove_data_mean
+        self.reversible = reversible
+        self.bessel = bessel
+        self.sparse_mode = sparse_mode
+        self.lagtime = lagtime
+        self.ncov = ncov
+        self.diag_only = diag_only
+
+        self._rc = running_covar(xx=self.compute_c00, xy=self.compute_c0t, yy=self.compute_ctt,
+                                 remove_mean=self.remove_data_mean, symmetrize=self.reversible,
+                                 sparse_mode=self.sparse_mode, modify_data=False, diag_only=self.diag_only,
                                  nsave=ncov)
 
-    def fit(self, data, n_splits=None, partial_fit=False):
+    @property
+    def is_lagged(self) -> bool:
+        return self.compute_c0t or self.compute_ctt
 
+    def fit(self, data, n_splits=None, column_selection=None):
+        self._rc.clear()
         if n_splits is None:
             n_splits = int(len(data[0]) // 100 if len(data[0]) >= 1e4 else 1)
-        if self._model.lagged:
+        if self.is_lagged:
             if not (isinstance(data, (list, tuple)) and len(data) == 2 and len(data[0]) == len(data[1])):
                 raise ValueError("Expected tuple of arrays of equal length!")
             x, x_lagged = data
@@ -128,33 +120,37 @@ class OnlineCovariance(Estimator):
             x, x_lagged = data, np.array([], dtype=data.dtype)
 
         for X, Y in zip(np.array_split(x, n_splits), np.array_split(x_lagged, n_splits)):
-            assert len(X) == len(Y) or (not self._model.lagged and len(Y) == 0)
-            self.partial_fit((X, Y))
+            assert len(X) == len(Y) or (not self.is_lagged and len(Y) == 0)
+            self.partial_fit((X, Y), column_selection=column_selection)
 
         return self
 
-    def partial_fit(self, data):
+    def partial_fit(self, data, column_selection=None):
         """ incrementally update the estimates
 
         Parameters
         ----------
         data: array, list of arrays, PyEMMA reader
             input data.
+        column_selection: foo
         """
         X, Y = data
         try:
-            self._rc.add(X, Y)
+            self._rc.add(X, Y if len(Y) > 0 else None, column_selection=column_selection)
         except MemoryError:
             raise MemoryError('Covariance matrix does not fit into memory. '
                               'Input is too high-dimensional ({} dimensions). '.format(X.shape[1]))
         return self
 
     def _update_model(self):
-        self._model._cov_00 = self._rc.cov_XX(self._model.bessel)
-        self._model._cov_01 = self._rc.cov_XY(self._model.bessel)
-        self._model._cov_11 = self._rc.cov_YY(self._model.bessel)
-        self._model._mean_0 = self._rc.mean_X()
-        self._model._mean_1 = self._rc.mean_Y()
+        if self.compute_c0t: self._model._cov_01 = self._rc.cov_XY(self.bessel)
+        if self.compute_ctt: self._model._cov_11 = self._rc.cov_YY(self.bessel)
+        if self.compute_c00: self._model._cov_00 = self._rc.cov_XX(self.bessel)
+
+        if self.compute_c00 or self.compute_c0t:
+            self._model._mean_0 = self._rc.mean_X()
+        if self.compute_ctt or self.compute_c0t:
+            self._model._mean_1 = self._rc.mean_Y()
 
     @property
     def model(self):
