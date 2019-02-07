@@ -69,7 +69,6 @@ class OnlineCovariance(Estimator):
      diag_only: bool
          If True, the computation is restricted to the diagonal entries (autocorrelations) only.
      """
-
     def __init__(self, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
                  reversible=False, bessel=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
         super(OnlineCovariance, self).__init__(model=model)
@@ -133,9 +132,9 @@ class OnlineCovariance(Estimator):
 
         Parameters
         ----------
-        data: array, list of arrays, PyEMMA reader
-            input data.
-        column_selection: foo
+        data: numpy array or tuple of two numpy arrays in case of time-lagged estimation
+        weights: the weights as 1d array with length len(data)
+        column_selection: the column selection
         """
         if self.is_lagged:
             x, y = data
