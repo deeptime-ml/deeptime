@@ -108,7 +108,7 @@ class OnlineCovariance(Estimator):
     def is_lagged(self) -> bool:
         return self.compute_c0t or self.compute_ctt
 
-    def fit(self, data, n_splits=None, column_selection=None):
+    def fit(self, data, weights=None, n_splits=None, column_selection=None):
         self._rc.clear()
         if n_splits is None:
             if self.is_lagged:
@@ -123,13 +123,17 @@ class OnlineCovariance(Estimator):
         else:
             x, x_lagged = data, np.array([], dtype=data.dtype)
 
-        for X, Y in zip(np.array_split(x, n_splits), np.array_split(x_lagged, n_splits)):
+        if weights is not None and len(np.atleast_1d(weights)) != len(x):
+            raise ValueError("Weights have incompatible shape.")
+        wsplit = np.array_split(weights, n_splits) if weights is not None else [None] * n_splits
+
+        for X, Y, w in zip(np.array_split(x, n_splits), np.array_split(x_lagged, n_splits), wsplit):
             assert len(X) == len(Y) or (not self.is_lagged and len(Y) == 0)
-            self.partial_fit((X, Y), column_selection=column_selection)
+            self.partial_fit((X, Y), column_selection=column_selection, weights=w)
 
         return self
 
-    def partial_fit(self, data, column_selection=None):
+    def partial_fit(self, data, weights=None, column_selection=None):
         """ incrementally update the estimates
 
         Parameters
@@ -139,8 +143,10 @@ class OnlineCovariance(Estimator):
         column_selection: foo
         """
         X, Y = data
+        if weights is not None and len(X) != len(np.atleast_1d(weights)):
+            raise ValueError("Weights have incompatible ")
         try:
-            self._rc.add(X, Y if len(Y) > 0 else None, column_selection=column_selection)
+            self._rc.add(X, Y if len(Y) > 0 else None, column_selection=column_selection, weights=weights)
         except MemoryError:
             raise MemoryError('Covariance matrix does not fit into memory. '
                               'Input is too high-dimensional ({} dimensions). '.format(X.shape[1]))
