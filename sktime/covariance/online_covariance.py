@@ -12,30 +12,30 @@ class OnlineCovarianceModel(object):
     def __init__(self):
 
         self._cov_00 = None
-        self._cov_01 = None
-        self._cov_11 = None
+        self._cov_0t = None
+        self._cov_tt = None
         self._mean_0 = None
-        self._mean_1 = None
+        self._mean_t = None
 
     @property
     def cov_00(self):
         return self._cov_00
 
     @property
-    def cov_01(self):
-        return self._cov_01
+    def cov_0t(self):
+        return self._cov_0t
 
     @property
-    def cov_11(self):
-        return self._cov_11
+    def cov_tt(self):
+        return self._cov_tt
 
     @property
     def mean_0(self):
         return self._mean_0
 
     @property
-    def mean_1(self):
-        return self._mean_1
+    def mean_t(self):
+        return self._mean_t
 
 
 class OnlineCovariance(Estimator):
@@ -111,7 +111,11 @@ class OnlineCovariance(Estimator):
     def fit(self, data, n_splits=None, column_selection=None):
         self._rc.clear()
         if n_splits is None:
-            n_splits = int(len(data[0]) // 100 if len(data[0]) >= 1e4 else 1)
+            if self.is_lagged:
+                dlen = len(data[0])
+            else:
+                dlen = len(data)
+            n_splits = int(dlen // 100 if dlen >= 1e4 else 1)
         if self.is_lagged:
             if not (isinstance(data, (list, tuple)) and len(data) == 2 and len(data[0]) == len(data[1])):
                 raise ValueError("Expected tuple of arrays of equal length!")
@@ -143,14 +147,17 @@ class OnlineCovariance(Estimator):
         return self
 
     def _update_model(self):
-        if self.compute_c0t: self._model._cov_01 = self._rc.cov_XY(self.bessel)
-        if self.compute_ctt: self._model._cov_11 = self._rc.cov_YY(self.bessel)
-        if self.compute_c00: self._model._cov_00 = self._rc.cov_XX(self.bessel)
+        if self.compute_c0t:
+            self._model._cov_0t = self._rc.cov_XY(self.bessel)
+        if self.compute_ctt:
+            self._model._cov_tt = self._rc.cov_YY(self.bessel)
+        if self.compute_c00:
+            self._model._cov_00 = self._rc.cov_XX(self.bessel)
 
         if self.compute_c00 or self.compute_c0t:
             self._model._mean_0 = self._rc.mean_X()
         if self.compute_ctt or self.compute_c0t:
-            self._model._mean_1 = self._rc.mean_Y()
+            self._model._mean_t = self._rc.mean_Y()
 
     @property
     def model(self):

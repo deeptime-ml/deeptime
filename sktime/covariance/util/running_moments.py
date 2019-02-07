@@ -244,6 +244,9 @@ class RunningCovar(object):
         """
 
         # check input
+        #X = X if X.ndim >= 2 else X[..., np.newaxis]
+        #if Y is not None:
+        #    Y = Y if Y.ndim >= 2 else Y[..., np.newaxis]
         T = X.shape[0]
         if Y is not None:
             assert Y.shape[0] == T, 'X and Y must have equal length'

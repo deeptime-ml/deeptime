@@ -94,50 +94,52 @@ class TestCovarEstimator(unittest.TestCase):
         cls.Mxy_c_sym = (1.0 / cls.wsym) * (np.dot(cls.Xc.T, cls.Yc) + np.dot(cls.Yc.T, cls.Xc))
 
         # weighted moments, object case:
-        cls.weights_obj = cls.wobj.weights(cls.X)
-        cls.weights_obj_lag0 = cls.wobj.weights(cls.data)
-        cls.wesum_obj = np.sum(cls.weights_obj)
-        cls.wesum_obj_sym = 2*np.sum(cls.weights_obj)
-        cls.wesum_obj_lag0 = np.sum(cls.weights_obj_lag0)
-        cls.sx_wobj = (cls.weights_obj[:, None] * cls.X).sum(axis=0)
-        cls.sx_wobj_lag0 = (cls.weights_obj_lag0[:, None] * cls.data).sum(axis=0)
-        cls.sy_wobj = (cls.weights_obj[:, None] * cls.Y).sum(axis=0)
-        cls.Mxx_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.weights_obj[:, None] * cls.X).T, cls.X)
-        cls.Mxx_wobj_lag0 = (1.0 / cls.wesum_obj_lag0) * np.dot((cls.weights_obj_lag0[:, None] * cls.data).T, cls.data)
-        cls.Mxy_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.weights_obj[:, None] * cls.X).T, cls.Y)
+        cls.X_weights = cls.wobj.weights(cls.X)
+        cls.X_weighted = cls.X_weights[:, np.newaxis] * cls.X
+        cls.data_weights = cls.wobj.weights(cls.data)
+        cls.data_weighted = cls.data_weights[:, np.newaxis] * cls.data
+        cls.wesum_obj = np.sum(cls.X_weights)
+        cls.wesum_obj_sym = 2*np.sum(cls.X_weights)
+        cls.wesum_obj_lag0 = np.sum(cls.data_weights)
+        cls.sx_wobj = (cls.X_weights[:, None] * cls.X).sum(axis=0)
+        cls.sx_wobj_lag0 = (cls.data_weights[:, None] * cls.data).sum(axis=0)
+        cls.sy_wobj = (cls.X_weights[:, None] * cls.Y).sum(axis=0)
+        cls.Mxx_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.X_weights[:, None] * cls.X).T, cls.X)
+        cls.Mxx_wobj_lag0 = (1.0 / cls.wesum_obj_lag0) * np.dot((cls.data_weights[:, None] * cls.data).T, cls.data)
+        cls.Mxy_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.X_weights[:, None] * cls.X).T, cls.Y)
         cls.mx_wobj = cls.sx_wobj / float(cls.wesum_obj)
         cls.mx_wobj_lag0 = cls.sx_wobj_lag0 / float(cls.wesum_obj_lag0)
         cls.my_wobj = cls.sy_wobj / float(cls.wesum_obj)
         cls.X0_wobj = cls.X - cls.mx_wobj
         cls.X0_wobj_lag0 = cls.data - cls.mx_wobj_lag0
         cls.Y0_wobj = cls.Y - cls.my_wobj
-        cls.Mxx0_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.weights_obj[:, None] * cls.X0_wobj).T, cls.X0_wobj)
-        cls.Mxx0_wobj_lag0 = (1.0 / cls.wesum_obj_lag0) * np.dot((cls.weights_obj_lag0[:, None] * cls.X0_wobj_lag0).T
+        cls.Mxx0_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.X_weights[:, None] * cls.X0_wobj).T, cls.X0_wobj)
+        cls.Mxx0_wobj_lag0 = (1.0 / cls.wesum_obj_lag0) * np.dot((cls.data_weights[:, None] * cls.X0_wobj_lag0).T
                                                                  , cls.X0_wobj_lag0)
-        cls.Mxy0_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.weights_obj[:, None] * cls.X0_wobj).T, cls.Y0_wobj)
+        cls.Mxy0_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.X_weights[:, None] * cls.X0_wobj).T, cls.Y0_wobj)
 
         # weighted symmetric moments, object case:
         cls.s_sym_wobj = cls.sx_wobj + cls.sy_wobj
-        cls.Mxx_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.weights_obj[:, None] * cls.X).T, cls.X)\
-                           + np.dot((cls.weights_obj[:, None] * cls.Y).T, cls.Y))
-        cls.Mxy_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.weights_obj[:, None] * cls.X).T, cls.Y)\
-                           + np.dot((cls.weights_obj[:, None] * cls.Y).T, cls.X))
+        cls.Mxx_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.X_weights[:, None] * cls.X).T, cls.X) \
+                                                        + np.dot((cls.X_weights[:, None] * cls.Y).T, cls.Y))
+        cls.Mxy_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.X_weights[:, None] * cls.X).T, cls.Y) \
+                                                        + np.dot((cls.X_weights[:, None] * cls.Y).T, cls.X))
         cls.m_sym_wobj = cls.s_sym_wobj / float(2 * cls.wesum_obj)
         cls.X0_sym_wobj = cls.X - cls.m_sym_wobj
         cls.Y0_sym_wobj = cls.Y - cls.m_sym_wobj
-        cls.Mxx0_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.weights_obj[:, None] *cls.X0_sym_wobj).T,cls.X0_sym_wobj)\
-                            + np.dot((cls.weights_obj[:, None] *cls.Y0_sym_wobj).T, cls.Y0_sym_wobj))
-        cls.Mxy0_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.weights_obj[:, None] *cls.X0_sym_wobj).T, cls.Y0_sym_wobj)\
-                            + np.dot((cls.weights_obj[:, None] *cls.Y0_sym_wobj).T, cls.X0_sym_wobj))
+        cls.Mxx0_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.X_weights[:, None] * cls.X0_sym_wobj).T, cls.X0_sym_wobj) \
+                                                         + np.dot((cls.X_weights[:, None] * cls.Y0_sym_wobj).T, cls.Y0_sym_wobj))
+        cls.Mxy0_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.X_weights[:, None] * cls.X0_sym_wobj).T, cls.Y0_sym_wobj) \
+                                                         + np.dot((cls.X_weights[:, None] * cls.Y0_sym_wobj).T, cls.X0_sym_wobj))
 
         # weighted moments, object case, constant mean
-        cls.sx_c_wobj = (cls.weights_obj[:, None] * cls.Xc).sum(axis=0)
-        cls.sx_c_wobj_lag0 = (cls.weights_obj_lag0[:, None] * cls.Xc_lag0).sum(axis=0)
-        cls.sy_c_wobj = (cls.weights_obj[:, None] * cls.Yc).sum(axis=0)
-        cls.Mxx_c_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.weights_obj[:, None] * cls.Xc).T, cls.Xc)
-        cls.Mxx_c_wobj_lag0 = (1.0 / cls.wesum_obj_lag0) * np.dot((cls.weights_obj_lag0[:, None] * cls.Xc_lag0).T,
+        cls.sx_c_wobj = (cls.X_weights[:, None] * cls.Xc).sum(axis=0)
+        cls.sx_c_wobj_lag0 = (cls.data_weights[:, None] * cls.Xc_lag0).sum(axis=0)
+        cls.sy_c_wobj = (cls.X_weights[:, None] * cls.Yc).sum(axis=0)
+        cls.Mxx_c_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.X_weights[:, None] * cls.Xc).T, cls.Xc)
+        cls.Mxx_c_wobj_lag0 = (1.0 / cls.wesum_obj_lag0) * np.dot((cls.data_weights[:, None] * cls.Xc_lag0).T,
                                                                   cls.Xc_lag0)
-        cls.Mxy_c_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.weights_obj[:, None] * cls.Xc).T, cls.Yc)
+        cls.Mxy_c_wobj = (1.0 / cls.wesum_obj) * np.dot((cls.X_weights[:, None] * cls.Xc).T, cls.Yc)
         cls.mx_c_wobj = cls.sx_c_wobj / float(cls.wesum_obj)
         cls.mx_c_wobj_lag0 = cls.sx_c_wobj_lag0 / float(cls.wesum_obj_lag0)
         cls.my_c_wobj = cls.sy_c_wobj / float(cls.wesum_obj)
@@ -145,40 +147,39 @@ class TestCovarEstimator(unittest.TestCase):
         # weighted symmetric moments, object case:
         cls.s_c_sym_wobj = cls.sx_c_wobj + cls.sy_c_wobj
         cls.m_c_sym_wobj = cls.s_c_sym_wobj / float(cls.wesum_obj_sym)
-        cls.Mxx_c_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.weights_obj[:, None] * cls.Xc).T, cls.Xc)\
-                           + np.dot((cls.weights_obj[:, None] * cls.Yc).T, cls.Yc))
-        cls.Mxy_c_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.weights_obj[:, None] * cls.Xc).T, cls.Yc)\
-                           + np.dot((cls.weights_obj[:, None] * cls.Yc).T, cls.Xc))
+        cls.Mxx_c_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.X_weights[:, None] * cls.Xc).T, cls.Xc) \
+                                                          + np.dot((cls.X_weights[:, None] * cls.Yc).T, cls.Yc))
+        cls.Mxy_c_sym_wobj = (1.0 / cls.wesum_obj_sym) * (np.dot((cls.X_weights[:, None] * cls.Xc).T, cls.Yc) \
+                                                          + np.dot((cls.X_weights[:, None] * cls.Yc).T, cls.Xc))
 
         return cls
 
     def test_XX_with_mean(self):
         # many passes
-        estimatoer = OnlineCovariance(compute_c0t=False, remove_data_mean=False, bessel=False)
-        cc = estimatoer.fit(self.data).model
+        est = OnlineCovariance(compute_c0t=False, remove_data_mean=False, bessel=False)
+        cc = est.fit(self.data).model
         np.testing.assert_allclose(cc.mean_0, self.mx_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_lag0)
-        cc = estimatoer.fit(self.data, column_selection=self.cols_2).model
+        cc = est.fit(self.data, column_selection=self.cols_2).model
         np.testing.assert_allclose(cc.cov_00, self.Mxx_lag0[:, self.cols_2])
 
     def test_XX_meanfree(self):
         # many passes
-        cc = covariance_lagged(data=self.data, c0t=False, remove_data_mean=True, bessel=False, chunksize=self.chunksize)
-        np.testing.assert_allclose(cc.mean, self.mx_lag0)
-        np.testing.assert_allclose(cc.C00_, self.Mxx0_lag0)
-        cc.column_selection = self.cols_2
-        cc.estimate(self.data)
-        np.testing.assert_allclose(cc.C00_, self.Mxx0_lag0[:, self.cols_2])
+        est = OnlineCovariance(compute_c0t=False, remove_data_mean=True, bessel=False)
+        cc = est.fit(self.data).model
+        np.testing.assert_allclose(cc.mean_0, self.mx_lag0)
+        np.testing.assert_allclose(cc.cov_00, self.Mxx0_lag0)
+        cc = est.fit(self.data, column_selection=self.cols_2).model
+        np.testing.assert_allclose(cc.cov_00, self.Mxx0_lag0[:, self.cols_2])
 
     def test_XX_weightobj_withmean(self):
         # many passes
-        cc = covariance_lagged(data=self.data, c0t=False, remove_data_mean=False, weights=self.wobj, bessel=False,
-                               chunksize=self.chunksize)
-        np.testing.assert_allclose(cc.mean, self.mx_wobj_lag0)
-        np.testing.assert_allclose(cc.C00_, self.Mxx_wobj_lag0)
-        cc.column_selection = self.cols_2
-        cc.estimate(self.data)
-        np.testing.assert_allclose(cc.C00_, self.Mxx_wobj_lag0[:, self.cols_2])
+        est = OnlineCovariance(compute_c0t=False, remove_data_mean=False, bessel=False)
+        cc = est.fit(self.data_weighted, n_splits=10).model
+        np.testing.assert_allclose(cc.mean_0, self.mx_wobj_lag0)
+        np.testing.assert_allclose(cc.cov_00, self.Mxx_wobj_lag0)
+        cc = est.fit(self.data, column_selection=self.cols_2).model
+        np.testing.assert_allclose(cc.cov_00, self.Mxx_wobj_lag0[:, self.cols_2])
 
     def test_XX_weightobj_meanfree(self):
         # many passes
