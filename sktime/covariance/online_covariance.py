@@ -10,7 +10,6 @@ __author__ = 'paul, nueske, marscher, clonker'
 
 class OnlineCovarianceModel(object):
     def __init__(self):
-
         self._cov_00 = None
         self._cov_0t = None
         self._cov_tt = None
@@ -69,15 +68,11 @@ class OnlineCovariance(Estimator):
          Indices of those columns that are to be computed. If None, all columns are computed.
      diag_only: bool
          If True, the computation is restricted to the diagonal entries (autocorrelations) only.
-
      """
 
     def __init__(self, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
-                 reversible=False, bessel=True, sparse_mode='auto', lagtime=0, ncov=5,
-                 diag_only=False):
-
-        if (compute_c0t or compute_ctt) and lagtime == 0:
-            raise ValueError("lag must be positive if compute_c0t=True or compute_ctt=True")
+                 reversible=False, bessel=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
+        super(OnlineCovariance, self).__init__(model=model)
 
         if diag_only and sparse_mode is not 'dense':
             if sparse_mode is 'sparse':
@@ -86,8 +81,6 @@ class OnlineCovariance(Estimator):
                               'mode.')
             sparse_mode = 'dense'
 
-        self._model = OnlineCovarianceModel()
-
         self.compute_c00 = compute_c00
         self.compute_c0t = compute_c0t
         self.compute_ctt = compute_ctt
@@ -95,7 +88,6 @@ class OnlineCovariance(Estimator):
         self.reversible = reversible
         self.bessel = bessel
         self.sparse_mode = sparse_mode
-        self.lagtime = lagtime
         self.ncov = ncov
         self.diag_only = diag_only
 
@@ -103,6 +95,9 @@ class OnlineCovariance(Estimator):
                                  remove_mean=self.remove_data_mean, symmetrize=self.reversible,
                                  sparse_mode=self.sparse_mode, modify_data=False, diag_only=self.diag_only,
                                  nsave=ncov)
+
+    def _create_model(self):
+        return OnlineCovarianceModel()
 
     @property
     def is_lagged(self) -> bool:
@@ -127,9 +122,9 @@ class OnlineCovariance(Estimator):
             raise ValueError("Weights have incompatible shape.")
         wsplit = np.array_split(weights, n_splits) if weights is not None else [None] * n_splits
 
-        for X, Y, w in zip(np.array_split(x, n_splits), np.array_split(x_lagged, n_splits), wsplit):
-            assert len(X) == len(Y) or (not self.is_lagged and len(Y) == 0)
-            self.partial_fit((X, Y), column_selection=column_selection, weights=w)
+        for x_batch, y_batch, w in zip(np.array_split(x, n_splits), np.array_split(x_lagged, n_splits), wsplit):
+            assert len(x_batch) == len(y_batch) or (not self.is_lagged and len(y_batch) == 0)
+            self.partial_fit((x_batch, y_batch), column_selection=column_selection, weights=w)
 
         return self
 
@@ -142,14 +137,17 @@ class OnlineCovariance(Estimator):
             input data.
         column_selection: foo
         """
-        X, Y = data
-        if weights is not None and len(X) != len(np.atleast_1d(weights)):
+        if self.is_lagged:
+            x, y = data
+        else:
+            x, y = data, tuple()
+        if weights is not None and len(x) != len(np.atleast_1d(weights)):
             raise ValueError("Weights have incompatible ")
         try:
-            self._rc.add(X, Y if len(Y) > 0 else None, column_selection=column_selection, weights=weights)
+            self._rc.add(x, y if len(y) > 0 else None, column_selection=column_selection, weights=weights)
         except MemoryError:
             raise MemoryError('Covariance matrix does not fit into memory. '
-                              'Input is too high-dimensional ({} dimensions). '.format(X.shape[1]))
+                              'Input is too high-dimensional ({} dimensions). '.format(x.shape[1]))
         return self
 
     def _update_model(self):
