@@ -194,15 +194,13 @@ class TICAModelBase(Model):
         return np.dot(self.cov, self.eigenvectors[:, : self.dimension()]) / feature_sigma[:, np.newaxis]
 
 
-
-class TICABase(Estimator):
+# TODO: we need lag time in the model to compute timescales!
+class TICA(Estimator):
 
     r""" Time-lagged independent component analysis (TICA) [1]_, [2]_, [3]_.
 
     Parameters
     ----------
-    lag : int
-        lag time
     dim : int or float, optional, default 0.95
         Number of dimensions (independent components) to project onto.
 
@@ -214,19 +212,9 @@ class TICABase(Estimator):
         of dimensions such that the amount of kinetic variance
         that needs to be explained is greater than the percentage
         specified by dim.
-    var_cutoff: None, deprecated
-        use dim with a float in range (0, 1]
-    kinetic_map : bool, optional, default True, deprecated
-        use scaling='kinetic_map'
-    commute_map : bool, optional, default False, deprecated
-        use scaling='commute_map'
-    epsilon : float
+    epsilon : float or None
         eigenvalue norm cutoff. Eigenvalues of C0 with norms <= epsilon will be
         cut off. The remaining number of eigenvalues define the size of the output.
-    stride: int, optional, default = 1
-        Use only every stride-th time step. By default, every time step is used.
-    skip : int, default=0
-        skip the first initial n frames per trajectory.
     reversible: bool, default=True
         symmetrize correlation matrices C_0, C_{\tau}.
     scaling: str or None, default='kinetic_map'
@@ -279,11 +267,14 @@ class TICABase(Estimator):
     """
     def __init__(self, epsilon=None, reversible=True, dim=0.95,
                  scaling='kinetic_map'):
-        super(TICABase, self).__init__()
-        self.epsilon = epsilon
+        super(TICA, self).__init__()
+        # tica parameters
+        self._model.epsilon = epsilon
+        self._model.dim = dim
+        self._model.scaling = scaling
+
+        # online cov parameters
         self.reversible = reversible
-        self.dim = dim
-        self.scaling = scaling
 
     def _create_model(self) -> TICAModelBase:
         return TICAModelBase()
@@ -311,12 +302,8 @@ class TICABase(Estimator):
 
         Parameters
         ----------
-        X: array, list of arrays, PyEMMA reader
+        X: array, list of arrays
             input data.
-
-        Notes
-        -----
-        The projection matrix is first being calculated upon its first access.
         """
         if self._covar is None:
             self._covar = OnlineCovariance(compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
@@ -329,13 +316,8 @@ class TICABase(Estimator):
         covar = OnlineCovariance(compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
                                  reversible=self.reversible, bessel=False, ncov=5)
         covar.fit(X, **kw)
-
-        self.model.update_model_params(mean=covar.mean,
-                                       cov=covar.c00,
-                                       cov_tau=covar.c0t)
-        self.model._diagonalize()
-
-        return self.model
+        # TODO: consider returning self.fetch_model(), but this changes behaviour!
+        return self
 
     def fetch_model(self):
         if self._covar is None:
