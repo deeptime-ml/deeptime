@@ -111,19 +111,27 @@ class OnlineCovariance(Estimator):
                 dlen = len(data)
             n_splits = int(dlen // 100 if dlen >= 1e4 else 1)
         if self.is_lagged:
-            if not (isinstance(data, (list, tuple)) and len(data) == 2 and len(data[0]) == len(data[1])):
-                raise ValueError("Expected tuple of arrays of equal length!")
             x, x_lagged = data
         else:
-            x, x_lagged = data, np.array([], dtype=data.dtype)
+            x, x_lagged = data, np.empty((0,))
+
+        x, x_lagged = np.asarray_chkfinite(x), np.asarray_chkfinite(x_lagged)
+
+        assert len(x_lagged) == 0 or len(x) == len(x_lagged), f"Expected data and time lagged data of equal length " \
+            f"but got {len(x)} != {len(x_lagged)}"
 
         if weights is not None and len(np.atleast_1d(weights)) != len(x):
-            raise ValueError("Weights have incompatible shape.")
+            raise ValueError(f"Weights have incompatible shape "
+                             f"(#weights={len(weights) if weights is not None else None} != {len(x)}=#frames.")
         wsplit = np.array_split(weights, n_splits) if weights is not None else [None] * n_splits
 
         for x_batch, y_batch, w in zip(np.array_split(x, n_splits), np.array_split(x_lagged, n_splits), wsplit):
             assert len(x_batch) == len(y_batch) or (not self.is_lagged and len(y_batch) == 0)
-            self.partial_fit((x_batch, y_batch), column_selection=column_selection, weights=w)
+            assert w is None or len(x_batch) == len(w)
+            if not self.is_lagged:
+                self.partial_fit(x_batch, column_selection=column_selection, weights=w)
+            else:
+                self.partial_fit((x_batch, y_batch), column_selection=column_selection, weights=w)
 
         return self
 
@@ -139,9 +147,10 @@ class OnlineCovariance(Estimator):
         if self.is_lagged:
             x, y = data
         else:
-            x, y = data, tuple()
+            x, y = data, np.empty((0,))
         if weights is not None and len(x) != len(np.atleast_1d(weights)):
-            raise ValueError("Weights have incompatible ")
+            raise ValueError(f"Weights have incompatible size (weights length "
+                             f"{len(weights) if weights is not None else None}, data length {len(x)})")
         try:
             self._rc.add(x, y if len(y) > 0 else None, column_selection=column_selection, weights=weights)
         except MemoryError:
