@@ -1,6 +1,6 @@
 import numpy as np
 
-from sktime.base import Estimator
+from sktime.base import Estimator, Model
 from .util.running_moments import running_covar as running_covar
 
 __all__ = ['OnlineCovariance']
@@ -8,7 +8,7 @@ __all__ = ['OnlineCovariance']
 __author__ = 'paul, nueske, marscher, clonker'
 
 
-class OnlineCovarianceModel(object):
+class OnlineCovarianceModel(Model):
     def __init__(self):
         self._cov_00 = None
         self._cov_0t = None
@@ -95,7 +95,7 @@ class OnlineCovariance(Estimator):
                                  sparse_mode=self.sparse_mode, modify_data=False, diag_only=self.diag_only,
                                  nsave=ncov)
 
-    def _create_model(self):
+    def _create_model(self) -> OnlineCovarianceModel:
         return OnlineCovarianceModel()
 
     @property
@@ -162,7 +162,6 @@ class OnlineCovariance(Estimator):
         if self.compute_ctt or self.compute_c0t:
             self._model._mean_t = self._rc.mean_Y()
 
-    @property
-    def model(self):
+    def fetch_model(self) -> OnlineCovarianceModel:
         self._update_model()
         return self._model

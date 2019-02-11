@@ -160,28 +160,28 @@ class TestCovarEstimator(unittest.TestCase):
     def test_XX_with_mean(self):
         # many passes
         est = OnlineCovariance(compute_c0t=False, remove_data_mean=False, bessel=False)
-        cc = est.fit(self.data).model
+        cc = est.fit(self.data).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_lag0)
-        cc = est.fit(self.data, column_selection=self.cols_2).model
+        cc = est.fit(self.data, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_lag0[:, self.cols_2])
 
     def test_XX_meanfree(self):
         # many passes
         est = OnlineCovariance(compute_c0t=False, remove_data_mean=True, bessel=False)
-        cc = est.fit(self.data).model
+        cc = est.fit(self.data).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_lag0)
-        cc = est.fit(self.data, column_selection=self.cols_2).model
+        cc = est.fit(self.data, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_lag0[:, self.cols_2])
 
     def test_XX_weightobj_withmean(self):
         # many passes
         est = OnlineCovariance(compute_c0t=False, remove_data_mean=False, bessel=False)
-        cc = est.fit(self.data, n_splits=10, weights=self.data_weights).model
+        cc = est.fit(self.data, n_splits=10, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_wobj_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_wobj_lag0)
-        cc = est.fit(self.data, column_selection=self.cols_2, weights=self.data_weights).model
+        cc = est.fit(self.data, column_selection=self.cols_2, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_wobj_lag0[:, self.cols_2])
 
     def test_XX_weightobj_meanfree(self):

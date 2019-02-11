@@ -1,5 +1,13 @@
 import abc
 
+
+class Model(object):
+
+    def copy(self):
+        import copy
+        return copy.deepcopy(self)
+
+
 class Estimator(object):
 
     def __init__(self, model=None):
@@ -9,14 +17,9 @@ class Estimator(object):
     def fit(self, data):
         pass
 
-    @property
-    def model(self):
+    def fetch_model(self) -> Model:
         return self._model
 
     @abc.abstractmethod
     def _create_model(self):
         pass
-
-    def copy_current_model(self):
-        import copy
-        return copy.deepcopy(self.model)

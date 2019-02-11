@@ -19,11 +19,11 @@ if __name__ == '__main__':
 
     # this finalizes the partial estimation (ie extracts means & covariance matrices from running covar)
     # and returns the current model
-    model = estimator.model
+    model = estimator.fetch_model()
     print(model.mean_0)
 
     # retrieves copy of current model
-    model_copy = estimator.copy_current_model()
+    model_copy = model.copy()
     assert np.all(model_copy.mean_0 == model.mean_0) and model_copy is not model
 
     ################################################################################################
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     estimator.fit((data[:-tau], data[tau:]))
 
     # finalize and retrieve model
-    model = estimator.model
+    model = estimator.fetch_model()
 
     print(model.cov_0t)
 
