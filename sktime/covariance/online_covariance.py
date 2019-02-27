@@ -2,6 +2,7 @@ import numpy as np
 
 from sktime.base import Estimator, Model
 from .util.running_moments import running_covar as running_covar
+from sktime.data.util import timeshifted_split
 
 __all__ = ['OnlineCovariance']
 
@@ -62,10 +63,6 @@ class OnlineCovariance(Estimator):
              * 'dense' : always use dense mode
              * 'auto' : automatic
              * 'sparse' : always use sparse mode if possible
-     lagtime: int, optional, default=0
-         lag time. Does not work with c0t=True or ctt=True.
-     column_selection: ndarray(k, dtype=int) or None
-         Indices of those columns that are to be computed. If None, all columns are computed.
      diag_only: bool
          If True, the computation is restricted to the diagonal entries (autocorrelations) only.
      """
@@ -103,6 +100,15 @@ class OnlineCovariance(Estimator):
         return self.compute_c0t or self.compute_ctt
 
     def fit(self, data, weights=None, n_splits=None, column_selection=None):
+        """
+         column_selection: ndarray(k, dtype=int) or None
+         Indices of those columns that are to be computed. If None, all columns are computed.
+        :param data:
+        :param weights:
+        :param n_splits:
+        :param column_selection:
+        :return:
+        """
         self._rc.clear()
         if n_splits is None:
             if self.is_lagged:
