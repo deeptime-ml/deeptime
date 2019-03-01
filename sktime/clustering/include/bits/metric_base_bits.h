@@ -11,14 +11,7 @@
 #include <omp.h>
 #endif
 
-/**
- * assign a given chunk to given centers using encapsuled metric.
- * @tparam dtype
- * @param chunk
- * @param centers
- * @param n_threads
- * @return
- */
+
 template <typename dtype>
 inline py::array_t<int> metric_base<dtype>::assign_chunk_to_centers(const np_array& chunk,
                                                                     const np_array& centers,
@@ -30,13 +23,15 @@ inline py::array_t<int> metric_base<dtype>::assign_chunk_to_centers(const np_arr
     if (centers.ndim() != 2) {
         throw std::invalid_argument("provided centers does not have two dimensions.");
     }
+
+    if (chunk.shape(1) != centers.shape(1)) {
+        throw std::invalid_argument("dimension mismatch centers and provided data to assign.");
+    }
+
     size_t N_centers = static_cast<size_t>(centers.shape(0));
     size_t N_frames = static_cast<size_t>(chunk.shape(0));
     size_t input_dim = static_cast<size_t>(chunk.shape(1));
 
-    if ((input_dim != dim) || (input_dim != centers.shape(1))) {
-        throw std::invalid_argument("input dimension mismatch");
-    }
     std::vector<dtype> dists(N_centers);
     std::vector<size_t> shape = {N_frames};
     py::array_t<int> dtraj(shape);
@@ -56,7 +51,7 @@ inline py::array_t<int> metric_base<dtype>::assign_chunk_to_centers(const np_arr
             /* Parallelize distance calculations to cluster centers to avoid cache misses */
             #pragma omp for
             for(size_t j = 0; j < N_centers; ++j) {
-                dists[j] = compute(&chunk_buff(i, 0), &centers_buff(j, 0));
+                dists[j] = compute(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
             }
             #pragma omp flush(dists)
 
@@ -80,25 +75,14 @@ inline py::array_t<int> metric_base<dtype>::assign_chunk_to_centers(const np_arr
     return dtraj;
 }
 
-/**
- * euclidean distance method
- * @tparam dtype
- * @param a
- * @param b
- * @return
- */
 template <typename dtype>
-inline dtype euclidean_metric<dtype>::compute(const dtype *const a, const dtype *const b) {
+inline dtype euclidean_metric<dtype>::compute(const dtype *const a, const dtype *const b, size_t dim) {
     double sum = 0.0;
-    //#pragma omp simd reduction(+:sum)
-    for (size_t i = 0; i < metric_base<dtype>::dim; ++i) {
-        assert(std::isfinite(a[i]));
-        assert(std::isfinite(b[i]));
-
+    #pragma omp simd reduction(+:sum)
+    for (size_t i = 0; i < dim; ++i) {
         auto d = a[i] - b[i];
         sum += d * d;
     }
-    assert(std::isfinite(sum));
     return static_cast<dtype>(std::sqrt(sum));
 }
 

@@ -23,8 +23,7 @@ public:
     using cluster_res = std::tuple<np_array, int, int>;
 
     KMeans(unsigned int k,
-           const std::string &metric,
-           size_t input_dimension) : ClusteringBase<dtype>(metric, input_dimension), k(k) {}
+           const std::string &metric) : ClusteringBase<dtype>(metric), k(k) {}
 
     /**
      * performs kmeans clustering on the given data chunk, provided a list of centers.

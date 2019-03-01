@@ -32,9 +32,8 @@ public:
      * @param input_dimension
      */
     RegularSpaceClustering(dtype dmin, std::size_t max_clusters,
-                           const std::string &metric,
-                           size_t input_dimension) :
-            ClusteringBase<dtype>(metric, input_dimension),
+                           const std::string &metric) :
+            ClusteringBase<dtype>(metric),
             dmin(dmin),
             max_clusters(max_clusters) {}
 
@@ -49,20 +48,20 @@ public:
         // this checks for ndim == 2
         const auto& data = chunk.template unchecked< 2 >();
 
-        std::size_t N_frames = chunk.shape(0);
-        std::size_t dim = chunk.shape(1);
-        std::size_t N_centers = py_centers.size();
+        auto N_frames = static_cast<std::size_t>(chunk.shape(0));
+        auto dim = static_cast<std::size_t>(chunk.shape(1));
+        auto N_centers = py_centers.size();
         #if defined(USE_OPENMP)
         omp_set_num_threads(n_threads);
         #endif
         // do the clustering
-        for (std::size_t i = 0; i < N_frames; ++i) {
+        for (auto i = 0; i < N_frames; ++i) {
             auto mindist = std::numeric_limits<dtype>::max();
             #pragma omp parallel for reduction(min:mindist)
-            for (std::size_t j = 0; j < N_centers; ++j) {
+            for (auto j = 0; j < N_centers; ++j) {
                 // TODO avoid the cast in inner loop?
                 auto point = py_centers[j].cast < py::array_t < dtype >> ();
-                auto d = parent_t::metric.get()->compute(&data(i, 0), point.data());
+                auto d = parent_t::metric.get()->compute(&data(i, 0), point.data(), dim);
                 if (d < mindist) mindist = d;
             }
             if (mindist > dmin) {

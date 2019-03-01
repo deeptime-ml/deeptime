@@ -18,18 +18,18 @@ PYBIND11_MODULE(_ext, m) {
 
     // register base class first.
     py::class_<cbase_f>(m, "ClusteringBase_f")
-            .def(py::init<const std::string&, std::size_t>())
+            .def(py::init<const std::string&>())
             .def("assign", &cbase_f::assign_chunk_to_centers);
     // regular space clustering.
     py::class_<regspace_f, cbase_f>(regspace_mod, "Regspace_f")
-            .def(py::init<dtype, std::size_t, const std::string&, size_t>())
+            .def(py::init<dtype, std::size_t, const std::string&>())
             .def("cluster", &regspace_f::cluster);
     py::register_exception<MaxCentersReachedException>(regspace_mod, "MaxCentersReachedException");
     // kmeans
     typedef KMeans<dtype> kmeans_f;
     py::class_<kmeans_f, cbase_f>(kmeans_mod, "Kmeans_f")
-            .def(py::init<unsigned int, const std::string&, std::size_t>(),
-                 py::arg("k"), py::arg("metric"), py::arg("dim"))
+            .def(py::init<unsigned int, const std::string&>(),
+                 py::arg("k"), py::arg("metric"))
              // py::arg("callback") = py::none()
             .def("cluster", &kmeans_f::cluster)
             .def("cluster_loop", &kmeans_f::cluster_loop)

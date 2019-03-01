@@ -18,15 +18,15 @@ class ClusteringBase {
 
 public:
     enum MetricType {
-        EUCLIDEAN, MINRMSD
+        EUCLIDEAN
     };
 
     using np_array = py::array_t<dtype, py::array::c_style | py::array::forcecast>;
 
-    ClusteringBase(const std::string& metric_s, std::size_t input_dimension) : input_dimension(input_dimension) {
+    ClusteringBase(const std::string& metric_s) {
         if (metric_s == "euclidean") {
             typedef euclidean_metric<dtype> eucl;
-            metric = std::unique_ptr<eucl>(new eucl(input_dimension));
+            metric = std::unique_ptr<eucl>(new eucl());
             _metric_type = MetricType::EUCLIDEAN;
         } else {
             throw std::invalid_argument("metric is not of {'euclidean'}");
@@ -40,7 +40,6 @@ public:
     ClusteringBase&operator=(ClusteringBase&&) noexcept = default;
 
     std::unique_ptr<metric_base<dtype>> metric;
-    std::size_t input_dimension;
 
     py::array_t<int> assign_chunk_to_centers(const py::array_t<dtype, py::array::c_style>& chunk,
                                              const py::array_t<dtype, py::array::c_style>& centers,
