@@ -1,17 +1,11 @@
-"""
-Created on 22.01.2015
-
-@author: clonker, marscher, noe
-"""
-
-import math
 import random
 import warnings
 
 import numpy as np
-from pyemma.util.contexts import random_seed
 
 from sktime.base import Estimator
+from sktime.clustering.cluster_model import ClusterModel
+from sktime.util import get_n_jobs
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
 
@@ -22,8 +16,7 @@ class KmeansClustering(Estimator):
     Parameters
     ----------
     n_clusters : int
-        amount of cluster centers. When not specified (None), min(sqrt(N), 5000) is chosen as default value,
-        where N denotes the number of data points
+        amount of cluster centers.
 
     max_iter : int
         maximum number of iterations before stopping.
@@ -55,22 +48,30 @@ class KmeansClustering(Estimator):
     """
     def __init__(self, n_clusters, max_iter=5, metric='euclidean',
                  tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
-                 n_jobs=None, initial_centers=None):
-
-        super(KmeansClustering, self).__init__()
-
+                 n_jobs=None, initial_centers=None, random_state=None):
         if initial_centers is None:
-            initial_centers = []
+            initial_centers = ()
 
-        self._converged = False
+        if random_state is None:
+            random_state = np.random.RandomState()
+
+        if n_jobs is None:
+            n_jobs = get_n_jobs()
 
         self.n_clusters = n_clusters
         self.max_iter = max_iter
+        self.metric = metric
         self.tolerance = tolerance
         self.init_strategy = init_strategy
         self.fixed_seed = fixed_seed
-        self.initial_centers = initial_centers
         self.n_jobs = n_jobs
+        self.initial_centers = initial_centers
+        self.random_state = random_state
+
+        super(KmeansClustering, self).__init__()
+
+    def _create_model(self) -> ClusterModel:
+        return ClusterModel(n_clusters=self.n_clusters, metric=self.metric)
 
     @property
     def init_strategy(self):
@@ -86,11 +87,15 @@ class KmeansClustering(Estimator):
 
     @property
     def fixed_seed(self):
-        """ seed for random choice of initial cluster centers. Fix this to get reproducible results."""
+        """ seed for random choice of initial cluster centers.
+
+        Fix this to get reproducible results in conjunction with n_jobs=1. The latter is needed, because parallel
+        execution causes non-deterministic behaviour again.
+        """
         return self._fixed_seed
 
     @fixed_seed.setter
-    def fixed_seed(self, value: [bool, int]):
+    def fixed_seed(self, value: [bool, int, None]):
         if isinstance(value, bool) or value is None:
             if value:
                 self._fixed_seed = 42
@@ -106,17 +111,13 @@ class KmeansClustering(Estimator):
         else:
             raise ValueError("fixed seed has to be bool or integer")
 
-    # TODO: model property
-    @property
-    def converged(self):
-        return self._converged
-
     def fit(self, data, callback_init_centers=None, callback_loop=None):
         """
 
         Parameters
         ----------
-        data: list of arrays or array
+        data: ndarray
+            data to be clustered
         callback_init_centers: function or None
             used for kmeans++ initialization to indicate progress.
         callback_loop: function or None
@@ -124,33 +125,25 @@ class KmeansClustering(Estimator):
 
         """
         # TODO: check data
+        ndim = data.shape[1]
 
+        from ._ext import kmeans as kmeans_mod
+        # TODO: based on input type of data use Kmeans_f or kmeans_d
+        ext = kmeans_mod.Kmeans_f(self.n_clusters, self.metric, ndim)
 
-        # or the centers are not initialized.
-            # first pass: gather data and run k-means
-        for X in data:
+        if self.initial_centers is None:
             if self.init_strategy == 'uniform':
-                # needed for concatenation
-                if len(self.clustercenters) == 0:
-                    self.clustercenters = np.empty((0, X.shape[1]))
-
-                if itraj in list(self._init_centers_indices.keys()):
-                    for l in range(len(X)):
-                        if len(self.clustercenters) < self.n_clusters and t + l in self._init_centers_indices[itraj]:
-                            new = np.vstack((self.clustercenters, X[l]))
-                            self.clustercenters = new
+                if self.n_clusters > len(data):
+                    raise ValueError('Not enough data points for desired amount of clusters.')
+                self.initial_centers = data[self.random_state.random_integers(0, len(data), size=self.n_clusters)]
             elif self.init_strategy == 'kmeans++':
-                self.clustercenters = self._inst.init_centers_KMpp(data, self.fixed_seed, self.n_jobs)
-            self.initial_centers_ = self.clustercenters[:]
+                self.initial_centers = ext.init_centers_KMpp(data, self.fixed_seed, self.n_jobs)
 
-            if len(self.clustercenters) != self.n_clusters:
-                # TODO: this can be non-fatal, because the extension can handle it?!
-                raise RuntimeError('Passed clustercenters do not match n_clusters: {} vs. {}'.
-                                   format(len(self.clustercenters), self.n_clusters))
         # run k-means with all the data
-        clustercenters, code, iterations = self._inst.cluster_loop(data, self.clustercenters,
-                                                                   self.n_jobs, self.max_iter, self.tolerance,
-                                                                   callback_loop)
+        converged = False
+        cluster_centers, code, iterations = ext.cluster_loop(data, self.initial_centers,
+                                                             self.n_jobs, self.max_iter, self.tolerance,
+                                                             callback_loop)
         if code == 0:
             converged = True
         else:
@@ -159,137 +152,42 @@ class KmeansClustering(Estimator):
                           self.tolerance, self.max_iter)
 
         self._model.converged = converged
-        self._model.cluster_centers = clustercenters
+        self._model.cluster_centers = cluster_centers
 
         return self
-
-    def _init_estimate(self):
-        # mini-batch sets stride to None
-        ###### init
-        self._init_centers_indices = {}
-        traj_lengths = self.trajectory_lengths(stride=stride, skip=self.skip)
-        total_length = sum(traj_lengths)
-        if self.init_strategy == 'kmeans++':
-            self._progress_register(self.n_clusters,
-                                    description="initialize kmeans++ centers", stage=0)
-        self._progress_register(self.max_iter, description="kmeans iterations", stage=1)
-        self._init_in_memory_chunks(total_length)
-
-        if self.init_strategy == 'uniform':
-            # gives random samples from each trajectory such that the cluster centers are distributed percentage-wise
-            # with respect to the trajectories length
-            with random_seed(self.fixed_seed):
-                for idx, traj_len in enumerate(traj_lengths):
-                    self._init_centers_indices[idx] = random.sample(list(range(0, traj_len)), int(
-                        math.ceil((traj_len / float(total_length)) * self.n_clusters)))
-
-        from ._ext import kmeans as kmeans_mod
-        # TODO: based on input type of data use Kmeans_f or kmeans_d
-        self._inst = kmeans_mod.Kmeans_f(self.n_clusters, self.metric, self.data_producer.ndim)
-
-    def _initialize_centers(self, data):
-
 
 
 class MiniBatchKmeansClustering(KmeansClustering):
     r"""Mini-batch k-means clustering"""
 
-    __serialize_version = 0
-
     def __init__(self, n_clusters, max_iter=5, metric='euclidean', tolerance=1e-5, init_strategy='kmeans++',
-                 batch_size=0.2, oom_strategy='memmap', fixed_seed=False, stride=None, n_jobs=None, skip=0,
-                 initial_centers=None, keep_data=False):
-
-        if stride is not None:
-            raise ValueError("stride is a dummy value in MiniBatch Kmeans")
-        if batch_size > 1:
-            raise ValueError("batch_size should be less or equal to 1, but was %s" % batch_size)
-        if keep_data:
-            raise ValueError("keep_data is a dummy value in MiniBatch Kmeans")
+                 n_jobs=None, initial_centers=None):
 
         super(MiniBatchKmeansClustering, self).__init__(n_clusters, max_iter, metric,
                                                         tolerance, init_strategy, False,
-                                                        oom_strategy, stride=stride, n_jobs=n_jobs, skip=skip,
-                                                        initial_centers=initial_centers, keep_data=False)
+                                                        n_jobs=n_jobs,
+                                                        initial_centers=initial_centers)
 
-        self.set_params(batch_size=batch_size)
+        # we need to remember this state during partial_fit calls.
+        self._converged = False
+        self._prev_cost = float('inf')
 
-    def _init_in_memory_chunks(self, size):
-        return super(MiniBatchKmeansClustering, self)._init_in_memory_chunks(self._n_samples)
+        from ._ext import kmeans as kmeans_mod
+        # TODO: based on input type of data use Kmeans_f or kmeans_d
+        self._ext = kmeans_mod.Kmeans_f(self.n_clusters, self.metric)
 
-    def _draw_mini_batch_sample(self):
-        offset = 0
-        for idx, traj_len in enumerate(self._traj_lengths):
-            n_samples_traj = self._n_samples_traj[idx]
-            start = slice(offset, offset + n_samples_traj)
+    def partial_fit(self, data):
+        if self._model.cluster_centers is None:
+            self._model.cluster_centers = np.empty((self.n_clusters, data.shape[1]))
+        cluster_centers = self._model.cluster_centers
 
-            self._random_access_stride[start, 0] = idx * np.ones(
-                n_samples_traj, dtype=int)
+        cluster_centers = self._ext.cluster(data, cluster_centers, self.n_jobs)
+        cost = self._ext.cost_function(data, cluster_centers, self.n_jobs)
 
-            # draw 'n_samples_traj' without replacement from range(0, traj_len)
-            choice = np.random.choice(traj_len, n_samples_traj, replace=False)
+        rel_change = np.abs(cost - self._prev_cost) / cost if cost != 0.0 else 0.0
+        self._prev_cost = cost
 
-            self._random_access_stride[start, 1] = np.sort(choice).T
-            offset += n_samples_traj
+        if rel_change <= self.tolerance:
+            self._converged = True
 
-        return self._random_access_stride
-
-    def _init_estimate(self):
-        self._traj_lengths = self.trajectory_lengths(skip=self.skip)
-        self._total_length = sum(self._traj_lengths)
-        samples = int(math.ceil(self._total_length * self.batch_size))
-        self._n_samples = 0
-        self._n_samples_traj = {}
-        for idx, traj_len in enumerate(self._traj_lengths):
-            traj_samples = int(math.floor(traj_len / float(self._total_length) * samples))
-            self._n_samples_traj[idx] = traj_samples
-            self._n_samples += traj_samples
-
-        self._random_access_stride = np.empty(shape=(self._n_samples, 2), dtype=int)
-        super(MiniBatchKmeansClustering, self)._init_estimate()
-
-    def _estimate(self, iterable, **kw):
-        # mini-batch kmeans does not use stride. Enforce it.
-        self.stride = None
-        self._init_estimate()
-
-        i_pass = 0
-        prev_cost = 0
-
-        ra_stride = self._draw_mini_batch_sample()
-        with iterable.iterator(return_trajindex=False, stride=ra_stride, skip=self.skip) as iterator, \
-                self._progress_context(), self._finish_estimate():
-            while not (self._converged or i_pass + 1 > self.max_iter):
-                first_chunk = True
-                # draw new sample and re-use existing iterator instance.
-                ra_stride = self._draw_mini_batch_sample()
-                iterator.stride = ra_stride
-                iterator.reset()
-                for X in iter(iterator):
-                    # collect data
-                    self._collect_data(X, first_chunk, iterator.last_chunk)
-                    # initialize cluster centers
-                    if i_pass == 0 and not self._check_resume_iteration():
-                        self._initialize_centers(X, iterator.current_trajindex, iterator.pos, iterator.last_chunk)
-                    first_chunk = False
-
-                # one pass over data completed
-                self.clustercenters = self._inst.cluster(self._in_memory_chunks, self.clustercenters, self.n_jobs)
-                cost = self._inst.cost_function(self._in_memory_chunks, self.clustercenters, self.n_jobs)
-
-                rel_change = np.abs(cost - prev_cost) / cost if cost != 0.0 else 0.0
-                prev_cost = cost
-
-                if rel_change <= self.tolerance:
-                    self._converged = True
-                    self.logger.info("Cluster centers converged after %i steps.", i_pass + 1)
-                    self._progress_force_finish(stage=1)
-                else:
-                    self._progress_update(1, stage=1)
-
-                i_pass += 1
-
-        if not self._converged:
-            self.logger.info("Algorithm did not reach convergence criterion"
-                             " of %g in %i iterations. Consider increasing max_iter.", self.tolerance, self.max_iter)
         return self
