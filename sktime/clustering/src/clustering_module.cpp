@@ -19,8 +19,7 @@ PYBIND11_MODULE(_ext, m) {
     // register base class first.
     py::class_<cbase_f>(m, "ClusteringBase_f")
             .def(py::init<const std::string&, std::size_t>())
-            .def("assign", &cbase_f::assign_chunk_to_centers)
-            .def("precenter_centers", &cbase_f::precenter_centers);
+            .def("assign", &cbase_f::assign_chunk_to_centers);
     // regular space clustering.
     py::class_<regspace_f, cbase_f>(regspace_mod, "Regspace_f")
             .def(py::init<dtype, std::size_t, const std::string&, size_t>())

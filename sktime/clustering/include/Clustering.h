@@ -28,12 +28,8 @@ public:
             typedef euclidean_metric<dtype> eucl;
             metric = std::unique_ptr<eucl>(new eucl(input_dimension));
             _metric_type = MetricType::EUCLIDEAN;
-        } else if(metric_s == "minRMSD") {
-            typedef min_rmsd_metric<float> min_rmsd_t;
-            metric = std::unique_ptr<min_rmsd_t>(new min_rmsd_t(input_dimension));
-            _metric_type = MetricType::MINRMSD;
         } else {
-            throw std::invalid_argument("metric is not of {'euclidean', 'minRMSD'}");
+            throw std::invalid_argument("metric is not of {'euclidean'}");
         }
     }
 
@@ -50,23 +46,6 @@ public:
                                              const py::array_t<dtype, py::array::c_style>& centers,
                                              unsigned int n_threads) const {
         return metric->assign_chunk_to_centers(chunk, centers, n_threads);
-    }
-
-    /**
-     * pre-center given centers in place
-     * @param centers
-     */
-    void precenter_centers(np_array& centers) const {
-        switch (_metric_type) {
-            case MetricType::MINRMSD: {
-                auto ptr = dynamic_cast<min_rmsd_metric<dtype>*>(metric.get());
-                ptr->precenter_centers(centers.mutable_data(0), centers.shape(0));
-                break;
-            }
-            default: {
-                throw std::runtime_error("precentering is only available for minRMSD metric.");
-            };
-        }
     }
 
 private:

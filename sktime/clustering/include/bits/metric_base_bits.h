@@ -7,9 +7,6 @@
 
 #include "../metric_base.h"
 
-#include <center.h>
-#include <theobald_rmsd.h>
-
 #ifdef USE_OPENMP
 #include <omp.h>
 #endif
@@ -103,48 +100,6 @@ inline dtype euclidean_metric<dtype>::compute(const dtype *const a, const dtype 
     }
     assert(std::isfinite(sum));
     return static_cast<dtype>(std::sqrt(sum));
-}
-
-/**
- * minRMSD distance function
- * a: centers
- * b: frames
- * n: dimension of one frame
- * buffer_a: pre-allocated buffer to store a copy of centers
- * buffer_b: pre-allocated buffer to store a copy of frames
- * trace_a_precalc: pre-calculated trace to centers (pointer to one value)
- */
-template <typename dtype>
-inline dtype min_rmsd_metric<dtype>::compute(const dtype *a, const dtype *b) {
-    float trace_a, trace_b;
-    auto dim3 = static_cast<const int>(parent_t::dim / 3);
-    std::vector<float> buffer_b (b, b + parent_t::dim);
-
-    if (!has_trace_a_been_precalculated) {
-        std::vector<float> buffer_a (a, a + parent_t::dim);
-        inplace_center_and_trace_atom_major(buffer_a.data(), &trace_a, 1, dim3);
-        inplace_center_and_trace_atom_major(buffer_b.data(), &trace_b, 1, dim3);
-
-    } else {
-        inplace_center_and_trace_atom_major(buffer_b.data(), &trace_b, 1, dim3);
-        trace_a = *trace_centers.data();
-    }
-
-    float msd = msd_atom_major(dim3, dim3, a, buffer_b.data(), trace_a, trace_b, 0, nullptr);
-    return std::sqrt(msd);
-}
-
-template<typename dtype>
-inline void min_rmsd_metric<dtype>::precenter_centers(float *centers, std::size_t N_centers) {
-    trace_centers.resize(N_centers);
-    float *trace_centers_p = trace_centers.data();
-
-    /* Parallelize centering of cluster generators */
-    /* Note that this is already OpenMP-enabled */
-    for (std::size_t j = 0; j < N_centers; ++j) {
-        inplace_center_and_trace_atom_major(&centers[j * parent_t::dim],
-                                            &trace_centers_p[j], 1, parent_t::dim / 3);
-    }
 }
 
 
