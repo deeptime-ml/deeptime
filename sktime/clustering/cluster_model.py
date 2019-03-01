@@ -4,6 +4,11 @@ from sktime.base import Model
 
 class ClusterModel(Model):
 
+    def __init__(self, n_clusters=0, cluster_centers=None, metric='euclidean'):
+        self._n_clusters = n_clusters
+        self._cluster_centers = cluster_centers
+        self._metric = metric
+
     @property
     def cluster_centers(self):
         return self._cluster_centers
@@ -20,19 +25,13 @@ class ClusterModel(Model):
     def metric(self):
         return self._metric
 
-    def transform(self, data):
-        """get closest index of point in :attr:`clustercenters` to x."""
+    def transform(self, data, n_jobs=None):
+        """get closest index of point in :attr:`cluster_centers` to x."""
         X = np.require(data, dtype=np.float32, requirements='C')
-        if not hasattr(self, '_inst'):
+        # TODO: consider this to be a singleton!
+        if not hasattr(self, '_ext'):
             from ._ext import ClusteringBase_f
-            self._inst = ClusteringBase_f(self.metric, X.shape[1])
-
-        # for performance reasons we pre-center the cluster centers for minRMSD.
-        # TODO: this should only reside in PyEMMA
-        if self.metric == 'minRMSD' and not self._precentered:
-            self._inst.precenter_centers(self.cluster_centers)
-            self._precentered = True
-
-        dtraj = self._inst.assign(X, self.cluster_centers, self.n_jobs)
+            self._ext = ClusteringBase_f(self.metric)
+        dtraj = self._ext.assign(X, self.cluster_centers, n_jobs)
         res = dtraj[:, None]  # always return a column vector in this function
         return res
