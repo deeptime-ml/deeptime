@@ -13,6 +13,10 @@ class ClusterModel(Model):
     def cluster_centers(self):
         return self._cluster_centers
 
+    @cluster_centers.setter
+    def cluster_centers(self, value):
+        self._cluster_centers = value
+
     @property
     def n_clusters(self):
         return self._n_clusters

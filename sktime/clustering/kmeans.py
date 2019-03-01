@@ -9,6 +9,20 @@ from sktime.util import get_n_jobs
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
 
+import time
+
+
+class timing(object):
+    def __init__(self, name):
+        self.name = name
+
+    def __enter__(self):
+        self.start = time.time()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        stop = time.time()
+        print(self.name, self.start - stop)
+
 
 class KmeansClustering(Estimator):
     r"""Kmeans clustering
@@ -46,14 +60,10 @@ class KmeansClustering(Estimator):
         This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
         the centers are directly passed to the kmeans iteration algorithm.
     """
+
     def __init__(self, n_clusters, max_iter=5, metric='euclidean',
                  tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None, random_state=None):
-        if initial_centers is None:
-            initial_centers = ()
-
-        if random_state is None:
-            random_state = np.random.RandomState()
 
         if n_jobs is None:
             n_jobs = get_n_jobs()
@@ -64,9 +74,15 @@ class KmeansClustering(Estimator):
         self.tolerance = tolerance
         self.init_strategy = init_strategy
         self.fixed_seed = fixed_seed
+        if random_state is None:
+            random_state = np.random.RandomState(self.fixed_seed)
+        self.random_state = random_state
         self.n_jobs = n_jobs
         self.initial_centers = initial_centers
-        self.random_state = random_state
+
+        from ._ext import kmeans as kmeans_mod
+        # TODO: based on input type of data use Kmeans_f or kmeans_d, introduce precision parameter or determine automatically?
+        self._ext = kmeans_mod.Kmeans_f(self.n_clusters, self.metric)
 
         super(KmeansClustering, self).__init__()
 
@@ -111,8 +127,8 @@ class KmeansClustering(Estimator):
         else:
             raise ValueError("fixed seed has to be bool or integer")
 
-    def fit(self, data, callback_init_centers=None, callback_loop=None):
-        """
+    def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None):
+        """ perform the clustering
 
         Parameters
         ----------
@@ -124,33 +140,28 @@ class KmeansClustering(Estimator):
             used to indicate progress on kmeans iterations.
 
         """
-        # TODO: check data
-        ndim = data.shape[1]
-
-        from ._ext import kmeans as kmeans_mod
-        # TODO: based on input type of data use Kmeans_f or kmeans_d
-        ext = kmeans_mod.Kmeans_f(self.n_clusters, self.metric, ndim)
-
-        if self.initial_centers is None:
+        if initial_centers is None:
+            if self.n_clusters > len(data):
+                raise ValueError('Not enough data points for desired amount of clusters.')
             if self.init_strategy == 'uniform':
-                if self.n_clusters > len(data):
-                    raise ValueError('Not enough data points for desired amount of clusters.')
-                self.initial_centers = data[self.random_state.random_integers(0, len(data), size=self.n_clusters)]
+                self.initial_centers = data[self.random_state.randint(0, len(data), size=self.n_clusters)]
             elif self.init_strategy == 'kmeans++':
-                self.initial_centers = ext.init_centers_KMpp(data, self.fixed_seed, self.n_jobs)
+                self.initial_centers = self._ext.init_centers_KMpp(data, self.fixed_seed, self.n_jobs,
+                                                                   callback_init_centers)
+        else:
+            self.initial_centers = initial_centers
 
         # run k-means with all the data
         converged = False
-        cluster_centers, code, iterations = ext.cluster_loop(data, self.initial_centers,
-                                                             self.n_jobs, self.max_iter, self.tolerance,
-                                                             callback_loop)
+        cluster_centers, code, iterations = self._ext.cluster_loop(data, self.initial_centers,
+                                                                   self.n_jobs, self.max_iter, self.tolerance,
+                                                                   callback_loop)
         if code == 0:
             converged = True
         else:
             warnings.warn("Algorithm did not reach convergence criterion"
-                          " of %g in %i iterations. Consider increasing max_iter.",
-                          self.tolerance, self.max_iter)
-
+                          " of {t} in {i} iterations. Consider increasing max_iter.".format(t=self.tolerance,
+                                                                                            i=self.max_iter))
         self._model.converged = converged
         self._model.cluster_centers = cluster_centers
 
