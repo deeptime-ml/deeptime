@@ -20,7 +20,15 @@ from __future__ import absolute_import
 import unittest
 from unittest import TestCase
 import numpy as np
-from pyemma.coordinates.api import cluster_mini_batch_kmeans
+
+from sktime.clustering import MiniBatchKmeansClustering
+
+
+def  cluster_mini_batch_kmeans(X, batch_size=0.5, k=100, max_iter=10000):
+    est = MiniBatchKmeansClustering(n_clusters=k, max_iter=max_iter)
+    est.fit(X)
+    model = est.fetch_model()
+    return est, model
 
 
 class TestMiniBatchKmeans(TestCase):
@@ -56,13 +64,12 @@ class TestMiniBatchKmeansResume(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from pyemma.util.contexts import numpy_random_seed
-        with numpy_random_seed(32):
-            # three gaussians
-            X = [np.random.randn(1000)-2.0,
-                 np.random.randn(1000),
-                 np.random.randn(1000)+2.0]
-            cls.X = np.hstack(X)
+        state = np.random.RandomState(32)
+        # three gaussians
+        X = [state.randn(1000) - 2.0,
+             state.randn(1000),
+             state.randn(1000) + 2.0]
+        cls.X = np.atleast_2d(np.hstack(X)).T
 
     def test_resume(self):
         """ check that we can continue with the iteration by passing centers"""
