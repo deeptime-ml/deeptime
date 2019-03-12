@@ -24,11 +24,12 @@ from math import ceil
 import numpy as np
 
 from sktime.base import Model
-from sktime.markovprocess import ureg, Q_
+from sktime.markovprocess import Q_
+from sktime.markovprocess.counting_mixin import MSMCountingMixin
 from sktime.markovprocess.pcca import PCCA
 
 
-class MarkovStateModel(Model):
+class MarkovStateModel(Model, MSMCountingMixin):
     r"""Markov model with a given transition matrix
 
     Parameters
@@ -70,7 +71,7 @@ class MarkovStateModel(Model):
         be greater than k; it is recommended that ncv > 2*k.
 
     """
-    def __init__(self, P, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None):
+    def __init__(self, P, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, full2active=None):
 
         self.ncv = ncv
         # we set reversible first, so it can be derived from P, if None was given.
@@ -79,7 +80,8 @@ class MarkovStateModel(Model):
         # pi might be derived from P, if None was given.
         self.stationary_distribution = pi
         self.dt_model = dt_model
-        self.neig = neig
+        #self.neig = neig
+
 
     def __eq__(self, other):
         if not isinstance(other, MarkovStateModel):
@@ -154,9 +156,7 @@ class MarkovStateModel(Model):
 
     @property
     def nstates(self):
-        """Number of active states on which all computations and estimations are done
-
-        """
+        """ Number of active states on which all computations and estimations are done """
         return self._nstates
 
     @nstates.setter
@@ -425,7 +425,7 @@ class MarkovStateModel(Model):
             set of states
         """
         if np.max(A) > self._nstates:
-            raise RuntimeError('Chosen set contains states that are not included in the active set.')
+            raise ValueError('Chosen set contains states that are not included in the active set.')
 
     def _mfpt(self, P, A, B, mu=None):
         self._assert_in_active(A)
@@ -1044,3 +1044,250 @@ class MarkovStateModel(Model):
         """
         import msmtools.generation as msmgen
         return msmgen.generate_traj(self.transition_matrix, N, start=start, stop=stop, dt=dt)
+
+    def generate_traj(self, N, start=None, stop=None, stride=1):
+        """Generates a synthetic discrete trajectory of length N and simulation time stride * lag time * N
+
+        This information can be used
+        in order to generate a synthetic molecular dynamics trajectory - see
+        :func:`pyemma.coordinates.save_traj`
+
+        Note that the time different between two samples is the Markov model lag time tau. When comparing
+        quantities computing from this synthetic trajectory and from the input trajectories, the time points of this
+        trajectory must be scaled by the lag time in order to have them on the same time scale.
+
+        Parameters
+        ----------
+        N : int
+            Number of time steps in the output trajectory. The total simulation time is stride * lag time * N
+        start : int, optional, default = None
+            starting state. If not given, will sample from the stationary distribution of P
+        stop : int or int-array-like, optional, default = None
+            stopping set. If given, the trajectory will be stopped before N steps
+            once a state of the stop set is reached
+        stride : int, optional, default = 1
+            Multiple of lag time used as a time step. By default, the time step is equal to the lag time
+
+        Returns
+        -------
+        indexes : ndarray( (N, 2) )
+            trajectory and time indexes of the simulated trajectory. Each row consist of a tuple (i, t), where i is
+            the index of the trajectory and t is the time index within the trajectory.
+            Note that the time different between two samples is the Markov model lag time tau
+
+        See also
+        --------
+        pyemma.coordinates.save_traj
+            in order to save this synthetic trajectory as a trajectory file with molecular structures
+
+        """
+        # TODO: this is the only function left which does something time-related in a multiple of tau rather than dt.
+        # TODO: we could generate dt-strided trajectories by sampling tau times from the current state, but that would
+        # TODO: probably lead to a weird-looking trajectory. Maybe we could use a HMM to generate intermediate 'hidden'
+        # TODO: frames. Anyway, this is a nontrivial issue.
+        # generate synthetic states
+        from msmtools.generation import generate_traj as _generate_traj
+
+        syntraj = _generate_traj(self.transition_matrix, N, start=start, stop=stop, dt=stride)
+        # result
+        return sample_indexes_by_sequence(self.active_state_indexes, syntraj)
+
+    def sample_by_state(self, nsample, subset=None, replace=True):
+        """Generates samples of the connected states.
+
+        For each state in the active set of states, generates nsample samples with trajectory/time indexes.
+        This information can be used in order to generate a trajectory of length nsample * nconnected using
+        :func:`pyemma.coordinates.save_traj` or nconnected trajectories of length nsample each using
+        :func:`pyemma.coordinates.save_traj`
+
+        Parameters
+        ----------
+        nsample : int
+            Number of samples per state. If replace = False, the number of returned samples per state could be smaller
+            if less than nsample indexes are available for a state.
+        subset : ndarray((n)), optional, default = None
+            array of states to be indexed. By default all states in the connected set will be used
+        replace : boolean, optional
+            Whether the sample is with or without replacement
+
+        Returns
+        -------
+        indexes : list of ndarray( (N, 2) )
+            list of trajectory/time index arrays with an array for each state.
+            Within each index array, each row consist of a tuple (i, t), where i is
+            the index of the trajectory and t is the time index within the trajectory.
+
+        See also
+        --------
+        pyemma.coordinates.save_traj
+            in order to save the sampled frames sequentially in a trajectory file with molecular structures
+        pyemma.coordinates.save_trajs
+            in order to save the sampled frames in nconnected trajectory files with molecular structures
+
+        """
+        # generate connected state indexes
+        return sample_indexes_by_state(self.active_state_indexes, nsample, subset=subset, replace=replace)
+
+    # TODO: add sample_metastable() for sampling from metastable (pcca or hmm) states.
+    def sample_by_distributions(self, distributions, nsample):
+        """Generates samples according to given probability distributions
+
+        Parameters
+        ----------
+        distributions : list or array of ndarray ( (n) )
+            m distributions over states. Each distribution must be of length n and must sum up to 1.0
+        nsample : int
+            Number of samples per distribution. If replace = False, the number of returned samples per state could be
+            smaller if less than nsample indexes are available for a state.
+
+        Returns
+        -------
+        indexes : length m list of ndarray( (nsample, 2) )
+            List of the sampled indices by distribution.
+            Each element is an index array with a number of rows equal to nsample, with rows consisting of a
+            tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
+
+        """
+        # generate connected state indexes
+        return sample_indexes_by_distribution(self.active_state_indexes, distributions, nsample)
+
+    ################################################################################
+    # For general statistics
+    ################################################################################
+    def trajectory_weights(self, dtrajs):
+        r"""Uses the MarkovStateModel to assign a probability weight to each trajectory frame.
+
+        This is a powerful function for the calculation of arbitrary observables in the trajectories one has
+        started the analysis with. The stationary probability of the MarkovStateModel will be used to reweigh all states.
+        Returns a list of weight arrays, one for each trajectory, and with a number of elements equal to
+        trajectory frames. Given :math:`N` trajectories of lengths :math:`T_1` to :math:`T_N`, this function
+        returns corresponding weights:
+
+        .. math::
+
+            (w_{1,1}, ..., w_{1,T_1}), (w_{N,1}, ..., w_{N,T_N})
+
+        that are normalized to one:
+
+        .. math::
+
+            \sum_{i=1}^N \sum_{t=1}^{T_i} w_{i,t} = 1
+
+        Suppose you are interested in computing the expectation value of a function :math:`a(x)`, where :math:`x`
+        are your input configurations. Use this function to compute the weights of all input configurations and
+        obtain the estimated expectation by:
+
+        .. math::
+
+            \langle a \rangle = \sum_{i=1}^N \sum_{t=1}^{T_i} w_{i,t} a(x_{i,t})
+
+        Or if you are interested in computing the time-lagged correlation between functions :math:`a(x)` and
+        :math:`b(x)` you could do:
+
+        .. math::
+
+            \langle a(t) b(t+\tau) \rangle_t = \sum_{i=1}^N \sum_{t=1}^{T_i} w_{i,t} a(x_{i,t}) a(x_{i,t+\tau})
+
+
+        Returns
+        -------
+        weights : list of ndarray
+            The normalized trajectory weights. Given :math:`N` trajectories of lengths :math:`T_1` to :math:`T_N`,
+            returns the corresponding weights:
+
+            .. math::
+
+                (w_{1,1}, ..., w_{1,T_1}), (w_{N,1}, ..., w_{N,T_N})
+
+        """
+        # compute stationary distribution, expanded to full set
+        statdist_full = np.zeros(self.nstates_full)
+        statdist_full[self.active_set] = self.stationary_distribution
+        # histogram observed states
+        import msmtools.dtraj as msmtraj
+        hist = 1.0 * msmtraj.count_states(dtrajs)
+        # simply read off stationary distribution and accumulate total weight
+        W = []
+        wtot = 0.0
+        for dtraj in dtrajs:
+            w = statdist_full[dtraj] / hist[dtraj]
+            W.append(w)
+            wtot += np.sum(w)
+        # normalize
+        for w in W:
+            w /= wtot
+        # done
+        return W
+
+    ################################################################################
+    # HMM-based coarse graining
+    ################################################################################
+
+    def hmm(self, dtrajs, nhidden: int):
+        """Estimates a hidden Markov state model as described in [1]_
+
+        Parameters
+        ----------
+        nhidden : int
+            number of hidden (metastable) states
+
+        Returns
+        -------
+        hmsm : :class:`MaximumLikelihoodHMSM`
+
+        References
+        ----------
+        .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
+            Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
+            J. Chem. Phys. 139, 184114 (2013)
+
+        """
+        # check if the time-scale separation is OK
+        # if hmm.nstates = msm.nstates there is no problem. Otherwise, check spectral gap
+        if self.nstates > nhidden:
+            timescale_ratios = self.timescales()[:-1] / self.timescales()[1:]
+            if timescale_ratios[nhidden - 2] < 1.5:
+                import warnings
+                warnings.warn('Requested coarse-grained model with {nhidden} metastable states at lag={lag}.'
+                              ' The ratio of relaxation timescales between'
+                              ' {nhidden} and {nhidden_1} states is only {ratio}'
+                              ' while we recommend at least 1.5.'
+                              ' It is possible that the resulting HMM is inaccurate. Handle with caution.'.format(
+                    lag=self.lagtime,
+                    nhidden=nhidden,
+                    nhidden_1=nhidden + 1,
+                    ratio=timescale_ratios[nhidden - 2],
+                ))
+        # run HMM estimate
+        #from pyemma.msm.estimators.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
+        estimator = MaximumLikelihoodHMSM(lag=self.lagtime, nstates=nhidden, msm_init=self,
+                                          reversible=self.reversible, dt_traj=self.dt_traj)
+        estimator.fit(dtrajs)
+        return estimator.fetch_model()
+
+    # TODO: redundant
+    def coarse_grain(self, dtrajs, ncoarse: int, method='hmm') -> Model:
+        r"""Returns a coarse-grained Markov model.
+
+        Currently only the HMM method described in [1]_ is available for coarse-graining MSMs.
+
+        Parameters
+        ----------
+        ncoarse : int
+            number of coarse states
+
+        Returns
+        -------
+        hmsm : :class:`MaximumLikelihoodHMSM`
+
+        References
+        ----------
+        .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
+            Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
+            J. Chem. Phys. 139, 184114 (2013)
+
+        """
+        # check input
+        assert 1 < ncoarse <= self.nstates, 'nstates must be an int in [2,msmobj.nstates]'
+
+        return self.hmm(dtrajs, ncoarse)

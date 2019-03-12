@@ -19,13 +19,13 @@ import numpy as np
 
 from msmtools import estimation as msmest
 
-from sktime.markovprocess._base import _MSMBaseEstimator
+from sktime.markovprocess._base import _MSMBaseEstimator, EstimatedMSM
 from sktime.markovprocess.markov_state_model import MarkovStateModel
 
-__all__ = ['MaximumLikelihoodMSMBase']
+__all__ = ['MaximumLikelihoodMSM']
 
 
-class MaximumLikelihoodMSMBase(_MSMBaseEstimator):
+class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
 
     Parameters
@@ -116,17 +116,6 @@ class MaximumLikelihoodMSMBase(_MSMBaseEstimator):
         in order to track changes in small probabilities. The Euclidean norm
         of the change vector, :math:`|e_i|_2`, is compared to maxerr.
 
-    score_method : str, optional, default='VAMP2'
-        Score to be used with score function. Available are:
-
-        |  'VAMP1'  [1]_
-        |  'VAMP2'  [1]_
-        |  'VAMPE'  [1]_
-
-    score_k : int or None
-        The maximum number of eigenvalues or singular values used in the
-        score. If set to None, all available eigenvalues will be used.
-
     mincount_connectivity : float or '1/n'
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
@@ -139,16 +128,15 @@ class MaximumLikelihoodMSMBase(_MSMBaseEstimator):
         (in preparation)
 
     """
+
     def __init__(self, lagtime=1, reversible=True, statdist_constraint=None,
                  count_mode='sliding', sparse=False,
                  connectivity='largest', dt_traj='1 step', maxiter=1000000,
-                 maxerr=1e-8, score_method='VAMP2', score_k=10,
-                 mincount_connectivity='1/n'):
+                 maxerr=1e-8, mincount_connectivity='1/n'):
 
-        super(MaximumLikelihoodMSMBase, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
-                                                       sparse=sparse, connectivity=connectivity, dt_traj=dt_traj,
-                                                       score_method=score_method, score_k=score_k,
-                                                       mincount_connectivity=mincount_connectivity)
+        super(MaximumLikelihoodMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
+                                                   sparse=sparse, connectivity=connectivity, dt_traj=dt_traj,
+                                                   mincount_connectivity=mincount_connectivity)
 
         self.statdist_constraint = statdist_constraint
         if self.statdist_constraint is not None:  # renormalize
@@ -158,10 +146,11 @@ class MaximumLikelihoodMSMBase(_MSMBaseEstimator):
         self.maxiter = maxiter
         self.maxerr = maxerr
 
-    def _create_model(self) -> MarkovStateModel:
-        return MarkovStateModel(None)
+    def _create_model(self) -> EstimatedMSM:
+        return EstimatedMSM(P=None)
 
-    def _prepare_input_revpi(self, C, pi):
+    @staticmethod
+    def _prepare_input_revpi(C, pi):
         """Max. state index visited by trajectories"""
         nC = C.shape[0]
         # Max. state index of the stationary vector array
@@ -185,52 +174,37 @@ class MaximumLikelihoodMSMBase(_MSMBaseEstimator):
         return pos[lcc]
 
     def fit(self, dtrajs):
-        """ Estimates the MarkovStateModel """
-        # get trajectory counts. This sets _C_full and _nstates_full
-        dtrajstats = self._get_dtraj_stats(dtrajs)
-        self._C_full = dtrajstats.count_matrix()  # full count matrix
-        self._nstates_full = self._C_full.shape[0]  # number of states
+        self._compute_count_matrix(dtrajs, lag=self.lagtime, mincount_connectivity=self.mincount_connectivity,
+                                   count_mode=self.count_mode)
 
         # set active set. This is at the same time a mapping from active to full
-        if self.connectivity == 'largest':
-            if self.statdist_constraint is None:
-                # statdist not given - full connectivity on all states
-                self.active_set = dtrajstats.largest_connected_set
-            else:
-                active_set = self._prepare_input_revpi(self._C_full,
-                                                       self.statdist_constraint)
-                self.active_set = active_set
+        if self.statdist_constraint is None:
+            # statdist not given - full connectivity on all states
+            active_set = self.largest_connected_set
         else:
-            # for 'None' and 'all' all visited states are active
-            self.active_set = dtrajstats.visited_set
+            active_set = self._prepare_input_revpi(self.count_matrix_full,
+                                                   self.statdist_constraint)
+            active_set = active_set
 
         # if active set is empty, we can't do anything.
-        if np.size(self.active_set) == 0:
+        if np.size(active_set) == 0:
             raise RuntimeError('Active set is empty. Cannot estimate MarkovStateModel.')
 
         # active count matrix and number of states
-        self._C_active = dtrajstats.count_matrix(subset=self.active_set)
+        C_active = self.count_matrix(subset=active_set)
 
         # continue sparse or dense?
         if not self.sparse:
             # converting count matrices to arrays. As a result the
             # transition matrix and all subsequent properties will be
             # computed using dense arrays and dense matrix algebra.
-            self._C_full = self._C_full.toarray()
-            self._C_active = self._C_active.toarray()
-
-        self._nstates = self._C_active.shape[0]
-
-        # computed derived quantities
-        # back-mapping from full to lcs
-        self._full2active = -1 * np.ones(dtrajstats.nstates, dtype=int)
-        self._full2active[self.active_set] = np.arange(len(self.active_set))
+            C_active = C_active.toarray()
 
         # restrict stationary distribution to active set
         if self.statdist_constraint is None:
             statdist_active = None
         else:
-            statdist_active = self.statdist_constraint[self.active_set]
+            statdist_active = self.statdist_constraint[active_set]
             statdist_active /= statdist_active.sum()  # renormalize
 
         opt_args = {}
@@ -239,34 +213,12 @@ class MaximumLikelihoodMSMBase(_MSMBaseEstimator):
             opt_args['return_statdist'] = True
 
         # Estimate transition matrix
-        if self.connectivity == 'largest':
-            P = msmest.transition_matrix(self._C_active, reversible=self.reversible,
-                                         mu=statdist_active, maxiter=self.maxiter,
-                                         maxerr=self.maxerr, **opt_args)
-        elif self.connectivity == 'none':
-            # reversible mode only possible if active set is connected
-            # - in this case all visited states are connected and thus
-            # this mode is identical to 'largest'
-            if self.reversible and not msmest.is_connected(self._C_active):
-                raise ValueError('Reversible MarkovStateModel estimation is not possible with connectivity mode "none", '
-                                 'because the set of all visited states is not reversibly connected')
-            P = msmest.transition_matrix(self._C_active, reversible=self.reversible,
-                                         mu=statdist_active,
-                                         maxiter=self.maxiter, maxerr=self.maxerr,
-                                         **opt_args
-                                         )
-        else:
-            raise NotImplementedError(
-                'MarkovStateModel estimation with connectivity=%s is currently not implemented.' % self.connectivity)
-
-        # msmtools returns a tuple for statdist_active = None.
+        P = msmest.transition_matrix(C_active, reversible=self.reversible,
+                                     mu=statdist_active, maxiter=self.maxiter,
+                                     maxerr=self.maxerr, **opt_args)
+        # msmtools returns a tuple for statdist_active=None.
         if isinstance(P, tuple):
             P, statdist_active = P
-
-        # Done. We set our own model parameters, so this estimator is
-        # equal to the estimated model.
-        self._dtrajs_full = dtrajs
-        self._connected_sets = dtrajstats.connected_sets
 
         # update model parameters
         m = self._model
@@ -277,22 +229,3 @@ class MaximumLikelihoodMSMBase(_MSMBaseEstimator):
         m.dt_model = self.timestep_traj * self.lagtime
 
         return self
-
-    # TODO: change to statistically effective count matrix!
-    @property
-    def effective_count_matrix(self):
-        """Statistically uncorrelated transition counts within the active set of states
-
-        You can use this count matrix for Bayesian estimation or error perturbation.
-
-        References
-        ----------
-        [1] Noe, F. (2015) Statistical inefficiency of Markov model count matrices
-            http://publications.mi.fu-berlin.de/1699/1/autocorrelation_counts.pdf
-
-        """
-        Ceff_full = msmest.effective_count_matrix(self._dtrajs_full, self.lagtime)
-        from pyemma.util.linalg import submatrix
-        Ceff = submatrix(Ceff_full, self.active_set)
-        return Ceff
-        # return self._C_active / float(self.lagtime)

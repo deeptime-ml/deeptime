@@ -1,8 +1,12 @@
-
 import numpy as np
 
 from msmtools import estimation as msmest
+from msmtools.dtraj import count_states
+
 from pyemma.util.linalg import submatrix
+
+from sktime.markovprocess import Q_
+from sktime.markovprocess.util import visited_set
 
 __author__ = 'noe'
 
@@ -67,79 +71,130 @@ def cvsplit_dtrajs(dtrajs):
     return dtrajs_train, dtrajs_test
 
 
-class DiscreteTrajectoryStats(object):
+class TransitionCountingMixin(object):
     r""" Statistics, count matrices and connectivity from discrete trajectories
 
     Operates sparse by default.
 
     """
 
-    def __init__(self, dtrajs):
-        # TODO: extensive input checking!
-        from pyemma.util.types import ensure_dtraj_list
+    @property
+    def lagtime(self) -> Q_:
+        """ The lag time at which the Markov model was estimated."""
+        return self._lag
 
-        # discrete trajectories
-        self._dtrajs = ensure_dtraj_list(dtrajs)
+    @lagtime.setter
+    def lagtime(self, value: [int, str]):
+        self._lag = Q_(value)
 
-        ## basic count statistics
-        # histogram
-        from msmtools.dtraj import count_states
-        self._hist = count_states(self._dtrajs, ignore_negative=True)
-        # total counts
-        self._total_count = np.sum(self._hist)
-        # number of states
-        self._nstates = msmest.number_of_states(dtrajs)
+    @property
+    def nstates_full(self):
+        """ Number of states in discrete trajectories """
+        return self._nstates_full
 
-        # not yet estimated
-        self._counted_at_lag = False
+    @property
+    def active_set(self):
+        """The active set of states on which all computations and estimations will be done"""
+        return self._active_set
 
-    def to_coreset(self, core_set, in_place=True):
+    @active_set.setter
+    def active_set(self, value):
+        self._active_set = value
+
+    @property
+    def dt_traj(self) -> Q_:
+        """Time interval between discrete steps of the time series."""
+        return self.timestep_traj
+
+    @dt_traj.setter
+    def dt_traj(self, value: [int, str]):
+        self.timestep_traj = Q_(value)
+
+    @property
+    def largest_connected_set(self):
+        """The largest reversible connected set of states."""
+        return self._connected_sets[0] if self._connected_sets is not None else ()
+
+    @property
+    def connected_sets(self):
+        """The reversible connected sets of states, sorted by size (descending)."""
+        return self._connected_sets
+
+    # TODO: ever used?
+    def map_discrete_trajectories_to_active(self, dtrajs):
         """
-
-        Parameters
-        ----------
-        core_set: an array of micro-states to include as core-sets
-
-        in_place: boolean, default=True
-            if True, replace the current dtrajs
-            if False, return a copy
-
-        Returns
-        -------
-        dtrajs
+        A list of integer arrays with the discrete trajectories mapped to the connectivity mode used.
+        For example, for connectivity='largest', the indexes will be given within the connected set.
+        Frames that are not in the connected set will be -1.
         """
-        import copy
-        dtrajs = self._dtrajs if in_place else copy.deepcopy(self._dtrajs)
+        # compute connected dtrajs
+        dtrajs_active = []
+        # TODO: checking for same set?
+        for dtraj in dtrajs:
+            dtrajs_active.append(self._full2lcs[dtraj])
 
-        core_set = np.array(core_set, dtype=int)
-        # build a boolean expression to create a mask of indices within the core set.
-        expr = ['(d == {i})'.format(i=i) for i in core_set]
-        expr = '|'.join(expr)
+        return dtrajs_active
 
-        def to_ranges(a):
-            # return a list of consecutive ranges in array a.
-            cons = np.split(a, np.where(np.diff(a) != 1)[0] + 1)
-            ranges = [(np.min(x), np.max(x) + 1) if len(x) > 1
-                      else (x[0], x[0] + 1) for x in cons]
-            return ranges
+    @property
+    def count_matrix_active(self):
+        """The count matrix on the active set given the connectivity mode used.
 
-        for d in dtrajs:
-            within_core_set = eval(expr)
-            outside_core_set = np.logical_not(within_core_set)
-            inds_outside_set = np.where(outside_core_set)[0]
-            # determine ranges to update, which lies outside the core set.
-            ranges = to_ranges(inds_outside_set)
+        For example, for connectivity='largest', the count matrix is given only on the largest reversibly connected set.
+        Attention: This count matrix has been obtained by sliding a window of length tau across the data. It contains
+        a factor of tau more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
+        likelihood estimated, but it will give far too small errors if you use it for uncertainty calculations. In order
+        to do uncertainty calculations, use the effective count matrix, see:
+        :attr:`effective_count_matrix`
 
-            # start with first valid core set value.
-            for start, stop in ranges:
-                core_set = d[start - 1] if start > 0 else -1
-                d[start:stop] = core_set
+        See Also
+        --------
+        effective_count_matrix
+            For a count matrix with effective (statistically uncorrelated) counts.
 
-        # re-initialize
-        if in_place:
-            self.__init__(dtrajs)
+        """
+        return self._C_active
 
-        return dtrajs
+    @property
+    def count_matrix_full(self):
+        """
+        The count matrix on full set of discrete states, irrespective as to whether they are connected or not.
+        Attention: This count matrix has been obtained by sliding a window of length tau across the data. It contains
+        a factor of tau more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
+        likelihood estimated, but it will give far too small errors if you use it for uncertainty calculations. In order
+        to do uncertainty calculations, use the effective count matrix, see: :attr:`effective_count_matrix`
+        (only implemented on the active set), or divide this count matrix by tau.
+
+        See Also
+        --------
+        effective_count_matrix
+            For a active-set count matrix with effective (statistically uncorrelated) counts.
+
+        """
+        # TODO: used to be _C_full
+        return self._C
+
+    @property
+    def active_state_fraction(self):
+        """The fraction of states in the largest connected set."""
+        return float(self._nstates) / float(self._nstates_full)
+
+    @property
+    def active_count_fraction(self):
+        """The fraction of counts in the largest connected set."""
+        from pyemma.util.discrete_trajectories import count_states
+
+        hist = count_states(self._hist)
+        hist_active = hist[self.active_set]
+        return float(np.sum(hist_active)) / float(np.sum(hist))
+
+    @property
+    # TODO: needed to be computed in fit()
+    def active_state_indexes(self):
+        """Ensures that the connected states are indexed and returns the indices."""
+        if not hasattr(self, '_active_state_indexes'):
+            from pyemma.util.discrete_trajectories import index_states
+            self._active_state_indexes = index_states(self.discrete_trajectories_active)
+        return self._active_state_indexes
 
     @staticmethod
     def _compute_connected_sets(C, mincount_connectivity, strong=True):
@@ -168,8 +223,8 @@ class DiscreteTrajectoryStats(object):
         S = msmest.connected_sets(Cconn, directed=strong)
         return S
 
-    def count_lagged(self, lag, count_mode='sliding', mincount_connectivity='1/n', show_progress=True, n_jobs=None,
-                     name=''):
+    def _compute_count_matrix(self, dtrajs, lag, count_mode='sliding', mincount_connectivity='1/n', show_progress=True, n_jobs=None,
+            name=''):
         r""" Counts transitions at given lag time
 
         Parameters
@@ -198,15 +253,29 @@ class DiscreteTrajectoryStats(object):
         n_jobs: int or None
 
         """
+        from pyemma.util.types import ensure_dtraj_list
+
+        # discrete trajectories
+        dtrajs = ensure_dtraj_list(dtrajs)
+
+        ## basic count statistics
+        # histogram
+        self._hist = count_states(dtrajs, ignore_negative=True)
+        # total counts
+        self._total_count = np.sum(self._hist)
+        # number of states
+        self._nstates = msmest.number_of_states(dtrajs)
+        self._visited_set = visited_set(dtrajs)
+
         # store lag time
         self._lag = lag
 
         # Compute count matrix
         count_mode = count_mode.lower()
         if count_mode == 'sliding':
-            self._C = msmest.count_matrix(self._dtrajs, lag, sliding=True)
+            self._C = msmest.count_matrix(dtrajs, lag, sliding=True)
         elif count_mode == 'sample':
-            self._C = msmest.count_matrix(self._dtrajs, lag, sliding=False)
+            self._C = msmest.count_matrix(dtrajs, lag, sliding=False)
         elif count_mode == 'effective':
             from pyemma.util.reflection import getargspec_no_self
             argspec = getargspec_no_self(msmest.effective_count_matrix)
@@ -222,15 +291,16 @@ class DiscreteTrajectoryStats(object):
                 if show_progress:
                     pg = ProgressReporter()
                     # this is a fast operation
-                    C_temp = msmest.count_matrix(self._dtrajs, lag, sliding=True)
+                    C_temp = msmest.count_matrix(dtrajs, lag, sliding=True)
                     pg.register(C_temp.nnz, '{}: compute stat. inefficiencies'.format(name), stage=0)
                     del C_temp
                     kw['callback'] = pg.update
                     ctx = pg.context(stage=0)
             with ctx:
-                self._C = msmest.effective_count_matrix(self._dtrajs, lag, **kw)
+                self._C = msmest.effective_count_matrix(dtrajs, lag, **kw)
         else:
             raise ValueError('Count mode ' + count_mode + ' is unknown.')
+        self._nstates_full = len(self._C)
 
         # store mincount_connectivity
         if mincount_connectivity == '1/n':
@@ -244,52 +314,22 @@ class DiscreteTrajectoryStats(object):
         else:
             self._connected_sets = msmest.connected_sets(self._C)
 
-        # set sizes and count matrices on reversibly connected sets
-        self._connected_set_sizes = np.zeros((len(self._connected_sets)))
-        self._C_sub = np.empty((len(self._connected_sets)), dtype=np.object)
+        # set sizes of reversibly connected sets
+        self._connected_set_sizes = np.zeros(len(self._connected_sets))
         for i in range(len(self._connected_sets)):
             # set size
             self._connected_set_sizes[i] = len(self._connected_sets[i])
-            # submatrix
-            # self._C_sub[i] = submatrix(self._C, self._connected_sets[i])
 
         # largest connected set
         self._lcs = self._connected_sets[0]
 
         # if lcs has no counts, make lcs empty
         if submatrix(self._C, self._lcs).sum() == 0:
-            self._lcs = np.array([], dtype=int)
+            self._lcs = np.empty(0, dtype=int)
 
         # mapping from full to lcs
-        self._full2lcs = -1 * np.ones((self._nstates), dtype=int)
+        self._full2lcs = -1 * np.ones(self._nstates, dtype=int)
         self._full2lcs[self._lcs] = np.arange(len(self._lcs))
-
-        # remember that this function was called
-        self._counted_at_lag = True
-
-    # ==================================
-    # Permanent properties
-    # ==================================
-
-    def _assert_counted_at_lag(self):
-        """
-        Checks if count_lagged has been run
-        """
-        assert self._counted_at_lag, \
-            "You haven't run count_lagged yet. Do that first before accessing lag-based quantities"
-
-    def _assert_subset(self, A):
-        """
-        Checks if set A is a subset of states
-
-        Parameters
-        ----------
-        A : int or int array
-            set of states
-        """
-        if np.size(A) == 0:
-            return True  # empty set is always contained
-        assert np.max(A) < self._nstates, 'Chosen set contains states that are not included in the data.'
 
     @property
     def nstates(self):
@@ -297,14 +337,6 @@ class DiscreteTrajectoryStats(object):
         Number (int) of states
         """
         return self._nstates
-
-    @property
-    def discrete_trajectories(self):
-        """
-        A list of integer arrays with the original (unmapped) discrete trajectories:
-
-        """
-        return self._dtrajs
 
     @property
     def total_count(self):
@@ -320,19 +352,6 @@ class DiscreteTrajectoryStats(object):
 
         """
         return self._hist
-
-    # ==================================
-    # Estimated properties
-    # ==================================
-
-    @property
-    def lagtime(self):
-        """
-        The active set of states on which all computations and estimations will be done
-
-        """
-        self._assert_counted_at_lag()
-        return self._lag
 
     def count_matrix(self, connected_set=None, subset=None, effective=False):
         """The count matrix
@@ -362,11 +381,11 @@ class DiscreteTrajectoryStats(object):
             Reversible Markov models of molecular kinetics: Estimation and uncertainty.
             in preparation.
         """
-        self._assert_counted_at_lag()
         if subset is not None and connected_set is not None:
             raise ValueError('Can\'t set both connected_set and subset.')
         if subset is not None:
-            self._assert_subset(subset)
+            if np.size(subset) > 0:
+                assert np.max(subset) < self._nstates, 'Chosen set contains states that are not included in the data.'
             C = submatrix(self._C, subset)
         elif connected_set is not None:
             C = submatrix(self._C, self._connected_sets[connected_set])
@@ -380,9 +399,7 @@ class DiscreteTrajectoryStats(object):
         return C
 
     def histogram_lagged(self, connected_set=None, subset=None, effective=False):
-        r""" Histogram of discrete state counts
-
-        """
+        r""" Histogram of discrete state counts"""
         C = self.count_matrix(connected_set=connected_set, subset=subset, effective=effective)
         return C.sum(axis=1)
 
@@ -392,41 +409,11 @@ class DiscreteTrajectoryStats(object):
         return h.sum()
 
     @property
-    def count_matrix_largest(self, effective=False):
-        """The count matrix on the largest connected set
-
-        """
-        return self.count_matrix(connected_set=0, effective=effective)
-
-    @property
-    def largest_connected_set(self):
-        """
-        The largest reversible connected set of states
-
-        """
-        self._assert_counted_at_lag()
-        return self._lcs
-
-    @property
     def visited_set(self):
-        r""" The set of visited states
-        """
-        from sktime.markovprocess.util import visited_set
-        return visited_set(self._dtrajs)
-
-    @property
-    def connected_sets(self):
-        """
-        The reversible connected sets of states, sorted by size (descending)
-
-        """
-        self._assert_counted_at_lag()
-        return self._connected_sets
+        """ The set of visited states"""
+        return self._visited_set
 
     @property
     def connected_set_sizes(self):
-        """The numbers of states for each connected set
-
-        """
-        self._assert_counted_at_lag()
+        """The numbers of states for each connected set"""
         return self._connected_set_sizes
