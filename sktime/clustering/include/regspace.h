@@ -5,6 +5,7 @@
 #pragma once
 
 #include "common.h"
+#include "metric.h"
 
 #if defined(USE_OPENMP)
 #include <omp.h>
@@ -29,10 +30,9 @@ private:
  * @param chunk array shape(n, d)
  * @param py_centers python list containing found centers.
  */
-template<typename T, typename MetricFunc>
+template<typename T>
 void cluster(const np_array<T> &chunk, py::list& py_centers, T dmin, std::size_t maxClusters,
-             const MetricFunc& metric, unsigned int n_threads) {
-    static_assert(is_metric_fn_v<T, MetricFunc>, "Metric has wrong signature");
+             const Metric *metric, unsigned int n_threads) {
 
     // this checks for ndim == 2
     const auto &data = chunk.template unchecked<2>();
@@ -50,7 +50,7 @@ void cluster(const np_array<T> &chunk, py::list& py_centers, T dmin, std::size_t
         for (auto j = 0U; j < N_centers; ++j) {
             // TODO avoid the cast in inner loop?
             auto point = py_centers[j].cast<np_array<T>>();
-            auto d = metric(&data(i, 0), point.data(), dim);
+            auto d = metric->compute(&data(i, 0), point.data(), dim);
             if (d < mindist) mindist = d;
         }
         if (mindist > dmin) {

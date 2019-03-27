@@ -27,14 +27,10 @@ clustering - Algorithms (:mod:`pyemma.coordinates.clustering`)
 .. autosummary::
     :toctree: generated/
 
-    AssignCenters
     KmeansClustering
     RegularSpaceClustering
-    UniformTimeClustering
 """
 
-from .assign import AssignCenters
 from .kmeans import KmeansClustering
 from .kmeans import MiniBatchKmeansClustering
 from .regspace import RegularSpaceClustering
-from .uniform_time import UniformTimeClustering

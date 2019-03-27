@@ -5,7 +5,7 @@ import numpy as np
 
 from sktime.base import Estimator
 from sktime.clustering.cluster_model import ClusterModel
-from sktime.util import get_n_jobs
+from sktime.clustering._bindings import kmeans as _ext
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
 
@@ -66,7 +66,9 @@ class KmeansClustering(Estimator):
                  n_jobs=None, initial_centers=None, random_state=None):
 
         if n_jobs is None:
-            n_jobs = get_n_jobs()
+            # todo: sensible choice?
+            # in sklearn: None -> 1 job, -1 -> all cpus (logical)
+            n_jobs = 1
 
         self.n_clusters = n_clusters
         self.max_iter = max_iter
@@ -79,10 +81,6 @@ class KmeansClustering(Estimator):
         self.random_state = random_state
         self.n_jobs = n_jobs
         self.initial_centers = initial_centers
-
-        from ._ext import kmeans as kmeans_mod
-        # TODO: based on input type of data use Kmeans_f or kmeans_d, introduce precision parameter or determine automatically?
-        self._ext = kmeans_mod.Kmeans_f(self.n_clusters, self.metric)
 
         super(KmeansClustering, self).__init__()
 
@@ -146,16 +144,16 @@ class KmeansClustering(Estimator):
             if self.init_strategy == 'uniform':
                 self.initial_centers = data[self.random_state.randint(0, len(data), size=self.n_clusters)]
             elif self.init_strategy == 'kmeans++':
-                self.initial_centers = self._ext.init_centers_KMpp(data, self.fixed_seed, self.n_jobs,
-                                                                   callback_init_centers)
+                self.initial_centers = _ext.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, self.n_jobs,
+                                                              callback_init_centers)
         else:
             self.initial_centers = initial_centers
 
         # run k-means with all the data
         converged = False
-        cluster_centers, code, iterations = self._ext.cluster_loop(data, self.initial_centers,
-                                                                   self.n_jobs, self.max_iter, self.tolerance,
-                                                                   callback_loop)
+        cluster_centers, code, iterations = _ext.cluster_loop(data, self.initial_centers, self.n_clusters,
+                                                              self.n_jobs, self.max_iter, self.tolerance,
+                                                              callback_loop)
         if code == 0:
             converged = True
         else:
@@ -183,17 +181,13 @@ class MiniBatchKmeansClustering(KmeansClustering):
         self._converged = False
         self._prev_cost = float('inf')
 
-        from ._ext import kmeans as kmeans_mod
-        # TODO: based on input type of data use Kmeans_f or kmeans_d
-        self._ext = kmeans_mod.Kmeans_f(self.n_clusters, self.metric)
-
     def partial_fit(self, data):
         if self._model.cluster_centers is None:
             self._model.cluster_centers = np.empty((self.n_clusters, data.shape[1]))
         cluster_centers = self._model.cluster_centers
 
-        cluster_centers = self._ext.cluster(data, cluster_centers, self.n_jobs)
-        cost = self._ext.cost_function(data, cluster_centers, self.n_jobs)
+        cluster_centers = _ext.cluster(data, cluster_centers, self.n_jobs)
+        cost = _ext.cost_function(data, cluster_centers, self.n_jobs)
 
         rel_change = np.abs(cost - self._prev_cost) / cost if cost != 0.0 else 0.0
         self._prev_cost = cost

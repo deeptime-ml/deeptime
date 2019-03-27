@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../metric_base.h"
+#include "metric.h"
 
 #ifdef USE_OPENMP
 #include <omp.h>
@@ -14,7 +14,7 @@ template<typename T, typename MetricFunc>
 inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
                                                 const np_array<T>& centers,
                                                 unsigned int n_threads,
-                                                const MetricFunc &metric) {
+                                                const Metric* metric) {
     static_assert(std::is_function_v<MetricFunc>, "Metric must be function");
     static_assert(std::is_invocable_r_v<T, MetricFunc, const T*, const T*, std::size_t>, "Metric has wrong signature");
     if (chunk.ndim() != 2) {
@@ -52,7 +52,7 @@ inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
             /* Parallelize distance calculations to cluster centers to avoid cache misses */
 #pragma omp for
             for(size_t j = 0; j < N_centers; ++j) {
-                dists[j] = metric(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
+                dists[j] = metric->compute(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
             }
 #pragma omp flush(dists)
 
@@ -74,17 +74,4 @@ inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
         }
     }
     return dtraj;
-}
-
-namespace metric {
-template<typename T>
-inline T euclidean(const T* a, const T* b, std::size_t dim) {
-    double sum = 0.0;
-#pragma omp simd reduction(+:sum)
-    for (size_t i = 0; i < dim; ++i) {
-        auto d = a[i] - b[i];
-        sum += d * d;
-    }
-    return static_cast<T>(std::sqrt(sum));
-}
 }

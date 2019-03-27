@@ -58,7 +58,7 @@ class TestKmeans(unittest.TestCase):
             assert np.linalg.norm(model1.cluster_centers - km1.initial_centers) > 0
             np.testing.assert_allclose(model1.cluster_centers, model2.cluster_centers,
                                        err_msg="should yield same centers with fixed seed=%s for strategy %s, Initial centers=%s"
-                                               % (fixed_seed, init_strategy, km2.initial_centers), atol=1e-6)
+                                               % (fixed_seed, init_strategy, km2.initial_centers), atol=1e-4)
 
     def test_check_convergence_serial_parallel(self):
         """ check serial and parallel version of kmeans converge to the same centers.

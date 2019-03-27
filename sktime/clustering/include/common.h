@@ -12,6 +12,3 @@ namespace py = pybind11;
 
 template<typename dtype>
 using np_array = py::array_t<dtype, py::array::c_style>;
-
-template<typename dtype, typename F>
-inline constexpr bool is_metric_fn_v = std::is_invocable_r_v<dtype, F, const dtype*, const dtype*, std::size_t>;

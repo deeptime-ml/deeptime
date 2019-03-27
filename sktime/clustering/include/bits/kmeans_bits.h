@@ -16,10 +16,9 @@
 
 namespace clustering::kmeans {
 
-template<typename T, typename MetricFunc>
+template<typename T>
 inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_centers, int n_threads,
-                           const MetricFunc &metric) {
-    static_assert(is_metric_fn_v<T, MetricFunc>, "Metric has wrong signature");
+                           const Metric *metric) {
 
     if (np_chunk.ndim() != 2) {
         throw std::runtime_error(R"(Number of dimensions of "chunk" ain't 2.)");
@@ -52,7 +51,7 @@ inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_ce
         for (std::size_t i = 0; i < n_frames; ++i) {
             auto mindist = std::numeric_limits<T>::max();
             for(std::size_t j = 0; j < n_centers; ++j) {
-                auto d = metric(&chunk(i, 0), &centers(j, 0), dim);
+                auto d = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
                 if(d < mindist) {
                     mindist = d;
                     closest_center_index = j;
@@ -99,9 +98,9 @@ inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_ce
                 for (auto i = begin; i < end; ++i) {
                     std::size_t argMinDist = 0;
                     {
-                        T minDist = metric(&chunk(i, 0), &centers(0, 0), dim);
+                        T minDist = metric->compute(&chunk(i, 0), &centers(0, 0), dim);
                         for (std::size_t j = 1; j < n_centers; ++j) {
-                            auto dist = metric(&chunk(i, 0), &centers(j, 0), dim);
+                            auto dist = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
                             if(dist < minDist) {
                                 minDist = dist;
                                 argMinDist = j;
@@ -143,17 +142,17 @@ inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_ce
     return return_new_centers;
 }
 
-template<typename T, typename MetricFunc>
+template<typename T>
 inline std::tuple<np_array<T>, int, int> cluster_loop(
         const np_array<T>& np_chunk, np_array<T>& np_centers,
-        std::size_t k, const MetricFunc &metric,
+        std::size_t k, const Metric *metric,
         int n_threads, int max_iter, T tolerance, py::object& callback) {
     int it = 0;
     bool converged = false;
     T rel_change = std::numeric_limits<T>::max();
     T prev_cost = static_cast<T>(0);
     do {
-        np_centers = cluster<T, MetricFunc>(np_chunk, np_centers, n_threads, metric);
+        np_centers = cluster<T>(np_chunk, np_centers, n_threads, metric);
         auto cost = costFunction(np_chunk, np_centers, metric, n_threads);
         rel_change = (cost != 0.0) ? std::abs(cost - prev_cost) / cost : 0;
         prev_cost = cost;
@@ -173,8 +172,8 @@ inline std::tuple<np_array<T>, int, int> cluster_loop(
     return std::make_tuple(std::move(np_centers), res, it);
 }
 
-template<typename T, typename MetricFunc>
-inline T costFunction(const np_array<T>& np_data, const np_array<T>& np_centers, const MetricFunc &metric,
+template<typename T>
+inline T costFunction(const np_array<T>& np_data, const np_array<T>& np_centers, const Metric *metric,
                       int n_threads) {
     auto data = np_data.template unchecked<2>();
     auto centers = np_centers.template unchecked<2>();
@@ -189,7 +188,7 @@ inline T costFunction(const np_array<T>& np_data, const np_array<T>& np_centers,
 #pragma omp parallel for reduction(+:value)
     for (std::size_t i = 0; i < n_frames; i++) {
         for (std::size_t r = 0; r < static_cast<std::size_t>(np_centers.shape(0)); r++) {
-            auto l = metric(&data(i, 0), &centers(r, 0), dim);
+            auto l = metric->compute(&data(i, 0), &centers(r, 0), dim);
             {
                 value += l;
             }
@@ -198,9 +197,9 @@ inline T costFunction(const np_array<T>& np_data, const np_array<T>& np_centers,
     return value;
 }
 
-template<typename T, typename MetricFunc>
+template<typename T>
 inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
-                                   const MetricFunc &metric, unsigned int random_seed,
+                                   const Metric *metric, unsigned int random_seed,
                                    int n_threads, py::object& callback) {
     if (static_cast<std::size_t>(np_data.shape(0)) < k) {
         std::stringstream ss;
@@ -267,7 +266,7 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
 #pragma omp parallel for reduction(+:dist_sum)
     for (std::size_t i = 0; i < n_frames; i++) {
         if (i != first_center_index) {
-            auto value = metric(&data(i, 0), &data(first_center_index, 0), dim);
+            auto value = metric->compute(&data(i, 0), &data(first_center_index, 0), dim);
             value = value * value;
             squared_distances[i] = value;
             /* build up dist_sum which keeps the sum of all squared distances */
@@ -323,7 +322,7 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
 #pragma omp critical
                     {
                         if (next_center_candidates.at(j) != i) {
-                            auto value = metric(&data(i, 0), &data(next_center_candidates.at(j), 0), dim);
+                            auto value = metric->compute(&data(i, 0), &data(next_center_candidates.at(j), 0), dim);
                             auto d = value * value;
                             if (d < squared_distances.at(i)) {
                                 next_center_candidates_potential[j] += d;
@@ -383,7 +382,7 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
 #pragma omp parallel for
                 for (std::size_t i = 0; i < n_frames; ++i) {
                     if (taken_points[i] == 0) {
-                        auto value = metric(&data(i, 0), &data(best_candidate, 0), dim);
+                        auto value = metric->compute(&data(i, 0), &data(best_candidate, 0), dim);
                         auto d = value * value;
 #pragma omp critical
                         {
