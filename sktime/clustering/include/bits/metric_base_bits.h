@@ -2,8 +2,7 @@
 // Created by marscher on 7/21/17.
 //
 
-#ifndef PYEMMA_METRIC_BASE_BITS_H
-#define PYEMMA_METRIC_BASE_BITS_H
+#pragma once
 
 #include "../metric_base.h"
 
@@ -11,11 +10,13 @@
 #include <omp.h>
 #endif
 
-
-template <typename dtype>
-inline py::array_t<int> metric_base<dtype>::assign_chunk_to_centers(const np_array& chunk,
-                                                                    const np_array& centers,
-                                                                    unsigned int n_threads) {
+template<typename T, typename MetricFunc>
+inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
+                                                const np_array<T>& centers,
+                                                unsigned int n_threads,
+                                                const MetricFunc &metric) {
+    static_assert(std::is_function_v<MetricFunc>, "Metric must be function");
+    static_assert(std::is_invocable_r_v<T, MetricFunc, const T*, const T*, std::size_t>, "Metric has wrong signature");
     if (chunk.ndim() != 2) {
         throw std::invalid_argument("provided chunk does not have two dimensions.");
     }
@@ -28,11 +29,11 @@ inline py::array_t<int> metric_base<dtype>::assign_chunk_to_centers(const np_arr
         throw std::invalid_argument("dimension mismatch centers and provided data to assign.");
     }
 
-    size_t N_centers = static_cast<size_t>(centers.shape(0));
-    size_t N_frames = static_cast<size_t>(chunk.shape(0));
-    size_t input_dim = static_cast<size_t>(chunk.shape(1));
+    auto N_centers = static_cast<size_t>(centers.shape(0));
+    auto N_frames = static_cast<size_t>(chunk.shape(0));
+    auto input_dim = static_cast<size_t>(chunk.shape(1));
 
-    std::vector<dtype> dists(N_centers);
+    std::vector<T> dists(N_centers);
     std::vector<size_t> shape = {N_frames};
     py::array_t<int> dtraj(shape);
 
@@ -45,20 +46,20 @@ inline py::array_t<int> metric_base<dtype>::assign_chunk_to_centers(const np_arr
     omp_set_num_threads(n_threads);
     assert(omp_get_num_threads() == n_threads);
 #endif
-    #pragma omp parallel
+#pragma omp parallel
     {
         for(size_t i = 0; i < N_frames; ++i) {
             /* Parallelize distance calculations to cluster centers to avoid cache misses */
-            #pragma omp for
+#pragma omp for
             for(size_t j = 0; j < N_centers; ++j) {
-                dists[j] = compute(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
+                dists[j] = metric(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
             }
-            #pragma omp flush(dists)
+#pragma omp flush(dists)
 
             /* Only one thread can make actual assignment */
-            #pragma omp single
+#pragma omp single
             {
-                dtype mindist = std::numeric_limits<dtype>::max();
+                T mindist = std::numeric_limits<T>::max();
                 int argmin = -1;
                 for (size_t j = 0; j < N_centers; ++j) {
                     if (dists[j] < mindist) {
@@ -69,22 +70,21 @@ inline py::array_t<int> metric_base<dtype>::assign_chunk_to_centers(const np_arr
                 dtraj_buff(i) = argmin;
             }
             /* Have all threads synchronize in progress through cluster assignments */
-            #pragma omp barrier
+#pragma omp barrier
         }
     }
     return dtraj;
 }
 
-template <typename dtype>
-inline dtype euclidean_metric<dtype>::compute(const dtype *const a, const dtype *const b, size_t dim) {
+namespace metric {
+template<typename T>
+inline T euclidean(const T* a, const T* b, std::size_t dim) {
     double sum = 0.0;
-    #pragma omp simd reduction(+:sum)
+#pragma omp simd reduction(+:sum)
     for (size_t i = 0; i < dim; ++i) {
         auto d = a[i] - b[i];
         sum += d * d;
     }
-    return static_cast<dtype>(std::sqrt(sum));
+    return static_cast<T>(std::sqrt(sum));
 }
-
-
-#endif //PYEMMA_METRIC_BASE_BITS_H
+}

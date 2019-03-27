@@ -32,7 +32,7 @@ if __name__ == '__main__':
             Extension('sktime.clustering._ext', sources=[
                 'sktime/clustering/src/clustering_module.cpp'
             ], include_dirs=['sktime/clustering/include'],
-                      language='c++'),
+                      language='c++', extra_compile_args=['-std=c++17']),
         ],
         cmdclass=dict(build_ext=Build),
         zip_safe=False,

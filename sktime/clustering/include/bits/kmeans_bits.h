@@ -3,8 +3,7 @@
 //
 
 
-#ifndef PYEMMA_KMEANS_BITS_H_H
-#define PYEMMA_KMEANS_BITS_H_H
+#pragma once
 
 #include "kmeans.h"
 #include "threading_utils.h"
@@ -15,10 +14,12 @@
 #include <pybind11/pytypes.h>
 #include <mutex>
 
+namespace clustering::kmeans {
 
-template<typename dtype>
-typename KMeans<dtype>::np_array
-KMeans<dtype>::cluster(const np_array &np_chunk, const np_array &np_centers, int n_threads) const {
+template<typename T, typename MetricFunc>
+inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_centers, int n_threads,
+                           const MetricFunc &metric) {
+    static_assert(is_metric_fn_v<T, MetricFunc>, "Metric has wrong signature");
 
     if (np_chunk.ndim() != 2) {
         throw std::runtime_error(R"(Number of dimensions of "chunk" ain't 2.)");
@@ -40,7 +41,7 @@ KMeans<dtype>::cluster(const np_array &np_chunk, const np_array &np_centers, int
 
     /* initialize centers_counter and new_centers with zeros */
     std::vector<std::size_t> shape = {n_centers, dim};
-    py::array_t <dtype> return_new_centers(shape);
+    py::array_t <T> return_new_centers(shape);
     auto new_centers = return_new_centers.mutable_unchecked();
     std::fill(return_new_centers.mutable_data(), return_new_centers.mutable_data() + return_new_centers.size(), 0.0);
     std::vector<std::size_t> centers_counter(n_centers, 0);
@@ -49,9 +50,9 @@ KMeans<dtype>::cluster(const np_array &np_chunk, const np_array &np_centers, int
     if (n_threads == 0) {
         std::size_t closest_center_index = 0;
         for (std::size_t i = 0; i < n_frames; ++i) {
-            auto mindist = std::numeric_limits<dtype>::max();
+            auto mindist = std::numeric_limits<T>::max();
             for(std::size_t j = 0; j < n_centers; ++j) {
-                auto d = parent_t::metric->compute(&chunk(i, 0), &centers(j, 0), dim);
+                auto d = metric(&chunk(i, 0), &centers(j, 0), dim);
                 if(d < mindist) {
                     mindist = d;
                     closest_center_index = j;
@@ -70,7 +71,7 @@ KMeans<dtype>::cluster(const np_array &np_chunk, const np_array &np_centers, int
         for (std::size_t i = 0; i < n_frames; ++i) {
             std::vector<dtype> dists(n_centers);
             for (std::size_t j = 0; j < n_centers; ++j) {
-                dists[j] = parent_t::metric->compute(&chunk(i, 0), &centers(j, 0), dim);
+                dists[j] = metric(&chunk(i, 0), &centers(j, 0), dim);
             }
 #pragma omp flush(dists)
 
@@ -98,9 +99,9 @@ KMeans<dtype>::cluster(const np_array &np_chunk, const np_array &np_centers, int
                 for (auto i = begin; i < end; ++i) {
                     std::size_t argMinDist = 0;
                     {
-                        dtype minDist = parent_t::metric->compute(&chunk(i, 0), &centers(0, 0), dim);
+                        T minDist = metric(&chunk(i, 0), &centers(0, 0), dim);
                         for (std::size_t j = 1; j < n_centers; ++j) {
-                            auto dist = parent_t::metric->compute(&chunk(i, 0), &centers(j, 0), dim);
+                            auto dist = metric(&chunk(i, 0), &centers(j, 0), dim);
                             if(dist < minDist) {
                                 minDist = dist;
                                 argMinDist = j;
@@ -135,25 +136,25 @@ KMeans<dtype>::cluster(const np_array &np_chunk, const np_array &np_centers, int
             }
         } else {
             for (std::size_t j = 0; j < dim; ++j) {
-                new_centers(i, j) /= static_cast<dtype>(*centers_counter_it);
+                new_centers(i, j) /= static_cast<T>(*centers_counter_it);
             }
         }
     }
     return return_new_centers;
 }
 
-
-template<typename dtype>
-typename KMeans<dtype>::cluster_res KMeans<dtype>::cluster_loop(const np_array& np_chunk, np_array& np_centers,
-                                                                int n_threads, int max_iter, float tolerance,
-                                                                py::object& callback) const {
+template<typename T, typename MetricFunc>
+inline std::tuple<np_array<T>, int, int> cluster_loop(
+        const np_array<T>& np_chunk, np_array<T>& np_centers,
+        std::size_t k, const MetricFunc &metric,
+        int n_threads, int max_iter, T tolerance, py::object& callback) {
     int it = 0;
     bool converged = false;
-    dtype rel_change = std::numeric_limits<dtype>::max();
-    dtype prev_cost = 0;
+    T rel_change = std::numeric_limits<T>::max();
+    T prev_cost = static_cast<T>(0);
     do {
-        np_centers = cluster(np_chunk, np_centers, n_threads);
-        auto cost = costFunction(np_chunk, np_centers, n_threads);
+        np_centers = cluster<T, MetricFunc>(np_chunk, np_centers, n_threads, metric);
+        auto cost = costFunction(np_chunk, np_centers, metric, n_threads);
         rel_change = (cost != 0.0) ? std::abs(cost - prev_cost) / cost : 0;
         prev_cost = cost;
         if(rel_change <= tolerance) {
@@ -172,12 +173,13 @@ typename KMeans<dtype>::cluster_res KMeans<dtype>::cluster_loop(const np_array& 
     return std::make_tuple(std::move(np_centers), res, it);
 }
 
-template<typename dtype>
-dtype KMeans<dtype>::costFunction(const np_array &np_data, const np_array &np_centers, int n_threads) const {
+template<typename T, typename MetricFunc>
+inline T costFunction(const np_array<T>& np_data, const np_array<T>& np_centers, const MetricFunc &metric,
+                      int n_threads) {
     auto data = np_data.template unchecked<2>();
     auto centers = np_centers.template unchecked<2>();
 
-    dtype value = 0.0;
+    T value = static_cast<T>(0);
     auto n_frames = static_cast<std::size_t>(np_data.shape(0));
     auto dim = static_cast<std::size_t>(np_data.shape(1));
 #ifdef USE_OPENMP
@@ -186,8 +188,8 @@ dtype KMeans<dtype>::costFunction(const np_array &np_data, const np_array &np_ce
 
 #pragma omp parallel for reduction(+:value)
     for (std::size_t i = 0; i < n_frames; i++) {
-        for (std::size_t r = 0; r < np_centers.shape(0); r++) {
-            auto l = parent_t::metric->compute(&data(i, 0), &centers(r, 0), dim);
+        for (std::size_t r = 0; r < static_cast<std::size_t>(np_centers.shape(0)); r++) {
+            auto l = metric(&data(i, 0), &centers(r, 0), dim);
             {
                 value += l;
             }
@@ -196,10 +198,11 @@ dtype KMeans<dtype>::costFunction(const np_array &np_data, const np_array &np_ce
     return value;
 }
 
-template<typename dtype>
-typename KMeans<dtype>::np_array KMeans<dtype>::
-initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads, py::object& callback) const {
-    if (np_data.shape(0) < k) {
+template<typename T, typename MetricFunc>
+inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
+                                   const MetricFunc &metric, unsigned int random_seed,
+                                   int n_threads, py::object& callback) {
+    if (static_cast<std::size_t>(np_data.shape(0)) < k) {
         std::stringstream ss;
         ss << "not enough data to initialize desired number of centers.";
         ss << "Provided frames (" << np_data.shape(0) << ") < n_centers (" << k << ").";
@@ -213,7 +216,7 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
     constexpr auto size_t_max = std::numeric_limits<std::size_t>::max();
 
     std::size_t centers_found = 0;
-    std::size_t dim = np_data.shape(1);
+    auto dim = static_cast<size_t>(np_data.shape(1));
 
     auto n_frames = static_cast<size_t>(np_data.shape(0));
 
@@ -224,14 +227,14 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
     std::vector<char> taken_points(n_frames, 0);
     /* candidates allocations */
     std::vector<std::size_t> next_center_candidates(n_trials, size_t_max);
-    std::vector<double> next_center_candidates_rand(n_trials, 0);
-    std::vector<double> next_center_candidates_potential(n_trials, 0);
+    std::vector<T> next_center_candidates_rand(n_trials, static_cast<T>(0));
+    std::vector<T> next_center_candidates_potential(n_trials, static_cast<T>(0));
     /* allocate space for the array holding the squared distances to the assigned cluster centers */
-    std::vector<double> squared_distances(n_frames, 0);
+    std::vector<T> squared_distances(n_frames, static_cast<T>(0));
 
     /* create the output objects */
     std::vector<std::size_t> shape = {k, dim};
-    np_array ret_init_centers(shape);
+    np_array<T> ret_init_centers(shape);
     auto init_centers = ret_init_centers.mutable_unchecked();
     std::memset(init_centers.mutable_data(), 0,
                 static_cast<std::size_t>(init_centers.size() * init_centers.itemsize()));
@@ -260,17 +263,17 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
 
     /* iterate over all data points j, measuring the squared distance between j and the initial center i: */
     /* squared_distances[i] = distance(x_j, x_i)*distance(x_j, x_i) */
-    dtype dist_sum = 0;
-    #pragma omp parallel for reduction(+:dist_sum)
-        for (std::size_t i = 0; i < n_frames; i++) {
-            if (i != first_center_index) {
-                auto value = parent_t::metric->compute(&data(i, 0), &data(first_center_index, 0), dim);
-                value = value * value;
-                squared_distances[i] = value;
-                /* build up dist_sum which keeps the sum of all squared distances */
-                dist_sum += value;
-            }
+    T dist_sum = static_cast<T>(0);
+#pragma omp parallel for reduction(+:dist_sum)
+    for (std::size_t i = 0; i < n_frames; i++) {
+        if (i != first_center_index) {
+            auto value = metric(&data(i, 0), &data(first_center_index, 0), dim);
+            value = value * value;
+            squared_distances[i] = value;
+            /* build up dist_sum which keeps the sum of all squared distances */
+            dist_sum += value;
         }
+    }
 
     /* keep picking centers while we do not have enough of them... */
     while (centers_found < k) {
@@ -280,12 +283,12 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
         for (std::size_t j = 0; j < n_trials; j++) {
             next_center_candidates[j] = size_t_max;
             auto point_index = uniform_dist(generator);
-            next_center_candidates_rand[j] = dist_sum * (static_cast<double>(point_index) /
-                                                         static_cast<double>(uniform_dist.max()));
+            next_center_candidates_rand[j] = dist_sum * (static_cast<T>(point_index) /
+                                                         static_cast<T>(uniform_dist.max()));
             next_center_candidates_potential[j] = 0.0;
         }
         /* pick candidate data points corresponding to their random value */
-        dtype sum = 0.0;
+        T sum = static_cast<T>(0);
         for (std::size_t i = 0; i < n_frames; i++) {
             if (taken_points[i] == 0) {
                 sum += squared_distances[i];
@@ -306,7 +309,7 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
 
         /* now find the maximum squared distance for each trial... */
         std::atomic_bool terminate(false);
-        #pragma omp parallel for
+#pragma omp parallel for
         for (std::size_t i = 0; i < n_frames; i++) {
             if (terminate.load()) {
                 continue;
@@ -317,11 +320,10 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
                         terminate.store(true);
                         break;
                     }
-                    #pragma omp critical
+#pragma omp critical
                     {
                         if (next_center_candidates.at(j) != i) {
-                            auto value = parent_t::metric->compute(&data(i, 0),
-                                                                   &data(next_center_candidates.at(j), 0), dim);
+                            auto value = metric(&data(i, 0), &data(next_center_candidates.at(j), 0), dim);
                             auto d = value * value;
                             if (d < squared_distances.at(i)) {
                                 next_center_candidates_potential[j] += d;
@@ -336,7 +338,7 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
 
         /* ... and select the best candidate by the minimum value of the maximum squared distances */
         long best_candidate = -1;
-        auto best_potential = std::numeric_limits<double>::max();
+        auto best_potential = std::numeric_limits<T>::max();
         for (std::size_t j = 0; j < n_trials; j++) {
             if (next_center_candidates[j] != size_t_max && next_center_candidates_potential[j] < best_potential) {
                 best_potential = next_center_candidates_potential[j];
@@ -381,7 +383,7 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
 #pragma omp parallel for
                 for (std::size_t i = 0; i < n_frames; ++i) {
                     if (taken_points[i] == 0) {
-                        auto value = parent_t::metric->compute(&data(i, 0), &data(best_candidate, 0), dim);
+                        auto value = metric(&data(i, 0), &data(best_candidate, 0), dim);
                         auto d = value * value;
 #pragma omp critical
                         {
@@ -401,4 +403,4 @@ initCentersKMpp(const np_array &np_data, unsigned int random_seed, int n_threads
     return ret_init_centers;
 }
 
-#endif //PYEMMA_KMEANS_BITS_H_H
+}
