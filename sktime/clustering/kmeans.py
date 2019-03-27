@@ -5,7 +5,8 @@ import numpy as np
 
 from sktime.base import Estimator
 from sktime.clustering.cluster_model import ClusterModel
-from sktime.clustering._bindings import kmeans as _ext
+from sktime.clustering._bindings import EuclideanMetric
+from sktime.clustering._bindings import kmeans as _kmeans_ext
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
 
@@ -42,7 +43,8 @@ class KmeansClustering(Estimator):
 
         is smaller than tolerance.
     metric : str
-        metric to use during clustering ('euclidean', 'minRMSD')
+        metric to use during clustering, default None evaluates to euclidean metric, otherwise instance of a subclass
+        of `sktime.clustering._bindings.Metric`
 
     init_strategy : string
         can be either 'kmeans++' or 'uniform', determining how the initial
@@ -61,7 +63,7 @@ class KmeansClustering(Estimator):
         the centers are directly passed to the kmeans iteration algorithm.
     """
 
-    def __init__(self, n_clusters, max_iter=5, metric='euclidean',
+    def __init__(self, n_clusters, max_iter=5, metric=None,
                  tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None, random_state=None):
 
@@ -69,6 +71,8 @@ class KmeansClustering(Estimator):
             # todo: sensible choice?
             # in sklearn: None -> 1 job, -1 -> all cpus (logical)
             n_jobs = 1
+        if metric is None:
+            metric = EuclideanMetric()
 
         self.n_clusters = n_clusters
         self.max_iter = max_iter
@@ -147,16 +151,16 @@ class KmeansClustering(Estimator):
             if self.init_strategy == 'uniform':
                 self.initial_centers = data[self.random_state.randint(0, len(data), size=self.n_clusters)]
             elif self.init_strategy == 'kmeans++':
-                self.initial_centers = _ext.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, self.n_jobs,
-                                                              callback_init_centers)
+                self.initial_centers = _kmeans_ext.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, self.n_jobs,
+                                                                     callback_init_centers, self.metric)
         else:
             self.initial_centers = initial_centers
 
         # run k-means with all the data
         converged = False
-        cluster_centers, code, iterations = _ext.cluster_loop(data, self.initial_centers, self.n_clusters,
-                                                              self.n_jobs, self.max_iter, self.tolerance,
-                                                              callback_loop)
+        cluster_centers, code, iterations = _kmeans_ext.cluster_loop(data, self.initial_centers, self.n_clusters,
+                                                                     self.n_jobs, self.max_iter, self.tolerance,
+                                                                     callback_loop, self.metric)
         if code == 0:
             converged = True
         else:
@@ -172,7 +176,7 @@ class KmeansClustering(Estimator):
 class MiniBatchKmeansClustering(KmeansClustering):
     r"""Mini-batch k-means clustering"""
 
-    def __init__(self, n_clusters, max_iter=5, metric='euclidean', tolerance=1e-5, init_strategy='kmeans++',
+    def __init__(self, n_clusters, max_iter=5, metric=None, tolerance=1e-5, init_strategy='kmeans++',
                  n_jobs=None, initial_centers=None):
 
         super(MiniBatchKmeansClustering, self).__init__(n_clusters, max_iter, metric,
@@ -189,8 +193,8 @@ class MiniBatchKmeansClustering(KmeansClustering):
             self._model.cluster_centers = np.empty((self.n_clusters, data.shape[1]))
         cluster_centers = self._model.cluster_centers
 
-        cluster_centers = _ext.cluster(data, cluster_centers, self.n_jobs)
-        cost = _ext.cost_function(data, cluster_centers, self.n_jobs)
+        cluster_centers = _kmeans_ext.cluster(data, cluster_centers, self.n_jobs, self.metric)
+        cost = _kmeans_ext.cost_function(data, cluster_centers, self.n_jobs, self.metric)
 
         rel_change = np.abs(cost - self._prev_cost) / cost if cost != 0.0 else 0.0
         self._prev_cost = cost

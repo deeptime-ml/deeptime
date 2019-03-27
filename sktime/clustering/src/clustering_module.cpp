@@ -126,4 +126,5 @@ PYBIND11_MODULE(_bindings, m) {
     registerRegspace(regspace_mod);
 
     py::class_<Metric>(m, "Metric");
+    py::class_<EuclideanMetric, Metric>(m, "EuclideanMetric").def(py::init<>());
 }
