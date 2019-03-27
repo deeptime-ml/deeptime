@@ -149,7 +149,7 @@ inline std::tuple<np_array<T>, int, int> cluster_loop(
         int n_threads, int max_iter, T tolerance, py::object& callback) {
     int it = 0;
     bool converged = false;
-    T rel_change = std::numeric_limits<T>::max();
+    T rel_change;
     T prev_cost = static_cast<T>(0);
     do {
         np_centers = cluster<T>(np_chunk, np_centers, n_threads, metric);

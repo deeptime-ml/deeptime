@@ -1,13 +1,11 @@
-import os
 import random
 import unittest
+
 import numpy as np
-import pytest
 from sklearn.datasets import make_blobs
 from sklearn.model_selection import ParameterGrid
 
 from sktime.clustering import KmeansClustering
-
 from sktime.clustering.cluster_model import ClusterModel
 
 
@@ -29,20 +27,21 @@ class TestKmeans(unittest.TestCase):
              state.randn(200),
              state.randn(200) + 2.0]
         X = np.atleast_2d(np.hstack(X)).T
+        X = X.astype(np.float32)
         k = 50
-        grid = ParameterGrid({'init_strategy': ['uniform', 'kmeans++'], 'fixed_seed': [True, 463498]})
+        grid = ParameterGrid({'init_strategy': ['uniform', 'kmeans++'], 'fixed_seed': [463498, True]})
         for param in grid:
             init_strategy = param['init_strategy']
             fixed_seed = param['fixed_seed']
-            kmeans, model = cluster_kmeans(X, k=k, init_strategy=init_strategy, n_jobs=0, fixed_seed=fixed_seed)
+            kmeans, model = cluster_kmeans(X, k=k, init_strategy=init_strategy, n_jobs=1, fixed_seed=fixed_seed)
             cc = model.cluster_centers
             self.assertTrue(np.all(np.isfinite(cc)), "cluster centers borked for strat %s" % init_strategy)
             assert (np.any(cc < 1.0)), "failed for init_strategy=%s" % init_strategy
             assert (np.any((cc > -1.0) * (cc < 1.0))), "failed for init_strategy=%s" % init_strategy
             assert (np.any(cc > -1.0)), "failed for init_strategy=%s" % init_strategy
 
-            km1, model1 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=0)
-            km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=0)
+            km1, model1 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=1)
+            km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=1)
             self.assertEqual(len(model1.cluster_centers), k)
             self.assertEqual(len(model2.cluster_centers), k)
 
@@ -56,9 +55,11 @@ class TestKmeans(unittest.TestCase):
                 km2.fit(data=X, initial_centers=model1.cluster_centers)
 
             assert np.linalg.norm(model1.cluster_centers - km1.initial_centers) > 0
+            assert np.allclose(model1.cluster_centers, model2.cluster_centers)
             np.testing.assert_allclose(model1.cluster_centers, model2.cluster_centers,
-                                       err_msg="should yield same centers with fixed seed=%s for strategy %s, Initial centers=%s"
-                                               % (fixed_seed, init_strategy, km2.initial_centers), atol=1e-4)
+                                       err_msg="should yield same centers with fixed seed=%s for strategy %s, "
+                                               "Initial centers=%s"
+                                               % (fixed_seed, init_strategy, km2.initial_centers))
 
     def test_check_convergence_serial_parallel(self):
         """ check serial and parallel version of kmeans converge to the same centers.

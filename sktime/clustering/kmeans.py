@@ -108,6 +108,9 @@ class KmeansClustering(Estimator):
         """
         return self._fixed_seed
 
+    def fetch_model(self) -> ClusterModel:
+        return self._model
+
     @fixed_seed.setter
     def fixed_seed(self, value: [bool, int, None]):
         if isinstance(value, bool) or value is None:
