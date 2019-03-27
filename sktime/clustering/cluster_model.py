@@ -4,7 +4,7 @@ from sktime.base import Model
 
 class ClusterModel(Model):
 
-    def __init__(self, n_clusters=0, cluster_centers=None, metric='euclidean'):
+    def __init__(self, n_clusters=0, cluster_centers=None, metric=None):
         self._n_clusters = n_clusters
         self._cluster_centers = cluster_centers
         self._metric = metric

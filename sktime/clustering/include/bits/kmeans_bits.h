@@ -143,17 +143,19 @@ inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_ce
 }
 
 template<typename T>
-inline std::tuple<np_array<T>, int, int> cluster_loop(
-        const np_array<T>& np_chunk, np_array<T>& np_centers,
+inline std::tuple<np_array<T>, int, int, T> cluster_loop(
+        const np_array<T>& np_chunk, const np_array<T>& np_centers,
         std::size_t k, const Metric *metric,
         int n_threads, int max_iter, T tolerance, py::object& callback) {
     int it = 0;
     bool converged = false;
     T rel_change;
-    T prev_cost = static_cast<T>(0);
+    auto prev_cost = static_cast<T>(0);
+    auto currentCenters = np_centers;
+
     do {
-        np_centers = cluster<T>(np_chunk, np_centers, n_threads, metric);
-        auto cost = costFunction(np_chunk, np_centers, metric, n_threads);
+        currentCenters = cluster<T>(np_chunk, currentCenters, n_threads, metric);
+        auto cost = costFunction(np_chunk, currentCenters, metric, n_threads);
         rel_change = (cost != 0.0) ? std::abs(cost - prev_cost) / cost : 0;
         prev_cost = cost;
         if(rel_change <= tolerance) {
@@ -169,7 +171,7 @@ inline std::tuple<np_array<T>, int, int> cluster_loop(
         it += 1;
     } while(it < max_iter && ! converged);
     int res = converged ? 0 : 1;
-    return std::make_tuple(std::move(np_centers), res, it);
+    return std::make_tuple(currentCenters, res, it, prev_cost);
 }
 
 template<typename T>

@@ -40,8 +40,8 @@ class TestKmeans(unittest.TestCase):
             assert (np.any((cc > -1.0) * (cc < 1.0))), "failed for init_strategy=%s" % init_strategy
             assert (np.any(cc > -1.0)), "failed for init_strategy=%s" % init_strategy
 
-            km1, model1 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=1)
-            km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=1)
+            km1, model1 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=0)
+            km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=0)
             self.assertEqual(len(model1.cluster_centers), k)
             self.assertEqual(len(model2.cluster_centers), k)
 
@@ -55,7 +55,7 @@ class TestKmeans(unittest.TestCase):
                 km2.fit(data=X, initial_centers=model1.cluster_centers)
 
             assert np.linalg.norm(model1.cluster_centers - km1.initial_centers) > 0
-            assert np.allclose(model1.cluster_centers, model2.cluster_centers)
+            np.testing.assert_array_almost_equal(model1.cluster_centers, model2.cluster_centers)
             np.testing.assert_allclose(model1.cluster_centers, model2.cluster_centers,
                                        err_msg="should yield same centers with fixed seed=%s for strategy %s, "
                                                "Initial centers=%s"
@@ -134,11 +134,11 @@ class TestKmeans(unittest.TestCase):
             np.array([-1, 1, 1], dtype=np.float32), np.array([-1, -1, 1], dtype=np.float32),
             np.array([-1, 1, -1], dtype=np.float32), np.array([1, -1, 1], dtype=np.float32)
         ])
-        X = np.atleast_2d(X).T
-        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=1)
+        X = np.atleast_2d(X)
+        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=0)
 
         cl = model.cluster_centers
-        assert np.all(np.abs(cl) <= 1)
+        assert np.all(np.abs(cl) <= 1), f"Got clustercenters {cl}"
 
     def test_kmeans_convex_hull(self):
         points = [

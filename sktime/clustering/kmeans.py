@@ -158,9 +158,9 @@ class KmeansClustering(Estimator):
 
         # run k-means with all the data
         converged = False
-        cluster_centers, code, iterations = _kmeans_ext.cluster_loop(data, self.initial_centers, self.n_clusters,
-                                                                     self.n_jobs, self.max_iter, self.tolerance,
-                                                                     callback_loop, self.metric)
+        cluster_centers, code, iterations, cost = _kmeans_ext.cluster_loop(data, self.initial_centers, self.n_clusters,
+                                                                           self.n_jobs, self.max_iter, self.tolerance,
+                                                                           callback_loop, self.metric)
         if code == 0:
             converged = True
         else:

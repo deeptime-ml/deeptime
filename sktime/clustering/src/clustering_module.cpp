@@ -11,9 +11,9 @@ using namespace pybind11::literals;
 static const auto euclidean = EuclideanMetric{};
 
 template<typename T>
-std::tuple<py::object, int, int> castLoopResult(const std::tuple<np_array<T>, int, int> &input) {
-    const auto& [arr, res, it] = input;
-    return std::make_tuple(py::cast<py::object>(arr), res, it);
+std::tuple<py::object, int, int, double> castLoopResult(const std::tuple<np_array<T>, int, int, T> &input) {
+    const auto& [arr, res, it, cost] = input;
+    return std::make_tuple(py::cast<py::object>(arr), res, it, static_cast<double>(cost));
 }
 
 void registerKmeans(py::module &mod) {
