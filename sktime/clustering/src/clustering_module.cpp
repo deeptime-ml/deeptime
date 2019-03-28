@@ -118,7 +118,7 @@ void registerRegspace(py::module &module) {
     });
 }
 
-PYBIND11_MODULE(_bindings, m) {
+PYBIND11_MODULE(_clustering_bindings, m) {
     m.doc() = "module containing clustering algorithms.";
     auto kmeans_mod = m.def_submodule("kmeans");
     registerKmeans(kmeans_mod);

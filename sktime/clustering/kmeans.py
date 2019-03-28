@@ -5,8 +5,8 @@ import numpy as np
 
 from sktime.base import Estimator
 from sktime.clustering.cluster_model import ClusterModel
-from sktime.clustering._bindings import EuclideanMetric
-from sktime.clustering._bindings import kmeans as _kmeans_ext
+from sktime.clustering._clustering_bindings import EuclideanMetric
+from sktime.clustering._clustering_bindings import kmeans as _kmeans_ext
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
 
