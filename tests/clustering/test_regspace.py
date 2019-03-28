@@ -41,15 +41,16 @@ class TestRegSpaceClustering(unittest.TestCase):
     def test_assignment(self):
         model = self.clustering.fit(self.src).fetch_model()
 
-        assert len(model.clustercenters) > 1
+        assert len(model.cluster_centers) > 1
+        dtraj = model.transform(self.src)
 
         # num states == num _clustercenters?
-        self.assertEqual(len(np.unique(model.dtrajs)),  len(
-            model.clustercenters), "number of unique states in dtrajs"
+        self.assertEqual(len(np.unique(dtraj)),  len(
+            model.cluster_centers), "number of unique states in dtrajs"
             " should be equal.")
 
         data_to_cluster = np.random.random((1000, 3))
-        model.assign(data_to_cluster, stride=1)
+        model.transform(data_to_cluster)
 
     def test_spread_data(self):
         src = RandomDataSource(a=-2, b=2)
@@ -61,9 +62,8 @@ class TestRegSpaceClustering(unittest.TestCase):
         RegularSpaceClustering(dmin=0.3).fit(data)
 
     def test_non_existent_metric(self):
-        self.clustering.metric = "non_existent_metric"
         with self.assertRaises(ValueError):
-            self.clustering.fit(self.src)
+            self.clustering.metric = "non_existent_metric"
 
     def test_too_small_dmin_should_warn(self):
         self.clustering.dmin = 1e-8
@@ -78,13 +78,12 @@ class TestRegSpaceClustering(unittest.TestCase):
             assert w
             assert len(w) == 1
             model = self.clustering.fetch_model()
-            assert len(model.clustercenters) == max_centers
+            assert len(model.cluster_centers) == max_centers
 
     def test_regspace_nthreads(self):
-        for metric in ('euclidean', 'minRMSD'):
-            self.clustering.fit(self.src, n_jobs=1, dmin=self.dmin, metric=metric)
-            cl2 = cluster_regspace(self.src, n_jobs=2, dmin=self.dmin, metric=metric)
-            np.testing.assert_equal(self.clustering.clustercenters, cl2.clustercenters)
+        self.clustering.fit(self.src, n_jobs=1)
+        cl2 = RegularSpaceClustering(dmin=self.dmin, n_jobs=2).fit(self.src).fetch_model()
+        np.testing.assert_equal(self.clustering.fetch_model().cluster_centers, cl2.cluster_centers)
 
 
 if __name__ == "__main__":

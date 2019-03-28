@@ -116,6 +116,7 @@ void registerRegspace(py::module &module) {
         }
 
     });
+    py::register_exception<clustering::regspace::MaxCentersReachedException>(module, "MaxCentersReachedException");
 }
 
 PYBIND11_MODULE(_clustering_bindings, m) {
@@ -124,6 +125,23 @@ PYBIND11_MODULE(_clustering_bindings, m) {
     registerKmeans(kmeans_mod);
     auto regspace_mod = m.def_submodule("regspace");
     registerRegspace(regspace_mod);
+
+    m.def("assign", [](py::object chunk, py::object centers, std::uint32_t nThreads, const Metric* metric) {
+        metric = metric ? metric : &euclidean;
+
+        auto bufChunk = py::array::ensure(chunk);
+        auto bufCenters = py::array::ensure(centers);
+        if(!(bufChunk && bufCenters)) {
+            throw std::invalid_argument("chunk and centers must be numpy arrays.");
+        }
+        if(py::isinstance<np_array<float>>(bufChunk)) {
+            return assign_chunk_to_centers(py::cast<np_array<float>>(bufChunk), py::cast<np_array<float>>(bufCenters),
+                                           nThreads, metric);
+        } else {
+            return assign_chunk_to_centers(py::cast<np_array<double>>(bufChunk), py::cast<np_array<double>>(bufCenters),
+                                           nThreads, metric);
+        }
+    }, "chunk"_a, "centers"_a, "n_threads"_a, "metric"_a = nullptr);
 
     py::class_<Metric>(m, "Metric");
     py::class_<EuclideanMetric, Metric>(m, "EuclideanMetric").def(py::init<>());

@@ -2,8 +2,12 @@ import warnings
 
 import numpy as np
 
+from base import Model
 from sktime.base import Estimator
 from sktime.clustering.cluster_model import ClusterModel
+
+from sktime.clustering._clustering_bindings import Metric, EuclideanMetric
+from sktime.clustering._clustering_bindings import regspace as _regspace_ext
 
 __all__ = ['RegularSpaceClustering']
 
@@ -46,15 +50,30 @@ class RegularSpaceClustering(Estimator):
 
     """
 
-    def __init__(self, dmin, max_centers=1000, metric='euclidean', n_jobs=None):
+    def __init__(self, dmin, max_centers=1000, metric=None, n_jobs=None):
         super(RegularSpaceClustering, self).__init__()
         self.dmin = dmin
+        if metric is None:
+            metric = EuclideanMetric()
         self.metric = metric
         self.max_centers = max_centers
         self.n_jobs = n_jobs
 
     def _create_model(self):
         return ClusterModel()
+
+    @property
+    def metric(self):
+        return self._metric
+
+    @metric.setter
+    def metric(self, value):
+        if value == 'euclidean':
+            value = EuclideanMetric()
+
+        if not isinstance(value, Metric):
+            raise ValueError(f"Unknown metric {value}, must be subclass of _clustering_bindings.Metric")
+        self._metric = value
 
     @property
     def dmin(self):
@@ -64,7 +83,7 @@ class RegularSpaceClustering(Estimator):
     @dmin.setter
     def dmin(self, d: float):
         if d < 0:
-            raise ValueError("d has to be positive")
+            raise ValueError("d has to be non-negative")
 
         self._dmin = d
 
@@ -79,7 +98,7 @@ class RegularSpaceClustering(Estimator):
     @max_centers.setter
     def max_centers(self, value: int):
         if value < 0:
-            raise ValueError("max_centers has to be positive")
+            raise ValueError("max_centers has to be non-negative")
 
         self._max_centers = value
 
@@ -91,7 +110,10 @@ class RegularSpaceClustering(Estimator):
     def n_clusters(self, val: int):
         self.max_centers = val
 
-    def fit(self, data, **kwargs):
+    def fetch_model(self) -> ClusterModel:
+        return self._model
+
+    def fit(self, data, n_jobs=None):
         ########
         # Calculate clustercenters:
         # 1. choose first datapoint as centroid
@@ -99,28 +121,27 @@ class RegularSpaceClustering(Estimator):
         # 3. add new centroid, if min(distance to all other clustercenters) >= dmin
         ########
         # temporary list to store cluster centers
-        clustercenters = []
-        used_data = 0
-        from ._ext import regspace
-        ndim = data.shape[1]
-        n = data.shape[0]
-        converged = False
 
-        self._inst = regspace.Regspace_f(self.dmin, self.max_centers, self.metric, ndim)
+        n_jobs = self.n_jobs if n_jobs is None else n_jobs
+        if n_jobs is None:
+            n_jobs = 0
+
+        if data.ndim == 1:
+            data = data[:, np.newaxis]
+
+        clustercenters = []
+        converged = False
         try:
-            for X in data:
-                used_data += len(X)
-                self._inst.cluster(X.astype(np.float32, order='C', copy=False),
-                                   clustercenters, self.n_jobs)
+            _regspace_ext.cluster(data, clustercenters, self.dmin, self.max_centers, n_jobs, self.metric)
             converged = True
-        except regspace.MaxCentersReachedException:
+        except _regspace_ext.MaxCentersReachedException:
             warnings.warn('Maximum number of cluster centers reached.'
                           ' Consider increasing max_centers or choose'
                           ' a larger minimum distance, dmin.')
         finally:
             # even if not converged, we store the found centers.
-            new_shape = (len(clustercenters), ndim)
-            clustercenters = np.array(clustercenters).reshape(new_shape)
+            # new_shape = (len(clustercenters), ndim)
+            clustercenters = np.asarray_chkfinite(clustercenters).squeeze() #.reshape(new_shape)
             self._model.cluster_centers = clustercenters
             self._model.n_clusters = len(clustercenters)
             self._model._converged = converged

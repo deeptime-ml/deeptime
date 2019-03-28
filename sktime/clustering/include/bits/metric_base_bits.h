@@ -10,13 +10,11 @@
 #include <omp.h>
 #endif
 
-template<typename T, typename MetricFunc>
+template<typename T>
 inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
                                                 const np_array<T>& centers,
                                                 unsigned int n_threads,
                                                 const Metric* metric) {
-    static_assert(std::is_function_v<MetricFunc>, "Metric must be function");
-    static_assert(std::is_invocable_r_v<T, MetricFunc, const T*, const T*, std::size_t>, "Metric has wrong signature");
     if (chunk.ndim() != 2) {
         throw std::invalid_argument("provided chunk does not have two dimensions.");
     }
