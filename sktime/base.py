@@ -24,6 +24,7 @@ class Estimator(object):
     def _create_model(self):
         pass
 
+
 class Transformer(object):
 
     @abc.abstractmethod

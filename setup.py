@@ -26,9 +26,17 @@ if __name__ == '__main__':
             Extension('sktime.covariance.util.covar_c', sources=[
                 'sktime/covariance/util/covar_c/covartools.cpp',
             ], language='c++'),
-            Extension('sktime.numeric.eig_qr', sources=['sktime/numeric/eig_qr.pyx'], language_level=3)
+            Extension('sktime.numeric.eig_qr', sources=[
+                'sktime/numeric/eig_qr.pyx'],
+                      language_level=3),
+            Extension('sktime.clustering._clustering_bindings', sources=[
+                'sktime/clustering/src/clustering_module.cpp'
+            ], include_dirs=['sktime/clustering/include'],
+                      language='c++', extra_compile_args=['-std=c++17']),
         ],
         cmdclass=dict(build_ext=Build),
-        zip_safe=False, install_requires=['numpy'],
-        setup_requires=['cython']
+        zip_safe=False,
+        install_requires=['numpy'],
+        # TODO: pep517
+        #setup_requires=['cython']
     )
