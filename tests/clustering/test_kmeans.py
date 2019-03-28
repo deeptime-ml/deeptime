@@ -33,7 +33,7 @@ class TestKmeans(unittest.TestCase):
         for param in grid:
             init_strategy = param['init_strategy']
             fixed_seed = param['fixed_seed']
-            kmeans, model = cluster_kmeans(X, k=k, init_strategy=init_strategy, n_jobs=1, fixed_seed=fixed_seed)
+            kmeans, model = cluster_kmeans(X, k=k, init_strategy=init_strategy, n_jobs=0, fixed_seed=fixed_seed)
             cc = model.cluster_centers
             self.assertTrue(np.all(np.isfinite(cc)), "cluster centers borked for strat %s" % init_strategy)
             assert (np.any(cc < 1.0)), "failed for init_strategy=%s" % init_strategy
@@ -52,7 +52,7 @@ class TestKmeans(unittest.TestCase):
             while not model1.converged:
                 km1.fit(data=X, initial_centers=model1.cluster_centers)
             while not model2.converged:
-                km2.fit(data=X, initial_centers=model1.cluster_centers)
+                km2.fit(data=X, initial_centers=model2.cluster_centers)
 
             assert np.linalg.norm(model1.cluster_centers - km1.initial_centers) > 0
             np.testing.assert_array_almost_equal(model1.cluster_centers, model2.cluster_centers)
