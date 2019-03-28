@@ -69,7 +69,7 @@ class KmeansClustering(Estimator):
 
         if n_jobs is None:
             # todo: sensible choice?
-            # in sklearn: None -> 1 job, -1 -> all cpus (logical)
+            # todo in sklearn: None -> 1 job, -1 -> all cpus (logical)
             n_jobs = 1
         if metric is None:
             metric = EuclideanMetric()
@@ -132,7 +132,20 @@ class KmeansClustering(Estimator):
         else:
             raise ValueError("fixed seed has to be bool or integer")
 
-    def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None):
+    def _pick_initial_centers(self, data, strategy, n_jobs, callback=None):
+        if self.n_clusters > len(data):
+            raise ValueError('Not enough data points for desired amount of clusters.')
+
+        if strategy == 'uniform':
+            return data[self.random_state.randint(0, len(data), size=self.n_clusters)]
+        elif self.init_strategy == 'kmeans++':
+            return _kmeans_ext.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, n_jobs,
+                                                 callback, self.metric)
+        else:
+            raise ValueError(f"Unknown cluster center initialization strategy \"{strategy}\", supported are "
+                             f"\"uniform\" and \"kmeans++\"")
+
+    def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
         """ perform the clustering
 
         Parameters
@@ -143,23 +156,21 @@ class KmeansClustering(Estimator):
             used for kmeans++ initialization to indicate progress.
         callback_loop: function or None
             used to indicate progress on kmeans iterations.
-
+        n_jobs: None or non-negative integer
+            if not None, supersedes the n_jobs attribute of the estimator instance
         """
+        if data.ndim == 1:
+            data = data[:, np.newaxis]
+        n_jobs = self.n_jobs if n_jobs is None else n_jobs
         if initial_centers is None:
-            if self.n_clusters > len(data):
-                raise ValueError('Not enough data points for desired amount of clusters.')
-            if self.init_strategy == 'uniform':
-                self.initial_centers = data[self.random_state.randint(0, len(data), size=self.n_clusters)]
-            elif self.init_strategy == 'kmeans++':
-                self.initial_centers = _kmeans_ext.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, self.n_jobs,
-                                                                     callback_init_centers, self.metric)
+            self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
         else:
             self.initial_centers = initial_centers
 
         # run k-means with all the data
         converged = False
         cluster_centers, code, iterations, cost = _kmeans_ext.cluster_loop(data, self.initial_centers, self.n_clusters,
-                                                                           self.n_jobs, self.max_iter, self.tolerance,
+                                                                           n_jobs, self.max_iter, self.tolerance,
                                                                            callback_loop, self.metric)
         if code == 0:
             converged = True
@@ -188,13 +199,19 @@ class MiniBatchKmeansClustering(KmeansClustering):
         self._converged = False
         self._prev_cost = float('inf')
 
-    def partial_fit(self, data):
+    def partial_fit(self, data, n_jobs=None):
+        if data.ndim == 1:
+            data = data[:, np.newaxis]
+        n_jobs = self.n_jobs if n_jobs is None else n_jobs
         if self._model.cluster_centers is None:
-            self._model.cluster_centers = np.empty((self.n_clusters, data.shape[1]))
-        cluster_centers = self._model.cluster_centers
+            if self.initial_centers is None:
+                # we have no initial centers set, pick some based on the first partial fit
+                self._model.cluster_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs)
+            else:
+                self._model.cluster_centers = np.copy(self.initial_centers)
 
-        cluster_centers = _kmeans_ext.cluster(data, cluster_centers, self.n_jobs, self.metric)
-        cost = _kmeans_ext.cost_function(data, cluster_centers, self.n_jobs, self.metric)
+        self._model.cluster_centers = _kmeans_ext.cluster(data, self._model.cluster_centers, n_jobs, self.metric)
+        cost = _kmeans_ext.cost_function(data, self._model.cluster_centers, n_jobs, self.metric)
 
         rel_change = np.abs(cost - self._prev_cost) / cost if cost != 0.0 else 0.0
         self._prev_cost = cost

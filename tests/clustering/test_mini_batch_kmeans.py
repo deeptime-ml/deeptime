@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -16,7 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import
 import unittest
 from unittest import TestCase
 import numpy as np
@@ -24,9 +22,13 @@ import numpy as np
 from sktime.clustering import MiniBatchKmeansClustering
 
 
-def  cluster_mini_batch_kmeans(X, batch_size=0.5, k=100, max_iter=10000):
+def cluster_mini_batch_kmeans(X, k=100, max_iter=10000):
     est = MiniBatchKmeansClustering(n_clusters=k, max_iter=max_iter)
-    est.fit(X)
+    if isinstance(X, (list, tuple)):
+        for x in X:
+            est.partial_fit(x)
+    else:
+        est.fit(X)
     model = est.fetch_model()
     return est, model
 
@@ -38,8 +40,8 @@ class TestMiniBatchKmeans(TestCase):
              np.random.randn(300),
              np.random.randn(400) + 2.0]
         X = np.hstack(X)
-        kmeans = cluster_mini_batch_kmeans(X, batch_size=0.5, k=100, max_iter=10000)
-        cc = kmeans.clustercenters
+        estimator, model = cluster_mini_batch_kmeans(X, k=100, max_iter=10000)
+        cc = model.cluster_centers
         assert (np.any(cc < 1.0))
         assert (np.any((cc > -1.0) * (cc < 1.0)))
         assert (np.any(cc > -1.0))
@@ -52,9 +54,8 @@ class TestMiniBatchKmeans(TestCase):
         X2[:, 0] = np.random.randn(300)
         X3 = np.zeros((400, 2))
         X3[:, 0] = np.random.randn(400) + 2.0
-        X = [X1, X2, X3]
-        kmeans = cluster_mini_batch_kmeans(X, batch_size=0.5, k=100, max_iter=10000)
-        cc = kmeans.clustercenters
+        estimator, model = cluster_mini_batch_kmeans([X1, X2, X3], k=100, max_iter=10000)
+        cc = model.cluster_centers
         assert (np.any(cc < 1.0))
         assert (np.any((cc > -1.0) * (cc < 1.0)))
         assert (np.any(cc > -1.0))
@@ -75,12 +76,13 @@ class TestMiniBatchKmeansResume(unittest.TestCase):
         """ check that we can continue with the iteration by passing centers"""
         # centers are far off
         initial_centers = np.array([[1, 2, 3]]).T
-        cl = cluster_mini_batch_kmeans(self.X, clustercenters=initial_centers,
-                                       max_iter=1, k=3)
 
-        resume_centers = cl.clustercenters
-        cl.estimate(self.X, clustercenters=resume_centers, max_iter=50)
-        new_centers = cl.clustercenters
+        est = MiniBatchKmeansClustering(n_clusters=3, max_iter=2, initial_centers=initial_centers)
+        est.partial_fit(self.X)
+
+        resume_centers = np.copy(est.fetch_model().cluster_centers)
+        est.partial_fit(self.X)
+        new_centers = np.copy(est.fetch_model().cluster_centers)
 
         true = np.array([[-2, 0, 2]]).T
         d0 = true - resume_centers
@@ -90,6 +92,7 @@ class TestMiniBatchKmeansResume(unittest.TestCase):
         diff_next = np.linalg.norm(d1)
 
         self.assertLess(diff_next, diff, 'resume_centers=%s, new_centers=%s' % (resume_centers, new_centers))
+
 
 if __name__ == '__main__':
     unittest.main()
