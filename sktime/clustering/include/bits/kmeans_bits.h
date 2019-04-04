@@ -68,9 +68,9 @@ inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_ce
 
 #pragma omp parallel for schedule(static, 1)
         for (std::size_t i = 0; i < n_frames; ++i) {
-            std::vector<dtype> dists(n_centers);
+            std::vector<T> dists(n_centers);
             for (std::size_t j = 0; j < n_centers; ++j) {
-                dists[j] = metric(&chunk(i, 0), &centers(j, 0), dim);
+                dists[j] = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
             }
 #pragma omp flush(dists)
 

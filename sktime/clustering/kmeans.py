@@ -3,69 +3,56 @@ import warnings
 
 import numpy as np
 
-from sktime.base import Estimator
-from sktime.clustering.cluster_model import ClusterModel
 from sktime.clustering._clustering_bindings import EuclideanMetric
 from sktime.clustering._clustering_bindings import kmeans as _kmeans_ext
 
+from sktime.base import Estimator
+from sktime.clustering.cluster_model import ClusterModel
+
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
-
-import time
-
-
-class timing(object):
-    def __init__(self, name):
-        self.name = name
-
-    def __enter__(self):
-        self.start = time.time()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        stop = time.time()
-        print(self.name, self.start - stop)
 
 
 class KmeansClustering(Estimator):
-    r"""Kmeans clustering
-
-    Parameters
-    ----------
-    n_clusters : int
-        amount of cluster centers.
-
-    max_iter : int
-        maximum number of iterations before stopping.
-
-    tolerance : float
-        stop iteration when the relative change in the cost function
-
-        .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf x \in S_i} \left\| \mathbf x - \boldsymbol\mu_i \right\|^2
-
-        is smaller than tolerance.
-    metric : str
-        metric to use during clustering, default None evaluates to euclidean metric, otherwise instance of a subclass
-        of `sktime.clustering._bindings.Metric`
-
-    init_strategy : string
-        can be either 'kmeans++' or 'uniform', determining how the initial
-        cluster centers are being chosen
-
-    fixed_seed : bool or int
-        if True, the seed gets set to 42. Use time based seeding otherwise.
-        if an integer is given, use this to initialize the random generator.
-
-    n_jobs : int or None, default None
-        Number of threads to use during assignment of the data.
-        If None, all available CPUs will be used.
-
-    initial_centers: None or array(k, dim)
-        This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
-        the centers are directly passed to the kmeans iteration algorithm.
-    """
+    r"""Kmeans clustering"""
 
     def __init__(self, n_clusters, max_iter=5, metric=None,
                  tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None, random_state=None):
+        """
+        Parameters
+        ----------
+        n_clusters : int
+            amount of cluster centers.
+
+        max_iter : int
+            maximum number of iterations before stopping.
+
+        metric : subclass of `sktime.clustering._bindings.Metric`
+            metric to use during clustering, default None evaluates to euclidean metric, otherwise instance of a subclass
+            of `sktime.clustering._bindings.Metric`
+
+        tolerance : float
+            stop iteration when the relative change in the cost function
+
+            .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf x \in S_i} \left\| \mathbf x - \boldsymbol\mu_i \right\|^2
+
+            is smaller than tolerance.
+
+        init_strategy : string
+            can be either 'kmeans++' or 'uniform', determining how the initial cluster centers are being chosen
+
+        fixed_seed : bool or int
+            if True, the seed gets set to 42. Use time based seeding otherwise. If an integer is given, use this to
+            initialize the random generator.
+
+        n_jobs : int or None, default None
+            Number of threads to use during assignment of the data.
+            If None, all available CPUs will be used.
+
+        initial_centers: None or np.ndarray[k, dim]
+            This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
+            the centers are directly passed to the kmeans iteration algorithm.
+        """
 
         if n_jobs is None:
             # todo: sensible choice?
@@ -98,6 +85,14 @@ class KmeansClustering(Estimator):
 
     @init_strategy.setter
     def init_strategy(self, value: str):
+        """
+        Setter for the initialization strategy that is used when no initial centers are provided.
+
+        Parameters
+        ----------
+        value : str
+            one of "kmeans++" or "uniform"
+        """
         valid = ('kmeans++', 'uniform')
         if value not in valid:
             raise ValueError('invalid parameter "{}" for init_strategy. Should be one of {}'.format(value, valid))
@@ -107,16 +102,34 @@ class KmeansClustering(Estimator):
     def fixed_seed(self):
         """ seed for random choice of initial cluster centers.
 
-        Fix this to get reproducible results in conjunction with n_jobs=1. The latter is needed, because parallel
+        Fix this to get reproducible results in conjunction with n_jobs=0. The latter is needed, because parallel
         execution causes non-deterministic behaviour again.
         """
         return self._fixed_seed
 
     def fetch_model(self) -> ClusterModel:
+        """
+        Fetches the current model.
+
+        Returns
+        -------
+        the clustering model
+        """
         return self._model
 
     @fixed_seed.setter
     def fixed_seed(self, value: [bool, int, None]):
+        """
+        Sets a fixed seed for cluster estimation to get reproducible results. This only works in the case of n_jobs=0
+        or n_jobs=1, parallel execution reintroduces non-deterministic behavior.
+
+        Parameters
+        ----------
+        value : bool or int or None
+            If the value is `True`, the seed will be fixed on `42`, if it is `False` or `None`, the seed gets drawn
+            randomly. In case an `int` value is provided, that will be used as fixed seed.
+
+        """
         if isinstance(value, bool) or value is None:
             if value:
                 self._fixed_seed = 42
@@ -124,13 +137,13 @@ class KmeansClustering(Estimator):
                 self._fixed_seed = random.randint(0, 2 ** 32 - 1)
         elif isinstance(value, int):
             if value < 0 or value > 2 ** 32 - 1:
-                warnings.warn("seed has to be positive (or smaller than 2**32-1)."
+                warnings.warn("seed has to be non-negative (or smaller than 2**32)."
                               " Seed will be chosen randomly.")
                 self.fixed_seed = False
             else:
                 self._fixed_seed = value
         else:
-            raise ValueError("fixed seed has to be bool or integer")
+            raise ValueError("fixed seed has to be None, bool or integer")
 
     def _pick_initial_centers(self, data, strategy, n_jobs, callback=None):
         if self.n_clusters > len(data):
@@ -150,14 +163,17 @@ class KmeansClustering(Estimator):
 
         Parameters
         ----------
-        data: ndarray
-            data to be clustered
+        data: np.ndarray
+            data to be clustered, shape should be (N, D), where N is the number of data points, D the dimension.
+            In case of one-dimensional data, a shape of (N,) also works.
+        initial_centers: np.ndarray or None
+            Optional cluster center initialization that supersedes the estimator's `initial_centers` attribute
         callback_init_centers: function or None
-            used for kmeans++ initialization to indicate progress.
+            used for kmeans++ initialization to indicate progress, called once per assigned center.
         callback_loop: function or None
-            used to indicate progress on kmeans iterations.
-        n_jobs: None or non-negative integer
-            if not None, supersedes the n_jobs attribute of the estimator instance
+            used to indicate progress on kmeans iterations, called once per iteration.
+        n_jobs: None or int
+            if not None, supersedes the n_jobs attribute of the estimator instance; must be non-negative
         """
         if data.ndim == 1:
             data = data[:, np.newaxis]
@@ -178,8 +194,8 @@ class KmeansClustering(Estimator):
             warnings.warn("Algorithm did not reach convergence criterion"
                           " of {t} in {i} iterations. Consider increasing max_iter.".format(t=self.tolerance,
                                                                                             i=self.max_iter))
-        self._model.converged = converged
-        self._model.cluster_centers = cluster_centers
+        self._model._converged = converged
+        self._model._cluster_centers = cluster_centers
 
         return self
 
@@ -189,6 +205,9 @@ class MiniBatchKmeansClustering(KmeansClustering):
 
     def __init__(self, n_clusters, max_iter=5, metric=None, tolerance=1e-5, init_strategy='kmeans++',
                  n_jobs=None, initial_centers=None):
+        """
+        Constructs a Minibatch k-means estimator. For details, see `KmeansClustering`.
+        """
 
         super(MiniBatchKmeansClustering, self).__init__(n_clusters, max_iter, metric,
                                                         tolerance, init_strategy, False,
@@ -206,12 +225,12 @@ class MiniBatchKmeansClustering(KmeansClustering):
         if self._model.cluster_centers is None:
             if self.initial_centers is None:
                 # we have no initial centers set, pick some based on the first partial fit
-                self._model.cluster_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs)
+                self._model._cluster_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs)
             else:
-                self._model.cluster_centers = np.copy(self.initial_centers)
+                self._model._cluster_centers = np.copy(self.initial_centers)
 
-        self._model.cluster_centers = _kmeans_ext.cluster(data, self._model.cluster_centers, n_jobs, self.metric)
-        cost = _kmeans_ext.cost_function(data, self._model.cluster_centers, n_jobs, self.metric)
+        self._model._cluster_centers = _kmeans_ext.cluster(data, self._model._cluster_centers, n_jobs, self.metric)
+        cost = _kmeans_ext.cost_function(data, self._model._cluster_centers, n_jobs, self.metric)
 
         rel_change = np.abs(cost - self._prev_cost) / cost if cost != 0.0 else 0.0
         self._prev_cost = cost

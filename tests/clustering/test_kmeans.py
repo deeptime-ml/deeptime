@@ -230,7 +230,8 @@ class TestKmeansResume(unittest.TestCase):
                                    max_iter=1, k=3)
 
         resume_centers = model.cluster_centers
-        cl.fit(self.X, initial_centers=resume_centers, max_iter=50)
+        cl.max_iter = 50
+        cl.fit(self.X, initial_centers=resume_centers)
         new_centers = model.cluster_centers
 
         true = np.array([-2, 0, 2])

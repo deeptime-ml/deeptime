@@ -10,26 +10,38 @@ class ClusterModel(Model):
         self._n_clusters = n_clusters
         self._cluster_centers = cluster_centers
         self._metric = metric
+        self._converged = False
 
     @property
     def cluster_centers(self):
-        return self._cluster_centers
+        """
+        Gets the cluster centers that were estimated for this model.
 
-    @cluster_centers.setter
-    def cluster_centers(self, value):
-        self._cluster_centers = value
+        Returns
+        -------
+        np.ndarray
+            Array containing estimated cluster centers.
+        """
+        return self._cluster_centers
 
     @property
     def n_clusters(self):
-        return self._n_clusters
+        """
 
-    @n_clusters.setter
-    def n_clusters(self, value: int):
-        self._n_clusters = value
+        Returns
+        -------
+        int
+            The number of cluster centers.
+        """
+        return self._n_clusters
 
     @property
     def metric(self):
         return self._metric
+
+    @property
+    def converged(self):
+        return self._converged
 
     def transform(self, data, n_jobs=None):
         """get closest index of point in :attr:`cluster_centers` to x."""

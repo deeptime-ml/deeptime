@@ -2,7 +2,6 @@ import warnings
 
 import numpy as np
 
-from base import Model
 from sktime.base import Estimator
 from sktime.clustering.cluster_model import ClusterModel
 
@@ -142,8 +141,8 @@ class RegularSpaceClustering(Estimator):
             # even if not converged, we store the found centers.
             # new_shape = (len(clustercenters), ndim)
             clustercenters = np.asarray_chkfinite(clustercenters).squeeze() #.reshape(new_shape)
-            self._model.cluster_centers = clustercenters
-            self._model.n_clusters = len(clustercenters)
+            self._model._cluster_centers = clustercenters
+            self._model._n_clusters = len(clustercenters)
             self._model._converged = converged
             if len(clustercenters) == 1:
                 warnings.warn('Have found only one center according to '
