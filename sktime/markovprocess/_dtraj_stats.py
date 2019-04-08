@@ -140,6 +140,7 @@ class TransitionCountingMixin(object):
         """The count matrix on the active set given the connectivity mode used.
 
         For example, for connectivity='largest', the count matrix is given only on the largest reversibly connected set.
+
         Attention: This count matrix has been obtained by sliding a window of length tau across the data. It contains
         a factor of tau more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
         likelihood estimated, but it will give far too small errors if you use it for uncertainty calculations. In order
@@ -223,34 +224,13 @@ class TransitionCountingMixin(object):
         S = msmest.connected_sets(Cconn, directed=strong)
         return S
 
-    def _compute_count_matrix(self, dtrajs, lag, count_mode='sliding', mincount_connectivity='1/n', show_progress=True, n_jobs=None,
-            name=''):
+    def _compute_count_matrix(self, dtrajs, count_mode, mincount_connectivity='1/n'):
         r""" Counts transitions at given lag time
 
         Parameters
         ----------
-        lag : int
-            lagtime in trajectory steps
 
-        count_mode : str, optional, default='sliding'
-            mode to obtain count matrices from discrete trajectories. Should be one of:
-
-            * 'sliding' : A trajectory of length T will have :math:`T-\tau` counts
-              at time indexes
-              .. math:: (0 \rightarray \tau), (1 \rightarray \tau+1), ..., (T-\tau-1 \rightarray T-1)
-
-            * 'effective' : Uses an estimate of the transition counts that are
-              statistically uncorrelated. Recommended when used with a
-              Bayesian MSM.
-
-            * 'sample' : A trajectory of length T will have :math:`T / \tau` counts
-              at time indexes
-              .. math:: (0 \rightarray \tau), (\tau \rightarray 2 \tau), ..., (((T/tau)-1) \tau \rightarray T)
-
-        show_progress: bool, default=True
-            show the progress for the expensive effective count mode computation.
-
-        n_jobs: int or None
+        dtrajs
 
         """
         from pyemma.util.types import ensure_dtraj_list
@@ -267,50 +247,28 @@ class TransitionCountingMixin(object):
         self._nstates = msmest.number_of_states(dtrajs)
         self._visited_set = visited_set(dtrajs)
 
-        # store lag time
-        self._lag = lag
+        # TODO: compute this in discrete steps of traj
+        lag = self.lagtime / self.dt_traj
 
         # Compute count matrix
-        count_mode = count_mode.lower()
         if count_mode == 'sliding':
             self._C = msmest.count_matrix(dtrajs, lag, sliding=True)
         elif count_mode == 'sample':
             self._C = msmest.count_matrix(dtrajs, lag, sliding=False)
         elif count_mode == 'effective':
-            from pyemma.util.reflection import getargspec_no_self
-            argspec = getargspec_no_self(msmest.effective_count_matrix)
-            kw = {}
-            from pyemma.util.contexts import nullcontext
-            ctx = nullcontext()
-            if 'callback' in argspec.args:  # msmtools effective cmatrix ready for multiprocessing?
-                from pyemma._base.progress import ProgressReporter
-                from pyemma._base.parallel import get_n_jobs
-
-                kw['n_jobs'] = get_n_jobs() if n_jobs is None else n_jobs
-
-                if show_progress:
-                    pg = ProgressReporter()
-                    # this is a fast operation
-                    C_temp = msmest.count_matrix(dtrajs, lag, sliding=True)
-                    pg.register(C_temp.nnz, '{}: compute stat. inefficiencies'.format(name), stage=0)
-                    del C_temp
-                    kw['callback'] = pg.update
-                    ctx = pg.context(stage=0)
-            with ctx:
-                self._C = msmest.effective_count_matrix(dtrajs, lag, **kw)
+            self._C = msmest.effective_count_matrix(dtrajs, lag)
         else:
-            raise ValueError('Count mode ' + count_mode + ' is unknown.')
+            raise ValueError('Count mode {} is unknown.'.format(count_mode))
         self._nstates_full = len(self._C)
 
         # store mincount_connectivity
         if mincount_connectivity == '1/n':
             mincount_connectivity = 1.0 / np.shape(self._C)[0]
-        self._mincount_connectivity = mincount_connectivity
 
         # Compute reversibly connected sets
-        if self._mincount_connectivity > 0:
+        if mincount_connectivity > 0:
             self._connected_sets = \
-                self._compute_connected_sets(self._C, mincount_connectivity=self._mincount_connectivity)
+                self._compute_connected_sets(self._C, mincount_connectivity=mincount_connectivity)
         else:
             self._connected_sets = msmest.connected_sets(self._C)
 
@@ -332,29 +290,22 @@ class TransitionCountingMixin(object):
         self._full2lcs[self._lcs] = np.arange(len(self._lcs))
 
     @property
-    def nstates(self):
-        """
-        Number (int) of states
-        """
+    def nstates(self) -> int:
+        """Number of states """
         return self._nstates
 
     @property
     def total_count(self):
-        """
-        Total number of counts
-
-        """
+        """Total number of counts"""
         return self._hist.sum()
 
     @property
     def histogram(self):
-        r""" Histogram of discrete state counts
-
-        """
+        """ Histogram of discrete state counts"""
         return self._hist
 
     def count_matrix(self, connected_set=None, subset=None, effective=False):
-        """The count matrix
+        r"""The count matrix
 
         Parameters
         ----------
@@ -393,6 +344,7 @@ class TransitionCountingMixin(object):
             C = self._C
 
         # effective count matrix wanted?
+        # FIXME: this modifies self._C in place!
         if effective:
             C /= float(self._lag)
 

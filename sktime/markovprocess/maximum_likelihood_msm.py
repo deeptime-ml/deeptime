@@ -19,7 +19,7 @@ import numpy as np
 
 from msmtools import estimation as msmest
 
-from sktime.markovprocess._base import _MSMBaseEstimator, EstimatedMSM
+from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
 
 __all__ = ['MaximumLikelihoodMSM']
@@ -131,11 +131,11 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
 
     def __init__(self, lagtime=1, reversible=True, statdist_constraint=None,
                  count_mode='sliding', sparse=False,
-                 connectivity='largest', dt_traj='1 step', maxiter=1000000,
+                 dt_traj='1 step', maxiter=1000000,
                  maxerr=1e-8, mincount_connectivity='1/n'):
 
         super(MaximumLikelihoodMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
-                                                   sparse=sparse, connectivity=connectivity, dt_traj=dt_traj,
+                                                   sparse=sparse, dt_traj=dt_traj,
                                                    mincount_connectivity=mincount_connectivity)
 
         self.statdist_constraint = statdist_constraint
@@ -174,8 +174,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         return pos[lcc]
 
     def fit(self, dtrajs):
-        self._compute_count_matrix(dtrajs, lag=self.lagtime, mincount_connectivity=self.mincount_connectivity,
-                                   count_mode=self.count_mode)
+        self._compute_count_matrix(dtrajs)
 
         # set active set. This is at the same time a mapping from active to full
         if self.statdist_constraint is None:

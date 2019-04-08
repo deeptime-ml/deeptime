@@ -25,11 +25,10 @@ import numpy as np
 
 from sktime.base import Model
 from sktime.markovprocess import Q_
-from sktime.markovprocess.counting_mixin import MSMCountingMixin
 from sktime.markovprocess.pcca import PCCA
 
 
-class MarkovStateModel(Model, MSMCountingMixin):
+class MarkovStateModel(Model):
     r"""Markov model with a given transition matrix
 
     Parameters
@@ -71,7 +70,7 @@ class MarkovStateModel(Model, MSMCountingMixin):
         be greater than k; it is recommended that ncv > 2*k.
 
     """
-    def __init__(self, P, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, full2active=None):
+    def __init__(self, P, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None):
 
         self.ncv = ncv
         # we set reversible first, so it can be derived from P, if None was given.
@@ -81,7 +80,6 @@ class MarkovStateModel(Model, MSMCountingMixin):
         self.stationary_distribution = pi
         self.dt_model = dt_model
         #self.neig = neig
-
 
     def __eq__(self, other):
         if not isinstance(other, MarkovStateModel):

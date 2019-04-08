@@ -65,7 +65,7 @@ class _MSMBaseEstimator(Estimator, TransitionCountingMixin):
     """
 
     def __init__(self, lagtime=1, reversible=True, count_mode='sliding', sparse=False,
-                 connectivity='largest', dt_traj='1 step', mincount_connectivity='1/n'):
+                 dt_traj='1 step', mincount_connectivity='1/n'):
         super(_MSMBaseEstimator, self).__init__()
         self.lagtime = lagtime
 
@@ -85,15 +85,6 @@ class _MSMBaseEstimator(Estimator, TransitionCountingMixin):
 
         # connectivity
         self.mincount_connectivity = mincount_connectivity
-
-    @property
-    def dt_traj(self) -> Q_:
-        """Time interval between discrete steps of the time series."""
-        return self.timestep_traj
-
-    @dt_traj.setter
-    def dt_traj(self, value: [int, str]):
-        self.timestep_traj = Q_(value)
 
     def score(self, dtrajs, model, score_method='VAMP2', score_k=10):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes [1]_ [2]_
@@ -177,7 +168,7 @@ class _MSMBaseEstimator(Estimator, TransitionCountingMixin):
 
     def _blocksplit_dtrajs(self, dtrajs, sliding):
         from pyemma.msm.estimators._dtraj_stats import blocksplit_dtrajs
-        return blocksplit_dtrajs(dtrajs, lag=self.lag, sliding=sliding)
+        return blocksplit_dtrajs(dtrajs, lag=self.lagtime, sliding=sliding)
 
     def score_cv(self, dtrajs, n=10, score_method='VAMP2', score_k=10):
         r""" Scores the MSM using the variational approach for Markov processes [1]_ [2]_ and crossvalidation [3]_ .
@@ -290,7 +281,8 @@ class _MSMBaseEstimator(Estimator, TransitionCountingMixin):
         if memberships is None:
             self.pcca(nsets)
             memberships = self.metastable_memberships
-        ck = ChapmanKolmogorovValidator(self, self, memberships, mlags=mlags, conf=conf,
+        from sktime.markovprocess.lagged_model_validators import ChapmanKolmogorovValidator
+        ck = ChapmanKolmogorovValidator(test_estimator=self, test_model=self.fetch_model(), memberships=memberships, mlags=mlags, conf=conf,
                                         n_jobs=n_jobs, err_est=err_est, show_progress=show_progress)
         ck.fit(dtrajs)
         return ck
