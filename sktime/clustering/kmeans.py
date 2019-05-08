@@ -18,7 +18,7 @@ class KmeansClustering(Estimator):
     def __init__(self, n_clusters, max_iter=5, metric=None,
                  tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None, random_state=None):
-        """
+        r"""
         Parameters
         ----------
         n_clusters : int

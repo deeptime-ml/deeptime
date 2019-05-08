@@ -127,18 +127,24 @@ class TestKmeans(unittest.TestCase):
         np.testing.assert_equal(initial_centersequilibrium.squeeze(), model.cluster_centers.squeeze(), err_msg=msg)
 
     def test_kmeans_converge_outlier_to_equilibrium_state(self):
-        initial_centersequilibrium = np.array([[2, 0, 0], [-2, 0, 0]])
-        X = np.array([
-            np.array([1, 1.5, 1], dtype=np.float32), np.array([1, 1, -1], dtype=np.float32),
-            np.array([1, -1, -1], dtype=np.float32), np.array([-1, -1, -1], dtype=np.float32),
-            np.array([-1, 1, 1], dtype=np.float32), np.array([-1, -1, 1], dtype=np.float32),
-            np.array([-1, 1, -1], dtype=np.float32), np.array([1, -1, 1], dtype=np.float32)
-        ])
-        X = np.atleast_2d(X)
-        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=0)
+        for _ in range(10000):
+            initial_centersequilibrium = np.array([[2, 0, 0], [-2, 0, 0]])
+            X = np.array([
+                np.array([1, 1.1, 1], dtype=np.float32), np.array([1, 1, -1], dtype=np.float32),
+                np.array([1, -1, -1], dtype=np.float32), np.array([-1, -1, -1], dtype=np.float32),
+                np.array([-1, 1, 1], dtype=np.float32), np.array([-1, -1, 1], dtype=np.float32),
+                np.array([-1, 1, -1], dtype=np.float32), np.array([1, -1, 1], dtype=np.float32)
+            ])
+            X = np.atleast_2d(X)
+            kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=0)
+            cl = model.cluster_centers
+            import sklearn.cluster as skcl
+            centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)
 
-        cl = model.cluster_centers
-        assert np.all(np.abs(cl) <= 1), f"Got clustercenters {cl}"
+            if not np.all(np.abs(cl) <= 1):
+                centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)
+            assert np.all(np.abs(centers) <= 1), f"Got clustercenters {cl}"
+            assert np.all(np.abs(cl) <= 1), f"Got clustercenters {cl}"
 
     def test_kmeans_convex_hull(self):
         points = [
@@ -227,10 +233,10 @@ class TestKmeansResume(unittest.TestCase):
         """ check that we can continue with the iteration by passing centers"""
         initial_centers = np.array([[20, 42, -29]]).T
         cl, model = cluster_kmeans(self.X, cluster_centers=initial_centers,
-                                   max_iter=1, k=3)
+                                   max_iter=2, k=3)
 
         resume_centers = model.cluster_centers
-        cl.max_iter = 50
+        cl.max_iter = 500
         cl.fit(self.X, initial_centers=resume_centers)
         new_centers = model.cluster_centers
 
@@ -243,7 +249,7 @@ class TestKmeansResume(unittest.TestCase):
 
         self.assertLess(diff_next, diff, 'resume_centers=%s, new_centers=%s' % (resume_centers, new_centers))
 
-    def test_syntetic_trivial(self):
+    def test_synthetic_trivial(self):
         test_data = np.zeros((40000, 4))
         test_data[0:10000, :] = 30.0
         test_data[10000:20000, :] = 60.0

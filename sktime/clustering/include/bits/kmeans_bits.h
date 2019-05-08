@@ -47,19 +47,24 @@ inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_ce
 
     /* do the clustering */
     if (n_threads == 0) {
-        std::size_t closest_center_index = 0;
         for (std::size_t i = 0; i < n_frames; ++i) {
-            auto mindist = std::numeric_limits<T>::max();
-            for(std::size_t j = 0; j < n_centers; ++j) {
-                auto d = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
-                if(d < mindist) {
-                    mindist = d;
-                    closest_center_index = j;
+            std::size_t argMinDist = 0;
+            {
+                T minDist = metric->compute(&chunk(i, 0), &centers(0, 0), dim);
+                for (std::size_t j = 1; j < n_centers; ++j) {
+                    auto dist = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
+                    if(dist < minDist) {
+                        minDist = dist;
+                        argMinDist = j;
+                    }
                 }
             }
-            centers_counter[closest_center_index]++;
-            for (std::size_t j = 0; j < dim; j++) {
-                new_centers(closest_center_index, j) += chunk(i, j);
+
+            {
+                centers_counter.at(argMinDist)++;
+                for (std::size_t j = 0; j < dim; j++) {
+                    new_centers(argMinDist, j) += chunk(i, j);
+                }
             }
         }
     } else {
@@ -139,6 +144,7 @@ inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_ce
             }
         }
     }
+
     return return_new_centers;
 }
 
