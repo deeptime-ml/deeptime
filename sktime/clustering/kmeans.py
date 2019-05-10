@@ -12,6 +12,38 @@ from sktime.clustering.cluster_model import ClusterModel
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
 
 
+class KMeansClusteringModel(ClusterModel):
+
+    def __init__(self, n_clusters=0, cluster_centers=None, metric=None, inertia=np.inf, tolerance=1e-5):
+        super().__init__(n_clusters, cluster_centers, metric)
+        self._inertia = inertia
+        self._tolerance = tolerance
+
+    @property
+    def tolerance(self):
+        """
+        The tolerance used as stopping criterion in the kmeans clustering loop. In particular, when
+        the relative change in the inertia is smaller than the given tolerance value.
+
+        Returns
+        -------
+        float
+            the tolerance
+        """
+        return self._tolerance
+
+    @property
+    def inertia(self):
+        """
+        Sum of squared distances to centers.
+        Returns
+        -------
+        float
+            the sum
+        """
+        return self._inertia
+
+
 class KmeansClustering(Estimator):
     r"""Kmeans clustering"""
 
@@ -75,8 +107,8 @@ class KmeansClustering(Estimator):
 
         super(KmeansClustering, self).__init__()
 
-    def _create_model(self) -> ClusterModel:
-        return ClusterModel(n_clusters=self.n_clusters, metric=self.metric)
+    def _create_model(self) -> KMeansClusteringModel:
+        return KMeansClusteringModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance)
 
     @property
     def init_strategy(self):
@@ -106,16 +138,6 @@ class KmeansClustering(Estimator):
         execution causes non-deterministic behaviour again.
         """
         return self._fixed_seed
-
-    def fetch_model(self) -> ClusterModel:
-        """
-        Fetches the current model.
-
-        Returns
-        -------
-        the clustering model
-        """
-        return self._model
 
     @fixed_seed.setter
     def fixed_seed(self, value: [bool, int, None]):
@@ -188,6 +210,7 @@ class KmeansClustering(Estimator):
         cluster_centers, code, iterations, cost = _kmeans_ext.cluster_loop(data, self.initial_centers, self.n_clusters,
                                                                            n_jobs, self.max_iter, self.tolerance,
                                                                            callback_loop, self.metric)
+        self._model._inertia = cost
         if code == 0:
             converged = True
         else:

@@ -129,26 +129,25 @@ class TestKmeans(unittest.TestCase):
         np.testing.assert_equal(initial_centersequilibrium.squeeze(), model.cluster_centers.squeeze(), err_msg=msg)
 
     def test_kmeans_converge_outlier_to_equilibrium_state(self):
-        for _ in range(10000):
-            initial_centersequilibrium = np.array([[2, 0, 0], [-2, 0, 0]]).astype(np.float32)
-            X = np.array([
-                np.array([1, 1.1, 1], dtype=np.float32), np.array([1, 1, -1], dtype=np.float32),
-                np.array([1, -1, -1], dtype=np.float32), np.array([-1, -1, -1], dtype=np.float32),
-                np.array([-1, 1, 1], dtype=np.float32), np.array([-1, -1, 1], dtype=np.float32),
-                np.array([-1, 1, -1], dtype=np.float32), np.array([1, -1, 1], dtype=np.float32)
-            ])
-            X = np.atleast_2d(X)
-            kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=0)
-            cl = model.cluster_centers
-            import sklearn.cluster as skcl
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore")
-                centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)
+        initial_centersequilibrium = np.array([[2, 0, 0], [-2, 0, 0]]).astype(np.float32)
+        X = np.array([
+            np.array([1, 1.1, 1], dtype=np.float32), np.array([1, 1, -1], dtype=np.float32),
+            np.array([1, -1, -1], dtype=np.float32), np.array([-1, -1, -1], dtype=np.float32),
+            np.array([-1, 1, 1], dtype=np.float32), np.array([-1, -1, 1], dtype=np.float32),
+            np.array([-1, 1, -1], dtype=np.float32), np.array([1, -1, 1], dtype=np.float32)
+        ])
+        X = np.atleast_2d(X)
+        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=0)
+        cl = model.cluster_centers
+        import sklearn.cluster as skcl
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)
 
-            if not np.all(np.abs(cl) <= 1):
-                centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)
-            assert np.all(np.abs(centers) <= 1), f"Got clustercenters {cl}"
-            assert np.all(np.abs(cl) <= 1), f"Got clustercenters {cl}"
+        if not np.all(np.abs(cl) <= 1):
+            centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)
+        assert np.all(np.abs(centers) <= 1), f"Got clustercenters {cl}"
+        assert np.all(np.abs(cl) <= 1), f"Got clustercenters {cl}"
 
     def test_kmeans_convex_hull(self):
         points = [

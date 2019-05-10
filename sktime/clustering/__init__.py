@@ -31,8 +31,6 @@ clustering - Algorithms (:mod:`pyemma.coordinates.clustering`)
     RegularSpaceClustering
 """
 
-from . import *
-
 from .kmeans import KmeansClustering
 from .kmeans import MiniBatchKmeansClustering
 from .regspace import RegularSpaceClustering
