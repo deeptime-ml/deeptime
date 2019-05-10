@@ -1,5 +1,6 @@
 import random
 import unittest
+import warnings
 
 import numpy as np
 from sklearn.datasets import make_blobs
@@ -12,7 +13,8 @@ from sktime.clustering.cluster_model import ClusterModel
 def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=0, cluster_centers=None,
                    callback_init_centers=None, callback_loop=None) -> (KmeansClustering, ClusterModel):
     est = KmeansClustering(n_clusters=k, max_iter=max_iter, init_strategy=init_strategy,
-                           fixed_seed=fixed_seed, n_jobs=n_jobs, initial_centers=cluster_centers)
+                           fixed_seed=fixed_seed, n_jobs=n_jobs,
+                           initial_centers=np.array(cluster_centers) if cluster_centers is not None else None)
     est.fit(data, callback_init_centers=callback_init_centers, callback_loop=callback_loop)
     model = est.fetch_model()
     return est, model
@@ -128,7 +130,7 @@ class TestKmeans(unittest.TestCase):
 
     def test_kmeans_converge_outlier_to_equilibrium_state(self):
         for _ in range(10000):
-            initial_centersequilibrium = np.array([[2, 0, 0], [-2, 0, 0]])
+            initial_centersequilibrium = np.array([[2, 0, 0], [-2, 0, 0]]).astype(np.float32)
             X = np.array([
                 np.array([1, 1.1, 1], dtype=np.float32), np.array([1, 1, -1], dtype=np.float32),
                 np.array([1, -1, -1], dtype=np.float32), np.array([-1, -1, -1], dtype=np.float32),
@@ -139,7 +141,9 @@ class TestKmeans(unittest.TestCase):
             kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=0)
             cl = model.cluster_centers
             import sklearn.cluster as skcl
-            centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore")
+                centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)
 
             if not np.all(np.abs(cl) <= 1):
                 centers, labels, inertia = skcl.k_means(X, n_clusters=2, init=cl)

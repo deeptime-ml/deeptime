@@ -178,10 +178,10 @@ class KmeansClustering(Estimator):
         if data.ndim == 1:
             data = data[:, np.newaxis]
         n_jobs = self.n_jobs if n_jobs is None else n_jobs
-        if initial_centers is None:
-            self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
-        else:
+        if initial_centers is not None:
             self.initial_centers = initial_centers
+        if self.initial_centers is None:
+            self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
 
         # run k-means with all the data
         converged = False
