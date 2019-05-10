@@ -7,7 +7,6 @@ from msmtools import estimation as msmest
 
 from pyemma.msm.estimators._OOM_MSM import bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix, \
     rank_decision, oom_components, equilibrium_transition_matrix
-from pyemma.msm.estimators._msm_estimator_base import _MSMEstimator
 from pyemma.util.annotators import fix_docs, aliased
 
 from sktime.markovprocess._base import _MSMBaseEstimator
@@ -33,7 +32,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         mode to obtain count matrices from discrete trajectories. Should be
         one of:
 
-        * 'sliding' : A trajectory of length T will have :math:`T-tau` counts
+        * 'sliding' : A trajectory of length T will have :math:`T-\tau` counts
           at time indexes
 
           .. math::
@@ -150,20 +149,21 @@ class OOMReweightedMSM(_MSMBaseEstimator):
 
         # Done. We set our own model parameters, so this estimator is
         # equal to the estimated model.
-        self._connected_sets = msmest.connected_sets(self._C_full)
-        self._Xi = Xi
-        self._omega = omega
-        self._sigma = sigma
-        self._eigenvalues_OOM = l
-        self._rank_ind = rank_ind
-        self._oom_rank = self._sigma.size
-        self._C2t = C2t
+
         # update model
         m = self._model
         m.transition_matrix = P
         m.reversible = self.reversible
-        #self.set_model_params(P=P, pi=None, reversible=self.reversible,
-        #                      dt_model=self.timestep_traj.get_scaled(self.lag))
+        # TODO: should the model know about the connected sets?
+        m._connected_sets = msmest.connected_sets(m._C_full)
+
+        m._Xi = Xi
+        m._omega = omega
+        m._sigma = sigma
+        m._eigenvalues_OOM = l
+        m._rank_ind = rank_ind
+        m._oom_rank = m._sigma.size
+        m._C2t = C2t
 
         return self
 

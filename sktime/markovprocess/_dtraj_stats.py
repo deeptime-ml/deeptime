@@ -248,7 +248,7 @@ class TransitionCountingMixin(object):
         self._visited_set = visited_set(dtrajs)
 
         # TODO: compute this in discrete steps of traj
-        lag = self.lagtime / self.dt_traj
+        lag = int((self.lagtime / self.dt_traj).magnitude)
 
         # Compute count matrix
         if count_mode == 'sliding':
@@ -259,7 +259,7 @@ class TransitionCountingMixin(object):
             self._C = msmest.effective_count_matrix(dtrajs, lag)
         else:
             raise ValueError('Count mode {} is unknown.'.format(count_mode))
-        self._nstates_full = len(self._C)
+        self._nstates_full = np.shape(self._C)[0]
 
         # store mincount_connectivity
         if mincount_connectivity == '1/n':

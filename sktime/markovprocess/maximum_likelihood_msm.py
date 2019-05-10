@@ -146,8 +146,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         self.maxiter = maxiter
         self.maxerr = maxerr
 
-    def _create_model(self) -> EstimatedMSM:
-        return EstimatedMSM(P=None)
+    def _create_model(self) -> MarkovStateModel:
+        return MarkovStateModel(P=None)
 
     @staticmethod
     def _prepare_input_revpi(C, pi):
@@ -174,7 +174,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         return pos[lcc]
 
     def fit(self, dtrajs):
-        self._compute_count_matrix(dtrajs)
+        self._compute_count_matrix(dtrajs, count_mode=self.count_mode,
+                                   mincount_connectivity=self.mincount_connectivity)
 
         # set active set. This is at the same time a mapping from active to full
         if self.statdist_constraint is None:

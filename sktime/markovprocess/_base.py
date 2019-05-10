@@ -278,11 +278,12 @@ class _MSMBaseEstimator(Estimator, TransitionCountingMixin):
             134: 174105
 
         """
+        test_model = self.fetch_model()
         if memberships is None:
-            self.pcca(nsets)
-            memberships = self.metastable_memberships
+            test_model.pcca(nsets)
+            memberships = test_model.metastable_memberships
         from sktime.markovprocess.lagged_model_validators import ChapmanKolmogorovValidator
-        ck = ChapmanKolmogorovValidator(test_estimator=self, test_model=self.fetch_model(), memberships=memberships, mlags=mlags, conf=conf,
+        ck = ChapmanKolmogorovValidator(test_estimator=self, test_model=test_model, memberships=memberships, mlags=mlags, conf=conf,
                                         n_jobs=n_jobs, err_est=err_est, show_progress=show_progress)
         ck.fit(dtrajs)
         return ck
