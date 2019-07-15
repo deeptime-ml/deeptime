@@ -78,7 +78,7 @@ metadata = \
         description='scikit-time project',
         long_description='',
         ext_modules=[
-            Extension('sktime.covariance.util.covar_c', sources=[
+            Extension('sktime.covariance.util.covar_c._covartools', sources=[
                 'sktime/covariance/util/covar_c/covartools.cpp',
             ], language='c++'),
             Extension('sktime.numeric.eig_qr', sources=[
