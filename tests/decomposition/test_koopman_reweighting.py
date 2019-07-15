@@ -1,6 +1,9 @@
 import unittest
-import h5py
 import numpy as np
+import pkg_resources
+
+from sktime.numeric.eigen import sort_by_norm
+import numpy.linalg as scl
 
 
 def transform_C0(C, epsilon):
@@ -15,12 +18,12 @@ def transform_C0(C, epsilon):
     R = np.dot(V, np.diag(d**(-0.5)))
     return R
 
+
 def scale_eigenvectors(V):
     for j in range(V.shape[1]):
         jj = np.argmax(np.abs(V[:, j]))
         V[:, j] *= np.sign(V[jj, j])
     return V
-
 
 
 class TestKoopmanTICA(unittest.TestCase):
