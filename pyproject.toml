@@ -1,0 +1,11 @@
+[build-system]
+requires = [
+ "setuptools",
+ "wheel",
+ "numpy>=1.10",
+ "Cython",
+ "scipy",
+ # TODO: include again once https://github.com/pybind/pybind11/issues/1067 is fixed.
+ #"pybind11",
+ ]
+
