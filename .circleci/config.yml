@@ -27,9 +27,9 @@ jobs:
           paths:
             - "*"
 
-  test:
-    <<: *defaults
-    parallelism: 4
+  #test:
+  #  <<: *defaults
+  #  parallelism: 4
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
@@ -61,6 +61,6 @@ workflows:
   build_and_test:
     jobs:
       - build
-      - test:
-          requires:
-            - build
+  #    - test:
+  #        requires:
+  #          - build
