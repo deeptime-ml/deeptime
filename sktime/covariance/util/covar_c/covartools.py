@@ -29,10 +29,10 @@ def variable_cols(X, tol=0.0, min_constant=0):
     if X is None:
         return None
     from ._covartools import (variable_cols_double,
-                        variable_cols_float,
-                        variable_cols_int,
-                        variable_cols_long,
-                        variable_cols_char)
+                              variable_cols_float,
+                              variable_cols_int,
+                              variable_cols_long,
+                              variable_cols_char)
     # prepare column array
     cols = numpy.zeros(X.shape[1], dtype=numpy.bool, order='C')
 
