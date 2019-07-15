@@ -1,6 +1,6 @@
 
 defaults: &defaults
-  #working_directory: ~/markovmodel/PyEMMA
+  working_directory: ~/scikit-time/scikit-time
   docker:
     - image: continuumio/miniconda3
     #- image: condaforge/linux-anvil
@@ -14,6 +14,10 @@ jobs:
   build:
     <<: *defaults
     parallelism: 1
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+
     steps:
       - checkout
       - run: conda config --add channels conda-forge
@@ -21,11 +25,12 @@ jobs:
       - run: conda config --set quiet true
       - run: conda install conda-build -c defaults
       - run: mkdir workspace
-      - run: conda build devtools/conda-recipe --python=3.7 --no-test --output-folder workspace
-      - persist_to_workspace:
-          root: workspace
-          paths:
-            - "*"
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+      - run: conda build devtools/conda-recipe --python=3.7 #--no-test --output-folder workspace
+#      - persist_to_workspace:
+#          root: workspace
+#          paths:
+#            - "*"
 
   #test:
   #  <<: *defaults
@@ -37,15 +42,15 @@ jobs:
       OMP_NUM_THREADS: 2
 
     steps:
-      - checkout
-      - run: conda config --add channels conda-forge
-      - run: conda config --set always_yes true
-      - run: conda config --set quiet true
-      - run: conda install conda-build -c defaults
-      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-      - attach_workspace:
-          at: workspace
-      - run: conda build devtools/conda-recipe --python=3.7 --test --output-folder workspace
+ #     - checkout
+ #     - run: conda config --add channels conda-forge
+ #     - run: conda config --set always_yes true
+ #     - run: conda config --set quiet true
+ #     - run: conda install conda-build -c defaults
+ #     - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+ #     - attach_workspace:
+ #         at: workspace
+      - run: conda build devtools/conda-recipe --python=3.7 --test #--output-folder workspace
       - run: bash <(curl -s https://codecov.io/bash) -f $HOME/coverage.xml
       - store_test_results:
           path: /tmp/circleci-test-results
