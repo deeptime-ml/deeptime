@@ -1,6 +1,6 @@
 import sys
 
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
 CCODE_TEMPLATE = """{includes}
@@ -69,10 +69,10 @@ class Build(build_ext):
         super(Build, self).build_extension(ext)
 
 
-if __name__ == '__main__':
-    setup(
+metadata = \
+    dict(
         name='scikit-time',
-        version='0.0.1',
+        version='0',
         author='cmb',
         author_email='nope',
         description='scikit-time project',
@@ -92,6 +92,8 @@ if __name__ == '__main__':
         cmdclass=dict(build_ext=Build),
         zip_safe=False,
         install_requires=['numpy'],
-        # TODO: pep517
-        # setup_requires=['cython']
+        packages=find_packages(),
     )
+
+if __name__ == '__main__':
+    setup(**metadata)

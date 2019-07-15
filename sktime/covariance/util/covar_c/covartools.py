@@ -28,11 +28,11 @@ def variable_cols(X, tol=0.0, min_constant=0):
     """
     if X is None:
         return None
-    from pyemma._ext.variational.estimators.covar_c._covartools import (variable_cols_double,
-                                                                        variable_cols_float,
-                                                                        variable_cols_int,
-                                                                        variable_cols_long,
-                                                                        variable_cols_char)
+    from sktime.covariance.util.covar_c import (variable_cols_double,
+                                                variable_cols_float,
+                                                variable_cols_int,
+                                                variable_cols_long,
+                                                variable_cols_char)
     # prepare column array
     cols = numpy.zeros(X.shape[1], dtype=numpy.bool, order='C')
 
