@@ -247,7 +247,7 @@ class TransitionCountingMixin(object):
         self._nstates = msmest.number_of_states(dtrajs)
         self._visited_set = visited_set(dtrajs)
 
-        # TODO: compute this in discrete steps of traj
+        # unitless lagtime
         lag = int((self.lagtime / self.dt_traj).magnitude)
 
         # Compute count matrix
