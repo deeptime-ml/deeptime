@@ -2,14 +2,14 @@ import numpy as np
 
 from sktime.base import Estimator, Model
 from sktime.markovprocess import Q_
-from sktime.markovprocess._dtraj_stats import TransitionCountingMixin
+from sktime.markovprocess._dtraj_stats import TransitionCountEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
 
 
 # TODO: do not store dtrajs
 # TODO: distinguish more between model and estimator attributes.
 
-class _MSMBaseEstimator(Estimator, TransitionCountingMixin):
+class _MSMBaseEstimator(Estimator):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
 
     Parameters
@@ -167,7 +167,7 @@ class _MSMBaseEstimator(Estimator, TransitionCountingMixin):
                           k=score_k, score=score_method)
 
     def _blocksplit_dtrajs(self, dtrajs, sliding):
-        from pyemma.msm.estimators._dtraj_stats import blocksplit_dtrajs
+        from sktime.markovprocess._dtraj_stats import blocksplit_dtrajs
         return blocksplit_dtrajs(dtrajs, lag=self.lagtime, sliding=sliding)
 
     def score_cv(self, dtrajs, n=10, score_method='VAMP2', score_k=10):

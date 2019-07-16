@@ -27,12 +27,21 @@ r"""Unit test for the MSM module
 import unittest
 
 import numpy as np
+from numpy.testing import assert_allclose
 import scipy.sparse
 import warnings
 
 from msmtools.generation import generate_traj
 from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
 from msmtools.analysis import stationary_distribution, timescales
+from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
+
+
+def estimate_markov_model(dtrajs, lag, **kw) -> MarkovStateModel:
+    statdist_constraint = kw.pop('statdist', None)
+    est = MaximumLikelihoodMSM(lagtime=lag, statdist_constraint=statdist_constraint, **kw)
+    est.fit(dtrajs, )
+    return est.fetch_model()
 
 
 class TestMSMSimple(unittest.TestCase):

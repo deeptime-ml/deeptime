@@ -25,6 +25,7 @@ import numpy as np
 
 from sktime.base import Model
 from sktime.markovprocess import Q_
+from sktime.markovprocess._dtraj_stats import TransitionCountModel
 from sktime.markovprocess.pcca import PCCA
 
 
@@ -67,7 +68,7 @@ class MarkovStateModel(Model):
     ncv : int (optional)
         Relevant for eigenvalue decomposition of reversible transition
         matrices. ncv is the number of Lanczos vectors generated, `ncv` must
-        be greater than k; it is recommended that ncv > 2*k.
+        be greater than neig; it is recommended that ncv > 2*neig.
 
     """
     def __init__(self, P, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None):
@@ -79,7 +80,7 @@ class MarkovStateModel(Model):
         # pi might be derived from P, if None was given.
         self.stationary_distribution = pi
         self.dt_model = dt_model
-        #self.neig = neig
+        self.neig = neig
 
     def __eq__(self, other):
         if not isinstance(other, MarkovStateModel):
@@ -138,19 +139,18 @@ class MarkovStateModel(Model):
     def reversible(self, value):
         self._reversible = value
 
+    # TODO: refactor to is_sparse
     @property
     def sparse(self):
         """Returns whether the MarkovStateModel is sparse """
-        return self._sparse
-
-    @sparse.setter
-    def sparse(self, value: bool):
-        self._sparse = value
+        from scipy.sparse import issparse
+        return issparse(self.transition_matrix)
 
     @property
-    def timestep_model(self):
-        """Physical time corresponding to one transition matrix step, e.g. '10 ps'"""
-        return str(self._dt_model)
+    # TODO: remove
+    #def timestep_model(self):
+    #    """Physical time corresponding to one transition matrix step, e.g. '10 ps'"""
+    #    return str(self._dt_model)
 
     @property
     def nstates(self):
@@ -172,7 +172,7 @@ class MarkovStateModel(Model):
         if value is None:
             if self.transition_matrix is not None:
                 if self.sparse:
-                    value = 10
+                    value = min(10, self.nstates - 1)
                 else:
                     value = self._nstates
 
@@ -182,6 +182,7 @@ class MarkovStateModel(Model):
 
         self._neig = value
 
+    # TODO: rename to dt_traj
     @property
     def dt_model(self) -> Q_:
         """Description of the physical time corresponding to the lag."""
@@ -1289,3 +1290,13 @@ class MarkovStateModel(Model):
         assert 1 < ncoarse <= self.nstates, 'nstates must be an int in [2,msmobj.nstates]'
 
         return self.hmm(dtrajs, ncoarse)
+
+
+class EstimatedMarkovStateModel(MarkovStateModel, TransitionCountModel):
+
+    @property
+    def nstates(self):
+        n1 = super(TransitionCountModel, self).nstates
+        n2 = super(MarkovStateModel, self).nstates
+        assert n1 == n2
+        return n1

@@ -18,8 +18,10 @@
 import numpy as np
 
 from msmtools import estimation as msmest
+from sktime.base import Model
 
 from sktime.markovprocess._base import _MSMBaseEstimator
+from sktime.markovprocess._dtraj_stats import TransitionCountModel, TransitionCountEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
 
 __all__ = ['MaximumLikelihoodMSM']
@@ -173,25 +175,26 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         lcc = msmest.largest_connected_set(C_pos, directed=False)
         return pos[lcc]
 
-    def fit(self, dtrajs):
-        self._compute_count_matrix(dtrajs, count_mode=self.count_mode,
-                                   mincount_connectivity=self.mincount_connectivity)
+    def fit_dtrajs(self, dtrajs):
+        counting_model = TransitionCountEstimator().fit(dtrajs, lagtime=self.lagtime, count_mode=self.count_mode,
+                                                        mincount_connectivity=self.mincount_connectivity).fetch_model()
+        return self.fit(counting_model)
 
+    def fit(self, counting_model):
         # set active set. This is at the same time a mapping from active to full
         if self.statdist_constraint is None:
             # statdist not given - full connectivity on all states
-            active_set = self.largest_connected_set
+            active_set = counting_model.largest_connected_set
         else:
-            active_set = self._prepare_input_revpi(self.count_matrix_full,
+            active_set = self._prepare_input_revpi(counting_model.count_matrix_full,
                                                    self.statdist_constraint)
-            active_set = active_set
 
         # if active set is empty, we can't do anything.
         if np.size(active_set) == 0:
             raise RuntimeError('Active set is empty. Cannot estimate MarkovStateModel.')
 
         # active count matrix and number of states
-        C_active = self.count_matrix(subset=active_set)
+        C_active = counting_model.count_matrix(subset=active_set)
 
         # continue sparse or dense?
         if not self.sparse:
@@ -226,6 +229,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         m.stationary_distribution = statdist_active
         m.reversible = self.reversible
         # lag time model:
-        m.dt_model = self.timestep_traj * self.lagtime
+        m.dt_model = counting_model.dt_traj * self.lagtime
+        m.counting_model = counting_model
 
         return self

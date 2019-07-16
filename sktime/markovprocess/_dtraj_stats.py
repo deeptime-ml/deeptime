@@ -4,9 +4,9 @@ from msmtools import estimation as msmest
 from msmtools.dtraj import count_states
 
 from pyemma.util.linalg import submatrix
+from sktime.base import Estimator, Model
 
 from sktime.markovprocess import Q_
-from sktime.markovprocess.util import visited_set
 
 __author__ = 'noe'
 
@@ -71,26 +71,38 @@ def cvsplit_dtrajs(dtrajs):
     return dtrajs_train, dtrajs_test
 
 
-class TransitionCountingMixin(object):
+class TransitionCountModel(Model):
     r""" Statistics, count matrices and connectivity from discrete trajectories
 
     Operates sparse by default.
 
     """
 
+    def __init__(self, lagtime=1, active_set=None, dt_traj='1 step',
+                 connected_sets=(), count_matrix=None, hist=None) -> None:
+        self._lag = Q_(lagtime)
+        self._active_set = active_set
+        self._dt_traj = Q_(dt_traj) if isinstance(dt_traj, (str, int)) else dt_traj
+        self._connected_sets = connected_sets
+        self._C = count_matrix
+        self._hist = hist
+
+        if count_matrix is not None:
+            self._nstates_full = count_matrix.shape[0]
+        else:
+            self._nstates_full = 0
+
+        # mapping from full to lcs
+        if active_set is not None:
+            self._full2lcs = -1 * np.ones(self.nstates, dtype=int)
+            self._full2lcs[active_set] = np.arange(len(active_set))
+        else:
+            self._full2lcs = None
+
     @property
     def lagtime(self) -> Q_:
         """ The lag time at which the Markov model was estimated."""
         return self._lag
-
-    @lagtime.setter
-    def lagtime(self, value: [int, str]):
-        self._lag = Q_(value)
-
-    @property
-    def nstates_full(self):
-        """ Number of states in discrete trajectories """
-        return self._nstates_full
 
     @property
     def active_set(self):
@@ -104,11 +116,7 @@ class TransitionCountingMixin(object):
     @property
     def dt_traj(self) -> Q_:
         """Time interval between discrete steps of the time series."""
-        return self.timestep_traj
-
-    @dt_traj.setter
-    def dt_traj(self, value: [int, str]):
-        self.timestep_traj = Q_(value)
+        return self._dt_traj
 
     @property
     def largest_connected_set(self):
@@ -129,7 +137,6 @@ class TransitionCountingMixin(object):
         """
         # compute connected dtrajs
         dtrajs_active = []
-        # TODO: checking for same set?
         for dtraj in dtrajs:
             dtrajs_active.append(self._full2lcs[dtraj])
 
@@ -153,8 +160,9 @@ class TransitionCountingMixin(object):
             For a count matrix with effective (statistically uncorrelated) counts.
 
         """
-        return self._C_active
+        return self.count_matrix(subset=self.active_set)
 
+    # todo rename to count_matrix
     @property
     def count_matrix_full(self):
         """
@@ -171,13 +179,12 @@ class TransitionCountingMixin(object):
             For a active-set count matrix with effective (statistically uncorrelated) counts.
 
         """
-        # TODO: used to be _C_full
         return self._C
 
     @property
     def active_state_fraction(self):
         """The fraction of states in the largest connected set."""
-        return float(self._nstates) / float(self._nstates_full)
+        return float(self.nstates) / float(self._nstates_full)
 
     @property
     def active_count_fraction(self):
@@ -189,110 +196,9 @@ class TransitionCountingMixin(object):
         return float(np.sum(hist_active)) / float(np.sum(hist))
 
     @property
-    # TODO: needed to be computed in fit()
-    def active_state_indexes(self):
-        """Ensures that the connected states are indexed and returns the indices."""
-        if not hasattr(self, '_active_state_indexes'):
-            from pyemma.util.discrete_trajectories import index_states
-            self._active_state_indexes = index_states(self.discrete_trajectories_active)
-        return self._active_state_indexes
-
-    @staticmethod
-    def _compute_connected_sets(C, mincount_connectivity, strong=True):
-        """ Computes the connected sets of C.
-
-        C : count matrix
-        mincount_connectivity : float
-            Minimum count which counts as a connection.
-        strong : boolean
-            True: Seek strongly connected sets. False: Seek weakly connected sets.
-        Returns
-        -------
-        Cconn, S
-        """
-        import msmtools.estimation as msmest
-        import scipy.sparse as scs
-        if scs.issparse(C):
-            Cconn = C.tocsr(copy=True)
-            Cconn.data[Cconn.data < mincount_connectivity] = 0
-            Cconn.eliminate_zeros()
-        else:
-            Cconn = C.copy()
-            Cconn[np.where(Cconn < mincount_connectivity)] = 0
-
-        # treat each connected set separately
-        S = msmest.connected_sets(Cconn, directed=strong)
-        return S
-
-    def _compute_count_matrix(self, dtrajs, count_mode, mincount_connectivity='1/n'):
-        r""" Counts transitions at given lag time
-
-        Parameters
-        ----------
-
-        dtrajs
-
-        """
-        from pyemma.util.types import ensure_dtraj_list
-
-        # discrete trajectories
-        dtrajs = ensure_dtraj_list(dtrajs)
-
-        ## basic count statistics
-        # histogram
-        self._hist = count_states(dtrajs, ignore_negative=True)
-        # total counts
-        self._total_count = np.sum(self._hist)
-        # number of states
-        self._nstates = msmest.number_of_states(dtrajs)
-        self._visited_set = visited_set(dtrajs)
-
-        # unitless lagtime
-        lag = int((self.lagtime / self.dt_traj).magnitude)
-
-        # Compute count matrix
-        if count_mode == 'sliding':
-            self._C = msmest.count_matrix(dtrajs, lag, sliding=True)
-        elif count_mode == 'sample':
-            self._C = msmest.count_matrix(dtrajs, lag, sliding=False)
-        elif count_mode == 'effective':
-            self._C = msmest.effective_count_matrix(dtrajs, lag)
-        else:
-            raise ValueError('Count mode {} is unknown.'.format(count_mode))
-        self._nstates_full = np.shape(self._C)[0]
-
-        # store mincount_connectivity
-        if mincount_connectivity == '1/n':
-            mincount_connectivity = 1.0 / np.shape(self._C)[0]
-
-        # Compute reversibly connected sets
-        if mincount_connectivity > 0:
-            self._connected_sets = \
-                self._compute_connected_sets(self._C, mincount_connectivity=mincount_connectivity)
-        else:
-            self._connected_sets = msmest.connected_sets(self._C)
-
-        # set sizes of reversibly connected sets
-        self._connected_set_sizes = np.zeros(len(self._connected_sets))
-        for i in range(len(self._connected_sets)):
-            # set size
-            self._connected_set_sizes[i] = len(self._connected_sets[i])
-
-        # largest connected set
-        self._lcs = self._connected_sets[0]
-
-        # if lcs has no counts, make lcs empty
-        if submatrix(self._C, self._lcs).sum() == 0:
-            self._lcs = np.empty(0, dtype=int)
-
-        # mapping from full to lcs
-        self._full2lcs = -1 * np.ones(self._nstates, dtype=int)
-        self._full2lcs[self._lcs] = np.arange(len(self._lcs))
-
-    @property
     def nstates(self) -> int:
         """Number of states """
-        return self._nstates
+        return self.count_matrix_full.shape[0]
 
     @property
     def total_count(self):
@@ -300,10 +206,11 @@ class TransitionCountingMixin(object):
         return self._hist.sum()
 
     @property
-    def histogram(self):
+    def state_histogram(self):
         """ Histogram of discrete state counts"""
         return self._hist
 
+    # todo: rename to subselect_count_matrix
     def count_matrix(self, connected_set=None, subset=None, effective=False):
         r"""The count matrix
 
@@ -336,7 +243,7 @@ class TransitionCountingMixin(object):
             raise ValueError('Can\'t set both connected_set and subset.')
         if subset is not None:
             if np.size(subset) > 0:
-                assert np.max(subset) < self._nstates, 'Chosen set contains states that are not included in the data.'
+                assert np.max(subset) < self.nstates, 'Chosen set contains states that are not included in the data.'
             C = submatrix(self._C, subset)
         elif connected_set is not None:
             C = submatrix(self._C, self._connected_sets[connected_set])
@@ -344,8 +251,8 @@ class TransitionCountingMixin(object):
             C = self._C
 
         # effective count matrix wanted?
-        # FIXME: this modifies self._C in place!
         if effective:
+            C = C.copy()
             C /= float(self._lag)
 
         return C
@@ -363,9 +270,112 @@ class TransitionCountingMixin(object):
     @property
     def visited_set(self):
         """ The set of visited states"""
-        return self._visited_set
+        return np.argwhere(self._hist > 0)[:, 0]
 
     @property
     def connected_set_sizes(self):
-        """The numbers of states for each connected set"""
-        return self._connected_set_sizes
+        # set sizes of reversibly connected sets
+        return np.array([len(x) for x in self.connected_sets])
+
+
+class TransitionCountEstimator(Estimator):
+
+    def _create_model(self) -> TransitionCountModel:
+        return TransitionCountModel()
+
+    @staticmethod
+    def _compute_connected_sets(C, mincount_connectivity, strong=True):
+        """ Computes the connected sets of C.
+
+        C : count matrix
+        mincount_connectivity : float
+            Minimum count which counts as a connection.
+        strong : boolean
+            True: Seek strongly connected sets. False: Seek weakly connected sets.
+        Returns
+        -------
+        Cconn, S
+        """
+        import msmtools.estimation as msmest
+        import scipy.sparse as scs
+        if scs.issparse(C):
+            Cconn = C.tocsr(copy=True)
+            Cconn.data[Cconn.data < mincount_connectivity] = 0
+            Cconn.eliminate_zeros()
+        else:
+            Cconn = C.copy()
+            Cconn[np.where(Cconn < mincount_connectivity)] = 0
+
+        # treat each connected set separately
+        S = msmest.connected_sets(Cconn, directed=strong)
+        return S
+
+    def fit(self, data, lagtime:int=1, count_mode='sliding', mincount_connectivity='1/n', dt_traj='1 step'):
+        r""" Counts transitions at given lag time
+
+        Parameters
+        ----------
+
+        dtrajs : list of 1D numpy arrays containing integers
+
+        """
+        
+        # create dt_traj quantity in model
+        dt_traj = Q_(dt_traj)
+        
+        if not isinstance(data, (list, tuple)):
+            data = [data]
+        
+        # typecheck
+        for x in data:
+            assert isinstance(x, np.ndarray), "dtraj list contained element which was not a numpy array"
+            assert x.ndim == 1, "dtraj list contained multi-dimensional array"
+            assert issubclass(x.dtype.type, np.integer), "dtraj list contained non-integer array"
+        
+        assert isinstance(self._model, TransitionCountModel)
+        
+        # these are now discrete trajectories
+        dtrajs = data
+        
+        ## basic count statistics
+        # histogram
+        hist = count_states(dtrajs, ignore_negative=True)
+        # number of states
+        # nstates = msmest.number_of_states(dtrajs)
+        # unitless lagtime
+        lagtime = int((lagtime / dt_traj).magnitude)
+
+        # Compute count matrix
+        if count_mode == 'sliding':
+            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True)
+        elif count_mode == 'sample':
+            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False)
+        elif count_mode == 'effective':
+            count_matrix = msmest.effective_count_matrix(dtrajs, lagtime)
+        else:
+            raise ValueError('Count mode {} is unknown.'.format(count_mode))
+
+        # store mincount_connectivity
+        if mincount_connectivity == '1/n':
+            mincount_connectivity = 1.0 / np.shape(count_matrix)[0]
+
+        # Compute reversibly connected sets
+        if mincount_connectivity > 0:
+            connected_sets = \
+                self._compute_connected_sets(count_matrix, mincount_connectivity=mincount_connectivity)
+        else:
+            connected_sets = msmest.connected_sets(count_matrix)
+
+        # largest connected set
+        lcs = connected_sets[0]
+
+        # if lcs has no counts, make lcs empty
+        if submatrix(count_matrix, lcs).sum() == 0:
+            lcs = np.empty(0, dtype=int)
+
+        self._model.__init__(
+            lagtime=lagtime, active_set=lcs, dt_traj=dt_traj,
+            connected_sets=connected_sets, count_matrix=count_matrix,
+            hist=hist
+        )
+        return self
