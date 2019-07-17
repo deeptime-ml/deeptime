@@ -26,6 +26,7 @@ def scale_eigenvectors(V):
     return V
 
 
+@unittest.skip('currently not implemented ')
 class TestKoopmanTICA(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
