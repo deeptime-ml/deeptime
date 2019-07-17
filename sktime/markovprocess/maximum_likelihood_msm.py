@@ -22,7 +22,7 @@ from sktime.base import Model
 
 from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess._dtraj_stats import TransitionCountModel, TransitionCountEstimator
-from sktime.markovprocess.markov_state_model import MarkovStateModel
+from sktime.markovprocess.markov_state_model import MarkovStateModel, EstimatedMarkovStateModel
 
 __all__ = ['MaximumLikelihoodMSM']
 
@@ -148,8 +148,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         self.maxiter = maxiter
         self.maxerr = maxerr
 
-    def _create_model(self) -> MarkovStateModel:
-        return MarkovStateModel(P=None)
+    def _create_model(self) -> EstimatedMarkovStateModel:
+        return EstimatedMarkovStateModel(P=None)
 
     @staticmethod
     def _prepare_input_revpi(C, pi):
@@ -176,12 +176,13 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         return pos[lcc]
 
     def fit_dtrajs(self, dtrajs):
-        counting_model = TransitionCountEstimator().fit(dtrajs, lagtime=self.lagtime, count_mode=self.count_mode,
-                                                        mincount_connectivity=self.mincount_connectivity).fetch_model()
-        return self.fit(counting_model)
+        pass
 
-    def fit(self, counting_model):
+    def fit(self, dtrajs):
         # set active set. This is at the same time a mapping from active to full
+        counting_model = TransitionCountEstimator().fit(
+            dtrajs, lagtime=self.lagtime, count_mode=self.count_mode,
+            mincount_connectivity=self.mincount_connectivity).fetch_model()
         if self.statdist_constraint is None:
             # statdist not given - full connectivity on all states
             active_set = counting_model.largest_connected_set
@@ -230,6 +231,12 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         m.reversible = self.reversible
         # lag time model:
         m.dt_model = counting_model.dt_traj * self.lagtime
-        m.counting_model = counting_model
+        m.__dict__.update(counting_model.__dict__)
+
+        TransitionCountModel.__init__(m, lagtime=self.lagtime, active_set=active_set, dt_traj=self.dt_traj,
+                                      #connected_sets=
+                                      )
+
+
 
         return self

@@ -22,8 +22,10 @@ import copy
 from math import ceil
 
 import numpy as np
+import typing
 
 from sktime.base import Model
+from sktime.util import ensure_ndarray
 from sktime.markovprocess import Q_
 from sktime.markovprocess._dtraj_stats import TransitionCountModel
 from sktime.markovprocess.pcca import PCCA
@@ -71,7 +73,7 @@ class MarkovStateModel(Model):
         be greater than neig; it is recommended that ncv > 2*neig.
 
     """
-    def __init__(self, P, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None):
+    def __init__(self, P, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, count_model=None):
 
         self.ncv = ncv
         # we set reversible first, so it can be derived from P, if None was given.
@@ -81,27 +83,19 @@ class MarkovStateModel(Model):
         self.stationary_distribution = pi
         self.dt_model = dt_model
         self.neig = neig
-
-    def __eq__(self, other):
-        if not isinstance(other, MarkovStateModel):
-            return False
-        if id(self) == id(other):
-            return True
-        if self.transition_matrix is not None and other.transition_matrix is not None:
-            if self.transition_matrix.shape != other.transition_matrix.shape:
-                P_equal = False
-            else:
-                P_equal = np.allclose(self.transition_matrix, other.transition_matrix)
-        else:
-            P_equal = True
-        return (P_equal and
-                self.sparse == other.sparse and self.neig == other.neig and
-                self.reversible == other.reversible and
-                self.timestep_model == other.timestep_model)
+        self._count_model = count_model
 
     ################################################################################
     # Basic attributes
     ################################################################################
+
+    @property
+    def count_model(self) -> typing.Optional[TransitionCountModel]:
+        return self._count_model
+
+    @count_model.setter
+    def count_model(self, value: typing.Optional[TransitionCountModel]):
+        self._count_model = value
 
     @property
     def transition_matrix(self):
@@ -120,13 +114,6 @@ class MarkovStateModel(Model):
             self.nstates = np.shape(self._P)[0]
             if self.reversible is None:
                 self.reversible = msmana.is_reversible(self._P)
-
-            from scipy.sparse import issparse
-            self.sparse = issparse(self._P)
-        else:
-            # set dummy values for not yet known attributes.
-            self.nstates = 0
-            self.sparse = False
 
         # TODO: if spectral decomp etc. already has been computed, reset its state.
 
@@ -390,7 +377,7 @@ class MarkovStateModel(Model):
             Distribution after k steps. Vector of size of the active set.
 
         """
-        p0 = _types.ensure_ndarray(p0, ndim=1, size=self.nstates, kind='numeric')
+        p0 = ensure_ndarray(p0, ndim=1, size=self.nstates)
         assert k >= 0, 'k must be a non-negative integer'
 
         if k == 0:  # simply return p0 normalized
@@ -481,7 +468,7 @@ class MarkovStateModel(Model):
         """
         return self._committor_backward(self.transition_matrix, A, B, mu=self.stationary_distribution)
 
-    def expectation(self, a):
+    def expectation(self, a: np.ndarray):
         r"""Equilibrium expectation value of a given observable.
 
         Parameters
@@ -505,8 +492,7 @@ class MarkovStateModel(Model):
         :math:`\pi=(\pi_i)` is the stationary vector of the transition matrix :math:`P`.
 
         """
-        # check input and go
-        a = _types.ensure_ndarray(a, ndim=1, size=self.nstates, kind='numeric')
+        a = ensure_ndarray(a, ndim=1, size=self.nstates)
         return np.dot(a, self.stationary_distribution)
 
     def correlation(self, a, b=None, maxtime=None, k=None, ncv=None):
@@ -1085,9 +1071,8 @@ class MarkovStateModel(Model):
         # TODO: probably lead to a weird-looking trajectory. Maybe we could use a HMM to generate intermediate 'hidden'
         # TODO: frames. Anyway, this is a nontrivial issue.
         # generate synthetic states
-        from msmtools.generation import generate_traj as _generate_traj
-
-        syntraj = _generate_traj(self.transition_matrix, N, start=start, stop=stop, dt=stride)
+        from msmtools.generation import generate_traj
+        syntraj = generate_traj(self.transition_matrix, N, start=start, stop=stop, dt=stride)
         # result
         return sample_indexes_by_sequence(self.active_state_indexes, syntraj)
 
@@ -1200,8 +1185,10 @@ class MarkovStateModel(Model):
 
         """
         # compute stationary distribution, expanded to full set
-        statdist_full = np.zeros(self.nstates_full)
-        statdist_full[self.active_set] = self.stationary_distribution
+        if self.count_model is None:
+            raise RuntimeError("Count model was None but needs to be provided in this case.")
+        statdist_full = np.zeros(self.count_model.nstates)
+        statdist_full[self.count_model.active_set] = self.stationary_distribution
         # histogram observed states
         import msmtools.dtraj as msmtraj
         hist = 1.0 * msmtraj.count_states(dtrajs)
@@ -1290,13 +1277,3 @@ class MarkovStateModel(Model):
         assert 1 < ncoarse <= self.nstates, 'nstates must be an int in [2,msmobj.nstates]'
 
         return self.hmm(dtrajs, ncoarse)
-
-
-class EstimatedMarkovStateModel(MarkovStateModel, TransitionCountModel):
-
-    @property
-    def nstates(self):
-        n1 = super(TransitionCountModel, self).nstates
-        n2 = super(MarkovStateModel, self).nstates
-        assert n1 == n2
-        return n1

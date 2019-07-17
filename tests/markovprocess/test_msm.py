@@ -27,6 +27,7 @@ r"""Unit test for the MSM module
 import unittest
 
 import numpy as np
+from msmtools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import assert_allclose
 import scipy.sparse
 import warnings
@@ -83,7 +84,6 @@ class TestMSMSimple(unittest.TestCase):
 
     def test_MSM(self):
         msm = estimate_markov_model(self.dtraj, self.tau)
-        assert_allclose(self.dtraj, msm.discrete_trajectories_full[0])
         self.assertEqual(self.tau, msm.lagtime)
         assert_allclose(self.lcc_MSM, msm.largest_connected_set)
         self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_matrix_active))
