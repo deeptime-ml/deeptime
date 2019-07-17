@@ -3,10 +3,10 @@ import numpy as np
 from msmtools import estimation as msmest
 from msmtools.dtraj import count_states
 
-from pyemma.util.linalg import submatrix
 from sktime.base import Estimator, Model
 
 from sktime.markovprocess import Q_
+from sktime.util import submatrix
 
 __author__ = 'noe'
 
@@ -189,8 +189,6 @@ class TransitionCountModel(Model):
     @property
     def active_count_fraction(self):
         """The fraction of counts in the largest connected set."""
-        from pyemma.util.discrete_trajectories import count_states
-
         hist = count_states(self._hist)
         hist_active = hist[self.active_set]
         return float(np.sum(hist_active)) / float(np.sum(hist))
@@ -237,7 +235,7 @@ class TransitionCountModel(Model):
 
         ..[1] Trendelkamp-Schroer B, H Wu, F Paul and F Noe. 2015:
             Reversible Markov models of molecular kinetics: Estimation and uncertainty.
-            in preparation.
+            J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
         """
         if subset is not None and connected_set is not None:
             raise ValueError('Can\'t set both connected_set and subset.')
@@ -319,31 +317,29 @@ class TransitionCountEstimator(Estimator):
         dtrajs : list of 1D numpy arrays containing integers
 
         """
-        
+
         # create dt_traj quantity in model
         dt_traj = Q_(dt_traj)
-        
+
         if not isinstance(data, (list, tuple)):
             data = [data]
-        
+
         # typecheck
         for x in data:
             assert isinstance(x, np.ndarray), "dtraj list contained element which was not a numpy array"
             assert x.ndim == 1, "dtraj list contained multi-dimensional array"
             assert issubclass(x.dtype.type, np.integer), "dtraj list contained non-integer array"
-        
+
         assert isinstance(self._model, TransitionCountModel)
-        
+
         # these are now discrete trajectories
         dtrajs = data
-        
+
         ## basic count statistics
         # histogram
         hist = count_states(dtrajs, ignore_negative=True)
         # number of states
         # nstates = msmest.number_of_states(dtrajs)
-        # unitless lagtime
-        lagtime = int((lagtime / dt_traj).magnitude)
 
         # Compute count matrix
         if count_mode == 'sliding':
@@ -361,8 +357,8 @@ class TransitionCountEstimator(Estimator):
 
         # Compute reversibly connected sets
         if mincount_connectivity > 0:
-            connected_sets = \
-                self._compute_connected_sets(count_matrix, mincount_connectivity=mincount_connectivity)
+            connected_sets = self._compute_connected_sets(count_matrix,
+                                                          mincount_connectivity=mincount_connectivity)
         else:
             connected_sets = msmest.connected_sets(count_matrix)
 

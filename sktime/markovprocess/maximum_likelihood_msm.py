@@ -18,11 +18,10 @@
 import numpy as np
 
 from msmtools import estimation as msmest
-from sktime.base import Model
 
 from sktime.markovprocess._base import _MSMBaseEstimator
-from sktime.markovprocess._dtraj_stats import TransitionCountModel, TransitionCountEstimator
-from sktime.markovprocess.markov_state_model import MarkovStateModel, EstimatedMarkovStateModel
+from sktime.markovprocess._dtraj_stats import TransitionCountEstimator
+from sktime.markovprocess.markov_state_model import MarkovStateModel
 
 __all__ = ['MaximumLikelihoodMSM']
 
@@ -148,8 +147,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         self.maxiter = maxiter
         self.maxerr = maxerr
 
-    def _create_model(self) -> EstimatedMarkovStateModel:
-        return EstimatedMarkovStateModel(P=None)
+    def _create_model(self) -> MarkovStateModel:
+        return MarkovStateModel(P=None)
 
     @staticmethod
     def _prepare_input_revpi(C, pi):
@@ -175,19 +174,16 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         lcc = msmest.largest_connected_set(C_pos, directed=False)
         return pos[lcc]
 
-    def fit_dtrajs(self, dtrajs):
-        pass
-
     def fit(self, dtrajs):
-        # set active set. This is at the same time a mapping from active to full
-        counting_model = TransitionCountEstimator().fit(
-            dtrajs, lagtime=self.lagtime, count_mode=self.count_mode,
+        count_model = TransitionCountEstimator().fit(
+            dtrajs, lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
             mincount_connectivity=self.mincount_connectivity).fetch_model()
+
         if self.statdist_constraint is None:
             # statdist not given - full connectivity on all states
-            active_set = counting_model.largest_connected_set
+            active_set = count_model.largest_connected_set
         else:
-            active_set = self._prepare_input_revpi(counting_model.count_matrix_full,
+            active_set = self._prepare_input_revpi(count_model.count_matrix_full,
                                                    self.statdist_constraint)
 
         # if active set is empty, we can't do anything.
@@ -195,7 +191,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
             raise RuntimeError('Active set is empty. Cannot estimate MarkovStateModel.')
 
         # active count matrix and number of states
-        C_active = counting_model.count_matrix(subset=active_set)
+        C_active = count_model.count_matrix(subset=active_set)
 
         # continue sparse or dense?
         if not self.sparse:
@@ -229,14 +225,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         m.transition_matrix = P
         m.stationary_distribution = statdist_active
         m.reversible = self.reversible
-        # lag time model:
-        m.dt_model = counting_model.dt_traj * self.lagtime
-        m.__dict__.update(counting_model.__dict__)
-
-        TransitionCountModel.__init__(m, lagtime=self.lagtime, active_set=active_set, dt_traj=self.dt_traj,
-                                      #connected_sets=
-                                      )
-
-
+        m.dt_model = count_model.dt_traj
+        m.count_model = count_model
 
         return self

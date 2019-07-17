@@ -38,17 +38,20 @@ from msmtools.analysis import stationary_distribution, timescales
 from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
 
 
-def estimate_markov_model(dtrajs, lag, **kw) -> MarkovStateModel:
+def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovStateModel:
     statdist_constraint = kw.pop('statdist', None)
     est = MaximumLikelihoodMSM(lagtime=lag, statdist_constraint=statdist_constraint, **kw)
     est.fit(dtrajs, )
+    if return_estimator:
+        return est, est.fetch_model()
     return est.fetch_model()
 
 
 class TestMSMSimple(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls) -> None:
         """Store state of the rng"""
-        self.state = np.random.mtrand.get_state()
+        cls.state = np.random.mtrand.get_state()
 
         """Reseed the rng to enforce 'deterministic' behavior"""
         np.random.mtrand.seed(42)
@@ -66,68 +69,48 @@ class TestMSMSimple(unittest.TestCase):
 
         bdc = BirthDeathChain(q, p)
         P = bdc.transition_matrix()
-        self.dtraj = generate_traj(P, 10000, start=0)
-        self.tau = 1
+        cls.dtraj = generate_traj(P, 10000, start=0)
+        cls.tau = 1
 
         """Estimate MSM"""
-        self.C_MSM = count_matrix(self.dtraj, self.tau, sliding=True)
-        self.lcc_MSM = largest_connected_set(self.C_MSM)
-        self.Ccc_MSM = largest_connected_submatrix(self.C_MSM, lcc=self.lcc_MSM)
-        self.P_MSM = transition_matrix(self.Ccc_MSM, reversible=True)
-        self.mu_MSM = stationary_distribution(self.P_MSM)
-        self.k = 3
-        self.ts = timescales(self.P_MSM, k=self.k, tau=self.tau)
+        cls.C_MSM = count_matrix(cls.dtraj, cls.tau, sliding=True)
+        cls.lcc_MSM = largest_connected_set(cls.C_MSM)
+        cls.Ccc_MSM = largest_connected_submatrix(cls.C_MSM, lcc=cls.lcc_MSM)
+        cls.P_MSM = transition_matrix(cls.Ccc_MSM, reversible=True)
+        cls.mu_MSM = stationary_distribution(cls.P_MSM)
+        cls.k = 3
+        cls.ts = timescales(cls.P_MSM, k=cls.k, tau=cls.tau)
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls) -> None:
         """Revert the state of the rng"""
-        np.random.mtrand.set_state(self.state)
+        np.random.mtrand.set_state(cls.state)
 
     def test_MSM(self):
         msm = estimate_markov_model(self.dtraj, self.tau)
-        self.assertEqual(self.tau, msm.lagtime)
-        assert_allclose(self.lcc_MSM, msm.largest_connected_set)
-        self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_matrix_active))
-        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_matrix_full))
+        self.assertEqual(self.tau, msm.count_model.lagtime)
+        assert_allclose(self.lcc_MSM, msm.count_model.largest_connected_set)
+        # TODO: count matrices used to be dense if estimation mode is dense.
+        self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_model.count_matrix_active.toarray()))
+        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix_full.toarray()))
         self.assertTrue(np.allclose(self.P_MSM.toarray(), msm.transition_matrix))
         assert_allclose(self.mu_MSM, msm.stationary_distribution)
         assert_allclose(self.ts[1:], msm.timescales(self.k - 1))
 
     def test_MSM_sparse(self):
         msm = estimate_markov_model(self.dtraj, self.tau, sparse=True)
-        assert_allclose(self.dtraj, msm.discrete_trajectories_full[0])
-        self.assertEqual(self.tau, msm.lagtime)
-        assert_allclose(self.lcc_MSM, msm.largest_connected_set)
-        self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_matrix_active.toarray()))
-        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_matrix_full.toarray()))
+        self.assertEqual(self.tau, msm.count_model.lagtime)
+        assert_allclose(self.lcc_MSM, msm.count_model.largest_connected_set)
+        self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_model.count_matrix_active.toarray()))
+        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix_full.toarray()))
         self.assertTrue(np.allclose(self.P_MSM.toarray(), msm.transition_matrix.toarray()))
         assert_allclose(self.mu_MSM, msm.stationary_distribution)
         assert_allclose(self.ts[1:], msm.timescales(self.k - 1))
-
-    def test_pcca_recompute(self):
-        msm = estimate_markov_model(self.dtraj, self.tau)
-        pcca1 = msm.pcca(2)
-        msm.estimate(self.dtraj, lag=self.tau + 1)
-        pcca2 = msm.pcca(2)
-        assert pcca2 is not pcca1
-
-    def test_rdl_recompute(self):
-        """ test for issue 1301. Should recompute RDL decomposition in case of new transition matrix. """
-        msm = estimate_markov_model(self.dtraj, self.tau)
-        ev1 = msm.eigenvectors_left(2)
-        msm.estimate(self.dtraj, lag=self.tau+1)
-        ev2 = msm.eigenvectors_left(2)
-        assert ev2 is not ev1
 
 
 class TestMSMRevPi(unittest.TestCase):
     r"""Checks if the MLMSM correctly handles the active set computation
     if a stationary distribution is given"""
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
 
     def test_valid_stationary_vector(self):
         dtraj = np.array([0, 0, 1, 0, 1, 2])
@@ -135,18 +118,18 @@ class TestMSMRevPi(unittest.TestCase):
         pi_invalid = np.array([0.1, 0.9])
         active_set = np.array([0, 1])
         msm = estimate_markov_model(dtraj, 1, statdist=pi_valid)
-        self.assertTrue(np.all(msm.active_set==active_set))
+        np.testing.assert_equal(msm.count_model.active_set, active_set)
         with self.assertRaises(ValueError):
-            msm = estimate_markov_model(dtraj, 1, statdist=pi_invalid)
+            estimate_markov_model(dtraj, 1, statdist=pi_invalid)
 
     def test_valid_trajectory(self):
         pi = np.array([0.1, 0.0, 0.9])
         dtraj_invalid = np.array([1, 1, 1, 1, 1, 1, 1])
         dtraj_valid = np.array([0, 2, 0, 2, 2, 0, 1, 1])
-        msm = estimate_markov_model(dtraj_valid, 1, statdist=pi)
-        self.assertTrue(np.all(msm.active_set==np.array([0, 2])))
+        msm = estimate_markov_model(dtraj_valid, lag=1, statdist=pi)
+        np.testing.assert_equal(msm.active_set, np.array([0, 2]))
         with self.assertRaises(ValueError):
-            msm = estimate_markov_model(dtraj_invalid, 1, statdist=pi)
+            estimate_markov_model(dtraj_invalid, lag=1, statdist=pi)
 
 
 class TestMSMDoubleWell(unittest.TestCase):
@@ -1079,19 +1062,6 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         msm = bayesian_markov_model(self.dtraj, lag=1, mincount_connectivity='1/n')
         msm_restricted = bayesian_markov_model(self.dtraj, lag=1, mincount_connectivity=self.mincount_connectivity)
         self._test_connectivity(msm, msm_restricted)
-
-    @unittest.skip("""
-      File "/home/marscher/workspace/pyemma/pyemma/msm/estimators/_OOM_MSM.py", line 260, in oom_components
-    omega = np.real(R[:, 0])
-IndexError: index 0 is out of bounds for axis 1 with size 0
-    """)
-    def test_oom(self):
-        from pyemma import msm
-        msm_one_over_n = msm.estimate_markov_model(self.dtraj, lag=1, mincount_connectivity='1/n', weights='oom')
-
-        # we now restrict the connectivity to have at least 6 counts, so we will loose state 2
-        msm_restrict_connectivity = msm.estimate_markov_model(self.dtraj, lag=1, mincount_connectivity=6, weights='oom')
-        self._test_connectivity(msm_one_over_n, msm_restrict_connectivity)
 
     def test_timescales(self):
         from pyemma.msm import timescales_msm
