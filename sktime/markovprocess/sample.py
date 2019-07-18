@@ -1,15 +1,19 @@
+import numbers
+import typing
 import numpy as np
+
 
 def _ensure_dtraj_list(dtrajs):
     r"""Makes sure that dtrajs is a list of discrete trajectories (array of int)
 
     """
     from sktime.util import ensure_ndarray
+    if len(dtrajs) > 0 and isinstance(dtrajs[0], numbers.Integral):
+        return [ensure_ndarray(dtrajs, dtype=np.int32)]
+    return [ensure_ndarray(t, dtype=np.int32) for t in dtrajs]
 
-    return [ensure_ndarray(t, dtype=int) for t in dtrajs]
 
-
-def _index_states(dtrajs, subset=None):
+def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
     """Generates a trajectory/time indexes for the given list of states
 
     Parameters
@@ -29,50 +33,21 @@ def _index_states(dtrajs, subset=None):
 
     """
     # check input
+    from . import _markovprocess_bindings as bd
     dtrajs = _ensure_dtraj_list(dtrajs)
-    # select subset unless given
-    n_states = max(np.max(dtraj) for dtraj in dtrajs)
-    if subset is None:
-        subset = np.arange(n_states)
-    else:
-        if np.max(subset) >= n_states:
-            raise ValueError('Selected subset is not a subset of the states in dtrajs.')
-    # histogram states
-    hist = count_states(dtrajs, ignore_negative=True)
-    # efficient access to which state are accessible
-    is_requested = np.ndarray((n_states), dtype=bool)
-    is_requested[:] = False
-    is_requested[subset] = True
-    # efficient access to requested state indexes
-    full2states = np.zeros((n_states), dtype=int)
-    full2states[subset] = range(len(subset))
-    # initialize results
-    res    = np.ndarray(len(subset), dtype=object)
-    counts = np.zeros((len(subset)), dtype=int)
-    for i,s in enumerate(subset):
-        res[i] = np.zeros((hist[s],2), dtype=int)
-    # walk through trajectories and remember requested state indexes
-    for i,dtraj in enumerate(dtrajs):
-        for t,s in enumerate(dtraj):
-            # only index nonnegative state indexes
-            if s >= 0 and is_requested[s]:
-                k = full2states[s]
-                res[k][counts[k],0] = i
-                res[k][counts[k],1] = t
-                counts[k] += 1
-    return res
+    return bd.sample.index_states(dtrajs, subset)
 
 ################################################################################
 # sampling from state indexes
 ################################################################################
 
 
-def sample_indexes_by_sequence(indexes, sequence):
+def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
     """Samples trajectory/time indexes according to the given sequence of states
 
     Parameters
     ----------
-    indexes : list of ndarray( (N_i, 2) )
+    indices : list of (N,2) ndarray
         For each state, all trajectory and time indexes where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
@@ -93,13 +68,13 @@ def sample_indexes_by_sequence(indexes, sequence):
     res = np.zeros((N,2), dtype=int)
     for t in range(N):
         s = sequence[t]
-        i = np.random.randint(indexes[s].shape[0])
-        res[t,:] = indexes[s][i,:]
+        i = np.random.randint(indices[s].shape[0])
+        res[t,:] = indices[s][i, :]
 
     return res
 
 
-def sample_indexes_by_state(indexes, nsample, subset=None, replace=True):
+def indices_by_state(indexes, nsample, subset=None, replace=True):
     """Samples trajectory/time indexes according to the given sequence of states
 
     Parameters
@@ -149,7 +124,7 @@ def sample_indexes_by_state(indexes, nsample, subset=None, replace=True):
     return res
 
 
-def sample_indexes_by_distribution(indexes, distributions, nsample):
+def indices_by_distribution(indexes, distributions, nsample):
     """Samples trajectory/time indexes according to the given probability distributions
 
     Parameters
@@ -184,13 +159,13 @@ def sample_indexes_by_distribution(indexes, distributions, nsample):
     for i, dist in enumerate(distributions):
         # sample states by distribution
         sequence = np.random.choice(n, size=nsample, p=dist)
-        res[i] = sample_indexes_by_sequence(indexes, sequence)
+        res[i] = indices_by_sequence(indexes, sequence)
     #
     return res
 
 
 
-def sample_by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
+def by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
     """Generates a synthetic discrete trajectory of length N and simulation time stride * lag time * N
 
     This information can be used
@@ -230,10 +205,10 @@ def sample_by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
         in order to save this synthetic trajectory as a trajectory file with molecular structures
 
     """
-    return sample_indexes_by_sequence(self.active_state_indexes, sequence)
+    return indices_by_sequence(self.active_state_indexes, sequence)
 
 
-def sample_by_state(dtrajs, nsample, subset=None, replace=True):
+def by_state(dtrajs, nsample, subset=None, replace=True):
     """Generates samples of the connected states.
 
     For each state in the active set of states, generates nsample samples with trajectory/time indexes.
@@ -269,11 +244,11 @@ def sample_by_state(dtrajs, nsample, subset=None, replace=True):
 
     """
     # generate connected state indexes
-    return sample_indexes_by_state(self.active_state_indexes, nsample, subset=subset, replace=replace)
+    return indices_by_state(self.active_state_indexes, nsample, subset=subset, replace=replace)
 
 
 # TODO: add sample_metastable() for sampling from metastable (pcca or hmm) states.
-def sample_by_distributions(self, distributions, nsample):
+def by_distributions(self, distributions, nsample):
     """Generates samples according to given probability distributions
 
     Parameters
@@ -295,4 +270,4 @@ def sample_by_distributions(self, distributions, nsample):
 
     """
     # generate connected state indexes
-    return sample_indexes_by_distribution(self.active_state_indexes, distributions, nsample)
+    return indices_by_distribution(self.active_state_indexes, distributions, nsample)

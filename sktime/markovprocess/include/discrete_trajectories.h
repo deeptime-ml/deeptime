@@ -15,7 +15,7 @@ py::array_t<std::int32_t> countStates(const py::list& dtrajs) {
         for(auto i = 0U; i < npDtraj.size(); ++i) {
             auto state = r(i);
             if(state >= 0) {
-                if (counts.size() <= state) {
+                if (static_cast<std::int64_t>(counts.size()) <= state) {
                     counts.resize(state + 1);
                 }
                 counts.at(state) += 1;
@@ -33,7 +33,7 @@ py::array_t<std::int32_t> countStates(const py::list& dtrajs) {
     return result;
 }
 
-py::array_t<std::int32_t> indexStates(const py::list& dtrajs, const py::object &pySubset) {
+auto indexStates(const py::list& dtrajs, const py::object &pySubset) {
     auto hist = countStates(dtrajs);
     auto nStates = hist.size();
 
@@ -44,13 +44,15 @@ py::array_t<std::int32_t> indexStates(const py::list& dtrajs, const py::object &
     std::size_t subsetSize = nStates;
     if(!pySubset.is_none()) {
         subset = py::cast<py::array_t<std::int32_t>>(pySubset);
-        subsetSize = subset.size();
-        for(auto i = 0U; i < subsetSize; ++i) {
-            isRequested.at(subset.at(i)) = true;
-        }
+
         auto max = std::max_element(subset.data(0), subset.data(0) + subset.size());
         if (*max >= nStates) {
             throw std::invalid_argument("Selected subset is not a subset of the states in dtrajs.");
+        }
+
+        subsetSize = subset.size();
+        for(auto i = 0U; i < subsetSize; ++i) {
+            isRequested.at(subset.at(i)) = true;
         }
     } else {
         subset = py::array_t<std::int32_t>(static_cast<std::size_t>(nStates));
@@ -73,16 +75,15 @@ py::array_t<std::int32_t> indexStates(const py::list& dtrajs, const py::object &
     }
     {
         auto itDtrajs = dtrajs.begin();
-        auto itResult = result.begin();
         std::size_t currentDtrajIndex = 0;
-        for (; itDtrajs != dtrajs.end(); ++itDtrajs, ++itResult, ++currentDtrajIndex) {
+        for (; itDtrajs != dtrajs.end(); ++itDtrajs, ++currentDtrajIndex) {
             auto arr = (*itDtrajs).cast<py::array_t<std::int32_t>>();
-            auto resultArray = (*itResult).cast<py::array_t<std::int32_t>>();
             auto data = arr.data(0);
             for(auto t = 0U; t < arr.size(); ++t) {
                 auto state = *(data + t);
                 if(state >= 0 && isRequested[state]) {
                     auto k = stateToContiguousIndex[state];
+                    auto resultArray = result[k].cast<py::array_t<std::int32_t>>();
                     resultArray.mutable_at(counts[k], 0) = currentDtrajIndex;
                     resultArray.mutable_at(counts[k], 1) = t;
                     ++counts.at(k);
