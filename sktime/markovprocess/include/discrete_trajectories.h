@@ -10,7 +10,7 @@ py::array_t<std::int32_t> countStates(const py::list& dtrajs) {
     std::vector<std::int32_t> counts;
     for(auto dtraj : dtrajs) {
         auto npDtraj = py::cast<py::array_t<std::int32_t>>(dtraj);
-        auto r = npDtraj.template unchecked<1>();
+        auto r = npDtraj.unchecked<1>();
 
         for(auto i = 0U; i < npDtraj.size(); ++i) {
             auto state = r(i);
@@ -48,6 +48,10 @@ py::array_t<std::int32_t> indexStates(const py::list& dtrajs, const py::object &
         for(auto i = 0U; i < subsetSize; ++i) {
             isRequested.at(subset.at(i)) = true;
         }
+        auto max = std::max_element(subset.data(0), subset.data(0) + subset.size());
+        if (*max >= nStates) {
+            throw std::invalid_argument("Selected subset is not a subset of the states in dtrajs.");
+        }
     } else {
         subset = py::array_t<std::int32_t>(static_cast<std::size_t>(nStates));
         auto ptr = subset.mutable_data(0);
@@ -61,8 +65,30 @@ py::array_t<std::int32_t> indexStates(const py::list& dtrajs, const py::object &
         result.append(std::move(zeros));
     }
 
-    // todo: implement filling result arrays
     std::vector<std::int32_t> counts (subsetSize, 0);
-
+    // stateToContiguousIndex[state] maps to the index of the state to a contiguous subset index
+    std::vector<std::int32_t> stateToContiguousIndex (nStates, 0);
+    for(auto i = 0U; i < subsetSize; ++i) {
+        stateToContiguousIndex[subset.at(i)] = i;
+    }
+    {
+        auto itDtrajs = dtrajs.begin();
+        auto itResult = result.begin();
+        std::size_t currentDtrajIndex = 0;
+        for (; itDtrajs != dtrajs.end(); ++itDtrajs, ++itResult, ++currentDtrajIndex) {
+            auto arr = (*itDtrajs).cast<py::array_t<std::int32_t>>();
+            auto resultArray = (*itResult).cast<py::array_t<std::int32_t>>();
+            auto data = arr.data(0);
+            for(auto t = 0U; t < arr.size(); ++t) {
+                auto state = *(data + t);
+                if(state >= 0 && isRequested[state]) {
+                    auto k = stateToContiguousIndex[state];
+                    resultArray.mutable_at(counts[k], 0) = currentDtrajIndex;
+                    resultArray.mutable_at(counts[k], 1) = t;
+                    ++counts.at(k);
+                }
+            }
+        }
+    }
     return result;
 }
