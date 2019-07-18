@@ -1,5 +1,7 @@
 
 from sktime.markovprocess.maximum_likelihood_msm import MaximumLikelihoodMSM
+from .markov_state_model import MarkovStateModel
+
 
 __author__ = 'noe, marscher'
 
@@ -136,29 +138,30 @@ class BayesianMSM(MaximumLikelihoodMSM):
         # conduct MLE estimation (superclass) first
         super(BayesianMSM, self).fit(dtrajs)
         model = self.fetch_model()
+        assert isinstance(model, MarkovStateModel)
 
         # transition matrix sampler
         from msmtools.estimation import tmatrix_sampler
         from math import sqrt
         if self.nsteps is None:
-            self.nsteps = int(sqrt(self.nstates))  # heuristic for number of steps to decorrelate
+            self.nsteps = int(sqrt(model.count_model.nstates))  # heuristic for number of steps to decorrelate
         # use the same count matrix as the MLE. This is why we have effective as a default
         if self.statdist_constraint is None:
-            tsampler = tmatrix_sampler(self.count_matrix_active, reversible=self.reversible, T0=model.transition_matrix,
-                                       nsteps=self.nsteps)
+            tsampler = tmatrix_sampler(model.count_model.count_matrix_active, reversible=self.reversible,
+                                       T0=model.transition_matrix, nsteps=self.nsteps)
         else:
             # Use the stationary distribution on the active set of states
             statdist_active = model.stationary_distribution
             # We can not use the MLE as T0. Use the initialization in the reversible pi sampler
-            tsampler = tmatrix_sampler(self.count_matrix_active, reversible=self.reversible,
+            tsampler = tmatrix_sampler(model.count_model.count_matrix_active, reversible=self.reversible,
                                        mu=statdist_active, nsteps=self.nsteps)
 
         sample_Ps, sample_mus = tsampler.sample(nsamples=self.nsamples, return_statdist=True, call_back=call_back)
         # construct sampled MSMs
-        samples = []
-        from sktime.markovprocess.markov_state_model import MarkovStateModel
-        for P, pi in zip(sample_Ps, sample_mus):
-            samples.append(MarkovStateModel(P, pi=pi, reversible=self.reversible, dt_model=self.dt_model))
+        samples = [
+            MarkovStateModel(P, pi=pi, reversible=self.reversible, dt_model=model.dt_model)
+            for P, pi in zip(sample_Ps, sample_mus)
+        ]
 
         self.samples = samples
         self.nsamples = len(samples)
