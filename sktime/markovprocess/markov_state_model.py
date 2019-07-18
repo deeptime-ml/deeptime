@@ -126,18 +126,11 @@ class MarkovStateModel(Model):
     def reversible(self, value):
         self._reversible = value
 
-    # TODO: refactor to is_sparse
     @property
-    def sparse(self):
+    def is_sparse(self):
         """Returns whether the MarkovStateModel is sparse """
         from scipy.sparse import issparse
         return issparse(self.transition_matrix)
-
-    @property
-    # TODO: remove
-    #def timestep_model(self):
-    #    """Physical time corresponding to one transition matrix step, e.g. '10 ps'"""
-    #    return str(self._dt_model)
 
     @property
     def nstates(self):
@@ -176,8 +169,12 @@ class MarkovStateModel(Model):
         return self._dt_model
 
     @dt_model.setter
-    def dt_model(self, value: str):
-        self._dt_model = Q_(value)
+    def dt_model(self, value: typing.Union[str, Q_]):
+        if isinstance(value, Q_):
+            self._dt_model = value
+        else:
+            self._dt_model = Q_(value)
+
 
     ################################################################################
     # Spectral quantities
@@ -1099,6 +1096,9 @@ class MarkovStateModel(Model):
             w /= wtot
         # done
         return W
+
+    def compute_active_count_fraction(self, dtrajs):
+        pass
 
     ################################################################################
     # HMM-based coarse graining

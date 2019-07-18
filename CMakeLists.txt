@@ -29,3 +29,4 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/lib/pybind11)
 
 add_subdirectory(sktime/covariance/util/covar_c)
 add_subdirectory(sktime/clustering)
+add_subdirectory(sktime/markovprocess)
