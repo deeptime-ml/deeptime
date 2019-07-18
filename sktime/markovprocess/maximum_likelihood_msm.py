@@ -148,7 +148,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         self.maxerr = maxerr
 
     def _create_model(self) -> MarkovStateModel:
-        return MarkovStateModel(P=None)
+        return MarkovStateModel(transition_matrix=None)
 
     @staticmethod
     def _prepare_input_revpi(C, pi):
@@ -225,7 +225,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         m.transition_matrix = P
         m.stationary_distribution = statdist_active
         m.reversible = self.reversible
-        m.dt_model = count_model.dt_traj
+        m.dt_model = count_model.dt_traj * self.lagtime
         m.count_model = count_model
 
         return self
