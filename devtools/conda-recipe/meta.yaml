@@ -26,7 +26,6 @@ requirements:
     - python
     - scipy
     - setuptools
-    - pip
     - pint
     - pybind11
 
@@ -39,6 +38,7 @@ requirements:
     - scipy
     - setuptools
     - tqdm
+    - pip
 
 test:
   source_files:
