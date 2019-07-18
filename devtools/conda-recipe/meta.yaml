@@ -32,12 +32,9 @@ requirements:
   run:
     - bhmm >=0.6.3,<0.7
     - intel-openmp # [osx]
-    #- mdtraj >=1.8
     - msmtools >=1.2
     - {{ pin_compatible('numpy') }}
-    #- psutil >3.1
     - python
-    #- pyyaml
     - scipy
     - setuptools
     - tqdm
@@ -46,10 +43,11 @@ test:
   source_files:
     - tests/*
   requires:
+    - scikit-learn
+
     - pytest
     - pytest-cov
-    - pytest-faulthandler 
-#    - pytest-xdist
-    - scikit-learn
-#    - pytest-sugar
+    - pytest-faulthandler
+    - pytest-xdist
+    - pytest-sugar
 
