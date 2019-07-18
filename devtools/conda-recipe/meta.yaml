@@ -26,7 +26,6 @@ requirements:
     - python
     - scipy
     - setuptools
-    - pint
     - pybind11
 
   run:
@@ -38,6 +37,7 @@ requirements:
     - scipy
     - setuptools
     - tqdm
+    - pint
     - pip
 
 test:
