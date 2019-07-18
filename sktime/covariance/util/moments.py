@@ -699,7 +699,7 @@ def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mod
 def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
                  modify_data=False, sparse_mode='auto', sparse_tol=0.0,
                  column_selection=None, diag_only=False):
-    """ Computes the first two unnormalized moments of X and Y
+    r""" Computes the first two unnormalized moments of X and Y
 
     If symmetrize is False, computes
 
@@ -842,7 +842,7 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
 def moments_block(X, Y, remove_mean=False, modify_data=False,
                   sparse_mode='auto', sparse_tol=0.0,
                   column_selection=None, diag_only=False):
-    """ Computes the first two unnormalized moments of X and Y
+    r""" Computes the first two unnormalized moments of X and Y
 
     Computes
 

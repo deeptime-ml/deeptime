@@ -5,11 +5,11 @@ from sktime.covariance.online_covariance import OnlineCovariance
 
 __author__ = 'noe'
 
-np.random.seed(123)
+state = np.random.RandomState(123)
 
-data = np.random.rand(5000, 2)
-weights = np.random.randn(len(data))
-mean_const = np.random.rand(2)
+data = state.rand(5000, 2)
+weights = state.randn(len(data))
+mean_const = state.rand(2)
 
 
 class TestCovarEstimator(unittest.TestCase):

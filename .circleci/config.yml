@@ -1,35 +1,11 @@
-
-defaults: &defaults
-  #working_directory: ~/markovmodel/PyEMMA
-  docker:
-    - image: continuumio/miniconda3
-    #- image: condaforge/linux-anvil
-
-inst_conda_bld: &inst_conda_bld
-
-
 version: 2
 
 jobs:
   build:
-    <<: *defaults
+    working_directory: ~/scikit-time/scikit-time
+    docker:
+    - image: continuumio/miniconda3
     parallelism: 1
-    steps:
-      - checkout
-      - run: conda config --add channels conda-forge
-      - run: conda config --set always_yes true
-      - run: conda config --set quiet true
-      - run: conda install conda-build -c defaults
-      - run: mkdir workspace
-      - run: conda build devtools/conda-recipe --python=3.7 --no-test --output-folder workspace
-      - persist_to_workspace:
-          root: workspace
-          paths:
-            - "*"
-
-  test:
-    <<: *defaults
-    parallelism: 4
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
@@ -43,9 +19,7 @@ jobs:
       - run: conda config --set quiet true
       - run: conda install conda-build -c defaults
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-      - attach_workspace:
-          at: workspace
-      - run: conda build devtools/conda-recipe --python=3.7 --test --output-folder workspace
+      - run: conda build devtools/conda-recipe --python=3.7
       - run: bash <(curl -s https://codecov.io/bash) -f $HOME/coverage.xml
       - store_test_results:
           path: /tmp/circleci-test-results
@@ -55,12 +29,8 @@ jobs:
       - store_artifacts:
           path: /tmp/circleci-test-results
 
-
 workflows:
   version: 2
   build_and_test:
     jobs:
       - build
-      - test:
-          requires:
-            - build
