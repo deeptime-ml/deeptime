@@ -60,24 +60,30 @@ auto indexStates(const py::list& dtrajs, const py::object &pySubset) {
         std::iota(ptr, ptr + nStates, 0);
     }
 
-    py::list result;
-    for(auto i = 0U; i < subset.size(); ++i) {
-        auto state = subset.at(i);
-        py::array_t<std::int32_t> zeros {std::vector<std::size_t>{static_cast<std::size_t>(hist.at(state)), 2}};
-        result.append(std::move(zeros));
-    }
 
     std::vector<std::int32_t> counts (subsetSize, 0);
     // stateToContiguousIndex[state] maps to the index of the state to a contiguous subset index
     std::vector<std::int32_t> stateToContiguousIndex (nStates, 0);
+
+    py::list result;
     for(auto i = 0U; i < subsetSize; ++i) {
+        auto state = subset.at(i);
+        py::array_t<std::int32_t> zeros {std::vector<std::size_t>{static_cast<std::size_t>(hist.at(state)), 2}};
+        result.append(std::move(zeros));
         stateToContiguousIndex[subset.at(i)] = i;
     }
+
+    // avoid casting within the main loop
+    std::vector<py::array_t<std::int32_t>> dtrajsvec;
+    for(auto dtraj : dtrajs) {
+        dtrajsvec.push_back(dtraj.cast<py::array_t<std::int32_t>>());
+    }
+
     {
-        auto itDtrajs = dtrajs.begin();
+        auto itDtrajs = dtrajsvec.begin();
         std::size_t currentDtrajIndex = 0;
-        for (; itDtrajs != dtrajs.end(); ++itDtrajs, ++currentDtrajIndex) {
-            auto arr = (*itDtrajs).cast<py::array_t<std::int32_t>>();
+        for (; itDtrajs != dtrajsvec.end(); ++itDtrajs, ++currentDtrajIndex) {
+            const auto& arr = *itDtrajs;
             auto data = arr.data(0);
             for(auto t = 0U; t < arr.size(); ++t) {
                 auto state = *(data + t);
