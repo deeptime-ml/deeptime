@@ -1,21 +1,72 @@
-
-
 import warnings
 
 import numpy as _np
 from msmtools import estimation as msmest
+# TODO: move to subpkg .koopman_reweighted_msm
+from pyemma.msm.estimators._OOM_MSM import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
+                                            rank_decision, oom_components, equilibrium_transition_matrix)
 
-from pyemma.msm.estimators._OOM_MSM import bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix, \
-    rank_decision, oom_components, equilibrium_transition_matrix
-from pyemma.util.annotators import fix_docs, aliased
-
+from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess._base import _MSMBaseEstimator
+from sktime.markovprocess._dtraj_stats import TransitionCountEstimator, TransitionCountModel
+from sktime.util import submatrix
 
 __author__ = 'Feliks Nueske, Fabian Paul, marscher'
 
 
-@fix_docs
-@aliased
+class KoopmanReweightedMSM(MarkovStateModel):
+    def __init__(self, eigenvalues_OOM=None, sigma=None, omega=None, *args, **kwargs):
+        super(KoopmanReweightedMSM, self).__init__(*args, **kwargs)
+        self._eigenvalues_oom = eigenvalues_OOM
+        self._Xi = oom_components
+        self._omega = omega
+        self._sigma = sigma
+        if sigma is not None:
+            self._oom_rank = sigma.size
+
+    def _blocksplit_dtrajs(self, dtrajs, sliding):
+        """ Override splitting method of base class.
+
+        For OOM estimators we currently need a clean trajectory splitting, i.e. we don't do block splitting at all.
+
+        """
+        if len(dtrajs) < 2:
+            raise NotImplementedError('Current cross-validation implementation for OOMReweightedMSM requires' +
+                                      'multiple trajectories. You can split the trajectory yourself into training' +
+                                      'and test set and use the score method after fitting the training set.')
+        return dtrajs
+
+    @property
+    def eigenvalues_OOM(self):
+        """System eigenvalues estimated by OOM."""
+        return self._eigenvalues_oom
+
+    @property
+    def timescales_OOM(self):
+        """System timescales estimated by OOM."""
+        return -self.lagtime / _np.log(_np.abs(self._eigenvalues_oom[1:]))
+
+    @property
+    def OOM_rank(self):
+        """Return OOM model rank."""
+        return self._oom_rank
+
+    @property
+    def OOM_components(self):
+        """Return OOM components."""
+        return self._Xi
+
+    @property
+    def OOM_omega(self):
+        """ Return OOM initial state vector."""
+        return self._omega
+
+    @property
+    def OOM_sigma(self):
+        """Return OOM evaluator vector."""
+        return self._sigma
+
+
 class OOMReweightedMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
 
@@ -90,6 +141,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         (in preparation)
 
     """
+
     def __init__(self, lagtime, reversible=True, count_mode='sliding', sparse=False,
                  dt_traj='1 step', nbs=10000, rank_Ct='bootstrap_counts', tol_rank=10.0,
                  mincount_connectivity='1/n'):
@@ -97,138 +149,66 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         # Check count mode:
         self.count_mode = str(count_mode).lower()
         if self.count_mode not in ('sliding', 'sample'):
-            raise ValueError('count mode {} is unknown. Only \'sliding\' and \'sample\' are allowed.'.format(count_mode))
+            raise ValueError(
+                'count mode {} is unknown. Only \'sliding\' and \'sample\' are allowed.'.format(count_mode))
         if rank_Ct not in ('bootstrap_counts', 'bootstrap_trajs'):
             raise ValueError('rank_Ct must be either \'bootstrap_counts\' or \'bootstrap_trajs\'')
 
-        super(OOMReweightedMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode, sparse=sparse,
+        super(OOMReweightedMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
+                                               sparse=sparse,
                                                dt_traj=dt_traj, mincount_connectivity=mincount_connectivity)
         self.nbs = nbs
         self.tol_rank = tol_rank
         self.rank_Ct = rank_Ct
 
+    def _create_model(self) -> KoopmanReweightedMSM:
+        return KoopmanReweightedMSM()
+
     def fit(self, dtrajs):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lag] for traj in dtrajs]
-        self._compute_count_matrix(dtrajs, mincount_connectivity=self.mincount_connectivity, count_mode=self.count_mode)
+        count_model = TransitionCountEstimator().fit(dtrajs, lagtime=self.lagtime,
+                                                     mincount_connectivity=self.mincount_connectivity,
+                                                     count_mode=self.count_mode).fetch_model()
 
         # Estimate transition matrix using re-sampling:
         if self.rank_Ct == 'bootstrap_counts':
-            Ceff_full = msmest.effective_count_matrix(dtrajs_lag, self.lag)
-            from pyemma.util.linalg import submatrix
-            Ceff = submatrix(Ceff_full, self.active_set)
+            Ceff_full = msmest.effective_count_matrix(dtrajs_lag, self.lagtime)
+            Ceff = submatrix(Ceff_full, count_model.active_set)
             smean, sdev = bootstrapping_count_matrix(Ceff, nbs=self.nbs)
         else:
-            smean, sdev = bootstrapping_dtrajs(dtrajs_lag, self.lag, self.nstates_full, nbs=self.nbs,
-                                               active_set=self.active_set)
+            smean, sdev = bootstrapping_dtrajs(dtrajs_lag, self.lagtime, count_model.nstates, nbs=self.nbs,
+                                               active_set=count_model.active_set)
         # Estimate two step count matrices:
-        C2t = twostep_count_matrix(dtrajs, self.lag, self.nstates_full)
+        C2t = twostep_count_matrix(dtrajs, self.lagtime, count_model.nstates)
         # Rank decision:
         rank_ind = rank_decision(smean, sdev, tol=self.tol_rank)
         # Estimate OOM components:
-        Xi, omega, sigma, l = oom_components(self._C_full.toarray(), C2t, rank_ind=rank_ind,
-                                             lcc=self.active_set)
+        Xi, omega, sigma, l = oom_components(count_model.count_matrix_full.toarray(), C2t, rank_ind=rank_ind,
+                                             lcc=count_model.active_set)
         # Compute transition matrix:
         P, lcc_new = equilibrium_transition_matrix(Xi, omega, sigma, reversible=self.reversible)
 
         # Update active set and derived quantities:
-        if lcc_new.size < self.nstates:
-            self.active_set = self.active_set[lcc_new]
-            self._C_active = self.count_matrix(subset=self.active_set)
-            self._nstates = self._C_active.shape[0]
-            self._full2lcs = -1 * _np.ones(len(self.C_active), dtype=int)
-            self._full2lcs[self.active_set] = _np.arange(len(self.active_set))
+        if lcc_new.size < count_model.nstates:
+            assert isinstance(count_model, TransitionCountModel)
+            count_model.__init__(self.lagtime, active_set=count_model.active_set[lcc_new],
+                                 dt_traj=count_model.dt_traj, connected_sets=count_model.connected_sets,
+                                 count_matrix=count_model.count_matrix_full)
             warnings.warn("Caution: Re-estimation of count matrix resulted in reduction of the active set.")
 
-        # continue sparse or dense?
-        if not self.sparse:
-            # converting count matrices to arrays. As a result the
-            # transition matrix and all subsequent properties will be
-            # computed using dense arrays and dense matrix algebra.
-            self._C_active = self._C_active.toarray()
+        # update models
+        count_model.C2t = C2t
 
-        # Done. We set our own model parameters, so this estimator is
-        # equal to the estimated model.
-
-        # update model
-        m = self._model
-        m.transition_matrix = P
-        m.is_reversible = self.reversible
-        # TODO: should the model know about the connected sets?
-        m._connected_sets = msmest.connected_sets(m._C_full)
-
-        m._Xi = Xi
-        m._omega = omega
-        m._sigma = sigma
-        m._eigenvalues_OOM = l
-        m._rank_ind = rank_ind
-        m._oom_rank = m._sigma.size
-        m._C2t = C2t
+        msm_model = self._model
+        msm_model.__init__(
+            transition_matrix=P,
+            eigenvalues_OOM=l,
+            sigma=sigma,
+            omega=omega,
+            count_model=count_model,
+            oom_components=Xi
+        )
 
         return self
 
-    def _blocksplit_dtrajs(self, dtrajs, sliding):
-        """ Override splitting method of base class.
-
-        For OOM estimators we currently need a clean trajectory splitting, i.e. we don't do block splitting at all.
-
-        """
-        if len(dtrajs) < 2:
-            raise NotImplementedError('Current cross-validation implementation for OOMReweightedMSM requires' +
-                                      'multiple trajectories. You can split the trajectory yourself into training' +
-                                      'and test set and use the score method after fitting the training set.')
-        return dtrajs
-
-    @property
-    def eigenvalues_OOM(self):
-        """
-            System eigenvalues estimated by OOM.
-
-        """
-        self._check_is_estimated()
-        return self._eigenvalues_OOM
-
-    @property
-    def timescales_OOM(self):
-        """
-            System timescales estimated by OOM.
-
-        """
-        self._check_is_estimated()
-        return -self.lag / _np.log(_np.abs(self._eigenvalues_OOM[1:]))
-
-    @property
-    def OOM_rank(self):
-        """
-            Return OOM model rank.
-
-        """
-        self._check_is_estimated()
-        return self._oom_rank
-
-    @property
-    def OOM_components(self):
-        """
-            Return OOM components.
-
-        """
-        self._check_is_estimated()
-        return self._Xi
-
-    @property
-    def OOM_omega(self):
-        """
-            Return OOM initial state vector.
-
-        """
-        self._check_is_estimated()
-        return self._omega
-
-    @property
-    def OOM_sigma(self):
-        """
-            Return OOM evaluator vector.
-
-        """
-        self._check_is_estimated()
-        return self._sigma
