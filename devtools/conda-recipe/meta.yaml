@@ -45,6 +45,7 @@ test:
     - tests/*
   requires:
     - scikit-learn
+    - pyemma # TODO: remove in the future
 
     - pytest
     - pytest-cov
