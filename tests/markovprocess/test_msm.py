@@ -36,6 +36,7 @@ from msmtools.generation import generate_traj
 from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
 from msmtools.analysis import stationary_distribution, timescales
 from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
+from sktime.markovprocess._base import score_cv
 
 
 def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovStateModel:
@@ -127,7 +128,7 @@ class TestMSMRevPi(unittest.TestCase):
         dtraj_invalid = np.array([1, 1, 1, 1, 1, 1, 1])
         dtraj_valid = np.array([0, 2, 0, 2, 2, 0, 1, 1])
         msm = estimate_markov_model(dtraj_valid, lag=1, statdist=pi)
-        np.testing.assert_equal(msm.active_set, np.array([0, 2]))
+        np.testing.assert_equal(msm.count_model.active_set, np.array([0, 2]))
         with self.assertRaises(ValueError):
             estimate_markov_model(dtraj_invalid, lag=1, statdist=pi)
 
@@ -159,24 +160,16 @@ class TestMSMDoubleWell(unittest.TestCase):
     # SCORE
     # ---------------------------------
     def _score(self, msm):
-        # check estimator args are not overwritten, if default arguments are used.
-        old_score_k = msm.score_k
-        old_score_method = msm.score_method
         dtrajs_test = self.dtraj[80000:]
         msm.score(dtrajs_test)
-        assert msm.score_k == old_score_k
-        assert msm.score_method == old_score_method
         s1 = msm.score(dtrajs_test, score_method='VAMP1', score_k=2)
-        assert msm.score_k == 2
-        assert msm.score_method == 'VAMP1'
         assert 1.0 <= s1 <= 2.0
 
         s2 = msm.score(dtrajs_test, score_method='VAMP2', score_k=2)
         assert 1.0 <= s2 <= 2.0
-        assert msm.score_k == 2
-        assert msm.score_method == 'VAMP2'
-        # se = msm.score(dtrajs_test, score_method='VAMPE', score_k=2)
-        # se_inf = msm.score(dtrajs_test, score_method='VAMPE', score_k=None)
+
+        #se = msm.score(dtrajs_test, score_method='VAMPE', score_k=2)
+        #se_inf = msm.score(dtrajs_test, score_method='VAMPE', score_k=None)
 
     def test_score(self):
         self._score(self.msmrev)
@@ -187,20 +180,20 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._score(self.msm_sparse)
 
     def _score_cv(self, estimator):
-        s1 = estimator.score_cv(self.dtraj, n=5, score_method='VAMP1', score_k=2).mean()
+        s1 = score_cv(estimator, self.dtraj, n=5, score_method='VAMP1', score_k=2).mean()
         assert 1.0 <= s1 <= 2.0
-        s2 = estimator.score_cv(self.dtraj, n=5, score_method='VAMP2', score_k=2).mean()
+        s2 = score_cv(estimator, self.dtraj, n=5, score_method='VAMP2', score_k=2).mean()
         assert 1.0 <= s2 <= 2.0
-        se = estimator.score_cv(self.dtraj, n=5, score_method='VAMPE', score_k=2).mean()
-        se_inf = estimator.score_cv(self.dtraj, n=5, score_method='VAMPE', score_k=None).mean()
+        se = score_cv(estimator, self.dtraj, n=5, score_method='VAMPE', score_k=2).mean()
+        se_inf = score_cv(estimator, self.dtraj, n=5, score_method='VAMPE', score_k=None).mean()
 
     def test_score_cv(self):
-        self._score_cv(MaximumLikelihoodMSM(lag=10, reversible=True))
-        self._score_cv(MaximumLikelihoodMSM(lag=10, reversible=True, statdist_constraint=self.statdist))
-        self._score_cv(MaximumLikelihoodMSM(lag=10, reversible=False))
-        self._score_cv(MaximumLikelihoodMSM(lag=10, reversible=True, sparse=True))
-        self._score_cv(MaximumLikelihoodMSM(lag=10, reversible=True, statdist_constraint=self.statdist, sparse=True))
-        self._score_cv(MaximumLikelihoodMSM(lag=10, reversible=False, sparse=True))
+        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True))
+        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, statdist_constraint=self.statdist))
+        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=False))
+        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, sparse=True))
+        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, statdist_constraint=self.statdist, sparse=True))
+        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=False, sparse=True))
 
     # ---------------------------------
     # BASIC PROPERTIES
@@ -210,14 +203,14 @@ class TestMSMDoubleWell(unittest.TestCase):
         # NONREVERSIBLE
         assert self.msmrev.is_reversible
         assert self.msmrevpi.is_reversible
-        assert (self.msmrev_sparse.is_reversible)
+        assert self.msmrev_sparse.is_reversible
         assert self.msmrevpi_sparse.is_reversible
         # REVERSIBLE
         assert not self.msm.is_reversible
         assert not self.msm_sparse.is_reversible
 
     def _sparse(self, msm):
-        assert (msm.is_sparse)
+        assert msm.is_sparse
 
     def test_sparse(self):
         self._sparse(self.msmrev_sparse)
@@ -225,7 +218,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._sparse(self.msm_sparse)
 
     def _lagtime(self, msm):
-        assert (msm.lagtime == self.tau)
+        assert msm.count_model.lagtime == self.tau
 
     def test_lagtime(self):
         self._lagtime(self.msmrev)
@@ -237,9 +230,9 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _active_set(self, msm):
         # should always be <= full set
-        assert (len(msm.active_set) <= self.msm.nstates_full)
+        assert len(msm.count_model.active_set) <= self.msm.count_model.nstates_active
         # should be length of nstates
-        assert (len(msm.active_set) == self.msm.nstates)
+        assert len(msm.count_model.active_set) == self.msm.count_model.nstates_active
 
     def test_active_set(self):
         self._active_set(self.msmrev)
@@ -250,11 +243,11 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._active_set(self.msm_sparse)
 
     def _largest_connected_set(self, msm):
-        lcs = msm.largest_connected_set
+        lcs = msm.count_model.largest_connected_set
         # identical to first connected set
-        assert (np.all(lcs == msm.connected_sets[0]))
+        assert np.all(lcs == msm.count_model.connected_sets[0])
         # LARGEST: identical to active set
-        assert (np.all(lcs == msm.active_set))
+        assert np.all(lcs == msm.count_model.active_set)
 
     def test_largest_connected_set(self):
         self._largest_connected_set(self.msmrev)
@@ -266,7 +259,7 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _nstates(self, msm):
         # should always be <= full
-        assert (msm.nstates <= msm.nstates_full)
+        assert (msm.nstates <= msm.count_model.nstates)
         # THIS DATASET:
         assert (msm.nstates == 66)
 
@@ -279,10 +272,10 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._nstates(self.msm_sparse)
 
     def _connected_sets(self, msm):
-        cs = msm.connected_sets
-        assert (len(cs) >= 1)
+        cs = msm.count_model.connected_sets
+        assert len(cs) >= 1
         # MODE LARGEST:
-        assert (np.all(cs[0] == msm.active_set))
+        assert np.all(cs[0] == msm.count_model.active_set)
 
     def test_connected_sets(self):
         self._connected_sets(self.msmrev)
@@ -292,20 +285,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._connected_sets(self.msmrevpi_sparse)
         self._connected_sets(self.msm_sparse)
 
-    def _connectivity(self, msm):
-        # HERE:
-        assert (msm.connectivity == 'largest')
-
-    def test_connectivity(self):
-        self._connectivity(self.msmrev)
-        self._connectivity(self.msmrevpi)
-        self._connectivity(self.msm)
-        self._connectivity(self.msmrev_sparse)
-        self._connectivity(self.msmrevpi_sparse)
-        self._connectivity(self.msm_sparse)
-
     def _count_matrix_active(self, msm):
-        C = msm.count_matrix_active
+        C = msm.count_model.count_matrix_active
         assert (np.all(C.shape == (msm.nstates, msm.nstates)))
 
     def test_count_matrix_active(self):
@@ -317,8 +298,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._count_matrix_active(self.msm_sparse)
 
     def _count_matrix_full(self, msm):
-        C = msm.count_matrix_full
-        assert (np.all(C.shape == (msm.nstates_full, msm.nstates_full)))
+        C = msm.count_model.count_matrix_full
+        assert (np.all(C.shape == (msm.count_model.nstates, msm.count_model.nstates)))
 
     def test_count_matrix_full(self):
         self._count_matrix_full(self.msmrev)
@@ -328,19 +309,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._count_matrix_full(self.msmrevpi_sparse)
         self._count_matrix_full(self.msm_sparse)
 
-    def _discrete_trajectories_full(self, msm):
-        assert (np.all(self.dtraj == msm.discrete_trajectories_full[0]))
-
-    def test_discrete_trajectories_full(self):
-        self._discrete_trajectories_full(self.msmrev)
-        self._discrete_trajectories_full(self.msmrevpi)
-        self._discrete_trajectories_full(self.msm)
-        self._discrete_trajectories_full(self.msmrev_sparse)
-        self._discrete_trajectories_full(self.msmrevpi_sparse)
-        self._discrete_trajectories_full(self.msm_sparse)
-
     def _discrete_trajectories_active(self, msm):
-        dta = msm.discrete_trajectories_active
+        dta = msm.count_model.map_discrete_trajectories_to_active(self.dtraj)
         # HERE
         assert (len(dta) == 1)
         # HERE: states are shifted down from the beginning, because early states are missing
@@ -355,8 +325,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._discrete_trajectories_active(self.msm_sparse)
 
     def _timestep(self, msm):
-        assert (msm.timestep_model.startswith('1'))
-        assert (msm.timestep_model.endswith('step'))
+        assert (str(msm.dt_model).startswith('1'))
+        assert (str(msm.dt_model).endswith('step'))
 
     def test_timestep(self):
         self._timestep(self.msmrev)
@@ -365,19 +335,6 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._timestep(self.msmrev_sparse)
         self._timestep(self.msmrevpi_sparse)
         self._timestep(self.msm_sparse)
-
-    def _dt_model(self, msm):
-        from pyemma.util.units import TimeUnit
-        tu = TimeUnit("1 step").get_scaled(self.msm.lagtime)
-        self.assertEqual(msm.dt_model, tu)
-
-    def test_dt_model(self):
-        self._dt_model(self.msmrev)
-        self._dt_model(self.msmrevpi)
-        self._dt_model(self.msm)
-        self._dt_model(self.msmrev_sparse)
-        self._dt_model(self.msmrevpi_sparse)
-        self._dt_model(self.msm_sparse)
 
     def _transition_matrix(self, msm):
         P = msm.transition_matrix
@@ -409,9 +366,9 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _active_count_fraction(self, msm):
         # should always be a fraction
-        assert (0.0 <= msm.active_count_fraction <= 1.0)
+        assert (0.0 <= msm.count_model.active_count_fraction <= 1.0)
         # special case for this data set:
-        assert (msm.active_count_fraction == 1.0)
+        assert (msm.count_model.active_count_fraction == 1.0)
 
     def test_active_count_fraction(self):
         self._active_count_fraction(self.msmrev)
@@ -423,7 +380,7 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _active_state_fraction(self, msm):
         # should always be a fraction
-        assert (0.0 <= msm.active_state_fraction <= 1.0)
+        assert (0.0 <= msm.count_model.active_state_fraction <= 1.0)
 
     def test_active_state_fraction(self):
         # should always be a fraction
@@ -435,9 +392,10 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._active_state_fraction(self.msm_sparse)
 
     def _effective_count_matrix(self, msm):
-        Ceff = msm.effective_count_matrix
+        Ceff = msm.count_model.effective_count_matrix
         assert (np.all(Ceff.shape == (msm.nstates, msm.nstates)))
 
+    @unittest.skip('todo: compute_effective_count_matrix not part of MSMEst, Model?')
     def test_effective_count_matrix(self):
         self._effective_count_matrix(self.msmrev)
         self._effective_count_matrix(self.msmrevpi)
@@ -453,9 +411,9 @@ class TestMSMDoubleWell(unittest.TestCase):
     def _statdist(self, msm):
         mu = msm.stationary_distribution
         # should strictly positive (irreversibility)
-        assert (np.all(mu > 0))
+        assert np.all(mu > 0)
         # should sum to one
-        assert (np.abs(np.sum(mu) - 1.0) < 1e-10)
+        assert np.abs(np.sum(mu) - 1.0) < 1e-10
 
     def test_statdist(self):
         self._statdist(self.msmrev)
@@ -526,13 +484,13 @@ class TestMSMDoubleWell(unittest.TestCase):
             k = 4
             R = msm.eigenvectors_right(k)
         # shape should be right
-        assert (np.all(R.shape == (msm.nstates, k)))
+        assert np.all(R.shape == (msm.nstates, k))
         # should be all ones
         r1 = R[:, 0]
-        assert (np.allclose(r1, np.ones(msm.nstates)))
+        assert np.allclose(r1, np.ones(msm.nstates))
         # REVERSIBLE:
         if msm.is_reversible:
-            assert (np.all(np.isreal(R)))
+            assert np.all(np.isreal(R))
 
     def test_eigenvectors_right(self):
         self._eigenvectors_right(self.msmrev)
@@ -548,12 +506,12 @@ class TestMSMDoubleWell(unittest.TestCase):
             D = np.diag(msm.eigenvalues())
             L = msm.eigenvectors_left()
             # orthogonality constraint
-            assert (np.allclose(np.dot(R, L), np.eye(msm.nstates)))
+            assert np.allclose(np.dot(R, L), np.eye(msm.nstates))
             # REVERSIBLE: also true for LR because reversible matrix
             if msm.is_reversible:
-                assert (np.allclose(np.dot(L, R), np.eye(msm.nstates)))
+                assert np.allclose(np.dot(L, R), np.eye(msm.nstates))
             # recover transition matrix
-            assert (np.allclose(np.dot(R, np.dot(D, L)), msm.transition_matrix))
+            assert np.allclose(np.dot(R, np.dot(D, L)), msm.transition_matrix)
 
         else:
             k = 4
@@ -567,7 +525,6 @@ class TestMSMDoubleWell(unittest.TestCase):
                 mu = msm.stationary_distribution
                 L_mu = mu[:,np.newaxis] * R
                 assert (np.allclose(np.dot(L_mu.T, R), np.eye(k)))
-
 
     def test_eigenvectors_RDL(self):
         self._eigenvectors_RDL(self.msmrev)
@@ -593,7 +550,7 @@ class TestMSMDoubleWell(unittest.TestCase):
                 ts = msm.timescales(k)
 
         # should be all positive
-        assert (np.all(ts > 0))
+        assert np.all(ts > 0)
         # REVERSIBLE: should be all real
         if msm.is_reversible:
             ts_ref = np.array([310.87, 8.5, 5.09])
@@ -810,8 +767,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         assert (np.allclose(rel1 - rel1[0], np.zeros((np.shape(rel1)[0]))))
         times, rel2 = msm.relaxation(pi_perturbed, a, maxtime=maxtime, k=k)
         # should relax
-        assert (len(times) == maxtime / msm.lagtime)
-        assert (len(rel2) == maxtime / msm.lagtime)
+        assert (len(times) == maxtime / msm.count_model.lagtime)
+        assert (len(rel2) == maxtime / msm.count_model.lagtime)
         assert (rel2[0] < rel2[-1])
 
     def test_relaxation(self):
@@ -916,17 +873,18 @@ class TestMSMDoubleWell(unittest.TestCase):
     # ---------------------------------
 
     def _active_state_indexes(self, msm):
-        I = msm.active_state_indexes
+        from sktime.markovprocess.sample import compute_index_states
+        I = compute_index_states(self.dtraj, subset=msm.count_model.active_set)
         assert (len(I) == msm.nstates)
         # compare to histogram
         import pyemma.util.discrete_trajectories as dt
 
-        hist = dt.count_states(msm.discrete_trajectories_full)
+        hist = dt.count_states(self.dtraj)
         # number of frames should match on active subset
-        A = msm.active_set
+        A = msm.count_model.active_set
         for i in range(A.shape[0]):
-            assert (I[i].shape[0] == hist[A[i]])
-            assert (I[i].shape[1] == 2)
+            assert I[i].shape[0] == hist[A[i]]
+            assert I[i].shape[1] == 2
 
     def test_active_state_indexes(self):
         self._active_state_indexes(self.msmrev)
@@ -936,49 +894,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._active_state_indexes(self.msmrevpi_sparse)
         self._active_state_indexes(self.msm_sparse)
 
-    def _generate_traj(self, msm):
-        T = 10
-        gt = msm.generate_traj(T)
-        # Test: should have the right dimension
-        assert (np.all(gt.shape == (T, 2)))
-        # itraj should be right
-        assert (np.all(gt[:, 0] == 0))
-
-    def test_generate_traj(self):
-        self._generate_traj(self.msmrev)
-        self._generate_traj(self.msmrevpi)
-        self._generate_traj(self.msm)
-        with warnings.catch_warnings(record=True) as w:
-            self._generate_traj(self.msmrev_sparse)
-        with warnings.catch_warnings(record=True) as w:
-            self._generate_traj(self.msmrevpi_sparse)
-        with warnings.catch_warnings(record=True) as w:
-            self._generate_traj(self.msm_sparse)
-
-    def _sample_by_state(self, msm):
-        nsample = 100
-        ss = msm.sample_by_state(nsample)
-        # must have the right size
-        assert (len(ss) == msm.nstates)
-        # must be correctly assigned
-        dtraj_active = msm.discrete_trajectories_active[0]
-        for i, samples in enumerate(ss):
-            # right shape
-            assert (np.all(samples.shape == (nsample, 2)))
-            for row in samples:
-                assert (row[0] == 0)  # right trajectory
-                assert (dtraj_active[row[1]] == i)
-
-    def test_sample_by_state(self):
-        self._sample_by_state(self.msmrev)
-        self._sample_by_state(self.msmrevpi)
-        self._sample_by_state(self.msm)
-        self._sample_by_state(self.msmrev_sparse)
-        self._sample_by_state(self.msmrevpi_sparse)
-        self._sample_by_state(self.msm_sparse)
-
     def _trajectory_weights(self, msm):
-        W = msm.trajectory_weights()
+        W = msm.compute_trajectory_weights(self.dtraj)
         # should sum to 1
         assert (np.abs(np.sum(W[0]) - 1.0) < 1e-6)
 
@@ -1048,8 +965,8 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         cls.active_set_restricted = np.array([0, 1, 3])
 
     def _test_connectivity(self, msm, msm_mincount):
-        np.testing.assert_equal(msm.active_set, self.active_set_unrestricted)
-        np.testing.assert_equal(msm_mincount.active_set, self.active_set_restricted)
+        np.testing.assert_equal(msm.count_model.active_set, self.active_set_unrestricted)
+        np.testing.assert_equal(msm_mincount.count_model.active_set, self.active_set_restricted)
 
     def test_msm(self):
         msm_one_over_n = estimate_markov_model(self.dtraj, lag=1, mincount_connectivity='1/n')

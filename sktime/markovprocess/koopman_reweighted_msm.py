@@ -153,7 +153,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         # update model
         m = self._model
         m.transition_matrix = P
-        m.reversible = self.reversible
+        m.is_reversible = self.reversible
         # TODO: should the model know about the connected sets?
         m._connected_sets = msmest.connected_sets(m._C_full)
 

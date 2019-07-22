@@ -1,9 +1,7 @@
 import numpy as np
 
-from sktime.base import Estimator, Model
-from sktime.markovprocess import Q_
-from sktime.markovprocess._dtraj_stats import TransitionCountEstimator
-from sktime.markovprocess.markov_state_model import MarkovStateModel
+from sktime.base import Estimator
+from sktime.markovprocess._dtraj_stats import blocksplit_dtrajs, cvsplit_dtrajs
 
 
 # TODO: do not store dtrajs
@@ -86,151 +84,6 @@ class _MSMBaseEstimator(Estimator):
         # connectivity
         self.mincount_connectivity = mincount_connectivity
 
-    def score(self, dtrajs, model, score_method='VAMP2', score_k=10):
-        r""" Scores the MSM using the dtrajs using the variational approach for Markov processes [1]_ [2]_
-
-        Currently only implemented using dense matrices - will be slow for large state spaces.
-
-        Parameters
-        ----------
-        dtrajs : list of arrays
-            test data (discrete trajectories).
-        score_method : str
-            Overwrite scoring method if desired. If `None`, the estimators scoring
-            method will be used. See __init__ for documentation.
-        score_k : int or None
-            Overwrite scoring rank if desired. If `None`, the estimators scoring
-            rank will be used. See __init__ for documentation.
-        score_method : str, optional, default='VAMP2'
-            Overwrite scoring method to be used if desired. If `None`, the estimators scoring
-            method will be used.
-            Available scores are based on the variational approach for Markov processes [1]_ [2]_ :
-
-            *  'VAMP1'  Sum of singular values of the symmetrized transition matrix [2]_ .
-                        If the MSM is reversible, this is equal to the sum of transition
-                        matrix eigenvalues, also called Rayleigh quotient [1]_ [3]_ .
-            *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [2]_ .
-                        If the MSM is reversible, this is equal to the kinetic variance [4]_ .
-
-        score_k : int or None
-            The maximum number of eigenvalues or singular values used in the
-            score. If set to None, all available eigenvalues will be used.
-
-        References
-        ----------
-        .. [1] Noe, F. and F. Nueske: A variational approach to modeling slow processes
-            in stochastic dynamical systems. SIAM Multiscale Model. Simul. 11, 635-655 (2013).
-        .. [2] Wu, H and F. Noe: Variational approach for learning Markov processes
-            from time series data (in preparation)
-        .. [3] McGibbon, R and V. S. Pande: Variational cross-validation of slow
-            dynamical modes in molecular kinetics, J. Chem. Phys. 142, 124105 (2015)
-        .. [4] Noe, F. and C. Clementi: Kinetic distance and kinetic maps from molecular
-            dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015)
-
-        """
-        dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
-
-        # determine actual scoring rank
-        if score_k is None:
-            score_k = self.nstates
-        if score_k > self.nstates:
-            import warnings
-            warnings.warn('Requested scoring rank {rank} exceeds number of MSM states. '
-                          'Reduced to score_k = {nstates}'.format(rank=score_k, nstates=self.nstates))
-            score_k = self.nstates  # limit to nstates
-
-        # training data
-        K = model.transition_matrix  # model
-        C0t_train = self.count_matrix_active
-        from scipy.sparse import issparse
-        if issparse(K):  # can't deal with sparse right now.
-            K = K.toarray()
-        if issparse(C0t_train):  # can't deal with sparse right now.
-            C0t_train = C0t_train.toarray()
-        C00_train = np.diag(C0t_train.sum(axis=1))  # empirical cov
-        Ctt_train = np.diag(C0t_train.sum(axis=0))  # empirical cov
-
-        # test data
-        from msmtools.estimation import count_matrix
-        C0t_test_raw = count_matrix(dtrajs, self.lagtime, sparse_return=False)
-        # map to present active set
-        map_from = self.active_set[np.where(self.active_set < C0t_test_raw.shape[0])[0]]
-        map_to = np.arange(len(map_from))
-        C0t_test = np.zeros((self.nstates, self.nstates))
-        C0t_test[np.ix_(map_to, map_to)] = C0t_test_raw[np.ix_(map_from, map_from)]
-        C00_test = np.diag(C0t_test.sum(axis=1))
-        Ctt_test = np.diag(C0t_test.sum(axis=0))
-
-        # score
-        from pyemma.util.metrics import vamp_score
-        return vamp_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_test,
-                          k=score_k, score=score_method)
-
-    def _blocksplit_dtrajs(self, dtrajs, sliding):
-        from sktime.markovprocess._dtraj_stats import blocksplit_dtrajs
-        return blocksplit_dtrajs(dtrajs, lag=self.lagtime, sliding=sliding)
-
-    def score_cv(self, dtrajs, n=10, score_method='VAMP2', score_k=10):
-        r""" Scores the MSM using the variational approach for Markov processes [1]_ [2]_ and crossvalidation [3]_ .
-
-        Divides the data into training and test data, fits a MSM using the training
-        data using the parameters of this estimator, and scores is using the test
-        data.
-        Currently only one way of splitting is implemented, where for each n,
-        the data is randomly divided into two approximately equally large sets of
-        discrete trajectory fragments with lengths of at least the lagtime.
-
-        Currently only implemented using dense matrices - will be slow for large state spaces.
-
-        Parameters
-        ----------
-        dtrajs : list of arrays
-            Test data (discrete trajectories).
-        n : number of samples
-            Number of repetitions of the cross-validation. Use large n to get solid
-            means of the score.
-        score_method : str, optional, default='VAMP2'
-            Overwrite scoring method to be used if desired. If `None`, the estimators scoring
-            method will be used.
-            Available scores are based on the variational approach for Markov processes [1]_ [2]_ :
-
-            *  'VAMP1'  Sum of singular values of the symmetrized transition matrix [2]_ .
-                        If the MSM is reversible, this is equal to the sum of transition
-                        matrix eigenvalues, also called Rayleigh quotient [1]_ [3]_ .
-            *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [2]_ .
-                        If the MSM is reversible, this is equal to the kinetic variance [4]_ .
-
-        score_k : int or None
-            The maximum number of eigenvalues or singular values used in the
-            score. If set to None, all available eigenvalues will be used.
-
-        References
-        ----------
-        .. [1] Noe, F. and F. Nueske: A variational approach to modeling slow processes
-            in stochastic dynamical systems. SIAM Multiscale Model. Simul. 11, 635-655 (2013).
-        .. [2] Wu, H and F. Noe: Variational approach for learning Markov processes
-            from time series data (in preparation).
-        .. [3] McGibbon, R and V. S. Pande: Variational cross-validation of slow
-            dynamical modes in molecular kinetics, J. Chem. Phys. 142, 124105 (2015).
-        .. [4] Noe, F. and C. Clementi: Kinetic distance and kinetic maps from molecular
-            dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015).
-
-        """
-        dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
-
-        from pyemma.msm.estimators._dtraj_stats import cvsplit_dtrajs
-        if self.count_mode not in ('sliding', 'sample'):
-            raise ValueError('score_cv currently only supports count modes "sliding" and "sample"')
-        sliding = self.count_mode == 'sliding'
-        scores = []
-        for i in range(n):
-            dtrajs_split = self._blocksplit_dtrajs(dtrajs, sliding)
-            dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split)
-            model = self.fit(dtrajs_train).fetch_model()
-            s = self.score(dtrajs_test, model, score_method=score_method, score_k=score_k)
-            scores.append(s)
-        return np.array(scores)
-
     # TODO: this one is tricky
     def cktest(self, dtrajs, nsets, memberships=None, mlags=10, conf=0.95, err_est=False,
                n_jobs=None, show_progress=True):
@@ -287,3 +140,66 @@ class _MSMBaseEstimator(Estimator):
                                         n_jobs=n_jobs, err_est=err_est, show_progress=show_progress)
         ck.fit(dtrajs)
         return ck
+
+
+def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', score_k=10, random_state=None):
+    r""" Scores the MSM using the variational approach for Markov processes [1]_ [2]_ and cross-validation [3]_ .
+
+    Divides the data into training and test data, fits a MSM using the training
+    data using the parameters of this estimator, and scores is using the test
+    data.
+    Currently only one way of splitting is implemented, where for each n,
+    the data is randomly divided into two approximately equally large sets of
+    discrete trajectory fragments with lengths of at least the lagtime.
+
+    Currently only implemented using dense matrices - will be slow for large state spaces.
+
+    Parameters
+    ----------
+    estimator : MSMBaseEstimator like
+        estimator to produce models for CV.
+    dtrajs : list of arrays
+        Test data (discrete trajectories).
+    n : number of samples
+        Number of repetitions of the cross-validation. Use large n to get solid
+        means of the score.
+    score_method : str, optional, default='VAMP2'
+        Overwrite scoring method to be used if desired. If `None`, the estimators scoring
+        method will be used.
+        Available scores are based on the variational approach for Markov processes [1]_ [2]_ :
+
+        *  'VAMP1'  Sum of singular values of the symmetrized transition matrix [2]_ .
+                    If the MSM is reversible, this is equal to the sum of transition
+                    matrix eigenvalues, also called Rayleigh quotient [1]_ [3]_ .
+        *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [2]_ .
+                    If the MSM is reversible, this is equal to the kinetic variance [4]_ .
+
+    score_k : int or None
+        The maximum number of eigenvalues or singular values used in the
+        score. If set to None, all available eigenvalues will be used.
+
+    References
+    ----------
+    .. [1] Noe, F. and F. Nueske: A variational approach to modeling slow processes
+        in stochastic dynamical systems. SIAM Multiscale Model. Simul. 11, 635-655 (2013).
+    .. [2] Wu, H and F. Noe: Variational approach for learning Markov processes
+        from time series data (in preparation).
+    .. [3] McGibbon, R and V. S. Pande: Variational cross-validation of slow
+        dynamical modes in molecular kinetics, J. Chem. Phys. 142, 124105 (2015).
+    .. [4] Noe, F. and C. Clementi: Kinetic distance and kinetic maps from molecular
+        dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015).
+
+    """
+    from sktime.markovprocess.sample import _ensure_dtraj_list
+    dtrajs = _ensure_dtraj_list(dtrajs)  # ensure format
+    if estimator.count_mode not in ('sliding', 'sample'):
+        raise ValueError('score_cv currently only supports count modes "sliding" and "sample"')
+    sliding = estimator.count_mode == 'sliding'
+    scores = []
+    for fold in range(n):
+        dtrajs_split = blocksplit_dtrajs(dtrajs, lag=estimator.lagtime, sliding=sliding, random_state=random_state)
+        dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split, random_state=random_state)
+        model = estimator.fit(dtrajs_train).fetch_model()
+        s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
+        scores.append(s)
+    return np.array(scores)

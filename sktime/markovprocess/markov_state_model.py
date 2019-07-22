@@ -25,6 +25,7 @@ import numpy as np
 import typing
 
 from sktime.base import Model
+from sktime.markovprocess.sample import _ensure_dtraj_list
 from sktime.util import ensure_ndarray
 from sktime.markovprocess import Q_
 from sktime.markovprocess._dtraj_stats import TransitionCountModel
@@ -76,7 +77,7 @@ class MarkovStateModel(Model):
     def __init__(self, transition_matrix, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, count_model=None):
         self.ncv = ncv
         # we set reversible first, so it can be derived from transition_matrix, if None was given.
-        self.reversible = reversible
+        self._is_reversible = reversible
         from scipy.sparse import issparse
         self.sparse = issparse(transition_matrix)
         self.transition_matrix = transition_matrix
@@ -99,6 +100,12 @@ class MarkovStateModel(Model):
         self._count_model = value
 
     @property
+    def lagtime(self) -> typing.Optional[int]:
+        if self.count_model is not None:
+            return self.count_model.lagtime
+        return None
+
+    @property
     def transition_matrix(self):
         """ The transition matrix on the active set. """
         return self._P
@@ -113,21 +120,21 @@ class MarkovStateModel(Model):
                 raise ValueError('T is not a transition matrix.')
             # set states
             self.nstates = np.shape(self._P)[0]
-            if self.reversible is None:
-                self.reversible = msmana.is_reversible(self._P)
+            if self._is_reversible is None:
+                self._is_reversible = msmana.is_reversible(self._P)
 
         # TODO: if spectral decomp etc. already has been computed, reset its state.
 
+    # backward compat
+    P = transition_matrix
+
     @property
-    def reversible(self):
+    def is_reversible(self):
         """Returns whether the MarkovStateModel is reversible """
-        return self._reversible
+        return self._is_reversible
 
-    @reversible.setter
-    def reversible(self, value):
-        self._reversible = value
-
-    is_reversible = reversible
+    # backward compat
+    reversible = is_reversible
 
     @property
     def is_sparse(self):
@@ -202,7 +209,7 @@ class MarkovStateModel(Model):
         """ Conducts the eigenvalue decomposition and stores k eigenvalues """
         from msmtools.analysis import eigenvalues as anaeig
 
-        if self.reversible:
+        if self.is_reversible:
             self._eigenvalues = anaeig(self.transition_matrix, k=neig, ncv=self.ncv,
                                        reversible=True, mu=self.stationary_distribution)
         else:
@@ -221,7 +228,7 @@ class MarkovStateModel(Model):
             if m < neig:
                 # not enough eigenpairs present - recompute:
                 self._compute_eigenvalues(neig)
-        except AttributeError:
+        except (AttributeError, TypeError) as e:
             # no eigendecomposition yet - compute:
             self._compute_eigenvalues(neig)
 
@@ -229,7 +236,7 @@ class MarkovStateModel(Model):
         """ Conducts the eigenvalue decomposition and stores k eigenvalues, left and right eigenvectors """
         from msmtools.analysis import rdl_decomposition
 
-        if self.reversible:
+        if self.is_reversible:
             self._R, self._D, self._L = rdl_decomposition(self.transition_matrix, norm='reversible',
                                                           k=neig, ncv=self.ncv)
             # everything must be real-valued
@@ -833,7 +840,7 @@ class MarkovStateModel(Model):
 
         """
         # can we do it?
-        if not self.reversible:
+        if not self.is_reversible:
             raise ValueError('Cannot compute PCCA for non-reversible matrices. '
                              'Set reversible=True when constructing the MarkovStateModel.')
 
@@ -1033,7 +1040,7 @@ class MarkovStateModel(Model):
     ################################################################################
     # For general statistics
     ################################################################################
-    def trajectory_weights(self, dtrajs):
+    def compute_trajectory_weights(self, dtrajs):
         r"""Uses the MarkovStateModel to assign a probability weight to each trajectory frame.
 
         This is a powerful function for the calculation of arbitrary observables in the trajectories one has
@@ -1082,11 +1089,12 @@ class MarkovStateModel(Model):
         # compute stationary distribution, expanded to full set
         if self.count_model is None:
             raise RuntimeError("Count model was None but needs to be provided in this case.")
+        dtrajs = _ensure_dtraj_list(dtrajs)
         statdist_full = np.zeros(self.count_model.nstates)
         statdist_full[self.count_model.active_set] = self.stationary_distribution
         # histogram observed states
-        import msmtools.dtraj as msmtraj
-        hist = 1.0 * msmtraj.count_states(dtrajs)
+        from msmtools.dtraj import count_states
+        hist = 1.0 * count_states(dtrajs)
         # simply read off stationary distribution and accumulate total weight
         W = []
         wtot = 0.0
@@ -1100,8 +1108,15 @@ class MarkovStateModel(Model):
         # done
         return W
 
-    def compute_active_count_fraction(self, dtrajs):
-        pass
+    # TODO: remove in future.
+    trajectory_weights = compute_trajectory_weights
+
+    @property
+    def active_state_indexes(self):
+        """
+        Ensures that the connected states are indexed and returns the indices
+        """
+        raise RuntimeError('use sktime.markovprocess.sample.compute_index_states(dtrajs)')
 
     ################################################################################
     # HMM-based coarse graining
@@ -1145,7 +1160,7 @@ class MarkovStateModel(Model):
         # run HMM estimate
         #from pyemma.msm.estimators.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
         estimator = MaximumLikelihoodHMSM(lag=self.lagtime, nstates=nhidden, msm_init=self,
-                                          reversible=self.reversible, dt_traj=self.dt_traj)
+                                          reversible=self.is_reversible, dt_traj=self.dt_traj)
         estimator.fit(dtrajs)
         return estimator.fetch_model()
 
@@ -1175,3 +1190,95 @@ class MarkovStateModel(Model):
         assert 1 < ncoarse <= self.nstates, 'nstates must be an int in [2,msmobj.nstates]'
 
         return self.hmm(dtrajs, ncoarse)
+
+    def score(self, dtrajs, score_method='VAMP2', score_k=10):
+        r""" Scores the MSM using the dtrajs using the variational approach for Markov processes [1]_ [2]_
+
+        Currently only implemented using dense matrices - will be slow for large state spaces.
+
+        Parameters
+        ----------
+        dtrajs : list of arrays
+            test data (discrete trajectories).
+        score_method : str
+            Overwrite scoring method if desired. If `None`, the estimators scoring
+            method will be used. See __init__ for documentation.
+        score_k : int or None
+            Overwrite scoring rank if desired. If `None`, the estimators scoring
+            rank will be used. See __init__ for documentation.
+        score_method : str, optional, default='VAMP2'
+            Overwrite scoring method to be used if desired. If `None`, the estimators scoring
+            method will be used.
+            Available scores are based on the variational approach for Markov processes [1]_ [2]_ :
+
+            *  'VAMP1'  Sum of singular values of the symmetrized transition matrix [2]_ .
+                        If the MSM is reversible, this is equal to the sum of transition
+                        matrix eigenvalues, also called Rayleigh quotient [1]_ [3]_ .
+            *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [2]_ .
+                        If the MSM is reversible, this is equal to the kinetic variance [4]_ .
+
+        score_k : int or None
+            The maximum number of eigenvalues or singular values used in the
+            score. If set to None, all available eigenvalues will be used.
+
+        References
+        ----------
+        .. [1] Noe, F. and F. Nueske: A variational approach to modeling slow processes
+            in stochastic dynamical systems. SIAM Multiscale Model. Simul. 11, 635-655 (2013).
+        .. [2] Wu, H and F. Noe: Variational approach for learning Markov processes
+            from time series data (in preparation)
+        .. [3] McGibbon, R and V. S. Pande: Variational cross-validation of slow
+            dynamical modes in molecular kinetics, J. Chem. Phys. 142, 124105 (2015)
+        .. [4] Noe, F. and C. Clementi: Kinetic distance and kinetic maps from molecular
+            dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015)
+
+        """
+        from sktime.markovprocess.sample import _ensure_dtraj_list
+        dtrajs = _ensure_dtraj_list(dtrajs)  # ensure format
+        if self.count_model is None:
+            raise RuntimeError('This MarkovStateModel has not been estimated from data '
+                               '(e.g. count_model unassigned). Cannot proceed.')
+
+        # determine actual scoring rank
+        if score_k is None:
+            score_k = self.nstates
+        if score_k > self.nstates:
+            import warnings
+            warnings.warn('Requested scoring rank {rank} exceeds number of MSM states. '
+                          'Reduced to score_k = {nstates}'.format(rank=score_k, nstates=self.nstates))
+            score_k = self.nstates  # limit to nstates
+
+        # training data
+        K = self.transition_matrix  # model
+        C0t_train = self.count_model.count_matrix_active
+        from scipy.sparse import issparse
+        if issparse(K):  # can't deal with sparse right now.
+            K = K.toarray()
+        if issparse(C0t_train):  # can't deal with sparse right now.
+            C0t_train = C0t_train.toarray()
+        C00_train = np.diag(C0t_train.sum(axis=1))  # empirical cov
+        Ctt_train = np.diag(C0t_train.sum(axis=0))  # empirical cov
+
+        # test data
+        from msmtools.estimation import count_matrix
+        C0t_test_raw = count_matrix(dtrajs, self.count_model.lagtime.magnitude, sparse_return=False)
+        # map to present active set
+        active_set = self.count_model.active_set
+        map_from = active_set[np.where(active_set < C0t_test_raw.shape[0])[0]]
+        map_to = np.arange(len(map_from))
+        C0t_test = np.zeros((self.nstates, self.nstates))
+        C0t_test[np.ix_(map_to, map_to)] = C0t_test_raw[np.ix_(map_from, map_from)]
+        C00_test = np.diag(C0t_test.sum(axis=1))
+        Ctt_test = np.diag(C0t_test.sum(axis=0))
+        assert C00_train.shape == C00_test.shape
+        assert C0t_train.shape == C0t_test.shape
+        assert Ctt_train.shape == Ctt_test.shape
+
+        # score
+        from pyemma.util.metrics import vamp_score
+        return vamp_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_test,
+                          k=score_k, score=score_method)
+
+    def _blocksplit_dtrajs(self, dtrajs, sliding):
+        from sktime.markovprocess._dtraj_stats import blocksplit_dtrajs
+        return blocksplit_dtrajs(dtrajs, lag=self.count_model.lagtime, sliding=sliding)

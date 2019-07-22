@@ -71,24 +71,6 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         matrices will be returned by the corresponding functions instead of
         numpy arrays. This behavior is suggested for very large numbers of
         states (e.g. > 4000) because it is likely to be much more efficient.
-    connectivity : str, optional, default = 'largest'
-        Connectivity mode. Three methods are intended (currently only 'largest'
-        is implemented)
-
-        * 'largest' : The active set is the largest reversibly connected set.
-          All estimation will be done on this subset and all quantities
-          (transition matrix, stationary distribution, etc) are only defined
-          on this subset and are correspondingly smaller than the full set
-          of states
-        * 'all' : The active set is the full set of states. Estimation will be
-          conducted on each reversibly connected set separately. That means
-          the transition matrix will decompose into disconnected submatrices,
-          the stationary vector is only defined within subsets, etc.
-          Currently not implemented.
-        * 'none' : The active set is the full set of states. Estimation will
-          be conducted on the full set of
-          states without ensuring connectivity. This only permits
-          nonreversible estimation. Currently not implemented.
 
     dt_traj : str, optional, default='1 step'
         Description of the physical time of the input trajectories. May be used
@@ -150,48 +132,23 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
     def _create_model(self) -> MarkovStateModel:
         return MarkovStateModel(transition_matrix=None)
 
-    @staticmethod
-    def _prepare_input_revpi(C, pi):
-        """Max. state index visited by trajectories"""
-        nC = C.shape[0]
-        # Max. state index of the stationary vector array
-        npi = pi.shape[0]
-        # pi has to be defined on all states visited by the trajectories
-        if nC > npi:
-            raise ValueError('There are visited states for which no stationary probability is given')
-        # Reduce pi to the visited set
-        pi_visited = pi[0:nC]
-        # Find visited states with positive stationary probabilities"""
-        pos = np.where(pi_visited > 0.0)[0]
-        # Reduce C to positive probability states"""
-        C_pos = msmest.connected_cmatrix(C, lcc=pos)
-        if C_pos.sum() == 0.0:
+    def fit(self, dtrajs, **kwargs):
+        count_model = TransitionCountEstimator().fit(
+            dtrajs, lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
+            mincount_connectivity=self.mincount_connectivity, stationary_dist_constraint=self.statdist_constraint).fetch_model()
+
+        if self.statdist_constraint is not None and count_model.count_matrix_active.sum() == 0.0:
             raise ValueError("The set of states with positive stationary"
                              "probabilities is not visited by the trajectories. A MarkovStateModel"
                              "reversible with respect to the given stationary vector can"
                              "not be estimated")
-        # Compute largest connected set of C_pos, undirected connectivity"""
-        lcc = msmest.largest_connected_set(C_pos, directed=False)
-        return pos[lcc]
-
-    def fit(self, dtrajs):
-        count_model = TransitionCountEstimator().fit(
-            dtrajs, lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
-            mincount_connectivity=self.mincount_connectivity).fetch_model()
-
-        if self.statdist_constraint is None:
-            # statdist not given - full connectivity on all states
-            active_set = count_model.largest_connected_set
-        else:
-            active_set = self._prepare_input_revpi(count_model.count_matrix_full,
-                                                   self.statdist_constraint)
 
         # if active set is empty, we can't do anything.
-        if np.size(active_set) == 0:
+        if count_model.active_set.size == 0:
             raise RuntimeError('Active set is empty. Cannot estimate MarkovStateModel.')
 
         # active count matrix and number of states
-        C_active = count_model.count_matrix(subset=active_set)
+        C_active = count_model.count_matrix_active
 
         # continue sparse or dense?
         if not self.sparse:
@@ -204,7 +161,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         if self.statdist_constraint is None:
             statdist_active = None
         else:
-            statdist_active = self.statdist_constraint[active_set]
+            statdist_active = self.statdist_constraint[count_model.active_set]
+            assert np.all(statdist_active > 0.0)
             statdist_active /= statdist_active.sum()  # renormalize
 
         opt_args = {}
@@ -221,11 +179,22 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
             P, statdist_active = P
 
         # update model parameters
-        m = self._model
-        m.transition_matrix = P
-        m.stationary_distribution = statdist_active
-        m.reversible = self.reversible
-        m.dt_model = count_model.dt_traj * self.lagtime
-        m.count_model = count_model
+        self._model.__init__(transition_matrix=P, pi=statdist_active, reversible=self.reversible,
+                             dt_model=count_model.dt_traj * self.lagtime,
+                             count_model=count_model)
 
         return self
+
+
+def compute_statistically_effective_count_matrix(dtrajs, lag, active_set=None):
+    """
+
+    :param dtrajs:
+    :param lag:
+    :param active_set:
+    :return:
+    """
+    from sktime.util import submatrix
+    Ceff_full = msmest.effective_count_matrix(dtrajs, lag=lag)
+    Ceff = submatrix(Ceff_full, active_set)
+    return Ceff
