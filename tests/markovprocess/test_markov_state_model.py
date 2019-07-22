@@ -12,4 +12,5 @@ class TestMarkovStateModel(unittest.TestCase):
 
     def test_dt_model(self):
         self.msm.dt_model = '50 ns'
-        print(self.msm.timestep_model)
+        assert self.msm.dt_model.magnitude == 50
+        assert self.msm.dt_model.u == 'nanosecond'
