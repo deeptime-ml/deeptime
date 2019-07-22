@@ -14,7 +14,7 @@ def _ensure_dtraj_list(dtrajs):
 
 
 def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
-    """Generates a trajectory/time indexes for the given list of states
+    """Generates a trajectory/time indices for the given list of states
 
     Parameters
     ----------
@@ -25,8 +25,8 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
 
     Returns
     -------
-    indexes : list of ndarray( (N_i, 2) )
-        For each state, all trajectory and time indexes where this state occurs.
+    indices : list of ndarray( (N_i, 2) )
+        For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
         within the trajectory.
@@ -38,17 +38,17 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
     return bd.sample.index_states(dtrajs, subset)
 
 ################################################################################
-# sampling from state indexes
+# sampling from state indices
 ################################################################################
 
 
 def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
-    """Samples trajectory/time indexes according to the given sequence of states
+    """Samples trajectory/time indices according to the given sequence of states
 
     Parameters
     ----------
     indices : list of (N,2) ndarray
-        For each state, all trajectory and time indexes where this state occurs.
+        For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
         within the trajectory.
@@ -58,7 +58,7 @@ def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
 
     Returns
     -------
-    indexes : ndarray( (N, 2) )
+    indices : ndarray( (N, 2) )
         The sampled index sequence.
         Index array with a number of rows equal to N=len(sequence), with rows consisting of a tuple (i, t),
         where i is the index of the trajectory and t is the time index within the trajectory.
@@ -74,19 +74,19 @@ def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
     return res
 
 
-def indices_by_state(indexes, nsample, subset=None, replace=True):
-    """Samples trajectory/time indexes according to the given sequence of states
+def indices_by_state(indices, nsample, subset=None, replace=True):
+    """Samples trajectory/time indices according to the given sequence of states
 
     Parameters
     ----------
-    indexes : list of ndarray( (N_i, 2) )
-        For each state, all trajectory and time indexes where this state occurs.
+    indices : list of ndarray( (N_i, 2) )
+        For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
         within the trajectory.
     nsample : int
         Number of samples per state. If replace = False, the number of returned samples per state could be smaller
-        if less than nsample indexes are available for a state.
+        if less than nsample indices are available for a state.
     subset : ndarray((n)), optional, default = None
         array of states to be indexed. By default all states in dtrajs will be used
     replace : boolean, optional
@@ -94,14 +94,14 @@ def indices_by_state(indexes, nsample, subset=None, replace=True):
 
     Returns
     -------
-    indexes : list of ndarray( (N, 2) )
+    indices : list of ndarray( (N, 2) )
         List of the sampled indices by state.
         Each element is an index array with a number of rows equal to N=len(sequence), with rows consisting of a
         tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
     """
     # how many states in total?
-    n = len(indexes)
+    n = len(indices)
     # define set of states to work on
     if subset is None:
         subset = np.arange(n)
@@ -109,28 +109,28 @@ def indices_by_state(indexes, nsample, subset=None, replace=True):
     # list of states
     res = np.ndarray(len(subset), dtype=object)
     for i, s in enumerate(subset):
-        # how many indexes are available?
-        m_available = indexes[s].shape[0]
-        # do we have no indexes for this state? Then insert empty array.
+        # how many indices are available?
+        m_available = indices[s].shape[0]
+        # do we have no indices for this state? Then insert empty array.
         if m_available == 0:
             res[i] = np.zeros((0, 2), dtype=int)
         elif replace:
             I = np.random.choice(m_available, nsample, replace=True)
-            res[i] = indexes[s][I,:]
+            res[i] = indices[s][I,:]
         else:
             I = np.random.choice(m_available, min(m_available,nsample), replace=False)
-            res[i] = indexes[s][I,:]
+            res[i] = indices[s][I,:]
 
     return res
 
 
-def indices_by_distribution(indexes, distributions, nsample):
-    """Samples trajectory/time indexes according to the given probability distributions
+def indices_by_distribution(indices, distributions, nsample):
+    """Samples trajectory/time indices according to the given probability distributions
 
     Parameters
     ----------
-    indexes : list of ndarray( (N_i, 2) )
-        For each state, all trajectory and time indexes where this state occurs.
+    indices : list of ndarray( (N_i, 2) )
+        For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
         within the trajectory.
@@ -138,18 +138,18 @@ def indices_by_distribution(indexes, distributions, nsample):
         m distributions over states. Each distribution must be of length n and must sum up to 1.0
     nsample : int
         Number of samples per distribution. If replace = False, the number of returned samples per state could be smaller
-        if less than nsample indexes are available for a state.
+        if less than nsample indices are available for a state.
 
     Returns
     -------
-    indexes : length m list of ndarray( (nsample, 2) )
+    indices : length m list of ndarray( (nsample, 2) )
         List of the sampled indices by distribution.
         Each element is an index array with a number of rows equal to nsample, with rows consisting of a
         tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
     """
     # how many states in total?
-    n = len(indexes)
+    n = len(indices)
     for dist in distributions:
         if len(dist) != n:
             raise ValueError('Size error: Distributions must all be of length n (number of states).')
@@ -159,7 +159,7 @@ def indices_by_distribution(indexes, distributions, nsample):
     for i, dist in enumerate(distributions):
         # sample states by distribution
         sequence = np.random.choice(n, size=nsample, p=dist)
-        res[i] = indices_by_sequence(indexes, sequence)
+        res[i] = indices_by_sequence(indices, sequence)
     #
     return res
 
@@ -194,8 +194,8 @@ def by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
 
     Returns
     -------
-    indexes : ndarray( (N, 2) )
-        trajectory and time indexes of the simulated trajectory. Each row consist of a tuple (i, t), where i is
+    indices : ndarray( (N, 2) )
+        trajectory and time indices of the simulated trajectory. Each row consist of a tuple (i, t), where i is
         the index of the trajectory and t is the time index within the trajectory.
         Note that the time different between two samples is the Markov model lag time tau
 
@@ -205,13 +205,13 @@ def by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
         in order to save this synthetic trajectory as a trajectory file with molecular structures
 
     """
-    return indices_by_sequence(self.active_state_indexes, sequence)
+    return indices_by_sequence(self.active_state_indices, sequence)
 
 
 def by_state(dtrajs, nsample, subset=None, replace=True):
     """Generates samples of the connected states.
 
-    For each state in the active set of states, generates nsample samples with trajectory/time indexes.
+    For each state in the active set of states, generates nsample samples with trajectory/time indices.
     This information can be used in order to generate a trajectory of length nsample * nconnected using
     :func:`pyemma.coordinates.save_traj` or nconnected trajectories of length nsample each using
     :func:`pyemma.coordinates.save_traj`
@@ -222,7 +222,7 @@ def by_state(dtrajs, nsample, subset=None, replace=True):
         underlying discrete trajectories
     nsample : int
         Number of samples per state. If replace = False, the number of returned samples per state could be smaller
-        if less than nsample indexes are available for a state.
+        if less than nsample indices are available for a state.
     subset : ndarray((n)), optional, default = None
         array of states to be indexed. By default all states in the connected set will be used
     replace : boolean, optional
@@ -230,7 +230,7 @@ def by_state(dtrajs, nsample, subset=None, replace=True):
 
     Returns
     -------
-    indexes : list of ndarray( (N, 2) )
+    indices : list of ndarray( (N, 2) )
         list of trajectory/time index arrays with an array for each state.
         Within each index array, each row consist of a tuple (i, t), where i is
         the index of the trajectory and t is the time index within the trajectory.
@@ -243,8 +243,8 @@ def by_state(dtrajs, nsample, subset=None, replace=True):
         in order to save the sampled frames in nconnected trajectory files with molecular structures
 
     """
-    # generate connected state indexes
-    return indices_by_state(self.active_state_indexes, nsample, subset=subset, replace=replace)
+    # generate connected state indices
+    return indices_by_state(self.active_state_indices, nsample, subset=subset, replace=replace)
 
 
 # TODO: add sample_metastable() for sampling from metastable (pcca or hmm) states.
@@ -259,15 +259,15 @@ def by_distributions(self, distributions, nsample):
         m distributions over states. Each distribution must be of length n and must sum up to 1.0
     nsample : int
         Number of samples per distribution. If replace = False, the number of returned samples per state could be
-        smaller if less than nsample indexes are available for a state.
+        smaller if less than nsample indices are available for a state.
 
     Returns
     -------
-    indexes : length m list of ndarray( (nsample, 2) )
+    indices : length m list of ndarray( (nsample, 2) )
         List of the sampled indices by distribution.
         Each element is an index array with a number of rows equal to nsample, with rows consisting of a
         tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
     """
-    # generate connected state indexes
-    return indices_by_distribution(self.active_state_indexes, distributions, nsample)
+    # generate connected state indices
+    return indices_by_distribution(self.active_state_indices, distributions, nsample)
