@@ -4,7 +4,6 @@ from sktime.base import Estimator
 from sktime.markovprocess._dtraj_stats import blocksplit_dtrajs, cvsplit_dtrajs
 
 
-# TODO: do not store dtrajs
 # TODO: distinguish more between model and estimator attributes.
 
 class _MSMBaseEstimator(Estimator):

@@ -1,12 +1,15 @@
 import abc
 from inspect import signature
+from sklearn.base import _pprint as pprint_sklearn
 
 
-class Model(object):
+class _base_methods_mixin(object):
 
-    def copy(self):
-        import copy
-        return copy.deepcopy(self)
+    def __repr__(self):
+        name = '{cls}-{id}:'.format(id=id(self), cls=self.__class__.__name__)
+        return '{name}{params}]'.format(name=name,
+            params=pprint_sklearn(self.get_params(), offset=len(name), )
+        )
 
     def get_params(self, deep=True):
         """Get parameters of this kernel.
@@ -45,28 +48,15 @@ class Model(object):
             params[arg] = getattr(self, arg, None)
         return params
 
-    def __repr__(self):
-        return '{cls}-{id}: {params}]'.format(
-            id=id(self),
-            cls=self.__class__,
-            params=self.get_params(),
-        )
 
-    def __str__(self):
-        from io import StringIO
-        import pprint
-        buff = StringIO()
-        start = '{cls_name}-{id}: '.format(
-            cls_name=self.__class__.__name__,
-            id=id(self),
-        )
-        buff.write(start)
-        pprint.pprint(self.get_params(), stream=buff, width=120+buff.tell()+5, compact=True)
-        buff.seek(0)
-        return buff.read()
+class Model(_base_methods_mixin):
+
+    def copy(self):
+        import copy
+        return copy.deepcopy(self)
 
 
-class Estimator(object):
+class Estimator(_base_methods_mixin):
 
     def __init__(self, model=None):
         self._model = model if model is not None else self._create_model()

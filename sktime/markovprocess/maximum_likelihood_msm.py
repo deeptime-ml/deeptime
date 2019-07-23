@@ -121,9 +121,11 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
                                                    sparse=sparse, dt_traj=dt_traj,
                                                    mincount_connectivity=mincount_connectivity)
 
-        self.statdist_constraint = statdist_constraint
-        if self.statdist_constraint is not None:  # renormalize
+        if statdist_constraint is not None:  # renormalize
+            self.statdist_constraint = statdist_constraint.copy()
             self.statdist_constraint /= self.statdist_constraint.sum()
+        else:
+            self.statdist_constraint = None
 
         # convergence parameters
         self.maxiter = maxiter

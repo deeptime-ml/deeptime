@@ -162,11 +162,11 @@ class TransitionCountModel(Model):
             For a count matrix with effective (statistically uncorrelated) counts.
 
         """
-        return self.count_matrix(subset=self.active_set)
+        return self.subselect_count_matrix(subset=self.active_set)
 
     # todo rename to count_matrix
     @property
-    def count_matrix_full(self):
+    def count_matrix(self):
         """
         The count matrix on full set of discrete states, irrespective as to whether they are connected or not.
         Attention: This count matrix has been obtained by sliding a window of length tau across the data. It contains
@@ -197,7 +197,7 @@ class TransitionCountModel(Model):
     @property
     def nstates(self) -> int:
         """Number of states """
-        return self.count_matrix_full.shape[0]
+        return self.count_matrix.shape[0]
 
     @property
     def nstates_active(self) -> int:
@@ -215,7 +215,7 @@ class TransitionCountModel(Model):
         return self._hist
 
     # todo: rename to subselect_count_matrix
-    def count_matrix(self, connected_set=None, subset=None, effective=False):
+    def subselect_count_matrix(self, connected_set=None, subset=None, effective=False):
         r"""The count matrix
 
         Parameters
@@ -263,7 +263,7 @@ class TransitionCountModel(Model):
 
     def histogram_lagged(self, connected_set=None, subset=None, effective=False):
         r""" Histogram of discrete state counts"""
-        C = self.count_matrix(connected_set=connected_set, subset=subset, effective=effective)
+        C = self.subselect_count_matrix(connected_set=connected_set, subset=subset, effective=effective)
         return C.sum(axis=1)
 
     @property
@@ -283,7 +283,7 @@ class TransitionCountModel(Model):
 
     @property
     def effective_count_matrix(self):
-        return self.count_matrix(connected_set=self.active_set, effective=True)
+        return self.subselect_count_matrix(connected_set=self.active_set, effective=True)
 
 
 class TransitionCountEstimator(Estimator):

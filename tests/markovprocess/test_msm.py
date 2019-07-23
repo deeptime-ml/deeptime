@@ -35,6 +35,8 @@ import warnings
 from msmtools.generation import generate_traj
 from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
 from msmtools.analysis import stationary_distribution, timescales
+
+from markovprocess import BayesianMSM
 from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
 from sktime.markovprocess._base import score_cv
 
@@ -93,7 +95,7 @@ class TestMSMSimple(unittest.TestCase):
         assert_allclose(self.lcc_MSM, msm.count_model.largest_connected_set)
         # TODO: count matrices used to be dense if estimation mode is dense.
         self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_model.count_matrix_active.toarray()))
-        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix_full.toarray()))
+        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix.toarray()))
         self.assertTrue(np.allclose(self.P_MSM.toarray(), msm.transition_matrix))
         assert_allclose(self.mu_MSM, msm.stationary_distribution)
         assert_allclose(self.ts[1:], msm.timescales(self.k - 1))
@@ -103,7 +105,7 @@ class TestMSMSimple(unittest.TestCase):
         self.assertEqual(self.tau, msm.count_model.lagtime)
         assert_allclose(self.lcc_MSM, msm.count_model.largest_connected_set)
         self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_model.count_matrix_active.toarray()))
-        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix_full.toarray()))
+        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix.toarray()))
         self.assertTrue(np.allclose(self.P_MSM.toarray(), msm.transition_matrix.toarray()))
         assert_allclose(self.mu_MSM, msm.stationary_distribution)
         assert_allclose(self.ts[1:], msm.timescales(self.k - 1))
@@ -298,7 +300,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._count_matrix_active(self.msm_sparse)
 
     def _count_matrix_full(self, msm):
-        C = msm.count_model.count_matrix_full
+        C = msm.count_model.count_matrix
         assert (np.all(C.shape == (msm.count_model.nstates, msm.count_model.nstates)))
 
     def test_count_matrix_full(self):
@@ -958,30 +960,31 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
             [0, 3, 0, 1, 2, 3, 0, 0, 1, 0, 1, 0, 3, 1, 0, 0, 0, 0, 0, 0, 1, 2, 0, 3, 0, 0, 3, 3, 0, 0, 1, 1, 3, 0,
              1, 0, 0, 1, 0, 0, 0, 0, 3, 0, 1, 0, 3, 2, 1, 0, 3, 1, 0, 1, 0, 1, 0, 3, 0, 0, 3, 0, 0, 0, 2, 0, 0, 3,
              0, 1, 0, 0, 0, 0, 3, 3, 3, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 3, 3, 3, 1, 0, 0, 0, 2, 1, 3, 0, 0])
-        assert (dtraj == 2).sum() == 5 # state 2 has only 5 counts,
+        assert (dtraj == 2).sum() == 5  # state 2 has only 5 counts,
         cls.dtraj = dtraj
-        cls.mincount_connectivity = 6 # state 2 will be kicked out by this choice.
+        cls.mincount_connectivity = 6  # state 2 will be kicked out by this choice.
         cls.active_set_unrestricted = np.array([0, 1, 2, 3])
         cls.active_set_restricted = np.array([0, 1, 3])
-
-    def _test_connectivity(self, msm, msm_mincount):
-        np.testing.assert_equal(msm.count_model.active_set, self.active_set_unrestricted)
-        np.testing.assert_equal(msm_mincount.count_model.active_set, self.active_set_restricted)
 
     def test_msm(self):
         msm_one_over_n = estimate_markov_model(self.dtraj, lag=1, mincount_connectivity='1/n')
         msm_restrict_connectivity = estimate_markov_model(self.dtraj, lag=1,
                                                           mincount_connectivity=self.mincount_connectivity)
-        self._test_connectivity(msm_one_over_n, msm_restrict_connectivity)
+        np.testing.assert_equal(msm_one_over_n.count_model.active_set, self.active_set_unrestricted)
+        np.testing.assert_equal(msm_restrict_connectivity.count_model.active_set, self.active_set_restricted)
 
     def test_bmsm(self):
-        from pyemma.msm import bayesian_markov_model
-        msm = bayesian_markov_model(self.dtraj, lag=1, mincount_connectivity='1/n')
-        msm_restricted = bayesian_markov_model(self.dtraj, lag=1, mincount_connectivity=self.mincount_connectivity)
-        self._test_connectivity(msm, msm_restricted)
+        msm = BayesianMSM(lagtime=1, mincount_connectivity='1/n').fit(dtrajs=self.dtraj).fetch_model()
+        msm_restricted = BayesianMSM(lagtime=1, mincount_connectivity=self.mincount_connectivity).fit(self.dtraj).fetch_model()
+
+        np.testing.assert_equal(msm.prior.count_model.active_set, self.active_set_unrestricted)
+        np.testing.assert_equal(msm.samples[0].count_model.active_set, self.active_set_unrestricted)
+        np.testing.assert_equal(msm_restricted.prior.count_model.active_set, self.active_set_restricted)
+        np.testing.assert_equal(msm_restricted.samples[0].count_model.active_set, self.active_set_restricted)
+        i = id(msm_restricted.prior.count_model)
+        assert all(id(x.count_model) == i for x in msm_restricted.samples)
 
     def test_timescales(self):
-        from pyemma.msm import timescales_msm
         its = timescales_msm(self.dtraj, lags=[1, 2], mincount_connectivity=0, errors=None)
         assert its.estimator.mincount_connectivity == 0
 

@@ -1,12 +1,25 @@
+import typing
 
+from base import Model
+from markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess.maximum_likelihood_msm import MaximumLikelihoodMSM
 from .markov_state_model import MarkovStateModel
-
 
 __author__ = 'noe, marscher'
 
 
-class BayesianMSM(MaximumLikelihoodMSM):
+class BayesianMSMPosterior(Model):
+    r""" Bayesian Markov state model with samples of posterior and prior.
+    """
+
+    def __init__(self,
+                 prior: typing.Optional[MarkovStateModel] = None,
+                 samples: typing.Optional[typing.List] = None):
+        self.prior = prior
+        self.samples = samples
+
+
+class BayesianMSM(_MSMBaseEstimator):
     r""" Bayesian estimator for MSMs given discrete trajectory statistics
 
     Parameters
@@ -104,28 +117,33 @@ class BayesianMSM(MaximumLikelihoodMSM):
     References
     ----------
     .. [1] Trendelkamp-Schroer, B., H. Wu, F. Paul and F. Noe: Estimation and
-       uncertainty of reversible Markov models. J. Chem. Phys. (in review)
-       Preprint: http://arxiv.org/abs/1507.05990
+       uncertainty of reversible Markov models. J. Chem. Phys.
+       J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
     """
+
     def __init__(self, lagtime=1, nsamples=100, nsteps=None, reversible=True,
                  statdist_constraint=None, count_mode='effective', sparse=False,
                  dt_traj='1 step', conf=0.95,
+                 maxiter=1000000,
+                 maxerr=1e-8,
                  show_progress=True, mincount_connectivity='1/n'):
 
-        super(BayesianMSM, self).__init__(self, lagtime=lagtime, reversible=reversible,
-                                          statdist_constraint=statdist_constraint,
+        super(BayesianMSM, self).__init__(lagtime=lagtime, reversible=reversible,
                                           count_mode=count_mode, sparse=sparse,
                                           dt_traj=dt_traj,
                                           mincount_connectivity=mincount_connectivity)
+        self.statdist_constraint = statdist_constraint
+        self.maxiter = maxiter
+        self.maxerr = maxerr
         self.nsamples = nsamples
         self.nsteps = nsteps
         self.conf = conf
         self.show_progress = show_progress
 
-    #def _create_model(self) -> MarkovStateModel:
-    #    return SampledModel()
+    def _create_model(self) -> BayesianMSMPosterior:
+        return BayesianMSMPosterior()
 
-    def fit(self, dtrajs, call_back=None):
+    def fit(self, dtrajs, call_back: typing.Callable = None):
         """
 
         Parameters
@@ -135,13 +153,16 @@ class BayesianMSM(MaximumLikelihoodMSM):
             or a single ndarray for only one trajectory.
 
         call_back: callable or None (optional)
-            function to be called to indicate progress (optional)
+            function to be called to indicate progress of sampling.
 
         """
         # conduct MLE estimation (superclass) first
         super(BayesianMSM, self).fit(dtrajs)
-        mle = self.fetch_model()
-        assert isinstance(mle, MarkovStateModel)
+        mle = MaximumLikelihoodMSM(lagtime=self.lagtime, reversible=self.reversible,
+                                   statdist_constraint=self.statdist_constraint, count_mode=self.count_mode,
+                                   sparse=self.sparse,
+                                   dt_traj=self.dt_traj, mincount_connectivity=self.mincount_connectivity,
+                                   maxiter=self.maxiter, maxerr=self.maxerr).fit(dtrajs).fetch_model()
 
         # transition matrix sampler
         from msmtools.estimation import tmatrix_sampler
@@ -162,13 +183,10 @@ class BayesianMSM(MaximumLikelihoodMSM):
         sample_Ps, sample_mus = tsampler.sample(nsamples=self.nsamples, return_statdist=True, call_back=call_back)
         # construct sampled MSMs
         samples = [
-            MarkovStateModel(P, pi=pi, reversible=self.reversible, dt_model=mle.dt_model)
+            MarkovStateModel(P, pi=pi, reversible=self.reversible, dt_model=mle.dt_model, count_model=mle.count_model)
             for P, pi in zip(sample_Ps, sample_mus)
         ]
 
-        # TODO: how should we treat SampledModel?
-        self.samples = samples
-        self.nsamples = len(samples)
+        self._model.__init__(prior=mle, samples=samples)
 
-        # done
         return self

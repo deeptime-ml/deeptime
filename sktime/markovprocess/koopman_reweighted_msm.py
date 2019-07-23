@@ -184,7 +184,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         # Rank decision:
         rank_ind = rank_decision(smean, sdev, tol=self.tol_rank)
         # Estimate OOM components:
-        Xi, omega, sigma, l = oom_components(count_model.count_matrix_full.toarray(), C2t, rank_ind=rank_ind,
+        Xi, omega, sigma, l = oom_components(count_model.count_matrix.toarray(), C2t, rank_ind=rank_ind,
                                              lcc=count_model.active_set)
         # Compute transition matrix:
         P, lcc_new = equilibrium_transition_matrix(Xi, omega, sigma, reversible=self.reversible)
@@ -194,7 +194,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
             assert isinstance(count_model, TransitionCountModel)
             count_model.__init__(self.lagtime, active_set=count_model.active_set[lcc_new],
                                  dt_traj=count_model.dt_traj, connected_sets=count_model.connected_sets,
-                                 count_matrix=count_model.count_matrix_full)
+                                 count_matrix=count_model.count_matrix)
             warnings.warn("Caution: Re-estimation of count matrix resulted in reduction of the active set.")
 
         # update models
