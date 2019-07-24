@@ -88,6 +88,10 @@ metadata = \
                 'sktime/clustering/src/clustering_module.cpp'
             ], include_dirs=['sktime/clustering/include'],
                       language='c++', extra_compile_args=['-std=c++17']),
+            Extension('sktime.markovprocess._markovprocess_bindings', sources=[
+                'sktime/markovprocess/src/markovprocess_module.cpp'
+            ], include_dirs=['sktime/markovprocess/include'],
+                      language='c++', extra_compile_args=['-std=c++17']),
         ],
         cmdclass=dict(build_ext=Build),
         zip_safe=False,

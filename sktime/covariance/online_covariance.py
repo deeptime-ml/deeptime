@@ -41,31 +41,31 @@ class OnlineCovarianceModel(Model):
 class OnlineCovariance(Estimator):
     r"""Compute (potentially lagged) covariances between data in an online fashion.
 
-     Parameters
-     ----------
-     c00 : bool, optional, default=True
-         compute instantaneous correlations over the first part of the data. If lag==0, use all of the data.
-         Makes the C00_ attribute available.
-     c0t : bool, optional, default=False
-         compute lagged correlations. Does not work with lag==0.
-         Makes the C0t_ attribute available.
-     ctt : bool, optional, default=False
-         compute instantaneous correlations over the time-shifted chunks of the data. Does not work with lag==0.
-         Makes the Ctt_ attribute available.
-     remove_data_mean : bool, optional, default=False
-         subtract the sample mean from the time series (mean-free correlations).
-     reversible : bool, optional, default=False
-         symmetrize correlations.
-     bessel : bool, optional, default=True
-         use Bessel's correction for correlations in order to use an unbiased estimator
-     sparse_mode : str, optional, default='auto'
-         one of:
-             * 'dense' : always use dense mode
-             * 'auto' : automatic
-             * 'sparse' : always use sparse mode if possible
-     diag_only: bool
-         If True, the computation is restricted to the diagonal entries (autocorrelations) only.
-     """
+    Parameters
+    ----------
+    compute_c00 : bool, optional, default=True
+        compute instantaneous correlations over the first part of the data. If lag==0, use all of the data.
+        Makes the C00_ attribute available.
+    compute_c0t : bool, optional, default=False
+        compute lagged correlations. Does not work with lag==0.
+        Makes the C0t_ attribute available.
+    compute_ctt : bool, optional, default=False
+        compute instantaneous correlations over the time-shifted chunks of the data. Does not work with lag==0.
+        Makes the Ctt_ attribute available.
+    remove_data_mean : bool, optional, default=False
+        subtract the sample mean from the time series (mean-free correlations).
+    reversible : bool, optional, default=False
+        symmetrize correlations.
+    bessel : bool, optional, default=True
+        use Bessel's correction for correlations in order to use an unbiased estimator
+    sparse_mode : str, optional, default='auto'
+        one of:
+            * 'dense' : always use dense mode
+            * 'auto' : automatic
+            * 'sparse' : always use sparse mode if possible
+    diag_only: bool
+        If True, the computation is restricted to the diagonal entries (autocorrelations) only.
+    """
     def __init__(self, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
                  reversible=False, bessel=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
         super(OnlineCovariance, self).__init__(model=model)
