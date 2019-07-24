@@ -26,6 +26,7 @@ requirements:
     - python
     - scipy
     - setuptools
+    - pip
     - pybind11
 
   run:
