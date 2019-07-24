@@ -19,8 +19,7 @@ import unittest
 import numpy as np
 
 
-from markovprocess import BayesianMSM
-from markovprocess.bayesian_msm import BayesianMSMPosterior
+from sktime.markovprocess import BayesianMSM, BayesianMSMPosterior
 
 from pyemma.util.statistics import confidence_interval
 

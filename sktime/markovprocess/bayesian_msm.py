@@ -1,7 +1,7 @@
 import typing
 
-from base import Model
-from markovprocess._base import _MSMBaseEstimator
+from sktime.base import Model
+from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess.maximum_likelihood_msm import MaximumLikelihoodMSM
 from .markov_state_model import MarkovStateModel
 

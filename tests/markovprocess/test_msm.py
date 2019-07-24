@@ -36,7 +36,7 @@ from msmtools.generation import generate_traj
 from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
 from msmtools.analysis import stationary_distribution, timescales
 
-from markovprocess import BayesianMSM
+from sktime.markovprocess import BayesianMSM
 from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
 from sktime.markovprocess._base import score_cv
 
