@@ -47,10 +47,8 @@ test:
   requires:
     - scikit-learn
     - pyemma # TODO: remove in the future
-
     - pytest
     - pytest-cov
     - pytest-faulthandler
     - pytest-xdist
     - pytest-sugar
-
