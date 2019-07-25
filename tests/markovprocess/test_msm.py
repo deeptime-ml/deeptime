@@ -984,11 +984,6 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         i = id(msm_restricted.prior.count_model)
         assert all(id(x.count_model) == i for x in msm_restricted.samples)
 
-    def test_timescales(self):
-        raise NotImplementedError
-        its = timescales_msm(self.dtraj, lags=[1, 2], mincount_connectivity=0, errors=None)
-        assert its.estimator.mincount_connectivity == 0
-
 
 if __name__ == "__main__":
     unittest.main()
