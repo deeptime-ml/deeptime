@@ -1,8 +1,9 @@
 import numpy as np
+from numpy.linalg import eig
 
 from sktime.base import Estimator, Model
 from .util.running_moments import running_covar as running_covar
-from sktime.data.util import timeshifted_split
+from sktime.numeric.eigen import spd_inv_split, sort_by_norm
 
 __all__ = ['OnlineCovariance']
 
@@ -179,4 +180,80 @@ class OnlineCovariance(Estimator):
 
     def fetch_model(self) -> OnlineCovarianceModel:
         self._update_model()
+        return self._model
+
+
+class KoopmanWeights(Model):
+
+    def __init__(self):
+        self.u = self.u_const = None
+
+    def compute_weight(self, X):
+        assert self.u is not None and self.u_const is not None
+        return X.dot(self.u) + self.u_const
+
+
+class KoopmanEstimator(Estimator):
+
+    def __init__(self, epsilon=1e-6, ncov=float('inf')):
+        super(KoopmanEstimator, self).__init__()
+        self.epsilon = epsilon
+        self._cov = OnlineCovariance(compute_c00=True, compute_c0t=True, remove_data_mean=True, reversible=False,
+                                     bessel=False, ncov=ncov)
+
+    def fit(self, data, y=None):
+        self._cov.fit(data)
+        return self
+
+    def partial_fit(self, data):
+        self._cov.partial_fit(data)
+        return self
+
+    def _create_model(self) -> KoopmanWeights:
+        return KoopmanWeights()
+
+    @staticmethod
+    def _compute_u(K):
+        """
+        Estimate an approximation of the ratio of stationary over empirical distribution from the basis.
+        Parameters:
+        -----------
+        K0, ndarray(M+1, M+1),
+            time-lagged correlation matrix for the whitened and padded data set.
+        Returns:
+        --------
+        u : ndarray(M,)
+            coefficients of the ratio stationary / empirical dist. from the whitened and expanded basis.
+        """
+        M = K.shape[0] - 1
+        # Compute right and left eigenvectors:
+        l, U = eig(K.T)
+        l, U = sort_by_norm(l, U)
+        # Extract the eigenvector for eigenvalue one and normalize:
+        u = np.real(U[:, 0])
+        v = np.zeros(M + 1)
+        v[M] = 1.0
+        u = u / np.dot(u, v)
+        return u
+
+    def fetch_model(self) -> KoopmanWeights:
+        cov = self._cov.fetch_model()
+
+        R = spd_inv_split(cov.cov_00, epsilon=self.epsilon, canonical_signs=True)
+        # Set the new correlation matrix:
+        M = R.shape[1]
+        K = np.dot(R.T, np.dot(cov.cov_0t, R))
+        K = np.vstack((K, np.dot((cov.mean_t - cov.mean_0), R)))
+        ex1 = np.zeros((M + 1, 1))
+        ex1[M, 0] = 1.0
+        K = np.hstack((K, ex1))
+
+        u = self._compute_u(K)
+        N = R.shape[0]
+        u_input = np.zeros(N+1)
+        u_input[0:N] = R.dot(u[0:-1])  # in input basis
+        u_input[N] = u[-1] - cov.mean_0.dot(R.dot(u[0:-1]))
+
+        self._model.u = u_input[:-1]
+        self._model.u_const = u_input[-1]
         return self._model
