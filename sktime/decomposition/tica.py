@@ -265,7 +265,7 @@ class TICA(Estimator, Transformer):
 
     """
     def __init__(self, epsilon=1e-6, reversible=True, dim=0.95,
-                 scaling='kinetic_map', ncov=5, koopman_weights=None):
+                 scaling='kinetic_map', ncov=5, reweighting_transformation=None):
         super(TICA, self).__init__()
         # tica parameters
         self._model.epsilon = epsilon
@@ -276,7 +276,7 @@ class TICA(Estimator, Transformer):
         self.reversible = reversible
         self._covar = OnlineCovariance(compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
                                        reversible=self.reversible, bessel=False, ncov=ncov)
-        self.reweighting_transformation = koopman_weights
+        self.reweighting_transformation = reweighting_transformation
 
     def _create_model(self) -> TICAModel:
         return TICAModel()
