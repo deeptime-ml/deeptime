@@ -12,7 +12,8 @@ def timeshifted_split(inputs, lagtime: int, chunksize=None, n_splits=None):
     for data in inputs:
         data = np.asarray_chkfinite(data)
 
-        n_splits = np.ceil(len(data) // chunksize) if n_splits is None else n_splits
+        n_splits = np.ceil(len(data) // min(len(data), chunksize)) if n_splits is None else n_splits
+        assert n_splits >= 1, n_splits
 
         data_lagged = data[lagtime:]
         data = data[:-lagtime]
