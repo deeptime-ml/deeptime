@@ -15,3 +15,6 @@ from .bayesian_msm import BayesianMSM, BayesianMSMPosterior
 from .markov_state_model import MarkovStateModel
 from .pcca import PCCA
 from .reactive_flux import ReactiveFlux
+
+from ._base import score_cv, cktest
+

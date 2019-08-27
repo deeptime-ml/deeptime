@@ -161,7 +161,6 @@ class TransitionCountModel(Model):
         """
         return self.subselect_count_matrix(subset=self.active_set)
 
-    # todo rename to count_matrix
     @property
     def count_matrix(self):
         """
