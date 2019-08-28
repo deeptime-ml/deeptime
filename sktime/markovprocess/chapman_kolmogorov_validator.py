@@ -77,11 +77,6 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     @test_estimator.setter
     def test_estimator(self, test_estimator):
         self._test_estimator = test_estimator
-        #TODO: active_set is a model attribute
-        self.active_set = types.ensure_ndarray(np.array(test_estimator.active_set), kind='i')  # create a copy
-        # map from the full set (here defined by the largest state index in active set) to active
-        self._full2active = np.zeros(np.max(self.active_set)+1, dtype=int)
-        self._full2active[self.active_set] = np.arange(self.nstates)
 
     @property
     def test_model(self):
@@ -93,6 +88,12 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         # define starting distribution
         self.P0 = self.memberships * test_model.stationary_distribution[:, None]
         self.P0 /= self.P0.sum(axis=0)  # column-normalize
+
+        #TODO: active_set is a model attribute
+        active_set = types.ensure_ndarray(np.array(test_model.count_model.active_set), kind='i')  # create a copy
+        # map from the full set (here defined by the largest state index in active set) to active
+        self._full2active = np.zeros(np.max(active_set) + 1, dtype=int)
+        self._full2active[active_set] = np.arange(self.nstates)
 
     def _compute_observables(self, model: MarkovStateModel, mlag=1):
         # for lag time 0 we return an identity matrix
@@ -136,3 +137,54 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
                                                  for pksub in pksub_samples), dtype=np.float, count=len(pksub_samples))
                 l[i, j], r[i, j] = confidence_interval(pk_on_set_samples, conf=self.conf)
         return l, r
+
+
+def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10,
+           conf=0.95, err_est=False) -> ChapmanKolmogorovValidator:
+    """ Conducts a Chapman-Kolmogorow test.
+
+    Parameters
+    ----------
+    nsets : int
+        number of sets to test on
+    memberships : ndarray(nstates, nsets), optional
+        optional state memberships. By default (None) will conduct a cktest
+        on PCCA (metastable) sets.
+    mlags : int or int-array, optional
+        multiples of lag times for testing the Model, e.g. range(10).
+        A single int will trigger a range, i.e. mlags=10 maps to
+        mlags=range(10). The setting None will choose mlags automatically
+        according to the longest available trajectory
+    conf : float, optional
+        confidence interval
+    err_est : bool, optional
+        compute errors also for all estimations (computationally expensive)
+        If False, only the prediction will get error bars, which is often
+        sufficient to validate a model.
+
+    Returns
+    -------
+    cktest : :class:`ChapmanKolmogorovValidator <sktime.markovprocess.ChapmanKolmogorovValidator>`
+
+
+    References
+    ----------
+    This test was suggested in [1]_ and described in detail in [2]_.
+
+    .. [1] F. Noe, Ch. Schuette, E. Vanden-Eijnden, L. Reich and
+        T. Weikl: Constructing the Full Ensemble of Folding Pathways
+        from Short Off-Equilibrium Simulations.
+        Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
+    .. [2] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
+        Chodera, C Schuette and F Noe. 2011. Markov models of
+        molecular kinetics: Generation and validation. J Chem Phys
+        134: 174105
+
+    """
+    if memberships is None:
+        test_model.pcca(nsets)
+        memberships = test_model.metastable_memberships
+    ck = ChapmanKolmogorovValidator(test_estimator=test_estimator, test_model=test_model, memberships=memberships,
+                                    mlags=mlags, conf=conf, err_est=err_est)
+    ck.fit(dtrajs)
+    return ck

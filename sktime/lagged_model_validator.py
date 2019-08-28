@@ -1,6 +1,7 @@
 import abc
 
 import numpy as np
+from msmtools.util.types import ensure_dtraj_list
 
 from sktime.base import Estimator, Model
 # TODO: copy over?
@@ -124,6 +125,7 @@ class LaggedModelValidator(Estimator):
 
     def _get_mlags(self, data, lagtime: int, mlags=None):
         # set mlags
+
         maxlength = np.max([len(x) for x in data])
         import math
         maxmlag = int(math.floor(maxlength / lagtime))
@@ -144,9 +146,11 @@ class LaggedModelValidator(Estimator):
     def _create_model(self) -> LaggedModelValidation:
         return LaggedModelValidation()
 
-    def fit(self, data, mlags=10):
+    def fit(self, dtrajs, mlags=10):
+        dtrajs = ensure_dtraj_list(dtrajs)
+
         # lag times
-        mlags = self._get_mlags(data, self.test_estimator.lagtime, mlags)
+        mlags = self._get_mlags(dtrajs, self.test_estimator.lagtime, mlags)
         assert isinstance(mlags, np.ndarray) and mlags.dtype == 'i'
         lags = mlags * self.test_estimator.lagtime
         pargrid = ParameterGrid({'lagtime': lags})
@@ -163,15 +167,15 @@ class LaggedModelValidator(Estimator):
 
         # run estimates
         estimated_models = []
-        for p in pargrid:
-            self.test_estimator.lagtime = p
-            self.test_estimator.fit(data)
+        for param in pargrid:
+            self.test_estimator.lagtime = param['lagtime']
+            self.test_estimator.fit(dtrajs)
             estimated_models.append(self.test_estimator.fetch_model())
 
         if include0:
             estimated_models.insert(0, None)
 
-        for i, mlag in enumerate(mlags):
+        for mlag, model in zip(mlags, estimated_models):
             if mlag == 0:
                 continue
             # make a prediction using the current model
@@ -182,7 +186,6 @@ class LaggedModelValidator(Estimator):
                 predictions_conf.append((l, r))
 
             # do an estimate at this lagtime
-            model = estimated_models[i]
             estimates.append(self._compute_observables(model))
             if self.has_errors and self.err_est:
                 l, r = self._compute_observables_conf(model)
@@ -208,10 +211,10 @@ class LaggedModelValidator(Estimator):
             estimates_conf = None
 
         m = self._model
-        m.estimates = estimates
-        m.estimates_conf = estimates_conf
-        m.predictions = predictions
-        m.predictions_conf = predictions_conf
+        m._estimates = estimates
+        m._estimates_conf = estimates_conf
+        m._predictions = predictions
+        m._predictions_conf = predictions_conf
 
         return self
 

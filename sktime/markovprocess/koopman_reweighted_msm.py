@@ -5,7 +5,7 @@ from msmtools.estimation import effective_count_matrix
 
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess._base import _MSMBaseEstimator
-from sktime.markovprocess._dtraj_stats import TransitionCountEstimator, TransitionCountModel
+from sktime.markovprocess.transition_counting import TransitionCountEstimator, TransitionCountModel
 from sktime.util import submatrix
 from ._koopman_reweighted_msm_impl import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
                                            rank_decision, oom_components, equilibrium_transition_matrix)

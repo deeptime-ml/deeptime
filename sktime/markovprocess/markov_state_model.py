@@ -26,7 +26,7 @@ import numpy as np
 
 from sktime.base import Model
 from sktime.markovprocess import Q_
-from sktime.markovprocess._dtraj_stats import TransitionCountModel
+from sktime.markovprocess.transition_counting import TransitionCountModel
 from sktime.markovprocess.pcca import PCCA
 from sktime.markovprocess.sample import ensure_dtraj_list
 from sktime.util import ensure_ndarray, mdot
@@ -1279,5 +1279,5 @@ class MarkovStateModel(Model):
                           k=score_k, score=score_method)
 
     def _blocksplit_dtrajs(self, dtrajs, sliding):
-        from sktime.markovprocess._dtraj_stats import blocksplit_dtrajs
+        from sktime.markovprocess.transition_counting import blocksplit_dtrajs
         return blocksplit_dtrajs(dtrajs, lag=self.count_model.lagtime, sliding=sliding)

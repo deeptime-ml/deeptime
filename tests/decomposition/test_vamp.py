@@ -27,7 +27,7 @@ from logging import getLogger
 
 from sktime.data.util import timeshifted_split
 from sktime.decomposition.vamp import VAMP, VAMPModel
-from sktime.markovprocess._dtraj_stats import cvsplit_dtrajs
+from sktime.markovprocess.transition_counting import cvsplit_dtrajs
 from tests.markovprocess.test_msm import estimate_markov_model
 
 logger = getLogger('sktime.' + 'TestVAMP')

@@ -30,8 +30,8 @@ import numpy as np
 from msmtools.generation import generate_traj
 from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
 from msmtools.util.birth_death_chain import BirthDeathChain
-from numpy.testing import assert_allclose
 
+from sktime.markovprocess import cktest
 from tests.markovprocess.test_bayesian_msm import bayesian_markov_model
 from tests.markovprocess.test_msm import estimate_markov_model
 
@@ -61,7 +61,8 @@ class TestCK_MSM(unittest.TestCase):
         tau = 1
 
         """Estimate MSM"""
-        MSM = estimate_markov_model(dtraj, tau)
+        estimator, MSM = estimate_markov_model(dtraj, tau, return_estimator=True)
+        self.estimator = estimator
         C_MSM = MSM.count_model.count_matrix
         lcc_MSM = MSM.count_model.largest_connected_set
         Ccc_MSM = MSM.count_model.count_matrix_active
@@ -140,7 +141,8 @@ class TestCK_MSM(unittest.TestCase):
                                 [0, 0, 1],
                                 [0, 0, 1],
                                 [0, 0, 1]])
-        ck = self.MSM.cktest(self.dtraj, nsets=3, memberships=memberships)
+        ck = cktest(test_model=self.MSM, test_estimator=self.estimator, dtrajs=self.dtraj, nsets=3, memberships=memberships)
+        ck = ck.fetch_model()
         p_MSM = np.vstack([ck.predictions[:, 0, 0], ck.predictions[:, 2, 2]]).T
         np.testing.assert_allclose(p_MSM, self.p_MSM)
         p_MD = np.vstack([ck.estimates[:, 0, 0], ck.estimates[:, 2, 2]]).T
@@ -158,8 +160,9 @@ class TestCK_AllEstimators(unittest.TestCase):
 
 
     def test_ck_msm(self):
-        MLMSM = estimate_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 40)
-        self.ck = MLMSM.cktest(2, mlags=[0,1,10])
+        estimator, MLMSM = estimate_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 40, return_estimator=True)
+        self.ck = cktest(test_estimator=estimator, test_model=MLMSM, nsets=2, mlags=[0,1,10],
+                         dtrajs=self.double_well_data.dtraj_T100K_dt10_n6good).fetch_model()
         estref = np.array([[[ 1.,          0.        ],
                             [ 0.,          1.        ]],
                            [[ 0.89806859,  0.10193141],

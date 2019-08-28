@@ -16,5 +16,6 @@ from .markov_state_model import MarkovStateModel
 from .pcca import PCCA
 from .reactive_flux import ReactiveFlux
 
-from ._base import score_cv, cktest
+from ._base import score_cv
+from .chapman_kolmogorov_validator import cktest
 
