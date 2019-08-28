@@ -14,7 +14,7 @@ class BayesianMSMPosterior(Model):
 
     def __init__(self,
                  prior: typing.Optional[MarkovStateModel] = None,
-                 samples: typing.Optional[typing.List] = None):
+                 samples: typing.Optional[typing.List[MarkovStateModel]] = None):
         self.prior = prior
         self.samples = samples
 
