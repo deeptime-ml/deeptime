@@ -156,8 +156,8 @@ class TestCK_AllEstimators(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # load double well data
-        import pyemma.datasets
-        cls.double_well_data = pyemma.datasets.load_2well_discrete()
+        from tests.markovprocess.double_well_data import DoubleWell_Discrete_Data
+        cls.double_well_data = DoubleWell_Discrete_Data()
 
     def test_ck_msm(self):
         estimator, MLMSM = estimate_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 40,
