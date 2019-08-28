@@ -389,7 +389,7 @@ class VAMPModel(Model):
         assert res
         return res + 1
 
-    def cktest(self, n_observables=None, observables='phi', statistics='psi', mlags=10, data=None):
+    def cktest(self, n_observables=None, observables='phi', statistics='psi', mlags=10, data=None, test_estimator=None):
         r"""Do the Chapman-Kolmogorov test by computing predictions for higher lag times and by performing estimations at higher lag times.
 
         Notes
@@ -479,11 +479,12 @@ class VAMPModel(Model):
         else:
             #ensure_ndarray_or_None(statistics, ndim=2)
             statistics_mean_free = False
-        test_estimator = VAMP(dim=self.dim, scaling=self.scaling, right=self.right, epsilon=self.epsilon)
+        if test_estimator is None:
+            test_estimator = VAMP(dim=self.dim, scaling=self.scaling, right=self.right, epsilon=self.epsilon)
         ck = VAMPChapmanKolmogorovValidator(self, test_estimator, observables, statistics, observables_mean_free,
                                             statistics_mean_free, mlags=mlags)
-
-        ck.fit(data)
+        if data is not None:
+            ck.fit(data)
         return ck
 
 
@@ -749,16 +750,17 @@ class VAMPChapmanKolmogorovValidator(LaggedModelValidator):
             self.nsets = min(self.observables.shape[1], self._statistics.shape[1])
 
     def _compute_observables(self, model: VAMPModel, mlag=1):
-        # for lag time 0 we return a matrix of nan, until the correct solution is implemented
-        if mlag == 0 or model is None:
-            if self.statistics is None:
-                return np.zeros(self.observables.shape[1]) + np.nan
-            else:
-                return np.zeros((self.observables.shape[1], self.statistics.shape[1])) + np.nan
-        else:
-            return model.expectation(statistics=self.statistics, observables=self.observables, lag_multiple=mlag,
-                                     statistics_mean_free=self.statistics_mean_free,
-                                     observables_mean_free=self.observables_mean_free)
+        return model.expectation(statistics=self.statistics, observables=self.observables, lag_multiple=mlag,
+                                 statistics_mean_free=self.statistics_mean_free,
+                                 observables_mean_free=self.observables_mean_free)
 
     def _compute_observables_conf(self, model, mlag=1, conf=0.95):
         raise NotImplementedError('estimation of confidence intervals not yet implemented for VAMP')
+
+    def _observable_dummy_mlag0(self, conf=False):
+        assert conf is False
+        # for lag time 0 we return a matrix of nan, until the correct solution is implemented
+        if self.statistics is None:
+            return np.zeros(self.observables.shape[1]) + np.nan
+        else:
+            return np.zeros((self.observables.shape[1], self.statistics.shape[1])) + np.nan
