@@ -84,6 +84,8 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
 
     @test_model.setter
     def test_model(self, test_model: MarkovStateModel):
+        assert self.memberships is not None
+        assert self.memberships.shape[0] == test_model.nstates, 'provided memberships and test_model nstates mismatch'
         self._test_model = test_model.copy()
         # define starting distribution
         self.P0 = self.memberships * test_model.stationary_distribution[:, None]
@@ -93,12 +95,9 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         active_set = types.ensure_ndarray(np.array(test_model.count_model.active_set), kind='i')  # create a copy
         # map from the full set (here defined by the largest state index in active set) to active
         self._full2active = np.zeros(np.max(active_set) + 1, dtype=int)
-        self._full2active[active_set] = np.arange(self.nstates)
+        self._full2active[active_set] = np.arange(test_model.nstates)
 
     def _compute_observables(self, model: MarkovStateModel, mlag=1):
-        # for lag time 0 we return an identity matrix
-        if mlag == 0 or model is None:
-            return np.eye(self.nsets)
         # otherwise compute or predict them by model.propagate
         pk_on_set = np.zeros((self.nsets, self.nsets))
         if model.count_model is not None:
@@ -138,7 +137,15 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
                 l[i, j], r[i, j] = confidence_interval(pk_on_set_samples, conf=self.conf)
         return l, r
 
+    def _observable_dummy_mlag0(self, conf=False):
+        I = np.eye(self.nsets)
+        if conf:
+            return I, I
 
+        return I
+
+
+# TODO: docstring
 def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10,
            conf=0.95, err_est=False) -> ChapmanKolmogorovValidator:
     """ Conducts a Chapman-Kolmogorow test.

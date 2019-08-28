@@ -4,7 +4,7 @@ from inspect import signature
 from sklearn.base import _pprint as pprint_sklearn
 
 
-class _base_methods_mixin(object):
+class _base_methods_mixin(object, metaclass=abc.ABCMeta):
 
     def __repr__(self):
         name = '{cls}-{id}:'.format(id=id(self), cls=self.__class__.__name__)

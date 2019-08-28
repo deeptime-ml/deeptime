@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -31,6 +30,7 @@ from msmtools.generation import generate_traj
 from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
 from msmtools.util.birth_death_chain import BirthDeathChain
 
+from sktime.lagged_model_validator import LaggedModelValidation
 from sktime.markovprocess import cktest
 from tests.markovprocess.test_bayesian_msm import bayesian_markov_model
 from tests.markovprocess.test_msm import estimate_markov_model
@@ -141,7 +141,8 @@ class TestCK_MSM(unittest.TestCase):
                                 [0, 0, 1],
                                 [0, 0, 1],
                                 [0, 0, 1]])
-        ck = cktest(test_model=self.MSM, test_estimator=self.estimator, dtrajs=self.dtraj, nsets=3, memberships=memberships)
+        ck = cktest(test_model=self.MSM, test_estimator=self.estimator, dtrajs=self.dtraj, nsets=3,
+                    memberships=memberships)
         ck = ck.fetch_model()
         p_MSM = np.vstack([ck.predictions[:, 0, 0], ck.predictions[:, 2, 2]]).T
         np.testing.assert_allclose(p_MSM, self.p_MSM)
@@ -158,61 +159,62 @@ class TestCK_AllEstimators(unittest.TestCase):
         import pyemma.datasets
         cls.double_well_data = pyemma.datasets.load_2well_discrete()
 
-
     def test_ck_msm(self):
-        estimator, MLMSM = estimate_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 40, return_estimator=True)
-        self.ck = cktest(test_estimator=estimator, test_model=MLMSM, nsets=2, mlags=[0,1,10],
+        estimator, MLMSM = estimate_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 40,
+                                                 return_estimator=True)
+        self.ck = cktest(test_estimator=estimator, test_model=MLMSM, nsets=2, mlags=[0, 1, 10],
                          dtrajs=self.double_well_data.dtraj_T100K_dt10_n6good).fetch_model()
-        estref = np.array([[[ 1.,          0.        ],
-                            [ 0.,          1.        ]],
-                           [[ 0.89806859,  0.10193141],
-                            [ 0.10003466,  0.89996534]],
-                           [[ 0.64851782,  0.35148218],
-                            [ 0.34411751,  0.65588249]]])
-        predref = np.array([[[ 1.,          0.        ],
-                             [ 0.,          1.        ]],
-                            [[ 0.89806859,  0.10193141],
-                             [ 0.10003466,  0.89996534]],
-                            [[ 0.62613723,  0.37386277],
-                             [ 0.3669059,   0.6330941 ]]])
+        assert isinstance(self.ck, LaggedModelValidation)
+        estref = np.array([[[1., 0.],
+                            [0., 1.]],
+                           [[0.89806859, 0.10193141],
+                            [0.10003466, 0.89996534]],
+                           [[0.64851782, 0.35148218],
+                            [0.34411751, 0.65588249]]])
+        predref = np.array([[[1., 0.],
+                             [0., 1.]],
+                            [[0.89806859, 0.10193141],
+                             [0.10003466, 0.89996534]],
+                            [[0.62613723, 0.37386277],
+                             [0.3669059, 0.6330941]]])
         # rough agreement with MLE
-        assert np.allclose(self.ck.estimates, estref, rtol=0.1, atol=10.0)
+        np.testing.assert_allclose(self.ck.estimates, estref, rtol=0.1, atol=10.0)
         assert self.ck.estimates_conf[0] is None
         assert self.ck.estimates_conf[1] is None
-        assert np.allclose(self.ck.predictions, predref, rtol=0.1, atol=10.0)
+        np.testing.assert_allclose(self.ck.predictions, predref, rtol=0.1, atol=10.0)
         assert self.ck.predictions_conf[0] is None
         assert self.ck.predictions_conf[1] is None
 
     def test_its_bmsm(self):
         BMSM = bayesian_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 40, reversible=True)
         # also ensure that reversible bit does not flip during cktest
-        assert BMSM.reversible
-        self.ck = BMSM.cktest(2, mlags=[0,1,10])
-        assert BMSM.reversible
-        estref = np.array([[[ 1.,          0.        ],
-                            [ 0.,          1.        ]],
-                           [[ 0.89722931,  0.10277069],
-                            [ 0.10070029,  0.89929971]],
-                           [[ 0.64668027,  0.35331973],
-                            [ 0.34369109,  0.65630891]]])
-        predref = np.array([[[ 1.,          0.        ],
-                             [ 0.,          1.        ]],
-                            [[ 0.89722931,  0.10277069],
-                             [ 0.10070029,  0.89929971]],
-                            [[ 0.62568693,  0.37431307],
-                             [ 0.36677222,  0.63322778]]])
-        predLref = np.array([[[ 1.        ,  0.        ],
-                              [ 0.        ,  1.        ]],
-                             [[ 0.89398296,  0.09942586],
-                              [ 0.09746008,  0.89588256]],
-                             [[ 0.6074675 ,  0.35695492],
-                              [ 0.34831224,  0.61440531]]])
-        predRref = np.array([[[ 1.        ,  0.        ],
-                              [ 0.        ,  1.        ]],
-                             [[ 0.90070139,  0.10630301],
-                              [ 0.10456111,  0.90255169]],
-                             [[ 0.64392557,  0.39258944],
-                              [ 0.38762444,  0.65176265]]])
+        assert BMSM.prior.reversible
+        self.ck = BMSM.cktest(2, mlags=[0, 1, 10])
+        assert BMSM.prior.reversible
+        estref = np.array([[[1., 0.],
+                            [0., 1.]],
+                           [[0.89722931, 0.10277069],
+                            [0.10070029, 0.89929971]],
+                           [[0.64668027, 0.35331973],
+                            [0.34369109, 0.65630891]]])
+        predref = np.array([[[1., 0.],
+                             [0., 1.]],
+                            [[0.89722931, 0.10277069],
+                             [0.10070029, 0.89929971]],
+                            [[0.62568693, 0.37431307],
+                             [0.36677222, 0.63322778]]])
+        predLref = np.array([[[1., 0.],
+                              [0., 1.]],
+                             [[0.89398296, 0.09942586],
+                              [0.09746008, 0.89588256]],
+                             [[0.6074675, 0.35695492],
+                              [0.34831224, 0.61440531]]])
+        predRref = np.array([[[1., 0.],
+                              [0., 1.]],
+                             [[0.90070139, 0.10630301],
+                              [0.10456111, 0.90255169]],
+                             [[0.64392557, 0.39258944],
+                              [0.38762444, 0.65176265]]])
         # rough agreement
         assert np.allclose(self.ck.estimates, estref, rtol=0.1, atol=10.0)
         assert self.ck.estimates_conf[0] is None
@@ -223,19 +225,19 @@ class TestCK_AllEstimators(unittest.TestCase):
 
     def test_its_hmsm(self):
         MLHMM = msm.estimate_hidden_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 2, 10)
-        self.ck = MLHMM.cktest(mlags=[0,1,10])
-        estref = np.array([[[ 1.,          0.        ],
-                            [ 0.,          1.        ]],
-                           [[ 0.98515058,  0.01484942],
-                            [ 0.01442843,  0.98557157]],
-                           [[ 0.88172685,  0.11827315],
-                            [ 0.11878823,  0.88121177]]])
-        predref = np.array([[[ 1.,          0.        ],
-                             [ 0.,          1.        ]],
-                            [[ 0.98515058,  0.01484942],
-                             [ 0.01442843,  0.98557157]],
-                            [[ 0.86961812,  0.13038188],
-                             [ 0.12668553,  0.87331447]]])
+        self.ck = MLHMM.cktest(mlags=[0, 1, 10])
+        estref = np.array([[[1., 0.],
+                            [0., 1.]],
+                           [[0.98515058, 0.01484942],
+                            [0.01442843, 0.98557157]],
+                           [[0.88172685, 0.11827315],
+                            [0.11878823, 0.88121177]]])
+        predref = np.array([[[1., 0.],
+                             [0., 1.]],
+                            [[0.98515058, 0.01484942],
+                             [0.01442843, 0.98557157]],
+                            [[0.86961812, 0.13038188],
+                             [0.12668553, 0.87331447]]])
         # rough agreement with MLE
         assert np.allclose(self.ck.estimates, estref, rtol=0.1, atol=10.0)
         assert self.ck.estimates_conf[0] is None
@@ -246,31 +248,31 @@ class TestCK_AllEstimators(unittest.TestCase):
 
     def test_its_bhmm(self):
         BHMM = msm.bayesian_hidden_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 2, 10)
-        self.ck = BHMM.cktest(mlags=[0,1,10])
-        estref = np.array([[[ 1.,          0.        ],
-                            [ 0.,          1.        ]],
-                           [[ 0.98497185,  0.01502815],
-                            [ 0.01459256,  0.98540744]],
-                           [[ 0.88213404,  0.11786596],
-                            [ 0.11877379,  0.88122621]]])
-        predref = np.array([[[ 1.,          0.        ],
-                             [ 0.,          1.        ]],
-                            [[ 0.98497185,  0.01502815],
-                             [ 0.01459256,  0.98540744]],
-                            [[ 0.86824695,  0.13175305],
-                             [ 0.1279342,   0.8720658 ]]])
-        predLref = np.array([[[ 1.        ,  0.        ],
-                              [ 0.        ,  1.        ]],
-                             [[ 0.98282734,  0.01284444],
-                              [ 0.0123793 ,  0.98296742]],
-                             [[ 0.8514399 ,  0.11369687],
-                              [ 0.10984971,  0.85255827]]])
-        predRref = np.array([[[ 1.        ,  0.        ],
-                              [ 0.        ,  1.        ]],
-                             [[ 0.98715575,  0.01722138],
-                              [ 0.0178059 ,  0.98762081]],
-                             [[ 0.8865478 ,  0.14905352],
-                              [ 0.14860461,  0.89064809]]])
+        self.ck = BHMM.cktest(mlags=[0, 1, 10])
+        estref = np.array([[[1., 0.],
+                            [0., 1.]],
+                           [[0.98497185, 0.01502815],
+                            [0.01459256, 0.98540744]],
+                           [[0.88213404, 0.11786596],
+                            [0.11877379, 0.88122621]]])
+        predref = np.array([[[1., 0.],
+                             [0., 1.]],
+                            [[0.98497185, 0.01502815],
+                             [0.01459256, 0.98540744]],
+                            [[0.86824695, 0.13175305],
+                             [0.1279342, 0.8720658]]])
+        predLref = np.array([[[1., 0.],
+                              [0., 1.]],
+                             [[0.98282734, 0.01284444],
+                              [0.0123793, 0.98296742]],
+                             [[0.8514399, 0.11369687],
+                              [0.10984971, 0.85255827]]])
+        predRref = np.array([[[1., 0.],
+                              [0., 1.]],
+                             [[0.98715575, 0.01722138],
+                              [0.0178059, 0.98762081]],
+                             [[0.8865478, 0.14905352],
+                              [0.14860461, 0.89064809]]])
         # rough agreement
         assert np.allclose(self.ck.estimates, estref, rtol=0.1, atol=10.0)
         assert self.ck.estimates_conf[0] is None

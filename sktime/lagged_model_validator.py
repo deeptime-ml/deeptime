@@ -40,7 +40,7 @@ class LaggedModelValidation(Model):
             computed at one of the T lag times.
 
         """
-        return self._estimates_conf,
+        return self._estimates_conf
 
     @property
     def predictions(self):
@@ -76,7 +76,7 @@ class LaggedModelValidation(Model):
         return self._predictions_conf
 
 
-class LaggedModelValidator(Estimator):
+class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
     r""" Validates a model estimated at lag time tau by testing its predictions
     for longer lag times
 
@@ -123,61 +123,60 @@ class LaggedModelValidator(Estimator):
 
         super(LaggedModelValidator, self).__init__()
 
-    def _get_mlags(self, data, lagtime: int, mlags=None):
-        # set mlags
+    def _set_mlags(self, data, lagtime: int, mlags=None):
+        # set mlags, we do it in fit, so we can obtain the maximum possible lagtime from the trajectory data.
+        from numbers import Integral
 
+        mlags = self.mlags
         maxlength = np.max([len(x) for x in data])
-        import math
-        maxmlag = int(math.floor(maxlength / lagtime))
+        maxmlag = int(np.floor(maxlength / lagtime))
         if mlags is None:
             mlags = maxmlag
-        from numbers import Integral
-        if isinstance(mlags, Integral):
-            mlags = np.arange(1, mlags)
-        mlags = mlags.astype(dtype='i')
+        elif isinstance(mlags, Integral):
+            mlags = np.arange(mlags)
+        mlags = np.asarray(mlags, dtype='i')
         if np.any(mlags > maxmlag):
             mlags = mlags[np.where(mlags <= maxmlag)]
         if np.any(mlags < 0):
             mlags = mlags[np.where(mlags >= 0)]
 
-        assert 0 not in mlags
-        return mlags
+        self.mlags = mlags
 
     def _create_model(self) -> LaggedModelValidation:
         return LaggedModelValidation()
 
-    def fit(self, dtrajs, mlags=10):
+    def fit(self, dtrajs):
         dtrajs = ensure_dtraj_list(dtrajs)
 
-        # lag times
-        mlags = self._get_mlags(dtrajs, self.test_estimator.lagtime, mlags)
-        assert isinstance(mlags, np.ndarray) and mlags.dtype == 'i'
-        lags = mlags * self.test_estimator.lagtime
-        pargrid = ParameterGrid({'lagtime': lags})
-        # do we have zero lag? this must be treated separately
-        include0 = mlags[0] == 0
-        if include0:
-            pargrid = pargrid[1:]
+        # set lag times
+        self._set_mlags(dtrajs, self.test_estimator.lagtime, self.mlags)
+        lags = self.mlags * self.test_estimator.lagtime
 
         predictions = []
         predictions_conf = []
-
         estimates = []
         estimates_conf = []
-
-        # run estimates
         estimated_models = []
-        for param in pargrid:
-            self.test_estimator.lagtime = param['lagtime']
-            self.test_estimator.fit(dtrajs)
-            estimated_models.append(self.test_estimator.fetch_model())
 
+        # do we have zero lag? this must be treated separately
+        include0 = self.mlags[0] == 0
         if include0:
-            estimated_models.insert(0, None)
+            lags = lags[1:]
+            estimated_models.append(None)
+            estimates.append(self._observable_dummy_mlag0())
+            predictions.append(self._observable_dummy_mlag0())
+            if self.has_errors:
+                estimates_conf.append(self._observable_dummy_mlag0(conf=True))
+                predictions.append(self._observable_dummy_mlag0(conf=True))
 
-        for mlag, model in zip(mlags, estimated_models):
-            if mlag == 0:
-                continue
+        # estimate models at multiple of input lag time.
+        for lag in lags:
+            self.test_estimator.lagtime = lag
+            self.test_estimator.fit(dtrajs)
+            estimated_models.append(self.test_estimator.fetch_model(copy=True))
+
+        for mlag, model in zip(self.mlags, estimated_models):
+            if model is None: continue
             # make a prediction using the current model
             predictions.append(self._compute_observables(self.test_model, mlag=mlag))
             # compute prediction errors if we can
@@ -190,13 +189,6 @@ class LaggedModelValidator(Estimator):
             if self.has_errors and self.err_est:
                 l, r = self._compute_observables_conf(model)
                 estimates_conf.append((l, r))
-        # TODO: fill
-        if include0:
-            dummy = np.ones_like(predictions[-1]) * np.nan
-            predictions.insert(0, dummy)
-            if self.has_errors:
-                dummy = np.ones_like(predictions_conf[-1]) * np.nan
-                predictions_conf.insert()
 
         # build arrays
         estimates = np.array(estimates)
@@ -204,11 +196,11 @@ class LaggedModelValidator(Estimator):
         if self.has_errors:
             predictions_conf = np.array(predictions_conf)
         else:
-            predictions_conf = None
+            predictions_conf = np.array((None, None))
         if self.has_errors and self.err_est:
             estimates_conf = np.array(estimates_conf)
         else:
-            estimates_conf = None
+            estimates_conf = np.array((None, None))
 
         m = self._model
         m._estimates = estimates
@@ -237,7 +229,7 @@ class LaggedModelValidator(Estimator):
             array with results
 
         """
-        raise NotImplementedError('_compute_observables is not implemented. Must override it in subclass!')
+        pass
 
     @abc.abstractmethod
     def _compute_observables_conf(self, model, mlag=1, conf=0.95):
@@ -261,4 +253,8 @@ class LaggedModelValidator(Estimator):
             array with upper confidence bounds
 
         """
-        raise NotImplementedError('_compute_observables is not implemented. Must override it in subclass!')
+        pass
+
+    @abc.abstractmethod
+    def _observable_dummy_mlag0(self, conf=False):
+        pass
