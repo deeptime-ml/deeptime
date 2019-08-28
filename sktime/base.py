@@ -95,8 +95,8 @@ class Estimator(_base_methods_mixin):
     def fit(self, data):
         pass
 
-    def fetch_model(self) -> Model:
-        return self._model
+    def fetch_model(self, copy=False) -> Model:
+        return self._model if not copy else self._model.copy()
 
     @abc.abstractmethod
     def _create_model(self):
