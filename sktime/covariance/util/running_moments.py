@@ -121,18 +121,13 @@ class MomentsStorage(object):
         """ Store object X with weight w
         """
         if len(self.storage) == self.nsave:  # merge if we must
-            # print 'must merge'
             self.storage[-1].combine(moments, mean_free=self.remove_mean)
         else:  # append otherwise
-            # print 'append'
             self.storage.append(moments)
         # merge if possible
         while self._can_merge_tail():
-            # print 'merge: ',self.storage
             M = self.storage.pop()
-            # print 'pop last: ',self.storage
             self.storage[-1].combine(M, mean_free=self.remove_mean)
-            # print 'merged: ',self.storage
 
     @property
     def moments(self):
@@ -140,10 +135,8 @@ class MomentsStorage(object):
         """
         # collapse storage if necessary
         while len(self.storage) > 1:
-            # print 'collapse'
             M = self.storage.pop()
             self.storage[-1].combine(M, mean_free=self.remove_mean)
-        # print 'return first element'
         return self.storage[0]
 
     def clear(self):
