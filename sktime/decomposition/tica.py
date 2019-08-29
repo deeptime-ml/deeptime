@@ -9,13 +9,12 @@ __author__ = 'marscher'
 
 class TICAModel(Model, Transformer):
 
-    def __init__(self, mean_0=None, cov_00=None, cov_0t=None, dim=None, epsilon=1e-6, scaling=None, lagtime=0):
+    def __init__(self, mean_0=None, cov_00=None, cov_0t=None, dim=None, epsilon=1e-6, scaling=None):
         self.cov_00 = cov_00
         self.cov_0t = cov_0t
         self.mean_0 = mean_0
         self.dim = dim
         self.epsilon = epsilon
-        self.lagtime = lagtime
         self.scaling = scaling
         self._rank = None
 
@@ -148,8 +147,7 @@ class TICAModel(Model, Transformer):
         self._rank = rank
         self._diagonalized = True
 
-    @property
-    def timescales(self):
+    def timescales(self, lagtime):
         r"""Implied timescales of the TICA transformation
 
         For each :math:`i`-th eigenvalue, this returns
@@ -168,7 +166,7 @@ class TICAModel(Model, Transformer):
             input coordinates were available. However, less eigenvalues will be returned if the TICA matrices
             were not full rank or :py:obj:`var_cutoff` was parsed
         """
-        return -self.lagtime / np.log(np.abs(self.eigenvalues))
+        return - lagtime / np.log(np.abs(self.eigenvalues))
 
     @property
     def feature_TIC_correlation(self):
@@ -266,19 +264,19 @@ class TICA(Estimator, Transformer):
        for kinetic modeling. J. Chem. Theory. Comput. doi:10.1021/acs.jctc.6b00762
 
     """
-    def __init__(self, lagtime: int, epsilon=1e-6, reversible=True, dim=0.95,
-                 scaling='kinetic_map', ncov=5):
+    def __init__(self, epsilon=1e-6, reversible=True, dim=0.95,
+                 scaling='kinetic_map', ncov=5, reweighting_transformation=None):
         super(TICA, self).__init__()
         # tica parameters
         self._model.epsilon = epsilon
         self._model.dim = dim
         self._model.scaling = scaling
-        self._model.lagtime = lagtime
 
         # online cov parameters
         self.reversible = reversible
         self._covar = OnlineCovariance(compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
                                        reversible=self.reversible, bessel=False, ncov=ncov)
+        self.reweighting_transformation = reweighting_transformation
 
     def _create_model(self) -> TICAModel:
         return TICAModel()
@@ -298,7 +296,7 @@ class TICA(Estimator, Transformer):
         """
         return self.fetch_model().transform(data)
 
-    def partial_fit(self, X):
+    def partial_fit(self, X, weights=None, column_selection=None):
         """ incrementally update the covariances and mean.
 
         Parameters
@@ -306,12 +304,27 @@ class TICA(Estimator, Transformer):
         X: array, list of arrays
             input data.
         """
-        self._covar.partial_fit(X)
+        # compute koopman weights for unlagged data.
+        weights = self._get_weights(weights, X[0])
+        self._covar.partial_fit(X, weights=weights, column_selection=column_selection)
         return self
 
-    def fit(self, X, **kw):
-        self._covar.fit(X, **kw)
+    def fit(self, X, y=None, weights=None, column_selection=None):
+        # compute koopman weights for unlagged data.
+        weights = self._get_weights(weights, X[0])
+        self._covar.fit(X, weights=weights, column_selection=column_selection)
         return self
+
+    def _get_weights(self, weights, X):
+        if self.reweighting_transformation is not None:
+            if weights is not None:
+                raise ValueError('Weights given but Koopman reweighting already in place. '
+                                 'Either use reweighting_transformation=None, weights=w or '
+                                 'reweighting_transformation=(A, b) '
+                                 'and weights=None in fit() or partial_fit()')
+            u, u_const = self.reweighting_transformation
+            weights = X.dot(u) + u_const
+        return weights
 
     def fetch_model(self) -> TICAModel:
         covar_model = self._covar.fetch_model()
