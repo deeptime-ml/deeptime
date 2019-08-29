@@ -179,6 +179,7 @@ class TestVAMPModel(unittest.TestCase):
         msm = estimate_markov_model(dtrajs, lag=lag, reversible=False)
         cls.trajs = trajs
         cls.dtrajs = dtrajs
+        cls.trajs_timeshifted = list(timeshifted_split(cls.trajs, lagtime=lag, chunksize=5000))
         cls.lag = lag
         cls.msm = msm
         cls.vamp = vamp
@@ -249,7 +250,9 @@ class TestVAMPModel(unittest.TestCase):
             np.testing.assert_allclose(est_, pred_, atol=0.006)
 
     def test_CK_covariances_of_singular_functions(self):
-        cktest = self.vamp.cktest(n_observables=2, mlags=4)  # auto
+        cktest = self.vamp.cktest(n_observables=2, mlags=4)
+        cktest.fit(data=self.trajs_timeshifted)
+
         pred = cktest.predictions[1:]
         est = cktest.estimates[1:]
         error = np.max(np.abs(np.array(pred) - np.array(est))) / max(np.max(pred), np.max(est))

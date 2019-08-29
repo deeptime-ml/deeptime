@@ -56,8 +56,8 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     def __init__(self, test_model, test_estimator, memberships, mlags=None, conf=0.95,
                  err_est=False):
         self.memberships = memberships
+        self.err_est = err_est
         super(ChapmanKolmogorovValidator, self).__init__(test_model, test_estimator, conf=conf, mlags=mlags)
-        self.err_est = err_est  # TODO: this is currently unused
 
     @property
     def memberships(self):
@@ -69,7 +69,6 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         self.nstates, self.nsets = self._memberships.shape
         assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
 
-    # TODO: do not store this, obtain active set from model during fit!
     @property
     def test_estimator(self):
         return self._test_estimator
@@ -91,8 +90,7 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         self.P0 = self.memberships * test_model.stationary_distribution[:, None]
         self.P0 /= self.P0.sum(axis=0)  # column-normalize
 
-        #TODO: active_set is a model attribute
-        active_set = types.ensure_ndarray(np.array(test_model.count_model.active_set), kind='i')  # create a copy
+        active_set = test_model.count_model.active_set
         # map from the full set (here defined by the largest state index in active set) to active
         self._full2active = np.zeros(np.max(active_set) + 1, dtype=int)
         self._full2active[active_set] = np.arange(test_model.nstates)
@@ -100,11 +98,13 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     def _compute_observables(self, model: MarkovStateModel, mlag=1):
         # otherwise compute or predict them by model.propagate
         pk_on_set = np.zeros((self.nsets, self.nsets))
+        # compute observable on prior in case for Bayesian models.
+        if hasattr(model, 'prior'):
+            model = model.prior
         if model.count_model is not None:
             subset = self._full2active[model.count_model.active_set]  # find subset we are now working on
         else:
-            # TODO: even needed?
-            subset = self._full2active[np.arange(model.nstates)]
+            subset = None
         for i in range(self.nsets):
             p0 = self.P0[:, i]  # starting distribution on reference active set
             p0sub = p0[subset]  # map distribution to new active set
@@ -114,16 +114,13 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
                 pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
         return pk_on_set
 
+    # TODO: model type
     def _compute_observables_conf(self, model: BayesianMSMPosterior, mlag=1, conf=0.95):
-        # for lag time 0 we return an identity matrix
-        if mlag == 0 or model is None:
-            return np.eye(self.nsets), np.eye(self.nsets)
         # otherwise compute or predict them by model.propagate
         if model.prior.count_model is not None:
             subset = self._full2active[model.prior.count_model.active_set]  # find subset we are now working on
         else:
-            # TODO: even needed?
-            subset = self._full2active[np.arange(model.prior.nstates)]
+            subset = None
         l = np.zeros((self.nsets, self.nsets))
         r = np.zeros((self.nsets, self.nsets))
         for i in range(self.nsets):

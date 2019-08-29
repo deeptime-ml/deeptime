@@ -186,10 +186,12 @@ class TestCK_AllEstimators(unittest.TestCase):
         assert self.ck.predictions_conf[1] is None
 
     def test_its_bmsm(self):
-        BMSM = bayesian_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 40, reversible=True)
+        estimator, BMSM = bayesian_markov_model(self.double_well_data.dtraj_T100K_dt10_n6good, 40, reversible=True, return_estimator=True)
         # also ensure that reversible bit does not flip during cktest
         assert BMSM.prior.reversible
-        self.ck = BMSM.cktest(2, mlags=[0, 1, 10])
+        self.ck = cktest(test_estimator=estimator, test_model=BMSM.prior, dtrajs=self.double_well_data.dtraj_T100K_dt10_n6good,
+                         nsets=2, mlags=[0, 1, 10]).fetch_model()
+        assert isinstance(self.ck, LaggedModelValidation)
         assert BMSM.prior.reversible
         estref = np.array([[[1., 0.],
                             [0., 1.]],
@@ -223,8 +225,9 @@ class TestCK_AllEstimators(unittest.TestCase):
         assert np.allclose(self.ck.predictions[0], predLref, rtol=0.1, atol=10.0)
         assert np.allclose(self.ck.predictions[1], predRref, rtol=0.1, atol=10.0)
 
+    @unittest.skip('hmsm not yet impled')
     def test_its_hmsm(self):
-        MLHMM = msm.estimate_hidden_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 2, 10)
+        MLHMM = estimate_hidden_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 2, 10)
         self.ck = MLHMM.cktest(mlags=[0, 1, 10])
         estref = np.array([[[1., 0.],
                             [0., 1.]],
@@ -246,6 +249,7 @@ class TestCK_AllEstimators(unittest.TestCase):
         assert self.ck.predictions_conf[0] is None
         assert self.ck.predictions_conf[1] is None
 
+    @unittest.skip('hmsm not yet impled')
     def test_its_bhmm(self):
         BHMM = msm.bayesian_hidden_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 2, 10)
         self.ck = BHMM.cktest(mlags=[0, 1, 10])

@@ -106,14 +106,10 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
     def __init__(self, test_model, test_estimator, mlags=None, conf=0.95, err_est=False):
         # set model and estimator
         self.test_model = test_model
-        assert hasattr(test_estimator, 'lagtime')
         self.test_estimator = test_estimator
         # set conf and error handling
         self.conf = conf
         self.has_errors = hasattr(test_model, 'samples')
-        #if self.has_errors:
-        #    self.test_model.set_model_params(conf=conf)
-
         self.mlags = mlags
 
         self.err_est = err_est
@@ -123,9 +119,11 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
 
         super(LaggedModelValidator, self).__init__()
 
-    def _set_mlags(self, data, lagtime: int, mlags=None):
+    def _set_mlags(self, data, lagtime: int):
         # set mlags, we do it in fit, so we can obtain the maximum possible lagtime from the trajectory data.
         from numbers import Integral
+        if not isinstance(data, list):
+            data = [data]
 
         mlags = self.mlags
         maxlength = np.max([len(x) for x in data])
@@ -145,12 +143,17 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
     def _create_model(self) -> LaggedModelValidation:
         return LaggedModelValidation()
 
-    def fit(self, dtrajs):
-        dtrajs = ensure_dtraj_list(dtrajs)
-
+    def fit(self, data):
         # set lag times
-        self._set_mlags(dtrajs, self.test_estimator.lagtime, self.mlags)
-        lags = self.mlags * self.test_estimator.lagtime
+        try:
+            input_lagtime = self.test_estimator.lagtime
+        except AttributeError:
+            try:
+                input_lagtime = self.test_model.lagtime
+            except AttributeError:
+                input_lagtime = 1
+        self._set_mlags(data, input_lagtime)
+        lags = self.mlags * input_lagtime
 
         predictions = []
         predictions_conf = []
@@ -172,7 +175,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         # estimate models at multiple of input lag time.
         for lag in lags:
             self.test_estimator.lagtime = lag
-            self.test_estimator.fit(dtrajs)
+            self.test_estimator.fit(data)
             estimated_models.append(self.test_estimator.fetch_model(copy=True))
 
         for mlag, model in zip(self.mlags, estimated_models):
