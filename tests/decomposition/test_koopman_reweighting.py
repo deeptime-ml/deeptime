@@ -168,7 +168,7 @@ class TestKoopmanTICA(unittest.TestCase):
 
         # Set up the model:
         cls.koop_rev = tica(cls.data, lag=cls.tau, scaling=None)
-        cls.koop_eq = tica(cls.data, lag=cls.tau, koopman_weights=cls.weight_obj, scaling=None)
+        cls.koop_eq = tica(cls.data, lag=cls.tau, reweighting_transformation=cls.weight_obj, scaling=None)
 
     def test_mean_x(self):
         np.testing.assert_allclose(self.koop_rev.mean_0, self.mean_rev)
