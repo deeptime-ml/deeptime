@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 from scipy.linalg import eig
 
@@ -158,19 +160,24 @@ class OnlineCovariance(Estimator):
         assert all(isinstance(e, np.ndarray) for e in data)
         assert all(e.dtype in (np.float32, np.float64) for e in data)
 
+        lazy_weights = False
+        wsplit = itertools.repeat(None)
+
         if weights is not None:
-            if len(np.atleast_1d(weights)) != len(data[0]):
+            if hasattr(weights, 'weights'):
+                lazy_weights = True
+            elif len(np.atleast_1d(weights)) != len(data[0]):
                 raise ValueError(
                     "Weights have incompatible shape "
                     f"(#weights={len(weights) if weights is not None else None} != {len(data[0])}=#frames.")
-            wsplit = np.array_split(weights, n_splits) if weights is not None else [None] * n_splits
-        else:
-            import itertools
-            wsplit = itertools.repeat(None)
+            elif isinstance(weights, np.ndarray):
+                wsplit = np.array_split(weights, n_splits)
 
         if self.is_lagged:
             for (x, y), w in zip(timeshifted_split(data, lagtime=lagtime, n_splits=n_splits), wsplit):
-                # TODO: can weights be shorter than actual data
+                if lazy_weights:
+                    w = weights.weights(x)
+                # weights can weights be shorter than actual data
                 if isinstance(w, np.ndarray):
                     w = w[:len(x)]
                 self.partial_fit((x, y), weights=w, column_selection=column_selection)
@@ -193,10 +200,7 @@ class OnlineCovariance(Estimator):
             x, y = data
         else:
             x, y = data, None
-        # todo: weights can be scalar, None or vector.
-        #if weights is not None and len(x) != len(np.atleast_1d(weights)):
-        #    raise ValueError(f"Weights have incompatible size (weights length "
-        #                     f"{len(weights) if weights is not None else None}, data length {len(x)})")
+        # TODO: types, shapes checking!
         try:
             self._rc.add(x, y, column_selection=column_selection, weights=weights)
         except MemoryError:
@@ -225,24 +229,25 @@ class OnlineCovariance(Estimator):
 
 class KoopmanWeights(Model):
 
-    def __init__(self):
-        self.u = self.u_const = None
+    def __init__(self, u=None, u_const=0):
+        self.u = u
+        self.u_const = u_const
 
-    def compute_weight(self, X):
+    def weights(self, X):
         assert self.u is not None and self.u_const is not None
         return X.dot(self.u) + self.u_const
 
 
 class KoopmanEstimator(Estimator):
 
-    def __init__(self, epsilon=1e-6, ncov=float('inf')):
+    def __init__(self, lagtime, epsilon=1e-6, ncov=float('inf')):
         super(KoopmanEstimator, self).__init__()
         self.epsilon = epsilon
-        self._cov = OnlineCovariance(compute_c00=True, compute_c0t=True, remove_data_mean=True, reversible=False,
+        self._cov = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, remove_data_mean=True, reversible=False,
                                      bessel=False, ncov=ncov)
 
-    def fit(self, data, y=None):
-        self._cov.fit(data)
+    def fit(self, data, y=None, lagtime=None):
+        self._cov.fit(data, lagtime=lagtime)
         self.fetch_model()  # pre-compute Koopman operator
         return self
 
@@ -298,3 +303,11 @@ class KoopmanEstimator(Estimator):
         self._model.u = u_input[:-1]
         self._model.u_const = u_input[-1]
         return self._model
+
+    @property
+    def lagtime(self):
+        return self._cov.lagtime
+
+    @lagtime.setter
+    def lagtime(self, value):
+        self._cov.lagtime = value

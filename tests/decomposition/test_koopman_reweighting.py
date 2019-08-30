@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import pkg_resources
 
+from sktime.covariance.online_covariance import KoopmanWeights
 from sktime.data.util import timeshifted_split
 from sktime.numeric.eigen import sort_by_norm
 import numpy.linalg as scl
@@ -113,7 +114,7 @@ class TestKoopmanTICA(unittest.TestCase):
         u_input = np.zeros(N + 1)
         u_input[0:N] = cls.R.dot(u_mod[0:-1])  # in input basis
         u_input[N] = u_mod[-1] - cls.mean_x.dot(cls.R.dot(u_mod[0:-1]))
-        cls.weight_obj = (u_input[:-1], u_input[-1])
+        cls.weight_obj = KoopmanWeights(u=u_input[:-1], u_const=u_input[-1])
 
         # Compute weights over all data points:
         cls.wtraj = []
@@ -160,15 +161,13 @@ class TestKoopmanTICA(unittest.TestCase):
 
         def tica(data, lag, weights=None, **params):
             from sktime.decomposition.tica import TICA
-            data_lagged = tuple(timeshifted_split(data, lagtime=lag, n_splits=1))
-            t = TICA(**params)
-            for x, y in data_lagged:
-                t.partial_fit((x, y), weights=weights)
+            t = TICA(lagtime=lag, **params)
+            t.fit(data, weights=weights)
             return t.fetch_model()
 
         # Set up the model:
         cls.koop_rev = tica(cls.data, lag=cls.tau, scaling=None)
-        cls.koop_eq = tica(cls.data, lag=cls.tau, reweighting_transformation=cls.weight_obj, scaling=None)
+        cls.koop_eq = tica(cls.data, lag=cls.tau, weights=cls.weight_obj, scaling=None)
 
     def test_mean_x(self):
         np.testing.assert_allclose(self.koop_rev.mean_0, self.mean_rev)
@@ -202,13 +201,22 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(out_traj_rev, ev_traj_rev)
         np.testing.assert_allclose(out_traj_eq, ev_traj_eq)
 
-    def test_koopman_estimator(self):
+    def test_koopman_estimator_partial_fit(self):
         from sktime.covariance.online_covariance import KoopmanEstimator
-        est = KoopmanEstimator()
-        data_lagged = timeshifted_split(self.data, lagtime=self.tau, n_splits=1)
+        est = KoopmanEstimator(lagtime=self.tau)
+        data_lagged = timeshifted_split(self.data, lagtime=self.tau, n_splits=10)
         for traj in data_lagged:
             est.partial_fit(traj)
         m = est.fetch_model()
 
-        np.testing.assert_allclose(m.u, self.weight_obj[0])
-        np.testing.assert_allclose(m.u_const, self.weight_obj[1])
+        np.testing.assert_allclose(m.u, self.weight_obj.u)
+        np.testing.assert_allclose(m.u_const, self.weight_obj.u_const)
+
+    def test_koopman_estimator_fit(self):
+        from sktime.covariance.online_covariance import KoopmanEstimator
+        est = KoopmanEstimator(lagtime=self.tau)
+        est.fit(self.data)
+        m = est.fetch_model()
+
+        np.testing.assert_allclose(m.u, self.weight_obj.u)
+        np.testing.assert_allclose(m.u_const, self.weight_obj.u_const)

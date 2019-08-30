@@ -264,8 +264,8 @@ class TICA(Estimator, Transformer):
        for kinetic modeling. J. Chem. Theory. Comput. doi:10.1021/acs.jctc.6b00762
 
     """
-    def __init__(self, epsilon=1e-6, reversible=True, dim=0.95,
-                 scaling='kinetic_map', ncov=5, reweighting_transformation=None):
+    def __init__(self, lagtime, epsilon=1e-6, reversible=True, dim=0.95,
+                 scaling='kinetic_map', ncov=5):
         super(TICA, self).__init__()
         # tica parameters
         self._model.epsilon = epsilon
@@ -274,9 +274,8 @@ class TICA(Estimator, Transformer):
 
         # online cov parameters
         self.reversible = reversible
-        self._covar = OnlineCovariance(compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
+        self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
                                        reversible=self.reversible, bessel=False, ncov=ncov)
-        self.reweighting_transformation = reweighting_transformation
 
     def _create_model(self) -> TICAModel:
         return TICAModel()
@@ -303,28 +302,14 @@ class TICA(Estimator, Transformer):
         ----------
         X: array, list of arrays
             input data.
+            :param weights:
         """
-        # compute koopman weights for unlagged data.
-        weights = self._get_weights(weights, X[0])
         self._covar.partial_fit(X, weights=weights, column_selection=column_selection)
         return self
 
-    def fit(self, X, y=None, weights=None, column_selection=None):
-        # compute koopman weights for unlagged data.
-        weights = self._get_weights(weights, X[0])
-        self._covar.fit(X, weights=weights, column_selection=column_selection)
+    def fit(self, X, lagtime=None, weights=None, column_selection=None):
+        self._covar.fit(X, lagtime=lagtime, weights=weights, column_selection=column_selection)
         return self
-
-    def _get_weights(self, weights, X):
-        if self.reweighting_transformation is not None:
-            if weights is not None:
-                raise ValueError('Weights given but Koopman reweighting already in place. '
-                                 'Either use reweighting_transformation=None, weights=w or '
-                                 'reweighting_transformation=(A, b) '
-                                 'and weights=None in fit() or partial_fit()')
-            u, u_const = self.reweighting_transformation
-            weights = X.dot(u) + u_const
-        return weights
 
     def fetch_model(self) -> TICAModel:
         covar_model = self._covar.fetch_model()
@@ -332,3 +317,11 @@ class TICA(Estimator, Transformer):
         self._model.cov_0t = covar_model.cov_0t
         self._model.mean_0 = covar_model.mean_0
         return self._model
+
+    @property
+    def lagtime(self):
+        return self._covar.lagtime
+
+    @lagtime.setter
+    def lagtime(self, value):
+        self._covar.lagtime = value
