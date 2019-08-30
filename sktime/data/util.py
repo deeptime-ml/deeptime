@@ -3,7 +3,10 @@ import numpy as np
 
 def timeshifted_split(inputs, lagtime: int, chunksize=None, n_splits=None):
     assert lagtime > 0
-    assert (chunksize is not None) ^ (n_splits is not None)
+    #assert (chunksize is not None) ^ (n_splits is not None)
+    if chunksize is None and n_splits is None:
+        chunksize = 500
+
     if not isinstance(inputs, (list, tuple)):
         inputs = [inputs]
 

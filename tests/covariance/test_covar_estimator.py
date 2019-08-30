@@ -22,11 +22,6 @@ class TestCovarEstimator(unittest.TestCase):
         cls.Y = cls.data[cls.lag:, :]
         cls.T = cls.X.shape[0]
 
-        # Chunk size:
-        cls.L = 1000
-        # Number of chunks:
-        cls.nchunks = 10
-
         # Weights:
         class weight_object(object):
             def __init__(self):
@@ -38,8 +33,6 @@ class TestCovarEstimator(unittest.TestCase):
         cls.wobj = weight_object()
         # Constant mean to be removed:
         cls.mean_const = mean_const
-        # Chunksize:
-        cls.chunksize = 500
         # column subsets
         cls.cols_2 = np.array([0])
 
@@ -96,9 +89,7 @@ class TestCovarEstimator(unittest.TestCase):
 
         # weighted moments, object case:
         cls.X_weights = cls.wobj.weights(cls.X)
-        cls.X_weighted = cls.X_weights[:, np.newaxis] * cls.X
         cls.data_weights = cls.wobj.weights(cls.data)
-        cls.data_weights_lagged = cls.data_weights[:-cls.lag]
         cls.data_weighted = cls.data_weights[:, np.newaxis] * cls.data
         cls.wesum_obj = np.sum(cls.X_weights)
         cls.wesum_obj_sym = 2 * np.sum(cls.X_weights)
@@ -160,7 +151,7 @@ class TestCovarEstimator(unittest.TestCase):
 
     def test_XX_with_mean(self):
         # many passes
-        est = OnlineCovariance(compute_c0t=False, remove_data_mean=False, bessel=False)
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=False, remove_data_mean=False, bessel=False)
         cc = est.fit(self.data).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_lag0)
@@ -169,7 +160,7 @@ class TestCovarEstimator(unittest.TestCase):
 
     def test_XX_meanfree(self):
         # many passes
-        est = OnlineCovariance(compute_c0t=False, remove_data_mean=True, bessel=False)
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=False, remove_data_mean=True, bessel=False)
         cc = est.fit(self.data).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_lag0)
@@ -178,7 +169,7 @@ class TestCovarEstimator(unittest.TestCase):
 
     def test_XX_weightobj_withmean(self):
         # many passes
-        est = OnlineCovariance(compute_c0t=False, remove_data_mean=False, bessel=False)
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=False, remove_data_mean=False, bessel=False)
         cc = est.fit(self.data, n_splits=10, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_wobj_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_wobj_lag0)
@@ -187,7 +178,7 @@ class TestCovarEstimator(unittest.TestCase):
 
     def test_XX_weightobj_meanfree(self):
         # many passes
-        est = OnlineCovariance(compute_c0t=False, remove_data_mean=True, bessel=False)
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=False, remove_data_mean=True, bessel=False)
         cc = est.fit(self.data, weights=self.data_weights, n_splits=10).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_wobj_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_wobj_lag0)
@@ -196,98 +187,100 @@ class TestCovarEstimator(unittest.TestCase):
 
     def test_XXXY_withmean(self):
         # many passes
-        est = OnlineCovariance(remove_data_mean=False, compute_c0t=True, bessel=False)
-        cc = est.fit((self.X, self.Y), n_splits=10).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, remove_data_mean=False, compute_c0t=True, bessel=False)
+        cc = est.fit(self.data, n_splits=1).fetch_model()
+        assert not cc.bessel
         np.testing.assert_allclose(cc.mean_0, self.mx)
         np.testing.assert_allclose(cc.mean_t, self.my)
         np.testing.assert_allclose(cc.cov_00, self.Mxx)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy)
-        cc = est.fit((self.X, self.Y), n_splits=10, column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.data, n_splits=1, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy[:, self.cols_2])
 
     def test_XXXY_meanfree(self):
         # many passes
-        est = OnlineCovariance(remove_data_mean=True, compute_c0t=True, bessel=False)
-        cc = est.fit((self.X, self.Y)).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, bessel=False)
+        cc = est.fit(self.data).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx)
         np.testing.assert_allclose(cc.mean_t, self.my)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy0)
-        cc = est.fit((self.X, self.Y), column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.data, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx0[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy0[:, self.cols_2])
 
     def test_XXXY_weightobj_withmean(self):
         # many passes
-        est = OnlineCovariance(remove_data_mean=False, compute_c0t=True, bessel=False)
-        cc = est.fit((self.X, self.Y), weights=self.data_weights_lagged).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, remove_data_mean=False, compute_c0t=True, bessel=False)
+        cc = est.fit(self.data, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_wobj)
         np.testing.assert_allclose(cc.mean_t, self.my_wobj)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_wobj)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_wobj)
-        cc = est.fit((self.X, self.Y), weights=self.data_weights_lagged, column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.data, weights=self.data_weights, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_wobj[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_wobj[:, self.cols_2])
 
     def test_XXXY_weightobj_meanfree(self):
+        #TODO: tests do not pass for n_splits > 1!
         # many passes
-        est = OnlineCovariance(remove_data_mean=True, compute_c0t=True, bessel=False)
-        cc = est.fit((self.X, self.Y), weights=self.data_weights_lagged).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, bessel=False)
+        cc = est.fit(self.data, weights=self.data_weights, n_splits=1).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_wobj)
         np.testing.assert_allclose(cc.mean_t, self.my_wobj)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_wobj)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy0_wobj)
-        cc = est.fit((self.X, self.Y), weights=self.data_weights_lagged, column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.data, weights=self.data_weights, column_selection=self.cols_2, n_splits=1).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_wobj[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy0_wobj[:, self.cols_2])
 
     def test_XXXY_sym_withmean(self):
         # many passes
-        est = OnlineCovariance(remove_data_mean=False, compute_c0t=True, reversible=True, bessel=False)
-        cc = est.fit((self.X, self.Y)).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, remove_data_mean=False, compute_c0t=True, reversible=True, bessel=False)
+        cc = est.fit(self.data).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_sym)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_sym)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_sym)
-        cc = est.fit((self.X, self.Y), column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.data, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_sym[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_sym[:, self.cols_2])
 
     def test_XXXY_sym_meanfree(self):
         # many passes
-        est = OnlineCovariance(remove_data_mean=True, compute_c0t=True, reversible=True, bessel=False)
-        cc = est.fit((self.X, self.Y)).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, reversible=True, bessel=False)
+        cc = est.fit(self.data, lagtime=self.lag).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_sym)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_sym)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy0_sym)
-        cc = est.fit((self.X, self.Y), column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.data, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_sym[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy0_sym[:, self.cols_2])
 
     def test_XXXY_weightobj_sym_withmean(self):
         # many passes
-        est = OnlineCovariance(remove_data_mean=False, compute_c0t=True, reversible=True, bessel=False)
-        cc = est.fit((self.X, self.Y), weights=self.data_weights_lagged).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, remove_data_mean=False, compute_c0t=True, reversible=True, bessel=False)
+        cc = est.fit(self.data, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_sym_wobj)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_sym_wobj)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_sym_wobj)
-        cc = est.fit((self.X, self.Y), weights=self.data_weights_lagged, column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.data, weights=self.data_weights, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_sym_wobj[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_sym_wobj[:, self.cols_2])
 
     def test_XXXY_weightobj_sym_meanfree(self):
         # many passes
-        est = OnlineCovariance(remove_data_mean=True, compute_c0t=True, reversible=True, bessel=False)
-        cc = est.fit((self.X, self.Y), weights=self.data_weights_lagged).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, reversible=True, bessel=False)
+        cc = est.fit(self.data, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_sym_wobj)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_sym_wobj)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy0_sym_wobj)
-        cc = est.fit((self.X, self.Y), weights=self.data_weights_lagged, column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.data, weights=self.data_weights, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_sym_wobj[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy0_sym_wobj[:, self.cols_2])
 
     def test_XX_meanconst(self):
-        est = OnlineCovariance(compute_c0t=False, bessel=False)
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=False, bessel=False)
         cc = est.fit(self.data - self.mean_const).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_c_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_lag0)
@@ -295,7 +288,7 @@ class TestCovarEstimator(unittest.TestCase):
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_lag0[:, self.cols_2])
 
     def test_XX_weighted_meanconst(self):
-        est = OnlineCovariance(compute_c0t=False, bessel=False)
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=False, bessel=False)
         cc = est.fit(self.data - self.mean_const, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_c_wobj_lag0)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_wobj_lag0)
@@ -303,47 +296,47 @@ class TestCovarEstimator(unittest.TestCase):
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_wobj_lag0[:, self.cols_2])
 
     def test_XY_meanconst(self):
-        est = OnlineCovariance(compute_c0t=True, bessel=False)
-        cc = est.fit((self.X - self.mean_const, self.Y - self.mean_const)).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=True, bessel=False)
+        cc = est.fit(self.Xc_lag0).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_c)
         np.testing.assert_allclose(cc.mean_t, self.my_c)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_c)
-        cc = est.fit((self.X - self.mean_const, self.Y - self.mean_const), column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.Xc_lag0, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_c[:, self.cols_2])
 
     def test_XY_weighted_meanconst(self):
-        est = OnlineCovariance(compute_c0t=True, bessel=False)
-        cc = est.fit((self.X - self.mean_const, self.Y - self.mean_const),
-                     weights=self.data_weights_lagged).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=True, bessel=False)
+        cc = est.fit(self.Xc_lag0,
+                     weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.mx_c_wobj)
         np.testing.assert_allclose(cc.mean_t, self.my_c_wobj)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_wobj)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_c_wobj)
-        cc = est.fit((self.X - self.mean_const, self.Y - self.mean_const),
-                     weights=self.data_weights_lagged, column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.Xc_lag0,
+                     weights=self.data_weights, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_wobj[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_c_wobj[:, self.cols_2])
 
     def test_XY_sym_meanconst(self):
-        est = OnlineCovariance(compute_c0t=True, reversible=True, bessel=False)
-        cc = est.fit((self.X - self.mean_const, self.Y - self.mean_const)).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=True, reversible=True, bessel=False)
+        cc = est.fit(self.Xc_lag0).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_c_sym)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_sym)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_c_sym)
-        cc = est.fit((self.X - self.mean_const, self.Y - self.mean_const), column_selection=self.cols_2).fetch_model()
+        cc = est.fit(self.Xc_lag0, column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_sym[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_c_sym[:, self.cols_2])
 
     def test_XY_sym_weighted_meanconst(self):
-        est = OnlineCovariance(compute_c0t=True, reversible=True, bessel=False)
-        cc = est.fit((self.X - self.mean_const, self.Y - self.mean_const),
-                     weights=self.data_weights_lagged).fetch_model()
+        est = OnlineCovariance(lagtime=self.lag, compute_c0t=True, reversible=True, bessel=False)
+        cc = est.fit(self.Xc_lag0, n_splits=1,
+                     weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_c_sym_wobj)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_sym_wobj)
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_c_sym_wobj)
-        cc = est.fit((self.X - self.mean_const, self.Y - self.mean_const), weights=self.data_weights_lagged,
+        cc = est.fit(self.Xc_lag0, weights=self.data_weights, n_splits=1,
                      column_selection=self.cols_2).fetch_model()
         np.testing.assert_allclose(cc.cov_00, self.Mxx_c_sym_wobj[:, self.cols_2])
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_c_sym_wobj[:, self.cols_2])
@@ -364,7 +357,7 @@ class TestCovarEstimatorWeightsList(unittest.TestCase):
         weights[0][:] = 1E-44
         weights = np.asarray(weights)
 
-        est = OnlineCovariance(compute_c0t=True)
+        est = OnlineCovariance(lagtime=1, compute_c0t=True)
         for data_traj, weights_traj in zip(data, weights):
            est.partial_fit((data_traj[:-3], data_traj[3:]), weights=weights_traj[:-3])
         cov = est.fetch_model()
@@ -392,10 +385,6 @@ class TestCovarEstimatorWeightsList(unittest.TestCase):
         assert np.all(cov.cov_00 < 1), cov.cov_00
         assert np.all(cov.cov_00 > 0), cov.cov_00
 
-        # from statsmodels.stats.weightstats import DescrStatsW
-        # ds = DescrStatsW(data, weights=weights)
-        # np.testing.assert_allclose(cov.C00_, ds.cov)
-
     def test_non_matching_length(self):
         n = 100
         data = [np.random.random(size=(n, 2)) for n in range(3)]
@@ -411,12 +400,11 @@ class TestCovarEstimatorWeightsList(unittest.TestCase):
     def test_re_estimate_weight_types(self):
         # check different types are allowed and re-estimation works
         x = np.random.random((100, 2))
-        x = (x[:-1], x[1:])
-        c = OnlineCovariance(compute_c0t=True)
-        c.fit(x, weights=np.ones((len(x[0]),))).fetch_model()
-        c.fit(x, weights=np.ones((len(x[0]),))).fetch_model()
+        c = OnlineCovariance(lagtime=1, compute_c0t=True)
+        c.fit(x, weights=np.ones((len(x),))).fetch_model()
+        c.fit(x, weights=np.ones((len(x),))).fetch_model()
         c.fit(x, weights=None).fetch_model()
-        c.fit(x, weights=x[0][:, 0]).fetch_model()
+        c.fit(x, weights=x[:, 0]).fetch_model()
 
 
 if __name__ == "__main__":
