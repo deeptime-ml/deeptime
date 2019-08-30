@@ -17,7 +17,7 @@ jobs:
       - run: conda config --add channels conda-forge
       - run: conda config --set always_yes true
       - run: conda config --set quiet true
-      - run: conda install conda-build -c defaults
+      - run: conda install conda-build conda-verify -c defaults
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
       - run: conda build devtools/conda-recipe --python=3.7
       - run: bash <(curl -s https://codecov.io/bash) -f $HOME/coverage.xml
