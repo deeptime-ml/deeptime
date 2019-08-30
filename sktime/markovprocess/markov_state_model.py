@@ -24,6 +24,8 @@ from math import ceil
 import numpy as np
 import typing
 
+from pyemma.util.linalg import mdot
+
 from sktime.base import Model
 from sktime.markovprocess.sample import _ensure_dtraj_list
 from sktime.util import ensure_ndarray
@@ -396,7 +398,6 @@ class MarkovStateModel(Model):
                 pk = np.dot(pk.T, self.transition_matrix)
         else:  # dense: employ eigenvalue decomposition
             self._ensure_eigendecomposition(self.nstates)
-            from pyemma.util.linalg import mdot
             pk = mdot(p0.T,
                       self.eigenvectors_right(),
                       np.diag(np.power(self.eigenvalues(), k)),

@@ -1,10 +1,10 @@
 import warnings
 
 import numpy as _np
-from msmtools import estimation as msmest
-# TODO: move to subpkg .koopman_reweighted_msm
-from pyemma.msm.estimators._OOM_MSM import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
-                                            rank_decision, oom_components, equilibrium_transition_matrix)
+from msmtools.estimation import effective_count_matrix
+
+from ._koopman_reweighted_msm_impl import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
+                                           rank_decision, oom_components, equilibrium_transition_matrix)
 
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess._base import _MSMBaseEstimator
@@ -166,14 +166,14 @@ class OOMReweightedMSM(_MSMBaseEstimator):
 
     def fit(self, dtrajs):
         # remove last lag steps from dtrajs:
-        dtrajs_lag = [traj[:-self.lag] for traj in dtrajs]
+        dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
         count_model = TransitionCountEstimator().fit(dtrajs, lagtime=self.lagtime,
                                                      mincount_connectivity=self.mincount_connectivity,
                                                      count_mode=self.count_mode).fetch_model()
 
         # Estimate transition matrix using re-sampling:
         if self.rank_Ct == 'bootstrap_counts':
-            Ceff_full = msmest.effective_count_matrix(dtrajs_lag, self.lagtime)
+            Ceff_full = effective_count_matrix(dtrajs_lag, self.lagtime)
             Ceff = submatrix(Ceff_full, count_model.active_set)
             smean, sdev = bootstrapping_count_matrix(Ceff, nbs=self.nbs)
         else:
