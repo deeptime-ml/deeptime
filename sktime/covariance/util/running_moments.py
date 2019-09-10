@@ -1,6 +1,8 @@
-import warnings
 import numbers
+import warnings
+
 import numpy as np
+
 from .moments import moments_XX, moments_XXXY, moments_block
 
 __author__ = 'noe'
@@ -67,19 +69,19 @@ class Moments(object):
     def mean_y(self):
         return self.sy / self.w
 
-    def covar(self, bessel=True):
+    def covar(self, bessels_correction=True):
         """
         Return covariance matrix:
 
         Parameters:
         -----------
-        bessel : bool, optional, default=True
+        bessels_correction : bool, optional, default=True
             Use Bessel's correction in order to
             obtain an unbiased estimator of sample covariances.
 
         """
-        if bessel:
-            return self.Mxy/ (self.w-1)
+        if bessels_correction:
+            return self.Mxy / (self.w - 1)
         else:
             return self.Mxy / self.w
 
@@ -121,18 +123,13 @@ class MomentsStorage(object):
         """ Store object X with weight w
         """
         if len(self.storage) == self.nsave:  # merge if we must
-            # print 'must merge'
             self.storage[-1].combine(moments, mean_free=self.remove_mean)
         else:  # append otherwise
-            # print 'append'
             self.storage.append(moments)
         # merge if possible
         while self._can_merge_tail():
-            # print 'merge: ',self.storage
             M = self.storage.pop()
-            # print 'pop last: ',self.storage
             self.storage[-1].combine(M, mean_free=self.remove_mean)
-            # print 'merged: ',self.storage
 
     @property
     def moments(self):
@@ -140,10 +137,8 @@ class MomentsStorage(object):
         """
         # collapse storage if necessary
         while len(self.storage) > 1:
-            # print 'collapse'
             M = self.storage.pop()
             self.storage[-1].combine(M, mean_free=self.remove_mean)
-        # print 'return first element'
         return self.storage[0]
 
     def clear(self):
@@ -360,13 +355,13 @@ class RunningCovar(object):
         return self.storage_YY.moments.Mxy
 
     def cov_XX(self, bessel=True):
-        return self.storage_XX.moments.covar(bessel=bessel)
+        return self.storage_XX.moments.covar(bessels_correction=bessel)
 
     def cov_XY(self, bessel=True):
-        return self.storage_XY.moments.covar(bessel=bessel)
+        return self.storage_XY.moments.covar(bessels_correction=bessel)
 
     def cov_YY(self, bessel):
-        return self.storage_YY.moments.covar(bessel=bessel)
+        return self.storage_YY.moments.covar(bessels_correction=bessel)
 
     def clear(self):
         self.storage_XX.clear()

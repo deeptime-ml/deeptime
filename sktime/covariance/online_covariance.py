@@ -1,22 +1,45 @@
+import itertools
+
 import numpy as np
-from numpy.linalg import eig
+from scipy.linalg import eig
 
 from sktime.base import Estimator, Model
-from .util.running_moments import running_covar as running_covar
+from sktime.data.util import timeshifted_split
 from sktime.numeric.eigen import spd_inv_split, sort_by_norm
+from .util.running_moments import running_covar as running_covar
 
 __all__ = ['OnlineCovariance']
 
 __author__ = 'paul, nueske, marscher, clonker'
 
 
+def ensure_timeseries_data(input_data):
+    if not isinstance(input_data, list):
+        if not isinstance(input_data, np.ndarray):
+            raise ValueError('input data can not be converted to a list of arrays')
+        elif isinstance(input_data, np.ndarray):
+            if input_data.dtype not in (np.float32, np.float64):
+                raise ValueError('only float and double dtype is supported')
+            return [input_data]
+    else:
+        for i, x in enumerate(input_data):
+            if not isinstance(x, np.ndarray):
+                raise ValueError(f'element {i} of given input data list is not an array.')
+            else:
+                if x.dtype not in (np.float32, np.float64):
+                    raise ValueError('only float and double dtype is supported')
+                input_data[i] = x
+    return input_data
+
+
 class OnlineCovarianceModel(Model):
-    def __init__(self):
-        self._cov_00 = None
-        self._cov_0t = None
-        self._cov_tt = None
-        self._mean_0 = None
-        self._mean_t = None
+    def __init__(self, cov_00=None, cov_0t=None, cov_tt=None, mean_0=None, mean_t=None, bessels_correction=True):
+        self._cov_00 = cov_00
+        self._cov_0t = cov_0t
+        self._cov_tt = cov_tt
+        self._mean_0 = mean_0
+        self._mean_t = mean_t
+        self._bessel = bessels_correction
 
     @property
     def cov_00(self):
@@ -37,6 +60,10 @@ class OnlineCovarianceModel(Model):
     @property
     def mean_t(self):
         return self._mean_t
+
+    @property
+    def bessels_correction(self):
+        return self._bessel
 
 
 class OnlineCovariance(Estimator):
@@ -67,9 +94,8 @@ class OnlineCovariance(Estimator):
     diag_only: bool
         If True, the computation is restricted to the diagonal entries (autocorrelations) only.
     """
-    def __init__(self, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
-                 reversible=False, bessel=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
-        super(OnlineCovariance, self).__init__(model=model)
+    def __init__(self, lagtime=None, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
+                 reversible=False, bessels_correction=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
 
         if diag_only and sparse_mode is not 'dense':
             if sparse_mode is 'sparse':
@@ -78,12 +104,17 @@ class OnlineCovariance(Estimator):
                               'mode.')
             sparse_mode = 'dense'
 
+        if (compute_c0t or compute_ctt) and lagtime is None:
+            raise ValueError('lagtime parameter mandatory due to requested covariance matrices.')
+
+        super(OnlineCovariance, self).__init__(model=model)
+        self.lagtime = lagtime
         self.compute_c00 = compute_c00
         self.compute_c0t = compute_c0t
         self.compute_ctt = compute_ctt
         self.remove_data_mean = remove_data_mean
         self.reversible = reversible
-        self.bessel = bessel
+        self.bessels_correction = bessels_correction
         self.sparse_mode = sparse_mode
         self.ncov = ncov
         self.diag_only = diag_only
@@ -100,45 +131,55 @@ class OnlineCovariance(Estimator):
     def is_lagged(self) -> bool:
         return self.compute_c0t or self.compute_ctt
 
-    def fit(self, data, weights=None, n_splits=None, column_selection=None):
+    def fit(self, data, lagtime=None, weights=None, n_splits=None, column_selection=None):
         """
          column_selection: ndarray(k, dtype=int) or None
          Indices of those columns that are to be computed. If None, all columns are computed.
-        :param data:
-        :param weights:
+        :param data: list of sequences (n elements)
+        :param weights: list of weight arrays (n elements) or array (shape
         :param n_splits:
         :param column_selection:
         :return:
         """
+        # TODO: constistent dtype
+        data = ensure_timeseries_data(data)
+
         self._rc.clear()
+
         if n_splits is None:
-            if self.is_lagged:
-                dlen = len(data[0])
-            else:
-                dlen = len(data)
+            dlen = min(len(d) for d in data)
             n_splits = int(dlen // 100 if dlen >= 1e4 else 1)
-        if self.is_lagged:
-            x, x_lagged = data
+
+        if lagtime is None:
+            lagtime = self.lagtime
         else:
-            x, x_lagged = data, np.empty((0,))
+            self.lagtime = lagtime
+        assert lagtime is not None
 
-        x, x_lagged = np.asarray_chkfinite(x), np.asarray_chkfinite(x_lagged)
+        lazy_weights = False
+        wsplit = itertools.repeat(None)
 
-        assert len(x_lagged) == 0 or len(x) == len(x_lagged), f"Expected data and time lagged data of equal length " \
-            f"but got {len(x)} != {len(x_lagged)}"
+        if weights is not None:
+            if hasattr(weights, 'weights'):
+                lazy_weights = True
+            elif len(np.atleast_1d(weights)) != len(data[0]):
+                raise ValueError(
+                    "Weights have incompatible shape "
+                    f"(#weights={len(weights) if weights is not None else None} != {len(data[0])}=#frames.")
+            elif isinstance(weights, np.ndarray):
+                wsplit = np.array_split(weights, n_splits)
 
-        if weights is not None and len(np.atleast_1d(weights)) != len(x):
-            raise ValueError(f"Weights have incompatible shape "
-                             f"(#weights={len(weights) if weights is not None else None} != {len(x)}=#frames.")
-        wsplit = np.array_split(weights, n_splits) if weights is not None else [None] * n_splits
-
-        for x_batch, y_batch, w in zip(np.array_split(x, n_splits), np.array_split(x_lagged, n_splits), wsplit):
-            assert len(x_batch) == len(y_batch) or (not self.is_lagged and len(y_batch) == 0)
-            assert w is None or len(x_batch) == len(w)
-            if not self.is_lagged:
-                self.partial_fit(x_batch, column_selection=column_selection, weights=w)
-            else:
-                self.partial_fit((x_batch, y_batch), column_selection=column_selection, weights=w)
+        if self.is_lagged:
+            for (x, y), w in zip(timeshifted_split(data, lagtime=lagtime, n_splits=n_splits), wsplit):
+                if lazy_weights:
+                    w = weights.weights(x)
+                # weights can weights be shorter than actual data
+                if isinstance(w, np.ndarray):
+                    w = w[:len(x)]
+                self.partial_fit((x, y), weights=w, column_selection=column_selection)
+        else:
+            for x in data:
+                self.partial_fit(x, weights=weights, column_selection=column_selection)
 
         return self
 
@@ -154,55 +195,55 @@ class OnlineCovariance(Estimator):
         if self.is_lagged:
             x, y = data
         else:
-            x, y = data, np.empty((0,))
-        if weights is not None and len(x) != len(np.atleast_1d(weights)):
-            raise ValueError(f"Weights have incompatible size (weights length "
-                             f"{len(weights) if weights is not None else None}, data length {len(x)})")
+            x, y = data, None
+        # TODO: types, shapes checking!
         try:
-            self._rc.add(x, y if len(y) > 0 else None, column_selection=column_selection, weights=weights)
+            self._rc.add(x, y, column_selection=column_selection, weights=weights)
         except MemoryError:
             raise MemoryError('Covariance matrix does not fit into memory. '
                               'Input is too high-dimensional ({} dimensions). '.format(x.shape[1]))
         return self
 
-    def _update_model(self):
+    def fetch_model(self) -> OnlineCovarianceModel:
+        cov_00 = cov_tt = cov_0t = mean_0 = mean_t = None
         if self.compute_c0t:
-            self._model._cov_0t = self._rc.cov_XY(self.bessel)
+            cov_0t = self._rc.cov_XY(self.bessels_correction)
         if self.compute_ctt:
-            self._model._cov_tt = self._rc.cov_YY(self.bessel)
+            cov_tt = self._rc.cov_YY(self.bessels_correction)
         if self.compute_c00:
-            self._model._cov_00 = self._rc.cov_XX(self.bessel)
+            cov_00 = self._rc.cov_XX(self.bessels_correction)
 
         if self.compute_c00 or self.compute_c0t:
-            self._model._mean_0 = self._rc.mean_X()
+            mean_0 = self._rc.mean_X()
         if self.compute_ctt or self.compute_c0t:
-            self._model._mean_t = self._rc.mean_Y()
-
-    def fetch_model(self) -> OnlineCovarianceModel:
-        self._update_model()
+            mean_t = self._rc.mean_Y()
+        self._model.__init__(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
+                             bessels_correction=self.bessels_correction)
         return self._model
 
 
 class KoopmanWeights(Model):
 
-    def __init__(self):
-        self.u = self.u_const = None
+    def __init__(self, u=None, u_const=0):
+        self.u = u
+        self.u_const = u_const
 
-    def compute_weight(self, X):
+    def weights(self, X):
         assert self.u is not None and self.u_const is not None
         return X.dot(self.u) + self.u_const
 
 
 class KoopmanEstimator(Estimator):
 
-    def __init__(self, epsilon=1e-6, ncov=float('inf')):
+    def __init__(self, lagtime, epsilon=1e-6, ncov=float('inf')):
         super(KoopmanEstimator, self).__init__()
         self.epsilon = epsilon
-        self._cov = OnlineCovariance(compute_c00=True, compute_c0t=True, remove_data_mean=True, reversible=False,
-                                     bessel=False, ncov=ncov)
+        self._cov = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, remove_data_mean=True, reversible=False,
+                                     bessels_correction=False, ncov=ncov)
 
-    def fit(self, data, y=None):
-        self._cov.fit(data)
+    def fit(self, data, y=None, lagtime=None):
+        self._cov.fit(data, lagtime=lagtime)
+        self.fetch_model()  # pre-compute Koopman operator
         return self
 
     def partial_fit(self, data):
@@ -257,3 +298,11 @@ class KoopmanEstimator(Estimator):
         self._model.u = u_input[:-1]
         self._model.u_const = u_input[-1]
         return self._model
+
+    @property
+    def lagtime(self):
+        return self._cov.lagtime
+
+    @lagtime.setter
+    def lagtime(self, value):
+        self._cov.lagtime = value

@@ -38,12 +38,12 @@ class TestTICA(unittest.TestCase):
         np.random.seed(0)
         data = np.random.randn(23000, 3)
 
-        est = TICA(dim=1)
+        est = TICA(lagtime=lag, dim=1)
         for X, Y in timeshifted_split(data, lagtime=lag, chunksize=chunk):
             est.partial_fit((X, Y))
         model1 = est.fetch_model().copy()
         # ------- run again with new chunksize -------
-        est.fit((data[:-lag], data[lag:]))
+        est.fit(data)
         model2 = est.fetch_model().copy()
 
         assert model1 != model2
@@ -56,7 +56,7 @@ class TestTICA(unittest.TestCase):
         o = np.ones((100, 10))
         z_lagged = (z[:-10], z[10:])
         o_lagged = (o[:-10], o[10:])
-        tica_obj = TICA()
+        tica_obj = TICA(lagtime=1)
         model = tica_obj.partial_fit(z_lagged).fetch_model()
         with self.assertRaises(ZeroRankError):
             _ = model.timescales(lagtime=1)
@@ -123,14 +123,13 @@ class TestTICAExtensive(unittest.TestCase):
         cls.cov_ref_0t = test_data['cov_ref_0t']
         cls.cov_ref_0t_nr = test_data['cov_ref_0t_nr']
         cls.data = test_data['data']
-        cls.timeshifted_data_pair = (cls.data[:-cls.lagtime], cls.data[cls.lagtime:])
 
         # perform unscaled TICA
-        cls.model_unscaled = TICA( dim=1, scaling=None).fit(cls.timeshifted_data_pair).fetch_model()
+        cls.model_unscaled = TICA(lagtime=cls.lagtime, dim=1, scaling=None).fit(cls.data).fetch_model()
         cls.transformed_data_unscaled = cls.model_unscaled.transform(cls.data)
 
         # non-reversible TICA
-        cls.model_nonrev = TICA( dim=1, scaling=None, reversible=False).fit(cls.timeshifted_data_pair) \
+        cls.model_nonrev = TICA(lagtime=cls.lagtime, dim=1, scaling=None, reversible=False).fit(cls.data) \
             .fetch_model()
         cls.transformed_data_nonrev = cls.model_nonrev.transform(cls.data)
 
@@ -141,7 +140,7 @@ class TestTICAExtensive(unittest.TestCase):
         assert np.max(np.abs(vars_nonrev - 1.0)) < 0.01
 
     def test_kinetic_map(self):
-        tica = TICA(dim=None, scaling='kinetic_map').fit(self.timeshifted_data_pair).fetch_model()
+        tica = TICA(lagtime=self.lagtime, dim=None, scaling='kinetic_map').fit(self.data).fetch_model()
         O = tica.transform(self.data)
         vars = np.var(O, axis=0)
         refs = tica.eigenvalues ** 2
@@ -163,15 +162,15 @@ class TestTICAExtensive(unittest.TestCase):
         assert self.model_unscaled.output_dimension() == 1
         assert self.model_nonrev.output_dimension() == 1
         # Test other variants
-        model = TICA(dim=1.0).fit(self.timeshifted_data_pair).fetch_model()
+        model = TICA(lagtime=self.lagtime, dim=1.0).fit(self.data).fetch_model()
         assert model.output_dimension() == 2
-        model = TICA(dim=.9).fit(self.timeshifted_data_pair).fetch_model()
+        model = TICA(lagtime=self.lagtime, dim=.9).fit(self.data).fetch_model()
         assert model.output_dimension() == 1
 
         invalid_dims = [0, 0.0, 1.1, -1]
         for invalid_dim in invalid_dims:
             with self.assertRaises(ValueError):
-                TICA(dim=invalid_dim)
+                TICA(lagtime=self.lagtime, dim=invalid_dim)
 
 
 if __name__ == "__main__":
