@@ -1,16 +1,20 @@
 import numpy as np
 
 
-def timeshifted_split(inputs, lagtime: int, chunksize=None, n_splits=None):
-    assert lagtime > 0
-    #assert (chunksize is not None) ^ (n_splits is not None)
-    if chunksize is None and n_splits is None:
-        chunksize = 500
+def timeshifted_split(inputs, lagtime: int, chunksize=1000, n_splits=None):
+    if lagtime < 0:
+        raise ValueError('lagtime has to be positive')
+    if int(chunksize) < 0:
+        raise ValueError('chunksize has to be positive')
 
-    if not isinstance(inputs, (list, tuple)):
+    if not isinstance(inputs, list):
+        if isinstance(inputs, tuple):
+            inputs = list(inputs)
         inputs = [inputs]
 
-    assert all(len(data) > lagtime for data in inputs)
+    if not all(len(data) > lagtime for data in inputs):
+        too_short_inputs = [i for i,x in enumerate(inputs) if len(x) < lagtime]
+        raise ValueError(f'Input contained to short (smaller than lagtime({lagtime}) at following indices: {too_short_inputs}')
 
     for data in inputs:
         data = np.asarray_chkfinite(data)
