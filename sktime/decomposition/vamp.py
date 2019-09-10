@@ -19,12 +19,9 @@
 '''
 
 
-import numpy as np
-
-
-
 import warnings
 
+import numpy as np
 
 from sktime.base import Model, Estimator
 from sktime.covariance.online_covariance import OnlineCovariance
@@ -271,7 +268,6 @@ class VAMPModel(Model):
               singular value. Note that only the left singular functions
               induce a kinetic map.
         """
-        print('diag vampmodel')
         L0 = spd_inv_split(self.cov_00, epsilon=self.epsilon)
         self._rank0 = L0.shape[1] if L0.ndim == 2 else 1
         Lt = spd_inv_split(self.cov_tt, epsilon=self.epsilon)
@@ -389,109 +385,10 @@ class VAMPModel(Model):
         assert res
         return res + 1
 
-    def cktest(self, n_observables=None, observables='phi', statistics='psi', mlags=10, data=None, test_estimator=None):
-        r"""Do the Chapman-Kolmogorov test by computing predictions for higher lag times and by performing estimations at higher lag times.
-
-        Notes
-        -----
-
-        This method computes two sets of time-lagged covariance matrices
-
-        * estimates at higher lag times :
-
-          .. math::
-
-              \left\langle \mathbf{K}(n\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
-
-          where :math:`\rho_{0}` is the empirical distribution implicitly defined
-          by all data points from time steps 0 to T-tau in all trajectories,
-          :math:`\mathbf{K}(n\tau)` is a rank-reduced Koopman matrix estimated
-          at the lag-time n*tau and g and f are some functions of the data.
-          Rank-reduction of the Koopman matrix is controlled by the `dim`
-          parameter of :func:`vamp <pyemma.coordinates.vamp>`.
-
-        * predictions at higher lag times :
-
-          .. math::
-
-              \left\langle \mathbf{K}^{n}(\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
-
-          where :math:`\mathbf{K}^{n}` is the n'th power of the rank-reduced
-          Koopman matrix contained in self.
-
-
-        The Champan-Kolmogorov test is to compare the predictions to the
-        estimates.
-
-        Parameters
-        ----------
-        n_observables : int, optional, default=None
-            Limit the number of default observables (and of default statistics)
-            to this number.
-            Only used if `observables` are None or `statistics` are None.
-
-        observables : np.ndarray((input_dimension, n_observables)) or 'phi'
-            Coefficients that express one or multiple observables :math:`g`
-            in the basis of the input features.
-            This parameter can be 'phi'. In that case, the dominant
-            right singular functions of the Koopman operator estimated
-            at the smallest lag time are used as default observables.
-
-        statistics : np.ndarray((input_dimension, n_statistics)) or 'psi'
-            Coefficients that express one or multiple statistics :math:`f`
-            in the basis of the input features.
-            This parameter can be 'psi'. In that case, the dominant
-            left singular functions of the Koopman operator estimated
-            at the smallest lag time are used as default statistics.
-
-        mlags : int or int-array, default=10
-            multiples of lag times for testing the Model, e.g. range(10).
-            A single int will trigger a range, i.e. mlags=10 maps to
-            mlags=range(10).
-            Note that you need to be able to do a model prediction for each
-            of these lag time multiples, e.g. the value 0 only make sense
-            if model.expectation(lag_multiple=0) will work.
-
-        Returns
-        -------
-        vckv : :class:`VAMPChapmanKolmogorovValidator <pyemma.coordinates.transform.VAMPChapmanKolmogorovValidator>`
-            Contains the estimated and the predicted covarince matrices.
-            The object can be plotted with :func:`plot_cktest <pyemma.plots.plot_cktest>` with the option `y01=False`.
-        """
-        if n_observables is not None:
-            if n_observables > self.dimension():
-                warnings.warn('Selected singular functions as observables but dimension '
-                              'is lower than requested number of observables.')
-                n_observables = self.dimension()
-        else:
-            n_observables = self.dimension()
-
-        if isinstance(observables, str) and observables == 'phi':
-            observables = self.singular_vectors_right[:, 0:n_observables]
-            observables_mean_free = True
-        else:
-            #ensure_ndarray(observables, ndim=2)
-            observables_mean_free = False
-
-        if isinstance(statistics, str) and statistics == 'psi':
-            statistics = self.singular_vectors_left[:, 0:n_observables]
-            statistics_mean_free = True
-        else:
-            #ensure_ndarray_or_None(statistics, ndim=2)
-            statistics_mean_free = False
-        if test_estimator is None:
-            test_estimator = VAMP(dim=self.dim, scaling=self.scaling, right=self.right, epsilon=self.epsilon)
-        ck = VAMPChapmanKolmogorovValidator(self, test_estimator, observables, statistics, observables_mean_free,
-                                            statistics_mean_free, mlags=mlags)
-        if data is not None:
-            ck.fit(data)
-        return ck
-
-
 class VAMP(Estimator):
     r"""Variational approach for Markov processes (VAMP)"""
 
-    def __init__(self, dim=None, scaling=None, right=False, epsilon=1e-6,
+    def __init__(self, lagtime=1, dim=None, scaling=None, right=False, epsilon=1e-6,
                  ncov=float('inf')):
         r""" Variational approach for Markov processes (VAMP) [1]_.
 
@@ -633,8 +530,8 @@ class VAMP(Estimator):
         self.right = right
         self.epsilon = epsilon
         self.ncov = ncov
-        self._covar = OnlineCovariance(compute_c00=True, compute_c0t=True, compute_ctt=True, remove_data_mean=True,
-                                       reversible=False, bessel=False, ncov=self.ncov)
+        self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=True, remove_data_mean=True,
+                                       reversible=False, bessels_correction=False, ncov=self.ncov)
 
         super(VAMP, self).__init__()
 
@@ -642,13 +539,8 @@ class VAMP(Estimator):
         return VAMPModel(dim=self.dim, epsilon=self.epsilon, scaling=self.scaling, right=self.right)
 
     def fit(self, data, **kw):
-        cov_model = self._covar.fit(data, **kw).fetch_model()
-        self._model.update_model_params(mean_0=cov_model.mean_0,
-                                        mean_t=cov_model.mean_t,
-                                        C00=cov_model.cov_00,
-                                        C0t=cov_model.cov_0t,
-                                        Ctt=cov_model.cov_tt)
-        self._model._diagonalize()
+        self._covar.fit(data, **kw)
+        self.fetch_model()
         return self
 
     def partial_fit(self, X):
@@ -764,3 +656,100 @@ class VAMPChapmanKolmogorovValidator(LaggedModelValidator):
             return np.zeros(self.observables.shape[1]) + np.nan
         else:
             return np.zeros((self.observables.shape[1], self.statistics.shape[1])) + np.nan
+
+
+def vamp_cktest(test_estimator, model, n_observables=None, observables='phi', statistics='psi', mlags=10, data=None):
+    r"""Do the Chapman-Kolmogorov test by computing predictions for higher lag times and by performing estimations at higher lag times.
+
+    Notes
+    -----
+
+    This method computes two sets of time-lagged covariance matrices
+
+    * estimates at higher lag times :
+
+      .. math::
+
+          \left\langle \mathbf{K}(n\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
+
+      where :math:`\rho_{0}` is the empirical distribution implicitly defined
+      by all data points from time steps 0 to T-tau in all trajectories,
+      :math:`\mathbf{K}(n\tau)` is a rank-reduced Koopman matrix estimated
+      at the lag-time n*tau and g and f are some functions of the data.
+      Rank-reduction of the Koopman matrix is controlled by the `dim`
+      parameter of :func:`vamp <pyemma.coordinates.vamp>`.
+
+    * predictions at higher lag times :
+
+      .. math::
+
+          \left\langle \mathbf{K}^{n}(\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
+
+      where :math:`\mathbf{K}^{n}` is the n'th power of the rank-reduced
+      Koopman matrix contained in self.
+
+
+    The Champan-Kolmogorov test is to compare the predictions to the
+    estimates.
+
+    Parameters
+    ----------
+    n_observables : int, optional, default=None
+        Limit the number of default observables (and of default statistics)
+        to this number.
+        Only used if `observables` are None or `statistics` are None.
+
+    observables : np.ndarray((input_dimension, n_observables)) or 'phi'
+        Coefficients that express one or multiple observables :math:`g`
+        in the basis of the input features.
+        This parameter can be 'phi'. In that case, the dominant
+        right singular functions of the Koopman operator estimated
+        at the smallest lag time are used as default observables.
+
+    statistics : np.ndarray((input_dimension, n_statistics)) or 'psi'
+        Coefficients that express one or multiple statistics :math:`f`
+        in the basis of the input features.
+        This parameter can be 'psi'. In that case, the dominant
+        left singular functions of the Koopman operator estimated
+        at the smallest lag time are used as default statistics.
+
+    mlags : int or int-array, default=10
+        multiples of lag times for testing the Model, e.g. range(10).
+        A single int will trigger a range, i.e. mlags=10 maps to
+        mlags=range(10).
+        Note that you need to be able to do a model prediction for each
+        of these lag time multiples, e.g. the value 0 only make sense
+        if model.expectation(lag_multiple=0) will work.
+
+    Returns
+    -------
+    vckv : :class:`VAMPChapmanKolmogorovValidator <pyemma.coordinates.transform.VAMPChapmanKolmogorovValidator>`
+        Contains the estimated and the predicted covarince matrices.
+        The object can be plotted with :func:`plot_cktest <pyemma.plots.plot_cktest>` with the option `y01=False`.
+    """
+    if n_observables is not None:
+        if n_observables > model.dimension():
+            warnings.warn('Selected singular functions as observables but dimension '
+                          'is lower than requested number of observables.')
+            n_observables = model.dimension()
+    else:
+        n_observables = model.dimension()
+
+    if isinstance(observables, str) and observables == 'phi':
+        observables = model.singular_vectors_right[:, 0:n_observables]
+        observables_mean_free = True
+    else:
+        #ensure_ndarray(observables, ndim=2)
+        observables_mean_free = False
+
+    if isinstance(statistics, str) and statistics == 'psi':
+        statistics = model.singular_vectors_left[:, 0:n_observables]
+        statistics_mean_free = True
+    else:
+        #ensure_ndarray_or_None(statistics, ndim=2)
+        statistics_mean_free = False
+    ck = VAMPChapmanKolmogorovValidator(model, test_estimator, observables, statistics, observables_mean_free,
+                                        statistics_mean_free, mlags=mlags)
+    if data is not None:
+        ck.fit(data)
+    return ck

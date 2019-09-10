@@ -21,30 +21,23 @@
 """
 
 import unittest
+
 import numpy as np
 
-from logging import getLogger
-
 from sktime.data.util import timeshifted_split
-from sktime.decomposition.vamp import VAMP, VAMPModel
+from sktime.decomposition.vamp import VAMP, VAMPModel, vamp_cktest
 from sktime.markovprocess.transition_counting import cvsplit_dtrajs
 from tests.markovprocess.test_msm import estimate_markov_model
 
-logger = getLogger('sktime.' + 'TestVAMP')
 
+def estimate_vamp(data, lag, partial_fit=False, return_estimator=False, **kwargs) -> VAMPModel:
+    estimator = VAMP(lagtime=lag, **kwargs)
+    estimator.fit(data)
 
-def estimate_vamp(data, lag, partial_fit=False, **kwargs) -> VAMPModel:
-    if partial_fit:
-        chunksize = 500
-        n_splits = None
-    else:
-        chunksize = None
-        n_splits = 1
-    data_lagged = timeshifted_split(data, lagtime=lag, chunksize=chunksize, n_splits=n_splits)
-    estimator = VAMP(**kwargs)
-    for traj in data_lagged:
-        estimator.partial_fit(traj)
-    return estimator.fetch_model()
+    m = estimator.fetch_model()
+    if return_estimator:
+        return estimator, m
+    return m
 
 
 def random_matrix(n, rank=None, eps=0.01):
@@ -175,7 +168,7 @@ class TestVAMPModel(unittest.TestCase):
             trajs.append(traj)
             p0 += traj[:-lag, :].sum(axis=0)
             p1 += traj[lag:, :].sum(axis=0)
-        vamp = estimate_vamp(trajs, lag=lag, scaling=None, dim=1.0)
+        estimator, vamp = estimate_vamp(trajs, lag=lag, scaling=None, dim=1.0, return_estimator=True)
         msm = estimate_markov_model(dtrajs, lag=lag, reversible=False)
         cls.trajs = trajs
         cls.dtrajs = dtrajs
@@ -183,6 +176,7 @@ class TestVAMPModel(unittest.TestCase):
         cls.lag = lag
         cls.msm = msm
         cls.vamp = vamp
+        cls.estimator = estimator
         cls.p0 = p0 / p0.sum()
         cls.p1 = p1 / p1.sum()
         cls.atol = np.finfo(np.float32).eps * 1000.0
@@ -217,7 +211,7 @@ class TestVAMPModel(unittest.TestCase):
         references_sf = [U.T.dot(np.diag(self.p0)).dot(np.linalg.matrix_power(self.msm.P, k * self.lag)).dot(V).T for k
                          in
                          range(10 - 1)]
-        cktest = self.vamp.cktest(n_observables=2, mlags=10)
+        cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, n_observables=2, mlags=10, data=self.trajs).fetch_model()
         pred_sf = cktest.predictions
         esti_sf = cktest.estimates
         for e, p, r in zip(esti_sf[1:], pred_sf[1:], references_sf[1:]):
@@ -237,7 +231,8 @@ class TestVAMPModel(unittest.TestCase):
 
     def test_CK_expectation_against_MSM(self):
         obs = np.eye(3)  # observe every state
-        cktest = self.vamp.cktest(observables=obs, statistics=None, mlags=4)
+        cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, observables=obs, statistics=None, mlags=4,
+                             data=self.trajs).fetch_model()
         pred = cktest.predictions[1:]
         est = cktest.estimates[1:]
 
@@ -250,8 +245,8 @@ class TestVAMPModel(unittest.TestCase):
             np.testing.assert_allclose(est_, pred_, atol=0.006)
 
     def test_CK_covariances_of_singular_functions(self):
-        cktest = self.vamp.cktest(n_observables=2, mlags=4)
-        cktest.fit(data=self.trajs_timeshifted)
+        cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, n_observables=2, mlags=4,
+                             data=self.trajs).fetch_model()
 
         pred = cktest.predictions[1:]
         est = cktest.estimates[1:]
@@ -261,7 +256,8 @@ class TestVAMPModel(unittest.TestCase):
     def test_CK_covariances_against_MSM(self):
         obs = np.eye(3)  # observe every state
         sta = np.eye(3)  # restrict p0 to every state
-        cktest = self.vamp.cktest(observables=obs, statistics=sta, mlags=4)
+        cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, observables=obs, statistics=sta,
+                             mlags=4, data=self.trajs).fetch_model()
         pred = cktest.predictions[1:]
         est = cktest.estimates[1:]
 

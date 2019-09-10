@@ -1,11 +1,11 @@
 import abc
 
 import numpy as np
-from msmtools.util.types import ensure_dtraj_list
 
 from sktime.base import Estimator, Model
+
+
 # TODO: copy over?
-from sklearn.model_selection import ParameterGrid
 
 
 class LaggedModelValidation(Model):
@@ -176,7 +176,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         for lag in lags:
             self.test_estimator.lagtime = lag
             self.test_estimator.fit(data)
-            estimated_models.append(self.test_estimator.fetch_model(copy=True))
+            estimated_models.append(self.test_estimator.fetch_model().copy())
 
         for mlag, model in zip(self.mlags, estimated_models):
             if model is None: continue
