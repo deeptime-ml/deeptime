@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
-
 from msmtools import estimation as msmest
 
 from sktime.markovprocess._base import _MSMBaseEstimator
@@ -132,9 +131,9 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         self.maxerr = maxerr
 
     def _create_model(self) -> MarkovStateModel:
-        return MarkovStateModel(transition_matrix=None)
+        return MarkovStateModel()
 
-    def fit(self, dtrajs, **kwargs):
+    def fit(self, dtrajs):
         count_model = TransitionCountEstimator().fit(
             dtrajs, lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
             mincount_connectivity=self.mincount_connectivity, stationary_dist_constraint=self.statdist_constraint).fetch_model()

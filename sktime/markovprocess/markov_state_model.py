@@ -19,19 +19,18 @@
 # .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
 import copy
+import typing
 from math import ceil
 
 import numpy as np
-import typing
-
 from pyemma.util.linalg import mdot
 
 from sktime.base import Model
-from sktime.markovprocess.sample import _ensure_dtraj_list
-from sktime.util import ensure_ndarray
 from sktime.markovprocess import Q_
 from sktime.markovprocess._dtraj_stats import TransitionCountModel
 from sktime.markovprocess.pcca import PCCA
+from sktime.markovprocess.sample import _ensure_dtraj_list
+from sktime.util import ensure_ndarray
 
 
 class MarkovStateModel(Model):
@@ -76,7 +75,7 @@ class MarkovStateModel(Model):
         be greater than neig; it is recommended that ncv > 2*neig.
 
     """
-    def __init__(self, transition_matrix, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, count_model=None):
+    def __init__(self, transition_matrix=None, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, count_model=None):
         self.ncv = ncv
         # we set reversible first, so it can be derived from transition_matrix, if None was given.
         self._is_reversible = reversible

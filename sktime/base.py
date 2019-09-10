@@ -1,5 +1,6 @@
 import abc
 from inspect import signature
+
 from sklearn.base import _pprint as pprint_sklearn
 
 
@@ -47,6 +48,35 @@ class _base_methods_mixin(object):
         for arg in args:
             params[arg] = getattr(self, arg, None)
         return params
+
+    def __getstate__(self):
+        try:
+            state = super().__getstate__()
+        except AttributeError:
+            state = self.__dict__
+
+        if type(self).__module__.startswith('sktime.'):
+            from sktime import __version__
+            return dict(state.items(), _sktime_version=__version__)
+        else:
+            return state
+
+    def __setstate__(self, state):
+        from sktime import __version__
+        if type(self).__module__.startswith('sktime.'):
+            pickle_version = state.pop("_sktime_version", None)
+            if pickle_version != __version__:
+                import warnings
+                warnings.warn(
+                    "Trying to unpickle estimator {0} from version {1} when "
+                    "using version {2}. This might lead to breaking code or "
+                    "invalid results. Use at your own risk.".format(
+                        self.__class__.__name__, pickle_version, __version__),
+                    UserWarning)
+        try:
+            super().__setstate__(state)
+        except AttributeError:
+            self.__dict__.update(state)
 
 
 class Model(_base_methods_mixin):

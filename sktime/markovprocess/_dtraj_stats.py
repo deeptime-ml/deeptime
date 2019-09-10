@@ -1,12 +1,9 @@
 import numpy as np
-
-from sklearn.utils.random import check_random_state
-
 from msmtools import estimation as msmest
 from msmtools.dtraj import count_states
+from sklearn.utils.random import check_random_state
 
 from sktime.base import Estimator, Model
-
 from sktime.markovprocess import Q_
 from sktime.util import submatrix
 
@@ -288,6 +285,8 @@ class TransitionCountModel(Model):
 
 class TransitionCountEstimator(Estimator):
 
+    # TODO: ctor?
+
     def _create_model(self) -> TransitionCountModel:
         return TransitionCountModel()
 
@@ -338,7 +337,7 @@ class TransitionCountEstimator(Estimator):
         lcc = msmest.largest_connected_set(C_pos, directed=False)
         return pos[lcc]
 
-    def fit(self, data, lagtime:int=1, count_mode='sliding', mincount_connectivity='1/n', dt_traj='1 step',
+    def fit(self, data, lagtime: int = 1, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
             stationary_dist_constraint=None):
         r""" Counts transitions at given lag time
 
