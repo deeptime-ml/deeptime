@@ -365,27 +365,6 @@ class TestCovarEstimatorWeightsList(unittest.TestCase):
         # cov = covariance_lagged(data, lag=3, weights=weights, chunksize=10)
         assert np.all(cov.cov_00 < 1)
 
-    @unittest.skip("zero weights known to be broken #1117")
-    def test_weights_equal_to_zero(self):
-        n = 1000
-        data = [np.random.random(size=(n, 2)) for _ in range(5)]
-
-        # create some artificial correlations
-        data[0][:, 0] *= np.random.randint(n)
-
-        weights = [np.ones(n, dtype=np.float32) for _ in range(5)]
-        # omit the first trajectory by setting a weight close to zero.
-        weights[0][:] = 0
-        weights[0][800:850] = 1
-
-        est = OnlineCovariance(compute_c0t=True)
-        for x, w in zip(data, weights):
-            est.partial_fit((x[:-3], x[3:]), w[:-3])
-        cov = est.fetch_model()
-        zeros = sum((sum(w == 0) for w in weights))
-        assert np.all(cov.cov_00 < 1), cov.cov_00
-        assert np.all(cov.cov_00 > 0), cov.cov_00
-
     def test_non_matching_length(self):
         n = 100
         data = [np.random.random(size=(n, 2)) for n in range(3)]
