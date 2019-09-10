@@ -72,7 +72,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
 
     Parameters
     ----------
-    lag : int
+    lagtime : int
         lag time at which transitions are counted and the transition matrix is
         estimated.
 
