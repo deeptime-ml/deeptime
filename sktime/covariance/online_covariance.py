@@ -16,18 +16,18 @@ __author__ = 'paul, nueske, marscher, clonker'
 def ensure_timeseries_data(input_data):
     if not isinstance(input_data, list):
         if not isinstance(input_data, np.ndarray):
-            raise ValueError(input_data)
+            raise ValueError('input data can not be converted to a list of arrays')
         elif isinstance(input_data, np.ndarray):
             if input_data.dtype not in (np.float32, np.float64):
-                raise ValueError
+                raise ValueError('only float and double dtype is supported')
             return [input_data]
     else:
         for i, x in enumerate(input_data):
             if not isinstance(x, np.ndarray):
-                raise ValueError()
+                raise ValueError(f'element {i} of given input data list is not an array.')
             else:
                 if x.dtype not in (np.float32, np.float64):
-                    raise ValueError
+                    raise ValueError('only float and double dtype is supported')
                 input_data[i] = x
     return input_data
 
@@ -155,10 +155,6 @@ class OnlineCovariance(Estimator):
         else:
             self.lagtime = lagtime
         assert lagtime is not None
-
-        assert isinstance(data, list)
-        assert all(isinstance(e, np.ndarray) for e in data)
-        assert all(e.dtype in (np.float32, np.float64) for e in data)
 
         lazy_weights = False
         wsplit = itertools.repeat(None)
