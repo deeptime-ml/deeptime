@@ -1,6 +1,8 @@
-import warnings
 import numbers
+import warnings
+
 import numpy as np
+
 from .moments import moments_XX, moments_XXXY, moments_block
 
 __author__ = 'noe'
@@ -67,19 +69,19 @@ class Moments(object):
     def mean_y(self):
         return self.sy / self.w
 
-    def covar(self, bessel=True):
+    def covar(self, bessels_correction=True):
         """
         Return covariance matrix:
 
         Parameters:
         -----------
-        bessel : bool, optional, default=True
+        bessels_correction : bool, optional, default=True
             Use Bessel's correction in order to
             obtain an unbiased estimator of sample covariances.
 
         """
-        if bessel:
-            return self.Mxy/ (self.w-1)
+        if bessels_correction:
+            return self.Mxy / (self.w - 1)
         else:
             return self.Mxy / self.w
 
@@ -353,13 +355,13 @@ class RunningCovar(object):
         return self.storage_YY.moments.Mxy
 
     def cov_XX(self, bessel=True):
-        return self.storage_XX.moments.covar(bessel=bessel)
+        return self.storage_XX.moments.covar(bessels_correction=bessel)
 
     def cov_XY(self, bessel=True):
-        return self.storage_XY.moments.covar(bessel=bessel)
+        return self.storage_XY.moments.covar(bessels_correction=bessel)
 
     def cov_YY(self, bessel):
-        return self.storage_YY.moments.covar(bessel=bessel)
+        return self.storage_YY.moments.covar(bessels_correction=bessel)
 
     def clear(self):
         self.storage_XX.clear()

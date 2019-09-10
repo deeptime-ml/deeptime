@@ -5,8 +5,8 @@ from scipy.linalg import eig
 
 from sktime.base import Estimator, Model
 from sktime.data.util import timeshifted_split
-from .util.running_moments import running_covar as running_covar
 from sktime.numeric.eigen import spd_inv_split, sort_by_norm
+from .util.running_moments import running_covar as running_covar
 
 __all__ = ['OnlineCovariance']
 
@@ -33,13 +33,13 @@ def ensure_timeseries_data(input_data):
 
 
 class OnlineCovarianceModel(Model):
-    def __init__(self):
-        self._cov_00 = None
-        self._cov_0t = None
-        self._cov_tt = None
-        self._mean_0 = None
-        self._mean_t = None
-        self._bessel = None
+    def __init__(self, cov_00=None, cov_0t=None, cov_tt=None, mean_0=None, mean_t=None, bessels_correction=True):
+        self._cov_00 = cov_00
+        self._cov_0t = cov_0t
+        self._cov_tt = cov_tt
+        self._mean_0 = mean_0
+        self._mean_t = mean_t
+        self._bessel = bessels_correction
 
     @property
     def cov_00(self):
@@ -62,7 +62,7 @@ class OnlineCovarianceModel(Model):
         return self._mean_t
 
     @property
-    def bessel(self):
+    def bessels_correction(self):
         return self._bessel
 
 
@@ -95,7 +95,7 @@ class OnlineCovariance(Estimator):
         If True, the computation is restricted to the diagonal entries (autocorrelations) only.
     """
     def __init__(self, lagtime=None, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
-                 reversible=False, bessel=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
+                 reversible=False, bessels_correction=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
 
         if diag_only and sparse_mode is not 'dense':
             if sparse_mode is 'sparse':
@@ -114,7 +114,7 @@ class OnlineCovariance(Estimator):
         self.compute_ctt = compute_ctt
         self.remove_data_mean = remove_data_mean
         self.reversible = reversible
-        self.bessel = bessel
+        self.bessels_correction = bessels_correction
         self.sparse_mode = sparse_mode
         self.ncov = ncov
         self.diag_only = diag_only
@@ -208,22 +208,21 @@ class OnlineCovariance(Estimator):
                               'Input is too high-dimensional ({} dimensions). '.format(x.shape[1]))
         return self
 
-    def _update_model(self):
+    def fetch_model(self) -> OnlineCovarianceModel:
+        cov_00 = cov_tt = cov_0t = mean_0 = mean_t = None
         if self.compute_c0t:
-            self._model._cov_0t = self._rc.cov_XY(self.bessel)
+            cov_0t = self._rc.cov_XY(self.bessels_correction)
         if self.compute_ctt:
-            self._model._cov_tt = self._rc.cov_YY(self.bessel)
+            cov_tt = self._rc.cov_YY(self.bessels_correction)
         if self.compute_c00:
-            self._model._cov_00 = self._rc.cov_XX(self.bessel)
+            cov_00 = self._rc.cov_XX(self.bessels_correction)
 
         if self.compute_c00 or self.compute_c0t:
-            self._model._mean_0 = self._rc.mean_X()
+            mean_0 = self._rc.mean_X()
         if self.compute_ctt or self.compute_c0t:
-            self._model._mean_t = self._rc.mean_Y()
-        self._model._bessel = self.bessel
-
-    def fetch_model(self) -> OnlineCovarianceModel:
-        self._update_model()
+            mean_t = self._rc.mean_Y()
+        self._model.__init__(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
+                             bessels_correction=self.bessels_correction)
         return self._model
 
 
@@ -244,7 +243,7 @@ class KoopmanEstimator(Estimator):
         super(KoopmanEstimator, self).__init__()
         self.epsilon = epsilon
         self._cov = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, remove_data_mean=True, reversible=False,
-                                     bessel=False, ncov=ncov)
+                                     bessels_correction=False, ncov=ncov)
 
     def fit(self, data, y=None, lagtime=None):
         self._cov.fit(data, lagtime=lagtime)

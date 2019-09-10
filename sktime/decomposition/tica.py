@@ -275,7 +275,7 @@ class TICA(Estimator, Transformer):
         # online cov parameters
         self.reversible = reversible
         self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
-                                       reversible=self.reversible, bessel=False, ncov=ncov)
+                                       reversible=self.reversible, bessels_correction=False, ncov=ncov)
 
     def _create_model(self) -> TICAModel:
         return TICAModel()
