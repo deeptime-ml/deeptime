@@ -1,0 +1,2 @@
+include versioneer.py
+include sktime/_version.py

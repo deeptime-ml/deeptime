@@ -3,6 +3,8 @@ import sys
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
+import versioneer
+
 CCODE_TEMPLATE = """{includes}
 int main(void) {{
     {code}
@@ -68,11 +70,13 @@ class Build(build_ext):
 
         super(Build, self).build_extension(ext)
 
+cmdclass = versioneer.get_cmdclass()
+cmdclass['build_ext'] = Build
 
 metadata = \
     dict(
         name='scikit-time',
-        version='0',
+        version=versioneer.get_version(),
         author='cmb',
         author_email='nope',
         description='scikit-time project',
@@ -93,7 +97,7 @@ metadata = \
             ], include_dirs=['sktime/markovprocess/include'],
                       language='c++', extra_compile_args=['-std=c++17']),
         ],
-        cmdclass=dict(build_ext=Build),
+        cmdclass=cmdclass,
         zip_safe=False,
         install_requires=['numpy'],
         packages=find_packages(),
