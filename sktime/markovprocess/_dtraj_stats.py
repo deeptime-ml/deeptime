@@ -285,7 +285,22 @@ class TransitionCountModel(Model):
 
 class TransitionCountEstimator(Estimator):
 
-    # TODO: ctor?
+    def __init__(self,lagtime: int = 1, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
+                 stationary_dist_constraint=None):
+        self.lagtime = lagtime
+        self.count_mode = count_mode
+        self.mincount_connectivity = mincount_connectivity
+        self.dt_traj = dt_traj
+        self.stationary_dist_constraint = stationary_dist_constraint
+        super().__init__()
+
+    @property
+    def dt_traj(self):
+        return self._dt_traj
+
+    @dt_traj.setter
+    def dt_traj(self, value):
+        self._dt_traj = Q_(value)
 
     def _create_model(self) -> TransitionCountModel:
         return TransitionCountModel()
@@ -337,8 +352,7 @@ class TransitionCountEstimator(Estimator):
         lcc = msmest.largest_connected_set(C_pos, directed=False)
         return pos[lcc]
 
-    def fit(self, data, lagtime: int = 1, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
-            stationary_dist_constraint=None):
+    def fit(self, data):
         r""" Counts transitions at given lag time
 
         Parameters
@@ -347,10 +361,6 @@ class TransitionCountEstimator(Estimator):
         dtrajs : list of 1D numpy arrays containing integers
 
         """
-
-        # create dt_traj quantity in model
-        dt_traj = Q_(dt_traj)
-
         if not isinstance(data, (list, tuple)):
             data = [data]
 
@@ -370,6 +380,8 @@ class TransitionCountEstimator(Estimator):
         hist = count_states(dtrajs, ignore_negative=True)
 
         # Compute count matrix
+        count_mode = self.count_mode
+        lagtime = self.lagtime
         if count_mode == 'sliding':
             count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True)
         elif count_mode == 'sample':
@@ -380,18 +392,18 @@ class TransitionCountEstimator(Estimator):
             raise ValueError('Count mode {} is unknown.'.format(count_mode))
 
         # store mincount_connectivity
-        if mincount_connectivity == '1/n':
-            mincount_connectivity = 1.0 / np.shape(count_matrix)[0]
+        if self.mincount_connectivity == '1/n':
+            self.mincount_connectivity = 1.0 / np.shape(count_matrix)[0]
 
         # Compute reversibly connected sets
-        if mincount_connectivity > 0:
+        if self.mincount_connectivity > 0:
             connected_sets = self._compute_connected_sets(count_matrix,
-                                                          mincount_connectivity=mincount_connectivity)
+                                                          mincount_connectivity=self.mincount_connectivity)
         else:
             connected_sets = msmest.connected_sets(count_matrix)
 
-        if stationary_dist_constraint is not None:
-            active_set = self._prepare_input_revpi(count_matrix, stationary_dist_constraint)
+        if self.stationary_dist_constraint is not None:
+            active_set = self._prepare_input_revpi(count_matrix, self.stationary_dist_constraint)
         else:
             # largest connected set
             active_set = connected_sets[0]
@@ -401,7 +413,7 @@ class TransitionCountEstimator(Estimator):
             active_set = np.empty(0, dtype=int)
 
         self._model.__init__(
-            lagtime=lagtime, active_set=active_set, dt_traj=dt_traj,
+            lagtime=lagtime, active_set=active_set, dt_traj=self.dt_traj,
             connected_sets=connected_sets, count_matrix=count_matrix,
             hist=hist
         )

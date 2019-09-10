@@ -3,13 +3,12 @@ import warnings
 import numpy as _np
 from msmtools.estimation import effective_count_matrix
 
-from ._koopman_reweighted_msm_impl import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
-                                           rank_decision, oom_components, equilibrium_transition_matrix)
-
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess._dtraj_stats import TransitionCountEstimator, TransitionCountModel
 from sktime.util import submatrix
+from ._koopman_reweighted_msm_impl import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
+                                           rank_decision, oom_components, equilibrium_transition_matrix)
 
 __author__ = 'Feliks Nueske, Fabian Paul, marscher'
 
@@ -167,9 +166,8 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     def fit(self, dtrajs):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
-        count_model = TransitionCountEstimator().fit(dtrajs, lagtime=self.lagtime,
-                                                     mincount_connectivity=self.mincount_connectivity,
-                                                     count_mode=self.count_mode).fetch_model()
+        count_model = TransitionCountEstimator(lagtime=self.lagtime, mincount_connectivity=self.mincount_connectivity,
+                                               count_mode=self.count_mode).fit(dtrajs).fetch_model()
 
         # Estimate transition matrix using re-sampling:
         if self.rank_Ct == 'bootstrap_counts':

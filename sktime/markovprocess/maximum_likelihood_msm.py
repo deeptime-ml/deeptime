@@ -134,9 +134,9 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         return MarkovStateModel()
 
     def fit(self, dtrajs):
-        count_model = TransitionCountEstimator().fit(
-            dtrajs, lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
-            mincount_connectivity=self.mincount_connectivity, stationary_dist_constraint=self.statdist_constraint).fetch_model()
+        count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
+            mincount_connectivity=self.mincount_connectivity, stationary_dist_constraint=self.statdist_constraint).fit(
+            dtrajs).fetch_model()
 
         if self.statdist_constraint is not None and count_model.count_matrix_active.sum() == 0.0:
             raise ValueError("The set of states with positive stationary"
