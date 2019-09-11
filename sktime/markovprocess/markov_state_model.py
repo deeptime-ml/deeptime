@@ -1274,7 +1274,7 @@ class MarkovStateModel(Model):
         assert Ctt_train.shape == Ctt_test.shape
 
         # score
-        from pyemma.util.metrics import vamp_score
+        from sktime.metrics import vamp_score
         return vamp_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_test,
                           k=score_k, score=score_method)
 

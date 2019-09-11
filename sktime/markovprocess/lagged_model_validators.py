@@ -2,7 +2,7 @@
 import math
 
 import numpy as np
-from pyemma.util import types
+#from pyemma.util import types
 
 from sktime.base import Estimator
 from sktime.util import confidence_interval
