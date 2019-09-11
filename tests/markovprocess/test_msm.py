@@ -30,7 +30,8 @@ import warnings
 import numpy as np
 import scipy.sparse
 from msmtools.analysis import stationary_distribution, timescales
-from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
+from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix, \
+    count_states
 from msmtools.generation import generate_traj
 from msmtools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import assert_allclose
@@ -878,9 +879,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         I = compute_index_states(self.dtraj, subset=msm.count_model.active_set)
         assert (len(I) == msm.nstates)
         # compare to histogram
-        import pyemma.util.discrete_trajectories as dt
 
-        hist = dt.count_states(self.dtraj)
+        hist = count_states(self.dtraj)
         # number of frames should match on active subset
         A = msm.count_model.active_set
         for i in range(A.shape[0]):

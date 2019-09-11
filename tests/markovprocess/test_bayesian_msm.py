@@ -18,9 +18,9 @@
 import unittest
 
 import numpy as np
-from pyemma.util.statistics import confidence_interval
 
 from sktime.markovprocess import MarkovStateModel, BayesianMSMPosterior
+from sktime.util import confidence_interval
 from tests.markovprocess.factory import bmsm_double_well
 
 

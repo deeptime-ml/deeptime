@@ -14,7 +14,6 @@ if not os.path.exists(target_dir):
 print('junit destination:', junit_xml)
 
 pytest_args = ("-vv "
-               "-n2 "  # n jobs
                "--cov={cover_pkg} "
                "--cov-report=xml:{dest_report} "
                "--doctest-modules "
