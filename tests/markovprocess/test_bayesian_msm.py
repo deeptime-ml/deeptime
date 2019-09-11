@@ -16,52 +16,29 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
+
 import numpy as np
-
-
-from sktime.markovprocess import BayesianMSM, BayesianMSMPosterior, MarkovStateModel
-
 from pyemma.util.statistics import confidence_interval
 
-
-def bayesian_markov_model(dtrajs, lag, **kwargs) -> BayesianMSMPosterior:
-    est = BayesianMSM(lagtime=lag, **kwargs)
-    est.fit(dtrajs)
-    model = est.fetch_model()
-    return model
+from sktime.markovprocess import MarkovStateModel, BayesianMSMPosterior
+from tests.markovprocess.factory import bmsm_double_well
 
 
 class TestBMSM(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # load observations
-        import pyemma.datasets
-        data = pyemma.datasets.load_2well_discrete()
-        obs_micro = data.dtraj_T100K_dt10
-
-        # stationary distribution
-        pi_micro = data.msm.stationary_distribution
-        pi_macro = np.zeros(2)
-        pi_macro[0] = pi_micro[0:50].sum()
-        pi_macro[1] = pi_micro[50:].sum()
-
-        # coarse-grain microstates to two metastable states
-        cg = np.zeros(100, dtype=int)
-        cg[50:] = 1
-        obs_macro = cg[obs_micro]
-
         # hidden states
         cls.nstates = 2
         # samples
         cls.nsamples = 100
 
         cls.lag = 100
-        cls.bmsm_rev = bayesian_markov_model(obs_macro, cls.lag, dt_traj='4 fs',
-                                             reversible=True, nsamples=cls.nsamples)
-        cls.bmsm_revpi = bayesian_markov_model(obs_macro, cls.lag, dt_traj='4 fs',
-                                               reversible=True, statdist_constraint=pi_macro,
-                                               nsamples=cls.nsamples)
+        cls.bmsm_rev = bmsm_double_well(lagtime=cls.lag, nsamples=cls.nsamples, reversible=True).fetch_model()
+        cls.bmsm_revpi = bmsm_double_well(lagtime=cls.lag, reversible=True, constrain_to_coarse_pi=True, nsamples=cls.nsamples).fetch_model()
+
+        assert isinstance(cls.bmsm_rev, BayesianMSMPosterior)
+        assert isinstance(cls.bmsm_revpi, BayesianMSMPosterior)
 
     def test_class_hierarchy(self):
         """ensure that the composite model has the right types """

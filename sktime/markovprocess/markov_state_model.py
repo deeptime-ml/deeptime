@@ -19,19 +19,17 @@
 # .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
 import copy
+import typing
 from math import ceil
 
 import numpy as np
-import typing
-
-from pyemma.util.linalg import mdot
 
 from sktime.base import Model
-from sktime.markovprocess.sample import _ensure_dtraj_list
-from sktime.util import ensure_ndarray
 from sktime.markovprocess import Q_
 from sktime.markovprocess._dtraj_stats import TransitionCountModel
 from sktime.markovprocess.pcca import PCCA
+from sktime.markovprocess.sample import ensure_dtraj_list
+from sktime.util import ensure_ndarray, mdot
 
 
 class MarkovStateModel(Model):
@@ -76,7 +74,7 @@ class MarkovStateModel(Model):
         be greater than neig; it is recommended that ncv > 2*neig.
 
     """
-    def __init__(self, transition_matrix, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, count_model=None):
+    def __init__(self, transition_matrix=None, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, count_model=None):
         self.ncv = ncv
         # we set reversible first, so it can be derived from transition_matrix, if None was given.
         self._is_reversible = reversible
@@ -1090,7 +1088,7 @@ class MarkovStateModel(Model):
         # compute stationary distribution, expanded to full set
         if self.count_model is None:
             raise RuntimeError("Count model was None but needs to be provided in this case.")
-        dtrajs = _ensure_dtraj_list(dtrajs)
+        dtrajs = ensure_dtraj_list(dtrajs)
         statdist_full = np.zeros(self.count_model.nstates)
         statdist_full[self.count_model.active_set] = self.stationary_distribution
         # histogram observed states
@@ -1234,8 +1232,8 @@ class MarkovStateModel(Model):
             dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015)
 
         """
-        from sktime.markovprocess.sample import _ensure_dtraj_list
-        dtrajs = _ensure_dtraj_list(dtrajs)  # ensure format
+        from sktime.markovprocess.sample import ensure_dtraj_list
+        dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
         if self.count_model is None:
             raise RuntimeError('This MarkovStateModel has not been estimated from data '
                                '(e.g. count_model unassigned). Cannot proceed.')

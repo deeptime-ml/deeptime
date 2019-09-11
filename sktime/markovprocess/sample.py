@@ -1,16 +1,8 @@
-import numbers
 import typing
+
 import numpy as np
 
-
-def _ensure_dtraj_list(dtrajs):
-    r"""Makes sure that dtrajs is a list of discrete trajectories (array of int)
-
-    """
-    from sktime.util import ensure_ndarray
-    if len(dtrajs) > 0 and isinstance(dtrajs[0], numbers.Integral):
-        return [ensure_ndarray(dtrajs, dtype=np.int32)]
-    return [ensure_ndarray(t, dtype=np.int32) for t in dtrajs]
+from sktime.util import ensure_dtraj_list
 
 
 def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
@@ -34,7 +26,7 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
     """
     # check input
     from . import _markovprocess_bindings as bd
-    dtrajs = _ensure_dtraj_list(dtrajs)
+    dtrajs = ensure_dtraj_list(dtrajs)
     return bd.sample.index_states(dtrajs, subset)
 
 ################################################################################

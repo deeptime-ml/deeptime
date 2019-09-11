@@ -25,16 +25,15 @@ r"""Unit test for the MSM module
 """
 
 import unittest
-
-import numpy as np
-from msmtools.util.birth_death_chain import BirthDeathChain
-from numpy.testing import assert_allclose
-import scipy.sparse
 import warnings
 
-from msmtools.generation import generate_traj
-from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
+import numpy as np
+import scipy.sparse
 from msmtools.analysis import stationary_distribution, timescales
+from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix
+from msmtools.generation import generate_traj
+from msmtools.util.birth_death_chain import BirthDeathChain
+from numpy.testing import assert_allclose
 
 from sktime.markovprocess import BayesianMSM
 from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
@@ -139,15 +138,15 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import pyemma.datasets
-        cls.dtraj = pyemma.datasets.load_2well_discrete().dtraj_T100K_dt10
+        from . import factory
+        cls.dtraj = factory.data_double_well.dtraj_T100K_dt10
         nu = 1.*np.bincount(cls.dtraj)
         cls.statdist = nu/nu.sum()
 
         cls.tau = 10
         maxerr = 1e-12
-        cls.msmrev = estimate_markov_model(cls.dtraj, cls.tau ,maxerr=maxerr)
-        cls.msmrevpi = estimate_markov_model(cls.dtraj, cls.tau,maxerr=maxerr,
+        cls.msmrev = estimate_markov_model(cls.dtraj, cls.tau, maxerr=maxerr)
+        cls.msmrevpi = estimate_markov_model(cls.dtraj, cls.tau, maxerr=maxerr,
                                              statdist=cls.statdist)
         cls.msm = estimate_markov_model(cls.dtraj, cls.tau, reversible=False, maxerr=maxerr)
 

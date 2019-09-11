@@ -3,9 +3,11 @@ import numpy as _np
 
 __author__ = 'noe'
 
+
 class ZeroRankError(_np.linalg.LinAlgError):
     """Input matrix has rank zero."""
     pass
+
 
 def sort_by_norm(evals, evecs):
     """
