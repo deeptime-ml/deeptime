@@ -23,14 +23,13 @@ import typing
 from math import ceil
 
 import numpy as np
-from pyemma.util.linalg import mdot
 
 from sktime.base import Model
 from sktime.markovprocess import Q_
 from sktime.markovprocess._dtraj_stats import TransitionCountModel
 from sktime.markovprocess.pcca import PCCA
 from sktime.markovprocess.sample import ensure_dtraj_list
-from sktime.util import ensure_ndarray
+from sktime.util import ensure_ndarray, mdot
 
 
 class MarkovStateModel(Model):
