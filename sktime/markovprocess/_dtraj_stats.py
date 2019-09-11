@@ -133,8 +133,8 @@ class TransitionCountModel(Model):
         Frames that are not in the connected set will be -1.
         """
         # compute connected dtrajs
-        from sktime.markovprocess.sample import _ensure_dtraj_list
-        dtrajs = _ensure_dtraj_list(dtrajs)
+        from sktime.markovprocess.sample import ensure_dtraj_list
+        dtrajs = ensure_dtraj_list(dtrajs)
         dtrajs_active = [
             self._full2lcs[dtraj]
             for dtraj in dtrajs

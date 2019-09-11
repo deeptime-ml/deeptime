@@ -1,3 +1,5 @@
+import numbers
+
 import numpy as np
 
 
@@ -47,3 +49,10 @@ def submatrix(M, sel):
         return C_cc.tocoo()
 
     return C_cc
+
+
+def ensure_dtraj_list(dtrajs):
+    """Makes sure that dtrajs is a list of discrete trajectories (array of int)"""
+    if len(dtrajs) > 0 and isinstance(dtrajs[0], numbers.Integral):
+        return [ensure_ndarray(dtrajs, dtype=np.int32)]
+    return [ensure_ndarray(t, dtype=np.int32) for t in dtrajs]

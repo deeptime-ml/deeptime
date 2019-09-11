@@ -189,8 +189,8 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', s
         dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015).
 
     """
-    from sktime.markovprocess.sample import _ensure_dtraj_list
-    dtrajs = _ensure_dtraj_list(dtrajs)  # ensure format
+    from sktime.util import ensure_dtraj_list
+    dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
     if estimator.count_mode not in ('sliding', 'sample'):
         raise ValueError('score_cv currently only supports count modes "sliding" and "sample"')
     sliding = estimator.count_mode == 'sliding'
