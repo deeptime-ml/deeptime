@@ -9,7 +9,7 @@ def load_2well_discrete():
             from pkg_resources import resource_filename
             from sktime.markovprocess import MarkovStateModel
 
-            filename = resource_filename('pyemma.datasets', 'double_well_discrete.npz')
+            filename = resource_filename(__name__, 'data/double_well_discrete.npz')
             with np.load(filename) as datafile:
                 self._dtraj_T100K_dt10 = datafile['dtraj']
                 P = datafile['P']
