@@ -1,13 +1,10 @@
 
-import math
 import numpy as np
-
-from pyemma.util.statistics import confidence_interval
-from pyemma.util import types
 
 from sktime.base import Estimator, Model
 from sktime.lagged_model_validator import LaggedModelValidator
 from sktime.markovprocess import MarkovStateModel, BayesianMSMPosterior
+from sktime.util import confidence_interval, ensure_ndarray
 
 __author__ = 'noe, marscher'
 
@@ -65,7 +62,7 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
 
     @memberships.setter
     def memberships(self, value):
-        self._memberships = types.ensure_ndarray(value, ndim=2, kind='numeric')
+        self._memberships = ensure_ndarray(value, ndim=2)
         self.nstates, self.nsets = self._memberships.shape
         assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
 

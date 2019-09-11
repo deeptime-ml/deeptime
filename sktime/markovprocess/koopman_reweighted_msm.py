@@ -23,18 +23,6 @@ class KoopmanReweightedMSM(MarkovStateModel):
         if sigma is not None:
             self._oom_rank = sigma.size
 
-    def _blocksplit_dtrajs(self, dtrajs, sliding):
-        """ Override splitting method of base class.
-
-        For OOM estimators we currently need a clean trajectory splitting, i.e. we don't do block splitting at all.
-
-        """
-        if len(dtrajs) < 2:
-            raise NotImplementedError('Current cross-validation implementation for OOMReweightedMSM requires' +
-                                      'multiple trajectories. You can split the trajectory yourself into training' +
-                                      'and test set and use the score method after fitting the training set.')
-        return dtrajs
-
     @property
     def eigenvalues_OOM(self):
         """System eigenvalues estimated by OOM."""

@@ -1277,7 +1277,3 @@ class MarkovStateModel(Model):
         from sktime.metrics import vamp_score
         return vamp_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_test,
                           k=score_k, score=score_method)
-
-    def _blocksplit_dtrajs(self, dtrajs, sliding):
-        from sktime.markovprocess.transition_counting import blocksplit_dtrajs
-        return blocksplit_dtrajs(dtrajs, lag=self.count_model.lagtime, sliding=sliding)
