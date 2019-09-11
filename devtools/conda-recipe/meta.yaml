@@ -30,25 +30,21 @@ requirements:
     - pybind11
 
   run:
-    - bhmm >=0.6.3,<0.7
+    #- bhmm >=0.6.3,<0.7
     - intel-openmp # [osx]
-    - msmtools >=1.2
+    - msmtools
     - {{ pin_compatible('numpy') }}
     - python
     - scipy
     - setuptools
-    - tqdm
     - pint
-    - pip
 
 test:
   source_files:
     - tests/*
   requires:
     - scikit-learn
-    - pyemma # TODO: remove in the future
     - pytest
     - pytest-cov
     - pytest-faulthandler
-    - pytest-xdist
     - pytest-sugar
