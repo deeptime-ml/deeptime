@@ -105,7 +105,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
     """
     def __init__(self, test_model, test_estimator, mlags=None, conf=0.95, err_est=False):
         # set model and estimator
-        self.test_model = test_model
+        self.test_model = test_model.copy()
         self.test_estimator = test_estimator
         # set conf and error handling
         self.conf = conf
@@ -151,7 +151,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
             try:
                 input_lagtime = self.test_model.lagtime
             except AttributeError:
-                input_lagtime = 1
+                raise RuntimeError('Neither provided model nor estimator provides the "lagtime" attribute. Cannot proceed.')
         self._set_mlags(data, input_lagtime)
         lags = self.mlags * input_lagtime
 
@@ -260,4 +260,5 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def _observable_dummy_mlag0(self, conf=False):
+        """ implement this method to handle the case of computing observables for lag time of zero."""
         pass
