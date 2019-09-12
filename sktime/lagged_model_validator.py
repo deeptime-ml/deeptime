@@ -105,6 +105,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
     """
     def __init__(self, test_model, test_estimator, mlags=None, conf=0.95, err_est=False):
         # set model and estimator
+        # TODO: subclass cktest takes a copy as well, how to avoid two copies while being general?
         self.test_model = test_model.copy()
         self.test_estimator = test_estimator
         # set conf and error handling
@@ -178,16 +179,18 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
             self.test_estimator.fit(data)
             estimated_models.append(self.test_estimator.fetch_model().copy())
 
-        for mlag, model in zip(self.mlags, estimated_models):
-            if model is None: continue
-            # make a prediction using the current model
+        for mlag in self.mlags:
+            if mlag == 0: continue
+            # make a prediction using the test model
             predictions.append(self._compute_observables(self.test_model, mlag=mlag))
             # compute prediction errors if we can
             if self.has_errors:
                 l, r = self._compute_observables_conf(self.test_model, mlag=mlag)
                 predictions_conf.append((l, r))
 
-            # do an estimate at this lagtime
+        for model in estimated_models:
+            if model is None: continue
+            # evaluate the estimate at lagtime*mlag
             estimates.append(self._compute_observables(model))
             if self.has_errors and self.err_est:
                 l, r = self._compute_observables_conf(model)
@@ -260,5 +263,11 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def _observable_dummy_mlag0(self, conf=False):
-        """ implement this method to handle the case of computing observables for lag time of zero."""
+        """ implement this method to handle the case of computing observables for lag time of zero.
+
+        Parameters
+        ----------
+        conf: bool
+            Indicating whether a dummy result is computed with or without confidence interval.
+        """
         pass
