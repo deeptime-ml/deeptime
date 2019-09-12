@@ -32,7 +32,7 @@ from msmtools.util.birth_death_chain import BirthDeathChain
 
 from sktime.lagged_model_validator import LaggedModelValidation
 from sktime.markovprocess import cktest
-from tests.markovprocess.test_bayesian_msm import bayesian_markov_model
+from tests.markovprocess.factory import bayesian_markov_model
 from tests.markovprocess.test_msm import estimate_markov_model
 
 
@@ -63,9 +63,6 @@ class TestCK_MSM(unittest.TestCase):
         """Estimate MSM"""
         estimator, MSM = estimate_markov_model(dtraj, tau, return_estimator=True)
         self.estimator = estimator
-        C_MSM = MSM.count_model.count_matrix
-        lcc_MSM = MSM.count_model.largest_connected_set
-        Ccc_MSM = MSM.count_model.count_matrix_active
         P_MSM = MSM.transition_matrix
         mu_MSM = MSM.stationary_distribution
 

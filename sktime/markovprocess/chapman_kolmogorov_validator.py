@@ -44,11 +44,6 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         errors for each tau estimate. This option can be computationally
         expensive.
 
-    n_jobs : int, default=None
-        how many jobs to use during calculation
-
-    show_progress : bool, default=True
-        Show progressbars for calculation?
     """
     def __init__(self, test_model, test_estimator, memberships, mlags=None, conf=0.95,
                  err_est=False):
@@ -62,17 +57,9 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
 
     @memberships.setter
     def memberships(self, value):
-        self._memberships = ensure_ndarray(value, ndim=2)
+        self._memberships = ensure_ndarray(value, ndim=2, dtype=np.float)
         self.nstates, self.nsets = self._memberships.shape
         assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
-
-    @property
-    def test_estimator(self):
-        return self._test_estimator
-
-    @test_estimator.setter
-    def test_estimator(self, test_estimator):
-        self._test_estimator = test_estimator
 
     @property
     def test_model(self):
@@ -84,8 +71,9 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         assert self.memberships.shape[0] == test_model.nstates, 'provided memberships and test_model nstates mismatch'
         self._test_model = test_model.copy()
         # define starting distribution
-        self.P0 = self.memberships * test_model.stationary_distribution[:, None]
-        self.P0 /= self.P0.sum(axis=0)  # column-normalize
+        P0 = self.memberships * test_model.stationary_distribution[:, None]
+        P0 /= P0.sum(axis=0)  # column-normalize
+        self.P0 = P0
 
         active_set = test_model.count_model.active_set
         # map from the full set (here defined by the largest state index in active set) to active
@@ -105,7 +93,8 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         for i in range(self.nsets):
             p0 = self.P0[:, i]  # starting distribution on reference active set
             p0sub = p0[subset]  # map distribution to new active set
-            p0sub /= p0sub.sum()  # renormalize
+            if subset is not None:
+                p0sub /= p0sub.sum()  # renormalize
             pksub = model.propagate(p0sub, mlag)
             for j in range(self.nsets):
                 pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set

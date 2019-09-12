@@ -213,8 +213,6 @@ class VAMPModel(Model):
         where :math:`r_{i}=\langle\psi_{i},f\rangle_{\rho_{0}}` and
         :math:`\boldsymbol{\Sigma}=\mathrm{diag(\boldsymbol{\sigma})}` .
         """
-        # TODO: implement the case lag_multiple=0
-
         dim = self.dimension()
 
         S = np.diag(np.concatenate(([1.0], self.singular_values[0:dim])))
@@ -222,8 +220,6 @@ class VAMPModel(Model):
         U = self.singular_vectors_left[:, 0:dim]
         m_0 = self.mean_0
         m_t = self.mean_t
-
-        assert lag_multiple >= 1, 'lag_multiple = 0 not implemented'
 
         if lag_multiple == 1:
             P = S
@@ -385,6 +381,7 @@ class VAMPModel(Model):
         assert res
         return res + 1
 
+
 class VAMP(Estimator):
     r"""Variational approach for Markov processes (VAMP)"""
 
@@ -532,7 +529,7 @@ class VAMP(Estimator):
         self.ncov = ncov
         self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=True, remove_data_mean=True,
                                        reversible=False, bessels_correction=False, ncov=self.ncov)
-
+        self.lagtime = lagtime
         super(VAMP, self).__init__()
 
     def _create_model(self) -> VAMPModel:
@@ -569,6 +566,14 @@ class VAMP(Estimator):
         self._model.mean_t = covar_model.mean_t
         self._model._diagonalize()
         return self._model
+
+    @property
+    def lagtime(self):
+        return self._covar.lagtime
+
+    @lagtime.setter
+    def lagtime(self, value):
+        self._covar.lagtime = value
 
 
 class VAMPChapmanKolmogorovValidator(LaggedModelValidator):

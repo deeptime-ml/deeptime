@@ -393,7 +393,7 @@ class MarkovStateModel(Model):
         if self.sparse:  # sparse: we don't have a full eigenvalue set, so just propagate
             pk = np.array(p0)
             for i in range(k):
-                pk = np.dot(pk.T, self.transition_matrix)
+                pk = pk.T.dot(self.transition_matrix)
         else:  # dense: employ eigenvalue decomposition
             self._ensure_eigendecomposition(self.nstates)
             pk = mdot(p0.T,
