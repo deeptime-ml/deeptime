@@ -108,7 +108,8 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         # set model and estimator
         # TODO: subclass cktest takes a copy as well, how to avoid two copies while being general?
         self.test_model = test_model.copy()
-        self.test_estimator = test_estimator
+        import copy
+        self.test_estimator = copy.deepcopy(test_estimator)
         # set conf and error handling
         self.conf = conf
         self.has_errors = hasattr(test_model, 'samples')
@@ -214,7 +215,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         m._estimates_conf = estimates_conf
         m._predictions = predictions
         m._predictions_conf = predictions_conf
-        m._lagtimes = self.test_model.lagtime * self.mlags
+        m._lagtimes = lags
 
         return self
 
