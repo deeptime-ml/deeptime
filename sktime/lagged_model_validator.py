@@ -9,11 +9,12 @@ from sktime.base import Estimator, Model
 
 
 class LaggedModelValidation(Model):
-    def __init__(self, estimates=None, estimates_conf=None, predictions=None, predictions_conf=None):
+    def __init__(self, estimates=None, estimates_conf=None, predictions=None, predictions_conf=None, lagtimes=None):
         self._estimates = estimates
         self._estimates_conf = estimates_conf
         self._predictions = predictions
         self._predictions_conf = predictions_conf
+        self._lagtimes = lagtimes
 
     @property
     def estimates(self):
@@ -213,6 +214,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         m._estimates_conf = estimates_conf
         m._predictions = predictions
         m._predictions_conf = predictions_conf
+        m._lagtimes = self.test_model.lagtime * self.mlags
 
         return self
 
