@@ -215,7 +215,10 @@ class TestKmeans(unittest.TestCase):
             nonlocal iter
             iter += 1
 
-        cluster_kmeans(np.random.rand(100, 3), k=3, max_iter=2, callback_init_centers=callback_init,
+
+        state = np.random.RandomState(42)
+        data = state.rand(100, 3)
+        cluster_kmeans(data, k=3, max_iter=2, callback_init_centers=callback_init,
                        callback_loop=callback_loop)
         assert init == 3
         assert iter == 2
