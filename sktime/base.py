@@ -80,11 +80,6 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
         except AttributeError:
             self.__dict__.update(state)
 
-    def __getattribute__(self, item):
-        if item == 'fit':
-            self._model = self._create_model()
-        return super(_base_methods_mixin, self).__getattribute__(item)
-
 
 class Model(_base_methods_mixin):
 
@@ -117,6 +112,11 @@ class Estimator(_base_methods_mixin):
     @abc.abstractmethod
     def _create_model(self):
         pass
+
+    def __getattribute__(self, item):
+        if item == 'fit':
+            self._model = self._create_model()
+        return super(_base_methods_mixin, self).__getattribute__(item)
 
 
 class Transformer(object):
