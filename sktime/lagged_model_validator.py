@@ -1,4 +1,5 @@
 import abc
+import warnings
 
 import numpy as np
 
@@ -110,6 +111,17 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         self.test_model = test_model.copy()
         import copy
         self.test_estimator = copy.deepcopy(test_estimator)
+
+        try:
+            input_lagtime = self.test_estimator.lagtime
+        except AttributeError:
+            try:
+                input_lagtime = self.test_model.lagtime
+            except AttributeError:
+                raise RuntimeError(
+                    'Neither provided model nor estimator provides the "lagtime" attribute. Cannot proceed.')
+        self.input_lagtime = input_lagtime
+
         # set conf and error handling
         self.conf = conf
         self.has_errors = hasattr(test_model, 'samples')
@@ -138,8 +150,10 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         mlags = np.asarray(mlags, dtype='i')
         if np.any(mlags > maxmlag):
             mlags = mlags[np.where(mlags <= maxmlag)]
+            warnings.warn('Dropped lag times exceeding data lengths')
         if np.any(mlags < 0):
             mlags = mlags[np.where(mlags >= 0)]
+            warnings.warn('Dropped negative multiples of lag time')
 
         self.mlags = mlags
 
@@ -148,15 +162,9 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
 
     def fit(self, data):
         # set lag times
-        try:
-            input_lagtime = self.test_estimator.lagtime
-        except AttributeError:
-            try:
-                input_lagtime = self.test_model.lagtime
-            except AttributeError:
-                raise RuntimeError('Neither provided model nor estimator provides the "lagtime" attribute. Cannot proceed.')
-        self._set_mlags(data, input_lagtime)
-        lags = self.mlags * input_lagtime
+
+        self._set_mlags(data, self.input_lagtime)
+        lags = self.mlags * self.input_lagtime
 
         predictions = []
         predictions_conf = []
@@ -210,12 +218,8 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         else:
             estimates_conf = np.array((None, None))
 
-        m = self._model
-        m._estimates = estimates
-        m._estimates_conf = estimates_conf
-        m._predictions = predictions
-        m._predictions_conf = predictions_conf
-        m._lagtimes = lags
+        self._model.__init__(estimates=estimates, estimates_conf=estimates_conf,
+                             predictions=predictions, predictions_conf=predictions_conf, lagtimes=lags)
 
         return self
 
