@@ -14,9 +14,9 @@ def mdot(*args):
     """
     if len(args) < 1:
         raise ValueError('need at least one argument')
-    elif len(args) == 1:
-        return args[0]
-    elif len(args) == 2:
-        return np.dot(args[0], args[1])
-    else:
-        return np.dot(args[0], mdot(*args[1:]))
+    args = list(args)[::-1]
+    x = args.pop()
+    while len(args):
+        y = args.pop()
+        x = np.dot(x, y)
+    return x
