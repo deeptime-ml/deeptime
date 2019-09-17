@@ -53,8 +53,10 @@ class TestKmeans(unittest.TestCase):
 
             while not model1.converged:
                 km1.fit(data=X, initial_centers=model1.cluster_centers)
+                model1 = km1.fetch_model()
             while not model2.converged:
                 km2.fit(data=X, initial_centers=model2.cluster_centers)
+                model2 = km2.fetch_model()
 
             assert np.linalg.norm(model1.cluster_centers - km1.initial_centers) > 0
             np.testing.assert_array_almost_equal(model1.cluster_centers, model2.cluster_centers)
@@ -241,7 +243,7 @@ class TestKmeansResume(unittest.TestCase):
         resume_centers = model.cluster_centers
         cl.max_iter = 500
         cl.fit(self.X, initial_centers=resume_centers)
-        new_centers = model.cluster_centers
+        new_centers = cl.fetch_model().cluster_centers
 
         true = np.array([-2, 0, 2])
         d0 = true - resume_centers

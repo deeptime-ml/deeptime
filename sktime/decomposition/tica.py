@@ -266,19 +266,19 @@ class TICA(Estimator, Transformer):
     """
     def __init__(self, lagtime, epsilon=1e-6, reversible=True, dim=0.95,
                  scaling='kinetic_map', ncov=5):
-        super(TICA, self).__init__()
         # tica parameters
-        self._model.epsilon = epsilon
-        self._model.dim = dim
-        self._model.scaling = scaling
+        self.epsilon = epsilon
+        self.dim = dim
+        self.scaling = scaling
 
         # online cov parameters
         self.reversible = reversible
         self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
                                        reversible=self.reversible, bessels_correction=False, ncov=ncov)
+        super(TICA, self).__init__()
 
     def _create_model(self) -> TICAModel:
-        return TICAModel()
+        return TICAModel(scaling=self.scaling, dim=self.dim, epsilon=self.epsilon)
 
     def transform(self, data):
         r"""Projects the data onto the dominant independent components.
