@@ -146,7 +146,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         if mlags is None:
             mlags = maxmlag
         elif isinstance(mlags, Integral):
-            mlags = np.arange(mlags)
+            mlags = np.arange(1, mlags)
         mlags = np.asarray(mlags, dtype='i')
         if np.any(mlags > maxmlag):
             mlags = mlags[np.where(mlags <= maxmlag)]
@@ -155,6 +155,8 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
             mlags = mlags[np.where(mlags >= 0)]
             warnings.warn('Dropped negative multiples of lag time')
 
+        if any(x <= 0 for x in mlags):
+            raise ValueError('multiples of lagtimes have to be greater zero.')
         self.mlags = mlags
 
     def _create_model(self) -> LaggedModelValidation:
@@ -174,14 +176,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
 
         # do we have zero lag? this must be treated separately
         include0 = self.mlags[0] == 0
-        if include0:
-            lags = lags[1:]
-            estimated_models.append(None)
-            estimates.append(self._observable_dummy_mlag0())
-            predictions.append(self._observable_dummy_mlag0())
-            if self.has_errors:
-                estimates_conf.append(self._observable_dummy_mlag0(conf=True))
-                predictions.append(self._observable_dummy_mlag0(conf=True))
+        assert not include0
 
         # estimate models at multiple of input lag time.
         for lag in lags:
@@ -190,7 +185,6 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
             estimated_models.append(self.test_estimator.fetch_model().copy())
 
         for mlag in self.mlags:
-            if mlag == 0: continue
             # make a prediction using the test model
             predictions.append(self._compute_observables(self.test_model, mlag=mlag))
             # compute prediction errors if we can
@@ -265,16 +259,5 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         R : ndarray
             array with upper confidence bounds
 
-        """
-        pass
-
-    @abc.abstractmethod
-    def _observable_dummy_mlag0(self, conf=False):
-        """ implement this method to handle the case of computing observables for lag time of zero.
-
-        Parameters
-        ----------
-        conf: bool
-            Indicating whether a dummy result is computed with or without confidence interval.
         """
         pass

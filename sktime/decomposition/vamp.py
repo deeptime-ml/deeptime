@@ -654,14 +654,6 @@ class VAMPChapmanKolmogorovValidator(LaggedModelValidator):
     def _compute_observables_conf(self, model, mlag=1, conf=0.95):
         raise NotImplementedError('estimation of confidence intervals not yet implemented for VAMP')
 
-    def _observable_dummy_mlag0(self, conf=False):
-        assert conf is False
-        # for lag time 0 we return a matrix of nan, until the correct solution is implemented
-        if self.statistics is None:
-            return np.zeros(self.observables.shape[1]) + np.nan
-        else:
-            return np.zeros((self.observables.shape[1], self.statistics.shape[1])) + np.nan
-
 
 def vamp_cktest(test_estimator, model, n_observables=None, observables='phi', statistics='psi', mlags=10, data=None):
     r"""Do the Chapman-Kolmogorov test by computing predictions for higher lag times and by performing estimations at higher lag times.

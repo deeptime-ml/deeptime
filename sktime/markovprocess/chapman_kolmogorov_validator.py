@@ -120,13 +120,6 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
                 l[i, j], r[i, j] = confidence_interval(pk_on_set_samples, conf=self.conf)
         return l, r
 
-    def _observable_dummy_mlag0(self, conf=False):
-        I = np.eye(self.nsets)
-        if conf:
-            return I, I
-
-        return I
-
 
 # TODO: docstring
 def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10,
