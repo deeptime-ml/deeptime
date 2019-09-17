@@ -210,11 +210,11 @@ class TestVAMPModel(unittest.TestCase):
         assert_allclose_ignore_phase(V, phi, atol=1E-5)
         references_sf = [U.T.dot(np.diag(self.p0)).dot(np.linalg.matrix_power(self.msm.P, k * self.lag)).dot(V).T for k
                          in
-                         range(10 - 1)]
+                         range(1, 10 - 1)]
         cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, n_observables=2, mlags=10, data=self.trajs).fetch_model()
         pred_sf = cktest.predictions
         esti_sf = cktest.estimates
-        for e, p, r in zip(esti_sf[1:], pred_sf[1:], references_sf[1:]):
+        for e, p, r in zip(esti_sf, pred_sf, references_sf):
             np.testing.assert_allclose(np.diag(p), np.diag(r), atol=1E-6)
             np.testing.assert_allclose(np.abs(p), np.abs(r), atol=1E-6)
 
@@ -258,8 +258,8 @@ class TestVAMPModel(unittest.TestCase):
         sta = np.eye(3)  # restrict p0 to every state
         cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, observables=obs, statistics=sta,
                              mlags=4, data=self.trajs).fetch_model()
-        pred = cktest.predictions[1:]
-        est = cktest.estimates[1:]
+        pred = cktest.predictions
+        est = cktest.estimates
 
         for i, (est_, pred_) in enumerate(zip(est, pred)):
             msm = estimate_markov_model(dtrajs=self.dtrajs, lag=self.lag * (i + 1), reversible=False)

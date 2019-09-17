@@ -73,23 +73,21 @@ class TestCK_MSM(unittest.TestCase):
         w_MSM[0, A] = mu_MSM[A] / mu_MSM[A].sum()
         w_MSM[1, B] = mu_MSM[B] / mu_MSM[B].sum()
 
-        K = 10
+        K = 9
         P_MSM_dense = P_MSM
 
         p_MSM = np.zeros((K, 2))
         w_MSM_k = 1.0 * w_MSM
         for k in range(1, K):
             w_MSM_k = np.dot(w_MSM_k, P_MSM_dense)
-            p_MSM[k, 0] = w_MSM_k[0, A].sum()
-            p_MSM[k, 1] = w_MSM_k[1, B].sum()
+            p_MSM[k-1, 0] = w_MSM_k[0, A].sum()
+            p_MSM[k-1, 1] = w_MSM_k[1, B].sum()
 
         """Assume that sets are equal, A(\tau)=A(k \tau) for all k"""
         w_MD = 1.0 * w_MSM
         p_MD = np.zeros((K, 2))
         eps_MD = np.zeros((K, 2))
-        p_MSM[0, :] = 1.0
-        p_MD[0, :] = 1.0
-        eps_MD[0, :] = 0.0
+
         for k in range(1, K):
             """Build MSM at lagtime k*tau"""
             C_MD = count_matrix(dtraj, k * tau, sliding=True) / (k * tau)
@@ -102,14 +100,14 @@ class TestCK_MSM(unittest.TestCase):
             """Set A"""
             prob_MD = w_MD_k[0, A].sum()
             c = c_MD[A].sum()
-            p_MD[k, 0] = prob_MD
-            eps_MD[k, 0] = np.sqrt(k * (prob_MD - prob_MD ** 2) / c)
+            p_MD[k-1, 0] = prob_MD
+            eps_MD[k-1, 0] = np.sqrt(k * (prob_MD - prob_MD ** 2) / c)
 
             """Set B"""
             prob_MD = w_MD_k[1, B].sum()
             c = c_MD[B].sum()
-            p_MD[k, 1] = prob_MD
-            eps_MD[k, 1] = np.sqrt(k * (prob_MD - prob_MD ** 2) / c)
+            p_MD[k-1, 1] = prob_MD
+            eps_MD[k-1, 1] = np.sqrt(k * (prob_MD - prob_MD ** 2) / c)
 
         """Input"""
         self.MSM = MSM
@@ -159,18 +157,17 @@ class TestCK_AllEstimators(unittest.TestCase):
     def test_ck_msm(self):
         estimator, MLMSM = estimate_markov_model([self.double_well_data.dtraj_T100K_dt10_n6good], 40,
                                                  return_estimator=True)
-        self.ck = cktest(test_estimator=estimator, test_model=MLMSM, nsets=2, mlags=[0, 1, 10],
+        with self.assertRaises(ValueError):
+            cktest(estimator, MLMSM, nsets=2, mlags=[0, 1, 50], dtrajs=self.double_well_data.dtraj_T100K_dt10_n6good)
+
+        self.ck = cktest(test_estimator=estimator, test_model=MLMSM, nsets=2, mlags=[1, 10],
                          dtrajs=self.double_well_data.dtraj_T100K_dt10_n6good).fetch_model()
         assert isinstance(self.ck, LaggedModelValidation)
-        estref = np.array([[[1., 0.],
-                            [0., 1.]],
-                           [[0.89806859, 0.10193141],
+        estref = np.array([[[0.89806859, 0.10193141],
                             [0.10003466, 0.89996534]],
                            [[0.64851782, 0.35148218],
                             [0.34411751, 0.65588249]]])
-        predref = np.array([[[1., 0.],
-                             [0., 1.]],
-                            [[0.89806859, 0.10193141],
+        predref = np.array([[[0.89806859, 0.10193141],
                              [0.10003466, 0.89996534]],
                             [[0.62613723, 0.37386277],
                              [0.3669059, 0.6330941]]])
@@ -187,29 +184,25 @@ class TestCK_AllEstimators(unittest.TestCase):
         # also ensure that reversible bit does not flip during cktest
         assert BMSM.prior.reversible
         self.ck = cktest(test_estimator=estimator, test_model=BMSM.prior, dtrajs=self.double_well_data.dtraj_T100K_dt10_n6good,
-                         nsets=2, mlags=[0, 1, 10]).fetch_model()
+                         nsets=2, mlags=[1, 10]).fetch_model()
         assert isinstance(self.ck, LaggedModelValidation)
         assert BMSM.prior.reversible
-        estref = np.array([[[1., 0.],
-                            [0., 1.]],
+        estref = np.array([
                            [[0.89722931, 0.10277069],
                             [0.10070029, 0.89929971]],
                            [[0.64668027, 0.35331973],
                             [0.34369109, 0.65630891]]])
-        predref = np.array([[[1., 0.],
-                             [0., 1.]],
+        predref = np.array([
                             [[0.89722931, 0.10277069],
                              [0.10070029, 0.89929971]],
                             [[0.62568693, 0.37431307],
                              [0.36677222, 0.63322778]]])
-        predLref = np.array([[[1., 0.],
-                              [0., 1.]],
+        predLref = np.array([
                              [[0.89398296, 0.09942586],
                               [0.09746008, 0.89588256]],
                              [[0.6074675, 0.35695492],
                               [0.34831224, 0.61440531]]])
-        predRref = np.array([[[1., 0.],
-                              [0., 1.]],
+        predRref = np.array([
                              [[0.90070139, 0.10630301],
                               [0.10456111, 0.90255169]],
                              [[0.64392557, 0.39258944],
