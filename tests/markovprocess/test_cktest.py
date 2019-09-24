@@ -73,15 +73,15 @@ class TestCK_MSM(unittest.TestCase):
         w_MSM[0, A] = mu_MSM[A] / mu_MSM[A].sum()
         w_MSM[1, B] = mu_MSM[B] / mu_MSM[B].sum()
 
-        K = 9
+        K = 10
         P_MSM_dense = P_MSM
 
         p_MSM = np.zeros((K, 2))
         w_MSM_k = 1.0 * w_MSM
         for k in range(1, K):
             w_MSM_k = np.dot(w_MSM_k, P_MSM_dense)
-            p_MSM[k-1, 0] = w_MSM_k[0, A].sum()
-            p_MSM[k-1, 1] = w_MSM_k[1, B].sum()
+            p_MSM[k, 0] = w_MSM_k[0, A].sum()
+            p_MSM[k, 1] = w_MSM_k[1, B].sum()
 
         """Assume that sets are equal, A(\tau)=A(k \tau) for all k"""
         w_MD = 1.0 * w_MSM
@@ -100,14 +100,14 @@ class TestCK_MSM(unittest.TestCase):
             """Set A"""
             prob_MD = w_MD_k[0, A].sum()
             c = c_MD[A].sum()
-            p_MD[k-1, 0] = prob_MD
-            eps_MD[k-1, 0] = np.sqrt(k * (prob_MD - prob_MD ** 2) / c)
+            p_MD[k, 0] = prob_MD
+            eps_MD[k, 0] = np.sqrt(k * (prob_MD - prob_MD ** 2) / c)
 
             """Set B"""
             prob_MD = w_MD_k[1, B].sum()
             c = c_MD[B].sum()
-            p_MD[k-1, 1] = prob_MD
-            eps_MD[k-1, 1] = np.sqrt(k * (prob_MD - prob_MD ** 2) / c)
+            p_MD[k, 1] = prob_MD
+            eps_MD[k, 1] = np.sqrt(k * (prob_MD - prob_MD ** 2) / c)
 
         """Input"""
         self.MSM = MSM
@@ -116,9 +116,10 @@ class TestCK_MSM(unittest.TestCase):
         self.B = B
 
         """Expected results"""
-        self.p_MSM = p_MSM
-        self.p_MD = p_MD
-        self.eps_MD = eps_MD
+        # skip first result as it is trivial case of mlag=0
+        self.p_MSM = p_MSM[1:, :]
+        self.p_MD = p_MD[1:, :]
+        self.eps_MD = eps_MD[1:, :]
 
         self.dtraj = dtraj
 
@@ -142,7 +143,7 @@ class TestCK_MSM(unittest.TestCase):
         np.testing.assert_allclose(p_MSM, self.p_MSM)
         p_MD = np.vstack([ck.estimates[:, 0, 0], ck.estimates[:, 2, 2]]).T
         # TODO: investigate why we needed to cut the precision dramatically (compared to pyemmas impl)...
-        np.testing.assert_allclose(p_MD, self.p_MD, atol=1e-6)
+        np.testing.assert_allclose(p_MD, self.p_MD, atol=1e-7)
 
 
 class TestCK_AllEstimators(unittest.TestCase):
