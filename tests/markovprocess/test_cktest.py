@@ -142,8 +142,7 @@ class TestCK_MSM(unittest.TestCase):
         p_MSM = np.vstack([ck.predictions[:, 0, 0], ck.predictions[:, 2, 2]]).T
         np.testing.assert_allclose(p_MSM, self.p_MSM)
         p_MD = np.vstack([ck.estimates[:, 0, 0], ck.estimates[:, 2, 2]]).T
-        # TODO: investigate why we needed to cut the precision dramatically (compared to pyemmas impl)...
-        np.testing.assert_allclose(p_MD, self.p_MD, atol=1e-7)
+        np.testing.assert_allclose(p_MD, self.p_MD, rtol=1e-5, atol=1e-8)
 
 
 class TestCK_AllEstimators(unittest.TestCase):
