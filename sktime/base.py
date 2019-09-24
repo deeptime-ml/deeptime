@@ -4,7 +4,9 @@ from inspect import signature
 from sklearn.base import _pprint as pprint_sklearn
 
 
-class _base_methods_mixin(object):
+class _base_methods_mixin(object, metaclass=abc.ABCMeta):
+    """ defines common methods used by both Estimator and Model classes.
+    """
 
     def __repr__(self):
         name = '{cls}-{id}:'.format(id=id(self), cls=self.__class__.__name__)
@@ -89,10 +91,19 @@ class Model(_base_methods_mixin):
 class Estimator(_base_methods_mixin):
 
     def __init__(self, model=None):
-        self._model = model if model is not None else self._create_model()
+        # we only need to create a default model in case the subclassing Estimator provides the partial_fit interface.
+        if hasattr(self.__class__, 'partial_fit') and model is None:
+            self._model = self._create_model()
+        # TODO: not tested (e.g. by partially fitted models.
+        elif model is not None:
+            self._model = model
 
     @abc.abstractmethod
     def fit(self, data):
+        """ performs a fit of this estimator with data. Creates a new model instance by default.
+        :param data:
+        :return: self
+        """
         pass
 
     def fetch_model(self) -> Model:
@@ -101,6 +112,11 @@ class Estimator(_base_methods_mixin):
     @abc.abstractmethod
     def _create_model(self):
         pass
+
+    def __getattribute__(self, item):
+        if item == 'fit':
+            self._model = self._create_model()
+        return super(_base_methods_mixin, self).__getattribute__(item)
 
 
 class Transformer(object):

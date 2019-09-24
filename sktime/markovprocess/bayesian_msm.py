@@ -14,7 +14,7 @@ class BayesianMSMPosterior(Model):
 
     def __init__(self,
                  prior: typing.Optional[MarkovStateModel] = None,
-                 samples: typing.Optional[typing.List] = None):
+                 samples: typing.Optional[typing.List[MarkovStateModel]] = None):
         self.prior = prior
         self.samples = samples
 
@@ -105,9 +105,6 @@ class BayesianMSM(_MSMBaseEstimator):
        Confidence interval. By default one-sigma (68.3%) is used. Use 95.4%
        for two sigma or 99.7% for three sigma.
 
-    show_progress : bool, default=True
-       Show progressbars for calculation?
-
     mincount_connectivity : float or '1/n'
        minimum number of counts to consider a connection between two states.
        Counts lower than that will count zero in the connectivity check and
@@ -138,7 +135,6 @@ class BayesianMSM(_MSMBaseEstimator):
         self.nsamples = nsamples
         self.nsteps = nsteps
         self.conf = conf
-        self.show_progress = show_progress
 
     def _create_model(self) -> BayesianMSMPosterior:
         return BayesianMSMPosterior()

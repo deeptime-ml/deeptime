@@ -26,7 +26,7 @@ import numpy as np
 
 from sktime.base import Model
 from sktime.markovprocess import Q_
-from sktime.markovprocess._dtraj_stats import TransitionCountModel
+from sktime.markovprocess.transition_counting import TransitionCountModel
 from sktime.markovprocess.pcca import PCCA
 from sktime.markovprocess.sample import ensure_dtraj_list
 from sktime.util import ensure_ndarray, mdot
@@ -393,7 +393,7 @@ class MarkovStateModel(Model):
         if self.sparse:  # sparse: we don't have a full eigenvalue set, so just propagate
             pk = np.array(p0)
             for i in range(k):
-                pk = np.dot(pk.T, self.transition_matrix)
+                pk = pk.T.dot(self.transition_matrix)
         else:  # dense: employ eigenvalue decomposition
             self._ensure_eigendecomposition(self.nstates)
             pk = mdot(p0.T,
@@ -1277,7 +1277,3 @@ class MarkovStateModel(Model):
         from sktime.metrics import vamp_score
         return vamp_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_test,
                           k=score_k, score=score_method)
-
-    def _blocksplit_dtrajs(self, dtrajs, sliding):
-        from sktime.markovprocess._dtraj_stats import blocksplit_dtrajs
-        return blocksplit_dtrajs(dtrajs, lag=self.count_model.lagtime, sliding=sliding)

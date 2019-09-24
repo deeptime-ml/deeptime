@@ -16,6 +16,7 @@ jobs:
       - checkout
       - run: conda config --add channels conda-forge
       - run: conda config --set always_yes true
+      - run: conda config --set channel_priority strict
       - run: conda config --set quiet true
       - run: conda install conda-build conda-verify -c defaults
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS

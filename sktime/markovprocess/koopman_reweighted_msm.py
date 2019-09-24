@@ -5,7 +5,7 @@ from msmtools.estimation import effective_count_matrix
 
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess._base import _MSMBaseEstimator
-from sktime.markovprocess._dtraj_stats import TransitionCountEstimator, TransitionCountModel
+from sktime.markovprocess.transition_counting import TransitionCountEstimator, TransitionCountModel
 from sktime.util import submatrix
 from ._koopman_reweighted_msm_impl import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
                                            rank_decision, oom_components, equilibrium_transition_matrix)
@@ -22,18 +22,6 @@ class KoopmanReweightedMSM(MarkovStateModel):
         self._sigma = sigma
         if sigma is not None:
             self._oom_rank = sigma.size
-
-    def _blocksplit_dtrajs(self, dtrajs, sliding):
-        """ Override splitting method of base class.
-
-        For OOM estimators we currently need a clean trajectory splitting, i.e. we don't do block splitting at all.
-
-        """
-        if len(dtrajs) < 2:
-            raise NotImplementedError('Current cross-validation implementation for OOMReweightedMSM requires' +
-                                      'multiple trajectories. You can split the trajectory yourself into training' +
-                                      'and test set and use the score method after fitting the training set.')
-        return dtrajs
 
     @property
     def eigenvalues_OOM(self):

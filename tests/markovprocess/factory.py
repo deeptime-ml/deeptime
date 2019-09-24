@@ -1,11 +1,22 @@
 import numpy as np
+import typing
 
-from sktime.markovprocess import BayesianMSM, MaximumLikelihoodMSM
+from sktime.markovprocess import BayesianMSM, MaximumLikelihoodMSM, BayesianMSMPosterior
 from . import datasets
 
 __all__ = ['data_double_well', 'msm_double_well', 'bmsm_double_well']
 
 data_double_well = datasets.load_2well_discrete()
+
+
+def bayesian_markov_model(dtrajs, lag, return_estimator=False, **kwargs) \
+        -> (typing.Optional[BayesianMSM], BayesianMSMPosterior):
+    est = BayesianMSM(lagtime=lag, **kwargs)
+    est.fit(dtrajs)
+    model = est.fetch_model()
+    if return_estimator:
+        return est, model
+    return model
 
 
 def msm_double_well(lagtime=100, reversible=True, **kwargs) -> MaximumLikelihoodMSM:

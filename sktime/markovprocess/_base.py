@@ -1,7 +1,7 @@
 import numpy as np
 
 from sktime.base import Estimator
-from sktime.markovprocess._dtraj_stats import blocksplit_dtrajs, cvsplit_dtrajs
+from sktime.markovprocess.transition_counting import blocksplit_dtrajs, cvsplit_dtrajs
 
 
 # TODO: distinguish more between model and estimator attributes.
@@ -83,63 +83,6 @@ class _MSMBaseEstimator(Estimator):
         # connectivity
         self.mincount_connectivity = mincount_connectivity
 
-    # TODO: this one is tricky
-    def cktest(self, dtrajs, nsets, memberships=None, mlags=10, conf=0.95, err_est=False,
-               n_jobs=None, show_progress=True):
-        """ Conducts a Chapman-Kolmogorow test.
-
-        Parameters
-        ----------
-        nsets : int
-            number of sets to test on
-        memberships : ndarray(nstates, nsets), optional
-            optional state memberships. By default (None) will conduct a cktest
-            on PCCA (metastable) sets.
-        mlags : int or int-array, optional
-            multiples of lag times for testing the Model, e.g. range(10).
-            A single int will trigger a range, i.e. mlags=10 maps to
-            mlags=range(10). The setting None will choose mlags automatically
-            according to the longest available trajectory
-        conf : float, optional
-            confidence interval
-        err_est : bool, optional
-            compute errors also for all estimations (computationally expensive)
-            If False, only the prediction will get error bars, which is often
-            sufficient to validate a model.
-        n_jobs : int, default=None
-            how many jobs to use during calculation
-        show_progress : bool, optional
-            Show progress bars for calculation?
-
-        Returns
-        -------
-        cktest : :class:`ChapmanKolmogorovValidator <pyemma.msm.ChapmanKolmogorovValidator>`
-
-
-        References
-        ----------
-        This test was suggested in [1]_ and described in detail in [2]_.
-
-        .. [1] F. Noe, Ch. Schuette, E. Vanden-Eijnden, L. Reich and
-            T. Weikl: Constructing the Full Ensemble of Folding Pathways
-            from Short Off-Equilibrium Simulations.
-            Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
-        .. [2] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
-            Chodera, C Schuette and F Noe. 2011. Markov models of
-            molecular kinetics: Generation and validation. J Chem Phys
-            134: 174105
-
-        """
-        test_model = self.fetch_model()
-        if memberships is None:
-            test_model.pcca(nsets)
-            memberships = test_model.metastable_memberships
-        from sktime.markovprocess.lagged_model_validators import ChapmanKolmogorovValidator
-        ck = ChapmanKolmogorovValidator(test_estimator=self, test_model=test_model, memberships=memberships, mlags=mlags, conf=conf,
-                                        n_jobs=n_jobs, err_est=err_est, show_progress=show_progress)
-        ck.fit(dtrajs)
-        return ck
-
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', score_k=10, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes [1]_ [2]_ and cross-validation [3]_ .
@@ -202,3 +145,4 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', s
         s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
         scores.append(s)
     return np.array(scores)
+

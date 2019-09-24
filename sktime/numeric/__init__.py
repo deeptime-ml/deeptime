@@ -1,0 +1,22 @@
+import numpy as np
+
+
+def mdot(*args):
+    """Computes a matrix product of multiple ndarrays
+
+    This is a convenience function to avoid constructs such as np.dot(A, np.dot(B, np.dot(C, D))) and instead
+    use mdot(A, B, C, D).
+
+    Parameters
+    ----------
+    *args : an arbitrarily long list of ndarrays that must be compatible for multiplication,
+        i.e. args[i].shape[1] = args[i+1].shape[0].
+    """
+    if len(args) < 1:
+        raise ValueError('need at least one argument')
+    args = list(args)[::-1]
+    x = args.pop()
+    while len(args):
+        y = args.pop()
+        x = np.dot(x, y)
+    return x

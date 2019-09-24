@@ -19,7 +19,7 @@ import numpy as np
 from msmtools import estimation as msmest
 
 from sktime.markovprocess._base import _MSMBaseEstimator
-from sktime.markovprocess._dtraj_stats import TransitionCountEstimator
+from sktime.markovprocess.transition_counting import TransitionCountEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
 
 __all__ = ['MaximumLikelihoodMSM']
