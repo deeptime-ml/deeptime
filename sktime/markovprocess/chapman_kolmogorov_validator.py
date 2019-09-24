@@ -57,7 +57,7 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
 
     @memberships.setter
     def memberships(self, value):
-        self._memberships = ensure_ndarray(value, ndim=2, dtype=np.float)
+        self._memberships = ensure_ndarray(value, ndim=2, dtype=np.float64)
         self.nstates, self.nsets = self._memberships.shape
         assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
 
@@ -69,7 +69,7 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     def test_model(self, test_model: MarkovStateModel):
         assert self.memberships is not None
         assert self.memberships.shape[0] == test_model.nstates, 'provided memberships and test_model nstates mismatch'
-        self._test_model = test_model.copy()
+        self._test_model = test_model
         # define starting distribution
         P0 = self.memberships * test_model.stationary_distribution[:, None]
         P0 /= P0.sum(axis=0)  # column-normalize

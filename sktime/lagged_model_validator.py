@@ -107,8 +107,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
     """
     def __init__(self, test_model, test_estimator, mlags=None, conf=0.95, err_est=False):
         # set model and estimator
-        # TODO: subclass cktest takes a copy as well, how to avoid two copies while being general?
-        self.test_model = test_model.copy()
+        self.test_model = test_model
         import copy
         self.test_estimator = copy.deepcopy(test_estimator)
 
@@ -164,7 +163,6 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
 
     def fit(self, data):
         # set lag times
-
         self._set_mlags(data, self.input_lagtime)
         lags = self.mlags * self.input_lagtime
 
@@ -174,15 +172,11 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         estimates_conf = []
         estimated_models = []
 
-        # do we have zero lag? this must be treated separately
-        include0 = self.mlags[0] == 0
-        assert not include0
-
         # estimate models at multiple of input lag time.
         for lag in lags:
             self.test_estimator.lagtime = lag
             self.test_estimator.fit(data)
-            estimated_models.append(self.test_estimator.fetch_model().copy())
+            estimated_models.append(self.test_estimator.fetch_model())
 
         for mlag in self.mlags:
             # make a prediction using the test model
