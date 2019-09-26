@@ -27,7 +27,7 @@ import numpy as np
 from sktime.base import Model
 from sktime.markovprocess import Q_
 from sktime.markovprocess.transition_counting import TransitionCountModel
-from sktime.markovprocess.pcca import PCCA
+from sktime.markovprocess.pcca import PCCA, PCCAEstimator
 from sktime.markovprocess.sample import ensure_dtraj_list
 from sktime.util import ensure_ndarray, mdot
 
@@ -854,8 +854,8 @@ class MarkovStateModel(Model):
             self._pcca = PCCA(self.transition_matrix, m)
 
         # set metastable properties
-        self._metastable_computed = True
         self._n_metastable = self._pcca.n_metastable
+        # TODO: why would we want to have copies here?
         self._metastable_memberships = copy.deepcopy(self._pcca.memberships)
         self._metastable_distributions = copy.deepcopy(self._pcca.output_probabilities)
         self._metastable_sets = copy.deepcopy(self._pcca.metastable_sets)
