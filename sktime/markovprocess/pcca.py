@@ -54,7 +54,7 @@ class PCCA(Model):
         -------
         For each microstate, the metastable state it is located in.
         """
-        return np.argmax(self.memberships, axis=1)
+        return self.memberships.argmax(axis=1) if self.memberships is not None else ()
 
     @property
     def metastable_sets(self):
