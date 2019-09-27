@@ -1,20 +1,14 @@
-
-
 """This module contains function for the Transition Path Theory (TPT)
 analysis of Markov models.
 
-__moduleauthor__ = "Benjamin Trendelkamp-Schroer, Frank Noe"
+__moduleauthor__ = "Benjamin Trendelkamp-Schroer, Frank Noe, Martin Scherer"
 
 """
 import numpy as np
+from msmtools.analysis import committor
+from msmtools.flux import (to_netflux, flux_matrix, total_flux, rate, pathways, coarsegrain)
 
-from msmtools import flux as tptapi
-
-
-# TODO: we use a order preserving set data structure here, because we would loose order eg. in _compute_coarse_sets
-#from pyemma._ext.orderedset import OrderedSet as set
-
-from sktime.base import Model
+from sktime.base import Model, Estimator
 from sktime.markovprocess import Q_
 
 __all__ = ['ReactiveFlux']
@@ -40,9 +34,9 @@ class ReactiveFlux(Model):
         List of integer state labels for set A
     B : array_like
         List of integer state labels for set B
-    flux : (n,n) ndarray or scipy sparse matrix
+    flux : (n, n) ndarray or scipy sparse matrix
         effective or net flux of A->B pathways
-    mu : (n,) ndarray (optional)
+    stationary_distribution : (n,) ndarray (optional)
         Stationary vector
     qminus : (n,) ndarray (optional)
         Backward committor for A->B reaction
@@ -50,6 +44,8 @@ class ReactiveFlux(Model):
         Forward committor for A-> B reaction
     gross_flux : (n,n) ndarray or scipy sparse matrix
         gross flux of A->B pathways, if available
+    dt_model : Quantity or None, optional
+        when the originating model has a lag time, output units will be scaled by it.
 
     Notes
     -----
@@ -60,22 +56,22 @@ class ReactiveFlux(Model):
     msmtools.tpt
 
     """
-    __serialize_version = 0
 
-    def __init__(self, A, B, flux,
-                 mu=None, qminus=None, qplus=None, gross_flux=None, dt_model='1 step'):
+    def __init__(self, A=None, B=None, flux=None,
+                 stationary_distribution=None, qminus=None, qplus=None, gross_flux=None, dt_model=1):
         # set data
-        self._A = A
-        self._B = B
+        self.A = A
+        self.B = B
         self._flux = flux
-        self._mu = mu
+        self._mu = stationary_distribution
         self._qminus = qminus
         self._qplus = qplus
         self._gross_flux = gross_flux
         self.dt_model = dt_model
-        # compute derived quantities:
-        self._totalflux = tptapi.total_flux(flux, A)
-        self._kAB = tptapi.rate(self._totalflux, mu, qminus)
+        if flux is not None and A is not None and stationary_distribution is not None and qminus is not None:
+            # compute derived quantities:
+            self._totalflux = total_flux(flux, A)
+            self._kAB = rate(self._totalflux, stationary_distribution, qminus)
 
     @property
     def dt_model(self) -> Q_:
@@ -88,7 +84,7 @@ class ReactiveFlux(Model):
     @property
     def nstates(self):
         """number of states."""
-        return np.shape(self._flux)[0]
+        return self._flux.shape[0]
 
     @property
     def A(self):
@@ -123,11 +119,6 @@ class ReactiveFlux(Model):
         self._mu = val
 
     @property
-    def flux(self):
-        """effective or net flux"""
-        return self._flux / self._dt_model
-
-    @property
     def net_flux(self):
         """effective or net flux"""
         return self._flux / self._dt_model
@@ -138,7 +129,7 @@ class ReactiveFlux(Model):
         return self._gross_flux / self._dt_model
 
     @property
-    def committor(self):
+    def forward_committor(self):
         """forward committor probability"""
         return self._qplus
 
@@ -186,8 +177,8 @@ class ReactiveFlux(Model):
             Multiscale Model Simul 7: 1192-1219 (2009)
 
         """
-        return tptapi.pathways(self.net_flux, self.A, self.B,
-                               fraction=fraction, maxiter=maxiter)
+        return pathways(self._flux, self.A, self.B,
+                        fraction=fraction, maxiter=maxiter)
 
     def _pathways_to_flux(self, paths, pathfluxes, n=None):
         """Sums up the flux from the pathways given
@@ -217,8 +208,7 @@ class ReactiveFlux(Model):
 
         # initialize flux
         F = np.zeros((n, n))
-        for i in range(len(paths)):
-            p = paths[i]
+        for i, p in enumerate(paths):
             for t in range(len(p) - 1):
                 F[p[t], p[t + 1]] += pathfluxes[i]
         return F
@@ -328,8 +318,8 @@ class ReactiveFlux(Model):
         nnew = len(tpt_sets)
 
         # coarse-grain fluxHere we should branch between sparse and dense implementations, but currently there is only a
-        F_coarse = tptapi.coarsegrain(self._gross_flux, tpt_sets)
-        Fnet_coarse = tptapi.to_netflux(F_coarse)
+        F_coarse = coarsegrain(self._gross_flux, tpt_sets)
+        Fnet_coarse = to_netflux(F_coarse)
 
         # coarse-grain stationary probability and committors - this can be done all dense
         pstat_coarse = np.zeros(nnew)
@@ -343,7 +333,147 @@ class ReactiveFlux(Model):
             forward_committor_coarse[i] = np.dot(partialI, self._qplus[I])
             backward_committor_coarse[i] = np.dot(partialI, self._qminus[I])
 
-        res = ReactiveFlux(Aindexes, Bindexes, Fnet_coarse, mu=pstat_coarse,
+        res = ReactiveFlux(Aindexes, Bindexes, Fnet_coarse, stationary_distribution=pstat_coarse,
                            qminus=backward_committor_coarse, qplus=forward_committor_coarse, gross_flux=F_coarse,
                            dt_model=self.dt_model)
         return tpt_sets, res
+
+
+class ReactiveFluxEstimator(Estimator):
+    r""" A->B reactive flux from transition path theory (TPT)
+
+       The estimated model :class:`ReactiveFlux`
+       can be used to extract various quantities of the flux, as well as to
+       compute A -> B transition pathways, their weights, and to coarse-grain
+       the flux onto sets of states.
+
+       Parameters
+       ----------
+       A : array_like
+           List of integer state labels for set A
+       B : array_like
+           List of integer state labels for set B
+
+       Returns
+       -------
+       tptobj : :class:`ReactiveFlux <pyemma.msm.models.ReactiveFlux>` object
+           An object containing the reactive A->B flux network
+           and several additional quantities, such as the stationary probability,
+           committors and set definitions.
+
+       See also
+       --------
+       :class:`ReactiveFlux`
+           Reactive Flux model
+
+       References
+       ----------
+       Transition path theory was introduced for space-continuous dynamical
+       processes, such as Langevin dynamics, in [1]_, [2]_ introduces discrete
+       transition path theory for Markov jump processes (Master equation models,
+       rate matrices) and pathway decomposition algorithms. [3]_ introduces
+       transition path theory for Markov state models (MSMs) and some analysis
+       algorithms. In this function, the equations described in [3]_ are applied.
+
+       .. [1] W. E and E. Vanden-Eijnden.
+           Towards a theory of transition paths.
+           J. Stat. Phys. 123: 503-523 (2006)
+
+       .. [2] P. Metzner, C. Schuette and E. Vanden-Eijnden.
+           Transition Path Theory for Markov Jump Processes.
+           Multiscale Model Simul 7: 1192-1219 (2009)
+
+       .. [3] F. Noe, Ch. Schuette, E. Vanden-Eijnden, L. Reich and
+           T. Weikl: Constructing the Full Ensemble of Folding Pathways
+           from Short Off-Equilibrium Simulations.
+           Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
+
+
+       Computes the A->B reactive flux using transition path theory (TPT)
+
+       Parameters
+       ----------
+       T : (M, M) ndarray or scipy.sparse matrix
+           Transition matrix (default) or Rate matrix (if rate_matrix=True)
+       A : array_like
+           List of integer state labels for set A
+       B : array_like
+           List of integer state labels for set B
+       mu : (M,) ndarray (optional)
+           Stationary vector
+       qminus : (M,) ndarray (optional)
+           Backward committor for A->B reaction
+       qplus : (M,) ndarray (optional)
+           Forward committor for A-> B reaction
+       rate_matrix = False : boolean
+           By default (False), T is a transition matrix.
+           If set to True, T is a rate matrix.
+
+       Notes
+       -----
+       The central object used in transition path theory is
+       the forward and backward comittor function.
+
+       TPT (originally introduced in [1]) for continuous systems has a
+       discrete version outlined in [2]. Here, we use the transition
+       matrix formulation described in [3].
+
+       See also
+       --------
+       msmtools.analysis.committor, ReactiveFlux
+
+       References
+       ----------
+       .. [1] W. E and E. Vanden-Eijnden.
+           Towards a theory of transition paths.
+           J. Stat. Phys. 123: 503-523 (2006)
+       .. [2] P. Metzner, C. Schuette and E. Vanden-Eijnden.
+           Transition Path Theory for Markov Jump Processes.
+           Multiscale Model Simul 7: 1192-1219 (2009)
+       .. [3] F. Noe, Ch. Schuette, E. Vanden-Eijnden, L. Reich and T. Weikl:
+           Constructing the Full Ensemble of Folding Pathways from Short Off-Equilibrium Simulations.
+           Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
+
+       """
+
+    def __init__(self, A, B):
+        if len(A) == 0:
+            raise ValueError('set A is empty')
+        if len(B) == 0:
+            raise ValueError('set B is empty')
+        self.A = A
+        self.B = B
+        super(ReactiveFluxEstimator, self).__init__()
+
+    def fit(self, msm):
+        """
+
+        :param msm:
+        :return:
+        """
+        T = msm.transition_matrix
+        mu = msm.stationary_distribution
+        n = T.shape[0]
+        if len(self.A) > n or max(self.A) > n:
+            raise ValueError(f'set A defines more states ({self.A}), than given transition matrix (nstates={n}).')
+        if len(self.B) > n or max(self.B) > n:
+            raise ValueError(f'set B defines more states ({self.B}), than given transition matrix (nstates={n}).')
+
+        # forward committor
+        qplus = committor(T, self.A, self.B, forward=True)
+        # backward committor
+        if msm.is_reversible:
+            qminus = 1.0 - qplus
+        else:
+            qminus = committor(T, self.A, self.B, forward=False, mu=mu)
+        # gross flux
+        grossflux = flux_matrix(T, mu, qminus, qplus, netflux=False)
+        # net flux
+        netflux = to_netflux(grossflux)
+
+        self._model.__init__(self.A, self.B, netflux, stationary_distribution=mu, qminus=qminus, qplus=qplus,
+                             gross_flux=grossflux, dt_model=msm.dt_model)
+        return self
+
+    def _create_model(self):
+        return ReactiveFlux()
