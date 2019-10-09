@@ -23,6 +23,8 @@ jobs:
 
   - bash: |
       conda config --add channels conda-forge # hightest priority
+      conda config --set always_yes true
+      conda config --set quiet true
       #conda install -y conda=4.7.12 conda-build=3.18.9
       conda create -n build conda-build=3.18.9
     displayName: 'Install dependencies'
