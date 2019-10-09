@@ -23,10 +23,11 @@ jobs:
 
   - bash: |
       conda config --add channels conda-forge # hightest priority
-      conda install -y conda=4.7.12 conda-build=3.18.9
+      #conda install -y conda=4.7.12 conda-build=3.18.9
+      conda create -n build conda-build=3.18.9
     displayName: 'Install dependencies'
     continueOnError: false
 
-  - bash: conda build devtools/conda-recipe
+  - bash: conda activate build && conda build devtools/conda-recipe
     displayName: 'Build and test'
     continueOnError: false
