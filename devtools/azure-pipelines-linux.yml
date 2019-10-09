@@ -27,10 +27,11 @@ jobs:
       conda config --set quiet true
       #conda install -y conda=4.7.12 conda-build=3.18.9
       conda create -n build conda-build=3.18.9
-      conda init bash
     displayName: 'Install dependencies'
     continueOnError: false
 
-  - bash: conda activate build && conda build devtools/conda-recipe
+  - bash: | 
+      source activate build
+      conda build devtools/conda-recipe
     displayName: 'Build and test'
     continueOnError: false
