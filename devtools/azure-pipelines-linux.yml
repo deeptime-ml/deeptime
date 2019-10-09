@@ -1,0 +1,32 @@
+jobs:
+- job: 'Linux'
+  pool:
+    vmImage: 'Ubuntu-18.04'
+  timeoutInMinutes: 360
+
+  strategy:
+    matrix:
+      Python36:
+        CONDA_PY: '3.6'
+        CONDA_NPY: '1.11'
+      Python37:
+        CONDA_PY: '3.7'
+        CONDA_NPY: '1.17'
+    maxParallel: 10
+
+  steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - bash: sudo install -d -m 0777 /usr/envs
+    displayName: Fix Conda permissions
+
+  - bash: |
+      conda config --add channels conda-forge # hightest priority
+      conda install -y conda=4.7.12 conda-build=3.18.9
+    displayName: 'Install dependencies'
+    continueOnError: false
+
+  - bash: conda build devtools/conda-recipe
+    displayName: 'Build and test'
+    continueOnError: false

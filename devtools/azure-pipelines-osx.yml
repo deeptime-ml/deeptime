@@ -1,0 +1,27 @@
+jobs:
+- job:
+  displayName: "OS X"
+  pool:
+    vmImage: 'macOS-10.13'
+  strategy:
+    matrix:
+      Python37:
+        CONDA_PY: '3.7'
+        CONDA_NPY: '1.17'
+
+  steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - script: sudo chmod -R 777 /usr/local/miniconda
+    displayName: Fix Conda permissions
+
+  - bash: |
+      conda config --add channels conda-forge # hightest priority
+      conda install -y conda=4.7.12 conda-build=3.18.9
+    displayName: 'Install dependencies'
+    continueOnError: false
+
+  - bash: conda build devtools/conda-recipe
+    displayName: 'Build and test'
+    continueOnError: false
