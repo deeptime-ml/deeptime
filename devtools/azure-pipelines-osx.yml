@@ -3,6 +3,8 @@ jobs:
   displayName: "OS X"
   pool:
     vmImage: 'macOS-10.14'
+  variables:
+    CXXFLAGS: '-fsized-deallocation' # https://github.com/pybind/pybind11/issues/1818
   strategy:
     matrix:
       Python37:
