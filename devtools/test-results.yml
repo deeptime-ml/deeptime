@@ -1,4 +1,4 @@
-task: PublishTestResults@2
+- task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit' # Options: JUnit, NUnit, VSTest, xUnit, cTest
     testResultsFiles: '**/junit.xml' 

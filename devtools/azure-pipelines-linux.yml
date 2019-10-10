@@ -23,5 +23,11 @@ jobs:
 
   - template: conda-setup+build.yml
 
-  - template: test-results.yml
-
+  #- template: test-results.yml
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'JUnit' # Options: JUnit, NUnit, VSTest, xUnit, cTest
+      testResultsFiles: '**/junit.xml' 
+      searchFolder: '$(HOME)' # Optional
+      failTaskOnFailedTests: true # Optional
+      publishRunAttachments: true # Optional
