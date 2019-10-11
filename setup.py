@@ -101,6 +101,9 @@ metadata = \
         zip_safe=False,
         install_requires=['numpy'],
         packages=find_packages(),
+        package_data={
+            'sktime.data': ['data/*.npz']
+        },
     )
 
 if __name__ == '__main__':
