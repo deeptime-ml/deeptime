@@ -9,6 +9,7 @@ jobs:
         CONDA_PY: '3.7'
         
   steps:
-  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+  - task: BatchScript@1
+    filename: "$env:CONDA\Scripts\activate.bat" 
     displayName: Add conda to PATH
   - template: conda-setup+build.yml
