@@ -11,13 +11,4 @@ jobs:
   steps:
   - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
     displayName: Add conda to PATH
-  - script: |
-      ECHO ON
-      set PYTHONUNBUFFERED=1
-      conda.exe config --add channels conda-forge
-      conda.exe install -yq conda=4.4 conda-build=3.17.8 ripgrep=11.0.2
-    displayName: 'Install dependencies'
-    continueOnError: false
-  - script: |      
-      conda.exe build devtools/conda-recipe
-    displayName: 'Build and test'
+  - template: conda-setup+build.yml
