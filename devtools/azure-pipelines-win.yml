@@ -10,6 +10,8 @@ jobs:
         
   steps:
   - task: BatchScript@1
-    filename: "$env:CONDA\\Scripts\\activate.bat" 
+    inputs:
+      filename: "$env:CONDA\\Scripts\\activate.bat" 
+      modifyEnvironment: True
     displayName: Add conda to PATH
   - template: conda-setup+build.yml
