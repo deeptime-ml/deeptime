@@ -106,7 +106,8 @@ metadata = \
 # workaround for https://reviews.llvm.org/D8467, see https://github.com/pybind/pybind11/issues/1818
 if sys.platform == 'darwin':
    for e in metadata['ext_modules']:
-       e.extra_compile_args.append('-fsized-deallocation')
+       e.extra_compile_args.append('-fno-sized-deallocation')
+       e.extra_compile_args.append('-fno-sized-allocation')
 
 if __name__ == '__main__':
     setup(**metadata)
