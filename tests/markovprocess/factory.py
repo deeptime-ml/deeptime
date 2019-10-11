@@ -2,11 +2,10 @@ import numpy as np
 import typing
 
 from sktime.markovprocess import BayesianMSM, MaximumLikelihoodMSM, BayesianMSMPosterior
-from . import datasets
+import sktime.datasets as datasets
 
-__all__ = ['data_double_well', 'msm_double_well', 'bmsm_double_well']
+__all__ = ['msm_double_well', 'bmsm_double_well']
 
-data_double_well = datasets.load_2well_discrete()
 
 
 def bayesian_markov_model(dtrajs, lag, return_estimator=False, **kwargs) \
@@ -21,7 +20,7 @@ def bayesian_markov_model(dtrajs, lag, return_estimator=False, **kwargs) \
 
 def msm_double_well(lagtime=100, reversible=True, **kwargs) -> MaximumLikelihoodMSM:
     est = MaximumLikelihoodMSM(lagtime=lagtime, reversible=reversible, **kwargs)
-    est.fit(data_double_well.dtraj_T100K_dt10)
+    est.fit(datasets.double_well_discrete().dtraj)
     return est
 
 
@@ -34,10 +33,10 @@ def bmsm_double_well(lagtime=100, nsamples=100, reversible=True, constrain_to_co
     :return: tuple(Estimator, Model)
     """
     # load observations
-    obs_micro = data_double_well.dtraj_T100K_dt10
+    obs_micro = datasets.double_well_discrete().dtraj
 
     # stationary distribution
-    pi_micro = data_double_well.msm.stationary_distribution
+    pi_micro = datasets.double_well_discrete().msm.stationary_distribution
     pi_macro = np.zeros(2)
     pi_macro[0] = pi_micro[0:50].sum()
     pi_macro[1] = pi_micro[50:].sum()
