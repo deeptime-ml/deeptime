@@ -1,2 +1,3 @@
 include versioneer.py
 include sktime/_version.py
+include LICENSE.txt
