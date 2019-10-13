@@ -11,6 +11,7 @@ build:
    - CIRCLE_TEST_REPORTS
    - OMP_NUM_THREADS
   script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
+
 requirements:
   build:
     - {{ compiler('c') }}

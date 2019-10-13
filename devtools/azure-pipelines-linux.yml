@@ -1,0 +1,33 @@
+jobs:
+- job: 'Linux'
+  pool:
+    vmImage: 'Ubuntu-18.04'
+  timeoutInMinutes: 360
+
+  strategy:
+    matrix:
+      Python36:
+        CONDA_PY: '3.6'
+        CONDA_NPY: '1.11'
+      Python37:
+        CONDA_PY: '3.7'
+        CONDA_NPY: '1.17'
+    maxParallel: 10
+
+  steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - bash: sudo install -d -m 0777 /usr/envs
+    displayName: Fix Conda permissions
+
+  - template: conda-setup+build.yml
+
+  #- template: test-results.yml
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'JUnit' # Options: JUnit, NUnit, VSTest, xUnit, cTest
+      testResultsFiles: '**/junit.xml' 
+      searchFolder: '$(HOME)' # Optional
+      failTaskOnFailedTests: true # Optional
+      publishRunAttachments: true # Optional

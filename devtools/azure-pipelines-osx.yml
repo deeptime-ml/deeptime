@@ -1,0 +1,19 @@
+jobs:
+- job:
+  displayName: "OS X"
+  pool:
+    vmImage: 'macOS-10.14'
+  strategy:
+    matrix:
+      Python37:
+        CONDA_PY: '3.7'
+        CONDA_NPY: '1.17'
+
+  steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - script: sudo chmod -R 777 /usr/local/miniconda
+    displayName: Fix Conda permissions
+
+  - template: conda-setup+build.yml
