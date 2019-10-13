@@ -140,7 +140,7 @@ class TestMSMDoubleWell(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from . import factory
-        cls.dtraj = factory.data_double_well.dtraj_T100K_dt10
+        cls.dtraj = factory.datasets.double_well_discrete().dtraj
         nu = 1.*np.bincount(cls.dtraj)
         cls.statdist = nu/nu.sum()
 

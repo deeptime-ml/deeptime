@@ -6,7 +6,7 @@ import numpy as np
 from sktime.clustering._clustering_bindings import EuclideanMetric
 from sktime.clustering._clustering_bindings import kmeans as _kmeans_ext
 
-from sktime.base import Estimator
+from sktime.base import Estimator, Transformer
 from sktime.clustering.cluster_model import ClusterModel
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
@@ -44,7 +44,7 @@ class KMeansClusteringModel(ClusterModel):
         return self._inertia
 
 
-class KmeansClustering(Estimator):
+class KmeansClustering(Estimator, Transformer):
     r"""Kmeans clustering"""
 
     def __init__(self, n_clusters, max_iter=5, metric=None,
@@ -109,6 +109,12 @@ class KmeansClustering(Estimator):
 
     def _create_model(self) -> KMeansClusteringModel:
         return KMeansClusteringModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance)
+
+    def fetch_model(self) -> KMeansClusteringModel:
+        return self._model
+
+    def transform(self, data):
+        return self.fetch_model().transform(data)
 
     @property
     def init_strategy(self):

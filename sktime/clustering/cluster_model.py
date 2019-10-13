@@ -1,10 +1,10 @@
 import numpy as np
-from sktime.base import Model
+from sktime.base import Model, Transformer
 
 from sktime.clustering._clustering_bindings import assign as _assign
 
 
-class ClusterModel(Model):
+class ClusterModel(Model, Transformer):
 
     def __init__(self, n_clusters=0, cluster_centers=None, metric=None):
         self._n_clusters = n_clusters
@@ -50,5 +50,4 @@ class ClusterModel(Model):
         if n_jobs is None:
             n_jobs = 0
         dtraj = _assign(data, self.cluster_centers, n_jobs, self.metric)
-        res = dtraj[:, None]  # always return a column vector in this function
-        return res
+        return dtraj
