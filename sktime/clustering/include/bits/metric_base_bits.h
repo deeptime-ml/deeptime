@@ -10,6 +10,11 @@
 #include <omp.h>
 #endif
 
+template<>
+inline float Metric::compute<float>(const float* xs, const float* ys, std::size_t dim) const {
+    return this->compute_f(xs, ys, dim);
+}
+
 template<typename T>
 inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
                                                 const np_array<T>& centers,

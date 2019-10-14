@@ -24,9 +24,6 @@ public:
     T compute(const T* xs, const T* ys, std::size_t dim) const {
         return compute_d(xs, ys, dim);
     }
-	float compute(const float* xs, const float* ys, std::size_t dim) const {
-		return compute_f(xs, ys, dim);
-	}
 };
 
 class EuclideanMetric : public Metric {
