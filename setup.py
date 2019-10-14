@@ -74,6 +74,8 @@ class Build(build_ext):
 cmdclass = versioneer.get_cmdclass()
 cmdclass['build_ext'] = Build
 
+# TODO: this is platform dependent, e.g. win should be treated differently.
+cxx_flags = ['-std=c++14']
 metadata = \
     dict(
         name='scikit-time',
@@ -85,18 +87,18 @@ metadata = \
         ext_modules=[
             Extension('sktime.covariance.util.covar_c._covartools', sources=[
                 'sktime/covariance/util/covar_c/covartools.cpp',
-            ], language='c++'),
+            ], language='c++', extra_compile_args=cxx_flags),
             Extension('sktime.numeric.eig_qr', sources=[
                 'sktime/numeric/eig_qr.pyx'],
                       language_level=3),
             Extension('sktime.clustering._clustering_bindings', sources=[
                 'sktime/clustering/src/clustering_module.cpp'
             ], include_dirs=['sktime/clustering/include'],
-                      language='c++', extra_compile_args=['-std=c++14']),
+                      language='c++', extra_compile_args=cxx_flags),
             Extension('sktime.markovprocess._markovprocess_bindings', sources=[
                 'sktime/markovprocess/src/markovprocess_module.cpp'
             ], include_dirs=['sktime/markovprocess/include'],
-                      language='c++', extra_compile_args=['-std=c++14']),
+                      language='c++', extra_compile_args=cxx_flags),
         ],
         cmdclass=cmdclass,
         zip_safe=False,
