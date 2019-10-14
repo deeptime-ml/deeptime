@@ -9,7 +9,8 @@
 #include "common.h"
 #include "metric.h"
 
-namespace clustering::kmeans {
+namespace clustering {
+namespace kmeans {
 
 template<typename T>
 np_array<T> cluster(const np_array<T> & /*np_chunk*/, const np_array<T> & /*np_centers*/, int /*n_threads*/,
@@ -27,5 +28,5 @@ np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k, const Met
                             unsigned int random_seed, int n_threads, py::object& callback);
 
 }
-
+}
 #include "bits/kmeans_bits.h"

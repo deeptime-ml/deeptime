@@ -11,7 +11,8 @@
 #include <omp.h>
 #endif
 
-namespace clustering::regspace {
+namespace clustering {
+namespace regspace {
 
 class MaxCentersReachedException : public std::exception {
 public:
@@ -68,5 +69,6 @@ void cluster(const np_array<T> &chunk, py::list& py_centers, T dmin, std::size_t
             N_centers++;
         }
     }
+}
 }
 }
