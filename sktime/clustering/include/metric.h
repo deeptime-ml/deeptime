@@ -16,6 +16,7 @@ namespace py = pybind11;
 
 class Metric {
 public:
+    virtual ~Metric() = default;
     virtual double compute_d(const double* xs, const double* ys, std::size_t dim) const = 0;
     virtual float compute_f(const float* xs, const float* ys, std::size_t dim) const = 0;
 
