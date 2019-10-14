@@ -114,4 +114,7 @@ if sys.platform == 'darwin':
        e.extra_compile_args.append('-fno-aligned-allocation')
 
 if __name__ == '__main__':
+    import os
+    assert os.listdir(os.path.join('lib', 'pybind11')), 'ensure pybind11 submodule is initialized'
+
     setup(**metadata)
