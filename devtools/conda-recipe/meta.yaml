@@ -28,7 +28,8 @@ requirements:
     - scipy
     - setuptools
     - pip
-    - pybind11
+# we ship this in the repo
+#    - pybind11
 
   run:
     #- bhmm >=0.6.3,<0.7
