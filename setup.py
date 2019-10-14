@@ -70,6 +70,7 @@ class Build(build_ext):
 
         super(Build, self).build_extension(ext)
 
+
 cmdclass = versioneer.get_cmdclass()
 cmdclass['build_ext'] = Build
 
@@ -91,11 +92,11 @@ metadata = \
             Extension('sktime.clustering._clustering_bindings', sources=[
                 'sktime/clustering/src/clustering_module.cpp'
             ], include_dirs=['sktime/clustering/include'],
-                      language='c++', extra_compile_args=['-std=c++17']),
+                      language='c++', extra_compile_args=['-std=c++14']),
             Extension('sktime.markovprocess._markovprocess_bindings', sources=[
                 'sktime/markovprocess/src/markovprocess_module.cpp'
             ], include_dirs=['sktime/markovprocess/include'],
-                      language='c++', extra_compile_args=['-std=c++17']),
+                      language='c++', extra_compile_args=['-std=c++14']),
         ],
         cmdclass=cmdclass,
         zip_safe=False,
