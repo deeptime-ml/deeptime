@@ -1,6 +1,9 @@
 stages:
 - stage: Test
   jobs:
+  - steps:
+    - checkout: self
+      submodules: true
   - template: ./devtools/azure-pipelines-linux.yml
   # TODO: enable 
   #- template: ./devtools/azure-pipelines-osx.yml
