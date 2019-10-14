@@ -21,12 +21,11 @@ public:
 
     template<typename T>
     T compute(const T* xs, const T* ys, std::size_t dim) const {
-        if constexpr (std::is_same_v<T, float>) {
-            return compute_f(xs, ys, dim);
-        } else {
-            return compute_d(xs, ys, dim);
-        }
+        return compute_d(xs, ys, dim);
     }
+	float compute(const float* xs, const float* ys, std::size_t dim) const {
+		return compute_f(xs, ys, dim);
+	}
 };
 
 class EuclideanMetric : public Metric {
