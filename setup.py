@@ -107,12 +107,6 @@ metadata = \
         },
     )
 
-# workaround for https://reviews.llvm.org/D8467, see https://github.com/pybind/pybind11/issues/1818
-if sys.platform == 'darwin':
-   for e in metadata['ext_modules']:
-       e.extra_compile_args.append('-fno-sized-deallocation')
-       e.extra_compile_args.append('-fno-aligned-allocation')
-
 if __name__ == '__main__':
     import os
     assert os.listdir(os.path.join('lib', 'pybind11')), 'ensure pybind11 submodule is initialized'
