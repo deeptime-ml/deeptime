@@ -14,7 +14,8 @@
 #include <pybind11/pytypes.h>
 #include <mutex>
 
-namespace clustering::kmeans {
+namespace clustering {
+namespace kmeans {
 
 template<typename T>
 inline np_array<T> cluster(const np_array<T> &np_chunk, const np_array<T> &np_centers, int n_threads,
@@ -410,4 +411,5 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
     return ret_init_centers;
 }
 
+}
 }

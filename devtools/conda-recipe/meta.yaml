@@ -8,8 +8,8 @@ source:
 
 build:
   script_env:
-   - CIRCLE_TEST_REPORTS
    - OMP_NUM_THREADS
+   - AGENT_BUILDDIRECTORY
   script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
 
 requirements:
@@ -22,13 +22,11 @@ requirements:
   host:
     - cython
     - intel-openmp # [osx]
-    - mdtraj
     - numpy
     - python
     - scipy
     - setuptools
     - pip
-    - pybind11
 
   run:
     #- bhmm >=0.6.3,<0.7

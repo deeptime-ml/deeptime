@@ -1,0 +1,4 @@
+steps:
+- checkout: self
+  submodules: true
+ 

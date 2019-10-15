@@ -10,11 +10,13 @@ jobs:
         CONDA_NPY: '1.17'
 
   steps:
+  - template: checkout.yml
   - bash: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 
   - script: sudo chmod -R 777 /usr/local/miniconda
     displayName: Fix Conda permissions
+  - script: env
 
   - template: conda-setup+build.yml
   - template: test-results.yml

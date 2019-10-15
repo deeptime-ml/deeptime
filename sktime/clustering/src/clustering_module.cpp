@@ -12,7 +12,11 @@ static const auto euclidean = EuclideanMetric{};
 
 template<typename T>
 std::tuple<py::object, int, int, double> castLoopResult(const std::tuple<np_array<T>, int, int, T> &input) {
-    const auto& [arr, res, it, cost] = input;
+    const auto& arr = std::get<0>(input);
+    const auto& res = std::get<1>(input);
+    const auto& it =  std::get<2>(input);
+    const auto& cost = std::get<3>(input);
+
     return std::make_tuple(py::cast<py::object>(arr), res, it, static_cast<double>(cost));
 }
 

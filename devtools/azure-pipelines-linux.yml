@@ -15,6 +15,7 @@ jobs:
     maxParallel: 10
 
   steps:
+  - template: checkout.yml
   - bash: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 

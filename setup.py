@@ -70,9 +70,12 @@ class Build(build_ext):
 
         super(Build, self).build_extension(ext)
 
+
 cmdclass = versioneer.get_cmdclass()
 cmdclass['build_ext'] = Build
 
+# TODO: this is platform dependent, e.g. win should be treated differently.
+cxx_flags = ['-std=c++14']
 metadata = \
     dict(
         name='scikit-time',
@@ -84,18 +87,18 @@ metadata = \
         ext_modules=[
             Extension('sktime.covariance.util.covar_c._covartools', sources=[
                 'sktime/covariance/util/covar_c/covartools.cpp',
-            ], language='c++'),
+            ], language='c++', extra_compile_args=cxx_flags),
             Extension('sktime.numeric.eig_qr', sources=[
                 'sktime/numeric/eig_qr.pyx'],
                       language_level=3),
             Extension('sktime.clustering._clustering_bindings', sources=[
                 'sktime/clustering/src/clustering_module.cpp'
             ], include_dirs=['sktime/clustering/include'],
-                      language='c++', extra_compile_args=['-std=c++17']),
+                      language='c++', extra_compile_args=cxx_flags),
             Extension('sktime.markovprocess._markovprocess_bindings', sources=[
                 'sktime/markovprocess/src/markovprocess_module.cpp'
             ], include_dirs=['sktime/markovprocess/include'],
-                      language='c++', extra_compile_args=['-std=c++17']),
+                      language='c++', extra_compile_args=cxx_flags),
         ],
         cmdclass=cmdclass,
         zip_safe=False,
@@ -106,11 +109,8 @@ metadata = \
         },
     )
 
-# workaround for https://reviews.llvm.org/D8467, see https://github.com/pybind/pybind11/issues/1818
-if sys.platform == 'darwin':
-   for e in metadata['ext_modules']:
-       e.extra_compile_args.append('-fno-sized-deallocation')
-       e.extra_compile_args.append('-fno-aligned-allocation')
-
 if __name__ == '__main__':
+    import os
+    assert os.listdir(os.path.join('lib', 'pybind11')), 'ensure pybind11 submodule is initialized'
+
     setup(**metadata)
