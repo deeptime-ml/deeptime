@@ -3,7 +3,17 @@ steps:
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit' # Options: JUnit, NUnit, VSTest, xUnit, cTest
-    testResultsFiles: '**/junit.xml'
-    searchFolder: '$(HOME)' # Optional
+    testResultsFiles: '**/*junit.xml'
     failTaskOnFailedTests: true # Optional
     publishRunAttachments: true # Optional
+
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: 'cobertura' # Options: cobertura, jaCoCo
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
+    pathToSources: '$(Build.SourcesDirectory)/sktime' # Optional
+    #reportDirectory: # Optional
+    #additionalCodeCoverageFiles: # Optional
+    #failIfCoverageEmpty: false # Optional
+
+- bash: curl -s https://codecov.io/bash | bash

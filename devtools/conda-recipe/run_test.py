@@ -2,17 +2,16 @@ import os
 import sys
 
 import pytest
+import tempfile
 
 cover_pkg = 'sktime'
-
+xml_results_dest = os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir())
+assert os.path.isdir(xml_results_dest), 'no dest dir available'
 # where to write junit xml
-junit_xml = os.path.join(os.getenv('CIRCLE_TEST_REPORTS', os.path.expanduser('~')),
-                         'reports', 'junit.xml')
-target_dir = os.path.dirname(junit_xml)
-if not os.path.exists(target_dir):
-    os.makedirs(target_dir)
+junit_xml = os.path.join(xml_results_dest, 'junit.xml')
+cov_xml = os.path.join(xml_results_dest, 'coverage.xml')
 print('junit destination:', junit_xml)
-
+print('coverage dest:', cov_xml)
 pytest_args = ("-vv "
                "--cov={cover_pkg} "
                "--cov-report=xml:{dest_report} "
@@ -22,7 +21,7 @@ pytest_args = ("-vv "
                "tests/ "
                .format(cover_pkg=cover_pkg,
                        junit_xml=junit_xml,
-                       dest_report=os.path.join(os.path.expanduser('~/'), 'coverage.xml'),
+                       dest_report=cov_xml,
                        )
                .split(' '))
 
