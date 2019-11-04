@@ -271,16 +271,12 @@ def rdl_decomposition(P, reversible=True):
         if len(s) > 1:
             if reversible:
                 r, d, l = msmana.rdl_decomposition(P[s, :][:, s], norm='reversible')
-                # everything must be real-valued - this should rather be handled by msmtools
-                R[I] = r.real
-                D[I] = d.real
-                L[I] = l.real
             else:
                 r, d, l = msmana.rdl_decomposition(P[s, :][:, s], norm='standard')
-                # write to full
-                R[I] = r
-                D[I] = d
-                L[I] = l
+            # write to full
+            R[I] = r
+            D[I] = d
+            L[I] = l
         else:  # just one element. Write 1's
             R[I] = 1
             D[I] = 1
