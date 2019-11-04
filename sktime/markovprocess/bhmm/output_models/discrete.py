@@ -16,14 +16,12 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-from __future__ import print_function
-from six.moves import range
 import numpy as np
 
-from bhmm.output_models.impl_c import discrete as dc
-from bhmm.output_models import OutputModel
+from .impl_c import discrete as dc
 from bhmm.util import config
+
+from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
 
 
 class DiscreteOutputModel(OutputModel):
@@ -201,16 +199,8 @@ class DiscreteOutputModel(OutputModel):
         # initialize output probability matrix
         self._output_probabilities = np.zeros((N, M))
         # update output probability matrix (numerator)
-        if self.__impl__ == self.__IMPL_C__:
-            for k in range(K):
-                dc.update_pout(observations[k], weights[k], self._output_probabilities, dtype=config.dtype)
-        elif self.__impl__ == self.__IMPL_PYTHON__:
-            for k in range(K):
-                for o in range(M):
-                    times = np.where(observations[k] == o)[0]
-                    self._output_probabilities[:, o] += np.sum(weights[k][times, :], axis=0)
-        else:
-            raise RuntimeError('Implementation '+str(self.__impl__)+' not available')
+        for k in range(K):
+            dc.update_pout(observations[k], weights[k], self._output_probabilities, dtype=config.dtype)
         # normalize
         self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
 
@@ -278,7 +268,7 @@ class DiscreteOutputModel(OutputModel):
         """
         # generate random generator (note that this is inefficient - better use one of the next functions
         import scipy.stats
-        gen = scipy.stats.rv_discrete(values=(range(len(self._output_probabilities[state_index])), 
+        gen = scipy.stats.rv_discrete(values=(range(len(self._output_probabilities[state_index])),
                                               self._output_probabilities[state_index]))
         gen.rvs(size=1)
 

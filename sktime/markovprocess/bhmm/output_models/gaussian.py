@@ -1,4 +1,3 @@
-
 # This file is part of BHMM (Bayesian Hidden Markov Models).
 #
 # Copyright (c) 2016 Frank Noe (Freie Universitaet Berlin)
@@ -17,14 +16,12 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function
-from six.moves import range
 import numpy as np
 
-from bhmm.output_models.impl_c import gaussian as gc
-from bhmm.output_models import OutputModel
-from bhmm.util.logger import logger
-from bhmm.util import config
+from .impl_c import gaussian
+
+from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
+from sktime.markovprocess.bhmm.util.logger import logger
 
 
 class GaussianOutputModel(OutputModel):
@@ -54,21 +51,21 @@ class GaussianOutputModel(OutputModel):
         >>> output_model = GaussianOutputModel(nstates=3, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
 
         """
-        OutputModel.__init__(self, nstates, ignore_outliers=ignore_outliers)
+        super(GaussianOutputModel, self).__init__(nstates=nstates, ignore_outliers=ignore_outliers)
 
-        dtype = config.dtype  # type for internal storage
+        dtype = np.float64  # type for internal storage
 
         if means is not None:
             self._means = np.array(means, dtype=dtype)
             if self._means.shape != (nstates,):
-                raise Exception('means must have shape (%d,); instead got %s' % (nstates, str(self._means.shape)))
+                raise ValueError('means must have shape (%d,); instead got %s' % (nstates, str(self._means.shape)))
         else:
             self._means = np.zeros([nstates], dtype=dtype)
 
         if sigmas is not None:
             self._sigmas = np.array(sigmas, dtype=dtype)
             if self._sigmas.shape != (nstates,):
-                raise Exception('sigmas must have shape (%d,); instead got %s' % (nstates, str(self._sigmas.shape)))
+                raise ValueError('sigmas must have shape (%d,); instead got %s' % (nstates, str(self._sigmas.shape)))
         else:
             self._sigmas = np.zeros([nstates], dtype=dtype)
 
@@ -81,7 +78,6 @@ class GaussianOutputModel(OutputModel):
         GaussianOutputModel(3, means=array([-1.,  0.,  1.]), sigmas=array([ 0.5,  1. ,  2. ]))
 
         """
-
         return "GaussianOutputModel(%d, means=%s, sigmas=%s)" % (self.nstates, repr(self.means), repr(self.sigmas))
 
     def __str__(self):
@@ -157,15 +153,15 @@ class GaussianOutputModel(OutputModel):
 
         """
         if self.__impl__ == self.__IMPL_C__:
-            return gc.p_o(o, self.means, self.sigmas, out=None, dtype=type(o))
+            return gaussian.p_o(o, self.means, self.sigmas, out=None, dtype=type(o))
         elif self.__impl__ == self.__IMPL_PYTHON__:
             if np.any(self.sigmas < np.finfo(self.sigmas.dtype).eps):
                 raise RuntimeError('at least one sigma is too small to continue.')
             C = 1.0 / (np.sqrt(2.0 * np.pi) * self.sigmas)
-            Pobs = C * np.exp(-0.5 * ((o-self.means)/self.sigmas)**2)
+            Pobs = C * np.exp(-0.5 * ((o - self.means) / self.sigmas) ** 2)
             return Pobs
         else:
-            raise RuntimeError('Implementation '+str(self.__impl__)+' not available')
+            raise RuntimeError('Implementation ' + str(self.__impl__) + ' not available')
 
     def p_obs(self, obs, out=None):
         """
@@ -196,20 +192,8 @@ class GaussianOutputModel(OutputModel):
         >>> p_o = output_model.p_obs(o_t)
 
         """
-        if self.__impl__ == self.__IMPL_C__:
-            res = gc.p_obs(obs, self.means, self.sigmas, out=out, dtype=config.dtype)
-            return self._handle_outliers(res)
-        elif self.__impl__ == self.__IMPL_PYTHON__:
-            T = len(obs)
-            if out is None:
-                res = np.zeros((T, self.nstates), dtype=config.dtype)
-            else:
-                res = out
-            for t in range(T):
-                res[t, :] = self._p_o(obs[t])
-            return self._handle_outliers(res)
-        else:
-            raise RuntimeError('Implementation '+str(self.__impl__)+' not available')
+        res = gaussian.p_obs(obs, self.means, self.sigmas, out=out)
+        return self._handle_outliers(res)
 
     def estimate(self, observations, weights):
         """
@@ -261,7 +245,7 @@ class GaussianOutputModel(OutputModel):
         for k in range(K):
             # update nominator
             for i in range(N):
-                Y = (observations[k] - self.means[i])**2
+                Y = (observations[k] - self.means[i]) ** 2
                 self.sigmas[i] += np.dot(weights[k][:, i], Y)
             # update denominator
             w_sum += np.sum(weights[k], axis=0)
@@ -310,11 +294,12 @@ class GaussianOutputModel(OutputModel):
             if nsamples_in_state == 0:
                 logger().warn('Warning: State %d has no observations.' % state_index)
             if nsamples_in_state > 0:  # Sample new mu.
-                self.means[state_index] = np.random.randn()*self.sigmas[state_index]/np.sqrt(nsamples_in_state) + np.mean(observations_in_state)
+                self.means[state_index] = np.random.randn() * self.sigmas[state_index] / np.sqrt(
+                    nsamples_in_state) + np.mean(observations_in_state)
             if nsamples_in_state > 1:  # Sample new sigma
                 # This scheme uses the improper Jeffreys prior on sigma^2, P(mu, sigma^2) \propto 1/sigma
-                chisquared = np.random.chisquare(nsamples_in_state-1)
-                sigmahat2 = np.mean((observations_in_state - self.means[state_index])**2)
+                chisquared = np.random.chisquare(nsamples_in_state - 1)
+                sigmahat2 = np.mean((observations_in_state - self.means[state_index]) ** 2)
                 self.sigmas[state_index] = np.sqrt(sigmahat2) / np.sqrt(chisquared / nsamples_in_state)
 
         return
@@ -411,9 +396,8 @@ class GaussianOutputModel(OutputModel):
         # Determine number of samples to generate.
         T = s_t.shape[0]
 
-        o_t = np.zeros([T], dtype=config.dtype)
+        o_t = np.zeros([T], dtype=np.float64)
         for t in range(T):
             s = s_t[t]
             o_t[t] = self.sigmas[s] * np.random.randn() + self.means[s]
         return o_t
-

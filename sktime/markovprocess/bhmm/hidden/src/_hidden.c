@@ -4,6 +4,7 @@
 #include <time.h>
 #include <math.h>
 
+/* // tODO: not used?
 #ifndef __DIMS__
 #define __DIMS__
 #define DIMM2(arr, i, j)    arr[(i)*M + j]
@@ -11,7 +12,7 @@
 #define DIM3(arr, t, i , j) arr[(t)*N*N + (i)*N + j]
 #define DIMM3(arr, t, i, j) arr[(t)*N*M + (i)*M + j]
 #endif
-
+*/
 
 double _forward(
         double *alpha,

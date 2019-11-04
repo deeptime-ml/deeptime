@@ -17,8 +17,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import
-
 # import API
 from bhmm.api import *
 
@@ -41,7 +39,3 @@ from bhmm.output_models import OutputModel, GaussianOutputModel, DiscreteOutputM
 # other stuff
 from bhmm.util import config
 from bhmm.util import testsystems
-
-from .version import get_versions
-__version__ = get_versions()['version']
-del get_versions

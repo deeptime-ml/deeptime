@@ -19,11 +19,12 @@
 
 import numpy as np
 
-from bhmm.hmm.generic_hmm import HMM
-from bhmm.hmm.generic_sampled_hmm import SampledHMM
-from bhmm.output_models.gaussian import GaussianOutputModel
 from bhmm.util import config
 from bhmm.util.statistics import confidence_interval_arr
+
+from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
+from sktime.markovprocess.bhmm.hmm.generic_sampled_hmm import SampledHMM
+from sktime.markovprocess.bhmm.output_models.gaussian import GaussianOutputModel
 
 
 class GaussianHMM(HMM, GaussianOutputModel):

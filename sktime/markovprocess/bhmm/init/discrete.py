@@ -20,7 +20,9 @@
 import numpy as np
 
 from bhmm.util.logger import logger
-from bhmm.estimators import _tmatrix_disconnected
+
+from sktime.markovprocess import PCCA
+from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 
 
 def coarse_grain_transition_matrix(P, M):
@@ -292,7 +294,6 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
 
     # COARSE-GRAINING WITH PCCA+
     if active_nonseparate.size > nmeta:
-        from msmtools.analysis.dense.pcca import PCCA
         pcca_obj = PCCA(P_active_nonseparate, nmeta)
         M_active_nonseparate = pcca_obj.memberships  # memberships
         B_active_nonseparate = pcca_obj.output_probabilities  # output probabilities
@@ -326,25 +327,9 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
     pi_hmm, P_hmm = regularize_hidden(pi_hmm, P_hmm, reversible=reversible, stationary=stationary, C=C_hmm, eps=eps_A)
     B_hmm = regularize_pobs(B_hmm, nonempty=nonempty, separate=separate, eps=eps_B)
 
-    # print 'cg pi: ', pi_hmm
-    # print 'cg A:\n ', P_hmm
-    # print 'cg B:\n ', B_hmm
-
     logger().info('Initial model: ')
     logger().info('initial distribution = \n'+str(pi_hmm))
     logger().info('transition matrix = \n'+str(P_hmm))
     logger().info('output matrix = \n'+str(B_hmm.T))
 
     return pi_hmm, P_hmm, B_hmm
-
-
-# Markers for future functions
-def init_discrete_hmm_ml(C_full, nstates, reversible=True, stationary=True, active_set=None, P=None,
-                         eps_A=None, eps_B=None, separate=None):
-    """Initializes discrete HMM using maximum likelihood of observation counts"""
-    raise NotImplementedError('ML-initialization not yet implemented')
-
-
-def init_discrete_hmm_random(nhidden, nobs, lifetimes=None):
-    """Initializes discrete HMM randomly"""
-    raise NotImplementedError('Random initialization not yet implemented')

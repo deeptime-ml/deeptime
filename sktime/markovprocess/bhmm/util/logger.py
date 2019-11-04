@@ -19,7 +19,8 @@
 
 import logging
 import sys
-from bhmm.util import config
+
+from sktime.markovprocess.bhmm.util import config
 
 
 def logger(name='BHMM', pattern='%(asctime)s %(levelname)s %(name)s: %(message)s',

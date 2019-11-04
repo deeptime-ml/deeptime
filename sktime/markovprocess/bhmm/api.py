@@ -19,6 +19,8 @@
 
 import numpy as _np
 
+from sktime.markovprocess.bhmm.estimators.bayesian_sampling import BayesianHMMSampler
+
 
 def _guess_output_type(observations):
     """ Suggests a HMM model type based on the observation data
@@ -456,8 +458,7 @@ def bayesian_hmm(observations, estimated_hmm, nsample=100, reversible=True, stat
 
     """
     # construct estimator
-    from bhmm.estimators.bayesian_sampling import BayesianHMMSampler as _BHMM
-    sampler = _BHMM(observations, estimated_hmm.nstates, initial_model=estimated_hmm,
+    sampler = BayesianHMMSampler(observations, estimated_hmm.nstates, initial_model=estimated_hmm,
                     reversible=reversible, stationary=stationary, transition_matrix_sampling_steps=1000,
                     p0_prior=p0_prior, transition_matrix_prior=transition_matrix_prior,
                     output=estimated_hmm.output_model.model_type)

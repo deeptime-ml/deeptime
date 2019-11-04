@@ -28,38 +28,7 @@ kernels. All implementations are based on paper Rabiners [1].
 """
 import numpy as np
 
-from bhmm.hidden import impl_python as ip
-from bhmm.hidden import impl_c as ic
-from bhmm.util import config
-
-
-# implementation codes
-__IMPL_PYTHON__ = 0
-__IMPL_C__ = 1
-
-# implementation used
-__impl__ = __IMPL_PYTHON__
-
-
-def set_implementation(impl):
-    """
-    Sets the implementation of this module
-
-    Parameters
-    ----------
-    impl : str
-        One of ["python", "c"]
-
-    """
-    global __impl__
-    if impl.lower() == 'python':
-        __impl__ = __IMPL_PYTHON__
-    elif impl.lower() == 'c':
-        __impl__ = __IMPL_C__
-    else:
-        import warnings
-        warnings.warn('Implementation '+impl+' is not known. Using the fallback python implementation.')
-        __impl__ = __IMPL_PYTHON__
+from . import hidden as _impl
 
 
 def forward(A, pobs, pi, T=None, alpha_out=None):
@@ -88,12 +57,7 @@ def forward(A, pobs, pi, T=None, alpha_out=None):
         used in many different algorithms related to HMMs.
 
     """
-    if __impl__ == __IMPL_PYTHON__:
-        return ip.forward(A, pobs, pi, T=T, alpha_out=alpha_out, dtype=config.dtype)
-    elif __impl__ == __IMPL_C__:
-        return ic.forward(A, pobs, pi, T=T, alpha_out=alpha_out, dtype=config.dtype)
-    else:
-        raise RuntimeError('Nonexisting implementation selected: '+str(__impl__))
+    return _impl.forward(A, pobs, pi, T=T, alpha_out=alpha_out)
 
 
 def backward(A, pobs, T=None, beta_out=None):
@@ -117,12 +81,7 @@ def backward(A, pobs, T=None, beta_out=None):
         used in many different algorithms related to HMMs.
 
     """
-    if __impl__ == __IMPL_PYTHON__:
-        return ip.backward(A, pobs, T=T, beta_out=beta_out, dtype=config.dtype)
-    elif __impl__ == __IMPL_C__:
-        return ic.backward(A, pobs, T=T, beta_out=beta_out, dtype=config.dtype)
-    else:
-        raise RuntimeError('Nonexisting implementation selected: '+str(__impl__))
+    return _impl.backward(A, pobs, T=T, beta_out=beta_out)
 
 
 # global singletons as little helpers
@@ -193,15 +152,15 @@ def state_counts(gamma, T, out=None):
 
     Parameters
     ----------
-    gamma : ndarray((T,N), dtype = float), optional, default = None
-        gamma[t,i] is the probabilty at time t to be in state i !
+    gamma : ndarray((T, N), dtype=float), optional, default = None
+        gamma[t, i] is the probability at time t to be in state i !
     T : int
         number of time steps
 
     Returns
     -------
     count : numpy.array shape (N)
-            count[i] is the summed probabilty to be in state i !
+            count[i] is the summed probability to be in state i !
 
     See Also
     --------
@@ -240,12 +199,7 @@ def transition_counts(alpha, beta, A, pobs, T=None, out=None):
     backward : calculate backward coefficients `beta`
 
     """
-    if __impl__ == __IMPL_PYTHON__:
-        return ip.transition_counts(alpha, beta, A, pobs, T=T, out=out, dtype=config.dtype)
-    elif __impl__ == __IMPL_C__:
-        return ic.transition_counts(alpha, beta, A, pobs, T=T, out=out, dtype=config.dtype)
-    else:
-        raise RuntimeError('Nonexisting implementation selected: '+str(__impl__))
+    return _impl.transition_counts(alpha, beta, A, pobs, T=T, out=out)
 
 
 def viterbi(A, pobs, pi):
@@ -266,12 +220,7 @@ def viterbi(A, pobs, pi):
         maximum likelihood hidden path
 
     """
-    if __impl__ == __IMPL_PYTHON__:
-        return ip.viterbi(A, pobs, pi, dtype=config.dtype)
-    elif __impl__ == __IMPL_C__:
-        return ic.viterbi(A, pobs, pi, dtype=config.dtype)
-    else:
-        raise RuntimeError('Nonexisting implementation selected: '+str(__impl__))
+    return _impl.viterbi(A, pobs, pi)
 
 
 def sample_path(alpha, A, pobs, T=None):
@@ -294,9 +243,4 @@ def sample_path(alpha, A, pobs, T=None):
         maximum likelihood hidden path
 
     """
-    if __impl__ == __IMPL_PYTHON__:
-        return ip.sample_path(alpha, A, pobs, T=T, dtype=config.dtype)
-    elif __impl__ == __IMPL_C__:
-        return ic.sample_path(alpha, A, pobs, T=T, dtype=config.dtype)
-    else:
-        raise RuntimeError('Nonexisting implementation selected: '+str(__impl__))
+    return _impl.sample_path(alpha, A, pobs, T=T)

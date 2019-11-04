@@ -22,13 +22,13 @@ import copy
 
 import numpy as np
 
-
 # TODO: reactivate multiprocessing, parallelize model fitting and forward-backward
 # from multiprocessing import Queue, Process, cpu_count
 
 # BHMM imports
+from .. import hidden
+
 import bhmm
-import bhmm.hidden as hidden
 from bhmm.util.logger import logger
 from bhmm.util import config
 

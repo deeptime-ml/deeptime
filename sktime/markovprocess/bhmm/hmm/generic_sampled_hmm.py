@@ -19,8 +19,8 @@
 
 import numpy as np
 
-from bhmm.hmm.generic_hmm import HMM
-from bhmm.util import config
+from sktime.util import confidence_interval
+from .generic_hmm import HMM
 from bhmm.util.statistics import confidence_interval_arr
 
 
@@ -87,7 +87,7 @@ class SampledHMM(HMM):
     @property
     def initial_distribution_conf(self):
         r""" The standard deviation of the initial distribution of the hidden states """
-        return confidence_interval_arr(self.initial_distribution_samples, conf=self._conf)
+        return confidence_interval(self.initial_distribution_samples, conf=self._conf)
 
     @property
     def stationary_distribution_samples(self):

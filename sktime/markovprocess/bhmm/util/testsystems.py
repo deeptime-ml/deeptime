@@ -20,7 +20,8 @@
 import numpy as np
 import math
 
-from bhmm.output_models import GaussianOutputModel, DiscreteOutputModel
+from sktime.markovprocess.bhmm.output_models.discrete import DiscreteOutputModel
+from sktime.markovprocess.bhmm.output_models.gaussian import GaussianOutputModel
 
 
 def generate_transition_matrix(nstates=3, lifetime_max=100, lifetime_min=10, reversible=True):

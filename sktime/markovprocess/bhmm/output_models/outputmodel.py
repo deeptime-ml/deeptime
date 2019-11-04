@@ -1,4 +1,3 @@
-
 # This file is part of BHMM (Bayesian Hidden Markov Models).
 #
 # Copyright (c) 2016 Frank Noe (Freie Universitaet Berlin)
@@ -21,69 +20,33 @@ import numpy as np
 from abc import ABCMeta, abstractmethod
 
 
-class OutputModel(object):
-    """
-    HMM output probability model abstract base class.
+class OutputModel(object, metaclass=ABCMeta):
+    """ HMM output probability model abstract base class. Handles a general output model.
+
+    Parameters
+    ----------
+    nstates : int
+        The number of output states.
+    ignore_outliers : bool
+        By outliers we mean observations that have zero probability given the
+        current model. ignore_outliers=True means that outliers will be treated
+        as if no observation was made, which is equivalent to making this
+        observation with equal probability from any hidden state.
+        ignore_outliers=True means that an Exception or in the worst case an
+        unhandled crash will occur if an outlier is observed.
+        If outliers have been found, the flag found_outliers will be set True
 
     """
-
-    # Abstract base class.
-    __metaclass__ = ABCMeta
-
-    # implementation codes
-    __IMPL_PYTHON__ = 0
-    __IMPL_C__ = 1
-
-    # implementation used
-    __impl__ = __IMPL_PYTHON__
 
     def __init__(self, nstates, ignore_outliers=True):
-        """
-        Create a general output model.
-
-        Parameters
-        ----------
-        nstates : int
-            The number of output states.
-        ignore_outliers : bool
-            By outliers we mean observations that have zero probability given the
-            current model. ignore_outliers=True means that outliers will be treated
-            as if no observation was made, which is equivalent to making this
-            observation with equal probability from any hidden state.
-            ignore_outliers=True means that an Exception or in the worst case an
-            unhandled crash will occur if an outlier is observed.
-            If outliers have been found, the flag found_outliers will be set True
-
-        """
         self._nstates = nstates
         self.ignore_outliers = ignore_outliers
         self.found_outliers = False
-
-        return
 
     @property
     def nstates(self):
         r""" Number of hidden states """
         return self._nstates
-
-    def set_implementation(self, impl):
-        """
-        Sets the implementation of this module
-
-        Parameters
-        ----------
-        impl : str
-            One of ["python", "c"]
-
-        """
-        if impl.lower() == 'python':
-            self.__impl__ = self.__IMPL_PYTHON__
-        elif impl.lower() == 'c':
-            self.__impl__ = self.__IMPL_C__
-        else:
-            import warnings
-            warnings.warn('Implementation '+impl+' is not known. Using the fallback python implementation.')
-            self.__impl__ = self.__IMPL_PYTHON__
 
     @abstractmethod
     def sub_output_model(self, states):
@@ -124,14 +87,14 @@ class OutputModel(object):
             output probabilities
         """
         if self.ignore_outliers:
-            outliers = np.where(p_o.sum(axis=1)==0)[0]
+            outliers = np.where(p_o.sum(axis=1) == 0)[0]
             if outliers.size > 0:
                 p_o[outliers, :] = 1.0
                 self.found_outliers = True
         return p_o
 
     @abstractmethod
-    def generate_observation_trajectory(self, s_t, dtype=None):
+    def generate_observation_trajectory(self, s_t):
         """
         Generate synthetic observation data from a given state sequence.
 

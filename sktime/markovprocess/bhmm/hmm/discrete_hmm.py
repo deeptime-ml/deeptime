@@ -1,4 +1,3 @@
-
 # This file is part of BHMM (Bayesian Hidden Markov Models).
 #
 # Copyright (c) 2016 Frank Noe (Freie Universitaet Berlin)
@@ -19,17 +18,15 @@
 
 import numpy as np
 
-from bhmm.hmm.generic_hmm import HMM
-from bhmm.hmm.generic_sampled_hmm import SampledHMM
-from bhmm.output_models.discrete import DiscreteOutputModel
 from bhmm.util import config
-from bhmm.util.statistics import confidence_interval_arr
+
+from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
+from sktime.markovprocess.bhmm.hmm.generic_sampled_hmm import SampledHMM
+from sktime.markovprocess.bhmm.output_models.discrete import DiscreteOutputModel
 
 
 class DiscreteHMM(HMM, DiscreteOutputModel):
-    r""" Convenience access to an HMM with a Gaussian output model.
-
-    """
+    r""" Convenience access to an HMM with a Gaussian output model."""
 
     def __init__(self, hmm):
         # superclass constructors
@@ -53,6 +50,7 @@ class SampledDiscreteHMM(DiscreteHMM, SampledHMM):
         confidence interval, e.g. 0.68 for 1 sigma or 0.95 for 2 sigma.
 
     """
+
     def __init__(self, estimated_hmm, sampled_hmms, conf=0.95):
         # call GaussianHMM superclass constructer with estimated_hmm
         DiscreteHMM.__init__(self, estimated_hmm)
@@ -62,7 +60,7 @@ class SampledDiscreteHMM(DiscreteHMM, SampledHMM):
     @property
     def output_probabilities_samples(self):
         r""" Samples of the output probability matrix """
-        res = np.empty((self.nsamples, self.nstates, self.dimension), dtype=config.dtype)
+        res = np.empty((self.nsamples, self.nstates, self.dimension))
         for i in range(self.nsamples):
             res[i, :, :] = self._sampled_hmms[i].means
         return res

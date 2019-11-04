@@ -20,10 +20,10 @@
 import numpy as np
 import copy
 import time
-import bhmm.hidden as hidden
-from bhmm.estimators import _tmatrix_disconnected
-from bhmm.util.logger import logger
-from bhmm.util import config
+
+from sktime.markovprocess.bhmm.util.logger import logger
+from .. import hidden
+from . import _tmatrix_disconnected
 
 import msmtools.estimation as msmest
 
@@ -193,13 +193,9 @@ class BayesianHMMSampler(object):
         # sampling options
         self.transition_matrix_sampling_steps = transition_matrix_sampling_steps
 
-        # implementation options
-        hidden.set_implementation(config.kernel)
-        self.model.output_model.set_implementation(config.kernel)
-
         # pre-construct hidden variables
-        self.alpha = np.zeros((self.maxT, self.nstates), config.dtype, order='C')
-        self.pobs = np.zeros((self.maxT, self.nstates), config.dtype, order='C')
+        self.alpha = np.zeros((self.maxT, self.nstates), dtype=np.float64, order='C')
+        self.pobs = np.zeros((self.maxT, self.nstates), dtype=np.float64, order='C')
 
         return
 
@@ -244,7 +240,7 @@ class BayesianHMMSampler(object):
             self._update()
 
         # Collect data.
-        models = list()
+        models = []
         for iteration in range(nsamples):
             logger().info("Iteration %8d / %8d" % (iteration, nsamples))
             # Run a number of Gibbs sampling updates to generate each sample.

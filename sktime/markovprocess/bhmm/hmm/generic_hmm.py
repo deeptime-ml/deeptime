@@ -19,9 +19,11 @@
 
 import numpy as np
 import msmtools.estimation as msmest
-from bhmm.estimators import _tmatrix_disconnected
+
+from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 
 
+# TODO: this seems somehow duplicated from pyemma.msm.HMM class + some extra features.
 class HMM(object):
     r""" Hidden Markov model (HMM).
 
