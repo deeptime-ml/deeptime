@@ -177,16 +177,16 @@ def viterbi(A, pobs, pi, dtype=numpy.float32):
         raise TypeError
 
 
-def sample_path(alpha, A, pobs, T = None, dtype=numpy.float32):
+def sample_path(alpha, A, pobs, T=None, dtype=numpy.float32):
     N = pobs.shape[1]
     # set T
-    if (T is None):
+    if T is None:
         T = pobs.shape[0] # if not set, use the length of pobs as trajectory length
     elif T > pobs.shape[0] or T > alpha.shape[0]:
         raise ValueError('T must be at most the length of pobs and alpha.')
     # prepare path array
     cdef numpy.ndarray[int, ndim=1, mode="c"] path
-    path = numpy.zeros( (T), dtype=ctypes.c_int, order='C' )
+    path = numpy.zeros(T, dtype=ctypes.c_int, order='C')
 
     if dtype == numpy.float64:
         ppath  = <int*>    numpy.PyArray_DATA(path)
@@ -199,4 +199,4 @@ def sample_path(alpha, A, pobs, T = None, dtype=numpy.float32):
             raise MemoryError()
         return path
     else:
-        raise TypeError
+        raise TypeError('only implemented for dtype=np.float64')

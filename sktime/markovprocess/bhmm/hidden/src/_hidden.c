@@ -130,20 +130,6 @@ void _computeGamma(
     }
 }
 
-/*
-void _compute_state_counts(
-        double *state_counts,
-        const double *gamma,
-        int T, int N)
-{
-    int i, t;
-    for (i = 0; i < N; i++) {
-        state_counts[i] = 0.0;
-        for (t = 0; t < T; t++)
-            state_counts[i] += gamma[t*N+i];
-    }
-}*/
-
 
 int _compute_transition_counts(
         double *transition_counts,
@@ -292,16 +278,11 @@ int _random_choice(const double* p, const int N)
         s += p[i];
         if (s >= r)
         {
-            return(i);
+            return i;
         }
     }
 
-    printf("ERROR: random select method could not select anything. Probably p is not normalized.\n");
-    for (i = 0; i < N; i++)
-    {
-        printf("%i \t %f\n",i,p[i]);
-    }
-    exit(1);
+    return _BHMM_ERR_RANDOM_SELECTION;
 }
 
 void _normalize(double* v, const int N)
@@ -327,7 +308,7 @@ int _sample_path(
         const int N, const int T)
 {
     // initialize variables
-    int i,t;
+    int i, t;
     double* psel;
     psel = (double*) malloc(N * sizeof(double));
     if (! psel) {
@@ -335,67 +316,32 @@ int _sample_path(
     }
 
     // initialize random number generator
+    // TODO: seed parameter to enforce deterministic behaviour.
     srand(time(NULL));
 
     // Sample final state.
-    //printf("t = %i ",(T-1));
     for (i = 0; i < N; i++)
     {
         psel[i] = alpha[(T-1)*N+i];
-        //printf("%f\t",psel[i]);
     }
-    //printf("\n");
     _normalize(psel, N);
     // Draw from this distribution.
     path[T-1] = _random_choice(psel, N);
-    //printf(" drawn: %i\n",path[T-1]);
 
     // Work backwards from T-2 to 0.
     for (t = T-2; t >= 0; t--)
     {
-        //printf("t = %i ",t);
         // Compute P(s_t = i | s_{t+1}..s_T).
         for (i = 0; i < N; i++)
         {
             psel[i] = alpha[t*N+i] * A[i*N+path[t+1]];
-            //printf("%f\t",psel[i]);
         }
-        //printf("\n");
         _normalize(psel, N);
         // Draw from this distribution.
         path[t] = _random_choice(psel, N);
-        //printf(" drawn: %i\n",path[t]);
     }
 
     // free memory
     free(psel);
     return 0;
 }
-
-/*
-void compute_transition_probabilities(
-        double *xi,
-        const double *A,
-        const double *B,
-        const short *O,
-        const double *alpha,
-        const double *beta,
-        int N, int M, int T)
-{
-    int i, j, t;
-    double sum;
-
-    for (t = 0; t < T-1; t++) {
-        sum = 0.0;
-        for (i = 0; i < N; i++)
-            for (j = 0; j < N; j++) {
-                DIM3(xi, t, i, j) = alpha[t*N+i]*beta[(t+1)*N+j]*A[i*N+j]*B[j*M+O[t+1]];
-                sum += DIM3(xi, t, i, j);
-            }
-        for (i = 0; i < N; i++)
-            for (j = 0; j < N; j++) {
-                DIM3(xi, t, i, j) /= sum;
-            }
-    }
-}
-*/
