@@ -1,0 +1,1 @@
+void _update_pout(int* obs, double* weights, int T, int N, int M, double* pout);
