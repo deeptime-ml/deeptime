@@ -18,10 +18,9 @@
 
 import numpy as np
 
-from .impl_c import gaussian
-
 from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
 from sktime.markovprocess.bhmm.util.logger import logger
+from .impl_c import gaussian
 
 
 class GaussianOutputModel(OutputModel):
@@ -220,7 +219,7 @@ class GaussianOutputModel(OutputModel):
 
         Update the observation model parameters my a maximum-likelihood fit.
 
-        >>> output_model.estimate(observations, weights)
+        >>> output_model.fit(observations, weights)
 
         """
         # sizes

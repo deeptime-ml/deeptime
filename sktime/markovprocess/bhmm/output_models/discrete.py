@@ -17,11 +17,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
-
-from .impl_c import discrete as dc
 from bhmm.util import config
 
 from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
+from .impl_c import discrete as dc
 
 
 class DiscreteOutputModel(OutputModel):
@@ -154,7 +153,7 @@ class DiscreteOutputModel(OutputModel):
             # out /= np.sum(out, axis=1)[:,None]
             return self._handle_outliers(out)
 
-    def estimate(self, observations, weights):
+    def fit(self, observations, weights):
         """
         Maximum likelihood estimation of output model given the observations and weights
 
@@ -190,7 +189,7 @@ class DiscreteOutputModel(OutputModel):
 
         Update the observation model parameters my a maximum-likelihood fit.
 
-        >>> output_model.estimate(obs, weights)
+        >>> output_model.fit(obs, weights)
 
         """
         # sizes
@@ -348,17 +347,7 @@ class DiscreteOutputModel(OutputModel):
             msg += 's_t.argmax = %d\n' % s_t.argmax()
             msg += 'self.nstates = %d\n' % self.nstates
             msg += 's_t is out of bounds.\n'
-            raise Exception(msg)
-
-        # generate random generators
-        # import scipy.stats
-        # gens = [scipy.stats.rv_discrete(values=(range(len(self.B[state_index])), self.B[state_index]))
-        #         for state_index in range(self.B.shape[0])]
-        # o_t = np.zeros([T], dtype=dtype)
-        # for t in range(T):
-        #     s = s_t[t]
-        #     o_t[t] = gens[s].rvs(size=1)
-        # return o_t
+            raise ValueError(msg)
 
         o_t = np.zeros([T], dtype=dtype)
         for t in range(T):

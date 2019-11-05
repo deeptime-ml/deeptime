@@ -17,15 +17,16 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
 import copy
 import time
 
-from sktime.markovprocess.bhmm.util.logger import logger
-from .. import hidden
-from . import _tmatrix_disconnected
-
 import msmtools.estimation as msmest
+import numpy as np
+
+from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator
+from sktime.markovprocess.bhmm.util.logger import logger
+from . import _tmatrix_disconnected
+from .. import hidden
 
 
 class BayesianHMMSampler(object):
@@ -300,7 +301,7 @@ class BayesianHMMSampler(object):
         Examples
         --------
         >>> import bhmm
-        >>> [model, observations, states, sampled_model] = bhmm.testsystems.generate_random_bhmm(ntrajectories=5, length=1000)
+        >>> model, observations, states, sampled_model = bhmm.testsystems.generate_random_bhmm(ntrajectories=5, length=1000)
         >>> o_t = observations[0]
         >>> s_t = sampled_model._sampleHiddenStateTrajectory(o_t)
 
@@ -316,7 +317,7 @@ class BayesianHMMSampler(object):
         # compute output probability matrix
         self.model.output_model.p_obs(obs, out=self.pobs)
         # compute forward variables
-        logprob = hidden.forward(A, self.pobs, pi, T=T, alpha_out=self.alpha)[0]
+        hidden.forward(A, self.pobs, pi, T=T, alpha_out=self.alpha)
         # sample path
         S = hidden.sample_path(self.alpha, A, self.pobs, T=T)
 
@@ -369,7 +370,6 @@ class BayesianHMMSampler(object):
 
         """
         logger().info("Generating initial model for BHMM using MLHMM...")
-        from bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator
         mlhmm = MaximumLikelihoodEstimator(self.observations, self.nstates, reversible=self.reversible,
                                            output=output_model_type)
         model = mlhmm.fit()

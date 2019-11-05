@@ -17,20 +17,20 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
 import copy
+import time
 
+import bhmm
 import numpy as np
-
-# TODO: reactivate multiprocessing, parallelize model fitting and forward-backward
-# from multiprocessing import Queue, Process, cpu_count
+from bhmm.util import config
+from bhmm.util.logger import logger
 
 # BHMM imports
 from .. import hidden
 
-import bhmm
-from bhmm.util.logger import logger
-from bhmm.util import config
+
+# TODO: reactivate multiprocessing, parallelize model fitting and forward-backward
+# from multiprocessing import Queue, Process, cpu_count
 
 
 class MaximumLikelihoodEstimator(object):
@@ -327,7 +327,7 @@ class MaximumLikelihoodEstimator(object):
         logger().info("pi: \n"+str(pi))
 
         # update output model
-        self._hmm.output_model.estimate(self._observations, gammas)
+        self._hmm.output_model.fit(self._observations, gammas)
 
     def compute_viterbi_paths(self):
         """
