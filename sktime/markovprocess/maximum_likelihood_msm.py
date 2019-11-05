@@ -19,13 +19,15 @@ import numpy as np
 from msmtools import estimation as msmest
 
 from sktime.markovprocess._base import _MSMBaseEstimator
-from sktime.markovprocess.transition_counting import TransitionCountEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
+from sktime.markovprocess.transition_counting import TransitionCountEstimator
 
-__all__ = ['MaximumLikelihoodMSM']
+__all__ = ['MaximumLikelihoodMSM',
+           'compute_statistically_effective_count_matrix',
+           ]
 
 
-class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
+class MaximumLikelihoodMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
 
     Parameters
