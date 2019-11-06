@@ -259,8 +259,10 @@ def rdl_decomposition(P, reversible=True):
     n = np.shape(P)[0]
     if reversible:
         dtype = np.float64
+        norm = 'reversible'
     else:
         dtype = complex
+        norm = 'standard'
     R = np.zeros((n, n), dtype=dtype)
     D = np.zeros((n, n), dtype=dtype)
     L = np.zeros((n, n), dtype=dtype)
@@ -269,10 +271,7 @@ def rdl_decomposition(P, reversible=True):
     for s in S:
         I = np.ix_(s, s)
         if len(s) > 1:
-            if reversible:
-                r, d, l = msmana.rdl_decomposition(P[s, :][:, s], norm='reversible')
-            else:
-                r, d, l = msmana.rdl_decomposition(P[s, :][:, s], norm='standard')
+            r, d, l = msmana.rdl_decomposition(P[s, :][:, s], norm=norm)
             # write to full
             R[I] = r
             D[I] = d
