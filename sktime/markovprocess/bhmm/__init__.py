@@ -18,24 +18,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # import API
-from bhmm.api import *
-
-# hmms
-from bhmm.hmm.generic_hmm import HMM
-from bhmm.hmm.gaussian_hmm import GaussianHMM
-from bhmm.hmm.discrete_hmm import DiscreteHMM
-
-from bhmm.hmm.generic_sampled_hmm import SampledHMM
-from bhmm.hmm.gaussian_hmm import SampledGaussianHMM
-from bhmm.hmm.discrete_hmm import SampledDiscreteHMM
-
+from .api import *
 # estimators
-from bhmm.estimators.bayesian_sampling import BayesianHMMSampler as BHMM
-from bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator as MLHMM
+from .estimators.bayesian_sampling import BayesianHMMSampler as BHMM
+from .estimators.maximum_likelihood import MaximumLikelihoodEstimator as MLHMM
+# hmms
+from .hmm.generic_hmm import HMM
+from .util import testsystems
 
 # output models
-from bhmm.output_models import OutputModel, GaussianOutputModel, DiscreteOutputModel
-
-# other stuff
-from bhmm.util import config
-from bhmm.util import testsystems
