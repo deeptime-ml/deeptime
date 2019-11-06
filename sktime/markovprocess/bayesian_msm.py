@@ -9,14 +9,17 @@ __author__ = 'noe, marscher'
 
 
 class BayesianMSMPosterior(Model):
-    r""" Bayesian Markov state model with samples of posterior and prior.
-    """
+    r""" Bayesian Markov state model with samples of posterior and prior. """
 
     def __init__(self,
                  prior: typing.Optional[MarkovStateModel] = None,
                  samples: typing.Optional[typing.List[MarkovStateModel]] = None):
         self.prior = prior
         self.samples = samples
+
+    def __iter__(self):
+        for s in self.samples:
+            yield s
 
 
 class BayesianMSM(_MSMBaseEstimator):
