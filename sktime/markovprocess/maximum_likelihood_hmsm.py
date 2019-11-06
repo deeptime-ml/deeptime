@@ -136,7 +136,7 @@ class MaximumLikelihoodHMSM(Estimator):
     def fit(self, dtrajs):
         from . import bhmm
         from .maximum_likelihood_msm import MaximumLikelihoodMSM
-        from bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator as _MaximumLikelihoodEstimator
+        from .bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator
         import msmtools.estimation as msmest
 
         # CHECK LAG
@@ -204,7 +204,7 @@ class MaximumLikelihoodHMSM(Estimator):
         # ---------------------------------------------------------------------------------------
 
         # run EM
-        hmm_est = _MaximumLikelihoodEstimator(dtrajs_lagged_strided, self.nstates, initial_model=hmm_init,
+        hmm_est = MaximumLikelihoodEstimator(dtrajs_lagged_strided, self.nstates, initial_model=hmm_init,
                                               output='discrete', reversible=self.reversible, stationary=self.stationary,
                                               accuracy=self.accuracy, maxit=self.maxit)
         # run
