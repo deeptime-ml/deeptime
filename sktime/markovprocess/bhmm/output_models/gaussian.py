@@ -19,15 +19,11 @@
 import numpy as np
 
 from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
-from sktime.markovprocess.bhmm.util.logger import logger
 from .impl_c import gaussian
 
 
 class GaussianOutputModel(OutputModel):
-    """
-    HMM output probability model using 1D-Gaussians
-
-    """
+    """ HMM output probability model using 1D-Gaussians """
 
     def __init__(self, nstates, means=None, sigmas=None, ignore_outliers=True):
         """
@@ -69,35 +65,6 @@ class GaussianOutputModel(OutputModel):
             self._sigmas = np.zeros([nstates], dtype=dtype)
 
         return
-
-    def __repr__(self):
-        r""" String representation of this output model
-        >>> output_model = GaussianOutputModel(nstates=3, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
-        >>> print(repr(output_model))
-        GaussianOutputModel(3, means=array([-1.,  0.,  1.]), sigmas=array([ 0.5,  1. ,  2. ]))
-
-        """
-        return "GaussianOutputModel(%d, means=%s, sigmas=%s)" % (self.nstates, repr(self.means), repr(self.sigmas))
-
-    def __str__(self):
-        r""" Human-readable string representation of this output model
-        >>> output_model = GaussianOutputModel(nstates=3, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
-        >>> print(str(output_model))
-        --------------------------------------------------------------------------------
-        GaussianOutputModel
-        nstates: 3
-        means: [-1.  0.  1.]
-        sigmas: [ 0.5  1.   2. ]
-        --------------------------------------------------------------------------------
-        """
-
-        output = "--------------------------------------------------------------------------------\n"
-        output += "GaussianOutputModel\n"
-        output += "nstates: %d\n" % self.nstates
-        output += "means: %s\n" % str(self.means)
-        output += "sigmas: %s\n" % str(self.sigmas)
-        output += "--------------------------------------------------------------------------------"
-        return output
 
     @property
     def model_type(self):
@@ -151,16 +118,7 @@ class GaussianOutputModel(OutputModel):
         >>> p_o = output_model._p_o(observation)
 
         """
-        if self.__impl__ == self.__IMPL_C__:
-            return gaussian.p_o(o, self.means, self.sigmas, out=None, dtype=type(o))
-        elif self.__impl__ == self.__IMPL_PYTHON__:
-            if np.any(self.sigmas < np.finfo(self.sigmas.dtype).eps):
-                raise RuntimeError('at least one sigma is too small to continue.')
-            C = 1.0 / (np.sqrt(2.0 * np.pi) * self.sigmas)
-            Pobs = C * np.exp(-0.5 * ((o - self.means) / self.sigmas) ** 2)
-            return Pobs
-        else:
-            raise RuntimeError('Implementation ' + str(self.__impl__) + ' not available')
+        return gaussian.p_o(o, self.means, self.sigmas, out=None, dtype=type(o))
 
     def p_obs(self, obs, out=None):
         """
@@ -194,7 +152,7 @@ class GaussianOutputModel(OutputModel):
         res = gaussian.p_obs(obs, self.means, self.sigmas, out=out)
         return self._handle_outliers(res)
 
-    def estimate(self, observations, weights):
+    def fit(self, observations, weights):
         """
         Fits the output model given the observations and weights
 
@@ -291,7 +249,8 @@ class GaussianOutputModel(OutputModel):
 
             # Skip update if no observations.
             if nsamples_in_state == 0:
-                logger().warn('Warning: State %d has no observations.' % state_index)
+                import warnings
+                warnings.warn('Warning: State %d has no observations.' % state_index)
             if nsamples_in_state > 0:  # Sample new mu.
                 self.means[state_index] = np.random.randn() * self.sigmas[state_index] / np.sqrt(
                     nsamples_in_state) + np.mean(observations_in_state)
@@ -300,8 +259,6 @@ class GaussianOutputModel(OutputModel):
                 chisquared = np.random.chisquare(nsamples_in_state - 1)
                 sigmahat2 = np.mean((observations_in_state - self.means[state_index]) ** 2)
                 self.sigmas[state_index] = np.sqrt(sigmahat2) / np.sqrt(chisquared / nsamples_in_state)
-
-        return
 
     def generate_observation_from_state(self, state_index):
         """
