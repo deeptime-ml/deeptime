@@ -16,8 +16,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
 from abc import ABCMeta, abstractmethod
+
+import numpy as np
 
 
 class OutputModel(object, metaclass=ABCMeta):
@@ -53,7 +54,11 @@ class OutputModel(object, metaclass=ABCMeta):
         """ Returns output model on a subset of states """
         pass
 
-    def log_p_obs(self, obs, out=None, dtype=np.float32):
+    @abstractmethod
+    def p_obs(self, obs, out=None):
+        pass
+
+    def log_p_obs(self, obs, out=None):
         """
         Returns the element-wise logarithm of the output probabilities for an entire trajectory and all hidden states
 
@@ -75,7 +80,7 @@ class OutputModel(object, metaclass=ABCMeta):
         if out is None:
             return np.log(self.p_obs(obs))
         else:
-            self.p_obs(obs, out=out, dtype=dtype)
+            self.p_obs(obs, out=out)
             np.log(out, out=out)
             return out
 
