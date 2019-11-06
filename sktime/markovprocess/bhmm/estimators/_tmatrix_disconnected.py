@@ -36,8 +36,11 @@ def connected_sets(C, mincount_connectivity=0, strong=True):
 
     """
     import msmtools.estimation as msmest
-    Cconn = C.copy()
-    Cconn[np.where(C <= mincount_connectivity)] = 0
+    if mincount_connectivity > 0:
+        Cconn = C.copy()
+        Cconn[np.where(C <= mincount_connectivity)] = 0
+    else:
+        Cconn = C
     # treat each connected set separately
     S = msmest.connected_sets(Cconn, directed=strong)
     return S
