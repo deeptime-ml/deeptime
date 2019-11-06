@@ -99,7 +99,7 @@ class Estimator(_base_methods_mixin):
             self._model = model
 
     @abc.abstractmethod
-    def fit(self, data):
+    def fit(self, data, **kwargs):
         """ performs a fit of this estimator with data. Creates a new model instance by default.
         :param data:
         :return: self
