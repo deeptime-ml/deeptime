@@ -18,10 +18,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
-import numpy as np
-import bhmm
-from os.path import abspath, join
 from os import pardir
+from os.path import abspath, join
+
+import numpy as np
+
+from sktime.markovprocess import bhmm
+from sktime.markovprocess.bhmm.output_models.discrete import DiscreteOutputModel
 
 
 class TestMLHMM_DoubleWell(unittest.TestCase):
@@ -33,9 +36,6 @@ class TestMLHMM_DoubleWell(unittest.TestCase):
         testfile = join(testfile, 'data')
         testfile = join(testfile, '2well_traj_100K.dat')
         obs = np.loadtxt(testfile, dtype=int)
-
-        # don't print
-        bhmm.config.verbose = False
 
         # hidden states
         nstates = 2
@@ -49,7 +49,6 @@ class TestMLHMM_DoubleWell(unittest.TestCase):
     # =============================================================================
 
     def test_output_model(self):
-        from bhmm import DiscreteOutputModel
         assert isinstance(self.hmm_lag1.output_model, DiscreteOutputModel)
         assert isinstance(self.hmm_lag10.output_model, DiscreteOutputModel)
 

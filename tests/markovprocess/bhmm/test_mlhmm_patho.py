@@ -18,8 +18,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
+
 import numpy as np
-import bhmm
+
+from sktime.markovprocess import bhmm
 
 
 class TestMLHMM_Pathologic(unittest.TestCase):

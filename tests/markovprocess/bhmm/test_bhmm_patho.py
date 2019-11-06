@@ -18,10 +18,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
+
 import numpy as np
-import bhmm
-from os.path import abspath, join
-from os import pardir
+
+from sktime.markovprocess import bhmm
 
 
 class TestBHMMPathological(unittest.TestCase):

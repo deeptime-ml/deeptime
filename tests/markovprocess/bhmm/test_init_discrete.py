@@ -17,11 +17,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
 import unittest
-from bhmm import init_discrete_hmm
-from bhmm.init.discrete import init_discrete_hmm_spectral
+
 import msmtools.estimation as msmest
+import numpy as np
+
+from sktime.markovprocess.bhmm import init_discrete_hmm
+from sktime.markovprocess.bhmm.init.discrete import init_discrete_hmm_spectral
 
 
 class TestHMM(unittest.TestCase):
