@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
 import msmtools.estimation as msmest
+import numpy as np
 
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 
@@ -34,7 +34,7 @@ class HMM(object):
     ----------
     Tij : np.array with shape (nstates, nstates), optional, default=None
         Row-stochastic transition matrix among states.
-    output_model : :class:`bhmm.OutputModel`
+    output_model : :class:`sktime.markovprocess.bhmm.OutputModel`
         The output model for the states.
     lag : int, optional, default=1
         Lag time (optional) used to estimate the HMM. Used to compute relaxation timescales.
@@ -94,38 +94,6 @@ class HMM(object):
         assert np.any(Pi > 0), 'Given initial distribution is zero'
         self._Pi = np.array(Pi) / np.sum(Pi) # ensure normalization and make a copy
 
-    def __repr__(self):
-        from bhmm.output_models import OutputModel
-        if issubclass(self.__class__, OutputModel):
-            outrepr = repr(OutputModel.__repr__(self))
-        else:
-            outrepr = repr(self.output_model)
-        """ Returns a string representation of the HMM """
-        return "HMM(%d, %s, %s, Pi=%s, stationary=%s, reversible=%s)" % (self._nstates,
-                                                                         repr(self._Tij),
-                                                                         outrepr,
-                                                                         repr(self._Pi),
-                                                                         repr(self.is_stationary),
-                                                                         repr(self.is_reversible))
-
-    def __str__(self):
-        """ Returns a human-readable string representation of the HMM """
-        output = 'Hidden Markov model\n'
-        output += '-------------------\n'
-        output += 'nstates: %d\n' % self._nstates
-        output += 'Tij:\n'
-        output += str(self._Tij) + '\n'
-        output += 'Pi:\n'
-        output += str(self._Pi) + '\n'
-        output += 'output model:\n'
-        from bhmm.output_models import OutputModel
-        if issubclass(self.__class__, OutputModel):
-            output += str(OutputModel.__str__(self))
-        else:
-            output += str(self.output_model)
-        output += '\n'
-        return output
-
     def _do_spectral_decomposition(self):
         self._R, self._D, self._L = _tmatrix_disconnected.rdl_decomposition(self._Tij, reversible=self.is_reversible)
         self._eigenvalues = np.diag(self._D)
@@ -139,35 +107,35 @@ class HMM(object):
 
     @property
     def lag(self):
-        r""" Lag time of the model, i.e. the number of observated trajectory steps made by the transition matrix """
+        """ Lag time of the model, i.e. the number of observed trajectory steps made by the transition matrix """
         return self._lag
 
     @property
     def is_strongly_connected(self):
-        r""" Whether the HMM transition matrix is strongly connected """
-        return _tmatrix_disconnected.is_connected(self._Tij, strong=True)
+        """ Whether the HMM transition matrix is strongly connected """
+        return msmest.is_connected(self._Tij, directed=True)
 
     @property
     def strongly_connected_sets(self):
-        return _tmatrix_disconnected.connected_sets(self._Tij, strong=True)
+        return msmest.is_connected(self._Tij, directed=True)
 
     @property
     def is_weakly_connected(self):
-        r""" Whether the HMM transition matrix is weakly connected """
-        return _tmatrix_disconnected.is_connected(self._Tij, strong=False)
+        """ Whether the HMM transition matrix is weakly connected """
+        return msmest.is_connected(self._Tij, directed=False)
 
     @property
     def weakly_connected_sets(self):
-        return _tmatrix_disconnected.connected_sets(self._Tij, strong=False)
+        return msmest.connected_sets(self._Tij, directed=False)
 
     @property
     def is_reversible(self):
-        r""" Whether the HMM is reversible """
+        """ Whether the HMM is reversible """
         return _tmatrix_disconnected.is_reversible(self._Tij)
 
     @property
     def is_stationary(self):
-        r""" Whether the MSM is stationary, i.e. whether the initial distribution is the stationary distribution
+        """ Whether the MSM is stationary, i.e. whether the initial distribution is the stationary distribution
          of the hidden transition matrix. """
         # for disconnected matrices, the stationary distribution depends on the estimator, so we can't compute
         # it directly. Therefore we test whether the initial distribution is stationary.
@@ -192,10 +160,10 @@ class HMM(object):
         ValueError if the HMM is not stationary
 
         """
-        assert _tmatrix_disconnected.is_connected(self._Tij, strong=False), \
-            'No unique stationary distribution because transition matrix is not connected'
-        import msmtools.analysis as msmana
-        return msmana.stationary_distribution(self._Tij)
+        from msmtools.analysis import is_connected, stationary_distribution
+        if not is_connected(self.transition_matrix, directed=False):
+            raise RuntimeError('No unique stationary distribution because transition matrix is not connected')
+        return stationary_distribution(self._Tij)
 
     @property
     def transition_matrix(self):
@@ -253,10 +221,10 @@ class HMM(object):
             :math:`\lambda_i` are the hidden transition matrix eigenvalues.
 
         """
-        from msmtools.analysis.dense.decomposition import timescales_from_eigenvalues as _timescales
+        from msmtools.analysis.dense.decomposition import timescales_from_eigenvalues as ts
 
         self._ensure_spectral_decomposition()
-        ts = _timescales(self._eigenvalues, tau=self._lag)
+        ts = ts(self._eigenvalues, tau=self._lag)
         return ts[1:]
 
     @property
@@ -334,68 +302,6 @@ class HMM(object):
 
         n = [traj[0] for traj in self.hidden_state_trajectories]
         return np.bincount(n, minlength=self.nstates)
-
-    # def emission_probability(self, state, observation):
-    #     """Compute the emission probability of an observation from a given state.
-    #
-    #     Parameters
-    #     ----------
-    #     state : int
-    #         The state index for which the emission probability is to be computed.
-    #
-    #     Returns
-    #     -------
-    #     Pobs : float
-    #         The probability (or probability density, if continuous) of the observation.
-    #
-    #     TODO
-    #     ----
-    #     * Vectorize
-    #
-    #     Examples
-    #     --------
-    #
-    #     Compute the probability of observing an emission of 0 from state 0.
-    #
-    #     >>> from bhmm import testsystems
-    #     >>> model = testsystems.dalton_model(nstates=3)
-    #     >>> state_index = 0
-    #     >>> observation = 0.0
-    #     >>> Pobs = model.emission_probability(state_index, observation)
-    #
-    #     """
-    #     return self.output_model.p_o_i(observation, state)
-
-    # def log_emission_probability(self, state, observation):
-    #     """Compute the log emission probability of an observation from a given state.
-    #
-    #     Parameters
-    #     ----------
-    #     state : int
-    #         The state index for which the emission probability is to be computed.
-    #
-    #     Returns
-    #     -------
-    #     log_Pobs : float
-    #         The log probability (or probability density, if continuous) of the observation.
-    #
-    #     TODO
-    #     ----
-    #     * Vectorize
-    #
-    #     Examples
-    #     --------
-    #
-    #     Compute the log probability of observing an emission of 0 from state 0.
-    #
-    #     >>> from bhmm import testsystems
-    #     >>> model = testsystems.dalton_model(nstates=3)
-    #     >>> state_index = 0
-    #     >>> observation = 0.0
-    #     >>> log_Pobs = model.log_emission_probability(state_index, observation)
-    #
-    #     """
-    #     return self.output_model.log_p_o_i(observation, state)
 
     def collect_observations_in_state(self, observations, state_index):
         # TODO: this would work well in a subclass with data
@@ -581,8 +487,8 @@ class HMM(object):
         >>> O, S = model.generate_synthetic_observation_trajectories(ntrajectories=10, length=100, initial_Pi=np.array([1,0,0]))
 
         """
-        O = list()  # observations
-        S = list()  # state trajectories
+        O = []  # observations
+        S = []  # state trajectories
         for trajectory_index in range(ntrajectories):
             o_t, s_t = self.generate_synthetic_observation_trajectory(length=length, initial_Pi=initial_Pi)
             O.append(o_t)
