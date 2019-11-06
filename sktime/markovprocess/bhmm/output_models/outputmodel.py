@@ -86,6 +86,7 @@ class OutputModel(object, metaclass=ABCMeta):
 
     def _handle_outliers(self, p_o):
         """ Sets observation probabilities of outliers to uniform if ignore_outliers is set.
+
         Parameters
         ----------
         p_o : ndarray((T, N))
@@ -107,8 +108,6 @@ class OutputModel(object, metaclass=ABCMeta):
         ----------
         s_t : numpy.array with shape (T,) of int type
             s_t[t] is the hidden state sampled at time t
-        dtype : numpy.dtype, optional, default=None
-            The datatype to return the resulting observations in.
 
         Returns
         -------
