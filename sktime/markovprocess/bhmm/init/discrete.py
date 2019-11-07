@@ -78,7 +78,7 @@ def regularize_hidden(p0, P, reversible=True, stationary=False, C=None, eps=None
         p0 separately. If stationary=False, the regularization will be applied to p0.
     C : ndarray(n, n)
         Hidden count matrix. Only needed for stationary=True and P disconnected.
-    epsilon : float or None
+    eps : float or None
         minimum value of the resulting transition matrix. Default: evaluates
         to 0.01 / n. The coarse-graining equation can lead to negative elements
         and thus epsilon should be set to at least 0. Positive settings of epsilon
@@ -254,22 +254,21 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
             raise ValueError('Given active set has empty states')  # don't tolerate empty states
     if P is not None:
         if np.shape(P)[0] != active_set.size:  # needs to fit to active
-            raise ValueError('Given initial transition matrix P has shape ' + str(np.shape(P))
-                             + 'while active set has size ' + str(active_set.size))
+            raise ValueError(f'Given initial transition matrix P has shape {np.shape(P)})'
+                             f'while active set has size {active_set.size}')
     # when using separate states, only keep the nonempty ones (the others don't matter)
     if separate is None:
         active_nonseparate = active_set.copy()
         nmeta = nstates
     else:
         if np.max(separate) >= nfull:
-            raise ValueError('Separate set has indexes that do not exist in full state space: '
-                             + str(np.max(separate)))
+            raise ValueError(f'Separate set has indexes that do not exist in full state space: {np.max(separate)}')
         active_nonseparate = np.array(list(set(active_set) - set(separate)))
         nmeta = nstates - 1
     # check if we can proceed
     if active_nonseparate.size < nmeta:
-        raise NotImplementedError('Trying to initialize ' + str(nmeta) + '-state HMM from smaller '
-                                  + str(active_nonseparate.size) + '-state MSM.')
+        raise NotImplementedError(f'Trying to initialize {nmeta}-state HMM from smaller '
+                                  f'{active_nonseparate.size}-state MSM.')
 
     # MICROSTATE TRANSITION MATRIX (MSM).
     C_active = C_full[np.ix_(active_set, active_set)]
@@ -293,7 +292,7 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
     # COARSE-GRAINING WITH PCCA+
     if active_nonseparate.size > nmeta:
         from sktime.markovprocess.pcca import PCCAEstimator
-        pcca_obj = PCCAEstimator(nmeta).fit(MarkovStateModel(P_active_nonseparate)).fetch_model()
+        pcca_obj = PCCAEstimator(n_metastable=nmeta).fit(MarkovStateModel(P_active_nonseparate)).fetch_model()
         M_active_nonseparate = pcca_obj.memberships  # memberships
         B_active_nonseparate = pcca_obj.output_probabilities  # output probabilities
     else:  # equal size
