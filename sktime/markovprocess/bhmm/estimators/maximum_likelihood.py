@@ -17,8 +17,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import copy
-
 import bhmm
 import numpy as np
 
@@ -96,44 +94,29 @@ class MaximumLikelihoodEstimator(Estimator):
         """
         # Use user-specified initial model, if provided.
         super(MaximumLikelihoodEstimator, self).__init__(model=initial_model)
+        if initial_model is None:
+            self._output = output
+            self._model = None
+
         # Set parameters
         self._nstates = nstates
         self._reversible = reversible
         self._stationary = stationary
 
-        if initial_model is None:
-            self._output = output
-            self._model = None
-
         # stationary and initial distribution
         self._fixed_stationary_distribution = None
         self._fixed_initial_distribution = None
         if p is not None:
+            p = np.array(p)
             if stationary:
-                self._fixed_stationary_distribution = np.array(p)
+                self._fixed_stationary_distribution = p
             else:
-                self._fixed_initial_distribution = np.array(p)
+                self._fixed_initial_distribution = p
 
         # convergence options
         self._accuracy = accuracy
         self._maxit = maxit
         self._maxit_P = maxit_P
-        self._likelihoods = None
-
-    @property
-    def observations(self):
-        r""" Observation trajectories """
-        return self._observations
-
-    @property
-    def nobservations(self):
-        r""" Number of observation trajectories """
-        return self._nobs
-
-    @property
-    def observation_lengths(self):
-        r""" Lengths of observation trajectories """
-        return self._Ts
 
     @property
     def is_reversible(self):
@@ -155,72 +138,26 @@ class MaximumLikelihoodEstimator(Estimator):
         r""" Maximum number of iterations """
         return self._maxit
 
-    @property
-    def likelihood(self):
-        r""" Estimated HMM likelihood """
-        return self._likelihoods[-1]
-
-    @property
-    def likelihoods(self):
-        r""" Sequence of likelihoods generated from the iteration """
-        return self._likelihoods
-
-    @property
-    def hidden_state_probabilities(self):
-        r""" Probabilities of hidden states at every trajectory and time point """
-        return self._gammas
-
-    @property
-    def hmm(self):
-        r""" The estimated HMM """
-        return self._model
-
-    @property
-    def output_model(self):
-        r""" The HMM output model """
-        return self._model.output_model
-
-    @property
-    def transition_matrix(self):
-        r""" Hidden transition matrix """
-        return self._model.Tij
-
-    @property
-    def initial_probability(self):
-        r""" Initial probability """
-        return self._model.Pi
-
-    @property
-    def stationary_probability(self):
-        r""" Stationary probability, if the model is stationary """
-        assert self._stationary, 'Estimator is not stationary'
-        return self._model.Pi
-
-    def _forward_backward(self, itraj):
+    def _forward_backward(self, obs, itraj):
         """
         Estimation step: Runs the forward-back algorithm on trajectory with index itraj
 
         Parameters
         ----------
+        obs: np.ndarray
+            single observation corresponding to index itraj
         itraj : int
             index of the observation trajectory to process
 
-        Results
+        Returns
         -------
         logprob : float
             The probability to observe the observation sequence given the HMM
             parameters
-        gamma : ndarray(T,N, dtype=float)
-            state probabilities for each t
-        count_matrix : ndarray(N,N, dtype=float)
-            the Baum-Welch transition count matrix from the hidden state
-            trajectory
-
         """
         # get parameters
         A = self._model.transition_matrix
         pi = self._model.initial_distribution
-        obs = self._observations[itraj]
         T = len(obs)
         # compute output probability matrix
         self._model.output_model.p_obs(obs, out=self._pobs)
@@ -246,7 +183,7 @@ class MaximumLikelihoodEstimator(Estimator):
         C = np.add.reduce(count_matrices)
         return C
 
-    def _update_model(self, gammas, count_matrices, maxiter=10000000):
+    def _update_model(self, observations, gammas, count_matrices, maxiter=10000000):
         """
         Maximization step: Updates the HMM model given the hidden state assignment and count matrices
 
@@ -284,32 +221,15 @@ class MaximumLikelihoodEstimator(Estimator):
         self._model.update(pi, T)
 
         # update output model
-        self._model.output_model.fit(self._observations, gammas)
+        self._model.output_model.fit(observations, gammas)
 
     def _create_model(self) -> HMM:
-        pass
-
-    # TODO: model param
-    def compute_viterbi_paths(self):
-        """
-        Computes the viterbi paths using the current HMM model
-
-        """
-        # get parameters
-        K = len(self._observations)
-        A = self._model.transition_matrix
-        pi = self._model.initial_distribution
-
-        # compute viterbi path for each trajectory
-        paths = np.empty(K, dtype=object)
-        for itraj in range(K):
-            obs = self._observations[itraj]
-            # compute output probability matrix
-            pobs = self._model.output_model.p_obs(obs)
-            # hidden path
-            paths[itraj] = hidden.viterbi(A, pobs, pi)
-
-        return paths
+        # If we already have a provided model (since the construction of the estimator,
+        # we do not want to override it here).
+        if self._model is None:
+            pass
+        else:
+            return HMM()
 
     def fit(self, observations, **kw):
         """
@@ -327,66 +247,65 @@ class MaximumLikelihoodEstimator(Estimator):
             The maximum likelihood HMM model.
 
         """
-
-        # Store a copy of the observations.
-        self._observations = copy.deepcopy(observations)
-        self._nobs = len(observations)
-        self._Ts = [len(o) for o in observations]
-        self._maxT = np.max(self._Ts)
+        _Ts = [len(o) for o in observations]
+        _maxT = np.max(_Ts)
         # pre-construct hidden variables
-        self._alpha = np.zeros((self._maxT, self._nstates))
-        self._beta = np.zeros((self._maxT, self._nstates))
-        self._pobs = np.zeros((self._maxT, self._nstates))
+        self._alpha = np.zeros((_maxT, self._nstates))
+        self._beta = np.zeros((_maxT, self._nstates))
+        self._pobs = np.zeros((_maxT, self._nstates))
         self._gammas = [np.zeros((len(obs), self._nstates)) for obs in observations]
-        self._Cs = [np.zeros((self._nstates, self._nstates), order='C') for _ in range(self._nobs)]
+        self._Cs = [np.zeros((self._nstates, self._nstates)) for _ in range(len(observations))]
 
         if self._model is None:
             # Generate our own initial model.
             self._model = init_hmm(observations, self.nstates, output=self._output)
 
         it = 0
-        self._likelihoods = np.zeros(self.maxit)
+        likelihoods = np.zeros(self.maxit)
         loglik = 0.0
         # flag if connectivity has changed (e.g. state lost) - in that case the likelihood
         # is discontinuous and can't be used as a convergence criterion in that iteration.
-        tmatrix_nonzeros = self.hmm.transition_matrix.nonzero()
+        tmatrix_nonzeros = self._model.transition_matrix.nonzero()
         converged = False
 
         while not converged and it < self.maxit:
             loglik = 0.0
-            for k in range(self._nobs):
-                loglik += self._forward_backward(k)
+            for k, obs in enumerate(observations):
+                loglik += self._forward_backward(obs, k)
                 assert np.isfinite(loglik), it
 
             # convergence check
             if it > 0:
-                dL = loglik - self._likelihoods[it-1]
+                dL = loglik - likelihoods[it-1]
                 if dL < self._accuracy:
                     converged = True
 
             # update model
-            self._update_model(self._gammas, self._Cs, maxiter=self._maxit_P)
+            self._update_model(observations, self._gammas, self._Cs, maxiter=self._maxit_P)
 
             # connectivity change check
-            tmatrix_nonzeros_new = self.hmm.transition_matrix.nonzero()
+            tmatrix_nonzeros_new = self._model.transition_matrix.nonzero()
             if not np.array_equal(tmatrix_nonzeros, tmatrix_nonzeros_new):
                 converged = False  # unset converged
                 tmatrix_nonzeros = tmatrix_nonzeros_new
 
             # end of iteration
-            self._likelihoods[it] = loglik
+            likelihoods[it] = loglik
             it += 1
 
         # truncate likelihood history
-        self._likelihoods = np.resize(self._likelihoods, it)
+        likelihoods = np.resize(likelihoods, it)
         # set final likelihood
-        self._model.likelihood = loglik
+        self._model._likelihood = loglik
+        self._model._likelihoods = likelihoods
+        self._model._gammas = self._gammas
         # set final count matrix
         self.count_matrix = self._transition_counts(self._Cs)
         self.initial_count = self._init_counts(self._gammas)
+        del self._gammas
 
         # Compute hidden state trajectories using the Viterbi algorithm.
-        self._model.hidden_state_trajectories = self.compute_viterbi_paths()
+        self._model.hidden_state_trajectories = self._model.compute_viterbi_paths(observations)
 
         return self
 

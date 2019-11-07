@@ -21,6 +21,7 @@ import msmtools.estimation as msmest
 import numpy as np
 
 from sktime.base import Model
+from sktime.markovprocess.bhmm import hidden
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 
 
@@ -69,7 +70,7 @@ class HMM(Model):
     """
     def __init__(self, initial_distribution=None, transition_matrix=None, output_model=None, lag=1):
         self._lag = lag
-        self.output_model = output_model
+        self._output_model = output_model
         self.hidden_state_trajectories = None
 
         if initial_distribution is not None and transition_matrix is not None:
@@ -241,6 +242,37 @@ class HMM(Model):
         """
         return -self._lag / np.log(np.diag(self.transition_matrix))
 
+    @property
+    def likelihood(self):
+        r""" Estimated HMM likelihood """
+        return self._likelihoods[-1]
+
+    @property
+    def likelihoods(self):
+        r""" Sequence of likelihoods generated from the iteration """
+        return self._likelihoods
+
+    @property
+    def hidden_state_probabilities(self):
+        r""" Probabilities of hidden states at every trajectory and time point """
+        return self._gammas
+
+    @property
+    def output_model(self):
+        r""" The HMM output model """
+        return self._output_model
+
+    @property
+    def initial_probability(self):
+        r""" Initial probability """
+        return self._Pi
+
+    @property
+    def stationary_probability(self):
+        r""" Stationary probability, if the model is stationary """
+        assert self._stationary, 'Estimator is not stationary'
+        return self._Pi
+
     def sub_hmm(self, states):
         r""" Returns HMM on a subset of states
 
@@ -255,8 +287,8 @@ class HMM(Model):
         # restrict transition matrix
         P_sub = self._Tij[states, :][:, states]
         # checks if this selection is possible
-        assert np.all(P_sub.sum(axis=1) > 0), \
-            'Illegal sub_hmm request: transition matrix cannot be normalized on ' + str(states)
+        if not np.all(P_sub.sum(axis=1) > 0):
+            raise ValueError(f'Illegal sub_hmm request: transition matrix cannot be normalized on {states}')
         P_sub /= P_sub.sum(axis=1)[:, None]
 
         # restrict output model
@@ -495,3 +527,18 @@ class HMM(Model):
             S.append(s_t)
 
         return O, S
+
+    def compute_viterbi_paths(self, observations):
+        """Computes the viterbi paths using the current HMM model"""
+        A = self.transition_matrix
+        pi = self.initial_distribution
+
+        # compute viterbi path for each trajectory
+        paths = []
+        for obs in observations:
+            # compute output probability matrix
+            pobs = self.output_model.p_obs(obs)
+            # hidden path
+            paths.append(hidden.viterbi(A, pobs, pi))
+
+        return np.array(paths)
