@@ -53,8 +53,8 @@ class TestBHMM(unittest.TestCase):
         assert all(isinstance(s.output_model, DiscreteOutputModel) for s in self.sampled_hmm_lag10)
 
     def test_reversible(self):
-        assert self.sampled_hmm_lag10.is_reversible
-        assert all(not s.is_reversible for s in self.sampled_hmm_lag10)
+        assert self.sampled_hmm_lag10.prior.is_reversible
+        assert all(s.is_reversible for s in self.sampled_hmm_lag10)
 
     def test_stationary(self):
         assert not self.sampled_hmm_lag10.prior.is_stationary
@@ -112,7 +112,7 @@ class TestBHMM(unittest.TestCase):
     def test_eigenvalues_stats(self):
         samples = np.array([s.eigenvalues for s in self.sampled_hmm_lag10])
         # mean
-        mean = samples.std(axis=0)
+        mean = samples.mean(axis=0)
         # test shape and consistency
         assert np.array_equal(mean.shape, (self.nstates,))
         assert np.isclose(mean[0], 1)
@@ -261,17 +261,18 @@ class TestBHMM(unittest.TestCase):
             assert np.all(l > 0.0)
 
     def test_timescales_stats(self):
+        samples = np.array([s.timescales for s in self.sampled_hmm_lag10])
         # mean
-        mean = self.sampled_hmm_lag10.timescales_mean
+        mean = samples.mean(axis=0)
         # test shape and consistency
         assert np.array_equal(mean.shape, (self.nstates - 1,))
         assert np.all(mean > 0.0)
         # std
-        std = self.sampled_hmm_lag10.timescales_std
+        std = samples.std(axis=0)
         # test shape
         assert np.array_equal(std.shape, (self.nstates - 1,))
         # conf
-        L, R = self.sampled_hmm_lag10.timescales_conf
+        L, R = confidence_interval(samples)
         # test shape
         assert np.array_equal(L.shape, (self.nstates - 1,))
         assert np.array_equal(R.shape, (self.nstates - 1,))
