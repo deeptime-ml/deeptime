@@ -20,11 +20,12 @@
 import msmtools.estimation as msmest
 import numpy as np
 
+from sktime.base import Model
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 
 
 # TODO: this seems somehow duplicated from pyemma.msm.HMM class + some extra features.
-class HMM(object):
+class HMM(Model):
     r""" Hidden Markov model (HMM).
 
     This class is used to represent an HMM. This could be a maximum-likelihood HMM or a sampled HMM from a
@@ -66,17 +67,14 @@ class HMM(object):
     >>> model = HMM(pi, Tij, output_model)
 
     """
-    def __init__(self, Pi, Tij, output_model, lag=1):
-        # set number of states
-        self._nstates = np.shape(Tij)[0]
-        # lag time
+    def __init__(self, initial_distribution=None, transition_matrix=None, output_model=None, lag=1):
         self._lag = lag
-        # output model
         self.output_model = output_model
-        # hidden state trajectories are optional
         self.hidden_state_trajectories = None
-        # update numbers
-        self.update(Pi, Tij)
+
+        if initial_distribution is not None and transition_matrix is not None:
+            # update numbers
+            self.update(initial_distribution, transition_matrix)
 
     def update(self, Pi, Tij):
         r""" Updates the transition matrix and recomputes all derived quantities """
@@ -84,6 +82,8 @@ class HMM(object):
 
         # update transition matrix by copy
         self._Tij = np.array(Tij)
+        # set number of states
+        self._nstates = np.shape(Tij)[0]
         assert msmana.is_transition_matrix(self._Tij), 'Given transition matrix is not a stochastic matrix'
         assert self._Tij.shape[0] == self._nstates, 'Given transition matrix has unexpected number of states '
         # reset spectral decomposition
@@ -282,11 +282,11 @@ class HMM(object):
         --------
 
         """
-        if self.hidden_state_trajectories is None:
+        if not self.hidden_state_trajectories:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
-        C = msmest.count_matrix(self.hidden_state_trajectories, 1, nstates=self._nstates)
-        return C.toarray()
+        C = msmest.count_matrix(self.hidden_state_trajectories, 1, nstates=self._nstates, sparse_return=False)
+        return C
 
     def count_init(self):
         """Compute the counts at the first time step
@@ -297,7 +297,7 @@ class HMM(object):
             n[i] is the number of trajectories starting in state i
 
         """
-        if self.hidden_state_trajectories is None:
+        if not self.hidden_state_trajectories:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
         n = [traj[0] for traj in self.hidden_state_trajectories]

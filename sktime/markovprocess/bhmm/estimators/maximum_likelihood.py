@@ -26,7 +26,7 @@ import numpy as np
 from sktime.base import Estimator
 from sktime.markovprocess.bhmm.estimators._tmatrix_disconnected import estimate_P, stationary_distribution
 from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
-from .. import hidden
+from .. import hidden, init_hmm
 
 
 # TODO: reactivate multiprocessing, parallelize model fitting and forward-backward
@@ -94,16 +94,14 @@ class MaximumLikelihoodEstimator(Estimator):
             Only used with reversible=True.
 
         """
+        # Use user-specified initial model, if provided.
+        super(MaximumLikelihoodEstimator, self).__init__(model=initial_model)
         # Set parameters
         self._nstates = nstates
         self._reversible = reversible
         self._stationary = stationary
 
-        if initial_model is not None:
-            # Use user-specified initial model, if provided.
-            self._model = copy.deepcopy(initial_model)
-            #assert self._model.output_model
-        else:
+        if initial_model is None:
             self._output = output
             self._model = None
 
@@ -115,14 +113,6 @@ class MaximumLikelihoodEstimator(Estimator):
                 self._fixed_stationary_distribution = np.array(p)
             else:
                 self._fixed_initial_distribution = np.array(p)
-
-        # pre-construct hidden variables
-        self._alpha = np.zeros((self._maxT, self._nstates), order='C')
-        self._beta = np.zeros((self._maxT, self._nstates), order='C')
-        self._pobs = np.zeros((self._maxT, self._nstates), order='C')
-        self._gammas = [np.zeros((len(self._observations[i]), self._nstates), order='C')
-                        for i in range(self._nobs)]
-        self._Cs = [np.zeros((self._nstates, self._nstates), order='C') for _ in range(self._nobs)]
 
         # convergence options
         self._accuracy = accuracy
@@ -297,8 +287,9 @@ class MaximumLikelihoodEstimator(Estimator):
         self._model.output_model.fit(self._observations, gammas)
 
     def _create_model(self) -> HMM:
-        return HMM()
+        pass
 
+    # TODO: model param
     def compute_viterbi_paths(self):
         """
         Computes the viterbi paths using the current HMM model
@@ -320,7 +311,7 @@ class MaximumLikelihoodEstimator(Estimator):
 
         return paths
 
-    def fit(self, observations):
+    def fit(self, observations, **kw):
         """
         Maximum-likelihood estimation of the HMM using the Baum-Welch algorithm
 
@@ -342,10 +333,16 @@ class MaximumLikelihoodEstimator(Estimator):
         self._nobs = len(observations)
         self._Ts = [len(o) for o in observations]
         self._maxT = np.max(self._Ts)
+        # pre-construct hidden variables
+        self._alpha = np.zeros((self._maxT, self._nstates))
+        self._beta = np.zeros((self._maxT, self._nstates))
+        self._pobs = np.zeros((self._maxT, self._nstates))
+        self._gammas = [np.zeros((len(obs), self._nstates)) for obs in observations]
+        self._Cs = [np.zeros((self._nstates, self._nstates), order='C') for _ in range(self._nobs)]
 
         if self._model is None:
             # Generate our own initial model.
-            self._model = bhmm.init_hmm(observations, self.nstates, output=self._output)
+            self._model = init_hmm(observations, self.nstates, output=self._output)
 
         it = 0
         self._likelihoods = np.zeros(self.maxit)
@@ -381,7 +378,7 @@ class MaximumLikelihoodEstimator(Estimator):
             it += 1
 
         # truncate likelihood history
-        self._likelihoods = np.resize(self._likelihoods, it)#[:it]
+        self._likelihoods = np.resize(self._likelihoods, it)
         # set final likelihood
         self._model.likelihood = loglik
         # set final count matrix

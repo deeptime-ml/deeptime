@@ -19,9 +19,7 @@
 
 import numpy as np
 
-from bhmm.util.logger import logger
-
-from sktime.markovprocess import PCCA
+from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 
 
@@ -294,7 +292,8 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
 
     # COARSE-GRAINING WITH PCCA+
     if active_nonseparate.size > nmeta:
-        pcca_obj = PCCA(P_active_nonseparate, nmeta)
+        from sktime.markovprocess.pcca import PCCAEstimator
+        pcca_obj = PCCAEstimator(nmeta).fit(MarkovStateModel(P_active_nonseparate)).fetch_model()
         M_active_nonseparate = pcca_obj.memberships  # memberships
         B_active_nonseparate = pcca_obj.output_probabilities  # output probabilities
     else:  # equal size
@@ -311,6 +310,7 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
         M_active = M_full[active_set]
 
     # COARSE-GRAINED TRANSITION MATRIX
+    # TODO: consider using sktime.markovprocess.pcca.PCCA.P_coarse
     P_hmm = coarse_grain_transition_matrix(P_active, M_active)
     if reversible:
         P_hmm = _tmatrix_disconnected.enforce_reversible_on_closed(P_hmm)
@@ -326,10 +326,5 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
     # REGULARIZE SOLUTION
     pi_hmm, P_hmm = regularize_hidden(pi_hmm, P_hmm, reversible=reversible, stationary=stationary, C=C_hmm, eps=eps_A)
     B_hmm = regularize_pobs(B_hmm, nonempty=nonempty, separate=separate, eps=eps_B)
-
-    logger().info('Initial model: ')
-    logger().info('initial distribution = \n'+str(pi_hmm))
-    logger().info('transition matrix = \n'+str(P_hmm))
-    logger().info('output matrix = \n'+str(B_hmm.T))
 
     return pi_hmm, P_hmm, B_hmm

@@ -1,4 +1,3 @@
-
 # This file is part of BHMM (Bayesian Hidden Markov Models).
 #
 # Copyright (c) 2016 Frank Noe (Freie Universitaet Berlin)
@@ -18,8 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as _np
-
-from sktime.markovprocess.bhmm.estimators.bayesian_sampling import BayesianHMMSampler
 
 
 def _guess_output_type(observations):
@@ -148,15 +145,12 @@ def discrete_hmm(pi, P, pout):
         If True: transition matrix will fulfill detailed balance constraints.
 
     """
-    from bhmm.hmm.discrete_hmm import DiscreteHMM
-    from bhmm.output_models.discrete import DiscreteOutputModel
+    from .output_models.discrete import DiscreteOutputModel
     # initialize output model
     output_model = DiscreteOutputModel(pout)
     # initialize general HMM
-    from bhmm.hmm.generic_hmm import HMM as _HMM
-    dhmm = _HMM(pi, P, output_model)
-    # turn it into a Gaussian HMM
-    dhmm = DiscreteHMM(dhmm)
+    from .hmm.generic_hmm import HMM
+    dhmm = HMM(pi, P, output_model)
     return dhmm
 
 
@@ -198,7 +192,7 @@ def init_hmm(observations, nstates, lag=1, output=None, reversible=True):
     elif output == 'gaussian':
         return init_gaussian_hmm(observations, nstates, lag=lag, reversible=reversible)
     else:
-        raise NotImplementedError('output model type '+str(output)+' not yet implemented.')
+        raise NotImplementedError('output model type ' + str(output) + ' not yet implemented.')
 
 
 def init_gaussian_hmm(observations, nstates, lag=1, reversible=True):
@@ -221,7 +215,7 @@ def init_gaussian_hmm(observations, nstates, lag=1, reversible=True):
     >>> initial_model = init_gaussian_hmm(observations, model.nstates)
 
     """
-    from bhmm.init import gaussian
+    from .init import gaussian
     if lag > 1:
         observations = lag_observations(observations, lag)
     hmm0 = gaussian.init_model_gaussian1d(observations, nstates, reversible=reversible)
@@ -273,8 +267,8 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
 
     """
     import msmtools.estimation as msmest
-    from bhmm.init.discrete import init_discrete_hmm_spectral
-    C = msmest.count_matrix(observations, lag).toarray()
+    from .init.discrete import init_discrete_hmm_spectral
+    C = msmest.count_matrix(observations, lag, sparse_return=False)
     # regularization
     if regularize:
         eps_A = None
@@ -285,18 +279,18 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
     if not stationary:
         raise NotImplementedError('Discrete-HMM initialization with stationary=False is not yet implemented.')
 
-    if method=='lcs-spectral':
+    if method == 'lcs-spectral':
         lcs = msmest.largest_connected_set(C)
         p0, P, B = init_discrete_hmm_spectral(C, nstates, reversible=reversible, stationary=stationary,
                                               active_set=lcs, separate=separate, eps_A=eps_A, eps_B=eps_B)
-    elif method=='connect-spectral':
+    elif method == 'connect-spectral':
         # make sure we're strongly connected
         C += msmest.prior_neighbor(C, 0.001)
         nonempty = _np.where(C.sum(axis=0) + C.sum(axis=1) > 0)[0]
         C[nonempty, nonempty] = _np.maximum(C[nonempty, nonempty], 0.001)
         p0, P, B = init_discrete_hmm_spectral(C, nstates, reversible=reversible, stationary=stationary,
                                               active_set=nonempty, separate=separate, eps_A=eps_A, eps_B=eps_B)
-    elif method=='spectral':
+    elif method == 'spectral':
         p0, P, B = init_discrete_hmm_spectral(C, nstates, reversible=reversible, stationary=stationary,
                                               active_set=None, separate=separate, eps_A=eps_A, eps_B=eps_B)
     else:
@@ -361,13 +355,13 @@ def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
         observations = lag_observations(observations, lag)
 
     # construct estimator
-    from bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator as _MaximumLikelihoodEstimator
-    est = _MaximumLikelihoodEstimator(observations, nstates, initial_model=initial_model, output=output,
-                                      reversible=reversible, stationary=stationary, p=p, accuracy=accuracy,
-                                      maxit=maxit, maxit_P=maxit_P)
+    from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator
+    est = MaximumLikelihoodEstimator(nstates, initial_model=initial_model, output=output,
+                                     reversible=reversible, stationary=stationary, p=p, accuracy=accuracy,
+                                     maxit=maxit, maxit_P=maxit_P)
     # run
-    est.fit()
-    # set lag time
+    est.fit(observations)
+    # set lag time # TODO: this is hacky
     est.hmm._lag = lag
     # return model
     # TODO: package into specific class (DiscreteHMM, GaussianHMM)
@@ -457,15 +451,12 @@ def bayesian_hmm(observations, estimated_hmm, nsample=100, reversible=True, stat
         J. Chem. Phys. 143, 174101 (2015).
 
     """
-    # construct estimator
-    sampler = BayesianHMMSampler(observations, estimated_hmm.nstates, initial_model=estimated_hmm,
-                    reversible=reversible, stationary=stationary, transition_matrix_sampling_steps=1000,
-                    p0_prior=p0_prior, transition_matrix_prior=transition_matrix_prior,
-                    output=estimated_hmm.output_model.model_type)
+    from sktime.markovprocess.bhmm.estimators.bayesian_sampling import BayesianHMMSampler
+    sampler = BayesianHMMSampler(estimated_hmm.nstates, initial_model=estimated_hmm,
+                                 reversible=reversible, stationary=stationary, transition_matrix_sampling_steps=1000,
+                                 p0_prior=p0_prior, transition_matrix_prior=transition_matrix_prior,
+                                 output=estimated_hmm.output_model.model_type)
 
-    # Sample models.
-    sampled_hmms = sampler.sample(nsamples=nsample, save_hidden_state_trajectory=store_hidden,
-                                  call_back=call_back)
-    # return model
-    from bhmm.hmm.generic_sampled_hmm import SampledHMM
-    return SampledHMM(estimated_hmm, sampled_hmms)
+    sampler.fit(observations, nsamples=nsample, save_hidden_state_trajectory=store_hidden, call_back=call_back)
+
+    return sampler

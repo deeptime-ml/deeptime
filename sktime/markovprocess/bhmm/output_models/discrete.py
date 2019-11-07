@@ -17,54 +17,50 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
-from bhmm.util import config
 
 from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
-from .impl_c import discrete as dc
+from .impl_c import discrete
 
 
 class DiscreteOutputModel(OutputModel):
-    """
-    HMM output probability model using discrete symbols. This is the "standard" HMM that is classically used in the
-    literature
+    r""" HMM output probability model using discrete symbols.
+
+    This is the "standard" HMM that is classically used in the literature.
+
+    Create a 1D Gaussian output model.
+
+    Parameters
+    ----------
+    B : ndarray((N, M), dtype=float)
+        output probability matrix using N hidden states and M observable symbols.
+        This matrix needs to be row-stochastic.
+    prior : None or broadcastable to ndarray((N, M), dtype=float)
+        Prior for the initial distribution of the HMM.
+        Currently implements the Dirichlet prior that is conjugate to the
+        Dirichlet distribution of :math:`b_i`. :math:`b_i` is sampled from:
+        .. math:
+            b_i \sim \prod_j b_{ij}_i^{a_{ij} + n_{ij} - 1}
+        where :math:`n_{ij}` are the number of times symbol :math:`j` has
+        been observed when the hidden trajectory was in state :math:`i`
+        and :math:`a_{ij}` is the prior count.
+        The default prior=None corresponds to :math:`a_{ij} = 0`.
+            This option ensures coincidence between sample mean an MLE.
+
+    Examples
+    --------
+
+    Create an observation model.
+
+    >>> import numpy as np
+    >>> B = np.array([[0.5, 0.5], [0.1, 0.9]])
+    >>> output_model = DiscreteOutputModel(B)
 
     """
-
     def __init__(self, B, prior=None, ignore_outliers=False):
-        """
-        Create a 1D Gaussian output model.
-
-        Parameters
-        ----------
-        B : ndarray((N, M), dtype=float)
-            output probability matrix using N hidden states and M observable symbols.
-            This matrix needs to be row-stochastic.
-        prior : None or broadcastable to ndarray((N, M), dtype=float)
-            Prior for the initial distribution of the HMM.
-            Currently implements the Dirichlet prior that is conjugate to the
-            Dirichlet distribution of :math:`b_i`. :math:`b_i` is sampled from:
-            .. math:
-                b_i \sim \prod_j b_{ij}_i^{a_{ij} + n_{ij} - 1}
-            where :math:`n_{ij}` are the number of times symbol :math:`j` has
-            been observed when the hidden trajectory was in state :math:`i`
-            and :math:`a_{ij}` is the prior count.
-            The default prior=None corresponds to :math:`a_{ij} = 0`.
-                This option ensures coincidence between sample mean an MLE.
-
-        Examples
-        --------
-
-        Create an observation model.
-
-        >>> import numpy as np
-        >>> B = np.array([[0.5, 0.5], [0.1, 0.9]])
-        >>> output_model = DiscreteOutputModel(B)
-
-        """
-        self._output_probabilities = np.array(B, dtype=config.dtype)
+        self._output_probabilities = np.array(B)
         nstates, self._nsymbols = self._output_probabilities.shape[0], self._output_probabilities.shape[1]
         # superclass constructor
-        OutputModel.__init__(self, nstates, ignore_outliers=ignore_outliers)
+        super(DiscreteOutputModel, self).__init__(nstates=nstates, ignore_outliers=ignore_outliers)
         # test if row-stochastic
         assert np.allclose(self._output_probabilities.sum(axis=1), np.ones(self.nstates)), 'B is no stochastic matrix'
         # set prior matrix
@@ -73,38 +69,6 @@ class DiscreteOutputModel(OutputModel):
         else:
             prior = np.zeros((nstates, self._nsymbols)) + prior  # will fail if not broadcastable
         self.prior = prior
-
-    def __repr__(self):
-        r""" String representation of this output model
-        >>> import numpy as np
-        >>> output_model = DiscreteOutputModel(np.array([[0.5,0.5],[0.1,0.9]]))
-        >>> print(repr(output_model))
-        DiscreteOutputModel(array([[ 0.5,  0.5],
-               [ 0.1,  0.9]]))
-
-        """
-        return "DiscreteOutputModel(%s)" % repr(self._output_probabilities)
-
-    def __str__(self):
-        r""" Human-readable string representation of this output model
-        >>> output_model = DiscreteOutputModel(np.array([[0.5,0.5],[0.1,0.9]]))
-        >>> print(str(output_model))
-        --------------------------------------------------------------------------------
-        DiscreteOutputModel
-        nstates: 2
-        nsymbols: 2
-        B[0] = [ 0.5  0.5]
-        B[1] = [ 0.1  0.9]
-        --------------------------------------------------------------------------------
-        """
-        output = "--------------------------------------------------------------------------------\n"
-        output += "DiscreteOutputModel\n"
-        output += "nstates: %d\n" % self.nstates
-        output += "nsymbols: %d\n" % self._nsymbols
-        for i in range(self.nstates):
-            output += "B["+str(i)+"] = %s\n" % str(self._output_probabilities[i])
-        output += "--------------------------------------------------------------------------------"
-        return output
 
     @property
     def model_type(self):
@@ -198,8 +162,9 @@ class DiscreteOutputModel(OutputModel):
         # initialize output probability matrix
         self._output_probabilities = np.zeros((N, M))
         # update output probability matrix (numerator)
+        up = discrete.update_pout
         for k in range(K):
-            dc.update_pout(observations[k], weights[k], self._output_probabilities, dtype=config.dtype)
+            up(observations[k], weights[k], self._output_probabilities)
         # normalize
         self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
 

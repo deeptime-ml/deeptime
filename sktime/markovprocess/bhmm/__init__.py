@@ -19,11 +19,9 @@
 
 # import API
 from .api import *
-# estimators
-from .estimators.bayesian_sampling import BayesianHMMSampler as BHMM
-from .estimators.maximum_likelihood import MaximumLikelihoodEstimator as MLHMM
 # hmms
 from .hmm.generic_hmm import HMM
 from .util import testsystems
-
-# output models
+# estimators
+from .estimators.bayesian_sampling import BayesianHMMSampler as BHMM
+from .estimators.maximum_likelihood import MaximumLikelihoodEstimator as MLHMM

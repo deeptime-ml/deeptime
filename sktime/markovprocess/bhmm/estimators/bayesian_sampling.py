@@ -17,20 +17,103 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import copy
-import time
+import typing
 
 import msmtools.estimation as msmest
 import numpy as np
 
+from sktime.base import Estimator, Model
+from sktime.markovprocess.bhmm import HMM
 from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator
-from sktime.markovprocess.bhmm.util.logger import logger
 from . import _tmatrix_disconnected
 from .. import hidden
 
 
-class BayesianHMMSampler(object):
-    """Bayesian hidden Markov model sampler.
+class BayesianHMMPosterior(Model):
+    r""" Bayesian Hidden Markov model with samples of posterior and prior. """
+
+    def __init__(self,
+                 prior: typing.Optional[HMM] = None,
+                 samples: typing.Optional[typing.List[HMM]] = None):
+        self.prior = prior
+        self.samples = samples
+
+    def __iter__(self):
+        for s in self.samples:
+            yield s
+
+
+class BayesianHMMSampler(Estimator):
+    r"""Bayesian hidden Markov model sampler.
+
+    Parameters
+    ----------
+    observations : list of numpy arrays representing temporal data
+        `observations[i]` is a 1d numpy array corresponding to the observed trajectory index `i`
+    nstates : int
+        The number of states in the model.
+    initial_model : HMM, optional, default=None
+        If specified, the given initial model will be used to initialize the BHMM.
+        Otherwise, a heuristic scheme is used to generate an initial guess.
+    reversible : bool, optional, default=True
+        If True, a prior that enforces reversible transition matrices (detailed balance) is used;
+        otherwise, a standard  non-reversible prior is used.
+    stationary : bool, optional, default=False
+        If True, the stationary distribution of the transition matrix will be used as initial distribution.
+        Only use True if you are confident that the observation trajectories are started from a global
+        equilibrium. If False, the initial distribution will be estimated as usual from the first step
+        of the hidden trajectories.
+    transition_matrix_sampling_steps : int, optional, default=1000
+        number of transition matrix sampling steps per BHMM cycle
+    p0_prior : None, str, float or ndarray(n)
+        Prior for the initial distribution of the HMM. Will only be active
+        if stationary=False (stationary=True means that p0 is identical to
+        the stationary distribution of the transition matrix).
+        Currently implements different versions of the Dirichlet prior that
+        is conjugate to the Dirichlet distribution of p0. p0 is sampled from:
+        .. math:
+            p0 \sim \prod_i (p0)_i^{a_i + n_i - 1}
+        where :math:`n_i` are the number of times a hidden trajectory was in
+        state :math:`i` at time step 0 and :math:`a_i` is the prior count.
+        Following options are available:
+        |  'mixed' (default),  :math:`a_i = p_{0,init}`, where :math:`p_{0,init}`
+            is the initial distribution of initial_model.
+        |  'uniform',  :math:`a_i = 1`
+        |  ndarray(n) or float,
+            the given array will be used as A.
+        |  None,  :math:`a_i = 0`. This option ensures coincidence between
+            sample mean an MLE. Will sooner or later lead to sampling problems,
+            because as soon as zero trajectories are drawn from a given state,
+            the sampler cannot recover and that state will never serve as a starting
+            state subsequently. Only recommended in the large data regime and
+            when the probability to sample zero trajectories from any state
+            is negligible.
+    transition_matrix_prior : str or ndarray(n, n)
+        Prior for the HMM transition matrix.
+        Currently implements Dirichlet priors if reversible=False and reversible
+        transition matrix priors as described in [1]_ if reversible=True. For the
+        nonreversible case the posterior of transition matrix :math:`P` is:
+        .. math:
+            P \sim \prod_{i,j} p_{ij}^{b_{ij} + c_{ij} - 1}
+        where :math:`c_{ij}` are the number of transitions found for hidden
+        trajectories and :math:`b_{ij}` are prior counts.
+        |  'mixed' (default),  :math:`b_{ij} = p_{ij,init}`, where :math:`p_{ij,init}`
+            is the transition matrix of initial_model. That means one prior
+            count will be used per row.
+        |  'uniform',  :math:`b_{ij} = 1`
+        |  ndarray(n, n) or broadcastable,
+            the given array will be used as B.
+        |  None,  :math:`b_ij = 0`. This option ensures coincidence between
+            sample mean an MLE. Will sooner or later lead to sampling problems,
+            because as soon as a transition :math:`ij` will not occur in a
+            sample, the sampler cannot recover and that transition will never
+            be sampled again. This option is not recommended unless you have
+            a small HMM and a lot of data.
+    output_model_type : str, optional, default='gaussian'
+        Output model type.  ['gaussian', 'discrete']
+
+    nsamples : int
+        The number of samples to generate.
 
     Examples
     --------
@@ -38,7 +121,6 @@ class BayesianHMMSampler(object):
     First, create some synthetic test data.
 
     >>> import bhmm
-    >>> bhmm.config.verbose = False
     >>> nstates = 3
     >>> model = bhmm.testsystems.dalton_model(nstates)
     >>> [observations, hidden_states] = model.generate_synthetic_observation_trajectories(ntrajectories=5, length=1000)
@@ -52,109 +134,25 @@ class BayesianHMMSampler(object):
 
     >>> models = bhmm_sampler.sample(nsamples=10)
 
+    References
+    ----------
+    .. [1] Trendelkamp-Schroer, B., H. Wu, F. Paul and F. Noe:
+        Estimation and uncertainty of reversible Markov models.
+        J. Chem. Phys. 143, 174101 (2015).
+
     """
-    def __init__(self, observations, nstates, initial_model=None, reversible=True, stationary=False,
+    def __init__(self, nstates, initial_model=None, reversible=True, stationary=False,
                  transition_matrix_sampling_steps=1000, p0_prior='mixed', transition_matrix_prior='mixed',
-                 output='gaussian'):
-        """Initialize a Bayesian hidden Markov model sampler.
+                 output='gaussian', nsamples=100, ):
 
-        Parameters
-        ----------
-        observations : list of numpy arrays representing temporal data
-            `observations[i]` is a 1d numpy array corresponding to the observed trajectory index `i`
-        nstates : int
-            The number of states in the model.
-        initial_model : HMM, optional, default=None
-            If specified, the given initial model will be used to initialize the BHMM.
-            Otherwise, a heuristic scheme is used to generate an initial guess.
-        reversible : bool, optional, default=True
-            If True, a prior that enforces reversible transition matrices (detailed balance) is used;
-            otherwise, a standard  non-reversible prior is used.
-        stationary : bool, optional, default=False
-            If True, the stationary distribution of the transition matrix will be used as initial distribution.
-            Only use True if you are confident that the observation trajectories are started from a global
-            equilibrium. If False, the initial distribution will be estimated as usual from the first step
-            of the hidden trajectories.
-        transition_matrix_sampling_steps : int, optional, default=1000
-            number of transition matrix sampling steps per BHMM cycle
-        p0_prior : None, str, float or ndarray(n)
-            Prior for the initial distribution of the HMM. Will only be active
-            if stationary=False (stationary=True means that p0 is identical to
-            the stationary distribution of the transition matrix).
-            Currently implements different versions of the Dirichlet prior that
-            is conjugate to the Dirichlet distribution of p0. p0 is sampled from:
-            .. math:
-                p0 \sim \prod_i (p0)_i^{a_i + n_i - 1}
-            where :math:`n_i` are the number of times a hidden trajectory was in
-            state :math:`i` at time step 0 and :math:`a_i` is the prior count.
-            Following options are available:
-            |  'mixed' (default),  :math:`a_i = p_{0,init}`, where :math:`p_{0,init}`
-                is the initial distribution of initial_model.
-            |  'uniform',  :math:`a_i = 1`
-            |  ndarray(n) or float,
-                the given array will be used as A.
-            |  None,  :math:`a_i = 0`. This option ensures coincidence between
-                sample mean an MLE. Will sooner or later lead to sampling problems,
-                because as soon as zero trajectories are drawn from a given state,
-                the sampler cannot recover and that state will never serve as a starting
-                state subsequently. Only recommended in the large data regime and
-                when the probability to sample zero trajectories from any state
-                is negligible.
-        transition_matrix_prior : str or ndarray(n, n)
-            Prior for the HMM transition matrix.
-            Currently implements Dirichlet priors if reversible=False and reversible
-            transition matrix priors as described in [1]_ if reversible=True. For the
-            nonreversible case the posterior of transition matrix :math:`P` is:
-            .. math:
-                P \sim \prod_{i,j} p_{ij}^{b_{ij} + c_{ij} - 1}
-            where :math:`c_{ij}` are the number of transitions found for hidden
-            trajectories and :math:`b_{ij}` are prior counts.
-            |  'mixed' (default),  :math:`b_{ij} = p_{ij,init}`, where :math:`p_{ij,init}`
-                is the transition matrix of initial_model. That means one prior
-                count will be used per row.
-            |  'uniform',  :math:`b_{ij} = 1`
-            |  ndarray(n, n) or broadcastable,
-                the given array will be used as B.
-            |  None,  :math:`b_ij = 0`. This option ensures coincidence between
-                sample mean an MLE. Will sooner or later lead to sampling problems,
-                because as soon as a transition :math:`ij` will not occur in a
-                sample, the sampler cannot recover and that transition will never
-                be sampled again. This option is not recommended unless you have
-                a small HMM and a lot of data.
-        output_model_type : str, optional, default='gaussian'
-            Output model type.  ['gaussian', 'discrete']
-
-        References
-        ----------
-        .. [1] Trendelkamp-Schroer, B., H. Wu, F. Paul and F. Noe:
-            Estimation and uncertainty of reversible Markov models.
-            J. Chem. Phys. 143, 174101 (2015).
-
-        """
-        # Sanity checks.
-        if len(observations) == 0:
-            raise Exception("No observations were provided.")
-
-        # Store options.
         self.reversible = reversible
         self.stationary = stationary
 
-        # Store the number of states.
         self.nstates = nstates
 
-        # Store a copy of the observations.
-        self.observations = copy.deepcopy(observations)
-        self.nobs = len(observations)
-        self.Ts = [len(o) for o in observations]
-        self.maxT = np.max(self.Ts)
-
-        # initial model
+        # Use user-specified initial model, if provided.
         if initial_model:
-            # Use user-specified initial model, if provided.
-            self.model = copy.deepcopy(initial_model)
-        else:
-            # Generate our own initial model.
-            self.model = self._generateInitialModel(output)
+            self.initial_model = initial_model.copy()
 
         # prior initial vector
         if p0_prior is None or p0_prior == 'sparse':
@@ -163,13 +161,13 @@ class BayesianHMMSampler(object):
             if len(p0_prior.shape) == 1 and p0_prior.shape[0] == self.nstates:
                 self.prior_n0 = np.array(p0_prior)
             else:
-                raise ValueError('initial distribution prior must have dimension ' + str(nstates))
+                raise ValueError(f'initial distribution prior must have dimension {nstates}')
         elif p0_prior == 'mixed':
-            self.prior_n0 = np.array(self.model.initial_distribution)
+            self.prior_n0 = np.array(self.initial_model.initial_distribution)
         elif p0_prior == 'uniform':
             self.prior_n0 = np.ones(nstates)
         else:
-            raise ValueError('initial distribution prior mode undefined: '+str(p0_prior))
+            raise ValueError(f'initial distribution prior mode undefined: {p0_prior}')
 
         # prior count matrix
         if transition_matrix_prior is None or p0_prior == 'sparse':
@@ -178,36 +176,30 @@ class BayesianHMMSampler(object):
             if np.array_equal(transition_matrix_prior.shape, (self.nstates, self.nstates)):
                 self.prior_C = np.array(transition_matrix_prior)
         elif transition_matrix_prior == 'mixed':
-            self.prior_C = np.array(self.model.transition_matrix)
+            self.prior_C = np.array(self.initial_model.transition_matrix)
         elif p0_prior == 'uniform':
             self.prior_C = np.ones((nstates, nstates))
         else:
-            raise ValueError('transition matrix prior mode undefined: '+str(transition_matrix_prior))
+            raise ValueError(f'transition matrix prior mode undefined: {transition_matrix_prior}')
 
         # check if we work with these options
-        if reversible:
-            if not _tmatrix_disconnected.is_connected(self.model.transition_matrix + self.prior_C, strong=True):
-                raise NotImplementedError('Trying to sample disconnected HMM with option reversible:\n '
-                                          + str(self.model.transition_matrix)
-                                          + '\nUse prior to connect, select connected subset, or use reversible=False.')
+        if reversible and not msmest.is_connected(self.initial_model.transition_matrix + self.prior_C, directed=True):
+            raise NotImplementedError('Trying to sample disconnected HMM with option reversible:\n '
+                                      f'{self.initial_model.transition_matrix}\n'
+                                      'Use prior to connect, select connected subset, or use reversible=False.')
 
         # sampling options
         self.transition_matrix_sampling_steps = transition_matrix_sampling_steps
+        self.nsamples = nsamples
 
-        # pre-construct hidden variables
-        self.alpha = np.zeros((self.maxT, self.nstates), dtype=np.float64, order='C')
-        self.pobs = np.zeros((self.maxT, self.nstates), dtype=np.float64, order='C')
+    def _create_model(self):
+        return BayesianHMMPosterior()
 
-        return
-
-    def sample(self, nsamples, nburn=0, nthin=1, save_hidden_state_trajectory=False,
-               call_back=None):
+    def fit(self, observations, nburn=0, nthin=1, save_hidden_state_trajectory=False, call_back=None, **kwargs):
         """Sample from the BHMM posterior.
 
         Parameters
         ----------
-        nsamples : int
-            The number of samples to generate.
         nburn : int, optional, default=0
             The number of samples to discard to burn-in, following which `nsamples` will be generated.
         nthin : int, optional, default=1
@@ -234,64 +226,70 @@ class BayesianHMMSampler(object):
         >>> samples = sampled_model.sample(nsamples, nburn=nburn, nthin=nthin)
 
         """
+        # Store a copy of the observations.
+        # Sanity checks.
+        if len(observations) == 0:
+            raise ValueError("No observations were provided.")
 
+        self.nobs = len(observations)
+        self.Ts = [len(o) for o in observations]
+        self.maxT = np.max(self.Ts)
+
+        # pre-construct hidden variables
+        self.alpha = np.zeros((self.maxT, self.nstates))
+        self.pobs = np.zeros((self.maxT, self.nstates))
+
+        # Generate our own initial model.
+        if not self.initial_model:
+            self.initial_model = self._generateInitialModel(observations, self._output)
+
+        # save a copy of the initial model as the prior
+        prior = self.initial_model.copy()
+        sample_model = prior.copy()
         # Run burn-in.
-        for iteration in range(nburn):
-            logger().info("Burn-in   %8d / %8d" % (iteration, nburn))
-            self._update()
+        for _ in range(nburn):
+            self._update(sample_model, observations)
 
         # Collect data.
         models = []
-        for iteration in range(nsamples):
-            logger().info("Iteration %8d / %8d" % (iteration, nsamples))
+        for _ in range(self.nsamples):
             # Run a number of Gibbs sampling updates to generate each sample.
-            for thin in range(nthin):
-                self._update()
+            for _ in range(nthin):
+                self._update(sample_model, observations)
             # Save a copy of the current model.
-            model_copy = copy.deepcopy(self.model)
-            # print "Sampled: \n",repr(model_copy)
+            model_copy = sample_model.copy()
+            # the viterbi path is discarded, but is needed to get a new transition matrix for each model.
             if not save_hidden_state_trajectory:
                 model_copy.hidden_state_trajectory = None
             models.append(model_copy)
             if call_back is not None:
                 call_back()
 
-        # Return the list of models saved.
-        return models
+        self._model.samples = models
+        self._model.prior = prior
 
-    def _update(self):
-        """Update the current model using one round of Gibbs sampling.
+        return self
 
-        """
-        initial_time = time.time()
+    def _update(self, model, observations):
+        """Update the current model using one round of Gibbs sampling."""
+        self._updateHiddenStateTrajectories(model, observations)
+        self._updateEmissionProbabilities(model, observations)
+        self._updateTransitionMatrix(model)
 
-        self._updateHiddenStateTrajectories()
-        self._updateEmissionProbabilities()
-        self._updateTransitionMatrix()
+    def _updateHiddenStateTrajectories(self, model, observations):
+        """Sample a new set of state trajectories from the conditional distribution P(S | T, E, O)"""
+        model.hidden_state_trajectories = [
+            self._sampleHiddenStateTrajectory(model, obs)
+            for obs in observations
+        ]
 
-        final_time = time.time()
-        elapsed_time = final_time - initial_time
-        logger().info("BHMM update iteration took %.3f s" % elapsed_time)
-
-    def _updateHiddenStateTrajectories(self):
-        """Sample a new set of state trajectories from the conditional distribution P(S | T, E, O)
-
-        """
-        self.model.hidden_state_trajectories = list()
-        for trajectory_index in range(self.nobs):
-            hidden_state_trajectory = self._sampleHiddenStateTrajectory(self.observations[trajectory_index])
-            self.model.hidden_state_trajectories.append(hidden_state_trajectory)
-        return
-
-    def _sampleHiddenStateTrajectory(self, obs, dtype=np.int32):
+    def _sampleHiddenStateTrajectory(self, model, obs):
         """Sample a hidden state trajectory from the conditional distribution P(s | T, E, o)
 
         Parameters
         ----------
         o_t : numpy.array with dimensions (T,)
             observation[n] is the nth observation
-        dtype : numpy.dtype, optional, default=numpy.int32
-            The dtype to to use for returned state trajectory.
 
         Returns
         -------
@@ -311,11 +309,11 @@ class BayesianHMMSampler(object):
         T = obs.shape[0]
 
         # Convenience access.
-        A = self.model.transition_matrix
-        pi = self.model.initial_distribution
+        A = model.transition_matrix
+        pi = model.initial_distribution
 
         # compute output probability matrix
-        self.model.output_model.p_obs(obs, out=self.pobs)
+        model.output_model.p_obs(obs, out=self.pobs)
         # compute forward variables
         hidden.forward(A, self.pobs, pi, T=T, alpha_out=self.alpha)
         # sample path
@@ -323,26 +321,20 @@ class BayesianHMMSampler(object):
 
         return S
 
-    def _updateEmissionProbabilities(self):
-        """Sample a new set of emission probabilites from the conditional distribution P(E | S, O)
+    def _updateEmissionProbabilities(self, model, observations):
+        """Sample a new set of emission probabilites from the conditional distribution P(E | S, O) """
+        observations_by_state = [model.collect_observations_in_state(observations, state)
+                                 for state in range(model.nstates)]
+        model.output_model.sample(observations_by_state)
 
-        """
-        observations_by_state = [self.model.collect_observations_in_state(self.observations, state)
-                                 for state in range(self.model.nstates)]
-        self.model.output_model.sample(observations_by_state)
-
-    def _updateTransitionMatrix(self):
-        """
-        Updates the hidden-state transition matrix and the initial distribution
-
-        """
-        # TRANSITION MATRIX
-        C = self.model.count_matrix() + self.prior_C  # posterior count matrix
+    def _updateTransitionMatrix(self, model):
+        """ Updates the hidden-state transition matrix and the initial distribution """
+        C = model.count_matrix() + self.prior_C  # posterior count matrix
 
         # check if we work with these options
-        if self.reversible and not _tmatrix_disconnected.is_connected(C, strong=True):
+        if self.reversible and not msmest.is_connected(C, directed=True):
             raise NotImplementedError('Encountered disconnected count matrix with sampling option reversible:\n '
-                                      + str(C) + '\nUse prior to ensure connectivity or use reversible=False.')
+                                      f'{C}\nUse prior to ensure connectivity or use reversible=False.')
         # ensure consistent sparsity pattern (P0 might have additional zeros because of underflows)
         # TODO: these steps work around a bug in msmtools. Should be fixed there
         P0 = msmest.transition_matrix(C, reversible=self.reversible, maxiter=10000, warn_not_converged=False)
@@ -356,21 +348,18 @@ class BayesianHMMSampler(object):
         if self.stationary:  # p0 is consistent with P
             p0 = _tmatrix_disconnected.stationary_distribution(Tij, C=C)
         else:
-            n0 = self.model.count_init().astype(float)
+            n0 = model.count_init().astype(float)
             first_timestep_counts_with_prior = n0 + self.prior_n0
             positive = first_timestep_counts_with_prior > 0
             p0 = np.zeros_like(n0)
             p0[positive] = np.random.dirichlet(first_timestep_counts_with_prior[positive])  # sample p0 from posterior
 
         # update HMM with new sample
-        self.model.update(p0, Tij)
+        model.update(p0, Tij)
 
-    def _generateInitialModel(self, output_model_type):
-        """Initialize using an MLHMM.
-
-        """
-        logger().info("Generating initial model for BHMM using MLHMM...")
-        mlhmm = MaximumLikelihoodEstimator(self.observations, self.nstates, reversible=self.reversible,
+    def _generateInitialModel(self, observations, output_model_type):
+        """Initialize using an MLHMM."""
+        mlhmm = MaximumLikelihoodEstimator(self.nstates, reversible=self.reversible,
                                            output=output_model_type)
-        model = mlhmm.fit()
+        model = mlhmm.fit(observations)
         return model

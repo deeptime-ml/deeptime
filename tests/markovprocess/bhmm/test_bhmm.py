@@ -35,7 +35,7 @@ class TestBHMM(unittest.TestCase):
         testfile = abspath(join(abspath(__file__), pardir))
         testfile = join(testfile, 'data')
         testfile = join(testfile, '2well_traj_100K.dat')
-        obs = np.loadtxt(testfile, dtype=int)
+        obs = np.loadtxt(testfile, dtype=np.int32)
 
         # hidden states
         cls.nstates = 2
