@@ -105,7 +105,6 @@ class DiscreteOutputModel(OutputModel):
         """
         if out is None:
             out = self._output_probabilities[:, obs].T
-            # out /= np.sum(out, axis=1)[:,None]
             return self._handle_outliers(out)
         else:
             if obs.shape[0] == out.shape[0]:
@@ -113,8 +112,7 @@ class DiscreteOutputModel(OutputModel):
             elif obs.shape[0] < out.shape[0]:
                 out[:obs.shape[0], :] = self._output_probabilities[:, obs].T
             else:
-                raise ValueError('output array out is too small: '+str(out.shape[0])+' < '+str(obs.shape[0]))
-            # out /= np.sum(out, axis=1)[:,None]
+                raise ValueError(f'output array out is too small: {len(out)} < {len(obs)}')
             return self._handle_outliers(out)
 
     def fit(self, observations, weights):
@@ -156,15 +154,12 @@ class DiscreteOutputModel(OutputModel):
         >>> output_model.fit(obs, weights)
 
         """
-        # sizes
-        N, M = self._output_probabilities.shape
-        K = len(observations)
         # initialize output probability matrix
-        self._output_probabilities = np.zeros((N, M))
+        self._output_probabilities[:] = 0
         # update output probability matrix (numerator)
         up = discrete.update_pout
-        for k in range(K):
-            up(observations[k], weights[k], self._output_probabilities)
+        for obs, w in zip(observations, weights):
+            up(obs, w, self._output_probabilities)
         # normalize
         self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
 
