@@ -109,7 +109,7 @@ def confidence_interval(data, conf=0.95):
 
         if np.isclose(dmin, dmax):
             warnings.warn('confidence interval for constant data is not meaningful')
-            return dmin, dmin, dmin
+            return dmin, dmin, dmax
 
         m = np.mean(x)
         x = np.sort(x)
@@ -141,7 +141,7 @@ def confidence_interval(data, conf=0.95):
         return m, l, r
 
     if data.ndim == 1:
-        m, lower, upper = _confidence_interval_1d(data)
+        mean, lower, upper = _confidence_interval_1d(data)
         return lower, upper
     else:
         lower = np.zeros_like(data[0])
@@ -167,6 +167,6 @@ def confidence_interval(data, conf=0.95):
 
         for i in np.ndindex(data[0].shape):
             col = _column(data, i)
-            m, lower[i], upper[i] = _confidence_interval_1d(col)
+            mean, lower[i], upper[i] = _confidence_interval_1d(col)
 
         return lower, upper
