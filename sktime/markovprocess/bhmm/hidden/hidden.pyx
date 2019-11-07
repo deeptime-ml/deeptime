@@ -18,8 +18,6 @@
 
 import ctypes
 
-cimport
-numpy
 import numpy
 
 cdef extern from "_hidden.h":
