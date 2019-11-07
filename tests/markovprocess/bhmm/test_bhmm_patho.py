@@ -37,16 +37,20 @@ class TestBHMMPathological(unittest.TestCase):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
         mle = bhmm.estimate_hmm([obs], nstates=2, lag=1)
         sampled = bhmm.bayesian_hmm([obs], mle, reversible=False, nsample=2000,
-                                    p0_prior='mixed', transition_matrix_prior='mixed')
-        assert np.all(sampled.transition_matrix_std[0] > 0)
-        assert np.max(np.abs(sampled.transition_matrix_std[1])) < 1e-3
+                                    p0_prior='mixed', transition_matrix_prior='mixed').fetch_model()
+        tmatrix_samples = np.array([s.transition_matrix for s in sampled])
+        std = tmatrix_samples.std(axis=0)
+        assert np.all(std[0] > 0)
+        assert np.max(np.abs(std[1])) < 1e-3
 
     def test_2state_rev_2step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0], dtype=int)
         mle = bhmm.estimate_hmm([obs], nstates=2, lag=1)
         sampled = bhmm.bayesian_hmm([obs], mle, reversible=False, nsample=100,
-                                    p0_prior='mixed', transition_matrix_prior='mixed')
-        assert np.all(sampled.transition_matrix_std > 0)
+                                    p0_prior='mixed', transition_matrix_prior='mixed').fetch_model()
+        tmatrix_samples = np.array([s.transition_matrix for s in sampled])
+        std = tmatrix_samples.std(axis=0)
+        assert np.all(std > 0)
 
 
 if __name__ == "__main__":
