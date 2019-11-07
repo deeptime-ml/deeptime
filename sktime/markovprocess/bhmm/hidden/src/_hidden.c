@@ -4,15 +4,6 @@
 #include <time.h>
 #include <math.h>
 
-/* // tODO: not used?
-#ifndef __DIMS__
-#define __DIMS__
-#define DIMM2(arr, i, j)    arr[(i)*M + j]
-#define DIM2(arr, i, j)     arr[(i)*N + j]
-#define DIM3(arr, t, i , j) arr[(t)*N*N + (i)*N + j]
-#define DIMM3(arr, t, i, j) arr[(t)*N*M + (i)*M + j]
-#endif
-*/
 
 double _forward(
         double *alpha,
@@ -155,15 +146,18 @@ int _compute_transition_counts(
     for (t = 0; t < T-1; t++)
     {
         sum = 0.0;
-        for (i = 0; i < N; i++)
+        for (i = 0; i < N; i++) {
             for (j = 0; j < N; j++)
             {
                 tmp[i*N+j] = alpha[t*N+i] * A[i*N+j] * pobs[(t+1)*N+j] * beta[(t+1)*N+j];
                 sum += tmp[i*N+j];
             }
-        for (i = 0; i < N; i++)
-            for (j = 0; j < N; j++)
+        }
+        for (i = 0; i < N; i++) {
+            for (j = 0; j < N; j++) {
                 transition_counts[i*N+j] += tmp[i*N+j] / sum;
+            }
+        }
     }
     free(tmp);
     return 0;
