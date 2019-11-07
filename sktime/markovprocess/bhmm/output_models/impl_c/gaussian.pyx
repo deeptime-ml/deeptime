@@ -1,6 +1,8 @@
-import numpy
 import ctypes
-cimport numpy
+
+cimport
+numpy
+import numpy
 
 
 cdef extern from "_gaussian.h":
@@ -51,11 +53,11 @@ def p_o(o, mus, sigmas, out=None, dtype=numpy.float32):
 
     # pointers to arrays
     if dtype == numpy.float32:
-        raise ValueError
+        raise ValueError('float32')
     elif dtype == numpy.float64:
         return p_o_64(o, mus, sigmas, out=out)
     else:
-        raise TypeError
+        raise TypeError(f'unknown dtype {dtype}')
 
 def p_obs_64(obs, mus, sigmas, out=None):
     N = mus.shape[0]
@@ -74,11 +76,11 @@ def p_obs_64(obs, mus, sigmas, out=None):
     return p
 
 def p_obs(obs, mus, sigmas, out=None, dtype=numpy.float32):
-    if (obs.dtype != dtype):
+    if obs.dtype != dtype:
         obs = obs.astype(dtype)
-    if (mus.dtype != dtype):
+    if mus.dtype != dtype:
         mus = mus.astype(dtype)
-    if (sigmas.dtype != dtype):
+    if sigmas.dtype != dtype:
         sigmas = sigmas.astype(dtype)
     # check types
     assert (obs.dtype == dtype)
@@ -87,8 +89,8 @@ def p_obs(obs, mus, sigmas, out=None, dtype=numpy.float32):
 
     # pointers to arrays
     if dtype == numpy.float32:
-        raise ValueError
+        raise ValueError('float32')
     elif dtype == numpy.float64:
         return p_obs_64(obs, mus, sigmas, out=out)
     else:
-        raise TypeError
+        raise TypeError(f'unknown dtype {dtype}')

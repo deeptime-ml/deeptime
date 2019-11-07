@@ -149,7 +149,7 @@ class GaussianOutputModel(OutputModel):
         >>> p_o = output_model.p_obs(o_t)
 
         """
-        res = gaussian.p_obs(obs, self.means, self.sigmas, out=out)
+        res = gaussian.p_obs(obs, self.means, self.sigmas, out=out, dtype=obs.dtype)
         return self._handle_outliers(res)
 
     def fit(self, observations, weights):
