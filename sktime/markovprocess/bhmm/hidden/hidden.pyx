@@ -16,10 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy
 import ctypes
 
-cimport numpy
+cimport
+numpy
+import numpy
 
 cdef extern from "_hidden.h":
     double _forward(double *alpha, const double *A, const double *pobs, const double *pi, const int N, const int T)
@@ -79,12 +80,10 @@ def backward(A, pobs, T=None, beta_out=None):
 
 
 def transition_counts(alpha, beta, A, pobs, T=None, out=None):
-    # set T
     if T is None:
         T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
     elif T > pobs.shape[0]:
         raise ValueError('T must be at most the length of pobs.')
-    # set N
     N = len(A)
     if out is None:
         C = cdef_double_array(N, N)
@@ -121,7 +120,6 @@ def viterbi(A, pobs, pi):
 
 def sample_path(alpha, A, pobs, T=None):
     N = pobs.shape[1]
-    # set T
     if T is None:
         T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
     elif T > pobs.shape[0] or T > alpha.shape[0]:
