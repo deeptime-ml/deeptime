@@ -29,7 +29,8 @@ from sktime.markovprocess import Q_
 from sktime.markovprocess.pcca import PCCA, PCCAEstimator
 from sktime.markovprocess.sample import ensure_dtraj_list
 from sktime.markovprocess.transition_counting import TransitionCountModel
-from sktime.util import ensure_ndarray, mdot
+from sktime.numeric import mdot
+from sktime.util import ensure_ndarray
 
 
 class MarkovStateModel(Model):

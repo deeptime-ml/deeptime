@@ -1,7 +1,7 @@
 import numpy as np
 
 from sktime.base import Model, Estimator
-from sktime.util import mdot
+from sktime.numeric import mdot
 
 
 class PCCA(Model):
