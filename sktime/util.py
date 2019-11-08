@@ -108,7 +108,7 @@ def confidence_interval(data, conf=0.95):
         dmin, dmax = np.min(x), np.max(x)
 
         if np.isclose(dmin, dmax):
-            warnings.warn('confidence interval for constant data is not meaningful')
+            warnings.warn('confidence interval for constant data is not meaningful', stacklevel=3)
             return dmin, dmin, dmax
 
         m = np.mean(x)
