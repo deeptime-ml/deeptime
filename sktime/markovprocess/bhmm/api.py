@@ -18,7 +18,6 @@
 
 import numpy as _np
 
-
 def _guess_output_type(observations):
     """ Suggests a HMM model type based on the observation data
 
@@ -87,7 +86,7 @@ def lag_observations(observations, lag, stride=1):
     obsnew = []
     for obs in observations:
         for shift in range(0, lag, stride):
-            obs_lagged = (obs[shift:][::lag])
+            obs_lagged = obs[shift::lag]
             if len(obs_lagged) > 1:
                 obsnew.append(obs_lagged)
     return obsnew
@@ -146,10 +145,11 @@ def discrete_hmm(pi, P, pout):
 
     """
     from .output_models.discrete import DiscreteOutputModel
+    from .hmm.generic_hmm import HMM
+
     # initialize output model
     output_model = DiscreteOutputModel(pout)
     # initialize general HMM
-    from .hmm.generic_hmm import HMM
     dhmm = HMM(pi, P, output_model)
     return dhmm
 
@@ -361,11 +361,9 @@ def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
                                      maxit=maxit, maxit_P=maxit_P)
     # run
     est.fit(observations)
-    # set lag time # TODO: this is hacky
-    est.hmm._lag = lag
-    # return model
-    # TODO: package into specific class (DiscreteHMM, GaussianHMM)
-    return est.hmm
+    model = est.fetch_model()
+    model._lag = lag
+    return model
 
 
 def bayesian_hmm(observations, estimated_hmm, nsample=100, reversible=True, stationary=False,
