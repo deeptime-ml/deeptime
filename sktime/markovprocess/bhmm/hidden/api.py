@@ -58,13 +58,13 @@ def forward(A, pobs, pi, T=None, alpha=None):
 
     """
     if T is None:
-        T_ = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
-    elif T > pobs.shape[0]:
+        T = len(pobs)  # if not set, use the length of pobs as trajectory length
+    elif T > len(pobs):
         raise TypeError('T must be at most the length of pobs.')
-    N = A.shape[0]
+    N = len(A)
     if alpha is None:
         alpha = np.zeros_like(pobs)
-    elif T > alpha.shape[0]:
+    elif T > len(alpha):
         raise TypeError('alpha must at least have length T in order to fit trajectory.')
 
     return _impl.forward(A, pobs, pi, alpha, T, N)
@@ -104,11 +104,6 @@ def backward(A, pobs, T=None, beta_out=None):
     return _impl.backward(A, pobs, T=T, N=N, beta=beta_out)
 
 
-# global singletons as little helpers
-_ones = None
-_ones_size = 0
-
-
 def state_probabilities(alpha, beta, T=None, gamma_out=None):
     """ Calculate the (T,N)-probability matrix for being in state i at time t.
 
@@ -137,57 +132,37 @@ def state_probabilities(alpha, beta, T=None, gamma_out=None):
 
     """
     # get summation helper - we use matrix multiplication with 1's because it's faster than the np.sum function (yes!)
-    global _ones_size
-    if _ones_size != alpha.shape[1]:
-        global _ones
-        _ones = np.ones(alpha.shape[1])[:, None]
-        _ones_size = alpha.shape[1]
-    #
-    if alpha.shape[0] != beta.shape[0]:
+    if state_probabilities.ones_size != alpha.shape[1]:
+        state_probabilities.ones = np.ones(alpha.shape[1])[:, None]
+        state_probabilities.ones_size = alpha.shape[1]
+
+    if len(alpha) != len(beta):
         raise ValueError('Inconsistent sizes of alpha and beta.')
     # determine T to use
     if T is None:
         if gamma_out is None:
-            T = alpha.shape[0]
+            T = len(alpha)
         else:
-            T = gamma_out.shape[0]
+            T = len(gamma_out)
     # compute
     if gamma_out is None:
         gamma_out = alpha * beta
-        if T < gamma_out.shape[0]:
+        if T < len(gamma_out):
             gamma_out = gamma_out[:T]
     else:
-        if gamma_out.shape[0] < alpha.shape[0]:
+        if len(gamma_out) < len(alpha):
             np.multiply(alpha[:T], beta[:T], gamma_out)
         else:
             np.multiply(alpha, beta, gamma_out)
     # normalize
-    np.divide(gamma_out, np.dot(gamma_out, _ones), out=gamma_out)
+    np.divide(gamma_out, np.dot(gamma_out, state_probabilities.ones), out=gamma_out)
     # done
     return gamma_out
 
 
-def state_counts(gamma, T, out=None):
-    """ Sum the probabilities of being in state i to time t
-
-    Parameters
-    ----------
-    gamma : ndarray((T, N), dtype=float), optional, default = None
-        gamma[t, i] is the probability at time t to be in state i !
-    T : int
-        number of time steps
-
-    Returns
-    -------
-    count : numpy.array shape (N)
-            count[i] is the summed probability to be in state i !
-
-    See Also
-    --------
-    state_probabilities : to calculate `gamma`
-
-    """
-    return np.sum(gamma[0:T], axis=0, out=out)
+# function singletons as little helpers
+state_probabilities.ones = None
+state_probabilities.ones_size = 0
 
 
 def transition_counts(alpha, beta, A, pobs, T=None, out=None):
