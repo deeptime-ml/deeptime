@@ -16,9 +16,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import ctypes
 
-import numpy
+import numpy as np
 
 cdef extern from "_hidden.h":
     double _forward(double *alpha, const double *A, const double *pobs, const double *pi, const int N, const int T)
@@ -31,7 +30,7 @@ cdef extern from "_hidden.h":
 
 
 def cdef_double_array(n1, n2):
-    cdef numpy.ndarray[double, ndim=2, mode="c"] out = numpy.zeros((n1, n2), dtype=numpy.double, order='C')
+    cdef np.ndarray[double, ndim=2, mode="c"] out = np.zeros((n1, n2))
     return out
 
 
@@ -48,10 +47,10 @@ def forward(A, pobs, pi, T=None, alpha_out=None):
     else:
         alpha = alpha_out
 
-    palpha = <double*> numpy.PyArray_DATA(alpha)
-    pA = <double*> numpy.PyArray_DATA(A)
-    ppobs = <double*> numpy.PyArray_DATA(pobs)
-    ppi = <double*> numpy.PyArray_DATA(pi)
+    palpha = <double*> np.PyArray_DATA(alpha)
+    pA = <double*> np.PyArray_DATA(A)
+    ppobs = <double*> np.PyArray_DATA(pobs)
+    ppi = <double*> np.PyArray_DATA(pi)
     # call
     logprob = _forward(palpha, pA, ppobs, ppi, N, T)
     return logprob, alpha
@@ -69,9 +68,9 @@ def backward(A, pobs, T=None, beta_out=None):
     else:
         beta = beta_out
 
-    pbeta = <double*> numpy.PyArray_DATA(beta)
-    pA = <double*> numpy.PyArray_DATA(A)
-    ppobs = <double*> numpy.PyArray_DATA(pobs)
+    pbeta = <double*> np.PyArray_DATA(beta)
+    pA = <double*> np.PyArray_DATA(A)
+    ppobs = <double*> np.PyArray_DATA(pobs)
     # call
     _backward(pbeta, pA, ppobs, N, T)
     return beta
@@ -88,11 +87,11 @@ def transition_counts(alpha, beta, A, pobs, T=None, out=None):
     else:
         C = out
 
-    pC = <double*> numpy.PyArray_DATA(C)
-    pA = <double*> numpy.PyArray_DATA(A)
-    ppobs = <double*> numpy.PyArray_DATA(pobs)
-    palpha = <double*> numpy.PyArray_DATA(alpha)
-    pbeta = <double*> numpy.PyArray_DATA(beta)
+    pC = <double*> np.PyArray_DATA(C)
+    pA = <double*> np.PyArray_DATA(A)
+    ppobs = <double*> np.PyArray_DATA(pobs)
+    palpha = <double*> np.PyArray_DATA(alpha)
+    pbeta = <double*> np.PyArray_DATA(beta)
     # call
     res = _compute_transition_counts(pC, pA, ppobs, palpha, pbeta, N, T)
     if res == _BHMM_ERR_NO_MEM:
@@ -103,13 +102,13 @@ def viterbi(A, pobs, pi):
     N = A.shape[0]
     T = pobs.shape[0]
     # prepare path array
-    cdef numpy.ndarray[int, ndim=1, mode="c"] path
-    path = numpy.zeros(T, dtype=ctypes.c_int, order='C')
+    cdef np.ndarray[int, ndim=1, mode="c"] path
+    path = np.zeros(T, dtype=np.int32)
 
-    ppath = <int*> numpy.PyArray_DATA(path)
-    pA = <double*> numpy.PyArray_DATA(A)
-    ppobs = <double*> numpy.PyArray_DATA(pobs)
-    ppi = <double*> numpy.PyArray_DATA(pi)
+    ppath = <int*> np.PyArray_DATA(path)
+    pA = <double*> np.PyArray_DATA(A)
+    ppobs = <double*> np.PyArray_DATA(pobs)
+    ppi = <double*> np.PyArray_DATA(pi)
     # call
     res = _compute_viterbi(ppath, pA, ppobs, ppi, N, T)
     if res == _BHMM_ERR_NO_MEM:
@@ -123,13 +122,13 @@ def sample_path(alpha, A, pobs, T=None):
     elif T > pobs.shape[0] or T > alpha.shape[0]:
         raise ValueError('T must be at most the length of pobs and alpha.')
     # prepare path array
-    cdef numpy.ndarray[int, ndim=1, mode="c"] path
-    path = numpy.zeros(T, dtype=ctypes.c_int, order='C')
+    cdef np.ndarray[int, ndim=1, mode="c"] path
+    path = np.zeros(T, dtype=np.int32)
 
-    ppath = <int*> numpy.PyArray_DATA(path)
-    palpha = <double*> numpy.PyArray_DATA(alpha)
-    pA = <double*> numpy.PyArray_DATA(A)
-    ppobs = <double*> numpy.PyArray_DATA(pobs)
+    ppath = <int*> np.PyArray_DATA(path)
+    palpha = <double*> np.PyArray_DATA(alpha)
+    pA = <double*> np.PyArray_DATA(A)
+    ppobs = <double*> np.PyArray_DATA(pobs)
     # call
     res = _sample_path(ppath, palpha, pA, ppobs, N, T)
     if res == _BHMM_ERR_NO_MEM:
