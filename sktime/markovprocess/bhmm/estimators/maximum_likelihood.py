@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import bhmm
 import numpy as np
 
 # BHMM imports
@@ -25,10 +24,6 @@ from sktime.base import Estimator
 from sktime.markovprocess.bhmm.estimators._tmatrix_disconnected import estimate_P, stationary_distribution
 from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
 from .. import hidden, init_hmm
-
-
-# TODO: reactivate multiprocessing, parallelize model fitting and forward-backward
-# from multiprocessing import Queue, Process, cpu_count
 
 
 class MaximumLikelihoodEstimator(Estimator):
@@ -138,7 +133,7 @@ class MaximumLikelihoodEstimator(Estimator):
         r""" Maximum number of iterations """
         return self._maxit
 
-    def _forward_backward(self, obs, itraj):
+    def _forward_backward(self, obs, alpha, beta, gamma, pobs, counts):
         """
         Estimation step: Runs the forward-back algorithm on trajectory with index itraj
 
@@ -160,15 +155,15 @@ class MaximumLikelihoodEstimator(Estimator):
         pi = self._model.initial_distribution
         T = len(obs)
         # compute output probability matrix
-        self._model.output_model.p_obs(obs, out=self._pobs)
+        self._model.output_model.p_obs(obs, out=pobs)
         # forward variables
-        logprob, _ = hidden.forward(A, self._pobs, pi, T=T, alpha_out=self._alpha)
+        logprob, _ = hidden.forward(A, pobs, pi, T=T, alpha=alpha)
         # backward variables
-        hidden.backward(A, self._pobs, T=T, beta_out=self._beta)
+        hidden.backward(A, pobs, T=T, beta_out=beta)
         # gamma
-        hidden.state_probabilities(self._alpha, self._beta, T=T, gamma_out=self._gammas[itraj])
+        hidden.state_probabilities(alpha, beta, T=T, gamma_out=gamma)
         # count matrix
-        hidden.transition_counts(self._alpha, self._beta, A, self._pobs, T=T, out=self._Cs[itraj])
+        hidden.transition_counts(alpha, beta, A, pobs, T=T, out=counts)
         return logprob
 
     def _init_counts(self, gammas):
@@ -189,9 +184,9 @@ class MaximumLikelihoodEstimator(Estimator):
 
         Parameters
         ----------
-        gamma : [ ndarray(T,N, dtype=float) ]
+        gammas : [ ndarray(T,N, dtype=float) ]
             list of state probabilities for each trajectory
-        count_matrix : [ ndarray(N,N, dtype=float) ]
+        count_matrices : [ ndarray(N,N, dtype=float) ]
             list of the Baum-Welch transition count matrices for each hidden
             state trajectory
         maxiter : int
@@ -250,11 +245,12 @@ class MaximumLikelihoodEstimator(Estimator):
         _Ts = [len(o) for o in observations]
         _maxT = np.max(_Ts)
         # pre-construct hidden variables
-        self._alpha = np.zeros((_maxT, self._nstates))
-        self._beta = np.zeros((_maxT, self._nstates))
-        self._pobs = np.zeros((_maxT, self._nstates))
-        self._gammas = [np.zeros((len(obs), self._nstates)) for obs in observations]
-        self._Cs = [np.zeros((self._nstates, self._nstates)) for _ in range(len(observations))]
+        N = self.nstates
+        alpha = np.zeros((_maxT, N))
+        beta = np.zeros((_maxT, N))
+        pobs = np.zeros((_maxT, N))
+        gammas = [np.zeros((len(obs), N)) for obs in observations]
+        count_matrices = [np.zeros((self._nstates, N)) for _ in range(len(observations))]
 
         if self._model is None:
             # Generate our own initial model.
@@ -270,8 +266,8 @@ class MaximumLikelihoodEstimator(Estimator):
 
         while not converged and it < self.maxit:
             loglik = 0.0
-            for k, obs in enumerate(observations):
-                loglik += self._forward_backward(obs, k)
+            for obs, gamma, counts in zip(observations, gammas, count_matrices):
+                loglik += self._forward_backward(obs, alpha, beta, gamma, pobs, counts)
                 assert np.isfinite(loglik), it
 
             # convergence check
@@ -281,7 +277,7 @@ class MaximumLikelihoodEstimator(Estimator):
                     converged = True
 
             # update model
-            self._update_model(observations, self._gammas, self._Cs, maxiter=self._maxit_P)
+            self._update_model(observations, gammas, count_matrices, maxiter=self._maxit_P)
 
             # connectivity change check
             tmatrix_nonzeros_new = self._model.transition_matrix.nonzero()
@@ -298,89 +294,12 @@ class MaximumLikelihoodEstimator(Estimator):
         # set final likelihood
         self._model._likelihood = loglik
         self._model._likelihoods = likelihoods
-        self._model._gammas = self._gammas
+        self._model._gammas = gammas
         # set final count matrix
-        self.count_matrix = self._transition_counts(self._Cs)
-        self.initial_count = self._init_counts(self._gammas)
-        del self._gammas
+        self.count_matrix = self._transition_counts(count_matrices)
+        self.initial_count = self._init_counts(gammas)
 
         # Compute hidden state trajectories using the Viterbi algorithm.
         self._model.hidden_state_trajectories = self._model.compute_viterbi_paths(observations)
 
         return self
-
-    # TODO: reactive multiprocessing
-    # ###################
-    # # MULTIPROCESSING
-    #
-    # def _forward_backward_worker(self, work_queue, done_queue):
-    #     try:
-    #         for k in iter(work_queue.get, 'STOP'):
-    #             (weight, gamma, count_matrix) = self._forward_backward(k)
-    #             done_queue.put((k, weight, gamma, count_matrix))
-    #     except Exception, e:
-    #         done_queue.put(e.message)
-    #     return True
-    #
-    #
-    # def fit_parallel(self):
-    #     """
-    #     Maximum-likelihood estimation of the HMM using the Baum-Welch algorithm
-    #
-    #     Returns
-    #     -------
-    #     The hidden markov model
-    #
-    #     """
-    #     K = len(self.observations)#, len(A), len(B[0])
-    #     gammas = np.empty(K, dtype=object)
-    #     count_matrices = np.empty(K, dtype=object)
-    #
-    #     it        = 0
-    #     converged = False
-    #
-    #     num_threads = min(cpu_count(), K)
-    #     work_queue = Queue()
-    #     done_queue = Queue()
-    #     processes = []
-    #
-    #     while (not converged):
-    #         print "it", it
-    #         loglik = 0.0
-    #
-    #         # fill work queue
-    #         for k in range(K):
-    #             work_queue.put(k)
-    #
-    #         # start processes
-    #         for w in xrange(num_threads):
-    #             p = Process(target=self._forward_backward_worker, args=(work_queue, done_queue))
-    #             p.start()
-    #             processes.append(p)
-    #             work_queue.put('STOP')
-    #
-    #         # end processes
-    #         for p in processes:
-    #             p.join()
-    #
-    #         # done signal
-    #         done_queue.put('STOP')
-    #
-    #         # get results
-    #         for (k, ll, gamma, count_matrix) in iter(done_queue.get, 'STOP'):
-    #             loglik += ll
-    #             gammas[k] = gamma
-    #             count_matrices[k] = count_matrix
-    #
-    #         # update T, pi
-    #         self._update_model(gammas, count_matrices)
-    #
-    #         self.likelihoods[it] = loglik
-    #
-    #         if it > 0:
-    #             if loglik - self.likelihoods[it-1] < self.accuracy:
-    #                 converged = True
-    #
-    #         it += 1
-    #
-    #     return self.model
