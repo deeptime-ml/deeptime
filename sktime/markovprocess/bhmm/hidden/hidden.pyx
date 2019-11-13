@@ -16,8 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-import numpy as np
+cimport numpy as np
 
 cdef extern from "_hidden.h":
     double _forward(double *alpha, const double *A, const double *pobs, const double *pi, const int N, const int T)
@@ -29,45 +28,17 @@ cdef extern from "_hidden.h":
     int _BHMM_ERR_NO_MEM
 
 
-def cdef_double_array(n1, n2):
-    cdef np.ndarray[double, ndim=2, mode="c"] out = np.zeros((n1, n2))
-    return out
-
-
-def forward(A, pobs, pi, T=None, alpha_out=None):
-    if T is None:
-        T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
-    elif T > pobs.shape[0]:
-        raise TypeError('T must be at most the length of pobs.')
-    N = A.shape[0]
-    if alpha_out is None:
-        alpha = cdef_double_array(T, N)
-    elif T > alpha_out.shape[0]:
-        raise TypeError('alpha_out must at least have length T in order to fit trajectory.')
-    else:
-        alpha = alpha_out
-
+def forward(A, pobs, pi, alpha, int T, int N):
     palpha = <double*> np.PyArray_DATA(alpha)
     pA = <double*> np.PyArray_DATA(A)
     ppobs = <double*> np.PyArray_DATA(pobs)
     ppi = <double*> np.PyArray_DATA(pi)
-    # call
+
     logprob = _forward(palpha, pA, ppobs, ppi, N, T)
     return logprob, alpha
 
-def backward(A, pobs, T=None, beta_out=None):
-    if T is None:
-        T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
-    elif T > pobs.shape[0]:
-        raise ValueError('T must be at most the length of pobs.')
-    N = A.shape[0]
-    if beta_out is None:
-        beta = cdef_double_array(T, N)
-    elif T > beta_out.shape[0]:
-        raise ValueError('beta_out must at least have length T in order to fit trajectory.')
-    else:
-        beta = beta_out
 
+def backward(A, pobs, beta, int T, int N):
     pbeta = <double*> np.PyArray_DATA(beta)
     pA = <double*> np.PyArray_DATA(A)
     ppobs = <double*> np.PyArray_DATA(pobs)
@@ -76,17 +47,7 @@ def backward(A, pobs, T=None, beta_out=None):
     return beta
 
 
-def transition_counts(alpha, beta, A, pobs, T=None, out=None):
-    if T is None:
-        T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
-    elif T > pobs.shape[0]:
-        raise ValueError('T must be at most the length of pobs.')
-    N = len(A)
-    if out is None:
-        C = cdef_double_array(N, N)
-    else:
-        C = out
-
+def transition_counts(alpha, beta, A, pobs, int T, int N, C):
     pC = <double*> np.PyArray_DATA(C)
     pA = <double*> np.PyArray_DATA(A)
     ppobs = <double*> np.PyArray_DATA(pobs)
@@ -98,38 +59,23 @@ def transition_counts(alpha, beta, A, pobs, T=None, out=None):
         raise MemoryError()
     return C
 
-def viterbi(A, pobs, pi):
-    N = A.shape[0]
-    T = pobs.shape[0]
-    # prepare path array
-    cdef np.ndarray[int, ndim=1, mode="c"] path
-    path = np.zeros(T, dtype=np.int32)
-
+def viterbi(A, pobs, pi, path, int T, int N):
     ppath = <int*> np.PyArray_DATA(path)
     pA = <double*> np.PyArray_DATA(A)
     ppobs = <double*> np.PyArray_DATA(pobs)
     ppi = <double*> np.PyArray_DATA(pi)
-    # call
+
     res = _compute_viterbi(ppath, pA, ppobs, ppi, N, T)
     if res == _BHMM_ERR_NO_MEM:
         raise MemoryError()
     return path
 
-def sample_path(alpha, A, pobs, T=None):
-    N = pobs.shape[1]
-    if T is None:
-        T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
-    elif T > pobs.shape[0] or T > alpha.shape[0]:
-        raise ValueError('T must be at most the length of pobs and alpha.')
-    # prepare path array
-    cdef np.ndarray[int, ndim=1, mode="c"] path
-    path = np.zeros(T, dtype=np.int32)
-
+def sample_path(alpha, A, pobs, path, int T, int N):
     ppath = <int*> np.PyArray_DATA(path)
     palpha = <double*> np.PyArray_DATA(alpha)
     pA = <double*> np.PyArray_DATA(A)
     ppobs = <double*> np.PyArray_DATA(pobs)
-    # call
+
     res = _sample_path(ppath, palpha, pA, ppobs, N, T)
     if res == _BHMM_ERR_NO_MEM:
         raise MemoryError()

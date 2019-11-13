@@ -31,7 +31,7 @@ import numpy as np
 from . import hidden as _impl
 
 
-def forward(A, pobs, pi, T=None, alpha_out=None):
+def forward(A, pobs, pi, T=None, alpha=None):
     """Compute P( obs | A, B, pi ) and all forward coefficients.
 
     Parameters
@@ -44,8 +44,8 @@ def forward(A, pobs, pi, T=None, alpha_out=None):
         initial distribution of hidden states
     T : int, optional, default = None
         trajectory length. If not given, T = pobs.shape[0] will be used.
-    alpha_out : ndarray((T,N), dtype = float), optional, default = None
-        containter for the alpha result variables. If None, a new container will be created.
+    alpha : ndarray((T,N), dtype = float), optional, default = None
+        container for the alpha result variables. If None, a new container will be created.
 
     Returns
     -------
@@ -57,7 +57,17 @@ def forward(A, pobs, pi, T=None, alpha_out=None):
         used in many different algorithms related to HMMs.
 
     """
-    return _impl.forward(A, pobs, pi, T=T, alpha_out=alpha_out)
+    if T is None:
+        T_ = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
+    elif T > pobs.shape[0]:
+        raise TypeError('T must be at most the length of pobs.')
+    N = A.shape[0]
+    if alpha is None:
+        alpha = np.zeros_like(pobs)
+    elif T > alpha.shape[0]:
+        raise TypeError('alpha must at least have length T in order to fit trajectory.')
+
+    return _impl.forward(A, pobs, pi, alpha, T, N)
 
 
 def backward(A, pobs, T=None, beta_out=None):
@@ -72,7 +82,7 @@ def backward(A, pobs, T=None, beta_out=None):
     T : int, optional, default = None
         trajectory length. If not given, T = pobs.shape[0] will be used.
     beta_out : ndarray((T,N), dtype = float), optional, default = None
-        containter for the beta result variables. If None, a new container will be created.
+        container for the beta result variables. If None, a new container will be created.
 
     Returns
     -------
@@ -81,16 +91,26 @@ def backward(A, pobs, T=None, beta_out=None):
         used in many different algorithms related to HMMs.
 
     """
-    return _impl.backward(A, pobs, T=T, beta_out=beta_out)
+    if T is None:
+        T = len(pobs)  # if not set, use the length of pobs as trajectory length
+    elif T > len(pobs):
+        raise ValueError('T must be at most the length of pobs.')
+    N = len(A)
+    if beta_out is None:
+        beta_out = np.zeros_like(pobs)
+    elif T > len(beta_out):
+        raise ValueError('beta_out must at least have length T in order to fit trajectory.')
+
+    return _impl.backward(A, pobs, T=T, N=N, beta=beta_out)
 
 
 # global singletons as little helpers
-ones = None
-ones_size = 0
+_ones = None
+_ones_size = 0
 
 
 def state_probabilities(alpha, beta, T=None, gamma_out=None):
-    """ Calculate the (T,N)-probabilty matrix for being in state i at time t.
+    """ Calculate the (T,N)-probability matrix for being in state i at time t.
 
     Parameters
     ----------
@@ -102,12 +122,12 @@ def state_probabilities(alpha, beta, T=None, gamma_out=None):
         trajectory length. If not given, gamma_out.shape[0] will be used. If
         gamma_out is neither given, T = alpha.shape[0] will be used.
     gamma_out : ndarray((T,N), dtype = float), optional, default = None
-        containter for the gamma result variables. If None, a new container will be created.
+        container for the gamma result variables. If None, a new container will be created.
 
     Returns
     -------
     gamma : ndarray((T,N), dtype = float), optional, default = None
-        gamma[t,i] is the probabilty at time t to be in state i !
+        gamma[t,i] is the probability at time t to be in state i !
 
 
     See Also
@@ -117,11 +137,11 @@ def state_probabilities(alpha, beta, T=None, gamma_out=None):
 
     """
     # get summation helper - we use matrix multiplication with 1's because it's faster than the np.sum function (yes!)
-    global ones_size
-    if ones_size != alpha.shape[1]:
-        global ones
-        ones = np.ones(alpha.shape[1])[:, None]
-        ones_size = alpha.shape[1]
+    global _ones_size
+    if _ones_size != alpha.shape[1]:
+        global _ones
+        _ones = np.ones(alpha.shape[1])[:, None]
+        _ones_size = alpha.shape[1]
     #
     if alpha.shape[0] != beta.shape[0]:
         raise ValueError('Inconsistent sizes of alpha and beta.')
@@ -142,7 +162,7 @@ def state_probabilities(alpha, beta, T=None, gamma_out=None):
         else:
             np.multiply(alpha, beta, gamma_out)
     # normalize
-    np.divide(gamma_out, np.dot(gamma_out, ones), out=gamma_out)
+    np.divide(gamma_out, np.dot(gamma_out, _ones), out=gamma_out)
     # done
     return gamma_out
 
@@ -186,7 +206,7 @@ def transition_counts(alpha, beta, A, pobs, T=None, out=None):
     T : int
         number of time steps
     out : ndarray((N,N), dtype = float), optional, default = None
-        containter for the resulting count matrix. If None, a new matrix will be created.
+        container for the resulting count matrix. If None, a new matrix will be created.
 
     Returns
     -------
@@ -199,7 +219,17 @@ def transition_counts(alpha, beta, A, pobs, T=None, out=None):
     backward : calculate backward coefficients `beta`
 
     """
-    return _impl.transition_counts(alpha, beta, A, pobs, T=T, out=out)
+    if T is None:
+        T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
+    elif T > pobs.shape[0]:
+        raise ValueError('T must be at most the length of pobs.')
+    N = len(A)
+    if out is None:
+        C = np.zeros_like(A)
+    else:
+        C = out
+
+    return _impl.transition_counts(alpha, beta, A, pobs, T=T, N=N, C=C)
 
 
 def viterbi(A, pobs, pi):
@@ -220,7 +250,12 @@ def viterbi(A, pobs, pi):
         maximum likelihood hidden path
 
     """
-    return _impl.viterbi(A, pobs, pi)
+    # prepare path array
+    T = len(pobs)
+    N = len(A)
+    path = np.zeros(T, dtype=np.int32)
+
+    return _impl.viterbi(A, pobs, pi, path, T, N)
 
 
 def sample_path(alpha, A, pobs, T=None):
@@ -243,4 +278,11 @@ def sample_path(alpha, A, pobs, T=None):
         maximum likelihood hidden path
 
     """
-    return _impl.sample_path(alpha, A, pobs, T=T)
+    N = pobs.shape[1]
+    if T is None:
+        T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
+    elif T > pobs.shape[0] or T > alpha.shape[0]:
+        raise ValueError('T must be at most the length of pobs and alpha.')
+    path = np.zeros(T, dtype=np.int32)
+
+    return _impl.sample_path(alpha, A, pobs, path, T, N)
