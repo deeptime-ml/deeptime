@@ -1,7 +1,6 @@
 import ctypes
 
-cimport
-numpy
+cimport numpy
 import numpy
 
 
@@ -13,12 +12,6 @@ cdef extern from "_gaussian.h":
 def cdef_double_vector(n):
     cdef numpy.ndarray[double, ndim=1, mode="c"] out = numpy.zeros((n), dtype=ctypes.c_double, order='C')
     return out
-
-
-def cdef_single_vector(n):
-    cdef numpy.ndarray[float, ndim=1, mode="c"] out = numpy.zeros((n), dtype=ctypes.c_float, order='C')
-    return out
-
 
 def cdef_double_matrix(n1, n2):
     cdef numpy.ndarray[double, ndim=2, mode="c"] out = numpy.zeros((n1, n2), dtype=ctypes.c_double, order='C')

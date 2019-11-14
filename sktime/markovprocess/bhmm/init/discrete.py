@@ -291,8 +291,11 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
 
     # COARSE-GRAINING WITH PCCA+
     if active_nonseparate.size > nmeta:
+        # TODO: if we do not have a connected matrix, we cannot compute pcca! (pi contains zeros -> NaNs in P)
         from sktime.markovprocess.pcca import PCCAEstimator
-        pcca_obj = PCCAEstimator(n_metastable=nmeta).fit(MarkovStateModel(P_active_nonseparate)).fetch_model()
+        msm = MarkovStateModel(P_active_nonseparate)
+        assert np.all(msm.stationary_distribution > 0)
+        pcca_obj = PCCAEstimator(n_metastable=nmeta).fit(msm).fetch_model()
         M_active_nonseparate = pcca_obj.memberships  # memberships
         B_active_nonseparate = pcca_obj.output_probabilities  # output probabilities
     else:  # equal size

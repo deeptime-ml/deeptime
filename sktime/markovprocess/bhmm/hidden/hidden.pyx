@@ -19,12 +19,12 @@
 cimport numpy as np
 
 cdef extern from "_hidden.h":
-    double _forward(double *alpha, const double *A, const double *pobs, const double *pi, const int N, const int T)
-    void _backward(double *beta, const double *A, const double *pobs, const int N, const int T)
+    double _forward(double *alpha, const double *A, const double *pobs, const double *pi, const int N, const int T) nogil
+    void _backward(double *beta, const double *A, const double *pobs, const int N, const int T) nogil
     int _compute_transition_counts(double *transition_counts, const double *A, const double *pobs, const double *alpha,
-                                   const double *beta, int N, int T)
-    int _compute_viterbi(int *path, const double *A, const double *pobs, const double *pi, int N, int T)
-    int _sample_path(int *path, const double *alpha, const double *A, const double *pobs, const int N, const int T)
+                                   const double *beta, int N, int T) nogil
+    int _compute_viterbi(int *path, const double *A, const double *pobs, const double *pi, int N, int T) nogil
+    int _sample_path(int *path, const double *alpha, const double *A, const double *pobs, const int N, const int T) nogil
     int _BHMM_ERR_NO_MEM
 
 
@@ -34,7 +34,8 @@ def forward(A, pobs, pi, alpha, int T, int N):
     ppobs = <double*> np.PyArray_DATA(pobs)
     ppi = <double*> np.PyArray_DATA(pi)
 
-    logprob = _forward(palpha, pA, ppobs, ppi, N, T)
+    with nogil:
+        logprob = _forward(palpha, pA, ppobs, ppi, N, T)
     return logprob, alpha
 
 
@@ -43,7 +44,8 @@ def backward(A, pobs, beta, int T, int N):
     pA = <double*> np.PyArray_DATA(A)
     ppobs = <double*> np.PyArray_DATA(pobs)
     # call
-    _backward(pbeta, pA, ppobs, N, T)
+    with nogil:
+        _backward(pbeta, pA, ppobs, N, T)
     return beta
 
 
@@ -54,7 +56,8 @@ def transition_counts(alpha, beta, A, pobs, int T, int N, C):
     palpha = <double*> np.PyArray_DATA(alpha)
     pbeta = <double*> np.PyArray_DATA(beta)
     # call
-    res = _compute_transition_counts(pC, pA, ppobs, palpha, pbeta, N, T)
+    with nogil:
+        res = _compute_transition_counts(pC, pA, ppobs, palpha, pbeta, N, T)
     if res == _BHMM_ERR_NO_MEM:
         raise MemoryError()
     return C
@@ -65,7 +68,8 @@ def viterbi(A, pobs, pi, path, int T, int N):
     ppobs = <double*> np.PyArray_DATA(pobs)
     ppi = <double*> np.PyArray_DATA(pi)
 
-    res = _compute_viterbi(ppath, pA, ppobs, ppi, N, T)
+    with nogil:
+        res = _compute_viterbi(ppath, pA, ppobs, ppi, N, T)
     if res == _BHMM_ERR_NO_MEM:
         raise MemoryError()
     return path
@@ -76,7 +80,8 @@ def sample_path(alpha, A, pobs, path, int T, int N):
     pA = <double*> np.PyArray_DATA(A)
     ppobs = <double*> np.PyArray_DATA(pobs)
 
-    res = _sample_path(ppath, palpha, pA, ppobs, N, T)
+    with nogil:
+        res = _sample_path(ppath, palpha, pA, ppobs, N, T)
     if res == _BHMM_ERR_NO_MEM:
         raise MemoryError()
     return path

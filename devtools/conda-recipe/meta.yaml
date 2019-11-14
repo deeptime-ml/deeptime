@@ -29,13 +29,11 @@ requirements:
     - pip
 
   run:
-    #- bhmm >=0.6.3,<0.7
     - intel-openmp # [osx]
     - msmtools
     - {{ pin_compatible('numpy') }}
     - python
     - scipy
-    - setuptools
     - pint
 
 test:

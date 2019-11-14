@@ -19,6 +19,7 @@ import numpy as np
 from pyemma.util import types
 
 from sktime.markovprocess import MarkovStateModel
+from sktime.numeric import mdot
 
 
 class HMSM(MarkovStateModel):
@@ -52,6 +53,10 @@ class HMSM(MarkovStateModel):
             self._nstates_obs = pobs.shape[1]
             # TODO: refactor
             self.pobs = pobs
+
+    @classmethod
+    def from_bhmm_generic_hmm(cls, foo):
+        pass
 
     @property
     def observation_probabilities(self):
@@ -118,7 +123,10 @@ class HMSM(MarkovStateModel):
         P_c = self.transition_matrix
         P_c_k = np.linalg.matrix_power(P_c, k)  # take a power if needed
         B = self.observation_probabilities
+        # TODO: use mdot
+        C_ = mdot(B.T, Pi_c, P_c_k, B)
         C = np.dot(np.dot(B.T, Pi_c), np.dot(P_c_k, B))
+        np.testing.assert_equal(C_, C)
         P = C / C.sum(axis=1)[:, None]  # row normalization
         return P
 

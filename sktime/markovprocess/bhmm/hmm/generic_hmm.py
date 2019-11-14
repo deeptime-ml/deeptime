@@ -26,6 +26,9 @@ from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 
 
 # TODO: this seems somehow duplicated from pyemma.msm.HMM class + some extra features.
+from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
+
+
 class HMM(Model):
     r""" Hidden Markov model (HMM).
 
@@ -34,13 +37,13 @@ class HMM(Model):
 
     Parameters
     ----------
-    Tij : np.array with shape (nstates, nstates), optional, default=None
+    transition_matrix : np.array with shape (nstates, nstates), optional, default=None
         Row-stochastic transition matrix among states.
     output_model : :class:`sktime.markovprocess.bhmm.OutputModel`
         The output model for the states.
     lag : int, optional, default=1
         Lag time (optional) used to estimate the HMM. Used to compute relaxation timescales.
-    Pi : np.array with shape (nstates), optional, default=None
+    initial_distribution : np.array with shape (nstates), optional, default=None
         The initial state vector. Required when stationary=False
     stationary : bool, optional, default=True
         If true, the initial distribution is equal to the stationary distribution of the transition matrix
@@ -69,9 +72,12 @@ class HMM(Model):
 
     """
     def __init__(self, initial_distribution=None, transition_matrix=None, output_model=None, lag=1):
+        self._stationary = None
+        self._likelihoods = None
         self._lag = lag
         self._output_model = output_model
         self.hidden_state_trajectories = None
+        self._gammas = None
 
         if initial_distribution is not None and transition_matrix is not None:
             # update numbers
@@ -258,7 +264,7 @@ class HMM(Model):
         return self._gammas
 
     @property
-    def output_model(self):
+    def output_model(self) -> OutputModel:
         r""" The HMM output model """
         return self._output_model
 

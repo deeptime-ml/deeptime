@@ -315,7 +315,7 @@ class BayesianHMMSampler(Estimator):
         # compute output probability matrix
         model.output_model.p_obs(obs, out=self.pobs)
         # compute forward variables
-        hidden.forward(A, self.pobs, pi, T=T, alpha_out=self.alpha)
+        hidden.forward(A, self.pobs, pi, T=T, alpha=self.alpha)
         # sample path
         S = hidden.sample_path(self.alpha, A, self.pobs, T=T)
 

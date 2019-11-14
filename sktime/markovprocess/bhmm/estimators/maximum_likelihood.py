@@ -16,6 +16,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import asyncio
 
 import numpy as np
 
@@ -141,8 +142,6 @@ class MaximumLikelihoodEstimator(Estimator):
         ----------
         obs: np.ndarray
             single observation corresponding to index itraj
-        itraj : int
-            index of the observation trajectory to process
 
         Returns
         -------
@@ -242,6 +241,7 @@ class MaximumLikelihoodEstimator(Estimator):
             The maximum likelihood HMM model.
 
         """
+        # TODO: type checking for observations
         _Ts = [len(o) for o in observations]
         _maxT = np.max(_Ts)
         # pre-construct hidden variables
@@ -250,7 +250,7 @@ class MaximumLikelihoodEstimator(Estimator):
         beta = np.zeros((_maxT, N))
         pobs = np.zeros((_maxT, N))
         gammas = [np.zeros((len(obs), N)) for obs in observations]
-        count_matrices = [np.zeros((self._nstates, N)) for _ in range(len(observations))]
+        count_matrices = [np.zeros((N, N)) for _ in observations]
 
         if self._model is None:
             # Generate our own initial model.
@@ -264,11 +264,23 @@ class MaximumLikelihoodEstimator(Estimator):
         tmatrix_nonzeros = self._model.transition_matrix.nonzero()
         converged = False
 
+        async def _forward_backward():
+            log_likelihoods = [await
+                self._forward_backward(obs, alpha, beta, gamma, pobs, counts)
+                for obs, gamma, counts in zip(observations, gammas, count_matrices)
+            ]
+            return sum(log_likelihoods)
+
         while not converged and it < self.maxit:
-            loglik = 0.0
+            #loglik = asyncio.get_event_loop().create_task(_forward_backward())
+            #loglik.result()
+            #if not asyncio.get_event_loop():
+            #loglik = asyncio.run(_forward_backward())
+            #else:
+            #    loglik = await _forward_backward()
             for obs, gamma, counts in zip(observations, gammas, count_matrices):
                 loglik += self._forward_backward(obs, alpha, beta, gamma, pobs, counts)
-                assert np.isfinite(loglik), it
+            assert np.isfinite(loglik), it
 
             # convergence check
             if it > 0:

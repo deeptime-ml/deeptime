@@ -1,4 +1,5 @@
 import sys
+import setuptools
 
 from numpy.distutils.command.build_ext import build_ext
 
@@ -97,7 +98,7 @@ metadata = \
                           'msmtools',
                           'pint',
                           'scipy',
-                          'scikit-learn>0.22',
+                          'scikit-learn>=0.21',
                           ],
         package_data={
             'sktime.data': ['data/*.npz']

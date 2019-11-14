@@ -18,8 +18,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
-from bhmm.util import testsystems
-from msmtools.analysis import is_transition_matrix
+from msmtools.analysis import is_transition_matrix, is_reversible
+
+from sktime.markovprocess.bhmm.util import testsystems
 
 
 class TestTestSystems(unittest.TestCase):
@@ -28,6 +29,7 @@ class TestTestSystems(unittest.TestCase):
         """Test example transition matrices.
         """
         Tij = testsystems.generate_transition_matrix(nstates=3, reversible=False)
+        assert not is_reversible(Tij)
         Tij = testsystems.generate_transition_matrix(nstates=3, reversible=True)
         assert Tij.shape == (3, 3)
         assert is_transition_matrix(Tij)
