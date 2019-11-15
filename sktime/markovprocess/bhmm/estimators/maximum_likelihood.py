@@ -33,17 +33,6 @@ class MaximumLikelihoodEstimator(Estimator):
 
     This class is used to fit a maximum-likelihood HMM to data.
 
-    Examples
-    --------
-
-    >>> import bhmm
-    >>> bhmm.config.verbose = False
-    >>>
-    >>> from bhmm import testsystems
-    >>> [model, O, S] = testsystems.generate_synthetic_observations(ntrajectories=5, length=1000)
-    >>> mlhmm = MaximumLikelihoodEstimator(O, model.nstates)
-    >>> model = mlhmm.fit()
-
     References
     ----------
     [1] L. E. Baum and J. A. Egon, "An inequality with applications to statistical
@@ -242,8 +231,7 @@ class MaximumLikelihoodEstimator(Estimator):
 
         """
         # TODO: type checking for observations
-        _Ts = [len(o) for o in observations]
-        _maxT = np.max(_Ts)
+        _maxT = max(len(obs) for obs in observations)
         # pre-construct hidden variables
         N = self.nstates
         alpha = np.zeros((_maxT, N))
@@ -272,12 +260,6 @@ class MaximumLikelihoodEstimator(Estimator):
             return sum(log_likelihoods)
 
         while not converged and it < self.maxit:
-            #loglik = asyncio.get_event_loop().create_task(_forward_backward())
-            #loglik.result()
-            #if not asyncio.get_event_loop():
-            #loglik = asyncio.run(_forward_backward())
-            #else:
-            #    loglik = await _forward_backward()
             for obs, gamma, counts in zip(observations, gammas, count_matrices):
                 loglik += self._forward_backward(obs, alpha, beta, gamma, pobs, counts)
             assert np.isfinite(loglik), it
