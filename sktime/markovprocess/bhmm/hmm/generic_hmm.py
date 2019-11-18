@@ -18,6 +18,7 @@
 
 import msmtools.estimation as msmest
 import numpy as np
+from msmtools.analysis import is_transition_matrix
 
 from sktime.base import Model
 from sktime.markovprocess.bhmm import hidden
@@ -84,13 +85,11 @@ class HMM(Model):
 
     def update(self, Pi, Tij):
         r""" Updates the transition matrix and recomputes all derived quantities """
-        from msmtools import analysis as msmana
-
         # update transition matrix by copy
         self._Tij = np.array(Tij)
         # set number of states
         self._nstates = np.shape(Tij)[0]
-        assert msmana.is_transition_matrix(self._Tij), 'Given transition matrix is not a stochastic matrix'
+        assert is_transition_matrix(self._Tij), 'Given transition matrix is not a stochastic matrix'
         assert self._Tij.shape[0] == self._nstates, 'Given transition matrix has unexpected number of states '
         # reset spectral decomposition
         self._spectral_decomp_available = False
