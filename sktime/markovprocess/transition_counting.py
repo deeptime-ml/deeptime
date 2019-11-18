@@ -284,7 +284,7 @@ class TransitionCountModel(Model):
 
 class TransitionCountEstimator(Estimator):
 
-    def __init__(self,lagtime: int = 1, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
+    def __init__(self, lagtime: int = 1, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
                  stationary_dist_constraint=None):
         self.lagtime = lagtime
         self.count_mode = count_mode
