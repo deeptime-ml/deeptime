@@ -1,5 +1,5 @@
 __author__ = 'noe'
 
-from bhmm.output_models.outputmodel import OutputModel
-from bhmm.output_models.discrete import DiscreteOutputModel
-from bhmm.output_models.gaussian import GaussianOutputModel
+from .outputmodel import OutputModel
+from .discrete import DiscreteOutputModel
+from .gaussian import GaussianOutputModel
