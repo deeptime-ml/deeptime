@@ -19,6 +19,8 @@ import unittest
 import numpy as np
 from msmtools import analysis as msmana
 
+from sktime.markovprocess.bhmm import HMM
+from sktime.markovprocess.hidden_markov_model import HMSM
 from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 from sktime.markovprocess.util import count_states
 from tests.markovprocess.test_msm import estimate_markov_model
@@ -393,6 +395,7 @@ class TestMLHMM(unittest.TestCase):
         assert (len(np.unique(traj)) <= len(hmsm.transition_matrix))
 
     def test_dt_model(self):
+        # TODO: test der doppelten implementierung :D
         tu = TimeUnit("1 step").get_scaled(self.hmsm_lag10.lag)
         self.assertEqual(self.hmsm_lag10.dt_model, tu)
 
@@ -429,12 +432,12 @@ class TestMLHMM(unittest.TestCase):
         # dtrj = np.random.randint(0, 2, size=100)
         # dtrj[np.random.randint(0, dtrj.shape[0], 3)] = 2
         # hard-coded due to stochastic failures
-        dtrj = [1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0,
+        dtrj = [np.array([1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0,
                 0, 2, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
                 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
-                0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0]
+                0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])]
 
-        h = msm.estimate_hidden_markov_model(dtrj, 3, 2)
+        h = estimate_hidden_markov_model(dtrj, 3, 2)
         h_original = deepcopy(h)
 
         hs = h.submodel_largest(mincount_connectivity=5)
@@ -446,7 +449,7 @@ class TestMLHMM(unittest.TestCase):
         self.assertEqual(hs.transition_matrix.shape, (2, 2))
 
 
-def estimate_hidden_markov_model(dtrajs,nstates, lag, return_estimator=False, **kwargs):
+def estimate_hidden_markov_model(dtrajs,nstates, lag, return_estimator=False, **kwargs) -> HMSM:
     est = MaximumLikelihoodHMSM(nstates=nstates, lagtime=lag, **kwargs)
     est.fit(dtrajs, )
 

@@ -130,7 +130,7 @@ class MarkovStateModel(Model):
     P = transition_matrix
 
     @property
-    def is_reversible(self):
+    def is_reversible(self) -> bool:
         """Returns whether the MarkovStateModel is reversible """
         return self._is_reversible
 
@@ -1155,9 +1155,9 @@ class MarkovStateModel(Model):
                     ratio=timescale_ratios[nhidden - 2],
                 ))
         # run HMM estimate
-        #from pyemma.msm.estimators.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
-        estimator = MaximumLikelihoodHMSM(lag=self.lagtime, nstates=nhidden, msm_init=self,
-                                          reversible=self.is_reversible, dt_traj=self.dt_traj)
+        from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
+        estimator = MaximumLikelihoodHMSM(lagtime=self.lagtime, nstates=nhidden, msm_init=self,
+                                          reversible=self.is_reversible, dt_traj=self.dt_model)
         estimator.fit(dtrajs)
         return estimator.fetch_model()
 

@@ -279,15 +279,16 @@ class MaximumLikelihoodHMM(Estimator):
 
         # truncate likelihood history
         likelihoods = np.resize(likelihoods, it)
+        m = self._model
         # set final likelihood
-        self._model._likelihood = loglik
-        self._model._likelihoods = likelihoods
-        self._model._gammas = gammas
+        m._likelihood = loglik
+        m._likelihoods = likelihoods
+        m._gammas = gammas
         # set final count matrix
-        self.count_matrix = self._transition_counts(count_matrices)
-        self.initial_count = self._init_counts(gammas)
+        m.count_matrix = self._transition_counts(count_matrices)
+        m.initial_count = self._init_counts(gammas)
 
         # Compute hidden state trajectories using the Viterbi algorithm.
-        self._model.hidden_state_trajectories = self._model.compute_viterbi_paths(observations)
+        m.hidden_state_trajectories = self._model.compute_viterbi_paths(observations)
 
         return self
