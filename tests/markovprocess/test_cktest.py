@@ -33,6 +33,7 @@ from sktime.lagged_model_validator import LaggedModelValidation
 from sktime.markovprocess import cktest
 from sktime.datasets import double_well_discrete
 from tests.markovprocess.factory import bayesian_markov_model
+from tests.markovprocess.test_hmsm import estimate_hidden_markov_model
 from tests.markovprocess.test_msm import estimate_markov_model
 
 
