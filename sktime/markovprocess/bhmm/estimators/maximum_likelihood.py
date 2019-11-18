@@ -78,10 +78,10 @@ class MaximumLikelihoodHMM(Estimator):
 
         """
         # Use user-specified initial model, if provided.
-        super(MaximumLikelihoodHMM, self).__init__(model=initial_model)
-        if initial_model is None:
+        super(MaximumLikelihoodHMM, self).__init__()
+        self.initial_model = initial_model
+        if initial_model is None:  # remember choice of output model for later creation of the HMM model
             self._output = output
-            self._model = None
 
         # Set parameters
         self._nstates = nstates
@@ -209,10 +209,10 @@ class MaximumLikelihoodHMM(Estimator):
     def _create_model(self) -> HMM:
         # If we already have a provided model (since the construction of the estimator,
         # we do not want to override it here).
-        if self._model is None:
-            pass
+        if self.initial_model is None:
+            return None
         else:
-            return HMM()
+            return self.initial_model
 
     def fit(self, observations, **kw):
         """
@@ -240,7 +240,7 @@ class MaximumLikelihoodHMM(Estimator):
         gammas = [np.zeros((len(obs), N)) for obs in observations]
         count_matrices = [np.zeros((N, N)) for _ in observations]
 
-        if self._model is None:
+        if self.initial_model is None:
             # Generate our own initial model.
             self._model = init_hmm(observations, self.nstates, output=self._output)
 
