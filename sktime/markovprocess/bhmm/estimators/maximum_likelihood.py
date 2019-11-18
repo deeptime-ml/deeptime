@@ -27,7 +27,7 @@ from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
 from .. import hidden, init_hmm
 
 
-class MaximumLikelihoodEstimator(Estimator):
+class MaximumLikelihoodHMM(Estimator):
     """
     Maximum likelihood Hidden Markov model (HMM).
 
@@ -78,7 +78,7 @@ class MaximumLikelihoodEstimator(Estimator):
 
         """
         # Use user-specified initial model, if provided.
-        super(MaximumLikelihoodEstimator, self).__init__(model=initial_model)
+        super(MaximumLikelihoodHMM, self).__init__(model=initial_model)
         if initial_model is None:
             self._output = output
             self._model = None
@@ -252,14 +252,8 @@ class MaximumLikelihoodEstimator(Estimator):
         tmatrix_nonzeros = self._model.transition_matrix.nonzero()
         converged = False
 
-        async def _forward_backward():
-            log_likelihoods = [await
-                self._forward_backward(obs, alpha, beta, gamma, pobs, counts)
-                for obs, gamma, counts in zip(observations, gammas, count_matrices)
-            ]
-            return sum(log_likelihoods)
-
         while not converged and it < self.maxit:
+            loglik = 0.0
             for obs, gamma, counts in zip(observations, gammas, count_matrices):
                 loglik += self._forward_backward(obs, alpha, beta, gamma, pobs, counts)
             assert np.isfinite(loglik), it

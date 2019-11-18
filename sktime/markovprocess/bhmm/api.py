@@ -355,10 +355,10 @@ def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
         observations = lag_observations(observations, lag)
 
     # construct estimator
-    from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator
-    est = MaximumLikelihoodEstimator(nstates, initial_model=initial_model, output=output,
-                                     reversible=reversible, stationary=stationary, p=p, accuracy=accuracy,
-                                     maxit=maxit, maxit_P=maxit_P)
+    from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
+    est = MaximumLikelihoodHMM(nstates, initial_model=initial_model, output=output,
+                               reversible=reversible, stationary=stationary, p=p, accuracy=accuracy,
+                               maxit=maxit, maxit_P=maxit_P)
     # run
     est.fit(observations)
     model = est.fetch_model()

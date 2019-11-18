@@ -138,7 +138,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     def fit(self, dtrajs, **kwargs):
         from . import bhmm
-        from .bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator
+        from .bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
 
         # CHECK LAG
         trajlengths = [np.size(dtraj) for dtraj in dtrajs]
@@ -161,10 +161,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
 
         # OBSERVATION SET
-        if self.observe_nonempty:
-            observe_subset = 'nonempty'
-        else:
-            observe_subset = None
+        observe_subset = 'nonempty' if self.observe_nonempty else None
 
         # INIT HMM
         from sktime.markovprocess.bhmm import init_discrete_hmm
@@ -188,12 +185,9 @@ class MaximumLikelihoodHMSM(Estimator):
         # ---------------------------------------------------------------------------------------
         # Estimate discrete HMM
         # ---------------------------------------------------------------------------------------
-
-        # run EM
-        hmm_est = MaximumLikelihoodEstimator(self.nstates, initial_model=hmm_init,
-                                             output='discrete', reversible=self.reversible, stationary=self.stationary,
-                                             accuracy=self.accuracy, maxit=self.maxit)
-        # run
+        hmm_est = MaximumLikelihoodHMM(self.nstates, initial_model=hmm_init,
+                                       output='discrete', reversible=self.reversible, stationary=self.stationary,
+                                       accuracy=self.accuracy, maxit=self.maxit)
         hmm = hmm_est.fit(dtrajs_lagged_strided).fetch_model()
 
         # get estimation parameters
@@ -231,7 +225,8 @@ class MaximumLikelihoodHMSM(Estimator):
         return self
 
     def _compute_effective_stride(self, dtrajs):
-        assert self.stride == 'effective', 'call this only if self.stride=="effective"!'
+        if self.stride != 'effective':
+            raise RuntimeError('call this only if self.stride=="effective"!')
         # by default use lag as stride (=lag sampling), because we currently have no better theory for deciding
         # how many uncorrelated counts we can make
         self.stride = self.lag
@@ -293,7 +288,6 @@ class MaximumLikelihoodHMSM(Estimator):
     ################################################################################
     # Submodel functions using estimation information (counts)
     ################################################################################
-
     def submodel(self, states=None, obs=None, mincount_connectivity='1/n', inplace=False):
         """Returns a HMM with restricted state space
 
@@ -551,8 +545,8 @@ class MaximumLikelihoodHMSM(Estimator):
             tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
         """
-        import pyemma.util.discrete_trajectories as dt
-        return dt.sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)
+        from msmtools.dtraj import sample_indexes_by_distribution
+        return sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)
 
 
 ################################################################################

@@ -24,7 +24,7 @@ import numpy as np
 
 from sktime.base import Estimator, Model
 from sktime.markovprocess.bhmm import HMM
-from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodEstimator
+from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
 from . import _tmatrix_disconnected
 from .. import hidden
 
@@ -359,7 +359,7 @@ class BayesianHMMSampler(Estimator):
 
     def _generateInitialModel(self, observations, output_model_type):
         """Initialize using an MLHMM."""
-        mlhmm = MaximumLikelihoodEstimator(self.nstates, reversible=self.reversible,
-                                           output=output_model_type)
+        mlhmm = MaximumLikelihoodHMM(self.nstates, reversible=self.reversible,
+                                     output=output_model_type)
         model = mlhmm.fit(observations)
         return model

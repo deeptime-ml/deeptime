@@ -24,4 +24,4 @@ from .hmm.generic_hmm import HMM
 from .util import testsystems
 # estimators
 from .estimators.bayesian_sampling import BayesianHMMSampler as BHMM
-from .estimators.maximum_likelihood import MaximumLikelihoodEstimator as MLHMM
+from .estimators.maximum_likelihood import MaximumLikelihoodHMM as MLHMM
