@@ -48,8 +48,6 @@ class BayesianHMMSampler(Estimator):
 
     Parameters
     ----------
-    observations : list of numpy arrays representing temporal data
-        `observations[i]` is a 1d numpy array corresponding to the observed trajectory index `i`
     nstates : int
         The number of states in the model.
     initial_model : HMM, optional, default=None
@@ -92,7 +90,7 @@ class BayesianHMMSampler(Estimator):
         Prior for the HMM transition matrix.
         Currently implements Dirichlet priors if reversible=False and reversible
         transition matrix priors as described in [1]_ if reversible=True. For the
-        nonreversible case the posterior of transition matrix :math:`P` is:
+        non-reversible case the posterior of transition matrix :math:`P` is:
         .. math:
             P \sim \prod_{i,j} p_{ij}^{b_{ij} + c_{ij} - 1}
         where :math:`c_{ij}` are the number of transitions found for hidden
@@ -109,7 +107,7 @@ class BayesianHMMSampler(Estimator):
             sample, the sampler cannot recover and that transition will never
             be sampled again. This option is not recommended unless you have
             a small HMM and a lot of data.
-    output_model_type : str, optional, default='gaussian'
+    output : str, optional, default='gaussian'
         Output model type.  ['gaussian', 'discrete']
 
     nsamples : int
@@ -144,7 +142,7 @@ class BayesianHMMSampler(Estimator):
     def __init__(self, nstates, initial_model=None, reversible=True, stationary=False,
                  transition_matrix_sampling_steps=1000, p0_prior='mixed', transition_matrix_prior='mixed',
                  output='gaussian', nsamples=100, ):
-
+        super(BayesianHMMSampler, self).__init__()
         self.reversible = reversible
         self.stationary = stationary
 
@@ -191,6 +189,7 @@ class BayesianHMMSampler(Estimator):
         # sampling options
         self.transition_matrix_sampling_steps = transition_matrix_sampling_steps
         self.nsamples = nsamples
+        self.output = output
 
     def _create_model(self):
         return BayesianHMMPosterior()
@@ -213,7 +212,7 @@ class BayesianHMMSampler(Estimator):
         Returns
         -------
         models : list of bhmm.HMM
-            The sampled HMM models from the Bayesian posterior.
+
 
         Examples
         --------
@@ -231,17 +230,16 @@ class BayesianHMMSampler(Estimator):
         if len(observations) == 0:
             raise ValueError("No observations were provided.")
 
-        self.nobs = len(observations)
-        self.Ts = [len(o) for o in observations]
-        self.maxT = np.max(self.Ts)
+        Ts = [len(o) for o in observations]
+        maxT = max(Ts)
 
         # pre-construct hidden variables
-        self.alpha = np.zeros((self.maxT, self.nstates))
-        self.pobs = np.zeros((self.maxT, self.nstates))
+        self._alpha = np.zeros((maxT, self.nstates))
+        self._pobs = np.zeros((maxT, self.nstates))
 
         # Generate our own initial model.
         if not self.initial_model:
-            self.initial_model = self._generateInitialModel(observations, self._output)
+            self.initial_model = self._generateInitialModel(observations, self.output)
 
         # save a copy of the initial model as the prior
         prior = self.initial_model.copy()
@@ -267,23 +265,26 @@ class BayesianHMMSampler(Estimator):
 
         self._model.samples = models
         self._model.prior = prior
+        # free estimation variables
+        del self._alpha
+        del self._pobs
 
         return self
 
     def _update(self, model, observations):
         """Update the current model using one round of Gibbs sampling."""
-        self._updateHiddenStateTrajectories(model, observations)
-        self._updateEmissionProbabilities(model, observations)
-        self._updateTransitionMatrix(model)
+        self._update_hidden_state_trajectories(model, observations)
+        self._update_emission_probabilities(model, observations)
+        self._update_transition_matrix(model)
 
-    def _updateHiddenStateTrajectories(self, model, observations):
+    def _update_hidden_state_trajectories(self, model, observations):
         """Sample a new set of state trajectories from the conditional distribution P(S | T, E, O)"""
         model.hidden_state_trajectories = [
-            self._sampleHiddenStateTrajectory(model, obs)
+            self._sample_hidden_state_trajectory(model, obs)
             for obs in observations
         ]
 
-    def _sampleHiddenStateTrajectory(self, model, obs):
+    def _sample_hidden_state_trajectory(self, model, obs):
         """Sample a hidden state trajectory from the conditional distribution P(s | T, E, o)
 
         Parameters
@@ -301,7 +302,7 @@ class BayesianHMMSampler(Estimator):
         >>> import bhmm
         >>> model, observations, states, sampled_model = bhmm.testsystems.generate_random_bhmm(ntrajectories=5, length=1000)
         >>> o_t = observations[0]
-        >>> s_t = sampled_model._sampleHiddenStateTrajectory(o_t)
+        >>> s_t = sampled_model._sample_hidden_state_trajectory(o_t)
 
         """
 
@@ -313,21 +314,21 @@ class BayesianHMMSampler(Estimator):
         pi = model.initial_distribution
 
         # compute output probability matrix
-        model.output_model.p_obs(obs, out=self.pobs)
+        model.output_model.p_obs(obs, out=self._pobs)
         # compute forward variables
-        hidden.forward(A, self.pobs, pi, T=T, alpha=self.alpha)
+        hidden.forward(A, self._pobs, pi, T=T, alpha=self._alpha)
         # sample path
-        S = hidden.sample_path(self.alpha, A, self.pobs, T=T)
+        S = hidden.sample_path(self._alpha, A, self._pobs, T=T)
 
         return S
 
-    def _updateEmissionProbabilities(self, model, observations):
+    def _update_emission_probabilities(self, model, observations):
         """Sample a new set of emission probabilites from the conditional distribution P(E | S, O) """
         observations_by_state = [model.collect_observations_in_state(observations, state)
                                  for state in range(model.nstates)]
         model.output_model.sample(observations_by_state)
 
-    def _updateTransitionMatrix(self, model):
+    def _update_transition_matrix(self, model):
         """ Updates the hidden-state transition matrix and the initial distribution """
         C = model.count_matrix() + self.prior_C  # posterior count matrix
 
