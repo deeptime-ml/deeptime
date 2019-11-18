@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
-from pyemma.util import types
 
 from sktime.markovprocess import MarkovStateModel
 from sktime.numeric import mdot
@@ -168,8 +167,8 @@ class HMSM(MarkovStateModel):
             Distribution after k steps. Vector of size of the active set.
 
         """
-        p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
-        assert types.is_int(k) and k >= 0, 'k must be a non-negative integer'
+        #p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
+        #assert types.is_int(k) and k >= 0, 'k must be a non-negative integer'
         if k == 0:  # simply return p0 normalized
             return p0 / p0.sum()
 
@@ -181,7 +180,6 @@ class HMSM(MarkovStateModel):
             p0 = np.dot(self.observation_probabilities, p0)
 
         self._ensure_eigendecomposition(self.nstates)
-        from pyemma.util.linalg import mdot
         pk = mdot(p0.T, self.eigenvectors_right(), np.diag(np.power(self.eigenvalues(), k)), self.eigenvectors_left())
 
         if micro:
@@ -231,7 +229,7 @@ class HMSM(MarkovStateModel):
     # ================================================================================================================
 
     def expectation(self, a):
-        a = types.ensure_float_vector(a, require_order=True)
+        #a = types.ensure_float_vector(a, require_order=True)
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             # project to hidden and compute
@@ -245,8 +243,8 @@ class HMSM(MarkovStateModel):
 
     def correlation(self, a, b=None, maxtime=None, k=None, ncv=None):
         # basic checks for a and b
-        a = types.ensure_ndarray(a, ndim=1, kind='numeric')
-        b = types.ensure_ndarray_or_None(b, ndim=1, kind='numeric', size=len(a))
+        #a = types.ensure_ndarray(a, ndim=1, kind='numeric')
+        #b = types.ensure_ndarray_or_None(b, ndim=1, kind='numeric', size=len(a))
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             a = np.dot(self.observation_probabilities, a)
@@ -261,8 +259,8 @@ class HMSM(MarkovStateModel):
 
     def fingerprint_correlation(self, a, b=None, k=None, ncv=None):
         # basic checks for a and b
-        a = types.ensure_ndarray(a, ndim=1, kind='numeric')
-        b = types.ensure_ndarray_or_None(b, ndim=1, kind='numeric', size=len(a))
+        #a = types.ensure_ndarray(a, ndim=1, kind='numeric')
+        #b = types.ensure_ndarray_or_None(b, ndim=1, kind='numeric', size=len(a))
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             a = np.dot(self.observation_probabilities, a)
@@ -277,8 +275,8 @@ class HMSM(MarkovStateModel):
 
     def relaxation(self, p0, a, maxtime=None, k=None, ncv=None):
         # basic checks for a and b
-        p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
-        a = types.ensure_ndarray(a, ndim=1, kind='numeric', size=len(p0))
+        #p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
+        #a = types.ensure_ndarray(a, ndim=1, kind='numeric', size=len(p0))
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             p0 = np.dot(self.observation_probabilities, p0)
@@ -292,8 +290,8 @@ class HMSM(MarkovStateModel):
 
     def fingerprint_relaxation(self, p0, a, k=None, ncv=None):
         # basic checks for a and b
-        p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
-        a = types.ensure_ndarray(a, ndim=1, kind='numeric', size=len(p0))
+        #p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
+        #a = types.ensure_ndarray(a, ndim=1, kind='numeric', size=len(p0))
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             p0 = np.dot(self.observation_probabilities, p0)

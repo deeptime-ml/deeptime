@@ -1,4 +1,3 @@
-
 # This file is part of BHMM (Bayesian Hidden Markov Models).
 #
 # Copyright (c) 2016 Frank Noe (Freie Universitaet Berlin)
@@ -23,7 +22,6 @@ import numpy as np
 from sktime.base import Model
 from sktime.markovprocess.bhmm import hidden
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
-
 
 # TODO: this seems somehow duplicated from pyemma.msm.HMM class + some extra features.
 from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
@@ -71,6 +69,7 @@ class HMM(Model):
     >>> model = HMM(pi, Tij, output_model)
 
     """
+
     def __init__(self, initial_distribution=None, transition_matrix=None, output_model=None, lag=1):
         self._stationary = None
         self._likelihoods = None
@@ -99,7 +98,7 @@ class HMM(Model):
         # check initial distribution
         assert np.all(Pi >= 0), 'Given initial distribution contains negative elements.'
         assert np.any(Pi > 0), 'Given initial distribution is zero'
-        self._Pi = np.array(Pi) / np.sum(Pi) # ensure normalization and make a copy
+        self._Pi = np.array(Pi) / np.sum(Pi)  # ensure normalization and make a copy
 
     def _do_spectral_decomposition(self):
         self._R, self._D, self._L = _tmatrix_disconnected.rdl_decomposition(self._Tij, reversible=self.is_reversible)

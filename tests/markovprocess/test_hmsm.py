@@ -15,13 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Test MLHMM.
-
-"""
-
-from __future__ import absolute_import
-
 import unittest
 import numpy as np
 from msmtools import analysis as msmana
@@ -44,9 +37,9 @@ class TestMLHMM(unittest.TestCase):
         nstates = 2
 
         # run with lag 1 and 10
-        cls.msm_lag1 = estimate_markov_model([obs], 1, reversible=True, connectivity='largest')
+        cls.msm_lag1 = estimate_markov_model([obs], 1, reversible=True)
         cls.hmsm_lag1 = estimate_hidden_markov_model([obs], nstates, 1, reversible=True, observe_nonempty=True)
-        cls.msm_lag10 = estimate_markov_model([obs], 10, reversible=True, connectivity='largest')
+        cls.msm_lag10 = estimate_markov_model([obs], 10, reversible=True)
         cls.hmsm_lag10 = estimate_hidden_markov_model([obs], nstates, 10, reversible=True, observe_nonempty=True)
 
     # =============================================================================
@@ -400,7 +393,6 @@ class TestMLHMM(unittest.TestCase):
         assert (len(np.unique(traj)) <= len(hmsm.transition_matrix))
 
     def test_dt_model(self):
-        from pyemma.util.units import TimeUnit
         tu = TimeUnit("1 step").get_scaled(self.hmsm_lag10.lag)
         self.assertEqual(self.hmsm_lag10.dt_model, tu)
 
@@ -426,8 +418,9 @@ class TestMLHMM(unittest.TestCase):
     def test_cktest_simple(self):
         dtraj = np.random.randint(0, 10, 100)
         oom = estimate_markov_model(dtraj, 1)
-        hmm = oom.coarse_grain(2)
-        hmm.cktest()
+        hmm = oom.coarse_grain(dtraj, 2)
+        cktest_hmm(hmm, dtraj)
+        #hmm.cktest()
 
     def test_submodel_simple(self):
         # sanity check for submodel;
@@ -453,8 +446,8 @@ class TestMLHMM(unittest.TestCase):
         self.assertEqual(hs.transition_matrix.shape, (2, 2))
 
 
-def estimate_hidden_markov_model(dtrajs, param, lag, separate, return_estimator=False, **kwargs):
-    est = MaximumLikelihoodHMSM(nstates=, lagtime=lag, separate=separate)
+def estimate_hidden_markov_model(dtrajs,nstates, lag, return_estimator=False, **kwargs):
+    est = MaximumLikelihoodHMSM(nstates=nstates, lagtime=lag, **kwargs)
     est.fit(dtrajs, )
 
     if not return_estimator:

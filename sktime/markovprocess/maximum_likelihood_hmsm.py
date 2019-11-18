@@ -142,10 +142,10 @@ class MaximumLikelihoodHMSM(Estimator):
 
         # CHECK LAG
         trajlengths = [np.size(dtraj) for dtraj in dtrajs]
-        if self.lag >= np.max(trajlengths):
-            raise ValueError(f'Illegal lag time {self.lag} exceeds longest trajectory length')
-        if self.lag > np.mean(trajlengths):
-            warnings.warn(f'Lag time {self.lag} is on the order of mean trajectory length '
+        if self.lagtime >= np.max(trajlengths):
+            raise ValueError(f'Illegal lag time {self.lagtime} exceeds longest trajectory length')
+        if self.lagtime > np.mean(trajlengths):
+            warnings.warn(f'Lag time {self.lagtime} is on the order of mean trajectory length '
                           f'{np.mean(trajlengths)}. It is recommended to fit four lag times in each '
                           'trajectory. HMM might be inaccurate.')
 
@@ -154,7 +154,7 @@ class MaximumLikelihoodHMSM(Estimator):
             self._compute_effective_stride(dtrajs)
 
         # LAG AND STRIDE DATA
-        dtrajs_lagged_strided = bhmm.lag_observations(dtrajs, self.lag, stride=self.stride)
+        dtrajs_lagged_strided = bhmm.lag_observations(dtrajs, self.lagtime, stride=self.stride)
         from sktime.markovprocess.transition_counting import TransitionCountModel
         class HiddenTransitionCountModel(TransitionCountModel):
             pass
@@ -229,10 +229,10 @@ class MaximumLikelihoodHMSM(Estimator):
             raise RuntimeError('call this only if self.stride=="effective"!')
         # by default use lag as stride (=lag sampling), because we currently have no better theory for deciding
         # how many uncorrelated counts we can make
-        self.stride = self.lag
+        self.stride = self.lagtime
         # get a quick fit from the spectral radius of the non-reversible
         from sktime.markovprocess import MaximumLikelihoodMSM
-        msm_non_rev = MaximumLikelihoodMSM(lagtime=self.lag, reversible=False, sparse=False,
+        msm_non_rev = MaximumLikelihoodMSM(lagtime=self.lagtime, reversible=False, sparse=False,
                                       dt_traj=self.dt_traj).fit(dtrajs).fetch_model()
         # if we have more than nstates timescales in our MSM, we use the next (neglected) timescale as an
         # fit of the de-correlation time
@@ -245,7 +245,7 @@ class MaximumLikelihoodHMSM(Estimator):
                                         module='msmtools.analysis.dense.decomposition')
                 corrtime = max(1, msm_non_rev.timescales()[self.nstates - 1])
             # use the smaller of these two pessimistic estimates
-            self.stride = int(min(self.lag, 2 * corrtime))
+            self.stride = int(min(self.lagtime, 2 * corrtime))
 
     @property
     def msm_init(self):
@@ -280,10 +280,10 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @connectivity.setter
     def connectivity(self, value):
-        allowed = ('largest', 'populus')
+        allowed = (None, 'largest', 'populus')
         if value not in allowed:
             raise ValueError(f'Illegal value for connectivity: {value}. Allowed values are one of: {allowed}.')
-        self._connnectiviy = value
+        self._connectivity = value
 
     ################################################################################
     # Submodel functions using estimation information (counts)
