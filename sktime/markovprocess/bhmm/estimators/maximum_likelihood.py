@@ -285,7 +285,7 @@ class MaximumLikelihoodHMM(Estimator):
         m._likelihoods = likelihoods
         m._gammas = gammas
         # set final count matrix
-        m.count_matrix = self._transition_counts(count_matrices)
+        m.transition_counts = self._transition_counts(count_matrices)
         m.initial_count = self._init_counts(gammas)
 
         # Compute hidden state trajectories using the Viterbi algorithm.

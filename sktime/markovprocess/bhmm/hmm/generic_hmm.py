@@ -318,7 +318,7 @@ class HMM(Model):
         --------
 
         """
-        if not self.hidden_state_trajectories:
+        if self.hidden_state_trajectories is None:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
         C = msmest.count_matrix(self.hidden_state_trajectories, 1, nstates=self._nstates, sparse_return=False)
@@ -533,16 +533,14 @@ class HMM(Model):
         return O, S
 
     def compute_viterbi_paths(self, observations):
-        """Computes the viterbi paths using the current HMM model"""
+        """Computes the Viterbi paths using the current HMM model"""
         A = self.transition_matrix
         pi = self.initial_distribution
-
-        # compute viterbi path for each trajectory
-        paths = []
-        for obs in observations:
+        p_obs = self.output_model.p_obs
+        paths = [
             # compute output probability matrix
-            pobs = self.output_model.p_obs(obs)
-            # hidden path
-            paths.append(hidden.viterbi(A, pobs, pi))
+            hidden.viterbi(A, p_obs(obs), pi)
+            for obs in observations
+        ]
 
-        return np.array(paths)
+        return paths

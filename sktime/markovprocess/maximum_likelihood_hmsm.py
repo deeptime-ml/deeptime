@@ -178,7 +178,7 @@ class MaximumLikelihoodHMSM(Estimator):
         # update the count matrix from the counts obtained via the Viterbi paths.
         # TODO: this seems like a hack, but is due to the duality of HMM and HMSM models...
         hmm_count_model.__init__(stride=self.stride,
-                                 count_matrix=hmm.count_matrix,
+                                 count_matrix=hmm.transition_counts,
                                  initial_count=hmm.initial_count)
         # get estimation parameters
         self._model.__init__(transition_matrix=hmm.transition_matrix, pobs=hmm.output_model.output_probabilities,
