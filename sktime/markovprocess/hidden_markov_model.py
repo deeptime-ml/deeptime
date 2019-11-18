@@ -47,15 +47,131 @@ class HMSM(MarkovStateModel):
                                    reversible=reversible, neig=neig)
 
         if pobs is not None:
-            assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
+            #assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
             assert np.allclose(pobs.sum(axis=1), 1), 'pobs is not a stochastic matrix'
             self._nstates_obs = pobs.shape[1]
             # TODO: refactor
             self.pobs = pobs
 
-    @classmethod
-    def from_bhmm_generic_hmm(cls, foo):
-        pass
+    ################################################################################
+    # Submodel functions using estimation information (counts)
+    ################################################################################
+    def submodel(self, states=None, obs=None, mincount_connectivity='1/n', inplace=False):
+        """Returns a HMM with restricted state space
+
+        Parameters
+        ----------
+        states : None, str or int-array
+            Hidden states to restrict the model to. In addition to specifying
+            the subset, possible options are:
+            * None : all states - don't restrict
+            * 'populous-strong' : strongly connected subset with maximum counts
+            * 'populous-weak' : weakly connected subset with maximum counts
+            * 'largest-strong' : strongly connected subset with maximum size
+            * 'largest-weak' : weakly connected subset with maximum size
+        obs : None, str or int-array
+            Observed states to restrict the model to. In addition to specifying
+            an array with the state labels to be observed, possible options are:
+            * None : all states - don't restrict
+            * 'nonempty' : all states with at least one observation in the estimator
+        mincount_connectivity : float or '1/n'
+            minimum number of counts to consider a connection between two states.
+            Counts lower than that will count zero in the connectivity check and
+            may thus separate the resulting transition matrix. Default value:
+            1/nstates.
+        inplace : Bool
+            if True, submodel is estimated in-place, overwriting the original
+            estimator and possibly discarding information. Default value: False
+
+        Returns
+        -------
+        hmm : HMM
+            The restricted HMM.
+
+        """
+        assert self.count_model is not None
+        if states is None and obs is None and mincount_connectivity == 0:
+            return self
+        if states is None:
+            states = np.arange(self.nstates)
+        if obs is None:
+            obs = np.arange(self.nstates_obs)
+
+        if str(mincount_connectivity) == '1/n':
+            mincount_connectivity = 1.0/float(self.nstates)
+
+        # handle new connectivity
+        from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
+        S = _tmatrix_disconnected.connected_sets(self.count_matrix,
+                                                 mincount_connectivity=mincount_connectivity,
+                                                 strong=True)
+        if inplace:
+            model = self
+        else:
+            from copy import deepcopy
+            model = deepcopy(self)
+
+        if len(S) > 1:
+            # keep only non-negligible transitions
+            C = np.zeros(self.count_matrix.shape)
+            large = np.where(self.count_matrix >= mincount_connectivity)
+            C[large] = self.count_matrix[large]
+            for s in S:  # keep all (also small) transition counts within strongly connected subsets
+                C[np.ix_(s, s)] = self.count_matrix[np.ix_(s, s)]
+            # re-fit transition matrix with disc.
+            P = _tmatrix_disconnected.estimate_P(C, reversible=self.reversible, mincount_connectivity=0)
+            pi = _tmatrix_disconnected.stationary_distribution(P, C)
+        else:
+            C = self.count_matrix
+            P = self.transition_matrix
+            pi = self.stationary_distribution
+
+        # determine substates
+        if isinstance(states, str):
+            strong = 'strong' in states
+            largest = 'largest' in states
+            S = _tmatrix_disconnected.connected_sets(self.count_matrix, mincount_connectivity=mincount_connectivity,
+                                                     strong=strong)
+            if largest:
+                score = [len(s) for s in S]
+            else:
+                score = [self.count_matrix[np.ix_(s, s)].sum() for s in S]
+            states = np.array(S[np.argmax(score)])
+        if states is not None:  # sub-transition matrix
+            model._active_set = states
+            C = C[np.ix_(states, states)].copy()
+            P = P[np.ix_(states, states)].copy()
+            P /= P.sum(axis=1)[:, None]
+            pi = _tmatrix_disconnected.stationary_distribution(P, C)
+            model.initial_count = self.initial_count[states]
+            model.initial_distribution = self.initial_distribution[states] / self.initial_distribution[states].sum()
+
+        # determine observed states
+        if str(obs) == 'nonempty':
+            obs = np.where(count_states(self.discrete_trajectories_lagged) > 0)[0]
+        if obs is not None:
+            # set observable set
+            model._observable_set = obs
+            model._nstates_obs = obs.size
+            # full2active mapping
+            _full2obs = -1 * np.ones(self._nstates_obs_full, dtype=int)
+            _full2obs[obs] = np.arange(len(obs), dtype=int)
+            # observable trajectories
+            model._dtrajs_obs = []
+            for dtraj in self.discrete_trajectories_full:
+                model._dtrajs_obs.append(_full2obs[dtraj])
+
+            # observation matrix
+            B = self.observation_probabilities[np.ix_(states, obs)].copy()
+            B /= B.sum(axis=1)[:, None]
+        else:
+            B = self.observation_probabilities
+
+        # set quantities back.
+        model.update_model_params(P=P, pobs=B, pi=pi)
+        model.count_matrix_EM = self.count_model.count_matrix[np.ix_(states, states)]  # unchanged count matrix
+        model.count_matrix = C  # count matrix consistent with P
+        return model
 
     @property
     def observation_probabilities(self):
