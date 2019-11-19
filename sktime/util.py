@@ -3,7 +3,9 @@ import numbers
 import numpy as np
 
 
-def ensure_ndarray(arr, shape: tuple = None, ndim: int = None, dtype=None, size=None) -> np.ndarray:
+def ensure_ndarray(arr, shape: tuple = None, ndim: int = None, dtype=None, size=None, allow_None=False) -> [np.ndarray, None]:
+    if allow_None and arr is None:
+        return None
     if not isinstance(arr, np.ndarray):
         arr = np.asarray(arr, dtype=dtype)
     if shape is not None and arr.shape != shape:

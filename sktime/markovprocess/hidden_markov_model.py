@@ -20,6 +20,7 @@ import numpy as np
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess.util import count_states
 from sktime.numeric import mdot
+from sktime.util import ensure_ndarray
 
 
 class HMSM(MarkovStateModel):
@@ -431,8 +432,8 @@ class HMSM(MarkovStateModel):
 
     def correlation(self, a, b=None, maxtime=None, k=None, ncv=None):
         # basic checks for a and b
-        #a = types.ensure_ndarray(a, ndim=1, kind='numeric')
-        #b = types.ensure_ndarray_or_None(b, ndim=1, kind='numeric', size=len(a))
+        a = ensure_ndarray(a, ndim=1)
+        b = ensure_ndarray(b, ndim=1, size=len(a), allow_None=True)
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             a = np.dot(self.observation_probabilities, a)
@@ -447,8 +448,8 @@ class HMSM(MarkovStateModel):
 
     def fingerprint_correlation(self, a, b=None, k=None, ncv=None):
         # basic checks for a and b
-        #a = types.ensure_ndarray(a, ndim=1, kind='numeric')
-        #b = types.ensure_ndarray_or_None(b, ndim=1, kind='numeric', size=len(a))
+        a = ensure_ndarray(a, ndim=1)
+        b = ensure_ndarray(b, ndim=1, size=len(a), allow_None=True)
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             a = np.dot(self.observation_probabilities, a)
@@ -463,8 +464,8 @@ class HMSM(MarkovStateModel):
 
     def relaxation(self, p0, a, maxtime=None, k=None, ncv=None):
         # basic checks for a and b
-        #p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
-        #a = types.ensure_ndarray(a, ndim=1, kind='numeric', size=len(p0))
+        p0 = ensure_ndarray(p0, ndim=1)
+        a = ensure_ndarray(a, ndim=1, size=len(p0))
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             p0 = np.dot(self.observation_probabilities, p0)
@@ -478,8 +479,8 @@ class HMSM(MarkovStateModel):
 
     def fingerprint_relaxation(self, p0, a, k=None, ncv=None):
         # basic checks for a and b
-        #p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
-        #a = types.ensure_ndarray(a, ndim=1, kind='numeric', size=len(p0))
+        p0 = ensure_ndarray(p0, ndim=1)
+        a = ensure_ndarray(a, ndim=1, size=len(p0))
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             p0 = np.dot(self.observation_probabilities, p0)
