@@ -16,7 +16,6 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import asyncio
 
 import numpy as np
 
@@ -125,7 +124,7 @@ class MaximumLikelihoodHMM(Estimator):
 
     def _forward_backward(self, obs, alpha, beta, gamma, pobs, counts):
         """
-        Estimation step: Runs the forward-back algorithm on trajectory with index itraj
+        Estimation step: Runs the forward-back algorithm on trajectory obs
 
         Parameters
         ----------

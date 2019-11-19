@@ -76,6 +76,8 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         self.P0 = P0
 
         active_set = test_model.count_model.active_set
+        if active_set is None:
+            active_set = np.arange(test_model.nstates)
         # map from the full set (here defined by the largest state index in active set) to active
         self._full2active = np.zeros(np.max(active_set) + 1, dtype=int)
         self._full2active[active_set] = np.arange(test_model.nstates)
@@ -107,14 +109,15 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
             subset = self._full2active[model.prior.count_model.active_set]  # find subset we are now working on
         else:
             subset = None
-        l = np.zeros((self.nsets, self.nsets))
-        r = np.zeros((self.nsets, self.nsets))
-        for i in range(self.nsets):
+        n = self.nsets
+        l = np.zeros((n, n))
+        r = np.zeros_like(l)
+        for i in range(n):
             p0 = self.P0[:, i]  # starting distribution
             p0sub = p0[subset]  # map distribution to new active set
             p0sub /= p0sub.sum()  # renormalize
             pksub_samples = [m.propagate(p0sub, mlag) for m in model.samples]
-            for j in range(self.nsets):
+            for j in range(n):
                 pk_on_set_samples = np.fromiter((np.dot(pksub, self.memberships[subset, j])
                                                  for pksub in pksub_samples), dtype=np.float, count=len(pksub_samples))
                 l[i, j], r[i, j] = confidence_interval(pk_on_set_samples, conf=self.conf)
@@ -132,7 +135,7 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
         number of sets to test on
     memberships : ndarray(nstates, nsets), optional
         optional state memberships. By default (None) will conduct a cktest
-        on PCCA (metastable) sets.
+        on PCCA (metastable) sets. In case of a hidden MSM memberships are ignored.
     mlags : int or int-array, optional
         multiples of lag times for testing the Model, e.g. range(10).
         A single int will trigger a range, i.e. mlags=10 maps to
@@ -164,9 +167,13 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
         134: 174105
 
     """
-    if memberships is None:
-        test_model.pcca(nsets)
-        memberships = test_model.metastable_memberships
+    try:
+        if memberships is None:
+            test_model.pcca(nsets)
+            memberships = test_model.metastable_memberships
+    except NotImplementedError:
+        memberships = np.eye(test_model.nstates)
+
     ck = ChapmanKolmogorovValidator(test_estimator=test_estimator, test_model=test_model, memberships=memberships,
                                     mlags=mlags, conf=conf, err_est=err_est)
     ck.fit(dtrajs)

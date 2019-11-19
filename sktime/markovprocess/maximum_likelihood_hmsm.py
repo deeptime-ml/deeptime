@@ -177,13 +177,19 @@ class MaximumLikelihoodHMSM(Estimator):
         hmm = hmm_est.fit(dtrajs_lagged_strided).fetch_model()
         # update the count matrix from the counts obtained via the Viterbi paths.
         # TODO: this seems like a hack, but is due to the duality of HMM and HMSM models...
+        # TODO: it is easy to introduce bugs due to invoking the ctor again (forgot a param), update_model_params of pyemma seems more reasonable for this case.
         hmm_count_model.__init__(stride=self.stride,
                                  count_matrix=hmm.transition_counts,
-                                 initial_count=hmm.initial_count)
+                                 initial_count=hmm.initial_count, lagtime=self.lagtime, dt_traj=self.dt_traj,
+                                 nstates=self.nstates,
+                                 active_set=np.arange(self.nstates))
         # get estimation parameters
-        self._model.__init__(transition_matrix=hmm.transition_matrix, pobs=hmm.output_model.output_probabilities,
-                    pi=hmm.stationary_distribution, dt_model=self.dt_traj, reversible=self.reversible,
-                    initial_distribution=hmm.initial_distribution, count_model=hmm_count_model)
+        self._model.__init__(transition_matrix=hmm.transition_matrix,
+                             pobs=hmm.output_model.output_probabilities,
+                             pi=hmm.stationary_distribution,
+                             dt_model=hmm_count_model.dt_traj*self.lagtime,
+                             reversible=self.reversible,
+                             initial_distribution=hmm.initial_distribution, count_model=hmm_count_model)
         self._model.hmm = hmm  # TODO: duplicity...
 
         # TODO: perhaps remove connectivity and just rely on .submodel()?
@@ -241,6 +247,7 @@ class MaximumLikelihoodHMSM(Estimator):
             raise ValueError(f'Illegal value for connectivity: {value}. Allowed values are one of: {allowed}.')
         self._connectivity = value
 
+    # TODO: model attribute
     def compute_trajectory_weights(self, dtrajs_observed):
         r"""Uses the HMSM to assign a probability weight to each trajectory frame.
 
@@ -333,61 +340,12 @@ class MaximumLikelihoodHMSM(Estimator):
         return sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)
 
 
-################################################################################
-# Model Validation
-################################################################################
-
-def cktest(dtrajs, mlags=10, conf=0.95, err_est=False):
-    """ Conducts a Chapman-Kolmogorow test.
-
-    Parameters
-    ----------
-    mlags : int or int-array, default=10
-        multiples of lag times for testing the Model, e.g. range(10).
-        A single int will trigger a range, i.e. mlags=10 maps to
-        mlags=range(10). The setting None will choose mlags automatically
-        according to the longest available trajectory
-    conf : float, optional, default = 0.95
-        confidence interval
-    err_est : bool, default=False
-        compute errors also for all estimations (computationally expensive)
-        If False, only the prediction will get error bars, which is often
-        sufficient to validate a model.
-
-    Returns
-    -------
-    cktest : :class:`ChapmanKolmogorovValidator <pyemma.msm.ChapmanKolmogorovValidator>`
-
-    References
-    ----------
-    This is an adaption of the Chapman-Kolmogorov Test described in detail
-    in [1]_ to Hidden MSMs as described in [2]_.
-
-    .. [1] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
-        Chodera, C Schuette and F Noe. 2011. Markov models of
-        molecular kinetics: Generation and validation. J Chem Phys
-        134: 174105
-
-    .. [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
-        Markov models for calculating kinetics and metastable states of complex
-        molecules. J. Chem. Phys. 139, 184114 (2013)
-
-    """
-    from sktime.markovprocess.chapman_kolmogorov_validator import ChapmanKolmogorovValidator
-    ck = ChapmanKolmogorovValidator(self, self, np.eye(self.nstates),
-                                    mlags=mlags, conf=conf, err_est=err_est)
-    if dtrajs is not None:
-        ck.fit(dtrajs)
-    return ck
-
-
 class _HMMTransitionCounts(transition_counting.TransitionCountModel):
     def __init__(self, nstates=None, stride=1, initial_count=None, **kwargs):
         super(_HMMTransitionCounts, self).__init__(**kwargs)
         self._count_matrix_EM = None
         self.initial_count = initial_count
         self._nstates_full = nstates
-        self._active_set = None
         self.stride = stride
 
     @property

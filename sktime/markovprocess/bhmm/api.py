@@ -303,8 +303,7 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
 
 # TODO: remove lag here?
 def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
-                 reversible=True, stationary=False, p=None, accuracy=1e-3, maxit=1000, maxit_P=100000,
-                 mincount_connectivity=1e-2):
+                 reversible=True, stationary=False, p=None, accuracy=1e-3, maxit=1000, maxit_P=100000):
     r""" Estimate maximum-likelihood HMM
 
     Generic maximum-likelihood estimation of HMMs

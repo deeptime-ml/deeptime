@@ -38,7 +38,7 @@ class MarkovStateModel(Model):
 
     Parameters
     ----------
-    P : ndarray(n,n)
+    transition_matrix : ndarray(n,n)
         transition matrix
 
     pi : ndarray(n), optional, default=None
@@ -1119,13 +1119,20 @@ class MarkovStateModel(Model):
     # HMM-based coarse graining
     ################################################################################
 
-    def hmm(self, dtrajs, nhidden: int):
+    def hmm(self, dtrajs, nhidden: int, return_estimator=False):
         """Estimates a hidden Markov state model as described in [1]_
 
         Parameters
         ----------
+        dtrajs: list of int-array like
+            discrete trajectories to use for estimation of the HMM.
+
         nhidden : int
             number of hidden (metastable) states
+
+        return_estimator : boolean, optional
+            if False only the Model is returned,
+            if True both the Estimator and the Model is returned.
 
         Returns
         -------
@@ -1141,7 +1148,8 @@ class MarkovStateModel(Model):
         # check if the time-scale separation is OK
         # if hmm.nstates = msm.nstates there is no problem. Otherwise, check spectral gap
         if self.nstates > nhidden:
-            timescale_ratios = self.timescales()[:-1] / self.timescales()[1:]
+            ts = self.timescales()
+            timescale_ratios = ts[:-1] / ts[1:]
             if timescale_ratios[nhidden - 2] < 1.5:
                 import warnings
                 warnings.warn('Requested coarse-grained model with {nhidden} metastable states at lag={lag}.'
@@ -1153,40 +1161,16 @@ class MarkovStateModel(Model):
                     nhidden=nhidden,
                     nhidden_1=nhidden + 1,
                     ratio=timescale_ratios[nhidden - 2],
-                ))
+                ), stacklevel=2)
         # run HMM estimate
         from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
         estimator = MaximumLikelihoodHMSM(lagtime=self.lagtime, nstates=nhidden, msm_init=self,
                                           reversible=self.is_reversible, dt_traj=self.dt_model)
         estimator.fit(dtrajs)
-        return estimator.fetch_model()
-
-    # TODO: redundant
-    def coarse_grain(self, dtrajs, ncoarse: int, method='hmm') -> Model:
-        r"""Returns a coarse-grained Markov model.
-
-        Currently only the HMM method described in [1]_ is available for coarse-graining MSMs.
-
-        Parameters
-        ----------
-        ncoarse : int
-            number of coarse states
-
-        Returns
-        -------
-        hmsm : :class:`MaximumLikelihoodHMSM`
-
-        References
-        ----------
-        .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
-            Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
-            J. Chem. Phys. 139, 184114 (2013)
-
-        """
-        # check input
-        assert 1 < ncoarse <= self.nstates, 'nstates must be an int in [2,msmobj.nstates]'
-
-        return self.hmm(dtrajs, ncoarse)
+        model = estimator.fetch_model()
+        if return_estimator:
+            return estimator, model
+        return model
 
     def score(self, dtrajs, score_method='VAMP2', score_k=10):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes [1]_ [2]_

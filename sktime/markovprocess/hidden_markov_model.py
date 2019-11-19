@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
+from msmtools.dtraj import index_states
 
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess.util import count_states
@@ -54,6 +55,7 @@ class HMSM(MarkovStateModel):
 
         if pobs is not None:
             #assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
+            pobs = ensure_ndarray(pobs, ndim=2, dtype=np.float64)
             assert np.allclose(pobs.sum(axis=1), 1), 'pobs is not a stochastic matrix'
             self._nstates_obs = pobs.shape[1]
             # TODO: refactor
@@ -96,7 +98,7 @@ class HMSM(MarkovStateModel):
             The restricted HMM.
         """
         if self.count_model is None:
-            return self.__submodel(states=states, obs=obs)
+            return self._submodel(states=states, obs=obs)
 
         if states is None and obs is None and mincount_connectivity == 0:
             return self
@@ -311,10 +313,7 @@ class HMSM(MarkovStateModel):
         P_c = self.transition_matrix
         P_c_k = np.linalg.matrix_power(P_c, k)  # take a power if needed
         B = self.observation_probabilities
-        # TODO: use mdot
-        C_ = mdot(B.T, Pi_c, P_c_k, B)
         C = np.dot(np.dot(B.T, Pi_c), np.dot(P_c_k, B))
-        np.testing.assert_equal(C_, C)
         P = C / C.sum(axis=1)[:, None]  # row normalization
         return P
 
@@ -369,6 +368,7 @@ class HMSM(MarkovStateModel):
             p0 = np.dot(self.observation_probabilities, p0)
 
         self._ensure_eigendecomposition(self.nstates)
+        # TODO: eigenvectors_right() and so forth call ensure_eigendecomp again with self.neig instead of self.nstates
         pk = mdot(p0.T, self.eigenvectors_right(), np.diag(np.power(self.eigenvalues(), k)), self.eigenvectors_left())
 
         if micro:
@@ -377,8 +377,8 @@ class HMSM(MarkovStateModel):
         # normalize to 1.0 and return
         return pk / pk.sum()
 
-    def __submodel(self, states=None, obs=None):
-        """Returns a HMM with restricted state space
+    def _submodel(self, states=None, obs=None):
+        """Returns a HMM with restricted state space (only restrict states and observations, not counts
 
         Parameters
         ----------
@@ -393,6 +393,8 @@ class HMSM(MarkovStateModel):
             The restricted HMM.
 
         """
+        assert self.count_model is None
+
         if states is None and obs is None:
             return self  # do nothing
         if states is None:
@@ -418,7 +420,7 @@ class HMSM(MarkovStateModel):
     # ================================================================================================================
 
     def expectation(self, a):
-        #a = types.ensure_float_vector(a, require_order=True)
+        a = ensure_ndarray(a, dtype=np.float64)
         # are we on microstates space?
         if len(a) == self.nstates_obs:
             # project to hidden and compute
@@ -626,3 +628,41 @@ class HMSM(MarkovStateModel):
         for t, h in enumerate(htraj):
             otraj[t] = output_distributions[h].rvs()  # current cluster
         return htraj, otraj
+    ################################################################################
+    # Generation of trajectories and samples
+    ################################################################################
+
+    @property
+    def observable_state_indexes(self):
+        """
+        Ensures that the observable states are indexed and returns the indices
+        """
+        try:  # if we have this attribute, return it
+            return self._observable_state_indexes
+        except AttributeError:  # didn't exist? then create it.
+            self._observable_state_indexes = index_states(self.discrete_trajectories_obs)
+            return self._observable_state_indexes
+
+    # TODO: generate_traj. How should that be defined? Probably indexes of observable states, but should we specify
+    #                      hidden or observable states as start and stop states?
+    # TODO: sample_by_state. How should that be defined?
+
+    def sample_by_observation_probabilities(self, nsample):
+        r"""Generates samples according to the current observation probability distribution
+
+        Parameters
+        ----------
+        nsample : int
+            Number of samples per distribution. If replace = False, the number of returned samples per state could be
+            smaller if less than nsample indexes are available for a state.
+
+        Returns
+        -------
+        indexes : length m list of ndarray( (nsample, 2) )
+            List of the sampled indices by distribution.
+            Each element is an index array with a number of rows equal to nsample, with rows consisting of a
+            tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
+
+        """
+        import pyemma.util.discrete_trajectories as dt
+        return dt.sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)

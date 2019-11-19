@@ -29,9 +29,9 @@ from msmtools.estimation import count_matrix, largest_connected_set, largest_con
 from msmtools.generation import generate_traj
 from msmtools.util.birth_death_chain import BirthDeathChain
 
+from sktime.datasets import double_well_discrete
 from sktime.lagged_model_validator import LaggedModelValidation
 from sktime.markovprocess import cktest
-from sktime.datasets import double_well_discrete
 from tests.markovprocess.factory import bayesian_markov_model
 from tests.markovprocess.test_hmsm import estimate_hidden_markov_model
 from tests.markovprocess.test_msm import estimate_markov_model
@@ -212,18 +212,16 @@ class TestCK_AllEstimators(unittest.TestCase):
         assert np.allclose(self.ck.predictions[0], predLref, rtol=0.1, atol=10.0)
         assert np.allclose(self.ck.predictions[1], predRref, rtol=0.1, atol=10.0)
 
-    @unittest.skip('hmsm not yet impled')
     def test_its_hmsm(self):
-        MLHMM = estimate_hidden_markov_model([double_well_discrete().dtraj_n6good], 2, 10)
-        self.ck = MLHMM.cktest(mlags=[0, 1, 10])
-        estref = np.array([[[1., 0.],
-                            [0., 1.]],
+        dtraj = [double_well_discrete().dtraj_n6good]
+        est, MLHMM = estimate_hidden_markov_model(dtraj, 2, 10, return_estimator=True)
+        self.ck = cktest(test_estimator=est, test_model=MLHMM, dtrajs=dtraj, mlags=[1, 10], nsets=2).fetch_model()
+        estref = np.array([
                            [[0.98515058, 0.01484942],
                             [0.01442843, 0.98557157]],
                            [[0.88172685, 0.11827315],
                             [0.11878823, 0.88121177]]])
-        predref = np.array([[[1., 0.],
-                             [0., 1.]],
+        predref = np.array([
                             [[0.98515058, 0.01484942],
                              [0.01442843, 0.98557157]],
                             [[0.86961812, 0.13038188],
@@ -238,7 +236,7 @@ class TestCK_AllEstimators(unittest.TestCase):
 
     @unittest.skip('hmsm not yet impled')
     def test_its_bhmm(self):
-        BHMM = msm.bayesian_hidden_markov_model([double_well_discrete().dtraj_n6good], 2, 10)
+        BHMM = bayesian_hidden_markov_model([double_well_discrete().dtraj_n6good], 2, 10)
         self.ck = BHMM.cktest(mlags=[0, 1, 10])
         estref = np.array([[[1., 0.],
                             [0., 1.]],

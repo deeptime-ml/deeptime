@@ -16,7 +16,12 @@ def mdot(*args):
         raise ValueError('need at least one argument')
     args = list(args)[::-1]
     x = args.pop()
+    i=0
     while len(args):
         y = args.pop()
-        x = np.dot(x, y)
+        try:
+            x = np.dot(x, y)
+            i+=1
+        except ValueError as ve:
+            raise ValueError(f'argument {i} and {i+1} are not shape compatible:\n{ve}')
     return x
