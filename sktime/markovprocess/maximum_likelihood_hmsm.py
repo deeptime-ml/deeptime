@@ -183,6 +183,8 @@ class MaximumLikelihoodHMSM(Estimator):
                                  initial_count=hmm.initial_count, lagtime=self.lagtime, dt_traj=self.dt_traj,
                                  nstates=self.nstates,
                                  active_set=np.arange(self.nstates))
+        # udpate model params would only set these:
+        # hmm_count_model._update_params(count_matrix=hmm.transition_counts, initial_counts=hmm.initial_counts)
         # get estimation parameters
         self._model.__init__(transition_matrix=hmm.transition_matrix,
                              pobs=hmm.output_model.output_probabilities,
@@ -396,12 +398,12 @@ class _HMMCountEstimator(transition_counting.TransitionCountEstimator):
 
         # EVALUATE STRIDE
         if self.stride == 'effective':
-            stride = self._compute_effective_stride(dtrajs)
+            stride = _HMMCountEstimator._compute_effective_stride(dtrajs, self.stride, self.lagtime, self.nstates)
         else:
             stride = self.stride
 
         # LAG AND STRIDE DATA
-        dtrajs_lagged_strided = lag_observations(dtrajs, int(self.lagtime), stride=self.stride)
+        dtrajs_lagged_strided = lag_observations(dtrajs, int(self.lagtime), stride=stride)
 
         # placeholder for counts computed from transition paths during HMM estimation.
         self._model.__init__(lagtime=self.lagtime, stride=stride)
@@ -409,27 +411,27 @@ class _HMMCountEstimator(transition_counting.TransitionCountEstimator):
 
         return self
 
-    def _compute_effective_stride(self, dtrajs):
-        if self.stride != 'effective':
+    @staticmethod
+    def _compute_effective_stride(dtrajs, stride, lagtime, nstates):
+        if stride != 'effective':
             raise RuntimeError('call this only if self.stride=="effective"!')
         # by default use lag as stride (=lag sampling), because we currently have no better theory for deciding
         # how many uncorrelated counts we can make
-        stride = self.lagtime
+        stride = lagtime
         # get a quick fit from the spectral radius of the non-reversible
         from sktime.markovprocess import MaximumLikelihoodMSM
-        msm_non_rev = MaximumLikelihoodMSM(lagtime=self.lagtime, reversible=False, sparse=False,
-                                           dt_traj=self.dt_traj).fit(dtrajs).fetch_model()
+        msm_non_rev = MaximumLikelihoodMSM(lagtime=lagtime, reversible=False, sparse=False).fit(dtrajs).fetch_model()
         # if we have more than nstates timescales in our MSM, we use the next (neglected) timescale as an
         # fit of the de-correlation time
-        if msm_non_rev.nstates > self.nstates:
+        if msm_non_rev.nstates > nstates:
             # because we use non-reversible msm, we want to silence the ImaginaryEigenvalueWarning
             import warnings
             from msmtools.util.exceptions import ImaginaryEigenValueWarning
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', category=ImaginaryEigenValueWarning,
                                         module='msmtools.analysis.dense.decomposition')
-                correlation_time = max(1, msm_non_rev.timescales()[self.nstates - 1])
+                correlation_time = max(1, msm_non_rev.timescales()[nstates - 1])
             # use the smaller of these two pessimistic estimates
-            stride = int(min(self.lagtime, 2 * correlation_time))
+            stride = int(min(lagtime, 2 * correlation_time))
 
         return stride
