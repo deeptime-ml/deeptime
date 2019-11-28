@@ -23,7 +23,6 @@ from msmtools.analysis import is_transition_matrix
 from sktime.base import Model
 from sktime.markovprocess.bhmm import hidden
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
-
 # TODO: this seems somehow duplicated from pyemma.msm.HMM class + some extra features.
 from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
 
@@ -333,7 +332,7 @@ class HMM(Model):
             n[i] is the number of trajectories starting in state i
 
         """
-        if not self.hidden_state_trajectories:
+        if self.hidden_state_trajectories is None:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
         n = [traj[0] for traj in self.hidden_state_trajectories]
@@ -349,8 +348,6 @@ class HMM(Model):
             List of observed trajectories.
         state_index : int
             The index of the hidden state for which corresponding observations are to be retrieved.
-        dtype : numpy.dtype, optional, default=numpy.float64
-            The numpy dtype to use to store the collected observations.
 
         Returns
         -------
@@ -366,13 +363,12 @@ class HMM(Model):
         if not self.hidden_state_trajectories:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
-        dtype = observations[0].dtype
-        collected_observations = np.array([], dtype=dtype)
-        for (s_t, o_t) in zip(self.hidden_state_trajectories, observations):
+        collected_observations = []
+        for s_t, o_t in zip(self.hidden_state_trajectories, observations):
             indices = np.where(s_t == state_index)[0]
-            collected_observations = np.append(collected_observations, o_t[indices])
+            collected_observations = collected_observations.append((collected_observations, o_t[indices]))
 
-        return collected_observations
+        return np.array(collected_observations)
 
     def generate_synthetic_state_trajectory(self, nsteps, initial_Pi=None, start=None, stop=None, dtype=np.int32):
         """Generate a synthetic state trajectory.
@@ -413,9 +409,9 @@ class HMM(Model):
         # Generate first state sample.
         if start is None:
             if initial_Pi is not None:
-                start = np.random.choice(range(self._nstates), size=1, p=initial_Pi)
+                start = np.random.choice(self._nstates, size=1, p=initial_Pi)
             else:
-                start = np.random.choice(range(self._nstates), size=1, p=self._Pi)
+                start = np.random.choice(self._nstates, size=1, p=self._Pi)
 
         # Generate and return trajectory
         from msmtools import generation as msmgen
