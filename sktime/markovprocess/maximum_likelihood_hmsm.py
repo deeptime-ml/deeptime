@@ -18,6 +18,7 @@
 import warnings
 
 import numpy as np
+from msmtools.dtraj import number_of_states
 
 from sktime.base import Estimator
 from sktime.markovprocess import MarkovStateModel, transition_counting
@@ -182,6 +183,7 @@ class MaximumLikelihoodHMSM(Estimator):
                                  count_matrix=hmm.transition_counts,
                                  initial_count=hmm.initial_count, lagtime=self.lagtime, dt_traj=self.dt_traj,
                                  nstates=self.nstates,
+                                 nstates_obs=number_of_states(dtrajs_lagged_strided),
                                  active_set=np.arange(self.nstates))
         # udpate model params would only set these:
         # hmm_count_model._update_params(count_matrix=hmm.transition_counts, initial_counts=hmm.initial_counts)
@@ -343,11 +345,14 @@ class MaximumLikelihoodHMSM(Estimator):
 
 
 class _HMMTransitionCounts(transition_counting.TransitionCountModel):
-    def __init__(self, nstates=None, stride=1, initial_count=None, **kwargs):
+    def __init__(self, nstates=None, nstates_obs=None, stride=1, initial_count=None, **kwargs):
         super(_HMMTransitionCounts, self).__init__(**kwargs)
         self._count_matrix_EM = None
         self.initial_count = initial_count
         self._nstates_full = nstates
+        self._nstates_obs = nstates_obs
+        if nstates_obs is not None:
+            self._observable_set = np.arange(nstates_obs)
         self.stride = stride
 
     @property
@@ -374,6 +379,14 @@ class _HMMTransitionCounts(transition_counting.TransitionCountModel):
         # TODO: we do not want this.
         return self._dtrajs
 
+    @property
+    def nstates_obs(self):
+        return self._nstates_obs
+
+    @property
+    def observable_set(self):
+        return self._observable_set
+
 
 class _HMMCountEstimator(transition_counting.TransitionCountEstimator):
     def __init__(self, lagtime, nstates, stride='effective'):
@@ -382,7 +395,7 @@ class _HMMCountEstimator(transition_counting.TransitionCountEstimator):
         self.stride = stride
         self.nstates = nstates
 
-    def _create_model(self) -> transition_counting.TransitionCountModel:
+    def _create_model(self) -> _HMMTransitionCounts:
         return _HMMTransitionCounts()
 
     def fit(self, data):
@@ -404,9 +417,9 @@ class _HMMCountEstimator(transition_counting.TransitionCountEstimator):
 
         # LAG AND STRIDE DATA
         dtrajs_lagged_strided = lag_observations(dtrajs, int(self.lagtime), stride=stride)
-
+        nstates_obs = number_of_states(dtrajs_lagged_strided)
         # placeholder for counts computed from transition paths during HMM estimation.
-        self._model.__init__(lagtime=self.lagtime, stride=stride)
+        self._model.__init__(lagtime=self.lagtime, stride=stride, nstates_obs=nstates_obs)
         self._model._dtrajs = dtrajs_lagged_strided
 
         return self

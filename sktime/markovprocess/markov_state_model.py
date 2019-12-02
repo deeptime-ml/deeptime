@@ -353,7 +353,7 @@ class MarkovStateModel(Model):
             self._ensure_eigenvalues(neig=k + 1)
         from msmtools.analysis.dense.decomposition import timescales_from_eigenvalues as timescales
 
-        ts = timescales(self._eigenvalues, tau=self._dt_model)
+        ts = timescales(self._eigenvalues, tau=self._dt_model.m) * self._dt_model.u
         if k is None:
             return ts[1:]
         else:

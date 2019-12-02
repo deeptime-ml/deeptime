@@ -172,3 +172,33 @@ def confidence_interval(data, conf=0.95):
             mean, lower[i], upper[i] = _confidence_interval_1d(col)
 
         return lower, upper
+
+
+def call_member(obj, f, *args, **kwargs):
+    """ Calls the specified method, property or attribute of the given object
+
+    Parameters
+    ----------
+    obj : object
+        The object that will be used
+    f : str or function
+        Name of or reference to method, property or attribute
+    *args : list
+        list of arguments to pass to f during evaluation
+    ** kwargs: dict
+        keyword arguments to pass to f during evaluation
+    """
+    import inspect
+    # get function name
+    if not isinstance(f, str):
+        fname = f.__func__.__name__
+    else:
+        fname = f
+    # get the method ref
+    method = getattr(obj, fname)
+    # handle cases
+    if inspect.ismethod(method):
+        return method(*args, **kwargs)
+
+    # attribute or property
+    return method
