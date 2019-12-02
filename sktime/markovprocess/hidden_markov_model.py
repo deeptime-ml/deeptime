@@ -41,6 +41,12 @@ class HMSM(MarkovStateModel):
     dt_model : str, optional, default='1 step'
         time step of the model
 
+    neig:
+
+    reversible:
+
+    initial_distribution:
+
     """
 
     def __init__(self, transition_matrix=None, pobs=None, pi=None, dt_model='1 step',
@@ -149,6 +155,7 @@ class HMSM(MarkovStateModel):
             else:
                 score = [count_matrix[np.ix_(s, s)].sum() for s in S]
             states = np.array(S[np.argmax(score)])
+
         if states is not None:  # sub-transition matrix
             model._active_set = states
             C = C[np.ix_(states, states)].copy()
@@ -276,7 +283,7 @@ class HMSM(MarkovStateModel):
             :math:`p_{ii}` are the diagonal entries of the hidden transition matrix.
 
         """
-        return -self._timeunit_model.dt / np.log(np.diag(self.transition_matrix))
+        return -self._dt_model / np.log(np.diag(self.transition_matrix))
 
     def transition_matrix_obs(self, k=1):
         r""" Computes the transition matrix between observed states
