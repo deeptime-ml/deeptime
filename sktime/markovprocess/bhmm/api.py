@@ -15,8 +15,10 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import types
 
 import numpy as _np
+
 
 def _guess_output_type(observations):
     """ Suggests a HMM model type based on the observation data
@@ -38,12 +40,10 @@ def _guess_output_type(observations):
         One of {'discrete', 'gaussian'}
 
     """
-    from bhmm.util import types as _types
-
     o1 = _np.array(observations[0])
 
     # CASE: vector of int? Then we want a discrete HMM
-    if _types.is_int_vector(o1):
+    if types.is_int_vector(o1):
         return 'discrete'
 
     # CASE: not int type, but everything is an integral number. Then we also go for discrete
@@ -57,7 +57,7 @@ def _guess_output_type(observations):
             return 'discrete'
 
     # CASE: vector of double? Then we want a gaussian
-    if _types.is_float_vector(o1):
+    if types.is_float_vector(o1):
         return 'gaussian'
 
     # None of the above? Then we currently do not support this format!

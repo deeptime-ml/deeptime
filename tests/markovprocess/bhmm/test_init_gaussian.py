@@ -16,10 +16,12 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
 import unittest
-from bhmm.init.gaussian import init_model_gaussian1d
+
 import msmtools.analysis as msmana
+import numpy as np
+
+from sktime.markovprocess.bhmm.init.gaussian import init_model_gaussian1d
 
 
 class TestHMM(unittest.TestCase):
@@ -43,7 +45,6 @@ class TestHMM(unittest.TestCase):
         initial_model = init_model_gaussian1d(self._observations, self._nstates)
         assert initial_model.nstates == self._nstates
         assert msmana.is_transition_matrix(initial_model.transition_matrix)
-
 
 
 if __name__ == "__main__":

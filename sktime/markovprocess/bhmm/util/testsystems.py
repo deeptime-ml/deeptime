@@ -17,9 +17,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
 import math
 
+import numpy as np
+
+from sktime.markovprocess.bhmm import HMM
 from sktime.markovprocess.bhmm.output_models.discrete import DiscreteOutputModel
 from sktime.markovprocess.bhmm.output_models.gaussian import GaussianOutputModel
 
@@ -183,7 +185,6 @@ def dalton_model(nstates=3, omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
     Pi = msmana.stationary_distribution(Tij)
 
     # Construct HMM with these parameters.
-    from bhmm import HMM
     model = HMM(Pi, Tij, output_model)
 
     return model

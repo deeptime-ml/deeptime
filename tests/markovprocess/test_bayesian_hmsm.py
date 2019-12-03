@@ -270,29 +270,22 @@ class TestBHMM(unittest.TestCase):
         assert np.all(L <= mean)
         assert np.all(R >= mean)
 
-    @unittest.skip('not yet impled')
     def test_submodel_simple(self):
         # sanity check for submodel;
-        # call should not alter self
-        from copy import deepcopy
-        # dtrj = np.random.randint(0, 2, size=100)
-        # dtrj[np.random.randint(0, dtrj.shape[0], 3)] = 2
-        # hard-coded due to stochastic failures
         dtrj = [1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0,
                 0, 2, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
                 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
                 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0]
 
-        h = bayesian_hidden_markov_model(dtrj, 3, 2)
-        h_original = deepcopy(h)
+        h = bayesian_hidden_markov_model(dtrj, 3, 2).fetch_model()
 
-        hs = h.submodel_largest(mincount_connectivity=5)
+        hs = h.submodel(states='largest-strong', mincount_connectivity=5)
 
-        self.assertTrue(h == h_original)
-
-        self.assertEqual(hs.timescales().shape[0], 1)
-        self.assertEqual(hs.pi.shape[0], 2)
-        self.assertEqual(hs.transition_matrix.shape, (2, 2))
+        models_to_check = [hs.prior] + hs.samples
+        for i, m in enumerate(models_to_check):
+            self.assertEqual(m.timescales().shape[0], 1, msg=i)
+            self.assertEqual(m.stationary_distribution.shape[0], 2, msg=i)
+            self.assertEqual(m.transition_matrix.shape, (2, 2), msg=i)
 
     # TODO: these tests can be made compact because they are almost the same. can define general functions for testing
     # TODO: samples and stats, only need to implement consistency check individually.
@@ -303,11 +296,11 @@ class TestBHMMSpecialCases(unittest.TestCase):
     def test_separate_states(self):
         dtrajs = [np.array([0, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1]),
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
-        hmm_bayes = bayesian_hidden_markov_model(dtrajs, 3, lag=1, separate=[0], nsamples=100)
+        hmm_bayes = bayesian_hidden_markov_model(dtrajs, 3, lag=1, separate=[0], nsamples=100).fetch_model()
         # we expect zeros in all samples at the following indexes:
         pobs_zeros = [[0, 1, 2, 2, 2], [0, 0, 1, 2, 3]]
         for s in hmm_bayes.samples:
-            assert np.allclose(s.observation_probabilities[pobs_zeros], 0)
+            np.testing.assert_allclose(s.observation_probabilities[pobs_zeros], 0)
         for strajs in hmm_bayes.sampled_trajs:
             assert strajs[0][0] == 2
             assert strajs[0][6] == 2
@@ -315,25 +308,27 @@ class TestBHMMSpecialCases(unittest.TestCase):
     def test_initialized_bhmm(self):
         obs = datasets.double_well_discrete().dtraj
 
-        init_hmm = estimate_hidden_markov_model(obs, 2, 10)
-        bay_hmm = BayesianHMSM(nstates=init_hmm.nstates, lag=init_hmm.lag,
-                               stride=init_hmm.stride, init_hmsm=init_hmm)
-        bay_hmm.estimate(obs)
+        est, init_hmm = estimate_hidden_markov_model(obs, 2, 10, return_estimator=True)
+        bay_hmm_est = BayesianHMSM(nstates=est.nstates, lagtime=init_hmm.lagtime,
+                               stride=est.stride, init_hmsm=init_hmm)
+        bay_hmm_est.fit(obs)
+        bay_hmm = bay_hmm_est.fetch_model()
 
-        assert np.isclose(bay_hmm.stationary_distribution.sum(), 1)
+        assert np.isclose(bay_hmm.prior.stationary_distribution.sum(), 1)
+        assert all(np.isclose(m.stationary_distribution.sum(), 1) for m in bay_hmm)
 
         with self.assertRaises(NotImplementedError) as ctx:
             obs = np.copy(obs)
             assert obs[0] != np.min(obs)
             obs[0] = np.min(obs)
-            bay_hmm.estimate(obs)
+            bay_hmm_est.fit(obs)
             self.assertIn('same data', ctx.exception.message)
 
     def test_initialized_bhmm_newstride(self):
         obs = np.random.randint(0, 2, size=1000)
 
-        init_hmm = estimate_hidden_markov_model(obs, 2, 10)
-        bay_hmm = BayesianHMSM(nstates=init_hmm.nstates, lag=init_hmm.lag,
+        est, init_hmm = estimate_hidden_markov_model(obs, 2, 10, return_estimator=True)
+        bay_hmm = BayesianHMSM(nstates=init_hmm.nstates, lagtime=est.lagtime,
                                stride='effective', init_hmsm=init_hmm)
         bay_hmm.estimate(obs)
 
