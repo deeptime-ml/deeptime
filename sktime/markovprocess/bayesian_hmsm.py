@@ -39,6 +39,14 @@ __all__ = [
 class QuantityStatistics(Model):
     """ Container for statistical quantities computed on samples.
 
+    Parameters
+    ----------
+
+    samples: list of ndarrays
+        the samples
+    store_samples: bool, default=False
+        whether to store the samples (array).
+
     Attributes
     ----------
     mean: array(n)
@@ -49,13 +57,17 @@ class QuantityStatistics(Model):
         element-wise lower bounds
     R : ndarray(shape)
         element-wise upper bounds
+
     """
 
-    def __init__(self, samples):
+    def __init__(self, samples, store_samples=False):
         # TODO: shall we refer to the original object?
-        # TODO: shall we store the samples as well? storing only derived attributes is more memory friendly.
         # TODO: we can re-add the quantity, because the creation of a new array will strip it.
         samples = np.array(samples)
+        if store_samples:
+            self.samples = samples
+        else:
+            self.samples = None
         self.mean = samples.mean(axis=0)
         self.std = samples.std(axis=0)
         self.L, self.R = confidence_interval(samples)
@@ -71,6 +83,9 @@ class BayesianHMMPosterior(Model):
         self.prior = prior
         self.samples = samples
         self.hidden_state_trajectories_samples = hidden_state_trajs
+
+        # TODO: deprecated...
+        self.sampled_trajs = self.hidden_state_trajectories_samples
 
     def __iter__(self):
         for s in self.samples:
@@ -232,11 +247,10 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
             if self.nstates != self.init_hmsm.nstates:
                 raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible nstates.')
 
-            # TODO: since we do not store dtrajs, we can not ensure this.
-            # if (len(dtrajs) != len(self.init_hmsm.dtrajs_full) or
-            #        not all((np.array_equal(d1, d2) for d1, d2 in zip(dtrajs, self.init_hmsm.dtrajs_full)))):
-            #    raise NotImplementedError('Bayesian HMM estimation with init_hmsm is currently only implemented '
-            #                              'if applied to the same data.')
+            if (len(dtrajs) != len(self.init_hmsm.count_model.dtrajs_full) or
+                    not all((np.array_equal(d1, d2) for d1, d2 in zip(dtrajs, self.init_hmsm.count_model.dtrajs_full)))):
+                raise NotImplementedError('Bayesian HMM estimation with init_hmsm is currently only implemented '
+                                          'if applied to the same data.')
 
             # EVALUATE STRIDE
             init_stride = self.init_hmsm.count_model.stride
@@ -245,16 +259,18 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
                                                                            self.nstates)
 
             # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
+            dtrajs_lagged_strided = self.init_hmsm.count_model.dtrajs_lagged_strided
             if self.stride != init_stride:
-                dtrajs_lagged_strided = lag_observations(dtrajs, self.lag, stride=self.stride)
+                _dtrajs_lagged_strided = lag_observations(dtrajs, self.lag, stride=self.stride)
                 _nstates_obs = number_of_states(dtrajs_lagged_strided, only_used=True)
                 _nstates_obs_full = number_of_states(dtrajs)
 
-                if np.setxor1d(np.concatenate(dtrajs_lagged_strided),
+                if np.setxor1d(np.concatenate(_dtrajs_lagged_strided),
                                np.concatenate(self.init_hmsm.count_model.dtrajs_lagged_strided)).size != 0:
                     raise UserWarning('Choice of stride has excluded a different set of microstates than in '
                                       'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
                                       'must match to the one used for init_hmsm estimation.')
+                del _dtrajs_lagged_strided
 
             # as mentioned in the docstring, take init_hmsm observed set observation probabilities
             self.observe_nonempty = False

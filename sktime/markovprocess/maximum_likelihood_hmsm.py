@@ -343,6 +343,63 @@ class MaximumLikelihoodHMSM(Estimator):
         from msmtools.dtraj import sample_indexes_by_distribution
         return sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)
 
+    ################################################################################
+    # Model Validation
+    ################################################################################
+
+    def cktest(self, dtrajs, mlags=10, conf=0.95, err_est=False):
+        """ Conducts a Chapman-Kolmogorow test.
+
+        Parameters
+        ----------
+        dtrajs:
+        mlags : int or int-array, default=10
+            multiples of lag times for testing the Model, e.g. range(10).
+            A single int will trigger a range, i.e. mlags=10 maps to
+            mlags=range(10). The setting None will choose mlags automatically
+            according to the longest available trajectory
+        conf : float, optional, default = 0.95
+            confidence interval
+        err_est : bool, default=False
+            compute errors also for all estimations (computationally expensive)
+            If False, only the prediction will get error bars, which is often
+            sufficient to validate a model.
+        n_jobs : int, default=None
+            how many jobs to use during calculation
+        show_progress : bool, default=True
+            Show progressbars for calculation?
+
+        Returns
+        -------
+        cktest : :class:`ChapmanKolmogorovValidator <pyemma.msm.ChapmanKolmogorovValidator>`
+
+        References
+        ----------
+        This is an adaption of the Chapman-Kolmogorov Test described in detail
+        in [1]_ to Hidden MSMs as described in [2]_.
+
+        .. [1] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
+            Chodera, C Schuette and F Noe. 2011. Markov models of
+            molecular kinetics: Generation and validation. J Chem Phys
+            134: 174105
+
+        .. [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
+            Markov models for calculating kinetics and metastable states of complex
+            molecules. J. Chem. Phys. 139, 184114 (2013)
+
+        """
+        from sktime.markovprocess.chapman_kolmogorov_validator import ChapmanKolmogorovValidator
+        try:
+            model = self.fetch_model()
+            if hasattr(model, 'prior'):
+                model = model.prior
+        except AttributeError:
+            raise RuntimeError('call fit() first!')
+        ck = ChapmanKolmogorovValidator(model, self, np.eye(self.nstates),
+                                        mlags=mlags, conf=conf, err_est=err_est)
+        ck.fit(dtrajs)
+        return ck.fetch_model()
+
 
 class _HMMTransitionCounts(transition_counting.TransitionCountModel):
     def __init__(self, nstates=None, nstates_obs=None, stride=1, initial_count=None, **kwargs):
@@ -378,6 +435,10 @@ class _HMMTransitionCounts(transition_counting.TransitionCountModel):
     def dtrajs_lagged_strided(self):
         # TODO: we do not want this.
         return self._dtrajs
+
+    @property
+    def dtrajs_full(self):
+        return self._dtrajs_full
 
     @property
     def nstates_obs(self):
@@ -421,6 +482,7 @@ class _HMMCountEstimator(transition_counting.TransitionCountEstimator):
         # placeholder for counts computed from transition paths during HMM estimation.
         self._model.__init__(lagtime=self.lagtime, stride=stride, nstates_obs=nstates_obs)
         self._model._dtrajs = dtrajs_lagged_strided
+        self._model._dtrajs_full = dtrajs
 
         return self
 
