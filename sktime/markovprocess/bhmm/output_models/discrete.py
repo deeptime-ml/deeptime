@@ -16,7 +16,9 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import numpy as np
+from numpy.random import dirichlet
 
 from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
 from .impl_c import discrete
@@ -188,7 +190,6 @@ class DiscreteOutputModel(OutputModel):
         >>> output_model.sample(obs)
 
         """
-        from numpy.random import dirichlet
         N, M = self._output_probabilities.shape  # nstates, nsymbols
         for i, obs_by_state in enumerate(observations_by_state):
             # count symbols found in data

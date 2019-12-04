@@ -244,7 +244,7 @@ class MaximumLikelihoodHMM(Estimator):
             self._model = init_hmm(observations, self.nstates, output=self._output)
 
         it = 0
-        likelihoods = np.zeros(self.maxit)
+        likelihoods = np.empty(self.maxit)
         loglik = 0.0
         # flag if connectivity has changed (e.g. state lost) - in that case the likelihood
         # is discontinuous and can't be used as a convergence criterion in that iteration.
