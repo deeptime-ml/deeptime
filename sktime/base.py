@@ -87,6 +87,11 @@ class Model(_base_methods_mixin):
         import copy
         return copy.deepcopy(self)
 
+    def _update_params(self, **kwargs):
+        for k, v in kwargs.items():
+            if v is not None:
+                setattr(self, k, v)
+
 
 class Estimator(_base_methods_mixin):
 

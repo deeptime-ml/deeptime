@@ -184,7 +184,7 @@ class MaximumLikelihoodHMSM(Estimator):
                                  initial_count=hmm.initial_count, lagtime=self.lagtime, dt_traj=self.dt_traj,
                                  nstates=self.nstates,
                                  nstates_obs=number_of_states(dtrajs_lagged_strided),
-                                 active_set=np.arange(self.nstates))
+                                 active_set=None)
         # udpate model params would only set these:
         # hmm_count_model._update_params(count_matrix=hmm.transition_counts, initial_counts=hmm.initial_counts)
         # get estimation parameters

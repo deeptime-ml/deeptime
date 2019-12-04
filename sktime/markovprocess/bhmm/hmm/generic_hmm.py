@@ -18,7 +18,6 @@
 
 import msmtools.estimation as msmest
 import numpy as np
-from msmtools.analysis import is_transition_matrix
 
 from sktime.base import Model
 from sktime.markovprocess.bhmm import hidden
@@ -85,18 +84,21 @@ class HMM(Model):
     def update(self, Pi, Tij):
         r""" Updates the transition matrix and recomputes all derived quantities """
         # update transition matrix by copy
+        # TODO: why copy here?
         self._Tij = np.array(Tij)
         # set number of states
-        self._nstates = np.shape(Tij)[0]
-        assert is_transition_matrix(self._Tij), 'Given transition matrix is not a stochastic matrix'
-        assert self._Tij.shape[0] == self._nstates, 'Given transition matrix has unexpected number of states '
+        self._nstates = len(Tij)
+        # assert is_transition_matrix(self._Tij), 'Given transition matrix is not a stochastic matrix'
+        # assert self._Tij.shape[0] == self._nstates, 'Given transition matrix has unexpected number of states '
         # reset spectral decomposition
         self._spectral_decomp_available = False
 
         # check initial distribution
-        assert np.all(Pi >= 0), 'Given initial distribution contains negative elements.'
-        assert np.any(Pi > 0), 'Given initial distribution is zero'
+        # assert np.all(Pi >= 0), 'Given initial distribution contains negative elements.'
+        # assert np.any(Pi > 0), 'Given initial distribution is zero'
         self._Pi = np.array(Pi) / np.sum(Pi)  # ensure normalization and make a copy
+        # TODO: why copy here?
+        #self._Pi = Pi / np.sum(Pi)
 
     def _do_spectral_decomposition(self):
         self._R, self._D, self._L = _tmatrix_disconnected.rdl_decomposition(self._Tij, reversible=self.is_reversible)
@@ -362,11 +364,17 @@ class HMM(Model):
         """
         if not self.hidden_state_trajectories:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
+        dtype = observations[0].dtype
+        collected_observations = np.array([], dtype=dtype)
+        for (s_t, o_t) in zip(self.hidden_state_trajectories, observations):
+            indices = np.where(s_t == state_index)[0]
+            collected_observations = np.append(collected_observations, o_t[indices])
 
-        collected_observations = [o_t[s_t == state_index]
-            for s_t, o_t in zip(self.hidden_state_trajectories, observations)
-        ]
-        return np.array(collected_observations).squeeze()
+        return collected_observations
+        collected_observations = (o_t[np.where(s_t == state_index)[0]]
+                                  for s_t, o_t in zip(self.hidden_state_trajectories, observations)
+                                  )
+        return np.hstack(collected_observations)
 
     def generate_synthetic_state_trajectory(self, nsteps, initial_Pi=None, start=None, stop=None, dtype=np.int32):
         """Generate a synthetic state trajectory.

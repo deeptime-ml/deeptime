@@ -58,13 +58,11 @@ class GaussianOutputModel(OutputModel):
             self._means = np.zeros([nstates], dtype=dtype)
 
         if sigmas is not None:
-            self._sigmas = np.array(sigmas, dtype=dtype)
+            self._sigmas = np.array(sigmas.squeeze(), dtype=dtype)
             if self._sigmas.shape != (nstates,):
                 raise ValueError('sigmas must have shape (%d,); instead got %s' % (nstates, str(self._sigmas.shape)))
         else:
             self._sigmas = np.zeros([nstates], dtype=dtype)
-
-        return
 
     @property
     def model_type(self):

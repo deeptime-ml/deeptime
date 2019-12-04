@@ -19,7 +19,7 @@ import unittest
 
 import numpy as np
 
-from sktime.markovprocess import MarkovStateModel, BayesianMSMPosterior
+from sktime.markovprocess import MarkovStateModel, BayesianPosterior
 from sktime.util import confidence_interval
 from tests.markovprocess.factory import bmsm_double_well
 
@@ -37,8 +37,8 @@ class TestBMSM(unittest.TestCase):
         cls.bmsm_rev = bmsm_double_well(lagtime=cls.lag, nsamples=cls.nsamples, reversible=True).fetch_model()
         cls.bmsm_revpi = bmsm_double_well(lagtime=cls.lag, reversible=True, constrain_to_coarse_pi=True, nsamples=cls.nsamples).fetch_model()
 
-        assert isinstance(cls.bmsm_rev, BayesianMSMPosterior)
-        assert isinstance(cls.bmsm_revpi, BayesianMSMPosterior)
+        assert isinstance(cls.bmsm_rev, BayesianPosterior)
+        assert isinstance(cls.bmsm_revpi, BayesianPosterior)
 
     def test_class_hierarchy(self):
         """ensure that the composite model has the right types """
@@ -273,30 +273,33 @@ class TestBMSM(unittest.TestCase):
         self._timescales_samples(self.bmsm_revpi)
 
     def _timescales_samples(self, msm):
-        samples = np.array([s.timescales() for s in msm.samples])
+        stats = msm.gather_stats(quantity='timescales', store_samples=True)
+        samples = stats.samples
         # shape
-        np.testing.assert_equal(np.shape(samples), (self.nsamples, self.nstates - 1))
+        np.testing.assert_equal(np.shape(samples), (self.nsamples, ))
         # consistency
+        u = msm.prior.count_model.dt_traj.u
         for l in samples:
             assert np.all(l > 0.0)
+            assert l.u == u
 
     def test_timescales_stats(self):
         self._timescales_stats(self.bmsm_rev)
         self._timescales_stats(self.bmsm_revpi)
 
     def _timescales_stats(self, msm):
-        samples = np.array([s.timescales() for s in msm.samples])
+        stats = msm.gather_stats()
         # mean
-        mean = samples.mean(axis=0)
+        mean = stats.mean
         # test shape and consistency
         assert np.array_equal(mean.shape, (self.nstates - 1,))
         assert np.all(mean > 0.0)
         # std
-        std = samples.std(axis=0)
+        std = samples.std
         # test shape
         assert np.array_equal(std.shape, (self.nstates - 1,))
         # conf
-        L, R = confidence_interval(samples)
+        L, R = stats.L, stats.R
         # test shape
         assert np.array_equal(L.shape, (self.nstates - 1,))
         assert np.array_equal(R.shape, (self.nstates - 1,))

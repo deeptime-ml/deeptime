@@ -298,10 +298,10 @@ class TestBHMMSpecialCases(unittest.TestCase):
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
         hmm_bayes = bayesian_hidden_markov_model(dtrajs, 3, lag=1, separate=[0], nsamples=100).fetch_model()
         # we expect zeros in all samples at the following indexes:
-        pobs_zeros = [[0, 1, 2, 2, 2], [0, 0, 1, 2, 3]]
-        for s in hmm_bayes.samples:
-            np.testing.assert_allclose(s.observation_probabilities[pobs_zeros], 0)
-        for strajs in hmm_bayes.sampled_trajs:
+        pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))
+        for i, s in enumerate(hmm_bayes.samples):
+            np.testing.assert_allclose(s.observation_probabilities[pobs_zeros], 0, err_msg=i)
+        for strajs in hmm_bayes.hidden_state_trajectories_samples:
             assert strajs[0][0] == 2
             assert strajs[0][6] == 2
 
@@ -330,9 +330,10 @@ class TestBHMMSpecialCases(unittest.TestCase):
         est, init_hmm = estimate_hidden_markov_model(obs, 2, 10, return_estimator=True)
         bay_hmm = BayesianHMSM(nstates=init_hmm.nstates, lagtime=est.lagtime,
                                stride='effective', init_hmsm=init_hmm)
-        bay_hmm.estimate(obs)
+        bay_hmm.fit(obs)
 
-        assert np.isclose(bay_hmm.stationary_distribution.sum(), 1)
+        assert np.isclose(bay_hmm.fetch_model().prior.stationary_distribution.sum(), 1)
+        assert all(np.isclose(m.stationary_distribution.sum(), 1) for m in bay_hmm.fetch_model())
 
 
 if __name__ == "__main__":

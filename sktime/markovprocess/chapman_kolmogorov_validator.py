@@ -3,7 +3,8 @@ import numpy as np
 
 from sktime.base import Estimator, Model
 from sktime.lagged_model_validator import LaggedModelValidator
-from sktime.markovprocess import MarkovStateModel, BayesianMSMPosterior
+from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess._base import BayesianPosterior
 from sktime.util import confidence_interval, ensure_ndarray
 
 __author__ = 'noe, marscher'
@@ -103,7 +104,7 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         return pk_on_set
 
     # TODO: model type
-    def _compute_observables_conf(self, model: BayesianMSMPosterior, mlag=1, conf=0.95):
+    def _compute_observables_conf(self, model: BayesianPosterior, mlag=1, conf=0.95):
         # otherwise compute or predict them by model.propagate
         if model.prior.count_model is not None:
             subset = self._full2active[model.prior.count_model.active_set]  # find subset we are now working on

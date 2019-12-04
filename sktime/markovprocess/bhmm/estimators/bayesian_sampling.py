@@ -230,8 +230,7 @@ class BayesianHMMSampler(Estimator):
         if len(observations) == 0:
             raise ValueError("No observations were provided.")
 
-        Ts = [len(o) for o in observations]
-        maxT = max(Ts)
+        maxT = max(len(o) for o in observations)
 
         # pre-construct hidden variables
         self._alpha = np.zeros((maxT, self.nstates))

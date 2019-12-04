@@ -22,21 +22,21 @@ import msmtools.analysis as msmana
 import numpy as np
 
 from sktime.markovprocess.bhmm.init.gaussian import init_model_gaussian1d
+from sktime.markovprocess.bhmm.util import testsystems
 
 
 class TestHMM(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from bhmm import testsystems
         cls._nstates = 3
         cls._model, cls._observations, cls._states = testsystems.generate_synthetic_observations(nstates=cls._nstates,
                                                                                                  output='gaussian')
 
     def test_gmm(self):
         # Fit a Gaussian mixture model to obtain emission distributions and state stationary probabilities.
-        from bhmm._external.sklearn import mixture
-        gmm = mixture.GMM(n_components=self._nstates)
+        from sklearn.mixture import GaussianMixture as GMM
+        gmm = GMM(n_components=self._nstates)
         gmm.fit(np.concatenate(self._observations)[:,None])
         assert gmm.n_components == self._nstates
         assert np.all(gmm.weights_ > 0)  # make sure we don't have empty states.

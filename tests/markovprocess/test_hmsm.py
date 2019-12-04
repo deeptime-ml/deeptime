@@ -461,7 +461,7 @@ class TestHMMSpecialCases(unittest.TestCase):
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
         hmm = estimate_hidden_markov_model(dtrajs, 3, lag=1, separate=[0])
         # we expect zeros in all samples at the following indexes:
-        pobs_zeros = [[0, 1, 2, 2, 2], [0, 0, 1, 2, 3]]
+        pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))
         assert np.allclose(hmm.observation_probabilities[pobs_zeros], 0)
 
 

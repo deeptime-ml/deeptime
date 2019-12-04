@@ -21,11 +21,11 @@ import numpy as np
 from msmtools.analysis import is_connected
 from msmtools.dtraj import number_of_states
 
-from sktime.base import Model
 from sktime.markovprocess.bhmm import discrete_hmm, bayesian_hmm, lag_observations
 from sktime.markovprocess.hidden_markov_model import HMSM
 from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
-from sktime.util import ensure_dtraj_list, confidence_interval, call_member
+from sktime.util import ensure_dtraj_list
+from ._base import BayesianPosterior
 from .maximum_likelihood_hmsm import MaximumLikelihoodHMSM as _MaximumLikelihoodHMSM, _HMMCountEstimator
 
 __author__ = 'noe'
@@ -36,62 +36,18 @@ __all__ = [
 ]
 
 
-class QuantityStatistics(Model):
-    """ Container for statistical quantities computed on samples.
-
-    Parameters
-    ----------
-
-    samples: list of ndarrays
-        the samples
-    store_samples: bool, default=False
-        whether to store the samples (array).
-
-    Attributes
-    ----------
-    mean: array(n)
-        mean along axis=0
-    std: array(n)
-        std deviation along axis=0
-    L : ndarray(shape)
-        element-wise lower bounds
-    R : ndarray(shape)
-        element-wise upper bounds
-
-    """
-
-    def __init__(self, samples, store_samples=False):
-        # TODO: shall we refer to the original object?
-        # TODO: we can re-add the quantity, because the creation of a new array will strip it.
-        samples = np.array(samples)
-        if store_samples:
-            self.samples = samples
-        else:
-            self.samples = None
-        self.mean = samples.mean(axis=0)
-        self.std = samples.std(axis=0)
-        self.L, self.R = confidence_interval(samples)
-
-
-class BayesianHMMPosterior(Model):
+class BayesianHMMPosterior(BayesianPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior. """
 
     def __init__(self,
                  prior: typing.Optional[HMSM] = None,
                  samples: typing.Optional[typing.List[HMSM]] = (),
                  hidden_state_trajs: typing.Optional[typing.List[np.ndarray]] = ()):
-        self.prior = prior
-        self.samples = samples
+        super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
         self.hidden_state_trajectories_samples = hidden_state_trajs
 
-        # TODO: deprecated...
-        self.sampled_trajs = self.hidden_state_trajectories_samples
-
-    def __iter__(self):
-        for s in self.samples:
-            yield s
-
     def submodel(self, states=None, obs=None, mincount_connectivity='1/n', inplace=False):
+        # restrict prior
         sub_model = self.prior.submodel(states=states, obs=obs,
                                         mincount_connectivity=mincount_connectivity,
                                         inplace=inplace)
@@ -100,12 +56,8 @@ class BayesianHMMPosterior(Model):
         subsamples = [sample.submodel(states=count_model.active_set, obs=count_model.observable_set)
                       for sample in self]
 
-        # TODO: handle hiddenstate traj samples!
+        # TODO: how to handle hiddenstate traj samples?!
         return BayesianHMMPosterior(sub_model, subsamples)
-
-    def gather_stats(self, quantity, *args, **kwargs):
-        samples = [call_member(s, quantity, *args, **kwargs) for s in self]
-        return QuantityStatistics(samples)
 
 
 class BayesianHMSM(_MaximumLikelihoodHMSM):
@@ -230,15 +182,20 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
         self._init_hmsm = value
 
     def fit(self, dtrajs, call_back=None):
-        # ensure right format
         dtrajs = ensure_dtraj_list(dtrajs)
 
         if self.init_hmsm is None:  # estimate using a maximum-likelihood hmm
+            # TODO: we cannot call super().fit(), since it would overwrite the internal model again
+            # TODO: it seems artificial, that bayesian_hmsm is a subclass of mlhmsm!
             self._model.prior = MaximumLikelihoodHMSM(nstates=self.nstates, lagtime=self.lagtime, stride=self.stride,
+                                                      reversible=self.reversible, stationary=self.stationary, dt_traj=self.dt_traj,
+                                                      separate=self.separate,
+                                                      # these params from self.ctor will be overridden.
                                                       connectivity=None,
                                                       mincount_connectivity=0,
                                                       accuracy=1e-2,  # this is sufficient for an initial guess
-                                                      observe_nonempty=False).fit(dtrajs).fetch_model()
+                                                      observe_nonempty=False,
+                                                      ).fit(dtrajs).fetch_model()
             dtrajs_lagged_strided = self._model.prior.count_model.dtrajs_lagged_strided
         else:  # if given another initialization, must copy its attributes
             # check if nstates and lag are compatible
@@ -261,16 +218,17 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
             # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
             dtrajs_lagged_strided = self.init_hmsm.count_model.dtrajs_lagged_strided
             if self.stride != init_stride:
-                _dtrajs_lagged_strided = lag_observations(dtrajs, self.lag, stride=self.stride)
-                _nstates_obs = number_of_states(dtrajs_lagged_strided, only_used=True)
-                _nstates_obs_full = number_of_states(dtrajs)
+                def _check_dtrajs_match():
+                    _dtrajs_lagged_strided = lag_observations(dtrajs, self.lagtime, stride=self.stride)
+                    _nstates_obs = number_of_states(dtrajs_lagged_strided, only_used=True)
+                    _nstates_obs_full = number_of_states(dtrajs)
 
-                if np.setxor1d(np.concatenate(_dtrajs_lagged_strided),
-                               np.concatenate(self.init_hmsm.count_model.dtrajs_lagged_strided)).size != 0:
-                    raise UserWarning('Choice of stride has excluded a different set of microstates than in '
-                                      'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
-                                      'must match to the one used for init_hmsm estimation.')
-                del _dtrajs_lagged_strided
+                    if np.setxor1d(np.concatenate(_dtrajs_lagged_strided),
+                                   np.concatenate(self.init_hmsm.count_model.dtrajs_lagged_strided)).size != 0:
+                        raise ValueError('Choice of stride has excluded a different set of microstates than in '
+                                         'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
+                                         'must match to the one used for init_hmsm estimation.')
+                _check_dtrajs_match()
 
             # as mentioned in the docstring, take init_hmsm observed set observation probabilities
             self.observe_nonempty = False
@@ -323,7 +281,6 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
         for P, pi, pobs, init_dist in sample_inp:  # restrict to observable set if necessary
             Bobs = pobs[:, prior_count_model.observable_set]
             pobs = Bobs / Bobs.sum(axis=1)[:, None]  # renormalize
-            # TODO: count model reference?
             samples.append(HMSM(P, pobs, pi=pi, dt_model=self.dt_traj,
                                 count_model=prior_count_model,
                                 reversible=self.reversible, initial_distribution=init_dist))
@@ -346,7 +303,8 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
         else:
             observe_subset = None
 
-        # return submodel (will return self if all None)
-        return self._model.submodel(states=states_subset, obs=observe_subset,
-                                    mincount_connectivity=self.mincount_connectivity,
-                                    inplace=True)
+        # state space restriction via submodel
+        self._model.submodel(states=states_subset, obs=observe_subset,
+                             mincount_connectivity=self.mincount_connectivity, inplace=True)
+
+        return self

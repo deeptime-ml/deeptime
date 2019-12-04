@@ -156,8 +156,10 @@ class HMSM(MarkovStateModel):
                 score = [count_matrix[np.ix_(s, s)].sum() for s in S]
             states = np.array(S[np.argmax(score)])
 
+        assert states is not None
+        # TODO: this if is not needed, as states is always defined above...
         if states is not None:  # sub-transition matrix
-            model._active_set = states
+            model.count_model._active_set = states
             C = C[np.ix_(states, states)].copy()
             P = P[np.ix_(states, states)].copy()
             P /= P.sum(axis=1)[:, None]
@@ -169,12 +171,9 @@ class HMSM(MarkovStateModel):
         if str(obs) == 'nonempty':
             obs = np.where(count_states(self.count_model.dtrajs_lagged_strided) > 0)[0]
         if obs is not None:
-            pass
-
-            # TODO: are these count_model attributes?
             # set observable set
-            # model._observable_set = obs
-            # model._nstates_obs = obs.size
+            model.count_model._observable_set = obs
+            model.count_model._nstates_obs = obs.size
             # # full2active mapping
             # _full2obs = -1 * np.ones(se   lf._nstates_obs_full, dtype=int)
             # _full2obs[obs] = np.arange(len(obs), dtype=int)
