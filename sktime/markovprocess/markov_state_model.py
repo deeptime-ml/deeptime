@@ -588,13 +588,11 @@ class MarkovStateModel(Model):
         on a three-state Markov model and plots the result using matplotlib:
 
         >>> import numpy as np
-        >>> import pyemma.msm as msm
-        >>>
         >>> P = np.array([[0.99, 0.01, 0], [0.01, 0.9, 0.09], [0, 0.1, 0.9]])
         >>> a = np.array([0.0, 0.5, 1.0])
-        >>> M = msm.markov_model(P)
+        >>> M = MarkovStateModel(P)
         >>> times, acf = M.correlation(a)
-        >>>
+
         >>> import matplotlib.pylab as plt
         >>> plt.plot(times, acf)  # doctest: +SKIP
 
