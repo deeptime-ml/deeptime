@@ -118,10 +118,10 @@ class BayesianHMMSampler(Estimator):
 
     First, create some synthetic test data.
 
-    >>> import bhmm
+    >>> from sktime.markovprocess import bhmm
     >>> nstates = 3
     >>> model = bhmm.testsystems.dalton_model(nstates)
-    >>> [observations, hidden_states] = model.generate_synthetic_observation_trajectories(ntrajectories=5, length=1000)
+    >>> observations, hidden_states = model.generate_synthetic_observation_trajectories(ntrajectories=5, length=1000)
 
     Initialize a new BHMM model.
 
@@ -149,8 +149,10 @@ class BayesianHMMSampler(Estimator):
         self.nstates = nstates
 
         # Use user-specified initial model, if provided.
-        if initial_model:
+        if initial_model is not None:
             self.initial_model = initial_model.copy()
+        else:
+            self.initial_model = None
 
         # prior initial vector
         if p0_prior is None or p0_prior == 'sparse':
@@ -161,7 +163,10 @@ class BayesianHMMSampler(Estimator):
             else:
                 raise ValueError(f'initial distribution prior must have dimension {nstates}')
         elif p0_prior == 'mixed':
-            self.prior_n0 = np.array(self.initial_model.initial_distribution)
+            if initial_model is not None:
+                self.prior_n0 = np.array(self.initial_model.initial_distribution)
+            else:
+                self.prior_n0 = None
         elif p0_prior == 'uniform':
             self.prior_n0 = np.ones(nstates)
         else:
@@ -174,14 +179,18 @@ class BayesianHMMSampler(Estimator):
             if np.array_equal(transition_matrix_prior.shape, (self.nstates, self.nstates)):
                 self.prior_C = np.array(transition_matrix_prior)
         elif transition_matrix_prior == 'mixed':
-            self.prior_C = np.array(self.initial_model.transition_matrix)
+            if initial_model is not None:
+                self.prior_C = np.array(self.initial_model.transition_matrix)
+            else:
+                self.prior_C = None
         elif p0_prior == 'uniform':
             self.prior_C = np.ones((nstates, nstates))
         else:
             raise ValueError(f'transition matrix prior mode undefined: {transition_matrix_prior}')
 
         # check if we work with these options
-        if reversible and not msmest.is_connected(self.initial_model.transition_matrix + self.prior_C, directed=True):
+        if (reversible and self.initial_model is not None
+                and not msmest.is_connected(self.initial_model.transition_matrix + self.prior_C, directed=True)):
             raise NotImplementedError('Trying to sample disconnected HMM with option reversible:\n '
                                       f'{self.initial_model.transition_matrix}\n'
                                       'Use prior to connect, select connected subset, or use reversible=False.')
@@ -237,8 +246,12 @@ class BayesianHMMSampler(Estimator):
         self._pobs = np.zeros((maxT, self.nstates))
 
         # Generate our own initial model.
-        if not self.initial_model:
+        if self.initial_model is None:
             self.initial_model = self._generateInitialModel(observations, self.output)
+            if self.prior_n0 is None:
+                self.prior_n0 = self.initial_model.initial_distribution
+            if self.prior_C is None:
+                self.prior_C = np.array(self.initial_model.transition_matrix)
 
         # save a copy of the initial model as the prior
         prior = self.initial_model.copy()
@@ -295,14 +308,6 @@ class BayesianHMMSampler(Estimator):
         -------
         s_t : numpy.array with dimensions (T,) of type `dtype`
             Hidden state trajectory, with s_t[t] the hidden state corresponding to observation o_t[t]
-
-        Examples
-        --------
-        >>> import bhmm
-        >>> model, observations, states, sampled_model = bhmm.testsystems.generate_random_bhmm(ntrajectories=5, length=1000)
-        >>> o_t = observations[0]
-        >>> s_t = sampled_model._sample_hidden_state_trajectory(o_t)
-
         """
 
         # Determine observation trajectory length
@@ -361,5 +366,6 @@ class BayesianHMMSampler(Estimator):
         """Initialize using an MLHMM."""
         mlhmm = MaximumLikelihoodHMM(self.nstates, reversible=self.reversible,
                                      output=output_model_type)
-        model = mlhmm.fit(observations)
+        mlhmm.fit(observations)
+        model = mlhmm.fetch_model()
         return model
