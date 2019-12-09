@@ -20,8 +20,10 @@
 import math
 
 import numpy as np
+from msmtools.analysis.dense.stationary_vector import stationary_distribution
 
 from sktime.markovprocess.bhmm import HMM
+from sktime.markovprocess.bhmm.estimators.bayesian_sampling import BayesianHMMSampler
 from sktime.markovprocess.bhmm.output_models.discrete import DiscreteOutputModel
 from sktime.markovprocess.bhmm.output_models.gaussian import GaussianOutputModel
 
@@ -95,11 +97,9 @@ def force_spectroscopy_model():
                     [0.00339873,  0.00660127,  0.99      ]])
 
     # Use stationary distribution as initial distribution
-    import msmtools.analysis as msmana
-    pi = msmana.stationary_distribution(Tij)
+    pi = stationary_distribution(Tij)
 
     # Construct HMM with these parameters.
-    from bhmm import HMM
     model = HMM(pi, Tij, output_model)
 
     return model
@@ -181,8 +181,7 @@ def dalton_model(nstates=3, omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
                                      reversible=reversible)
 
     # stationary distribution
-    import msmtools.analysis as msmana
-    Pi = msmana.stationary_distribution(Tij)
+    Pi = stationary_distribution(Tij)
 
     # Construct HMM with these parameters.
     model = HMM(Pi, Tij, output_model)
@@ -247,7 +246,7 @@ def generate_synthetic_observations(nstates=3, ntrajectories=10, length=10000,
                          output=output)
 
     # Generate synthetic data.
-    [O, S] = model.generate_synthetic_observation_trajectories(ntrajectories=ntrajectories, length=length)
+    O, S = model.generate_synthetic_observation_trajectories(ntrajectories=ntrajectories, length=length)
 
     return [model, O, S]
 
@@ -312,8 +311,7 @@ def generate_random_bhmm(nstates=3, ntrajectories=10, length=10000,
     # Generate synthetic data.
     O, S = model.generate_synthetic_observation_trajectories(ntrajectories=ntrajectories, length=length)
     # Initialize a new BHMM model.
-    from bhmm import BHMM
-    sampled_model = BHMM(O, nstates)
+    sampled_model = BayesianHMMSampler(nstates=nstates).fit(O)#.fetch_model()
 
     return model, O, S, sampled_model
 
