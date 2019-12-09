@@ -33,17 +33,17 @@ class TestMLHMM(unittest.TestCase):
     def setUpClass(cls):
         # load observations
         from sktime.data.double_well import DoubleWellDiscrete
-        obs = DoubleWellDiscrete().dtraj
+        obs = DoubleWellDiscrete().dtraj.copy()
         obs -= np.min(obs)  # remove empty states
 
         # hidden states
         nstates = 2
 
         # run with lag 1 and 10
-        cls.msm_lag1 = estimate_markov_model([obs], 1, reversible=True)
-        cls.hmsm_lag1 = estimate_hidden_markov_model([obs], nstates, 1, reversible=True, observe_nonempty=True)
-        cls.msm_lag10 = estimate_markov_model([obs], 10, reversible=True)
-        cls.hmsm_lag10 = estimate_hidden_markov_model([obs], nstates, 10, reversible=True, observe_nonempty=True)
+        cls.msm_lag1 = estimate_markov_model(obs, 1, reversible=True)
+        cls.hmsm_lag1 = estimate_hidden_markov_model(obs, nstates, 1, reversible=True, observe_nonempty=True)
+        cls.msm_lag10 = estimate_markov_model(obs, 10, reversible=True)
+        cls.hmsm_lag10 = estimate_hidden_markov_model(obs, nstates, 10, reversible=True, observe_nonempty=True)
 
     # =============================================================================
     # Test basic HMM properties

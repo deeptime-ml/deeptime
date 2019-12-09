@@ -24,6 +24,7 @@ class DoubleWellDiscrete(object):
     def __init__(self):
         dtraj, msm = _load_double_well_discrete()
         self._dtraj = dtraj
+        self._dtraj.flags.writeable = False
         self._msm = msm
 
     @property
