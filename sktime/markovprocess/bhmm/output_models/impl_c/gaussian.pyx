@@ -1,3 +1,4 @@
+cimport numpy
 import ctypes
 
 import numpy
