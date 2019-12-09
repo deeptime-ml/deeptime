@@ -76,10 +76,13 @@ class TestMSMSimple(unittest.TestCase):
         cls.tau = 1
 
         """Estimate MSM"""
+        import inspect
+        argspec = inspect.getfullargspec(MaximumLikelihoodMSM)
+        default_maxerr = argspec.defaults[argspec.args.index('maxerr') - 1]
         cls.C_MSM = count_matrix(cls.dtraj, cls.tau, sliding=True)
         cls.lcc_MSM = largest_connected_set(cls.C_MSM)
         cls.Ccc_MSM = largest_connected_submatrix(cls.C_MSM, lcc=cls.lcc_MSM)
-        cls.P_MSM = transition_matrix(cls.Ccc_MSM, reversible=True)
+        cls.P_MSM = transition_matrix(cls.Ccc_MSM, reversible=True, maxerr=default_maxerr)
         cls.mu_MSM = stationary_distribution(cls.P_MSM)
         cls.k = 3
         cls.ts = timescales(cls.P_MSM, k=cls.k, tau=cls.tau)
