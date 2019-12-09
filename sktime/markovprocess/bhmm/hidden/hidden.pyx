@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 cimport numpy as np
+from libc.stdlib cimport RAND_MAX
 
 cdef extern from "_hidden.h":
     double _forward(double *alpha, const double *A, const double *pobs, const double *pi, const int N, const int T) nogil
@@ -24,8 +25,10 @@ cdef extern from "_hidden.h":
     int _compute_transition_counts(double *transition_counts, const double *A, const double *pobs, const double *alpha,
                                    const double *beta, int N, int T) nogil
     int _compute_viterbi(int *path, const double *A, const double *pobs, const double *pi, int N, int T) nogil
-    int _sample_path(int *path, const double *alpha, const double *A, const double *pobs, const int N, const int T) nogil
+    int _sample_path(int *path, const double *alpha, const double *A, const double *pobs,
+                     const int N, const int T, int seed) nogil
     int _BHMM_ERR_NO_MEM
+    int _random_choice(double* pobs, int N)
 
 
 def forward(A, pobs, pi, alpha, int T, int N):
@@ -74,14 +77,16 @@ def viterbi(A, pobs, pi, path, int T, int N):
         raise MemoryError()
     return path
 
-def sample_path(alpha, A, pobs, path, int T, int N):
+def sample_path(alpha, A, pobs, path, int T, int N, int seed=-1):
     ppath = <int*> np.PyArray_DATA(path)
     palpha = <double*> np.PyArray_DATA(alpha)
     pA = <double*> np.PyArray_DATA(A)
     ppobs = <double*> np.PyArray_DATA(pobs)
 
+    if seed < -1 or seed >= RAND_MAX:
+        raise ValueError(f'seed needs to be -1 (use time to initialize rng or in interval [0, {RAND_MAX}]')
     with nogil:
-        res = _sample_path(ppath, palpha, pA, ppobs, N, T)
+        res = _sample_path(ppath, palpha, pA, ppobs, N, T, seed)
     if res == _BHMM_ERR_NO_MEM:
         raise MemoryError()
     return path

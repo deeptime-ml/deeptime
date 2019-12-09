@@ -53,7 +53,8 @@ int _sample_path(
         const double *alpha,
         const double *A,
         const double *pobs,
-        const int N, const int T);
+        const int N, const int T,
+        int seed);
 
 /*
  HELPER FUNCTIONS

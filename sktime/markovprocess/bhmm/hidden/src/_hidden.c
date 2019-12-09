@@ -300,7 +300,7 @@ int _sample_path(
         const double *alpha,
         const double *A,
         const double *pobs,
-        const int N, const int T)
+        const int N, const int T, int seed)
 {
     // initialize variables
     int i, t;
@@ -311,8 +311,11 @@ int _sample_path(
     }
 
     // initialize random number generator
-    // TODO: seed parameter to enforce deterministic behaviour.
-    srand(time(NULL));
+    if (seed == -1) {
+        srand(time(NULL));
+    } else {
+        srand(seed);
+    }
 
     // Sample final state.
     for (i = 0; i < N; i++)

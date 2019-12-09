@@ -233,7 +233,7 @@ def viterbi(A, pobs, pi):
     return _impl.viterbi(A, pobs, pi, path, T, N)
 
 
-def sample_path(alpha, A, pobs, T=None):
+def sample_path(alpha, A, pobs, T=None, seed=-1):
     """ Sample the hidden pathway S from the conditional distribution P ( S | Parameters, Observations )
 
     Parameters
@@ -246,6 +246,9 @@ def sample_path(alpha, A, pobs, T=None):
         pobs[t,i] is the observation probability for observation at time t given hidden state i
     T : int
         number of time steps
+    seed: int, default = -1
+        seed for libc.stdlib.srand, if -1 is given, the random number generation will be initialized
+        with the current time (seconds).
 
     Returns
     -------
@@ -260,4 +263,4 @@ def sample_path(alpha, A, pobs, T=None):
         raise ValueError('T must be at most the length of pobs and alpha.')
     path = np.zeros(T, dtype=np.int32)
 
-    return _impl.sample_path(alpha, A, pobs, path, T, N)
+    return _impl.sample_path(alpha, A, pobs, path, T, N, seed)
