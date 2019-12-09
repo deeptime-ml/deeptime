@@ -276,7 +276,7 @@ class TestBMSM(unittest.TestCase):
         stats = msm.gather_stats(quantity='timescales', store_samples=True)
         samples = stats.samples
         # shape
-        np.testing.assert_equal(np.shape(samples), (self.nsamples, ))
+        np.testing.assert_equal(np.shape(samples), (self.nsamples, self.nstates - 1))
         # consistency
         u = msm.prior.count_model.dt_traj.u
         for l in samples:
@@ -288,14 +288,14 @@ class TestBMSM(unittest.TestCase):
         self._timescales_stats(self.bmsm_revpi)
 
     def _timescales_stats(self, msm):
-        stats = msm.gather_stats()
+        stats = msm.gather_stats('timescales')
         # mean
         mean = stats.mean
         # test shape and consistency
         assert np.array_equal(mean.shape, (self.nstates - 1,))
         assert np.all(mean > 0.0)
         # std
-        std = samples.std
+        std = stats.std
         # test shape
         assert np.array_equal(std.shape, (self.nstates - 1,))
         # conf
