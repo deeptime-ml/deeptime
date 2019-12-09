@@ -2,6 +2,7 @@ import functools
 from typing import List
 
 import numpy as _np
+
 from sktime.markovprocess import MarkovStateModel as _MarkovStateModel
 
 __author__ = 'noe, marscher, clonker'
@@ -14,6 +15,9 @@ def _load_double_well_discrete():
     with _np.load(filename) as datafile:
         dtraj = datafile['dtraj']
         transition_matrix = datafile['P']
+    # avoid side effects, since we are caching these arrays!
+    dtraj.flags.writeable = False
+    transition_matrix.flags.writeable = False
     msm = _MarkovStateModel(transition_matrix)
     return dtraj, msm
 
@@ -24,7 +28,6 @@ class DoubleWellDiscrete(object):
     def __init__(self):
         dtraj, msm = _load_double_well_discrete()
         self._dtraj = dtraj
-        self._dtraj.flags.writeable = False
         self._msm = msm
 
     @property
