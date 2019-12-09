@@ -1,6 +1,5 @@
 import ctypes
 
-cimport numpy
 import numpy
 
 
@@ -10,7 +9,7 @@ cdef extern from "_gaussian.h":
 
 
 def cdef_double_vector(n):
-    cdef numpy.ndarray[double, ndim=1, mode="c"] out = numpy.zeros((n), dtype=ctypes.c_double, order='C')
+    cdef numpy.ndarray[double, ndim=1, mode="c"] out = numpy.zeros(n, dtype=ctypes.c_double, order='C')
     return out
 
 def cdef_double_matrix(n1, n2):
@@ -39,18 +38,6 @@ def p_o_64(o, mus, sigmas, out=None):
 
     return p
 
-def p_o(o, mus, sigmas, out=None, dtype=numpy.float32):
-    # check types
-    assert (mus.dtype == dtype)
-    assert (sigmas.dtype == dtype)
-
-    # pointers to arrays
-    if dtype == numpy.float32:
-        raise ValueError('float32')
-    elif dtype == numpy.float64:
-        return p_o_64(o, mus, sigmas, out=out)
-    else:
-        raise TypeError(f'unknown dtype {dtype}')
 
 def p_obs_64(obs, mus, sigmas, out=None):
     N = mus.shape[0]
