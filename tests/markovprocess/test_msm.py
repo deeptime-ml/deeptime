@@ -316,10 +316,9 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _discrete_trajectories_active(self, msm):
         dta = msm.count_model.map_discrete_trajectories_to_active(self.dtraj)
-        # HERE
-        assert (len(dta) == 1)
+        assert len(dta) == 1
         # HERE: states are shifted down from the beginning, because early states are missing
-        assert (dta[0][0] < self.dtraj[0])
+        assert dta[0][0] < self.dtraj[0]
 
     def test_discrete_trajectories_active(self):
         self._discrete_trajectories_active(self.msmrev)
