@@ -17,13 +17,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
 import unittest
 
-import bhmm
-from bhmm.util import testsystems
-
+import numpy as np
 from numpy.testing import assert_array_almost_equal
+
+from sktime.markovprocess import bhmm
+from sktime.markovprocess.bhmm.util import testsystems
 
 
 class TestHMM(unittest.TestCase):
@@ -56,18 +56,6 @@ class TestHMM(unittest.TestCase):
         assert_array_almost_equal(model.stationary_distribution, Pi)
         assert(np.allclose(model.output_model.means, np.array(means)))
         assert(np.allclose(model.output_model.sigmas, np.array(sigmas)))
-
-    def test_attributes(self):
-        """ Tests that attributes used in properties remain in sync
-        """
-        model = testsystems.force_spectroscopy_model()
-        assert(hasattr(model, 'is_stationary'))
-        assert(hasattr(model, '_nstates'))
-        assert(hasattr(model, '_ensure_spectral_decomposition'))
-        assert(hasattr(model, '_spectral_decomp_available'))
-        assert(hasattr(model, '_Pi'))
-        assert(hasattr(model, '_Tij'))
-
 
 if __name__ == "__main__":
     unittest.main()
