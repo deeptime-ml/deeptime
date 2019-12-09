@@ -143,9 +143,9 @@ class QuantityStatistics(Model):
         self.quantity = quantity
         # TODO: shall we refer to the original object?
         # we re-add the (optional) quantity, because the creation of a new array will strip it.
-        unit = getattr(samples[0], 'u')
+        unit = getattr(samples[0], 'u', None)
         if unit is not None:
-            samples = np.fromiter((x.magnitude for x in samples), dtype=samples[0].m.dtype, count=len(samples))
+            samples = np.array(tuple(x.magnitude for x in samples))
         else:
             samples = np.array(samples)
         if unit is not None:
