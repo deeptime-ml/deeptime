@@ -55,14 +55,14 @@ class GaussianOutputModel(OutputModel):
             if self._means.shape != (nstates,):
                 raise ValueError('means must have shape (%d,); instead got %s' % (nstates, str(self._means.shape)))
         else:
-            self._means = np.zeros([nstates], dtype=dtype)
+            self._means = np.zeros(nstates, dtype=dtype)
 
         if sigmas is not None:
-            self._sigmas = np.array(sigmas.squeeze(), dtype=dtype)
+            self._sigmas = np.array(sigmas, dtype=dtype).squeeze()
             if self._sigmas.shape != (nstates,):
                 raise ValueError('sigmas must have shape (%d,); instead got %s' % (nstates, str(self._sigmas.shape)))
         else:
-            self._sigmas = np.zeros([nstates], dtype=dtype)
+            self._sigmas = np.zeros(nstates, dtype=dtype)
 
     @property
     def model_type(self):
@@ -88,35 +88,6 @@ class GaussianOutputModel(OutputModel):
 
     def sub_output_model(self, states):
         return GaussianOutputModel(self._means[states], self._sigmas[states])
-
-    def _p_o(self, o):
-        """
-        Returns the output probability for symbol o from all hidden states
-
-        Parameters
-        ----------
-        o : float
-            A single observation.
-
-        Return
-        ------
-        p_o : ndarray (N)
-            p_o[i] is the probability density of the observation o from state i emission distribution
-
-        Examples
-        --------
-
-        Create an observation model.
-
-        >>> output_model = GaussianOutputModel(nstates=3, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
-
-        Compute the output probability of a single observation from all hidden states.
-
-        >>> observation = 0
-        >>> p_o = output_model._p_o(observation)
-
-        """
-        return gaussian.p_o(o, self.means, self.sigmas, out=None, dtype=type(o))
 
     def p_obs(self, obs, out=None):
         """
@@ -312,7 +283,7 @@ class GaussianOutputModel(OutputModel):
 
         Generate samples from each state.
 
-        >>> observations = [ output_model.generate_observations_from_state(state_index, nobs=100) for state_index in range(output_model.nstates) ]
+        >>> observations = [output_model.generate_observations_from_state(state_index, nobs=100) for state_index in range(output_model.nstates) ]
 
         """
         observations = self.sigmas[state_index] * np.random.randn(nobs) + self.means[state_index]
