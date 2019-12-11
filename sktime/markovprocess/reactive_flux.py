@@ -445,11 +445,16 @@ class ReactiveFluxEstimator(Estimator):
         self.B = B
         super(ReactiveFluxEstimator, self).__init__()
 
-    def fit(self, msm):
+    # we do not check for input-data constness and type, because here we allow a MarkovStateModel as input.
+    _MUTABLE_INPUT_DATA = True
+
+    def fit(self, msm, y=None):
         """
 
-        :param msm:
-        :return:
+        Parameters
+        ----------
+        msm: MarkovStateModel
+            the MSM contains the transition matrix for which the fluxes will will be computed.
         """
         T = msm.transition_matrix
         mu = msm.stationary_distribution
