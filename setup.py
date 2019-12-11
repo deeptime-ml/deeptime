@@ -71,7 +71,8 @@ class Build(build_ext):
         for ext in self.extensions:
             ext.include_dirs.append(np_inc)
             ext.include_dirs.append(pybind_inc)
-            ext.extra_compile_args += cxx_flags
+            if ext.language == 'c++':
+                ext.extra_compile_args += cxx_flags
 
             if has_openmp:
                 ext.extra_compile_args += extra_compile_args
