@@ -4,7 +4,7 @@ import numpy as np
 from sktime.base import Estimator, Model, InputFormatError
 
 
-class MyEstimator(Estimator):
+class EvilEstimator(Estimator):
     def _create_model(self):
         return Model()
 
@@ -28,9 +28,18 @@ class MutableInputDataEstimator(Estimator):
         return self
 
 
+class WellBehavingEstimator(Estimator):
+    def _create_model(self):
+        return Model()
+
+    def fit(self, x):
+        self.y = x + 1
+        return self
+
+
 class TestImmutableData(unittest.TestCase):
     def setUp(self) -> None:
-        self.est = MyEstimator()
+        self.est = EvilEstimator()
 
     def test_modifying_raises(self):
         data = np.arange(0, 10)
@@ -68,16 +77,12 @@ class TestImmutableData(unittest.TestCase):
 
     def test_result_of_fit(self):
         """ fit should return estimator instance itself """
-        class E(Estimator):
-            def _create_model(self):
-                return Model()
+        result = WellBehavingEstimator().fit(np.empty(0))
+        self.assertIsInstance(result, WellBehavingEstimator)
 
-            def fit(self, x):
-                self.y = x + 1
-                return self
-
-        result = E().fit(np.empty(0))
-        self.assertIsInstance(result, E)
+    def test_kw_data_passing(self):
+        """ Estimator.fit(data, **kwargs) should allow for fit(data=foobar) calls """
+        WellBehavingEstimator().fit(x=np.empty(0))
 
 
 if __name__ == '__main__':

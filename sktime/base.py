@@ -158,6 +158,8 @@ class _ImmutableInputData(object):
         if len(args) == 0:
             if 'data' in kwargs:
                 args = [kwargs['data']]
+            elif len(kwargs) == 1:
+                args = [kwargs[k] for k in kwargs.keys()]
             else:
                 raise InputFormatError(f'No input at all for fit(). Input was {args}, kw={kwargs}')
         value = args[0]
