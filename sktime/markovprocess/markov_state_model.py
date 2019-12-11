@@ -593,7 +593,7 @@ class MarkovStateModel(Model):
         >>> M = MarkovStateModel(P)
         >>> times, acf = M.correlation(a)
 
-        >>> import matplotlib.pylab as plt
+        >>> import matplotlib.pylab as plt # doctest: +SKIP
         >>> plt.plot(times, acf)  # doctest: +SKIP
 
         References
