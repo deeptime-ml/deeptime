@@ -89,6 +89,10 @@ class Model(_base_methods_mixin):
 
 
 class Estimator(_base_methods_mixin):
+    """ Base class of all estimators """
+
+    """ class wide flag to control whether input of fit or partial_fit should be checked for modifications """
+    _MUTABLE_INPUT_DATA = False
 
     def __init__(self, model=None):
         # we only need to create a default model in case the subclassing Estimator provides the partial_fit interface.
@@ -116,6 +120,10 @@ class Estimator(_base_methods_mixin):
     def __getattribute__(self, item):
         if item == 'fit':
             self._model = self._create_model()
+        if (item == 'fit' or item == 'partial_fit') and not self._MUTABLE_INPUT_DATA:
+            fit = super(Estimator, self).__getattribute__(item)
+            return _ImmutableInputData(fit)
+
         return super(_base_methods_mixin, self).__getattribute__(item)
 
 
@@ -124,3 +132,64 @@ class Transformer(object):
     @abc.abstractmethod
     def transform(self, data):
         pass
+
+
+class _ImmutableInputData(object):
+    """A function decorator for Estimator.fit() to make input data immutable """
+    def __init__(self, fit_method):
+        self.fit_method = fit_method
+        self._data = None
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value_):
+        args, kwargs = value_
+        # store data as a list of ndarrays
+        import numpy as np
+        # handle optional y for supervised learning
+        y = kwargs.get('y', None)
+
+        self._data = [] if y is None else [y]
+
+        # first argument is x
+        if len(args) == 0:
+            raise InputFormatError()
+        value = args[0]
+        if isinstance(value, np.ndarray):
+            self._data.append(value)
+        elif isinstance(value, (list, tuple)):
+            for i, x in enumerate(value):
+                if isinstance(x, np.ndarray):
+                    self._data.append(x)
+                else:
+                    raise InputFormatError(f'Invalid input element in position {i}, only numpy.ndarrays allowed.')
+        else:
+            raise InputFormatError(f'Only ndarray or list/tuple of ndarray allowed. But was of type {type(value)}'
+                                   f' and looks like {value}.')
+
+    def __enter__(self):
+        self.old_writable_flags = []
+        for array in self.data:
+            self.old_writable_flags.append(array.flags.writeable)
+            # set ndarray writabe flags to false
+            array.flags.writeable = False
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # restore ndarray writable flags to old state
+        for array, writable in zip(self.data, self.old_writable_flags):
+            array.flags.writeable = writable
+
+    def __call__(self, *args, **kwargs):
+        # extract input data from args, **kwargs (namely x and y)
+        self.data = args, kwargs
+
+        # here we invoke the immutable setting context manager.
+        with self:
+            return self.fit_method(*args, **kwargs)
+
+
+class InputFormatError(ValueError):
+    """Input data for Estimator is not allowed."""
