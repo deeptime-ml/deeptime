@@ -156,7 +156,10 @@ class _ImmutableInputData(object):
 
         # first argument is x
         if len(args) == 0:
-            raise InputFormatError()
+            if 'data' in kwargs:
+                args = [kwargs['data']]
+            else:
+                raise InputFormatError(f'No input at all for fit(). Input was {args}, kw={kwargs}')
         value = args[0]
         if isinstance(value, np.ndarray):
             self._data.append(value)

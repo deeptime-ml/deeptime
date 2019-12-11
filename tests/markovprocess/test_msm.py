@@ -973,7 +973,7 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         np.testing.assert_equal(msm_restrict_connectivity.count_model.active_set, self.active_set_restricted)
 
     def test_bmsm(self):
-        msm = BayesianMSM(lagtime=1, mincount_connectivity='1/n').fit(dtrajs=self.dtraj).fetch_model()
+        msm = BayesianMSM(lagtime=1, mincount_connectivity='1/n').fit(self.dtraj).fetch_model()
         msm_restricted = BayesianMSM(lagtime=1, mincount_connectivity=self.mincount_connectivity).fit(self.dtraj).fetch_model()
 
         np.testing.assert_equal(msm.prior.count_model.active_set, self.active_set_unrestricted)
