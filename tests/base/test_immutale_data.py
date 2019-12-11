@@ -84,6 +84,11 @@ class TestImmutableData(unittest.TestCase):
         """ Estimator.fit(data, **kwargs) should allow for fit(data=foobar) calls """
         WellBehavingEstimator().fit(x=np.empty(0))
 
+    def test_kw_data_passing_y_arg(self):
+        class Supervised(WellBehavingEstimator):
+            def fit(self, x, y=None, foobar=None):
+                return super(Supervised, self).fit(x)
+
 
 if __name__ == '__main__':
     unittest.main()
