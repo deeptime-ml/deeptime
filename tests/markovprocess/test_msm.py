@@ -76,10 +76,13 @@ class TestMSMSimple(unittest.TestCase):
         cls.tau = 1
 
         """Estimate MSM"""
+        import inspect
+        argspec = inspect.getfullargspec(MaximumLikelihoodMSM)
+        default_maxerr = argspec.defaults[argspec.args.index('maxerr') - 1]
         cls.C_MSM = count_matrix(cls.dtraj, cls.tau, sliding=True)
         cls.lcc_MSM = largest_connected_set(cls.C_MSM)
         cls.Ccc_MSM = largest_connected_submatrix(cls.C_MSM, lcc=cls.lcc_MSM)
-        cls.P_MSM = transition_matrix(cls.Ccc_MSM, reversible=True)
+        cls.P_MSM = transition_matrix(cls.Ccc_MSM, reversible=True, maxerr=default_maxerr)
         cls.mu_MSM = stationary_distribution(cls.P_MSM)
         cls.k = 3
         cls.ts = timescales(cls.P_MSM, k=cls.k, tau=cls.tau)
@@ -973,7 +976,7 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         np.testing.assert_equal(msm_restrict_connectivity.count_model.active_set, self.active_set_restricted)
 
     def test_bmsm(self):
-        msm = BayesianMSM(lagtime=1, mincount_connectivity='1/n').fit(dtrajs=self.dtraj).fetch_model()
+        msm = BayesianMSM(lagtime=1, mincount_connectivity='1/n').fit(self.dtraj).fetch_model()
         msm_restricted = BayesianMSM(lagtime=1, mincount_connectivity=self.mincount_connectivity).fit(self.dtraj).fetch_model()
 
         np.testing.assert_equal(msm.prior.count_model.active_set, self.active_set_unrestricted)
