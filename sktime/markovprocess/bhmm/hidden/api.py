@@ -62,13 +62,12 @@ def forward(A, pobs, pi, T=None, alpha=None):
         T = len(pobs)  # if not set, use the length of pobs as trajectory length
     elif T > len(pobs):
         raise TypeError('T must be at most the length of pobs.')
-    N = len(A)
     if alpha is None:
         alpha = np.zeros_like(pobs)
     elif T > len(alpha):
         raise TypeError('alpha must at least have length T in order to fit trajectory.')
 
-    return _bindings.forward(A, pobs, pi, alpha, T, N)
+    return _bindings.forward(A, pobs, pi, alpha, T)
 
 
 def backward(A, pobs, T=None, beta_out=None):
@@ -96,13 +95,12 @@ def backward(A, pobs, T=None, beta_out=None):
         T = len(pobs)  # if not set, use the length of pobs as trajectory length
     elif T > len(pobs):
         raise ValueError('T must be at most the length of pobs.')
-    N = len(A)
     if beta_out is None:
         beta_out = np.zeros_like(pobs)
     elif T > len(beta_out):
         raise ValueError('beta_out must at least have length T in order to fit trajectory.')
 
-    return _bindings.backward(A, pobs, beta=beta_out, T=T, N=N)
+    return _bindings.backward(A, pobs, beta=beta_out, T=T)
 
 
 def state_probabilities(alpha, beta, T=None, gamma_out=None):
@@ -199,13 +197,12 @@ def transition_counts(alpha, beta, A, pobs, T=None, out=None):
         T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
     elif T > pobs.shape[0]:
         raise ValueError('T must be at most the length of pobs.')
-    N = len(A)
     if out is None:
         C = np.zeros_like(A)
     else:
         C = out
 
-    return _impl.transition_counts(alpha, beta, A, pobs, T=T, N=N, C=C)
+    return _bindings.transition_counts(alpha, beta, A, pobs, T=T, C=C)
 
 
 def viterbi(A, pobs, pi):
@@ -227,11 +224,7 @@ def viterbi(A, pobs, pi):
 
     """
     # prepare path array
-    T = len(pobs)
-    N = len(A)
-    path = np.zeros(T, dtype=np.int32)
-
-    return _impl.viterbi(A, pobs, pi, path, T, N)
+    return _bindings.viterbi(A=A, pobs=pobs, pi=pi, T=len(pobs))
 
 
 def sample_path(alpha, A, pobs, T=None, seed=-1):
@@ -257,11 +250,9 @@ def sample_path(alpha, A, pobs, T=None, seed=-1):
         maximum likelihood hidden path
 
     """
-    N = pobs.shape[1]
     if T is None:
         T = pobs.shape[0]  # if not set, use the length of pobs as trajectory length
     elif T > pobs.shape[0] or T > alpha.shape[0]:
         raise ValueError('T must be at most the length of pobs and alpha.')
-    path = np.zeros(T, dtype=np.int32)
 
-    return _impl.sample_path(alpha, A, pobs, path, T, N, seed)
+    return _bindings.sample_path(alpha=alpha, A=A, pobs=pobs, T=T, seed=seed)
