@@ -1,5 +1,4 @@
 
-
 def configuration(parent_package='', top_path=None):
     from numpy.distutils.misc_util import Configuration
     config = Configuration('markovprocess', parent_package, top_path)
@@ -9,4 +8,7 @@ def configuration(parent_package='', top_path=None):
                          include_dirs=['include'],
                          language='c++',
                          )
+
+    config.add_subpackage('bhmm')
+
     return config
