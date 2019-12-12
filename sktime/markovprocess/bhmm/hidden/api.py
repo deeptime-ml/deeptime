@@ -29,6 +29,7 @@ kernels. All implementations are based on paper Rabiners [1].
 import numpy as np
 
 from . import hidden as _impl
+from . import _bhmm_hidden_bindings as _bindings
 
 
 def forward(A, pobs, pi, T=None, alpha=None):
@@ -67,7 +68,7 @@ def forward(A, pobs, pi, T=None, alpha=None):
     elif T > len(alpha):
         raise TypeError('alpha must at least have length T in order to fit trajectory.')
 
-    return _impl.forward(A, pobs, pi, alpha, T, N)
+    return _bindings.forward(A, pobs, pi, alpha, T, N)
 
 
 def backward(A, pobs, T=None, beta_out=None):
@@ -101,7 +102,7 @@ def backward(A, pobs, T=None, beta_out=None):
     elif T > len(beta_out):
         raise ValueError('beta_out must at least have length T in order to fit trajectory.')
 
-    return _impl.backward(A, pobs, T=T, N=N, beta=beta_out)
+    return _bindings.backward(A, pobs, beta=beta_out, T=T, N=N)
 
 
 def state_probabilities(alpha, beta, T=None, gamma_out=None):

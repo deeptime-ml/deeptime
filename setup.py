@@ -51,6 +51,11 @@ def supports_omp(cc):
 class Build(build_ext):
 
     def build_extensions(self):
+        extra_compile_args = []
+        extra_link_args = []
+        define_macros = []
+
+
         from numpy import get_include as _np_inc
         np_inc = _np_inc()
         pybind_inc = 'lib/pybind11/include'
@@ -59,14 +64,14 @@ class Build(build_ext):
         has_openmp = supports_omp(self.compiler)
 
         if has_openmp:
-            extra_compile_args = ['-fopenmp' if sys.platform != 'darwin' else '-fopenmp=libiomp5']
+            extra_compile_args += ['-fopenmp' if sys.platform != 'darwin' else '-fopenmp=libiomp5']
             if sys.platform.startswith('linux'):
-                extra_link_args = ['-lgomp']
+                extra_link_args += ['-lgomp']
             elif sys.platform == 'darwin':
-                extra_link_args = ['-liomp5']
+                extra_link_args += ['-liomp5']
             else:
                 raise ValueError("Hmm.")
-            define_macros = [('USE_OPENMP', None)]
+            define_macros += [('USE_OPENMP', None)]
 
         for ext in self.extensions:
             ext.include_dirs.append(np_inc)
