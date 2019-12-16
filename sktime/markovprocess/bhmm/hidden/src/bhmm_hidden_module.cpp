@@ -228,7 +228,8 @@ void normalize(Iter1 begin, Iter2 end) {
     }
 }
 
-int _random_choice(const double* p, const int N)
+template<typename T>
+int _random_choice(const T* const p, const int N)
 {
     double dR = (double)rand();
     double dM = (double)RAND_MAX;
