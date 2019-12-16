@@ -28,7 +28,6 @@ kernels. All implementations are based on paper Rabiners [1].
 """
 import numpy as np
 
-from . import hidden as _impl
 from . import _bhmm_hidden_bindings as _bindings
 
 
