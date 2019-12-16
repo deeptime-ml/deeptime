@@ -37,8 +37,8 @@ def init_model_gaussian1d(observations, nstates, reversible=True):
 
     Generate initial model for a gaussian output model.
 
-    >>> from bhmm import testsystems
-    >>> [model, observations, states] = testsystems.generate_synthetic_observations(output='gaussian')
+    >>> from sktime.markovprocess.bhmm import testsystems
+    >>> model, observations, states = testsystems.generate_synthetic_observations(output='gaussian')
     >>> initial_model = init_model_gaussian1d(observations, model.nstates)
 
     """

@@ -21,6 +21,7 @@ import unittest
 from msmtools.analysis import is_transition_matrix, is_reversible
 
 from sktime.markovprocess.bhmm.util import testsystems
+from sktime.markovprocess.bhmm.util.testsystems import generate_random_bhmm
 
 
 class TestTestSystems(unittest.TestCase):
@@ -43,7 +44,6 @@ class TestTestSystems(unittest.TestCase):
 
     @unittest.skip('known to be kaputt.')
     def test_generate_random_bhmm(self):
-        from bhmm.util.testsystems import generate_random_bhmm
         model, observations, hidden_traj, bhmm = generate_random_bhmm(output='discrete')
         assert is_transition_matrix(model.transition_matrix)
 

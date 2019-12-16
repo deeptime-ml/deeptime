@@ -111,17 +111,14 @@ def gaussian_hmm(pi, P, means, sigmas):
         If True: transition matrix will fulfill detailed balance constraints.
 
     """
-    from bhmm.hmm.gaussian_hmm import GaussianHMM
-    from bhmm.output_models.gaussian import GaussianOutputModel
+    from .output_models.gaussian import GaussianOutputModel
+    from .hmm.generic_hmm import HMM
     # count states
     nstates = _np.array(P).shape[0]
     # initialize output model
     output_model = GaussianOutputModel(nstates, means, sigmas)
     # initialize general HMM
-    from bhmm.hmm.generic_hmm import HMM as _HMM
-    ghmm = _HMM(pi, P, output_model)
-    # turn it into a Gaussian HMM
-    ghmm = GaussianHMM(ghmm)
+    ghmm = HMM(pi, P, output_model)
     return ghmm
 
 
@@ -136,13 +133,6 @@ def discrete_hmm(pi, P, pout):
         Hidden transition matrix
     pout : ndarray(nstates,nsymbols)
         Output matrix from hidden states to observable symbols
-    pi : ndarray(nstates, )
-        Fixed initial (if stationary=False) or fixed stationary distribution (if stationary=True).
-    stationary : bool, optional, default=True
-        If True: initial distribution is equal to stationary distribution of transition matrix
-    reversible : bool, optional, default=True
-        If True: transition matrix will fulfill detailed balance constraints.
-
     """
     from .output_models.discrete import DiscreteOutputModel
     from .hmm.generic_hmm import HMM
@@ -172,14 +162,14 @@ def init_hmm(observations, nstates, lag=1, output=None, reversible=True):
 
     Generate initial model for a gaussian output model.
 
-    >>> import bhmm
-    >>> [model, observations, states] = bhmm.testsystems.generate_synthetic_observations(output='gaussian')
+    >>> from sktime.markovprocess import bhmm
+    >>> model, observations, states = bhmm.testsystems.generate_synthetic_observations(output='gaussian')
     >>> initial_model = init_hmm(observations, model.nstates, output='gaussian')
 
     Generate initial model for a discrete output model.
 
-    >>> import bhmm
-    >>> [model, observations, states] = bhmm.testsystems.generate_synthetic_observations(output='discrete')
+    >>> from sktime.markovprocess import bhmm
+    >>> model, observations, states = bhmm.testsystems.generate_synthetic_observations(output='discrete')
     >>> initial_model = init_hmm(observations, model.nstates, output='discrete')
 
     """
@@ -210,7 +200,7 @@ def init_gaussian_hmm(observations, nstates, lag=1, reversible=True):
 
     Generate initial model for a gaussian output model.
 
-    >>> import bhmm
+    >>> from sktime.markovprocess import bhmm
     >>> [model, observations, states] = bhmm.testsystems.generate_synthetic_observations(output='gaussian')
     >>> initial_model = init_gaussian_hmm(observations, model.nstates)
 
@@ -261,8 +251,8 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
 
     Generate initial model for a discrete output model.
 
-    >>> import bhmm
-    >>> [model, observations, states] = bhmm.testsystems.generate_synthetic_observations(output='discrete')
+    >>> from sktime.markovprocess import bhmm
+    >>> model, observations, states = bhmm.testsystems.generate_synthetic_observations(output='discrete')
     >>> initial_model = init_discrete_hmm(observations, model.nstates)
 
     """

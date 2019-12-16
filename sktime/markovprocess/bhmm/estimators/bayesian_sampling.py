@@ -125,12 +125,14 @@ class BayesianHMMSampler(Estimator):
 
     Initialize a new BHMM model.
 
-    >>> from bhmm import BHMM
-    >>> bhmm_sampler = BHMM(observations, nstates)
+    >>> from sktime.markovprocess.bhmm import BHMM
+    >>> bhmm_sampler = BHMM(nstates=nstates)
+    >>> bhmm_sampler.fit(observations) # +DOCTEST.ELLIPSIS
+    BayesianHMMSampler...
 
     Sample from the posterior.
 
-    >>> models = bhmm_sampler.sample(nsamples=10)
+    >>> models = bhmm_sampler.fetch_model().samples
 
     References
     ----------
@@ -226,12 +228,19 @@ class BayesianHMMSampler(Estimator):
         Examples
         --------
 
-        >>> from bhmm import testsystems
-        >>> [model, observations, states, sampled_model] = testsystems.generate_random_bhmm(ntrajectories=5, length=1000)
+        >>> from sktime.markovprocess.bhmm import testsystems
+        >>> model, observations, states, sampler = testsystems.generate_random_bhmm(ntrajectories=5, length=1000)
         >>> nburn = 5 # run the sampler a bit before recording samples
         >>> nsamples = 10 # generate 10 samples
         >>> nthin = 2 # discard one sample in between each recorded sample
-        >>> samples = sampled_model.sample(nsamples, nburn=nburn, nthin=nthin)
+        >>> sampler.nsamples = nsamples
+        >>> sampler.fit(observations, nburn=nburn, nthin=nthin) # +DOCTEST.ELLIPSIS
+        BayesianHMMSampler...
+        >>> model = sampler.fetch_model()
+        >>> model.prior # +DOCTEST.ELLIPSIS
+        HMM...
+        >>> len(model.samples)
+        10
 
         """
         # Store a copy of the observations.

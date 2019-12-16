@@ -42,11 +42,6 @@ class HMM(Model):
         Lag time (optional) used to estimate the HMM. Used to compute relaxation timescales.
     initial_distribution : np.array with shape (nstates), optional, default=None
         The initial state vector. Required when stationary=False
-    stationary : bool, optional, default=True
-        If true, the initial distribution is equal to the stationary distribution of the transition matrix
-        If false, the initial distribution must be given as Pi
-    reversible : bool, optional, default=True
-        If true, the transition matrix is reversible.
 
     Examples
     --------
@@ -55,7 +50,7 @@ class HMM(Model):
     >>> nstates = 2
     >>> pi = np.array([0.5, 0.5])
     >>> Tij = np.array([[0.8, 0.2], [0.5, 0.5]])
-    >>> from bhmm import GaussianOutputModel
+    >>> from sktime.markovprocess.bhmm.output_models import GaussianOutputModel
     >>> output_model = GaussianOutputModel(nstates, means=[-1, +1], sigmas=[1, 1])
     >>> model = HMM(pi, Tij, output_model)
 
@@ -63,7 +58,7 @@ class HMM(Model):
     >>> nstates = 2
     >>> pi = np.array([0.5, 0.5])
     >>> Tij = np.array([[0.8, 0.2], [0.5, 0.5]])
-    >>> from bhmm import DiscreteOutputModel
+    >>> from sktime.markovprocess.bhmm.output_models import DiscreteOutputModel
     >>> output_model = DiscreteOutputModel([[0.5, 0.1, 0.4], [0.2, 0.3, 0.5]])
     >>> model = HMM(pi, Tij, output_model)
 
@@ -403,7 +398,7 @@ class HMM(Model):
 
         Generate a synthetic state trajectory of a specified length.
 
-        >>> from bhmm import testsystems
+        >>> from sktime.markovprocess.bhmm import testsystems
         >>> model = testsystems.dalton_model()
         >>> states = model.generate_synthetic_state_trajectory(nsteps=100)
 
@@ -442,7 +437,7 @@ class HMM(Model):
 
         Generate a synthetic observation from a single state.
 
-        >>> from bhmm import testsystems
+        >>> from sktime.markovprocess.bhmm import testsystems
         >>> model = testsystems.dalton_model()
         >>> observation = model.generate_synthetic_observation(0)
 
@@ -471,13 +466,12 @@ class HMM(Model):
 
         Generate a synthetic observation trajectory for an equilibrium realization.
 
-        >>> from bhmm import testsystems
+        >>> from sktime.markovprocess.bhmm import testsystems
         >>> model = testsystems.dalton_model()
         >>> [o_t, s_t] = model.generate_synthetic_observation_trajectory(length=100)
 
         Use an initial nonequilibrium distribution.
 
-        >>> from bhmm import testsystems
         >>> model = testsystems.dalton_model()
         >>> [o_t, s_t] = model.generate_synthetic_observation_trajectory(length=100, initial_Pi=np.array([1,0,0]))
 
@@ -514,13 +508,12 @@ class HMM(Model):
 
         Generate a number of synthetic trajectories.
 
-        >>> from bhmm import testsystems
+        >>> from sktime.markovprocess.bhmm import testsystems
         >>> model = testsystems.dalton_model()
         >>> O, S = model.generate_synthetic_observation_trajectories(ntrajectories=10, length=100)
 
         Use an initial nonequilibrium distribution.
 
-        >>> from bhmm import testsystems
         >>> model = testsystems.dalton_model(nstates=3)
         >>> O, S = model.generate_synthetic_observation_trajectories(ntrajectories=10, length=100, initial_Pi=np.array([1,0,0]))
 

@@ -23,6 +23,7 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal
 
 from sktime.markovprocess import bhmm
+from sktime.markovprocess.bhmm.output_models import GaussianOutputModel
 from sktime.markovprocess.bhmm.util import testsystems
 
 
@@ -46,7 +47,6 @@ class TestHMM(unittest.TestCase):
         # stationary distribution
         import msmtools.analysis as msmana
         Pi = msmana.stationary_distribution(Tij)
-        from bhmm import GaussianOutputModel
         means = [-1, +1]
         sigmas = [1, 1]
         output_model = GaussianOutputModel(nstates, means=means, sigmas=sigmas)

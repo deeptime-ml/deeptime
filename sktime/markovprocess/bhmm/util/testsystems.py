@@ -277,7 +277,7 @@ def generate_random_bhmm(nstates=3, ntrajectories=10, length=10000,
         maximum lifetime of any state
     lifetime_min : float, optional, default = 10
         minimum lifetime of any state
-    output_model_type : str, optional, default='gaussian'
+    output : str, optional, default='gaussian'
         Output model to use, one of ['gaussian', 'discrete']
 
     Returns
@@ -311,9 +311,9 @@ def generate_random_bhmm(nstates=3, ntrajectories=10, length=10000,
     # Generate synthetic data.
     O, S = model.generate_synthetic_observation_trajectories(ntrajectories=ntrajectories, length=length)
     # Initialize a new BHMM model.
-    sampled_model = BayesianHMMSampler(nstates=nstates).fit(O)#.fetch_model()
+    sampler = BayesianHMMSampler(nstates=nstates).fit(O)
 
-    return model, O, S, sampled_model
+    return model, O, S, sampler
 
 
 def total_state_visits(nstates, S):
