@@ -4,6 +4,7 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <random>
 
 using namespace pybind11::literals;
 
@@ -228,26 +229,6 @@ void normalize(Iter1 begin, Iter2 end) {
     }
 }
 
-template<typename T>
-int _random_choice(const T* const p, const int N)
-{
-    double dR = (double)rand();
-    double dM = (double)RAND_MAX;
-    double r = dR / (dM + 1.0);
-    double s = 0.0;
-    int i;
-    for (i = 0; i < N; i++)
-    {
-        s += p[i];
-        if (s >= r)
-        {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
 template<typename dtype>
 np_array<std::int32_t> samplePath(const np_array<dtype> &alpha, const np_array<dtype> &A, const np_array<dtype> &pobs, std::size_t T,
                 int seed = -1) {
@@ -263,21 +244,17 @@ np_array<std::int32_t> samplePath(const np_array<dtype> &alpha, const np_array<d
     auto ABuf = A.data();
     {
         py::gil_scoped_release gil;
-        // initialize random number generator
-        if (seed == -1) {
-            srand(time(NULL));
-        } else {
-            srand(seed);
-        }
+        std::default_random_engine generator (seed);
 
         // Sample final state.
         for (std::size_t i = 0; i < N; i++) {
             psel[i] = alphaBuf[(T - 1) * N + i];
         }
 
+        std::discrete_distribution<> ddist (psel, psel+N);
         normalize(psel, psel + N);
         // Draw from this distribution.
-        path[T - 1] = _random_choice(psel, N);
+        path[T - 1] = ddist(generator); //_random_choice(psel, N);
 
         // Work backwards from T-2 to 0.
         for (std::size_t t = T - 1; t >= 1; t--) {
@@ -285,9 +262,10 @@ np_array<std::int32_t> samplePath(const np_array<dtype> &alpha, const np_array<d
             for (std::size_t i = 0; i < N; i++) {
                 psel[i] = alphaBuf[(t - 1) * N + i] * ABuf[i * N + path[t]];
             }
-            normalize(psel, psel + N);
+            std::discrete_distribution<> ddistBackw (psel, psel+N);
+
             // Draw from this distribution.
-            path[t - 1] = _random_choice(psel, N);
+            path[t - 1] = ddistBackw(generator); //_random_choice(psel, N);
         }
     }
 
