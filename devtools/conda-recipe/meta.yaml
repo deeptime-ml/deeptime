@@ -5,6 +5,7 @@ package:
 
 source:
   path: ../..
+  #git_url: ../../
 
 build:
   script_env:
@@ -40,7 +41,7 @@ test:
   source_files:
     - tests/*
     # for doctests
-    - sktime/*
+    # - sktime/*
   requires:
     - scikit-learn
     - pytest
