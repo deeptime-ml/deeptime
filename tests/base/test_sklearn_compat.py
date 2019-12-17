@@ -20,6 +20,7 @@ class TestSkLearnCompat(unittest.TestCase):
 
     def test_mlmsm_pipeline(self):
         file = mdshare.fetch('hmm-doublewell-2d-100k.npz', working_directory='data')
+
         with np.load(file) as fh:
             data = fh['trajectory']
             transition_matrix = fh['transition_matrix']
@@ -31,7 +32,6 @@ class TestSkLearnCompat(unittest.TestCase):
         ])
         pipeline.fit(data)
         mlmsm = pipeline[-1].fetch_model()
-        P = pcca.PCCAEstimator(n_metastable=2).fit(mlmsm)\
-            .fetch_model().coarse_grained_transition_matrix
+        P = mlmsm.pcca(2).coarse_grained_transition_matrix
         mindist = min(np.linalg.norm(P - transition_matrix), np.linalg.norm(P - transition_matrix.T))
         assert mindist < 0.05
