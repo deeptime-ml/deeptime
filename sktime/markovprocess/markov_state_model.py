@@ -1007,6 +1007,66 @@ class MarkovStateModel(Model):
         self._assert_metastable()
         return self._metastable_assignments
 
+    def reactive_flux(self, A, B):
+        r""" A->B reactive flux from transition path theory (TPT)
+
+        The returned :class:`ReactiveFlux <pyemma.msm.models.ReactiveFlux>` object
+        can be used to extract various quantities of the flux, as well as to
+        compute A -> B transition pathways, their weights, and to coarse-grain
+        the flux onto sets of states.
+
+        Parameters
+        ----------
+        A : array_like
+            List of integer state labels for set A
+        B : array_like
+            List of integer state labels for set B
+
+        Returns
+        -------
+        tptobj : :class:`ReactiveFlux <sktime.markovprocess.ReactiveFlux>` object
+            An object containing the reactive A->B flux network
+            and several additional quantities, such as the stationary probability,
+            committors and set definitions.
+
+        See also
+        --------
+        :class:`ReactiveFlux <sktime.markovprocess.ReactiveFlux>`
+            Reactive Flux model
+    """
+        from msmtools.flux import flux_matrix, to_netflux
+        import msmtools.analysis as msmana
+        from sktime.util import ensure_ndarray
+        from sktime.markovprocess import ReactiveFlux
+
+        T = self.transition_matrix
+        mu = self.stationary_distribution
+        A = ensure_ndarray(A, dtype=int)
+        B = ensure_ndarray(B, dtype=int)
+
+        if len(A) == 0 or len(B) == 0:
+            raise ValueError('set A or B is empty')
+        n = T.shape[0]
+        if len(A) > n or len(B) > n or max(A) > n or max(B) > n:
+            raise ValueError('set A or B defines more states, than given transition matrix.')
+
+        # forward committor
+        qplus = msmana.committor(T, A, B, forward=True)
+        # backward committor
+        if msmana.is_reversible(T, mu=mu):
+            qminus = 1.0 - qplus
+        else:
+            qminus = msmana.committor(T, A, B, forward=False, mu=mu)
+        # gross flux
+        grossflux = flux_matrix(T, mu, qminus, qplus, netflux=False)
+        # net flux
+        netflux = to_netflux(grossflux)
+
+        # construct flux object
+        F = ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux,
+                         dt_model=self.dt_model)
+        return F
+
     def simulate(self, N, start=None, stop=None, dt=1):
         """
         Generates a realization of the Markov Model

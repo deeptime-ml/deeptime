@@ -64,15 +64,13 @@ class ReactiveFlux(Model):
     msmtools.tpt
 
     """
-    __serialize_version = 0
-
     def __init__(self, A, B, flux,
                  mu=None, qminus=None, qplus=None, gross_flux=None, dt_model='1 step'):
         # set data
         self._A = A
         self._B = B
         self._flux = flux
-        self._mu = stationary_distribution
+        self._mu = mu
         self._qminus = qminus
         self._qplus = qplus
         self._gross_flux = gross_flux
@@ -137,9 +135,10 @@ class ReactiveFlux(Model):
         return self._gross_flux / self._dt_model
 
     @property
-    def committor(self):
+    def forward_committor(self):
         """forward committor probability"""
         return self._qplus
+    # TODO: this was named committor
 
     @property
     def backward_committor(self):
