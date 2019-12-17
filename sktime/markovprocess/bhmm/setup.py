@@ -9,7 +9,6 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('hmm')
     config.add_subpackage('init')
     config.add_subpackage('output_models')
-    config.add_subpackage('output_models.impl_c')
     config.add_subpackage('util')
 
     return config
