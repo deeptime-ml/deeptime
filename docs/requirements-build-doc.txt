@@ -1,0 +1,4 @@
+sphinx-issues
+
+# theme
+msmb_theme>=1.2
