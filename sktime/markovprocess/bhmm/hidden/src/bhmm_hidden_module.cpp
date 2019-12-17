@@ -262,10 +262,10 @@ np_array<std::int32_t> samplePath(const np_array<dtype> &alpha, const np_array<d
             for (std::size_t i = 0; i < N; i++) {
                 psel[i] = alphaBuf[(t - 1) * N + i] * ABuf[i * N + path[t]];
             }
-            std::discrete_distribution<> ddistBackw (psel, psel+N);
+            ddist.param(decltype(ddist)::param_type(psel, psel+N));
 
             // Draw from this distribution.
-            path[t - 1] = ddistBackw(generator); //_random_choice(psel, N);
+            path[t - 1] = ddist(generator); //_random_choice(psel, N);
         }
     }
 
@@ -273,6 +273,7 @@ np_array<std::int32_t> samplePath(const np_array<dtype> &alpha, const np_array<d
 }
 
 PYBIND11_MODULE(_bhmm_hidden_bindings, m) {
+    // comment for Martin: the _a is a c++11 literal constexpr that expands to py::arg(...)
     m.def("forward", &forward<float>, "A"_a, "pobs"_a, "pi"_a, "alpha"_a, "T"_a);
     m.def("forward", &forward<double>, "A"_a, "pobs"_a, "pi"_a, "alpha"_a, "T"_a);
     m.def("backward", &backward<float>, "A"_a, "pobs"_a, "beta"_a, "T"_a);

@@ -21,7 +21,7 @@ import numpy as np
 from numpy.random import dirichlet
 
 from sktime.markovprocess.bhmm.output_models.outputmodel import OutputModel
-from .impl_c import discrete
+from ._bhmm_output_models import discrete as discrete
 
 
 class DiscreteOutputModel(OutputModel):
@@ -157,11 +157,10 @@ class DiscreteOutputModel(OutputModel):
 
         """
         # initialize output probability matrix
-        self._output_probabilities[:] = 0
+        self._output_probabilities.fill(0)
         # update output probability matrix (numerator)
-        up = discrete.update_pout
         for obs, w in zip(observations, weights):
-            up(obs, w, self._output_probabilities)
+            discrete.update_p_out(obs, w, self._output_probabilities)
         # normalize
         self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
 
