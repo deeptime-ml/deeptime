@@ -105,9 +105,6 @@ class BayesianMSM(_MSMBaseEstimator):
         self.nsteps = nsteps
         self.conf = conf
 
-    def _create_model(self) -> BayesianPosterior:
-        return BayesianPosterior()
-
     def fit(self, dtrajs, call_back: typing.Callable = None):
         """
 
@@ -152,6 +149,6 @@ class BayesianMSM(_MSMBaseEstimator):
             for P, pi in zip(sample_Ps, sample_mus)
         ]
 
-        self._model.__init__(prior=mle, samples=samples)
+        self._model = BayesianPosterior(prior=mle, samples=samples)
 
         return self

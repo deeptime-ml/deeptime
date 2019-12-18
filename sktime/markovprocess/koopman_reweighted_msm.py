@@ -148,9 +148,6 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         self.tol_rank = tol_rank
         self.rank_Ct = rank_Ct
 
-    def _create_model(self) -> KoopmanReweightedMSM:
-        return KoopmanReweightedMSM()
-
     def fit(self, dtrajs):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
@@ -176,6 +173,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         P, lcc_new = equilibrium_transition_matrix(Xi, omega, sigma, reversible=self.reversible)
 
         # Update active set and derived quantities:
+        # todo: dont re-initialize, this is only due to active set (see bhmm impl)
         if lcc_new.size < count_model.nstates:
             assert isinstance(count_model, TransitionCountModel)
             count_model.__init__(self.lagtime, active_set=count_model.active_set[lcc_new],
@@ -186,8 +184,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         # update models
         count_model.C2t = C2t
 
-        msm_model = self._model
-        msm_model.__init__(
+        self._model = KoopmanReweightedMSM(
             transition_matrix=P,
             eigenvalues_OOM=l,
             sigma=sigma,

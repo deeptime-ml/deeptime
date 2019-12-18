@@ -205,14 +205,6 @@ class MaximumLikelihoodHMM(Estimator):
         # update output model
         self._model.output_model.fit(observations, gammas)
 
-    def _create_model(self) -> HMM:
-        # If we already have a provided model (since the construction of the estimator,
-        # we do not want to override it here).
-        if self.initial_model is None:
-            return None
-        else:
-            return self.initial_model
-
     def fit(self, observations, **kw):
         """
         Maximum-likelihood estimation of the HMM using the Baum-Welch algorithm
@@ -242,6 +234,8 @@ class MaximumLikelihoodHMM(Estimator):
         if self.initial_model is None:
             # Generate our own initial model.
             self._model = init_hmm(observations, self.nstates, output=self._output)
+        else:
+            self._model = self.initial_model
 
         it = 0
         likelihoods = np.empty(self.maxit)

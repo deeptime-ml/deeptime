@@ -50,3 +50,26 @@ def count_states(dtrajs, ignore_negative=False):
     for i, bc in enumerate(bcs):
         res[:bc.shape[0]] += bc
     return res
+
+
+def compute_effective_stride(dtrajs, lagtime, nstates):
+    # by default use lag as stride (=lag sampling), because we currently have no better theory for deciding
+    # how many uncorrelated counts we can make
+    stride = lagtime
+    # get a quick fit from the spectral radius of the non-reversible
+    from sktime.markovprocess import MaximumLikelihoodMSM
+    msm_non_rev = MaximumLikelihoodMSM(lagtime=lagtime, reversible=False, sparse=False).fit(dtrajs).fetch_model()
+    # if we have more than nstates timescales in our MSM, we use the next (neglected) timescale as an
+    # fit of the de-correlation time
+    if msm_non_rev.nstates > nstates:
+        # because we use non-reversible msm, we want to silence the ImaginaryEigenvalueWarning
+        import warnings
+        from msmtools.util.exceptions import ImaginaryEigenValueWarning
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=ImaginaryEigenValueWarning,
+                                    module='msmtools.analysis.dense.decomposition')
+            correlation_time = max(1, msm_non_rev.timescales()[nstates - 1])
+        # use the smaller of these two pessimistic estimates
+        stride = int(min(lagtime, 2 * correlation_time))
+
+    return stride

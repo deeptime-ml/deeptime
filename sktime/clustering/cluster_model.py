@@ -6,11 +6,11 @@ from sktime.clustering._clustering_bindings import assign as _assign
 
 class ClusterModel(Model, Transformer):
 
-    def __init__(self, n_clusters=0, cluster_centers=None, metric=None):
+    def __init__(self, n_clusters, cluster_centers, metric, converged=False):
         self._n_clusters = n_clusters
         self._cluster_centers = cluster_centers
         self._metric = metric
-        self._converged = False
+        self._converged = converged
 
     @property
     def cluster_centers(self):

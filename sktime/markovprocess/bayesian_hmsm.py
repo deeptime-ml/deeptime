@@ -23,10 +23,10 @@ from msmtools.dtraj import number_of_states
 
 from sktime.markovprocess.bhmm import discrete_hmm, bayesian_hmm, lag_observations
 from sktime.markovprocess.hidden_markov_model import HMSM
-from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
+from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM, _HMMTransitionCounts
 from sktime.util import ensure_dtraj_list
 from ._base import BayesianPosterior
-from .maximum_likelihood_hmsm import MaximumLikelihoodHMSM as _MaximumLikelihoodHMSM, _HMMCountEstimator
+from .maximum_likelihood_hmsm import MaximumLikelihoodHMSM as _MaximumLikelihoodHMSM
 
 __author__ = 'noe'
 
@@ -168,9 +168,6 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
         self.conf = conf
         self.store_hidden = store_hidden
 
-    def _create_model(self) -> BayesianHMMPosterior:
-        return BayesianHMMPosterior()
-
     @property
     def init_hmsm(self):
         return self._init_hmsm
@@ -182,6 +179,7 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
         self._init_hmsm = value
 
     def fit(self, dtrajs, call_back=None):
+        self._model = BayesianHMMPosterior()
         dtrajs = ensure_dtraj_list(dtrajs)
 
         if self.init_hmsm is None:  # estimate using a maximum-likelihood hmm
@@ -196,7 +194,9 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
                                                       accuracy=1e-2,  # this is sufficient for an initial guess
                                                       observe_nonempty=False,
                                                       ).fit(dtrajs).fetch_model()
-            dtrajs_lagged_strided = self._model.prior.count_model.dtrajs_lagged_strided
+            dtrajs_lagged_strided = _HMMTransitionCounts.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
+                                                                                  nstates=self.nstates,
+                                                                                  stride=self.stride)
         else:  # if given another initialization, must copy its attributes
             # check if nstates and lag are compatible
             if self.lagtime != self.init_hmsm.lagtime:
@@ -204,27 +204,19 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
             if self.nstates != self.init_hmsm.nstates:
                 raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible nstates.')
 
-            if (len(dtrajs) != len(self.init_hmsm.count_model.dtrajs_full) or
-                    not all((np.array_equal(d1, d2) for d1, d2 in zip(dtrajs, self.init_hmsm.count_model.dtrajs_full)))):
-                raise NotImplementedError('Bayesian HMM estimation with init_hmsm is currently only implemented '
-                                          'if applied to the same data.')
-
             # EVALUATE STRIDE
             init_stride = self.init_hmsm.count_model.stride
             if self.stride == 'effective':
-                self.stride = _HMMCountEstimator._compute_effective_stride(dtrajs, self.stride, self.lagtime,
-                                                                           self.nstates)
+                from sktime.markovprocess.util import compute_effective_stride
+                self.stride = compute_effective_stride(dtrajs, self.lagtime, self.nstates)
 
             # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
-            dtrajs_lagged_strided = self.init_hmsm.count_model.dtrajs_lagged_strided
+            dtrajs_lagged_strided = _HMMTransitionCounts.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
+                                                                                  nstates=self.nstates, stride=self.stride)
             if self.stride != init_stride:
                 def _check_dtrajs_match():
-                    _dtrajs_lagged_strided = lag_observations(dtrajs, self.lagtime, stride=self.stride)
-                    _nstates_obs = number_of_states(dtrajs_lagged_strided, only_used=True)
-                    _nstates_obs_full = number_of_states(dtrajs)
-
-                    if np.setxor1d(np.concatenate(_dtrajs_lagged_strided),
-                                   np.concatenate(self.init_hmsm.count_model.dtrajs_lagged_strided)).size != 0:
+                    symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
+                    if self.init_hmsm.count_model.symbols != symbols:
                         raise ValueError('Choice of stride has excluded a different set of microstates than in '
                                          'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
                                          'must match to the one used for init_hmsm estimation.')

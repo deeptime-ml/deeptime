@@ -208,8 +208,7 @@ def init_gaussian_hmm(observations, nstates, lag=1, reversible=True):
     from .init import gaussian
     if lag > 1:
         observations = lag_observations(observations, lag)
-    hmm0 = gaussian.init_model_gaussian1d(observations, nstates, reversible=reversible)
-    hmm0._lag = lag
+    hmm0 = gaussian.init_model_gaussian1d(observations, nstates, lag, reversible=reversible)
     return hmm0
 
 

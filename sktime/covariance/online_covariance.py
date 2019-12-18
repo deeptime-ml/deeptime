@@ -124,9 +124,6 @@ class OnlineCovariance(Estimator):
                                  sparse_mode=self.sparse_mode, modify_data=False, diag_only=self.diag_only,
                                  nsave=ncov)
 
-    def _create_model(self) -> OnlineCovarianceModel:
-        return OnlineCovarianceModel()
-
     @property
     def is_lagged(self) -> bool:
         return self.compute_c0t or self.compute_ctt
@@ -217,6 +214,8 @@ class OnlineCovariance(Estimator):
             mean_0 = self._rc.mean_X()
         if self.compute_ctt or self.compute_c0t:
             mean_t = self._rc.mean_Y()
+        if self._model is None:
+            self._model = OnlineCovarianceModel()
         self._model.__init__(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
                              bessels_correction=self.bessels_correction)
         return self._model
@@ -249,9 +248,6 @@ class KoopmanEstimator(Estimator):
     def partial_fit(self, data):
         self._cov.partial_fit(data)
         return self
-
-    def _create_model(self) -> KoopmanWeights:
-        return KoopmanWeights()
 
     @staticmethod
     def _compute_u(K):
@@ -295,8 +291,8 @@ class KoopmanEstimator(Estimator):
         u_input[0:N] = R.dot(u[0:-1])  # in input basis
         u_input[N] = u[-1] - cov.mean_0.dot(R.dot(u[0:-1]))
 
-        self._model.u = u_input[:-1]
-        self._model.u_const = u_input[-1]
+        self._model = KoopmanWeights(u=u_input[:-1], u_const=u_input[-1])
+
         return self._model
 
     @property

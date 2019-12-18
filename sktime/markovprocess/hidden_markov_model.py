@@ -49,8 +49,8 @@ class HMSM(MarkovStateModel):
 
     """
 
-    def __init__(self, transition_matrix=None, pobs=None, pi=None, dt_model='1 step',
-                 neig=None, reversible=None, count_model=None, initial_distribution=None):
+    def __init__(self, transition_matrix, pobs, pi=None, dt_model='1 step',
+                 neig=None, reversible=None, count_model=None, initial_distribution=None, bhmm_hmm_model=None):
         if count_model is None:
             from sktime.markovprocess.maximum_likelihood_hmsm import _HMMTransitionCounts
             count_model = _HMMTransitionCounts()
@@ -59,14 +59,14 @@ class HMSM(MarkovStateModel):
         super(HMSM, self).__init__(transition_matrix=transition_matrix, pi=pi, dt_model=dt_model,
                                    reversible=reversible, neig=neig, count_model=count_model)
 
-        if pobs is not None:
-            #assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
-            pobs = ensure_ndarray(pobs, ndim=2, dtype=np.float64)
-            assert np.allclose(pobs.sum(axis=1), 1), 'pobs is not a stochastic matrix'
-            self._nstates_obs = pobs.shape[1]
-            # TODO: refactor
-            self.pobs = pobs
+        #assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
+        pobs = ensure_ndarray(pobs, ndim=2, dtype=np.float64)
+        assert np.allclose(pobs.sum(axis=1), 1), 'pobs is not a stochastic matrix'
+        self._nstates_obs = pobs.shape[1]
+        # TODO: refactor
+        self.pobs = pobs
         self._initial_distribution = initial_distribution
+        self.hmm = bhmm_hmm_model
 
     ################################################################################
     # Submodel functions using estimation information (counts)
@@ -76,19 +76,20 @@ class HMSM(MarkovStateModel):
 
         Parameters
         ----------
-        states : None, str or int-array
+        states : None or int-array
             Hidden states to restrict the model to. In addition to specifying
             the subset, possible options are:
+
+            * int-array: indices of states to restrict onto
             * None : all states - don't restrict
-            * 'populous-strong' : strongly connected subset with maximum counts
-            * 'populous-weak' : weakly connected subset with maximum counts
-            * 'largest-strong' : strongly connected subset with maximum size
-            * 'largest-weak' : weakly connected subset with maximum size
-        obs : None, str or int-array
+
+        obs : None or int-array
             Observed states to restrict the model to. In addition to specifying
             an array with the state labels to be observed, possible options are:
-            * None : all states - don't restrict
-            * 'nonempty' : all states with at least one observation in the estimator
+
+              * int-array: indices of states to restrict onto
+              * None : all states - don't restrict
+
         mincount_connectivity : float or '1/n'
             minimum number of counts to consider a connection between two states.
             Counts lower than that will count zero in the connectivity check and
@@ -144,19 +145,8 @@ class HMSM(MarkovStateModel):
             pi = self.stationary_distribution
 
         # determine substates
-        if isinstance(states, str):
-            strong = 'strong' in states
-            largest = 'largest' in states
-            S = _tmatrix_disconnected.connected_sets(count_matrix,
-                                                     mincount_connectivity=mincount_connectivity,
-                                                     strong=strong)
-            if largest:
-                score = [len(s) for s in S]
-            else:
-                score = [count_matrix[np.ix_(s, s)].sum() for s in S]
-            states = np.array(S[np.argmax(score)])
+        states = self._select_states(count_matrix, mincount_connectivity, states)
 
-        assert states is not None
         # TODO: this if is not needed, as states is always defined above...
         if states is not None:  # sub-transition matrix
             model.count_model._active_set = states
@@ -198,6 +188,20 @@ class HMSM(MarkovStateModel):
                        initial_distribution=model.initial_distribution)
         return model
 
+    def _select_states(self, count_matrix, mincount_connectivity, states):
+        if isinstance(states, str):
+            strong = 'strong' in states
+            largest = 'largest' in states
+            S = _tmatrix_disconnected.connected_sets(count_matrix,
+                                                     mincount_connectivity=mincount_connectivity,
+                                                     strong=strong)
+            if largest:
+                score = [len(s) for s in S]
+            else:
+                score = [count_matrix[np.ix_(s, s)].sum() for s in S]
+            states = np.array(S[np.argmax(score)])
+        return states
+
     def submodel_largest(self, strong=True, mincount_connectivity='1/n'):
         """ Returns the largest connected sub-HMM (convenience function)
 
@@ -212,7 +216,7 @@ class HMSM(MarkovStateModel):
         else:
             return self.submodel(states='largest-weak', mincount_connectivity=mincount_connectivity)
 
-    def submodel_populous(self, strong=True, mincount_connectivity='1/n'):
+    def submodel_populous(self, strong=True, mincount_connectivity='1/n', obs_nonempty=True):
         """ Returns the most populous connected sub-HMM (convenience function)
 
         Returns
@@ -221,6 +225,8 @@ class HMSM(MarkovStateModel):
             The restricted HMSM.
 
         """
+        if obs_nonempty:
+            non_empty_states = np.where(self.count_model.state_histogram > 0)[0]
         if strong:
             return self.submodel(states='populous-strong', mincount_connectivity=mincount_connectivity)
         else:

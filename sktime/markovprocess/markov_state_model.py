@@ -75,7 +75,8 @@ class MarkovStateModel(Model):
         be greater than neig; it is recommended that ncv > 2*neig.
 
     """
-    def __init__(self, transition_matrix=None, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, count_model=None):
+    def __init__(self, transition_matrix, pi=None, reversible=None,
+                 dt_model='1 step', neig=None, ncv=None, count_model=None):
         self.ncv = ncv
         # we set reversible first, so it can be derived from transition_matrix, if None was given.
         self._is_reversible = reversible

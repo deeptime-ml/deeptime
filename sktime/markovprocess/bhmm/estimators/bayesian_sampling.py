@@ -202,9 +202,6 @@ class BayesianHMMSampler(Estimator):
         self.nsamples = nsamples
         self.output = output
 
-    def _create_model(self):
-        return BayesianHMMPosterior()
-
     def fit(self, observations, nburn=0, nthin=1, save_hidden_state_trajectory=False, call_back=None, **kwargs):
         """Sample from the BHMM posterior.
 
@@ -284,8 +281,8 @@ class BayesianHMMSampler(Estimator):
             if call_back is not None:
                 call_back()
 
-        self._model.samples = models
-        self._model.prior = prior
+        self._model = BayesianHMMPosterior(prior=prior, samples=models)
+
         # free estimation variables
         del self._alpha
         del self._pobs

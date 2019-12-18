@@ -134,19 +134,19 @@ class MaximumLikelihoodHMSM(Estimator):
         self.accuracy = accuracy
         self.maxit = maxit
 
-    def _create_model(self) -> HMSM:
-        return HMSM()
-
     def fit(self, dtrajs, **kwargs):
-        from .bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
+        dtrajs = ensure_dtraj_list(dtrajs)
+        # CHECK LAG
+        trajlengths = [len(dtraj) for dtraj in dtrajs]
+        if self.lagtime >= np.max(trajlengths):
+            raise ValueError(f'Illegal lag time {self.lagtime} exceeds longest trajectory length')
+        if self.lagtime > np.mean(trajlengths):
+            warnings.warn(f'Lag time {self.lagtime} is on the order of mean trajectory length '
+                          f'{np.mean(trajlengths)}. It is recommended to fit four lag times in each '
+                          'trajectory. HMM might be inaccurate.')
 
-        # OBSERVATION SET
-        observe_subset = 'nonempty' if self.observe_nonempty else None
-
-        hmm_count_model = _HMMCountEstimator(nstates=self.nstates, lagtime=self.lagtime, stride=self.stride) \
-            .fit(dtrajs).fetch_model()
-        assert isinstance(hmm_count_model, _HMMTransitionCounts)
-        dtrajs_lagged_strided = hmm_count_model.dtrajs_lagged_strided
+        dtrajs_lagged_strided = _HMMTransitionCounts.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
+                                                                              nstates=self.nstates, stride=self.stride)
 
         # INIT HMM
         if isinstance(self.msm_init, str):
@@ -167,49 +167,32 @@ class MaximumLikelihoodHMSM(Estimator):
                                                        active_set=msm_count_model.active_set,
                                                        P=self.msm_init.transition_matrix, separate=self.separate)
             hmm_init = discrete_hmm(p0, P0, pobs0)
-            observe_subset = msm_count_model.active_set  # override observe_subset.
 
         # ---------------------------------------------------------------------------------------
         # Estimate discrete HMM
         # ---------------------------------------------------------------------------------------
+        from .bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
         hmm_est = MaximumLikelihoodHMM(self.nstates, initial_model=hmm_init,
                                        output='discrete', reversible=self.reversible, stationary=self.stationary,
                                        accuracy=self.accuracy, maxit=self.maxit)
         hmm = hmm_est.fit(dtrajs_lagged_strided).fetch_model()
         # update the count matrix from the counts obtained via the Viterbi paths.
-        # TODO: this seems like a hack, but is due to the duality of HMM and HMSM models...
-        # TODO: it is easy to introduce bugs due to invoking the ctor again (forgot a param), update_model_params of pyemma seems more reasonable for this case.
-        hmm_count_model.__init__(stride=self.stride,
-                                 count_matrix=hmm.transition_counts,
-                                 initial_count=hmm.initial_count, lagtime=self.lagtime, dt_traj=self.dt_traj,
-                                 nstates=self.nstates,
-                                 nstates_obs=number_of_states(dtrajs_lagged_strided),
-                                 active_set=None)
-        # udpate model params would only set these:
-        # hmm_count_model._update_params(count_matrix=hmm.transition_counts, initial_counts=hmm.initial_counts)
-        # get estimation parameters
-        self._model.__init__(transition_matrix=hmm.transition_matrix,
-                             pobs=hmm.output_model.output_probabilities,
-                             pi=hmm.stationary_distribution,
-                             dt_model=hmm_count_model.dt_traj*self.lagtime,
-                             reversible=self.reversible,
-                             initial_distribution=hmm.initial_distribution, count_model=hmm_count_model)
-        self._model.hmm = hmm  # TODO: duplicity...
-
-        # TODO: perhaps remove connectivity and just rely on .submodel()?
-        # deal with connectivity
-        states_subset = None
-        if self.connectivity == 'largest':
-            states_subset = 'largest-strong'
-        elif self.connectivity == 'populous':
-            states_subset = 'populous-strong'
-
-        # restrict model to observed and desired state space with given minimum count connectivity
-        sub_model = self._model.submodel(states=states_subset, obs=observe_subset,
-                                         mincount_connectivity=self.mincount_connectivity,
-                                         inplace=True)
-        # TODO:evil
-        self._model = sub_model
+        hmm_count_model = _HMMTransitionCounts(stride=self.stride,
+                                               count_matrix=hmm.transition_counts,
+                                               initial_count=hmm.initial_count, lagtime=self.lagtime,
+                                               dt_traj=self.dt_traj,
+                                               nstates=self.nstates,
+                                               nstates_obs=number_of_states(dtrajs_lagged_strided),
+                                               active_set=None,
+                                               symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
+        # set model parameters
+        self._model = HMSM(transition_matrix=hmm.transition_matrix,
+                           pobs=hmm.output_model.output_probabilities,
+                           pi=hmm.stationary_distribution,
+                           dt_model=hmm_count_model.dt_traj * self.lagtime,
+                           reversible=self.reversible,
+                           initial_distribution=hmm.initial_distribution, count_model=hmm_count_model,
+                           bhmm_hmm_model=hmm)
 
         return self
 
@@ -246,7 +229,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @connectivity.setter
     def connectivity(self, value):
-        allowed = (None, 'largest', 'populus')
+        allowed = (None, 'largest', 'popolust')
         if value not in allowed:
             raise ValueError(f'Illegal value for connectivity: {value}. Allowed values are one of: {allowed}.')
         self._connectivity = value
@@ -402,15 +385,25 @@ class MaximumLikelihoodHMSM(Estimator):
 
 
 class _HMMTransitionCounts(transition_counting.TransitionCountModel):
-    def __init__(self, nstates=None, nstates_obs=None, stride=1, initial_count=None, **kwargs):
-        super(_HMMTransitionCounts, self).__init__(**kwargs)
-        self._count_matrix_EM = None
+    def __init__(self, nstates=None, nstates_obs=None, stride=1, initial_count=None, symbols=None,
+                 lagtime=1, active_set=None, dt_traj='1 step',
+                 connected_sets=(), count_matrix=None, hist=None):
+        super(_HMMTransitionCounts, self).__init__(lagtime=lagtime, active_set=active_set, dt_traj=dt_traj,
+                                                   connected_sets=connected_sets, count_matrix=count_matrix,
+                                                   hist=hist)
+
         self.initial_count = initial_count
         self._nstates_full = nstates
         self._nstates_obs = nstates_obs
         if nstates_obs is not None:
             self._observable_set = np.arange(nstates_obs)
         self.stride = stride
+        self._symbols = symbols
+
+    @property
+    def symbols(self):
+        """Sorted unique symbols in observations """
+        return self._symbols
 
     @property
     def initial_count(self):
@@ -427,20 +420,6 @@ class _HMMTransitionCounts(transition_counting.TransitionCountModel):
         return super(_HMMTransitionCounts, self).count_matrix
 
     @property
-    def count_matrix_EM(self):
-        """ """
-        return self._count_matrix_EM
-
-    @property
-    def dtrajs_lagged_strided(self):
-        # TODO: we do not want this.
-        return self._dtrajs
-
-    @property
-    def dtrajs_full(self):
-        return self._dtrajs_full
-
-    @property
     def nstates_obs(self):
         return self._nstates_obs
 
@@ -448,65 +427,14 @@ class _HMMTransitionCounts(transition_counting.TransitionCountModel):
     def observable_set(self):
         return self._observable_set
 
-
-class _HMMCountEstimator(transition_counting.TransitionCountEstimator):
-    def __init__(self, lagtime, nstates, stride='effective'):
-        super(_HMMCountEstimator, self).__init__()
-        self.lagtime = lagtime
-        self.stride = stride
-        self.nstates = nstates
-
-    def _create_model(self) -> _HMMTransitionCounts:
-        return _HMMTransitionCounts()
-
-    def fit(self, data):
-        dtrajs = ensure_dtraj_list(data)
-        # CHECK LAG
-        trajlengths = [len(dtraj) for dtraj in dtrajs]
-        if self.lagtime >= np.max(trajlengths):
-            raise ValueError(f'Illegal lag time {self.lagtime} exceeds longest trajectory length')
-        if self.lagtime > np.mean(trajlengths):
-            warnings.warn(f'Lag time {self.lagtime} is on the order of mean trajectory length '
-                          f'{np.mean(trajlengths)}. It is recommended to fit four lag times in each '
-                          'trajectory. HMM might be inaccurate.')
-
+    @staticmethod
+    def compute_dtrajs_effective(dtrajs, lagtime, nstates, stride):
+        lagtime = int(lagtime)
         # EVALUATE STRIDE
-        if self.stride == 'effective':
-            stride = _HMMCountEstimator._compute_effective_stride(dtrajs, self.stride, self.lagtime, self.nstates)
-        else:
-            stride = self.stride
+        if stride == 'effective':
+            from sktime.markovprocess.util import compute_effective_stride
+            stride = compute_effective_stride(dtrajs, lagtime, nstates)
 
         # LAG AND STRIDE DATA
-        dtrajs_lagged_strided = lag_observations(dtrajs, int(self.lagtime), stride=stride)
-        nstates_obs = number_of_states(dtrajs_lagged_strided)
-        # placeholder for counts computed from transition paths during HMM estimation.
-        self._model.__init__(lagtime=self.lagtime, stride=stride, nstates_obs=nstates_obs)
-        self._model._dtrajs = dtrajs_lagged_strided
-        self._model._dtrajs_full = dtrajs
-
-        return self
-
-    @staticmethod
-    def _compute_effective_stride(dtrajs, stride, lagtime, nstates):
-        if stride != 'effective':
-            raise RuntimeError('call this only if self.stride=="effective"!')
-        # by default use lag as stride (=lag sampling), because we currently have no better theory for deciding
-        # how many uncorrelated counts we can make
-        stride = lagtime
-        # get a quick fit from the spectral radius of the non-reversible
-        from sktime.markovprocess import MaximumLikelihoodMSM
-        msm_non_rev = MaximumLikelihoodMSM(lagtime=lagtime, reversible=False, sparse=False).fit(dtrajs).fetch_model()
-        # if we have more than nstates timescales in our MSM, we use the next (neglected) timescale as an
-        # fit of the de-correlation time
-        if msm_non_rev.nstates > nstates:
-            # because we use non-reversible msm, we want to silence the ImaginaryEigenvalueWarning
-            import warnings
-            from msmtools.util.exceptions import ImaginaryEigenValueWarning
-            with warnings.catch_warnings():
-                warnings.filterwarnings('ignore', category=ImaginaryEigenValueWarning,
-                                        module='msmtools.analysis.dense.decomposition')
-                correlation_time = max(1, msm_non_rev.timescales()[nstates - 1])
-            # use the smaller of these two pessimistic estimates
-            stride = int(min(lagtime, 2 * correlation_time))
-
-        return stride
+        dtrajs_lagged_strided = lag_observations(dtrajs, lagtime, stride=stride)
+        return dtrajs_lagged_strided

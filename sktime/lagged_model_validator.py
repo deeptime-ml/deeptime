@@ -158,9 +158,6 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
             raise ValueError('multiples of lagtimes have to be greater zero.')
         self.mlags = mlags
 
-    def _create_model(self) -> LaggedModelValidation:
-        return LaggedModelValidation()
-
     def fit(self, data):
         # set lag times
         self._set_mlags(data, self.input_lagtime)
@@ -206,8 +203,8 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
         else:
             estimates_conf = np.array((None, None))
 
-        self._model.__init__(estimates=estimates, estimates_conf=estimates_conf,
-                             predictions=predictions, predictions_conf=predictions_conf, lagtimes=lags)
+        self._model = LaggedModelValidation(estimates=estimates, estimates_conf=estimates_conf,
+                                            predictions=predictions, predictions_conf=predictions_conf, lagtimes=lags)
 
         return self
 

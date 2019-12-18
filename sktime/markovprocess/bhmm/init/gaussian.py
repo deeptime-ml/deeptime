@@ -22,7 +22,7 @@ from sktime.markovprocess.bhmm import HMM
 from sktime.markovprocess.bhmm.output_models.gaussian import GaussianOutputModel
 
 
-def init_model_gaussian1d(observations, nstates, reversible=True):
+def init_model_gaussian1d(observations, nstates, lag, reversible=True):
     """Generate an initial model with 1D-Gaussian output densities
 
     Parameters
@@ -71,6 +71,6 @@ def init_model_gaussian1d(observations, nstates, reversible=True):
     pi = msmana.stationary_distribution(Tij)
 
     # Update model.
-    model = HMM(pi, Tij, output_model)
+    model = HMM(pi, Tij, output_model, lag=lag)
 
     return model

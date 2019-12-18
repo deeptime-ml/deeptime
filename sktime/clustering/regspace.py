@@ -58,9 +58,6 @@ class RegularSpaceClustering(Estimator):
         self.max_centers = max_centers
         self.n_jobs = n_jobs
 
-    def _create_model(self):
-        return ClusterModel()
-
     @property
     def metric(self):
         return self._metric
@@ -139,11 +136,10 @@ class RegularSpaceClustering(Estimator):
                           ' a larger minimum distance, dmin.')
         finally:
             # even if not converged, we store the found centers.
-            # new_shape = (len(clustercenters), ndim)
-            clustercenters = np.asarray_chkfinite(clustercenters).squeeze() #.reshape(new_shape)
-            self._model._cluster_centers = clustercenters
-            self._model._n_clusters = len(clustercenters)
-            self._model._converged = converged
+            clustercenters = np.asarray_chkfinite(clustercenters).squeeze()
+
+            self._model = ClusterModel(len(clustercenters), clustercenters, self.metric, converged)
+
             if len(clustercenters) == 1:
                 warnings.warn('Have found only one center according to '
                               'minimum distance requirement of %f' % self.dmin)

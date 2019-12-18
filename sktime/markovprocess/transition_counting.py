@@ -284,14 +284,14 @@ class TransitionCountModel(Model):
 
 class TransitionCountEstimator(Estimator):
 
-    def __init__(self, lagtime: int = 1, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
+    def __init__(self, lagtime: int, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
                  stationary_dist_constraint=None):
+        super().__init__()
         self.lagtime = lagtime
         self.count_mode = count_mode
         self.mincount_connectivity = mincount_connectivity
         self.dt_traj = dt_traj
         self.stationary_dist_constraint = stationary_dist_constraint
-        super().__init__()
 
     @property
     def dt_traj(self):
@@ -300,9 +300,6 @@ class TransitionCountEstimator(Estimator):
     @dt_traj.setter
     def dt_traj(self, value):
         self._dt_traj = Q_(value)
-
-    def _create_model(self) -> TransitionCountModel:
-        return TransitionCountModel()
 
     @staticmethod
     def _compute_connected_sets(C, mincount_connectivity, strong=True):
@@ -411,7 +408,7 @@ class TransitionCountEstimator(Estimator):
         if submatrix(count_matrix, active_set).sum() == 0:
             active_set = np.empty(0, dtype=int)
 
-        self._model.__init__(
+        self._model = TransitionCountModel(
             lagtime=lagtime, active_set=active_set, dt_traj=self.dt_traj,
             connected_sets=connected_sets, count_matrix=count_matrix,
             hist=hist

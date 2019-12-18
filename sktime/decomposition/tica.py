@@ -277,9 +277,6 @@ class TICA(Estimator, Transformer):
                                        reversible=self.reversible, bessels_correction=False, ncov=ncov)
         super(TICA, self).__init__()
 
-    def _create_model(self) -> TICAModel:
-        return TICAModel(scaling=self.scaling, dim=self.dim, epsilon=self.epsilon)
-
     def transform(self, data):
         r"""Projects the data onto the dominant independent components.
 
@@ -304,15 +301,19 @@ class TICA(Estimator, Transformer):
             input data.
             :param weights:
         """
+        if self._model is None:
+            self._model = TICAModel(scaling=self.scaling, dim=self.dim, epsilon=self.epsilon)
         self._covar.partial_fit(X, weights=weights, column_selection=column_selection)
         return self
 
     def fit(self, X, lagtime=None, weights=None, column_selection=None):
+        self._model = TICAModel(scaling=self.scaling, dim=self.dim, epsilon=self.epsilon)
         self._covar.fit(X, lagtime=lagtime, weights=weights, column_selection=column_selection)
         return self
 
     def fetch_model(self) -> TICAModel:
         covar_model = self._covar.fetch_model()
+
         self._model.cov_00 = covar_model.cov_00
         self._model.cov_0t = covar_model.cov_0t
         self._model.mean_0 = covar_model.mean_0
