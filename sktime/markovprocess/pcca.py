@@ -100,6 +100,9 @@ class PCCAEstimator(Estimator):
         super(PCCAEstimator, self).__init__()
         self.n_metastable = n_metastable
 
+    # we do not check for input-data constness and type, because here we allow a MarkovStateModel as input.
+    _MUTABLE_INPUT_DATA = True
+
     def _create_model(self) -> PCCA:
         return PCCA()
 

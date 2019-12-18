@@ -105,12 +105,12 @@ class BayesianMSM(_MSMBaseEstimator):
         self.nsteps = nsteps
         self.conf = conf
 
-    def fit(self, dtrajs, call_back: typing.Callable = None):
+    def fit(self, data, call_back: typing.Callable = None):
         """
 
         Parameters
         ----------
-        dtrajs : list containing ndarrays(dtype=int) or ndarray(n, dtype=int)
+        data : list containing ndarrays(dtype=int) or ndarray(n, dtype=int)
             discrete trajectories, stored as integer ndarrays (arbitrary size)
             or a single ndarray for only one trajectory.
 
@@ -119,12 +119,12 @@ class BayesianMSM(_MSMBaseEstimator):
 
         """
         # conduct MLE estimation (superclass) first
-        super(BayesianMSM, self).fit(dtrajs)
+        super(BayesianMSM, self).fit(data)
         mle = MaximumLikelihoodMSM(lagtime=self.lagtime, reversible=self.reversible,
                                    statdist_constraint=self.statdist_constraint, count_mode=self.count_mode,
                                    sparse=self.sparse,
                                    dt_traj=self.dt_traj, mincount_connectivity=self.mincount_connectivity,
-                                   maxiter=self.maxiter, maxerr=self.maxerr).fit(dtrajs).fetch_model()
+                                   maxiter=self.maxiter, maxerr=self.maxerr).fit(data).fetch_model()
 
         # transition matrix sampler
         from msmtools.estimation import tmatrix_sampler
