@@ -27,8 +27,7 @@ import msmtools.analysis as msmana
 import numpy as np
 from numpy.testing import assert_allclose
 
-from sktime.markovprocess import MarkovStateModel
-from sktime.markovprocess.reactive_flux import ReactiveFluxEstimator
+from sktime.markovprocess import MarkovStateModel, ReactiveFlux
 
 
 class TestReactiveFluxFunctions(unittest.TestCase):
@@ -74,7 +73,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
                                                  [0., 0., 0., 0., 0.]])
 
         # Testing:
-        cls.tpt1 = ReactiveFluxEstimator(cls.A, cls.B).fit(cls.P).fetch_model()
+        cls.tpt1 = cls.P.reactive_flux(cls.A, cls.B)
 
         # 16-state toy system
         P2_nonrev = np.array([[0.5, 0.2, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -125,7 +124,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
                                         [0., 0., 0., 0., 0., 0.]])
 
         # Testing
-        cls.tpt2 = ReactiveFluxEstimator(cls.A2, cls.B2).fit(cls.P2).fetch_model()
+        cls.tpt2 = cls.P2.reactive_flux(cls.A2, cls.B2)
 
     def test_nstates(self):
         self.assertEqual(self.tpt1.nstates, self.P.nstates)
@@ -182,7 +181,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
 
     def test_dt_model(self):
         msm = MarkovStateModel(np.array([[0.1, 0.9], [0.9, 0.1]]), dt_model='5s')
-        tpt = ReactiveFluxEstimator([0], [1]).fit(msm).fetch_model()
+        tpt = msm.reactive_flux([0], [1])
         assert '5 second' in str(tpt.dt_model)
 
     def test_coarse_grain(self):
