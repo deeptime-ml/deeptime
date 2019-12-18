@@ -2,8 +2,7 @@ import warnings
 
 import numpy as np
 
-from sktime.base import Model, Estimator
-from sktime.util import mdot
+from sktime.base import Model
 
 
 # TODO: should pass pi to msmtools once it's supported.

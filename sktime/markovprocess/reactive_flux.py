@@ -138,6 +138,7 @@ class ReactiveFlux(Model):
     def forward_committor(self):
         """forward committor probability"""
         return self._qplus
+    # TODO: this was named committor
 
     @property
     def backward_committor(self):

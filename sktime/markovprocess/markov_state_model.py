@@ -791,19 +791,8 @@ class MarkovStateModel(Model):
         from msmtools.analysis import fingerprint_relaxation as fr
         return fr(self.transition_matrix, p0, a, tau=self._dt_model, k=k, ncv=ncv)
 
-    ################################################################################
-    # pcca
-    ################################################################################
-
-    def _assert_metastable(self):
-        """ Tests if pcca object is available, or else raises a ValueError.
-
-        """
-        if getattr(self, '_pcca', None) is None:
-            raise ValueError('Metastable decomposition has not yet been computed. Please call pcca(m) first.')
-
-    def pcca(self, m: int) -> PCCA:
-        r""" Runs PCCA++ [1]_ to compute a metastable decomposition of MarkovStateModel states
+    def pcca(self, m: int) -> PCCAModel:
+        r""" Runs PCCA+ [1]_ to compute a metastable decomposition of MarkovStateModel states
 
         After calling this method you can access :func:`metastable_memberships`,
         :func:`metastable_distributions`, :func:`metastable_sets` and
@@ -816,17 +805,13 @@ class MarkovStateModel(Model):
 
         Returns
         -------
-        pcca_obj : :class:`PCCA <pyemma.msm.PCCA>`
-            An object containing all PCCA quantities. However, you can also
-            ignore this return value and instead retrieve the quantities of
-            your interest with the following MarkovStateModel functions: :func:`metastable_memberships`,
-            :func:`metastable_distributions`, :func:`metastable_sets` and :func:`metastable_assignments`.
+        pcca_obj : :class:`PCCAModel <sktime.markovprocess.PCCAModel>`
+            An object containing all PCCA+ quantities.
 
         Notes
         -----
-        If you coarse grain with PCCA++, the order of the obtained memberships
-        might not be preserved. This also applies for :func:`metastable_memberships`,
-        :func:`metastable_distributions`, :func:`metastable_sets`, :func:`metastable_assignments`
+        If you coarse grain with PCCA+, the order of the obtained memberships
+        might not be preserved.
 
         References
         ----------
@@ -834,178 +819,72 @@ class MarkovStateModel(Model):
             PCCA+: application to Markov state models and data
             classification. Advances in Data Analysis and Classification 7
             (2): 147-179
-
         """
         # can we do it?
         if not self.is_reversible:
-            raise ValueError('Cannot compute PCCA for non-reversible matrices. '
+            raise ValueError('Cannot compute PCCA+ for non-reversible matrices. '
                              'Set reversible=True when constructing the MarkovStateModel.')
+        return pcca(self.transition_matrix, m)
 
-        # ensure that we have a pcca object with the right number of states
-        try:
-            # this will except if we don't have a pcca object
-            if self._pcca.n_metastable != m or self._pcca.transition_matrix is not self.transition_matrix:
-                # incorrect number of states or new transition matrix -> recompute
-                raise AttributeError('recompute')
-        except AttributeError:
-            # didn't have a pcca object yet - compute
-            self._pcca = PCCAEstimator(m).fit(msm=self).fetch_model()
+    def reactive_flux(self, A, B):
+        r""" A->B reactive flux from transition path theory (TPT)
 
-        # set metastable properties
-        self._n_metastable = self._pcca.n_metastable
-        # TODO: why would we want to have copies here?
-        self._metastable_memberships = copy.deepcopy(self._pcca.memberships)
-        self._metastable_distributions = copy.deepcopy(self._pcca.output_probabilities)
-        self._metastable_sets = copy.deepcopy(self._pcca.metastable_sets)
-        self._metastable_assignments = copy.deepcopy(self._pcca.metastable_assignment)
+        The returned :class:`ReactiveFlux <pyemma.msm.models.ReactiveFlux>` object
+        can be used to extract various quantities of the flux, as well as to
+        compute A -> B transition pathways, their weights, and to coarse-grain
+        the flux onto sets of states.
 
-        return self._pcca
-
-    @property
-    def n_metastable(self):
-        """ Number of states chosen for PCCA++ computation.
-        """
-        # are we ready?
-        self._assert_metastable()
-        return self._n_metastable
-
-    @property
-    def metastable_memberships(self):
-        r""" Probabilities of MarkovStateModel states to belong to a metastable state by PCCA++
-
-        Computes the memberships of active set states to metastable sets with
-        the PCCA++ method [1]_.
-
-        :func:`pcca` needs to be called first to make this attribute available.
+        Parameters
+        ----------
+        A : array_like
+            List of integer state labels for set A
+        B : array_like
+            List of integer state labels for set B
 
         Returns
         -------
-        M : ndarray((n,m))
-            A matrix containing the probability or membership of each state to be
-            assigned to each metastable set, i.e. p(metastable | state).
-            The row sums of M are 1.
+        tptobj : :class:`ReactiveFlux <sktime.markovprocess.ReactiveFlux>` object
+            An object containing the reactive A->B flux network
+            and several additional quantities, such as the stationary probability,
+            committors and set definitions.
 
         See also
         --------
-        pcca
-            to compute the metastable decomposition
-
-        References
-        ----------
-        .. [1] Roeblitz, S and M Weber. 2013. Fuzzy spectral clustering by
-            PCCA+: application to Markov state models and data
-            classification. Advances in Data Analysis and Classification 7
-            (2): 147-179
-
+        :class:`ReactiveFlux <sktime.markovprocess.ReactiveFlux>`
+            Reactive Flux model
         """
-        # are we ready?
-        self._assert_metastable()
-        return self._metastable_memberships
+        from msmtools.flux import flux_matrix, to_netflux
+        import msmtools.analysis as msmana
+        from sktime.util import ensure_ndarray
+        from sktime.markovprocess import ReactiveFlux
 
-    @property
-    def metastable_distributions(self):
-        r""" Probability of metastable states to visit an MarkovStateModel state by PCCA++
+        T = self.transition_matrix
+        mu = self.stationary_distribution
+        A = ensure_ndarray(A, dtype=int)
+        B = ensure_ndarray(B, dtype=int)
 
-        Computes the probability distributions of active set states within
-        each metastable set by combining the the PCCA++ method [1]_ with
-        Bayesian inversion as described in [2]_.
+        if len(A) == 0 or len(B) == 0:
+            raise ValueError('set A or B is empty')
+        n = T.shape[0]
+        if len(A) > n or len(B) > n or max(A) > n or max(B) > n:
+            raise ValueError('set A or B defines more states, than given transition matrix.')
 
-        :func:`pcca` needs to be called first to make this attribute available.
+        # forward committor
+        qplus = msmana.committor(T, A, B, forward=True)
+        # backward committor
+        if msmana.is_reversible(T, mu=mu):
+            qminus = 1.0 - qplus
+        else:
+            qminus = msmana.committor(T, A, B, forward=False, mu=mu)
+        # gross flux
+        grossflux = flux_matrix(T, mu, qminus, qplus, netflux=False)
+        # net flux
+        netflux = to_netflux(grossflux)
 
-        Returns
-        -------
-        p_out : ndarray (m,n)
-            A matrix containing the probability distribution of each active set
-            state, given that we are in one of the m metastable sets,
-            i.e. p(state | metastable). The row sums of p_out are 1.
-
-        See also
-        --------
-        pcca
-            to compute the metastable decomposition
-
-        References
-        ----------
-        .. [1] Roeblitz, S and M Weber. 2013. Fuzzy spectral clustering by
-            PCCA+: application to Markov state models and data classification.
-            Advances in Data Analysis and Classification 7, 147-179.
-        .. [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner. 2013.
-            Projected and hidden Markov models for calculating kinetics and
-            metastable states of complex molecules J. Chem. Phys. 139, 184114.
-
-        """
-        # are we ready?
-        self._assert_metastable()
-        return self._metastable_distributions
-
-    @property
-    def metastable_sets(self):
-        """ Metastable sets using PCCA++
-
-        Computes the metastable sets of active set states within each
-        metastable set using the PCCA++ method [1]_. :func:`pcca` needs
-        to be called first to make this attribute available.
-
-        This is only recommended for visualization purposes. You *cannot*
-        compute any actual quantity of the coarse-grained kinetics without
-        employing the fuzzy memberships!
-
-        Returns
-        -------
-        sets : list of ndarray
-            A list of length equal to metastable states. Each element is an
-            array with microstate indexes contained in it
-
-        See also
-        --------
-        pcca
-            to compute the metastable decomposition
-
-        References
-        ----------
-        .. [1] Roeblitz, S and M Weber. 2013. Fuzzy spectral clustering by
-            PCCA+: application to Markov state models and data
-            classification. Advances in Data Analysis and Classification 7
-            (2): 147-179
-
-        """
-        # are we ready?
-        self._assert_metastable()
-        return self._metastable_sets
-
-    @property
-    def metastable_assignments(self):
-        """ Assignment of states to metastable sets using PCCA++
-
-        Computes the assignment to metastable sets for active set states using
-        the PCCA++ method [1]_. :func:`pcca` needs to be called first to make
-        this attribute available.
-
-        This is only recommended for visualization purposes. You *cannot* compute
-        any actual quantity of the coarse-grained kinetics without employing the
-        fuzzy memberships!
-
-        Returns
-        -------
-        assignments : ndarray (n,)
-            For each MarkovStateModel state, the metastable state it is located in.
-
-        See also
-        --------
-        pcca
-            to compute the metastable decomposition
-
-        References
-        ----------
-        .. [1] Roeblitz, S and M Weber. 2013. Fuzzy spectral clustering by
-            PCCA+: application to Markov state models and data
-            classification. Advances in Data Analysis and Classification 7
-            (2): 147-179
-
-        """
-        # are we ready?
-        self._assert_metastable()
-        return self._metastable_assignments
+        # construct flux object
+        F = ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux,
+                         dt_model=self.dt_model)
+        return F
 
     def simulate(self, N, start=None, stop=None, dt=1):
         """
