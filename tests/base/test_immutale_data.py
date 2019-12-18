@@ -5,8 +5,6 @@ from sktime.base import Estimator, Model, InputFormatError
 
 
 class EvilEstimator(Estimator):
-    def _create_model(self):
-        return Model()
 
     # fit accidentally writes to input array!
     def fit(self, x, y=None):
@@ -20,17 +18,12 @@ class EvilEstimator(Estimator):
 class MutableInputDataEstimator(Estimator):
     _MUTABLE_INPUT_DATA = True
 
-    def _create_model(self):
-        return Model()
-
     def fit(self, x):
         x[0] = 5
         return self
 
 
 class WellBehavingEstimator(Estimator):
-    def _create_model(self):
-        return Model()
 
     def fit(self, x):
         self.y = x + 1
