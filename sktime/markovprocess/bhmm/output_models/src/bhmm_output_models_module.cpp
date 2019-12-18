@@ -1,6 +1,6 @@
 /**
  * @file bhmm_output_models_module.cpp
- * @brief 
+ * @brief
  * @authors noe, clonker
  * @date 12/16/19
  */
@@ -96,7 +96,6 @@ void updatePOut(const np_array<dtype_obs> &obs, const np_array<dtype> &weights, 
     auto weightsBuf = weights.data();
     auto poutBuf = pout.mutable_data();
 
-    #pragma omp parallel for
     for(std::size_t t = 0; t < T; ++t) {
         auto o = obsBuf[t];
         for(std::size_t i = 0; i < N; ++i) {
