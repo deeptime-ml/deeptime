@@ -26,11 +26,10 @@ import numpy as np
 
 from sktime.base import Model
 from sktime.markovprocess import Q_
-from sktime.markovprocess.pcca import PCCA, PCCAEstimator
-from sktime.markovprocess.sample import ensure_dtraj_list
 from sktime.markovprocess.transition_counting import TransitionCountModel
-from sktime.numeric import mdot
-from sktime.util import ensure_ndarray
+from sktime.markovprocess.pcca import pcca, PCCAModel
+from sktime.markovprocess.sample import ensure_dtraj_list
+from sktime.util import ensure_ndarray, mdot
 
 
 class MarkovStateModel(Model):
@@ -131,7 +130,7 @@ class MarkovStateModel(Model):
     P = transition_matrix
 
     @property
-    def is_reversible(self) -> bool:
+    def is_reversible(self):
         """Returns whether the MarkovStateModel is reversible """
         return self._is_reversible
 
@@ -589,12 +588,14 @@ class MarkovStateModel(Model):
         on a three-state Markov model and plots the result using matplotlib:
 
         >>> import numpy as np
+        >>> import pyemma.msm as msm
+        >>>
         >>> P = np.array([[0.99, 0.01, 0], [0.01, 0.9, 0.09], [0, 0.1, 0.9]])
         >>> a = np.array([0.0, 0.5, 1.0])
-        >>> M = MarkovStateModel(P)
+        >>> M = msm.markov_model(P)
         >>> times, acf = M.correlation(a)
-
-        >>> import matplotlib.pylab as plt # doctest: +SKIP
+        >>>
+        >>> import matplotlib.pylab as plt
         >>> plt.plot(times, acf)  # doctest: +SKIP
 
         References

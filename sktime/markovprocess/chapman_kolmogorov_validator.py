@@ -170,8 +170,8 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
     """
     try:
         if memberships is None:
-            test_model.pcca(nsets)
-            memberships = test_model.metastable_memberships
+            pcca = test_model.pcca(nsets)
+            memberships = pcca.metastable_memberships
     except NotImplementedError:
         memberships = np.eye(test_model.nstates)
 
