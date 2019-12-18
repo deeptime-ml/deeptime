@@ -165,8 +165,8 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
 
     """
     if memberships is None:
-        test_model.pcca(nsets)
-        memberships = test_model.metastable_memberships
+        pcca = test_model.pcca(nsets)
+        memberships = pcca.memberships
     ck = ChapmanKolmogorovValidator(test_estimator=test_estimator, test_model=test_model, memberships=memberships,
                                     mlags=mlags, conf=conf, err_est=err_est)
     ck.fit(dtrajs)
