@@ -19,6 +19,7 @@ import numpy as np
 from msmtools.dtraj import index_states
 
 from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 from sktime.markovprocess.util import count_states
 from sktime.numeric import mdot
 from sktime.util import ensure_ndarray

@@ -366,8 +366,6 @@ class TransitionCountEstimator(Estimator):
             assert x.ndim == 1, "dtraj list contained multi-dimensional array"
             assert issubclass(x.dtype.type, np.integer), "dtraj list contained non-integer array"
 
-        assert isinstance(self._model, TransitionCountModel)
-
         # these are now discrete trajectories
         dtrajs = data
 

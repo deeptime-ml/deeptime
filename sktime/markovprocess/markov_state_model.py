@@ -18,7 +18,6 @@
 # .. moduleauthor:: F. Noe <frank DOT noe AT fu-berlin DOT de>
 # .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
-import copy
 import typing
 from math import ceil
 
@@ -26,10 +25,11 @@ import numpy as np
 
 from sktime.base import Model
 from sktime.markovprocess import Q_
-from sktime.markovprocess.transition_counting import TransitionCountModel
 from sktime.markovprocess.pcca import pcca, PCCAModel
 from sktime.markovprocess.sample import ensure_dtraj_list
-from sktime.util import ensure_ndarray, mdot
+from sktime.markovprocess.transition_counting import TransitionCountModel
+from sktime.numeric import mdot
+from sktime.util import ensure_ndarray
 
 
 class MarkovStateModel(Model):
@@ -595,7 +595,7 @@ class MarkovStateModel(Model):
         >>> M = msm.markov_model(P)
         >>> times, acf = M.correlation(a)
         >>>
-        >>> import matplotlib.pylab as plt
+        >>> import matplotlib.pylab as plt # doctest: +SKIP
         >>> plt.plot(times, acf)  # doctest: +SKIP
 
         References

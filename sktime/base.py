@@ -113,10 +113,6 @@ class Estimator(_base_methods_mixin):
     def fetch_model(self) -> Model:
         return self._model
 
-    @abc.abstractmethod
-    def _create_model(self):
-        pass
-
     def __getattribute__(self, item):
         if (item == 'fit' or item == 'partial_fit') and not self._MUTABLE_INPUT_DATA:
             fit = super(Estimator, self).__getattribute__(item)
