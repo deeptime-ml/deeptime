@@ -313,6 +313,8 @@ class TestBHMMSpecialCases(unittest.TestCase):
                                stride=est.stride, init_hmsm=init_hmm)
         bay_hmm_est.fit(obs)
         bay_hmm = bay_hmm_est.fetch_model()
+        # fixme
+        bay_hmm.submodel()
 
         assert np.isclose(bay_hmm.prior.stationary_distribution.sum(), 1)
         assert all(np.isclose(m.stationary_distribution.sum(), 1) for m in bay_hmm)

@@ -130,15 +130,12 @@ class MarkovStateModel(Model):
     P = transition_matrix
 
     @property
-    def is_reversible(self):
+    def is_reversible(self) -> bool:
         """Returns whether the MarkovStateModel is reversible """
         return self._is_reversible
 
-    # backward compat
-    reversible = is_reversible
-
     @property
-    def is_sparse(self):
+    def is_sparse(self) -> bool:
         """Returns whether the MarkovStateModel is sparse """
         from scipy.sparse import issparse
         return issparse(self.transition_matrix)

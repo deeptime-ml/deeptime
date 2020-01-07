@@ -16,13 +16,76 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
+import typing
 from msmtools.dtraj import index_states
 
-from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess import MarkovStateModel, transition_counting
+from sktime.markovprocess.bhmm import lag_observations
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 from sktime.markovprocess.util import count_states
 from sktime.numeric import mdot
 from sktime.util import ensure_ndarray
+
+
+class HMMTransitionCountModel(transition_counting.TransitionCountModel):
+    def __init__(self, nstates=None, observable_set: typing.Optional[np.ndarray]=None,
+                 stride=1, initial_count=None, symbols=None,
+                 lagtime=1, active_set=None, dt_traj='1 step',
+                 connected_sets=(), count_matrix=None, state_histogram=None):
+        super(HMMTransitionCountModel, self).__init__(lagtime=lagtime, active_set=active_set, dt_traj=dt_traj,
+                                                      connected_sets=connected_sets, count_matrix=count_matrix,
+                                                      state_histogram=state_histogram)
+
+        self.initial_count = initial_count
+        self._nstates_full = nstates
+        self._observable_set = observable_set
+        self._nstates_obs = observable_set.size
+        self._stride = stride
+        self._symbols = symbols
+
+    @property
+    def stride(self):
+        """ Stride with which the dtrajs were lagged and stridden """
+        return self._stride
+
+    @property
+    def symbols(self):
+        """Sorted unique symbols in observations """
+        return self._symbols
+
+    @property
+    def initial_count(self):
+        """ hidden init count """
+        return self._initial_counts
+
+    @initial_count.setter
+    def initial_count(self, value):
+        self._initial_counts = value
+
+    @property
+    def count_matrix(self):
+        """ Hidden count matrix consistent with transition matrix """
+        return super(HMMTransitionCountModel, self).count_matrix
+
+    @property
+    def nstates_obs(self):
+        return self._nstates_obs
+
+    @property
+    def observable_set(self):
+        return self._observable_set
+
+    @staticmethod
+    def compute_dtrajs_effective(dtrajs, lagtime, nstates, stride):
+        lagtime = int(lagtime)
+        # EVALUATE STRIDE
+        if stride == 'effective':
+            from sktime.markovprocess.util import compute_effective_stride
+            stride = compute_effective_stride(dtrajs, lagtime, nstates)
+
+        # LAG AND STRIDE DATA
+        dtrajs_lagged_strided = lag_observations(dtrajs, lagtime, stride=stride)
+        return dtrajs_lagged_strided
 
 
 class HMSM(MarkovStateModel):
@@ -53,14 +116,13 @@ class HMSM(MarkovStateModel):
     def __init__(self, transition_matrix, pobs, pi=None, dt_model='1 step',
                  neig=None, reversible=None, count_model=None, initial_distribution=None, bhmm_hmm_model=None):
         if count_model is None:
-            from sktime.markovprocess.maximum_likelihood_hmsm import _HMMTransitionCounts
-            count_model = _HMMTransitionCounts()
+            count_model = HMMTransitionCountModel()
 
         # construct superclass and check input
         super(HMSM, self).__init__(transition_matrix=transition_matrix, pi=pi, dt_model=dt_model,
                                    reversible=reversible, neig=neig, count_model=count_model)
 
-        #assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
+        # assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
         pobs = ensure_ndarray(pobs, ndim=2, dtype=np.float64)
         assert np.allclose(pobs.sum(axis=1), 1), 'pobs is not a stochastic matrix'
         self._nstates_obs = pobs.shape[1]
@@ -69,10 +131,19 @@ class HMSM(MarkovStateModel):
         self._initial_distribution = initial_distribution
         self.hmm = bhmm_hmm_model
 
+    @property
+    def count_model(self) -> typing.Optional[HMMTransitionCountModel]:
+        return self._count_model
+
+    @count_model.setter
+    def count_model(self, value: typing.Optional[HMMTransitionCountModel]):
+        self.count_model = value
+
     ################################################################################
     # Submodel functions using estimation information (counts)
     ################################################################################
-    def submodel(self, states=None, obs=None, mincount_connectivity='1/n', inplace=False):
+    def submodel(self, states: typing.Optional[np.ndarray] = None, obs: typing.Optional[np.ndarray] = None,
+                 mincount_connectivity='1/n'):
         """Returns a HMM with restricted state space
 
         Parameters
@@ -108,21 +179,16 @@ class HMSM(MarkovStateModel):
         if self.count_model is None:
             return self._submodel(states=states, obs=obs)
 
-        if states is None and obs is None and mincount_connectivity == 0:
-            return self
         if states is None:
             states = np.arange(self.nstates)
         if obs is None:
             obs = np.arange(self.nstates_obs)
 
-        if str(mincount_connectivity) == '1/n':
-            mincount_connectivity = 1.0/float(self.nstates)
-
-        # should we always take a copy here?
-        model = self.copy() if not inplace else self
-
-        count_matrix = model.count_model.count_matrix
+        count_matrix = self.count_model.count_matrix.copy()
         assert count_matrix is not None
+
+        if str(mincount_connectivity) == '1/n':
+            mincount_connectivity = 1.0 / float(self.nstates)
 
         # handle new connectivity
         from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
@@ -138,72 +204,72 @@ class HMSM(MarkovStateModel):
             for s in S:  # keep all (also small) transition counts within strongly connected subsets
                 C[np.ix_(s, s)] = count_matrix[np.ix_(s, s)]
             # re-fit transition matrix with disc.
-            P = _tmatrix_disconnected.estimate_P(C, reversible=self.reversible, mincount_connectivity=0)
+            P = _tmatrix_disconnected.estimate_P(C, reversible=self.is_reversible, mincount_connectivity=0)
             pi = _tmatrix_disconnected.stationary_distribution(P, C)
         else:
             C = count_matrix
             P = self.transition_matrix
             pi = self.stationary_distribution
 
-        # determine substates
-        states = self._select_states(count_matrix, mincount_connectivity, states)
+        # sub-transition matrix
+        P = P[np.ix_(states, states)].copy()
+        P /= P.sum(axis=1)[:, None]
+        initial_count = self.count_model.initial_count[states].copy()
+        initial_distribution = self.initial_distribution[states] / self.initial_distribution[states].sum()
 
-        # TODO: this if is not needed, as states is always defined above...
-        if states is not None:  # sub-transition matrix
-            model.count_model._active_set = states
-            C = C[np.ix_(states, states)].copy()
-            P = P[np.ix_(states, states)].copy()
-            P /= P.sum(axis=1)[:, None]
-            pi = _tmatrix_disconnected.stationary_distribution(P, C)
-            model.count_model.initial_count = self.count_model.initial_count[states]
-            model._initial_distribution = self.initial_distribution[states] / self.initial_distribution[states].sum()
+        # # full2active mapping
+        # _full2obs = -1 * np.ones(se   lf._nstates_obs_full, dtype=int)
+        # _full2obs[obs] = np.arange(len(obs), dtype=int)
+        # # observable trajectories
+        # model._dtrajs_obs = []
+        # for dtraj in self.count_model.discrete_trajectories_full:
+        #     model._dtrajs_obs.append(_full2obs[dtraj])
 
-        # determine observed states
-        if str(obs) == 'nonempty':
-            obs = np.where(count_states(self.count_model.dtrajs_lagged_strided) > 0)[0]
-        if obs is not None:
-            # set observable set
-            model.count_model._observable_set = obs
-            model.count_model._nstates_obs = obs.size
-            # # full2active mapping
-            # _full2obs = -1 * np.ones(se   lf._nstates_obs_full, dtype=int)
-            # _full2obs[obs] = np.arange(len(obs), dtype=int)
-            # # observable trajectories
-            # model._dtrajs_obs = []
-            # for dtraj in self.count_model.discrete_trajectories_full:
-            #     model._dtrajs_obs.append(_full2obs[dtraj])
+        # observation matrix
+        B = self.observation_probabilities[np.ix_(states, obs)].copy()
+        B /= B.sum(axis=1)[:, None]
 
-            # observation matrix
-            B = self.observation_probabilities[np.ix_(states, obs)].copy()
-            B /= B.sum(axis=1)[:, None]
-        else:
-            B = self.observation_probabilities
-
-        # set quantities back.
-        cm = model.count_model
-        cm._count_matrix_EM = cm.count_matrix[np.ix_(states, states)]  # unchanged count matrix
-        model.__init__(transition_matrix=P, pobs=B, pi=pi,
-                       dt_model=model.dt_model,
-                       reversible=model.reversible,
-                       count_model=model.count_model,
-                       initial_distribution=model.initial_distribution)
+        count_model = HMMTransitionCountModel(
+            nstates=self.count_model.nstates_full, observable_set=obs,
+            stride=self.count_model.stride, symbols=self.count_model.symbols, dt_traj=self.count_model.dt_traj,
+            state_histogram=self.count_model.state_histogram,
+            initial_count=initial_count, active_set=states,
+            connected_sets=S, count_matrix=C[np.ix_(states, states)].copy(),
+        )
+        model = HMSM(transition_matrix=P, pobs=B, pi=pi, dt_model=self.dt_model, neig=self.neig,
+                     reversible=self.is_reversible, count_model=count_model,
+                     initial_distribution=initial_distribution, bhmm_hmm_model=self.hmm)
         return model
 
-    def _select_states(self, count_matrix, mincount_connectivity, states):
+    def _select_states(self, mincount_connectivity, states):
+        if str(mincount_connectivity) == '1/n':
+            mincount_connectivity = 1.0 / float(self.nstates)
         if isinstance(states, str):
             strong = 'strong' in states
             largest = 'largest' in states
-            S = _tmatrix_disconnected.connected_sets(count_matrix,
+            S = _tmatrix_disconnected.connected_sets(self.count_model.count_matrix,
                                                      mincount_connectivity=mincount_connectivity,
                                                      strong=strong)
             if largest:
                 score = [len(s) for s in S]
             else:
-                score = [count_matrix[np.ix_(s, s)].sum() for s in S]
+                score = [self.count_model.count_matrix[np.ix_(s, s)].sum() for s in S]
             states = np.array(S[np.argmax(score)])
         return states
 
-    def submodel_largest(self, strong=True, mincount_connectivity='1/n'):
+    def nonempty_obs(self, dtrajs):
+        if dtrajs is None:
+            raise ValueError("Needs nonempty dtrajs to evaluate nonempty obs.")
+        dtrajs_lagged_strided = self.count_model.compute_dtrajs_effective(
+            dtrajs, self.count_model.lagtime, self.count_model.nstates_full, self.count_model.stride
+        )
+        obs = np.where(count_states(dtrajs_lagged_strided) > 0)[0]
+        return obs
+
+    def states_largest(self, strong=True, mincount_connectivity='1/n'):
+        return self._select_states(mincount_connectivity, 'largest-strong' if strong else 'largest-weak')
+
+    def submodel_largest(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
         """ Returns the largest connected sub-HMM (convenience function)
 
         Returns
@@ -212,12 +278,14 @@ class HMSM(MarkovStateModel):
             The restricted HMSM.
 
         """
-        if strong:
-            return self.submodel(states='largest-strong', mincount_connectivity=mincount_connectivity)
-        else:
-            return self.submodel(states='largest-weak', mincount_connectivity=mincount_connectivity)
+        states = self.states_largest(strong=strong, mincount_connectivity=mincount_connectivity)
+        obs = self.nonempty_obs(dtrajs) if observe_nonempty else None
+        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
 
-    def submodel_populous(self, strong=True, mincount_connectivity='1/n', obs_nonempty=True):
+    def states_populous(self, strong=True, mincount_connectivity='1/n'):
+        return self._select_states(mincount_connectivity, 'populous-strong' if strong else 'populous-weak')
+
+    def submodel_populous(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
         """ Returns the most populous connected sub-HMM (convenience function)
 
         Returns
@@ -226,12 +294,9 @@ class HMSM(MarkovStateModel):
             The restricted HMSM.
 
         """
-        if obs_nonempty:
-            non_empty_states = np.where(self.count_model.state_histogram > 0)[0]
-        if strong:
-            return self.submodel(states='populous-strong', mincount_connectivity=mincount_connectivity)
-        else:
-            return self.submodel(states='populous-weak', mincount_connectivity=mincount_connectivity)
+        states = self.states_populous(strong=strong, mincount_connectivity=mincount_connectivity)
+        obs = self.nonempty_obs(dtrajs) if observe_nonempty else None
+        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
 
     def submodel_disconnect(self, mincount_connectivity='1/n'):
         """Disconnects sets of hidden states that are barely connected
@@ -368,8 +433,8 @@ class HMSM(MarkovStateModel):
             Distribution after k steps. Vector of size of the active set.
 
         """
-        #p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
-        #assert types.is_int(k) and k >= 0, 'k must be a non-negative integer'
+        # p0 = types.ensure_ndarray(p0, ndim=1, kind='numeric')
+        # assert types.is_int(k) and k >= 0, 'k must be a non-negative integer'
         if k == 0:  # simply return p0 normalized
             return p0 / p0.sum()
 
@@ -423,10 +488,7 @@ class HMSM(MarkovStateModel):
         B = self.observation_probabilities[np.ix_(states, obs)].copy()
         B /= B.sum(axis=1)[:, None]
 
-        sub_hmsm = HMSM(P, B, dt_model=self.dt_model)
-        #TODO: shouldn't this be true in every case?
-        sub_hmsm.reversible = self.reversible
-        return sub_hmsm
+        return HMSM(P, B, dt_model=self.dt_model, reversible=self.is_reversible)
 
     # ================================================================================================================
     # Experimental properties: Here we allow to use either coarse-grained or microstate observables
@@ -442,8 +504,9 @@ class HMSM(MarkovStateModel):
         if len(a) == self.nstates:
             return super(HMSM, self).expectation(a)
         else:
-            raise ValueError(f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
-                             f' and observed states ({self.nstates_obs})')
+            raise ValueError(
+                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
+                f' and observed states ({self.nstates_obs})')
 
     def correlation(self, a, b=None, maxtime=None, k=None, ncv=None):
         # basic checks for a and b
@@ -458,8 +521,9 @@ class HMSM(MarkovStateModel):
         if len(a) == self.nstates:
             return super(HMSM, self).correlation(a, b=b, maxtime=maxtime)
         else:
-            raise ValueError(f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
-                             f' and observed states ({self.nstates_obs})')
+            raise ValueError(
+                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
+                f' and observed states ({self.nstates_obs})')
 
     def fingerprint_correlation(self, a, b=None, k=None, ncv=None):
         # basic checks for a and b
@@ -474,8 +538,9 @@ class HMSM(MarkovStateModel):
         if len(a) == self.nstates:
             return super(HMSM, self).fingerprint_correlation(a, b=b)
         else:
-            raise ValueError(f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
-                             f' and observed states ({self.nstates_obs})')
+            raise ValueError(
+                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
+                f' and observed states ({self.nstates_obs})')
 
     def relaxation(self, p0, a, maxtime=None, k=None, ncv=None):
         # basic checks for a and b
@@ -489,8 +554,9 @@ class HMSM(MarkovStateModel):
         if len(a) == self.nstates:
             return super(HMSM, self).relaxation(p0, a, maxtime=maxtime)
         else:
-            raise ValueError(f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
-                             f' and observed states ({self.nstates_obs})')
+            raise ValueError(
+                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
+                f' and observed states ({self.nstates_obs})')
 
     def fingerprint_relaxation(self, p0, a, k=None, ncv=None):
         # basic checks for a and b
@@ -631,7 +697,7 @@ class HMSM(MarkovStateModel):
         from scipy import stats
         import msmtools.generation as msmgen
         # generate output distributions
-        #TODO: replace this with numpy.random.choice
+        # TODO: replace this with numpy.random.choice
         output_distributions = [stats.rv_discrete(values=(np.arange(self.pobs.shape[1]), pobs_i)) for pobs_i in
                                 self.pobs]
         # sample hidden trajectory
@@ -641,6 +707,7 @@ class HMSM(MarkovStateModel):
         for t, h in enumerate(htraj):
             otraj[t] = output_distributions[h].rvs()  # current cluster
         return htraj, otraj
+
     ################################################################################
     # Generation of trajectories and samples
     ################################################################################

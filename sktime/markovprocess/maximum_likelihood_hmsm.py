@@ -21,10 +21,10 @@ import numpy as np
 from msmtools.dtraj import number_of_states
 
 from sktime.base import Estimator
-from sktime.markovprocess import MarkovStateModel, transition_counting
-from sktime.markovprocess.bhmm import discrete_hmm, lag_observations, init_discrete_hmm
+from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess.bhmm import discrete_hmm, init_discrete_hmm
 from sktime.markovprocess.bhmm.init.discrete import init_discrete_hmm_spectral
-from sktime.markovprocess.hidden_markov_model import HMSM
+from sktime.markovprocess.hidden_markov_model import HMSM, HMMTransitionCountModel
 from sktime.util import ensure_dtraj_list
 
 
@@ -145,8 +145,9 @@ class MaximumLikelihoodHMSM(Estimator):
                           f'{np.mean(trajlengths)}. It is recommended to fit four lag times in each '
                           'trajectory. HMM might be inaccurate.')
 
-        dtrajs_lagged_strided = _HMMTransitionCounts.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                                              nstates=self.nstates, stride=self.stride)
+        dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
+                                                                                 nstates=self.nstates,
+                                                                                 stride=self.stride)
 
         # INIT HMM
         if isinstance(self.msm_init, str):
@@ -177,14 +178,14 @@ class MaximumLikelihoodHMSM(Estimator):
                                        accuracy=self.accuracy, maxit=self.maxit)
         hmm = hmm_est.fit(dtrajs_lagged_strided).fetch_model()
         # update the count matrix from the counts obtained via the Viterbi paths.
-        hmm_count_model = _HMMTransitionCounts(stride=self.stride,
-                                               count_matrix=hmm.transition_counts,
-                                               initial_count=hmm.initial_count, lagtime=self.lagtime,
-                                               dt_traj=self.dt_traj,
-                                               nstates=self.nstates,
-                                               nstates_obs=number_of_states(dtrajs_lagged_strided),
-                                               active_set=None,
-                                               symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
+        hmm_count_model = HMMTransitionCountModel(stride=self.stride,
+                                                  count_matrix=hmm.transition_counts,
+                                                  initial_count=hmm.initial_count, lagtime=self.lagtime,
+                                                  dt_traj=self.dt_traj,
+                                                  nstates=self.nstates,
+                                                  observable_set=np.arange(number_of_states(dtrajs_lagged_strided)),
+                                                  active_set=None,
+                                                  symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
         # set model parameters
         self._model = HMSM(transition_matrix=hmm.transition_matrix,
                            pobs=hmm.output_model.output_probabilities,
@@ -383,58 +384,3 @@ class MaximumLikelihoodHMSM(Estimator):
         ck.fit(dtrajs)
         return ck.fetch_model()
 
-
-class _HMMTransitionCounts(transition_counting.TransitionCountModel):
-    def __init__(self, nstates=None, nstates_obs=None, stride=1, initial_count=None, symbols=None,
-                 lagtime=1, active_set=None, dt_traj='1 step',
-                 connected_sets=(), count_matrix=None, hist=None):
-        super(_HMMTransitionCounts, self).__init__(lagtime=lagtime, active_set=active_set, dt_traj=dt_traj,
-                                                   connected_sets=connected_sets, count_matrix=count_matrix,
-                                                   hist=hist)
-
-        self.initial_count = initial_count
-        self._nstates_full = nstates
-        self._nstates_obs = nstates_obs
-        if nstates_obs is not None:
-            self._observable_set = np.arange(nstates_obs)
-        self.stride = stride
-        self._symbols = symbols
-
-    @property
-    def symbols(self):
-        """Sorted unique symbols in observations """
-        return self._symbols
-
-    @property
-    def initial_count(self):
-        """ hidden init count """
-        return self._initial_counts
-
-    @initial_count.setter
-    def initial_count(self, value):
-        self._initial_counts = value
-
-    @property
-    def count_matrix(self):
-        """ Hidden count matrix consistent with transition matrix """
-        return super(_HMMTransitionCounts, self).count_matrix
-
-    @property
-    def nstates_obs(self):
-        return self._nstates_obs
-
-    @property
-    def observable_set(self):
-        return self._observable_set
-
-    @staticmethod
-    def compute_dtrajs_effective(dtrajs, lagtime, nstates, stride):
-        lagtime = int(lagtime)
-        # EVALUATE STRIDE
-        if stride == 'effective':
-            from sktime.markovprocess.util import compute_effective_stride
-            stride = compute_effective_stride(dtrajs, lagtime, nstates)
-
-        # LAG AND STRIDE DATA
-        dtrajs_lagged_strided = lag_observations(dtrajs, lagtime, stride=stride)
-        return dtrajs_lagged_strided

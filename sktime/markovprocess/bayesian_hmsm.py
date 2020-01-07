@@ -21,9 +21,9 @@ import numpy as np
 from msmtools.analysis import is_connected
 from msmtools.dtraj import number_of_states
 
-from sktime.markovprocess.bhmm import discrete_hmm, bayesian_hmm, lag_observations
-from sktime.markovprocess.hidden_markov_model import HMSM
-from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM, _HMMTransitionCounts
+from sktime.markovprocess.bhmm import discrete_hmm, bayesian_hmm
+from sktime.markovprocess.hidden_markov_model import HMSM, HMMTransitionCountModel
+from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 from sktime.util import ensure_dtraj_list
 from ._base import BayesianPosterior
 from .maximum_likelihood_hmsm import MaximumLikelihoodHMSM as _MaximumLikelihoodHMSM
@@ -46,11 +46,14 @@ class BayesianHMMPosterior(BayesianPosterior):
         super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
         self.hidden_state_trajectories_samples = hidden_state_trajs
 
-    def submodel(self, states=None, obs=None, mincount_connectivity='1/n', inplace=False):
+    def submodel_largest(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
+        # todo (or solve differently?)
+        pass
+
+    def submodel(self, states=None, obs=None, mincount_connectivity='1/n'):
         # restrict prior
         sub_model = self.prior.submodel(states=states, obs=obs,
-                                        mincount_connectivity=mincount_connectivity,
-                                        inplace=inplace)
+                                        mincount_connectivity=mincount_connectivity)
         # restrict reduce samples
         count_model = sub_model.count_model
         subsamples = [sample.submodel(states=count_model.active_set, obs=count_model.observable_set)
@@ -168,6 +171,9 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
         self.conf = conf
         self.store_hidden = store_hidden
 
+    def fetch_model(self) -> BayesianHMMPosterior:
+        return self._model
+
     @property
     def init_hmsm(self):
         return self._init_hmsm
@@ -194,9 +200,9 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
                                                       accuracy=1e-2,  # this is sufficient for an initial guess
                                                       observe_nonempty=False,
                                                       ).fit(dtrajs).fetch_model()
-            dtrajs_lagged_strided = _HMMTransitionCounts.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                                                  nstates=self.nstates,
-                                                                                  stride=self.stride)
+            dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
+                                                                                     nstates=self.nstates_full,
+                                                                                     stride=self.stride)
         else:  # if given another initialization, must copy its attributes
             # check if nstates and lag are compatible
             if self.lagtime != self.init_hmsm.lagtime:
@@ -211,16 +217,14 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
                 self.stride = compute_effective_stride(dtrajs, self.lagtime, self.nstates)
 
             # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
-            dtrajs_lagged_strided = _HMMTransitionCounts.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                                                  nstates=self.nstates, stride=self.stride)
+            dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(
+                dtrajs, lagtime=self.lagtime, nstates=self.nstates, stride=self.stride)
             if self.stride != init_stride:
-                def _check_dtrajs_match():
-                    symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
-                    if self.init_hmsm.count_model.symbols != symbols:
-                        raise ValueError('Choice of stride has excluded a different set of microstates than in '
-                                         'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
-                                         'must match to the one used for init_hmsm estimation.')
-                _check_dtrajs_match()
+                symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
+                if self.init_hmsm.count_model.symbols != symbols:
+                    raise ValueError('Choice of stride has excluded a different set of microstates than in '
+                                     'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
+                                     'must match to the one used for init_hmsm estimation.')
 
             # as mentioned in the docstring, take init_hmsm observed set observation probabilities
             self.observe_nonempty = False
@@ -281,22 +285,5 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
         if self.store_hidden:
             self._model.hidden_state_trajectories_samples = [s.hidden_state_trajectories for s in sampled_hmm]
         self._model.samples = samples
-
-        # deal with connectivity
-        states_subset = None
-        if self.connectivity == 'largest':
-            states_subset = 'largest-strong'
-        elif self.connectivity == 'populous':
-            states_subset = 'populous-strong'
-
-        # OBSERVATION SET
-        if self.observe_nonempty:
-            observe_subset = 'nonempty'
-        else:
-            observe_subset = None
-
-        # state space restriction via submodel
-        self._model.submodel(states=states_subset, obs=observe_subset,
-                             mincount_connectivity=self.mincount_connectivity, inplace=True)
 
         return self

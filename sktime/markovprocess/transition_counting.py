@@ -80,13 +80,13 @@ class TransitionCountModel(Model):
     """
 
     def __init__(self, lagtime=1, active_set=None, dt_traj='1 step',
-                 connected_sets=(), count_matrix=None, hist=None) -> None:
+                 connected_sets=(), count_matrix=None, state_histogram=None) -> None:
         self._lag = Q_(lagtime)
         self._active_set = active_set
         self._dt_traj = Q_(dt_traj) if isinstance(dt_traj, (str, int)) else dt_traj
         self._connected_sets = connected_sets
         self._C = count_matrix
-        self._hist = hist
+        self._hist = state_histogram
 
         if count_matrix is not None:
             self._nstates_full = count_matrix.shape[0]
@@ -182,7 +182,7 @@ class TransitionCountModel(Model):
     @property
     def active_state_fraction(self):
         """The fraction of states in the largest connected set."""
-        return float(self.nstates) / float(self._nstates_full)
+        return float(self.nstates) / float(self.nstates_full)
 
     @property
     def active_count_fraction(self):
@@ -194,6 +194,13 @@ class TransitionCountModel(Model):
     def nstates(self) -> int:
         """Number of states """
         return self.count_matrix.shape[0]
+
+    @property
+    def nstates_full(self) -> int:
+        """
+        Number of states in the full model before any subselection.
+        """
+        return self._nstates_full
 
     @property
     def nstates_active(self) -> int:
@@ -409,7 +416,7 @@ class TransitionCountEstimator(Estimator):
         self._model = TransitionCountModel(
             lagtime=lagtime, active_set=active_set, dt_traj=self.dt_traj,
             connected_sets=connected_sets, count_matrix=count_matrix,
-            hist=hist
+            state_histogram=hist
         )
 
         return self
