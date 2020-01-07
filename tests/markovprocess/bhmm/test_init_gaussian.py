@@ -42,7 +42,7 @@ class TestHMM(unittest.TestCase):
         assert np.all(gmm.weights_ > 0)  # make sure we don't have empty states.
 
     def test_init(self):
-        initial_model = init_model_gaussian1d(self._observations, self._nstates)
+        initial_model = init_model_gaussian1d(self._observations, self._nstates, lag=1)
         assert initial_model.nstates == self._nstates
         assert msmana.is_transition_matrix(initial_model.transition_matrix)
 

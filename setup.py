@@ -1,5 +1,4 @@
 import sys
-import setuptools
 
 from numpy.distutils.command.build_ext import build_ext
 
@@ -54,7 +53,6 @@ class Build(build_ext):
         extra_compile_args = []
         extra_link_args = []
         define_macros = []
-
 
         from numpy import get_include as _np_inc
         np_inc = _np_inc()

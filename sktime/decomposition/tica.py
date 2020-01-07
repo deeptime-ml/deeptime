@@ -1,3 +1,6 @@
+from numbers import Real, Integral
+from typing import Union
+
 import numpy as np
 
 from sktime.base import Model, Estimator, Transformer
@@ -276,6 +279,22 @@ class TICA(Estimator, Transformer):
         self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=False, remove_data_mean=True,
                                        reversible=self.reversible, bessels_correction=False, ncov=ncov)
         super(TICA, self).__init__()
+
+    @property
+    def dim(self):
+        return self._dim
+
+    @dim.setter
+    def dim(self, value: Union[Real, Integral, None]):
+        if isinstance(value, Real) and (value <= 0. or value > 1.0):
+            raise ValueError("TICA: Invalid dimension parameter, if it is given in terms of a floating point, "
+                             "can only be in the interval [0, 1).")
+        elif isinstance(value, Integral) and value <= 0:
+            raise ValueError("TICA: Invalid dimension parameter, if it is given in terms of the dimension (integer), "
+                             "must be positive.")
+        elif value is not None and not isinstance(value, (Integral, Real)):
+            raise ValueError("Invalid type for dimension, got", value)
+        self._dim = value
 
     def transform(self, data):
         r"""Projects the data onto the dominant independent components.
