@@ -1,4 +1,5 @@
 import sys
+import setuptools
 
 from numpy.distutils.command.build_ext import build_ext
 

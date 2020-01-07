@@ -10,5 +10,6 @@ def configuration(parent_package='', top_path=None):
                          )
 
     config.add_subpackage('bhmm')
+    config.add_subpackage('generation')
 
     return config
