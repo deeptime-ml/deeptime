@@ -26,9 +26,11 @@ from sktime.markovprocess.util import count_states
 from sktime.numeric import mdot
 from sktime.util import ensure_ndarray
 
+from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM as BHMM_HMM
+
 
 class HMMTransitionCountModel(transition_counting.TransitionCountModel):
-    def __init__(self, nstates=None, observable_set: typing.Optional[np.ndarray]=None,
+    def __init__(self, n_states=None, observable_set: typing.Optional[np.ndarray]=None,
                  stride=1, initial_count=None, symbols=None,
                  lagtime=1, active_set=None, dt_traj='1 step',
                  connected_sets=(), count_matrix=None, state_histogram=None):
@@ -37,9 +39,9 @@ class HMMTransitionCountModel(transition_counting.TransitionCountModel):
                                                       state_histogram=state_histogram)
 
         self.initial_count = initial_count
-        self._nstates_full = nstates
+        self._n_states_full = n_states
         self._observable_set = observable_set
-        self._nstates_obs = observable_set.size
+        self._n_states_obs = observable_set.size
         self._stride = stride
         self._symbols = symbols
 
@@ -68,20 +70,20 @@ class HMMTransitionCountModel(transition_counting.TransitionCountModel):
         return super(HMMTransitionCountModel, self).count_matrix
 
     @property
-    def nstates_obs(self):
-        return self._nstates_obs
+    def n_states_obs(self):
+        return self._n_states_obs
 
     @property
     def observable_set(self):
         return self._observable_set
 
     @staticmethod
-    def compute_dtrajs_effective(dtrajs, lagtime, nstates, stride):
+    def compute_dtrajs_effective(dtrajs, lagtime, n_states, stride):
         lagtime = int(lagtime)
         # EVALUATE STRIDE
         if stride == 'effective':
             from sktime.markovprocess.util import compute_effective_stride
-            stride = compute_effective_stride(dtrajs, lagtime, nstates)
+            stride = compute_effective_stride(dtrajs, lagtime, n_states)
 
         # LAG AND STRIDE DATA
         dtrajs_lagged_strided = lag_observations(dtrajs, lagtime, stride=stride)
@@ -113,8 +115,8 @@ class HMSM(MarkovStateModel):
 
     """
 
-    def __init__(self, transition_matrix, pobs, pi=None, dt_model='1 step',
-                 neig=None, reversible=None, count_model=None, initial_distribution=None, bhmm_hmm_model=None):
+    def __init__(self, transition_matrix, observation_probabilities, pi=None, dt_model='1 step',
+                 neig=None, reversible=None, count_model=None, initial_distribution=None, bhmm_model : BHMM_HMM = None):
         if count_model is None:
             count_model = HMMTransitionCountModel()
 
@@ -123,13 +125,16 @@ class HMSM(MarkovStateModel):
                                    reversible=reversible, neig=neig, count_model=count_model)
 
         # assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
-        pobs = ensure_ndarray(pobs, ndim=2, dtype=np.float64)
-        assert np.allclose(pobs.sum(axis=1), 1), 'pobs is not a stochastic matrix'
-        self._nstates_obs = pobs.shape[1]
-        # TODO: refactor
-        self.pobs = pobs
+        observation_probabilities = ensure_ndarray(observation_probabilities, ndim=2, dtype=np.float64)
+        assert np.allclose(observation_probabilities.sum(axis=1), 1), 'pobs is not a stochastic matrix'
+        self.n_states_obs = observation_probabilities.shape[1]
+        self._observation_probabilities = observation_probabilities
         self._initial_distribution = initial_distribution
-        self.hmm = bhmm_hmm_model
+        self._hmm = bhmm_model
+
+    @property
+    def bhmm_model(self) -> BHMM_HMM:
+        return self._hmm
 
     @property
     def count_model(self) -> typing.Optional[HMMTransitionCountModel]:
@@ -166,7 +171,7 @@ class HMSM(MarkovStateModel):
             minimum number of counts to consider a connection between two states.
             Counts lower than that will count zero in the connectivity check and
             may thus separate the resulting transition matrix. Default value:
-            1/nstates.
+            1/n_states.
         inplace : Bool
             if True, submodel is estimated in-place, overwriting the original
             estimator and possibly discarding information. Default value: False
@@ -180,15 +185,15 @@ class HMSM(MarkovStateModel):
             return self._submodel(states=states, obs=obs)
 
         if states is None:
-            states = np.arange(self.nstates)
+            states = np.arange(self.n_states)
         if obs is None:
-            obs = np.arange(self.nstates_obs)
+            obs = np.arange(self.n_states_obs)
 
         count_matrix = self.count_model.count_matrix.copy()
         assert count_matrix is not None
 
         if str(mincount_connectivity) == '1/n':
-            mincount_connectivity = 1.0 / float(self.nstates)
+            mincount_connectivity = 1.0 / float(self.n_states)
 
         # handle new connectivity
         from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
@@ -218,7 +223,7 @@ class HMSM(MarkovStateModel):
         initial_distribution = self.initial_distribution[states] / self.initial_distribution[states].sum()
 
         # # full2active mapping
-        # _full2obs = -1 * np.ones(se   lf._nstates_obs_full, dtype=int)
+        # _full2obs = -1 * np.ones(se   lf._n_states_obs_full, dtype=int)
         # _full2obs[obs] = np.arange(len(obs), dtype=int)
         # # observable trajectories
         # model._dtrajs_obs = []
@@ -230,20 +235,20 @@ class HMSM(MarkovStateModel):
         B /= B.sum(axis=1)[:, None]
 
         count_model = HMMTransitionCountModel(
-            nstates=self.count_model.nstates_full, observable_set=obs,
+            n_states=self.count_model.n_states_full, observable_set=obs,
             stride=self.count_model.stride, symbols=self.count_model.symbols, dt_traj=self.count_model.dt_traj,
             state_histogram=self.count_model.state_histogram,
             initial_count=initial_count, active_set=states,
             connected_sets=S, count_matrix=C[np.ix_(states, states)].copy(),
         )
-        model = HMSM(transition_matrix=P, pobs=B, pi=pi, dt_model=self.dt_model, neig=self.neig,
+        model = HMSM(transition_matrix=P, observation_probabilities=B, pi=pi, dt_model=self.dt_model, neig=self.neig,
                      reversible=self.is_reversible, count_model=count_model,
-                     initial_distribution=initial_distribution, bhmm_hmm_model=self.hmm)
+                     initial_distribution=initial_distribution, bhmm_model=self.hmm)
         return model
 
     def _select_states(self, mincount_connectivity, states):
         if str(mincount_connectivity) == '1/n':
-            mincount_connectivity = 1.0 / float(self.nstates)
+            mincount_connectivity = 1.0 / float(self.n_states)
         if isinstance(states, str):
             strong = 'strong' in states
             largest = 'largest' in states
@@ -261,7 +266,7 @@ class HMSM(MarkovStateModel):
         if dtrajs is None:
             raise ValueError("Needs nonempty dtrajs to evaluate nonempty obs.")
         dtrajs_lagged_strided = self.count_model.compute_dtrajs_effective(
-            dtrajs, self.count_model.lagtime, self.count_model.nstates_full, self.count_model.stride
+            dtrajs, self.count_model.lagtime, self.count_model.n_states_full, self.count_model.stride
         )
         obs = np.where(count_states(dtrajs_lagged_strided) > 0)[0]
         return obs
@@ -312,7 +317,7 @@ class HMSM(MarkovStateModel):
             minimum number of counts to consider a connection between two states.
             Counts lower than that will count zero in the connectivity check and
             may thus separate the resulting transition matrix. The default
-            evaluates to 1/nstates.
+            evaluates to 1/n_states.
 
         Returns
         -------
@@ -332,10 +337,10 @@ class HMSM(MarkovStateModel):
             output probability matrix from hidden to observable discrete states
 
         """
-        return self.pobs
+        return self._observation_probabilities
 
     @property
-    def nstates_obs(self):
+    def n_states_obs(self):
         return self.observation_probabilities.shape[1]
 
     @property
@@ -348,9 +353,9 @@ class HMSM(MarkovStateModel):
 
         Returns
         -------
-        l : ndarray(nstates)
+        l : ndarray(n_states)
             state lifetimes in units of the input trajectory time step,
-            defined by :math:`-\tau / ln \mid p_{ii} \mid, i = 1,...,nstates`, where
+            defined by :math:`-\tau / ln \mid p_{ii} \mid, i = 1,...,n_states`, where
             :math:`p_{ii}` are the diagonal entries of the hidden transition matrix.
 
         """
@@ -440,13 +445,13 @@ class HMSM(MarkovStateModel):
 
         micro = False
         # are we on microstates space?
-        if len(p0) == self.nstates_obs:
+        if len(p0) == self.n_states_obs:
             micro = True
             # project to hidden and compute
             p0 = np.dot(self.observation_probabilities, p0)
 
-        self._ensure_eigendecomposition(self.nstates)
-        # TODO: eigenvectors_right() and so forth call ensure_eigendecomp again with self.neig instead of self.nstates
+        self._ensure_eigendecomposition(self.n_states)
+        # TODO: eigenvectors_right() and so forth call ensure_eigendecomp again with self.neig instead of self.n_states
         pk = mdot(p0.T, self.eigenvectors_right(), np.diag(np.power(self.eigenvalues(), k)), self.eigenvectors_left())
 
         if micro:
@@ -476,9 +481,9 @@ class HMSM(MarkovStateModel):
         if states is None and obs is None:
             return self  # do nothing
         if states is None:
-            states = np.arange(self.nstates)
+            states = np.arange(self.n_states)
         if obs is None:
-            obs = np.arange(self.nstates_obs)
+            obs = np.arange(self.n_states_obs)
 
         # transition matrix
         P = self.transition_matrix[np.ix_(states, states)].copy()
@@ -497,81 +502,81 @@ class HMSM(MarkovStateModel):
     def expectation(self, a):
         a = ensure_ndarray(a, dtype=np.float64)
         # are we on microstates space?
-        if len(a) == self.nstates_obs:
+        if len(a) == self.n_states_obs:
             # project to hidden and compute
             a = np.dot(self.observation_probabilities, a)
         # now we are on macrostate space, or something is wrong
-        if len(a) == self.nstates:
+        if len(a) == self.n_states:
             return super(HMSM, self).expectation(a)
         else:
             raise ValueError(
-                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
-                f' and observed states ({self.nstates_obs})')
+                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.n_states})'
+                f' and observed states ({self.n_states_obs})')
 
     def correlation(self, a, b=None, maxtime=None, k=None, ncv=None):
         # basic checks for a and b
         a = ensure_ndarray(a, ndim=1)
         b = ensure_ndarray(b, ndim=1, size=len(a), allow_None=True)
         # are we on microstates space?
-        if len(a) == self.nstates_obs:
+        if len(a) == self.n_states_obs:
             a = np.dot(self.observation_probabilities, a)
             if b is not None:
                 b = np.dot(self.observation_probabilities, b)
         # now we are on macrostate space, or something is wrong
-        if len(a) == self.nstates:
+        if len(a) == self.n_states:
             return super(HMSM, self).correlation(a, b=b, maxtime=maxtime)
         else:
             raise ValueError(
-                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
-                f' and observed states ({self.nstates_obs})')
+                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.n_states})'
+                f' and observed states ({self.n_states_obs})')
 
     def fingerprint_correlation(self, a, b=None, k=None, ncv=None):
         # basic checks for a and b
         a = ensure_ndarray(a, ndim=1)
         b = ensure_ndarray(b, ndim=1, size=len(a), allow_None=True)
         # are we on microstates space?
-        if len(a) == self.nstates_obs:
+        if len(a) == self.n_states_obs:
             a = np.dot(self.observation_probabilities, a)
             if b is not None:
                 b = np.dot(self.observation_probabilities, b)
         # now we are on macrostate space, or something is wrong
-        if len(a) == self.nstates:
+        if len(a) == self.n_states:
             return super(HMSM, self).fingerprint_correlation(a, b=b)
         else:
             raise ValueError(
-                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
-                f' and observed states ({self.nstates_obs})')
+                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.n_states})'
+                f' and observed states ({self.n_states_obs})')
 
     def relaxation(self, p0, a, maxtime=None, k=None, ncv=None):
         # basic checks for a and b
         p0 = ensure_ndarray(p0, ndim=1)
         a = ensure_ndarray(a, ndim=1, size=len(p0))
         # are we on microstates space?
-        if len(a) == self.nstates_obs:
+        if len(a) == self.n_states_obs:
             p0 = np.dot(self.observation_probabilities, p0)
             a = np.dot(self.observation_probabilities, a)
         # now we are on macrostate space, or something is wrong
-        if len(a) == self.nstates:
+        if len(a) == self.n_states:
             return super(HMSM, self).relaxation(p0, a, maxtime=maxtime)
         else:
             raise ValueError(
-                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.nstates})'
-                f' and observed states ({self.nstates_obs})')
+                f'observable vectors have size {len(a)} which is incompatible with both hidden ({self.n_states})'
+                f' and observed states ({self.n_states_obs})')
 
     def fingerprint_relaxation(self, p0, a, k=None, ncv=None):
         # basic checks for a and b
         p0 = ensure_ndarray(p0, ndim=1)
         a = ensure_ndarray(a, ndim=1, size=len(p0))
         # are we on microstates space?
-        if len(a) == self.nstates_obs:
+        if len(a) == self.n_states_obs:
             p0 = np.dot(self.observation_probabilities, p0)
             a = np.dot(self.observation_probabilities, a)
         # now we are on macrostate space, or something is wrong
-        if len(a) == self.nstates:
+        if len(a) == self.n_states:
             return super(HMSM, self).fingerprint_relaxation(p0, a)
         else:
             raise ValueError('observable vectors have size %s which is incompatible with both hidden (%s)'
-                             ' and observed states (%s)' % (len(a), self.nstates, self.nstates_obs))
+                             ' and observed states (%s)' % (len(a), self.n_states, self.n_states_obs))
 
     def pcca(self, m):
         raise NotImplementedError('PCCA is not meaningful for Hidden Markov models. '
@@ -601,7 +606,7 @@ class HMSM(MarkovStateModel):
 
         """
         nonzero = np.nonzero(self.stationary_distribution_obs)[0]
-        M = np.zeros((self.nstates_obs, self.nstates))
+        M = np.zeros((self.n_states_obs, self.n_states))
         M[nonzero, :] = np.transpose(np.diag(self.stationary_distribution).dot(
             self.observation_probabilities[:, nonzero]) / self.stationary_distribution_obs[nonzero])
         # renormalize
@@ -645,7 +650,7 @@ class HMSM(MarkovStateModel):
         """
         res = []
         assignment = self.metastable_assignments
-        for i in range(self.nstates):
+        for i in range(self.n_states):
             res.append(np.where(assignment == i)[0])
         return res
 
@@ -698,8 +703,8 @@ class HMSM(MarkovStateModel):
         import msmtools.generation as msmgen
         # generate output distributions
         # TODO: replace this with numpy.random.choice
-        output_distributions = [stats.rv_discrete(values=(np.arange(self.pobs.shape[1]), pobs_i)) for pobs_i in
-                                self.pobs]
+        output_distributions = [stats.rv_discrete(values=(np.arange(self._observation_probabilities.shape[1]), pobs_i)) for pobs_i in
+                                self._observation_probabilities]
         # sample hidden trajectory
         htraj = msmgen.generate_traj(self.transition_matrix, N, start=start, stop=stop, dt=dt)
         otraj = np.zeros(htraj.size, dtype=int)

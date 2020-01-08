@@ -28,7 +28,7 @@ class TestMLHMM_Pathologic(unittest.TestCase):
 
     def test_1state(self):
         obs = np.array([0, 0, 0, 0, 0], dtype=int)
-        hmm = bhmm.estimate_hmm([obs], nstates=1, lag=1, accuracy=1e-6)
+        hmm = bhmm.estimate_hmm([obs], n_states=1, lag=1, accuracy=1e-6)
         p0_ref = np.array([1.0])
         A_ref = np.array([[1.0]])
         B_ref = np.array([[1.0]])
@@ -39,11 +39,11 @@ class TestMLHMM_Pathologic(unittest.TestCase):
     def test_1state_fail(self):
         obs = np.array([0, 0, 0, 0, 0], dtype=int)
         with self.assertRaises(NotImplementedError):
-            bhmm.estimate_hmm([obs], nstates=2, lag=1, accuracy=1e-6)
+            bhmm.estimate_hmm([obs], n_states=2, lag=1, accuracy=1e-6)
 
     def test_2state_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
-        hmm = bhmm.estimate_hmm([obs], nstates=2, lag=1, accuracy=1e-6)
+        hmm = bhmm.estimate_hmm([obs], n_states=2, lag=1, accuracy=1e-6)
         p0_ref = np.array([1, 0])
         A_ref = np.array([[0.8, 0.2],
                           [0.0, 1.0]])
@@ -59,7 +59,7 @@ class TestMLHMM_Pathologic(unittest.TestCase):
 
     def test_2state_2step(self):
         obs = np.array([0, 1, 0], dtype=int)
-        hmm = bhmm.estimate_hmm([obs], nstates=2, lag=1, accuracy=1e-6)
+        hmm = bhmm.estimate_hmm([obs], n_states=2, lag=1, accuracy=1e-6)
         p0_ref = np.array([1, 0])
         A_ref = np.array([[0.0, 1.0],
                           [1.0, 0.0]])

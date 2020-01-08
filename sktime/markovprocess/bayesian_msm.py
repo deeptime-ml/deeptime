@@ -78,7 +78,7 @@ class BayesianMSM(_MSMBaseEstimator):
        minimum number of counts to consider a connection between two states.
        Counts lower than that will count zero in the connectivity check and
        may thus separate the resulting transition matrix. The default
-       evaluates to 1/nstates.
+       evaluates to 1/n_states.
 
     References
     ----------
@@ -130,7 +130,7 @@ class BayesianMSM(_MSMBaseEstimator):
         from msmtools.estimation import tmatrix_sampler
         from math import sqrt
         if self.nsteps is None:
-            self.nsteps = int(sqrt(mle.count_model.nstates))  # heuristic for number of steps to decorrelate
+            self.nsteps = int(sqrt(mle.count_model.n_states))  # heuristic for number of steps to decorrelate
         # use the same count matrix as the MLE. This is why we have effective as a default
         if self.statdist_constraint is None:
             tsampler = tmatrix_sampler(mle.count_model.count_matrix_active, reversible=self.reversible,

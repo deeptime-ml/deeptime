@@ -34,28 +34,28 @@ class HMM(Model):
 
     Parameters
     ----------
-    transition_matrix : np.array with shape (nstates, nstates), optional, default=None
+    transition_matrix : np.array with shape (n_states, n_states), optional, default=None
         Row-stochastic transition matrix among states.
     output_model : :class:`sktime.markovprocess.bhmm.OutputModel`
         The output model for the states.
     lag : int, optional, default=1
         Lag time (optional) used to estimate the HMM. Used to compute relaxation timescales.
-    initial_distribution : np.array with shape (nstates), optional, default=None
+    initial_distribution : np.array with shape (n_states), optional, default=None
         The initial state vector. Required when stationary=False
 
     Examples
     --------
 
     >>> # Gaussian HMM
-    >>> nstates = 2
+    >>> n_states = 2
     >>> pi = np.array([0.5, 0.5])
     >>> Tij = np.array([[0.8, 0.2], [0.5, 0.5]])
     >>> from sktime.markovprocess.bhmm.output_models import GaussianOutputModel
-    >>> output_model = GaussianOutputModel(nstates, means=[-1, +1], sigmas=[1, 1])
+    >>> output_model = GaussianOutputModel(n_states, means=[-1, +1], sigmas=[1, 1])
     >>> model = HMM(pi, Tij, output_model)
 
     >>> # Discrete HMM
-    >>> nstates = 2
+    >>> n_states = 2
     >>> pi = np.array([0.5, 0.5])
     >>> Tij = np.array([[0.8, 0.2], [0.5, 0.5]])
     >>> from sktime.markovprocess.bhmm.output_models import DiscreteOutputModel
@@ -82,9 +82,9 @@ class HMM(Model):
         # TODO: why copy here?
         self._Tij = np.array(Tij)
         # set number of states
-        self._nstates = len(Tij)
+        self._n_states = len(Tij)
         # assert is_transition_matrix(self._Tij), 'Given transition matrix is not a stochastic matrix'
-        # assert self._Tij.shape[0] == self._nstates, 'Given transition matrix has unexpected number of states '
+        # assert self._Tij.shape[0] == self.n_states, 'Given transition matrix has unexpected number of states '
         # reset spectral decomposition
         self._spectral_decomp_available = False
 
@@ -143,9 +143,9 @@ class HMM(Model):
         return np.allclose(np.dot(self._Pi, self._Tij), self._Pi)
 
     @property
-    def nstates(self):
+    def n_states(self):
         r""" The number of hidden states """
-        return self._nstates
+        return self._n_states
 
     @property
     def initial_distribution(self):
@@ -190,7 +190,7 @@ class HMM(Model):
 
         Returns
         -------
-        L : ndarray(nstates,nstates)
+        L : ndarray(n_states,n_states)
             left eigenvectors in a row matrix. l_ij is the j'th component of the i'th left eigenvector
 
         """
@@ -203,7 +203,7 @@ class HMM(Model):
 
         Returns
         -------
-        R : ndarray(nstates,nstates)
+        R : ndarray(n_states,n_states)
             right eigenvectors in a column matrix. r_ij is the i'th component of the j'th right eigenvector
 
         """
@@ -218,7 +218,7 @@ class HMM(Model):
         -------
         ts : ndarray(m)
             relaxation timescales in units of the input trajectory time step,
-            defined by :math:`-tau / ln | \lambda_i |, i = 2,...,nstates`, where
+            defined by :math:`-tau / ln | \lambda_i |, i = 2,...,n_states`, where
             :math:`\lambda_i` are the hidden transition matrix eigenvalues.
 
         """
@@ -234,9 +234,9 @@ class HMM(Model):
 
         Returns
         -------
-        l : ndarray(nstates)
+        l : ndarray(n_states)
             state lifetimes in units of the input trajectory time step,
-            defined by :math:`-tau / ln | p_{ii} |, i = 1,...,nstates`, where
+            defined by :math:`-tau / ln | p_{ii} |, i = 1,...,n_states`, where
             :math:`p_{ii}` are the diagonal entries of the hidden transition matrix.
 
         """
@@ -302,7 +302,7 @@ class HMM(Model):
 
         Returns
         -------
-        C : numpy.array with shape (nstates,nstates)
+        C : numpy.array with shape (n_states,n_states)
             C[i,j] is the number of transitions observed from state i to state j
 
         Raises
@@ -317,7 +317,7 @@ class HMM(Model):
         if self.hidden_state_trajectories is None:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
-        C = msmest.count_matrix(self.hidden_state_trajectories, 1, nstates=self._nstates, sparse_return=False)
+        C = msmest.count_matrix(self.hidden_state_trajectories, 1, n_states=self._n_states, sparse_return=False)
         return C
 
     def count_init(self):
@@ -325,7 +325,7 @@ class HMM(Model):
 
         Returns
         -------
-        n : ndarray(nstates)
+        n : ndarray(n_states)
             n[i] is the number of trajectories starting in state i
 
         """
@@ -333,7 +333,7 @@ class HMM(Model):
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
         n = [traj[0] for traj in self.hidden_state_trajectories]
-        return np.bincount(n, minlength=self.nstates)
+        return np.bincount(n, minlength=self.n_states)
 
     def collect_observations_in_state(self, observations, state_index):
         # TODO: this would work well in a subclass with data
@@ -378,7 +378,7 @@ class HMM(Model):
         ----------
         nsteps : int
             Number of steps in the synthetic state trajectory to be generated.
-        initial_Pi : np.array of shape (nstates,), optional, default=None
+        initial_Pi : np.array of shape (n_states,), optional, default=None
             The initial probability distribution, if samples are not to be taken from the intrinsic
             initial distribution.
         start : int
@@ -390,8 +390,8 @@ class HMM(Model):
 
         Returns
         -------
-        states : np.array of shape (nstates,) of dtype=np.int32
-            The trajectory of hidden states, with each element in range(0,nstates).
+        states : np.array of shape (n_states,) of dtype=np.int32
+            The trajectory of hidden states, with each element in range(0,n_states).
 
         Examples
         --------
@@ -410,9 +410,9 @@ class HMM(Model):
         # Generate first state sample.
         if start is None:
             if initial_Pi is not None:
-                start = np.random.choice(self._nstates, size=1, p=initial_Pi)
+                start = np.random.choice(self._n_states, size=1, p=initial_Pi)
             else:
-                start = np.random.choice(self._nstates, size=1, p=self._Pi)
+                start = np.random.choice(self._n_states, size=1, p=self._Pi)
 
         # Generate and return trajectory
         from msmtools import generation as msmgen
@@ -451,15 +451,15 @@ class HMM(Model):
         ----------
         length : int
             Length of synthetic state trajectory to be generated.
-        initial_Pi : np.array of shape (nstates,), optional, default=None
+        initial_Pi : np.array of shape (n_states,), optional, default=None
             The initial probability distribution, if samples are not to be taken from equilibrium.
 
         Returns
         -------
-        o_t : np.array of shape (nstates,) of dtype=np.float32
+        o_t : np.array of shape (n_states,) of dtype=np.float32
             The trajectory of observations.
-        s_t : np.array of shape (nstates,) of dtype=np.int32
-            The trajectory of hidden states, with each element in range(0,nstates).
+        s_t : np.array of shape (n_states,) of dtype=np.int32
+            The trajectory of hidden states, with each element in range(0,n_states).
 
         Examples
         --------
@@ -493,14 +493,14 @@ class HMM(Model):
             The number of trajectories to be generated.
         length : int
             Length of synthetic state trajectory to be generated.
-        initial_Pi : np.array of shape (nstates,), optional, default=None
+        initial_Pi : np.array of shape (n_states,), optional, default=None
             The initial probability distribution, if samples are not to be taken from equilibrium.
 
         Returns
         -------
-        O : list of np.array of shape (nstates,) of dtype=np.float32
+        O : list of np.array of shape (n_states,) of dtype=np.float32
             The trajectories of observations
-        S : list of np.array of shape (nstates,) of dtype=np.int32
+        S : list of np.array of shape (n_states,) of dtype=np.int32
             The trajectories of hidden states
 
         Examples
@@ -514,7 +514,7 @@ class HMM(Model):
 
         Use an initial nonequilibrium distribution.
 
-        >>> model = testsystems.dalton_model(nstates=3)
+        >>> model = testsystems.dalton_model(n_states=3)
         >>> O, S = model.generate_synthetic_observation_trajectories(ntrajectories=10, length=100, initial_Pi=np.array([1,0,0]))
 
         """

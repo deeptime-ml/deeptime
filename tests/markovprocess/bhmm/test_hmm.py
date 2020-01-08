@@ -31,7 +31,7 @@ class TestHMM(unittest.TestCase):
 
     def test_hmm(self):
         # Create a simple HMM model.
-        model = testsystems.dalton_model(nstates=3)
+        model = testsystems.dalton_model(n_states=3)
         # Test model parameter access.
         np.testing.assert_equal(model.transition_matrix.shape, (3, 3))
         np.testing.assert_equal(model.stationary_distribution.shape, (3, ))
@@ -42,14 +42,14 @@ class TestHMM(unittest.TestCase):
         """Test the creation of a simple two-state HMM model with analytical parameters.
         """
         # Create a simple two-state model.
-        nstates = 2
+        n_states = 2
         Tij = testsystems.generate_transition_matrix(reversible=True)
         # stationary distribution
         import msmtools.analysis as msmana
         Pi = msmana.stationary_distribution(Tij)
         means = [-1, +1]
         sigmas = [1, 1]
-        output_model = GaussianOutputModel(nstates, means=means, sigmas=sigmas)
+        output_model = GaussianOutputModel(n_states, means=means, sigmas=sigmas)
         model = bhmm.HMM(Pi, Tij, output_model)
         # Test model is correct.
         assert_array_almost_equal(model.transition_matrix, Tij)

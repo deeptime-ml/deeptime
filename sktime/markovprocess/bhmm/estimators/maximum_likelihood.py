@@ -39,13 +39,13 @@ class MaximumLikelihoodHMM(Estimator):
         for ecology," Bull. Amer. Meteorol. Soc., vol. 73, pp. 360-363, 1967.
 
     """
-    def __init__(self, nstates, initial_model=None, output='gaussian',
+    def __init__(self, n_states, initial_model=None, output='gaussian',
                  reversible=True, stationary=False, p=None, accuracy=1e-3, maxit=1000, maxit_P=100000):
         """Initialize a Bayesian hidden Markov model sampler.
 
         Parameters
         ----------
-        nstates : int
+        n_states : int
             The number of states in the model.
         initial_model : HMM, optional, default=None
             If specified, the given initial model will be used to initialize the
@@ -59,7 +59,7 @@ class MaximumLikelihoodHMM(Estimator):
             If True, the initial distribution of hidden states is self-consistently
             computed as the stationary distribution of the transition matrix. If
             False, it will be estimated from the starting states.
-        p : ndarray (nstates), optional, default=None
+        p : ndarray (n_states), optional, default=None
             Initial or fixed stationary distribution. If given and stationary=True,
             transition matrices will be estimated with the constraint that they
             have p as their stationary distribution. If given and stationary=False,
@@ -83,7 +83,7 @@ class MaximumLikelihoodHMM(Estimator):
             self._output = output
 
         # Set parameters
-        self._nstates = nstates
+        self._n_states = n_states
         self._reversible = reversible
         self._stationary = stationary
 
@@ -108,9 +108,9 @@ class MaximumLikelihoodHMM(Estimator):
         return self._reversible
 
     @property
-    def nstates(self):
+    def n_states(self):
         r""" Number of hidden states """
-        return self._nstates
+        return self._n_states
 
     @property
     def accuracy(self):
@@ -154,7 +154,7 @@ class MaximumLikelihoodHMM(Estimator):
         return logprob
 
     def _init_counts(self, gammas):
-        gamma0_sum = np.zeros(self._nstates)
+        gamma0_sum = np.zeros(self._n_states)
         # update state counts
         for g in gammas:
             gamma0_sum += g[0]
@@ -224,7 +224,7 @@ class MaximumLikelihoodHMM(Estimator):
         # TODO: type checking for observations
         _maxT = max(len(obs) for obs in observations)
         # pre-construct hidden variables
-        N = self.nstates
+        N = self.n_states
         alpha = np.zeros((_maxT, N))
         beta = np.zeros((_maxT, N))
         pobs = np.zeros((_maxT, N))
@@ -233,7 +233,7 @@ class MaximumLikelihoodHMM(Estimator):
 
         if self.initial_model is None:
             # Generate our own initial model.
-            self._model = init_hmm(observations, self.nstates, output=self._output)
+            self._model = init_hmm(observations, self.n_states, output=self._output)
         else:
             self._model = self.initial_model
 

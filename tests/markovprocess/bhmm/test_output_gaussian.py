@@ -27,10 +27,10 @@ from sktime.markovprocess.bhmm.output_models.gaussian import GaussianOutputModel
 class TestOutputGaussian(unittest.TestCase):
 
     def setUp(self):
-        nstates = 3
+        n_states = 3
         means = np.array([-0.5, 0.0, 0.5])
         sigmas = np.array([0.2, 0.2, 0.2])
-        self.G = GaussianOutputModel(nstates, means=means, sigmas=sigmas)
+        self.G = GaussianOutputModel(n_states, means=means, sigmas=sigmas)
 
         # random Gaussian samples
         self.obs = np.random.randn(10000)

@@ -83,6 +83,7 @@ def lag_observations(observations, lag, stride=1):
         will return only one trajectory for every stride. Use this for Bayesian analysis.
 
     """
+    # todo cppify
     obsnew = []
     for obs in observations:
         for shift in range(0, lag, stride):
@@ -97,13 +98,13 @@ def gaussian_hmm(pi, P, means, sigmas):
 
     Parameters
     ----------
-    pi : ndarray(nstates, )
+    pi : ndarray(n_states, )
         Initial distribution.
-    P : ndarray(nstates,nstates)
+    P : ndarray(n_states,n_states)
         Hidden transition matrix
-    means : ndarray(nstates, )
+    means : ndarray(n_states, )
         Means of Gaussian output distributions
-    sigmas : ndarray(nstates, )
+    sigmas : ndarray(n_states, )
         Standard deviations of Gaussian output distributions
     stationary : bool, optional, default=True
         If True: initial distribution is equal to stationary distribution of transition matrix
@@ -114,9 +115,9 @@ def gaussian_hmm(pi, P, means, sigmas):
     from .output_models.gaussian import GaussianOutputModel
     from .hmm.generic_hmm import HMM
     # count states
-    nstates = _np.array(P).shape[0]
+    n_states = _np.array(P).shape[0]
     # initialize output model
-    output_model = GaussianOutputModel(nstates, means, sigmas)
+    output_model = GaussianOutputModel(n_states, means, sigmas)
     # initialize general HMM
     ghmm = HMM(pi, P, output_model)
     return ghmm
@@ -127,11 +128,11 @@ def discrete_hmm(pi, P, pout):
 
     Parameters
     ----------
-    pi : ndarray(nstates, )
+    pi : ndarray(n_states, )
         Initial distribution.
-    P : ndarray(nstates,nstates)
+    P : ndarray(n_states,n_states)
         Hidden transition matrix
-    pout : ndarray(nstates,nsymbols)
+    pout : ndarray(n_states,nsymbols)
         Output matrix from hidden states to observable symbols
     """
     from .output_models.discrete import DiscreteOutputModel
@@ -144,14 +145,14 @@ def discrete_hmm(pi, P, pout):
     return dhmm
 
 
-def init_hmm(observations, nstates, lag=1, output=None, reversible=True):
+def init_hmm(observations, n_states, lag=1, output=None, reversible=True):
     """Use a heuristic scheme to generate an initial model.
 
     Parameters
     ----------
     observations : list of ndarray((T_i))
         list of arrays of length T_i with observation data
-    nstates : int
+    n_states : int
         The number of states.
     output : str, optional, default=None
         Output model type from [None, 'gaussian', 'discrete']. If None, will automatically select an output
@@ -164,13 +165,13 @@ def init_hmm(observations, nstates, lag=1, output=None, reversible=True):
 
     >>> from sktime.markovprocess import bhmm
     >>> model, observations, states = bhmm.testsystems.generate_synthetic_observations(output='gaussian')
-    >>> initial_model = init_hmm(observations, model.nstates, output='gaussian')
+    >>> initial_model = init_hmm(observations, model.n_states, output='gaussian')
 
     Generate initial model for a discrete output model.
 
     >>> from sktime.markovprocess import bhmm
     >>> model, observations, states = bhmm.testsystems.generate_synthetic_observations(output='discrete')
-    >>> initial_model = init_hmm(observations, model.nstates, output='discrete')
+    >>> initial_model = init_hmm(observations, model.n_states, output='discrete')
 
     """
     # select output model type
@@ -178,21 +179,21 @@ def init_hmm(observations, nstates, lag=1, output=None, reversible=True):
         output = _guess_output_type(observations)
 
     if output == 'discrete':
-        return init_discrete_hmm(observations, nstates, lag=lag, reversible=reversible)
+        return init_discrete_hmm(observations, n_states, lag=lag, reversible=reversible)
     elif output == 'gaussian':
-        return init_gaussian_hmm(observations, nstates, lag=lag, reversible=reversible)
+        return init_gaussian_hmm(observations, n_states, lag=lag, reversible=reversible)
     else:
         raise NotImplementedError('output model type ' + str(output) + ' not yet implemented.')
 
 
-def init_gaussian_hmm(observations, nstates, lag=1, reversible=True):
+def init_gaussian_hmm(observations, n_states, lag=1, reversible=True):
     """ Use a heuristic scheme to generate an initial model.
 
     Parameters
     ----------
     observations : list of ndarray((T_i))
         list of arrays of length T_i with observation data
-    nstates : int
+    n_states : int
         The number of states.
 
     Examples
@@ -202,18 +203,18 @@ def init_gaussian_hmm(observations, nstates, lag=1, reversible=True):
 
     >>> from sktime.markovprocess import bhmm
     >>> [model, observations, states] = bhmm.testsystems.generate_synthetic_observations(output='gaussian')
-    >>> initial_model = init_gaussian_hmm(observations, model.nstates)
+    >>> initial_model = init_gaussian_hmm(observations, model.n_states)
 
     """
     from .init import gaussian
     if lag > 1:
         observations = lag_observations(observations, lag)
-    hmm0 = gaussian.init_model_gaussian1d(observations, nstates, lag, reversible=reversible)
+    hmm0 = gaussian.init_model_gaussian1d(observations, n_states, lag, reversible=reversible)
     return hmm0
 
 
 # TODO: remove lag here?
-def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=True, regularize=True,
+def init_discrete_hmm(observations, n_states, lag=1, reversible=True, stationary=True, regularize=True,
                       method='connect-spectral', separate=None):
     """Use a heuristic scheme to generate an initial model.
 
@@ -221,7 +222,7 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
     ----------
     observations : list of ndarray((T_i))
         list of arrays of length T_i with observation data
-    nstates : int
+    n_states : int
         The number of states.
     lag : int
         Lag time at which the observations should be counted.
@@ -243,7 +244,7 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
             large observation spaces.
     separate : None or iterable of int
         Force the given set of observed states to stay in a separate hidden state.
-        The remaining nstates-1 states will be assigned by a metastable decomposition.
+        The remaining n_states-1 states will be assigned by a metastable decomposition.
 
     Examples
     --------
@@ -252,7 +253,7 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
 
     >>> from sktime.markovprocess import bhmm
     >>> model, observations, states = bhmm.testsystems.generate_synthetic_observations(output='discrete')
-    >>> initial_model = init_discrete_hmm(observations, model.nstates)
+    >>> initial_model = init_discrete_hmm(observations, model.n_states)
 
     """
     import msmtools.estimation as msmest
@@ -270,17 +271,17 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
 
     if method == 'lcs-spectral':
         lcs = msmest.largest_connected_set(C)
-        p0, P, B = init_discrete_hmm_spectral(C, nstates, reversible=reversible, stationary=stationary,
+        p0, P, B = init_discrete_hmm_spectral(C, n_states, reversible=reversible, stationary=stationary,
                                               active_set=lcs, separate=separate, eps_A=eps_A, eps_B=eps_B)
     elif method == 'connect-spectral':
         # make sure we're strongly connected
         C += msmest.prior_neighbor(C, 0.001)
         nonempty = _np.where(C.sum(axis=0) + C.sum(axis=1) > 0)[0]
         C[nonempty, nonempty] = _np.maximum(C[nonempty, nonempty], 0.001)
-        p0, P, B = init_discrete_hmm_spectral(C, nstates, reversible=reversible, stationary=stationary,
+        p0, P, B = init_discrete_hmm_spectral(C, n_states, reversible=reversible, stationary=stationary,
                                               active_set=nonempty, separate=separate, eps_A=eps_A, eps_B=eps_B)
     elif method == 'spectral':
-        p0, P, B = init_discrete_hmm_spectral(C, nstates, reversible=reversible, stationary=stationary,
+        p0, P, B = init_discrete_hmm_spectral(C, n_states, reversible=reversible, stationary=stationary,
                                               active_set=None, separate=separate, eps_A=eps_A, eps_B=eps_B)
     else:
         raise NotImplementedError('Unknown discrete-HMM initialization method ' + str(method))
@@ -291,7 +292,7 @@ def init_discrete_hmm(observations, nstates, lag=1, reversible=True, stationary=
 
 
 # TODO: remove lag here?
-def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
+def estimate_hmm(observations, n_states, lag=1, initial_model=None, output=None,
                  reversible=True, stationary=False, p=None, accuracy=1e-3, maxit=1000, maxit_P=100000):
     r""" Estimate maximum-likelihood HMM
 
@@ -301,7 +302,7 @@ def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
     ----------
     observations : list of numpy arrays representing temporal data
         `observations[i]` is a 1d numpy array corresponding to the observed trajectory index `i`
-    nstates : int
+    n_states : int
         The number of states in the model.
     lag : int
         the lag time at which observations should be read
@@ -319,7 +320,7 @@ def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
         distribution of the transition matrix. If False, it will be estimated from the starting states.
         Only set this to true if you're sure that the observation trajectories are initiated from a global
         equilibrium distribution.
-    p : ndarray (nstates), optional, default=None
+    p : ndarray (n_states), optional, default=None
         Initial or fixed stationary distribution. If given and stationary=True, transition matrices will be
         estimated with the constraint that they have p as their stationary distribution. If given and
         stationary=False, p is the fixed initial distribution of hidden states.
@@ -344,7 +345,7 @@ def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
 
     # construct estimator
     from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
-    est = MaximumLikelihoodHMM(nstates, initial_model=initial_model, output=output,
+    est = MaximumLikelihoodHMM(n_states, initial_model=initial_model, output=output,
                                reversible=reversible, stationary=stationary, p=p, accuracy=accuracy,
                                maxit=maxit, maxit_P=maxit_P)
     # run
@@ -355,7 +356,7 @@ def estimate_hmm(observations, nstates, lag=1, initial_model=None, output=None,
 
 
 def bayesian_hmm(observations, estimated_hmm, nsample=100, reversible=True, stationary=False,
-                 p0_prior='mixed', transition_matrix_prior='mixed', store_hidden=False, call_back=None):
+                 p0_prior='mixed', transition_matrix_prior='mixed', store_hidden=False, callback=None):
     r""" Bayesian HMM based on sampling the posterior
 
     Generic maximum-likelihood estimation of HMMs
@@ -422,7 +423,7 @@ def bayesian_hmm(observations, estimated_hmm, nsample=100, reversible=True, stat
             a small HMM and a lot of data.
     store_hidden : bool, optional, default=False
         store hidden trajectories in sampled HMMs
-    call_back : function, optional, default=None
+    callback : function, optional, default=None
         a call back function with no arguments, which if given is being called
         after each computed sample. This is useful for implementing progress bars.
 
@@ -438,11 +439,11 @@ def bayesian_hmm(observations, estimated_hmm, nsample=100, reversible=True, stat
 
     """
     from sktime.markovprocess.bhmm.estimators.bayesian_sampling import BayesianHMMSampler
-    sampler = BayesianHMMSampler(estimated_hmm.nstates, initial_model=estimated_hmm,
+    sampler = BayesianHMMSampler(estimated_hmm.n_states, initial_model=estimated_hmm,
                                  reversible=reversible, stationary=stationary, transition_matrix_sampling_steps=1000,
                                  p0_prior=p0_prior, transition_matrix_prior=transition_matrix_prior,
                                  output=estimated_hmm.output_model.model_type)
 
-    sampler.fit(observations, nsamples=nsample, save_hidden_state_trajectory=store_hidden, call_back=call_back)
+    sampler.fit(observations, nsamples=nsample, save_hidden_state_trajectory=store_hidden, callback=callback)
 
     return sampler

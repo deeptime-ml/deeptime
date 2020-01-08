@@ -38,11 +38,11 @@ class TestMLHMM_DoubleWell(unittest.TestCase):
         obs = np.loadtxt(testfile, dtype=int)
 
         # hidden states
-        nstates = 2
+        n_states = 2
 
         # run with lag 1 and 10
-        cls.hmm_lag1 = bhmm.estimate_hmm([obs], nstates, lag=1, output='discrete')
-        cls.hmm_lag10 = bhmm.estimate_hmm([obs], nstates, lag=10, output='discrete')
+        cls.hmm_lag1 = bhmm.estimate_hmm([obs], n_states, lag=1, output='discrete')
+        cls.hmm_lag10 = bhmm.estimate_hmm([obs], n_states, lag=10, output='discrete')
 
     # =============================================================================
     # Test
@@ -64,9 +64,9 @@ class TestMLHMM_DoubleWell(unittest.TestCase):
         assert self.hmm_lag1.lag == 1
         assert self.hmm_lag10.lag == 10
 
-    def test_nstates(self):
-        assert self.hmm_lag1.nstates == 2
-        assert self.hmm_lag10.nstates == 2
+    def test_n_states(self):
+        assert self.hmm_lag1.n_states == 2
+        assert self.hmm_lag10.n_states == 2
 
     def test_transition_matrix(self):
         import msmtools.analysis as msmana

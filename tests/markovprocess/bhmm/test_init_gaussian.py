@@ -29,21 +29,21 @@ class TestHMM(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls._nstates = 3
-        cls._model, cls._observations, cls._states = testsystems.generate_synthetic_observations(nstates=cls._nstates,
+        cls._n_states = 3
+        cls._model, cls._observations, cls._states = testsystems.generate_synthetic_observations(n_states=cls._n_states,
                                                                                                  output='gaussian')
 
     def test_gmm(self):
         # Fit a Gaussian mixture model to obtain emission distributions and state stationary probabilities.
         from sklearn.mixture import GaussianMixture as GMM
-        gmm = GMM(n_components=self._nstates)
+        gmm = GMM(n_components=self._n_states)
         gmm.fit(np.concatenate(self._observations)[:,None])
-        assert gmm.n_components == self._nstates
+        assert gmm.n_components == self._n_states
         assert np.all(gmm.weights_ > 0)  # make sure we don't have empty states.
 
     def test_init(self):
-        initial_model = init_model_gaussian1d(self._observations, self._nstates, lag=1)
-        assert initial_model.nstates == self._nstates
+        initial_model = init_model_gaussian1d(self._observations, self._n_states, lag=1)
+        assert initial_model.n_states == self._n_states
         assert msmana.is_transition_matrix(initial_model.transition_matrix)
 
 

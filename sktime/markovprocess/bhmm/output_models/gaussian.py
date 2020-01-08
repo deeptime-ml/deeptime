@@ -26,17 +26,17 @@ from ._bhmm_output_models import gaussian as gaussian
 class GaussianOutputModel(OutputModel):
     """ HMM output probability model using 1D-Gaussians """
 
-    def __init__(self, nstates, means=None, sigmas=None, ignore_outliers=True):
+    def __init__(self, n_states, means=None, sigmas=None, ignore_outliers=True):
         """
         Create a 1D Gaussian output model.
 
         Parameters
         ----------
-        nstates : int
+        n_states : int
             The number of output states.
-        means : array_like of shape (nstates,), optional, default=None
+        means : array_like of shape (n_states,), optional, default=None
             If specified, initialize the Gaussian means to these values.
-        sigmas : array_like of shape (nstates,), optional, default=None
+        sigmas : array_like of shape (n_states,), optional, default=None
             If specified, initialize the Gaussian variances to these values.
 
         Examples
@@ -44,26 +44,26 @@ class GaussianOutputModel(OutputModel):
 
         Create an observation model.
 
-        >>> output_model = GaussianOutputModel(nstates=3, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
+        >>> output_model = GaussianOutputModel(n_states=3, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
 
         """
-        super(GaussianOutputModel, self).__init__(nstates=nstates, ignore_outliers=ignore_outliers)
+        super(GaussianOutputModel, self).__init__(n_states=n_states, ignore_outliers=ignore_outliers)
 
         dtype = np.float64  # type for internal storage
 
         if means is not None:
             self._means = np.array(means, dtype=dtype)
-            if self._means.shape != (nstates,):
-                raise ValueError('means must have shape (%d,); instead got %s' % (nstates, str(self._means.shape)))
+            if self._means.shape != (n_states,):
+                raise ValueError('means must have shape (%d,); instead got %s' % (n_states, str(self._means.shape)))
         else:
-            self._means = np.zeros(nstates, dtype=dtype)
+            self._means = np.zeros(n_states, dtype=dtype)
 
         if sigmas is not None:
             self._sigmas = np.array(sigmas, dtype=dtype).squeeze()
-            if self._sigmas.shape != (nstates,):
-                raise ValueError('sigmas must have shape (%d,); instead got %s' % (nstates, str(self._sigmas.shape)))
+            if self._sigmas.shape != (n_states,):
+                raise ValueError('sigmas must have shape (%d,); instead got %s' % (n_states, str(self._sigmas.shape)))
         else:
-            self._sigmas = np.zeros(nstates, dtype=dtype)
+            self._sigmas = np.zeros(n_states, dtype=dtype)
 
     @property
     def model_type(self):
@@ -110,8 +110,8 @@ class GaussianOutputModel(OutputModel):
         Generate an observation model and synthetic observation trajectory.
 
         >>> nobs = 1000
-        >>> output_model = GaussianOutputModel(nstates=3, means=[-1, 0, +1], sigmas=[0.5, 1, 2])
-        >>> s_t = np.random.randint(0, output_model.nstates, size=[nobs])
+        >>> output_model = GaussianOutputModel(n_states=3, means=[-1, 0, +1], sigmas=[0.5, 1, 2])
+        >>> s_t = np.random.randint(0, output_model.n_states, size=[nobs])
         >>> o_t = output_model.generate_observation_trajectory(s_t)
 
         Compute output probabilities for entire trajectory and all hidden states.
@@ -130,7 +130,7 @@ class GaussianOutputModel(OutputModel):
         ----------
         observations : [ ndarray(T_k,) ] with K elements
             A list of K observation trajectories, each having length T_k and d dimensions
-        weights : [ ndarray(T_k,nstates) ] with K elements
+        weights : [ ndarray(T_k,n_states) ] with K elements
             A list of K weight matrices, each having length T_k
             weights[k][t,n] is the weight assignment from observations[k][t] to state index n
 
@@ -141,7 +141,7 @@ class GaussianOutputModel(OutputModel):
 
         >>> ntrajectories = 3
         >>> nobs = 1000
-        >>> output_model = GaussianOutputModel(nstates=3, means=[-1, 0, +1], sigmas=[0.5, 1, 2])
+        >>> output_model = GaussianOutputModel(n_states=3, means=[-1, 0, +1], sigmas=[0.5, 1, 2])
         >>> observations = [ np.random.randn(nobs) for _ in range(ntrajectories) ] # random observations
         >>> weights = [ np.random.dirichlet([2, 3, 4], size=nobs) for _ in range(ntrajectories) ] # random weights
 
@@ -151,7 +151,7 @@ class GaussianOutputModel(OutputModel):
 
         """
         # sizes
-        N = self.nstates
+        N = self.n_states
         K = len(observations)
 
         # fit means
@@ -190,7 +190,7 @@ class GaussianOutputModel(OutputModel):
 
         Parameters
         ----------
-        observations :  [ numpy.array with shape (N_k,) ] with `nstates` elements
+        observations :  [ numpy.array with shape (N_k,) ] with `n_states` elements
             observations[k] is a set of observations sampled from state `k`
         prior : object
             prior option for compatibility
@@ -200,17 +200,17 @@ class GaussianOutputModel(OutputModel):
 
         Generate synthetic observations.
 
-        >>> nstates = 3
+        >>> n_states = 3
         >>> nobs = 1000
-        >>> output_model = GaussianOutputModel(nstates=nstates, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
-        >>> observations = [ output_model.generate_observations_from_state(state_index, nobs) for state_index in range(nstates) ]
+        >>> output_model = GaussianOutputModel(n_states=n_states, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
+        >>> observations = [ output_model.generate_observations_from_state(state_index, nobs) for state_index in range(n_states) ]
 
         Update output parameters by sampling.
 
         >>> output_model.sample(observations)
 
         """
-        for state_index in range(self.nstates):
+        for state_index in range(self.n_states):
             # Update state emission distribution parameters.
 
             observations_in_state = observations[state_index]
@@ -249,7 +249,7 @@ class GaussianOutputModel(OutputModel):
 
         Generate an observation model.
 
-        >>> output_model = GaussianOutputModel(nstates=2, means=[0, 1], sigmas=[1, 2])
+        >>> output_model = GaussianOutputModel(n_states=2, means=[0, 1], sigmas=[1, 2])
 
         Generate sample from a state.
 
@@ -280,11 +280,11 @@ class GaussianOutputModel(OutputModel):
 
         Generate an observation model.
 
-        >>> output_model = GaussianOutputModel(nstates=2, means=[0, 1], sigmas=[1, 2])
+        >>> output_model = GaussianOutputModel(n_states=2, means=[0, 1], sigmas=[1, 2])
 
         Generate samples from each state.
 
-        >>> observations = [output_model.generate_observations_from_state(state_index, nobs=100) for state_index in range(output_model.nstates) ]
+        >>> observations = [output_model.generate_observations_from_state(state_index, nobs=100) for state_index in range(output_model.n_states) ]
 
         """
         observations = self.sigmas[state_index] * np.random.randn(nobs) + self.means[state_index]
@@ -310,8 +310,8 @@ class GaussianOutputModel(OutputModel):
         Generate an observation model and synthetic state trajectory.
 
         >>> nobs = 1000
-        >>> output_model = GaussianOutputModel(nstates=3, means=[-1, 0, +1], sigmas=[0.5, 1, 2])
-        >>> s_t = np.random.randint(0, output_model.nstates, size=[nobs])
+        >>> output_model = GaussianOutputModel(n_states=3, means=[-1, 0, +1], sigmas=[0.5, 1, 2])
+        >>> s_t = np.random.randint(0, output_model.n_states, size=[nobs])
 
         Generate a synthetic trajectory
 

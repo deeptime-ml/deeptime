@@ -120,7 +120,7 @@ class MarkovStateModel(Model):
             if not msmana.is_transition_matrix(self._P, tol=1e-8):
                 raise ValueError('T is not a transition matrix.')
             # set states
-            self.nstates = np.shape(self._P)[0]
+            self.n_states = np.shape(self._P)[0]
             if self._is_reversible is None:
                 self._is_reversible = msmana.is_reversible(self._P)
 
@@ -141,13 +141,13 @@ class MarkovStateModel(Model):
         return issparse(self.transition_matrix)
 
     @property
-    def nstates(self):
+    def n_states(self):
         """ Number of active states on which all computations and estimations are done """
-        return self._nstates
+        return self._n_states
 
-    @nstates.setter
-    def nstates(self, n):
-        self._nstates = n
+    @n_states.setter
+    def n_states(self, n):
+        self._n_states = n
 
     @property
     def neig(self):
@@ -160,9 +160,9 @@ class MarkovStateModel(Model):
         if value is None:
             if self.transition_matrix is not None:
                 if self.sparse:
-                    value = min(10, self.nstates - 1)
+                    value = min(10, self.n_states - 1)
                 else:
-                    value = self._nstates
+                    value = self._n_states
 
         # set ncv for consistency
         if not hasattr(self, 'ncv'):
@@ -382,7 +382,7 @@ class MarkovStateModel(Model):
             Distribution after k steps. Vector of size of the active set.
 
         """
-        p0 = ensure_ndarray(p0, ndim=1, size=self.nstates)
+        p0 = ensure_ndarray(p0, ndim=1, size=self.n_states)
         assert k >= 0, 'k must be a non-negative integer'
 
         if k == 0:  # simply return p0 normalized
@@ -393,7 +393,7 @@ class MarkovStateModel(Model):
             for i in range(k):
                 pk = pk.T.dot(self.transition_matrix)
         else:  # dense: employ eigenvalue decomposition
-            self._ensure_eigendecomposition(self.nstates)
+            self._ensure_eigendecomposition(self.n_states)
             pk = mdot(p0.T,
                       self.eigenvectors_right(),
                       np.diag(np.power(self.eigenvalues(), k)),
@@ -414,7 +414,7 @@ class MarkovStateModel(Model):
         A : int or int array
             set of states
         """
-        if np.max(A) > self._nstates:
+        if np.max(A) > self._n_states:
             raise ValueError('Chosen set contains states that are not included in the active set.')
 
     def _mfpt(self, P, A, B, mu=None):
@@ -496,7 +496,7 @@ class MarkovStateModel(Model):
         :math:`\pi=(\pi_i)` is the stationary vector of the transition matrix :math:`P`.
 
         """
-        a = ensure_ndarray(a, ndim=1, size=self.nstates)
+        a = ensure_ndarray(a, ndim=1, size=self.n_states)
         return np.dot(a, self.stationary_distribution)
 
     def correlation(self, a, b=None, maxtime=None, k=None, ncv=None):
@@ -963,7 +963,7 @@ class MarkovStateModel(Model):
         if self.count_model is None:
             raise RuntimeError("Count model was None but needs to be provided in this case.")
         dtrajs = ensure_dtraj_list(dtrajs)
-        statdist_full = np.zeros(self.count_model.nstates)
+        statdist_full = np.zeros(self.count_model.n_states)
         statdist_full[self.count_model.active_set] = self.stationary_distribution
         # histogram observed states
         from msmtools.dtraj import count_states
@@ -1022,8 +1022,8 @@ class MarkovStateModel(Model):
 
         """
         # check if the time-scale separation is OK
-        # if hmm.nstates = msm.nstates there is no problem. Otherwise, check spectral gap
-        if self.nstates > nhidden:
+        # if hmm.n_states = msm.n_states there is no problem. Otherwise, check spectral gap
+        if self.n_states > nhidden:
             ts = self.timescales()
             timescale_ratios = ts[:-1] / ts[1:]
             if timescale_ratios[nhidden - 2] < 1.5:
@@ -1040,7 +1040,7 @@ class MarkovStateModel(Model):
                 ), stacklevel=2)
         # run HMM estimate
         from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
-        estimator = MaximumLikelihoodHMSM(lagtime=self.lagtime, nstates=nhidden, msm_init=self,
+        estimator = MaximumLikelihoodHMSM(lagtime=self.lagtime, n_states=nhidden, msm_init=self,
                                           reversible=self.is_reversible, dt_traj=self.dt_model)
         estimator.fit(dtrajs)
         model = estimator.fetch_model()
@@ -1098,12 +1098,12 @@ class MarkovStateModel(Model):
 
         # determine actual scoring rank
         if score_k is None:
-            score_k = self.nstates
-        if score_k > self.nstates:
+            score_k = self.n_states
+        if score_k > self.n_states:
             import warnings
             warnings.warn('Requested scoring rank {rank} exceeds number of MSM states. '
-                          'Reduced to score_k = {nstates}'.format(rank=score_k, nstates=self.nstates))
-            score_k = self.nstates  # limit to nstates
+                          'Reduced to score_k = {n_states}'.format(rank=score_k, n_states=self.n_states))
+            score_k = self.n_states  # limit to n_states
 
         # training data
         K = self.transition_matrix  # model
@@ -1123,7 +1123,7 @@ class MarkovStateModel(Model):
         active_set = self.count_model.active_set
         map_from = active_set[np.where(active_set < C0t_test_raw.shape[0])[0]]
         map_to = np.arange(len(map_from))
-        C0t_test = np.zeros((self.nstates, self.nstates))
+        C0t_test = np.zeros((self.n_states, self.n_states))
         C0t_test[np.ix_(map_to, map_to)] = C0t_test_raw[np.ix_(map_from, map_from)]
         C00_test = np.diag(C0t_test.sum(axis=1))
         Ctt_test = np.diag(C0t_test.sum(axis=0))

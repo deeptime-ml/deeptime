@@ -28,13 +28,13 @@ from sktime.markovprocess.bhmm.output_models.discrete import DiscreteOutputModel
 from sktime.markovprocess.bhmm.output_models.gaussian import GaussianOutputModel
 
 
-def generate_transition_matrix(nstates=3, lifetime_max=100, lifetime_min=10, reversible=True):
+def generate_transition_matrix(n_states=3, lifetime_max=100, lifetime_min=10, reversible=True):
     """
     Generates random metastable transition matrices
 
     Parameters
     ----------
-    nstates : int, optional, default=3
+    n_states : int, optional, default=3
         Number of states for which row-stockastic transition matrix is to be generated.
     lifetime_max : float, optional, default = 100
         maximum lifetime of any state
@@ -45,24 +45,24 @@ def generate_transition_matrix(nstates=3, lifetime_max=100, lifetime_min=10, rev
 
     Returns
     -------
-    Tij : np.array with shape (nstates, nstates)
+    Tij : np.array with shape (n_states, n_states)
         A randomly generated row-stochastic transition matrix.
 
     """
     # regular grid in the log lifetimes
     ltmax = math.log(lifetime_max)
     ltmin = math.log(lifetime_min)
-    lt = np.linspace(ltmin, ltmax, num=nstates)
+    lt = np.linspace(ltmin, ltmax, num=n_states)
     # create diagonal with self-transition probabilities according to timescales
     diag = 1.0 - 1.0/np.exp(lt)
     # random X
-    X = np.random.random((nstates, nstates))
+    X = np.random.random((n_states, n_states))
     if reversible:
         X += X.T
     # row-normalize
     T = X / np.sum(X, axis=1)[:, None]
     # enforce lifetimes by rescaling rows
-    for i in range(nstates):
+    for i in range(n_states):
         T[i, i] = 0
         T[i, :] *= (1.0-diag[i]) / np.sum(T[i, :])
         T[i, i] = 1.0 - np.sum(T[i, :])
@@ -86,10 +86,10 @@ def force_spectroscopy_model():
     >>> model = force_spectroscopy_model()
 
     """
-    nstates = 3
+    n_states = 3
 
     # Define state emission probabilities.
-    output_model = GaussianOutputModel(nstates, means=[3.0, 4.7, 5.6], sigmas=[1.0, 0.3, 0.2])
+    output_model = GaussianOutputModel(n_states, means=[3.0, 4.7, 5.6], sigmas=[1.0, 0.3, 0.2])
 
     # Define a reversible transition matrix.
     Tij = np.array([[0.98      ,  0.01540412,  0.00459588],
@@ -105,7 +105,7 @@ def force_spectroscopy_model():
     return model
 
 
-def dalton_model(nstates=3, omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
+def dalton_model(n_states=3, omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
                  lifetime_max=100, lifetime_min=10, reversible=True, output='gaussian'):
     """
     Construct a test multistate model with regular spaced emission means (linearly interpolated between omin and omax)
@@ -113,7 +113,7 @@ def dalton_model(nstates=3, omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
 
     Parameters
     ----------
-    nstates : int, optional, default = 3
+    n_states : int, optional, default = 3
         number of hidden states
     omin : float, optional, default = -5
         mean position of the first state.
@@ -146,7 +146,7 @@ def dalton_model(nstates=3, omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
 
     Generate model with specified number of states.
 
-    >>> model = dalton_model(nstates=5)
+    >>> model = dalton_model(n_states=5)
 
     Generate non-reversible model.
 
@@ -159,25 +159,25 @@ def dalton_model(nstates=3, omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
     """
 
     # parameters
-    means = np.linspace(omin, omax, num=nstates)
-    sigmas = np.linspace(sigma_min, sigma_max, num=nstates)
+    means = np.linspace(omin, omax, num=n_states)
+    sigmas = np.linspace(sigma_min, sigma_max, num=n_states)
 
     # Define state emission probabilities.
     if output == 'gaussian':
-        output_model = GaussianOutputModel(nstates, means=means, sigmas=sigmas)
+        output_model = GaussianOutputModel(n_states, means=means, sigmas=sigmas)
     elif output == 'discrete':
         # Construct matrix of output probabilities
-        # B[i,j] is probability state i produces symbol j, where nsymbols = nstates
-        B = np.zeros([nstates, nstates], dtype=np.float64)
-        for i in range(nstates):
-            for j in range(nstates):
+        # B[i,j] is probability state i produces symbol j, where nsymbols = n_states
+        B = np.zeros([n_states, n_states], dtype=np.float64)
+        for i in range(n_states):
+            for j in range(n_states):
                 B[i, j] = np.exp(-0.5 * (means[i] - means[j]) / (sigmas[i] * sigmas[j]))
             B[i, :] /= B[i, :].sum()
         output_model = DiscreteOutputModel(B)
     else:
         raise Exception("output_model_type = '%s' unknown, must be one of ['gaussian', 'discrete']" % output)
 
-    Tij = generate_transition_matrix(nstates, lifetime_max=lifetime_max, lifetime_min=lifetime_min,
+    Tij = generate_transition_matrix(n_states, lifetime_max=lifetime_max, lifetime_min=lifetime_min,
                                      reversible=reversible)
 
     # stationary distribution
@@ -189,7 +189,7 @@ def dalton_model(nstates=3, omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
     return model
 
 
-def generate_synthetic_observations(nstates=3, ntrajectories=10, length=10000,
+def generate_synthetic_observations(n_states=3, ntrajectories=10, length=10000,
                                     omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
                                     lifetime_max=100, lifetime_min=10, reversible=True,
                                     output='gaussian'):
@@ -197,7 +197,7 @@ def generate_synthetic_observations(nstates=3, ntrajectories=10, length=10000,
 
     Parameters
     ----------
-    nstates : int, optional, default=3
+    n_states : int, optional, default=3
         The number of states for the underlying HMM model.
     ntrajectories : int, optional, default=10
         The number of synthetic observation trajectories to generate.
@@ -241,7 +241,7 @@ def generate_synthetic_observations(nstates=3, ntrajectories=10, length=10000,
     """
 
     # Generate a random HMM model.
-    model = dalton_model(nstates, omin=omin, omax=omax, sigma_min=sigma_min, sigma_max=sigma_max,
+    model = dalton_model(n_states, omin=omin, omax=omax, sigma_min=sigma_min, sigma_max=sigma_max,
                          lifetime_max=lifetime_max, lifetime_min=lifetime_min, reversible=reversible,
                          output=output)
 
@@ -251,7 +251,7 @@ def generate_synthetic_observations(nstates=3, ntrajectories=10, length=10000,
     return [model, O, S]
 
 
-def generate_random_bhmm(nstates=3, ntrajectories=10, length=10000,
+def generate_random_bhmm(n_states=3, ntrajectories=10, length=10000,
                          omin=-5, omax=5, sigma_min=0.5, sigma_max=2.0,
                          lifetime_max=100, lifetime_min=10, reversible=True,
                          output='gaussian'):
@@ -259,7 +259,7 @@ def generate_random_bhmm(nstates=3, ntrajectories=10, length=10000,
 
     Parameters
     ----------
-    nstates : int, optional, default=3
+    n_states : int, optional, default=3
         The number of states for the underlying HMM model.
     ntrajectories : int, optional, default=10
         The number of synthetic observation trajectories to generate.
@@ -305,35 +305,35 @@ def generate_random_bhmm(nstates=3, ntrajectories=10, length=10000,
     """
 
     # Generate a random HMM model.
-    model = dalton_model(nstates, omin=omin, omax=omax, sigma_min=sigma_min, sigma_max=sigma_max,
+    model = dalton_model(n_states, omin=omin, omax=omax, sigma_min=sigma_min, sigma_max=sigma_max,
                          lifetime_max=lifetime_max, lifetime_min=lifetime_min, reversible=reversible,
                          output=output)
     # Generate synthetic data.
     O, S = model.generate_synthetic_observation_trajectories(ntrajectories=ntrajectories, length=length)
     # Initialize a new BHMM model.
-    sampler = BayesianHMMSampler(nstates=nstates).fit(O)
+    sampler = BayesianHMMSampler(n_states=n_states).fit(O)
 
     return model, O, S, sampler
 
 
-def total_state_visits(nstates, S):
+def total_state_visits(n_states, S):
     """
     Return summary statistics for state trajectories.
 
     Parameters
     ----------
-    nstates : int
+    n_states : int
         The number of states.
     S : list of numpy.array
         S[i] is the hidden state trajectory from state i
 
     """
 
-    N_i = np.zeros(nstates, np.int32)
-    min_state = nstates
+    N_i = np.zeros(n_states, np.int32)
+    min_state = n_states
     max_state = 0
     for s_t in S:
-        for state_index in range(nstates):
+        for state_index in range(n_states):
             N_i[state_index] += (s_t == state_index).sum()
         min_state = min(min_state, s_t.min())
         max_state = max(max_state, s_t.max())

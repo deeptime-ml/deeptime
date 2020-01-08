@@ -28,14 +28,14 @@ class TestBHMMPathological(unittest.TestCase):
 
     def test_2state_rev_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
-        mle = bhmm.estimate_hmm([obs], nstates=2, lag=1)
+        mle = bhmm.estimate_hmm([obs], n_states=2, lag=1)
         # this will generate disconnected count matrices and should fail:
         with self.assertRaises(NotImplementedError):
             bhmm.bayesian_hmm([obs], mle, reversible=True, p0_prior=None, transition_matrix_prior=None)
 
     def test_2state_nonrev_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
-        mle = bhmm.estimate_hmm([obs], nstates=2, lag=1)
+        mle = bhmm.estimate_hmm([obs], n_states=2, lag=1)
         sampled = bhmm.bayesian_hmm([obs], mle, reversible=False, nsample=2000,
                                     p0_prior='mixed', transition_matrix_prior='mixed').fetch_model()
         tmatrix_samples = np.array([s.transition_matrix for s in sampled])
@@ -45,7 +45,7 @@ class TestBHMMPathological(unittest.TestCase):
 
     def test_2state_rev_2step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0], dtype=int)
-        mle = bhmm.estimate_hmm([obs], nstates=2, lag=1)
+        mle = bhmm.estimate_hmm([obs], n_states=2, lag=1)
         sampled = bhmm.bayesian_hmm([obs], mle, reversible=False, nsample=100,
                                     p0_prior='mixed', transition_matrix_prior='mixed').fetch_model()
         tmatrix_samples = np.array([s.transition_matrix for s in sampled])

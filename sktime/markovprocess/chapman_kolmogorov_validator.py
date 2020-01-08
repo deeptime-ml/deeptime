@@ -59,8 +59,8 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     @memberships.setter
     def memberships(self, value):
         self._memberships = ensure_ndarray(value, ndim=2, dtype=np.float64)
-        self.nstates, self.nsets = self._memberships.shape
-        assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
+        self.n_states, self.nsets = self._memberships.shape
+        assert np.allclose(self._memberships.sum(axis=1), np.ones(self.n_states))  # stochastic matrix?
 
     @property
     def test_model(self):
@@ -69,7 +69,7 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     @test_model.setter
     def test_model(self, test_model: MarkovStateModel):
         assert self.memberships is not None
-        assert self.memberships.shape[0] == test_model.nstates, 'provided memberships and test_model nstates mismatch'
+        assert self.memberships.shape[0] == test_model.n_states, 'provided memberships and test_model n_states mismatch'
         self._test_model = test_model
         # define starting distribution
         P0 = self.memberships * test_model.stationary_distribution[:, None]
@@ -78,10 +78,10 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
 
         active_set = test_model.count_model.active_set
         if active_set is None:
-            active_set = np.arange(test_model.nstates)
+            active_set = np.arange(test_model.n_states)
         # map from the full set (here defined by the largest state index in active set) to active
         self._full2active = np.zeros(np.max(active_set) + 1, dtype=int)
-        self._full2active[active_set] = np.arange(test_model.nstates)
+        self._full2active[active_set] = np.arange(test_model.n_states)
 
     def _compute_observables(self, model: MarkovStateModel, mlag=1):
         # otherwise compute or predict them by model.propagate
@@ -134,7 +134,7 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
     ----------
     nsets : int
         number of sets to test on
-    memberships : ndarray(nstates, nsets), optional
+    memberships : ndarray(n_states, nsets), optional
         optional state memberships. By default (None) will conduct a cktest
         on PCCA (metastable) sets. In case of a hidden MSM memberships are ignored.
     mlags : int or int-array, optional
@@ -173,7 +173,7 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
             pcca = test_model.pcca(nsets)
             memberships = pcca.metastable_memberships
     except NotImplementedError:
-        memberships = np.eye(test_model.nstates)
+        memberships = np.eye(test_model.n_states)
 
     ck = ChapmanKolmogorovValidator(test_estimator=test_estimator, test_model=test_model, memberships=memberships,
                                     mlags=mlags, conf=conf, err_est=err_est)

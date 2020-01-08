@@ -52,23 +52,43 @@ def count_states(dtrajs, ignore_negative=False):
     return res
 
 
-def compute_effective_stride(dtrajs, lagtime, nstates):
+def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
+    r"""
+    Computes the effective stride which is an estimate of the striding required to produce uncorrelated samples.
+    By default this is the lagtime (lag sampling). A nonreversible MSM is estimated, if its number of states is larger
+    than the number of states provided to this method, stride is set to the minimum of lagtime and two times the
+    correlation time of the next neglected timescale.
+
+    Parameters
+    ----------
+    dtrajs : array_like or list of array_like
+        Discretized trajectory or list of discretized trajectories
+    lagtime : int
+        Lagtime
+    n_states : int
+        Target number of states
+
+    Returns
+    -------
+    stride : int
+        Estimated effective stride to produce approximately uncorrelated samples
+    """
     # by default use lag as stride (=lag sampling), because we currently have no better theory for deciding
     # how many uncorrelated counts we can make
     stride = lagtime
     # get a quick fit from the spectral radius of the non-reversible
     from sktime.markovprocess import MaximumLikelihoodMSM
     msm_non_rev = MaximumLikelihoodMSM(lagtime=lagtime, reversible=False, sparse=False).fit(dtrajs).fetch_model()
-    # if we have more than nstates timescales in our MSM, we use the next (neglected) timescale as an
+    # if we have more than n_states timescales in our MSM, we use the next (neglected) timescale as an
     # fit of the de-correlation time
-    if msm_non_rev.nstates > nstates:
+    if msm_non_rev.n_states > n_states:
         # because we use non-reversible msm, we want to silence the ImaginaryEigenvalueWarning
         import warnings
         from msmtools.util.exceptions import ImaginaryEigenValueWarning
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=ImaginaryEigenValueWarning,
                                     module='msmtools.analysis.dense.decomposition')
-            correlation_time = max(1, msm_non_rev.timescales()[nstates - 1])
+            correlation_time = max(1, msm_non_rev.timescales()[n_states - 1])
         # use the smaller of these two pessimistic estimates
         stride = int(min(lagtime, 2 * correlation_time))
 

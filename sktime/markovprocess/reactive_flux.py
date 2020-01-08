@@ -88,7 +88,7 @@ class ReactiveFlux(Model):
         self._dt_model = Q_(value)
 
     @property
-    def nstates(self):
+    def n_states(self):
         """number of states."""
         return self._flux.shape[0]
 
@@ -113,7 +113,7 @@ class ReactiveFlux(Model):
     @property
     def I(self):
         """set of intermediate states"""
-        return list(set(range(self.nstates)) - set(self._A) - set(self._B))
+        return list(set(range(self.n_states)) - set(self._A) - set(self._B))
 
     @property
     def stationary_distribution(self):
@@ -224,7 +224,7 @@ class ReactiveFlux(Model):
         """ main pathway part of the net flux comprising at most the requested fraction of the full flux.
         """
         paths, pathfluxes = self.pathways(fraction=fraction)
-        return self._pathways_to_flux(paths, pathfluxes, n=self.nstates)
+        return self._pathways_to_flux(paths, pathfluxes, n=self.n_states)
 
     # this will be a private function in tpt. only Parameter left will be the sets to be distinguished
     def _compute_coarse_sets(self, user_sets):
@@ -261,7 +261,7 @@ class ReactiveFlux(Model):
         raw_sets = [set(user_set) for user_set in user_sets]
 
         # anything missing? Compute all listed states
-        set_all = set(range(self.nstates))
+        set_all = set(range(self.n_states))
         set_all_user = []
         for user_set in raw_sets:
             set_all_user += user_set

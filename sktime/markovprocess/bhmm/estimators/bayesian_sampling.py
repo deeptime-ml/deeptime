@@ -48,7 +48,7 @@ class BayesianHMMSampler(Estimator):
 
     Parameters
     ----------
-    nstates : int
+    n_states : int
         The number of states in the model.
     initial_model : HMM, optional, default=None
         If specified, the given initial model will be used to initialize the BHMM.
@@ -119,14 +119,14 @@ class BayesianHMMSampler(Estimator):
     First, create some synthetic test data.
 
     >>> from sktime.markovprocess import bhmm
-    >>> nstates = 3
-    >>> model = bhmm.testsystems.dalton_model(nstates)
+    >>> n_states = 3
+    >>> model = bhmm.testsystems.dalton_model(n_states)
     >>> observations, hidden_states = model.generate_synthetic_observation_trajectories(ntrajectories=5, length=1000)
 
     Initialize a new BHMM model.
 
     >>> from sktime.markovprocess.bhmm import BHMM
-    >>> bhmm_sampler = BHMM(nstates=nstates)
+    >>> bhmm_sampler = BHMM(n_states=n_states)
     >>> bhmm_sampler.fit(observations) # +DOCTEST.ELLIPSIS
     BayesianHMMSampler...
 
@@ -141,14 +141,14 @@ class BayesianHMMSampler(Estimator):
         J. Chem. Phys. 143, 174101 (2015).
 
     """
-    def __init__(self, nstates, initial_model=None, reversible=True, stationary=False,
+    def __init__(self, n_states, initial_model=None, reversible=True, stationary=False,
                  transition_matrix_sampling_steps=1000, p0_prior='mixed', transition_matrix_prior='mixed',
                  output='gaussian', nsamples=100, ):
         super(BayesianHMMSampler, self).__init__()
         self.reversible = reversible
         self.stationary = stationary
 
-        self.nstates = nstates
+        self.n_states = n_states
 
         # Use user-specified initial model, if provided.
         if initial_model is not None:
@@ -158,27 +158,27 @@ class BayesianHMMSampler(Estimator):
 
         # prior initial vector
         if p0_prior is None or p0_prior == 'sparse':
-            self.prior_n0 = np.zeros(self.nstates)
+            self.prior_n0 = np.zeros(self.n_states)
         elif isinstance(p0_prior, np.ndarray):
-            if len(p0_prior.shape) == 1 and p0_prior.shape[0] == self.nstates:
+            if len(p0_prior.shape) == 1 and p0_prior.shape[0] == self.n_states:
                 self.prior_n0 = np.array(p0_prior)
             else:
-                raise ValueError(f'initial distribution prior must have dimension {nstates}')
+                raise ValueError(f'initial distribution prior must have dimension {n_states}')
         elif p0_prior == 'mixed':
             if initial_model is not None:
                 self.prior_n0 = np.array(self.initial_model.initial_distribution)
             else:
                 self.prior_n0 = None
         elif p0_prior == 'uniform':
-            self.prior_n0 = np.ones(nstates)
+            self.prior_n0 = np.ones(n_states)
         else:
             raise ValueError(f'initial distribution prior mode undefined: {p0_prior}')
 
         # prior count matrix
         if transition_matrix_prior is None or p0_prior == 'sparse':
-            self.prior_C = np.zeros((self.nstates, self.nstates))
+            self.prior_C = np.zeros((self.n_states, self.n_states))
         elif isinstance(transition_matrix_prior, np.ndarray):
-            if np.array_equal(transition_matrix_prior.shape, (self.nstates, self.nstates)):
+            if np.array_equal(transition_matrix_prior.shape, (self.n_states, self.n_states)):
                 self.prior_C = np.array(transition_matrix_prior)
         elif transition_matrix_prior == 'mixed':
             if initial_model is not None:
@@ -186,7 +186,7 @@ class BayesianHMMSampler(Estimator):
             else:
                 self.prior_C = None
         elif p0_prior == 'uniform':
-            self.prior_C = np.ones((nstates, nstates))
+            self.prior_C = np.ones((n_states, n_states))
         else:
             raise ValueError(f'transition matrix prior mode undefined: {transition_matrix_prior}')
 
@@ -202,7 +202,7 @@ class BayesianHMMSampler(Estimator):
         self.nsamples = nsamples
         self.output = output
 
-    def fit(self, observations, nburn=0, nthin=1, save_hidden_state_trajectory=False, call_back=None, **kwargs):
+    def fit(self, observations, nburn=0, nthin=1, save_hidden_state_trajectory=False, callback=None, **kwargs):
         """Sample from the BHMM posterior.
 
         Parameters
@@ -213,7 +213,7 @@ class BayesianHMMSampler(Estimator):
             The number of Gibbs sampling updates used to generate each returned sample.
         save_hidden_state_trajectory : bool, optional, default=False
             If True, the hidden state trajectory for each sample will be saved as well.
-        call_back : function, optional, default=None
+        callback : function, optional, default=None
             a call back function with no arguments, which if given is being called
             after each computed sample. This is useful for implementing progress bars.
 
@@ -248,8 +248,8 @@ class BayesianHMMSampler(Estimator):
         maxT = max(len(o) for o in observations)
 
         # pre-construct hidden variables
-        self._alpha = np.zeros((maxT, self.nstates))
-        self._pobs = np.zeros((maxT, self.nstates))
+        self._alpha = np.zeros((maxT, self.n_states))
+        self._pobs = np.zeros((maxT, self.n_states))
 
         # Generate our own initial model.
         if self.initial_model is None:
@@ -278,8 +278,8 @@ class BayesianHMMSampler(Estimator):
             if not save_hidden_state_trajectory:
                 model_copy.hidden_state_trajectory = None
             models.append(model_copy)
-            if call_back is not None:
-                call_back()
+            if callback is not None:
+                callback()
 
         self._model = BayesianHMMPosterior(prior=prior, samples=models)
 
@@ -335,7 +335,7 @@ class BayesianHMMSampler(Estimator):
     def _update_emission_probabilities(self, model, observations):
         """Sample a new set of emission probabilites from the conditional distribution P(E | S, O) """
         observations_by_state = [model.collect_observations_in_state(observations, state)
-                                 for state in range(model.nstates)]
+                                 for state in range(model.n_states)]
         model.output_model.sample(observations_by_state)
 
     def _update_transition_matrix(self, model):
@@ -370,7 +370,7 @@ class BayesianHMMSampler(Estimator):
 
     def _generateInitialModel(self, observations, output_model_type):
         """Initialize using an MLHMM."""
-        mlhmm = MaximumLikelihoodHMM(self.nstates, reversible=self.reversible,
+        mlhmm = MaximumLikelihoodHMM(self.n_states, reversible=self.reversible,
                                      output=output_model_type)
         mlhmm.fit(observations)
         model = mlhmm.fetch_model()

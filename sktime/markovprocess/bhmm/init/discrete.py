@@ -132,7 +132,7 @@ def regularize_pobs(B, nonempty=None, separate=None, eps=None):
         Nonempty set. Only regularize on this subset.
     separate : None or iterable of int
         Force the given set of observed states to stay in a separate hidden state.
-        The remaining nstates-1 states will be assigned by a metastable decomposition.
+        The remaining n_states-1 states will be assigned by a metastable decomposition.
     reversible : bool
         HMM is reversible. Will make sure it is still reversible after modification.
 
@@ -164,7 +164,7 @@ def regularize_pobs(B, nonempty=None, separate=None, eps=None):
     return B
 
 
-def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True, active_set=None, P=None,
+def init_discrete_hmm_spectral(C_full, n_states, reversible=True, stationary=True, active_set=None, P=None,
                                eps_A=None, eps_B=None, separate=None):
     """Initializes discrete HMM using spectral clustering of observation counts
 
@@ -183,7 +183,7 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
     ----------
     C_full : ndarray(N, N)
         Transition count matrix on the full observable state space
-    nstates : int
+    n_states : int
         The number of hidden states.
     reversible : bool
         Estimate reversible HMM transition matrix.
@@ -195,12 +195,12 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
         Transition matrix estimated from C (with option reversible). Use this
         option if P has already been estimated to avoid estimating it twice.
     eps_A : float or None
-        Minimum transition probability. Default: 0.01 / nstates
+        Minimum transition probability. Default: 0.01 / n_states
     eps_B : float or None
         Minimum output probability. Default: 0.01 / nfull
     separate : None or iterable of int
         Force the given set of observed states to stay in a separate hidden state.
-        The remaining nstates-1 states will be assigned by a metastable decomposition.
+        The remaining n_states-1 states will be assigned by a metastable decomposition.
 
     Returns
     -------
@@ -241,7 +241,7 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
 
     # INPUTS
     if eps_A is None:  # default transition probability, in order to avoid zero columns
-        eps_A = 0.01 / nstates
+        eps_A = 0.01 / n_states
     if eps_B is None:  # default output probability, in order to avoid zero columns
         eps_B = 0.01 / nfull
     # Manage sets
@@ -259,12 +259,12 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
     # when using separate states, only keep the nonempty ones (the others don't matter)
     if separate is None:
         active_nonseparate = active_set.copy()
-        nmeta = nstates
+        nmeta = n_states
     else:
         if np.max(separate) >= nfull:
             raise ValueError(f'Separate set has indexes that do not exist in full state space: {np.max(separate)}')
         active_nonseparate = np.array(list(set(active_set) - set(separate)))
-        nmeta = nstates - 1
+        nmeta = n_states - 1
     # check if we can proceed
     if active_nonseparate.size < nmeta:
         raise NotImplementedError(f'Trying to initialize {nmeta}-state HMM from smaller '
@@ -305,7 +305,7 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
     if separate is None:
         M_active = M_active_nonseparate
     else:
-        M_full = np.zeros((nfull, nstates))
+        M_full = np.zeros((nfull, n_states))
         M_full[active_nonseparate, :nmeta] = M_active_nonseparate
         M_full[separate, -1] = 1
         M_active = M_full[active_set]
@@ -319,7 +319,7 @@ def init_discrete_hmm_spectral(C_full, nstates, reversible=True, stationary=True
     pi_hmm = _tmatrix_disconnected.stationary_distribution(P_hmm, C=C_hmm)  # need C_hmm in case if A is disconnected
 
     # COARSE-GRAINED OUTPUT DISTRIBUTION
-    B_hmm = np.zeros((nstates, nfull))
+    B_hmm = np.zeros((n_states, nfull))
     B_hmm[:nmeta, active_nonseparate] = B_active_nonseparate
     if separate is not None:  # add separate states
         B_hmm[-1, separate] = pi_full[separate]

@@ -14,8 +14,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-import typing
+from typing import Optional, Union, List
 
 import numpy as np
 from msmtools.analysis import is_connected
@@ -26,7 +25,6 @@ from sktime.markovprocess.hidden_markov_model import HMSM, HMMTransitionCountMod
 from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 from sktime.util import ensure_dtraj_list
 from ._base import BayesianPosterior
-from .maximum_likelihood_hmsm import MaximumLikelihoodHMSM as _MaximumLikelihoodHMSM
 
 __author__ = 'noe'
 
@@ -35,14 +33,16 @@ __all__ = [
     'BayesianHMSM',
 ]
 
+from ..base import Estimator
+
 
 class BayesianHMMPosterior(BayesianPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior. """
 
     def __init__(self,
-                 prior: typing.Optional[HMSM] = None,
-                 samples: typing.Optional[typing.List[HMSM]] = (),
-                 hidden_state_trajs: typing.Optional[typing.List[np.ndarray]] = ()):
+                 prior: Optional[HMSM] = None,
+                 samples: Optional[List[HMSM]] = (),
+                 hidden_state_trajs: Optional[List[np.ndarray]] = ()):
         super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
         self.hidden_state_trajectories_samples = hidden_state_trajs
 
@@ -63,113 +63,150 @@ class BayesianHMMPosterior(BayesianPosterior):
         return BayesianHMMPosterior(sub_model, subsamples)
 
 
-class BayesianHMSM(_MaximumLikelihoodHMSM):
-    r"""Estimator for a Bayesian Hidden Markov state model
+class BayesianHMSM(Estimator):
+    r""" Estimator for a Bayesian Hidden Markov state model """
 
-    Parameters
-    ----------
-    nstates : int, optional, default=2
-        number of hidden states
-    lagtime : int, optional, default=1
-        lagtime to estimate the HMSM at
-    stride : str or int, default=1
-        stride between two lagged trajectories extracted from the input
-        trajectories. Given trajectory s[t], stride and lag will result
-        in trajectories
-            s[0], s[tau], s[2 tau], ...
-            s[stride], s[stride + tau], s[stride + 2 tau], ...
-        Setting stride = 1 will result in using all data (useful for
-        maximum likelihood estimator), while a Bayesian estimator requires
-        a longer stride in order to have statistically uncorrelated
-        trajectories. Setting stride = None 'effective' uses the largest
-        neglected timescale as an estimate for the correlation time and
-        sets the stride accordingly.
-    p0_prior : None, str, float or ndarray(n)
-        Prior for the initial distribution of the HMM. Will only be active
-        if stationary=False (stationary=True means that p0 is identical to
-        the stationary distribution of the transition matrix).
-        Currently implements different versions of the Dirichlet prior that
-        is conjugate to the Dirichlet distribution of p0. p0 is sampled from:
+    def __init__(self, init_hmsm: Optional[HMSM] = None,
+                 n_states: int = 2,
+                 lagtime: int = 1, n_samples: int = 100,
+                 stride: Union[str, int] = 'effective',
+                 p0_prior: Optional[Union[str, float, np.ndarray]] = 'mixed',
+                 transition_matrix_prior: Union[str, np.ndarray] = 'mixed',
+                 separate: Optional[Union[int, List[int]]] = None,
+                 store_hidden: bool = False,
+                 reversible: bool = True,
+                 stationary: bool = False,
+                 dt_traj: str = '1 step'):
 
-        .. math:
-            p0 \sim \prod_i (p0)_i^{a_i + n_i - 1}
-        where :math:`n_i` are the number of times a hidden trajectory was in
-        state :math:`i` at time step 0 and :math:`a_i` is the prior count.
-        Following options are available:
+        r"""
+        Estimator for a Bayesian Hidden Markov state model.
 
-        * 'mixed' (default),  :math:`a_i = p_{0,init}`, where :math:`p_{0,init}`
-          is the initial distribution of initial_model.
-        *  ndarray(n) or float,
-           the given array will be used as A.
-        *  'uniform',  :math:`a_i = 1`
-        *   None,  :math:`a_i = 0`. This option ensures coincidence between
-            sample mean an MLE. Will sooner or later lead to sampling problems,
-            because as soon as zero trajectories are drawn from a given state,
-            the sampler cannot recover and that state will never serve as a starting
-            state subsequently. Only recommended in the large data regime and
-            when the probability to sample zero trajectories from any state
-            is negligible.
-    transition_matrix_prior : str or ndarray(n, n)
-        Prior for the HMM transition matrix.
-        Currently implements Dirichlet priors if reversible=False and reversible
-        transition matrix priors as described in [3]_ if reversible=True. For the
-        nonreversible case the posterior of transition matrix :math:`P` is:
+        Parameters
+        ----------
+        init_hmsm : :class:`HMSM <sktime.markovprocess.hidden_markov_model.HMSM>`, optional
+            Single-point estimate of HMSM object around which errors will be evaluated.
+            If None is give an initial estimate will be automatically generated using the
+            given parameters.
+        n_states : int, optional, default=2
+            number of hidden states
+        lagtime : int, optional, default=1
+            lagtime to estimate the HMSM at
+        n_samples : int, optional, default=100
+            Number of Gibbs sampling steps
+        stride : str or int, default='effective'
+            stride between two lagged trajectories extracted from the input
+            trajectories. Given trajectory s[t], stride and lag will result
+            in trajectories
+                s[0], s[tau], s[2 tau], ...
+                s[stride], s[stride + tau], s[stride + 2 tau], ...
+            Setting stride = 1 will result in using all data (useful for
+            maximum likelihood estimator), while a Bayesian estimator requires
+            a longer stride in order to have statistically uncorrelated
+            trajectories. Setting stride = 'effective' uses the largest
+            neglected timescale as an estimate for the correlation time and
+            sets the stride accordingly.
+        p0_prior : None, str, float or ndarray(n)
+            Prior for the initial distribution of the HMM. Will only be active
+            if stationary=False (stationary=True means that p0 is identical to
+            the stationary distribution of the transition matrix).
+            Currently implements different versions of the Dirichlet prior that
+            is conjugate to the Dirichlet distribution of p0. p0 is sampled from:
 
-        .. math:
-            P \sim \prod_{i,j} p_{ij}^{b_{ij} + c_{ij} - 1}
-        where :math:`c_{ij}` are the number of transitions found for hidden
-        trajectories and :math:`b_{ij}` are prior counts.
+            .. math:
+                p0 \sim \prod_i (p0)_i^{a_i + n_i - 1}
+            where :math:`n_i` are the number of times a hidden trajectory was in
+            state :math:`i` at time step 0 and :math:`a_i` is the prior count.
+            Following options are available:
 
-        * 'mixed' (default),  :math:`b_{ij} = p_{ij,init}`, where :math:`p_{ij,init}`
-          is the transition matrix of initial_model. That means one prior
-          count will be used per row.
-        * ndarray(n, n) or broadcastable,
-          the given array will be used as B.
-        * 'uniform',  :math:`b_{ij} = 1`
-        * None,  :math:`b_ij = 0`. This option ensures coincidence between
-          sample mean an MLE. Will sooner or later lead to sampling problems,
-          because as soon as a transition :math:`ij` will not occur in a
-          sample, the sampler cannot recover and that transition will never
-          be sampled again. This option is not recommended unless you have
-          a small HMM and a lot of data.
-    init_hmsm : :class:`HMSM <pyemma.msm.models.HMSM>`, default=None
-        Single-point estimate of HMSM object around which errors will be evaluated.
-        If None is give an initial estimate will be automatically generated using the
-        given parameters.
-    store_hidden : bool, optional, default=False
-        store hidden trajectories in sampled HMMs
+            * 'mixed' (default),  :math:`a_i = p_{0,init}`, where :math:`p_{0,init}`
+              is the initial distribution of initial_model.
+            *  ndarray(n) or float,
+               the given array will be used as A.
+            *  'uniform',  :math:`a_i = 1`
+            *   None,  :math:`a_i = 0`. This option ensures coincidence between
+                sample mean an MLE. Will sooner or later lead to sampling problems,
+                because as soon as zero trajectories are drawn from a given state,
+                the sampler cannot recover and that state will never serve as a starting
+                state subsequently. Only recommended in the large data regime and
+                when the probability to sample zero trajectories from any state
+                is negligible.
+        transition_matrix_prior : str or ndarray(n, n)
+            Prior for the HMM transition matrix.
+            Currently implements Dirichlet priors if reversible=False and reversible
+            transition matrix priors as described in [3]_ if reversible=True. For the
+            nonreversible case the posterior of transition matrix :math:`P` is:
 
-    References
-    ----------
-    .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
-        Markov models for calculating kinetics and metastable states of complex
-        molecules. J. Chem. Phys. 139, 184114 (2013)
-    .. [2] J. D. Chodera Et Al: Bayesian hidden Markov model analysis of
-        single-molecule force spectroscopy: Characterizing kinetics under
-        measurement uncertainty. arXiv:1108.1430 (2011)
-    .. [3] Trendelkamp-Schroer, B., H. Wu, F. Paul and F. Noe:
-        Estimation and uncertainty of reversible Markov models.
-        J. Chem. Phys. 143, 174101 (2015).
+            .. math:
+                P \sim \prod_{i,j} p_{ij}^{b_{ij} + c_{ij} - 1}
+            where :math:`c_{ij}` are the number of transitions found for hidden
+            trajectories and :math:`b_{ij}` are prior counts.
 
-    """
+            * 'mixed' (default),  :math:`b_{ij} = p_{ij,init}`, where :math:`p_{ij,init}`
+              is the transition matrix of initial_model. That means one prior
+              count will be used per row.
+            * ndarray(n, n) or broadcastable,
+              the given array will be used as B.
+            * 'uniform',  :math:`b_{ij} = 1`
+            * None,  :math:`b_ij = 0`. This option ensures coincidence between
+              sample mean an MLE. Will sooner or later lead to sampling problems,
+              because as soon as a transition :math:`ij` will not occur in a
+              sample, the sampler cannot recover and that transition will never
+              be sampled again. This option is not recommended unless you have
+              a small HMM and a lot of data.
+        separate : None or iterable of int, optional, default=None
+            Force the given set of observed states to stay in a separate hidden state.
+            The remaining n_states-1 states will be assigned by a metastable decomposition.
+        store_hidden : bool, optional, default=False
+            store hidden trajectories in sampled HMMs
+        reversible : bool, optional, default=True
+            If True, a prior that enforces reversible transition matrices (detailed balance) is used;
+            otherwise, a standard  non-reversible prior is used.
+        stationary : bool, optional, default=False
+            If True, the stationary distribution of the transition matrix will be used as initial distribution.
+            Only use True if you are confident that the observation trajectories are started from a global
+            equilibrium. If False, the initial distribution will be estimated as usual from the first step
+            of the hidden trajectories.
+        dt_traj : str, optional, default='1 step'
+            Description of the physical time corresponding to the trajectory time
+            step.  May be used by analysis algorithms such as plotting tools to
+            pretty-print the axes. By default '1 step', i.e. there is no physical
+            time unit. Specify by a number, whitespace and unit. Permitted units
+            are (* is an arbitrary string):
 
-    def __init__(self, nstates=2, lagtime=1, stride='effective',
-                 p0_prior='mixed', transition_matrix_prior='mixed',
-                 nsamples=100, init_hmsm=None, reversible=True, stationary=False,
-                 connectivity='largest', mincount_connectivity='1/n', separate=None, observe_nonempty=True,
-                 dt_traj='1 step', conf=0.95, store_hidden=False):
+            |  'fs',  'femtosecond*'
+            |  'ps',  'picosecond*'
+            |  'ns',  'nanosecond*'
+            |  'us',  'microsecond*'
+            |  'ms',  'millisecond*'
+            |  's',   'second*'
 
-        super(BayesianHMSM, self).__init__(nstates=nstates, lagtime=lagtime, stride=stride,
-                                           reversible=reversible, stationary=stationary,
-                                           connectivity=connectivity, mincount_connectivity=mincount_connectivity,
-                                           observe_nonempty=observe_nonempty, separate=separate,
-                                           dt_traj=dt_traj)
+        References
+        ----------
+        .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
+            Markov models for calculating kinetics and metastable states of complex
+            molecules. J. Chem. Phys. 139, 184114 (2013)
+        .. [2] J. D. Chodera Et Al: Bayesian hidden Markov model analysis of
+            single-molecule force spectroscopy: Characterizing kinetics under
+            measurement uncertainty. arXiv:1108.1430 (2011)
+        .. [3] Trendelkamp-Schroer, B., H. Wu, F. Paul and F. Noe:
+            Estimation and uncertainty of reversible Markov models.
+            J. Chem. Phys. 143, 174101 (2015).
+        """
+
+        super(BayesianHMSM, self).__init__()
+        self.n_states = n_states
+        self.lagtime = lagtime
+        self.stride = stride
+
         self.p0_prior = p0_prior
         self.transition_matrix_prior = transition_matrix_prior
-        self.nsamples = nsamples
         self.init_hmsm = init_hmsm
-        self.conf = conf
         self.store_hidden = store_hidden
+        self.reversible = reversible
+        self.stationary = stationary
+        self.n_samples = n_samples
+        self.dt_traj = dt_traj
+        self.separate = separate
 
     def fetch_model(self) -> BayesianHMMPosterior:
         return self._model
@@ -179,46 +216,61 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
         return self._init_hmsm
 
     @init_hmsm.setter
-    def init_hmsm(self, value: typing.Optional[HMSM]):
+    def init_hmsm(self, value: Optional[HMSM]):
         if value is not None and not issubclass(value.__class__, HMSM):
             raise ValueError('hmsm must be of type HMSM')
         self._init_hmsm = value
 
-    def fit(self, dtrajs, call_back=None):
-        self._model = BayesianHMMPosterior()
+    @staticmethod
+    def compute_default_prior(dtrajs, n_states, lagtime, stride, reversible, stationary, dt_traj, separate) -> HMSM:
+        """
+        Computes a default prior for a BHMSM.
+
+        Parameters
+        ----------
+        dtrajs : array_like or list of array_like
+            discretized trajectories
+
+        Returns
+        -------
+        The estimated prior model.
+        """
+        dtrajs = ensure_dtraj_list(dtrajs)
+        accuracy = 1e-2  # sufficient accuracy for an initial guess
+        model = MaximumLikelihoodHMSM(
+            n_states=n_states, lagtime=lagtime, stride=stride,
+            reversible=reversible, stationary=stationary, dt_traj=dt_traj,
+            separate=separate, connectivity=None, mincount_connectivity=0,
+            accuracy=accuracy, observe_nonempty=False
+        ).fit(dtrajs).fetch_model()
+        return model
+
+    def fit(self, dtrajs, callback=None):
         dtrajs = ensure_dtraj_list(dtrajs)
 
+        model = BayesianHMMPosterior()
+
         if self.init_hmsm is None:  # estimate using a maximum-likelihood hmm
-            # TODO: we cannot call super().fit(), since it would overwrite the internal model again
-            # TODO: it seems artificial, that bayesian_hmsm is a subclass of mlhmsm!
-            self._model.prior = MaximumLikelihoodHMSM(nstates=self.nstates, lagtime=self.lagtime, stride=self.stride,
-                                                      reversible=self.reversible, stationary=self.stationary, dt_traj=self.dt_traj,
-                                                      separate=self.separate,
-                                                      # these params from self.ctor will be overridden.
-                                                      connectivity=None,
-                                                      mincount_connectivity=0,
-                                                      accuracy=1e-2,  # this is sufficient for an initial guess
-                                                      observe_nonempty=False,
-                                                      ).fit(dtrajs).fetch_model()
+            model.prior = self.compute_default_prior(dtrajs)
             dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                                                     nstates=self.nstates_full,
+                                                                                     n_states=self.n_states,
                                                                                      stride=self.stride)
-        else:  # if given another initialization, must copy its attributes
-            # check if nstates and lag are compatible
+        else:
+            # check if n_states and lag are compatible
             if self.lagtime != self.init_hmsm.lagtime:
                 raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible lagtime.')
-            if self.nstates != self.init_hmsm.nstates:
-                raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible nstates.')
+            if self.n_states != self.init_hmsm.n_states:
+                raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible n_states.')
 
             # EVALUATE STRIDE
             init_stride = self.init_hmsm.count_model.stride
             if self.stride == 'effective':
                 from sktime.markovprocess.util import compute_effective_stride
-                self.stride = compute_effective_stride(dtrajs, self.lagtime, self.nstates)
+                self.stride = compute_effective_stride(dtrajs, self.lagtime, self.n_states)
 
             # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
             dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(
-                dtrajs, lagtime=self.lagtime, nstates=self.nstates, stride=self.stride)
+                dtrajs, lagtime=self.lagtime, n_states=self.n_states, stride=self.stride)
             if self.stride != init_stride:
                 symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
                 if self.init_hmsm.count_model.symbols != symbols:
@@ -230,9 +282,9 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
             self.observe_nonempty = False
 
             # update HMM Model
-            self._model.prior = self.init_hmsm.copy()
+            model.prior = self.init_hmsm.copy()
 
-        prior = self._model.prior
+        prior = model.prior
         prior_count_model = prior.count_model
         # check if we have a valid initial model
         if self.reversible and not is_connected(prior_count_model.count_matrix):
@@ -244,12 +296,12 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
 
         # here we blow up the output matrix (if needed) to the FULL state space because we want to use dtrajs in the
         # Bayesian HMM sampler. This is just an initialization.
-        nstates_full = number_of_states(dtrajs)
+        n_states_full = number_of_states(dtrajs)
 
-        if prior_count_model.nstates_obs < nstates_full:
-            eps = 0.01 / nstates_full  # default output probability, in order to avoid zero columns
+        if prior_count_model.n_states_obs < n_states_full:
+            eps = 0.01 / n_states_full  # default output probability, in order to avoid zero columns
             # full state space output matrix. make sure there are no zero columns
-            B_init = eps * np.ones((self.nstates, nstates_full), dtype=np.float64)
+            B_init = eps * np.ones((self.n_states, n_states_full), dtype=np.float64)
             # fill active states
             B_init[:, prior_count_model.observable_set] = np.maximum(eps, prior.observation_probabilities)
             # renormalize B to make it row-stochastic
@@ -259,31 +311,35 @@ class BayesianHMSM(_MaximumLikelihoodHMSM):
 
         # HMM sampler
         if self.init_hmsm is not None:
-            hmm_mle = self.init_hmsm.hmm
+            hmm_mle = self.init_hmsm.bhmm_model
         else:
             hmm_mle = discrete_hmm(prior.initial_distribution, prior.transition_matrix, B_init)
 
-        sampled_hmm = bayesian_hmm(dtrajs_lagged_strided, hmm_mle, nsample=self.nsamples,
+        sampled_hmm = bayesian_hmm(dtrajs_lagged_strided, hmm_mle, nsample=self.n_samples,
                                    reversible=self.reversible, stationary=self.stationary,
                                    p0_prior=self.p0_prior, transition_matrix_prior=self.transition_matrix_prior,
-                                   store_hidden=self.store_hidden, call_back=call_back).fetch_model()
+                                   store_hidden=self.store_hidden, callback=callback).fetch_model()
 
-        # Samples
-        sample_inp = [(m.transition_matrix, m.stationary_distribution, m.output_model.output_probabilities,
-                       m.initial_distribution)
-                      for m in sampled_hmm]
-
+        # repackage samples as HMSM objects and re-normalize after restricting to observable set
         samples = []
-        for P, pi, pobs, init_dist in sample_inp:  # restrict to observable set if necessary
+        for sample in sampled_hmm:  # restrict to observable set if necessary
+            P = sample.transition_matrix
+            pi = sample.stationary_distribution
+            pobs = sample.output_model.output_probabilities
+            init_dist = sample.initial_distribution
+
             Bobs = pobs[:, prior_count_model.observable_set]
             pobs = Bobs / Bobs.sum(axis=1)[:, None]  # renormalize
-            samples.append(HMSM(P, pobs, pi=pi, dt_model=self.dt_traj,
+            samples.append(HMSM(P, pobs, pi=pi, dt_model=prior.dt_model,
                                 count_model=prior_count_model,
                                 reversible=self.reversible, initial_distribution=init_dist))
 
         # store results
         if self.store_hidden:
-            self._model.hidden_state_trajectories_samples = [s.hidden_state_trajectories for s in sampled_hmm]
-        self._model.samples = samples
+            model.hidden_state_trajectories_samples = [s.hidden_state_trajectories for s in sampled_hmm]
+        model.samples = samples
+
+        # set new model
+        self._model = model
 
         return self

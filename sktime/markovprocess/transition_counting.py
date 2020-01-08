@@ -89,13 +89,13 @@ class TransitionCountModel(Model):
         self._hist = state_histogram
 
         if count_matrix is not None:
-            self._nstates_full = count_matrix.shape[0]
+            self._n_states_full = count_matrix.shape[0]
         else:
-            self._nstates_full = 0
+            self._n_states_full = 0
 
         # mapping from full to lcs
         if active_set is not None:
-            self._full2lcs = -1 * np.ones(self.nstates, dtype=int)
+            self._full2lcs = -1 * np.ones(self.n_states, dtype=int)
             self._full2lcs[active_set] = np.arange(len(active_set))
         else:
             self._full2lcs = None
@@ -182,7 +182,7 @@ class TransitionCountModel(Model):
     @property
     def active_state_fraction(self):
         """The fraction of states in the largest connected set."""
-        return float(self.nstates) / float(self.nstates_full)
+        return float(self.n_states) / float(self.n_states_full)
 
     @property
     def active_count_fraction(self):
@@ -191,19 +191,19 @@ class TransitionCountModel(Model):
         return float(np.sum(hist_active)) / float(np.sum(self._hist))
 
     @property
-    def nstates(self) -> int:
+    def n_states(self) -> int:
         """Number of states """
         return self.count_matrix.shape[0]
 
     @property
-    def nstates_full(self) -> int:
+    def n_states_full(self) -> int:
         """
         Number of states in the full model before any subselection.
         """
-        return self._nstates_full
+        return self._n_states_full
 
     @property
-    def nstates_active(self) -> int:
+    def n_states_active(self) -> int:
         """Number of states in the active set"""
         return len(self._active_set)
 
@@ -250,7 +250,7 @@ class TransitionCountModel(Model):
             raise ValueError('Can\'t set both connected_set and subset.')
         if subset is not None:
             if np.size(subset) > 0:
-                assert np.max(subset) < self.nstates, 'Chosen set contains states that are not included in the data.'
+                assert np.max(subset) < self.n_states, 'Chosen set contains states that are not included in the data.'
             C = submatrix(self._C, subset)
         elif connected_set is not None:
             C = submatrix(self._C, self._connected_sets[connected_set])
@@ -355,7 +355,7 @@ class TransitionCountEstimator(Estimator):
         lcc = msmest.largest_connected_set(C_pos, directed=False)
         return pos[lcc]
 
-    def fit(self, data):
+    def fit(self, data, **kw):
         r""" Counts transitions at given lag time
 
         Parameters

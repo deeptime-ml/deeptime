@@ -29,9 +29,9 @@ class TestTestSystems(unittest.TestCase):
     def test_transition_matrix(self):
         """Test example transition matrices.
         """
-        Tij = testsystems.generate_transition_matrix(nstates=3, reversible=False)
+        Tij = testsystems.generate_transition_matrix(n_states=3, reversible=False)
         assert not is_reversible(Tij)
-        Tij = testsystems.generate_transition_matrix(nstates=3, reversible=True)
+        Tij = testsystems.generate_transition_matrix(n_states=3, reversible=True)
         assert Tij.shape == (3, 3)
         assert is_transition_matrix(Tij)
 

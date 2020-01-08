@@ -13,9 +13,12 @@ using namespace pybind11::literals;
 template<typename dtype>
 using np_array = py::array_t<dtype, py::array::c_style>;
 
-template<typename dtype>
+template<typename dtype, bool RELEASE_GIL>
 np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, const py::object& stop, long seed) {
-    py::gil_scoped_release gil;
+    std::unique_ptr<py::gil_scoped_release> gil;
+    if (RELEASE_GIL) {
+        gil = std::make_unique<py::gil_scoped_release>();
+    }
 
     auto nStates = P.shape(0);
 
@@ -59,6 +62,6 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
 }
 
 PYBIND11_MODULE(_markovprocess_generation_bindings, m) {
-    m.def("trajectory", &trajectory<float>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
-    m.def("trajectory", &trajectory<double>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
+    m.def("trajectory", &trajectory<float, true>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
+    m.def("trajectory", &trajectory<double, true>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
 }

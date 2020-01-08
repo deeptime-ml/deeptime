@@ -26,7 +26,7 @@ class OutputModel(object, metaclass=ABCMeta):
 
     Parameters
     ----------
-    nstates : int
+    n_states : int
         The number of output states.
     ignore_outliers : bool
         By outliers we mean observations that have zero probability given the
@@ -39,15 +39,15 @@ class OutputModel(object, metaclass=ABCMeta):
 
     """
 
-    def __init__(self, nstates, ignore_outliers=True):
-        self._nstates = nstates
+    def __init__(self, n_states, ignore_outliers=True):
+        self._n_states = n_states
         self.ignore_outliers = ignore_outliers
         self.found_outliers = False
 
     @property
-    def nstates(self):
+    def n_states(self):
         r""" Number of hidden states """
-        return self._nstates
+        return self._n_states
 
     @abstractmethod
     def sub_output_model(self, states):

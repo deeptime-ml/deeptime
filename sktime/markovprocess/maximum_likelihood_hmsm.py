@@ -33,7 +33,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     Parameters
     ----------
-    nstates : int, optional, default=2
+    n_states : int, optional, default=2
         number of hidden states
     lag : int, optional, default=1
         lagtime to fit the HMSM at
@@ -69,7 +69,7 @@ class MaximumLikelihoodHMSM(Estimator):
         transitions with at least mincount_connectivity counts.
         If a subset of states is used, all estimated quantities (transition
         matrix, stationary distribution, etc) are only defined on this subset
-        and are correspondingly smaller than nstates.
+        and are correspondingly smaller than n_states.
         Following modes are available:
 
         * None or 'all' : The active set is the full set of states.
@@ -81,10 +81,10 @@ class MaximumLikelihoodHMSM(Estimator):
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
         may thus separate the resulting transition matrix. The default
-        evaluates to 1/nstates.
+        evaluates to 1/n_states.
     separate : None or iterable of int
         Force the given set of observed states to stay in a separate hidden state.
-        The remaining nstates-1 states will be assigned by a metastable decomposition.
+        The remaining n_states-1 states will be assigned by a metastable decomposition.
     observe_nonempty : bool
         If True, will restricted the observed states to the states that have
         at least one observation in the lagged input trajectories.
@@ -114,11 +114,11 @@ class MaximumLikelihoodHMSM(Estimator):
         stopped without convergence (a warning is given)
 
     """
-    def __init__(self, nstates=2, lagtime=1, stride=1, msm_init='largest-strong', reversible=True, stationary=False,
+    def __init__(self, n_states=2, lagtime=1, stride=1, msm_init='largest-strong', reversible=True, stationary=False,
                  connectivity=None, mincount_connectivity='1/n', observe_nonempty=True, separate=None,
                  dt_traj='1 step', accuracy=1e-3, maxit=1000):
         super(MaximumLikelihoodHMSM, self).__init__()
-        self.nstates = nstates
+        self.n_states = n_states
         self.lagtime = lagtime
         self.stride = stride
         self.msm_init = msm_init
@@ -126,13 +126,16 @@ class MaximumLikelihoodHMSM(Estimator):
         self.stationary = stationary
         self.connectivity = connectivity
         if mincount_connectivity == '1/n':
-            mincount_connectivity = 1.0 / float(nstates)
+            mincount_connectivity = 1.0 / float(n_states)
         self.mincount_connectivity = mincount_connectivity
         self.separate = separate
         self.observe_nonempty = observe_nonempty
         self.dt_traj = dt_traj
         self.accuracy = accuracy
         self.maxit = maxit
+
+    def fetch_model(self) -> HMSM:
+        return self._model
 
     def fit(self, dtrajs, **kwargs):
         dtrajs = ensure_dtraj_list(dtrajs)
@@ -146,12 +149,12 @@ class MaximumLikelihoodHMSM(Estimator):
                           'trajectory. HMM might be inaccurate.')
 
         dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                                                 nstates=self.nstates,
+                                                                                 n_states=self.n_states,
                                                                                  stride=self.stride)
 
         # INIT HMM
         if isinstance(self.msm_init, str):
-            args = dict(observations=dtrajs_lagged_strided, nstates=self.nstates, lag=1,
+            args = dict(observations=dtrajs_lagged_strided, n_states=self.n_states, lag=1,
                         reversible=self.reversible, stationary=True, regularize=True,
                         separate=self.separate)
             if self.msm_init == 'largest-strong':
@@ -163,7 +166,7 @@ class MaximumLikelihoodHMSM(Estimator):
         else:
             assert isinstance(self.msm_init, MarkovStateModel)
             msm_count_model = self.msm_init.count_model
-            p0, P0, pobs0 = init_discrete_hmm_spectral(msm_count_model.count_matrix.toarray(), self.nstates,
+            p0, P0, pobs0 = init_discrete_hmm_spectral(msm_count_model.count_matrix.toarray(), self.n_states,
                                                        reversible=self.reversible, stationary=True,
                                                        active_set=msm_count_model.active_set,
                                                        P=self.msm_init.transition_matrix, separate=self.separate)
@@ -173,7 +176,7 @@ class MaximumLikelihoodHMSM(Estimator):
         # Estimate discrete HMM
         # ---------------------------------------------------------------------------------------
         from .bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
-        hmm_est = MaximumLikelihoodHMM(self.nstates, initial_model=hmm_init,
+        hmm_est = MaximumLikelihoodHMM(self.n_states, initial_model=hmm_init,
                                        output='discrete', reversible=self.reversible, stationary=self.stationary,
                                        accuracy=self.accuracy, maxit=self.maxit)
         hmm = hmm_est.fit(dtrajs_lagged_strided).fetch_model()
@@ -182,18 +185,18 @@ class MaximumLikelihoodHMSM(Estimator):
                                                   count_matrix=hmm.transition_counts,
                                                   initial_count=hmm.initial_count, lagtime=self.lagtime,
                                                   dt_traj=self.dt_traj,
-                                                  nstates=self.nstates,
+                                                  n_states=self.n_states,
                                                   observable_set=np.arange(number_of_states(dtrajs_lagged_strided)),
                                                   active_set=None,
                                                   symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
         # set model parameters
         self._model = HMSM(transition_matrix=hmm.transition_matrix,
-                           pobs=hmm.output_model.output_probabilities,
+                           observation_probabilities=hmm.output_model.output_probabilities,
                            pi=hmm.stationary_distribution,
                            dt_model=hmm_count_model.dt_traj * self.lagtime,
                            reversible=self.reversible,
                            initial_distribution=hmm.initial_distribution, count_model=hmm_count_model,
-                           bhmm_hmm_model=hmm)
+                           bhmm_model=hmm)
 
         return self
 
@@ -379,7 +382,7 @@ class MaximumLikelihoodHMSM(Estimator):
                 model = model.prior
         except AttributeError:
             raise RuntimeError('call fit() first!')
-        ck = ChapmanKolmogorovValidator(model, self, np.eye(self.nstates),
+        ck = ChapmanKolmogorovValidator(model, self, np.eye(self.n_states),
                                         mlags=mlags, conf=conf, err_est=err_est)
         ck.fit(dtrajs)
         return ck.fetch_model()

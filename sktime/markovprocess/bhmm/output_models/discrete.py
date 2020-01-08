@@ -60,16 +60,16 @@ class DiscreteOutputModel(OutputModel):
     """
     def __init__(self, B, prior=None, ignore_outliers=False):
         self._output_probabilities = np.array(B)
-        nstates, self._nsymbols = self._output_probabilities.shape[0], self._output_probabilities.shape[1]
+        n_states, self._nsymbols = self._output_probabilities.shape[0], self._output_probabilities.shape[1]
         # superclass constructor
-        super(DiscreteOutputModel, self).__init__(nstates=nstates, ignore_outliers=ignore_outliers)
+        super(DiscreteOutputModel, self).__init__(n_states=n_states, ignore_outliers=ignore_outliers)
         # test if row-stochastic
-        assert np.allclose(self._output_probabilities.sum(axis=1), np.ones(self.nstates)), 'B is no stochastic matrix'
+        assert np.allclose(self._output_probabilities.sum(axis=1), np.ones(self.n_states)), 'B is no stochastic matrix'
         # set prior matrix
         if prior is None:
-            prior = np.zeros((nstates, self._nsymbols))
+            prior = np.zeros((n_states, self._nsymbols))
         else:
-            prior = np.zeros((nstates, self._nsymbols)) + prior  # will fail if not broadcastable
+            prior = np.zeros((n_states, self._nsymbols)) + prior  # will fail if not broadcastable
         self.prior = prior
 
     @property
@@ -172,7 +172,7 @@ class DiscreteOutputModel(OutputModel):
 
         Parameters
         ----------
-        observations :  [ numpy.array with shape (N_k,) ] with nstates elements
+        observations :  [ numpy.array with shape (N_k,) ] with n_states elements
             observations[k] are all observations associated with hidden state k
 
         Examples
@@ -189,7 +189,7 @@ class DiscreteOutputModel(OutputModel):
         >>> output_model.sample(obs)
 
         """
-        N, M = self._output_probabilities.shape  # nstates, nsymbols
+        N, M = self._output_probabilities.shape  # n_states, nsymbols
         for i, obs_by_state in enumerate(observations_by_state):
             # count symbols found in data
             count = np.bincount(obs_by_state, minlength=M).astype(float)
@@ -256,7 +256,7 @@ class DiscreteOutputModel(OutputModel):
 
         Generate sample from each state.
 
-        >>> observations = [output_model.generate_observations_from_state(state_index, nobs=100) for state_index in range(output_model.nstates)]
+        >>> observations = [output_model.generate_observations_from_state(state_index, nobs=100) for state_index in range(output_model.n_states)]
 
         """
         import scipy.stats
@@ -286,7 +286,7 @@ class DiscreteOutputModel(OutputModel):
 
         >>> nobs = 1000
         >>> output_model = DiscreteOutputModel(np.array([[0.5,0.5],[0.1,0.9]]))
-        >>> s_t = np.random.randint(0, output_model.nstates, size=[nobs])
+        >>> s_t = np.random.randint(0, output_model.n_states, size=[nobs])
 
         Generate a synthetic trajectory
 
@@ -300,12 +300,12 @@ class DiscreteOutputModel(OutputModel):
         T = s_t.shape[0]
         nsymbols = self._output_probabilities.shape[1]
 
-        if (s_t.max() >= self.nstates) or (s_t.min() < 0):
+        if (s_t.max() >= self.n_states) or (s_t.min() < 0):
             msg = ''
             msg += 's_t = %s\n' % s_t
             msg += 's_t.min() = %d, s_t.max() = %d\n' % (s_t.min(), s_t.max())
             msg += 's_t.argmax = %d\n' % s_t.argmax()
-            msg += 'self.nstates = %d\n' % self.nstates
+            msg += 'self.n_states = %d\n' % self.n_states
             msg += 's_t is out of bounds.\n'
             raise ValueError(msg)
 

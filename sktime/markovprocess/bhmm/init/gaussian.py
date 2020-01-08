@@ -22,14 +22,14 @@ from sktime.markovprocess.bhmm import HMM
 from sktime.markovprocess.bhmm.output_models.gaussian import GaussianOutputModel
 
 
-def init_model_gaussian1d(observations, nstates, lag, reversible=True):
+def init_model_gaussian1d(observations, n_states, lag, reversible=True):
     """Generate an initial model with 1D-Gaussian output densities
 
     Parameters
     ----------
     observations : list of ndarray((T_i), dtype=float)
         list of arrays of length T_i with observation data
-    nstates : int
+    n_states : int
         The number of states.
 
     Examples
@@ -39,7 +39,7 @@ def init_model_gaussian1d(observations, nstates, lag, reversible=True):
 
     >>> from sktime.markovprocess.bhmm import testsystems
     >>> model, observations, states = testsystems.generate_synthetic_observations(output='gaussian')
-    >>> initial_model = init_model_gaussian1d(observations, model.nstates)
+    >>> initial_model = init_model_gaussian1d(observations, model.n_states)
 
     """
     # Concatenate all observations.
@@ -47,12 +47,12 @@ def init_model_gaussian1d(observations, nstates, lag, reversible=True):
 
     # Fit a Gaussian mixture model to obtain emission distributions and state stationary probabilities.
     from sklearn.mixture import GaussianMixture
-    gmm = GaussianMixture(n_components=nstates)
+    gmm = GaussianMixture(n_components=n_states)
     gmm.fit(collected_observations[:, None])
-    output_model = GaussianOutputModel(nstates, means=gmm.means_[:, 0], sigmas=np.sqrt(gmm.covariances_[:, 0]))
+    output_model = GaussianOutputModel(n_states, means=gmm.means_[:, 0], sigmas=np.sqrt(gmm.covariances_[:, 0]))
 
     # Compute fractional state memberships.
-    Nij = np.zeros((nstates, nstates))
+    Nij = np.zeros((n_states, n_states))
     for o_t in observations:
         # length of trajectory
         T = o_t.shape[0]

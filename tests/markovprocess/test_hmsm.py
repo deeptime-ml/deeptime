@@ -37,13 +37,13 @@ class TestMLHMM(unittest.TestCase):
         obs -= np.min(obs)  # remove empty states
 
         # hidden states
-        nstates = 2
+        n_states = 2
 
         # run with lag 1 and 10
         cls.msm_lag1 = estimate_markov_model(obs, 1, reversible=True)
-        cls.hmsm_lag1 = estimate_hidden_markov_model(obs, nstates, 1, reversible=True, observe_nonempty=True)
+        cls.hmsm_lag1 = estimate_hidden_markov_model(obs, n_states, 1, reversible=True, observe_nonempty=True)
         cls.msm_lag10 = estimate_markov_model(obs, 10, reversible=True)
-        cls.hmsm_lag10 = estimate_hidden_markov_model(obs, nstates, 10, reversible=True, observe_nonempty=True)
+        cls.hmsm_lag10 = estimate_hidden_markov_model(obs, n_states, 10, reversible=True, observe_nonempty=True)
 
     # =============================================================================
     # Test basic HMM properties
@@ -56,9 +56,9 @@ class TestMLHMM(unittest.TestCase):
         assert self.hmsm_lag1.lagtime == 1
         assert self.hmsm_lag10.lagtime == 10
 
-    def test_nstates(self):
-        assert self.hmsm_lag1.nstates == 2
-        assert self.hmsm_lag10.nstates == 2
+    def test_n_states(self):
+        assert self.hmsm_lag1.n_states == 2
+        assert self.hmsm_lag10.n_states == 2
 
     def test_transition_matrix(self):
         for P in [self.hmsm_lag1.transition_matrix, self.hmsm_lag1.transition_matrix]:
@@ -121,7 +121,7 @@ class TestMLHMM(unittest.TestCase):
         assert q_backward[a] == 1
         assert q_backward[b] == 0
         # REVERSIBLE:
-        assert np.allclose(q_forward + q_backward, np.ones(hmsm.nstates))
+        assert np.allclose(q_forward + q_backward, np.ones(hmsm.n_states))
 
     def test_mfpt(self):
         hmsm = self.hmsm_lag10
@@ -139,21 +139,21 @@ class TestMLHMM(unittest.TestCase):
     # Test HMSM observable spectral properties
     # =============================================================================
 
-    def test_nstates_obs(self):
-        assert self.hmsm_lag1.nstates_obs == self.msm_lag1.nstates
-        assert self.hmsm_lag10.nstates_obs == self.msm_lag10.nstates
+    def test_n_states_obs(self):
+        assert self.hmsm_lag1.n_states_obs == self.msm_lag1.n_states
+        assert self.hmsm_lag10.n_states_obs == self.msm_lag10.n_states
 
     def test_observation_probabilities(self):
-        assert np.array_equal(self.hmsm_lag1.observation_probabilities.shape, (2, self.hmsm_lag1.nstates_obs))
+        assert np.array_equal(self.hmsm_lag1.observation_probabilities.shape, (2, self.hmsm_lag1.n_states_obs))
         assert np.allclose(self.hmsm_lag1.observation_probabilities.sum(axis=1), np.ones(2))
-        assert np.array_equal(self.hmsm_lag10.observation_probabilities.shape, (2, self.hmsm_lag10.nstates_obs))
+        assert np.array_equal(self.hmsm_lag10.observation_probabilities.shape, (2, self.hmsm_lag10.n_states_obs))
         assert np.allclose(self.hmsm_lag10.observation_probabilities.sum(axis=1), np.ones(2))
 
     def test_transition_matrix_obs(self):
         assert np.array_equal(self.hmsm_lag1.transition_matrix_obs().shape,
-                              (self.hmsm_lag1.nstates_obs, self.hmsm_lag1.nstates_obs))
+                              (self.hmsm_lag1.n_states_obs, self.hmsm_lag1.n_states_obs))
         assert np.array_equal(self.hmsm_lag10.transition_matrix_obs().shape,
-                              (self.hmsm_lag10.nstates_obs, self.hmsm_lag10.nstates_obs))
+                              (self.hmsm_lag10.n_states_obs, self.hmsm_lag10.n_states_obs))
         for T in [self.hmsm_lag1.transition_matrix_obs(),
                   self.hmsm_lag1.transition_matrix_obs(k=2),
                   self.hmsm_lag10.transition_matrix_obs(),
@@ -165,7 +165,7 @@ class TestMLHMM(unittest.TestCase):
         for hmsm in [self.hmsm_lag1, self.hmsm_lag10]:
             # lag 1
             sd = hmsm.stationary_distribution_obs
-            assert len(sd) == hmsm.nstates_obs
+            assert len(sd) == hmsm.n_states_obs
             assert np.allclose(sd.sum(), 1.0)
             assert np.allclose(sd, np.dot(sd, hmsm.transition_matrix_obs()))
 
@@ -173,13 +173,13 @@ class TestMLHMM(unittest.TestCase):
         for hmsm in [self.hmsm_lag1, self.hmsm_lag10]:
             L = hmsm.eigenvectors_left_obs
             # shape should be right
-            assert np.array_equal(L.shape, (hmsm.nstates, hmsm.nstates_obs))
+            assert np.array_equal(L.shape, (hmsm.n_states, hmsm.n_states_obs))
             # first one should be identical to stat.dist
             l1 = L[0, :]
             err = hmsm.stationary_distribution_obs - l1
             assert np.max(np.abs(err)) < 1e-10
             # sums should be 1, 0, 0, ...
-            assert np.allclose(np.sum(L[1:, :], axis=1), np.zeros(hmsm.nstates_obs - 1))
+            assert np.allclose(np.sum(L[1:, :], axis=1), np.zeros(hmsm.n_states_obs - 1))
             # REVERSIBLE:
             if hmsm.is_reversible:
                 assert np.all(np.isreal(L))
@@ -188,10 +188,10 @@ class TestMLHMM(unittest.TestCase):
         for hmsm in [self.hmsm_lag1, self.hmsm_lag10]:
             R = hmsm.eigenvectors_right_obs
             # shape should be right
-            assert np.array_equal(R.shape, (hmsm.nstates_obs, hmsm.nstates))
+            assert np.array_equal(R.shape, (hmsm.n_states_obs, hmsm.n_states))
             # should be all ones
             r1 = R[:, 0]
-            assert np.allclose(r1, np.ones(hmsm.nstates_obs))
+            assert np.allclose(r1, np.ones(hmsm.n_states_obs))
             # REVERSIBLE:
             if hmsm.is_reversible:
                 assert np.all(np.isreal(R))
@@ -202,12 +202,12 @@ class TestMLHMM(unittest.TestCase):
 
     def test_expectation(self):
         hmsm = self.hmsm_lag10
-        e = hmsm.expectation(np.arange(hmsm.nstates_obs))
+        e = hmsm.expectation(np.arange(hmsm.n_states_obs))
         # approximately equal for both
         assert np.abs(e - 31.73) < 0.01
 
         # test error case of incompatible vector size
-        self.assertRaises(ValueError, hmsm.expectation, np.arange(hmsm.nstates_obs - 1))
+        self.assertRaises(ValueError, hmsm.expectation, np.arange(hmsm.n_states_obs - 1))
 
     def test_correlation(self):
         hmsm = self.hmsm_lag10
@@ -217,28 +217,28 @@ class TestMLHMM(unittest.TestCase):
             hmsm.correlation(a, 1) # raise assertion error because size is wrong:
 
         # should decrease
-        a = np.arange(hmsm.nstates_obs)
+        a = np.arange(hmsm.n_states_obs)
         times, corr1 = hmsm.correlation(a, maxtime=maxtime)
         assert len(corr1) == maxtime / hmsm.lagtime
         assert len(times) == maxtime / hmsm.lagtime
         assert corr1[0] > corr1[-1]
-        a = np.arange(hmsm.nstates_obs)
+        a = np.arange(hmsm.n_states_obs)
         times, corr2 = hmsm.correlation(a, a, maxtime=maxtime)
         # should be identical to autocorr
         np.testing.assert_allclose(corr1, corr2)
         # Test: should be increasing in time
-        b = np.arange(hmsm.nstates_obs)[::-1]
+        b = np.arange(hmsm.n_states_obs)[::-1]
         times, corr3 = hmsm.correlation(a, b, maxtime=maxtime)
         assert len(times) == maxtime / hmsm.lagtime
         assert len(corr3) == maxtime / hmsm.lagtime
         assert corr3[0] < corr3[-1]
 
         # test error case of incompatible vector size
-        self.assertRaises(ValueError, hmsm.correlation, np.arange(hmsm.nstates + hmsm.nstates_obs)), None
+        self.assertRaises(ValueError, hmsm.correlation, np.arange(hmsm.n_states + hmsm.n_states_obs)), None
 
     def test_relaxation(self):
         hmsm = self.hmsm_lag10
-        a = np.arange(hmsm.nstates)
+        a = np.arange(hmsm.n_states)
         maxtime = 1000
         times, rel1 = hmsm.relaxation(hmsm.stationary_distribution, a, maxtime=maxtime)
         # should be constant because we are in equilibrium
@@ -252,7 +252,7 @@ class TestMLHMM(unittest.TestCase):
 
         # test error case of incompatible vector size
         with self.assertRaises(ValueError):
-            hmsm.relaxation(np.arange(hmsm.nstates + 1), np.arange(hmsm.nstates + 1))
+            hmsm.relaxation(np.arange(hmsm.n_states + 1), np.arange(hmsm.n_states + 1))
 
     def test_fingerprint_correlation(self):
         hmsm = self.hmsm_lag10
@@ -261,7 +261,7 @@ class TestMLHMM(unittest.TestCase):
         with self.assertRaises(ValueError):
             hmsm.fingerprint_correlation(a, 1)
         # should decrease
-        a = np.arange(hmsm.nstates_obs)
+        a = np.arange(hmsm.n_states_obs)
         fp1 = hmsm.fingerprint_correlation(a)
         # first timescale is infinite
         assert fp1[0][0] == np.inf
@@ -270,18 +270,18 @@ class TestMLHMM(unittest.TestCase):
         # all amplitudes nonnegative (for autocorrelation)
         assert np.all(fp1[1][:] >= 0)
         # identical call
-        b = np.arange(hmsm.nstates_obs)
+        b = np.arange(hmsm.n_states_obs)
         fp2 = hmsm.fingerprint_correlation(a, b)
         assert np.allclose(fp1[0], fp2[0])
         assert np.allclose(fp1[1], fp2[1])
         # should be - of the above, apart from the first
-        b = np.arange(hmsm.nstates_obs)[::-1]
+        b = np.arange(hmsm.n_states_obs)[::-1]
         fp3 = hmsm.fingerprint_correlation(a, b)
         assert np.allclose(fp1[0], fp3[0])
         assert np.allclose(fp1[1][1:], -fp3[1][1:])
 
         # test error case of incompatible vector size
-        self.assertRaises(ValueError, hmsm.fingerprint_correlation, np.arange(hmsm.nstates + hmsm.nstates_obs)), None
+        self.assertRaises(ValueError, hmsm.fingerprint_correlation, np.arange(hmsm.n_states + hmsm.n_states_obs)), None
 
     def test_fingerprint_relaxation(self):
         hmsm = self.hmsm_lag10
@@ -290,7 +290,7 @@ class TestMLHMM(unittest.TestCase):
         with self.assertRaises(ValueError):
             hmsm.fingerprint_relaxation(hmsm.stationary_distribution, a)
         # equilibrium relaxation should be constant
-        a = np.arange(hmsm.nstates)
+        a = np.arange(hmsm.n_states)
         fp1 = hmsm.fingerprint_relaxation(hmsm.stationary_distribution, a)
         # first timescale is infinite
         assert fp1[0][0] == np.inf
@@ -310,7 +310,7 @@ class TestMLHMM(unittest.TestCase):
 
         # test error case of incompatible vector size
         with self.assertRaises(ValueError):
-            hmsm.fingerprint_relaxation(np.arange(hmsm.nstates + 1), np.arange(hmsm.nstates + 1))
+            hmsm.fingerprint_relaxation(np.arange(hmsm.n_states + 1), np.arange(hmsm.n_states + 1))
 
     # ================================================================================================================
     # Metastable state stuff
@@ -320,17 +320,17 @@ class TestMLHMM(unittest.TestCase):
         hmsm = self.hmsm_lag10
         M = hmsm.metastable_memberships
         # should be right size
-        assert np.all(M.shape == (hmsm.nstates_obs, 2))
+        assert np.all(M.shape == (hmsm.n_states_obs, 2))
         # should be nonnegative
         assert np.all(M >= 0)
         # should add up to one:
-        assert np.allclose(np.sum(M, axis=1), np.ones(hmsm.nstates_obs))
+        assert np.allclose(np.sum(M, axis=1), np.ones(hmsm.n_states_obs))
 
     def test_metastable_distributions(self):
         hmsm = self.hmsm_lag10
         pccadist = hmsm.metastable_distributions
         # should be right size
-        assert np.all(pccadist.shape == (2, hmsm.nstates_obs))
+        assert np.all(pccadist.shape == (2, hmsm.n_states_obs))
         # should be nonnegative
         assert np.all(pccadist >= 0)
         # should roughly add up to stationary:
@@ -351,7 +351,7 @@ class TestMLHMM(unittest.TestCase):
         hmsm = self.hmsm_lag10
         ass = hmsm.metastable_assignments
         # test: number of states
-        assert len(ass) == hmsm.nstates_obs
+        assert len(ass) == hmsm.n_states_obs
         # test: should be 0 or 1
         assert np.all(ass >= 0)
         assert np.all(ass <= 1)
@@ -366,7 +366,7 @@ class TestMLHMM(unittest.TestCase):
     def test_observable_state_indexes(self):
         hmsm = self.hmsm_lag10
         I = hmsm.observable_state_indexes
-        assert len(I) == hmsm.nstates_obs
+        assert len(I) == hmsm.n_states_obs
         # compare to histogram
         hist = count_states(hmsm.discrete_trajectories_full)
         # number of frames should match on active subset
@@ -381,7 +381,7 @@ class TestMLHMM(unittest.TestCase):
         nsample = 100
         ss = hmsm.sample_by_observation_probabilities(nsample)
         # must have the right size
-        assert len(ss) == hmsm.nstates
+        assert len(ss) == hmsm.n_states
         # must be correctly assigned
         for i, samples in enumerate(ss):
             # right shape
@@ -444,8 +444,8 @@ class TestMLHMM(unittest.TestCase):
         self.assertEqual(hs.transition_matrix.shape, (2, 2))
 
 
-def estimate_hidden_markov_model(dtrajs,nstates, lag, return_estimator=False, **kwargs) -> HMSM:
-    est = MaximumLikelihoodHMSM(nstates=nstates, lagtime=lag, **kwargs)
+def estimate_hidden_markov_model(dtrajs, n_states, lag, return_estimator=False, **kwargs) -> HMSM:
+    est = MaximumLikelihoodHMSM(n_states=n_states, lagtime=lag, **kwargs)
     est.fit(dtrajs, )
 
     if not return_estimator:

@@ -57,7 +57,7 @@ class TestHMM(unittest.TestCase):
 
     def test_discrete_4_2(self):
         # 4x4 transition matrix
-        nstates = 2
+        n_states = 2
         P = np.array([[0.90, 0.10, 0.00, 0.00],
                       [0.10, 0.89, 0.01, 0.00],
                       [0.00, 0.01, 0.89, 0.10],
@@ -68,7 +68,7 @@ class TestHMM(unittest.TestCase):
         dtrajs = [msmgen.generate_traj(P, T)]
         C = msmest.count_matrix(dtrajs, 1).toarray()
         # estimate initial HMM with 2 states - should be identical to P
-        hmm = init_discrete_hmm(dtrajs, nstates)
+        hmm = init_discrete_hmm(dtrajs, n_states)
         # Test if model fit is close to reference. Note that we do not have an exact reference, so we cannot set the
         # tolerance in a rigorous way to test statistical significance. These are just sanity checks.
         Tij = hmm.transition_matrix
@@ -88,7 +88,7 @@ class TestHMM(unittest.TestCase):
 
     def test_discrete_6_3(self):
         # 4x4 transition matrix
-        nstates = 3
+        n_states = 3
         P = np.array([[0.90, 0.10, 0.00, 0.00, 0.00, 0.00],
                       [0.20, 0.79, 0.01, 0.00, 0.00, 0.00],
                       [0.00, 0.01, 0.84, 0.15, 0.00, 0.00],
@@ -101,7 +101,7 @@ class TestHMM(unittest.TestCase):
         dtrajs = [msmgen.generate_traj(P, T)]
         C = msmest.count_matrix(dtrajs, 1).toarray()
         # estimate initial HMM with 2 states - should be identical to P
-        hmm = init_discrete_hmm(dtrajs, nstates)
+        hmm = init_discrete_hmm(dtrajs, n_states)
         # Test stochasticity and reversibility
         Tij = hmm.transition_matrix
         B = hmm.output_model.output_probabilities

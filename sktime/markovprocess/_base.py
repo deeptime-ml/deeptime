@@ -60,7 +60,7 @@ class _MSMBaseEstimator(Estimator):
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
         may thus separate the resulting transition matrix. The default
-        evaluates to 1/nstates.
+        evaluates to 1/n_states.
 
     """
 
