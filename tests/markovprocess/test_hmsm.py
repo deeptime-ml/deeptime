@@ -444,14 +444,14 @@ class TestMLHMM(unittest.TestCase):
         self.assertEqual(hs.transition_matrix.shape, (2, 2))
 
 
-def estimate_hidden_markov_model(dtrajs, n_states, lag, return_estimator=False, **kwargs) -> HMSM:
+def estimate_hidden_markov_model(dtrajs, n_states, lag, return_estimator=False, **kwargs):
     est = MaximumLikelihoodHMSM(n_states=n_states, lagtime=lag, **kwargs)
     est.fit(dtrajs, )
 
     if not return_estimator:
         return est.fetch_model()
 
-    return est, est.fetch_model()
+    return est, est.fetch_model().submodel_largest(dtrajs=dtrajs)
 
 
 class TestHMMSpecialCases(unittest.TestCase):

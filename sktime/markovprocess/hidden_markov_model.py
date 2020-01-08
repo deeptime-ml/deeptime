@@ -24,7 +24,7 @@ from sktime.markovprocess.bhmm import lag_observations
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
 from sktime.markovprocess.util import count_states
 from sktime.numeric import mdot
-from sktime.util import ensure_ndarray
+from sktime.util import ensure_ndarray, ensure_dtraj_list
 
 from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM as BHMM_HMM
 
@@ -239,7 +239,7 @@ class HMSM(MarkovStateModel):
             stride=self.count_model.stride, symbols=self.count_model.symbols, dt_traj=self.count_model.dt_traj,
             state_histogram=self.count_model.state_histogram,
             initial_count=initial_count, active_set=states,
-            connected_sets=S, count_matrix=C[np.ix_(states, states)].copy(),
+            connected_sets=S, count_matrix=C,
         )
         model = HMSM(transition_matrix=P, observation_probabilities=B, pi=pi, dt_model=self.dt_model, neig=self.neig,
                      reversible=self.is_reversible, count_model=count_model,
@@ -265,6 +265,7 @@ class HMSM(MarkovStateModel):
     def nonempty_obs(self, dtrajs):
         if dtrajs is None:
             raise ValueError("Needs nonempty dtrajs to evaluate nonempty obs.")
+        dtrajs = ensure_dtraj_list(dtrajs)
         dtrajs_lagged_strided = self.count_model.compute_dtrajs_effective(
             dtrajs, self.count_model.lagtime, self.count_model.n_states_full, self.count_model.stride
         )
