@@ -157,6 +157,9 @@ class QuantityStatistics(Model):
         self.mean = samples.mean(axis=0)
         self.std = samples.std(axis=0)
         self.L, self.R = confidence_interval(samples)
+        if unit is not None:
+            self.L *= unit
+            self.R *= unit
 
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', score_k=10, random_state=None):
