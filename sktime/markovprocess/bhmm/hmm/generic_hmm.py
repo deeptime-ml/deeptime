@@ -317,7 +317,7 @@ class HMM(Model):
         if self.hidden_state_trajectories is None:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
-        C = msmest.count_matrix(self.hidden_state_trajectories, 1, n_states=self._n_states, sparse_return=False)
+        C = msmest.count_matrix(self.hidden_state_trajectories, 1, nstates=self._n_states, sparse_return=False)
         return C
 
     def count_init(self):

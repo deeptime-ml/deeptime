@@ -127,7 +127,7 @@ class HMSM(MarkovStateModel):
         # assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
         observation_probabilities = ensure_ndarray(observation_probabilities, ndim=2, dtype=np.float64)
         assert np.allclose(observation_probabilities.sum(axis=1), 1), 'pobs is not a stochastic matrix'
-        self.n_states_obs = observation_probabilities.shape[1]
+        self._n_states_obs = observation_probabilities.shape[1]
         self._observation_probabilities = observation_probabilities
         self._initial_distribution = initial_distribution
         self._hmm = bhmm_model
@@ -210,15 +210,15 @@ class HMSM(MarkovStateModel):
                 C[np.ix_(s, s)] = count_matrix[np.ix_(s, s)]
             # re-fit transition matrix with disc.
             P = _tmatrix_disconnected.estimate_P(C, reversible=self.is_reversible, mincount_connectivity=0)
-            pi = _tmatrix_disconnected.stationary_distribution(P, C)
         else:
             C = count_matrix
-            P = self.transition_matrix
-            pi = self.stationary_distribution
+            P = self.transition_matrix.copy()
 
         # sub-transition matrix
-        P = P[np.ix_(states, states)].copy()
+        P = P[np.ix_(states, states)]
         P /= P.sum(axis=1)[:, None]
+        C = C[np.ix_(states, states)]
+        pi = _tmatrix_disconnected.stationary_distribution(P, C)
         initial_count = self.count_model.initial_count[states].copy()
         initial_distribution = self.initial_distribution[states] / self.initial_distribution[states].sum()
 
@@ -243,7 +243,7 @@ class HMSM(MarkovStateModel):
         )
         model = HMSM(transition_matrix=P, observation_probabilities=B, pi=pi, dt_model=self.dt_model, neig=self.neig,
                      reversible=self.is_reversible, count_model=count_model,
-                     initial_distribution=initial_distribution, bhmm_model=self.hmm)
+                     initial_distribution=initial_distribution, bhmm_model=self.bhmm_model)
         return model
 
     def _select_states(self, mincount_connectivity, states):

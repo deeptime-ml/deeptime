@@ -47,8 +47,16 @@ class BayesianHMMPosterior(BayesianPosterior):
         self.hidden_state_trajectories_samples = hidden_state_trajs
 
     def submodel_largest(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
-        # todo (or solve differently?)
-        pass
+        dtrajs = ensure_dtraj_list(dtrajs)
+        states = self.prior.states_largest(strong=strong, mincount_connectivity=mincount_connectivity)
+        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
+        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
+
+    def submodel_populous(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
+        dtrajs = ensure_dtraj_list(dtrajs)
+        states = self.prior.states_populous(strong=strong, mincount_connectivity=mincount_connectivity)
+        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
+        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
 
     def submodel(self, states=None, obs=None, mincount_connectivity='1/n'):
         # restrict prior
@@ -66,27 +74,23 @@ class BayesianHMMPosterior(BayesianPosterior):
 class BayesianHMSM(Estimator):
     r""" Estimator for a Bayesian Hidden Markov state model """
 
-    def __init__(self, init_hmsm: Optional[HMSM] = None,
+    def __init__(self, init_hmsm: HMSM,
                  n_states: int = 2,
                  lagtime: int = 1, n_samples: int = 100,
                  stride: Union[str, int] = 'effective',
                  p0_prior: Optional[Union[str, float, np.ndarray]] = 'mixed',
                  transition_matrix_prior: Union[str, np.ndarray] = 'mixed',
-                 separate: Optional[Union[int, List[int]]] = None,
                  store_hidden: bool = False,
                  reversible: bool = True,
-                 stationary: bool = False,
-                 dt_traj: str = '1 step'):
-
+                 stationary: bool = False):
         r"""
         Estimator for a Bayesian Hidden Markov state model.
 
         Parameters
         ----------
-        init_hmsm : :class:`HMSM <sktime.markovprocess.hidden_markov_model.HMSM>`, optional
+        init_hmsm : :class:`HMSM <sktime.markovprocess.hidden_markov_model.HMSM>`
             Single-point estimate of HMSM object around which errors will be evaluated.
-            If None is give an initial estimate will be automatically generated using the
-            given parameters.
+            There is a static method available that can be used to generate a default prior.
         n_states : int, optional, default=2
             number of hidden states
         lagtime : int, optional, default=1
@@ -153,9 +157,6 @@ class BayesianHMSM(Estimator):
               sample, the sampler cannot recover and that transition will never
               be sampled again. This option is not recommended unless you have
               a small HMM and a lot of data.
-        separate : None or iterable of int, optional, default=None
-            Force the given set of observed states to stay in a separate hidden state.
-            The remaining n_states-1 states will be assigned by a metastable decomposition.
         store_hidden : bool, optional, default=False
             store hidden trajectories in sampled HMMs
         reversible : bool, optional, default=True
@@ -166,19 +167,6 @@ class BayesianHMSM(Estimator):
             Only use True if you are confident that the observation trajectories are started from a global
             equilibrium. If False, the initial distribution will be estimated as usual from the first step
             of the hidden trajectories.
-        dt_traj : str, optional, default='1 step'
-            Description of the physical time corresponding to the trajectory time
-            step.  May be used by analysis algorithms such as plotting tools to
-            pretty-print the axes. By default '1 step', i.e. there is no physical
-            time unit. Specify by a number, whitespace and unit. Permitted units
-            are (* is an arbitrary string):
-
-            |  'fs',  'femtosecond*'
-            |  'ps',  'picosecond*'
-            |  'ns',  'nanosecond*'
-            |  'us',  'microsecond*'
-            |  'ms',  'millisecond*'
-            |  's',   'second*'
 
         References
         ----------
@@ -205,8 +193,6 @@ class BayesianHMSM(Estimator):
         self.reversible = reversible
         self.stationary = stationary
         self.n_samples = n_samples
-        self.dt_traj = dt_traj
-        self.separate = separate
 
     def fetch_model(self) -> BayesianHMMPosterior:
         return self._model
@@ -222,67 +208,68 @@ class BayesianHMSM(Estimator):
         self._init_hmsm = value
 
     @staticmethod
-    def compute_default_prior(dtrajs, n_states, lagtime, stride, reversible, stationary, dt_traj, separate) -> HMSM:
+    def default(dtrajs, n_states: int, lagtime: int, n_samples: int = 100,
+                stride: Union[str, int] = 'effective',
+                p0_prior: Optional[Union[str, float, np.ndarray]] = 'mixed',
+                transition_matrix_prior: Union[str, np.ndarray] = 'mixed',
+                separate: Optional[Union[int, List[int]]] = None,
+                store_hidden: bool = False,
+                reversible: bool = True,
+                stationary: bool = False,
+                dt_traj: str = '1 step'):
         """
-        Computes a default prior for a BHMSM.
-
-        Parameters
-        ----------
-        dtrajs : array_like or list of array_like
-            discretized trajectories
-
-        Returns
-        -------
-        The estimated prior model.
+        Computes a default prior for a BHMSM and uses that for error estimation.
+        For a more detailed description of the arguments please
+        refer to :class:`HMSM <sktime.markovprocess.hidden_markov_model.HMSM>` or
+        :class:`BayesianHMSM <sktime.markovprocess.bayesian_hmsm.BayesianHMSM>`.
         """
         dtrajs = ensure_dtraj_list(dtrajs)
         accuracy = 1e-2  # sufficient accuracy for an initial guess
-        model = MaximumLikelihoodHMSM(
+        prior = MaximumLikelihoodHMSM(
             n_states=n_states, lagtime=lagtime, stride=stride,
             reversible=reversible, stationary=stationary, dt_traj=dt_traj,
             separate=separate, connectivity=None, mincount_connectivity=0,
             accuracy=accuracy, observe_nonempty=False
         ).fit(dtrajs).fetch_model()
-        return model
+
+        estimator = BayesianHMSM(init_hmsm=prior, n_states=n_states, lagtime=lagtime, n_samples=n_samples,
+                                 stride=stride, p0_prior=p0_prior, transition_matrix_prior=transition_matrix_prior,
+                                 store_hidden=store_hidden, reversible=reversible,
+                                 stationary=stationary)
+        return estimator
 
     def fit(self, dtrajs, callback=None):
         dtrajs = ensure_dtraj_list(dtrajs)
 
         model = BayesianHMMPosterior()
 
-        if self.init_hmsm is None:  # estimate using a maximum-likelihood hmm
-            model.prior = self.compute_default_prior(dtrajs)
-            dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                                                     n_states=self.n_states,
-                                                                                     stride=self.stride)
-        else:
-            # check if n_states and lag are compatible
-            if self.lagtime != self.init_hmsm.lagtime:
-                raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible lagtime.')
-            if self.n_states != self.init_hmsm.n_states:
-                raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible n_states.')
+        # check if n_states and lag are compatible
+        if self.lagtime != self.init_hmsm.lagtime:
+            raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible lagtime.')
+        if self.n_states != self.init_hmsm.n_states:
+            raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible n_states.')
 
-            # EVALUATE STRIDE
-            init_stride = self.init_hmsm.count_model.stride
-            if self.stride == 'effective':
-                from sktime.markovprocess.util import compute_effective_stride
-                self.stride = compute_effective_stride(dtrajs, self.lagtime, self.n_states)
+        # EVALUATE STRIDE
+        init_stride = self.init_hmsm.count_model.stride
+        if self.stride == 'effective':
+            from sktime.markovprocess.util import compute_effective_stride
+            self.stride = compute_effective_stride(dtrajs, self.lagtime, self.n_states)
 
-            # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
-            dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(
-                dtrajs, lagtime=self.lagtime, n_states=self.n_states, stride=self.stride)
-            if self.stride != init_stride:
-                symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
-                if self.init_hmsm.count_model.symbols != symbols:
-                    raise ValueError('Choice of stride has excluded a different set of microstates than in '
-                                     'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
-                                     'must match to the one used for init_hmsm estimation.')
+        # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
+        dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(
+            dtrajs, lagtime=self.lagtime, n_states=self.n_states, stride=self.stride)
+        if self.stride != init_stride:
+            symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
+            if not np.all(self.init_hmsm.count_model.symbols == symbols):
+                raise ValueError('Choice of stride has excluded a different set of microstates than in '
+                                 'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
+                                 'must match to the one used for init_hmsm estimation.')
 
-            # as mentioned in the docstring, take init_hmsm observed set observation probabilities
-            self.observe_nonempty = False
+        # as mentioned in the docstring, take init_hmsm observed set observation probabilities
+        self.observe_nonempty = False
 
-            # update HMM Model
-            model.prior = self.init_hmsm.copy()
+        # update HMM Model
+        model.prior = self.init_hmsm.copy()
 
         prior = model.prior
         prior_count_model = prior.count_model
