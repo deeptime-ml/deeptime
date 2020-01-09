@@ -751,5 +751,5 @@ class HMSM(MarkovStateModel):
             tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
         """
-        import pyemma.util.discrete_trajectories as dt
-        return dt.sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)
+        from msmtools.dtraj import sample_indexes_by_distribution
+        return sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)

@@ -2,9 +2,7 @@
 // Created by clonkscher on 8/8/17.
 //
 
-#ifndef PYEMMA_THREADING_UTILS_H
-#define PYEMMA_THREADING_UTILS_H
-
+#pragma once
 
 #include <stdexcept>
 #include <thread>
@@ -63,6 +61,3 @@ public:
      */
     scoped_thread &operator=(const scoped_thread &) = delete;
 };
-
-
-#endif //PYEMMA_THREADING_UTILS_H
