@@ -1,14 +1,12 @@
 import unittest
 
-import numpy as np
-
 import mdshare
+import numpy as np
 from sklearn.pipeline import Pipeline
 
-import sktime.decomposition.tica as tica
 import sktime.clustering.kmeans as kmeans
+import sktime.decomposition.tica as tica
 import sktime.markovprocess.maximum_likelihood_msm as msm
-import sktime.markovprocess.pcca as pcca
 
 
 class TestSkLearnCompat(unittest.TestCase):

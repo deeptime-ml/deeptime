@@ -69,6 +69,9 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     @test_model.setter
     def test_model(self, test_model: MarkovStateModel):
         assert self.memberships is not None
+        if hasattr(test_model, 'prior'):
+            # todo ugly hack, cktest needs to be reworked!!
+            test_model = test_model.prior
         assert self.memberships.shape[0] == test_model.n_states, 'provided memberships and test_model n_states mismatch'
         self._test_model = test_model
         # define starting distribution
@@ -171,7 +174,7 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
     try:
         if memberships is None:
             pcca = test_model.pcca(nsets)
-            memberships = pcca.metastable_memberships
+            memberships = pcca.memberships
     except NotImplementedError:
         memberships = np.eye(test_model.n_states)
 

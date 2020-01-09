@@ -208,6 +208,19 @@ class BayesianHMSM(Estimator):
         self._init_hmsm = value
 
     @staticmethod
+    def default_prior_estimator(n_states: int, lagtime: int, stride: Union[str, int] = 'effective',
+                                reversible: bool = True, stationary: bool = False,
+                                separate: Optional[Union[int, List[int]]] = None, dt_traj: str = '1 step'):
+        accuracy = 1e-2  # sufficient accuracy for an initial guess
+        prior_estimator = MaximumLikelihoodHMSM(
+            n_states=n_states, lagtime=lagtime, stride=stride,
+            reversible=reversible, stationary=stationary, dt_traj=dt_traj,
+            separate=separate, connectivity=None, mincount_connectivity=0,
+            accuracy=accuracy, observe_nonempty=False
+        )
+        return prior_estimator
+
+    @staticmethod
     def default(dtrajs, n_states: int, lagtime: int, n_samples: int = 100,
                 stride: Union[str, int] = 'effective',
                 p0_prior: Optional[Union[str, float, np.ndarray]] = 'mixed',
@@ -224,13 +237,10 @@ class BayesianHMSM(Estimator):
         :class:`BayesianHMSM <sktime.markovprocess.bayesian_hmsm.BayesianHMSM>`.
         """
         dtrajs = ensure_dtraj_list(dtrajs)
-        accuracy = 1e-2  # sufficient accuracy for an initial guess
-        prior = MaximumLikelihoodHMSM(
-            n_states=n_states, lagtime=lagtime, stride=stride,
-            reversible=reversible, stationary=stationary, dt_traj=dt_traj,
-            separate=separate, connectivity=None, mincount_connectivity=0,
-            accuracy=accuracy, observe_nonempty=False
-        ).fit(dtrajs).fetch_model()
+        prior_est = BayesianHMSM.default_prior_estimator(n_states=n_states, lagtime=lagtime, stride=stride,
+                                                         reversible=reversible, stationary=stationary,
+                                                         separate=separate, dt_traj=dt_traj)
+        prior = prior_est.fit(dtrajs).fetch_model()
 
         estimator = BayesianHMSM(init_hmsm=prior, n_states=n_states, lagtime=lagtime, n_samples=n_samples,
                                  stride=stride, p0_prior=p0_prior, transition_matrix_prior=transition_matrix_prior,
@@ -330,3 +340,55 @@ class BayesianHMSM(Estimator):
         self._model = model
 
         return self
+
+    def cktest(self, dtrajs, mlags=10, conf=0.95, err_est=False):
+        """ Conducts a Chapman-Kolmogorow test.
+
+        Parameters
+        ----------
+        dtrajs:
+        mlags : int or int-array, default=10
+            multiples of lag times for testing the Model, e.g. range(10).
+            A single int will trigger a range, i.e. mlags=10 maps to
+            mlags=range(10). The setting None will choose mlags automatically
+            according to the longest available trajectory
+        conf : float, optional, default = 0.95
+            confidence interval
+        err_est : bool, default=False
+            compute errors also for all estimations (computationally expensive)
+            If False, only the prediction will get error bars, which is often
+            sufficient to validate a model.
+        n_jobs : int, default=None
+            how many jobs to use during calculation
+        show_progress : bool, default=True
+            Show progressbars for calculation?
+
+        Returns
+        -------
+        cktest : :class:`ChapmanKolmogorovValidator <pyemma.msm.ChapmanKolmogorovValidator>`
+
+        References
+        ----------
+        This is an adaption of the Chapman-Kolmogorov Test described in detail
+        in [1]_ to Hidden MSMs as described in [2]_.
+
+        .. [1] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
+            Chodera, C Schuette and F Noe. 2011. Markov models of
+            molecular kinetics: Generation and validation. J Chem Phys
+            134: 174105
+
+        .. [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
+            Markov models for calculating kinetics and metastable states of complex
+            molecules. J. Chem. Phys. 139, 184114 (2013)
+
+        """
+        # todo how to deal with this properly?
+        from sktime.markovprocess.chapman_kolmogorov_validator import ChapmanKolmogorovValidator
+        model = self.fetch_model()
+        if model is None:
+            raise RuntimeError('call fit() first!')
+        prior_est = self.default_prior_estimator(self.n_states, self.lagtime, self.stride, self.reversible, self.stationary, dt_traj=model.prior.dt_model)
+        ck = ChapmanKolmogorovValidator(self.init_hmsm, prior_est, np.eye(self.n_states),
+                                        mlags=mlags, conf=conf, err_est=err_est)
+        ck.fit(dtrajs)
+        return ck.fetch_model()

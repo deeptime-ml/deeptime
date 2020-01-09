@@ -4,7 +4,7 @@ import unittest.mock as mock
 
 import numpy as np
 
-from ..markovprocess import factory
+from tests.markovprocess import factory
 
 
 class TestPickling(unittest.TestCase):

@@ -158,7 +158,7 @@ class LaggedModelValidator(Estimator, metaclass=abc.ABCMeta):
             raise ValueError('multiples of lagtimes have to be greater zero.')
         self.mlags = mlags
 
-    def fit(self, data):
+    def fit(self, data, **kw):
         # set lag times
         self._set_mlags(data, self.input_lagtime)
         lags = self.mlags * self.input_lagtime

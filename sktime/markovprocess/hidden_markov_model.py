@@ -239,7 +239,7 @@ class HMSM(MarkovStateModel):
             stride=self.count_model.stride, symbols=self.count_model.symbols, dt_traj=self.count_model.dt_traj,
             state_histogram=self.count_model.state_histogram,
             initial_count=initial_count, active_set=states,
-            connected_sets=S, count_matrix=C,
+            connected_sets=S, count_matrix=C, lagtime=self.count_model.lagtime
         )
         model = HMSM(transition_matrix=P, observation_probabilities=B, pi=pi, dt_model=self.dt_model, neig=self.neig,
                      reversible=self.is_reversible, count_model=count_model,
@@ -723,11 +723,12 @@ class HMSM(MarkovStateModel):
         """
         Ensures that the observable states are indexed and returns the indices
         """
-        try:  # if we have this attribute, return it
-            return self._observable_state_indexes
-        except AttributeError:  # didn't exist? then create it.
-            self._observable_state_indexes = index_states(self.discrete_trajectories_obs)
-            return self._observable_state_indexes
+        raise RuntimeError('use sktime.markovprocess.sample.compute_index_states(dtrajs)')
+        #try:  # if we have this attribute, return it
+        #    return self._observable_state_indexes
+        #except AttributeError:  # didn't exist? then create it.
+        #   self._observable_state_indexes = index_states(self.discrete_trajectories_obs)
+        #    return self._observable_state_indexes
 
     # TODO: generate_traj. How should that be defined? Probably indexes of observable states, but should we specify
     #                      hidden or observable states as start and stop states?

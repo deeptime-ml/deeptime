@@ -286,7 +286,7 @@ class TransitionCountModel(Model):
 
     @property
     def effective_count_matrix(self):
-        return self.subselect_count_matrix(connected_set=self.active_set, effective=True)
+        return self.subselect_count_matrix(subset=self.active_set, effective=True)
 
 
 class TransitionCountEstimator(Estimator):

@@ -142,7 +142,7 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from . import factory
+        from tests.markovprocess import factory
         cls.dtraj = factory.datasets.double_well_discrete().dtraj
         nu = 1.*np.bincount(cls.dtraj)
         cls.statdist = nu/nu.sum()
@@ -192,7 +192,6 @@ class TestMSMDoubleWell(unittest.TestCase):
         se = score_cv(estimator, self.dtraj, n=5, score_method='VAMPE', score_k=2).mean()
         se_inf = score_cv(estimator, self.dtraj, n=5, score_method='VAMPE', score_k=None).mean()
 
-    @unittest.skip('scheiss lahmer test.... gaehn.')
     def test_score_cv(self):
         self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True))
         self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, statdist_constraint=self.statdist))
@@ -400,7 +399,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         Ceff = msm.count_model.effective_count_matrix
         assert (np.all(Ceff.shape == (msm.n_states, msm.n_states)))
 
-    @unittest.skip('todo: compute_effective_count_matrix not part of MSMEst, Model?')
+    # @unittest.skip('todo: compute_effective_count_matrix not part of MSMEst, Model?')
     def test_effective_count_matrix(self):
         self._effective_count_matrix(self.msmrev)
         self._effective_count_matrix(self.msmrevpi)
@@ -561,11 +560,11 @@ class TestMSMDoubleWell(unittest.TestCase):
             ts_ref = np.array([310.87, 8.5, 5.09])
             assert (np.all(np.isreal(ts)))
             # HERE:
-            np.testing.assert_almost_equal(ts[:3], ts_ref, decimal=2)
+            np.testing.assert_almost_equal(ts[:3].magnitude, ts_ref, decimal=2)
         else:
             ts_ref = np.array([310.49376926, 8.48302712, 5.02649564])
             # HERE:
-            np.testing.assert_almost_equal(ts[:3], ts_ref, decimal=2)
+            np.testing.assert_almost_equal(ts[:3].magnitude, ts_ref, decimal=2)
 
     def test_timescales(self):
         self._timescales(self.msmrev)
@@ -798,7 +797,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp1[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp1[0][1:], msm.timescales(k-1)))
+            assert (np.allclose(fp1[0][1:], msm.timescales(k-1).magnitude))
             # all amplitudes nonnegative (for autocorrelation)
             assert (np.all(fp1[1][:] >= 0))
             # identical call
@@ -843,7 +842,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp1[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp1[0][1:], msm.timescales(k-1)))
+            assert (np.allclose(fp1[0][1:], msm.timescales(k-1).magnitude))
             # dynamical amplitudes should be near 0 because we are in equilibrium
             assert (np.max(np.abs(fp1[1][1:])) < 1e-10)
             # off-equilibrium relaxation
@@ -853,7 +852,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp2[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp2[0][1:], msm.timescales(k-1)))
+            assert (np.allclose(fp2[0][1:], msm.timescales(k-1).magnitude))
             # dynamical amplitudes should be significant because we are not in equilibrium
             assert (np.max(np.abs(fp2[1][1:])) > 0.1)
         else:  # raise ValueError, because fingerprints are not defined for nonreversible

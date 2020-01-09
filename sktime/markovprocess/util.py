@@ -1,5 +1,7 @@
 import numpy as np
 
+from util import ensure_dtraj_list
+
 
 def visited_set(dtrajs):
     r"""returns the set of states that have at least one count
@@ -14,6 +16,7 @@ def visited_set(dtrajs):
     vis : ndarray((n), dtype=int)
         the set of states that have at least one count.
     """
+    dtrajs = ensure_dtraj_list(dtrajs)
     hist = count_states(dtrajs)
     return np.argwhere(hist > 0)[:, 0]
 
@@ -36,6 +39,7 @@ def count_states(dtrajs, ignore_negative=False):
 
     """
     # make bincounts for each input trajectory
+    dtrajs = ensure_dtraj_list(dtrajs)
     nmax = 0
     bcs = []
     for dtraj in dtrajs:
@@ -73,6 +77,7 @@ def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
     stride : int
         Estimated effective stride to produce approximately uncorrelated samples
     """
+    dtrajs = ensure_dtraj_list(dtrajs)
     # by default use lag as stride (=lag sampling), because we currently have no better theory for deciding
     # how many uncorrelated counts we can make
     stride = lagtime

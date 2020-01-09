@@ -120,3 +120,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# downloaded test data
+tests/**/*.npz

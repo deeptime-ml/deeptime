@@ -34,7 +34,6 @@ from sktime.lagged_model_validator import LaggedModelValidation
 from sktime.markovprocess import cktest
 from sktime.markovprocess.bayesian_hmsm import BayesianHMSM
 from tests.markovprocess.factory import bayesian_markov_model
-from tests.markovprocess.test_bayesian_hmsm import bayesian_hidden_markov_model
 from tests.markovprocess.test_hmsm import estimate_hidden_markov_model
 from tests.markovprocess.test_msm import estimate_markov_model
 
@@ -181,11 +180,11 @@ class TestCK_AllEstimators(unittest.TestCase):
         estimator, BMSM = bayesian_markov_model(double_well_discrete().dtraj_n6good, 40, reversible=True,
                                                 return_estimator=True)
         # also ensure that reversible bit does not flip during cktest
-        assert BMSM.prior.reversible
+        assert BMSM.prior.is_reversible
         self.ck = cktest(test_estimator=estimator, test_model=BMSM.prior, dtrajs=double_well_discrete().dtraj_n6good,
                          nsets=2, mlags=[1, 10]).fetch_model()
         assert isinstance(self.ck, LaggedModelValidation)
-        assert BMSM.prior.reversible
+        assert BMSM.prior.is_reversible
         estref = np.array([
                            [[0.89722931, 0.10277069],
                             [0.10070029, 0.89929971]],
@@ -238,8 +237,8 @@ class TestCK_AllEstimators(unittest.TestCase):
 
     def test_its_bhmm(self):
         dtraj = double_well_discrete().dtraj_n6good
-        BHMM = bayesian_hidden_markov_model(dtraj, 2, 10)
-        self.ck = BHMM.cktest(dtraj, mlags=[1, 10])
+        bhmm = BayesianHMSM.default(dtraj, n_states=2, lagtime=10).fit(dtrajs=dtraj)
+        self.ck = bhmm.cktest(dtraj, mlags=[1, 10])
         estref = np.array([
                            [[0.98497185, 0.01502815],
                             [0.01459256, 0.98540744]],
@@ -267,12 +266,6 @@ class TestCK_AllEstimators(unittest.TestCase):
         assert np.allclose(self.ck.predictions, predref, rtol=0.1, atol=10.0)
         assert np.allclose(self.ck.predictions[0], predLref, rtol=0.1, atol=10.0)
         assert np.allclose(self.ck.predictions[1], predRref, rtol=0.1, atol=10.0)
-
-    def test_ck_not_yet_estimated_bhmm(self):
-        bhmm = BayesianHMSM()
-        with self.assertRaises(RuntimeError):
-            bhmm.cktest([0, 1, 0, 1, 0])
-
 
 if __name__ == "__main__":
     unittest.main()
