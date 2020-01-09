@@ -1,6 +1,6 @@
 import numpy as np
 
-from util import ensure_dtraj_list
+from sktime.util import ensure_dtraj_list
 
 
 def visited_set(dtrajs):

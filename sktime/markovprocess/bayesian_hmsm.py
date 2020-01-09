@@ -46,29 +46,11 @@ class BayesianHMMPosterior(BayesianPosterior):
         super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
         self.hidden_state_trajectories_samples = hidden_state_trajs
 
-    def submodel_largest(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
-        dtrajs = ensure_dtraj_list(dtrajs)
-        states = self.prior.states_largest(strong=strong, mincount_connectivity=mincount_connectivity)
-        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
-        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
-
-    def submodel_populous(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
-        dtrajs = ensure_dtraj_list(dtrajs)
-        states = self.prior.states_populous(strong=strong, mincount_connectivity=mincount_connectivity)
-        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
-        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
-
     def submodel(self, states=None, obs=None, mincount_connectivity='1/n'):
-        # restrict prior
-        sub_model = self.prior.submodel(states=states, obs=obs,
-                                        mincount_connectivity=mincount_connectivity)
-        # restrict reduce samples
-        count_model = sub_model.count_model
-        subsamples = [sample.submodel(states=count_model.active_set, obs=count_model.observable_set)
-                      for sample in self]
-
-        # TODO: how to handle hiddenstate traj samples?!
-        return BayesianHMMPosterior(sub_model, subsamples)
+        bayesian_posterior = super().submodel(states, obs, mincount_connectivity)
+        # todo how to restrict hidden state trajectory samples??
+        return BayesianHMMPosterior(bayesian_posterior.prior, bayesian_posterior.samples,
+                                    self.hidden_state_trajectories_samples)
 
 
 class BayesianHMSM(Estimator):
