@@ -19,12 +19,12 @@ import warnings
 import numpy as np
 from msmtools.dtraj import number_of_states
 
-from markovprocess.util import compute_dtrajs_effective
 from sktime.base import Estimator
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess.bhmm import discrete_hmm, init_discrete_hmm
 from sktime.markovprocess.bhmm.init.discrete import init_discrete_hmm_spectral
 from sktime.markovprocess.hidden_markov_model import HMSM, HMMTransitionCountModel
+from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 
 

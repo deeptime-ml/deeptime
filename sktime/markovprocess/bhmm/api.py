@@ -19,6 +19,8 @@
 import numpy as _np
 from msmtools.util import types
 
+from sktime.markovprocess.util import lag_observations
+
 
 def _guess_output_type(observations):
     """ Suggests a HMM model type based on the observation data

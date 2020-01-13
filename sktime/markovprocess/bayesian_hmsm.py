@@ -313,7 +313,7 @@ class BayesianHMSM(Estimator):
             Bobs = pobs[:, prior_count_model.observable_set]
             pobs = Bobs / Bobs.sum(axis=1)[:, None]  # renormalize
             samples.append(HMSM(P, pobs, pi=pi, dt_model=prior.dt_model,
-                                count_model=prior_count_model,
+                                count_model=prior_count_model, initial_counts=sample.initial_count,
                                 reversible=self.reversible, initial_distribution=init_dist))
 
         # store results

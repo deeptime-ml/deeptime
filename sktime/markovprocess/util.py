@@ -22,7 +22,7 @@ def visited_set(dtrajs):
 
 
 def count_states(dtrajs, ignore_negative=False):
-    r"""returns a histogram count
+    r"""returns a count histogram
 
     Parameters
     ----------

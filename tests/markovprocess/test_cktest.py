@@ -218,12 +218,6 @@ class TestCK_AllEstimators(unittest.TestCase):
         dtraj = [double_well_discrete().dtraj_n6good]
         est = MaximumLikelihoodHMSM(n_states=2, lagtime=10)
         MLHMM = est.fit(dtraj).fetch_model()
-        states = MLHMM.states_largest()
-        obs = MLHMM.nonempty_obs(dtraj)
-        cktest(est, MLHMM, dtraj, )
-
-
-        # est, MLHMM = estimate_hidden_markov_model(dtraj, 2, 10, return_estimator=True)
         self.ck = cktest(test_estimator=est, test_model=MLHMM, dtrajs=dtraj, mlags=[1, 10], nsets=2).fetch_model()
         estref = np.array([
                            [[0.98515058, 0.01484942],

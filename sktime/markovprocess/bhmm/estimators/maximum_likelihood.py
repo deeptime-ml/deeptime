@@ -19,8 +19,6 @@
 
 import numpy as np
 
-# BHMM imports
-from base import Model
 from sktime.base import Estimator
 from sktime.markovprocess.bhmm.estimators._tmatrix_disconnected import estimate_P, stationary_distribution
 from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
@@ -126,7 +124,8 @@ class MaximumLikelihoodHMM(Estimator):
     def fetch_model(self) -> HMM:
         return self._model
 
-    def _forward_backward(self, obs, alpha, beta, gamma, pobs, counts):
+    @staticmethod
+    def _forward_backward(model, obs, alpha, beta, gamma, pobs, counts):
         """
         Estimation step: Runs the forward-back algorithm on trajectory obs
 
@@ -142,11 +141,11 @@ class MaximumLikelihoodHMM(Estimator):
             parameters
         """
         # get parameters
-        A = self._model.transition_matrix
-        pi = self._model.initial_distribution
+        A = model.transition_matrix
+        pi = model.initial_distribution
         T = len(obs)
         # compute output probability matrix
-        self._model.output_model.p_obs(obs, out=pobs)
+        model.output_model.p_obs(obs, out=pobs)
         # forward variables
         logprob, _ = hidden.forward(A, pobs, pi, T=T, alpha=alpha)
         # backward variables
@@ -169,7 +168,7 @@ class MaximumLikelihoodHMM(Estimator):
         C = np.add.reduce(count_matrices)
         return C
 
-    def _update_model(self, observations, gammas, count_matrices, maxiter=10000000):
+    def _update_model(self, model, observations, gammas, count_matrices, maxiter=10000000):
         """
         Maximization step: Updates the HMM model given the hidden state assignment and count matrices
 
@@ -189,7 +188,7 @@ class MaximumLikelihoodHMM(Estimator):
         C = self._transition_counts(count_matrices)
 
         # compute new transition matrix
-        T = estimate_P(C, reversible=self._model.is_reversible, fixed_statdist=self._fixed_stationary_distribution,
+        T = estimate_P(C, reversible=model.is_reversible, fixed_statdist=self._fixed_stationary_distribution,
                        maxiter=maxiter, maxerr=1e-12, mincount_connectivity=1e-16)
         # estimate stationary or init distribution
         if self._stationary:
@@ -204,10 +203,10 @@ class MaximumLikelihoodHMM(Estimator):
                 pi = self._fixed_initial_distribution
 
         # update model
-        self._model.update(pi, T)
+        model.update(pi, T)
 
         # update output model
-        self._model.output_model.fit(observations, gammas)
+        model.output_model.fit(observations, gammas)
 
     def fit(self, observations, **kw):
         """
@@ -237,22 +236,22 @@ class MaximumLikelihoodHMM(Estimator):
 
         if self.initial_model is None:
             # Generate our own initial model.
-            self._model = init_hmm(observations, self.n_states, output=self._output)
+            model = init_hmm(observations, self.n_states, output=self._output)
         else:
-            self._model = self.initial_model
+            model = self.initial_model
 
         it = 0
         likelihoods = np.empty(self.maxit)
         loglik = 0.0
         # flag if connectivity has changed (e.g. state lost) - in that case the likelihood
         # is discontinuous and can't be used as a convergence criterion in that iteration.
-        tmatrix_nonzeros = self._model.transition_matrix.nonzero()
+        tmatrix_nonzeros = model.transition_matrix.nonzero()
         converged = False
 
         while not converged and it < self.maxit:
             loglik = 0.0
             for obs, gamma, counts in zip(observations, gammas, count_matrices):
-                loglik += self._forward_backward(obs, alpha, beta, gamma, pobs, counts)
+                loglik += self._forward_backward(model, obs, alpha, beta, gamma, pobs, counts)
             assert np.isfinite(loglik), it
 
             # convergence check
@@ -262,10 +261,10 @@ class MaximumLikelihoodHMM(Estimator):
                     converged = True
 
             # update model
-            self._update_model(observations, gammas, count_matrices, maxiter=self._maxit_P)
+            self._update_model(model, observations, gammas, count_matrices, maxiter=self._maxit_P)
 
             # connectivity change check
-            tmatrix_nonzeros_new = self._model.transition_matrix.nonzero()
+            tmatrix_nonzeros_new = model.transition_matrix.nonzero()
             if not np.array_equal(tmatrix_nonzeros, tmatrix_nonzeros_new):
                 converged = False  # unset converged
                 tmatrix_nonzeros = tmatrix_nonzeros_new
@@ -276,16 +275,18 @@ class MaximumLikelihoodHMM(Estimator):
 
         # truncate likelihood history
         likelihoods = np.resize(likelihoods, it)
-        m = self._model
+
         # set final likelihood
-        m._likelihood = loglik
-        m._likelihoods = likelihoods
-        m._gammas = gammas
+        model._likelihood = loglik
+        model._likelihoods = likelihoods
+        model._gammas = gammas
         # set final count matrix
-        m.transition_counts = self._transition_counts(count_matrices)
-        m.initial_count = self._init_counts(gammas)
+        model.transition_counts = self._transition_counts(count_matrices)
+        model.initial_count = self._init_counts(gammas)
 
         # Compute hidden state trajectories using the Viterbi algorithm.
-        m.hidden_state_trajectories = self._model.compute_viterbi_paths(observations)
+        model.hidden_state_trajectories = model.compute_viterbi_paths(observations)
+
+        self._model = model
 
         return self
