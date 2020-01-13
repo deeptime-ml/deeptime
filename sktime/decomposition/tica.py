@@ -1,3 +1,6 @@
+from numbers import Real, Integral
+from typing import Union
+
 import numpy as np
 
 from sktime.base import Model, Estimator, Transformer
@@ -277,8 +280,21 @@ class TICA(Estimator, Transformer):
                                        reversible=self.reversible, bessels_correction=False, ncov=ncov)
         super(TICA, self).__init__()
 
-    def _create_model(self) -> TICAModel:
-        return TICAModel(scaling=self.scaling, dim=self.dim, epsilon=self.epsilon)
+    @property
+    def dim(self):
+        return self._dim
+
+    @dim.setter
+    def dim(self, value: Union[Real, Integral, None]):
+        if isinstance(value, Real) and (value <= 0. or value > 1.0):
+            raise ValueError("TICA: Invalid dimension parameter, if it is given in terms of a floating point, "
+                             "can only be in the interval [0, 1).")
+        elif isinstance(value, Integral) and value <= 0:
+            raise ValueError("TICA: Invalid dimension parameter, if it is given in terms of the dimension (integer), "
+                             "must be positive.")
+        elif value is not None and not isinstance(value, (Integral, Real)):
+            raise ValueError("Invalid type for dimension, got", value)
+        self._dim = value
 
     def transform(self, data):
         r"""Projects the data onto the dominant independent components.
@@ -304,15 +320,19 @@ class TICA(Estimator, Transformer):
             input data.
             :param weights:
         """
+        if self._model is None:
+            self._model = TICAModel(scaling=self.scaling, dim=self.dim, epsilon=self.epsilon)
         self._covar.partial_fit(X, weights=weights, column_selection=column_selection)
         return self
 
     def fit(self, X, lagtime=None, weights=None, column_selection=None):
+        self._model = TICAModel(scaling=self.scaling, dim=self.dim, epsilon=self.epsilon)
         self._covar.fit(X, lagtime=lagtime, weights=weights, column_selection=column_selection)
         return self
 
     def fetch_model(self) -> TICAModel:
         covar_model = self._covar.fetch_model()
+
         self._model.cov_00 = covar_model.cov_00
         self._model.cov_0t = covar_model.cov_0t
         self._model.mean_0 = covar_model.mean_0

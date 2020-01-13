@@ -1,11 +1,11 @@
 import numpy as np
 from msmtools import estimation as msmest
-from msmtools.dtraj import count_states
 from sklearn.utils.random import check_random_state
 
 from sktime.base import Estimator, Model
 from sktime.markovprocess import Q_
-from sktime.util import submatrix
+from sktime.markovprocess.util import count_states
+from sktime.util import submatrix, ensure_dtraj_list
 
 __author__ = 'noe'
 
@@ -74,31 +74,21 @@ def cvsplit_dtrajs(dtrajs, random_state=None):
 
 class TransitionCountModel(Model):
     r""" Statistics, count matrices and connectivity from discrete trajectories
-
-    Operates sparse by default.
-
     """
 
     def __init__(self, lagtime=1, active_set=None, dt_traj='1 step',
-                 connected_sets=(), count_matrix=None, hist=None) -> None:
+                 connected_sets=(), count_matrix=None, state_histogram=None):
         self._lag = Q_(lagtime)
         self._active_set = active_set
         self._dt_traj = Q_(dt_traj) if isinstance(dt_traj, (str, int)) else dt_traj
         self._connected_sets = connected_sets
         self._C = count_matrix
-        self._hist = hist
+        self._hist = state_histogram
 
         if count_matrix is not None:
-            self._nstates_full = count_matrix.shape[0]
+            self._n_states_full = count_matrix.shape[0]
         else:
-            self._nstates_full = 0
-
-        # mapping from full to lcs
-        if active_set is not None:
-            self._full2lcs = -1 * np.ones(self.nstates, dtype=int)
-            self._full2lcs[active_set] = np.arange(len(active_set))
-        else:
-            self._full2lcs = None
+            self._n_states_full = 0
 
     @property
     def lagtime(self) -> Q_:
@@ -133,13 +123,13 @@ class TransitionCountModel(Model):
         Frames that are not in the connected set will be -1.
         """
         # compute connected dtrajs
-        from sktime.markovprocess.sample import ensure_dtraj_list
-        dtrajs = ensure_dtraj_list(dtrajs)
-        dtrajs_active = [
-            self._full2lcs[dtraj]
-            for dtraj in dtrajs
-        ]
-        return dtrajs_active
+        if self.active_set is not None:
+            mapping = -1 * np.ones(self.n_states, dtype=np.int32)
+            mapping[self.active_set] = np.arange(len(self.active_set))
+            return [mapping[dtraj] for dtraj in ensure_dtraj_list(dtrajs)]
+        else:
+            return dtrajs
+
 
     @property
     def count_matrix_active(self):
@@ -182,7 +172,7 @@ class TransitionCountModel(Model):
     @property
     def active_state_fraction(self):
         """The fraction of states in the largest connected set."""
-        return float(self.nstates) / float(self._nstates_full)
+        return float(self.n_states) / float(self.n_states_full)
 
     @property
     def active_count_fraction(self):
@@ -191,12 +181,19 @@ class TransitionCountModel(Model):
         return float(np.sum(hist_active)) / float(np.sum(self._hist))
 
     @property
-    def nstates(self) -> int:
+    def n_states(self) -> int:
         """Number of states """
         return self.count_matrix.shape[0]
 
     @property
-    def nstates_active(self) -> int:
+    def n_states_full(self) -> int:
+        """
+        Number of states in the full model before any subselection.
+        """
+        return self._n_states_full
+
+    @property
+    def n_states_active(self) -> int:
         """Number of states in the active set"""
         return len(self._active_set)
 
@@ -243,7 +240,7 @@ class TransitionCountModel(Model):
             raise ValueError('Can\'t set both connected_set and subset.')
         if subset is not None:
             if np.size(subset) > 0:
-                assert np.max(subset) < self.nstates, 'Chosen set contains states that are not included in the data.'
+                assert np.max(subset) < self.n_states, 'Chosen set contains states that are not included in the data.'
             C = submatrix(self._C, subset)
         elif connected_set is not None:
             C = submatrix(self._C, self._connected_sets[connected_set])
@@ -279,19 +276,19 @@ class TransitionCountModel(Model):
 
     @property
     def effective_count_matrix(self):
-        return self.subselect_count_matrix(connected_set=self.active_set, effective=True)
+        return self.subselect_count_matrix(subset=self.active_set, effective=True)
 
 
 class TransitionCountEstimator(Estimator):
 
-    def __init__(self,lagtime: int = 1, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
+    def __init__(self, lagtime: int, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
                  stationary_dist_constraint=None):
+        super().__init__()
         self.lagtime = lagtime
         self.count_mode = count_mode
         self.mincount_connectivity = mincount_connectivity
         self.dt_traj = dt_traj
         self.stationary_dist_constraint = stationary_dist_constraint
-        super().__init__()
 
     @property
     def dt_traj(self):
@@ -300,9 +297,6 @@ class TransitionCountEstimator(Estimator):
     @dt_traj.setter
     def dt_traj(self, value):
         self._dt_traj = Q_(value)
-
-    def _create_model(self) -> TransitionCountModel:
-        return TransitionCountModel()
 
     @staticmethod
     def _compute_connected_sets(C, mincount_connectivity, strong=True):
@@ -319,19 +313,20 @@ class TransitionCountEstimator(Estimator):
         """
         import msmtools.estimation as msmest
         import scipy.sparse as scs
-        if scs.issparse(C):
-            Cconn = C.tocsr(copy=True)
-            Cconn.data[Cconn.data < mincount_connectivity] = 0
-            Cconn.eliminate_zeros()
+        if mincount_connectivity > 0:
+            if scs.issparse(C):
+                Cconn = C.tocsr(copy=True)
+                Cconn.data[Cconn.data < mincount_connectivity] = 0
+                Cconn.eliminate_zeros()
+            else:
+                Cconn = C.copy()
+                Cconn[np.where(Cconn < mincount_connectivity)] = 0
         else:
-            Cconn = C.copy()
-            Cconn[np.where(Cconn < mincount_connectivity)] = 0
-
+            Cconn = C
         # treat each connected set separately
         S = msmest.connected_sets(Cconn, directed=strong)
         return S
 
-    # TODO: this has been moved from MSM estimaton here, because it fits better, but is still too MSM-est like (input of pi, instead of active_set)
     @staticmethod
     def _prepare_input_revpi(C, pi):
         """Max. state index visited by trajectories"""
@@ -346,37 +341,25 @@ class TransitionCountEstimator(Estimator):
         # Find visited states with positive stationary probabilities"""
         pos = np.where(pi_visited > 0.0)[0]
         # Reduce C to positive probability states"""
-        C_pos = msmest.connected_cmatrix(C, lcc=pos)
+        C_pos = msmest.largest_connected_submatrix(C, lcc=pos)
         # Compute largest connected set of C_pos, undirected connectivity"""
         lcc = msmest.largest_connected_set(C_pos, directed=False)
         return pos[lcc]
 
-    def fit(self, data):
+    def fit(self, data, **kw):
         r""" Counts transitions at given lag time
 
         Parameters
         ----------
 
-        dtrajs : list of 1D numpy arrays containing integers
+        dtrajs : array_like or list of array_like
+            discretized trajectories
 
         """
-        if not isinstance(data, (list, tuple)):
-            data = [data]
+        dtrajs = ensure_dtraj_list(data)
 
-        # typecheck
-        for x in data:
-            assert isinstance(x, np.ndarray), "dtraj list contained element which was not a numpy array"
-            assert x.ndim == 1, "dtraj list contained multi-dimensional array"
-            assert issubclass(x.dtype.type, np.integer), "dtraj list contained non-integer array"
-
-        assert isinstance(self._model, TransitionCountModel)
-
-        # these are now discrete trajectories
-        dtrajs = data
-
-        ## basic count statistics
-        # histogram
-        hist = count_states(dtrajs, ignore_negative=True)
+        # basic count statistics
+        histogram = count_states(dtrajs, ignore_negative=True)
 
         # Compute count matrix
         count_mode = self.count_mode
@@ -395,11 +378,7 @@ class TransitionCountEstimator(Estimator):
             self.mincount_connectivity = 1.0 / np.shape(count_matrix)[0]
 
         # Compute reversibly connected sets
-        if self.mincount_connectivity > 0:
-            connected_sets = self._compute_connected_sets(count_matrix,
-                                                          mincount_connectivity=self.mincount_connectivity)
-        else:
-            connected_sets = msmest.connected_sets(count_matrix)
+        connected_sets = self._compute_connected_sets(count_matrix, self.mincount_connectivity, strong=True)
 
         if self.stationary_dist_constraint is not None:
             active_set = self._prepare_input_revpi(count_matrix, self.stationary_dist_constraint)
@@ -411,10 +390,10 @@ class TransitionCountEstimator(Estimator):
         if submatrix(count_matrix, active_set).sum() == 0:
             active_set = np.empty(0, dtype=int)
 
-        self._model.__init__(
+        self._model = TransitionCountModel(
             lagtime=lagtime, active_set=active_set, dt_traj=self.dt_traj,
             connected_sets=connected_sets, count_matrix=count_matrix,
-            hist=hist
+            state_histogram=histogram
         )
 
         return self

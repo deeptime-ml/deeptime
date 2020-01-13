@@ -3,7 +3,9 @@ import numbers
 import numpy as np
 
 
-def ensure_ndarray(arr, shape: tuple = None, ndim: int = None, dtype=None, size=None) -> np.ndarray:
+def ensure_ndarray(arr, shape: tuple = None, ndim: int = None, dtype=None, size=None, allow_None=False) -> [np.ndarray, None]:
+    if allow_None and arr is None:
+        return None
     if not isinstance(arr, np.ndarray):
         arr = np.asarray(arr, dtype=dtype)
     if shape is not None and arr.shape != shape:
@@ -49,27 +51,6 @@ def submatrix(M, sel):
         return C_cc.tocoo()
 
     return C_cc
-
-
-def mdot(*args):
-    """Computes a matrix product of multiple ndarrays
-
-    This is a convenience function to avoid constructs such as np.dot(A, np.dot(B, np.dot(C, D))) and instead
-    use mdot(A, B, C, D).
-
-    Parameters
-    ----------
-    *args : an arbitrarily long list of ndarrays that must be compatible for multiplication,
-        i.e. args[i].shape[1] = args[i+1].shape[0].
-    """
-    if len(args) < 1:
-        raise ValueError('need at least one argument')
-    elif len(args) == 1:
-        return args[0]
-    elif len(args) == 2:
-        return np.dot(args[0], args[1])
-    else:
-        return np.dot(args[0], mdot(*args[1:]))
 
 
 def ensure_dtraj_list(dtrajs):
@@ -129,8 +110,8 @@ def confidence_interval(data, conf=0.95):
         dmin, dmax = np.min(x), np.max(x)
 
         if np.isclose(dmin, dmax):
-            warnings.warn('confidence interval for constant data is not meaningful')
-            return dmin, dmin, dmin
+            warnings.warn('confidence interval for constant data is not meaningful', stacklevel=3)
+            return dmin, dmin, dmax
 
         m = np.mean(x)
         x = np.sort(x)
@@ -162,7 +143,7 @@ def confidence_interval(data, conf=0.95):
         return m, l, r
 
     if data.ndim == 1:
-        m, lower, upper = _confidence_interval_1d(data)
+        mean, lower, upper = _confidence_interval_1d(data)
         return lower, upper
     else:
         lower = np.zeros_like(data[0])
@@ -188,6 +169,36 @@ def confidence_interval(data, conf=0.95):
 
         for i in np.ndindex(data[0].shape):
             col = _column(data, i)
-            m, lower[i], upper[i] = _confidence_interval_1d(col)
+            mean, lower[i], upper[i] = _confidence_interval_1d(col)
 
         return lower, upper
+
+
+def call_member(obj, f, *args, **kwargs):
+    """ Calls the specified method, property or attribute of the given object
+
+    Parameters
+    ----------
+    obj : object
+        The object that will be used
+    f : str or function
+        Name of or reference to method, property or attribute
+    *args : list
+        list of arguments to pass to f during evaluation
+    ** kwargs: dict
+        keyword arguments to pass to f during evaluation
+    """
+    import inspect
+    # get function name
+    if not isinstance(f, str):
+        fname = f.__func__.__name__
+    else:
+        fname = f
+    # get the method ref
+    method = getattr(obj, fname)
+    # handle cases
+    if inspect.ismethod(method):
+        return method(*args, **kwargs)
+
+    # attribute or property
+    return method

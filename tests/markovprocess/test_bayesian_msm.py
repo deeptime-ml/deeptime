@@ -19,7 +19,7 @@ import unittest
 
 import numpy as np
 
-from sktime.markovprocess import MarkovStateModel, BayesianMSMPosterior
+from sktime.markovprocess import MarkovStateModel, BayesianPosterior
 from sktime.util import confidence_interval
 from tests.markovprocess.factory import bmsm_double_well
 
@@ -29,7 +29,7 @@ class TestBMSM(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # hidden states
-        cls.nstates = 2
+        cls.n_states = 2
         # samples
         cls.nsamples = 100
 
@@ -37,8 +37,8 @@ class TestBMSM(unittest.TestCase):
         cls.bmsm_rev = bmsm_double_well(lagtime=cls.lag, nsamples=cls.nsamples, reversible=True).fetch_model()
         cls.bmsm_revpi = bmsm_double_well(lagtime=cls.lag, reversible=True, constrain_to_coarse_pi=True, nsamples=cls.nsamples).fetch_model()
 
-        assert isinstance(cls.bmsm_rev, BayesianMSMPosterior)
-        assert isinstance(cls.bmsm_revpi, BayesianMSMPosterior)
+        assert isinstance(cls.bmsm_rev, BayesianPosterior)
+        assert isinstance(cls.bmsm_revpi, BayesianPosterior)
 
     def test_class_hierarchy(self):
         """ensure that the composite model has the right types """
@@ -61,13 +61,13 @@ class TestBMSM(unittest.TestCase):
         assert msm.prior.lagtime == self.lag
         assert all(s.lagtime == self.lag for s in msm.samples)
 
-    def test_nstates(self):
-        self._nstates(self.bmsm_rev)
-        self._nstates(self.bmsm_revpi)
+    def test_n_states(self):
+        self._n_states(self.bmsm_rev)
+        self._n_states(self.bmsm_revpi)
 
-    def _nstates(self, msm):
-        assert msm.prior.nstates == self.nstates
-        assert all(s.nstates == self.nstates for s in msm.samples)
+    def _n_states(self, msm):
+        assert msm.prior.n_states == self.n_states
+        assert all(s.n_states == self.n_states for s in msm.samples)
 
     def test_transition_matrix_samples(self):
         self._transition_matrix_samples(self.bmsm_rev, given_pi=False)
@@ -76,7 +76,7 @@ class TestBMSM(unittest.TestCase):
     def _transition_matrix_samples(self, msm, given_pi):
         Psamples = [s.transition_matrix for s in msm.samples]
         # shape
-        assert np.array_equal(np.shape(Psamples), (self.nsamples, self.nstates, self.nstates))
+        assert np.array_equal(np.shape(Psamples), (self.nsamples, self.n_states, self.n_states))
         # consistency
         import msmtools.analysis as msmana
         for P in Psamples:
@@ -101,17 +101,17 @@ class TestBMSM(unittest.TestCase):
         Ps = np.array([s.transition_matrix for s in msm.samples])
         Pmean = Ps.mean(axis=0)
         # test shape and consistency
-        assert np.array_equal(Pmean.shape, (self.nstates, self.nstates))
+        assert np.array_equal(Pmean.shape, (self.n_states, self.n_states))
         assert msmana.is_transition_matrix(Pmean)
         # std
         Pstd = Ps.std(axis=0)
         # test shape
-        assert np.array_equal(Pstd.shape, (self.nstates, self.nstates))
+        assert np.array_equal(Pstd.shape, (self.n_states, self.n_states))
         # conf
         L, R = confidence_interval(Ps)
         # test shape
-        assert np.array_equal(L.shape, (self.nstates, self.nstates))
-        assert np.array_equal(R.shape, (self.nstates, self.nstates))
+        assert np.array_equal(L.shape, (self.n_states, self.n_states))
+        assert np.array_equal(R.shape, (self.n_states, self.n_states))
         # test consistency
         assert np.all(L <= Pmean)
         assert np.all(R >= Pmean)
@@ -123,7 +123,7 @@ class TestBMSM(unittest.TestCase):
     def _eigenvalues_samples(self, msm):
         samples = np.array([s.eigenvalues() for s in msm.samples])
         # shape
-        self.assertEqual(np.shape(samples), (self.nsamples, self.nstates))
+        self.assertEqual(np.shape(samples), (self.nsamples, self.n_states))
         # consistency
         for ev in samples:
             assert np.isclose(ev[0], 1)
@@ -138,18 +138,18 @@ class TestBMSM(unittest.TestCase):
         samples = np.array([s.eigenvalues() for s in msm.samples])
         mean = samples.mean(axis=0)
         # test shape and consistency
-        assert np.array_equal(mean.shape, (self.nstates,))
+        assert np.array_equal(mean.shape, (self.n_states,))
         assert np.isclose(mean[0], 1)
         assert np.all(mean[1:] < 1.0)
         # std
         std = samples.std(axis=0)
         # test shape
-        assert np.array_equal(std.shape, (self.nstates,))
+        assert np.array_equal(std.shape, (self.n_states,))
         # conf
         L, R = confidence_interval(samples)
         # test shape
-        assert np.array_equal(L.shape, (self.nstates,))
-        assert np.array_equal(R.shape, (self.nstates,))
+        assert np.array_equal(L.shape, (self.n_states,))
+        assert np.array_equal(R.shape, (self.n_states,))
         # test consistency
         assert np.all(L - tol <= mean)
         assert np.all(R + tol >= mean)
@@ -161,7 +161,7 @@ class TestBMSM(unittest.TestCase):
     def _eigenvectors_left_samples(self, msm):
         samples = np.array([s.eigenvectors_left() for s in msm.samples])
         # shape
-        np.testing.assert_equal(np.shape(samples), (self.nsamples, self.nstates, self.nstates))
+        np.testing.assert_equal(np.shape(samples), (self.nsamples, self.n_states, self.n_states))
         # consistency
         for evec in samples:
             assert np.sign(evec[0, 0]) == np.sign(evec[0, 1])
@@ -176,18 +176,18 @@ class TestBMSM(unittest.TestCase):
         samples = np.array([s.eigenvectors_left() for s in msm.samples])
         mean = samples.mean(axis=0)
         # test shape and consistency
-        assert np.array_equal(mean.shape, (self.nstates, self.nstates))
+        assert np.array_equal(mean.shape, (self.n_states, self.n_states))
         assert np.sign(mean[0, 0]) == np.sign(mean[0, 1])
         assert np.sign(mean[1, 0]) != np.sign(mean[1, 1])
         # std
         std = samples.std(axis=0)
         # test shape
-        assert np.array_equal(std.shape, (self.nstates, self.nstates))
+        assert np.array_equal(std.shape, (self.n_states, self.n_states))
         # conf
         L, R = confidence_interval(samples)
         # test shape
-        assert np.array_equal(L.shape, (self.nstates, self.nstates))
-        assert np.array_equal(R.shape, (self.nstates, self.nstates))
+        assert np.array_equal(L.shape, (self.n_states, self.n_states))
+        assert np.array_equal(R.shape, (self.n_states, self.n_states))
         # test consistency
         assert np.all(L - tol <= mean)
         assert np.all(R + tol >= mean)
@@ -199,7 +199,7 @@ class TestBMSM(unittest.TestCase):
     def _eigenvectors_right_samples(self, msm):
         samples = np.array([s.eigenvectors_right() for s in msm.samples])
         # shape
-        np.testing.assert_equal(np.shape(samples), (self.nsamples, self.nstates, self.nstates))
+        np.testing.assert_equal(np.shape(samples), (self.nsamples, self.n_states, self.n_states))
         # consistency
         for evec in samples:
             assert np.sign(evec[0, 0]) == np.sign(evec[1, 0])
@@ -214,18 +214,18 @@ class TestBMSM(unittest.TestCase):
         # mean
         mean = samples.mean(axis=0)
         # test shape and consistency
-        np.testing.assert_equal(mean.shape, (self.nstates, self.nstates))
+        np.testing.assert_equal(mean.shape, (self.n_states, self.n_states))
         assert np.sign(mean[0, 0]) == np.sign(mean[1, 0])
         assert np.sign(mean[0, 1]) != np.sign(mean[1, 1])
         # std
         std = samples.std(axis=0)
         # test shape
-        assert np.array_equal(std.shape, (self.nstates, self.nstates))
+        assert np.array_equal(std.shape, (self.n_states, self.n_states))
         # conf
         L, R = confidence_interval(samples)
         # test shape
-        assert np.array_equal(L.shape, (self.nstates, self.nstates))
-        assert np.array_equal(R.shape, (self.nstates, self.nstates))
+        assert np.array_equal(L.shape, (self.n_states, self.n_states))
+        assert np.array_equal(R.shape, (self.n_states, self.n_states))
         # test consistency
         assert np.all(L - tol <= mean)
         assert np.all(R + tol >= mean)
@@ -236,7 +236,7 @@ class TestBMSM(unittest.TestCase):
     def _stationary_distribution_samples(self, msm):
         samples = np.array([s.stationary_distribution for s in msm.samples])
         # shape
-        assert np.array_equal(np.shape(samples), (self.nsamples, self.nstates))
+        assert np.array_equal(np.shape(samples), (self.nsamples, self.n_states))
         # consistency
         for mu in samples:
             assert np.isclose(mu.sum(), 1.0)
@@ -251,19 +251,19 @@ class TestBMSM(unittest.TestCase):
         # mean
         mean = samples.mean(axis=0)
         # test shape and consistency
-        assert np.array_equal(mean.shape, (self.nstates,))
+        assert np.array_equal(mean.shape, (self.n_states,))
         assert np.isclose(mean.sum(), 1.0)
         assert np.all(mean > 0.0)
         assert np.max(np.abs(mean[0] - mean[1])) < 0.05
         # std
         std = samples.std(axis=0)
         # test shape
-        assert np.array_equal(std.shape, (self.nstates,))
+        assert np.array_equal(std.shape, (self.n_states,))
         # conf
         L, R = confidence_interval(samples)
         # test shape
-        assert np.array_equal(L.shape, (self.nstates,))
-        assert np.array_equal(R.shape, (self.nstates,))
+        assert np.array_equal(L.shape, (self.n_states,))
+        assert np.array_equal(R.shape, (self.n_states,))
         # test consistency
         assert np.all(L - tol <= mean)
         assert np.all(R + tol >= mean)
@@ -273,33 +273,36 @@ class TestBMSM(unittest.TestCase):
         self._timescales_samples(self.bmsm_revpi)
 
     def _timescales_samples(self, msm):
-        samples = np.array([s.timescales() for s in msm.samples])
+        stats = msm.gather_stats(quantity='timescales', store_samples=True)
+        samples = stats.samples
         # shape
-        np.testing.assert_equal(np.shape(samples), (self.nsamples, self.nstates - 1))
+        np.testing.assert_equal(np.shape(samples), (self.nsamples, self.n_states - 1))
         # consistency
+        u = msm.prior.count_model.dt_traj.u
         for l in samples:
             assert np.all(l > 0.0)
+            assert l.u == u
 
     def test_timescales_stats(self):
         self._timescales_stats(self.bmsm_rev)
         self._timescales_stats(self.bmsm_revpi)
 
     def _timescales_stats(self, msm):
-        samples = np.array([s.timescales() for s in msm.samples])
+        stats = msm.gather_stats('timescales')
         # mean
-        mean = samples.mean(axis=0)
+        mean = stats.mean
         # test shape and consistency
-        assert np.array_equal(mean.shape, (self.nstates - 1,))
+        assert np.array_equal(mean.shape, (self.n_states - 1,))
         assert np.all(mean > 0.0)
         # std
-        std = samples.std(axis=0)
+        std = stats.std
         # test shape
-        assert np.array_equal(std.shape, (self.nstates - 1,))
+        assert np.array_equal(std.shape, (self.n_states - 1,))
         # conf
-        L, R = confidence_interval(samples)
+        L, R = stats.L, stats.R
         # test shape
-        assert np.array_equal(L.shape, (self.nstates - 1,))
-        assert np.array_equal(R.shape, (self.nstates - 1,))
+        assert np.array_equal(L.shape, (self.n_states - 1,))
+        assert np.array_equal(R.shape, (self.n_states - 1,))
         # test consistency
         assert np.all(L <= mean)
         assert np.all(R >= mean)

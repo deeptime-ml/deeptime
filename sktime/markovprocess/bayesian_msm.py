@@ -1,22 +1,10 @@
 import typing
 
-from sktime.base import Model
-from sktime.markovprocess._base import _MSMBaseEstimator
+from sktime.markovprocess._base import _MSMBaseEstimator, BayesianPosterior
 from sktime.markovprocess.maximum_likelihood_msm import MaximumLikelihoodMSM
 from .markov_state_model import MarkovStateModel
 
 __author__ = 'noe, marscher'
-
-
-class BayesianMSMPosterior(Model):
-    r""" Bayesian Markov state model with samples of posterior and prior.
-    """
-
-    def __init__(self,
-                 prior: typing.Optional[MarkovStateModel] = None,
-                 samples: typing.Optional[typing.List[MarkovStateModel]] = None):
-        self.prior = prior
-        self.samples = samples
 
 
 class BayesianMSM(_MSMBaseEstimator):
@@ -68,25 +56,6 @@ class BayesianMSM(_MSMBaseEstimator):
        numpy arrays. This behavior is suggested for very large numbers of
        states (e.g. > 4000) because it is likely to be much more efficient.
 
-    connectivity : str, optional, default = 'largest'
-       Connectivity mode. Three methods are intended (currently only
-       'largest' is implemented)
-
-       * 'largest' : The active set is the largest reversibly connected set.
-         All estimation will be done on this subset and all quantities
-           (transition matrix, stationary distribution, etc) are only defined
-           on this subset and are correspondingly smaller than the full set
-           of states
-       * 'all' : The active set is the full set of states. Estimation will be
-         conducted on each reversibly connected set separately. That means
-         the transition matrix will decompose into disconnected submatrices,
-         the stationary vector is only defined within subsets, etc.
-         Currently not implemented.
-       * 'none' : The active set is the full set of states. Estimation will be
-         conducted on the full set of states without ensuring connectivity.
-         This only permits nonreversible estimation.
-         Currently not implemented.
-
     dt_traj : str, optional, default='1 step'
        Description of the physical time corresponding to the trajectory time
        step. May be used by analysis algorithms such as plotting tools to
@@ -109,7 +78,7 @@ class BayesianMSM(_MSMBaseEstimator):
        minimum number of counts to consider a connection between two states.
        Counts lower than that will count zero in the connectivity check and
        may thus separate the resulting transition matrix. The default
-       evaluates to 1/nstates.
+       evaluates to 1/n_states.
 
     References
     ----------
@@ -123,7 +92,7 @@ class BayesianMSM(_MSMBaseEstimator):
                  dt_traj='1 step', conf=0.95,
                  maxiter=1000000,
                  maxerr=1e-8,
-                 show_progress=True, mincount_connectivity='1/n'):
+                 mincount_connectivity='1/n'):
 
         super(BayesianMSM, self).__init__(lagtime=lagtime, reversible=reversible,
                                           count_mode=count_mode, sparse=sparse,
@@ -135,9 +104,6 @@ class BayesianMSM(_MSMBaseEstimator):
         self.nsamples = nsamples
         self.nsteps = nsteps
         self.conf = conf
-
-    def _create_model(self) -> BayesianMSMPosterior:
-        return BayesianMSMPosterior()
 
     def fit(self, data, call_back: typing.Callable = None):
         """
@@ -164,7 +130,7 @@ class BayesianMSM(_MSMBaseEstimator):
         from msmtools.estimation import tmatrix_sampler
         from math import sqrt
         if self.nsteps is None:
-            self.nsteps = int(sqrt(mle.count_model.nstates))  # heuristic for number of steps to decorrelate
+            self.nsteps = int(sqrt(mle.count_model.n_states))  # heuristic for number of steps to decorrelate
         # use the same count matrix as the MLE. This is why we have effective as a default
         if self.statdist_constraint is None:
             tsampler = tmatrix_sampler(mle.count_model.count_matrix_active, reversible=self.reversible,
@@ -183,6 +149,6 @@ class BayesianMSM(_MSMBaseEstimator):
             for P, pi in zip(sample_Ps, sample_mus)
         ]
 
-        self._model.__init__(prior=mle, samples=samples)
+        self._model = BayesianPosterior(prior=mle, samples=samples)
 
         return self

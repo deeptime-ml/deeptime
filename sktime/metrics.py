@@ -4,8 +4,8 @@ Contains various metrics for ranking kinetic models
 
 import numpy as np
 
+from sktime.numeric import mdot
 from sktime.numeric.eigen import spd_inv_sqrt
-from sktime.util import mdot
 
 __author__ = 'noe'
 

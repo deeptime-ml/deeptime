@@ -1,14 +1,14 @@
 import unittest
 
-import numpy as np
-
 import mdshare
+import numpy as np
 from sklearn.pipeline import Pipeline
 
-import sktime.decomposition.tica as tica
 import sktime.clustering.kmeans as kmeans
+import sktime.decomposition.tica as tica
 import sktime.markovprocess.maximum_likelihood_msm as msm
-import sktime.markovprocess.pcca as pcca
+from sktime.data.double_well import DoubleWellDiscrete
+from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 
 
 class TestSkLearnCompat(unittest.TestCase):
@@ -35,3 +35,10 @@ class TestSkLearnCompat(unittest.TestCase):
         P = mlmsm.pcca(2).coarse_grained_transition_matrix
         mindist = min(np.linalg.norm(P - transition_matrix), np.linalg.norm(P - transition_matrix.T))
         assert mindist < 0.05
+
+    def test_hmm_stuff(self):
+        obs = DoubleWellDiscrete().dtraj.copy()
+        obs -= np.min(obs)  # remove empty states
+        hmsm = MaximumLikelihoodHMSM(n_states=2, lagtime=1)
+        model = hmsm.fit([obs, obs]).fetch_model()
+        print(model)

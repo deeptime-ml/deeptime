@@ -18,7 +18,6 @@
 # .. moduleauthor:: F. Noe <frank DOT noe AT fu-berlin DOT de>
 # .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
-import copy
 import typing
 from math import ceil
 
@@ -26,10 +25,11 @@ import numpy as np
 
 from sktime.base import Model
 from sktime.markovprocess import Q_
-from sktime.markovprocess.transition_counting import TransitionCountModel
 from sktime.markovprocess.pcca import pcca, PCCAModel
 from sktime.markovprocess.sample import ensure_dtraj_list
-from sktime.util import ensure_ndarray, mdot
+from sktime.markovprocess.transition_counting import TransitionCountModel
+from sktime.numeric import mdot
+from sktime.util import ensure_ndarray
 
 
 class MarkovStateModel(Model):
@@ -37,7 +37,7 @@ class MarkovStateModel(Model):
 
     Parameters
     ----------
-    P : ndarray(n,n)
+    transition_matrix : ndarray(n,n)
         transition matrix
 
     pi : ndarray(n), optional, default=None
@@ -63,7 +63,7 @@ class MarkovStateModel(Model):
         *  'ms',  'millisecond*'
         *  's',   'second*'
 
-    neig : int or None
+    n_eigenvalues : int or None
         The number of eigenvalues / eigenvectors to be kept. If set to None,
         defaults will be used. For a dense MarkovStateModel the default is all eigenvalues.
         For a sparse MarkovStateModel the default is 10.
@@ -74,7 +74,8 @@ class MarkovStateModel(Model):
         be greater than neig; it is recommended that ncv > 2*neig.
 
     """
-    def __init__(self, transition_matrix=None, pi=None, reversible=None, dt_model='1 step', neig=None, ncv=None, count_model=None):
+    def __init__(self, transition_matrix, pi=None, reversible=None,
+                 dt_model='1 step', n_eigenvalues=None, ncv=None, count_model=None):
         self.ncv = ncv
         # we set reversible first, so it can be derived from transition_matrix, if None was given.
         self._is_reversible = reversible
@@ -84,7 +85,7 @@ class MarkovStateModel(Model):
         # pi might be derived from transition_matrix, if None was given.
         self.stationary_distribution = pi
         self.dt_model = dt_model
-        self.neig = neig
+        self.n_eigenvalues = n_eigenvalues
         self._count_model = count_model
 
     ################################################################################
@@ -119,7 +120,7 @@ class MarkovStateModel(Model):
             if not msmana.is_transition_matrix(self._P, tol=1e-8):
                 raise ValueError('T is not a transition matrix.')
             # set states
-            self.nstates = np.shape(self._P)[0]
+            self.n_states = np.shape(self._P)[0]
             if self._is_reversible is None:
                 self._is_reversible = msmana.is_reversible(self._P)
 
@@ -129,42 +130,39 @@ class MarkovStateModel(Model):
     P = transition_matrix
 
     @property
-    def is_reversible(self):
+    def is_reversible(self) -> bool:
         """Returns whether the MarkovStateModel is reversible """
         return self._is_reversible
 
-    # backward compat
-    reversible = is_reversible
-
     @property
-    def is_sparse(self):
+    def is_sparse(self) -> bool:
         """Returns whether the MarkovStateModel is sparse """
         from scipy.sparse import issparse
         return issparse(self.transition_matrix)
 
     @property
-    def nstates(self):
+    def n_states(self):
         """ Number of active states on which all computations and estimations are done """
-        return self._nstates
+        return self._n_states
 
-    @nstates.setter
-    def nstates(self, n):
-        self._nstates = n
+    @n_states.setter
+    def n_states(self, n):
+        self._n_states = n
 
     @property
-    def neig(self):
+    def n_eigenvalues(self):
         """ number of eigenvalues to compute. """
         return self._neig
 
-    @neig.setter
-    def neig(self, value):
+    @n_eigenvalues.setter
+    def n_eigenvalues(self, value):
         # set or correct eig param
         if value is None:
             if self.transition_matrix is not None:
                 if self.sparse:
-                    value = min(10, self.nstates - 1)
+                    value = min(10, self.n_states - 1)
                 else:
-                    value = self._nstates
+                    value = self._n_states
 
         # set ncv for consistency
         if not hasattr(self, 'ncv'):
@@ -221,7 +219,7 @@ class MarkovStateModel(Model):
     def _ensure_eigenvalues(self, neig=None):
         """ Ensures that at least neig eigenvalues have been computed """
         if neig is None:
-            neig = self.neig
+            neig = self.n_eigenvalues
         # ensure that eigenvalue decomposition with k components is done.
         try:
             m = len(self._eigenvalues)  # this will raise and exception if self._eigenvalues doesn't exist yet.
@@ -264,7 +262,7 @@ class MarkovStateModel(Model):
 
         """
         if neig is None:
-            neig = self.neig
+            neig = self.n_eigenvalues
         # ensure that eigenvalue decomposition with k components is done.
         try:
             m = self._D.shape[0]  # this will raise and exception if self._D doesn't exist yet.
@@ -352,7 +350,7 @@ class MarkovStateModel(Model):
             self._ensure_eigenvalues(neig=k + 1)
         from msmtools.analysis.dense.decomposition import timescales_from_eigenvalues as timescales
 
-        ts = timescales(self._eigenvalues, tau=self._dt_model)
+        ts = timescales(self._eigenvalues, tau=self._dt_model.m) * self._dt_model.u
         if k is None:
             return ts[1:]
         else:
@@ -384,7 +382,7 @@ class MarkovStateModel(Model):
             Distribution after k steps. Vector of size of the active set.
 
         """
-        p0 = ensure_ndarray(p0, ndim=1, size=self.nstates)
+        p0 = ensure_ndarray(p0, ndim=1, size=self.n_states)
         assert k >= 0, 'k must be a non-negative integer'
 
         if k == 0:  # simply return p0 normalized
@@ -395,7 +393,7 @@ class MarkovStateModel(Model):
             for i in range(k):
                 pk = pk.T.dot(self.transition_matrix)
         else:  # dense: employ eigenvalue decomposition
-            self._ensure_eigendecomposition(self.nstates)
+            self._ensure_eigendecomposition(self.n_states)
             pk = mdot(p0.T,
                       self.eigenvectors_right(),
                       np.diag(np.power(self.eigenvalues(), k)),
@@ -416,7 +414,7 @@ class MarkovStateModel(Model):
         A : int or int array
             set of states
         """
-        if np.max(A) > self._nstates:
+        if np.max(A) > self._n_states:
             raise ValueError('Chosen set contains states that are not included in the active set.')
 
     def _mfpt(self, P, A, B, mu=None):
@@ -498,7 +496,7 @@ class MarkovStateModel(Model):
         :math:`\pi=(\pi_i)` is the stationary vector of the transition matrix :math:`P`.
 
         """
-        a = ensure_ndarray(a, ndim=1, size=self.nstates)
+        a = ensure_ndarray(a, ndim=1, size=self.n_states)
         return np.dot(a, self.stationary_distribution)
 
     def correlation(self, a, b=None, maxtime=None, k=None, ncv=None):
@@ -587,14 +585,14 @@ class MarkovStateModel(Model):
         on a three-state Markov model and plots the result using matplotlib:
 
         >>> import numpy as np
-        >>> import pyemma.msm as msm
+        >>> import sktime.markovprocess.markov_state_model as msm
         >>>
         >>> P = np.array([[0.99, 0.01, 0], [0.01, 0.9, 0.09], [0, 0.1, 0.9]])
         >>> a = np.array([0.0, 0.5, 1.0])
-        >>> M = msm.markov_model(P)
+        >>> M = msm.MarkovStateModel(P)
         >>> times, acf = M.correlation(a)
         >>>
-        >>> import matplotlib.pylab as plt
+        >>> import matplotlib.pylab as plt # doctest: +SKIP
         >>> plt.plot(times, acf)  # doctest: +SKIP
 
         References
@@ -965,7 +963,7 @@ class MarkovStateModel(Model):
         if self.count_model is None:
             raise RuntimeError("Count model was None but needs to be provided in this case.")
         dtrajs = ensure_dtraj_list(dtrajs)
-        statdist_full = np.zeros(self.count_model.nstates)
+        statdist_full = np.zeros(self.count_model.n_states)
         statdist_full[self.count_model.active_set] = self.stationary_distribution
         # histogram observed states
         from msmtools.dtraj import count_states
@@ -997,13 +995,20 @@ class MarkovStateModel(Model):
     # HMM-based coarse graining
     ################################################################################
 
-    def hmm(self, dtrajs, nhidden: int):
+    def hmm(self, dtrajs, nhidden: int, return_estimator=False):
         """Estimates a hidden Markov state model as described in [1]_
 
         Parameters
         ----------
+        dtrajs: list of int-array like
+            discrete trajectories to use for estimation of the HMM.
+
         nhidden : int
             number of hidden (metastable) states
+
+        return_estimator : boolean, optional
+            if False only the Model is returned,
+            if True both the Estimator and the Model is returned.
 
         Returns
         -------
@@ -1017,9 +1022,10 @@ class MarkovStateModel(Model):
 
         """
         # check if the time-scale separation is OK
-        # if hmm.nstates = msm.nstates there is no problem. Otherwise, check spectral gap
-        if self.nstates > nhidden:
-            timescale_ratios = self.timescales()[:-1] / self.timescales()[1:]
+        # if hmm.n_states = msm.n_states there is no problem. Otherwise, check spectral gap
+        if self.n_states > nhidden:
+            ts = self.timescales()
+            timescale_ratios = ts[:-1] / ts[1:]
             if timescale_ratios[nhidden - 2] < 1.5:
                 import warnings
                 warnings.warn('Requested coarse-grained model with {nhidden} metastable states at lag={lag}.'
@@ -1031,40 +1037,16 @@ class MarkovStateModel(Model):
                     nhidden=nhidden,
                     nhidden_1=nhidden + 1,
                     ratio=timescale_ratios[nhidden - 2],
-                ))
+                ), stacklevel=2)
         # run HMM estimate
-        #from pyemma.msm.estimators.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
-        estimator = MaximumLikelihoodHMSM(lag=self.lagtime, nstates=nhidden, msm_init=self,
-                                          reversible=self.is_reversible, dt_traj=self.dt_traj)
+        from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
+        estimator = MaximumLikelihoodHMSM(lagtime=self.lagtime, n_states=nhidden, msm_init=self,
+                                          reversible=self.is_reversible, dt_traj=self.dt_model)
         estimator.fit(dtrajs)
-        return estimator.fetch_model()
-
-    # TODO: redundant
-    def coarse_grain(self, dtrajs, ncoarse: int, method='hmm') -> Model:
-        r"""Returns a coarse-grained Markov model.
-
-        Currently only the HMM method described in [1]_ is available for coarse-graining MSMs.
-
-        Parameters
-        ----------
-        ncoarse : int
-            number of coarse states
-
-        Returns
-        -------
-        hmsm : :class:`MaximumLikelihoodHMSM`
-
-        References
-        ----------
-        .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
-            Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
-            J. Chem. Phys. 139, 184114 (2013)
-
-        """
-        # check input
-        assert 1 < ncoarse <= self.nstates, 'nstates must be an int in [2,msmobj.nstates]'
-
-        return self.hmm(dtrajs, ncoarse)
+        model = estimator.fetch_model()
+        if return_estimator:
+            return estimator, model
+        return model
 
     def score(self, dtrajs, score_method='VAMP2', score_k=10):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes [1]_ [2]_
@@ -1116,12 +1098,12 @@ class MarkovStateModel(Model):
 
         # determine actual scoring rank
         if score_k is None:
-            score_k = self.nstates
-        if score_k > self.nstates:
+            score_k = self.n_states
+        if score_k > self.n_states:
             import warnings
             warnings.warn('Requested scoring rank {rank} exceeds number of MSM states. '
-                          'Reduced to score_k = {nstates}'.format(rank=score_k, nstates=self.nstates))
-            score_k = self.nstates  # limit to nstates
+                          'Reduced to score_k = {n_states}'.format(rank=score_k, n_states=self.n_states))
+            score_k = self.n_states  # limit to n_states
 
         # training data
         K = self.transition_matrix  # model
@@ -1141,7 +1123,7 @@ class MarkovStateModel(Model):
         active_set = self.count_model.active_set
         map_from = active_set[np.where(active_set < C0t_test_raw.shape[0])[0]]
         map_to = np.arange(len(map_from))
-        C0t_test = np.zeros((self.nstates, self.nstates))
+        C0t_test = np.zeros((self.n_states, self.n_states))
         C0t_test[np.ix_(map_to, map_to)] = C0t_test_raw[np.ix_(map_from, map_from)]
         C00_test = np.diag(C0t_test.sum(axis=1))
         Ctt_test = np.diag(C0t_test.sum(axis=0))

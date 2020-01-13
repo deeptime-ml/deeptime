@@ -3,7 +3,8 @@ import numpy as np
 
 from sktime.base import Estimator, Model
 from sktime.lagged_model_validator import LaggedModelValidator
-from sktime.markovprocess import MarkovStateModel, BayesianMSMPosterior
+from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess._base import BayesianPosterior
 from sktime.util import confidence_interval, ensure_ndarray
 
 __author__ = 'noe, marscher'
@@ -58,8 +59,8 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     @memberships.setter
     def memberships(self, value):
         self._memberships = ensure_ndarray(value, ndim=2, dtype=np.float64)
-        self.nstates, self.nsets = self._memberships.shape
-        assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
+        self.n_states, self.nsets = self._memberships.shape
+        assert np.allclose(self._memberships.sum(axis=1), np.ones(self.n_states))  # stochastic matrix?
 
     @property
     def test_model(self):
@@ -68,7 +69,10 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
     @test_model.setter
     def test_model(self, test_model: MarkovStateModel):
         assert self.memberships is not None
-        assert self.memberships.shape[0] == test_model.nstates, 'provided memberships and test_model nstates mismatch'
+        if hasattr(test_model, 'prior'):
+            # todo ugly hack, cktest needs to be reworked!!
+            test_model = test_model.prior
+        assert self.memberships.shape[0] == test_model.n_states, 'provided memberships and test_model n_states mismatch'
         self._test_model = test_model
         # define starting distribution
         P0 = self.memberships * test_model.stationary_distribution[:, None]
@@ -76,9 +80,11 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         self.P0 = P0
 
         active_set = test_model.count_model.active_set
+        if active_set is None:
+            active_set = np.arange(test_model.n_states)
         # map from the full set (here defined by the largest state index in active set) to active
         self._full2active = np.zeros(np.max(active_set) + 1, dtype=int)
-        self._full2active[active_set] = np.arange(test_model.nstates)
+        self._full2active[active_set] = np.arange(test_model.n_states)
 
     def _compute_observables(self, model: MarkovStateModel, mlag=1):
         # otherwise compute or predict them by model.propagate
@@ -101,20 +107,21 @@ class ChapmanKolmogorovValidator(LaggedModelValidator):
         return pk_on_set
 
     # TODO: model type
-    def _compute_observables_conf(self, model: BayesianMSMPosterior, mlag=1, conf=0.95):
+    def _compute_observables_conf(self, model: BayesianPosterior, mlag=1, conf=0.95):
         # otherwise compute or predict them by model.propagate
         if model.prior.count_model is not None:
             subset = self._full2active[model.prior.count_model.active_set]  # find subset we are now working on
         else:
             subset = None
-        l = np.zeros((self.nsets, self.nsets))
-        r = np.zeros((self.nsets, self.nsets))
-        for i in range(self.nsets):
+        n = self.nsets
+        l = np.zeros((n, n))
+        r = np.zeros_like(l)
+        for i in range(n):
             p0 = self.P0[:, i]  # starting distribution
             p0sub = p0[subset]  # map distribution to new active set
             p0sub /= p0sub.sum()  # renormalize
             pksub_samples = [m.propagate(p0sub, mlag) for m in model.samples]
-            for j in range(self.nsets):
+            for j in range(n):
                 pk_on_set_samples = np.fromiter((np.dot(pksub, self.memberships[subset, j])
                                                  for pksub in pksub_samples), dtype=np.float, count=len(pksub_samples))
                 l[i, j], r[i, j] = confidence_interval(pk_on_set_samples, conf=self.conf)
@@ -130,9 +137,9 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
     ----------
     nsets : int
         number of sets to test on
-    memberships : ndarray(nstates, nsets), optional
+    memberships : ndarray(n_states, nsets), optional
         optional state memberships. By default (None) will conduct a cktest
-        on PCCA (metastable) sets.
+        on PCCA (metastable) sets. In case of a hidden MSM memberships are ignored.
     mlags : int or int-array, optional
         multiples of lag times for testing the Model, e.g. range(10).
         A single int will trigger a range, i.e. mlags=10 maps to
@@ -164,9 +171,14 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
         134: 174105
 
     """
-    if memberships is None:
-        pcca = test_model.pcca(nsets)
-        memberships = pcca.memberships
+    try:
+        if memberships is None:
+            pcca = test_model.pcca(nsets)
+            memberships = pcca.memberships
+    except NotImplementedError:
+        # todo: ugh...
+        memberships = np.eye(test_model.n_states)
+
     ck = ChapmanKolmogorovValidator(test_estimator=test_estimator, test_model=test_model, memberships=memberships,
                                     mlags=mlags, conf=conf, err_est=err_est)
     ck.fit(dtrajs)

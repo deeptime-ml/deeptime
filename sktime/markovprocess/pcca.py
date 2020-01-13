@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 
 from sktime.base import Model
+from sktime.numeric import mdot
 
 
 # TODO: should pass pi to msmtools once it's supported.
@@ -47,10 +48,7 @@ def pcca(P, m):
     pi_coarse = np.dot(M.T, pi)
 
     # HMM output matrix
-    from sktime.util import mdot
-    B_ = mdot(np.diag(1.0 / pi_coarse), M.T, np.diag(pi))
-    B = np.dot(np.dot(np.diag(1.0 / pi_coarse), M.T), np.diag(pi))
-    np.testing.assert_allclose(B_, B)
+    B = mdot(np.diag(1.0 / pi_coarse), M.T, np.diag(pi))
     # renormalize B to make it row-stochastic
     B /= B.sum(axis=1)[:, None]
 
@@ -136,6 +134,8 @@ class PCCAModel(Model):
             i.e. p(state | metastable). The row sums of p_out are 1.
         """
         return self._B
+
+    output_probabilities = distributions
 
     @property
     def coarse_grained_transition_matrix(self):

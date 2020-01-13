@@ -1,7 +1,7 @@
 import sys
+import setuptools
 
-from setuptools import setup, Extension, find_packages
-from setuptools.command.build_ext import build_ext
+from numpy.distutils.command.build_ext import build_ext
 
 import versioneer
 
@@ -50,32 +50,45 @@ def supports_omp(cc):
 
 class Build(build_ext):
 
-    def build_extension(self, ext):
+    def build_extensions(self):
+        extra_compile_args = []
+        extra_link_args = []
+        define_macros = []
+
         from numpy import get_include as _np_inc
         np_inc = _np_inc()
         pybind_inc = 'lib/pybind11/include'
+        # TODO: this is platform dependent, e.g. win should be treated differently.
+        cxx_flags = ['-std=c++14']
+        has_openmp = supports_omp(self.compiler)
 
-        ext.include_dirs.append(np_inc)
-        ext.include_dirs.append(pybind_inc)
-
-        if supports_omp(self.compiler):
-            ext.extra_compile_args += ['-fopenmp' if sys.platform != 'darwin' else '-fopenmp=libiomp5']
+        if has_openmp:
+            extra_compile_args += ['-fopenmp' if sys.platform != 'darwin' else '-fopenmp=libiomp5']
             if sys.platform.startswith('linux'):
-                ext.extra_link_args += ['-lgomp']
+                extra_link_args += ['-lgomp']
             elif sys.platform == 'darwin':
-                ext.extra_link_args += ['-liomp5']
+                extra_link_args += ['-liomp5']
             else:
                 raise ValueError("Hmm.")
-            ext.define_macros += [('USE_OPENMP', None)]
+            define_macros += [('USE_OPENMP', None)]
 
-        super(Build, self).build_extension(ext)
+        for ext in self.extensions:
+            ext.include_dirs.append(np_inc)
+            ext.include_dirs.append(pybind_inc)
+            if ext.language == 'c++':
+                ext.extra_compile_args += cxx_flags
+
+            if has_openmp:
+                ext.extra_compile_args += extra_compile_args
+                ext.extra_link_args += extra_link_args
+                ext.define_macros += define_macros
+
+        super(Build, self).build_extensions()
 
 
 cmdclass = versioneer.get_cmdclass()
 cmdclass['build_ext'] = Build
 
-# TODO: this is platform dependent, e.g. win should be treated differently.
-cxx_flags = ['-std=c++14']
 metadata = \
     dict(
         name='scikit-time',
@@ -84,33 +97,35 @@ metadata = \
         author_email='nope',
         description='scikit-time project',
         long_description='',
-        ext_modules=[
-            Extension('sktime.covariance.util.covar_c._covartools', sources=[
-                'sktime/covariance/util/covar_c/covartools.cpp',
-            ], language='c++', extra_compile_args=cxx_flags),
-            Extension('sktime.numeric.eig_qr', sources=[
-                'sktime/numeric/eig_qr.pyx'],
-                      language_level=3),
-            Extension('sktime.clustering._clustering_bindings', sources=[
-                'sktime/clustering/src/clustering_module.cpp'
-            ], include_dirs=['sktime/clustering/include'],
-                      language='c++', extra_compile_args=cxx_flags),
-            Extension('sktime.markovprocess._markovprocess_bindings', sources=[
-                'sktime/markovprocess/src/markovprocess_module.cpp'
-            ], include_dirs=['sktime/markovprocess/include'],
-                      language='c++', extra_compile_args=cxx_flags),
-        ],
         cmdclass=cmdclass,
         zip_safe=False,
-        install_requires=['numpy'],
-        packages=find_packages(),
+        install_requires=['numpy',
+                          'msmtools',
+                          'pint',
+                          'scipy',
+                          'scikit-learn>=0.21',
+                          ],
         package_data={
             'sktime.data': ['data/*.npz']
         },
     )
 
+
+def configuration(parent_package='', top_path=None):
+    from numpy.distutils.misc_util import Configuration
+    config = Configuration(None, parent_package, top_path)
+    config.set_options(ignore_setup_xxx_py=True,
+                       assume_default_configuration=True,
+                       delegate_options_to_subpackages=True,
+                       # quiet=True,
+                       )
+    config.add_subpackage('sktime')
+    return config
+
+
 if __name__ == '__main__':
     import os
     assert os.listdir(os.path.join('lib', 'pybind11')), 'ensure pybind11 submodule is initialized'
-
+    from numpy.distutils.core import setup
+    metadata['configuration'] = configuration
     setup(**metadata)

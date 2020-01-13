@@ -19,13 +19,15 @@ import numpy as np
 from msmtools import estimation as msmest
 
 from sktime.markovprocess._base import _MSMBaseEstimator
-from sktime.markovprocess.transition_counting import TransitionCountEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
+from sktime.markovprocess.transition_counting import TransitionCountEstimator
 
-__all__ = ['MaximumLikelihoodMSM']
+__all__ = ['MaximumLikelihoodMSM',
+           'compute_statistically_effective_count_matrix',
+           ]
 
 
-class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
+class MaximumLikelihoodMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
 
     Parameters
@@ -102,7 +104,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
         may thus separate the resulting transition matrix. The default
-        evaluates to 1/nstates.
+        evaluates to 1/n_states.
 
     References
     ----------
@@ -130,13 +132,11 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         self.maxiter = maxiter
         self.maxerr = maxerr
 
-    def _create_model(self) -> MarkovStateModel:
-        return MarkovStateModel()
-
     def fit(self, dtrajs, y=None):
         count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
-            mincount_connectivity=self.mincount_connectivity, stationary_dist_constraint=self.statdist_constraint).fit(
-            dtrajs).fetch_model()
+                                               mincount_connectivity=self.mincount_connectivity,
+                                               stationary_dist_constraint=self.statdist_constraint) \
+            .fit(dtrajs).fetch_model()
 
         if self.statdist_constraint is not None and count_model.count_matrix_active.sum() == 0.0:
             raise ValueError("The set of states with positive stationary"
@@ -179,10 +179,10 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator, ):
         if isinstance(P, tuple):
             P, statdist_active = P
 
-        # update model parameters
-        self._model.__init__(transition_matrix=P, pi=statdist_active, reversible=self.reversible,
-                             dt_model=count_model.dt_traj * self.lagtime,
-                             count_model=count_model)
+        # create model
+        self._model = MarkovStateModel(transition_matrix=P, pi=statdist_active, reversible=self.reversible,
+                                       dt_model=count_model.dt_traj * self.lagtime,
+                                       count_model=count_model)
 
         return self
 

@@ -87,6 +87,11 @@ class Model(_base_methods_mixin):
         import copy
         return copy.deepcopy(self)
 
+    def _update_params(self, **kwargs):
+        for k, v in kwargs.items():
+            if v is not None:
+                setattr(self, k, v)
+
 
 class Estimator(_base_methods_mixin):
     """ Base class of all estimators """
@@ -95,15 +100,10 @@ class Estimator(_base_methods_mixin):
     _MUTABLE_INPUT_DATA = False
 
     def __init__(self, model=None):
-        # we only need to create a default model in case the subclassing Estimator provides the partial_fit interface.
-        if hasattr(self.__class__, 'partial_fit') and model is None:
-            self._model = self._create_model()
-        # TODO: not tested (e.g. by partially fitted models.
-        elif model is not None:
-            self._model = model
+        self._model = model
 
     @abc.abstractmethod
-    def fit(self, data):
+    def fit(self, data, **kwargs):
         """ performs a fit of this estimator with data. Creates a new model instance by default.
         :param data:
         :return: self
@@ -113,13 +113,7 @@ class Estimator(_base_methods_mixin):
     def fetch_model(self) -> Model:
         return self._model
 
-    @abc.abstractmethod
-    def _create_model(self):
-        pass
-
     def __getattribute__(self, item):
-        if item == 'fit':
-            self._model = self._create_model()
         if (item == 'fit' or item == 'partial_fit') and not self._MUTABLE_INPUT_DATA:
             fit = super(Estimator, self).__getattribute__(item)
             return _ImmutableInputData(fit)

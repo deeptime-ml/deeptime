@@ -126,8 +126,8 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         # Testing
         cls.tpt2 = cls.P2.reactive_flux(cls.A2, cls.B2)
 
-    def test_nstates(self):
-        self.assertEqual(self.tpt1.nstates, self.P.nstates)
+    def test_n_states(self):
+        self.assertEqual(self.tpt1.n_states, self.P.n_states)
 
     def test_A(self):
         self.assertEqual(self.tpt1.A, self.A)

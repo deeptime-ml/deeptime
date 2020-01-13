@@ -14,8 +14,8 @@ __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering']
 
 class KMeansClusteringModel(ClusterModel):
 
-    def __init__(self, n_clusters=0, cluster_centers=None, metric=None, inertia=np.inf, tolerance=1e-5):
-        super().__init__(n_clusters, cluster_centers, metric)
+    def __init__(self, n_clusters, cluster_centers, metric, tolerance, inertia=np.inf, converged=False):
+        super().__init__(n_clusters, cluster_centers, metric, converged=converged)
         self._inertia = inertia
         self._tolerance = tolerance
 
@@ -106,9 +106,6 @@ class KmeansClustering(Estimator, Transformer):
         self.initial_centers = initial_centers
 
         super(KmeansClustering, self).__init__()
-
-    def _create_model(self) -> KMeansClusteringModel:
-        return KMeansClusteringModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance)
 
     def fetch_model(self) -> KMeansClusteringModel:
         return self._model
@@ -216,15 +213,14 @@ class KmeansClustering(Estimator, Transformer):
         cluster_centers, code, iterations, cost = _kmeans_ext.cluster_loop(data, self.initial_centers, self.n_clusters,
                                                                            n_jobs, self.max_iter, self.tolerance,
                                                                            callback_loop, self.metric)
-        self._model._inertia = cost
         if code == 0:
             converged = True
         else:
             warnings.warn("Algorithm did not reach convergence criterion"
                           " of {t} in {i} iterations. Consider increasing max_iter.".format(t=self.tolerance,
                                                                                             i=self.max_iter))
-        self._model._converged = converged
-        self._model._cluster_centers = cluster_centers
+        self._model = KMeansClusteringModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance,
+                                            cluster_centers=cluster_centers, inertia=cost, converged=converged)
 
         return self
 
@@ -243,11 +239,10 @@ class MiniBatchKmeansClustering(KmeansClustering):
                                                         n_jobs=n_jobs,
                                                         initial_centers=initial_centers)
 
-        # we need to remember this state during partial_fit calls.
-        self._converged = False
-        self._prev_cost = float('inf')
-
     def partial_fit(self, data, n_jobs=None):
+        if self._model is None:
+            self._model = KMeansClusteringModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
+                                                tolerance=self.tolerance, inertia=float('inf'))
         if data.ndim == 1:
             data = data[:, np.newaxis]
         n_jobs = self.n_jobs if n_jobs is None else n_jobs
@@ -258,13 +253,13 @@ class MiniBatchKmeansClustering(KmeansClustering):
             else:
                 self._model._cluster_centers = np.copy(self.initial_centers)
 
-        self._model._cluster_centers = _kmeans_ext.cluster(data, self._model._cluster_centers, n_jobs, self.metric)
-        cost = _kmeans_ext.cost_function(data, self._model._cluster_centers, n_jobs, self.metric)
+        self._model._cluster_centers = _kmeans_ext.cluster(data, self._model.cluster_centers, n_jobs, self.metric)
+        cost = _kmeans_ext.cost_function(data, self._model.cluster_centers, n_jobs, self.metric)
 
-        rel_change = np.abs(cost - self._prev_cost) / cost if cost != 0.0 else 0.0
-        self._prev_cost = cost
+        rel_change = np.abs(cost - self._model.inertia) / cost if cost != 0.0 else 0.0
+        self._model._inertia = cost
 
         if rel_change <= self.tolerance:
-            self._converged = True
+            self._model._converged = True
 
         return self

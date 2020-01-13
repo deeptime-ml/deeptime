@@ -120,7 +120,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
         may thus separate the resulting transition matrix. The default
-        evaluates to 1/nstates.
+        evaluates to 1/n_states.
 
     References
     ----------
@@ -148,9 +148,6 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         self.tol_rank = tol_rank
         self.rank_Ct = rank_Ct
 
-    def _create_model(self) -> KoopmanReweightedMSM:
-        return KoopmanReweightedMSM()
-
     def fit(self, dtrajs):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
@@ -163,10 +160,10 @@ class OOMReweightedMSM(_MSMBaseEstimator):
             Ceff = submatrix(Ceff_full, count_model.active_set)
             smean, sdev = bootstrapping_count_matrix(Ceff, nbs=self.nbs)
         else:
-            smean, sdev = bootstrapping_dtrajs(dtrajs_lag, self.lagtime, count_model.nstates, nbs=self.nbs,
+            smean, sdev = bootstrapping_dtrajs(dtrajs_lag, self.lagtime, count_model.n_states, nbs=self.nbs,
                                                active_set=count_model.active_set)
         # Estimate two step count matrices:
-        C2t = twostep_count_matrix(dtrajs, self.lagtime, count_model.nstates)
+        C2t = twostep_count_matrix(dtrajs, self.lagtime, count_model.n_states)
         # Rank decision:
         rank_ind = rank_decision(smean, sdev, tol=self.tol_rank)
         # Estimate OOM components:
@@ -176,7 +173,8 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         P, lcc_new = equilibrium_transition_matrix(Xi, omega, sigma, reversible=self.reversible)
 
         # Update active set and derived quantities:
-        if lcc_new.size < count_model.nstates:
+        # todo: dont re-initialize, this is only due to active set (see bhmm impl)
+        if lcc_new.size < count_model.n_states:
             assert isinstance(count_model, TransitionCountModel)
             count_model.__init__(self.lagtime, active_set=count_model.active_set[lcc_new],
                                  dt_traj=count_model.dt_traj, connected_sets=count_model.connected_sets,
@@ -186,8 +184,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         # update models
         count_model.C2t = C2t
 
-        msm_model = self._model
-        msm_model.__init__(
+        self._model = KoopmanReweightedMSM(
             transition_matrix=P,
             eigenvalues_OOM=l,
             sigma=sigma,

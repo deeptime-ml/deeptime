@@ -1,10 +1,13 @@
+import typing
+
 import numpy as np
 
-from sktime.base import Estimator
+from sktime.base import Estimator, Model
+from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess.transition_counting import blocksplit_dtrajs, cvsplit_dtrajs
+# TODO: we do not need this anymore!
+from sktime.util import confidence_interval, ensure_dtraj_list
 
-
-# TODO: distinguish more between model and estimator attributes.
 
 class _MSMBaseEstimator(Estimator):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
@@ -57,7 +60,7 @@ class _MSMBaseEstimator(Estimator):
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
         may thus separate the resulting transition matrix. The default
-        evaluates to 1/nstates.
+        evaluates to 1/n_states.
 
     """
 
@@ -82,6 +85,103 @@ class _MSMBaseEstimator(Estimator):
 
         # connectivity
         self.mincount_connectivity = mincount_connectivity
+
+
+class BayesianPosterior(Model):
+    def __init__(self,
+                 prior: typing.Optional[MarkovStateModel] = None,
+                 samples: typing.Optional[typing.List[MarkovStateModel]] = None):
+        self.prior = prior
+        self.samples = samples
+
+    def __iter__(self):
+        for s in self.samples:
+            yield s
+
+    def gather_stats(self, quantity, store_samples=False, *args, **kwargs):
+        """ obtain statistics about a sampled quantity
+
+        Parameters
+        ----------
+        quantity: str
+            name of attribute, which will be evaluated on samples
+
+        store_samples: bool, optional, default=False
+            whether to store the samples (array).
+        *args:
+
+        """
+        from sktime.util import call_member
+        samples = [call_member(s, quantity, *args, **kwargs) for s in self]
+        return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples)
+
+    def submodel_largest(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
+        dtrajs = ensure_dtraj_list(dtrajs)
+        states = self.prior.states_largest(strong=strong, mincount_connectivity=mincount_connectivity)
+        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
+        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
+
+    def submodel_populous(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
+        dtrajs = ensure_dtraj_list(dtrajs)
+        states = self.prior.states_populous(strong=strong, mincount_connectivity=mincount_connectivity)
+        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
+        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
+
+    def submodel(self, states=None, obs=None, mincount_connectivity='1/n'):
+        # restrict prior
+        sub_model = self.prior.submodel(states=states, obs=obs,
+                                        mincount_connectivity=mincount_connectivity)
+        # restrict reduce samples
+        count_model = sub_model.count_model
+        subsamples = [sample.submodel(states=count_model.active_set, obs=count_model.observable_set)
+                      for sample in self]
+        return BayesianPosterior(sub_model, subsamples)
+
+
+class QuantityStatistics(Model):
+    """ Container for statistical quantities computed on samples.
+
+    Parameters
+    ----------
+    samples: list of ndarrays
+        the samples
+    store_samples: bool, default=False
+        whether to store the samples (array).
+
+    Attributes
+    ----------
+    mean: array(n)
+        mean along axis=0
+    std: array(n)
+        std deviation along axis=0
+    L : ndarray(shape)
+        element-wise lower bounds
+    R : ndarray(shape)
+        element-wise upper bounds
+
+    """
+
+    def __init__(self, samples: typing.List[np.ndarray], quantity, store_samples=False):
+        self.quantity = quantity
+        # TODO: shall we refer to the original object?
+        # we re-add the (optional) quantity, because the creation of a new array will strip it.
+        unit = getattr(samples[0], 'u', None)
+        if unit is not None:
+            samples = np.array(tuple(x.magnitude for x in samples))
+        else:
+            samples = np.array(samples)
+        if unit is not None:
+            samples *= unit
+        if store_samples:
+            self.samples = samples
+        else:
+            self.samples = np.empty(0) * unit
+        self.mean = samples.mean(axis=0)
+        self.std = samples.std(axis=0)
+        self.L, self.R = confidence_interval(samples)
+        if unit is not None:
+            self.L *= unit
+            self.R *= unit
 
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', score_k=10, random_state=None):

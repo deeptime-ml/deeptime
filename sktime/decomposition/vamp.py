@@ -532,10 +532,8 @@ class VAMP(Estimator):
         self.lagtime = lagtime
         super(VAMP, self).__init__()
 
-    def _create_model(self) -> VAMPModel:
-        return VAMPModel(dim=self.dim, epsilon=self.epsilon, scaling=self.scaling, right=self.right)
-
     def fit(self, data, **kw):
+        self._model = VAMPModel(dim=self.dim, epsilon=self.epsilon, scaling=self.scaling, right=self.right)
         self._covar.fit(data, **kw)
         self.fetch_model()
         return self
@@ -552,6 +550,8 @@ class VAMP(Estimator):
         -----
         The projection matrix is first being calculated upon its first access.
         """
+        if self._model is None:
+            self._model = VAMPModel(dim=self.dim, epsilon=self.epsilon, scaling=self.scaling, right=self.right)
         self._covar.partial_fit(X)
         return self
 

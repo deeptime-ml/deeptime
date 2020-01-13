@@ -29,10 +29,13 @@ from msmtools.estimation import count_matrix, largest_connected_set, largest_con
 from msmtools.generation import generate_traj
 from msmtools.util.birth_death_chain import BirthDeathChain
 
+from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
+from sktime.datasets import double_well_discrete
 from sktime.lagged_model_validator import LaggedModelValidation
 from sktime.markovprocess import cktest
-from sktime.datasets import double_well_discrete
+from sktime.markovprocess.bayesian_hmsm import BayesianHMSM
 from tests.markovprocess.factory import bayesian_markov_model
+from tests.markovprocess.test_hmsm import estimate_hidden_markov_model
 from tests.markovprocess.test_msm import estimate_markov_model
 
 
@@ -178,11 +181,11 @@ class TestCK_AllEstimators(unittest.TestCase):
         estimator, BMSM = bayesian_markov_model(double_well_discrete().dtraj_n6good, 40, reversible=True,
                                                 return_estimator=True)
         # also ensure that reversible bit does not flip during cktest
-        assert BMSM.prior.reversible
+        assert BMSM.prior.is_reversible
         self.ck = cktest(test_estimator=estimator, test_model=BMSM.prior, dtrajs=double_well_discrete().dtraj_n6good,
                          nsets=2, mlags=[1, 10]).fetch_model()
         assert isinstance(self.ck, LaggedModelValidation)
-        assert BMSM.prior.reversible
+        assert BMSM.prior.is_reversible
         estref = np.array([
                            [[0.89722931, 0.10277069],
                             [0.10070029, 0.89929971]],
@@ -211,18 +214,17 @@ class TestCK_AllEstimators(unittest.TestCase):
         assert np.allclose(self.ck.predictions[0], predLref, rtol=0.1, atol=10.0)
         assert np.allclose(self.ck.predictions[1], predRref, rtol=0.1, atol=10.0)
 
-    @unittest.skip('hmsm not yet impled')
     def test_its_hmsm(self):
-        MLHMM = estimate_hidden_markov_model([double_well_discrete().dtraj_n6good], 2, 10)
-        self.ck = MLHMM.cktest(mlags=[0, 1, 10])
-        estref = np.array([[[1., 0.],
-                            [0., 1.]],
+        dtraj = [double_well_discrete().dtraj_n6good]
+        est = MaximumLikelihoodHMSM(n_states=2, lagtime=10)
+        MLHMM = est.fit(dtraj).fetch_model()
+        self.ck = cktest(test_estimator=est, test_model=MLHMM, dtrajs=dtraj, mlags=[1, 10], nsets=2).fetch_model()
+        estref = np.array([
                            [[0.98515058, 0.01484942],
                             [0.01442843, 0.98557157]],
                            [[0.88172685, 0.11827315],
                             [0.11878823, 0.88121177]]])
-        predref = np.array([[[1., 0.],
-                             [0., 1.]],
+        predref = np.array([
                             [[0.98515058, 0.01484942],
                              [0.01442843, 0.98557157]],
                             [[0.86961812, 0.13038188],
@@ -235,30 +237,26 @@ class TestCK_AllEstimators(unittest.TestCase):
         assert self.ck.predictions_conf[0] is None
         assert self.ck.predictions_conf[1] is None
 
-    @unittest.skip('hmsm not yet impled')
     def test_its_bhmm(self):
-        BHMM = msm.bayesian_hidden_markov_model([double_well_discrete().dtraj_n6good], 2, 10)
-        self.ck = BHMM.cktest(mlags=[0, 1, 10])
-        estref = np.array([[[1., 0.],
-                            [0., 1.]],
+        dtraj = double_well_discrete().dtraj_n6good
+        bhmm = BayesianHMSM.default(dtraj, n_states=2, lagtime=10).fit(dtrajs=dtraj)
+        self.ck = bhmm.cktest(dtraj, mlags=[1, 10])
+        estref = np.array([
                            [[0.98497185, 0.01502815],
                             [0.01459256, 0.98540744]],
                            [[0.88213404, 0.11786596],
                             [0.11877379, 0.88122621]]])
-        predref = np.array([[[1., 0.],
-                             [0., 1.]],
+        predref = np.array([
                             [[0.98497185, 0.01502815],
                              [0.01459256, 0.98540744]],
                             [[0.86824695, 0.13175305],
                              [0.1279342, 0.8720658]]])
-        predLref = np.array([[[1., 0.],
-                              [0., 1.]],
+        predLref = np.array([
                              [[0.98282734, 0.01284444],
                               [0.0123793, 0.98296742]],
                              [[0.8514399, 0.11369687],
                               [0.10984971, 0.85255827]]])
-        predRref = np.array([[[1., 0.],
-                              [0., 1.]],
+        predRref = np.array([
                              [[0.98715575, 0.01722138],
                               [0.0178059, 0.98762081]],
                              [[0.8865478, 0.14905352],
@@ -270,7 +268,6 @@ class TestCK_AllEstimators(unittest.TestCase):
         assert np.allclose(self.ck.predictions, predref, rtol=0.1, atol=10.0)
         assert np.allclose(self.ck.predictions[0], predLref, rtol=0.1, atol=10.0)
         assert np.allclose(self.ck.predictions[1], predRref, rtol=0.1, atol=10.0)
-
 
 if __name__ == "__main__":
     unittest.main()
