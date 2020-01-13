@@ -176,6 +176,7 @@ def cktest(test_estimator, test_model, dtrajs, nsets, memberships=None, mlags=10
             pcca = test_model.pcca(nsets)
             memberships = pcca.memberships
     except NotImplementedError:
+        # todo: ugh...
         memberships = np.eye(test_model.n_states)
 
     ck = ChapmanKolmogorovValidator(test_estimator=test_estimator, test_model=test_model, memberships=memberships,

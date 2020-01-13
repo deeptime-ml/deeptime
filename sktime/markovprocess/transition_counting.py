@@ -74,13 +74,10 @@ def cvsplit_dtrajs(dtrajs, random_state=None):
 
 class TransitionCountModel(Model):
     r""" Statistics, count matrices and connectivity from discrete trajectories
-
-    Operates sparse by default.
-
     """
 
     def __init__(self, lagtime=1, active_set=None, dt_traj='1 step',
-                 connected_sets=(), count_matrix=None, state_histogram=None) -> None:
+                 connected_sets=(), count_matrix=None, state_histogram=None):
         self._lag = Q_(lagtime)
         self._active_set = active_set
         self._dt_traj = Q_(dt_traj) if isinstance(dt_traj, (str, int)) else dt_traj
@@ -134,12 +131,7 @@ class TransitionCountModel(Model):
         """
         # compute connected dtrajs
         from sktime.markovprocess.sample import ensure_dtraj_list
-        dtrajs = ensure_dtraj_list(dtrajs)
-        dtrajs_active = [
-            self._full2lcs[dtraj]
-            for dtraj in dtrajs
-        ]
-        return dtrajs_active
+        return [self._full2lcs[dtraj] for dtraj in ensure_dtraj_list(dtrajs)]
 
     @property
     def count_matrix_active(self):

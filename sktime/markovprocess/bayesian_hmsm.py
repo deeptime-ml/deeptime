@@ -33,6 +33,8 @@ __all__ = [
     'BayesianHMSM',
 ]
 
+from sktime.markovprocess.util import compute_dtrajs_effective
+
 from ..base import Estimator
 
 
@@ -248,8 +250,9 @@ class BayesianHMSM(Estimator):
             self.stride = compute_effective_stride(dtrajs, self.lagtime, self.n_states)
 
         # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
-        dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(
-            dtrajs, lagtime=self.lagtime, n_states=self.n_states, stride=self.stride)
+        dtrajs_lagged_strided = compute_dtrajs_effective(
+            dtrajs, lagtime=self.lagtime, n_states=self.n_states, stride=self.stride
+        )
         if self.stride != init_stride:
             symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
             if not np.all(self.init_hmsm.count_model.symbols == symbols):

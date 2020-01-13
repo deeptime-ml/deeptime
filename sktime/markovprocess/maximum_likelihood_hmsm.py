@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -20,6 +19,7 @@ import warnings
 import numpy as np
 from msmtools.dtraj import number_of_states
 
+from markovprocess.util import compute_dtrajs_effective
 from sktime.base import Estimator
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess.bhmm import discrete_hmm, init_discrete_hmm
@@ -114,6 +114,7 @@ class MaximumLikelihoodHMSM(Estimator):
         stopped without convergence (a warning is given)
 
     """
+
     def __init__(self, n_states=2, lagtime=1, stride=1, msm_init='largest-strong', reversible=True, stationary=False,
                  connectivity=None, mincount_connectivity='1/n', observe_nonempty=True, separate=None,
                  dt_traj='1 step', accuracy=1e-3, maxit=1000):
@@ -148,9 +149,9 @@ class MaximumLikelihoodHMSM(Estimator):
                           f'{np.mean(trajlengths)}. It is recommended to fit four lag times in each '
                           'trajectory. HMM might be inaccurate.')
 
-        dtrajs_lagged_strided = HMMTransitionCountModel.compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                                                 n_states=self.n_states,
-                                                                                 stride=self.stride)
+        dtrajs_lagged_strided = compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
+                                                         n_states=self.n_states,
+                                                         stride=self.stride)
 
         # INIT HMM
         if isinstance(self.msm_init, str):
@@ -183,16 +184,17 @@ class MaximumLikelihoodHMSM(Estimator):
         # update the count matrix from the counts obtained via the Viterbi paths.
         hmm_count_model = HMMTransitionCountModel(stride=self.stride,
                                                   count_matrix=hmm.transition_counts,
-                                                  initial_count=hmm.initial_count, lagtime=self.lagtime,
+                                                  lagtime=self.lagtime,
                                                   dt_traj=self.dt_traj,
                                                   n_states=self.n_states,
+                                                  active_set=np.arange(self.n_states),
                                                   observable_set=np.arange(number_of_states(dtrajs_lagged_strided)),
-                                                  active_set=None,
                                                   symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
         # set model parameters
         self._model = HMSM(transition_matrix=hmm.transition_matrix,
                            observation_probabilities=hmm.output_model.output_probabilities,
                            pi=hmm.stationary_distribution,
+                           initial_counts=hmm.initial_count,
                            dt_model=hmm_count_model.dt_traj * self.lagtime,
                            reversible=self.reversible,
                            initial_distribution=hmm.initial_distribution, count_model=hmm_count_model,
@@ -222,7 +224,7 @@ class MaximumLikelihoodHMSM(Estimator):
                                       'the provided count_model of the MSM.')
         elif isinstance(value, str):
             supported = ('largest-strong', 'all')
-            if not value in supported:
+            if value not in supported:
                 raise NotImplementedError(f'unknown msm_init value, was "{value}",'
                                           f'but valid options are {supported}.')
         self._msm_init = value
@@ -386,4 +388,3 @@ class MaximumLikelihoodHMSM(Estimator):
                                         mlags=mlags, conf=conf, err_est=err_est)
         ck.fit(dtrajs)
         return ck.fetch_model()
-

@@ -29,6 +29,7 @@ from msmtools.estimation import count_matrix, largest_connected_set, largest_con
 from msmtools.generation import generate_traj
 from msmtools.util.birth_death_chain import BirthDeathChain
 
+from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 from sktime.datasets import double_well_discrete
 from sktime.lagged_model_validator import LaggedModelValidation
 from sktime.markovprocess import cktest
@@ -215,7 +216,14 @@ class TestCK_AllEstimators(unittest.TestCase):
 
     def test_its_hmsm(self):
         dtraj = [double_well_discrete().dtraj_n6good]
-        est, MLHMM = estimate_hidden_markov_model(dtraj, 2, 10, return_estimator=True)
+        est = MaximumLikelihoodHMSM(n_states=2, lagtime=10)
+        MLHMM = est.fit(dtraj).fetch_model()
+        states = MLHMM.states_largest()
+        obs = MLHMM.nonempty_obs(dtraj)
+        cktest(est, MLHMM, dtraj, )
+
+
+        # est, MLHMM = estimate_hidden_markov_model(dtraj, 2, 10, return_estimator=True)
         self.ck = cktest(test_estimator=est, test_model=MLHMM, dtrajs=dtraj, mlags=[1, 10], nsets=2).fetch_model()
         estref = np.array([
                            [[0.98515058, 0.01484942],

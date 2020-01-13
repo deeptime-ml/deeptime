@@ -20,6 +20,7 @@
 import numpy as np
 
 # BHMM imports
+from base import Model
 from sktime.base import Estimator
 from sktime.markovprocess.bhmm.estimators._tmatrix_disconnected import estimate_P, stationary_distribution
 from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
@@ -121,6 +122,9 @@ class MaximumLikelihoodHMM(Estimator):
     def maxit(self):
         r""" Maximum number of iterations """
         return self._maxit
+
+    def fetch_model(self) -> HMM:
+        return self._model
 
     def _forward_backward(self, obs, alpha, beta, gamma, pobs, counts):
         """

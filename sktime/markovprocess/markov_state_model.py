@@ -63,7 +63,7 @@ class MarkovStateModel(Model):
         *  'ms',  'millisecond*'
         *  's',   'second*'
 
-    neig : int or None
+    n_eigenvalues : int or None
         The number of eigenvalues / eigenvectors to be kept. If set to None,
         defaults will be used. For a dense MarkovStateModel the default is all eigenvalues.
         For a sparse MarkovStateModel the default is 10.
@@ -75,7 +75,7 @@ class MarkovStateModel(Model):
 
     """
     def __init__(self, transition_matrix, pi=None, reversible=None,
-                 dt_model='1 step', neig=None, ncv=None, count_model=None):
+                 dt_model='1 step', n_eigenvalues=None, ncv=None, count_model=None):
         self.ncv = ncv
         # we set reversible first, so it can be derived from transition_matrix, if None was given.
         self._is_reversible = reversible
@@ -85,7 +85,7 @@ class MarkovStateModel(Model):
         # pi might be derived from transition_matrix, if None was given.
         self.stationary_distribution = pi
         self.dt_model = dt_model
-        self.neig = neig
+        self.n_eigenvalues = n_eigenvalues
         self._count_model = count_model
 
     ################################################################################
@@ -150,12 +150,12 @@ class MarkovStateModel(Model):
         self._n_states = n
 
     @property
-    def neig(self):
+    def n_eigenvalues(self):
         """ number of eigenvalues to compute. """
         return self._neig
 
-    @neig.setter
-    def neig(self, value):
+    @n_eigenvalues.setter
+    def n_eigenvalues(self, value):
         # set or correct eig param
         if value is None:
             if self.transition_matrix is not None:
@@ -219,7 +219,7 @@ class MarkovStateModel(Model):
     def _ensure_eigenvalues(self, neig=None):
         """ Ensures that at least neig eigenvalues have been computed """
         if neig is None:
-            neig = self.neig
+            neig = self.n_eigenvalues
         # ensure that eigenvalue decomposition with k components is done.
         try:
             m = len(self._eigenvalues)  # this will raise and exception if self._eigenvalues doesn't exist yet.
@@ -262,7 +262,7 @@ class MarkovStateModel(Model):
 
         """
         if neig is None:
-            neig = self.neig
+            neig = self.n_eigenvalues
         # ensure that eigenvalue decomposition with k components is done.
         try:
             m = self._D.shape[0]  # this will raise and exception if self._D doesn't exist yet.

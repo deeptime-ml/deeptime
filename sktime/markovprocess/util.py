@@ -70,7 +70,7 @@ def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
     lagtime : int
         Lagtime
     n_states : int
-        Target number of states
+        Number of resolved states
 
     Returns
     -------
@@ -98,3 +98,63 @@ def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
         stride = int(min(lagtime, 2 * correlation_time))
 
     return stride
+
+
+def lag_observations(observations, lag, stride=1):
+    r""" Create new trajectories that are subsampled at lag but shifted
+
+    Given a trajectory (s0, s1, s2, s3, s4, ...) and lag 3, this function will generate 3 trajectories
+    (s0, s3, s6, ...), (s1, s4, s7, ...) and (s2, s5, s8, ...). Use this function in order to parametrize a MLE
+    at lag times larger than 1 without discarding data. Do not use this function for Bayesian estimators, where
+    data must be given such that subsequent transitions are uncorrelated.
+
+    Parameters
+    ----------
+    observations : array_like or list of array_like
+        observation trajectories
+    lag : int
+        lag time
+    stride : int, default=1
+        will return only one trajectory for every stride. Use this for Bayesian analysis.
+
+    """
+    # todo cppify
+    observations = ensure_dtraj_list(observations)
+    obsnew = []
+    for obs in observations:
+        for shift in range(0, lag, stride):
+            obs_lagged = obs[shift::lag]
+            if len(obs_lagged) > 1:
+                obsnew.append(obs_lagged)
+    return obsnew
+
+
+def compute_dtrajs_effective(dtrajs, lagtime, n_states, stride):
+    r"""
+    Takes discrete trajectories as input and strides these with an effective stride. See methods
+    `compute_effective_stride` and `lag_observations`.
+
+
+    Parameters
+    ----------
+    dtrajs : array_like or list of array_like
+        discrete trajectories
+    lagtime : int
+        lagtime
+    n_states : int
+        number of resolved states
+    stride : int or str
+        if 'effective', computes effective stride, otherwise uses int value
+
+    Returns
+    -------
+    Lagged and stridden observations.
+    """
+    lagtime = int(lagtime)
+    # EVALUATE STRIDE
+    if stride == 'effective':
+        stride = compute_effective_stride(dtrajs, lagtime, n_states)
+
+    # LAG AND STRIDE DATA
+    dtrajs_lagged_strided = lag_observations(dtrajs, lagtime, stride=stride)
+    return dtrajs_lagged_strided

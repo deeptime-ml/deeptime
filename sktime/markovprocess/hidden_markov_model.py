@@ -17,12 +17,10 @@
 
 import numpy as np
 import typing
-from msmtools.dtraj import index_states
 
 from sktime.markovprocess import MarkovStateModel, transition_counting
-from sktime.markovprocess.bhmm import lag_observations
 from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
-from sktime.markovprocess.util import count_states
+from sktime.markovprocess.util import count_states, compute_dtrajs_effective
 from sktime.numeric import mdot
 from sktime.util import ensure_ndarray, ensure_dtraj_list
 
@@ -30,15 +28,13 @@ from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM as BHMM_HMM
 
 
 class HMMTransitionCountModel(transition_counting.TransitionCountModel):
-    def __init__(self, n_states=None, observable_set: typing.Optional[np.ndarray]=None,
-                 stride=1, initial_count=None, symbols=None,
+    def __init__(self, n_states=None, observable_set: typing.Optional[np.ndarray] = None,
+                 stride=1, symbols=None,
                  lagtime=1, active_set=None, dt_traj='1 step',
-                 connected_sets=(), count_matrix=None, state_histogram=None):
+                 connected_sets=(), count_matrix=None):
         super(HMMTransitionCountModel, self).__init__(lagtime=lagtime, active_set=active_set, dt_traj=dt_traj,
-                                                      connected_sets=connected_sets, count_matrix=count_matrix,
-                                                      state_histogram=state_histogram)
+                                                      connected_sets=connected_sets, count_matrix=count_matrix)
 
-        self.initial_count = initial_count
         self._n_states_full = n_states
         self._observable_set = observable_set
         self._n_states_obs = observable_set.size
@@ -56,15 +52,6 @@ class HMMTransitionCountModel(transition_counting.TransitionCountModel):
         return self._symbols
 
     @property
-    def initial_count(self):
-        """ hidden init count """
-        return self._initial_counts
-
-    @initial_count.setter
-    def initial_count(self, value):
-        self._initial_counts = value
-
-    @property
     def count_matrix(self):
         """ Hidden count matrix consistent with transition matrix """
         return super(HMMTransitionCountModel, self).count_matrix
@@ -76,18 +63,6 @@ class HMMTransitionCountModel(transition_counting.TransitionCountModel):
     @property
     def observable_set(self):
         return self._observable_set
-
-    @staticmethod
-    def compute_dtrajs_effective(dtrajs, lagtime, n_states, stride):
-        lagtime = int(lagtime)
-        # EVALUATE STRIDE
-        if stride == 'effective':
-            from sktime.markovprocess.util import compute_effective_stride
-            stride = compute_effective_stride(dtrajs, lagtime, n_states)
-
-        # LAG AND STRIDE DATA
-        dtrajs_lagged_strided = lag_observations(dtrajs, lagtime, stride=stride)
-        return dtrajs_lagged_strided
 
 
 class HMSM(MarkovStateModel):
@@ -107,7 +82,7 @@ class HMSM(MarkovStateModel):
     dt_model : str, optional, default='1 step'
         time step of the model
 
-    neig:
+    n_eigenvalues:
 
     reversible:
 
@@ -116,13 +91,10 @@ class HMSM(MarkovStateModel):
     """
 
     def __init__(self, transition_matrix, observation_probabilities, pi=None, dt_model='1 step',
-                 neig=None, reversible=None, count_model=None, initial_distribution=None, bhmm_model : BHMM_HMM = None):
-        if count_model is None:
-            count_model = HMMTransitionCountModel()
-
-        # construct superclass and check input
+                 n_eigenvalues=None, reversible=None, count_model=None, initial_distribution=None, initial_counts=None,
+                 bhmm_model : BHMM_HMM = None):
         super(HMSM, self).__init__(transition_matrix=transition_matrix, pi=pi, dt_model=dt_model,
-                                   reversible=reversible, neig=neig, count_model=count_model)
+                                   reversible=reversible, n_eigenvalues=n_eigenvalues, count_model=count_model)
 
         # assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
         observation_probabilities = ensure_ndarray(observation_probabilities, ndim=2, dtype=np.float64)
@@ -130,7 +102,22 @@ class HMSM(MarkovStateModel):
         self._n_states_obs = observation_probabilities.shape[1]
         self._observation_probabilities = observation_probabilities
         self._initial_distribution = initial_distribution
+        self._initial_counts = initial_counts
         self._hmm = bhmm_model
+
+    @property
+    def initial_counts(self) -> typing.List[np.ndarray]:
+        """
+        Hidden initial counts.
+        Returns
+        -------
+        initial counts
+        """
+        return self._initial_counts
+
+    @initial_counts.setter
+    def initial_counts(self, value):
+        self._initial_counts = value
 
     @property
     def bhmm_model(self) -> BHMM_HMM:
@@ -219,7 +206,7 @@ class HMSM(MarkovStateModel):
         P /= P.sum(axis=1)[:, None]
         C = C[np.ix_(states, states)]
         pi = _tmatrix_disconnected.stationary_distribution(P, C)
-        initial_count = self.count_model.initial_count[states].copy()
+        initial_count = self.initial_counts[states].copy()
         initial_distribution = self.initial_distribution[states] / self.initial_distribution[states].sum()
 
         # # full2active mapping
@@ -237,12 +224,12 @@ class HMSM(MarkovStateModel):
         count_model = HMMTransitionCountModel(
             n_states=self.count_model.n_states_full, observable_set=obs,
             stride=self.count_model.stride, symbols=self.count_model.symbols, dt_traj=self.count_model.dt_traj,
-            state_histogram=self.count_model.state_histogram,
-            initial_count=initial_count, active_set=states,
-            connected_sets=S, count_matrix=C, lagtime=self.count_model.lagtime
+            active_set=states, connected_sets=S, count_matrix=C, lagtime=self.count_model.lagtime
         )
-        model = HMSM(transition_matrix=P, observation_probabilities=B, pi=pi, dt_model=self.dt_model, neig=self.neig,
+        model = HMSM(transition_matrix=P, observation_probabilities=B, pi=pi, dt_model=self.dt_model,
+                     n_eigenvalues=self.n_eigenvalues,
                      reversible=self.is_reversible, count_model=count_model,
+                     initial_counts=initial_count,
                      initial_distribution=initial_distribution, bhmm_model=self.bhmm_model)
         return model
 
@@ -266,7 +253,7 @@ class HMSM(MarkovStateModel):
         if dtrajs is None:
             raise ValueError("Needs nonempty dtrajs to evaluate nonempty obs.")
         dtrajs = ensure_dtraj_list(dtrajs)
-        dtrajs_lagged_strided = self.count_model.compute_dtrajs_effective(
+        dtrajs_lagged_strided = compute_dtrajs_effective(
             dtrajs, self.count_model.lagtime, self.count_model.n_states_full, self.count_model.stride
         )
         obs = np.where(count_states(dtrajs_lagged_strided) > 0)[0]
