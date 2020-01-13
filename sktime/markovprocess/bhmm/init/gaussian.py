@@ -39,7 +39,7 @@ def init_model_gaussian1d(observations, n_states, lag, reversible=True):
 
     >>> from sktime.markovprocess.bhmm import testsystems
     >>> model, observations, states = testsystems.generate_synthetic_observations(output='gaussian')
-    >>> initial_model = init_model_gaussian1d(observations, model.n_states)
+    >>> initial_model = init_model_gaussian1d(observations, model.n_states, lag=1)
 
     """
     # Concatenate all observations.
