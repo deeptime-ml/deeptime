@@ -122,14 +122,12 @@ class TransitionCountModel(Model):
         For example, for connectivity='largest', the indexes will be given within the connected set.
         Frames that are not in the connected set will be -1.
         """
-        # compute connected dtrajs
-        if self.active_set is not None:
+        if self.active_set is not None and len(self.active_set) < self.n_states_full:
             mapping = -1 * np.ones(self.n_states, dtype=np.int32)
             mapping[self.active_set] = np.arange(len(self.active_set))
             return [mapping[dtraj] for dtraj in ensure_dtraj_list(dtrajs)]
         else:
             return dtrajs
-
 
     @property
     def count_matrix_active(self):
@@ -207,7 +205,12 @@ class TransitionCountModel(Model):
         """ Histogram of discrete state counts"""
         return self._hist
 
-    # todo: rename to subselect_count_matrix
+    def aggregate(self, memberships):
+        pass
+
+    def submodel(self, states):
+        pass
+
     def subselect_count_matrix(self, connected_set=None, subset=None, effective=False):
         r"""The count matrix
 
@@ -328,8 +331,22 @@ class TransitionCountEstimator(Estimator):
         return S
 
     @staticmethod
-    def _prepare_input_revpi(C, pi):
-        """Max. state index visited by trajectories"""
+    def states_revpi(C, pi):
+        r"""
+        Compute states so that the subselected model is defined on the intersection of the states with positive
+        stationary vector and the largest connected set (undirected).
+
+        Parameters
+        ----------
+        C : (M, M) ndarray
+            count matrix
+        pi : (M,) ndarray
+            stationary vector on full set of states
+
+        Returns
+        -------
+        active set
+        """
         nC = C.shape[0]
         # Max. state index of the stationary vector array
         npi = pi.shape[0]
@@ -337,7 +354,7 @@ class TransitionCountEstimator(Estimator):
         if nC > npi:
             raise ValueError('There are visited states for which no stationary probability is given')
         # Reduce pi to the visited set
-        pi_visited = pi[0:nC]
+        pi_visited = pi[:nC]
         # Find visited states with positive stationary probabilities"""
         pos = np.where(pi_visited > 0.0)[0]
         # Reduce C to positive probability states"""
@@ -380,18 +397,9 @@ class TransitionCountEstimator(Estimator):
         # Compute reversibly connected sets
         connected_sets = self._compute_connected_sets(count_matrix, self.mincount_connectivity, strong=True)
 
-        if self.stationary_dist_constraint is not None:
-            active_set = self._prepare_input_revpi(count_matrix, self.stationary_dist_constraint)
-        else:
-            # largest connected set
-            active_set = connected_sets[0]
-
-        # if active set has no counts, make it empty
-        if submatrix(count_matrix, active_set).sum() == 0:
-            active_set = np.empty(0, dtype=int)
-
+        n_states = count_matrix.shape[0]
         self._model = TransitionCountModel(
-            lagtime=lagtime, active_set=active_set, dt_traj=self.dt_traj,
+            lagtime=lagtime, active_set=np.arange(n_states), dt_traj=self.dt_traj,
             connected_sets=connected_sets, count_matrix=count_matrix,
             state_histogram=histogram
         )

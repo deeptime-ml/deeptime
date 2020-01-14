@@ -36,7 +36,7 @@ def bmsm_double_well(lagtime=100, nsamples=100, reversible=True, constrain_to_co
     obs_micro = datasets.double_well_discrete().dtraj
 
     # stationary distribution
-    pi_micro = datasets.double_well_discrete().msm.stationary_distribution
+    pi_micro = datasets.double_well_discrete().analytic_msm.stationary_distribution
     pi_macro = np.zeros(2)
     pi_macro[0] = pi_micro[0:50].sum()
     pi_macro[1] = pi_micro[50:].sum()

@@ -28,7 +28,7 @@ class DoubleWellDiscrete(object):
     def __init__(self):
         dtraj, msm = _load_double_well_discrete()
         self._dtraj = dtraj
-        self._msm = msm
+        self._analytic_msm = msm
 
     @property
     def dtraj(self):
@@ -65,12 +65,12 @@ class DoubleWellDiscrete(object):
     @property
     def transition_matrix(self):
         """ Exact transition matrix used to generate the data """
-        return self.msm.transition_matrix
+        return self.analytic_msm.transition_matrix
 
     @property
-    def msm(self):
+    def analytic_msm(self):
         """ Returns an MSM object with the exact transition matrix """
-        return self._msm
+        return self._analytic_msm
 
     def simulate_trajectory(self, n_steps, start=None, stop=None, dt=1) -> _np.ndarray:
         """
@@ -85,7 +85,7 @@ class DoubleWellDiscrete(object):
         -------
         a discrete trajectory
         """
-        return self.msm.simulate(n_steps, start=start, stop=stop, dt=dt)
+        return self.analytic_msm.simulate(n_steps, start=start, stop=stop, dt=dt)
 
     def simulate_trajectories(self, n_trajectories: int, n_steps: int,
                               start=None, stop=None, dt=1) -> List[_np.ndarray]:

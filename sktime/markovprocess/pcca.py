@@ -54,7 +54,7 @@ def pcca(P, m):
 
     # coarse-grained transition matrix
     W = np.linalg.inv(np.dot(M.T, M))
-    A = np.dot(np.dot(M.T, P),M)
+    A = np.dot(np.dot(M.T, P), M)
     P_coarse = np.dot(W, A)
 
     # symmetrize and renormalize to eliminate numerical errors
@@ -65,7 +65,6 @@ def pcca(P, m):
 
 
 class PCCAModel(Model):
-
     """
     Model for PCCA+ spectral clustering method with optimized memberships [1]_
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
@@ -80,7 +79,7 @@ class PCCAModel(Model):
         Coarse stationary distribution
     memberships : ndarray (n,m)
         The pcca memberships to clusters
-    B : ndarray (m, n)
+    metastable_distributions : ndarray (m, n)
         metastable distributions
 
     References
@@ -92,12 +91,13 @@ class PCCAModel(Model):
         Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
         J. Chem. Phys. 139, 184114 (2013)
     """
-    def __init__(self, P_coarse, pi_coarse, memberships, B):
+
+    def __init__(self, P_coarse, pi_coarse, memberships, metastable_distributions):
         self._P_coarse = P_coarse
         self._pi_coarse = pi_coarse
-        self._M = memberships
-        self._B = B
-        self.m = self._M.shape[1]
+        self._memberships = memberships
+        self._metastable_distributions = metastable_distributions
+        self.m = self._memberships.shape[1]
 
     @property
     def n_metastable(self):
@@ -116,7 +116,7 @@ class PCCAModel(Model):
             assigned to each metastable set, i.e. p(metastable | state).
             The row sums of M are 1.
         """
-        return self._M
+        return self._memberships
 
     @property
     def distributions(self):
@@ -133,7 +133,7 @@ class PCCAModel(Model):
             state, given that we are in one of the m metastable sets,
             i.e. p(state | metastable). The row sums of p_out are 1.
         """
-        return self._B
+        return self._metastable_distributions
 
     output_probabilities = distributions
 

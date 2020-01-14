@@ -85,7 +85,7 @@ class KmeansClustering(Estimator, Transformer):
             This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
             the centers are directly passed to the kmeans iteration algorithm.
         """
-
+        super(KmeansClustering, self).__init__()
         if n_jobs is None:
             # todo: sensible choice?
             # todo in sklearn: None -> 1 job, -1 -> all cpus (logical)
@@ -104,8 +104,6 @@ class KmeansClustering(Estimator, Transformer):
         self.random_state = random_state
         self.n_jobs = n_jobs
         self.initial_centers = initial_centers
-
-        super(KmeansClustering, self).__init__()
 
     def fetch_model(self) -> KMeansClusteringModel:
         return self._model

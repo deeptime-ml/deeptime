@@ -879,9 +879,8 @@ class MarkovStateModel(Model):
         netflux = to_netflux(grossflux)
 
         # construct flux object
-        F = ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux,
-                         dt_model=self.dt_model)
-        return F
+        return ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux,
+                            dt_model=self.dt_model)
 
     def simulate(self, N, start=None, stop=None, dt=1):
         """
