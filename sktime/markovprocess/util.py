@@ -21,14 +21,14 @@ def visited_set(dtrajs):
     return np.argwhere(hist > 0)[:, 0]
 
 
-def count_states(dtrajs, ignore_negative=False):
-    r"""returns a count histogram
+def count_states(dtrajs, ignore_negative: bool = False):
+    r"""Computes a histogram over the visited states in one or multiple discretized trajectories.
 
     Parameters
     ----------
     dtrajs : array_like or list of array_like
         Discretized trajectory or list of discretized trajectories
-    ignore_negative, bool, default=False
+    ignore_negative : bool, default=False
         Ignore negative elements. By default, a negative element will cause an
         exception
 
@@ -38,21 +38,21 @@ def count_states(dtrajs, ignore_negative=False):
         the number of occurrences of each state. n=max+1 where max is the largest state index found.
 
     """
-    # make bincounts for each input trajectory
     dtrajs = ensure_dtraj_list(dtrajs)
-    nmax = 0
-    bcs = []
-    for dtraj in dtrajs:
+
+    max_n_states = 0
+    histograms = []
+    for discrete_trajectory in dtrajs:
         if ignore_negative:
-            dtraj = dtraj[np.where(dtraj >= 0)]
-        bc = np.bincount(dtraj)
-        nmax = max(nmax, bc.shape[0])
-        bcs.append(bc)
-    # construct total bincount
-    res = np.zeros(nmax, dtype=int)
-    # add up individual bincounts
-    for i, bc in enumerate(bcs):
-        res[:bc.shape[0]] += bc
+            discrete_trajectory = discrete_trajectory[np.where(discrete_trajectory >= 0)]
+        trajectory_histogram = np.bincount(discrete_trajectory)
+        max_n_states = max(max_n_states, trajectory_histogram.shape[0])
+        histograms.append(trajectory_histogram)
+    # allocate space for histogram
+    res = np.zeros(max_n_states, dtype=int)
+    # aggregate histograms over trajectories
+    for trajectory_histogram in histograms:
+        res[:trajectory_histogram.shape[0]] += trajectory_histogram
     return res
 
 

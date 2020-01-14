@@ -648,7 +648,7 @@ class TestMSMDoubleWell(unittest.TestCase):
     def _pcca_distributions(self, msm):
         if msm.is_reversible:
             pcca = msm.pcca(2)
-            pccadist = pcca.distributions
+            pccadist = pcca.metastable_distributions
             # should be right size
             assert (np.all(pccadist.shape == (2, msm.n_states)))
             # should be nonnegative

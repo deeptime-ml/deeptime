@@ -134,7 +134,6 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     def fit(self, dtrajs, y=None):
         count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
-                                               mincount_connectivity=self.mincount_connectivity,
                                                stationary_dist_constraint=self.statdist_constraint) \
             .fit(dtrajs).fetch_model()
 
@@ -145,18 +144,19 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
                              "not be estimated")
 
         # if active set is empty, we can't do anything.
-        if count_model.active_set.size == 0:
-            raise RuntimeError('Active set is empty. Cannot estimate MarkovStateModel.')
+        #if count_model.active_set.size == 0:
+        #    raise RuntimeError('Active set is empty. Cannot estimate MarkovStateModel.')
 
         # active count matrix and number of states
-        C_active = count_model.count_matrix_active
+        count_matrix = count_model.count_matrix
+        # C_active = count_model.count_matrix_active
 
         # continue sparse or dense?
         if not self.sparse:
             # converting count matrices to arrays. As a result the
             # transition matrix and all subsequent properties will be
             # computed using dense arrays and dense matrix algebra.
-            C_active = C_active.toarray()
+            count_matrix = count_matrix.toarray()
 
         # restrict stationary distribution to active set
         if self.statdist_constraint is None:
@@ -172,7 +172,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             opt_args['return_statdist'] = True
 
         # Estimate transition matrix
-        P = msmest.transition_matrix(C_active, reversible=self.reversible,
+        P = msmest.transition_matrix(count_matrix, reversible=self.reversible,
                                      mu=statdist_active, maxiter=self.maxiter,
                                      maxerr=self.maxerr, **opt_args)
         # msmtools returns a tuple for statdist_active=None.

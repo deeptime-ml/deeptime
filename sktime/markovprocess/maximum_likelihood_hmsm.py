@@ -189,7 +189,7 @@ class MaximumLikelihoodHMSM(Estimator):
                                                   n_states=self.n_states,
                                                   active_set=np.arange(self.n_states),
                                                   observable_set=np.arange(number_of_states(dtrajs_lagged_strided)),
-                                                  symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
+                                                  state_symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
         # set model parameters
         self._model = HMSM(transition_matrix=hmm.transition_matrix,
                            observation_probabilities=hmm.output_model.output_probabilities,

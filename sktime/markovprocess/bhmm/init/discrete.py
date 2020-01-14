@@ -296,7 +296,7 @@ def init_discrete_hmm_spectral(C_full, n_states, reversible=True, stationary=Tru
         assert np.all(msm.stationary_distribution > 0)
         pcca_obj = msm.pcca(m=nmeta)
         M_active_nonseparate = pcca_obj.memberships  # memberships
-        B_active_nonseparate = pcca_obj.distributions  # output probabilities
+        B_active_nonseparate = pcca_obj.metastable_distributions  # output probabilities
     else:  # equal size
         M_active_nonseparate = np.eye(nmeta)
         B_active_nonseparate = np.eye(nmeta)

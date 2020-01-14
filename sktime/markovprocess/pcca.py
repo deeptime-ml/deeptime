@@ -1,4 +1,5 @@
 import warnings
+from typing import List
 
 import numpy as np
 
@@ -119,7 +120,7 @@ class PCCAModel(Model):
         return self._memberships
 
     @property
-    def distributions(self):
+    def metastable_distributions(self):
         r""" Probability of metastable states to visit an MarkovStateModel state by PCCA+
 
         Returns the probability distributions of active set states within
@@ -135,8 +136,6 @@ class PCCAModel(Model):
         """
         return self._metastable_distributions
 
-    output_probabilities = distributions
-
     @property
     def coarse_grained_transition_matrix(self):
         return self._P_coarse
@@ -146,7 +145,7 @@ class PCCAModel(Model):
         return self._pi_coarse
 
     @property
-    def assignments(self):
+    def assignments(self) -> np.ndarray:
         """ Assignment of states to metastable sets using PCCA++
 
         Computes the assignment to metastable sets for active set states using
@@ -165,7 +164,7 @@ class PCCAModel(Model):
         return np.argmax(self.memberships, axis=1)
 
     @property
-    def sets(self):
+    def sets(self) -> List[np.ndarray]:
         """ Metastable sets using PCCA+
 
         Computes the metastable sets of active set states within each
