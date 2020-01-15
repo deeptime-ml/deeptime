@@ -22,7 +22,7 @@ from msmtools import estimation as msmest
 from sktime.markovprocess import Q_
 from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
-from sktime.markovprocess.transition_counting import TransitionCountEstimator, TransitionCountModel
+from sktime.markovprocess.transition_counting import TransitionCountModel
 
 __all__ = ['MaximumLikelihoodMSM']
 
@@ -116,6 +116,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     """
 
+    _MUTABLE_INPUT_DATA = True
+
     def __init__(self, lagtime: int = 1, reversible: bool = True,
                  stationary_distribution_constraint: Optional[np.ndarray] = None,
                  count_mode: str = 'sliding', sparse: bool = False,
@@ -161,27 +163,30 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             value = np.copy(value) / np.sum(value)
         self._stationary_distribution_constraint = value
 
+    def fetch_model(self) -> MarkovStateModel:
+        return self._model
+
     def fit(self, data, **kw):
-        if not isinstance(data, TransitionCountModel):
-            count_model = TransitionCountEstimator(
-                lagtime=self.lagtime, count_mode=self.count_mode, physical_time=self.physical_time
-            ).fit(data).fetch_model()
+        if not isinstance(data, (TransitionCountModel, np.ndarray)):
+            raise ValueError("Can only fit on a TransitionCountModel or a count matrix directly.")
+
+        if isinstance(data, np.ndarray):
+            if data.ndim != 2 or data.shape[0] != data.shape[1] or np.any(data < 0.):
+                raise ValueError("If fitting a count matrix directly, only non-negative square matrices can be used.")
+            count_model = TransitionCountModel(data)
         else:
             count_model = data
 
-        if self.statdist_constraint is not None and count_model.count_matrix.sum() == 0.0:
-            raise ValueError("The set of states with positive stationary"
-                             "probabilities is not visited by the trajectories. A MarkovStateModel"
-                             "reversible with respect to the given stationary vector can"
-                             "not be estimated")
+        if self.stationary_distribution_constraint is not None:
+            if np.any(self.stationary_distribution_constraint[count_model.state_symbols]) == 0.:
+                raise ValueError("The count matrix contains symbols that have no probability in the stationary "
+                                 "distribution constraint.")
+            if count_model.count_matrix.sum() == 0.0:
+                raise ValueError("The set of states with positive stationary probabilities is not visited by the "
+                                 "trajectories. A MarkovStateModel reversible with respect to the given stationary"
+                                 " vector can not be estimated")
 
-        # if active set is empty, we can't do anything.
-        #if count_model.active_set.size == 0:
-        #    raise RuntimeError('Active set is empty. Cannot estimate MarkovStateModel.')
-
-        # active count matrix and number of states
         count_matrix = count_model.count_matrix
-        # C_active = count_model.count_matrix_active
 
         # continue sparse or dense?
         if not self.sparse:
@@ -190,12 +195,14 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             # computed using dense arrays and dense matrix algebra.
             count_matrix = count_matrix.toarray()
 
+        if not msmest.is_connected(count_matrix, directed=True):
+            raise ValueError("Can only estimate ML-MSM on count matrices which are reversibly connected!")
+
         # restrict stationary distribution to active set
-        if self.statdist_constraint is None:
+        if self.stationary_distribution_constraint is None:
             statdist_active = None
         else:
-            statdist_active = self.statdist_constraint[count_model.active_set]
-            assert np.all(statdist_active > 0.0)
+            statdist_active = self.statdist_constraint[count_model.state_symbols]
             statdist_active /= statdist_active.sum()  # renormalize
 
         opt_args = {}

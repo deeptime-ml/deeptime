@@ -162,7 +162,7 @@ def compute_dtrajs_effective(dtrajs, lagtime: Union[int, Q_], n_states: int, str
     return dtrajs_lagged_strided
 
 
-def compute_connected_sets(C, mincount_connectivity, directed=True):
+def compute_connected_sets(C, connectivity_threshold, directed=True):
     """ Computes the connected sets of a count matrix C.
 
     C : (N, N) np.ndarray
@@ -178,14 +178,14 @@ def compute_connected_sets(C, mincount_connectivity, directed=True):
     """
     import msmtools.estimation as msmest
     import scipy.sparse as scs
-    if mincount_connectivity > 0:
+    if connectivity_threshold > 0:
         if scs.issparse(C):
             Cconn = C.tocsr(copy=True)
-            Cconn.data[Cconn.data < mincount_connectivity] = 0
+            Cconn.data[Cconn.data < connectivity_threshold] = 0
             Cconn.eliminate_zeros()
         else:
             Cconn = C.copy()
-            Cconn[np.where(Cconn < mincount_connectivity)] = 0
+            Cconn[np.where(Cconn < connectivity_threshold)] = 0
     else:
         Cconn = C
     # treat each connected set separately
