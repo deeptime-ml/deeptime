@@ -59,6 +59,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         * 'effective' : Uses an estimate of the transition counts that are
           statistically uncorrelated. Recommended when used with a
           Bayesian MarkovStateModel.
+
         * 'sample' : A trajectory of length T will have :math:`T/tau` counts
           at time indexes
 

@@ -60,8 +60,8 @@ class TransitionCountModel(Model):
             Histogram over all state symbols. If None, the provided state_histogram  is assumed to take that role.
         """
 
-        if count_matrix is None or not isinstance(count_matrix, (np.ndarray, coo_matrix)):
-            raise ValueError("count matrix needs to be an ndarray but was {}".format(count_matrix))
+        if count_matrix is None:
+            raise ValueError("count matrix was None")
 
         self._count_matrix = count_matrix
         self._counting_mode = counting_mode
@@ -250,7 +250,8 @@ class TransitionCountModel(Model):
     def submodel_largest(self, connectivity_threshold: Union[None, float] = 0., directed: bool = False):
         r"""
         Restricts this model to the submodel corresponding to the largest connected set of states after eliminating
-        states that fall below the specified connectivity threshold.
+        states that fall below the specified connectivity threshold. Additionally a stationary distribution constraint
+        can be given so that the submodel is defined only defined on states with positive stationary vector.
         
         Parameters
         ----------
@@ -270,6 +271,23 @@ class TransitionCountModel(Model):
         largest_connected_set = connected_sets[0]
         return self.submodel(largest_connected_set)
 
+    def submodel_largest_stationary_distribution_constraint(self, stationary_vector):
+        r"""
+        Restricts the model so that its states are the intersection of the states with positive stationary vector
+        and the largest connected set (undirected).
+
+        Parameters
+        ----------
+        stationary_vector : (N, ) np.ndarray
+            stationary vector over the states of this count model
+
+        Returns
+        -------
+        a model on the largest connected set restricted to positive stationary vector components
+        """
+        states = self.states_largest_stationary_constraint(stationary_vector)
+        return self.submodel(states)
+
     def count_matrix_histogram(self) -> np.ndarray:
         r"""
         Computes a histogram over states represented in the count matrix. The magnitude of the values returned values
@@ -281,42 +299,36 @@ class TransitionCountModel(Model):
         return self.count_matrix.sum(axis=1)
 
     @property
-    def visited_set(self):
+    def visited_set(self) -> np.ndarray:
         """ The set of visited states. """
         return np.argwhere(self.state_histogram > 0)[:, 0]
 
-    @staticmethod
-    def states_revpi(C, pi):
+    def states_largest_stationary_constraint(self, stationary_vector) -> np.ndarray:
         r"""
-        Compute states so that the subselected model is defined on the intersection of the states with positive
-        stationary vector and the largest connected set (undirected).
+        Compute states so that a restriction to these yields a model defined on the intersection of the states
+        with positive stationary vector and the largest connected set (undirected).
 
         Parameters
         ----------
-        C : (M, M) ndarray
-            count matrix
-        pi : (M,) ndarray
+        stationary_vector : (M,) ndarray
             stationary vector on full set of states
 
         Returns
         -------
-        active set
+        set of states
         """
-        nC = C.shape[0]
-        # Max. state index of the stationary vector array
-        npi = pi.shape[0]
         # pi has to be defined on all states visited by the trajectories
-        if nC > npi:
+        if self.n_states > stationary_vector.shape[0]:
             raise ValueError('There are visited states for which no stationary probability is given')
         # Reduce pi to the visited set
-        pi_visited = pi[:nC]
-        # Find visited states with positive stationary probabilities"""
+        pi_visited = stationary_vector[:self.n_states]
+        # Find visited states with positive stationary probabilities
         pos = np.where(pi_visited > 0.0)[0]
-        # Reduce C to positive probability states"""
-        C_pos = msmest.largest_connected_submatrix(C, lcc=pos)
-        # Compute largest connected set of C_pos, undirected connectivity"""
-        lcc = msmest.largest_connected_set(C_pos, directed=False)
-        return pos[lcc]
+        # Reduce C to positive probability states
+        sub_count_matrix = msmest.largest_connected_submatrix(self.count_matrix, lcc=pos)
+        # Compute largest connected set of C_pos, undirected connectivity
+        largest_connected_set = msmest.largest_connected_set(sub_count_matrix, directed=False)
+        return pos[largest_connected_set]
 
 
 class TransitionCountEstimator(Estimator):
@@ -350,7 +362,7 @@ class TransitionCountEstimator(Estimator):
         J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
     """
 
-    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step', stationary_dist_constraint=None):
+    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step'):
         r"""
         Constructs a transition count estimator that can be used to estimate ``TransitionCountModel``s.
 
@@ -401,7 +413,7 @@ class TransitionCountEstimator(Estimator):
         return self._physical_time
 
     @physical_time.setter
-    def physical_time(self, value : str):
+    def physical_time(self, value: str):
         r"""
         Sets a description of the physical time for input trajectories. Specify by a number, whitespace, and unit.
         Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
@@ -428,7 +440,7 @@ class TransitionCountEstimator(Estimator):
 
         Parameters
         ----------
-        dtrajs : array_like or list of array_like
+        data : array_like or list of array_like
             discretized trajectories
         """
         dtrajs = ensure_dtraj_list(data)
