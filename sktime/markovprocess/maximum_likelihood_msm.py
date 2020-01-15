@@ -14,17 +14,17 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from typing import Optional, Union
 
 import numpy as np
 from msmtools import estimation as msmest
 
+from sktime.markovprocess import Q_
 from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
-from sktime.markovprocess.transition_counting import TransitionCountEstimator
+from sktime.markovprocess.transition_counting import TransitionCountEstimator, TransitionCountModel
 
-__all__ = ['MaximumLikelihoodMSM',
-           'compute_statistically_effective_count_matrix',
-           ]
+__all__ = ['MaximumLikelihoodMSM']
 
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
@@ -56,9 +56,11 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
              (0 \rightarrow \tau), (1 \rightarrow \tau+1), ..., (T-\tau-1 \rightarrow T-1)
 
-        * 'effective' : Uses an estimate of the transition counts that are
-          statistically uncorrelated. Recommended when used with a
-          Bayesian MarkovStateModel.
+        * 'sliding-effective' : Same as 'sliding' but after counting all counts are
+          divided by the lagtime :math:`\tau`.
+
+        * 'effective' : Uses an estimate of the transition counts that are statistically uncorrelated.
+          Recommended when used with a Bayesian MarkovStateModel.
 
         * 'sample' : A trajectory of length T will have :math:`T/tau` counts
           at time indexes
@@ -74,7 +76,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         numpy arrays. This behavior is suggested for very large numbers of
         states (e.g. > 4000) because it is likely to be much more efficient.
 
-    dt_traj : str, optional, default='1 step'
+    physical_time : str, optional, default='1 step'
         Description of the physical time of the input trajectories. May be used
         by analysis algorithms such as plotting tools to pretty-print the axes.
         By default '1 step', i.e. there is no physical time unit. Specify by a
@@ -101,7 +103,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         in order to track changes in small probabilities. The Euclidean norm
         of the change vector, :math:`|e_i|_2`, is compared to maxerr.
 
-    mincount_connectivity : float or '1/n'
+    connectivity_threshold : float or '1/n'
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
         may thus separate the resulting transition matrix. The default
@@ -114,31 +116,60 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     """
 
-    def __init__(self, lagtime=1, reversible=True, statdist_constraint=None,
-                 count_mode='sliding', sparse=False,
-                 dt_traj='1 step', maxiter=1000000,
-                 maxerr=1e-8, mincount_connectivity='1/n'):
+    def __init__(self, lagtime: int = 1, reversible: bool = True,
+                 stationary_distribution_constraint: Optional[np.ndarray] = None,
+                 count_mode: str = 'sliding', sparse: bool = False,
+                 physical_time: Union[Q_, str] = '1 step', maxiter: int = int(1e6),
+                 maxerr: float = 1e-8, connectivity_threshold='1/n'):
 
         super(MaximumLikelihoodMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
-                                                   sparse=sparse, dt_traj=dt_traj,
-                                                   mincount_connectivity=mincount_connectivity)
+                                                   sparse=sparse, physical_time=physical_time,
+                                                   connectivity_threshold=connectivity_threshold)
 
-        if statdist_constraint is not None:  # renormalize
-            self.statdist_constraint = statdist_constraint.copy()
-            self.statdist_constraint /= self.statdist_constraint.sum()
-        else:
-            self.statdist_constraint = None
+        self.stationary_distribution_constraint = stationary_distribution_constraint
 
         # convergence parameters
         self.maxiter = maxiter
         self.maxerr = maxerr
 
-    def fit(self, dtrajs, y=None):
-        count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, physical_time=self.dt_traj,
-                                               stationary_dist_constraint=self.statdist_constraint) \
-            .fit(dtrajs).fetch_model()
+    @property
+    def stationary_distribution_constraint(self) -> Optional[np.ndarray]:
+        r"""
+        Yields the stationary distribution constraint that can either be None (no constraint) or constrains the
+        count and transition matrices to states with positive stationary vector entries.
 
-        if self.statdist_constraint is not None and count_model.count_matrix_active.sum() == 0.0:
+        Returns
+        -------
+        The stationary vector constraint, can be None
+        """
+        return self._stationary_distribution_constraint
+
+    @stationary_distribution_constraint.setter
+    def stationary_distribution_constraint(self, value: Optional[np.ndarray]):
+        r"""
+        Sets a stationary distribution constraint by giving a stationary vector as value. The estimated count- and
+        transition-matrices are restricted to states that have positive entries. In case the vector is not normalized,
+        setting it here implicitly copies and normalizes it.
+
+        Parameters
+        ----------
+        value : np.ndarray or None
+            the stationary vector
+        """
+        if value is not None and np.sum(value) != 1.0:
+            # re-normalize if not already normalized
+            value = np.copy(value) / np.sum(value)
+        self._stationary_distribution_constraint = value
+
+    def fit(self, data, **kw):
+        if not isinstance(data, TransitionCountModel):
+            count_model = TransitionCountEstimator(
+                lagtime=self.lagtime, count_mode=self.count_mode, physical_time=self.physical_time
+            ).fit(data).fetch_model()
+        else:
+            count_model = data
+
+        if self.statdist_constraint is not None and count_model.count_matrix.sum() == 0.0:
             raise ValueError("The set of states with positive stationary"
                              "probabilities is not visited by the trajectories. A MarkovStateModel"
                              "reversible with respect to the given stationary vector can"
@@ -186,17 +217,3 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
                                        count_model=count_model)
 
         return self
-
-
-def compute_statistically_effective_count_matrix(dtrajs, lag, active_set=None):
-    """
-
-    :param dtrajs:
-    :param lag:
-    :param active_set:
-    :return:
-    """
-    from sktime.util import submatrix
-    Ceff_full = msmest.effective_count_matrix(dtrajs, lag=lag)
-    Ceff = submatrix(Ceff_full, active_set)
-    return Ceff

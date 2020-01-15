@@ -56,7 +56,7 @@ class BayesianMSM(_MSMBaseEstimator):
        numpy arrays. This behavior is suggested for very large numbers of
        states (e.g. > 4000) because it is likely to be much more efficient.
 
-    dt_traj : str, optional, default='1 step'
+    physical_time : str, optional, default='1 step'
        Description of the physical time corresponding to the trajectory time
        step. May be used by analysis algorithms such as plotting tools to
        pretty-print the axes. By default '1 step', i.e. there is no physical
@@ -74,7 +74,7 @@ class BayesianMSM(_MSMBaseEstimator):
        Confidence interval. By default one-sigma (68.3%) is used. Use 95.4%
        for two sigma or 99.7% for three sigma.
 
-    mincount_connectivity : float or '1/n'
+    connectivity_threshold : float or '1/n'
        minimum number of counts to consider a connection between two states.
        Counts lower than that will count zero in the connectivity check and
        may thus separate the resulting transition matrix. The default
@@ -89,15 +89,15 @@ class BayesianMSM(_MSMBaseEstimator):
 
     def __init__(self, lagtime=1, nsamples=100, nsteps=None, reversible=True,
                  statdist_constraint=None, count_mode='effective', sparse=False,
-                 dt_traj='1 step', conf=0.95,
+                 physical_time='1 step', conf=0.95,
                  maxiter=1000000,
                  maxerr=1e-8,
-                 mincount_connectivity='1/n'):
+                 connectivity_threshold='1/n'):
 
         super(BayesianMSM, self).__init__(lagtime=lagtime, reversible=reversible,
                                           count_mode=count_mode, sparse=sparse,
-                                          dt_traj=dt_traj,
-                                          mincount_connectivity=mincount_connectivity)
+                                          physical_time=physical_time,
+                                          connectivity_threshold=connectivity_threshold)
         self.statdist_constraint = statdist_constraint
         self.maxiter = maxiter
         self.maxerr = maxerr
@@ -121,9 +121,9 @@ class BayesianMSM(_MSMBaseEstimator):
         # conduct MLE estimation (superclass) first
         super(BayesianMSM, self).fit(data)
         mle = MaximumLikelihoodMSM(lagtime=self.lagtime, reversible=self.reversible,
-                                   statdist_constraint=self.statdist_constraint, count_mode=self.count_mode,
+                                   stationary_distribution_constraint=self.statdist_constraint, count_mode=self.count_mode,
                                    sparse=self.sparse,
-                                   dt_traj=self.dt_traj, mincount_connectivity=self.mincount_connectivity,
+                                   physical_time=self.physical_time, connectivity_threshold=self.connectivity_threshold,
                                    maxiter=self.maxiter, maxerr=self.maxerr).fit(data).fetch_model()
 
         # transition matrix sampler

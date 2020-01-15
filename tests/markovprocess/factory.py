@@ -47,7 +47,7 @@ def bmsm_double_well(lagtime=100, nsamples=100, reversible=True, constrain_to_co
     obs_macro = cg[obs_micro]
 
     est = BayesianMSM(lagtime=lagtime, reversible=reversible, nsamples=nsamples,
-                      dt_traj='4ps',
+                      physical_time='4 ps',
                       statdist_constraint=pi_macro if constrain_to_coarse_pi else None,
                       **kwargs)
     est.fit(obs_macro)

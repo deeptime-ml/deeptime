@@ -239,7 +239,7 @@ class TestCK_AllEstimators(unittest.TestCase):
 
     def test_its_bhmm(self):
         dtraj = double_well_discrete().dtraj_n6good
-        bhmm = BayesianHMSM.default(dtraj, n_states=2, lagtime=10).fit(dtrajs=dtraj)
+        bhmm = BayesianHMSM.default(dtraj, n_states=2, lagtime=10).fit(data=dtraj)
         self.ck = bhmm.cktest(dtraj, mlags=[1, 10])
         estref = np.array([
                            [[0.98497185, 0.01502815],

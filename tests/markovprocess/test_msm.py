@@ -43,7 +43,7 @@ from sktime.markovprocess._base import score_cv
 
 def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovStateModel:
     statdist_constraint = kw.pop('statdist', None)
-    est = MaximumLikelihoodMSM(lagtime=lag, statdist_constraint=statdist_constraint, **kw)
+    est = MaximumLikelihoodMSM(lagtime=lag, stationary_distribution_constraint=statdist_constraint, **kw)
     est.fit(dtrajs, )
     if return_estimator:
         return est, est.fetch_model()
@@ -194,10 +194,10 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def test_score_cv(self):
         self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True))
-        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, statdist_constraint=self.statdist))
+        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, stationary_distribution_constraint=self.statdist))
         self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=False))
         self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, sparse=True))
-        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, statdist_constraint=self.statdist, sparse=True))
+        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, stationary_distribution_constraint=self.statdist, sparse=True))
         self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=False, sparse=True))
 
     # ---------------------------------
@@ -974,8 +974,8 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         np.testing.assert_equal(msm_restrict_connectivity.count_model.active_set, self.active_set_restricted)
 
     def test_bmsm(self):
-        msm = BayesianMSM(lagtime=1, mincount_connectivity='1/n').fit(self.dtraj).fetch_model()
-        msm_restricted = BayesianMSM(lagtime=1, mincount_connectivity=self.mincount_connectivity).fit(self.dtraj).fetch_model()
+        msm = BayesianMSM(lagtime=1, connectivity_threshold='1/n').fit(self.dtraj).fetch_model()
+        msm_restricted = BayesianMSM(lagtime=1, connectivity_threshold=self.mincount_connectivity).fit(self.dtraj).fetch_model()
 
         np.testing.assert_equal(msm.prior.count_model.active_set, self.active_set_unrestricted)
         np.testing.assert_equal(msm.samples[0].count_model.active_set, self.active_set_unrestricted)

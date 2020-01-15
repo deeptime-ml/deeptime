@@ -4,12 +4,10 @@ import numpy as np
 
 from sktime.base import Estimator, Model
 from sktime.markovprocess import MarkovStateModel
-# TODO: we do not need this anymore!
 from sktime.util import confidence_interval, ensure_dtraj_list
 
 
-
-# TODO: this could me moved to msmtools.dtraj
+# TODO: this could be moved to msmtools.dtraj
 def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None):
     """ Splits the discrete trajectories into approximately uncorrelated fragments
 
@@ -52,7 +50,7 @@ def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None
     return dtrajs_new
 
 
-# TODO: this could me moved to msmtools.dtraj
+# TODO: this could be moved to msmtools.dtraj
 def cvsplit_dtrajs(dtrajs, random_state=None):
     """ Splits the trajectories into a training and test set with approximately equal number of trajectories
 
@@ -71,6 +69,7 @@ def cvsplit_dtrajs(dtrajs, random_state=None):
     dtrajs_train = [dtrajs[i] for i in I0]
     dtrajs_test = [dtrajs[i] for i in I1]
     return dtrajs_train, dtrajs_test
+
 
 class _MSMBaseEstimator(Estimator):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
@@ -112,14 +111,14 @@ class _MSMBaseEstimator(Estimator):
         numpy arrays. This behavior is suggested for very large numbers of
         states (e.g. > 4000) because it is likely to be much more efficient.
 
-    dt_traj : str, optional, default='1 step'
+    physical_time : str, optional, default='1 step'
         Description of the physical time of the input trajectories. May be used
         by analysis algorithms such as plotting tools to pretty-print the axes.
         By default '1 step', i.e. there is no physical time unit. Specify by a
         number, whitespace and unit. Permitted units are (* is an arbitrary
         string). E.g. 200 picoseconds or 200ps.
 
-    mincount_connectivity : float or '1/n'
+    connectivity_threshold : float or '1/n'
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
         may thus separate the resulting transition matrix. The default
@@ -128,7 +127,7 @@ class _MSMBaseEstimator(Estimator):
     """
 
     def __init__(self, lagtime=1, reversible=True, count_mode='sliding', sparse=False,
-                 dt_traj='1 step', mincount_connectivity='1/n'):
+                 physical_time='1 step', connectivity_threshold='1/n'):
         super(_MSMBaseEstimator, self).__init__()
         self.lagtime = lagtime
 
@@ -140,14 +139,14 @@ class _MSMBaseEstimator(Estimator):
 
         # store counting mode (lowercase)
         self.count_mode = count_mode
-        if self.count_mode not in ('sliding', 'effective', 'sample'):
+        if self.count_mode not in ('sliding', 'sliding-effective', 'effective', 'sample'):
             raise ValueError('count mode ' + count_mode + ' is unknown.')
 
         # time step
-        self.dt_traj = dt_traj
+        self.physical_time = physical_time
 
         # connectivity
-        self.mincount_connectivity = mincount_connectivity
+        self.connectivity_threshold = connectivity_threshold
 
 
 class BayesianPosterior(Model):
@@ -308,4 +307,3 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', s
         s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
         scores.append(s)
     return np.array(scores)
-

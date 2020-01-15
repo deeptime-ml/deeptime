@@ -90,7 +90,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         numpy arrays. This behavior is suggested for very large numbers of
         states (e.g. > 4000) because it is likely to be much more efficient.
 
-    dt_traj : str, optional, default='1 step'
+    physical_time : str, optional, default='1 step'
         Description of the physical time of the input trajectories. May be used
         by analysis algorithms such as plotting tools to pretty-print the axes.
         By default '1 step', i.e. there is no physical time unit. Specify by a
@@ -116,7 +116,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     tol_rank: float, optional, default = 10.0
         signal-to-noise threshold for rank decision.
 
-    mincount_connectivity : float or '1/n'
+    connectivity_threshold : float or '1/n'
         minimum number of counts to consider a connection between two states.
         Counts lower than that will count zero in the connectivity check and
         may thus separate the resulting transition matrix. The default
@@ -130,8 +130,8 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     """
 
     def __init__(self, lagtime, reversible=True, count_mode='sliding', sparse=False,
-                 dt_traj='1 step', nbs=10000, rank_Ct='bootstrap_counts', tol_rank=10.0,
-                 mincount_connectivity='1/n'):
+                 physical_time='1 step', nbs=10000, rank_Ct='bootstrap_counts', tol_rank=10.0,
+                 connectivity_threshold='1/n'):
 
         # Check count mode:
         self.count_mode = str(count_mode).lower()
@@ -143,7 +143,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
 
         super(OOMReweightedMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
                                                sparse=sparse,
-                                               dt_traj=dt_traj, mincount_connectivity=mincount_connectivity)
+                                               physical_time=physical_time, connectivity_threshold=connectivity_threshold)
         self.nbs = nbs
         self.tol_rank = tol_rank
         self.rank_Ct = rank_Ct
@@ -151,7 +151,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     def fit(self, dtrajs):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
-        count_model = TransitionCountEstimator(lagtime=self.lagtime, mincount_connectivity=self.mincount_connectivity,
+        count_model = TransitionCountEstimator(lagtime=self.lagtime, mincount_connectivity=self.connectivity_threshold,
                                                count_mode=self.count_mode).fit(dtrajs).fetch_model()
 
         # Estimate transition matrix using re-sampling:

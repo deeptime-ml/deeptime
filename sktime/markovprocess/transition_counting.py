@@ -250,8 +250,7 @@ class TransitionCountModel(Model):
     def submodel_largest(self, connectivity_threshold: Union[None, float] = 0., directed: bool = False):
         r"""
         Restricts this model to the submodel corresponding to the largest connected set of states after eliminating
-        states that fall below the specified connectivity threshold. Additionally a stationary distribution constraint
-        can be given so that the submodel is defined only defined on states with positive stationary vector.
+        states that fall below the specified connectivity threshold.
         
         Parameters
         ----------
