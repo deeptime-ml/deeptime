@@ -25,7 +25,7 @@ def is_connected(C, mincount_connectivity=0, strong=True):
     return len(S) == 1
 
 
-def connected_sets(C, mincount_connectivity=0, strong=True):
+def connected_sets(C, mincount_connectivity=0., strong=True):
     """ Computes the connected sets of C.
 
     C : count matrix

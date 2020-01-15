@@ -4,10 +4,73 @@ import numpy as np
 
 from sktime.base import Estimator, Model
 from sktime.markovprocess import MarkovStateModel
-from sktime.markovprocess.transition_counting import blocksplit_dtrajs, cvsplit_dtrajs
 # TODO: we do not need this anymore!
 from sktime.util import confidence_interval, ensure_dtraj_list
 
+
+
+# TODO: this could me moved to msmtools.dtraj
+def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None):
+    """ Splits the discrete trajectories into approximately uncorrelated fragments
+
+    Will split trajectories into fragments of lengths lag or longer. These fragments
+    are overlapping in order to conserve the transition counts at given lag.
+    If sliding=True, the resulting trajectories will lead to exactly the same count
+    matrix as when counted from dtrajs. If sliding=False (sampling at lag), the
+    count matrices are only equal when also setting shift=0.
+
+    Parameters
+    ----------
+    dtrajs : list of ndarray(int)
+        Discrete trajectories
+    lag : int
+        Lag time at which counting will be done. If sh
+    sliding : bool
+        True for splitting trajectories for sliding count, False if lag-sampling will be applied
+    shift : None or int
+        Start of first full tau-window. If None, shift will be randomly generated
+
+    """
+    from sklearn.utils.random import check_random_state
+    dtrajs_new = []
+    random_state = check_random_state(random_state)
+    for dtraj in dtrajs:
+        if len(dtraj) <= lag:
+            continue
+        if shift is None:
+            s = random_state.randint(min(lag, dtraj.size - lag))
+        else:
+            s = shift
+        if sliding:
+            if s > 0:
+                dtrajs_new.append(dtraj[0:lag + s])
+            for t0 in range(s, dtraj.size - lag, lag):
+                dtrajs_new.append(dtraj[t0:t0 + 2 * lag])
+        else:
+            for t0 in range(s, dtraj.size - lag, lag):
+                dtrajs_new.append(dtraj[t0:t0 + lag + 1])
+    return dtrajs_new
+
+
+# TODO: this could me moved to msmtools.dtraj
+def cvsplit_dtrajs(dtrajs, random_state=None):
+    """ Splits the trajectories into a training and test set with approximately equal number of trajectories
+
+    Parameters
+    ----------
+    dtrajs : list of ndarray(int)
+        Discrete trajectories
+
+    """
+    from sklearn.utils.random import check_random_state
+    if len(dtrajs) == 1:
+        raise ValueError('Only have a single trajectory. Cannot be split into train and test set')
+    random_state = check_random_state(random_state)
+    I0 = random_state.choice(len(dtrajs), int(len(dtrajs) / 2), replace=False)
+    I1 = np.array(list(set(list(np.arange(len(dtrajs)))) - set(list(I0))))
+    dtrajs_train = [dtrajs[i] for i in I0]
+    dtrajs_test = [dtrajs[i] for i in I1]
+    return dtrajs_train, dtrajs_test
 
 class _MSMBaseEstimator(Estimator):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics

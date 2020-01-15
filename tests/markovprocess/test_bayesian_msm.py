@@ -278,7 +278,7 @@ class TestBMSM(unittest.TestCase):
         # shape
         np.testing.assert_equal(np.shape(samples), (self.nsamples, self.n_states - 1))
         # consistency
-        u = msm.prior.count_model.dt_traj.u
+        u = msm.prior.count_model.physical_time.u
         for l in samples:
             assert np.all(l > 0.0)
             assert l.u == u

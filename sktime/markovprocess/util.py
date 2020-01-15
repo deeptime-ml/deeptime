@@ -1,5 +1,8 @@
+from typing import Union
+
 import numpy as np
 
+from sktime.markovprocess import Q_
 from sktime.util import ensure_dtraj_list
 
 
@@ -129,11 +132,10 @@ def lag_observations(observations, lag, stride=1):
     return obsnew
 
 
-def compute_dtrajs_effective(dtrajs, lagtime, n_states, stride):
+def compute_dtrajs_effective(dtrajs, lagtime: Union[int, Q_], n_states: int, stride: Union[int, str]):
     r"""
     Takes discrete trajectories as input and strides these with an effective stride. See methods
     `compute_effective_stride` and `lag_observations`.
-
 
     Parameters
     ----------
@@ -158,3 +160,34 @@ def compute_dtrajs_effective(dtrajs, lagtime, n_states, stride):
     # LAG AND STRIDE DATA
     dtrajs_lagged_strided = lag_observations(dtrajs, lagtime, stride=stride)
     return dtrajs_lagged_strided
+
+
+def compute_connected_sets(C, mincount_connectivity, directed=True):
+    """ Computes the connected sets of a count matrix C.
+
+    C : (N, N) np.ndarray
+        count matrix
+    mincount_connectivity : float
+        Minimum count required to be included in the connected set computation.
+    directed : boolean
+        True: Seek connected sets in the directed graph. False: Seek connected sets in the undirected graph.
+    Returns
+    -------
+    A list of arrays, each array representing a connected set by enumerating the respective states. The list is in
+    descending order by size of connected set.
+    """
+    import msmtools.estimation as msmest
+    import scipy.sparse as scs
+    if mincount_connectivity > 0:
+        if scs.issparse(C):
+            Cconn = C.tocsr(copy=True)
+            Cconn.data[Cconn.data < mincount_connectivity] = 0
+            Cconn.eliminate_zeros()
+        else:
+            Cconn = C.copy()
+            Cconn[np.where(Cconn < mincount_connectivity)] = 0
+    else:
+        Cconn = C
+    # treat each connected set separately
+    S = msmest.connected_sets(Cconn, directed=directed)
+    return S

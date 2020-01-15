@@ -177,7 +177,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         if lcc_new.size < count_model.n_states:
             assert isinstance(count_model, TransitionCountModel)
             count_model.__init__(self.lagtime, active_set=count_model.active_set[lcc_new],
-                                 dt_traj=count_model.dt_traj, connected_sets=count_model.connected_sets,
+                                 physical_time=count_model.physical_time, connected_sets=count_model.connected_sets,
                                  count_matrix=count_model.count_matrix)
             warnings.warn("Caution: Re-estimation of count matrix resulted in reduction of the active set.")
 

@@ -133,7 +133,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self.maxerr = maxerr
 
     def fit(self, dtrajs, y=None):
-        count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, dt_traj=self.dt_traj,
+        count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, physical_time=self.dt_traj,
                                                stationary_dist_constraint=self.statdist_constraint) \
             .fit(dtrajs).fetch_model()
 
@@ -181,7 +181,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
         # create model
         self._model = MarkovStateModel(transition_matrix=P, pi=statdist_active, reversible=self.reversible,
-                                       dt_model=count_model.dt_traj * self.lagtime,
+                                       dt_model=count_model.physical_time * self.lagtime,
                                        count_model=count_model)
 
         return self

@@ -23,7 +23,7 @@ class TestPickling(unittest.TestCase):
 
         np.testing.assert_equal(model_restored.transition_matrix, model.transition_matrix)
         assert model_restored.lagtime == model_restored.lagtime
-        assert model.count_model.dt_traj == model_restored.count_model.dt_traj
+        assert model.count_model.physical_time == model_restored.count_model.physical_time
 
     def test_pickle_bmsm(self):
         msm = factory.bmsm_double_well(nsamples=10)
@@ -39,7 +39,7 @@ class TestPickling(unittest.TestCase):
 
         np.testing.assert_equal(model_restored.prior.transition_matrix, model.prior.transition_matrix)
         assert model_restored.prior.lagtime == model_restored.prior.lagtime
-        assert model.prior.count_model.dt_traj == model_restored.prior.count_model.dt_traj
+        assert model.prior.count_model.physical_time == model_restored.prior.count_model.physical_time
 
     def test_old_version_raise_warning(self):
         """ ensures that a user warning is displayed, when restoring an object stored with an old version.
