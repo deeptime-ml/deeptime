@@ -181,9 +181,9 @@ class TestReactiveFluxFunctions(unittest.TestCase):
 
     def test_dt_model(self):
         C = TransitionCountModel(np.array([[0.1, 0.9], [0.9, 0.1]]), lagtime=5, physical_time='s')
-        msm = MarkovStateModel(C.count_matrix, count_model=C, time_unit='s')
+        msm = MarkovStateModel(C.count_matrix, count_model=C)
         tpt = msm.reactive_flux([0], [1])
-        assert '5 second' in str(tpt.physical_time)
+        assert '5 second' in str(msm.count_model.lagtime * tpt.physical_time)
 
     def test_coarse_grain(self):
         (tpt_sets, cgRF) = self.tpt2.coarse_grain(self.coarsesets2)

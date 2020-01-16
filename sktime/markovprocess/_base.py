@@ -108,6 +108,7 @@ class _MSMBaseEstimator(Estimator):
     def sparse(self, value: bool):
         self._sparse = value
 
+
 class BayesianPosterior(Model):
     def __init__(self,
                  prior: typing.Optional[MarkovStateModel] = None,
@@ -205,7 +206,8 @@ class QuantityStatistics(Model):
             self.R *= unit
 
 
-def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', score_k=10, random_state=None):
+def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
+             score_k=10, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes [1]_ [2]_ and cross-validation [3]_ .
 
     Divides the data into training and test data, fits a MSM using the training
@@ -221,11 +223,16 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', s
     ----------
     estimator : MSMBaseEstimator like
         estimator to produce models for CV.
-    dtrajs : list of arrays
+    dtrajs : list of array_like
         Test data (discrete trajectories).
+    lagtime : int
+        lag time
     n : number of samples
         Number of repetitions of the cross-validation. Use large n to get solid
         means of the score.
+    count_mode : str, optional, default='sliding'
+        counting mode of count matrix estimator, if sliding the trajectory is split in a sliding window fashion.
+        Supports 'sliding' and 'sample'.
     score_method : str, optional, default='VAMP2'
         Overwrite scoring method to be used if desired. If `None`, the estimators scoring
         method will be used.
@@ -256,15 +263,15 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', s
     from sktime.markovprocess import TransitionCountEstimator
     from sktime.util import ensure_dtraj_list
     dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
-    if estimator.count_mode not in ('sliding', 'sample'):
+    if count_mode not in ('sliding', 'sample'):
         raise ValueError('score_cv currently only supports count modes "sliding" and "sample"')
-    sliding = estimator.count_mode == 'sliding'
+    sliding = count_mode == 'sliding'
     scores = []
     for fold in range(n):
-        dtrajs_split = blocksplit_dtrajs(dtrajs, lag=estimator.lagtime, sliding=sliding, random_state=random_state)
+        dtrajs_split = blocksplit_dtrajs(dtrajs, lag=lagtime, sliding=sliding, random_state=random_state)
         dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split, random_state=random_state)
 
-        cc = TransitionCountEstimator(estimator.lagtime, "sliding").fit(dtrajs_train).fetch_model().submodel_largest()
+        cc = TransitionCountEstimator(lagtime, count_mode).fit(dtrajs_train).fetch_model().submodel_largest()
         model = estimator.fit(cc).fetch_model()
         s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
         scores.append(s)

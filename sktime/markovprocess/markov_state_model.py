@@ -26,8 +26,8 @@ import numpy as np
 from scipy.sparse import issparse
 
 from sktime.base import Model
-from sktime.markovprocess import Q_
 from sktime.markovprocess.pcca import pcca, PCCAModel
+from sktime.markovprocess.reactive_flux import ReactiveFlux
 from sktime.markovprocess.sample import ensure_dtraj_list, compute_index_states
 from sktime.markovprocess.transition_counting import TransitionCountModel
 from sktime.numeric import mdot
@@ -783,7 +783,7 @@ class MarkovStateModel(Model):
                              'Set reversible=True when constructing the MarkovStateModel.')
         return pcca(self.transition_matrix, n_metastable_sets)
 
-    def reactive_flux(self, A, B):
+    def reactive_flux(self, A, B) -> ReactiveFlux:
         r""" A->B reactive flux from transition path theory (TPT)
 
         The returned :class:`ReactiveFlux <pyemma.msm.models.ReactiveFlux>` object
@@ -840,7 +840,7 @@ class MarkovStateModel(Model):
 
         # construct flux object
         return ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux,
-                            physical_time=self.count_model.physical_time)
+                            physical_time=self.count_model.physical_time if self.count_model is not None else '1 step')
 
     def simulate(self, N, start=None, stop=None, dt=1):
         """

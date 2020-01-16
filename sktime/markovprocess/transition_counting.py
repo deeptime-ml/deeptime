@@ -278,7 +278,7 @@ class TransitionCountModel(Model):
         sub_symbols = self.state_symbols[states]
         sub_state_histogram = self.state_histogram[states]
         return TransitionCountModel(sub_count_matrix, self.counting_mode, self.lagtime, sub_state_histogram,
-                                    state_symbols=sub_symbols, physical_time=self.physical_time.units,
+                                    state_symbols=sub_symbols, physical_time=self.physical_time,
                                     count_matrix_full=self.count_matrix_full,
                                     state_histogram_full=self.state_histogram_full)
 

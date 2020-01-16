@@ -190,12 +190,12 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._score(self.msm_sparse)
 
     def _score_cv(self, estimator):
-        s1 = score_cv(estimator, self.dtraj, n=5, score_method='VAMP1', score_k=2).mean()
+        s1 = score_cv(estimator, self.dtraj, lagtime=10, n=5, score_method='VAMP1', score_k=2).mean()
         assert 1.0 <= s1 <= 2.0
-        s2 = score_cv(estimator, self.dtraj, n=5, score_method='VAMP2', score_k=2).mean()
+        s2 = score_cv(estimator, self.dtraj, lagtime=10, n=5, score_method='VAMP2', score_k=2).mean()
         assert 1.0 <= s2 <= 2.0
-        se = score_cv(estimator, self.dtraj, n=5, score_method='VAMPE', score_k=2).mean()
-        se_inf = score_cv(estimator, self.dtraj, n=5, score_method='VAMPE', score_k=None).mean()
+        se = score_cv(estimator, self.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=2).mean()
+        se_inf = score_cv(estimator, self.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=None).mean()
 
     def test_score_cv(self):
         self._score_cv(MaximumLikelihoodMSM(reversible=True))
@@ -952,13 +952,15 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         np.testing.assert_equal(msm_restrict_connectivity.count_model.state_symbols, self.active_set_restricted)
 
     def test_bmsm(self):
-        msm = BayesianMSM(lagtime=1, connectivity_threshold='1/n').fit(self.dtraj).fetch_model()
-        msm_restricted = BayesianMSM(lagtime=1, connectivity_threshold=self.mincount_connectivity).fit(self.dtraj).fetch_model()
+        cc = TransitionCountEstimator(lagtime=1, count_mode="effective").fit(self.dtraj).fetch_model()
+        msm = BayesianMSM().fit(cc.submodel_largest(connectivity_threshold='1/n')).fetch_model()
+        msm_restricted = BayesianMSM().fit(cc.submodel_largest(connectivity_threshold=self.mincount_connectivity))\
+            .fetch_model()
 
-        np.testing.assert_equal(msm.prior.count_model.active_set, self.active_set_unrestricted)
-        np.testing.assert_equal(msm.samples[0].count_model.active_set, self.active_set_unrestricted)
-        np.testing.assert_equal(msm_restricted.prior.count_model.active_set, self.active_set_restricted)
-        np.testing.assert_equal(msm_restricted.samples[0].count_model.active_set, self.active_set_restricted)
+        np.testing.assert_equal(msm.prior.count_model.state_symbols, self.active_set_unrestricted)
+        np.testing.assert_equal(msm.samples[0].count_model.state_symbols, self.active_set_unrestricted)
+        np.testing.assert_equal(msm_restricted.prior.count_model.state_symbols, self.active_set_restricted)
+        np.testing.assert_equal(msm_restricted.samples[0].count_model.state_symbols, self.active_set_restricted)
         i = id(msm_restricted.prior.count_model)
         assert all(id(x.count_model) == i for x in msm_restricted.samples)
 
