@@ -30,9 +30,9 @@ from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM as BHMM_HMM
 class HMMTransitionCountModel(transition_counting.TransitionCountModel):
     def __init__(self, n_states=None, observable_set: typing.Optional[np.ndarray] = None,
                  stride=1, state_symbols=None,
-                 lagtime=1, active_set=None, physical_time='1 step',
+                 lagtime=1, active_set=None, time_unit='1 step',
                  connected_sets=(), count_matrix=None):
-        super(HMMTransitionCountModel, self).__init__(lagtime=lagtime, active_set=active_set, physical_time=physical_time,
+        super(HMMTransitionCountModel, self).__init__(lagtime=lagtime, active_set=active_set, time_unit=time_unit,
                                                       connected_sets=connected_sets, count_matrix=count_matrix)
 
         self._n_states_full = n_states
@@ -76,10 +76,10 @@ class HMSM(MarkovStateModel):
     p_obs : ndarray (m,n)
         observation probability matrix from hidden to observable discrete states
 
-    pi: ndarray(m), optional
+    stationary_distribution: ndarray(m), optional
         stationary distribution
 
-    dt_model : str, optional, default='1 step'
+    time_unit : str, optional, default='1 step'
         time step of the model
 
     n_eigenvalues:
@@ -90,10 +90,10 @@ class HMSM(MarkovStateModel):
 
     """
 
-    def __init__(self, transition_matrix, observation_probabilities, pi=None, dt_model='1 step',
+    def __init__(self, transition_matrix, observation_probabilities, stationary_distribution=None, time_unit='1 step',
                  n_eigenvalues=None, reversible=None, count_model=None, initial_distribution=None, initial_counts=None,
                  bhmm_model : BHMM_HMM = None):
-        super(HMSM, self).__init__(transition_matrix=transition_matrix, pi=pi, dt_model=dt_model,
+        super(HMSM, self).__init__(transition_matrix=transition_matrix, stationary_distribution=stationary_distribution, time_unit=time_unit,
                                    reversible=reversible, n_eigenvalues=n_eigenvalues, count_model=count_model)
 
         # assert types.is_float_matrix(pobs), 'pobs is not a matrix of floating numbers'
@@ -126,10 +126,6 @@ class HMSM(MarkovStateModel):
     @property
     def count_model(self) -> typing.Optional[HMMTransitionCountModel]:
         return self._count_model
-
-    @count_model.setter
-    def count_model(self, value: typing.Optional[HMMTransitionCountModel]):
-        self.count_model = value
 
     ################################################################################
     # Submodel functions using estimation information (counts)
@@ -223,10 +219,10 @@ class HMSM(MarkovStateModel):
 
         count_model = HMMTransitionCountModel(
             n_states=self.count_model.n_states_full, observable_set=obs,
-            stride=self.count_model.stride, state_symbols=self.count_model.symbols, physical_time=self.count_model.physical_time,
+            stride=self.count_model.stride, state_symbols=self.count_model.symbols, time_unit=self.count_model.physical_time,
             active_set=states, connected_sets=S, count_matrix=C, lagtime=self.count_model.lagtime
         )
-        model = HMSM(transition_matrix=P, observation_probabilities=B, pi=pi, dt_model=self.dt_model,
+        model = HMSM(transition_matrix=P, observation_probabilities=B, stationary_distribution=pi, time_unit=self.dt_model,
                      n_eigenvalues=self.n_eigenvalues,
                      reversible=self.is_reversible, count_model=count_model,
                      initial_counts=initial_count,
@@ -481,7 +477,7 @@ class HMSM(MarkovStateModel):
         B = self.observation_probabilities[np.ix_(states, obs)].copy()
         B /= B.sum(axis=1)[:, None]
 
-        return HMSM(P, B, dt_model=self.dt_model, reversible=self.is_reversible)
+        return HMSM(P, B, time_unit=self.dt_model, reversible=self.is_reversible)
 
     # ================================================================================================================
     # Experimental properties: Here we allow to use either coarse-grained or microstate observables
@@ -566,7 +562,7 @@ class HMSM(MarkovStateModel):
             raise ValueError('observable vectors have size %s which is incompatible with both hidden (%s)'
                              ' and observed states (%s)' % (len(a), self.n_states, self.n_states_obs))
 
-    def pcca(self, m):
+    def pcca(self, n_metastable_sets):
         raise NotImplementedError('PCCA is not meaningful for Hidden Markov models. '
                                   'If you really want to do this, initialize an MSM with the HMSM transition matrix.')
 

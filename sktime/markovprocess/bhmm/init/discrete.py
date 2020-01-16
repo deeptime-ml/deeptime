@@ -294,7 +294,7 @@ def init_discrete_hmm_spectral(C_full, n_states, reversible=True, stationary=Tru
         # TODO: if we do not have a connected matrix, we cannot compute pcca! (pi contains zeros -> NaNs in P)
         msm = MarkovStateModel(P_active_nonseparate)
         assert np.all(msm.stationary_distribution > 0)
-        pcca_obj = msm.pcca(m=nmeta)
+        pcca_obj = msm.pcca(n_metastable_sets=nmeta)
         M_active_nonseparate = pcca_obj.memberships  # memberships
         B_active_nonseparate = pcca_obj.metastable_distributions  # output probabilities
     else:  # equal size

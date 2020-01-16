@@ -3,6 +3,7 @@ import pint
 ureg = pint.UnitRegistry()
 ureg.define('step = []')  # dimensionless unit for unspecified lag time unit.
 Q_ = ureg.Quantity
+U_ = ureg.Unit
 
 # TODO: we need to do this for unpickling, but it will overwrite other apps default registry!
 pint.set_application_registry(ureg)

@@ -312,7 +312,7 @@ class BayesianHMSM(Estimator):
 
             Bobs = pobs[:, prior_count_model.observable_set]
             pobs = Bobs / Bobs.sum(axis=1)[:, None]  # renormalize
-            samples.append(HMSM(P, pobs, pi=pi, dt_model=prior.dt_model,
+            samples.append(HMSM(P, pobs, stationary_distribution=pi, time_unit=prior.physical_time,
                                 count_model=prior_count_model, initial_counts=sample.initial_count,
                                 reversible=self.reversible, initial_distribution=init_dist))
 
@@ -372,7 +372,7 @@ class BayesianHMSM(Estimator):
         model = self.fetch_model()
         if model is None:
             raise RuntimeError('call fit() first!')
-        prior_est = self.default_prior_estimator(self.n_states, self.lagtime, self.stride, self.reversible, self.stationary, dt_traj=model.prior.dt_model)
+        prior_est = self.default_prior_estimator(self.n_states, self.lagtime, self.stride, self.reversible, self.stationary, dt_traj=model.prior.physical_time)
         ck = ChapmanKolmogorovValidator(self.init_hmsm, prior_est, np.eye(self.n_states),
                                         mlags=mlags, conf=conf, err_est=err_est)
         ck.fit(dtrajs)

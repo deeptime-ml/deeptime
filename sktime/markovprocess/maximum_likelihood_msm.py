@@ -116,8 +116,6 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     """
 
-    _MUTABLE_INPUT_DATA = True
-
     def __init__(self, lagtime: int = 1, reversible: bool = True,
                  stationary_distribution_constraint: Optional[np.ndarray] = None,
                  count_mode: str = 'sliding', sparse: bool = False,
@@ -166,7 +164,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     def fetch_model(self) -> MarkovStateModel:
         return self._model
 
-    def fit(self, data, **kw):
+    def fit(self, data, y=None, **kw):
         if not isinstance(data, (TransitionCountModel, np.ndarray)):
             raise ValueError("Can only fit on a TransitionCountModel or a count matrix directly.")
 
@@ -216,8 +214,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             P, statdist_active = P
 
         # create model
-        self._model = MarkovStateModel(transition_matrix=P, pi=statdist_active, reversible=self.reversible,
-                                       dt_model=count_model.physical_time * self.lagtime,
+        self._model = MarkovStateModel(transition_matrix=P, stationary_distribution=statdist_active, reversible=self.reversible,
+                                       time_unit=count_model.physical_time.units,
                                        count_model=count_model)
 
         return self

@@ -3,7 +3,7 @@ import typing
 import numpy as np
 
 import sktime.datasets as datasets
-from sktime.markovprocess import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior
+from sktime.markovprocess import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior, TransitionCountEstimator
 
 __all__ = ['msm_double_well', 'bmsm_double_well']
 
@@ -19,8 +19,10 @@ def bayesian_markov_model(dtrajs, lag, return_estimator=False, **kwargs) \
 
 
 def msm_double_well(lagtime=100, reversible=True, **kwargs) -> MaximumLikelihoodMSM:
+    count_model = TransitionCountEstimator(lagtime=lagtime, count_mode="sliding")\
+        .fit(datasets.double_well_discrete().dtraj).fetch_model().submodel_largest()
     est = MaximumLikelihoodMSM(lagtime=lagtime, reversible=reversible, **kwargs)
-    est.fit(datasets.double_well_discrete().dtraj)
+    est.fit(count_model)
     return est
 
 

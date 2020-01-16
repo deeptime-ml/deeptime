@@ -5,22 +5,19 @@ from sklearn.base import _pprint as pprint_sklearn
 
 
 class _base_methods_mixin(object, metaclass=abc.ABCMeta):
-    """ defines common methods used by both Estimator and Model classes.
+    """ Defines common methods used by both Estimator and Model classes. These are mostly static and low-level
+    checking of conformity with respect to scikit-time conventions.
     """
 
     def __repr__(self):
         name = '{cls}-{id}:'.format(id=id(self), cls=self.__class__.__name__)
         return '{name}{params}]'.format(name=name,
-            params=pprint_sklearn(self.get_params(), offset=len(name), )
+                                        params=pprint_sklearn(self.get_params(), offset=len(name), )
         )
 
-    def get_params(self, deep=True):
-        """Get parameters of this kernel.
-        Parameters
-        ----------
-        deep : boolean, optional
-            If True, will return the parameters for this estimator and
-            contained subobjects that are estimators.
+    def get_params(self):
+        r"""Get parameters of this kernel.
+
         Returns
         -------
         params : mapping of string to any
@@ -140,9 +137,9 @@ class _ImmutableInputData(object):
 
     @data.setter
     def data(self, value_):
+        import numpy as np
         args, kwargs = value_
         # store data as a list of ndarrays
-        import numpy as np
         # handle optional y for supervised learning
         y = kwargs.get('y', None)
 
@@ -165,21 +162,27 @@ class _ImmutableInputData(object):
                     self._data.append(x)
                 else:
                     raise InputFormatError(f'Invalid input element in position {i}, only numpy.ndarrays allowed.')
+        elif isinstance(value, Model):
+            self._data.append(value)
         else:
-            raise InputFormatError(f'Only ndarray or list/tuple of ndarray allowed. But was of type {type(value)}'
-                                   f' and looks like {value}.')
+            raise InputFormatError(f'Only model, ndarray or list/tuple of ndarray allowed. '
+                                   f'But was of type {type(value)}: {value}.')
 
     def __enter__(self):
+        import numpy as np
         self.old_writable_flags = []
-        for array in self.data:
-            self.old_writable_flags.append(array.flags.writeable)
-            # set ndarray writabe flags to false
-            array.flags.writeable = False
+        for d in self.data:
+            if isinstance(d, np.ndarray):
+                self.old_writable_flags.append(d.flags.writeable)
+                # set ndarray writabe flags to false
+                d.flags.writeable = False
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # restore ndarray writable flags to old state
-        for array, writable in zip(self.data, self.old_writable_flags):
-            array.flags.writeable = writable
+        import numpy as np
+        for d, writable in zip(self.data, self.old_writable_flags):
+            if isinstance(d, np.ndarray):
+                d.flags.writeable = writable
 
     def __call__(self, *args, **kwargs):
         # extract input data from args, **kwargs (namely x and y)

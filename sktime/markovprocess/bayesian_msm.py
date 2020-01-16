@@ -145,7 +145,7 @@ class BayesianMSM(_MSMBaseEstimator):
         sample_Ps, sample_mus = tsampler.sample(nsamples=self.nsamples, return_statdist=True, call_back=call_back)
         # construct sampled MSMs
         samples = [
-            MarkovStateModel(P, pi=pi, reversible=self.reversible, dt_model=mle.dt_model, count_model=mle.count_model)
+            MarkovStateModel(P, stationary_distribution=pi, reversible=self.reversible, time_unit=mle.physical_time, count_model=mle.count_model)
             for P, pi in zip(sample_Ps, sample_mus)
         ]
 

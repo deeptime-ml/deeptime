@@ -52,7 +52,7 @@ class ReactiveFlux(Model):
         Forward committor for A-> B reaction
     gross_flux : (n,n) ndarray or scipy sparse matrix
         gross flux of A->B pathways, if available
-    dt_model : Quantity or None, optional
+    physical_time : Quantity or None, optional
         when the originating model has a lag time, output units will be scaled by it.
 
     Notes
@@ -64,8 +64,7 @@ class ReactiveFlux(Model):
     msmtools.tpt
 
     """
-    def __init__(self, A, B, flux,
-                 mu=None, qminus=None, qplus=None, gross_flux=None, dt_model='1 step'):
+    def __init__(self, A, B, flux, mu=None, qminus=None, qplus=None, gross_flux=None, physical_time='1 step'):
         # set data
         self._A = A
         self._B = B
@@ -74,17 +73,17 @@ class ReactiveFlux(Model):
         self._qminus = qminus
         self._qplus = qplus
         self._gross_flux = gross_flux
-        self.dt_model = dt_model
+        self.physical_time = physical_time
         # compute derived quantities:
         self._totalflux = tptapi.total_flux(flux, A)
         self._kAB = tptapi.rate(self._totalflux, mu, qminus)
 
     @property
-    def dt_model(self) -> Q_:
+    def physical_time(self) -> Q_:
         return self._dt_model
 
-    @dt_model.setter
-    def dt_model(self, value):
+    @physical_time.setter
+    def physical_time(self, value):
         self._dt_model = Q_(value)
 
     @property
@@ -342,5 +341,5 @@ class ReactiveFlux(Model):
 
         res = ReactiveFlux(Aindexes, Bindexes, Fnet_coarse, mu=pstat_coarse,
                            qminus=backward_committor_coarse, qplus=forward_committor_coarse, gross_flux=F_coarse,
-                           dt_model=self.dt_model)
+                           physical_time=self.physical_time)
         return tpt_sets, res

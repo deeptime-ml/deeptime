@@ -129,7 +129,7 @@ class TestMSMRevPi(unittest.TestCase):
         pi_invalid = np.array([0.1, 0.9])
         active_set = np.array([0, 1])
         msm = estimate_markov_model(dtraj, 1, statdist=pi_valid)
-        np.testing.assert_equal(msm.count_model.active_set, active_set)
+        np.testing.assert_equal(msm.count_model.state_symbols, active_set)
         with self.assertRaises(ValueError):
             estimate_markov_model(dtraj, 1, statdist=pi_invalid)
 
@@ -138,7 +138,7 @@ class TestMSMRevPi(unittest.TestCase):
         dtraj_invalid = np.array([1, 1, 1, 1, 1, 1, 1])
         dtraj_valid = np.array([0, 2, 0, 2, 2, 0, 1, 1])
         msm = estimate_markov_model(dtraj_valid, lag=1, statdist=pi)
-        np.testing.assert_equal(msm.count_model.active_set, np.array([0, 2]))
+        np.testing.assert_equal(msm.count_model.state_symbols, np.array([0, 2]))
         with self.assertRaises(ValueError):
             estimate_markov_model(dtraj_invalid, lag=1, statdist=pi)
 
@@ -320,8 +320,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._discrete_trajectories_active(self.msm_sparse)
 
     def _timestep(self, msm):
-        assert (str(msm.dt_model).startswith('1'))
-        assert (str(msm.dt_model).endswith('step'))
+        assert (str(msm.physical_time).startswith('1'))
+        assert (str(msm.physical_time).endswith('step'))
 
     def test_timestep(self):
         self._timestep(self.msmrev)
@@ -538,11 +538,11 @@ class TestMSMDoubleWell(unittest.TestCase):
             ts_ref = np.array([310.87, 8.5, 5.09])
             assert (np.all(np.isreal(ts)))
             # HERE:
-            np.testing.assert_almost_equal(ts[:3].magnitude, ts_ref, decimal=2)
+            np.testing.assert_almost_equal(ts[:3], ts_ref, decimal=2)
         else:
             ts_ref = np.array([310.49376926, 8.48302712, 5.02649564])
             # HERE:
-            np.testing.assert_almost_equal(ts[:3].magnitude, ts_ref, decimal=2)
+            np.testing.assert_almost_equal(ts[:3], ts_ref, decimal=2)
 
     def test_timescales(self):
         self._timescales(self.msmrev)
@@ -775,7 +775,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp1[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp1[0][1:], msm.timescales(k-1).magnitude))
+            assert (np.allclose(fp1[0][1:], msm.timescales(k-1)))
             # all amplitudes nonnegative (for autocorrelation)
             assert (np.all(fp1[1][:] >= 0))
             # identical call
@@ -820,7 +820,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp1[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp1[0][1:], msm.timescales(k-1).magnitude))
+            assert (np.allclose(fp1[0][1:], msm.timescales(k-1)))
             # dynamical amplitudes should be near 0 because we are in equilibrium
             assert (np.max(np.abs(fp1[1][1:])) < 1e-10)
             # off-equilibrium relaxation
@@ -830,7 +830,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp2[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp2[0][1:], msm.timescales(k-1).magnitude))
+            assert (np.allclose(fp2[0][1:], msm.timescales(k-1)))
             # dynamical amplitudes should be significant because we are not in equilibrium
             assert (np.max(np.abs(fp2[1][1:])) > 0.1)
         else:  # raise ValueError, because fingerprints are not defined for nonreversible
