@@ -271,7 +271,7 @@ class TransitionCountModel(Model):
                                     count_matrix_full=self.count_matrix_full,
                                     state_histogram_full=self.state_histogram_full)
 
-    def submodel_largest(self, connectivity_threshold: Union[None, float] = 0., directed: bool = True,
+    def submodel_largest(self, connectivity_threshold: Union[None, float] = 0., directed: Optional[bool] = None,
                          probability_constraint: Optional[np.ndarray] = None):
         r"""
         Restricts this model to the submodel corresponding to the largest connected set of states after eliminating
@@ -282,14 +282,19 @@ class TransitionCountModel(Model):
         connectivity_threshold : float or '1/n', optional, default=0.
             Connectivity threshold. counts that are below the specified value are disregarded when finding connected
             sets. In case of '1/n', the threshold gets resolved to :math:`1 / n\_states\_full`.
-        directed : bool, optional, default=False
-            Whether to look for connected sets in a directed graph or in an undirected one.
+        directed : bool, optional, default=None
+            Whether to look for connected sets in a directed graph or in an undirected one. Per default it looks whether
+            a probability constraint is given. In case it is given it defaults to the undirected case, otherwise
+            directed.
         probability_constraint : (N,) ndarray, optional, default=None
             Constraint on the whole state space (n_states_full). Only considers states that have positive probability.
         Returns
         -------
         The submodel.
         """
+        if directed is None:
+            # if probability constraint is given, we want undirected per default
+            directed = probability_constraint is None
         if connectivity_threshold == '1/n':
             connectivity_threshold = 1. / self.n_states_full
         connectivity_threshold = float(connectivity_threshold)
