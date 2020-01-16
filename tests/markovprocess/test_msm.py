@@ -240,9 +240,9 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _active_set(self, msm):
         # should always be <= full set
-        assert len(msm.count_model.active_set) <= self.msm.count_model.n_states_active
+        assert len(msm.count_model.state_symbols) <= self.msm.count_model.n_states_full
         # should be length of n_states
-        assert len(msm.count_model.active_set) == self.msm.count_model.n_states_active
+        assert len(msm.count_model.state_symbols) == self.msm.count_model.n_states
 
     def test_active_set(self):
         self._active_set(self.msmrev)
@@ -251,21 +251,6 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._active_set(self.msmrev_sparse)
         self._active_set(self.msmrevpi_sparse)
         self._active_set(self.msm_sparse)
-
-    def _largest_connected_set(self, msm):
-        lcs = msm.count_model.largest_connected_set
-        # identical to first connected set
-        assert np.all(lcs == msm.count_model.connected_sets[0])
-        # LARGEST: identical to active set
-        assert np.all(lcs == msm.count_model.active_set)
-
-    def test_largest_connected_set(self):
-        self._largest_connected_set(self.msmrev)
-        self._largest_connected_set(self.msmrevpi)
-        self._largest_connected_set(self.msm)
-        self._largest_connected_set(self.msmrev_sparse)
-        self._largest_connected_set(self.msmrevpi_sparse)
-        self._largest_connected_set(self.msm_sparse)
 
     def _n_states(self, msm):
         # should always be <= full
@@ -282,10 +267,11 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._n_states(self.msm_sparse)
 
     def _connected_sets(self, msm):
-        cs = msm.count_model.connected_sets
-        assert len(cs) >= 1
-        # MODE LARGEST:
-        assert np.all(cs[0] == msm.count_model.active_set)
+        cs = msm.count_model.connected_sets()
+        assert len(cs) == 1
+        # mode largest: re-evaluating connected_sets should yield one connected set with exactly as many states as
+        # contained in the count model
+        np.testing.assert_array_almost_equal(cs[0], np.arange(msm.count_model.n_states))
 
     def test_connected_sets(self):
         self._connected_sets(self.msmrev)
@@ -296,7 +282,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._connected_sets(self.msm_sparse)
 
     def _count_matrix_active(self, msm):
-        C = msm.count_model.count_matrix_active
+        C = msm.count_model.count_matrix
         assert (np.all(C.shape == (msm.n_states, msm.n_states)))
 
     def test_count_matrix_active(self):
@@ -320,7 +306,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._count_matrix_full(self.msm_sparse)
 
     def _discrete_trajectories_active(self, msm):
-        dta = msm.count_model.map_discrete_trajectories_to_active(self.dtraj)
+        dta = msm.count_model.transform_discrete_trajectories_to_submodel(self.dtraj)
         assert len(dta) == 1
         # HERE: states are shifted down from the beginning, because early states are missing
         assert dta[0][0] < self.dtraj[0]
@@ -399,19 +385,6 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._active_state_fraction(self.msmrev_sparse)
         self._active_state_fraction(self.msmrevpi_sparse)
         self._active_state_fraction(self.msm_sparse)
-
-    def _effective_count_matrix(self, msm):
-        Ceff = msm.count_model.effective_count_matrix
-        assert (np.all(Ceff.shape == (msm.n_states, msm.n_states)))
-
-    # @unittest.skip('todo: compute_effective_count_matrix not part of MSMEst, Model?')
-    def test_effective_count_matrix(self):
-        self._effective_count_matrix(self.msmrev)
-        self._effective_count_matrix(self.msmrevpi)
-        self._effective_count_matrix(self.msm)
-        self._effective_count_matrix(self.msmrev_sparse)
-        self._effective_count_matrix(self.msmrevpi_sparse)
-        self._effective_count_matrix(self.msm_sparse)
 
     # ---------------------------------
     # EIGENVALUES, EIGENVECTORS
@@ -880,26 +853,26 @@ class TestMSMDoubleWell(unittest.TestCase):
     # STATISTICS, SAMPLING
     # ---------------------------------
 
-    def _active_state_indexes(self, msm):
+    def _active_state_indices(self, msm):
         from sktime.markovprocess.sample import compute_index_states
-        I = compute_index_states(self.dtraj, subset=msm.count_model.active_set)
+        I = compute_index_states(self.dtraj, subset=msm.count_model.state_symbols)
         assert (len(I) == msm.n_states)
         # compare to histogram
 
         hist = count_states(self.dtraj)
         # number of frames should match on active subset
-        A = msm.count_model.active_set
+        A = msm.count_model.state_symbols
         for i in range(A.shape[0]):
             assert I[i].shape[0] == hist[A[i]]
             assert I[i].shape[1] == 2
 
     def test_active_state_indexes(self):
-        self._active_state_indexes(self.msmrev)
-        self._active_state_indexes(self.msmrevpi)
-        self._active_state_indexes(self.msm)
-        self._active_state_indexes(self.msmrev_sparse)
-        self._active_state_indexes(self.msmrevpi_sparse)
-        self._active_state_indexes(self.msm_sparse)
+        self._active_state_indices(self.msmrev)
+        self._active_state_indices(self.msmrevpi)
+        self._active_state_indices(self.msm)
+        self._active_state_indices(self.msmrev_sparse)
+        self._active_state_indices(self.msmrevpi_sparse)
+        self._active_state_indices(self.msm_sparse)
 
     def _trajectory_weights(self, msm):
         W = msm.compute_trajectory_weights(self.dtraj)

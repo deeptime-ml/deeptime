@@ -138,7 +138,7 @@ class TransitionCountModel(Model):
         """
         return self.n_states == self.n_states_full
 
-    def transform_discrete_trajectories_to_selected_symbols(self, dtrajs):
+    def transform_discrete_trajectories_to_submodel(self, dtrajs):
         r"""A list of integer arrays with the discrete trajectories mapped to the currently used set of symbols.
         For example, if there has been a subselection of the model for connectivity='largest', the indices will be
         given within the connected set, frames that do not correspond to a considered symbol are set to -1.
@@ -248,6 +248,9 @@ class TransitionCountModel(Model):
             if scipy.sparse.issparse(count_matrix):
                 count_matrix = count_matrix.tocsc()
             count_matrix[:, pos] = 0.
+
+            if scipy.sparse.issparse(count_matrix):
+                count_matrix.eliminate_zeros()
 
         return compute_connected_sets(count_matrix, connectivity_threshold, directed=directed)
 

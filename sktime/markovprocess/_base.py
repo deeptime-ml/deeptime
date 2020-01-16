@@ -294,6 +294,7 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', s
         dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015).
 
     """
+    from sktime.markovprocess import TransitionCountEstimator
     from sktime.util import ensure_dtraj_list
     dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
     if estimator.count_mode not in ('sliding', 'sample'):
@@ -303,7 +304,9 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, n=10, score_method='VAMP2', s
     for fold in range(n):
         dtrajs_split = blocksplit_dtrajs(dtrajs, lag=estimator.lagtime, sliding=sliding, random_state=random_state)
         dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split, random_state=random_state)
-        model = estimator.fit(dtrajs_train).fetch_model()
+
+        cc = TransitionCountEstimator(estimator.lagtime, "sliding").fit(dtrajs_train).fetch_model().submodel_largest()
+        model = estimator.fit(cc).fetch_model()
         s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
         scores.append(s)
     return np.array(scores)

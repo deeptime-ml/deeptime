@@ -15,6 +15,7 @@ from ._base import BayesianPosterior
 from .maximum_likelihood_msm import MaximumLikelihoodMSM
 from .bayesian_msm import BayesianMSM
 from .pcca import pcca
+from .transition_counting import TransitionCountEstimator, TransitionCountModel
 
 from .reactive_flux import ReactiveFlux
 

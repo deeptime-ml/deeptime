@@ -195,14 +195,11 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             # computed using dense arrays and dense matrix algebra.
             count_matrix = count_matrix.toarray()
 
-        if not msmest.is_connected(count_matrix, directed=True):
-            raise ValueError("Can only estimate ML-MSM on count matrices which are reversibly connected!")
-
         # restrict stationary distribution to active set
         if self.stationary_distribution_constraint is None:
             statdist_active = None
         else:
-            statdist_active = self.statdist_constraint[count_model.state_symbols]
+            statdist_active = self.stationary_distribution_constraint[count_model.state_symbols]
             statdist_active /= statdist_active.sum()  # renormalize
 
         opt_args = {}

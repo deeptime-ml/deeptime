@@ -963,7 +963,7 @@ class MarkovStateModel(Model):
             raise RuntimeError("Count model was None but needs to be provided in this case.")
         dtrajs = ensure_dtraj_list(dtrajs)
         statdist_full = np.zeros(self.count_model.n_states)
-        statdist_full[self.count_model.active_set] = self.stationary_distribution
+        statdist_full[self.count_model.state_symbols] = self.stationary_distribution
         # histogram observed states
         from msmtools.dtraj import count_states
         hist = 1.0 * count_states(dtrajs)
@@ -1106,7 +1106,7 @@ class MarkovStateModel(Model):
 
         # training data
         K = self.transition_matrix  # model
-        C0t_train = self.count_model.count_matrix_active
+        C0t_train = self.count_model.count_matrix
         from scipy.sparse import issparse
         if issparse(K):  # can't deal with sparse right now.
             K = K.toarray()
@@ -1119,7 +1119,7 @@ class MarkovStateModel(Model):
         from msmtools.estimation import count_matrix
         C0t_test_raw = count_matrix(dtrajs, self.count_model.lagtime.magnitude, sparse_return=False)
         # map to present active set
-        active_set = self.count_model.active_set
+        active_set = self.count_model.state_symbols
         map_from = active_set[np.where(active_set < C0t_test_raw.shape[0])[0]]
         map_to = np.arange(len(map_from))
         C0t_test = np.zeros((self.n_states, self.n_states))
