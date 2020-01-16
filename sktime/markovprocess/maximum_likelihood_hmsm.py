@@ -185,7 +185,7 @@ class MaximumLikelihoodHMSM(Estimator):
         hmm_count_model = HMMTransitionCountModel(stride=self.stride,
                                                   count_matrix=hmm.transition_counts,
                                                   lagtime=self.lagtime,
-                                                  time_unit=self.dt_traj,
+                                                  physical_time=self.dt_traj,
                                                   n_states=self.n_states,
                                                   active_set=np.arange(self.n_states),
                                                   observable_set=np.arange(number_of_states(dtrajs_lagged_strided)),

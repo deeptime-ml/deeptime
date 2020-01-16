@@ -28,86 +28,7 @@ __all__ = ['MaximumLikelihoodMSM']
 
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
-    r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
-
-    Parameters
-    ----------
-    lagtime : int
-        lag time at which transitions are counted and the transition matrix is
-        estimated.
-
-    reversible : bool, optional, default = True
-        If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel
-
-    statdist : (M,) ndarray, optional
-        Stationary vector on the full set of states. Estimation will be
-        made such the the resulting transition matrix has this distribution
-        as an equilibrium distribution. Set probabilities to zero if these
-        states should be excluded from the analysis.
-
-    count_mode : str, optional, default='sliding'
-        mode to obtain count matrices from discrete trajectories. Should be
-        one of:
-
-        * 'sliding' : A trajectory of length T will have :math:`T-tau` counts
-          at time indexes
-
-          .. math::
-
-             (0 \rightarrow \tau), (1 \rightarrow \tau+1), ..., (T-\tau-1 \rightarrow T-1)
-
-        * 'sliding-effective' : Same as 'sliding' but after counting all counts are
-          divided by the lagtime :math:`\tau`.
-
-        * 'effective' : Uses an estimate of the transition counts that are statistically uncorrelated.
-          Recommended when used with a Bayesian MarkovStateModel.
-
-        * 'sample' : A trajectory of length T will have :math:`T/tau` counts
-          at time indexes
-
-          .. math::
-
-                (0 \rightarrow \tau), (\tau \rightarrow 2 \tau), ..., (((T/tau)-1) \tau \rightarrow T)
-
-    sparse : bool, optional, default = False
-        If true compute count matrix, transition matrix and all derived
-        quantities using sparse matrix algebra. In this case python sparse
-        matrices will be returned by the corresponding functions instead of
-        numpy arrays. This behavior is suggested for very large numbers of
-        states (e.g. > 4000) because it is likely to be much more efficient.
-
-    physical_time : str, optional, default='1 step'
-        Description of the physical time of the input trajectories. May be used
-        by analysis algorithms such as plotting tools to pretty-print the axes.
-        By default '1 step', i.e. there is no physical time unit. Specify by a
-        number, whitespace and unit. Permitted units are (* is an arbitrary
-        string):
-
-        |  'fs',  'femtosecond*'
-        |  'ps',  'picosecond*'
-        |  'ns',  'nanosecond*'
-        |  'us',  'microsecond*'
-        |  'ms',  'millisecond*'
-        |  's',   'second*'
-
-    maxiter: int, optioanl, default = 1000000
-        Optional parameter with reversible = True. maximum number of iterations
-        before the transition matrix estimation method exits
-    maxerr : float, optional, default = 1e-8
-        Optional parameter with reversible = True.
-        convergence tolerance for transition matrix estimation.
-        This specifies the maximum change of the Euclidean norm of relative
-        stationary probabilities (:math:`x_i = \sum_k x_{ik}`). The relative
-        stationary probability changes
-        :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used
-        in order to track changes in small probabilities. The Euclidean norm
-        of the change vector, :math:`|e_i|_2`, is compared to maxerr.
-
-    connectivity_threshold : float or '1/n'
-        minimum number of counts to consider a connection between two states.
-        Counts lower than that will count zero in the connectivity check and
-        may thus separate the resulting transition matrix. The default
-        evaluates to 1/n_states.
+    r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics.
 
     References
     ----------
@@ -116,19 +37,38 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     """
 
-    def __init__(self, lagtime: int = 1, reversible: bool = True,
-                 stationary_distribution_constraint: Optional[np.ndarray] = None,
-                 count_mode: str = 'sliding', sparse: bool = False,
-                 physical_time: Union[Q_, str] = '1 step', maxiter: int = int(1e6),
-                 maxerr: float = 1e-8, connectivity_threshold='1/n'):
+    def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
+                 sparse: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8):
+        r"""
+        Constructs a new maximum-likelihood msm estimator.
 
-        super(MaximumLikelihoodMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
-                                                   sparse=sparse, physical_time=physical_time,
-                                                   connectivity_threshold=connectivity_threshold)
+        Parameters
+        ----------
+        reversible : bool, optional, default=True
+            If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel
+        stationary_distribution_constraint : (N,) ndarray, optional, default=None
+            Stationary vector on the full set of states. Estimation will be made such the the resulting transition
+            matrix has this distribution as an equilibrium distribution. Set probabilities to zero if the states which
+            should be excluded from the analysis.
+        sparse : bool, optional, default=False
+            If true compute count matrix, transition matrix and all derived quantities using sparse matrix algebra.
+            In this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
+            This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
+            more efficient.
+        maxiter : int, optional, default=1000000
+            Optional parameter with reversible = True, sets the maximum number of iterations before the transition
+            matrix estimation method exits.
+        maxerr : float, optional, default = 1e-8
+            Optional parameter with reversible = True. Convergence tolerance for transition matrix estimation. This
+            specifies the maximum change of the Euclidean norm of relative stationary probabilities
+            (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
+            :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
+            probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
+        """
+
+        super(MaximumLikelihoodMSM, self).__init__(reversible=reversible, sparse=sparse)
 
         self.stationary_distribution_constraint = stationary_distribution_constraint
-
-        # convergence parameters
         self.maxiter = maxiter
         self.maxerr = maxerr
 
@@ -221,8 +161,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             P, statdist_active = P
 
         # create model
-        self._model = MarkovStateModel(transition_matrix=P, stationary_distribution=statdist_active, reversible=self.reversible,
-                                       time_unit=count_model.physical_time.units,
-                                       count_model=count_model)
+        self._model = MarkovStateModel(transition_matrix=P, stationary_distribution=statdist_active,
+                                       reversible=self.reversible, count_model=count_model)
 
         return self

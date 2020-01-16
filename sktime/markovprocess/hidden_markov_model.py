@@ -29,8 +29,8 @@ from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM as BHMM_HMM
 
 class HMMTransitionCountModel(transition_counting.TransitionCountModel):
     def __init__(self, n_states=None, observable_set: typing.Optional[np.ndarray] = None,
-                 stride=1, state_symbols=None, lagtime=1, time_unit='1 step', count_matrix=None):
-        super(HMMTransitionCountModel, self).__init__(lagtime=lagtime, time_unit=time_unit,
+                 stride=1, state_symbols=None, lagtime=1, physical_time='1 step', count_matrix=None):
+        super(HMMTransitionCountModel, self).__init__(lagtime=lagtime, physical_time=physical_time,
                                                       count_matrix=count_matrix)
 
         self._n_states_full = n_states
@@ -217,7 +217,7 @@ class HMSM(MarkovStateModel):
 
         count_model = HMMTransitionCountModel(
             n_states=self.count_model.n_states_full, observable_set=obs,
-            stride=self.count_model.stride, state_symbols=self.count_model.symbols, time_unit=self.count_model.physical_time,
+            stride=self.count_model.stride, state_symbols=self.count_model.symbols, physical_time=self.count_model.physical_time,
             active_set=states, connected_sets=S, count_matrix=C, lagtime=self.count_model.lagtime
         )
         model = HMSM(transition_matrix=P, observation_probabilities=B, stationary_distribution=pi, time_unit=self.dt_model,

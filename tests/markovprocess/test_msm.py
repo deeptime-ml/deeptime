@@ -48,7 +48,7 @@ def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovSt
     count_model = TransitionCountEstimator(lagtime=lag, count_mode="sliding").fit(dtrajs).fetch_model()
     count_model = count_model.submodel_largest(probability_constraint=statdist_constraint,
                                                connectivity_threshold=connectivity)
-    est = MaximumLikelihoodMSM(lagtime=lag, stationary_distribution_constraint=statdist_constraint, **kw)
+    est = MaximumLikelihoodMSM(stationary_distribution_constraint=statdist_constraint, **kw)
     est.fit(count_model)
     if return_estimator:
         return est, est.fetch_model()
@@ -198,12 +198,12 @@ class TestMSMDoubleWell(unittest.TestCase):
         se_inf = score_cv(estimator, self.dtraj, n=5, score_method='VAMPE', score_k=None).mean()
 
     def test_score_cv(self):
-        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True))
-        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, stationary_distribution_constraint=self.statdist))
-        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=False))
-        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, sparse=True))
-        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=True, stationary_distribution_constraint=self.statdist, sparse=True))
-        self._score_cv(MaximumLikelihoodMSM(lagtime=10, reversible=False, sparse=True))
+        self._score_cv(MaximumLikelihoodMSM(reversible=True))
+        self._score_cv(MaximumLikelihoodMSM(reversible=True, stationary_distribution_constraint=self.statdist))
+        self._score_cv(MaximumLikelihoodMSM(reversible=False))
+        self._score_cv(MaximumLikelihoodMSM(reversible=True, sparse=True))
+        self._score_cv(MaximumLikelihoodMSM(reversible=True, stationary_distribution_constraint=self.statdist, sparse=True))
+        self._score_cv(MaximumLikelihoodMSM(reversible=False, sparse=True))
 
     # ---------------------------------
     # BASIC PROPERTIES
@@ -320,8 +320,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._discrete_trajectories_active(self.msm_sparse)
 
     def _timestep(self, msm):
-        assert (str(msm.physical_time).startswith('1'))
-        assert (str(msm.physical_time).endswith('step'))
+        assert (str(msm.count_model.physical_time).startswith('1'))
+        assert (str(msm.count_model.physical_time).endswith('step'))
 
     def test_timestep(self):
         self._timestep(self.msmrev)

@@ -180,7 +180,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         assert_allclose(self.tpt1.major_flux(fraction=0.95), self.ref_majorflux_95percent, rtol=1e-02, atol=1e-07)
 
     def test_dt_model(self):
-        C = TransitionCountModel(np.array([[0.1, 0.9], [0.9, 0.1]]), lagtime=5, time_unit='s')
+        C = TransitionCountModel(np.array([[0.1, 0.9], [0.9, 0.1]]), lagtime=5, physical_time='s')
         msm = MarkovStateModel(C.count_matrix, count_model=C, time_unit='s')
         tpt = msm.reactive_flux([0], [1])
         assert '5 second' in str(tpt.physical_time)

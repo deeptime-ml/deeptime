@@ -26,7 +26,7 @@ import numpy as np
 from scipy.sparse import issparse
 
 from sktime.base import Model
-from sktime.markovprocess import Q_, U_
+from sktime.markovprocess import Q_
 from sktime.markovprocess.pcca import pcca, PCCAModel
 from sktime.markovprocess.sample import ensure_dtraj_list, compute_index_states
 from sktime.markovprocess.transition_counting import TransitionCountModel
@@ -41,42 +41,27 @@ class MarkovStateModel(Model):
     ----------
     transition_matrix : ndarray(n,n)
         transition matrix
-
     stationary_distribution : ndarray(n), optional, default=None
         stationary distribution. Can be optionally given in case if it was
         already computed, e.g. by the estimator.
-
     reversible : bool, optional, default=None
         whether P is reversible with respect to its stationary distribution.
         If None (default), will be determined from P
-
-    time_unit : str, optional, default='1 step'
-        Description of the physical time unit corresponding to one time step of the
-        MarkovStateModel (aka lag time). May be used by analysis algorithms such as plotting
-        tools to pretty-print the axes.
-        By default 'step', i.e. there is no physical time unit. Permitted units are
-
-        *  'fs',  'femtosecond*'
-        *  'ps',  'picosecond*'
-        *  'ns',  'nanosecond*'
-        *  'us',  'microsecond*'
-        *  'ms',  'millisecond*'
-        *  's',   'second*'
-
     n_eigenvalues : int or None
         The number of eigenvalues / eigenvectors to be kept. If set to None,
         defaults will be used. For a dense MarkovStateModel the default is all eigenvalues.
         For a sparse MarkovStateModel the default is 10.
-
     ncv : int, optional, default=None
         Relevant for eigenvalue decomposition of reversible transition
         matrices. It is the number of Lanczos vectors generated, `ncv` must
         be greater than n_eigenvalues; it is recommended that ncv > 2*neig.
-
+    count_model : TransitionCountModel, optional, default=None
+        Transition count model containing count matrix and potentially data statistics. Not required for instantiation,
+        default is None.
     """
 
-    def __init__(self, transition_matrix, stationary_distribution=None, reversible=None,
-                 time_unit='step', n_eigenvalues=None, ncv=None, count_model=None):
+    def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
+                 count_model=None):
         self._sparse = issparse(transition_matrix)
         self._is_reversible = reversible
         self._ncv = ncv
@@ -101,10 +86,6 @@ class MarkovStateModel(Model):
                              "(sum={})".format(np.sum(stationary_distribution)))
         self._stationary_distribution = stationary_distribution
 
-        if not isinstance(time_unit, U_):
-            time_unit = U_(time_unit)
-        self._physical_unit = time_unit
-
         if n_eigenvalues is None:
             if self.is_sparse:
                 # expect large matrix, don't take full state space but just (magic) the dominant 10
@@ -114,8 +95,6 @@ class MarkovStateModel(Model):
                 n_eigenvalues = self.n_states
         self._n_eigenvalues = n_eigenvalues
         self._count_model = count_model
-        if self.count_model is not None and self.count_model.physical_time != self.physical_time:
-            raise ValueError("Mismatch of physical time of count model and markov state model!")
         # initially None, compute lazily
         self._eigenvalues = None
 
@@ -128,10 +107,10 @@ class MarkovStateModel(Model):
         return self._count_model
 
     @property
-    def lagtime(self) -> Q_:
+    def lagtime(self) -> int:
         if self.count_model is not None:
             return self.count_model.lagtime
-        return Q_('1 step')
+        return 1
 
     @property
     def transition_matrix(self):
@@ -157,11 +136,6 @@ class MarkovStateModel(Model):
     def n_eigenvalues(self) -> int:
         """ number of eigenvalues to compute. """
         return self._n_eigenvalues
-
-    @property
-    def physical_time(self) -> Q_:
-        """Description of the physical time corresponding to the lag."""
-        return self.lagtime * self._physical_unit
 
     @property
     def ncv(self):
@@ -866,7 +840,7 @@ class MarkovStateModel(Model):
 
         # construct flux object
         return ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux,
-                            physical_time=self.physical_time)
+                            physical_time=self.count_model.physical_time)
 
     def simulate(self, N, start=None, stop=None, dt=1):
         """
@@ -1035,7 +1009,7 @@ class MarkovStateModel(Model):
         # run HMM estimate
         from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
         estimator = MaximumLikelihoodHMSM(lagtime=self.lagtime, n_states=nhidden, msm_init=self,
-                                          reversible=self.is_reversible, dt_traj=self.physical_time)
+                                          reversible=self.is_reversible, dt_traj=self.count_model.physical_time)
         estimator.fit(dtrajs)
         model = estimator.fetch_model()
         if return_estimator:

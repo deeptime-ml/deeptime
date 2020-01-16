@@ -21,7 +21,7 @@ def bayesian_markov_model(dtrajs, lag, return_estimator=False, **kwargs) \
 def msm_double_well(lagtime=100, reversible=True, **kwargs) -> MaximumLikelihoodMSM:
     count_model = TransitionCountEstimator(lagtime=lagtime, count_mode="sliding")\
         .fit(datasets.double_well_discrete().dtraj).fetch_model().submodel_largest()
-    est = MaximumLikelihoodMSM(lagtime=lagtime, reversible=reversible, **kwargs)
+    est = MaximumLikelihoodMSM(reversible=reversible, **kwargs)
     est.fit(count_model)
     return est
 
@@ -48,10 +48,11 @@ def bmsm_double_well(lagtime=100, nsamples=100, reversible=True, constrain_to_co
     cg[50:] = 1
     obs_macro = cg[obs_micro]
 
-    est = BayesianMSM(lagtime=lagtime, reversible=reversible, nsamples=nsamples,
-                      physical_time='4 ps',
-                      statdist_constraint=pi_macro if constrain_to_coarse_pi else None,
-                      **kwargs)
-    est.fit(obs_macro)
+    distribution_constraint = pi_macro if constrain_to_coarse_pi else None
+    counting = TransitionCountEstimator(lagtime=lagtime, count_mode="effective", physical_time="4 ps")\
+        .fit(obs_macro).fetch_model().submodel_largest(probability_constraint=distribution_constraint)
+    est = BayesianMSM(reversible=reversible, n_samples=nsamples,
+                      stationary_distribution_constraint=distribution_constraint, **kwargs)
+    est.fit(counting)
 
     return est

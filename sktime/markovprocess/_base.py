@@ -76,33 +76,8 @@ class _MSMBaseEstimator(Estimator):
 
     Parameters
     ----------
-    lag : int
-        lag time at which transitions are counted and the transition matrix is
-        estimated.
-
     reversible : bool, optional, default = True
         If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel
-
-    count_mode : str, optional, default='sliding'
-        mode to obtain count matrices from discrete trajectories. Should be
-        one of:
-
-        * 'sliding' : A trajectory of length T will have :math:`T-\tau` counts
-          at time indexes
-
-          .. math::
-
-             (0 \rightarrow \tau), (1 \rightarrow \tau+1), ..., (T-\tau-1 \rightarrow T-1)
-
-        * 'effective' : Uses an estimate of the transition counts that are
-          statistically uncorrelated. Recommended when used with a
-          Bayesian MarkovStateModel.
-        * 'sample' : A trajectory of length T will have :math:`T/\tau` counts
-          at time indexes
-
-          .. math::
-
-                (0 \rightarrow \tau), (\tau \rightarrow 2 \tau), ..., (((T/\tau)-1) \tau \rightarrow T)
 
     sparse : bool, optional, default = False
         If true compute count matrix, transition matrix and all derived
@@ -110,44 +85,28 @@ class _MSMBaseEstimator(Estimator):
         matrices will be returned by the corresponding functions instead of
         numpy arrays. This behavior is suggested for very large numbers of
         states (e.g. > 4000) because it is likely to be much more efficient.
-
-    physical_time : str, optional, default='1 step'
-        Description of the physical time of the input trajectories. May be used
-        by analysis algorithms such as plotting tools to pretty-print the axes.
-        By default '1 step', i.e. there is no physical time unit. Specify by a
-        number, whitespace and unit. Permitted units are (* is an arbitrary
-        string). E.g. 200 picoseconds or 200ps.
-
-    connectivity_threshold : float or '1/n'
-        minimum number of counts to consider a connection between two states.
-        Counts lower than that will count zero in the connectivity check and
-        may thus separate the resulting transition matrix. The default
-        evaluates to 1/n_states.
-
     """
 
-    def __init__(self, lagtime=1, reversible=True, count_mode='sliding', sparse=False,
-                 physical_time='1 step', connectivity_threshold='1/n'):
+    def __init__(self, reversible=True, sparse=False):
         super(_MSMBaseEstimator, self).__init__()
-        self.lagtime = lagtime
-
-        # set basic parameters
         self.reversible = reversible
-
-        # sparse matrix computation wanted?
         self.sparse = sparse
 
-        # store counting mode (lowercase)
-        self.count_mode = count_mode
-        if self.count_mode not in ('sliding', 'sliding-effective', 'effective', 'sample'):
-            raise ValueError('count mode ' + count_mode + ' is unknown.')
+    @property
+    def reversible(self) -> bool:
+        return self._reversible
 
-        # time step
-        self.physical_time = physical_time
+    @reversible.setter
+    def reversible(self, value: bool):
+        self._reversible = value
 
-        # connectivity
-        self.connectivity_threshold = connectivity_threshold
+    @property
+    def sparse(self) -> bool:
+        return self._sparse
 
+    @sparse.setter
+    def sparse(self, value: bool):
+        self._sparse = value
 
 class BayesianPosterior(Model):
     def __init__(self,

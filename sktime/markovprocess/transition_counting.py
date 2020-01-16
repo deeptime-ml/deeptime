@@ -6,7 +6,7 @@ from msmtools import estimation as msmest
 from scipy.sparse import coo_matrix
 
 from sktime.base import Estimator, Model
-from sktime.markovprocess import Q_, U_
+from sktime.markovprocess import Q_
 from sktime.markovprocess.util import count_states, compute_connected_sets
 from sktime.util import submatrix, ensure_dtraj_list
 
@@ -26,7 +26,7 @@ class TransitionCountModel(Model):
 
     def __init__(self, count_matrix: Union[np.ndarray, coo_matrix], counting_mode: Optional[str] = None,
                  lagtime: int = 1, state_histogram: Optional[np.ndarray] = None,
-                 time_unit: Union[U_, str] = '1 step',
+                 physical_time: Union[Q_, str] = '1 step',
                  state_symbols: Optional[np.ndarray] = None,
                  count_matrix_full: Union[None, np.ndarray, coo_matrix] = None,
                  state_histogram_full: Optional[np.ndarray] = None):
@@ -50,7 +50,7 @@ class TransitionCountModel(Model):
             The time offset which was used to count transitions in state.
         state_histogram : array_like, optional, default=None
             Histogram over the visited states in discretized trajectories.
-        time_unit : Unit or str, default='step'
+        physical_time : Unit or str, default='step'
             Description of the physical time unit corresponding to one time step of the
             transitioning process (aka lag time). May be used by analysis methods such as plotting
             tools to pretty-print the axes.
@@ -79,7 +79,7 @@ class TransitionCountModel(Model):
         self._count_matrix = count_matrix
         self._counting_mode = counting_mode
         self._lag = lagtime
-        self._time_unit = U_(time_unit) if isinstance(time_unit, (str, int)) else time_unit
+        self._physical_time = Q_(physical_time) if isinstance(physical_time, (str, int)) else physical_time
         self._state_histogram = state_histogram
 
         if state_symbols is None:
@@ -137,7 +137,7 @@ class TransitionCountModel(Model):
     @property
     def physical_time(self) -> Q_:
         """Time interval between discrete steps of the time series."""
-        return self.lagtime * self._time_unit
+        return self._physical_time
 
     @property
     def is_full_model(self) -> bool:
@@ -278,7 +278,7 @@ class TransitionCountModel(Model):
         sub_symbols = self.state_symbols[states]
         sub_state_histogram = self.state_histogram[states]
         return TransitionCountModel(sub_count_matrix, self.counting_mode, self.lagtime, sub_state_histogram,
-                                    state_symbols=sub_symbols, time_unit=self.physical_time.units,
+                                    state_symbols=sub_symbols, physical_time=self.physical_time.units,
                                     count_matrix_full=self.count_matrix_full,
                                     state_histogram_full=self.state_histogram_full)
 
@@ -464,7 +464,7 @@ class TransitionCountEstimator(Estimator):
         # with the input arguments
         self._model = TransitionCountModel(
             count_matrix=count_matrix, counting_mode=count_mode, lagtime=lagtime, state_histogram=histogram,
-            time_unit=self.physical_time
+            physical_time=self.physical_time
         )
 
         return self

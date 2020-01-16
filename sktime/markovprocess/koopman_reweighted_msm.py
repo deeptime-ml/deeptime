@@ -90,7 +90,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         numpy arrays. This behavior is suggested for very large numbers of
         states (e.g. > 4000) because it is likely to be much more efficient.
 
-    physical_time : str, optional, default='1 step'
+    time_unit : str, optional, default='1 step'
         Description of the physical time of the input trajectories. May be used
         by analysis algorithms such as plotting tools to pretty-print the axes.
         By default '1 step', i.e. there is no physical time unit. Specify by a
@@ -130,7 +130,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     """
 
     def __init__(self, lagtime, reversible=True, count_mode='sliding', sparse=False,
-                 physical_time='1 step', nbs=10000, rank_Ct='bootstrap_counts', tol_rank=10.0,
+                 time_unit='1 step', nbs=10000, rank_Ct='bootstrap_counts', tol_rank=10.0,
                  connectivity_threshold='1/n'):
 
         # Check count mode:
@@ -143,7 +143,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
 
         super(OOMReweightedMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
                                                sparse=sparse,
-                                               physical_time=physical_time, connectivity_threshold=connectivity_threshold)
+                                               time_unit=time_unit, connectivity_threshold=connectivity_threshold)
         self.nbs = nbs
         self.tol_rank = tol_rank
         self.rank_Ct = rank_Ct
@@ -177,7 +177,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         if lcc_new.size < count_model.n_states:
             assert isinstance(count_model, TransitionCountModel)
             count_model.__init__(self.lagtime, active_set=count_model.active_set[lcc_new],
-                                 time_unit=count_model.physical_time, connected_sets=count_model.connected_sets,
+                                 physical_time=count_model.physical_time, connected_sets=count_model.connected_sets,
                                  count_matrix=count_model.count_matrix)
             warnings.warn("Caution: Re-estimation of count matrix resulted in reduction of the active set.")
 
