@@ -26,7 +26,7 @@ import numpy as np
 
 from sktime.data.util import timeshifted_split
 from sktime.decomposition.vamp import VAMP, VAMPModel, vamp_cktest
-from sktime.markovprocess.transition_counting import cvsplit_dtrajs
+from sktime.markovprocess._base import cvsplit_dtrajs
 from tests.markovprocess.test_msm import estimate_markov_model
 
 
@@ -187,13 +187,13 @@ class TestVAMPModel(unittest.TestCase):
         C0 = self.vamp.cov_00 + m0[:, np.newaxis] * m0[np.newaxis, :]
         C1 = self.vamp.cov_0t + m0[:, np.newaxis] * mt[np.newaxis, :]
         K = np.linalg.inv(C0).dot(C1)
-        np.testing.assert_allclose(K, self.msm.P, atol=1E-5)
+        np.testing.assert_allclose(K, self.msm.transition_matrix, atol=1E-5)
 
-        Tsym = np.diag(self.p0 ** 0.5).dot(self.msm.P).dot(np.diag(self.p1 ** -0.5))
+        Tsym = np.diag(self.p0 ** 0.5).dot(self.msm.transition_matrix).dot(np.diag(self.p1 ** -0.5))
         np.testing.assert_allclose(np.linalg.svd(Tsym)[1][1:], self.vamp.singular_values[0:2], atol=1E-7)
 
     def test_singular_functions_against_MSM(self):
-        Tsym = np.diag(self.p0 ** 0.5).dot(self.msm.P).dot(np.diag(self.p1 ** -0.5))
+        Tsym = np.diag(self.p0 ** 0.5).dot(self.msm.transition_matrix).dot(np.diag(self.p1 ** -0.5))
         Up, S, Vhp = np.linalg.svd(Tsym)
         Vp = Vhp.T
         U = Up * (self.p0 ** -0.5)[:, np.newaxis]
@@ -208,9 +208,10 @@ class TestVAMPModel(unittest.TestCase):
         psi = self.vamp.transform(np.eye(3))
         assert_allclose_ignore_phase(U, psi, atol=1E-5)
         assert_allclose_ignore_phase(V, phi, atol=1E-5)
-        references_sf = [U.T.dot(np.diag(self.p0)).dot(np.linalg.matrix_power(self.msm.P, k * self.lag)).dot(V).T for k
-                         in
-                         range(1, 10 - 1)]
+        references_sf = [
+            U.T.dot(np.diag(self.p0)).dot(np.linalg.matrix_power(self.msm.transition_matrix, k * self.lag)).dot(V).T
+            for k in range(1, 10 - 1)
+        ]
         cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, n_observables=2, mlags=10, data=self.trajs).fetch_model()
         pred_sf = cktest.predictions
         esti_sf = cktest.estimates
@@ -238,8 +239,8 @@ class TestVAMPModel(unittest.TestCase):
 
         for i, (est_, pred_) in enumerate(zip(est, pred)):
             msm = estimate_markov_model(dtrajs=self.dtrajs, lag=self.lag * (i + 1), reversible=False)
-            msm_esti = self.p0.T.dot(msm.P).dot(obs)
-            msm_pred = self.p0.T.dot(np.linalg.matrix_power(self.msm.P, (i + 1))).dot(obs)
+            msm_esti = self.p0.T.dot(msm.transition_matrix).dot(obs)
+            msm_pred = self.p0.T.dot(np.linalg.matrix_power(self.msm.transition_matrix, (i + 1))).dot(obs)
             np.testing.assert_allclose(pred_, msm_pred, atol=self.atol)
             np.testing.assert_allclose(est_, msm_esti, atol=self.atol)
             np.testing.assert_allclose(est_, pred_, atol=0.006)
@@ -263,14 +264,14 @@ class TestVAMPModel(unittest.TestCase):
 
         for i, (est_, pred_) in enumerate(zip(est, pred)):
             msm = estimate_markov_model(dtrajs=self.dtrajs, lag=self.lag * (i + 1), reversible=False)
-            msm_esti = (self.p0 * sta).T.dot(msm.P).dot(obs).T
-            msm_pred = (self.p0 * sta).T.dot(np.linalg.matrix_power(self.msm.P, (i + 1))).dot(obs).T
+            msm_esti = (self.p0 * sta).T.dot(msm.transition_matrix).dot(obs).T
+            msm_pred = (self.p0 * sta).T.dot(np.linalg.matrix_power(self.msm.transition_matrix, (i + 1))).dot(obs).T
             np.testing.assert_allclose(np.diag(pred_), np.diag(msm_pred), atol=self.atol)
             np.testing.assert_allclose(np.diag(est_), np.diag(msm_esti), atol=self.atol)
             np.testing.assert_allclose(np.diag(est_), np.diag(pred_), atol=0.006)
 
     def test_self_score_with_MSM(self):
-        T = self.msm.P
+        T = self.msm.transition_matrix
         Tadj = np.diag(1. / self.p1).dot(T.T).dot(np.diag(self.p0))
         NFro = np.trace(T.dot(Tadj))
         s2 = self.vamp.score(score_method='VAMP2')

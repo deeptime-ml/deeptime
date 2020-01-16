@@ -161,7 +161,14 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             value = np.copy(value) / np.sum(value)
         self._stationary_distribution_constraint = value
 
-    def fetch_model(self) -> MarkovStateModel:
+    def fetch_model(self) -> Optional[MarkovStateModel]:
+        r"""
+        Yields the most recent markov state model that was estimated. Can be None if fit was not called.
+
+        Returns
+        -------
+        The most recent markov state model or None
+        """
         return self._model
 
     def fit(self, data, y=None, **kw):

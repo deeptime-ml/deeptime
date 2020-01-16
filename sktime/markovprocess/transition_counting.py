@@ -100,7 +100,7 @@ class TransitionCountModel(Model):
                              "full count matrix.".format(self.n_states, self.n_states_full))
         if state_histogram_full is None:
             state_histogram_full = state_histogram
-        if self.n_states_full != len(state_histogram_full):
+        if state_histogram_full is not None and self.n_states_full != len(state_histogram_full):
             raise ValueError(
                 "Mismatch between number of states represented in full state histogram and full count matrix "
                 "(#states histogram = {}, #states matrix = {})".format(len(state_histogram_full), self.n_states_full)
