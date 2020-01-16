@@ -242,15 +242,9 @@ class TransitionCountModel(Model):
             count_matrix = count_matrix.copy()
 
             if scipy.sparse.issparse(count_matrix):
-                count_matrix = count_matrix.tocsr()
+                count_matrix = count_matrix.tolil()
             count_matrix[pos, :] = 0.
-
-            if scipy.sparse.issparse(count_matrix):
-                count_matrix = count_matrix.tocsc()
             count_matrix[:, pos] = 0.
-
-            if scipy.sparse.issparse(count_matrix):
-                count_matrix.eliminate_zeros()
 
         return compute_connected_sets(count_matrix, connectivity_threshold, directed=directed)
 

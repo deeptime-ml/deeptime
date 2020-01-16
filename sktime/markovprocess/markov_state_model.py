@@ -962,7 +962,7 @@ class MarkovStateModel(Model):
         if self.count_model is None:
             raise RuntimeError("Count model was None but needs to be provided in this case.")
         dtrajs = ensure_dtraj_list(dtrajs)
-        statdist_full = np.zeros(self.count_model.n_states)
+        statdist_full = np.zeros(self.count_model.n_states_full)
         statdist_full[self.count_model.state_symbols] = self.stationary_distribution
         # histogram observed states
         from msmtools.dtraj import count_states
