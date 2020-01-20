@@ -14,12 +14,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 from msmtools import estimation as msmest
 
-from sktime.markovprocess import Q_
 from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
 from sktime.markovprocess.transition_counting import TransitionCountModel

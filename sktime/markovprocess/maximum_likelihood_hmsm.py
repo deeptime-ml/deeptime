@@ -23,7 +23,7 @@ from sktime.base import Estimator
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess.bhmm import discrete_hmm, init_discrete_hmm
 from sktime.markovprocess.bhmm.init.discrete import init_discrete_hmm_spectral
-from sktime.markovprocess.hidden_markov_model import HMSM, HMMTransitionCountModel
+from sktime.markovprocess.hidden_markov_model import HiddenMarkovStateModel, HMMTransitionCountModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 
@@ -135,7 +135,7 @@ class MaximumLikelihoodHMSM(Estimator):
         self.accuracy = accuracy
         self.maxit = maxit
 
-    def fetch_model(self) -> HMSM:
+    def fetch_model(self) -> HiddenMarkovStateModel:
         return self._model
 
     def fit(self, dtrajs, **kwargs):
@@ -187,18 +187,16 @@ class MaximumLikelihoodHMSM(Estimator):
                                                   lagtime=self.lagtime,
                                                   physical_time=self.dt_traj,
                                                   n_states=self.n_states,
-                                                  active_set=np.arange(self.n_states),
                                                   observable_set=np.arange(number_of_states(dtrajs_lagged_strided)),
-                                                  state_symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
+                                                  observation_state_symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
         # set model parameters
-        self._model = HMSM(transition_matrix=hmm.transition_matrix,
-                           observation_probabilities=hmm.output_model.output_probabilities,
-                           stationary_distribution=hmm.stationary_distribution,
-                           initial_counts=hmm.initial_count,
-                           time_unit=hmm_count_model.physical_time * self.lagtime,
-                           reversible=self.reversible,
-                           initial_distribution=hmm.initial_distribution, count_model=hmm_count_model,
-                           bhmm_model=hmm)
+        self._model = HiddenMarkovStateModel(transition_matrix=hmm.transition_matrix,
+                                             observation_probabilities=hmm.output_model.output_probabilities,
+                                             stationary_distribution=hmm.stationary_distribution,
+                                             initial_counts=hmm.initial_count,
+                                             reversible=self.reversible,
+                                             initial_distribution=hmm.initial_distribution, count_model=hmm_count_model,
+                                             bhmm_model=hmm)
 
         return self
 
@@ -220,8 +218,8 @@ class MaximumLikelihoodHMSM(Estimator):
     @msm_init.setter
     def msm_init(self, value: [str, MarkovStateModel]):
         if isinstance(value, MarkovStateModel) and value.count_model is None:
-            raise NotImplementedError('currently we obtain the active set and the count matrix from '
-                                      'the provided count_model of the MSM.')
+            raise NotImplementedError('Requires markov state model instance that contains a count model '
+                                      'with count matrix for estimation.')
         elif isinstance(value, str):
             supported = ('largest-strong', 'all')
             if value not in supported:
@@ -235,7 +233,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @connectivity.setter
     def connectivity(self, value):
-        allowed = (None, 'largest', 'popolust')
+        allowed = (None, 'largest', 'populus')
         if value not in allowed:
             raise ValueError(f'Illegal value for connectivity: {value}. Allowed values are one of: {allowed}.')
         self._connectivity = value
@@ -331,60 +329,3 @@ class MaximumLikelihoodHMSM(Estimator):
         """
         from msmtools.dtraj import sample_indexes_by_distribution
         return sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)
-
-    ################################################################################
-    # Model Validation
-    ################################################################################
-
-    def cktest(self, dtrajs, mlags=10, conf=0.95, err_est=False):
-        """ Conducts a Chapman-Kolmogorow test.
-
-        Parameters
-        ----------
-        dtrajs:
-        mlags : int or int-array, default=10
-            multiples of lag times for testing the Model, e.g. range(10).
-            A single int will trigger a range, i.e. mlags=10 maps to
-            mlags=range(10). The setting None will choose mlags automatically
-            according to the longest available trajectory
-        conf : float, optional, default = 0.95
-            confidence interval
-        err_est : bool, default=False
-            compute errors also for all estimations (computationally expensive)
-            If False, only the prediction will get error bars, which is often
-            sufficient to validate a model.
-        n_jobs : int, default=None
-            how many jobs to use during calculation
-        show_progress : bool, default=True
-            Show progressbars for calculation?
-
-        Returns
-        -------
-        cktest : :class:`ChapmanKolmogorovValidator <pyemma.msm.ChapmanKolmogorovValidator>`
-
-        References
-        ----------
-        This is an adaption of the Chapman-Kolmogorov Test described in detail
-        in [1]_ to Hidden MSMs as described in [2]_.
-
-        .. [1] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
-            Chodera, C Schuette and F Noe. 2011. Markov models of
-            molecular kinetics: Generation and validation. J Chem Phys
-            134: 174105
-
-        .. [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
-            Markov models for calculating kinetics and metastable states of complex
-            molecules. J. Chem. Phys. 139, 184114 (2013)
-
-        """
-        from sktime.markovprocess.chapman_kolmogorov_validator import ChapmanKolmogorovValidator
-        try:
-            model = self.fetch_model()
-            if hasattr(model, 'prior'):
-                model = model.prior
-        except AttributeError:
-            raise RuntimeError('call fit() first!')
-        ck = ChapmanKolmogorovValidator(model, self, np.eye(self.n_states),
-                                        mlags=mlags, conf=conf, err_est=err_est)
-        ck.fit(dtrajs)
-        return ck.fetch_model()

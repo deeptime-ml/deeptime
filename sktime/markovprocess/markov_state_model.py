@@ -263,8 +263,7 @@ class MarkovStateModel(Model):
         Parameters
         ----------
         k : int
-            number of eigenvectors to be returned. By default all available
-            eigenvectors.
+            number of eigenvectors to be returned. By default uses value of :func:`n_eigenvalues`.
 
         Returns
         -------
@@ -282,8 +281,7 @@ class MarkovStateModel(Model):
         Parameters
         ----------
         k : int
-            number of eigenvectors to be computed. By default all available
-            eigenvectors.
+            number of eigenvectors to be computed. By default uses value of :func:`n_eigenvalues`.
 
         Returns
         -------
@@ -387,7 +385,7 @@ class MarkovStateModel(Model):
             raise ValueError('Chosen set contains states that are not included in the active set.')
 
     def mfpt(self, A, B):
-        """Mean first passage times from set A to set B, in units of the input trajectory time step
+        """Mean first passage times from set A to set B, in units of the input trajectory time step.
 
         Parameters
         ----------
@@ -402,7 +400,7 @@ class MarkovStateModel(Model):
         return mfpt(self.transition_matrix, B, origin=A, mu=self.stationary_distribution) * self.lagtime
 
     def committor_forward(self, A, B):
-        """Forward committor (also known as p_fold or splitting probability) from set A to set B
+        """Forward committor (also known as p_fold or splitting probability) from set A to set B.
 
         Parameters
         ----------

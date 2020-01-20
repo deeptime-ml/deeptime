@@ -7,7 +7,6 @@ from sktime.markovprocess import MarkovStateModel
 from sktime.util import confidence_interval, ensure_dtraj_list
 
 
-# TODO: this could be moved to msmtools.dtraj
 def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None):
     """ Splits the discrete trajectories into approximately uncorrelated fragments
 
@@ -50,7 +49,6 @@ def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None
     return dtrajs_new
 
 
-# TODO: this could be moved to msmtools.dtraj
 def cvsplit_dtrajs(dtrajs, random_state=None):
     """ Splits the trajectories into a training and test set with approximately equal number of trajectories
 

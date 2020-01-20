@@ -21,7 +21,7 @@ from msmtools.analysis import is_connected
 from msmtools.dtraj import number_of_states
 
 from sktime.markovprocess.bhmm import discrete_hmm, bayesian_hmm
-from sktime.markovprocess.hidden_markov_model import HMSM, HMMTransitionCountModel
+from sktime.markovprocess.hidden_markov_model import HiddenMarkovStateModel, HMMTransitionCountModel
 from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 from sktime.util import ensure_dtraj_list
 from ._base import BayesianPosterior
@@ -42,8 +42,8 @@ class BayesianHMMPosterior(BayesianPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior. """
 
     def __init__(self,
-                 prior: Optional[HMSM] = None,
-                 samples: Optional[List[HMSM]] = (),
+                 prior: Optional[HiddenMarkovStateModel] = None,
+                 samples: Optional[List[HiddenMarkovStateModel]] = (),
                  hidden_state_trajs: Optional[List[np.ndarray]] = ()):
         super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
         self.hidden_state_trajectories_samples = hidden_state_trajs
@@ -58,7 +58,7 @@ class BayesianHMMPosterior(BayesianPosterior):
 class BayesianHMSM(Estimator):
     r""" Estimator for a Bayesian Hidden Markov state model """
 
-    def __init__(self, init_hmsm: HMSM,
+    def __init__(self, init_hmsm: HiddenMarkovStateModel,
                  n_states: int = 2,
                  lagtime: int = 1, n_samples: int = 100,
                  stride: Union[str, int] = 'effective',
@@ -186,8 +186,8 @@ class BayesianHMSM(Estimator):
         return self._init_hmsm
 
     @init_hmsm.setter
-    def init_hmsm(self, value: Optional[HMSM]):
-        if value is not None and not issubclass(value.__class__, HMSM):
+    def init_hmsm(self, value: Optional[HiddenMarkovStateModel]):
+        if value is not None and not issubclass(value.__class__, HiddenMarkovStateModel):
             raise ValueError('hmsm must be of type HMSM')
         self._init_hmsm = value
 
@@ -312,9 +312,9 @@ class BayesianHMSM(Estimator):
 
             Bobs = pobs[:, prior_count_model.observable_set]
             pobs = Bobs / Bobs.sum(axis=1)[:, None]  # renormalize
-            samples.append(HMSM(P, pobs, stationary_distribution=pi, time_unit=prior.physical_time,
-                                count_model=prior_count_model, initial_counts=sample.initial_count,
-                                reversible=self.reversible, initial_distribution=init_dist))
+            samples.append(HiddenMarkovStateModel(P, pobs, stationary_distribution=pi, time_unit=prior.physical_time,
+                                                  count_model=prior_count_model, initial_counts=sample.initial_count,
+                                                  reversible=self.reversible, initial_distribution=init_dist))
 
         # store results
         if self.store_hidden:

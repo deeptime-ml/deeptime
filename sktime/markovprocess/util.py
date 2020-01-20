@@ -89,7 +89,7 @@ def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
     count_model = TransitionCountEstimator(lagtime=lagtime, count_mode="sliding").fit(dtrajs).fetch_model()
     count_model = count_model.submodel_largest()
     from sktime.markovprocess import MaximumLikelihoodMSM
-    msm_non_rev = MaximumLikelihoodMSM(lagtime=lagtime, reversible=False, sparse=False).fit(count_model).fetch_model()
+    msm_non_rev = MaximumLikelihoodMSM(reversible=False, sparse=False).fit(count_model).fetch_model()
     # if we have more than n_states timescales in our MSM, we use the next (neglected) timescale as an
     # fit of the de-correlation time
     if msm_non_rev.n_states > n_states:
