@@ -96,7 +96,7 @@ class HMM(Model):
         #self._Pi = Pi / np.sum(Pi)
 
     def _do_spectral_decomposition(self):
-        self._R, self._D, self._L = _tmatrix_disconnected.rdl_decomposition(self._Tij, reversible=self.is_reversible)
+        self._R, self._D, self._L = _tmatrix_disconnected.rdl_decomposition(self._Tij, reversible=self.reversible)
         self._eigenvalues = np.diag(self._D)
         self._spectral_decomp_available = True
 
@@ -118,7 +118,7 @@ class HMM(Model):
 
     @property
     def strongly_connected_sets(self):
-        return msmest.is_connected(self._Tij, directed=True)
+        return msmest.connected_sets(self._Tij, directed=True)
 
     @property
     def is_weakly_connected(self):
@@ -130,7 +130,7 @@ class HMM(Model):
         return msmest.connected_sets(self._Tij, directed=False)
 
     @property
-    def is_reversible(self):
+    def reversible(self):
         """ Whether the HMM is reversible """
         return _tmatrix_disconnected.is_reversible(self._Tij)
 

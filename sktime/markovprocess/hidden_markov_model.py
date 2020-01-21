@@ -14,72 +14,40 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from typing import Optional, List
+from numbers import Integral
+from typing import Optional, Union
 
 import numpy as np
 
-from sktime.markovprocess import MarkovStateModel, transition_counting
-from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
+from sktime.markovprocess import MarkovStateModel, TransitionCountModel
+from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM as BHMM_HMM
 from sktime.markovprocess.util import count_states, compute_dtrajs_effective
 from sktime.numeric import mdot
 from sktime.util import ensure_ndarray, ensure_dtraj_list
-
-from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM as BHMM_HMM
-
-
-class HMMTransitionCountModel(transition_counting.TransitionCountModel):
-    def __init__(self, n_states=None, observable_set: Optional[np.ndarray] = None,
-                 stride=1, observation_state_symbols=None, lagtime=1, physical_time='1 step', count_matrix=None):
-        super(HMMTransitionCountModel, self).__init__(lagtime=lagtime, physical_time=physical_time,
-                                                      count_matrix=count_matrix)
-
-        self._n_states_full = n_states
-        self._observable_set = observable_set
-        self._n_states_obs = observable_set.size
-        self._stride = stride
-        self._observation_state_symbols = observation_state_symbols
-
-    @property
-    def stride(self):
-        """ Stride with which the dtrajs were lagged and stridden """
-        return self._stride
-
-    @property
-    def observation_state_symbols(self):
-        """Sorted unique symbols in observations """
-        return self._observation_state_symbols
-
-    @property
-    def count_matrix(self):
-        """ Hidden count matrix consistent with transition matrix """
-        return super(HMMTransitionCountModel, self).count_matrix
-
-    @property
-    def n_states_obs(self):
-        return self._n_states_obs
-
-    @property
-    def observable_set(self):
-        return self._observable_set
 
 
 class HiddenMarkovStateModel(MarkovStateModel):
     r""" Hidden Markov model on discrete states.
     """
 
-    def __init__(self, transition_matrix, observation_probabilities, stationary_distribution=None,
+    def __init__(self, transition_matrix, observation_probabilities, stride=1, stationary_distribution=None,
                  n_eigenvalues=None, reversible=None, count_model=None, initial_distribution=None, initial_counts=None,
-                 ncv: Optional[int] = None, bhmm_model : BHMM_HMM = None):
+                 ncv: Optional[int] = None, bhmm_model: BHMM_HMM = None, observation_state_symbols=None,
+                 n_observation_states_full=None):
         r"""
-        Constructs a new hidden markov state model from a coarse-grained / hidden transition matrix and an observation
-        probability matrix that maps from hidden to observable discrete states (microstates).
+        Constructs a new hidden markov state model from a hidden transition matrix (micro states) and an observation
+        probability matrix that maps from hidden to observable discrete states (macro states).
 
         Parameters
         ----------
         transition_matrix : ndarray (m,m)
-            coarse-grained or hidden transition matrix
+            micro-state or hidden transition matrix
         observation_probabilities : ndarray (m,n)
-            observation probability matrix from hidden to observable discrete states
+            observation probability matrix from hidden to observable discrete states (macro states)
+        stride : int or str('effective'), optional, default=1
+            Stride which was used to subsample discrete trajectories while estimating a HMSM. Can either be an integer
+            value which determines the offset or 'effective', which makes an estimate of a stride at which subsequent
+            discrete trajectory elements are uncorrelated.
         stationary_distribution : ndarray(m), optional, default=None
             Stationary distribution. Can be optionally given in case if it was
             already computed, e.g. by the estimator.
@@ -91,16 +59,25 @@ class HiddenMarkovStateModel(MarkovStateModel):
             whether P is reversible with respect to its stationary distribution.
             If None (default), will be determined from P
         count_model : TransitionCountModel, optional, default=None
-            Transition count model containing count matrix and potentially data statistics.
-            Not required for instantiation, default is None.
-        initial_distribution
-        initial_counts
+            Transition count model containing count matrix and potentially data statistics for the hidden (micro)
+            states. Not required for instantiation, default is None.
+        initial_distribution : ndarray(m), optional, default=None
+            Initial distribution of the hidden (micro) states
+        initial_counts : ndarray(m), optional, default=None
+            Initial counts of the hidden (micro) states, computed from the gamma output of the Baum-Welch algorithm
         ncv : int, optional, default=None
             Relevant for eigenvalue decomposition of reversible transition
             matrices. It is the number of Lanczos vectors generated, `ncv` must
             be greater than n_eigenvalues; it is recommended that ncv > 2*neig.
         bhmm_model : BHMM_HMM, optional, default=None
             bhmm hmm model TODO to be removed
+        observation_state_symbols : array_like of int, optional, default=None
+            Sorted unique symbols in observations. If None, it is assumed that all possible observations are made
+            and the state symbols are set to an iota range over the number of observation states.
+        n_observation_states_full : int, optional, default=None
+            Number of possible observation states. It is assumed that the symbols form a iota range from 0 (inclusive)
+            to n_observation_states_full (exclusive). If None, it is assumed that the full set of observation states
+            is captured by this model and is set to n_observation_states.
         """
         super(HiddenMarkovStateModel, self).__init__(
             transition_matrix=transition_matrix, stationary_distribution=stationary_distribution,
@@ -114,9 +91,83 @@ class HiddenMarkovStateModel(MarkovStateModel):
         self._initial_distribution = initial_distribution
         self._initial_counts = initial_counts
         self._hmm = bhmm_model
+        if observation_state_symbols is None:
+            # iota range over n observation states, already sorted
+            self._observation_state_symbols = np.arange(self.n_observation_states)
+        else:
+            # sort observation states and set member
+            self._observation_state_symbols = np.sort(observation_state_symbols)
+        if n_observation_states_full is None:
+            n_observation_states_full = self.n_observation_states
+        self._n_observation_states_full = n_observation_states_full
+        if not (isinstance(stride, Integral) or (isinstance(stride, str) and stride == 'effective')):
+            raise ValueError("Stride argument must either be an integer value or 'effective', "
+                             "but was: {}".format(stride))
+        self._stride = stride
 
     @property
-    def initial_counts(self) -> List[np.ndarray]:
+    def stride(self) -> Union[Integral, str]:
+        r"""
+        The stride parameter which was used to subsample the discrete trajectories when estimating the hidden
+        markov state model. Can either be an integer value or 'effective', in which case a stride is estimated at
+        which subsequent states are uncorrelated.
+
+        Returns
+        -------
+        The stride parameter.
+        """
+        return self._stride
+
+    @property
+    def n_observation_states_full(self):
+        r"""
+        Yields the total number of observation states ignoring whether this HMSM represents only a subset of them.
+        It is assumed that the possible observation states form a iota range from 0 (inclusive) to
+        n_observation_states_full (exclusive).
+
+        Returns
+        -------
+        The full number of observation states.
+        """
+        return self._n_observation_states_full
+
+    @property
+    def observation_state_symbols(self):
+        r"""
+        Observation symbols that are represented in this hidden markov model. This can be a subset of all possible
+        observations in the trajectories.
+
+        Returns
+        -------
+        List of observation symbols represented in this model, sorted.
+        """
+        return self._observation_state_symbols
+
+    @property
+    def n_observation_states(self):
+        r"""
+        Property determining the number of observed/macro states. It coincides with the size of the second axis
+        of the observation probabilities matrix.
+
+        Returns
+        -------
+        Number of observed/macro states
+        """
+        return self.observation_probabilities.shape[1]
+
+    @property
+    def count_model(self) -> Optional[TransitionCountModel]:
+        r"""
+        Yields the count model for the micro (hidden) states. The count matrix is estimated from Viterbi paths.
+
+        Returns
+        -------
+        The count model for the micro states.
+        """
+        return super().count_model
+
+    @property
+    def initial_counts(self) -> np.ndarray:
         """
         Hidden initial counts.
         Returns
@@ -133,15 +184,11 @@ class HiddenMarkovStateModel(MarkovStateModel):
     def bhmm_model(self) -> BHMM_HMM:
         return self._hmm
 
-    @property
-    def count_model(self) -> Optional[HMMTransitionCountModel]:
-        return self._count_model
-
     ################################################################################
     # Submodel functions using estimation information (counts)
     ################################################################################
-    def submodel(self, states: Optional[np.ndarray] = None, obs: Optional[np.ndarray] = None,
-                 mincount_connectivity='1/n'):
+
+    def submodel(self, states: Optional[np.ndarray] = None, obs: Optional[np.ndarray] = None):
         """Returns a HMM with restricted state space
 
         Parameters
@@ -159,42 +206,35 @@ class HiddenMarkovStateModel(MarkovStateModel):
 
               * int-array: indices of states to restrict onto
               * None : all states - don't restrict
-
-        mincount_connectivity : float or '1/n'
-            minimum number of counts to consider a connection between two states.
-            Counts lower than that will count zero in the connectivity check and
-            may thus separate the resulting transition matrix. Default value:
-            1/n_states.
-        inplace : Bool
-            if True, submodel is estimated in-place, overwriting the original
-            estimator and possibly discarding information. Default value: False
-
         Returns
         -------
-        hmm : HMM
+        hmm : HiddenMarkovStateModel
             The restricted HMM.
         """
-        if self.count_model is None:
-            return self._submodel(states=states, obs=obs)
 
+        if states is None and obs is None:
+            return self  # do nothing
         if states is None:
             states = np.arange(self.n_states)
         if obs is None:
             obs = np.arange(self.n_states_obs)
 
-        if str(mincount_connectivity) == '1/n':
-            mincount_connectivity = 1.0 / float(self.n_states)
+        count_model = self.count_model
+        if count_model is not None:
+            from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
+            count_model = count_model.submodel(states)
+            P = _tmatrix_disconnected.estimate_P(count_model.count_matrix, reversible=self.reversible,
+                                                 mincount_connectivity=0)
+            P /= P.sum(axis=1)[:, None]
+            stationary_distribution = _tmatrix_disconnected.stationary_distribution(P, count_model.count_matrix)
+        else:
+            P = self.transition_matrix[np.ix_(states, states)].copy()
+            P /= P.sum(axis=1)[:, None]
 
-        from sktime.markovprocess.bhmm.estimators import _tmatrix_disconnected
-        connected_sets = self.count_model.connected_sets(connectivity_threshold=mincount_connectivity, directed=False)
-        # restrict to largest connected set
-        sub_count_model = self.count_model.submodel(connected_sets[0])
+            stationary_distribution = self.stationary_distribution
+            if stationary_distribution is not None:
+                stationary_distribution = stationary_distribution[states]
 
-        P = _tmatrix_disconnected.estimate_P(sub_count_model.count_matrix, reversible=self.is_reversible,
-                                             mincount_connectivity=0)
-
-        P /= P.sum(axis=1)[:, None]
-        pi = _tmatrix_disconnected.stationary_distribution(P, sub_count_model.count_matrix)
         initial_count = self.initial_counts[states].copy()
         initial_distribution = self.initial_distribution[states] / self.initial_distribution[states].sum()
 
@@ -202,17 +242,14 @@ class HiddenMarkovStateModel(MarkovStateModel):
         B = self.observation_probabilities[np.ix_(states, obs)].copy()
         B /= B.sum(axis=1)[:, None]
 
-        count_model = HMMTransitionCountModel(
-            n_states=self.count_model.n_states_full, observable_set=obs,
-            stride=self.count_model.stride, observation_state_symbols=self.count_model.symbols,
-            physical_time=self.count_model.physical_time,
-            count_matrix=sub_count_model.count_matrix, lagtime=self.count_model.lagtime
-        )
-        model = HiddenMarkovStateModel(transition_matrix=P, observation_probabilities=B, stationary_distribution=pi,
-                                       n_eigenvalues=self.n_eigenvalues,
-                                       reversible=self.is_reversible, count_model=count_model,
-                                       initial_counts=initial_count,
-                                       initial_distribution=initial_distribution, bhmm_model=self.bhmm_model)
+        symbols = self.observation_state_symbols[obs]
+
+        model = HiddenMarkovStateModel(
+            transition_matrix=P, observation_probabilities=B, stride=self.stride,
+            stationary_distribution=stationary_distribution, n_eigenvalues=self.n_eigenvalues,
+            reversible=self.reversible, count_model=count_model, initial_counts=initial_count,
+            initial_distribution=initial_distribution, ncv=self.ncv, bhmm_model=self.bhmm_model,
+            observation_state_symbols=symbols, n_observation_states_full=self.n_observation_states_full)
         return model
 
     def _select_states(self, mincount_connectivity, states):
@@ -221,14 +258,12 @@ class HiddenMarkovStateModel(MarkovStateModel):
         if isinstance(states, str):
             strong = 'strong' in states
             largest = 'largest' in states
-            S = _tmatrix_disconnected.connected_sets(self.count_model.count_matrix,
-                                                     mincount_connectivity=mincount_connectivity,
-                                                     strong=strong)
+            S = self.count_model.connected_sets(connectivity_threshold=mincount_connectivity, directed=strong)
             if largest:
-                score = [len(s) for s in S]
+                score = np.array([len(s) for s in S])
             else:
-                score = [self.count_model.count_matrix[np.ix_(s, s)].sum() for s in S]
-            states = np.array(S[np.argmax(score)])
+                score = np.array([self.count_model.count_matrix[np.ix_(s, s)].sum() for s in S])
+            states = S[np.argmax(score)]
         return states
 
     def nonempty_obs(self, dtrajs):
@@ -236,7 +271,7 @@ class HiddenMarkovStateModel(MarkovStateModel):
             raise ValueError("Needs nonempty dtrajs to evaluate nonempty obs.")
         dtrajs = ensure_dtraj_list(dtrajs)
         dtrajs_lagged_strided = compute_dtrajs_effective(
-            dtrajs, self.count_model.lagtime, self.count_model.n_states_full, self.count_model.stride
+            dtrajs, self.count_model.lagtime, self.count_model.n_states_full, self.stride
         )
         obs = np.where(count_states(dtrajs_lagged_strided) > 0)[0]
         return obs
@@ -255,7 +290,7 @@ class HiddenMarkovStateModel(MarkovStateModel):
         """
         states = self.states_largest(strong=strong, mincount_connectivity=mincount_connectivity)
         obs = self.nonempty_obs(dtrajs) if observe_nonempty else None
-        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
+        return self.submodel(states=states, obs=obs)
 
     def states_populous(self, strong=True, mincount_connectivity='1/n'):
         return self._select_states(mincount_connectivity, 'populous-strong' if strong else 'populous-weak')
@@ -271,7 +306,7 @@ class HiddenMarkovStateModel(MarkovStateModel):
         """
         states = self.states_populous(strong=strong, mincount_connectivity=mincount_connectivity)
         obs = self.nonempty_obs(dtrajs) if observe_nonempty else None
-        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
+        return self.submodel(states=states, obs=obs)
 
     def submodel_disconnect(self, mincount_connectivity='1/n'):
         """Disconnects sets of hidden states that are barely connected
@@ -295,7 +330,8 @@ class HiddenMarkovStateModel(MarkovStateModel):
             The restricted HMM.
 
         """
-        return self.submodel(mincount_connectivity=mincount_connectivity)
+        lcc = self.count_model.connected_sets(connectivity_threshold=mincount_connectivity)[0]
+        return self.submodel(lcc)
 
     @property
     def observation_probabilities(self):
@@ -329,7 +365,7 @@ class HiddenMarkovStateModel(MarkovStateModel):
             :math:`p_{ii}` are the diagonal entries of the hidden transition matrix.
 
         """
-        return -self._dt_model / np.log(np.diag(self.transition_matrix))
+        return -self.count_model.physical_time / np.log(np.diag(self.transition_matrix))
 
     def transition_matrix_obs(self, k=1):
         r""" Computes the transition matrix between observed states
@@ -429,41 +465,6 @@ class HiddenMarkovStateModel(MarkovStateModel):
 
         # normalize to 1.0 and return
         return pk / pk.sum()
-
-    def _submodel(self, states=None, obs=None):
-        """Returns a HMM with restricted state space (only restrict states and observations, not counts
-
-        Parameters
-        ----------
-        states : None or int-array
-            Hidden states to restrict the model to (if not None).
-        obs : None, str or int-array
-            Observed states to restrict the model to (if not None).
-
-        Returns
-        -------
-        hmm : HMM
-            The restricted HMM.
-
-        """
-        assert self.count_model is None
-
-        if states is None and obs is None:
-            return self  # do nothing
-        if states is None:
-            states = np.arange(self.n_states)
-        if obs is None:
-            obs = np.arange(self.n_states_obs)
-
-        # transition matrix
-        P = self.transition_matrix[np.ix_(states, states)].copy()
-        P /= P.sum(axis=1)[:, None]
-
-        # observation matrix
-        B = self.observation_probabilities[np.ix_(states, obs)].copy()
-        B /= B.sum(axis=1)[:, None]
-
-        return HiddenMarkovStateModel(P, B, time_unit=self.dt_model, reversible=self.is_reversible)
 
     # ================================================================================================================
     # Experimental properties: Here we allow to use either coarse-grained or microstate observables
@@ -673,7 +674,8 @@ class HiddenMarkovStateModel(MarkovStateModel):
         import msmtools.generation as msmgen
         # generate output distributions
         # TODO: replace this with numpy.random.choice
-        output_distributions = [stats.rv_discrete(values=(np.arange(self._observation_probabilities.shape[1]), pobs_i)) for pobs_i in
+        output_distributions = [stats.rv_discrete(values=(np.arange(self._observation_probabilities.shape[1]), pobs_i))
+                                for pobs_i in
                                 self._observation_probabilities]
         # sample hidden trajectory
         htraj = msmgen.generate_traj(self.transition_matrix, N, start=start, stop=stop, dt=dt)
@@ -693,9 +695,9 @@ class HiddenMarkovStateModel(MarkovStateModel):
         Ensures that the observable states are indexed and returns the indices
         """
         raise RuntimeError('use sktime.markovprocess.sample.compute_index_states(dtrajs)')
-        #try:  # if we have this attribute, return it
+        # try:  # if we have this attribute, return it
         #    return self._observable_state_indexes
-        #except AttributeError:  # didn't exist? then create it.
+        # except AttributeError:  # didn't exist? then create it.
         #   self._observable_state_indexes = index_states(self.discrete_trajectories_obs)
         #    return self._observable_state_indexes
 

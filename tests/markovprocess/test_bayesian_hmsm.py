@@ -47,8 +47,8 @@ class TestBHMM(unittest.TestCase):
         assert isinstance(cls.bhmm, BayesianHMMPosterior)
 
     def test_reversible(self):
-        assert self.bhmm.prior.is_reversible
-        assert all(s.is_reversible for s in self.bhmm)
+        assert self.bhmm.prior.reversible
+        assert all(s.reversible for s in self.bhmm)
 
     def test_lag(self):
         assert self.bhmm.prior.lagtime == self.lag

@@ -50,8 +50,8 @@ class TestBMSM(unittest.TestCase):
         self._reversible(self.bmsm_revpi)
 
     def _reversible(self, msm):
-        assert msm.prior.is_reversible
-        assert all(s.is_reversible for s in msm.samples)
+        assert msm.prior.reversible
+        assert all(s.reversible for s in msm.samples)
 
     def test_lag(self):
         self._lag(self.bmsm_rev)

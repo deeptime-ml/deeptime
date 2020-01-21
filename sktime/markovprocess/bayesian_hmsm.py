@@ -198,7 +198,7 @@ class BayesianHMSM(Estimator):
         accuracy = 1e-2  # sufficient accuracy for an initial guess
         prior_estimator = MaximumLikelihoodHMSM(
             n_states=n_states, lagtime=lagtime, stride=stride,
-            reversible=reversible, stationary=stationary, dt_traj=dt_traj,
+            reversible=reversible, stationary=stationary, physical_time=dt_traj,
             separate=separate, connectivity=None, mincount_connectivity=0,
             accuracy=accuracy, observe_nonempty=False
         )

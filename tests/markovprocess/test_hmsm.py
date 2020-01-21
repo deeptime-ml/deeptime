@@ -49,8 +49,8 @@ class TestMLHMM(unittest.TestCase):
     # Test basic HMM properties
     # =============================================================================
     def test_reversible(self):
-        assert self.hmsm_lag1.is_reversible
-        assert self.hmsm_lag10.is_reversible
+        assert self.hmsm_lag1.reversible
+        assert self.hmsm_lag10.reversible
 
     def test_lag(self):
         assert self.hmsm_lag1.lagtime == 1
@@ -181,7 +181,7 @@ class TestMLHMM(unittest.TestCase):
             # sums should be 1, 0, 0, ...
             assert np.allclose(np.sum(L[1:, :], axis=1), np.zeros(hmsm.n_states_obs - 1))
             # REVERSIBLE:
-            if hmsm.is_reversible:
+            if hmsm.reversible:
                 assert np.all(np.isreal(L))
 
     def test_eigenvectors_right_obs(self):
@@ -193,7 +193,7 @@ class TestMLHMM(unittest.TestCase):
             r1 = R[:, 0]
             assert np.allclose(r1, np.ones(hmsm.n_states_obs))
             # REVERSIBLE:
-            if hmsm.is_reversible:
+            if hmsm.reversible:
                 assert np.all(np.isreal(R))
 
     # =============================================================================

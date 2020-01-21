@@ -20,10 +20,10 @@ import numpy as np
 from msmtools.dtraj import number_of_states
 
 from sktime.base import Estimator
-from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess import MarkovStateModel, TransitionCountModel
 from sktime.markovprocess.bhmm import discrete_hmm, init_discrete_hmm
 from sktime.markovprocess.bhmm.init.discrete import init_discrete_hmm_spectral
-from sktime.markovprocess.hidden_markov_model import HiddenMarkovStateModel, HMMTransitionCountModel
+from sktime.markovprocess.hidden_markov_model import HiddenMarkovStateModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 
@@ -55,7 +55,7 @@ class MaximumLikelihoodHMSM(Estimator):
             strongly connected set and use spectral clustering to generate an
             initial HMM
         * 'all' : Estimate MSM(s) on the full state space to initialize the
-            HMM. This fit maybe weakly connected or disconnected.
+            HMM. This fit may be weakly connected or disconnected.
     reversible : bool, optional, default = True
         If true compute reversible MSM, else non-reversible MSM
     stationary : bool, optional, default=False
@@ -90,7 +90,7 @@ class MaximumLikelihoodHMSM(Estimator):
         at least one observation in the lagged input trajectories.
         If an initial MSM is given, this option is ignored and the observed
         subset is always identical to the active set of that MSM.
-    dt_traj : str, optional, default='1 step'
+    physical_time : str, optional, default='1 step'
         Description of the physical time corresponding to the trajectory time
         step.  May be used by analysis algorithms such as plotting tools to
         pretty-print the axes. By default '1 step', i.e. there is no physical
@@ -116,22 +116,19 @@ class MaximumLikelihoodHMSM(Estimator):
     """
 
     def __init__(self, n_states=2, lagtime=1, stride=1, msm_init='largest-strong', reversible=True, stationary=False,
-                 connectivity=None, mincount_connectivity='1/n', observe_nonempty=True, separate=None,
-                 dt_traj='1 step', accuracy=1e-3, maxit=1000):
+                 connectivity=None, observe_nonempty=True, separate=None,
+                 physical_time='1 step', accuracy=1e-3, maxit=1000):
         super(MaximumLikelihoodHMSM, self).__init__()
-        self.n_states = n_states
+        self.n_hidden_states = n_states
         self.lagtime = lagtime
         self.stride = stride
         self.msm_init = msm_init
         self.reversible = reversible
         self.stationary = stationary
         self.connectivity = connectivity
-        if mincount_connectivity == '1/n':
-            mincount_connectivity = 1.0 / float(n_states)
-        self.mincount_connectivity = mincount_connectivity
         self.separate = separate
         self.observe_nonempty = observe_nonempty
-        self.dt_traj = dt_traj
+        self.physical_time = physical_time
         self.accuracy = accuracy
         self.maxit = maxit
 
@@ -150,12 +147,12 @@ class MaximumLikelihoodHMSM(Estimator):
                           'trajectory. HMM might be inaccurate.')
 
         dtrajs_lagged_strided = compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                         n_states=self.n_states,
+                                                         n_states=self.n_hidden_states,
                                                          stride=self.stride)
 
         # INIT HMM
         if isinstance(self.msm_init, str):
-            args = dict(observations=dtrajs_lagged_strided, n_states=self.n_states, lag=1,
+            args = dict(observations=dtrajs_lagged_strided, n_states=self.n_hidden_states, lag=1,
                         reversible=self.reversible, stationary=True, regularize=True,
                         separate=self.separate)
             if self.msm_init == 'largest-strong':
@@ -164,40 +161,40 @@ class MaximumLikelihoodHMSM(Estimator):
                 args['method'] = 'spectral'
 
             hmm_init = init_discrete_hmm(**args)
-        else:
-            assert isinstance(self.msm_init, MarkovStateModel)
+        elif isinstance(self.msm_init, MarkovStateModel):
             msm_count_model = self.msm_init.count_model
-            p0, P0, pobs0 = init_discrete_hmm_spectral(msm_count_model.count_matrix.toarray(), self.n_states,
-                                                       reversible=self.reversible, stationary=True,
-                                                       active_set=msm_count_model.active_set,
-                                                       P=self.msm_init.transition_matrix, separate=self.separate)
+            p0, P0, pobs0 = init_discrete_hmm_spectral(msm_count_model.count_matrix.toarray(),
+                                                       self.n_hidden_states, reversible=self.reversible,
+                                                       stationary=True, P=self.msm_init.transition_matrix,
+                                                       separate=self.separate)
             hmm_init = discrete_hmm(p0, P0, pobs0)
+        else:
+            raise RuntimeError("msm init was neither a string (largest-strong or spectral) nor "
+                               "a MarkovStateModel: {}".format(self.msm_init))
 
         # ---------------------------------------------------------------------------------------
         # Estimate discrete HMM
         # ---------------------------------------------------------------------------------------
         from .bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
-        hmm_est = MaximumLikelihoodHMM(self.n_states, initial_model=hmm_init,
+        hmm_est = MaximumLikelihoodHMM(self.n_hidden_states, initial_model=hmm_init,
                                        output='discrete', reversible=self.reversible, stationary=self.stationary,
                                        accuracy=self.accuracy, maxit=self.maxit)
         hmm = hmm_est.fit(dtrajs_lagged_strided).fetch_model()
+        observation_state_symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
         # update the count matrix from the counts obtained via the Viterbi paths.
-        hmm_count_model = HMMTransitionCountModel(stride=self.stride,
-                                                  count_matrix=hmm.transition_counts,
-                                                  lagtime=self.lagtime,
-                                                  physical_time=self.dt_traj,
-                                                  n_states=self.n_states,
-                                                  observable_set=np.arange(number_of_states(dtrajs_lagged_strided)),
-                                                  observation_state_symbols=np.unique(np.concatenate(dtrajs_lagged_strided)))
+        hmm_count_model = TransitionCountModel(count_matrix=hmm.transition_counts,
+                                               lagtime=self.lagtime,
+                                               physical_time=self.physical_time)
         # set model parameters
         self._model = HiddenMarkovStateModel(transition_matrix=hmm.transition_matrix,
                                              observation_probabilities=hmm.output_model.output_probabilities,
+                                             stride=self.stride,
                                              stationary_distribution=hmm.stationary_distribution,
                                              initial_counts=hmm.initial_count,
                                              reversible=self.reversible,
                                              initial_distribution=hmm.initial_distribution, count_model=hmm_count_model,
-                                             bhmm_model=hmm)
-
+                                             bhmm_model=hmm,
+                                             observation_state_symbols=observation_state_symbols)
         return self
 
     @property

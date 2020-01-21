@@ -31,7 +31,7 @@ from sktime.markovprocess.reactive_flux import ReactiveFlux
 from sktime.markovprocess.sample import ensure_dtraj_list, compute_index_states
 from sktime.markovprocess.transition_counting import TransitionCountModel
 from sktime.numeric import mdot
-from sktime.util import ensure_ndarray
+from sktime.util import ensure_ndarray, submatrix
 
 
 class MarkovStateModel(Model):
@@ -104,6 +104,14 @@ class MarkovStateModel(Model):
 
     @property
     def count_model(self) -> Optional[TransitionCountModel]:
+        r"""
+        Returns a transition count model, can be None. The transition count model statistics about data that was used
+        for transition counting as well as a count matrix.
+
+        Returns
+        -------
+        The transition count model or None.
+        """
         return self._count_model
 
     @property
@@ -118,7 +126,7 @@ class MarkovStateModel(Model):
         return self._transition_matrix
 
     @property
-    def is_reversible(self) -> bool:
+    def reversible(self) -> bool:
         """Returns whether the MarkovStateModel is reversible """
         return self._is_reversible
 
@@ -142,6 +150,35 @@ class MarkovStateModel(Model):
         """ Number of Lanczos vectors used when computing the partial eigenvalue decomposition """
         return self._ncv
 
+    def submodel(self, states: np.ndarray):
+        r"""
+        Restricts this markov state model to a subset of states by taking a submatrix of the transition matrix
+        and re-normalizing it, as well as restricting the stationary distribution and count model if given.
+
+        Parameters
+        ----------
+        states : ndarray(m, dtype=int)
+            states to restrict to
+        Returns
+        -------
+        A onto the given states restricted MSM.
+        """
+        if np.any(states >= self.n_states):
+            raise ValueError("At least one of the given states is not contained in this model "
+                             "(n_states={}, max. given state={}).".format(self.n_states, np.max(states)))
+        count_model = self.count_model
+        if count_model is not None:
+            count_model = count_model.submodel(states)
+        transition_matrix = submatrix(self.transition_matrix, states)
+        transition_matrix /= transition_matrix.sum(axis=1)[:, None]
+        stationary_distribution = self.stationary_distribution
+        if stationary_distribution is not None:
+            # restrict to states
+            stationary_distribution = stationary_distribution[states]
+        return MarkovStateModel(transition_matrix, stationary_distribution=stationary_distribution,
+                                reversible=self.reversible, n_eigenvalues=self.n_eigenvalues, ncv=self.ncv,
+                                count_model=count_model)
+
     ################################################################################
     # Spectral quantities
     ################################################################################
@@ -155,7 +192,7 @@ class MarkovStateModel(Model):
         """ Conducts the eigenvalue decomposition and stores k eigenvalues """
         from msmtools.analysis import eigenvalues as anaeig
 
-        if self.is_reversible:
+        if self.reversible:
             self._eigenvalues = anaeig(self.transition_matrix, k=neig, ncv=self._ncv,
                                        reversible=True, mu=self.stationary_distribution)
         else:
@@ -196,9 +233,9 @@ class MarkovStateModel(Model):
         from msmtools.analysis import rdl_decomposition
 
         R, D, L = rdl_decomposition(self.transition_matrix, k=n_eigenvalues,
-                                    norm='standard' if not self.is_reversible else 'reversible',
+                                    norm='standard' if not self.reversible else 'reversible',
                                     ncv=self._ncv)
-        if self.is_reversible:
+        if self.reversible:
             # everything must be real-valued
             R = R.real
             D = D.real
@@ -776,7 +813,7 @@ class MarkovStateModel(Model):
             classification. Advances in Data Analysis and Classification 7
             (2): 147-179
         """
-        if not self.is_reversible:
+        if not self.reversible:
             raise ValueError('Cannot compute PCCA+ for non-reversible matrices. '
                              'Set reversible=True when constructing the MarkovStateModel.')
         return pcca(self.transition_matrix, n_metastable_sets)
@@ -1007,7 +1044,7 @@ class MarkovStateModel(Model):
         # run HMM estimate
         from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
         estimator = MaximumLikelihoodHMSM(lagtime=self.lagtime, n_states=nhidden, msm_init=self,
-                                          reversible=self.is_reversible, dt_traj=self.count_model.physical_time)
+                                          reversible=self.reversible, physical_time=self.count_model.physical_time)
         estimator.fit(dtrajs)
         model = estimator.fetch_model()
         if return_estimator:

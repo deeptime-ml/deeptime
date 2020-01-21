@@ -275,8 +275,14 @@ class TransitionCountModel(Model):
             raise ValueError("Tried restricting model to states that are not represented! "
                              "States range from 0 to {}.".format(np.max(states)))
         sub_count_matrix = submatrix(self.count_matrix, states)
-        sub_symbols = self.state_symbols[states]
-        sub_state_histogram = self.state_histogram[states]
+        if self.state_symbols is not None:
+            sub_symbols = self.state_symbols[states]
+        else:
+            sub_symbols = None
+        if self.state_histogram is not None:
+            sub_state_histogram = self.state_histogram[states]
+        else:
+            sub_state_histogram = None
         return TransitionCountModel(sub_count_matrix, self.counting_mode, self.lagtime, sub_state_histogram,
                                     state_symbols=sub_symbols, physical_time=self.physical_time,
                                     count_matrix_full=self.count_matrix_full,

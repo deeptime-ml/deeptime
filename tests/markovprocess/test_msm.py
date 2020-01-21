@@ -211,13 +211,13 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def test_reversible(self):
         # NONREVERSIBLE
-        assert self.msmrev.is_reversible
-        assert self.msmrevpi.is_reversible
-        assert self.msmrev_sparse.is_reversible
-        assert self.msmrevpi_sparse.is_reversible
+        assert self.msmrev.reversible
+        assert self.msmrevpi.reversible
+        assert self.msmrev_sparse.reversible
+        assert self.msmrevpi_sparse.reversible
         # REVERSIBLE
-        assert not self.msm.is_reversible
-        assert not self.msm_sparse.is_reversible
+        assert not self.msm.reversible
+        assert not self.msm_sparse.reversible
 
     def _sparse(self, msm):
         assert msm.is_sparse
@@ -344,7 +344,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         assert (msmana.is_transition_matrix(P))
         assert (msmana.is_connected(P))
         # REVERSIBLE
-        if msm.is_reversible:
+        if msm.reversible:
             assert (msmana.is_reversible(P))
 
     def test_transition_matrix(self):
@@ -420,7 +420,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         for i in range(0, len(evabs) - 1):
             assert (evabs[i] >= evabs[i + 1])
         # REVERSIBLE:
-        if msm.is_reversible:
+        if msm.reversible:
             assert (np.all(np.isreal(ev)))
 
     def test_eigenvalues(self):
@@ -447,7 +447,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         # sums should be 1, 0, 0, ...
         assert (np.allclose(np.sum(L[1:, :], axis=1), np.zeros(k - 1)))
         # REVERSIBLE:
-        if msm.is_reversible:
+        if msm.reversible:
             assert (np.all(np.isreal(L)))
 
     def test_eigenvectors_left(self):
@@ -471,7 +471,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         r1 = R[:, 0]
         assert np.allclose(r1, np.ones(msm.n_states))
         # REVERSIBLE:
-        if msm.is_reversible:
+        if msm.reversible:
             assert np.all(np.isreal(R))
 
     def test_eigenvectors_right(self):
@@ -490,7 +490,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # orthogonality constraint
             assert np.allclose(np.dot(R, L), np.eye(msm.n_states))
             # REVERSIBLE: also true for LR because reversible matrix
-            if msm.is_reversible:
+            if msm.reversible:
                 assert np.allclose(np.dot(L, R), np.eye(msm.n_states))
             # recover transition matrix
             assert np.allclose(np.dot(R, np.dot(D, L)), msm.transition_matrix)
@@ -503,7 +503,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             """Orthoginality"""
             assert (np.allclose(np.dot(L, R), np.eye(k)))
             """Reversibility"""
-            if msm.is_reversible:
+            if msm.reversible:
                 mu = msm.stationary_distribution
                 L_mu = mu[:,np.newaxis] * R
                 assert (np.allclose(np.dot(L_mu.T, R), np.eye(k)))
@@ -518,14 +518,14 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _timescales(self, msm):
         if not msm.is_sparse:
-            if not msm.is_reversible:
+            if not msm.reversible:
                 with warnings.catch_warnings(record=True) as w:
                     ts = msm.timescales()
             else:
                 ts = msm.timescales()
         else:
             k = 4
-            if not msm.is_reversible:
+            if not msm.reversible:
                 with warnings.catch_warnings(record=True) as w:
                     ts = msm.timescales(k)
             else:
@@ -534,7 +534,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         # should be all positive
         assert np.all(ts > 0)
         # REVERSIBLE: should be all real
-        if msm.is_reversible:
+        if msm.reversible:
             ts_ref = np.array([310.87, 8.5, 5.09])
             assert (np.all(np.isreal(ts)))
             # HERE:
@@ -568,7 +568,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         assert (np.all(q_backward[:30] > 0.5))
         assert (np.all(q_backward[40:] < 0.5))
         # REVERSIBLE:
-        if msm.is_reversible:
+        if msm.reversible:
             assert (np.allclose(q_forward + q_backward, np.ones(msm.n_states)))
 
     def test_committor(self):
@@ -583,7 +583,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         t = msm.mfpt(a, b)
         assert (t > 0)
         # HERE:
-        if msm.is_reversible:
+        if msm.reversible:
             np.testing.assert_allclose(t, 872.69, rtol=1e-3, atol=1e-6)
         else:
             np.testing.assert_allclose(t, 872.07, rtol=1e-3, atol=1e-6)
@@ -599,7 +599,7 @@ class TestMSMDoubleWell(unittest.TestCase):
     # ---------------------------------
 
     def _pcca_assignment(self, msm):
-        if msm.is_reversible:
+        if msm.reversible:
             pcca = msm.pcca(2)
             assignments = pcca.assignments
             # test: number of states
@@ -624,7 +624,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             self._pcca_assignment(self.msm_sparse)
 
     def _pcca_distributions(self, msm):
-        if msm.is_reversible:
+        if msm.reversible:
             pcca = msm.pcca(2)
             pccadist = pcca.metastable_distributions
             # should be right size
@@ -648,7 +648,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._pcca_distributions(self.msm_sparse)
 
     def _pcca_memberships(self, msm):
-        if msm.is_reversible:
+        if msm.reversible:
             pcca = msm.pcca(2)
             M = pcca.memberships
             # should be right size
@@ -668,7 +668,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._pcca_memberships(self.msm_sparse)
 
     def _pcca_sets(self, msm):
-        if msm.is_reversible:
+        if msm.reversible:
             pcca = msm.pcca(2)
             S = pcca.sets
             assignment = pcca.assignments
@@ -764,7 +764,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         else:
             k = msm.n_states
 
-        if msm.is_reversible:
+        if msm.reversible:
             # raise assertion error because size is wrong:
             a = [1, 2, 3]
             with self.assertRaises(AssertionError):
@@ -809,7 +809,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         else:
             k = msm.n_states
 
-        if msm.is_reversible:
+        if msm.reversible:
             # raise assertion error because size is wrong:
             a = [1, 2, 3]
             with self.assertRaises(AssertionError):
