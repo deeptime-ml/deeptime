@@ -180,7 +180,7 @@ class MaximumLikelihoodHMSM(Estimator):
                                        output='discrete', reversible=self.reversible, stationary=self.stationary,
                                        accuracy=self.accuracy, maxit=self.maxit)
         hmm = hmm_est.fit(dtrajs_lagged_strided).fetch_model()
-        observation_state_symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
+        # observation_state_symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
         # update the count matrix from the counts obtained via the Viterbi paths.
         hmm_count_model = TransitionCountModel(count_matrix=hmm.transition_counts,
                                                lagtime=self.lagtime,
@@ -194,7 +194,7 @@ class MaximumLikelihoodHMSM(Estimator):
                                              reversible=self.reversible,
                                              initial_distribution=hmm.initial_distribution, count_model=hmm_count_model,
                                              bhmm_model=hmm,
-                                             observation_state_symbols=observation_state_symbols)
+                                             observation_state_symbols=None)
         return self
 
     @property

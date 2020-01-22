@@ -41,9 +41,9 @@ class HiddenMarkovStateModel(MarkovStateModel):
         Parameters
         ----------
         transition_matrix : ndarray (m,m)
-            micro-state or hidden transition matrix
+            macro-state or hidden transition matrix
         observation_probabilities : ndarray (m,n)
-            observation probability matrix from hidden to observable discrete states (macro states)
+            observation probability matrix from hidden to observable discrete states (micro states)
         stride : int or str('effective'), optional, default=1
             Stride which was used to subsample discrete trajectories while estimating a HMSM. Can either be an integer
             value which determines the offset or 'effective', which makes an estimate of a stride at which subsequent
@@ -59,12 +59,12 @@ class HiddenMarkovStateModel(MarkovStateModel):
             whether P is reversible with respect to its stationary distribution.
             If None (default), will be determined from P
         count_model : TransitionCountModel, optional, default=None
-            Transition count model containing count matrix and potentially data statistics for the hidden (micro)
+            Transition count model containing count matrix and potentially data statistics for the hidden (macro)
             states. Not required for instantiation, default is None.
         initial_distribution : ndarray(m), optional, default=None
-            Initial distribution of the hidden (micro) states
+            Initial distribution of the hidden (macro) states
         initial_counts : ndarray(m), optional, default=None
-            Initial counts of the hidden (micro) states, computed from the gamma output of the Baum-Welch algorithm
+            Initial counts of the hidden (macro) states, computed from the gamma output of the Baum-Welch algorithm
         ncv : int, optional, default=None
             Relevant for eigenvalue decomposition of reversible transition
             matrices. It is the number of Lanczos vectors generated, `ncv` must
@@ -690,7 +690,7 @@ class HiddenMarkovStateModel(MarkovStateModel):
     ################################################################################
 
     @property
-    def observable_state_indexes(self):
+    def observable_state_indices(self):
         """
         Ensures that the observable states are indexed and returns the indices
         """
@@ -723,4 +723,4 @@ class HiddenMarkovStateModel(MarkovStateModel):
 
         """
         from msmtools.dtraj import sample_indexes_by_distribution
-        return sample_indexes_by_distribution(self.observable_state_indexes, self.observation_probabilities, nsample)
+        return sample_indexes_by_distribution(self.observable_state_indices, self.observation_probabilities, nsample)

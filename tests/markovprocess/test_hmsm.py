@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 from msmtools import analysis as msmana
 
-from sktime.markovprocess import cktest
 from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 from sktime.markovprocess.util import count_states
 from tests.markovprocess.test_msm import estimate_markov_model
@@ -133,7 +132,7 @@ class TestMLHMM(unittest.TestCase):
         assert tba > 0
         # HERE:
         err = np.minimum(np.abs(tab - 680.708752214), np.abs(tba - 699.560589099))
-        assert err < 1e-6
+        assert err < 1e-3, "err was {}".format(err)
 
     # =============================================================================
     # Test HMSM observable spectral properties
@@ -266,7 +265,7 @@ class TestMLHMM(unittest.TestCase):
         # first timescale is infinite
         assert fp1[0][0] == np.inf
         # next timescales are identical to timescales:
-        assert np.allclose(fp1[0][1:], hmsm.timescales().magnitude)
+        assert np.allclose(fp1[0][1:], hmsm.timescales())
         # all amplitudes nonnegative (for autocorrelation)
         assert np.all(fp1[1][:] >= 0)
         # identical call
@@ -295,7 +294,7 @@ class TestMLHMM(unittest.TestCase):
         # first timescale is infinite
         assert fp1[0][0] == np.inf
         # next timescales are identical to timescales:
-        assert np.allclose(fp1[0][1:], hmsm.timescales().magnitude)
+        assert np.allclose(fp1[0][1:], hmsm.timescales())
         # dynamical amplitudes should be near 0 because we are in equilibrium
         assert np.max(np.abs(fp1[1][1:])) < 1e-10
         # off-equilibrium relaxation
@@ -304,7 +303,7 @@ class TestMLHMM(unittest.TestCase):
         # first timescale is infinite
         assert fp2[0][0] == np.inf
         # next timescales are identical to timescales:
-        assert np.allclose(fp2[0][1:], hmsm.timescales().magnitude)
+        assert np.allclose(fp2[0][1:], hmsm.timescales())
         # dynamical amplitudes should be significant because we are not in equilibrium
         assert np.max(np.abs(fp2[1][1:])) > 0.1
 
@@ -366,18 +365,17 @@ class TestMLHMM(unittest.TestCase):
         from sktime.markovprocess.sample import compute_index_states
 
         hmsm = self.hmsm_lag10
-        I = compute_index_states(self.obs, subset=hmsm.count_model.observable_set)
+        I = compute_index_states(self.obs, subset=self.hmsm_lag10.observation_state_symbols)
         # I = hmsm.observable_state_indexes
         assert len(I) == hmsm.n_states_obs
         # compare to histogram
         hist = count_states(self.obs)
         # number of frames should match on active subset
-        A = hmsm.count_model.observable_set
+        A = hmsm.observation_state_symbols
         for i in range(A.shape[0]):
             assert I[i].shape[0] == hist[A[i]]
             assert I[i].shape[1] == 2
 
-    @unittest.skip('not yet impled, we do not store dtrajs anymore.')
     def test_sample_by_observation_probabilities(self):
         hmsm = self.hmsm_lag10
         nsample = 100
@@ -400,8 +398,8 @@ class TestMLHMM(unittest.TestCase):
         assert len(np.unique(traj)) <= len(hmsm.transition_matrix)
 
     def test_dt_model(self):
-        self.assertEqual(self.hmsm_lag10.dt_model.magnitude, 10)
-        self.assertEqual(self.hmsm_lag10.dt_model.units, '1 step')
+        self.assertEqual((self.hmsm_lag10.count_model.lagtime * self.hmsm_lag10.count_model.physical_time).m, 10)
+        self.assertEqual(self.hmsm_lag10.count_model.physical_time.units, '1 step')
 
     # ----------------------------------
     # MORE COMPLEX TESTS / SANITY CHECKS
@@ -421,13 +419,6 @@ class TestMLHMM(unittest.TestCase):
         ksum = 1.0 / t12 + 1.0 / t21
         k2 = 1.0 / t2
         assert np.abs(k2 - ksum) < 1e-4
-
-    def test_cktest_simple(self):
-        dtraj = np.random.randint(0, 10, 100)
-        oom = estimate_markov_model(dtraj, 1)
-        nsets = 2
-        est, hmm = oom.hmm(dtraj, nsets, return_estimator=True)
-        cktest(test_estimator=est, test_model=hmm, dtrajs=dtraj, nsets=nsets)
 
     def test_submodel_simple(self):
         # sanity check for submodel;

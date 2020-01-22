@@ -434,7 +434,7 @@ class MarkovStateModel(Model):
         from msmtools.analysis import mfpt
         self._assert_in_active(A)
         self._assert_in_active(B)
-        return mfpt(self.transition_matrix, B, origin=A, mu=self.stationary_distribution) * self.lagtime
+        return self.lagtime * mfpt(self.transition_matrix, B, origin=A, mu=self.stationary_distribution)
 
     def committor_forward(self, A, B):
         """Forward committor (also known as p_fold or splitting probability) from set A to set B.
