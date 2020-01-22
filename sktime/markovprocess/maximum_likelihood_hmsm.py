@@ -230,7 +230,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @connectivity.setter
     def connectivity(self, value):
-        allowed = (None, 'largest', 'populus')
+        allowed = (None, 'largest', 'populous')
         if value not in allowed:
             raise ValueError(f'Illegal value for connectivity: {value}. Allowed values are one of: {allowed}.')
         self._connectivity = value

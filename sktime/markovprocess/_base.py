@@ -21,7 +21,7 @@ def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None
     dtrajs : list of ndarray(int)
         Discrete trajectories
     lag : int
-        Lag time at which counting will be done. If sh
+        Lag time at which counting will be done.
     sliding : bool
         True for splitting trajectories for sliding count, False if lag-sampling will be applied
     shift : None or int

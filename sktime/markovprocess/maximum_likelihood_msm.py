@@ -95,6 +95,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         value : np.ndarray or None
             the stationary vector
         """
+        if value is not None and (np.any(value < 0) or np.any(value > 1)):
+            raise ValueError("not a distribution, contained negative entries and/or entries > 1.")
         if value is not None and np.sum(value) != 1.0:
             # re-normalize if not already normalized
             value = np.copy(value) / np.sum(value)

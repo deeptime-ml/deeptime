@@ -70,7 +70,7 @@ class MarkovStateModel(Model):
             raise ValueError("Markov state model requires a transition matrix, but it was None.")
         else:
             if not msmana.is_transition_matrix(transition_matrix, tol=1e-8):
-                raise ValueError('The input transition matrix was not a stochastic matrix '
+                raise ValueError('The input transition matrix is not a stochastic matrix '
                                  '(elements >= 0, rows sum up to 1).')
             self._transition_matrix = transition_matrix
 

@@ -23,7 +23,7 @@ class BayesianMSM(_MSMBaseEstimator):
 
     def __init__(self, n_samples: int = 100, n_steps: int = None, reversible: bool = True,
                  stationary_distribution_constraint: Optional[np.ndarray] = None,
-                 sparse: bool = False, confidence_interval: float = 0.954, maxiter: int = int(1e6), maxerr: float = 1e-8):
+                 sparse: bool = False, confidence: float = 0.954, maxiter: int = int(1e6), maxerr: float = 1e-8):
         r"""
         Constructs a new Bayesian estimator for MSMs.
 
@@ -47,7 +47,7 @@ class BayesianMSM(_MSMBaseEstimator):
             this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
             This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
             more efficient.
-        confidence_interval : float, optional, default=0.954
+        confidence : float, optional, default=0.954
             Confidence interval. By default two sigma (95.4%) is used. Use 68.3% for one sigma, 99.7% for three sigma.
         maxiter : int, optional, default=1000000
             Optional parameter with reversible = True, sets the maximum number of iterations before the transition
@@ -66,7 +66,7 @@ class BayesianMSM(_MSMBaseEstimator):
         self.maxerr = maxerr
         self.n_samples = n_samples
         self.n_steps = n_steps
-        self.confidence_interval = confidence_interval
+        self.confidence = confidence
 
     @property
     def stationary_distribution_constraint(self) -> Optional[np.ndarray]:
@@ -92,6 +92,8 @@ class BayesianMSM(_MSMBaseEstimator):
         value : np.ndarray or None
             the stationary vector
         """
+        if value is not None and (np.any(value < 0) or np.any(value > 1)):
+            raise ValueError("not a distribution, contained negative entries and/or entries > 1.")
         if value is not None and np.sum(value) != 1.0:
             # re-normalize if not already normalized
             value = np.copy(value) / np.sum(value)
