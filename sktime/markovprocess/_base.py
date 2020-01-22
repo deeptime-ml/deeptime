@@ -135,28 +135,6 @@ class BayesianPosterior(Model):
         samples = [call_member(s, quantity, *args, **kwargs) for s in self]
         return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples)
 
-    def submodel_largest(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
-        dtrajs = ensure_dtraj_list(dtrajs)
-        states = self.prior.states_largest(strong=strong, mincount_connectivity=mincount_connectivity)
-        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
-        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
-
-    def submodel_populous(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
-        dtrajs = ensure_dtraj_list(dtrajs)
-        states = self.prior.states_populous(strong=strong, mincount_connectivity=mincount_connectivity)
-        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
-        return self.submodel(states=states, obs=obs, mincount_connectivity=mincount_connectivity)
-
-    def submodel(self, states=None, obs=None, mincount_connectivity='1/n'):
-        # restrict prior
-        sub_model = self.prior.submodel(states=states, obs=obs,
-                                        mincount_connectivity=mincount_connectivity)
-        # restrict reduce samples
-        count_model = sub_model.count_model
-        subsamples = [sample.submodel(states=count_model.active_set, obs=count_model.observable_set)
-                      for sample in self]
-        return BayesianPosterior(sub_model, subsamples)
-
 
 class QuantityStatistics(Model):
     """ Container for statistical quantities computed on samples.

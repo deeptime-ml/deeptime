@@ -252,13 +252,13 @@ class HiddenMarkovStateModel(MarkovStateModel):
             observation_state_symbols=symbols, n_observation_states_full=self.n_observation_states_full)
         return model
 
-    def _select_states(self, mincount_connectivity, states):
-        if str(mincount_connectivity) == '1/n':
-            mincount_connectivity = 1.0 / float(self.n_states)
+    def _select_states(self, connectivity_threshold, states):
+        if str(connectivity_threshold) == '1/n':
+            connectivity_threshold = 1.0 / float(self.n_states)
         if isinstance(states, str):
             strong = 'strong' in states
             largest = 'largest' in states
-            S = self.count_model.connected_sets(connectivity_threshold=mincount_connectivity, directed=strong)
+            S = self.count_model.connected_sets(connectivity_threshold=connectivity_threshold, directed=strong)
             if largest:
                 score = np.array([len(s) for s in S])
             else:
@@ -276,10 +276,10 @@ class HiddenMarkovStateModel(MarkovStateModel):
         obs = np.where(count_states(dtrajs_lagged_strided) > 0)[0]
         return obs
 
-    def states_largest(self, strong=True, mincount_connectivity='1/n'):
-        return self._select_states(mincount_connectivity, 'largest-strong' if strong else 'largest-weak')
+    def states_largest(self, strong=True, connectivity_threshold='1/n'):
+        return self._select_states(connectivity_threshold, 'largest-strong' if strong else 'largest-weak')
 
-    def submodel_largest(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
+    def submodel_largest(self, strong=True, connectivity_threshold='1/n', observe_nonempty=True, dtrajs=None):
         """ Returns the largest connected sub-HMM (convenience function)
 
         Returns
@@ -288,14 +288,14 @@ class HiddenMarkovStateModel(MarkovStateModel):
             The restricted HMSM.
 
         """
-        states = self.states_largest(strong=strong, mincount_connectivity=mincount_connectivity)
+        states = self.states_largest(strong=strong, connectivity_threshold=connectivity_threshold)
         obs = self.nonempty_obs(dtrajs) if observe_nonempty else None
         return self.submodel(states=states, obs=obs)
 
-    def states_populous(self, strong=True, mincount_connectivity='1/n'):
-        return self._select_states(mincount_connectivity, 'populous-strong' if strong else 'populous-weak')
+    def states_populous(self, strong=True, connectivity_threshold='1/n'):
+        return self._select_states(connectivity_threshold, 'populous-strong' if strong else 'populous-weak')
 
-    def submodel_populous(self, strong=True, mincount_connectivity='1/n', observe_nonempty=True, dtrajs=None):
+    def submodel_populous(self, strong=True, connectivity_threshold='1/n', observe_nonempty=True, dtrajs=None):
         """ Returns the most populous connected sub-HMM (convenience function)
 
         Returns
@@ -304,21 +304,21 @@ class HiddenMarkovStateModel(MarkovStateModel):
             The restricted HMSM.
 
         """
-        states = self.states_populous(strong=strong, mincount_connectivity=mincount_connectivity)
+        states = self.states_populous(strong=strong, connectivity_threshold=connectivity_threshold)
         obs = self.nonempty_obs(dtrajs) if observe_nonempty else None
         return self.submodel(states=states, obs=obs)
 
-    def submodel_disconnect(self, mincount_connectivity='1/n'):
+    def submodel_disconnect(self, connectivity_threshold='1/n'):
         """Disconnects sets of hidden states that are barely connected
 
         Runs a connectivity check excluding all transition counts below
-        mincount_connectivity. The transition matrix and stationary distribution
+        connectivity_threshold. The transition matrix and stationary distribution
         will be re-estimated. Note that the resulting transition matrix
         may have both strongly and weakly connected subsets.
 
         Parameters
         ----------
-        mincount_connectivity : float or '1/n'
+        connectivity_threshold : float or '1/n'
             minimum number of counts to consider a connection between two states.
             Counts lower than that will count zero in the connectivity check and
             may thus separate the resulting transition matrix. The default
@@ -330,7 +330,7 @@ class HiddenMarkovStateModel(MarkovStateModel):
             The restricted HMM.
 
         """
-        lcc = self.count_model.connected_sets(connectivity_threshold=mincount_connectivity)[0]
+        lcc = self.count_model.connected_sets(connectivity_threshold=connectivity_threshold)[0]
         return self.submodel(lcc)
 
     @property
@@ -689,23 +689,32 @@ class HiddenMarkovStateModel(MarkovStateModel):
     # Generation of trajectories and samples
     ################################################################################
 
-    @property
-    def observable_state_indices(self):
-        """
-        Ensures that the observable states are indexed and returns the indices
-        """
-        raise RuntimeError('use sktime.markovprocess.sample.compute_index_states(dtrajs)')
-        # try:  # if we have this attribute, return it
-        #    return self._observable_state_indexes
-        # except AttributeError:  # didn't exist? then create it.
-        #   self._observable_state_indexes = index_states(self.discrete_trajectories_obs)
-        #    return self._observable_state_indexes
-
     # TODO: generate_traj. How should that be defined? Probably indexes of observable states, but should we specify
     #                      hidden or observable states as start and stop states?
     # TODO: sample_by_state. How should that be defined?
 
-    def sample_by_observation_probabilities(self, nsample):
+    def transform_discrete_trajectories_to_observed_symbols(self, dtrajs):
+        r"""A list of integer arrays with the discrete trajectories mapped to the currently used set of observation
+        symbols. For example, if there has been a subselection of the model for connectivity='largest', the indices
+        will be given within the connected set, frames that do not correspond to a considered symbol are set to -1.
+
+        Parameters
+        ----------
+        dtrajs : array_like or list of array_like
+            discretized trajectories
+
+        Returns
+        -------
+        array_like or list of array_like
+            Curated discretized trajectories so that unconsidered symbols are mapped to -1.
+        """
+
+        dtrajs = ensure_dtraj_list(dtrajs)
+        mapping = -1 * np.ones(self.n_observation_states_full, dtype=np.int32)
+        mapping[self.observation_state_symbols] = np.arange(self.n_observation_states)
+        return [mapping[dtraj] for dtraj in dtrajs]
+
+    def sample_by_observation_probabilities(self, dtrajs, nsample):
         r"""Generates samples according to the current observation probability distribution
 
         Parameters
@@ -723,4 +732,7 @@ class HiddenMarkovStateModel(MarkovStateModel):
 
         """
         from msmtools.dtraj import sample_indexes_by_distribution
-        return sample_indexes_by_distribution(self.observable_state_indices, self.observation_probabilities, nsample)
+        from sktime.markovprocess.sample import compute_index_states
+        mapped = self.transform_discrete_trajectories_to_observed_symbols(dtrajs)
+        observable_state_indices = compute_index_states(mapped)
+        return sample_indexes_by_distribution(observable_state_indices, self.observation_probabilities, nsample)

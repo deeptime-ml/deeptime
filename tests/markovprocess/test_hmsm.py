@@ -21,6 +21,7 @@ import numpy as np
 from msmtools import analysis as msmana
 
 from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
+from sktime.markovprocess.sample import compute_index_states
 from sktime.markovprocess.util import count_states
 from tests.markovprocess.test_msm import estimate_markov_model
 
@@ -379,7 +380,7 @@ class TestMLHMM(unittest.TestCase):
     def test_sample_by_observation_probabilities(self):
         hmsm = self.hmsm_lag10
         nsample = 100
-        ss = hmsm.sample_by_observation_probabilities(nsample)
+        ss = hmsm.sample_by_observation_probabilities(self.obs, nsample)
         # must have the right size
         assert len(ss) == hmsm.n_states
         # must be correctly assigned
@@ -428,7 +429,7 @@ class TestMLHMM(unittest.TestCase):
                 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])]
 
         h = estimate_hidden_markov_model(dtrj, 3, 2)
-        hs = h.submodel_largest(mincount_connectivity=5, dtrajs=dtrj)
+        hs = h.submodel_largest(connectivity_threshold=5, dtrajs=dtrj)
 
         self.assertEqual(hs.timescales().shape[0], 1)
         self.assertEqual(hs.stationary_distribution.shape[0], 2)
