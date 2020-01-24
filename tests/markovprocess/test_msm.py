@@ -1029,6 +1029,23 @@ class TestMSMSimplePathologicalCases(unittest.TestCase):
         self._test_msm_invalid_statdist_constraint(reversible=True)
         self._test_msm_invalid_statdist_constraint(reversible=False)
 
+    def test_raises_disconnected(self):
+        with self.assertRaises(AssertionError):
+            MaximumLikelihoodMSM(reversible=True).fit(self.count_model)
+
+        non_reversibly_connected_set = [0, 1, 2, 3]
+        submodel = self.count_model.submodel(non_reversibly_connected_set)
+        with self.assertRaises(AssertionError):
+            MaximumLikelihoodMSM(reversible=True).fit(submodel)
+
+        fully_disconnected_set = [6, 2]
+        submodel = self.count_model.submodel(fully_disconnected_set)
+        with self.assertRaises(AssertionError):
+            MaximumLikelihoodMSM(reversible=True).fit(submodel)
+
+    def _test_submodel_properties(self):
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()
