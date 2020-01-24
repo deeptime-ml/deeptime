@@ -18,6 +18,7 @@ from typing import Optional
 
 import numpy as np
 from msmtools import estimation as msmest
+from scipy.sparse import issparse
 
 from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess.markov_state_model import MarkovStateModel
@@ -135,7 +136,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         count_matrix = count_model.count_matrix
 
         # continue sparse or dense?
-        if not self.sparse:
+        if not self.sparse and issparse(count_matrix):
             # converting count matrices to arrays. As a result the
             # transition matrix and all subsequent properties will be
             # computed using dense arrays and dense matrix algebra.

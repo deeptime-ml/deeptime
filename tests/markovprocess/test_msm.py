@@ -26,11 +26,10 @@ import itertools
 import unittest
 import warnings
 
+import msmtools.analysis as msmana
+import msmtools.estimation as msmest
 import numpy as np
 import scipy.sparse
-from msmtools.analysis import stationary_distribution, timescales
-from msmtools.estimation import count_matrix, largest_connected_set, largest_connected_submatrix, transition_matrix, \
-    count_states
 from msmtools.generation import generate_traj
 from msmtools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import assert_allclose
@@ -39,6 +38,7 @@ from sktime.markovprocess import BayesianMSM
 from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
 from sktime.markovprocess._base import score_cv
 from sktime.markovprocess.transition_counting import TransitionCountEstimator
+from sktime.markovprocess.util import count_states
 from tests.util import GenerateTestMatrix
 
 
@@ -56,6 +56,10 @@ def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovSt
 
 
 class TestMSMBasic(unittest.TestCase, metaclass=GenerateTestMatrix):
+    """
+    Tests whether constructor attributes are passed along properly and whether the ML-MSM implementation works
+    with respect to estimation and taking a submodel in the reversible and non-reversible case.
+    """
 
     params = {
         '_test_estimator_params' : [dict(reversible=r, statdist=st, sparse=sp, maxiter=mit, maxerr=mer)
@@ -68,8 +72,8 @@ class TestMSMBasic(unittest.TestCase, metaclass=GenerateTestMatrix):
     def _test_estimator_params(self, reversible, statdist, sparse, maxiter, maxerr):
         if np.any(statdist > 1) or np.any(statdist < 0):
             with self.assertRaises(ValueError):
-                msm = MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=statdist,
-                                           sparse=sparse, maxiter=maxiter, maxerr=maxerr)
+                MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=statdist,
+                                     sparse=sparse, maxiter=maxiter, maxerr=maxerr)
         else:
             msm = MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=statdist,
                                        sparse=sparse, maxiter=maxiter, maxerr=maxerr)
@@ -79,9 +83,76 @@ class TestMSMBasic(unittest.TestCase, metaclass=GenerateTestMatrix):
             np.testing.assert_equal(msm.maxiter, maxiter)
             np.testing.assert_equal(msm.maxerr, maxerr)
 
-    def test_disconnected_count_matrix(self):
-        count_matrix = np.array([[10, 0, 0, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 0, 0, 1]], dtype=np.float32)
-        MaximumLikelihoodMSM()
+    def test_weakly_connected_count_matrix(self):
+        count_matrix = np.array([[10, 1, 0, 0], [0, 1, 1, 0], [0, 1, 1, 1], [0, 0, 0, 1]], dtype=np.float32)
+        with self.assertRaises(BaseException, msg="count matrix not strongly connected, expected failure in rev. case"):
+            MaximumLikelihoodMSM().fit(count_matrix)
+        # count matrix weakly connected, this should work
+        msm = MaximumLikelihoodMSM(reversible=False).fit(count_matrix).fetch_model()
+        np.testing.assert_equal(msm.reversible, False)
+        np.testing.assert_equal(msm.n_states, 4)
+        np.testing.assert_equal(msm.lagtime, 1)
+        np.testing.assert_(msm.count_model is not None)
+        np.testing.assert_equal(msm.count_model.count_matrix, count_matrix)
+        # last state is sink state
+        np.testing.assert_equal(msm.stationary_distribution, [0, 0, 0, 1])
+        np.testing.assert_array_almost_equal(msm.transition_matrix,
+                                             [[10./11, 1./11, 0, 0],
+                                              [0, 0.5, 0.5, 0],
+                                              [0, 1./3, 1./3, 1./3],
+                                              [0, 0, 0, 1]])
+        np.testing.assert_equal(msm.n_eigenvalues, 4)
+        np.testing.assert_equal(msm.sparse, False)
+
+        msm = msm.submodel(np.array([1, 2]))
+        np.testing.assert_equal(msm.reversible, False)
+        np.testing.assert_equal(msm.n_states, 2)
+        np.testing.assert_equal(msm.count_model.state_symbols, [1, 2])
+        np.testing.assert_equal(msm.lagtime, 1)
+        np.testing.assert_equal(msm.count_model.count_matrix, [[1, 1], [1, 1]])
+        np.testing.assert_equal(msm.stationary_distribution, [0.5, 0.5])
+        np.testing.assert_array_almost_equal(msm.transition_matrix, [[0.5, 0.5], [0.5, 0.5]])
+        np.testing.assert_equal(msm.n_eigenvalues, 2)
+        np.testing.assert_equal(msm.sparse, False)
+
+    def test_strongly_connected_count_model(self):
+        # transitions 6->1->2->3->4->6, disconnected are 0 and 5
+        dtraj = np.array([0, 6, 1, 2, 3, 4, 6, 5])
+        counts = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(dtraj).fetch_model()
+        np.testing.assert_equal(counts.n_states, 7)
+        sets = counts.connected_sets(directed=True)
+        np.testing.assert_equal(len(sets), 3)
+        np.testing.assert_equal(len(sets[0]), 5)
+        with self.assertRaises(BaseException, msg="count matrix not strongly connected, expected failure in rev. case"):
+            MaximumLikelihoodMSM().fit(counts)
+        counts = counts.submodel_largest(directed=True)  # now we are strongly connected
+        # due to reversible we get 6<->1<->2<->3<->4<->6
+        msm = MaximumLikelihoodMSM(reversible=True).fit(counts).fetch_model()
+        # check that the msm has symbols 1,2,3,4,6
+        np.testing.assert_(np.all([i in msm.count_model.state_symbols for i in [1, 2, 3, 4, 6]]))
+        np.testing.assert_equal(msm.reversible, True)
+        np.testing.assert_equal(msm.n_states, 5)
+        np.testing.assert_equal(msm.lagtime, 1)
+        np.testing.assert_array_almost_equal(msm.transition_matrix, [
+            [0., .5, 0., 0., .5],
+            [.5, 0., .5, 0., 0.],
+            [0., .5, 0., .5, 0.],
+            [0., 0., .5, 0., .5],
+            [.5, 0., 0., .5, 0.]
+        ])
+        np.testing.assert_array_almost_equal(msm.stationary_distribution, [1./5]*5)
+        np.testing.assert_equal(msm.n_eigenvalues, 5)
+        np.testing.assert_equal(msm.sparse, False)
+
+        msm = msm.submodel(np.array([3, 4]))  # states 3 and 4 correspond to symbols 4 and 6
+        np.testing.assert_equal(msm.reversible, True)
+        np.testing.assert_equal(msm.n_states, 2)
+        np.testing.assert_equal(msm.lagtime, 1)
+        np.testing.assert_array_almost_equal(msm.transition_matrix, [[0, 1.], [1., 0]])
+        np.testing.assert_array_almost_equal(msm.stationary_distribution, [0.5, 0.5])
+        np.testing.assert_equal(msm.n_eigenvalues, 2)
+        np.testing.assert_equal(msm.sparse, False)
+        np.testing.assert_equal(msm.count_model.state_symbols, [4, 6])
 
 
 class TestMSMSimple(unittest.TestCase):
@@ -113,13 +184,13 @@ class TestMSMSimple(unittest.TestCase):
         import inspect
         argspec = inspect.getfullargspec(MaximumLikelihoodMSM)
         default_maxerr = argspec.defaults[argspec.args.index('maxerr') - 1]
-        cls.C_MSM = count_matrix(cls.dtraj, cls.tau, sliding=True)
-        cls.lcc_MSM = largest_connected_set(cls.C_MSM)
-        cls.Ccc_MSM = largest_connected_submatrix(cls.C_MSM, lcc=cls.lcc_MSM)
-        cls.P_MSM = transition_matrix(cls.Ccc_MSM, reversible=True, maxerr=default_maxerr)
-        cls.mu_MSM = stationary_distribution(cls.P_MSM)
+        cls.C_MSM = msmest.count_matrix(cls.dtraj, cls.tau, sliding=True)
+        cls.lcc_MSM = msmest.largest_connected_set(cls.C_MSM)
+        cls.Ccc_MSM = msmest.largest_connected_submatrix(cls.C_MSM, lcc=cls.lcc_MSM)
+        cls.P_MSM = msmest.transition_matrix(cls.Ccc_MSM, reversible=True, maxerr=default_maxerr)
+        cls.mu_MSM = msmana.stationary_distribution(cls.P_MSM)
         cls.k = 3
-        cls.ts = timescales(cls.P_MSM, k=cls.k, tau=cls.tau)
+        cls.ts = msmana.timescales(cls.P_MSM, k=cls.k, tau=cls.tau)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -250,7 +321,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         assert not self.msm_sparse.reversible
 
     def _sparse(self, msm):
-        assert msm.is_sparse
+        assert msm.sparse
 
     def test_sparse(self):
         self._sparse(self.msmrev_sparse)
@@ -436,7 +507,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._statdist(self.msm_sparse)
 
     def _eigenvalues(self, msm):
-        if not msm.is_sparse:
+        if not msm.sparse:
             ev = msm.eigenvalues()
         else:
             k = 4
@@ -462,7 +533,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._eigenvalues(self.msm_sparse)
 
     def _eigenvectors_left(self, msm):
-        if not msm.is_sparse:
+        if not msm.sparse:
             L = msm.eigenvectors_left()
             k = msm.n_states
         else:
@@ -489,7 +560,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._eigenvectors_left(self.msm_sparse)
 
     def _eigenvectors_right(self, msm):
-        if not msm.is_sparse:
+        if not msm.sparse:
             R = msm.eigenvectors_right()
             k = msm.n_states
         else:
@@ -513,7 +584,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._eigenvectors_right(self.msm_sparse)
 
     def _eigenvectors_RDL(self, msm):
-        if not msm.is_sparse:
+        if not msm.sparse:
             R = msm.eigenvectors_right()
             D = np.diag(msm.eigenvalues())
             L = msm.eigenvectors_left()
@@ -547,7 +618,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._eigenvectors_RDL(self.msm_sparse)
 
     def _timescales(self, msm):
-        if not msm.is_sparse:
+        if not msm.sparse:
             if not msm.reversible:
                 with warnings.catch_warnings(record=True) as w:
                     ts = msm.timescales()
@@ -732,7 +803,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._expectation(self.msm_sparse)
 
     def _correlation(self, msm):
-        if msm.is_sparse:
+        if msm.sparse:
             k = 4
         else:
             k = msm.n_states
@@ -765,7 +836,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         # self._correlation(self.msm_sparse)
 
     def _relaxation(self, msm):
-        if msm.is_sparse:
+        if msm.sparse:
             k = 4
         else:
             k = msm.n_states
@@ -789,7 +860,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._relaxation(self.msm_sparse)
 
     def _fingerprint_correlation(self, msm):
-        if msm.is_sparse:
+        if msm.sparse:
             k = 4
         else:
             k = msm.n_states
@@ -834,7 +905,7 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._fingerprint_correlation(self.msm_sparse)
 
     def _fingerprint_relaxation(self, msm):
-        if msm.is_sparse:
+        if msm.sparse:
             k = 4
         else:
             k = msm.n_states
@@ -931,7 +1002,7 @@ class TestMSMDoubleWell(unittest.TestCase):
     # ----------------------------------
 
     def _two_state_kinetics(self, msm, eps=0.001):
-        if msm.is_sparse:
+        if msm.sparse:
             k = 4
         else:
             k = msm.n_states
