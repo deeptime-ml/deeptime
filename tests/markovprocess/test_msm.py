@@ -951,6 +951,7 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         np.testing.assert_equal(msm_one_over_n.count_model.state_symbols, self.active_set_unrestricted)
         np.testing.assert_equal(msm_restrict_connectivity.count_model.state_symbols, self.active_set_restricted)
 
+    # TODO: move to test_bayesian_msm
     def test_bmsm(self):
         cc = TransitionCountEstimator(lagtime=1, count_mode="effective").fit(self.dtraj).fetch_model()
         msm = BayesianMSM().fit(cc.submodel_largest(connectivity_threshold='1/n')).fetch_model()
@@ -963,6 +964,70 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         np.testing.assert_equal(msm_restricted.samples[0].count_model.state_symbols, self.active_set_restricted)
         i = id(msm_restricted.prior.count_model)
         assert all(id(x.count_model) == i for x in msm_restricted.samples)
+
+
+class TestMSMSimplePathologicalCases(unittest.TestCase):
+    """
+    example that covers disconnected states handling
+    2 <- 0 <-> 1 <-> 3 - 7 -> 4 <-> 5 - 6
+    """
+    @classmethod
+    def setUpClass(cls):
+        dtrajs = [np.array([0, 1, 0, 1, 0, 0, 1, 2, 2, 2, 2]),
+                  np.array([0, 1, 3, 3, 3, 0, 1, 1, 0, 3, 1]),
+                  np.array([4, 4, 5, 5, 4, 4, 5, 5, 4, 4, 5]),
+                  np.array([6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]),
+                  np.array([7, 7, 7, 7, 4, 5, 4, 5, 4, 5, 4])]
+
+        cls.connected_sets = [[0, 1, 3], [4, 5], [2], [6], [7]]
+        cmat_set1 = np.array([[1, 5, 1],
+                              [3, 1, 1],
+                              [1, 1, 2]], dtype=np.int)
+        cmat_set2 = np.array([[3, 6],
+                              [5, 2]], dtype=np.int)
+        cls.count_matrices = [cmat_set1, cmat_set2, None, None, None]
+
+        lag = 1
+        cls.count_model = TransitionCountEstimator(lagtime=lag, count_mode="sliding").fit(dtrajs).fetch_model()
+
+    def test_connected_sets(self):
+        cs = self.count_model.connected_sets()
+        assert all([set(c) in set(map(frozenset, self.connected_sets)) for c in cs])
+
+    def test_sub_counts(self):
+        for cset, cmat_ref in zip(self.count_model.connected_sets(), self.count_matrices):
+            submodel = self.count_model.submodel(cset)
+            self.assertEqual(len(submodel.connected_sets()), 1)
+            self.assertEqual(len(submodel.connected_sets()[0]), len(cset))
+            self.assertEqual(submodel.count_matrix.shape[0], len(cset))
+
+            if cmat_ref is not None:
+                np.testing.assert_array_equal(submodel.count_matrix.toarray(), cmat_ref)
+
+    def _test_msm_submodel_statdist(self, reversible=True):
+        for cset in self.count_model.connected_sets():
+            submodel = self.count_model.submodel(cset)
+            estimator = MaximumLikelihoodMSM(reversible=reversible).fit(submodel)
+            msm = estimator.fetch_model()
+
+            np.testing.assert_array_almost_equal(msm.stationary_distribution,
+                                                 np.array([1./len(cset) for _ in cset]),
+                                                 decimal=1)
+
+    def test_msm_submodel_statdist(self):
+        self._test_msm_submodel_statdist(reversible=True)
+        self._test_msm_submodel_statdist(reversible=False)
+
+    def _test_msm_invalid_statdist_constraint(self, reversible=True):
+        pi = np.ones(4) / 4.
+        for cset in self.count_model.connected_sets():
+            submodel = self.count_model.submodel(cset)
+            with self.assertRaises(RuntimeError):
+                MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=pi).fit(submodel)
+
+    def test_msm_invalid_statdist_constraint(self):
+        self._test_msm_invalid_statdist_constraint(reversible=True)
+        self._test_msm_invalid_statdist_constraint(reversible=False)
 
 
 if __name__ == "__main__":
