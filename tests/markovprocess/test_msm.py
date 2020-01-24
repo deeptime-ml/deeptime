@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -23,7 +22,7 @@ r"""Unit test for the MSM module
 .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
 """
-
+import itertools
 import unittest
 import warnings
 
@@ -40,6 +39,7 @@ from sktime.markovprocess import BayesianMSM
 from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
 from sktime.markovprocess._base import score_cv
 from sktime.markovprocess.transition_counting import TransitionCountEstimator
+from tests.util import GenerateTestMatrix
 
 
 def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovStateModel:
@@ -53,6 +53,35 @@ def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovSt
     if return_estimator:
         return est, est.fetch_model()
     return est.fetch_model()
+
+
+class TestMSMBasic(unittest.TestCase, metaclass=GenerateTestMatrix):
+
+    params = {
+        '_test_estimator_params' : [dict(reversible=r, statdist=st, sparse=sp, maxiter=mit, maxerr=mer)
+                                    for r, st, sp, mit, mer in itertools.product(
+                [True, False], [None, np.array([0.5, 0.5]), np.array([1.1, .5]), np.array([.1, .1]),
+                                np.array([-.1, .5])], [True, False], [1], [1e-3]
+            )]
+    }
+
+    def _test_estimator_params(self, reversible, statdist, sparse, maxiter, maxerr):
+        if np.any(statdist > 1) or np.any(statdist < 0):
+            with self.assertRaises(ValueError):
+                msm = MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=statdist,
+                                           sparse=sparse, maxiter=maxiter, maxerr=maxerr)
+        else:
+            msm = MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=statdist,
+                                       sparse=sparse, maxiter=maxiter, maxerr=maxerr)
+            np.testing.assert_equal(msm.reversible, reversible)
+            np.testing.assert_equal(msm.stationary_distribution_constraint, statdist)
+            np.testing.assert_equal(msm.sparse, sparse)
+            np.testing.assert_equal(msm.maxiter, maxiter)
+            np.testing.assert_equal(msm.maxerr, maxerr)
+
+    def test_disconnected_count_matrix(self):
+        count_matrix = np.array([[10, 0, 0, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 0, 0, 1]], dtype=np.float32)
+        MaximumLikelihoodMSM()
 
 
 class TestMSMSimple(unittest.TestCase):
@@ -149,8 +178,8 @@ class TestMSMDoubleWell(unittest.TestCase):
     def setUpClass(cls):
         from tests.markovprocess import factory
         cls.dtraj = factory.datasets.double_well_discrete().dtraj
-        nu = 1.*np.bincount(cls.dtraj)
-        cls.statdist = nu/nu.sum()
+        nu = 1. * np.bincount(cls.dtraj)
+        cls.statdist = nu / nu.sum()
 
         cls.tau = 10
         maxerr = 1e-12
@@ -161,7 +190,7 @@ class TestMSMDoubleWell(unittest.TestCase):
 
         """Sparse"""
         cls.msmrev_sparse = estimate_markov_model(cls.dtraj, cls.tau, sparse=True, maxerr=maxerr)
-        cls.msmrevpi_sparse = estimate_markov_model(cls.dtraj, cls.tau,maxerr=maxerr,
+        cls.msmrevpi_sparse = estimate_markov_model(cls.dtraj, cls.tau, maxerr=maxerr,
                                                     statdist=cls.statdist,
                                                     sparse=True)
         cls.msm_sparse = estimate_markov_model(cls.dtraj, cls.tau, reversible=False, sparse=True, maxerr=maxerr)
@@ -178,8 +207,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         s2 = msm.score(dtrajs_test, score_method='VAMP2', score_k=2)
         assert 1.0 <= s2 <= 2.0
 
-        #se = msm.score(dtrajs_test, score_method='VAMPE', score_k=2)
-        #se_inf = msm.score(dtrajs_test, score_method='VAMPE', score_k=None)
+        # se = msm.score(dtrajs_test, score_method='VAMPE', score_k=2)
+        # se_inf = msm.score(dtrajs_test, score_method='VAMPE', score_k=None)
 
     def test_score(self):
         self._score(self.msmrev)
@@ -202,7 +231,8 @@ class TestMSMDoubleWell(unittest.TestCase):
         self._score_cv(MaximumLikelihoodMSM(reversible=True, stationary_distribution_constraint=self.statdist))
         self._score_cv(MaximumLikelihoodMSM(reversible=False))
         self._score_cv(MaximumLikelihoodMSM(reversible=True, sparse=True))
-        self._score_cv(MaximumLikelihoodMSM(reversible=True, stationary_distribution_constraint=self.statdist, sparse=True))
+        self._score_cv(
+            MaximumLikelihoodMSM(reversible=True, stationary_distribution_constraint=self.statdist, sparse=True))
         self._score_cv(MaximumLikelihoodMSM(reversible=False, sparse=True))
 
     # ---------------------------------
@@ -361,9 +391,9 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _active_count_fraction(self, msm):
         # should always be a fraction
-        assert (0.0 <= msm.count_model.active_count_fraction <= 1.0)
+        assert (0.0 <= msm.count_model.selected_count_fraction <= 1.0)
         # special case for this data set:
-        assert (msm.count_model.active_count_fraction == 1.0)
+        assert (msm.count_model.selected_count_fraction == 1.0)
 
     def test_active_count_fraction(self):
         self._active_count_fraction(self.msmrev)
@@ -375,7 +405,7 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _active_state_fraction(self, msm):
         # should always be a fraction
-        assert (0.0 <= msm.count_model.active_state_fraction <= 1.0)
+        assert (0.0 <= msm.count_model.selected_state_fraction <= 1.0)
 
     def test_active_state_fraction(self):
         # should always be a fraction
@@ -505,7 +535,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             """Reversibility"""
             if msm.reversible:
                 mu = msm.stationary_distribution
-                L_mu = mu[:,np.newaxis] * R
+                L_mu = mu[:, np.newaxis] * R
                 assert (np.allclose(np.dot(L_mu.T, R), np.eye(k)))
 
     def test_eigenvectors_RDL(self):
@@ -634,7 +664,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # should roughly add up to stationary:
             cgdist = np.array([msm.stationary_distribution[pcca.sets[0]].sum(),
                                msm.stationary_distribution[pcca.sets[1]].sum()])
-            ds = cgdist[0]*pccadist[0] + cgdist[1]*pccadist[1]
+            ds = cgdist[0] * pccadist[0] + cgdist[1] * pccadist[1]
             ds /= ds.sum()
             assert (np.max(np.abs(ds - msm.stationary_distribution)) < 0.001)
         else:
@@ -775,7 +805,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp1[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp1[0][1:], msm.timescales(k-1)))
+            assert (np.allclose(fp1[0][1:], msm.timescales(k - 1)))
             # all amplitudes nonnegative (for autocorrelation)
             assert (np.all(fp1[1][:] >= 0))
             # identical call
@@ -820,7 +850,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp1[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp1[0][1:], msm.timescales(k-1)))
+            assert (np.allclose(fp1[0][1:], msm.timescales(k - 1)))
             # dynamical amplitudes should be near 0 because we are in equilibrium
             assert (np.max(np.abs(fp1[1][1:])) < 1e-10)
             # off-equilibrium relaxation
@@ -830,7 +860,7 @@ class TestMSMDoubleWell(unittest.TestCase):
             # first timescale is infinite
             assert (fp2[0][0] == np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp2[0][1:], msm.timescales(k-1)))
+            assert (np.allclose(fp2[0][1:], msm.timescales(k - 1)))
             # dynamical amplitudes should be significant because we are not in equilibrium
             assert (np.max(np.abs(fp2[1][1:])) > 0.1)
         else:  # raise ValueError, because fingerprints are not defined for nonreversible
@@ -889,8 +919,8 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def test_simulate_MSM(self):
         msm = self.msm
-        N=400
-        start=1
+        N = 400
+        start = 1
         traj = msm.simulate(N=N, start=start)
         assert (len(traj) <= N)
         assert (len(np.unique(traj)) <= len(msm.transition_matrix))
@@ -955,7 +985,7 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
     def test_bmsm(self):
         cc = TransitionCountEstimator(lagtime=1, count_mode="effective").fit(self.dtraj).fetch_model()
         msm = BayesianMSM().fit(cc.submodel_largest(connectivity_threshold='1/n')).fetch_model()
-        msm_restricted = BayesianMSM().fit(cc.submodel_largest(connectivity_threshold=self.mincount_connectivity))\
+        msm_restricted = BayesianMSM().fit(cc.submodel_largest(connectivity_threshold=self.mincount_connectivity)) \
             .fetch_model()
 
         np.testing.assert_equal(msm.prior.count_model.state_symbols, self.active_set_unrestricted)

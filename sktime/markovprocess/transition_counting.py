@@ -108,7 +108,7 @@ class TransitionCountModel(Model):
         self._state_histogram_full = state_histogram_full
 
     @property
-    def state_histogram_full(self) -> np.ndarray:
+    def state_histogram_full(self) -> Optional[np.ndarray]:
         r""" Histogram over all states in the trajectories. """
         return self._state_histogram_full
 
@@ -123,9 +123,9 @@ class TransitionCountModel(Model):
         return self._state_symbols
 
     @property
-    def counting_mode(self) -> str:
+    def counting_mode(self) -> Optional[str]:
         """ The counting mode that was used to estimate the contained count matrix.
-        One of 'sliding', 'sample', 'effective'.
+        One of 'None', 'sliding', 'sample', 'effective'.
         """
         return self._counting_mode
 
@@ -193,14 +193,17 @@ class TransitionCountModel(Model):
         return self._count_matrix_full
 
     @property
-    def active_state_fraction(self) -> float:
+    def selected_state_fraction(self) -> float:
         """The fraction of states represented in this count model."""
         return float(self.n_states) / float(self.n_states_full)
 
     @property
-    def active_count_fraction(self) -> float:
+    def selected_count_fraction(self) -> float:
         """The fraction of counts represented in this count model."""
-        return float(np.sum(self.state_histogram)) / float(np.sum(self.state_histogram_full))
+        if self.state_histogram is not None:
+            return float(np.sum(self.state_histogram)) / float(np.sum(self.state_histogram_full))
+        else:
+            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
 
     @property
     def n_states(self) -> int:
@@ -210,11 +213,22 @@ class TransitionCountModel(Model):
     @property
     def total_count(self) -> int:
         """Total number of counts"""
-        return self._state_histogram.sum()
+        if self.state_histogram is not None:
+            return self._state_histogram.sum()
+        else:
+            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
 
     @property
-    def state_histogram(self) -> np.ndarray:
-        """ Histogram of discrete state counts"""
+    def visited_set(self) -> np.ndarray:
+        """ The set of visited states. """
+        if self.state_histogram is not None:
+            return np.argwhere(self.state_histogram > 0)[:, 0]
+        else:
+            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+
+    @property
+    def state_histogram(self) -> Optional[np.ndarray]:
+        """ Histogram of discrete state counts, can be None in case no statistics were provided """
         return self._state_histogram
 
     def connected_sets(self, connectivity_threshold: float = 0., directed: bool = True,
@@ -329,11 +343,6 @@ class TransitionCountModel(Model):
         A `(n_states,) np.ndarray` histogram over the collected counts per state.
         """
         return self.count_matrix.sum(axis=1)
-
-    @property
-    def visited_set(self) -> np.ndarray:
-        """ The set of visited states. """
-        return np.argwhere(self.state_histogram > 0)[:, 0]
 
 
 class TransitionCountEstimator(Estimator):
