@@ -53,8 +53,8 @@ class TestBHMM(unittest.TestCase):
         assert all(isinstance(s.output_model, DiscreteOutputModel) for s in self.sampled_hmm_lag10)
 
     def test_reversible(self):
-        assert self.sampled_hmm_lag10.prior.is_reversible
-        assert all(s.is_reversible for s in self.sampled_hmm_lag10)
+        assert self.sampled_hmm_lag10.prior.reversible
+        assert all(s.reversible for s in self.sampled_hmm_lag10)
 
     def test_stationary(self):
         assert not self.sampled_hmm_lag10.prior.is_stationary

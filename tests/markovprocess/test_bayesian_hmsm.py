@@ -47,8 +47,8 @@ class TestBHMM(unittest.TestCase):
         assert isinstance(cls.bhmm, BayesianHMMPosterior)
 
     def test_reversible(self):
-        assert self.bhmm.prior.is_reversible
-        assert all(s.is_reversible for s in self.bhmm)
+        assert self.bhmm.prior.reversible
+        assert all(s.reversible for s in self.bhmm)
 
     def test_lag(self):
         assert self.bhmm.prior.lagtime == self.lag
@@ -275,7 +275,7 @@ class TestBHMM(unittest.TestCase):
                 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])
 
         h = BayesianHMSM.default(dtrj, n_states=3, lagtime=2).fit(dtrj).fetch_model()
-        hs = h.submodel_largest(strong=True, mincount_connectivity=5, observe_nonempty=True, dtrajs=dtrj)
+        hs = h.submodel_largest(strong=True, connectivity_threshold=5, observe_nonempty=True, dtrajs=dtrj)
 
         models_to_check = [hs.prior] + hs.samples
         for i, m in enumerate(models_to_check):

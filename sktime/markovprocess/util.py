@@ -1,5 +1,8 @@
+from typing import Union
+
 import numpy as np
 
+from sktime.markovprocess import Q_
 from sktime.util import ensure_dtraj_list
 
 
@@ -21,14 +24,14 @@ def visited_set(dtrajs):
     return np.argwhere(hist > 0)[:, 0]
 
 
-def count_states(dtrajs, ignore_negative=False):
-    r"""returns a count histogram
+def count_states(dtrajs, ignore_negative: bool = False):
+    r"""Computes a histogram over the visited states in one or multiple discretized trajectories.
 
     Parameters
     ----------
     dtrajs : array_like or list of array_like
         Discretized trajectory or list of discretized trajectories
-    ignore_negative, bool, default=False
+    ignore_negative : bool, default=False
         Ignore negative elements. By default, a negative element will cause an
         exception
 
@@ -38,21 +41,21 @@ def count_states(dtrajs, ignore_negative=False):
         the number of occurrences of each state. n=max+1 where max is the largest state index found.
 
     """
-    # make bincounts for each input trajectory
     dtrajs = ensure_dtraj_list(dtrajs)
-    nmax = 0
-    bcs = []
-    for dtraj in dtrajs:
+
+    max_n_states = 0
+    histograms = []
+    for discrete_trajectory in dtrajs:
         if ignore_negative:
-            dtraj = dtraj[np.where(dtraj >= 0)]
-        bc = np.bincount(dtraj)
-        nmax = max(nmax, bc.shape[0])
-        bcs.append(bc)
-    # construct total bincount
-    res = np.zeros(nmax, dtype=int)
-    # add up individual bincounts
-    for i, bc in enumerate(bcs):
-        res[:bc.shape[0]] += bc
+            discrete_trajectory = discrete_trajectory[np.where(discrete_trajectory >= 0)]
+        trajectory_histogram = np.bincount(discrete_trajectory)
+        max_n_states = max(max_n_states, trajectory_histogram.shape[0])
+        histograms.append(trajectory_histogram)
+    # allocate space for histogram
+    res = np.zeros(max_n_states, dtype=int)
+    # aggregate histograms over trajectories
+    for trajectory_histogram in histograms:
+        res[:trajectory_histogram.shape[0]] += trajectory_histogram
     return res
 
 
@@ -82,8 +85,11 @@ def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
     # how many uncorrelated counts we can make
     stride = lagtime
     # get a quick fit from the spectral radius of the non-reversible
+    from sktime.markovprocess import TransitionCountEstimator
+    count_model = TransitionCountEstimator(lagtime=lagtime, count_mode="sliding").fit(dtrajs).fetch_model()
+    count_model = count_model.submodel_largest()
     from sktime.markovprocess import MaximumLikelihoodMSM
-    msm_non_rev = MaximumLikelihoodMSM(lagtime=lagtime, reversible=False, sparse=False).fit(dtrajs).fetch_model()
+    msm_non_rev = MaximumLikelihoodMSM(reversible=False, sparse=False).fit(count_model).fetch_model()
     # if we have more than n_states timescales in our MSM, we use the next (neglected) timescale as an
     # fit of the de-correlation time
     if msm_non_rev.n_states > n_states:
@@ -129,11 +135,10 @@ def lag_observations(observations, lag, stride=1):
     return obsnew
 
 
-def compute_dtrajs_effective(dtrajs, lagtime, n_states, stride):
+def compute_dtrajs_effective(dtrajs, lagtime: Union[int, Q_], n_states: int, stride: Union[int, str]):
     r"""
     Takes discrete trajectories as input and strides these with an effective stride. See methods
     `compute_effective_stride` and `lag_observations`.
-
 
     Parameters
     ----------
@@ -158,3 +163,34 @@ def compute_dtrajs_effective(dtrajs, lagtime, n_states, stride):
     # LAG AND STRIDE DATA
     dtrajs_lagged_strided = lag_observations(dtrajs, lagtime, stride=stride)
     return dtrajs_lagged_strided
+
+
+def compute_connected_sets(C, connectivity_threshold, directed=True):
+    """ Computes the connected sets of a count matrix C.
+
+    C : (N, N) np.ndarray
+        count matrix
+    mincount_connectivity : float
+        Minimum count required to be included in the connected set computation.
+    directed : boolean
+        True: Seek connected sets in the directed graph. False: Seek connected sets in the undirected graph.
+    Returns
+    -------
+    A list of arrays, each array representing a connected set by enumerating the respective states. The list is in
+    descending order by size of connected set.
+    """
+    import msmtools.estimation as msmest
+    import scipy.sparse as scs
+    if connectivity_threshold > 0:
+        if scs.issparse(C):
+            Cconn = C.tocsr(copy=True)
+            Cconn.data[Cconn.data < connectivity_threshold] = 0
+            Cconn.eliminate_zeros()
+        else:
+            Cconn = C.copy()
+            Cconn[np.where(Cconn < connectivity_threshold)] = 0
+    else:
+        Cconn = C
+    # treat each connected set separately
+    S = msmest.connected_sets(Cconn, directed=directed)
+    return S

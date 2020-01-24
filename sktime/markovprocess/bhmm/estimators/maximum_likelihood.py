@@ -102,7 +102,7 @@ class MaximumLikelihoodHMM(Estimator):
         self._maxit_P = maxit_P
 
     @property
-    def is_reversible(self):
+    def reversible(self):
         r""" Whether the transition matrix is estimated with detailed balance constraints """
         return self._reversible
 
@@ -188,7 +188,7 @@ class MaximumLikelihoodHMM(Estimator):
         C = self._transition_counts(count_matrices)
 
         # compute new transition matrix
-        T = estimate_P(C, reversible=model.is_reversible, fixed_statdist=self._fixed_stationary_distribution,
+        T = estimate_P(C, reversible=model.reversible, fixed_statdist=self._fixed_stationary_distribution,
                        maxiter=maxiter, maxerr=1e-12, mincount_connectivity=1e-16)
         # estimate stationary or init distribution
         if self._stationary:

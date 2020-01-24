@@ -8,6 +8,7 @@ import sktime.clustering.kmeans as kmeans
 import sktime.decomposition.tica as tica
 import sktime.markovprocess.maximum_likelihood_msm as msm
 from sktime.data.double_well import DoubleWellDiscrete
+from sktime.markovprocess import TransitionCountEstimator
 from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 
 
@@ -28,10 +29,11 @@ class TestSkLearnCompat(unittest.TestCase):
         pipeline = Pipeline(steps=[
             ('tica', tica.TICA(lagtime=1, dim=1)),
             ('cluster', kmeans.KmeansClustering(n_clusters=2, max_iter=500)),
-            ('msm', msm.MaximumLikelihoodMSM())
+            ('counts', TransitionCountEstimator(lagtime=1, count_mode="sliding"))
         ])
         pipeline.fit(data)
-        mlmsm = pipeline[-1].fetch_model()
+        counts = pipeline[-1].fetch_model().submodel_largest()
+        mlmsm = msm.MaximumLikelihoodMSM().fit(counts).fetch_model()
         P = mlmsm.pcca(2).coarse_grained_transition_matrix
         mindist = min(np.linalg.norm(P - transition_matrix), np.linalg.norm(P - transition_matrix.T))
         assert mindist < 0.05

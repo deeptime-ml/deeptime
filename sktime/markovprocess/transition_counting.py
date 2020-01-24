@@ -1,184 +1,209 @@
+from typing import Union, Optional, List
+
 import numpy as np
+import scipy
 from msmtools import estimation as msmest
-from sklearn.utils.random import check_random_state
+from scipy.sparse import coo_matrix
 
 from sktime.base import Estimator, Model
 from sktime.markovprocess import Q_
-from sktime.markovprocess.util import count_states
+from sktime.markovprocess.util import count_states, compute_connected_sets
 from sktime.util import submatrix, ensure_dtraj_list
 
-__author__ = 'noe'
-
-
-# TODO: this could me moved to msmtools.dtraj
-def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None):
-    """ Splits the discrete trajectories into approximately uncorrelated fragments
-
-    Will split trajectories into fragments of lengths lag or longer. These fragments
-    are overlapping in order to conserve the transition counts at given lag.
-    If sliding=True, the resulting trajectories will lead to exactly the same count
-    matrix as when counted from dtrajs. If sliding=False (sampling at lag), the
-    count matrices are only equal when also setting shift=0.
-
-    Parameters
-    ----------
-    dtrajs : list of ndarray(int)
-        Discrete trajectories
-    lag : int
-        Lag time at which counting will be done. If sh
-    sliding : bool
-        True for splitting trajectories for sliding count, False if lag-sampling will be applied
-    shift : None or int
-        Start of first full tau-window. If None, shift will be randomly generated
-
-    """
-    dtrajs_new = []
-    random_state = check_random_state(random_state)
-    for dtraj in dtrajs:
-        if len(dtraj) <= lag:
-            continue
-        if shift is None:
-            s = random_state.randint(min(lag, dtraj.size - lag))
-        else:
-            s = shift
-        if sliding:
-            if s > 0:
-                dtrajs_new.append(dtraj[0:lag + s])
-            for t0 in range(s, dtraj.size - lag, lag):
-                dtrajs_new.append(dtraj[t0:t0 + 2 * lag])
-        else:
-            for t0 in range(s, dtraj.size - lag, lag):
-                dtrajs_new.append(dtraj[t0:t0 + lag + 1])
-    return dtrajs_new
-
-
-# TODO: this could me moved to msmtools.dtraj
-def cvsplit_dtrajs(dtrajs, random_state=None):
-    """ Splits the trajectories into a training and test set with approximately equal number of trajectories
-
-    Parameters
-    ----------
-    dtrajs : list of ndarray(int)
-        Discrete trajectories
-
-    """
-    if len(dtrajs) == 1:
-        raise ValueError('Only have a single trajectory. Cannot be split into train and test set')
-    random_state = check_random_state(random_state)
-    I0 = random_state.choice(len(dtrajs), int(len(dtrajs) / 2), replace=False)
-    I1 = np.array(list(set(list(np.arange(len(dtrajs)))) - set(list(I0))))
-    dtrajs_train = [dtrajs[i] for i in I0]
-    dtrajs_test = [dtrajs[i] for i in I1]
-    return dtrajs_train, dtrajs_test
+__author__ = 'noe, clonker'
 
 
 class TransitionCountModel(Model):
-    r""" Statistics, count matrices and connectivity from discrete trajectories
+    r""" Statistics, count matrices, and connectivity from discrete trajectories. These statistics can be used to, e.g.,
+    construct MSMs. This model can create submodels (see (:func:`sktime.markovprocess.TransitionCountModel.submodel`)
+    that are restricted to a certain selection of states. This subselection can be made by
+
+    * analyzing the connected sets of the
+      count matrix (:func:`sktime.markovprocess.TransitionCountModel.connected_sets`)
+    * pruning states by thresholding with a mincount_connectivity parameter,
+    * or simply providing a subset of states manually.
     """
 
-    def __init__(self, lagtime=1, active_set=None, dt_traj='1 step',
-                 connected_sets=(), count_matrix=None, state_histogram=None):
-        self._lag = Q_(lagtime)
-        self._active_set = active_set
-        self._dt_traj = Q_(dt_traj) if isinstance(dt_traj, (str, int)) else dt_traj
-        self._connected_sets = connected_sets
-        self._C = count_matrix
-        self._hist = state_histogram
+    def __init__(self, count_matrix: Union[np.ndarray, coo_matrix], counting_mode: Optional[str] = None,
+                 lagtime: int = 1, state_histogram: Optional[np.ndarray] = None,
+                 physical_time: Union[Q_, str] = '1 step',
+                 state_symbols: Optional[np.ndarray] = None,
+                 count_matrix_full: Union[None, np.ndarray, coo_matrix] = None,
+                 state_histogram_full: Optional[np.ndarray] = None):
+        r"""Creates a new TransitionCountModel. This can be used to, e.g., construct Markov state models. The minimal
+        requirement for instantiation is a count matrix, but statistics of the data can also be provided.
 
-        if count_matrix is not None:
-            self._n_states_full = count_matrix.shape[0]
-        else:
-            self._n_states_full = 0
+        Parameters
+        ----------
+        count_matrix : array_like
+            The count matrix. In case it was estimated with 'sliding', it contains a factor of `lagtime` more counts
+            than are statistically uncorrelated.
+        counting_mode : str, optional, default=None
+            If not None, one of 'sliding', 'sample', or 'effective'.
+            Indicates the counting method that was used to estimate the count matrix. In case of 'sliding', a sliding
+            window of the size of the lagtime was used to count transitions. It therefore contains a factor
+            of `lagtime` more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
+            likelihood estimation, but it will give far too small errors if you use it for uncertainty calculations.
+            In order to do uncertainty calculations, use the effective count matrix, see
+            :attr:`effective_count_matrix`, divide this count matrix by tau, or use 'effective' as estimation parameter.
+        lagtime : int, optional, default=1
+            The time offset which was used to count transitions in state.
+        state_histogram : array_like, optional, default=None
+            Histogram over the visited states in discretized trajectories.
+        physical_time : Unit or str, default='step'
+            Description of the physical time unit corresponding to one time step of the
+            transitioning process (aka lag time). May be used by analysis methods such as plotting
+            tools to pretty-print the axes.
+            By default 'step', i.e. there is no physical time unit. Permitted units are
+
+            *  'fs',  'femtosecond'
+            *  'ps',  'picosecond'
+            *  'ns',  'nanosecond'
+            *  'us',  'microsecond'
+            *  'ms',  'millisecond'
+            *  's',   'second'
+        state_symbols : array_like, optional, default=None
+            Symbols of the original discrete trajectory that are represented in the counting model. If None, the
+            symbols are assumed to represent the data, i.e., a iota range over the number of states. Subselection
+            of the model also subselects the symbols.
+        count_matrix_full : array_like, optional, default=None
+            Count matrix for all state symbols. If None, the count matrix provided as first argument is assumed to
+            take that role.
+        state_histogram_full : array_like, optional, default=None
+            Histogram over all state symbols. If None, the provided state_histogram  is assumed to take that role.
+        """
+
+        if count_matrix is None:
+            raise ValueError("count matrix was None")
+
+        self._count_matrix = count_matrix
+        self._counting_mode = counting_mode
+        self._lag = lagtime
+        self._physical_time = Q_(physical_time) if isinstance(physical_time, (str, int)) else physical_time
+        self._state_histogram = state_histogram
+
+        if state_symbols is None:
+            # if symbols is not set, assume that the count matrix represents all states in the data
+            state_symbols = np.arange(self.n_states)
+
+        if len(state_symbols) != self.n_states:
+            raise ValueError("Number of symbols in counting model must coincide with the number of states in the "
+                             "count matrix! (#symbols = {}, #states = {})".format(len(state_symbols), self.n_states))
+        self._state_symbols = state_symbols
+        if count_matrix_full is None:
+            count_matrix_full = count_matrix
+        self._count_matrix_full = count_matrix_full
+        if self.n_states_full < self.n_states:
+            # full number of states must be at least as large as n_states
+            raise ValueError("Number of states was bigger than full number of "
+                             "states. (#states = {}, #states_full = {}), likely a wrong "
+                             "full count matrix.".format(self.n_states, self.n_states_full))
+        if state_histogram_full is None:
+            state_histogram_full = state_histogram
+        if state_histogram_full is not None and self.n_states_full != len(state_histogram_full):
+            raise ValueError(
+                "Mismatch between number of states represented in full state histogram and full count matrix "
+                "(#states histogram = {}, #states matrix = {})".format(len(state_histogram_full), self.n_states_full)
+            )
+        self._state_histogram_full = state_histogram_full
 
     @property
-    def lagtime(self) -> Q_:
+    def state_histogram_full(self) -> Optional[np.ndarray]:
+        r""" Histogram over all states in the trajectories. """
+        return self._state_histogram_full
+
+    @property
+    def n_states_full(self) -> int:
+        r""" Full number of states represented in the underlying data. """
+        return self.count_matrix_full.shape[0]
+
+    @property
+    def state_symbols(self) -> np.ndarray:
+        r""" Symbols (states) that are represented in this count model. """
+        return self._state_symbols
+
+    @property
+    def counting_mode(self) -> Optional[str]:
+        """ The counting mode that was used to estimate the contained count matrix.
+        One of 'None', 'sliding', 'sample', 'effective'.
+        """
+        return self._counting_mode
+
+    @property
+    def lagtime(self) -> int:
         """ The lag time at which the Markov model was estimated."""
         return self._lag
 
     @property
-    def active_set(self):
-        """The active set of states on which all computations and estimations will be done"""
-        return self._active_set
-
-    @property
-    def dt_traj(self) -> Q_:
+    def physical_time(self) -> Q_:
         """Time interval between discrete steps of the time series."""
-        return self._dt_traj
+        return self._physical_time
 
     @property
-    def largest_connected_set(self):
-        """The largest reversible connected set of states."""
-        return self._connected_sets[0] if self._connected_sets is not None else ()
+    def is_full_model(self) -> bool:
+        r""" Determine whether this counting model refers to the full model that represents all states of the data.
 
-    @property
-    def connected_sets(self):
-        """The reversible connected sets of states, sorted by size (descending)."""
-        return self._connected_sets
+        Returns
+        -------
+        whether this counting model represents all states of the data
+        """
+        return self.n_states == self.n_states_full
 
-    # TODO: ever used?
-    def map_discrete_trajectories_to_active(self, dtrajs):
+    def transform_discrete_trajectories_to_submodel(self, dtrajs):
+        r"""A list of integer arrays with the discrete trajectories mapped to the currently used set of symbols.
+        For example, if there has been a subselection of the model for connectivity='largest', the indices will be
+        given within the connected set, frames that do not correspond to a considered symbol are set to -1.
+
+        Parameters
+        ----------
+        dtrajs : array_like or list of array_like
+            discretized trajectories
+
+        Returns
+        -------
+        array_like or list of array_like
+            Curated discretized trajectories so that unconsidered symbols are mapped to -1.
         """
-        A list of integer arrays with the discrete trajectories mapped to the connectivity mode used.
-        For example, for connectivity='largest', the indexes will be given within the connected set.
-        Frames that are not in the connected set will be -1.
-        """
-        # compute connected dtrajs
-        if self.active_set is not None:
-            mapping = -1 * np.ones(self.n_states, dtype=np.int32)
-            mapping[self.active_set] = np.arange(len(self.active_set))
-            return [mapping[dtraj] for dtraj in ensure_dtraj_list(dtrajs)]
-        else:
+
+        if self.is_full_model:
+            # no-op
             return dtrajs
-
-
-    @property
-    def count_matrix_active(self):
-        """The count matrix on the active set given the connectivity mode used.
-
-        For example, for connectivity='largest', the count matrix is given only on the largest reversibly connected set.
-
-        Attention: This count matrix has been obtained by sliding a window of length tau across the data. It contains
-        a factor of tau more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
-        likelihood estimated, but it will give far too small errors if you use it for uncertainty calculations. In order
-        to do uncertainty calculations, use the effective count matrix, see:
-        :attr:`effective_count_matrix`
-
-        See Also
-        --------
-        effective_count_matrix
-            For a count matrix with effective (statistically uncorrelated) counts.
-
-        """
-        return self.subselect_count_matrix(subset=self.active_set)
+        else:
+            dtrajs = ensure_dtraj_list(dtrajs)
+            mapping = -1 * np.ones(self.n_states_full, dtype=np.int32)
+            mapping[self.state_symbols] = np.arange(self.n_states)
+            return [mapping[dtraj] for dtraj in dtrajs]
 
     @property
     def count_matrix(self):
-        """
-        The count matrix on full set of discrete states, irrespective as to whether they are connected or not.
-        Attention: This count matrix has been obtained by sliding a window of length tau across the data. It contains
-        a factor of tau more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
-        likelihood estimated, but it will give far too small errors if you use it for uncertainty calculations. In order
-        to do uncertainty calculations, use the effective count matrix, see: :attr:`effective_count_matrix`
-        (only implemented on the active set), or divide this count matrix by tau.
+        """The count matrix, possibly restricted to a subset of states.
 
-        See Also
-        --------
-        effective_count_matrix
-            For a active-set count matrix with effective (statistically uncorrelated) counts.
-
+        Attention: This count matrix could have been obtained by sliding a window of length tau across the data.
+        It then contains a factor of tau more counts than are statistically uncorrelated. It's fine to use this matrix
+        for maximum likelihood estimation, but it will give far too small errors if you use it for uncertainty
+        calculations. In order to do uncertainty calculations, use effective counting during estimation,
+        or divide this count matrix by tau.
         """
-        return self._C
+        return self._count_matrix
 
     @property
-    def active_state_fraction(self):
-        """The fraction of states in the largest connected set."""
+    def count_matrix_full(self) -> np.ndarray:
+        r""" The count matrix on full set of discrete states, irrespective as to whether they are selected or not.
+        """
+        return self._count_matrix_full
+
+    @property
+    def selected_state_fraction(self) -> float:
+        """The fraction of states represented in this count model."""
         return float(self.n_states) / float(self.n_states_full)
 
     @property
-    def active_count_fraction(self):
-        """The fraction of counts in the largest connected set."""
-        hist_active = self._hist[self.active_set]
-        return float(np.sum(hist_active)) / float(np.sum(self._hist))
+    def selected_count_fraction(self) -> float:
+        """The fraction of counts represented in this count model."""
+        if self.state_histogram is not None:
+            return float(np.sum(self.state_histogram)) / float(np.sum(self.state_histogram_full))
+        else:
+            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
 
     @property
     def n_states(self) -> int:
@@ -186,48 +211,202 @@ class TransitionCountModel(Model):
         return self.count_matrix.shape[0]
 
     @property
-    def n_states_full(self) -> int:
-        """
-        Number of states in the full model before any subselection.
-        """
-        return self._n_states_full
-
-    @property
-    def n_states_active(self) -> int:
-        """Number of states in the active set"""
-        return len(self._active_set)
-
-    @property
-    def total_count(self):
+    def total_count(self) -> int:
         """Total number of counts"""
-        return self._hist.sum()
+        if self.state_histogram is not None:
+            return self._state_histogram.sum()
+        else:
+            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
 
     @property
-    def state_histogram(self):
-        """ Histogram of discrete state counts"""
-        return self._hist
+    def visited_set(self) -> np.ndarray:
+        """ The set of visited states. """
+        if self.state_histogram is not None:
+            return np.argwhere(self.state_histogram > 0)[:, 0]
+        else:
+            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
 
-    # todo: rename to subselect_count_matrix
-    def subselect_count_matrix(self, connected_set=None, subset=None, effective=False):
-        r"""The count matrix
+    @property
+    def state_histogram(self) -> Optional[np.ndarray]:
+        """ Histogram of discrete state counts, can be None in case no statistics were provided """
+        return self._state_histogram
+
+    def connected_sets(self, connectivity_threshold: float = 0., directed: bool = True,
+                       probability_constraint: Optional[np.ndarray] = None) -> List[np.ndarray]:
+        r""" Computes the connected sets of the counting matrix. A threshold can be set fixing a number of counts
+        required to consider two states connected. In case of sliding window the number of counts is increased by a
+        factor of `lagtime`. In case of 'sliding-effective' counting, the number of sliding window counts were
+        divided by the lagtime and can therefore also be in the open interval (0, 1). Same for 'effective' counting.
 
         Parameters
         ----------
-        connected_set : int or None, optional, default=None
-            connected set index. See :func:`connected_sets` to get a sorted list of connected sets.
-            This parameter is exclusive with subset.
-        subset : array-like of int or None, optional, default=None
-            subset of states to compute the count matrix on. This parameter is exclusive with subset.
-        effective : bool, optional, default=False
-            Statistically uncorrelated transition counts within the active set of states.
+        connectivity_threshold : float, optional, default=0.
+            Number of counts required to consider two states connected. When the count matrix was estimated with
+            effective mode or sliding-effective mode, a threshold of :math:`1 / n_states_full` is commonly used.
+        directed : bool, optional, default=True
+            Compute connected set for directed or undirected transition graph, default directed
+        probability_constraint : (N,) ndarray, optional, default=None
+            constraint on the whole state space, sets all counts to zero which have no probability
 
-            You can use this count matrix for any kind of estimation, in particular it is meant to give reasonable
-            error bars in uncertainty measurements (error perturbation or Gibbs sampling of the posterior).
+        Returns
+        -------
+        A list of arrays containing integers (states), each array representing a connected set. The list is
+        ordered decreasingly by the size of the individual components.
+        """
+        count_matrix = self.count_matrix
+        if probability_constraint is not None:
+            # pi has to be defined on all states visited by the trajectories
+            if len(probability_constraint) != self.n_states_full:
+                raise ValueError("The connected sets with a constraint can only be evaluated if the constraint "
+                                 "refers to the whole state space (#states total = {}), but it had a length of "
+                                 "#constrained states = {}".format(self.n_states_full, len(probability_constraint)))
+            probability_constraint = probability_constraint[self.state_symbols]
 
-            The effective count matrix is obtained by dividing the sliding-window count matrix by the lag time. This
-            can be shown to provide a likelihood that is the geometrical average over shifted subsamples of the trajectory,
-            :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to the
-            correct likelihood in the statistical limit [1]_.
+            # Find visited states with positive stationary probabilities
+            pos = np.where(probability_constraint <= 0.0)[0]
+            count_matrix = count_matrix.copy()
+
+            if scipy.sparse.issparse(count_matrix):
+                count_matrix = count_matrix.tolil()
+            count_matrix[pos, :] = 0.
+            count_matrix[:, pos] = 0.
+
+        return compute_connected_sets(count_matrix, connectivity_threshold, directed=directed)
+
+    def submodel(self, states: np.ndarray):
+        r"""This returns a count model that is restricted to a selection of states.
+
+        Parameters
+        ----------
+        states : array_like
+            The states to restrict to.
+
+        Returns
+        -------
+        A submodel restricted to the requested states.
+        """
+        if np.max(states) >= self.n_states:
+            raise ValueError("Tried restricting model to states that are not represented! "
+                             "States range from 0 to {}.".format(np.max(states)))
+        sub_count_matrix = submatrix(self.count_matrix, states)
+        if self.state_symbols is not None:
+            sub_symbols = self.state_symbols[states]
+        else:
+            sub_symbols = None
+        if self.state_histogram is not None:
+            sub_state_histogram = self.state_histogram[states]
+        else:
+            sub_state_histogram = None
+        return TransitionCountModel(sub_count_matrix, self.counting_mode, self.lagtime, sub_state_histogram,
+                                    state_symbols=sub_symbols, physical_time=self.physical_time,
+                                    count_matrix_full=self.count_matrix_full,
+                                    state_histogram_full=self.state_histogram_full)
+
+    def submodel_largest(self, connectivity_threshold: Union[None, float] = 0., directed: Optional[bool] = None,
+                         probability_constraint: Optional[np.ndarray] = None):
+        r"""
+        Restricts this model to the submodel corresponding to the largest connected set of states after eliminating
+        states that fall below the specified connectivity threshold.
+        
+        Parameters
+        ----------
+        connectivity_threshold : float or '1/n', optional, default=0.
+            Connectivity threshold. counts that are below the specified value are disregarded when finding connected
+            sets. In case of '1/n', the threshold gets resolved to :math:`1 / n\_states\_full`.
+        directed : bool, optional, default=None
+            Whether to look for connected sets in a directed graph or in an undirected one. Per default it looks whether
+            a probability constraint is given. In case it is given it defaults to the undirected case, otherwise
+            directed.
+        probability_constraint : (N,) ndarray, optional, default=None
+            Constraint on the whole state space (n_states_full). Only considers states that have positive probability.
+        Returns
+        -------
+        The submodel.
+        """
+        if directed is None:
+            # if probability constraint is given, we want undirected per default
+            directed = probability_constraint is None
+        if connectivity_threshold == '1/n':
+            connectivity_threshold = 1. / self.n_states_full
+        connectivity_threshold = float(connectivity_threshold)
+        connected_sets = self.connected_sets(connectivity_threshold=connectivity_threshold, directed=directed,
+                                             probability_constraint=probability_constraint)
+        largest_connected_set = connected_sets[0]
+        return self.submodel(largest_connected_set)
+
+    def count_matrix_histogram(self) -> np.ndarray:
+        r"""
+        Computes a histogram over states represented in the count matrix. The magnitude of the values returned values
+        depend on the mode which was used for counting.
+        Returns
+        -------
+        A `(n_states,) np.ndarray` histogram over the collected counts per state.
+        """
+        return self.count_matrix.sum(axis=1)
+
+
+class TransitionCountEstimator(Estimator):
+    r"""
+    Estimator which produces a ``TransitionCountModel`` given discretized trajectories. Hereby one can decide whether
+    the count mode should be:
+
+        * sample: A trajectory of length T will have :math:`T / \tau` counts at time indices
+          .. math:: (0 \rightarray \tau), (\tau \rightarray 2 \tau), ..., (((T/tau)-1) \tau \rightarray T)
+
+        * sliding: A trajectory of length T will have :math:`T-\tau` counts at time indices
+          .. math:: (0 \rightarray \tau), (1 \rightarray \tau+1), ..., (T-\tau-1 \rightarray T-1)
+          This introduces an overestimation of the actual count values by a factor of "lagtime". For
+          maximum-likelihood MSMs this plays no role but it leads to wrong error bars in uncertainty estimation.
+
+        * sliding-effective: See sliding mode, just that the resulting count matrix is divided by the lagtime after
+          counting. This which can be shown to provide a likelihood that is the geometrical average
+          over shifted subsamples of the trajectory, :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc.
+          This geometrical average converges to the correct likelihood in the statistical limit [1]_. "effective"
+          uses an estimate of the transition counts that are statistically uncorrelated.
+
+        * effective: Uses an estimate of the transition counts that are statistically uncorrelated. Recommended
+          when used with a Bayesian MSM.
+
+    References
+    ----------
+
+    ..[1] Trendelkamp-Schroer B, H Wu, F Paul and F Noe. 2015:
+        Reversible Markov models of molecular kinetics: Estimation and uncertainty.
+        J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
+    """
+
+    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step'):
+        r"""
+        Constructs a transition count estimator that can be used to estimate ``TransitionCountModel``s.
+
+        Parameters
+        ----------
+        lagtime : int
+            Distance between two frames in the discretized trajectories under which their potential change of state
+            is considered a transition.
+        count_mode : str
+            one of "sample", "sliding", "sliding-effective", and "effective". "sample" strides the trajectory with
+            lagtime :math:`\tau` and uses the strided counts as transitions. "sliding" uses a sliding window approach,
+            yielding counts that are statistically correlated and too large by a factor of
+            :math:`\tau`; in uncertainty estimation this yields wrong uncertainties. "sliding-effective" takes "sliding"
+            and divides it by :math:`\tau`, which can be shown to provide a likelihood that is the geometrical average
+            over shifted subsamples of the trajectory, :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc.
+            This geometrical average converges to the correct likelihood in the statistical limit [1]_. "effective"
+            uses an estimate of the transition counts that are statistically uncorrelated. Recommended when estimating
+            Bayesian MSMs.
+        physical_time : str, optional, default='1 step'
+            Description of the physical time of the input trajectories. May be used
+            by analysis algorithms such as plotting tools to pretty-print the axes.
+            By default '1 step', i.e. there is no physical time unit. Specify by a
+            number, whitespace and unit. Permitted units are (* is an arbitrary
+            string):
+
+            |  'fs',  'femtosecond*'
+            |  'ps',  'picosecond*'
+            |  'ns',  'nanosecond*'
+            |  'us',  'microsecond*'
+            |  'ms',  'millisecond*'
+            |  's',   'second*'
 
         References
         ----------
@@ -236,125 +415,46 @@ class TransitionCountModel(Model):
             Reversible Markov models of molecular kinetics: Estimation and uncertainty.
             J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
         """
-        if subset is not None and connected_set is not None:
-            raise ValueError('Can\'t set both connected_set and subset.')
-        if subset is not None:
-            if np.size(subset) > 0:
-                assert np.max(subset) < self.n_states, 'Chosen set contains states that are not included in the data.'
-            C = submatrix(self._C, subset)
-        elif connected_set is not None:
-            C = submatrix(self._C, self._connected_sets[connected_set])
-        else:  # full matrix wanted
-            C = self._C
-
-        # effective count matrix wanted?
-        if effective:
-            C = C.copy()
-            C /= float(self._lag)
-
-        return C
-
-    def histogram_lagged(self, connected_set=None, subset=None, effective=False):
-        r""" Histogram of discrete state counts"""
-        C = self.subselect_count_matrix(connected_set=connected_set, subset=subset, effective=effective)
-        return C.sum(axis=1)
-
-    @property
-    def total_count_lagged(self, connected_set=None, subset=None, effective=False):
-        h = self.histogram_lagged(connected_set=connected_set, subset=subset, effective=effective)
-        return h.sum()
-
-    @property
-    def visited_set(self):
-        """ The set of visited states"""
-        return np.argwhere(self._hist > 0)[:, 0]
-
-    @property
-    def connected_set_sizes(self):
-        # set sizes of reversibly connected sets
-        return np.array([len(x) for x in self.connected_sets])
-
-    @property
-    def effective_count_matrix(self):
-        return self.subselect_count_matrix(subset=self.active_set, effective=True)
-
-
-class TransitionCountEstimator(Estimator):
-
-    def __init__(self, lagtime: int, count_mode: str = 'sliding', mincount_connectivity='1/n', dt_traj='1',
-                 stationary_dist_constraint=None):
         super().__init__()
         self.lagtime = lagtime
         self.count_mode = count_mode
-        self.mincount_connectivity = mincount_connectivity
-        self.dt_traj = dt_traj
-        self.stationary_dist_constraint = stationary_dist_constraint
+        self.physical_time = physical_time
 
     @property
-    def dt_traj(self):
-        return self._dt_traj
+    def physical_time(self) -> Q_:
+        r""" yields a description of the physical time """
+        return self._physical_time
 
-    @dt_traj.setter
-    def dt_traj(self, value):
-        self._dt_traj = Q_(value)
-
-    @staticmethod
-    def _compute_connected_sets(C, mincount_connectivity, strong=True):
-        """ Computes the connected sets of C.
-
-        C : count matrix
-        mincount_connectivity : float
-            Minimum count which counts as a connection.
-        strong : boolean
-            True: Seek strongly connected sets. False: Seek weakly connected sets.
-        Returns
-        -------
-        Cconn, S
-        """
-        import msmtools.estimation as msmest
-        import scipy.sparse as scs
-        if mincount_connectivity > 0:
-            if scs.issparse(C):
-                Cconn = C.tocsr(copy=True)
-                Cconn.data[Cconn.data < mincount_connectivity] = 0
-                Cconn.eliminate_zeros()
-            else:
-                Cconn = C.copy()
-                Cconn[np.where(Cconn < mincount_connectivity)] = 0
-        else:
-            Cconn = C
-        # treat each connected set separately
-        S = msmest.connected_sets(Cconn, directed=strong)
-        return S
-
-    @staticmethod
-    def _prepare_input_revpi(C, pi):
-        """Max. state index visited by trajectories"""
-        nC = C.shape[0]
-        # Max. state index of the stationary vector array
-        npi = pi.shape[0]
-        # pi has to be defined on all states visited by the trajectories
-        if nC > npi:
-            raise ValueError('There are visited states for which no stationary probability is given')
-        # Reduce pi to the visited set
-        pi_visited = pi[0:nC]
-        # Find visited states with positive stationary probabilities"""
-        pos = np.where(pi_visited > 0.0)[0]
-        # Reduce C to positive probability states"""
-        C_pos = msmest.largest_connected_submatrix(C, lcc=pos)
-        # Compute largest connected set of C_pos, undirected connectivity"""
-        lcc = msmest.largest_connected_set(C_pos, directed=False)
-        return pos[lcc]
-
-    def fit(self, data, **kw):
-        r""" Counts transitions at given lag time
+    @physical_time.setter
+    def physical_time(self, value: str):
+        r"""
+        Sets a description of the physical time for input trajectories. Specify by a number, whitespace, and unit.
+        Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
 
         Parameters
         ----------
+        value : str
+            the physical time description
+        """
+        self._physical_time = Q_(value)
 
-        dtrajs : array_like or list of array_like
+    def fetch_model(self) -> Optional[TransitionCountModel]:
+        r"""
+        Yields the latest estimated ``TransitionCountModel`. Might be `None` if fetched before any data was fit.
+
+        Returns
+        -------
+        The latest ``TransitionCountModel`` or ``None``.
+        """
+        return self._model
+
+    def fit(self, data, *args, **kw):
+        r""" Counts transitions at given lag time according to configuration of the estimator.
+
+        Parameters
+        ----------
+        data : array_like or list of array_like
             discretized trajectories
-
         """
         dtrajs = ensure_dtraj_list(data)
 
@@ -364,8 +464,10 @@ class TransitionCountEstimator(Estimator):
         # Compute count matrix
         count_mode = self.count_mode
         lagtime = self.lagtime
-        if count_mode == 'sliding':
+        if count_mode == 'sliding' or count_mode == 'sliding-effective':
             count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True)
+            if count_mode == 'sliding-effective':
+                count_matrix /= lagtime
         elif count_mode == 'sample':
             count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False)
         elif count_mode == 'effective':
@@ -373,27 +475,11 @@ class TransitionCountEstimator(Estimator):
         else:
             raise ValueError('Count mode {} is unknown.'.format(count_mode))
 
-        # store mincount_connectivity
-        if self.mincount_connectivity == '1/n':
-            self.mincount_connectivity = 1.0 / np.shape(count_matrix)[0]
-
-        # Compute reversibly connected sets
-        connected_sets = self._compute_connected_sets(count_matrix, self.mincount_connectivity, strong=True)
-
-        if self.stationary_dist_constraint is not None:
-            active_set = self._prepare_input_revpi(count_matrix, self.stationary_dist_constraint)
-        else:
-            # largest connected set
-            active_set = connected_sets[0]
-
-        # if active set has no counts, make it empty
-        if submatrix(count_matrix, active_set).sum() == 0:
-            active_set = np.empty(0, dtype=int)
-
+        # initially state symbols, full count matrix, and full histogram can be left None because they coincide
+        # with the input arguments
         self._model = TransitionCountModel(
-            lagtime=lagtime, active_set=active_set, dt_traj=self.dt_traj,
-            connected_sets=connected_sets, count_matrix=count_matrix,
-            state_histogram=histogram
+            count_matrix=count_matrix, counting_mode=count_mode, lagtime=lagtime, state_histogram=histogram,
+            physical_time=self.physical_time
         )
 
         return self

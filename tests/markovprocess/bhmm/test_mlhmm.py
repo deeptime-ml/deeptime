@@ -53,8 +53,8 @@ class TestMLHMM_DoubleWell(unittest.TestCase):
         assert isinstance(self.hmm_lag10.output_model, DiscreteOutputModel)
 
     def test_reversible(self):
-        assert self.hmm_lag1.is_reversible
-        assert self.hmm_lag10.is_reversible
+        assert self.hmm_lag1.reversible
+        assert self.hmm_lag10.reversible
 
     def test_stationary(self):
         assert not self.hmm_lag1.is_stationary

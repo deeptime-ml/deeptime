@@ -21,7 +21,7 @@ from msmtools.analysis import is_connected
 from msmtools.dtraj import number_of_states
 
 from sktime.markovprocess.bhmm import discrete_hmm, bayesian_hmm
-from sktime.markovprocess.hidden_markov_model import HMSM, HMMTransitionCountModel
+from sktime.markovprocess.hidden_markov_model import HiddenMarkovStateModel
 from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 from sktime.util import ensure_dtraj_list
 from ._base import BayesianPosterior
@@ -42,23 +42,37 @@ class BayesianHMMPosterior(BayesianPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior. """
 
     def __init__(self,
-                 prior: Optional[HMSM] = None,
-                 samples: Optional[List[HMSM]] = (),
+                 prior: Optional[HiddenMarkovStateModel] = None,
+                 samples: Optional[List[HiddenMarkovStateModel]] = (),
                  hidden_state_trajs: Optional[List[np.ndarray]] = ()):
         super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
         self.hidden_state_trajectories_samples = hidden_state_trajs
 
-    def submodel(self, states=None, obs=None, mincount_connectivity='1/n'):
-        bayesian_posterior = super().submodel(states, obs, mincount_connectivity)
-        # todo how to restrict hidden state trajectory samples??
-        return BayesianHMMPosterior(bayesian_posterior.prior, bayesian_posterior.samples,
-                                    self.hidden_state_trajectories_samples)
+    def submodel_largest(self, strong=True, connectivity_threshold='1/n', observe_nonempty=True, dtrajs=None):
+        dtrajs = ensure_dtraj_list(dtrajs)
+        states = self.prior.states_largest(strong=strong, connectivity_threshold=connectivity_threshold)
+        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
+        return self.submodel(states=states, obs=obs)
+
+    def submodel_populous(self, strong=True, connectivity_threshold='1/n', observe_nonempty=True, dtrajs=None):
+        dtrajs = ensure_dtraj_list(dtrajs)
+        states = self.prior.states_populous(strong=strong, connectivity_threshold=connectivity_threshold)
+        obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
+        return self.submodel(states=states, obs=obs)
+
+    def submodel(self, states=None, obs=None):
+        # restrict prior
+        sub_model = self.prior.submodel(states=states, obs=obs)
+        # restrict reduce samples
+        subsamples = [sample.submodel(states=states, obs=obs)
+                      for sample in self]
+        return BayesianHMMPosterior(sub_model, subsamples, self.hidden_state_trajectories_samples)
 
 
 class BayesianHMSM(Estimator):
     r""" Estimator for a Bayesian Hidden Markov state model """
 
-    def __init__(self, init_hmsm: HMSM,
+    def __init__(self, init_hmsm: HiddenMarkovStateModel,
                  n_states: int = 2,
                  lagtime: int = 1, n_samples: int = 100,
                  stride: Union[str, int] = 'effective',
@@ -186,8 +200,8 @@ class BayesianHMSM(Estimator):
         return self._init_hmsm
 
     @init_hmsm.setter
-    def init_hmsm(self, value: Optional[HMSM]):
-        if value is not None and not issubclass(value.__class__, HMSM):
+    def init_hmsm(self, value: Optional[HiddenMarkovStateModel]):
+        if value is not None and not issubclass(value.__class__, HiddenMarkovStateModel):
             raise ValueError('hmsm must be of type HMSM')
         self._init_hmsm = value
 
@@ -198,8 +212,8 @@ class BayesianHMSM(Estimator):
         accuracy = 1e-2  # sufficient accuracy for an initial guess
         prior_estimator = MaximumLikelihoodHMSM(
             n_states=n_states, lagtime=lagtime, stride=stride,
-            reversible=reversible, stationary=stationary, dt_traj=dt_traj,
-            separate=separate, connectivity=None, mincount_connectivity=0,
+            reversible=reversible, stationary=stationary, physical_time=dt_traj,
+            separate=separate, connectivity=None,
             accuracy=accuracy, observe_nonempty=False
         )
         return prior_estimator
@@ -224,7 +238,7 @@ class BayesianHMSM(Estimator):
         prior_est = BayesianHMSM.default_prior_estimator(n_states=n_states, lagtime=lagtime, stride=stride,
                                                          reversible=reversible, stationary=stationary,
                                                          separate=separate, dt_traj=dt_traj)
-        prior = prior_est.fit(dtrajs).fetch_model()
+        prior = prior_est.fit(dtrajs).fetch_model().submodel_largest(connectivity_threshold='1/n', dtrajs=dtrajs)
 
         estimator = BayesianHMSM(init_hmsm=prior, n_states=n_states, lagtime=lagtime, n_samples=n_samples,
                                  stride=stride, p0_prior=p0_prior, transition_matrix_prior=transition_matrix_prior,
@@ -244,7 +258,7 @@ class BayesianHMSM(Estimator):
             raise ValueError('BayesianHMSM cannot be initialized with init_hmsm with incompatible n_states.')
 
         # EVALUATE STRIDE
-        init_stride = self.init_hmsm.count_model.stride
+        init_stride = self.init_hmsm.stride
         if self.stride == 'effective':
             from sktime.markovprocess.util import compute_effective_stride
             self.stride = compute_effective_stride(dtrajs, self.lagtime, self.n_states)
@@ -255,7 +269,7 @@ class BayesianHMSM(Estimator):
         )
         if self.stride != init_stride:
             symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
-            if not np.all(self.init_hmsm.count_model.symbols == symbols):
+            if not np.all(self.init_hmsm.observation_state_symbols == symbols):
                 raise ValueError('Choice of stride has excluded a different set of microstates than in '
                                  'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
                                  'must match to the one used for init_hmsm estimation.')
@@ -280,12 +294,12 @@ class BayesianHMSM(Estimator):
         # Bayesian HMM sampler. This is just an initialization.
         n_states_full = number_of_states(dtrajs)
 
-        if prior_count_model.n_states_obs < n_states_full:
+        if prior.n_observation_states < n_states_full:
             eps = 0.01 / n_states_full  # default output probability, in order to avoid zero columns
             # full state space output matrix. make sure there are no zero columns
             B_init = eps * np.ones((self.n_states, n_states_full), dtype=np.float64)
             # fill active states
-            B_init[:, prior_count_model.observable_set] = np.maximum(eps, prior.observation_probabilities)
+            B_init[:, prior.observation_state_symbols] = np.maximum(eps, prior.observation_probabilities)
             # renormalize B to make it row-stochastic
             B_init /= B_init.sum(axis=1)[:, None]
         else:
@@ -310,11 +324,11 @@ class BayesianHMSM(Estimator):
             pobs = sample.output_model.output_probabilities
             init_dist = sample.initial_distribution
 
-            Bobs = pobs[:, prior_count_model.observable_set]
+            Bobs = pobs[:, prior.observation_state_symbols]
             pobs = Bobs / Bobs.sum(axis=1)[:, None]  # renormalize
-            samples.append(HMSM(P, pobs, pi=pi, dt_model=prior.dt_model,
-                                count_model=prior_count_model, initial_counts=sample.initial_count,
-                                reversible=self.reversible, initial_distribution=init_dist))
+            samples.append(HiddenMarkovStateModel(P, pobs, stationary_distribution=pi,
+                                                  count_model=prior_count_model, initial_counts=sample.initial_count,
+                                                  reversible=self.reversible, initial_distribution=init_dist))
 
         # store results
         if self.store_hidden:
@@ -325,55 +339,3 @@ class BayesianHMSM(Estimator):
         self._model = model
 
         return self
-
-    def cktest(self, dtrajs, mlags=10, conf=0.95, err_est=False):
-        """ Conducts a Chapman-Kolmogorow test.
-
-        Parameters
-        ----------
-        dtrajs:
-        mlags : int or int-array, default=10
-            multiples of lag times for testing the Model, e.g. range(10).
-            A single int will trigger a range, i.e. mlags=10 maps to
-            mlags=range(10). The setting None will choose mlags automatically
-            according to the longest available trajectory
-        conf : float, optional, default = 0.95
-            confidence interval
-        err_est : bool, default=False
-            compute errors also for all estimations (computationally expensive)
-            If False, only the prediction will get error bars, which is often
-            sufficient to validate a model.
-        n_jobs : int, default=None
-            how many jobs to use during calculation
-        show_progress : bool, default=True
-            Show progressbars for calculation?
-
-        Returns
-        -------
-        cktest : :class:`ChapmanKolmogorovValidator <pyemma.msm.ChapmanKolmogorovValidator>`
-
-        References
-        ----------
-        This is an adaption of the Chapman-Kolmogorov Test described in detail
-        in [1]_ to Hidden MSMs as described in [2]_.
-
-        .. [1] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
-            Chodera, C Schuette and F Noe. 2011. Markov models of
-            molecular kinetics: Generation and validation. J Chem Phys
-            134: 174105
-
-        .. [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
-            Markov models for calculating kinetics and metastable states of complex
-            molecules. J. Chem. Phys. 139, 184114 (2013)
-
-        """
-        # todo how to deal with this properly?
-        from sktime.markovprocess.chapman_kolmogorov_validator import ChapmanKolmogorovValidator
-        model = self.fetch_model()
-        if model is None:
-            raise RuntimeError('call fit() first!')
-        prior_est = self.default_prior_estimator(self.n_states, self.lagtime, self.stride, self.reversible, self.stationary, dt_traj=model.prior.dt_model)
-        ck = ChapmanKolmogorovValidator(self.init_hmsm, prior_est, np.eye(self.n_states),
-                                        mlags=mlags, conf=conf, err_est=err_est)
-        ck.fit(dtrajs)
-        return ck.fetch_model()

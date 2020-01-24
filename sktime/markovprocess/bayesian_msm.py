@@ -1,84 +1,17 @@
-import typing
+from typing import Optional, Callable
+
+import numpy as np
 
 from sktime.markovprocess._base import _MSMBaseEstimator, BayesianPosterior
+from sktime.markovprocess.markov_state_model import MarkovStateModel
 from sktime.markovprocess.maximum_likelihood_msm import MaximumLikelihoodMSM
-from .markov_state_model import MarkovStateModel
 
 __author__ = 'noe, marscher'
 
 
 class BayesianMSM(_MSMBaseEstimator):
     r""" Bayesian estimator for MSMs given discrete trajectory statistics
-
-    Parameters
-    ----------
-    lag : int, optional, default=1
-       lagtime to estimate the HMSM at
-
-    nsamples : int, optional, default=100
-       number of sampled transition matrices used
-
-    nsteps : int, optional, default=None
-       number of Gibbs sampling steps for each transition matrix used.
-       If None, nstep will be determined automatically
-
-    reversible : bool, optional, default = True
-       If true compute reversible MSM, else non-reversible MSM
-
-    statdist_constraint : (M,) ndarray optional
-       Stationary vector on the full set of states. Assign zero
-       stationary probabilities to states for which the
-       stationary vector is unknown. Estimation will be made such
-       that the resulting ensemble of transition matrices is
-       defined on the intersection of the states with positive
-       stationary vector and the largest connected set
-       (undirected).
-
-    count_mode : str, optional, default='effective'
-       mode to obtain count matrices from discrete trajectories. Should be one of:
-
-       * 'sliding' : A trajectory of length T will have :math:`T-\tau` counts
-         at time indexes
-         .. math:: (0 \rightarray \tau), (1 \rightarray \tau+1), ..., (T-\tau-1 \rightarray T-1)
-
-       * 'effective' : Uses an estimate of the transition counts that are
-         statistically uncorrelated. Recommended when used with a
-         Bayesian MSM.
-
-       * 'sample' : A trajectory of length T will have :math:`T / \tau` counts
-         at time indexes
-         .. math:: (0 \rightarray \tau), (\tau \rightarray 2 \tau), ..., (((T/tau)-1) \tau \rightarray T)
-
     sparse : bool, optional, default = False
-       If true compute count matrix, transition matrix and all derived
-       quantities using sparse matrix algebra. In this case python sparse
-       matrices will be returned by the corresponding functions instead of
-       numpy arrays. This behavior is suggested for very large numbers of
-       states (e.g. > 4000) because it is likely to be much more efficient.
-
-    dt_traj : str, optional, default='1 step'
-       Description of the physical time corresponding to the trajectory time
-       step. May be used by analysis algorithms such as plotting tools to
-       pretty-print the axes. By default '1 step', i.e. there is no physical
-       time unit. Specify by a number, whitespace and unit. Permitted units
-       are (* is an arbitrary string):
-
-       |  'fs',  'femtosecond*'
-       |  'ps',  'picosecond*'
-       |  'ns',  'nanosecond*'
-       |  'us',  'microsecond*'
-       |  'ms',  'millisecond*'
-       |  's',   'second*'
-
-    conf : float, optional, default=0.95
-       Confidence interval. By default one-sigma (68.3%) is used. Use 95.4%
-       for two sigma or 99.7% for three sigma.
-
-    mincount_connectivity : float or '1/n'
-       minimum number of counts to consider a connection between two states.
-       Counts lower than that will count zero in the connectivity check and
-       may thus separate the resulting transition matrix. The default
-       evaluates to 1/n_states.
 
     References
     ----------
@@ -87,65 +20,138 @@ class BayesianMSM(_MSMBaseEstimator):
        J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
     """
 
-    def __init__(self, lagtime=1, nsamples=100, nsteps=None, reversible=True,
-                 statdist_constraint=None, count_mode='effective', sparse=False,
-                 dt_traj='1 step', conf=0.95,
-                 maxiter=1000000,
-                 maxerr=1e-8,
-                 mincount_connectivity='1/n'):
-
-        super(BayesianMSM, self).__init__(lagtime=lagtime, reversible=reversible,
-                                          count_mode=count_mode, sparse=sparse,
-                                          dt_traj=dt_traj,
-                                          mincount_connectivity=mincount_connectivity)
-        self.statdist_constraint = statdist_constraint
-        self.maxiter = maxiter
-        self.maxerr = maxerr
-        self.nsamples = nsamples
-        self.nsteps = nsteps
-        self.conf = conf
-
-    def fit(self, data, call_back: typing.Callable = None):
-        """
+    def __init__(self, n_samples: int = 100, n_steps: int = None, reversible: bool = True,
+                 stationary_distribution_constraint: Optional[np.ndarray] = None,
+                 sparse: bool = False, confidence: float = 0.954, maxiter: int = int(1e6), maxerr: float = 1e-8):
+        r"""
+        Constructs a new Bayesian estimator for MSMs.
 
         Parameters
         ----------
-        data : list containing ndarrays(dtype=int) or ndarray(n, dtype=int)
-            discrete trajectories, stored as integer ndarrays (arbitrary size)
-            or a single ndarray for only one trajectory.
+        n_samples : int, optional, default=100
+            Number of sampled transition matrices used in estimation of confidences.
+        n_steps : int, optional, default=None
+            Number of Gibbs sampling steps for each transition matrix. If None, nsteps will be determined
+            automatically as the square root of the number of states in the full state space of the count matrix.
+            This is a heuristic for the number of steps it takes to decorrelate between samples.
+        reversible : bool, optional, default=True
+            If true compute reversible MSM, else non-reversible MSM.
+        stationary_distribution_constraint : ndarray, optional, default=None
+            Stationary vector on the full set of states. Assign zero stationary probabilities to states for which the
+            stationary vector is unknown. Estimation will be made such that the resulting ensemble of transition
+            matrices is defined on the intersection of the states with positive stationary vector and the largest
+            connected set (undirected in the default case).
+        sparse : bool, optional, default=False
+            If true compute count matrix, transition matrix and all derived quantities using sparse matrix algebra. In
+            this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
+            This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
+            more efficient.
+        confidence : float, optional, default=0.954
+            Confidence interval. By default two sigma (95.4%) is used. Use 68.3% for one sigma, 99.7% for three sigma.
+        maxiter : int, optional, default=1000000
+            Optional parameter with reversible = True, sets the maximum number of iterations before the transition
+            matrix estimation method exits.
+        maxerr : float, optional, default = 1e-8
+            Optional parameter with reversible = True. Convergence tolerance for transition matrix estimation. This
+            specifies the maximum change of the Euclidean norm of relative stationary probabilities
+            (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
+            :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
+            probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
+        """
 
-        call_back: callable or None (optional)
+        super(BayesianMSM, self).__init__(reversible=reversible, sparse=sparse)
+        self.stationary_distribution_constraint = stationary_distribution_constraint
+        self.maxiter = maxiter
+        self.maxerr = maxerr
+        self.n_samples = n_samples
+        self.n_steps = n_steps
+        self.confidence = confidence
+
+    @property
+    def stationary_distribution_constraint(self) -> Optional[np.ndarray]:
+        r"""
+        Yields the stationary distribution constraint that can either be None (no constraint) or constrains the
+        count and transition matrices to states with positive stationary vector entries.
+
+        Returns
+        -------
+        The stationary vector constraint, can be None
+        """
+        return self._stationary_distribution_constraint
+
+    @stationary_distribution_constraint.setter
+    def stationary_distribution_constraint(self, value: Optional[np.ndarray]):
+        r"""
+        Sets a stationary distribution constraint by giving a stationary vector as value. The estimated count- and
+        transition-matrices are restricted to states that have positive entries. In case the vector is not normalized,
+        setting it here implicitly copies and normalizes it.
+
+        Parameters
+        ----------
+        value : np.ndarray or None
+            the stationary vector
+        """
+        if value is not None and (np.any(value < 0) or np.any(value > 1)):
+            raise ValueError("not a distribution, contained negative entries and/or entries > 1.")
+        if value is not None and np.sum(value) != 1.0:
+            # re-normalize if not already normalized
+            value = np.copy(value) / np.sum(value)
+        self._stationary_distribution_constraint = value
+
+    def fetch_model(self) -> BayesianPosterior:
+        r"""
+        Yields the model that was estimated the most recent.
+
+        Returns
+        -------
+        The estimated model or None if fit was not called.
+        """
+        return self._model
+
+    def fit(self, data, callback: Callable = None):
+        """
+        Performs the estimation on either a count matrix or a previously estimated TransitionCountModel.
+
+        Parameters
+        ----------
+        data : (N,N) count matrix or TransitionCountModel
+            a count matrix or a transition count model that was estimated from data
+
+        callback: callable, optional, default=None
             function to be called to indicate progress of sampling.
 
         """
-        # conduct MLE estimation (superclass) first
-        super(BayesianMSM, self).fit(data)
-        mle = MaximumLikelihoodMSM(lagtime=self.lagtime, reversible=self.reversible,
-                                   statdist_constraint=self.statdist_constraint, count_mode=self.count_mode,
-                                   sparse=self.sparse,
-                                   dt_traj=self.dt_traj, mincount_connectivity=self.mincount_connectivity,
-                                   maxiter=self.maxiter, maxerr=self.maxerr).fit(data).fetch_model()
+        from sktime.markovprocess import TransitionCountModel
+        if isinstance(data, TransitionCountModel) and data.counting_mode is not None \
+                and "effective" not in data.counting_mode:
+            raise ValueError("The transition count model was not estimated using an effective counting method, "
+                             "therefore counts are likely to be strongly correlated yielding wrong confidences.")
+        mle = MaximumLikelihoodMSM(
+            reversible=self.reversible, stationary_distribution_constraint=self.stationary_distribution_constraint,
+            sparse=self.sparse, maxiter=self.maxiter, maxerr=self.maxerr
+        ).fit(data).fetch_model()
 
         # transition matrix sampler
         from msmtools.estimation import tmatrix_sampler
         from math import sqrt
-        if self.nsteps is None:
-            self.nsteps = int(sqrt(mle.count_model.n_states))  # heuristic for number of steps to decorrelate
+        if self.n_steps is None:
+            # heuristic for number of steps to decorrelate
+            self.n_steps = int(sqrt(mle.count_model.n_states_full))
         # use the same count matrix as the MLE. This is why we have effective as a default
-        if self.statdist_constraint is None:
-            tsampler = tmatrix_sampler(mle.count_model.count_matrix_active, reversible=self.reversible,
-                                       T0=mle.transition_matrix, nsteps=self.nsteps)
+        if self.stationary_distribution_constraint is None:
+            tsampler = tmatrix_sampler(mle.count_model.count_matrix, reversible=self.reversible,
+                                       T0=mle.transition_matrix, nsteps=self.n_steps)
         else:
             # Use the stationary distribution on the active set of states
             statdist_active = mle.stationary_distribution
             # We can not use the MLE as T0. Use the initialization in the reversible pi sampler
-            tsampler = tmatrix_sampler(mle.count_model.count_matrix_active, reversible=self.reversible,
-                                       mu=statdist_active, nsteps=self.nsteps)
+            tsampler = tmatrix_sampler(mle.count_model.count_matrix, reversible=self.reversible,
+                                       mu=statdist_active, nsteps=self.n_steps)
 
-        sample_Ps, sample_mus = tsampler.sample(nsamples=self.nsamples, return_statdist=True, call_back=call_back)
+        sample_Ps, sample_mus = tsampler.sample(nsamples=self.n_samples, return_statdist=True, call_back=callback)
         # construct sampled MSMs
         samples = [
-            MarkovStateModel(P, pi=pi, reversible=self.reversible, dt_model=mle.dt_model, count_model=mle.count_model)
+            MarkovStateModel(P, stationary_distribution=pi, reversible=self.reversible, count_model=mle.count_model)
             for P, pi in zip(sample_Ps, sample_mus)
         ]
 
