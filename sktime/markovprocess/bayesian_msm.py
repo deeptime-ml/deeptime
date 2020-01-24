@@ -2,7 +2,6 @@ from typing import Optional, Callable
 
 import numpy as np
 
-from sktime.base import Model
 from sktime.markovprocess._base import _MSMBaseEstimator, BayesianPosterior
 from sktime.markovprocess.markov_state_model import MarkovStateModel
 from sktime.markovprocess.maximum_likelihood_msm import MaximumLikelihoodMSM
@@ -116,13 +115,17 @@ class BayesianMSM(_MSMBaseEstimator):
         Parameters
         ----------
         data : (N,N) count matrix or TransitionCountModel
-            discrete trajectories, stored as integer ndarrays (arbitrary size)
-            or a single ndarray for only one trajectory.
+            a count matrix or a transition count model that was estimated from data
 
         callback: callable, optional, default=None
             function to be called to indicate progress of sampling.
 
         """
+        from sktime.markovprocess import TransitionCountModel
+        if isinstance(data, TransitionCountModel) and data.counting_mode is not None \
+                and "effective" not in data.counting_mode:
+            raise ValueError("The transition count model was not estimated using an effective counting method, "
+                             "therefore counts are likely to be strongly correlated yielding wrong confidences.")
         mle = MaximumLikelihoodMSM(
             reversible=self.reversible, stationary_distribution_constraint=self.stationary_distribution_constraint,
             sparse=self.sparse, maxiter=self.maxiter, maxerr=self.maxerr

@@ -112,15 +112,15 @@ class TestTransitionCountModel(unittest.TestCase, metaclass=GenerateTestMatrix):
         np.testing.assert_equal(model.state_histogram_full, histogram)
         np.testing.assert_equal(model.lagtime, 1)
         np.testing.assert_equal(model.n_states_full, 4)
-        np.testing.assert_equal(model.physical_time, Q_("1 step"))
+        np.testing.assert_equal(model.physical_time, Q_("10 miles"))
         np.testing.assert_equal(model.count_matrix_full, count_matrix)
-        np.testing.assert_equal(model.counting_mode, "sliding")
-
+        np.testing.assert_equal(model.counting_mode, "effective")
 
     def _test_submodel(self, histogram):
         # three connected components: ((1, 2), (0), (3))
         count_matrix = np.array([[10., 0., 0., 0.], [0., 1., 1., 0.], [0., 1., 1., 0.], [0., 0., 0., 1]])
-        model = TransitionCountModel(count_matrix, counting_mode="sliding", state_histogram=histogram)
+        model = TransitionCountModel(count_matrix, counting_mode="effective", state_histogram=histogram,
+                                     physical_time="10 miles")
 
         self._check_submodel_transitive_properties(histogram, count_matrix, model)
 

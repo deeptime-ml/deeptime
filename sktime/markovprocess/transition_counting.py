@@ -123,9 +123,9 @@ class TransitionCountModel(Model):
         return self._state_symbols
 
     @property
-    def counting_mode(self) -> str:
+    def counting_mode(self) -> Optional[str]:
         """ The counting mode that was used to estimate the contained count matrix.
-        One of 'sliding', 'sample', 'effective'.
+        One of 'None', 'sliding', 'sample', 'effective'.
         """
         return self._counting_mode
 
