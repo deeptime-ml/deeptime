@@ -87,7 +87,7 @@ class MarkovStateModel(Model):
         self._stationary_distribution = stationary_distribution
 
         if n_eigenvalues is None:
-            if self.is_sparse:
+            if self.sparse:
                 # expect large matrix, don't take full state space but just (magic) the dominant 10
                 n_eigenvalues = min(10, self.n_states - 1)
             else:
@@ -131,7 +131,7 @@ class MarkovStateModel(Model):
         return self._is_reversible
 
     @property
-    def is_sparse(self) -> bool:
+    def sparse(self) -> bool:
         """Returns whether the MarkovStateModel is sparse """
         return self._sparse
 
@@ -171,13 +171,10 @@ class MarkovStateModel(Model):
             count_model = count_model.submodel(states)
         transition_matrix = submatrix(self.transition_matrix, states)
         transition_matrix /= transition_matrix.sum(axis=1)[:, None]
-        stationary_distribution = self.stationary_distribution
-        if stationary_distribution is not None:
-            # restrict to states
-            stationary_distribution = stationary_distribution[states]
-        return MarkovStateModel(transition_matrix, stationary_distribution=stationary_distribution,
-                                reversible=self.reversible, n_eigenvalues=self.n_eigenvalues, ncv=self.ncv,
-                                count_model=count_model)
+        # set stationary distribution to None, gets recomputed in the constructor
+        return MarkovStateModel(transition_matrix, stationary_distribution=None,
+                                reversible=self.reversible, n_eigenvalues=min(self.n_eigenvalues, len(states)),
+                                ncv=self.ncv, count_model=count_model)
 
     ################################################################################
     # Spectral quantities
@@ -392,7 +389,7 @@ class MarkovStateModel(Model):
             return p0 / p0.sum()
 
         # sparse: we most likely don't have a full eigenvalue set, so just propagate
-        if self.is_sparse:
+        if self.sparse:
             pk = np.array(p0)
             for i in range(k):
                 pk = pk.T.dot(self.transition_matrix)
