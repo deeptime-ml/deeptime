@@ -19,9 +19,48 @@ import unittest
 
 import numpy as np
 
-from sktime.markovprocess import MarkovStateModel, BayesianPosterior
+from sktime.markovprocess import MarkovStateModel, BayesianPosterior, BayesianMSM, TransitionCountEstimator
 from sktime.util import confidence_interval
 from tests.markovprocess.factory import bmsm_double_well
+
+
+class TestBMSMBasic(unittest.TestCase):
+
+    def test_estimator_params(self):
+        estimator = BayesianMSM(n_samples=13, n_steps=55, reversible=False,
+                                stationary_distribution_constraint=np.array([0.5, 0.5]), sparse=True, confidence=0.9,
+                                maxiter=5000, maxerr=1e-12)
+        np.testing.assert_equal(estimator.n_samples, 13)
+        np.testing.assert_equal(estimator.n_steps, 55)
+        np.testing.assert_equal(estimator.reversible, False)
+        np.testing.assert_equal(estimator.stationary_distribution_constraint, [0.5, 0.5])
+        np.testing.assert_equal(estimator.sparse, True)
+        np.testing.assert_equal(estimator.confidence, 0.9)
+        np.testing.assert_equal(estimator.maxiter, 5000)
+        np.testing.assert_equal(estimator.maxerr, 1e-12)
+        with self.assertRaises(ValueError):
+            estimator.stationary_distribution_constraint = np.array([1.1, .5])
+        with self.assertRaises(ValueError):
+            estimator.stationary_distribution_constraint = np.array([.5, -.1])
+
+    def test_with_count_matrix(self):
+        count_matrix = np.ones((5, 5), dtype=np.float32)
+        posterior = BayesianMSM(n_samples=33).fit(count_matrix).fetch_model()
+        np.testing.assert_equal(len(posterior.samples), 33)
+
+    def test_with_count_model(self):
+        dtraj = np.random.randint(0, 10, size=(10000,))
+        with self.assertRaises(ValueError):
+            counts = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(dtraj).fetch_model()
+            BayesianMSM().fit(counts)  # fails because its not effective or sliding-effective
+        counts = TransitionCountEstimator(lagtime=1, count_mode="effective").fit(dtraj).fetch_model()
+        bmsm = BayesianMSM(n_samples=44).fit(counts).fetch_model()
+        np.testing.assert_equal(len(bmsm.samples), 44)
+
+        bmsm = bmsm.submodel(np.array([3, 4, 5]))
+        np.testing.assert_equal(bmsm.prior.count_model.state_symbols, [3, 4, 5])
+        for sample in bmsm:
+            np.testing.assert_equal(sample.count_model.state_symbols, [3, 4, 5])
 
 
 class TestBMSM(unittest.TestCase):
@@ -35,7 +74,8 @@ class TestBMSM(unittest.TestCase):
 
         cls.lag = 100
         cls.bmsm_rev = bmsm_double_well(lagtime=cls.lag, nsamples=cls.nsamples, reversible=True).fetch_model()
-        cls.bmsm_revpi = bmsm_double_well(lagtime=cls.lag, reversible=True, constrain_to_coarse_pi=True, nsamples=cls.nsamples).fetch_model()
+        cls.bmsm_revpi = bmsm_double_well(lagtime=cls.lag, reversible=True, constrain_to_coarse_pi=True,
+                                          nsamples=cls.nsamples).fetch_model()
 
         assert isinstance(cls.bmsm_rev, BayesianPosterior)
         assert isinstance(cls.bmsm_revpi, BayesianPosterior)

@@ -118,6 +118,23 @@ class BayesianPosterior(Model):
         for s in self.samples:
             yield s
 
+    def submodel(self, states: np.ndarray):
+        r""" Creates a bayesian posterior that is restricted onto the specified states.
+
+        Parameters
+        ----------
+        states: (N,) ndarray, dtype=int
+            array of integers specifying the states to restrict to
+
+        Returns
+        -------
+        A posterior with prior and samples restricted to specified states.
+        """
+        return BayesianPosterior(
+            prior=self.prior.submodel(states),
+            samples=[sample.submodel(states) for sample in self.samples]
+        )
+
     def gather_stats(self, quantity, store_samples=False, *args, **kwargs):
         """ obtain statistics about a sampled quantity
 
