@@ -361,9 +361,9 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _active_count_fraction(self, msm):
         # should always be a fraction
-        assert (0.0 <= msm.count_model.active_count_fraction <= 1.0)
+        assert (0.0 <= msm.count_model.selected_count_fraction <= 1.0)
         # special case for this data set:
-        assert (msm.count_model.active_count_fraction == 1.0)
+        assert (msm.count_model.selected_count_fraction == 1.0)
 
     def test_active_count_fraction(self):
         self._active_count_fraction(self.msmrev)
@@ -375,7 +375,7 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _active_state_fraction(self, msm):
         # should always be a fraction
-        assert (0.0 <= msm.count_model.active_state_fraction <= 1.0)
+        assert (0.0 <= msm.count_model.selected_state_fraction <= 1.0)
 
     def test_active_state_fraction(self):
         # should always be a fraction
