@@ -25,7 +25,7 @@ import unittest
 import numpy as np
 
 from sktime.data.util import timeshifted_split
-from sktime.decomposition.vamp import VAMP, VAMPModel, vamp_cktest
+from sktime.decomposition.vamp import VAMP, VAMPModel
 from sktime.markovprocess._base import cvsplit_dtrajs
 from tests.markovprocess.test_msm import estimate_markov_model
 
@@ -208,16 +208,6 @@ class TestVAMPModel(unittest.TestCase):
         psi = self.vamp.transform(np.eye(3))
         assert_allclose_ignore_phase(U, psi, atol=1E-5)
         assert_allclose_ignore_phase(V, phi, atol=1E-5)
-        references_sf = [
-            U.T.dot(np.diag(self.p0)).dot(np.linalg.matrix_power(self.msm.transition_matrix, k * self.lag)).dot(V).T
-            for k in range(1, 10 - 1)
-        ]
-        cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, n_observables=2, mlags=10, data=self.trajs).fetch_model()
-        pred_sf = cktest.predictions
-        esti_sf = cktest.estimates
-        for e, p, r in zip(esti_sf, pred_sf, references_sf):
-            np.testing.assert_allclose(np.diag(p), np.diag(r), atol=1E-6)
-            np.testing.assert_allclose(np.abs(p), np.abs(r), atol=1E-6)
 
         cumsum_Tsym = np.cumsum(S[1:] ** 2)
         cumsum_Tsym /= cumsum_Tsym[-1]
@@ -229,46 +219,6 @@ class TestVAMPModel(unittest.TestCase):
             special_cumvar = np.asarray([0] + self.vamp.cumvar.tolist())
             self.assertLessEqual(d, special_cumvar[self.vamp.dimension()], )
             self.assertLessEqual(special_cumvar[self.vamp.dimension() - 1], d)
-
-    def test_CK_expectation_against_MSM(self):
-        obs = np.eye(3)  # observe every state
-        cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, observables=obs, statistics=None, mlags=4,
-                             data=self.trajs).fetch_model()
-        pred = cktest.predictions[1:]
-        est = cktest.estimates[1:]
-
-        for i, (est_, pred_) in enumerate(zip(est, pred)):
-            msm = estimate_markov_model(dtrajs=self.dtrajs, lag=self.lag * (i + 1), reversible=False)
-            msm_esti = self.p0.T.dot(msm.transition_matrix).dot(obs)
-            msm_pred = self.p0.T.dot(np.linalg.matrix_power(self.msm.transition_matrix, (i + 1))).dot(obs)
-            np.testing.assert_allclose(pred_, msm_pred, atol=self.atol)
-            np.testing.assert_allclose(est_, msm_esti, atol=self.atol)
-            np.testing.assert_allclose(est_, pred_, atol=0.006)
-
-    def test_CK_covariances_of_singular_functions(self):
-        cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, n_observables=2, mlags=4,
-                             data=self.trajs).fetch_model()
-
-        pred = cktest.predictions[1:]
-        est = cktest.estimates[1:]
-        error = np.max(np.abs(np.array(pred) - np.array(est))) / max(np.max(pred), np.max(est))
-        assert error < 0.05
-
-    def test_CK_covariances_against_MSM(self):
-        obs = np.eye(3)  # observe every state
-        sta = np.eye(3)  # restrict p0 to every state
-        cktest = vamp_cktest(test_estimator=self.estimator, model=self.vamp, observables=obs, statistics=sta,
-                             mlags=4, data=self.trajs).fetch_model()
-        pred = cktest.predictions
-        est = cktest.estimates
-
-        for i, (est_, pred_) in enumerate(zip(est, pred)):
-            msm = estimate_markov_model(dtrajs=self.dtrajs, lag=self.lag * (i + 1), reversible=False)
-            msm_esti = (self.p0 * sta).T.dot(msm.transition_matrix).dot(obs).T
-            msm_pred = (self.p0 * sta).T.dot(np.linalg.matrix_power(self.msm.transition_matrix, (i + 1))).dot(obs).T
-            np.testing.assert_allclose(np.diag(pred_), np.diag(msm_pred), atol=self.atol)
-            np.testing.assert_allclose(np.diag(est_), np.diag(msm_esti), atol=self.atol)
-            np.testing.assert_allclose(np.diag(est_), np.diag(pred_), atol=0.006)
 
     def test_self_score_with_MSM(self):
         T = self.msm.transition_matrix
