@@ -8,7 +8,7 @@ cd scikit-time
 git submodule update --init
 
 conda install numpy scipy cython
-conda install msmtoolds -c conda-forge
+conda install msmtools -c conda-forge
 
 python setup.py install
 ```
