@@ -3,8 +3,7 @@ from typing import Optional, Callable
 import numpy as np
 
 from sktime.markovprocess._base import _MSMBaseEstimator, BayesianPosterior
-from sktime.markovprocess.markov_state_model import MarkovStateModel
-from sktime.markovprocess.maximum_likelihood_msm import MaximumLikelihoodMSM
+from sktime.markovprocess.msm import MarkovStateModel, MaximumLikelihoodMSM
 
 __author__ = 'noe, marscher'
 

@@ -6,10 +6,10 @@ from sklearn.pipeline import Pipeline
 
 import sktime.clustering.kmeans as kmeans
 import sktime.decomposition.tica as tica
-import sktime.markovprocess.maximum_likelihood_msm as msm
+import sktime.markovprocess.msm as msm
 from sktime.data.double_well import DoubleWellDiscrete
 from sktime.markovprocess import TransitionCountEstimator
-from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
+from sktime.markovprocess.hmm.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
 
 
 class TestSkLearnCompat(unittest.TestCase):

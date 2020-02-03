@@ -1,17 +1,13 @@
 //
-// Created by mho on 1/7/20.
+// Created by mho on 2/3/20.
 //
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <random>
+#pragma once
+
 #include <chrono>
+#include <random>
 
-namespace py = pybind11;
-using namespace pybind11::literals;
-
-template<typename dtype>
-using np_array = py::array_t<dtype, py::array::c_style>;
+#include "common.h"
 
 template<typename dtype, bool RELEASE_GIL>
 np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, const py::object& stop, long seed) {
@@ -59,9 +55,4 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
         }
     }
     return result;
-}
-
-PYBIND11_MODULE(_markovprocess_generation_bindings, m) {
-    m.def("trajectory", &trajectory<float, true>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
-    m.def("trajectory", &trajectory<double, true>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
 }

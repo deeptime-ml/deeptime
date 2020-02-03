@@ -21,7 +21,7 @@ import numpy as np
 
 from sktime import datasets
 from sktime.datasets import double_well_discrete
-from sktime.markovprocess.bayesian_hmsm import BayesianHMSM, BayesianHMMPosterior
+from sktime.markovprocess.hmm.bayesian_hmsm import BayesianHMSM, BayesianHMMPosterior
 from sktime.util import confidence_interval
 from tests.markovprocess.test_hmsm import estimate_hidden_markov_model
 

@@ -20,8 +20,7 @@ import unittest
 import numpy as np
 from msmtools import analysis as msmana
 
-from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
-from sktime.markovprocess.sample import compute_index_states
+from sktime.markovprocess.hmm import MaximumLikelihoodHMSM
 from sktime.markovprocess.util import count_states
 from tests.markovprocess.test_msm import estimate_markov_model
 

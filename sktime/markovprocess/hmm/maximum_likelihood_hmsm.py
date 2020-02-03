@@ -17,107 +17,104 @@
 import warnings
 
 import numpy as np
-from msmtools.dtraj import number_of_states
 
 from sktime.base import Estimator
 from sktime.markovprocess import MarkovStateModel, TransitionCountModel
 from sktime.markovprocess.bhmm import discrete_hmm, init_discrete_hmm
 from sktime.markovprocess.bhmm.init.discrete import init_discrete_hmm_spectral
-from sktime.markovprocess.hidden_markov_model import HiddenMarkovStateModel
+from sktime.markovprocess.hmm import HiddenMarkovStateModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 
 
 class MaximumLikelihoodHMSM(Estimator):
-    r"""Maximum likelihood estimator for a Hidden MSM given a MSM
-
-    Parameters
-    ----------
-    n_states : int, optional, default=2
-        number of hidden states
-    lag : int, optional, default=1
-        lagtime to fit the HMSM at
-    stride : str or int, default=1
-        stride between two lagged trajectories extracted from the input
-        trajectories. Given trajectory s[t], stride and lag will result
-        in trajectories
-            s[0], s[lag], s[2 lag], ...
-            s[stride], s[stride + lag], s[stride + 2 lag], ...
-        Setting stride = 1 will result in using all data (useful for maximum
-        likelihood estimator), while a Bayesian estimator requires a longer
-        stride in order to have statistically uncorrelated trajectories.
-        Setting stride = 'effective' uses the largest neglected timescale as
-        an fit for the correlation time and sets the stride accordingly
-    msm_init : str or :class:`MSM <sktime.markovprocess.MarkovStateModel>`
-        MSM object to initialize the estimation, or one of following keywords:
-
-        * 'largest-strong' or None (default) : Estimate MSM on the largest
-            strongly connected set and use spectral clustering to generate an
-            initial HMM
-        * 'all' : Estimate MSM(s) on the full state space to initialize the
-            HMM. This fit may be weakly connected or disconnected.
-    reversible : bool, optional, default = True
-        If true compute reversible MSM, else non-reversible MSM
-    stationary : bool, optional, default=False
-        If True, the initial distribution of hidden states is self-consistently computed as the stationary
-        distribution of the transition matrix. If False, it will be estimated from the starting states.
-        Only set this to true if you're sure that the observation trajectories are initiated from a global
-        equilibrium distribution.
-    connectivity : str, optional, default = None
-        Defines if the resulting HMM will be defined on all hidden states or on
-        a connected subset. Connectivity is defined by counting only
-        transitions with at least mincount_connectivity counts.
-        If a subset of states is used, all estimated quantities (transition
-        matrix, stationary distribution, etc) are only defined on this subset
-        and are correspondingly smaller than n_states.
-        Following modes are available:
-
-        * None or 'all' : The active set is the full set of states.
-          Estimation is done on all weakly connected subsets separately. The
-          resulting transition matrix may be disconnected.
-        * 'largest' : The active set is the largest reversibly connected set.
-        * 'populous' : The active set is the reversibly connected set with most counts.
-    mincount_connectivity : float or '1/n'
-        minimum number of counts to consider a connection between two states.
-        Counts lower than that will count zero in the connectivity check and
-        may thus separate the resulting transition matrix. The default
-        evaluates to 1/n_states.
-    separate : None or iterable of int
-        Force the given set of observed states to stay in a separate hidden state.
-        The remaining n_states-1 states will be assigned by a metastable decomposition.
-    observe_nonempty : bool
-        If True, will restricted the observed states to the states that have
-        at least one observation in the lagged input trajectories.
-        If an initial MSM is given, this option is ignored and the observed
-        subset is always identical to the active set of that MSM.
-    physical_time : str, optional, default='1 step'
-        Description of the physical time corresponding to the trajectory time
-        step.  May be used by analysis algorithms such as plotting tools to
-        pretty-print the axes. By default '1 step', i.e. there is no physical
-        time unit. Specify by a number, whitespace and unit. Permitted units
-        are (* is an arbitrary string):
-
-        |  'fs',  'femtosecond*'
-        |  'ps',  'picosecond*'
-        |  'ns',  'nanosecond*'
-        |  'us',  'microsecond*'
-        |  'ms',  'millisecond*'
-        |  's',   'second*'
-
-    accuracy : float, optional, default = 1e-3
-        convergence threshold for EM iteration. When two the likelihood does
-        not increase by more than accuracy, the iteration is stopped
-        successfully.
-    maxit : int, optional, default = 1000
-        stopping criterion for EM iteration. When so many iterations are
-        performed without reaching the requested accuracy, the iteration is
-        stopped without convergence (a warning is given)
-
+    """
+    Maximum likelihood hidden markov state model estimator.
     """
 
     def __init__(self, n_states=2, lagtime=1, stride=1, msm_init='largest-strong', reversible=True, stationary=False,
                  connectivity=None, observe_nonempty=True, separate=None,
                  physical_time='1 step', accuracy=1e-3, maxit=1000):
+        r"""Maximum likelihood estimator for a Hidden MSM given a MSM
+
+        Parameters
+        ----------
+        n_states : int, optional, default=2
+            number of hidden states
+        lag : int, optional, default=1
+            lagtime to fit the HMSM at
+        stride : str or int, default=1
+            stride between two lagged trajectories extracted from the input
+            trajectories. Given trajectory s[t], stride and lag will result
+            in trajectories
+                s[0], s[lag], s[2 lag], ...
+                s[stride], s[stride + lag], s[stride + 2 lag], ...
+            Setting stride = 1 will result in using all data (useful for maximum
+            likelihood estimator), while a Bayesian estimator requires a longer
+            stride in order to have statistically uncorrelated trajectories.
+            Setting stride = 'effective' uses the largest neglected timescale as
+            an fit for the correlation time and sets the stride accordingly
+        msm_init : str or :class:`MSM <sktime.markovprocess.MarkovStateModel>`
+            MSM object to initialize the estimation, or one of following keywords:
+
+            * 'largest-strong' or None (default) : Estimate MSM on the largest
+                strongly connected set and use spectral clustering to generate an
+                initial HMM
+            * 'all' : Estimate MSM(s) on the full state space to initialize the
+                HMM. This fit may be weakly connected or disconnected.
+        reversible : bool, optional, default = True
+            If true compute reversible MSM, else non-reversible MSM
+        stationary : bool, optional, default=False
+            If True, the initial distribution of hidden states is self-consistently computed as the stationary
+            distribution of the transition matrix. If False, it will be estimated from the starting states.
+            Only set this to true if you're sure that the observation trajectories are initiated from a global
+            equilibrium distribution.
+        connectivity : str, optional, default = None
+            Defines if the resulting HMM will be defined on all hidden states or on
+            a connected subset. Connectivity is defined by counting only
+            transitions with at least mincount_connectivity counts.
+            If a subset of states is used, all estimated quantities (transition
+            matrix, stationary distribution, etc) are only defined on this subset
+            and are correspondingly smaller than n_states.
+            Following modes are available:
+
+            * None or 'all' : The active set is the full set of states.
+              Estimation is done on all weakly connected subsets separately. The
+              resulting transition matrix may be disconnected.
+            * 'largest' : The active set is the largest reversibly connected set.
+            * 'populous' : The active set is the reversibly connected set with most counts.
+        separate : None or iterable of int
+            Force the given set of observed states to stay in a separate hidden state.
+            The remaining n_states-1 states will be assigned by a metastable decomposition.
+        observe_nonempty : bool
+            If True, will restricted the observed states to the states that have
+            at least one observation in the lagged input trajectories.
+            If an initial MSM is given, this option is ignored and the observed
+            subset is always identical to the active set of that MSM.
+        physical_time : str, optional, default='1 step'
+            Description of the physical time corresponding to the trajectory time
+            step.  May be used by analysis algorithms such as plotting tools to
+            pretty-print the axes. By default '1 step', i.e. there is no physical
+            time unit. Specify by a number, whitespace and unit. Permitted units
+            are (* is an arbitrary string):
+
+            |  'fs',  'femtosecond*'
+            |  'ps',  'picosecond*'
+            |  'ns',  'nanosecond*'
+            |  'us',  'microsecond*'
+            |  'ms',  'millisecond*'
+            |  's',   'second*'
+
+        accuracy : float, optional, default = 1e-3
+            convergence threshold for EM iteration. When two the likelihood does
+            not increase by more than accuracy, the iteration is stopped
+            successfully.
+        maxit : int, optional, default = 1000
+            stopping criterion for EM iteration. When so many iterations are
+            performed without reaching the requested accuracy, the iteration is
+            stopped without convergence (a warning is given)
+
+        """
         super(MaximumLikelihoodHMSM, self).__init__()
         self.n_hidden_states = n_states
         self.lagtime = lagtime
@@ -135,12 +132,21 @@ class MaximumLikelihoodHMSM(Estimator):
     def fetch_model(self) -> HiddenMarkovStateModel:
         return self._model
 
+    @staticmethod
+    def initial_guess(dtrajs, lagtime, n_hidden_states, stride) -> HiddenMarkovStateModel:
+        dtrajs = ensure_dtraj_list(dtrajs)
+        dtrajs_lagged_strided = compute_dtrajs_effective(dtrajs, lagtime=lagtime,
+                                                         n_states=n_hidden_states,
+                                                         stride=stride)
+
+
+
     def fit(self, dtrajs, **kwargs):
         dtrajs = ensure_dtraj_list(dtrajs)
         # CHECK LAG
         trajlengths = [len(dtraj) for dtraj in dtrajs]
         if self.lagtime >= np.max(trajlengths):
-            raise ValueError(f'Illegal lag time {self.lagtime} exceeds longest trajectory length')
+            raise ValueError(f'Illegal lag time {self.lagtime}, needs to be smaller than longest input trajectory.')
         if self.lagtime > np.mean(trajlengths):
             warnings.warn(f'Lag time {self.lagtime} is on the order of mean trajectory length '
                           f'{np.mean(trajlengths)}. It is recommended to fit four lag times in each '
@@ -163,6 +169,8 @@ class MaximumLikelihoodHMSM(Estimator):
             hmm_init = init_discrete_hmm(**args)
         elif isinstance(self.msm_init, MarkovStateModel):
             msm_count_model = self.msm_init.count_model
+            pcca = self.msm_init.pcca(n_metastable_sets=self.n_hidden_states)
+
             p0, P0, pobs0 = init_discrete_hmm_spectral(msm_count_model.count_matrix.toarray(),
                                                        self.n_hidden_states, reversible=self.reversible,
                                                        stationary=True, P=self.msm_init.transition_matrix,
@@ -175,7 +183,7 @@ class MaximumLikelihoodHMSM(Estimator):
         # ---------------------------------------------------------------------------------------
         # Estimate discrete HMM
         # ---------------------------------------------------------------------------------------
-        from .bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
+        from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
         hmm_est = MaximumLikelihoodHMM(self.n_hidden_states, initial_model=hmm_init,
                                        output='discrete', reversible=self.reversible, stationary=self.stationary,
                                        accuracy=self.accuracy, maxit=self.maxit)

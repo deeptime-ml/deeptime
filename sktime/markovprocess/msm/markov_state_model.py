@@ -883,8 +883,7 @@ class MarkovStateModel(Model):
         N : int
             trajectory length in steps of the lag time
         start : int, optional, default = None
-            starting hidden state. If not given, will sample from the stationary
-            distribution of the hidden transition matrix.
+            starting state
         stop : int or int-array-like, optional, default = None
             stopping hidden set. If given, the trajectory will be stopped before
             N steps once a hidden state of the stop set is reached
@@ -898,9 +897,14 @@ class MarkovStateModel(Model):
         (N/dt,) ndarray
             The state trajectory with length N/dt
         """
-        # todo replace with faster implementation in sktime.markovprocess.generation
-        import msmtools.generation as msmgen
-        return msmgen.generate_traj(self.transition_matrix, N, start=start, stop=stop, dt=dt)
+        import sktime.markovprocess._bindings.simulation as sim
+        if start is None:
+            start = np.random.choice(self.n_states, self.stationary_distribution)
+        if dt > 1:
+            P = np.linalg.matrix_power(self.transition_matrix, dt)
+        else:
+            P = self.transition_matrix
+        return sim.trajectory(N=N, start=start, P=P, stop=stop, seed=-1)
 
     ################################################################################
     # For general statistics

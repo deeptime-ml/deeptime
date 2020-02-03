@@ -10,7 +10,7 @@ from sktime.util import submatrix
 from ._koopman_reweighted_msm_impl import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
                                            rank_decision, oom_components, equilibrium_transition_matrix)
 
-__author__ = 'Feliks Nueske, Fabian Paul, marscher'
+__author__ = 'Feliks Nüske, Fabian Paul, marscher'
 
 
 class KoopmanReweightedMSM(MarkovStateModel):
@@ -148,7 +148,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         self.tol_rank = tol_rank
         self.rank_Ct = rank_Ct
 
-    def fit(self, dtrajs):
+    def fit(self, dtrajs, **kw):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
         count_model = TransitionCountEstimator(lagtime=self.lagtime, mincount_connectivity=self.connectivity_threshold,
@@ -194,4 +194,3 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         )
 
         return self
-

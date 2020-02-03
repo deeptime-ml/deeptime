@@ -21,7 +21,7 @@ from msmtools import estimation as msmest
 from scipy.sparse import issparse
 
 from sktime.markovprocess._base import _MSMBaseEstimator
-from sktime.markovprocess.markov_state_model import MarkovStateModel
+from sktime.markovprocess.msm import MarkovStateModel
 from sktime.markovprocess.transition_counting import TransitionCountModel
 
 __all__ = ['MaximumLikelihoodMSM']

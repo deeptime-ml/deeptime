@@ -262,7 +262,7 @@ def init_discrete_hmm_spectral(C_full, n_states, reversible=True, stationary=Tru
         nmeta = n_states
     else:
         if np.max(separate) >= nfull:
-            raise ValueError(f'Separate set has indexes that do not exist in full state space: {np.max(separate)}')
+            raise ValueError(f'Separate set has indices that do not exist in full state space: {np.max(separate)}')
         active_nonseparate = np.array(list(set(active_set) - set(separate)))
         nmeta = n_states - 1
     # check if we can proceed

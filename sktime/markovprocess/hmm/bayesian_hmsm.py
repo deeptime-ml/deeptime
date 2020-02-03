@@ -20,11 +20,12 @@ import numpy as np
 from msmtools.analysis import is_connected
 from msmtools.dtraj import number_of_states
 
+from sktime.base import Estimator
+from sktime.markovprocess._base import BayesianPosterior
 from sktime.markovprocess.bhmm import discrete_hmm, bayesian_hmm
-from sktime.markovprocess.hidden_markov_model import HiddenMarkovStateModel
-from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
+from sktime.markovprocess.hmm import HiddenMarkovStateModel, MaximumLikelihoodHMSM
+from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
-from ._base import BayesianPosterior
 
 __author__ = 'noe'
 
@@ -32,11 +33,6 @@ __all__ = [
     'BayesianHMMPosterior',
     'BayesianHMSM',
 ]
-
-from sktime.markovprocess.util import compute_dtrajs_effective
-
-from ..base import Estimator
-
 
 class BayesianHMMPosterior(BayesianPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior. """
