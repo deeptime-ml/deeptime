@@ -13,14 +13,40 @@ namespace output_models {
 template<typename RealType>
 class dirichlet_distribution {
 public:
-    explicit dirichlet_distribution(RealType alpha) : gamma(alpha, 1) {}
+    dirichlet_distribution() : gammas() {}
+    template<typename InputIterator>
+    dirichlet_distribution(InputIterator wbegin, InputIterator wend) {
+        params(wbegin, wend);
+    }
+
     template<typename Generator>
-    RealType operator()(Generator& gen) {
-        auto y = gamma();
-        return y;
+    std::vector<RealType> operator()(Generator& gen) {
+        std::vector<RealType> xs;
+        xs.reserve(gammas.size());
+        for(auto& gdist : gammas) {
+            // ignore zeros
+            if(gdist.alpha() != 0) {
+                xs.push_back(gdist(gen));
+            } else {
+                xs.push_back(0);
+            }
+        }
+        auto sum = std::accumulate(xs.begin(), xs.end(), 0);
+        for(auto it = xs.begin(); it != xs.end(); ++it) {
+            *it /= sum;
+        }
+        return xs;
+    }
+
+    template<typename InputIterator>
+    void params(InputIterator wbegin, InputIterator wend) {
+        gammas.resize(0);
+        std::transform(wbegin, wend, std::back_inserter(gammas), [](const auto& weight) {
+            return std::gamma_distribution<RealType>(weight, 1);
+        });
     }
 private:
-    std::gamma_distribution<RealType> gamma;
+    std::vector<std::gamma_distribution<RealType>> gammas;
 };
 
 template<template<typename, typename> class T, typename PROB, typename STATE>
@@ -228,6 +254,34 @@ struct DiscreteOutputModel : public OutputModel<DiscreteOutputModel, dtype, STAT
 
     const np_array<dtype> &prior() const {
         return _prior;
+    }
+
+    void sample(const std::vector<np_array<STATE>> &observationsPerState) {
+        auto nObs = Super::nObservableStates();
+        ssize_t currentState {0};
+
+        std::default_random_engine generator (clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+        dirichlet_distribution<dtype> dirichlet;
+
+        for(const np_array<STATE> &observations : observationsPerState) {
+            std::vector<dtype> hist (nObs, 0);
+            for(ssize_t i = 0; i < observations.size(); ++i) {
+                ++hist.at(observations.at(i));
+            }
+            auto priorBegin = _prior.data(currentState);
+            // add prior onto histogram
+            std::transform(hist.begin(), hist.end(), priorBegin, hist.begin(), std::plus<>());
+            dirichlet.params(hist.begin(), hist.end());
+            auto probs = dirichlet(generator);
+
+            for(std::size_t i = 0; i < probs.size(); ++i) {
+                if(probs[i] != 0) {
+                    outputProbabilityMatrix.mutable_at(currentState, i) = probs[i];
+                }
+            }
+
+            ++currentState;
+        }
     }
 
     np_array<dtype> generateObservationTrajectoryImpl(const np_array<STATE> &hiddenStateTrajectory) const override {

@@ -20,6 +20,7 @@ PYBIND11_MODULE(_hmm_bindings, m) {
         dm.def("submodel", &DOM::submodel);
         dm.def("output_probability_trajectory", &DOM::outputProbabilityTrajectory);
         dm.def("generate_observation_trajectory", &DOM::generateObservationTrajectory);
+        dm.def("sample", &DOM::sample);
     }
     {
         {
