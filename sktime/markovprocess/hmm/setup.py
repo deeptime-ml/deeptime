@@ -7,6 +7,7 @@ def configuration(parent_package='', top_path=None):
                          sources=['_bindings/src/hmm_module.cpp'],
                          include_dirs=['_bindings/include'],
                          language='c++',
+                         extra_compile_args=['-fvisibility=hidden']
                          )
 
     return config
