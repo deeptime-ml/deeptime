@@ -3,7 +3,7 @@
 
 using namespace pybind11::literals;
 
-PYBIND11_MODULE(_bindings, m) {
+PYBIND11_MODULE(_markovprocess_bindings, m) {
     {
         auto sampleMod = m.def_submodule("sample");
         sampleMod.def("index_states", &indexStates, py::arg("dtrajs"), py::arg("subset") = py::none());

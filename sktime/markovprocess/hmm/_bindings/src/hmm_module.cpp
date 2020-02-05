@@ -43,10 +43,10 @@ PYBIND11_MODULE(_hmm_bindings, m) {
         gaussian.def("p_o", &hmm::output_models::gaussian::pO<double>, "o"_a, "mus"_a, "sigmas"_a,
                      "out"_a = py::none());
         gaussian.def("p_o", &hmm::output_models::gaussian::pO<float>, "o"_a, "mus"_a, "sigmas"_a, "out"_a = py::none());
-        gaussian.def("p_obs", &hmm::output_models::gaussian::pObs<double>, "obs"_a, "mus"_a, "sigmas"_a,
-                     "out"_a = py::none());
-        gaussian.def("p_obs", &hmm::output_models::gaussian::pObs<float>, "obs"_a, "mus"_a, "sigmas"_a,
-                     "out"_a = py::none());
+        gaussian.def("to_output_probability_trajectory",
+                     &hmm::output_models::gaussian::toOutputProbabilityTrajectory<double>);
+        gaussian.def("to_output_probability_trajectory",
+                     &hmm::output_models::gaussian::toOutputProbabilityTrajectory<float>);
     }
 
 }

@@ -182,7 +182,7 @@ class GaussianOutputModel(OutputModel):
         if np.any(self._sigmas < np.finfo(self._sigmas.dtype).eps):
             raise RuntimeError('at least one sigma is too small to continue.')
 
-    def sample(self, observations, prior=None):
+    def sample(self, observations):
         """
         Sample a new set of distribution parameters given a sample of observations from the given state.
 
@@ -192,8 +192,6 @@ class GaussianOutputModel(OutputModel):
         ----------
         observations :  [ numpy.array with shape (N_k,) ] with `n_states` elements
             observations[k] is a set of observations sampled from state `k`
-        prior : object
-            prior option for compatibility
 
         Examples
         --------

@@ -25,7 +25,7 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
 
     """
     # check input
-    from . import _bindings as bd
+    from . import _markovprocess_bindings as bd
     dtrajs = ensure_dtraj_list(dtrajs)
     return bd.sample.index_states(dtrajs, subset)
 
