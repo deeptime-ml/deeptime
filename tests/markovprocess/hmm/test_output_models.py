@@ -68,7 +68,7 @@ class TestDiscrete(unittest.TestCase):
 
         m = DiscreteOutputModel(output_probabilities)
         obs_traj = np.array([0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4])
-        prob_traj = m.output_probability_trajectory(obs_traj)
+        prob_traj = m.to_state_probability_trajectory(obs_traj)
         for state, prob in zip(obs_traj, prob_traj):
             np.testing.assert_equal(prob, output_probabilities[:, state])
         np.testing.assert_equal(prob_traj, DOM(output_probabilities).p_obs(
