@@ -63,16 +63,27 @@ class TestDiscrete(unittest.TestCase):
             [0.6, 0.1, 0.1, 0.1, 0.1],
         ])
 
-        from bhmm.output_models import DiscreteOutputModel as DOM
-        m = DOM(output_probabilities)
 
         m = DiscreteOutputModel(output_probabilities)
         obs_traj = np.array([0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4])
         prob_traj = m.to_state_probability_trajectory(obs_traj)
         for state, prob in zip(obs_traj, prob_traj):
             np.testing.assert_equal(prob, output_probabilities[:, state])
-        np.testing.assert_equal(prob_traj, DOM(output_probabilities).p_obs(
-            np.array([0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4])))
+
+    def test_sample(self):
+        output_probabilities = np.array([
+            [0.8, 0.1, 0.1],
+            [0.1, 0.9, 0.0]
+        ])
+        from bhmm.output_models import DiscreteOutputModel as DOM
+        m = DiscreteOutputModel(output_probabilities)
+        # m = DOM(output_probabilities)
+        obs_per_state = [
+            np.array([0] * 50000 + [1] * 50000),  # state 0
+            np.array([1] * 30000 + [2] * 70000)   # state 1
+        ]
+        m.sample(obs_per_state)
+        np.testing.assert_array_almost_equal(m.output_probabilities, np.array([[.5, .5, 0.], [0, .3, .7]]), decimal=2)
 
     @unittest.skip("reference to bhmm")
     def test_observation_trajectory2(self):

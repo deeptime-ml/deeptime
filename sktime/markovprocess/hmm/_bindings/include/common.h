@@ -31,11 +31,11 @@ public:
         xs.reserve(gammas.size());
         for(auto& gdist : gammas) {
             // ignore zeros
-            if(gdist.alpha() != 0) {
-                xs.push_back(gdist(gen));
+            xs.push_back(gdist(gen));
+            /*if(gdist.alpha() != 0) {
             } else {
                 xs.push_back(0);
-            }
+            }*/
         }
         auto sum = std::accumulate(xs.begin(), xs.end(), 0.);
         for(auto it = xs.begin(); it != xs.end(); ++it) {

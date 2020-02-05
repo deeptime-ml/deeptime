@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 
@@ -91,5 +91,17 @@ class DiscreteOutputModel(OutputModel):
     def generate_observation_trajectory(self, hidden_state_trajectory: np.ndarray) -> np.ndarray:
         return _bindings.discrete.generate_observation_trajectory(hidden_state_trajectory, self.output_probabilities)
 
+    def sample(self, observations_per_state: List[np.ndarray]) -> None:
+        r"""
 
+        Parameters
+        ----------
+        observations_per_state
+
+        Returns
+        -------
+
+        """
+        # todo why ignore observation states w/o counts in a hidden state parameter sample?
+        _bindings.discrete.sample(observations_per_state, self.output_probabilities, self.prior)
 

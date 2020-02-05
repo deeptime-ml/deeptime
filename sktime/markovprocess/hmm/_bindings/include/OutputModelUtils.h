@@ -108,9 +108,9 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
         auto probs = dirichlet(generator);
 
         for(std::size_t i = 0; i < probs.size(); ++i) {
-            if(probs[i] != 0) {
+            //if(probs[i] != 0) {
                 outputProbabilities.mutable_at(currentState, i) = probs[i];
-            }
+            //}
         }
 
         ++currentState;
