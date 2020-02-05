@@ -62,17 +62,11 @@ struct OutputModel {
     virtual ~OutputModel() = default;
 
     std::size_t nHiddenStates() const { return _nHiddenStates; }
-    void setNHiddenStates(std::size_t value) { _nHiddenStates = value; }
 
     std::size_t nObservableStates() const { return _nObservableStates; }
-    void setNObservableStates(std::size_t value) { _nObservableStates = value; }
 
     bool ignoreOutliers() const { return _ignoreOutliers; }
     void setIgnoreOutliers(bool value) { _ignoreOutliers = value; }
-
-    Subclass submodel(const np_array<STATE>& states) const {
-        return static_cast<const Subclass*>(this)->submodelImpl(states);
-    }
 
     np_array<PROB> outputProbabilityTrajectory(const np_array<STATE>& observations) const {
         return static_cast<const Subclass*>(this)->outputProbabilityTrajectoryImpl(observations);
@@ -105,7 +99,6 @@ struct OutputModel {
 
     virtual np_array<PROB> generateObservationTrajectoryImpl(const np_array<STATE> &hiddenStateTrajectory) const = 0;
     virtual np_array<PROB> outputProbabilityTrajectoryImpl(const np_array<STATE>& observations) const = 0;
-    virtual Subclass submodelImpl(const np_array<STATE>& states) const = 0;
 
 protected:
     std::size_t _nHiddenStates;
@@ -216,12 +209,13 @@ struct DiscreteOutputModel : public OutputModel<DiscreteOutputModel, dtype, STAT
         }
         auto nHidden = outputProbabilityMatrix.shape(0);
         auto nObs = outputProbabilityMatrix.shape(1);
-        Super::setNHiddenStates(nHidden);
-        Super::setNObservableStates(nObs);
+        Super::_nHiddenStates = nHidden;
+        Super::_nObservableStates = nObs;
         Super::setIgnoreOutliers(outliers);
 
         if(prior.is_none()) {
             this->_prior = np_array<dtype>({nHidden, nObs});
+            std::fill(this->_prior.mutable_data(), this->_prior.mutable_data() + nHidden * nObs, 0.);
         } else {
             auto npPrior = py::cast<np_array<dtype>>(prior);
             if(npPrior.ndim() != 2) {
@@ -237,9 +231,10 @@ struct DiscreteOutputModel : public OutputModel<DiscreteOutputModel, dtype, STAT
             }
             this->_prior = npPrior;
         }
-        for(ssize_t row = 0; row < nObs; ++row) {
+        for(ssize_t col = 0; col < nHidden; ++col) {
+
             dtype sum = 0;
-            for(ssize_t col = 0; col < nHidden; ++col) {
+            for(ssize_t row = 0; row < nObs; ++row) {
                 sum += outputProbabilityMatrix.at(col, row);
             }
             if(std::abs(sum - 1) > 1e-3) {
@@ -332,24 +327,6 @@ struct DiscreteOutputModel : public OutputModel<DiscreteOutputModel, dtype, STAT
             Super::handleOutliers(output);
         }
         return output;
-    }
-
-    DiscreteOutputModel submodelImpl(const np_array<STATE> &states) const override {
-        if(states.ndim() != 1) {
-            throw std::invalid_argument("Discrete output model submodel requires one-dimensional states array.");
-        }
-        np_array<dtype> restrictedOutputProbabilityMatrix({states.shape(0), outputProbabilityMatrix.shape(1)});
-        np_array<dtype> restrictedPrior({states.shape(0), outputProbabilityMatrix.shape(1)});
-        auto pptr = outputProbabilityMatrix.data();
-        auto priorptr = _prior.data();
-        for(ssize_t i = 0; i < states.shape(0); ++i) {
-            auto state = states.at(i);
-            std::copy(pptr + state * Super::nObservableStates(), pptr + (state+1) * Super::nObservableStates(),
-                      restrictedOutputProbabilityMatrix.mutable_data(i, 0));
-            std::copy(priorptr + state * Super::nObservableStates(), priorptr + (state+1) * Super::nObservableStates(),
-                      restrictedPrior.mutable_data(i, 0));
-        }
-        return DiscreteOutputModel{restrictedOutputProbabilityMatrix, restrictedPrior, Super::_ignoreOutliers};
     }
 
 private:
