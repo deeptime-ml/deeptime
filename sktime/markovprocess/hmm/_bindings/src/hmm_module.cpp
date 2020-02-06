@@ -52,5 +52,4 @@ PYBIND11_MODULE(_hmm_bindings, m) {
         gaussian.def("fit", &hmm::output_models::gaussian::fit<float>);
         gaussian.def("fit", &hmm::output_models::gaussian::fit<double>);
     }
-
 }

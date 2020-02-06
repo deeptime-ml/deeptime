@@ -22,7 +22,7 @@ void handleOutliers(np_array<dtype> &outputProbabilityTrajectory) {
     for (decltype(nTimesteps) t = 0; t < nTimesteps; ++t) {
         auto begin = ptr + t * nStates;
         auto end = begin + nStates;
-        auto sum = std::accumulate(begin, end, 0);
+        auto sum = std::accumulate(begin, end, static_cast<dtype>(0.));
         if (sum == 0) {
             // got an outlier, fill with uniform (will be renormalized later)
             std::fill(begin, end, static_cast<dtype>(1));
