@@ -47,6 +47,10 @@ PYBIND11_MODULE(_hmm_bindings, m) {
                      &hmm::output_models::gaussian::toOutputProbabilityTrajectory<double>);
         gaussian.def("to_output_probability_trajectory",
                      &hmm::output_models::gaussian::toOutputProbabilityTrajectory<float>);
+        gaussian.def("generate_observation_trajectory", &hmm::output_models::gaussian::generateObservationTrajectory<float>);
+        gaussian.def("generate_observation_trajectory", &hmm::output_models::gaussian::generateObservationTrajectory<double>);
+        gaussian.def("fit", &hmm::output_models::gaussian::fit<float>);
+        gaussian.def("fit", &hmm::output_models::gaussian::fit<double>);
     }
 
 }

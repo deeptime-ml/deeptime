@@ -199,15 +199,7 @@ class GaussianOutputModel(OutputModel):
         >>> o_t = output_model.generate_observation_trajectory(s_t)
 
         """
-
-        # Determine number of samples to generate.
-        T = hidden_state_trajectory.shape[0]
-
-        o_t = np.zeros([T], dtype=np.float64)
-        for t in range(T):
-            s = hidden_state_trajectory[t]
-            o_t[t] = self.sigmas[s] * np.random.randn() + self.means[s]
-        return o_t
+        return _bindings.gaussian.generate_observation_trajectory(hidden_state_trajectory, self.means, self.sigmas)
 
     def fit(self, observations: List[np.ndarray], weights: List[np.ndarray]):
         """
@@ -228,7 +220,7 @@ class GaussianOutputModel(OutputModel):
 
         >>> ntrajectories = 3
         >>> nobs = 1000
-        >>> output_model = GaussianOutputModel(n_states=3, means=np.array([-1, 0, +1]), sigmas=np.array[0.5, 1, 2])
+        >>> output_model = GaussianOutputModel(n_states=3, means=np.array([-1, 0, +1]), sigmas=np.array([0.5, 1, 2]))
         >>> observations = [ np.random.randn(nobs) for _ in range(ntrajectories) ] # random observations
         >>> weights = [ np.random.dirichlet([2, 3, 4], size=nobs) for _ in range(ntrajectories) ] # random weights
 
@@ -237,35 +229,9 @@ class GaussianOutputModel(OutputModel):
         >>> output_model.fit(observations, weights)
 
         """
-        # sizes
-        N = self.n_hidden_states
-        K = len(observations)
-
-        # fit means
-        self._means = np.zeros(N)
-        w_sum = np.zeros(N)
-        for k in range(K):
-            # update nominator
-            for i in range(N):
-                self.means[i] += np.dot(weights[k][:, i], observations[k])
-            # update denominator
-            w_sum += np.sum(weights[k], axis=0)
-        # normalize
-        self._means /= w_sum
-
-        # fit variances
-        self._sigmas = np.zeros(N)
-        w_sum = np.zeros(N)
-        for k in range(K):
-            # update nominator
-            for i in range(N):
-                Y = (observations[k] - self.means[i]) ** 2
-                self.sigmas[i] += np.dot(weights[k][:, i], Y)
-            # update denominator
-            w_sum += np.sum(weights[k], axis=0)
-        # normalize
-        self._sigmas /= w_sum
-        self._sigmas = np.sqrt(self.sigmas)
+        means, sigmas = _bindings.gaussian.fit(self.n_hidden_states, observations, weights)
+        self._means = means
+        self._sigmas = sigmas
         if np.any(self._sigmas < np.finfo(self._sigmas.dtype).eps):
             raise RuntimeError('at least one sigma is too small to continue.')
         return self
@@ -288,15 +254,17 @@ class GaussianOutputModel(OutputModel):
 
         >>> n_states = 3
         >>> nobs = 1000
-        >>> output_model = GaussianOutputModel(n_states=n_states, means=[-1, 0, 1], sigmas=[0.5, 1, 2])
-        >>> observations = [ output_model.generate_observations_from_state(state_index, nobs) for state_index in range(n_states) ]
+        >>> output_model = GaussianOutputModel(n_states=n_states, means=np.array([-1, 0, 1]),
+        ...                                    sigmas=np.array([0.5, 1, 2]))
+        >>> observations = [output_model.generate_observation_trajectory(np.array([state_index]*nobs))
+        ...                 for state_index in range(n_states)]
 
         Update output parameters by sampling.
 
         >>> output_model.sample(observations)
 
         """
-        for state_index in range(self.n_states):
+        for state_index in range(self.n_hidden_states):
             # Update state emission distribution parameters.
 
             observations_in_state = observations[state_index]

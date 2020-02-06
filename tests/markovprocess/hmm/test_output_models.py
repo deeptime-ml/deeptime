@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 from sktime.markovprocess.hmm.output_model import DiscreteOutputModel
+from sktime.markovprocess.hmm.output_model import GaussianOutputModel
 
 
 class TestDiscrete(unittest.TestCase):
@@ -75,9 +76,7 @@ class TestDiscrete(unittest.TestCase):
             [0.8, 0.1, 0.1],
             [0.1, 0.9, 0.0]
         ])
-        from bhmm.output_models import DiscreteOutputModel as DOM
         m = DiscreteOutputModel(output_probabilities)
-        # m = DOM(output_probabilities)
         obs_per_state = [
             np.array([0] * 50000 + [1] * 50000),  # state 0
             np.array([1] * 30000 + [2] * 70000)   # state 1
@@ -101,6 +100,21 @@ class TestDiscrete(unittest.TestCase):
         bc /= np.sum(bc)
         print(bc)
 
+class TestGaussian(unittest.TestCase):
+
+    def test_observation_trajectory(self):
+        m = GaussianOutputModel(3, means=np.array([-1., 0., 1.]), sigmas=np.array([.5, .2, .1]))
+        np.testing.assert_equal(m.n_hidden_states, 3)
+        np.testing.assert_equal(m.ignore_outliers, True)
+        for state in range(3):
+            traj = m.generate_observation_trajectory(np.array([state]*100000))
+            np.testing.assert_almost_equal(np.mean(traj), m.means[state], decimal=3)
+            np.testing.assert_almost_equal(np.sqrt(np.var(traj)), m.sigmas[state], decimal=3)
+
+    def test_output_probability_trajectory(self):
+        m = GaussianOutputModel(3, means=np.array([-1., 0., 1.]), sigmas=np.array([.5, .2, .1]))
+        stateprobs = m.to_state_probability_trajectory(np.array([-1., 0., 1.]))
+        print(stateprobs)
 
 if __name__ == '__main__':
     unittest.main()

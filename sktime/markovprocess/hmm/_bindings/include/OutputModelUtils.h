@@ -181,7 +181,7 @@ np_array<dtype> pO(dtype o, const np_array<dtype> &mus, const np_array<dtype> &s
 
 template<typename dtype>
 np_array<dtype> toOutputProbabilityTrajectory(const np_array<dtype> &obs, const np_array<dtype> &mus,
-        const np_array<dtype> &sigmas) {
+                                              const np_array<dtype> &sigmas) {
     auto N = static_cast<std::size_t>(mus.shape(0));
     auto T = static_cast<std::size_t>(obs.shape(0));
 
@@ -201,9 +201,103 @@ np_array<dtype> toOutputProbabilityTrajectory(const np_array<dtype> &obs, const 
     return p;
 }
 
+template<typename dtype>
+np_array<dtype>
+generateObservationTrajectory(const np_array<dtype> &hiddenStateTrajectory, const np_array<dtype> &means,
+                              const np_array<dtype> &sigmas) {
+    if (hiddenStateTrajectory.ndim() != 1) {
+        throw std::invalid_argument("Hidden state trajectory must be one-dimensional!");
+    }
+    auto nTimesteps = hiddenStateTrajectory.shape(0);
+    np_array<dtype> output({static_cast<std::size_t>(nTimesteps)});
+    auto ptr = output.mutable_data();
 
+    std::default_random_engine generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+    std::normal_distribution<dtype> dist{0, 1};
+
+    for (decltype(nTimesteps) t = 0; t < nTimesteps; ++t) {
+        auto state = hiddenStateTrajectory.at(t);
+        *(ptr + t) = sigmas.at(state) * dist(generator) + means.at(state);
+    }
+    return output;
 }
 
+template<typename dtype>
+std::tuple<np_array<dtype>, np_array<dtype>> fit(std::size_t nHiddenStates, const py::list &observations,
+                                                 const py::list &weights) {
+    auto nObsTrajs = observations.size();
+    if (nObsTrajs != weights.size()) {
+        throw std::invalid_argument("number of observation trajectories must match number of weight matrices");
+    }
+
+    auto result = std::make_tuple(
+            np_array<dtype>(std::vector<std::size_t>{nHiddenStates}),
+            np_array<dtype>(std::vector<std::size_t>{nHiddenStates})
+    );
+    auto &means = std::get<0>(result);
+    auto &sigmas = std::get<1>(result);
+
+    std::fill(means.mutable_data(), means.mutable_data() + nHiddenStates, 0);
+    std::fill(sigmas.mutable_data(), sigmas.mutable_data() + nHiddenStates, 0);
+
+    // fit means
+    {
+        std::vector<dtype> wSum(nHiddenStates, 0);
+        auto weightsIt = weights.begin();
+        auto obsIt = observations.begin();
+        for (decltype(nObsTrajs) k = 0; k < nObsTrajs; ++k, ++weightsIt, ++obsIt) {
+            const auto &w = py::cast<np_array<dtype>>(*weightsIt);
+            const auto &obs = py::cast<np_array<dtype>>(*obsIt);
+            for (decltype(nHiddenStates) i = 0; i < nObsTrajs; ++i) {
+                dtype dot = 0;
+                dtype wStateSum = 0;
+                for (ssize_t t = 0; t < obs.shape(0); ++t) {
+                    dot += w.at(t, i) * obs.at(i);
+                    wStateSum += w.at(t, i);
+                }
+                // update nominator
+                means.mutable_at(i) += dot;
+                // update denominator
+                wSum.at(i) += wStateSum;
+            }
+
+        }
+        // update normalize
+        for(decltype(nHiddenStates) i = 0; i < nHiddenStates; ++i) {
+            means.mutable_at(i) /= wSum.at(i);
+        }
+    }
+    // fit variances
+    {
+        std::vector<dtype> wSum(nHiddenStates, 0);
+        auto weightsIt = weights.begin();
+        auto obsIt = observations.begin();
+        for (decltype(nObsTrajs) k = 0; k < nObsTrajs; ++k, ++weightsIt, ++obsIt) {
+            const auto &w = py::cast<np_array<dtype>>(*weightsIt);
+            const auto &obs = py::cast<np_array<dtype>>(*obsIt);
+
+            dtype wStateSum = 0;
+            for (decltype(nHiddenStates) i = 0; i < nObsTrajs; ++i) {
+                dtype sigmaUpdate = 0;
+                for (ssize_t t = 0; t < obs.shape(0); ++t) {
+                    auto y = std::pow(obs.at(t) - means.at(i), 2);
+                    sigmaUpdate += w.at(t, i) * y;
+                    wStateSum += w.at(t, i);
+                }
+                // update nominator
+                sigmas.mutable_at(i) += sigmaUpdate;
+                // update denominator
+                wSum.at(i) += wStateSum;
+            }
+        }
+        for(decltype(nHiddenStates) i = 0; i < nHiddenStates; ++i) {
+            sigmas.mutable_at(i) = std::sqrt(sigmas.at(i) / wSum.at(i));
+        }
+    }
+    return result;
+}
+
+}
 
 }
 }
