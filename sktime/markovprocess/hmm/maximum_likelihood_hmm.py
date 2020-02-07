@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import warnings
+from typing import Union
 
 import numpy as np
 
@@ -25,6 +26,31 @@ from sktime.markovprocess.bhmm.init.discrete import init_discrete_hmm_spectral
 from sktime.markovprocess.hmm import HiddenMarkovStateModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
+
+class MaximumLikelihoodHMSM2(Estimator):
+
+    def __init__(self, initial_model: HiddenMarkovStateModel, model=None):
+        super().__init__(model=model)
+        self._initial_model = initial_model
+
+    @property
+    def n_hidden_states(self) -> int:
+        return self._initial_model.n_hidden_states
+
+    @property
+    def initial_transition_model(self) -> MarkovStateModel:
+        return self._initial_transition_model
+
+    @initial_transition_model.setter
+    def initial_transition_model(self, value: Union[np.ndarray, MarkovStateModel]) -> None:
+        if isinstance(value, np.ndarray):
+            value = MarkovStateModel(value)
+        self._initial_transition_model = value
+
+    def fit(self, dtrajs, **kwargs):
+        dtrajs = ensure_dtraj_list(dtrajs)
+
+
 
 
 class MaximumLikelihoodHMSM(Estimator):
@@ -169,7 +195,7 @@ class MaximumLikelihoodHMSM(Estimator):
             hmm_init = init_discrete_hmm(**args)
         elif isinstance(self.msm_init, MarkovStateModel):
             msm_count_model = self.msm_init.count_model
-            pcca = self.msm_init.pcca(n_metastable_sets=self.n_hidden_states)
+            # pcca = self.msm_init.pcca(n_metastable_sets=self.n_hidden_states)
 
             p0, P0, pobs0 = init_discrete_hmm_spectral(msm_count_model.count_matrix.toarray(),
                                                        self.n_hidden_states, reversible=self.reversible,
