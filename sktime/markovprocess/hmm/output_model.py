@@ -229,7 +229,11 @@ class GaussianOutputModel(OutputModel):
         >>> output_model.fit(observations, weights)
 
         """
-        means, sigmas = _bindings.gaussian.fit(self.n_hidden_states, observations, weights)
+        if self.means.dtype == np.float32:
+            means, sigmas = _bindings.gaussian.fit32(self.n_hidden_states, observations, weights)
+        else:
+            means, sigmas = _bindings.gaussian.fit64(self.n_hidden_states, observations, weights)
+
         self._means = means
         self._sigmas = sigmas
         if np.any(self._sigmas < np.finfo(self._sigmas.dtype).eps):

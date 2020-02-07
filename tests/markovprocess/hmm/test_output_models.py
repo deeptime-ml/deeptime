@@ -147,18 +147,25 @@ class TestGaussian(unittest.TestCase):
     def test_fit(self):
         expected_means = np.array([-5., 0., 7.])
         expected_stds = np.array([.3, .5, 1.])
-        m = GaussianOutputModel(3)
+        m = GaussianOutputModel(3, means=np.zeros(3))
         obs = []
         n_trajs = 100
         for _ in range(n_trajs):
-            states = np.random.choice([0, 1, 2], size=10000 + np.random.randint(-3, 3))
+            states = np.random.choice([0, 1, 2], size=1000 + np.random.randint(-3, 3))
             obs.append(np.array([
                 np.random.normal(expected_means[state], expected_stds[state]) for state in states
             ]))
-        m.fit(obs, weights=[np.ones([len(o), 3], dtype=o.dtype) for o in obs])
-        print(m.means)
-        print(m.sigmas)
+        # weights=[np.ones([len(o), 3], dtype=o.dtype) for o in obs]
 
+        weights = [ np.random.dirichlet([2, 3, 4], size=len(obs[i])).astype(np.float32) for i in range(n_trajs) ]
+
+        from sktime.markovprocess.bhmm.output_models import GaussianOutputModel as GOM
+        mm = GOM(n_states=3)
+        mm.fit(obs, weights=weights)
+        m.fit(obs, weights=weights)
+        print(m.means, m.sigmas)
+        print(mm.means, mm.sigmas)
+        # todo this does not seem right?
 
 
 if __name__ == '__main__':
