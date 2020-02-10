@@ -96,6 +96,13 @@ class HiddenMarkovStateModel(Model):
     def hidden_state_trajectories(self) -> Optional[List[np.ndarray]]:
         return self._hidden_state_trajectories
 
+    @property
+    def stationary_distribution_obs(self):
+        # todo this only works for discrete hmm, can it be generalized?
+        if isinstance(self.output_model, DiscreteOutputModel):
+            return np.dot(self.transition_model.stationary_distribution, self.output_model.output_probabilities)
+        raise RuntimeError("only available for discrete output model")
+
     def compute_viterbi_paths(self, observations: List[np.ndarray]):
         """Computes the Viterbi paths using the current HMM model"""
         observations = ensure_dtraj_list(observations)

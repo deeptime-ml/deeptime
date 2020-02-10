@@ -35,33 +35,32 @@ from sktime.util import ensure_ndarray, submatrix
 
 
 class MarkovStateModel(Model):
-    r"""Markov model with a given transition matrix
-
-    Parameters
-    ----------
-    transition_matrix : ndarray(n,n)
-        transition matrix
-    stationary_distribution : ndarray(n), optional, default=None
-        stationary distribution. Can be optionally given in case if it was
-        already computed, e.g. by the estimator.
-    reversible : bool, optional, default=None
-        whether P is reversible with respect to its stationary distribution.
-        If None (default), will be determined from P
-    n_eigenvalues : int or None
-        The number of eigenvalues / eigenvectors to be kept. If set to None,
-        defaults will be used. For a dense MarkovStateModel the default is all eigenvalues.
-        For a sparse MarkovStateModel the default is 10.
-    ncv : int, optional, default=None
-        Relevant for eigenvalue decomposition of reversible transition
-        matrices. It is the number of Lanczos vectors generated, `ncv` must
-        be greater than n_eigenvalues; it is recommended that ncv > 2*neig.
-    count_model : TransitionCountModel, optional, default=None
-        Transition count model containing count matrix and potentially data statistics. Not required for instantiation,
-        default is None.
-    """
-
+    r"""Markov model with a given transition matrix."""
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
                  count_model=None):
+        r"""
+        Constructs a new markov state model based on a transition matrix.
+
+        Parameters
+        ----------
+        transition_matrix : (n,n) ndarray
+            The transition matrix.
+        stationary_distribution : ndarray(n), optional, default=None
+            Stationary distribution. Can be optionally given in case if it was already computed.
+        reversible : bool, optional, default=None
+            Whether the transition matrix is reversible with respect to its stationary distribution. If None (default),
+            will be determined from the transition matrix.
+        n_eigenvalues : int, optional, default=None
+            The number of eigenvalues / eigenvectors to be kept. If set to None, it depends on the transition matrix.
+            If it is densely stored (in terms of a numpy array), all eigenvectors and eigenvalues are computed. If it is
+            sparse, only the 10 largest eigenvalues with corresponding eigenvectors are computed.
+        ncv : int optional, default=None
+            Relevant for eigenvalue decomposition of reversible transition matrices. It is the number of Lanczos
+            vectors generated, `ncv` must be greater than n_eigenvalues; it is recommended that ncv > 2*neig.
+        count_model : TransitionCountModel, optional, default=None
+            In case the MSM was estimated from data, the transition count model can be provided for statistical
+            information about the data. Some properties of the model require a count model so that they can be computed.
+        """
         self._sparse = issparse(transition_matrix)
         self._is_reversible = reversible
         self._ncv = ncv
@@ -576,7 +575,7 @@ class MarkovStateModel(Model):
         on a three-state Markov model and plots the result using matplotlib:
 
         >>> import numpy as np
-        >>> import sktime.markovprocess.markov_state_model as msm
+        >>> import sktime.markovprocess.msm as msm
         >>>
         >>> P = np.array([[0.99, 0.01, 0], [0.01, 0.9, 0.09], [0, 0.1, 0.9]])
         >>> a = np.array([0.0, 0.5, 1.0])

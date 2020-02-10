@@ -1,7 +1,6 @@
-
-# This file is part of BHMM (Bayesian Hidden Markov Models).
+# This file is part of sktime.
 #
-# Copyright (c) 2016 Frank Noe (Freie Universitaet Berlin)
+# Copyright (c) 2020 Frank Noe (Freie Universitaet Berlin)
 # and John D. Chodera (Memorial Sloan-Kettering Cancer Center, New York)
 #
 # BHMM is free software: you can redistribute it and/or modify
@@ -19,53 +18,7 @@
 
 import numpy as np
 
-
-def is_connected(C, mincount_connectivity=0, strong=True):
-    S = connected_sets(C, mincount_connectivity=mincount_connectivity, strong=strong)
-    return len(S) == 1
-
-
-def connected_sets(C, mincount_connectivity=0., strong=True):
-    """ Computes the connected sets of C.
-
-    C : count matrix
-    mincount_connectivity : float
-        Minimum count which counts as a connection.
-    strong : boolean
-        True: Seek strongly connected sets. False: Seek weakly connected sets.
-
-    """
-    import msmtools.estimation as msmest
-    if mincount_connectivity > 0:
-        Cconn = C.copy()
-        Cconn[np.where(C <= mincount_connectivity)] = 0
-    else:
-        Cconn = C
-    # treat each connected set separately
-    S = msmest.connected_sets(Cconn, directed=strong)
-    return S
-
-
-def closed_sets(C, mincount_connectivity=0):
-    """ Computes the strongly connected closed sets of C """
-    n = np.shape(C)[0]
-    S = connected_sets(C, mincount_connectivity=mincount_connectivity, strong=True)
-    closed = []
-    for s in S:
-        mask = np.zeros(n, dtype=bool)
-        mask[s] = True
-        if C[np.ix_(mask, ~mask)].sum() == 0:  # closed set, take it
-            closed.append(s)
-    return closed
-
-
-def nonempty_set(C, mincount_connectivity=0):
-    """ Returns the set of states that have at least one incoming or outgoing count """
-    # truncate to states with at least one observed incoming or outgoing count.
-    if mincount_connectivity > 0:
-        C = C.copy()
-        C[np.where(C < mincount_connectivity)] = 0
-    return np.where(C.sum(axis=0) + C.sum(axis=1) > 0)[0]
+from sktime.markovprocess.util import compute_connected_sets, closed_sets, is_connected
 
 
 def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=1e-8, mincount_connectivity=0):
@@ -95,7 +48,7 @@ def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=
     P = np.eye(n, dtype=np.float64)
     # decide if we need to proceed by weakly or strongly connected sets
     if reversible and fixed_statdist is None:  # reversible to unknown eq. dist. - use strongly connected sets.
-        S = connected_sets(C, mincount_connectivity=mincount_connectivity, strong=True)
+        S = compute_connected_sets(C, connectivity_threshold=mincount_connectivity, directed=True)
         for s in S:
             mask = np.zeros(n, dtype=bool)
             mask[s] = True
@@ -107,7 +60,7 @@ def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=
                     P[I] = msmest.transition_matrix(C[I], reversible=True, warn_not_converged=False,
                                                     maxiter=maxiter, maxerr=maxerr)
     else:  # nonreversible or given equilibrium distribution - weakly connected sets
-        S = connected_sets(C, mincount_connectivity=mincount_connectivity, strong=False)
+        S = compute_connected_sets(C, connectivity_threshold=mincount_connectivity, directed=False)
         for s in S:
             I = np.ix_(s, s)
             if not reversible:
@@ -216,7 +169,7 @@ def is_reversible(P):
     """ Returns if P is reversible on its weakly connected sets """
     import msmtools.analysis as msmana
     # treat each weakly connected set separately
-    sets = connected_sets(P, strong=False)
+    sets = compute_connected_sets(P, directed=False)
     for s in sets:
         Ps = P[s, :][:, s]
         if not msmana.is_transition_matrix(Ps):
@@ -234,7 +187,7 @@ def stationary_distribution(P, C=None, mincount_connectivity=0):
     # can be replaced by msmtools.analysis.stationary_distribution in next msmtools release
     from msmtools.analysis.dense.stationary_vector import stationary_distribution as msmstatdist
     if C is None:
-        if is_connected(P, strong=True):
+        if is_connected(P, directed=True):
             return msmstatdist(P)
         else:
             raise ValueError('Computing stationary distribution for disconnected matrix. Need count matrix.')
@@ -244,7 +197,7 @@ def stationary_distribution(P, C=None, mincount_connectivity=0):
     ctot = np.sum(C)
     pi = np.zeros(n)
     # treat each weakly connected set separately
-    sets = connected_sets(C, mincount_connectivity=mincount_connectivity, strong=False)
+    sets = compute_connected_sets(C, connectivity_threshold=mincount_connectivity, directed=False)
     for s in sets:
         # compute weight
         w = np.sum(C[s, :]) / ctot

@@ -5,6 +5,7 @@
 #include "common.h"
 #include "utils.h"
 #include "OutputModelUtils.h"
+#include "docs.h"
 
 using namespace pybind11::literals;
 
@@ -59,5 +60,12 @@ PYBIND11_MODULE(_hmm_bindings, m) {
         auto util = m.def_submodule("util");
         util.def("viterbi", &viterbi<float>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a);
         util.def("viterbi", &viterbi<double>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a);
+        util.def("forward", &forward<float>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a, "alpha"_a, "T"_a = py::none(), docs::FORWARD);
+        util.def("forward", &forward<double>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a, "alpha"_a, "T"_a = py::none(), docs::FORWARD);
+        util.def("backward", &backward<float>, "transition_matrix"_a, "state_probability_trajectory"_a, "beta"_a, "T"_a = py::none(), docs::BACKWARD);
+        util.def("backward", &backward<double>, "transition_matrix"_a, "state_probability_trajectory"_a, "beta"_a, "T"_a = py::none(), docs::BACKWARD);
+        util.def("state_probabilities", &stateProbabilities<float>, "alpha"_a, "beta"_a, "gamma"_a, "T"_a = py::none(), docs::STATE_PROBS);
+        util.def("state_probabilities", &stateProbabilities<double>, "alpha"_a, "beta"_a, "gamma"_a, "T"_a = py::none(), docs::STATE_PROBS);
+
     }
 }
