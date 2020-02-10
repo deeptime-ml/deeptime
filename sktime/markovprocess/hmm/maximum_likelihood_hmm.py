@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import warnings
-from typing import Union
 
 import numpy as np
 
@@ -27,33 +26,97 @@ from sktime.markovprocess.hmm import HiddenMarkovStateModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 
-class MaximumLikelihoodHMSM2(Estimator):
 
-    def __init__(self, initial_model: HiddenMarkovStateModel, model=None):
+class MaximumLikelihoodHMSM(Estimator):
+
+    def __init__(self, initial_model: HiddenMarkovStateModel, stride: int = 1, lagtime: int = 1, model=None):
         super().__init__(model=model)
-        self._initial_model = initial_model
+        self.initial_transition_model = initial_model
 
     @property
     def n_hidden_states(self) -> int:
         return self._initial_model.n_hidden_states
 
     @property
-    def initial_transition_model(self) -> MarkovStateModel:
+    def initial_transition_model(self) -> HiddenMarkovStateModel:
         return self._initial_transition_model
 
     @initial_transition_model.setter
-    def initial_transition_model(self, value: Union[np.ndarray, MarkovStateModel]) -> None:
-        if isinstance(value, np.ndarray):
-            value = MarkovStateModel(value)
+    def initial_transition_model(self, value: HiddenMarkovStateModel) -> None:
         self._initial_transition_model = value
 
-    def fit(self, dtrajs, **kwargs):
+    def fit(self, dtrajs, initial_model=None,**kwargs):
+        if initial_model is None:
+            initial_model = self.initial_transition_model
+        if initial_model is None or not isinstance(initial_model, HiddenMarkovStateModel):
+            raise ValueError("For estimation, an initial model of type "
+                             "`sktime.markovprocess.hmm.HiddenMarkovStateModel` is required.")
+
+        model = initial_model.copy()
+
         dtrajs = ensure_dtraj_list(dtrajs)
+        dtrajs = compute_dtrajs_effective(dtrajs, lagtime=self.lagtime, n_states=initial_model.n_hidden_states,
+                                          stride=self.stride)
+
+        _maxT = max(len(obs) for obs in dtrajs)
+        # pre-construct hidden variables
+        N = self.n_states
+        alpha = np.zeros((_maxT, N))
+        beta = np.zeros((_maxT, N))
+        pobs = np.zeros((_maxT, N))
+        gammas = [np.zeros((len(obs), N)) for obs in dtrajs]
+        count_matrices = [np.zeros((N, N)) for _ in dtrajs]
+
+        it = 0
+        likelihoods = np.empty(self.maxit)
+        # flag if connectivity has changed (e.g. state lost) - in that case the likelihood
+        # is discontinuous and can't be used as a convergence criterion in that iteration.
+        tmatrix_nonzeros = model.transition_model.transition_matrix.nonzero()
+        converged = False
+
+        while not converged and it < self.maxit:
+            loglik = 0.0
+            for obs, gamma, counts in zip(dtrajs, gammas, count_matrices):
+                loglik += self._forward_backward(model, obs, alpha, beta, gamma, pobs, counts)
+            assert np.isfinite(loglik), it
+
+            # convergence check
+            if it > 0:
+                dL = loglik - likelihoods[it-1]
+                if dL < self._accuracy:
+                    converged = True
+
+            # update model
+            self._update_model(model, dtrajs, gammas, count_matrices, maxiter=self._maxit_P)
+
+            # connectivity change check
+            tmatrix_nonzeros_new = model.transition_matrix.nonzero()
+            if not np.array_equal(tmatrix_nonzeros, tmatrix_nonzeros_new):
+                converged = False  # unset converged
+                tmatrix_nonzeros = tmatrix_nonzeros_new
+
+            # end of iteration
+            likelihoods[it] = loglik
+            it += 1
+
+        likelihoods = np.resize(likelihoods, it)
+
+        transition_counts = self._transition_counts(count_matrices)
+
+        hmm_count_model = TransitionCountModel(count_matrix=transition_counts,
+                                               lagtime=self.lagtime,
+                                               physical_time=self.physical_time)
+
+        model._likelihoods = likelihoods
+        model._gammas = gammas
+        model._initial_count = self._init_counts(gammas)
+        model._hidden_state_trajectories = model.compute_viterbi_paths(dtrajs)
+
+        self._model = model
+        return self
 
 
-
-
-class MaximumLikelihoodHMSM(Estimator):
+class MaximumLikelihoodHMSM2(Estimator):
     """
     Maximum likelihood hidden markov state model estimator.
     """
@@ -141,7 +204,7 @@ class MaximumLikelihoodHMSM(Estimator):
             stopped without convergence (a warning is given)
 
         """
-        super(MaximumLikelihoodHMSM, self).__init__()
+        super(MaximumLikelihoodHMSM2, self).__init__()
         self.n_hidden_states = n_states
         self.lagtime = lagtime
         self.stride = stride
@@ -175,7 +238,7 @@ class MaximumLikelihoodHMSM(Estimator):
             raise ValueError(f'Illegal lag time {self.lagtime}, needs to be smaller than longest input trajectory.')
         if self.lagtime > np.mean(trajlengths):
             warnings.warn(f'Lag time {self.lagtime} is on the order of mean trajectory length '
-                          f'{np.mean(trajlengths)}. It is recommended to fit four lag times in each '
+                          f'{np.mean(trajlengths)}. It is recommended to fit at least four lag times in each '
                           'trajectory. HMM might be inaccurate.')
 
         dtrajs_lagged_strided = compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,

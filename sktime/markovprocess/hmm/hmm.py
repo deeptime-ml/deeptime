@@ -1,17 +1,19 @@
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 import numpy as np
 
 from sktime.base import Model
-from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess import MarkovStateModel, TransitionCountModel
 from sktime.markovprocess.hmm.output_model import OutputModel, DiscreteOutputModel
+from sktime.util import ensure_dtraj_list
+import sktime.markovprocess.hmm._hmm_bindings as _bindings
 
 
 class HiddenMarkovStateModel(Model):
 
     def __init__(self, transition_model: Union[np.ndarray, MarkovStateModel],
                  output_model: Union[np.ndarray, OutputModel],
-                 initial_distribution: Optional[np.ndarray] = None):
+                 initial_distribution: Optional[np.ndarray] = None, count_model: Optional[TransitionCountModel] = None):
         r"""
         Constructs a new hidden markov state model from a (m, m) hidden transition matrix (macro states), an
         observation probability matrix that maps from hidden to observable states (micro states), i.e., a (m, n)-matrix,
@@ -42,6 +44,11 @@ class HiddenMarkovStateModel(Model):
         self._transition_model = transition_model
         self._output_model = output_model
         self._initial_distribution = initial_distribution
+        self._likelihoods = None
+        self._gammas = None
+        self._initial_count = None
+        self._hidden_state_trajectories = None
+        self._count_model = count_model
 
     @property
     def transition_model(self) -> MarkovStateModel:
@@ -58,3 +65,65 @@ class HiddenMarkovStateModel(Model):
     @property
     def n_hidden_states(self):
         return self.output_model.n_hidden_states
+
+    @property
+    def likelihoods(self) -> Optional[np.ndarray]:
+        return self._likelihoods
+
+    @property
+    def likelihood(self) -> Optional[float]:
+        if self.likelihoods is not None:
+            return self.likelihoods[-1]
+        return None
+
+    @property
+    def gammas(self) -> Optional[List[np.ndarray]]:
+        return self._gammas
+
+    @property
+    def count_model(self) -> Optional[TransitionCountModel]:
+        return self._count_model
+
+    @property
+    def transition_counts(self) -> Optional[np.ndarray]:
+        return self.count_model.count_matrix if self.count_model is not None else None
+
+    @property
+    def initial_count(self) -> Optional[np.ndarray]:
+        return self._initial_count
+
+    @property
+    def hidden_state_trajectories(self) -> Optional[List[np.ndarray]]:
+        return self._hidden_state_trajectories
+
+    def compute_viterbi_paths(self, observations: List[np.ndarray]):
+        """Computes the Viterbi paths using the current HMM model"""
+        observations = ensure_dtraj_list(observations)
+        A = self.transition_model.transition_matrix
+        pi = self.initial_distribution
+        state_probabilities = self.output_model.to_state_probability_trajectory(observations)
+        paths = [viterbi(A, obs, pi) for obs in state_probabilities]
+        return paths
+
+
+def viterbi(transition_matrix: np.ndarray, state_probability_trajectory: np.ndarray, initial_distribution: np.ndarray):
+    """ Estimate the hidden pathway of maximum likelihood using the Viterbi algorithm.
+
+    Parameters
+    ----------
+    transition_matrix : ndarray((N,N), dtype = float)
+        transition matrix of the hidden states
+    state_probability_trajectory : ndarray((T,N), dtype = float)
+        pobs[t,i] is the observation probability for observation at time t given hidden state i
+    initial_distribution : ndarray((N), dtype = float)
+        initial distribution of hidden states
+
+    Returns
+    -------
+    q : numpy.array shape (T)
+        maximum likelihood hidden path
+
+    """
+    return _bindings.util.viterbi(transition_matrix=transition_matrix,
+                                  state_probability_trajectory=state_probability_trajectory,
+                                  initial_distribution=initial_distribution)

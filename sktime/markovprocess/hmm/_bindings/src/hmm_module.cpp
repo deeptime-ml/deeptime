@@ -3,6 +3,7 @@
 //
 
 #include "common.h"
+#include "utils.h"
 #include "OutputModelUtils.h"
 
 using namespace pybind11::literals;
@@ -53,5 +54,10 @@ PYBIND11_MODULE(_hmm_bindings, m) {
                      &hmm::output_models::gaussian::generateObservationTrajectory<double>);
         gaussian.def("fit32", &hmm::output_models::gaussian::fit<float>);
         gaussian.def("fit64", &hmm::output_models::gaussian::fit<double>);
+    }
+    {
+        auto util = m.def_submodule("util");
+        util.def("viterbi", &viterbi<float>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a);
+        util.def("viterbi", &viterbi<double>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a);
     }
 }

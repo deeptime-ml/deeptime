@@ -223,7 +223,7 @@ def viterbi(A, pobs, pi):
 
     """
     # prepare path array
-    return _bindings.viterbi(A=A, pobs=pobs, pi=pi, T=len(pobs))
+    return _bindings.viterbi(A=A, state_probability_trajectory=pobs, initial_distribution=pi, T=len(pobs))
 
 
 def sample_path(alpha, A, pobs, T=None, seed=-1):
