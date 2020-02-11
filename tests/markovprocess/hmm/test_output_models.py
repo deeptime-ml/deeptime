@@ -63,7 +63,6 @@ class TestDiscrete(unittest.TestCase):
             [0.6, 0.1, 0.1, 0.1, 0.1],
         ])
 
-
         m = DiscreteOutputModel(output_probabilities)
         obs_traj = np.array([0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4])
         prob_traj = m.to_state_probability_trajectory(obs_traj)
@@ -78,7 +77,7 @@ class TestDiscrete(unittest.TestCase):
         m = DiscreteOutputModel(output_probabilities)
         obs_per_state = [
             np.array([0] * 50000 + [1] * 50000),  # state 0
-            np.array([1] * 30000 + [2] * 70000)   # state 1
+            np.array([1] * 30000 + [2] * 70000)  # state 1
         ]
         m.sample(obs_per_state)
         np.testing.assert_array_almost_equal(m.output_probabilities, np.array([[.5, .5, 0.], [0, .3, .7]]), decimal=2)
@@ -93,7 +92,7 @@ class TestDiscrete(unittest.TestCase):
         obs = [np.random.randint(0, 3, size=10000 + np.random.randint(-3, 3)) for _ in range(n_trajs)]
         weights = [np.random.dirichlet([2, 3, 4], size=o.size) for o in obs]
         m.fit(obs, weights)
-        np.testing.assert_allclose(m.output_probabilities, 1./3, atol=.01)
+        np.testing.assert_allclose(m.output_probabilities, 1. / 3, atol=.01)
 
     @unittest.skip("reference to bhmm")
     def test_observation_trajectory2(self):
@@ -111,6 +110,7 @@ class TestDiscrete(unittest.TestCase):
         bc /= np.sum(bc)
         print(bc)
 
+
 class TestGaussian(unittest.TestCase):
 
     def test_observation_trajectory(self):
@@ -118,7 +118,7 @@ class TestGaussian(unittest.TestCase):
         np.testing.assert_equal(m.n_hidden_states, 3)
         np.testing.assert_equal(m.ignore_outliers, True)
         for state in range(3):
-            traj = m.generate_observation_trajectory(np.array([state]*500000))
+            traj = m.generate_observation_trajectory(np.array([state] * 500000))
             np.testing.assert_almost_equal(np.mean(traj), m.means[state], decimal=3)
             np.testing.assert_almost_equal(np.sqrt(np.var(traj)), m.sigmas[state], decimal=3)
 
@@ -154,7 +154,7 @@ class TestGaussian(unittest.TestCase):
             obs.append(np.array([
                 np.random.normal(expected_means[state], expected_stds[state]) for state in states
             ]))
-        weights = [ np.random.dirichlet([2, 3, 4], size=len(obs[i])).astype(np.float32) for i in range(n_trajs) ]
+        weights = [np.random.dirichlet([2, 3, 4], size=len(obs[i])).astype(np.float32) for i in range(n_trajs)]
 
         from bhmm.output_models import GaussianOutputModel as GOM
         mm = GOM(nstates=3)

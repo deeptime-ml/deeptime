@@ -180,8 +180,9 @@ void backward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &po
         }
 
         // scale first beta
-        for (i = 0; i < N; ++i)
+        for (i = 0; i < N; ++i) {
             betaPtr[(T - 1) * N + i] /= scaling;
+        }
 
         // iterate trajectory
         for (t = T - 1; t >= 1; --t) {

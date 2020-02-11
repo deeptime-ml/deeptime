@@ -3,6 +3,9 @@ import unittest
 import numpy as np
 import sktime.markovprocess.hmm._hmm_bindings as _bindings
 
+from sktime.markovprocess.hmm.hmm import viterbi
+
+
 class TestAlgorithmsAgainstReference(unittest.TestCase):
     """ Tests against example from Wikipedia: http://en.wikipedia.org/wiki/Forward-backward_algorithm#Example """
 
@@ -42,17 +45,21 @@ class TestAlgorithmsAgainstReference(unittest.TestCase):
         np.testing.assert_array_almost_equal(alpha_out, ref_alpha, decimal=4)
 
     def test_backward(self):
-        beta_out = np.zeros((6, 2))
+        beta_out = np.zeros_like(self.state_probabilities)
         _bindings.util.backward(self.transition_probabilities, self.state_probabilities, beta_out=beta_out)
 
         ref_beta = np.array([
-            [1]
+            [0.5923, 0.4077],
+            [0.3763, 0.6237],
+            [0.6533, 0.3467],
+            [0.6273, 0.3727],
+            [.5, .5]
         ])
-        print(beta_out)
-        import bhmm.hidden as refimpl
-        b = refimpl.backward(self.transition_probabilities, self.state_probabilities)
-        print(b)
+        np.testing.assert_array_almost_equal(beta_out, ref_beta, decimal=4)
 
+    def test_viterbi(self):
+        path = viterbi(self.transition_probabilities, self.state_probabilities, np.array([0.5, 0.5]))
+        np.testing.assert_array_equal(path, self.dtraj)
 
 class TestMLHMM(unittest.TestCase):
     pass
