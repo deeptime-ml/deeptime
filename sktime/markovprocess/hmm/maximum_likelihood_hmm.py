@@ -1,8 +1,8 @@
-# This file is part of PyEMMA.
+# This file is part of sktime.
 #
-# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
+# Copyright (c) 2020, 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
 #
-# PyEMMA is free software: you can redistribute it and/or modify
+# sktime is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
@@ -15,72 +15,166 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import collections
-import warnings
-from typing import List, Union
+from typing import List, Union, Optional
 
 import numpy as np
+import sktime.markovprocess.hmm._hmm_bindings as _bindings
 from scipy.sparse import issparse
 
 from sktime.base import Estimator
-from sktime.markovprocess import MarkovStateModel, TransitionCountModel
+from sktime.markovprocess import TransitionCountModel, Q_
 from sktime.markovprocess._transition_matrix import estimate_P, stationary_distribution
-from sktime.markovprocess.bhmm import discrete_hmm, init_discrete_hmm
-from sktime.markovprocess.bhmm.init.discrete import init_discrete_hmm_spectral
 from sktime.markovprocess.hmm import HiddenMarkovStateModel
+from sktime.markovprocess.hmm.hmm import viterbi
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 
 _HMMModelStorage = collections.namedtuple('_HMMModelStorage', ['transition_matrix', 'output_model',
                                                                'initial_distribution'])
 
-def _forward(A, pobs, pi, T=None, alpha=None):
-    """Compute P( obs | A, B, pi ) and all forward coefficients.
-
-    Parameters
-    ----------
-    A : ndarray((N,N), dtype = float)
-        transition matrix of the hidden states
-    pobs : ndarray((T,N), dtype = float)
-        pobs[t,i] is the observation probability for observation at time t given hidden state i
-    pi : ndarray((N), dtype = float)
-        initial distribution of hidden states
-    T : int, optional, default = None
-        trajectory length. If not given, T = pobs.shape[0] will be used.
-    alpha : ndarray((T,N), dtype = float), optional, default = None
-        container for the alpha result variables. If None, a new container will be created.
-
-    Returns
-    -------
-    logprob : float
-        The probability to observe the sequence `ob` with the model given
-        by `A`, `B` and `pi`.
-    alpha : ndarray((T,N), dtype = float), optional, default = None
-        alpha[t,i] is the ith forward coefficient of time t. These can be
-        used in many different algorithms related to HMMs.
-
-    """
-    if T is None:
-        T = len(pobs)  # if not set, use the length of pobs as trajectory length
-    elif T > len(pobs):
-        raise TypeError('T must be at most the length of pobs.')
-    if alpha is None:
-        alpha = np.zeros_like(pobs)
-    elif T > len(alpha):
-        raise TypeError('alpha must at least have length T in order to fit trajectory.')
-
-    return _bindings.forward(A, pobs, pi, alpha, T)
 
 class MaximumLikelihoodHMSM(Estimator):
+    """
+    Maximum likelihood Hidden Markov model (HMM).
+
+    This class is used to fit a maximum-likelihood HMM to data.
+
+    References
+    ----------
+    [1] L. E. Baum and J. A. Egon, "An inequality with applications to statistical
+        estimation for probabilistic functions of a Markov process and to a model
+        for ecology," Bull. Amer. Meteorol. Soc., vol. 73, pp. 360-363, 1967.
+
+    """
 
     def __init__(self, initial_model: HiddenMarkovStateModel, stride: Union[int, str] = 1,
-                 lagtime: int = 1, reversible: bool = False, accuracy=1e-3, maxit=1000, model=None):
-        super().__init__(model=model)
+                 lagtime: int = 1, reversible: bool = True, stationary: bool = False,
+                 p: Optional[np.ndarray] = None, physical_time: str = '1 step', accuracy: float = 1e-3,
+                 maxit: int = 1000, maxit_reversible: int = 100000):
+        r"""
+        Initialize a maximum likelihood hidden Markov model estimator. The type of output model (gaussian or discrete)
+        and the number of hidden states are extracted from the initial model. In case no initial distribution was given,
+        the initial model assumes a uniform initial distribution.
+
+        Parameters
+        ----------
+        initial_model : HiddenMarkovStateModel
+            This model will be used to initialize the hidden markov model estimation routine. Since it is prone to
+            get stuck in local optima, several initializations should be tried and scored and/or one of the available
+            initialization heuristics should be applied, if appropriate.
+        stride : int or str, optional, default=1
+            stride between two lagged trajectories extracted from the input trajectories. Given trajectory s[t], stride
+            and lag will result in trajectories
+                s[0], s[lag], s[2 lag], ...
+                s[stride], s[stride + lag], s[stride + 2 lag], ...
+            Setting stride = 1 will result in using all data (useful for maximum likelihood estimator), while a
+            Bayesian estimator requires a longer stride in order to have statistically uncorrelated trajectories.
+            Setting stride = 'effective' uses the largest neglected timescale as an fit for the correlation time and
+            sets the stride accordingly.
+        lagtime : int, optional, default=1
+            Lag parameter used for fitting the HMM
+        reversible : bool, optional, default=True
+            If True, a prior that enforces reversible transition matrices (detailed balance) is used;
+            otherwise, a standard  non-reversible prior is used.
+        stationary : bool, optional, default=False
+            If True, the initial distribution of hidden states is self-consistently computed as the stationary
+            distribution of the transition matrix. If False, it will be estimated from the starting states.
+            Only set this to true if you're sure that the observation trajectories are initiated from a global
+            equilibrium distribution.
+        p : (n,) ndarray, optional, default=None
+            Initial or fixed stationary distribution. If given and stationary=True, transition matrices will be
+            estimated with the constraint that they have the set parameter as their stationary distribution.
+            If given and stationary=False, the parameter is the fixed initial distribution of hidden states.
+        physical_time : str, optional, default='1 step'
+            Description of the physical time corresponding to the trajectory time
+            step.  May be used by analysis algorithms such as plotting tools to
+            pretty-print the axes. By default '1 step', i.e. there is no physical
+            time unit. Specify by a number, whitespace and unit. Permitted units
+            are (* is an arbitrary string):
+
+            |  'fs',  'femtosecond*'
+            |  'ps',  'picosecond*'
+            |  'ns',  'nanosecond*'
+            |  'us',  'microsecond*'
+            |  'ms',  'millisecond*'
+            |  's',   'second*'
+        accuracy : float, optional, default=1e-3
+            Convergence threshold for EM iteration. When two the likelihood does not increase by more than
+            accuracy, the iteration is stopped successfully.
+        maxit : int, optional, default=1000
+            Stopping criterion for EM iteration. When this many iterations are performed without reaching the requested
+            accuracy, the iteration is stopped without convergence and a warning is given.
+        maxit_reversible : int, optional, default=1000000
+            Maximum number of iterations for reversible transition matrix estimation. Only used with reversible=True.
+        """
+        super().__init__()
         self.initial_transition_model = initial_model
         self.stride = stride
         self.lagtime = lagtime
         self.reversible = reversible
+        self.stationary = stationary
+        if stationary:
+            self.fixed_stationary_distribution = p
+        else:
+            self.fixed_initial_distribution = p
         self.accuracy = accuracy
         self.maxit = maxit
+        self.maxit_reversible = maxit_reversible
+        self.physical_time = physical_time
+
+    @property
+    def physical_time(self) -> Q_:
+        r""" yields a description of the physical time """
+        return self._physical_time
+
+    @physical_time.setter
+    def physical_time(self, value: str):
+        r"""
+        Sets a description of the physical time for input trajectories. Specify by a number, whitespace, and unit.
+        Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
+
+        Parameters
+        ----------
+        value : str
+            the physical time description
+        """
+        self._physical_time = Q_(value)
+
+    @property
+    def maxit_reversible(self) -> int:
+        return self._maxit_reversible
+
+    @maxit_reversible.setter
+    def maxit_reversible(self, value: int):
+        self._maxit_reversible = int(value)
+
+    @property
+    def fixed_stationary_distribution(self) -> Optional[np.ndarray]:
+        return self._fixed_stationary_distribution
+
+    @fixed_stationary_distribution.setter
+    def fixed_stationary_distribution(self, value: Optional[np.ndarray]):
+        if value is not None and value.shape[0] != self.n_hidden_states:
+            raise ValueError("Fixed stationary distribution must be as long as there are hidden states.")
+        self._fixed_stationary_distribution = value
+
+    @property
+    def fixed_initial_distribution(self) -> Optional[np.ndarray]:
+        return self._fixed_initial_distribution
+
+    @fixed_initial_distribution.setter
+    def fixed_initial_distribution(self, value: Optional[np.ndarray]):
+        if value is not None and value.shape[0] != self.n_hidden_states:
+            raise ValueError("Fixed initial distribution must be as long as there are hidden states.")
+        self._fixed_initial_distribution = value
+
+    @property
+    def stationary(self) -> bool:
+        return self._stationary
+
+    @stationary.setter
+    def stationary(self, value: bool):
+        self._stationary = bool(value)
 
     @property
     def accuracy(self) -> float:
@@ -171,7 +265,6 @@ class MaximumLikelihoodHMSM(Estimator):
         N = self.n_states
         alpha = np.zeros((max_n_frames, N))
         beta = np.zeros((max_n_frames, N))
-        pobs = np.zeros((max_n_frames, N))
         gammas = [np.zeros((len(obs), N)) for obs in dtrajs]
         count_matrices = [np.zeros((N, N)) for _ in dtrajs]
 
@@ -185,7 +278,8 @@ class MaximumLikelihoodHMSM(Estimator):
         while not converged and it < self.maxit:
             loglik = 0.0
             for obs, gamma, counts in zip(dtrajs, gammas, count_matrices):
-                loglik += self._forward_backward(hmm_data, obs, alpha, beta, gamma, pobs, counts)
+                loglik_update, _ = self._forward_backward(hmm_data, obs, alpha, beta, gamma, counts)
+                loglik += loglik_update
             assert np.isfinite(loglik), it
 
             # convergence check
@@ -216,15 +310,14 @@ class MaximumLikelihoodHMSM(Estimator):
         model = HiddenMarkovStateModel(
             transition_model=hmm_data.transition_matrix,
             output_model=hmm_data.output_model,
-            initial_distribution=hmm_data.initial_distribution
+            initial_distribution=hmm_data.initial_distribution,
+            likelihoods=likelihoods,
+            state_probabilities=gammas,
+            initial_count=self._init_counts(gammas),
+            hidden_state_trajectories=[viterbi(hmm_data.transition_matrix, obs, hmm_data.initial_distribution)
+                                       for obs in dtrajs],
+            count_model=count_model
         )
-        # todo make ctor args
-        model._count_model = count_model
-        model._likelihoods = likelihoods
-        model._gammas = gammas
-        model._initial_count = self._init_counts(gammas)
-        model._hidden_state_trajectories = model.compute_viterbi_paths(dtrajs)
-
         self._model = model
         return self
 
@@ -235,14 +328,26 @@ class MaximumLikelihoodHMSM(Estimator):
 
         Parameters
         ----------
+        model: _HMMModelStorage
+            named tuple with transition matrix, initial distribution, output model
         obs: np.ndarray
             single observation corresponding to index itraj
+        alpha: ndarray
+            forward coefficients
+        beta: ndarray
+            backward coefficients
+        gamma: ndarray
+            gammas
+        counts: ndarray
+            count matrix
 
         Returns
         -------
         logprob : float
             The probability to observe the observation sequence given the HMM
             parameters
+        pobs : ndarray
+            state probability trajectory obtained from obs
         """
         # get parameters
         A = model.transition_matrix
@@ -251,13 +356,13 @@ class MaximumLikelihoodHMSM(Estimator):
         # compute output probability matrix
         pobs = model.output_model.to_state_probability_trajectory(obs)
         # forward variables
-        logprob, _ = hidden.forward(A, pobs, pi, T=T, alpha=alpha)
+        logprob = _bindings.util.forward(A, pobs, pi, alpha_out=alpha, T=T)
         # backward variables
-        hidden.backward(A, pobs, T=T, beta_out=beta)
+        _bindings.util.backward(A, pobs, beta_out=beta, T=T)
         # gamma
-        hidden.state_probabilities(alpha, beta, T=T, gamma_out=gamma)
+        _bindings.util.state_probabilities(alpha, beta, gamma_out=gamma, T=T)
         # count matrix
-        hidden.transition_counts(alpha, beta, A, pobs, T=T, out=counts)
+        _bindings.util.transition_counts(alpha, beta, A, pobs, counts_out=counts, T=T)
         return logprob, pobs
 
     def _init_counts(self, gammas):
@@ -293,235 +398,20 @@ class MaximumLikelihoodHMSM(Estimator):
         C = self._reduce_transition_counts(count_matrices)
 
         # compute new transition matrix
-        T = estimate_P(C, reversible=self.reversible, fixed_statdist=self._fixed_stationary_distribution,
+        T = estimate_P(C, reversible=self.reversible, fixed_statdist=self.fixed_stationary_distribution,
                        maxiter=maxiter, maxerr=1e-12, mincount_connectivity=1e-16)
         # estimate stationary or init distribution
-        if self._stationary:
-            if self._fixed_stationary_distribution is None:
+        if self.stationary:
+            if self.fixed_stationary_distribution is None:
                 pi = stationary_distribution(T, C=C, mincount_connectivity=1e-16)
             else:
-                pi = self._fixed_stationary_distribution
+                pi = self.fixed_stationary_distribution
         else:
-            if self._fixed_initial_distribution is None:
+            if self.fixed_initial_distribution is None:
                 pi = gamma0_sum / np.sum(gamma0_sum)
             else:
-                pi = self._fixed_initial_distribution
+                pi = self.fixed_initial_distribution
 
         model.initial_distribution = pi
         model.transition_matrix = T
         model.output_model.fit(observations, gammas)
-
-
-class MaximumLikelihoodHMSM2(Estimator):
-    """
-    Maximum likelihood hidden markov state model estimator.
-    """
-
-    def __init__(self, n_states=2, lagtime=1, stride=1, msm_init='largest-strong', reversible=True, stationary=False,
-                 connectivity=None, observe_nonempty=True, separate=None,
-                 physical_time='1 step', accuracy=1e-3, maxit=1000):
-        r"""Maximum likelihood estimator for a Hidden MSM given a MSM
-
-        Parameters
-        ----------
-        n_states : int, optional, default=2
-            number of hidden states
-        lag : int, optional, default=1
-            lagtime to fit the HMSM at
-        stride : str or int, default=1
-            stride between two lagged trajectories extracted from the input
-            trajectories. Given trajectory s[t], stride and lag will result
-            in trajectories
-                s[0], s[lag], s[2 lag], ...
-                s[stride], s[stride + lag], s[stride + 2 lag], ...
-            Setting stride = 1 will result in using all data (useful for maximum
-            likelihood estimator), while a Bayesian estimator requires a longer
-            stride in order to have statistically uncorrelated trajectories.
-            Setting stride = 'effective' uses the largest neglected timescale as
-            an fit for the correlation time and sets the stride accordingly
-        msm_init : str or :class:`MSM <sktime.markovprocess.MarkovStateModel>`
-            MSM object to initialize the estimation, or one of following keywords:
-
-            * 'largest-strong' or None (default) : Estimate MSM on the largest
-                strongly connected set and use spectral clustering to generate an
-                initial HMM
-            * 'all' : Estimate MSM(s) on the full state space to initialize the
-                HMM. This fit may be weakly connected or disconnected.
-        reversible : bool, optional, default = True
-            If true compute reversible MSM, else non-reversible MSM
-        stationary : bool, optional, default=False
-            If True, the initial distribution of hidden states is self-consistently computed as the stationary
-            distribution of the transition matrix. If False, it will be estimated from the starting states.
-            Only set this to true if you're sure that the observation trajectories are initiated from a global
-            equilibrium distribution.
-        connectivity : str, optional, default = None
-            Defines if the resulting HMM will be defined on all hidden states or on
-            a connected subset. Connectivity is defined by counting only
-            transitions with at least mincount_connectivity counts.
-            If a subset of states is used, all estimated quantities (transition
-            matrix, stationary distribution, etc) are only defined on this subset
-            and are correspondingly smaller than n_states.
-            Following modes are available:
-
-            * None or 'all' : The active set is the full set of states.
-              Estimation is done on all weakly connected subsets separately. The
-              resulting transition matrix may be disconnected.
-            * 'largest' : The active set is the largest reversibly connected set.
-            * 'populous' : The active set is the reversibly connected set with most counts.
-        separate : None or iterable of int
-            Force the given set of observed states to stay in a separate hidden state.
-            The remaining n_states-1 states will be assigned by a metastable decomposition.
-        observe_nonempty : bool
-            If True, will restricted the observed states to the states that have
-            at least one observation in the lagged input trajectories.
-            If an initial MSM is given, this option is ignored and the observed
-            subset is always identical to the active set of that MSM.
-        physical_time : str, optional, default='1 step'
-            Description of the physical time corresponding to the trajectory time
-            step.  May be used by analysis algorithms such as plotting tools to
-            pretty-print the axes. By default '1 step', i.e. there is no physical
-            time unit. Specify by a number, whitespace and unit. Permitted units
-            are (* is an arbitrary string):
-
-            |  'fs',  'femtosecond*'
-            |  'ps',  'picosecond*'
-            |  'ns',  'nanosecond*'
-            |  'us',  'microsecond*'
-            |  'ms',  'millisecond*'
-            |  's',   'second*'
-
-        accuracy : float, optional, default = 1e-3
-            convergence threshold for EM iteration. When two the likelihood does
-            not increase by more than accuracy, the iteration is stopped
-            successfully.
-        maxit : int, optional, default = 1000
-            stopping criterion for EM iteration. When so many iterations are
-            performed without reaching the requested accuracy, the iteration is
-            stopped without convergence (a warning is given)
-
-        """
-        super(MaximumLikelihoodHMSM2, self).__init__()
-        self.n_hidden_states = n_states
-        self.lagtime = lagtime
-        self.stride = stride
-        self.msm_init = msm_init
-        self.reversible = reversible
-        self.stationary = stationary
-        self.connectivity = connectivity
-        self.separate = separate
-        self.observe_nonempty = observe_nonempty
-        self.physical_time = physical_time
-        self.accuracy = accuracy
-        self.maxit = maxit
-
-    def fetch_model(self) -> HiddenMarkovStateModel:
-        return self._model
-
-    @staticmethod
-    def initial_guess(dtrajs, lagtime, n_hidden_states, stride) -> HiddenMarkovStateModel:
-        dtrajs = ensure_dtraj_list(dtrajs)
-        dtrajs_lagged_strided = compute_dtrajs_effective(dtrajs, lagtime=lagtime,
-                                                         n_states=n_hidden_states,
-                                                         stride=stride)
-
-    def fit(self, dtrajs, **kwargs):
-        dtrajs = ensure_dtraj_list(dtrajs)
-        # CHECK LAG
-        trajlengths = [len(dtraj) for dtraj in dtrajs]
-        if self.lagtime >= np.max(trajlengths):
-            raise ValueError(f'Illegal lag time {self.lagtime}, needs to be smaller than longest input trajectory.')
-        if self.lagtime > np.mean(trajlengths):
-            warnings.warn(f'Lag time {self.lagtime} is on the order of mean trajectory length '
-                          f'{np.mean(trajlengths)}. It is recommended to fit at least four lag times in each '
-                          'trajectory. HMM might be inaccurate.')
-
-        dtrajs_lagged_strided = compute_dtrajs_effective(dtrajs, lagtime=self.lagtime,
-                                                         n_states=self.n_hidden_states,
-                                                         stride=self.stride)
-
-        # INIT HMM
-        if isinstance(self.msm_init, str):
-            args = dict(observations=dtrajs_lagged_strided, n_states=self.n_hidden_states, lag=1,
-                        reversible=self.reversible, stationary=True, regularize=True,
-                        separate=self.separate)
-            if self.msm_init == 'largest-strong':
-                args['method'] = 'lcs-spectral'
-            elif self.msm_init == 'all':
-                args['method'] = 'spectral'
-
-            hmm_init = init_discrete_hmm(**args)
-        elif isinstance(self.msm_init, MarkovStateModel):
-            msm_count_model = self.msm_init.count_model
-            # pcca = self.msm_init.pcca(n_metastable_sets=self.n_hidden_states)
-
-            p0, P0, pobs0 = init_discrete_hmm_spectral(msm_count_model.count_matrix.toarray(),
-                                                       self.n_hidden_states, reversible=self.reversible,
-                                                       stationary=True, P=self.msm_init.transition_matrix,
-                                                       separate=self.separate)
-            hmm_init = discrete_hmm(p0, P0, pobs0)
-        else:
-            raise RuntimeError("msm init was neither a string (largest-strong or spectral) nor "
-                               "a MarkovStateModel: {}".format(self.msm_init))
-
-        # ---------------------------------------------------------------------------------------
-        # Estimate discrete HMM
-        # ---------------------------------------------------------------------------------------
-        from sktime.markovprocess.bhmm.estimators.maximum_likelihood import MaximumLikelihoodHMM
-        hmm_est = MaximumLikelihoodHMM(self.n_hidden_states, initial_model=hmm_init,
-                                       output='discrete', reversible=self.reversible, stationary=self.stationary,
-                                       accuracy=self.accuracy, maxit=self.maxit)
-        hmm = hmm_est.fit(dtrajs_lagged_strided).fetch_model()
-        # observation_state_symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
-        # update the count matrix from the counts obtained via the Viterbi paths.
-        hmm_count_model = TransitionCountModel(count_matrix=hmm.transition_counts,
-                                               lagtime=self.lagtime,
-                                               physical_time=self.physical_time)
-        # set model parameters
-        self._model = HiddenMarkovStateModel(transition_matrix=hmm.transition_matrix,
-                                             observation_probabilities=hmm.output_model.output_probabilities,
-                                             stride=self.stride,
-                                             stationary_distribution=hmm.stationary_distribution,
-                                             initial_counts=hmm.initial_count,
-                                             reversible=self.reversible,
-                                             initial_distribution=hmm.initial_distribution, count_model=hmm_count_model,
-                                             bhmm_model=hmm,
-                                             observation_state_symbols=None)
-        return self
-
-    @property
-    def msm_init(self):
-        """ MSM initialization method, should be one of:
-        * instance of :class:`MSM <sktime.markovprocess.MarkovStateModel>`
-
-        or a string:
-
-        * 'largest-strong' or None (default) : Estimate MSM on the largest
-            strongly connected set and use spectral clustering to generate an
-            initial HMM
-        * 'all' : Estimate MSM(s) on the full state space to initialize the
-            HMM. This fit maybe weakly connected or disconnected.
-        """
-        return self._msm_init
-
-    @msm_init.setter
-    def msm_init(self, value: [str, MarkovStateModel]):
-        if isinstance(value, MarkovStateModel) and value.count_model is None:
-            raise NotImplementedError('Requires markov state model instance that contains a count model '
-                                      'with count matrix for estimation.')
-        elif isinstance(value, str):
-            supported = ('largest-strong', 'all')
-            if value not in supported:
-                raise NotImplementedError(f'unknown msm_init value, was "{value}",'
-                                          f'but valid options are {supported}.')
-        self._msm_init = value
-
-    @property
-    def connectivity(self):
-        return self._connectivity
-
-    @connectivity.setter
-    def connectivity(self, value):
-        allowed = (None, 'largest', 'populous')
-        if value not in allowed:
-            raise ValueError(f'Illegal value for connectivity: {value}. Allowed values are one of: {allowed}.')
-        self._connectivity = value

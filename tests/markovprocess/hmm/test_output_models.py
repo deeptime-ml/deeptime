@@ -1,8 +1,7 @@
 import unittest
 
 import numpy as np
-from sktime.markovprocess.hmm.output_model import DiscreteOutputModel
-from sktime.markovprocess.hmm.output_model import GaussianOutputModel
+from sktime.markovprocess.hmm.output_model import DiscreteOutputModel, GaussianOutputModel
 
 
 class TestDiscrete(unittest.TestCase):
@@ -155,13 +154,11 @@ class TestGaussian(unittest.TestCase):
             obs.append(np.array([
                 np.random.normal(expected_means[state], expected_stds[state]) for state in states
             ]))
-        # weights=[np.ones([len(o), 3], dtype=o.dtype) for o in obs]
-
         weights = [ np.random.dirichlet([2, 3, 4], size=len(obs[i])).astype(np.float32) for i in range(n_trajs) ]
 
-        from sktime.markovprocess.bhmm.output_models import GaussianOutputModel as GOM
-        mm = GOM(n_states=3)
-        mm.fit(obs, weights=weights)
+        from bhmm.output_models import GaussianOutputModel as GOM
+        mm = GOM(nstates=3)
+        mm.estimate(obs, weights=weights)
         m.fit(obs, weights=weights)
         print(m.means, m.sigmas)
         print(mm.means, mm.sigmas)

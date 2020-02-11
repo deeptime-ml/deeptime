@@ -20,7 +20,6 @@
 import numpy as np
 
 from sktime.base import Estimator
-from sktime.markovprocess.bhmm.estimators._tmatrix_disconnected import estimate_P, stationary_distribution
 from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
 from .. import hidden, init_hmm
 
@@ -52,27 +51,17 @@ class MaximumLikelihoodHMM(Estimator):
         type : str, optional, default=None
             Output model type from [None, 'gaussian', 'discrete'].
         reversible : bool, optional, default=True
-            If True, a prior that enforces reversible transition matrices (detailed
-            balance) is used; otherwise, a standard  non-reversible prior is used.
+
         stationary : bool, optional, default=False
-            If True, the initial distribution of hidden states is self-consistently
-            computed as the stationary distribution of the transition matrix. If
-            False, it will be estimated from the starting states.
+
         p : ndarray (n_states), optional, default=None
-            Initial or fixed stationary distribution. If given and stationary=True,
-            transition matrices will be estimated with the constraint that they
-            have p as their stationary distribution. If given and stationary=False,
-            p is the fixed initial distribution of hidden states.
+
         accuracy : float
-            convergence threshold for EM iteration. When two the likelihood does
-            not increase by more than accuracy, the iteration is stopped successfully.
+
         maxit : int
-            stopping criterion for EM iteration. When so many iterations are
-            performed without reaching the requested accuracy, the iteration is
-            stopped without convergence (a warning is given)
+
         maxit_P : int
-            maximum number of iterations for reversible transition matrix estimation.
-            Only used with reversible=True.
+
 
         """
         # Use user-specified initial model, if provided.

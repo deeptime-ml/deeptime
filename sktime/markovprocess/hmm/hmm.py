@@ -13,7 +13,12 @@ class HiddenMarkovStateModel(Model):
 
     def __init__(self, transition_model: Union[np.ndarray, MarkovStateModel],
                  output_model: Union[np.ndarray, OutputModel],
-                 initial_distribution: Optional[np.ndarray] = None, count_model: Optional[TransitionCountModel] = None):
+                 initial_distribution: Optional[np.ndarray] = None,
+                 likelihoods: Optional[np.ndarray] = None,
+                 state_probabilities: Optional[List[np.ndarray]] = None,
+                 initial_count : Optional[np.ndarray] = None,
+                 hidden_state_trajectories : Optional[List[np.ndarray]] = None,
+                 count_model: Optional[TransitionCountModel] = None):
         r"""
         Constructs a new hidden markov state model from a (m, m) hidden transition matrix (macro states), an
         observation probability matrix that maps from hidden to observable states (micro states), i.e., a (m, n)-matrix,
@@ -28,6 +33,14 @@ class HiddenMarkovStateModel(Model):
             the mapping from hidden to observable state.
         initial_distribution : (m,) ndarray, optional, default=None
             Initial distribution of the hidden (macro) states. Default is uniform.
+        likelihoods : (k,) ndarray, optional, default=None
+            Likelihood progression of the HMM as it was trained for k iterations with Baum-Welch.
+        state_probabilities : list of ndarray, optional, default=None
+            List of state probabilities for each trajectory that the model was trained on (gammas).
+        initial_count : ndarray, optional, default=None
+            Initial counts of the hidden (macro) states, computed from the gamma output of the Baum-Welch algorithm
+        count_model : TransitionCountModel, optional, default=None
+            Transition count model containing count matrix, lagtime, and physical time description
         """
         if isinstance(transition_model, np.ndarray):
             transition_model = MarkovStateModel(transition_model)
@@ -44,10 +57,10 @@ class HiddenMarkovStateModel(Model):
         self._transition_model = transition_model
         self._output_model = output_model
         self._initial_distribution = initial_distribution
-        self._likelihoods = None
-        self._gammas = None
-        self._initial_count = None
-        self._hidden_state_trajectories = None
+        self._likelihoods = likelihoods
+        self._state_probabilities = state_probabilities
+        self._initial_count = initial_count
+        self._hidden_state_trajectories = hidden_state_trajectories
         self._count_model = count_model
 
     @property
@@ -78,7 +91,7 @@ class HiddenMarkovStateModel(Model):
 
     @property
     def gammas(self) -> Optional[List[np.ndarray]]:
-        return self._gammas
+        return self._state_probabilities
 
     @property
     def count_model(self) -> Optional[TransitionCountModel]:

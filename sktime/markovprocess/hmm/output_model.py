@@ -8,7 +8,7 @@ import sktime.markovprocess.hmm._hmm_bindings.output_models as _bindings
 from sktime.base import Model
 
 
-class OutputModel(metaclass=abc.ABCMeta, Model):
+class OutputModel(Model, metaclass=abc.ABCMeta):
 
     def __init__(self, n_hidden_states: int, n_observable_states: int, ignore_outliers: bool = True):
         self._n_hidden_states = n_hidden_states

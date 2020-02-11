@@ -15,7 +15,7 @@ state_probability_trajectory : ndarray((T,N), dtype = float)
     state_probability_trajectory[t,i] is the observation probability for observation at time t given hidden state i
 initial_distribution : ndarray((N), dtype = float)
     initial distribution of hidden states
-alpha : ndarray((T,N), dtype = float)
+alpha_out : ndarray((T,N), dtype = float)
     container for the alpha result variables. alpha[t,i] is the ith forward coefficient of time t. These can be
     used in many different algorithms related to HMMs.
 T : int, optional, default = None
@@ -34,7 +34,7 @@ transition_matrix : ndarray((N,N), dtype = float)
     transition matrix of the hidden states
 state_probability_trajectory : ndarray((T,N), dtype = float)
     pobs[t,i] is the observation probability for observation at time t given hidden state i
-beta : ndarray((T,N), dtype = float)
+beta_out : ndarray((T,N), dtype = float)
     container for the beta result variables. beta[t,i] is the ith backward coefficient of time t. These can be
     used in many different algorithms related to HMMs.
 T : int, optional, default = None
@@ -73,7 +73,7 @@ state_probability_trajectory : ndarray((T,N), dtype = float)
     state_probability_trajectory[t,i] is the observation probability for observation at time t given hidden state i
 T : int, optional, default=None
     number of time steps, if None set to len(pobs)
-counts : ndarray((N,N), dtype = float)
+counts_out : ndarray((N,N), dtype = float)
     container for the resulting count matrix. counts[i, j] is the summed probability to transition from i to j in time [0,T)
 
 See Also
