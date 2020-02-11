@@ -58,14 +58,17 @@ PYBIND11_MODULE(_hmm_bindings, m) {
     }
     {
         auto util = m.def_submodule("util");
-        util.def("viterbi", &viterbi<float>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a);
-        util.def("viterbi", &viterbi<double>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a);
+        util.def("viterbi", &viterbiPath<float>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a, docs::VITERBI);
+        util.def("viterbi", &viterbiPath<double>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a, docs::VITERBI);
         util.def("forward", &forward<float>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a, "alpha"_a, "T"_a = py::none(), docs::FORWARD);
         util.def("forward", &forward<double>, "transition_matrix"_a, "state_probability_trajectory"_a, "initial_distribution"_a, "alpha"_a, "T"_a = py::none(), docs::FORWARD);
         util.def("backward", &backward<float>, "transition_matrix"_a, "state_probability_trajectory"_a, "beta"_a, "T"_a = py::none(), docs::BACKWARD);
         util.def("backward", &backward<double>, "transition_matrix"_a, "state_probability_trajectory"_a, "beta"_a, "T"_a = py::none(), docs::BACKWARD);
         util.def("state_probabilities", &stateProbabilities<float>, "alpha"_a, "beta"_a, "gamma"_a, "T"_a = py::none(), docs::STATE_PROBS);
         util.def("state_probabilities", &stateProbabilities<double>, "alpha"_a, "beta"_a, "gamma"_a, "T"_a = py::none(), docs::STATE_PROBS);
-
+        util.def("transition_counts", &transitionCounts<float>, "alpha"_a, "beta"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "counts"_a, "T"_a = py::none(), docs::TRANSITION_COUNTS);
+        util.def("transition_counts", &transitionCounts<double>, "alpha"_a, "beta"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "counts"_a, "T"_a = py::none(), docs::TRANSITION_COUNTS);
+        util.def("samplePath", &samplePath<float>, "alpha"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "T"_a = py::none(), "seed"_a = -1, docs::SAMPLE_PATH);
+        util.def("samplePath", &samplePath<double>, "alpha"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "T"_a = py::none(), "seed"_a = -1, docs::SAMPLE_PATH);
     }
 }

@@ -7,8 +7,8 @@
 #include "common.h"
 
 template<typename dtype>
-np_array<int> viterbi(const np_array<dtype> &transitionMatrix, const np_array<dtype> &stateProbabilityTraj,
-                      const np_array<dtype> &initialDistribution) {
+np_array<std::int32_t> viterbiPath(const np_array<dtype> &transitionMatrix, const np_array<dtype> &stateProbabilityTraj,
+                                   const np_array<dtype> &initialDistribution) {
     auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
     auto T = static_cast<std::size_t>(stateProbabilityTraj.shape(0));
     np_array<std::int32_t> path(std::vector<std::size_t>{T});
@@ -83,10 +83,10 @@ dtype forward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &pO
             return py::cast<std::size_t>(pyT);
         }
     }();
-    if (T > pObs.shape(0)) {
+    if (T > static_cast<std::size_t>(pObs.shape(0))) {
         throw std::invalid_argument("T must be at most the length of pobs.");
     }
-    if (alpha.ndim() != pObs.ndim() || alpha.shape(0) < T || alpha.shape(1) != pObs.shape(1)) {
+    if (alpha.ndim() != pObs.ndim() || static_cast<std::size_t>(alpha.shape(0)) < T || alpha.shape(1) != pObs.shape(1)) {
         throw std::invalid_argument("Shape mismatch: Shape of state probability trajectory must match shape of alphas");
     }
 
@@ -156,7 +156,7 @@ void backward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &po
         }
     }();
 
-    if (beta.ndim() != pobs.ndim() || beta.shape(0) < T || beta.shape(1) != pobs.shape(1)) {
+    if (beta.ndim() != pobs.ndim() || static_cast<std::size_t>(beta.shape(0)) < T || beta.shape(1) != pobs.shape(1)) {
         throw std::invalid_argument("Shape mismatch: Beta must have at least size T and otherwise shape of beta must "
                                     "match shape of state probability trajectory.");
     }
@@ -221,139 +221,97 @@ void stateProbabilities(const np_array<dtype> &alpha, const np_array<dtype> &bet
     auto gammaPtr = gamma.mutable_data();
 
     #pragma omp parallel for collapse(2)
-    for(std::size_t t = 0; t < T; ++t) {
-        for(std::size_t n = 0; n < N; ++n) {
-            *(gammaPtr + t*N + n) = *(alphaPtr + t*N + n) * *(betaPtr + t*N + n);
+    for (std::size_t t = 0; t < T; ++t) {
+        for (std::size_t n = 0; n < N; ++n) {
+            *(gammaPtr + t * N + n) = *(alphaPtr + t * N + n) * *(betaPtr + t * N + n);
         }
     }
-    dtype gammaSum;
+    dtype gammaSum = 0;
     #pragma omp parallel for reduction(+:gammaSum)
-    for(std::size_t i = 0; i < gamma.size(); ++i) {
+    for (ssize_t i = 0; i < gamma.size(); ++i) {
         gammaSum += *(gammaPtr + i);
     }
 
     #pragma omp parallel for
-    for(std::size_t i = 0; i < gamma.size(); ++i) {
+    for (ssize_t i = 0; i < gamma.size(); ++i) {
         gammaPtr[i] /= gammaSum;
     }
 }
 
 template<typename dtype>
-void transitionCounts(const np_array<dtype> &alpha, const np_array<dtype> &beta, const np_array<dtype> &A,
-                      const np_array<dtype> &pobs, std::size_t T, np_array<dtype> &counts) {
+void transitionCounts(const np_array<dtype> &alpha, const np_array<dtype> &beta,
+                      const np_array<dtype> &transitionMatrix,
+                      const np_array<dtype> &pObs, np_array<dtype> &counts, const py::object &pyT) {
+    std::size_t T = [&pyT, &pObs]() {
+        if (pyT.is_none()) {
+            return static_cast<std::size_t>(pObs.shape(0));
+        } else {
+            return py::cast<std::size_t>(pyT);
+        }
+    }();
+    if (static_cast<std::size_t>(pObs.shape(0)) < T) {
+        throw std::invalid_argument("T must be at least the length of pObs.");
+    }
+    if (!arraySameShape(transitionMatrix, counts)) {
+        throw std::invalid_argument("Shape mismatch: counts must be same shape as transition matrix.");
+    }
     auto countsBuf = counts.mutable_data();
     auto alphaBuf = alpha.data();
-    auto ABuf = A.data();
+    auto transitionMatrixPtr = transitionMatrix.data();
     auto betaBuf = beta.data();
-    auto pobsBuf = pobs.data();
+    auto pObsBuf = pObs.data();
 
-    auto N = static_cast<std::size_t>(A.shape(0));
+    auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
 
-    {
-        py::gil_scoped_release gil;
+    py::gil_scoped_release gil;
 
-        std::fill(countsBuf, countsBuf + counts.size(), 0.0);
+    std::fill(countsBuf, countsBuf + counts.size(), 0.0);
 
-        dtype sum;
+    dtype sum;
 
-        std::unique_ptr<dtype[]> tmp = std::unique_ptr<dtype[]>(new dtype[N * N]);
+    std::unique_ptr<dtype[]> tmp = std::unique_ptr<dtype[]>(new dtype[N * N]);
 
-        for (std::size_t t = 0; t < T - 1; t++) {
-            sum = 0.0;
-            for (std::size_t i = 0; i < N; i++) {
-                for (std::size_t j = 0; j < N; j++) {
-                    tmp[i * N + j] =
-                            alphaBuf[t * N + i] * ABuf[i * N + j] * pobsBuf[(t + 1) * N + j] * betaBuf[(t + 1) * N + j];
-                    sum += tmp[i * N + j];
-                }
-            }
-            for (std::size_t i = 0; i < N; i++) {
-                for (std::size_t j = 0; j < N; j++) {
-                    countsBuf[i * N + j] += tmp[i * N + j] / sum;
-                }
-            }
-        }
-    }
-}
-
-template<typename dtype>
-np_array<int> viterbi(const np_array<dtype> &A, const np_array<dtype> &pobs, const np_array<dtype> &pi, std::size_t T) {
-    auto N = static_cast<std::size_t>(A.shape(0));
-
-    np_array<std::int32_t> path(std::vector<std::size_t>{T});
-    auto pathBuf = path.mutable_data();
-    auto ABuf = A.data();
-    auto pobsBuf = pobs.data();
-    auto piBuf = pi.data();
-    {
-        py::gil_scoped_release gil;
-
-        std::fill(pathBuf, pathBuf + path.size(), 0);
-
-        std::size_t i, j, t, maxi;
-        dtype sum;
-        auto vData = std::unique_ptr<dtype[]>(new dtype[N]);
-        auto v = vData.get();
-        auto vnextData = std::unique_ptr<dtype[]>(new dtype[N]);
-        auto vnext = vnextData.get();
-        auto hData = std::unique_ptr<dtype[]>(new dtype[N]);
-        auto h = hData.get();
-        auto ptr = std::unique_ptr<std::int32_t[]>(new std::int32_t[T * N]);
-
-        // initialization of v
+    for (std::size_t t = 0; t < T - 1; t++) {
         sum = 0.0;
-        for (i = 0; i < N; i++) {
-            v[i] = pobsBuf[i] * piBuf[i];
-            sum += v[i];
-        }
-        // normalize
-        for (i = 0; i < N; i++) {
-            v[i] /= sum;
-        }
-
-        // iteration of v
-        for (t = 1; t < T; t++) {
-            sum = 0.0;
-            for (j = 0; j < N; j++) {
-                for (i = 0; i < N; i++) {
-                    h[i] = v[i] * ABuf[i * N + j];
-                }
-                maxi = std::distance(h, std::max_element(h, h + N));
-                ptr[t * N + j] = maxi;
-                vnext[j] = pobsBuf[t * N + j] * v[maxi] * ABuf[maxi * N + j];
-                sum += vnext[j];
+        for (std::size_t i = 0; i < N; i++) {
+            for (std::size_t j = 0; j < N; j++) {
+                tmp[i * N + j] =
+                        alphaBuf[t * N + i] * transitionMatrixPtr[i * N + j] * pObsBuf[(t + 1) * N + j] *
+                        betaBuf[(t + 1) * N + j];
+                sum += tmp[i * N + j];
             }
-            // normalize
-            for (i = 0; i < N; i++) {
-                vnext[i] /= sum;
+        }
+        for (std::size_t i = 0; i < N; i++) {
+            for (std::size_t j = 0; j < N; j++) {
+                countsBuf[i * N + j] += tmp[i * N + j] / sum;
             }
-            // update v
-            std::swap(v, vnext);
         }
-
-        // path reconstruction
-        pathBuf[T - 1] = std::distance(v, std::max_element(v, v + N));
-        for (t = T - 1; t >= 1; t--) {
-            pathBuf[t - 1] = ptr[t * N + pathBuf[t]];
-        }
-
-
     }
-    return path;
 }
 
 template<typename Iter1, typename Iter2>
 void normalize(Iter1 begin, Iter2 end) {
     auto sum = std::accumulate(begin, end, typename std::iterator_traits<Iter1>::value_type());
-    for(auto it = begin; it != end; ++it) {
+    for (auto it = begin; it != end; ++it) {
         *it /= sum;
     }
 }
 
 template<typename dtype>
-np_array<std::int32_t> samplePath(const np_array<dtype> &alpha, const np_array<dtype> &A, const np_array<dtype> &pobs, std::size_t T,
-                                  int seed = -1) {
-    auto N = static_cast<std::size_t>(A.shape(0));
+np_array<std::int32_t>
+samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix, const np_array<dtype> &pobs,
+           const py::object &pyT, int seed = -1) {
+    std::size_t T = [&pyT, &pobs]() {
+        if (pyT.is_none()) {
+            return static_cast<std::size_t>(pobs.shape(0));
+        } else {
+            return py::cast<std::size_t>(pyT);
+        }
+    }();
+    if(static_cast<std::size_t>(pobs.shape(0)) < T || static_cast<std::size_t>(alpha.shape(0)) < T) {
+        throw std::invalid_argument("T must be at most length of state probability trajectory and alphas.");
+    }
+    auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
 
     np_array<std::int32_t> pathArray(std::vector<std::size_t>{T});
     auto path = pathArray.mutable_data();
@@ -362,17 +320,17 @@ np_array<std::int32_t> samplePath(const np_array<dtype> &alpha, const np_array<d
     auto psel = pselPtr.get();
 
     auto alphaBuf = alpha.data();
-    auto ABuf = A.data();
+    auto transitionMatrixPtr = transitionMatrix.data();
     {
         py::gil_scoped_release gil;
-        std::default_random_engine generator (seed);
+        std::default_random_engine generator(seed);
 
         // Sample final state.
         for (std::size_t i = 0; i < N; i++) {
             psel[i] = alphaBuf[(T - 1) * N + i];
         }
 
-        std::discrete_distribution<> ddist (psel, psel+N);
+        std::discrete_distribution<> ddist(psel, psel + N);
         normalize(psel, psel + N);
         // Draw from this distribution.
         path[T - 1] = ddist(generator); //_random_choice(psel, N);
@@ -381,9 +339,9 @@ np_array<std::int32_t> samplePath(const np_array<dtype> &alpha, const np_array<d
         for (std::size_t t = T - 1; t >= 1; t--) {
             // Compute P(s_t = i | s_{t+1}..s_T).
             for (std::size_t i = 0; i < N; i++) {
-                psel[i] = alphaBuf[(t - 1) * N + i] * ABuf[i * N + path[t]];
+                psel[i] = alphaBuf[(t - 1) * N + i] * transitionMatrixPtr[i * N + path[t]];
             }
-            ddist.param(decltype(ddist)::param_type(psel, psel+N));
+            ddist.param(decltype(ddist)::param_type(psel, psel + N));
 
             // Draw from this distribution.
             path[t - 1] = ddist(generator); //_random_choice(psel, N);
