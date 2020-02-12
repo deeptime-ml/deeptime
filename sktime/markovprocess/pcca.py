@@ -32,16 +32,15 @@ def pcca(P, m, stationary_distribution=None):
         application to Markov state models and data classification.
         Adv Data Anal Classif 7, 147-179 (2013).
     """
+    if m <= 0 or m > P.shape[0]:
+        raise ValueError("Number of metastable sets must be larger than 0 and can be at most as large as the number "
+                         "of states.")
     assert 0 < m <= P.shape[0]
     from scipy.sparse import issparse
     if issparse(P):
         warnings.warn('PCCA is only implemented for dense matrices, '
                       'converting sparse transition matrix to dense ndarray.', stacklevel=2)
         P = P.toarray()
-    # memberships
-    # TODO: can be improved. pcca computes stationary distribution internally, we don't need to compute it twice.
-    from msmtools.analysis.dense.pcca import pcca as _algorithm_impl
-    M = _algorithm_impl(P, m)
 
     # stationary distribution
     if stationary_distribution is None:
@@ -49,6 +48,11 @@ def pcca(P, m, stationary_distribution=None):
         pi = statdist(P)
     else:
         pi = stationary_distribution
+
+    # memberships
+    # TODO: can be improved. pcca computes stationary distribution internally, we don't need to compute it twice.
+    from msmtools.analysis.dense.pcca import pcca as _algorithm_impl
+    M = _algorithm_impl(P, m)
 
     # coarse-grained stationary distribution
     pi_coarse = np.dot(M.T, pi)
@@ -65,9 +69,7 @@ def pcca(P, m, stationary_distribution=None):
 
     # symmetrize and renormalize to eliminate numerical errors
     X = np.dot(np.diag(pi_coarse), P_coarse)
-    # this coarse-graining can lead to negative elements. Setting them to zero here.
-    X = np.maximum(X, 0)
-    # and renormalize
+    # and normalize
     P_coarse = X / X.sum(axis=1)[:, None]
 
 

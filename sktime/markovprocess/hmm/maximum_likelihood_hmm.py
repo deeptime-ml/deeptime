@@ -23,11 +23,12 @@ from scipy.sparse import issparse
 
 from sktime.base import Estimator
 from sktime.markovprocess import TransitionCountModel, Q_, MarkovStateModel, TransitionCountEstimator, \
-    MaximumLikelihoodMSM
+    MaximumLikelihoodMSM, _transition_matrix
 from sktime.markovprocess._transition_matrix import estimate_P, stationary_distribution, enforce_reversible_on_closed
 from sktime.markovprocess.hmm import HiddenMarkovStateModel
 from sktime.markovprocess.hmm.hmm import viterbi
 from sktime.markovprocess.hmm.output_model import GaussianOutputModel
+from sktime.markovprocess.pcca import PCCAModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 
@@ -140,53 +141,101 @@ def _regularize_pobs(output_probabilities, nonempty=None, separate=None, eps=Non
     return output_probabilities
 
 
+def _coarse_grain_transition_matrix(P, M):
+    """ Coarse grain transition matrix P using memberships M
+
+    Computes
+
+    .. math:
+        Pc = (M' M)^-1 M' P M
+
+    Parameters
+    ----------
+    P : ndarray(n, n)
+        microstate transition matrix
+    M : ndarray(n, m)
+        membership matrix. Membership to macrostate m for each microstate.
+
+    Returns
+    -------
+    Pc : ndarray(m, m)
+        coarse-grained transition matrix.
+
+    """
+    # coarse-grain matrix: Pc = (M' M)^-1 M' P M
+    W = np.linalg.inv(np.dot(M.T, M))
+    A = np.dot(np.dot(M.T, P), M)
+    P_coarse = np.dot(W, A)
+
+    # this coarse-graining can lead to negative elements. Setting them to zero here.
+    P_coarse = np.maximum(P_coarse, 0)
+    # and renormalize
+    P_coarse /= P_coarse.sum(axis=1)[:, None]
+
+    return P_coarse
+
+
 def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                     reversible: bool = True, stationary: bool = False,
-                                    separate: np.array = None) -> HiddenMarkovStateModel:
-    if np.any(msm.stationary_distribution <= 0):
-        raise RuntimeError("If transition matrix is not connected, stationary distribution contains zeros and "
-                           "therefore PCCA+ cannot be performed.")
+                                    separate: np.array = None, regularize: bool = True) -> HiddenMarkovStateModel:
     count_matrix = msm.count_model.count_matrix
-    if issparse(count_matrix):
-        count_matrix = count_matrix.toarray()
     nonseparate = np.arange(msm.n_states)
+    nonseparate_msm = msm
     if separate is not None:
         nonseparate = np.setdiff1d(nonseparate, separate)
-    pcca = msm.pcca(n_hidden_states if separate is None else n_hidden_states - 1)
+        nonseparate_count_model = msm.count_model.submodel(nonseparate)
+        # make reversible
+        P_nonseparate = _transition_matrix.estimate_P(nonseparate_count_model.count_matrix, reversible=True)
+        nonseparate_msm = MarkovStateModel(P_nonseparate)
+    if issparse(count_matrix):
+        count_matrix = count_matrix.toarray()
+
+    # if #metastable sets == #states, we can stop here
+    n_meta = n_hidden_states if separate is None else n_hidden_states - 1
+    if n_meta == nonseparate_msm.n_states:
+        pcca = PCCAModel(nonseparate_msm.transition_matrix, nonseparate_msm.stationary_distribution, np.eye(n_meta),
+                         np.eye(n_meta))
+    else:
+        pcca = nonseparate_msm.pcca(n_meta)
     if separate is not None:
         memberships = np.zeros((msm.n_states, n_hidden_states))
         memberships[nonseparate, :n_hidden_states - 1] = pcca.memberships
-        memberships[nonseparate, -1] = 1
+        memberships[separate, -1] = 1
     else:
         memberships = pcca.memberships
-    hidden_transition_matrix = pcca.coarse_grained_transition_matrix
+
+    hidden_transition_matrix = _coarse_grain_transition_matrix(msm.transition_matrix, memberships)
     if reversible:
         hidden_transition_matrix = enforce_reversible_on_closed(hidden_transition_matrix)
+
     hmm_counts = memberships.T.dot(count_matrix).dot(memberships)
     hmm_pi = stationary_distribution(hidden_transition_matrix, C=hmm_counts)
+
     if separate is not None:
-        output_probabilities = np.empty((n_hidden_states, msm.n_states))
+        output_probabilities = np.zeros((n_hidden_states, msm.n_states))
         output_probabilities[:n_hidden_states - 1, nonseparate] = pcca.metastable_distributions
         output_probabilities[-1, separate] = msm.stationary_distribution[separate]
     else:
         output_probabilities = pcca.metastable_distributions
 
     # regularize
-    eps_a = 0.01 / n_hidden_states
+    eps_a = 0.01 / n_hidden_states if regularize else 0.
     hmm_pi, hidden_transition_matrix = _regularize_hidden(hmm_pi, hidden_transition_matrix, reversible=reversible,
                                                           stationary=stationary, C=hmm_counts, eps=eps_a)
-    eps_b = 0.01 / msm.n_states
+    eps_b = 0.01 / msm.n_states if regularize else 0.
     output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate, eps=eps_b)
     return HiddenMarkovStateModel(transition_model=hidden_transition_matrix, output_model=output_probabilities,
                                   initial_distribution=hmm_pi)
 
 
-def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, reversible: bool=True, stationary: bool = False, separate: Optional[np.ndarray] = None, states: Optional[np.ndarray] = None):
+def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, reversible: bool = True,
+                                     stationary: bool = False, separate: Optional[np.ndarray] = None,
+                                     states: Optional[np.ndarray] = None, regularize: bool = True):
     counts = TransitionCountEstimator(lagtime, 'sliding').fit(dtrajs).fetch_model()
     if states is not None:
         counts = counts.submodel(states)
-    msm = MaximumLikelihoodMSM(reversible=reversible, allow_disconnected=True, maxiter=10000).fit(counts).fetch_model()
-    return initial_guess_discrete_from_msm(msm, n_hidden_states, reversible, stationary, separate)
+    msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True, maxiter=10000).fit(counts).fetch_model()
+    return initial_guess_discrete_from_msm(msm, n_hidden_states, reversible, stationary, separate, regularize)
 
 
 def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):
