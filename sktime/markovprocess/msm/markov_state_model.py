@@ -812,7 +812,7 @@ class MarkovStateModel(Model):
         if not self.reversible:
             raise ValueError('Cannot compute PCCA+ for non-reversible matrices. '
                              'Set reversible=True when constructing the MarkovStateModel.')
-        return pcca(self.transition_matrix, n_metastable_sets)
+        return pcca(self.transition_matrix, n_metastable_sets, self.stationary_distribution)
 
     def reactive_flux(self, A, B) -> ReactiveFlux:
         r""" A->B reactive flux from transition path theory (TPT)
