@@ -221,21 +221,18 @@ void stateProbabilities(const np_array<dtype> &alpha, const np_array<dtype> &bet
     auto betaPtr = beta.data();
     auto gammaPtr = gamma.mutable_data();
 
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for
     for (std::size_t t = 0; t < T; ++t) {
+        dtype rowSum = 0;
         for (std::size_t n = 0; n < N; ++n) {
             *(gammaPtr + t * N + n) = *(alphaPtr + t * N + n) * *(betaPtr + t * N + n);
+            rowSum += gammaPtr[t*N + n];
         }
-    }
-    dtype gammaSum = 0;
-    #pragma omp parallel for reduction(+:gammaSum)
-    for (ssize_t i = 0; i < gamma.size(); ++i) {
-        gammaSum += *(gammaPtr + i);
-    }
-
-    #pragma omp parallel for
-    for (ssize_t i = 0; i < gamma.size(); ++i) {
-        gammaPtr[i] /= gammaSum;
+        for (std::size_t n = 0; n < N; ++n) {
+            if(rowSum != 0.) {
+                gammaPtr[t * N + n] /= rowSum;
+            }
+        }
     }
 }
 
