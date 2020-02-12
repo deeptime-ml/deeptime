@@ -38,7 +38,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     """
 
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
-                 sparse: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8):
+                 sparse: bool = False, allow_disconnected: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8):
         r"""
         Constructs a new maximum-likelihood msm estimator.
 
@@ -55,6 +55,9 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             In this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
             This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
             more efficient.
+        allow_disconnected : bool, optional, default=False
+            If set to true, the resulting transition matrix may have disconnected and transient states, and the
+            estimated stationary distribution is only meaningful on the respective connected sets.
         maxiter : int, optional, default=1000000
             Optional parameter with reversible = True, sets the maximum number of iterations before the transition
             matrix estimation method exits.
@@ -69,8 +72,17 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         super(MaximumLikelihoodMSM, self).__init__(reversible=reversible, sparse=sparse)
 
         self.stationary_distribution_constraint = stationary_distribution_constraint
+        self.allow_disconnected = allow_disconnected
         self.maxiter = maxiter
         self.maxerr = maxerr
+
+    @property
+    def allow_disconnected(self) -> bool:
+        return self._allow_disconnected
+
+    @allow_disconnected.setter
+    def allow_disconnected(self, value: bool):
+        self._allow_disconnected = bool(value)
 
     @property
     def stationary_distribution_constraint(self) -> Optional[np.ndarray]:
@@ -114,6 +126,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         return self._model
 
     def fit(self, data, y=None, **kw):
+        import sktime.markovprocess._transition_matrix as tmat
         if not isinstance(data, (TransitionCountModel, np.ndarray)):
             raise ValueError("Can only fit on a TransitionCountModel or a count matrix directly.")
 
@@ -144,26 +157,32 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
         # restrict stationary distribution to active set
         if self.stationary_distribution_constraint is None:
-            statdist_active = None
+            statdist = None
         else:
-            statdist_active = self.stationary_distribution_constraint[count_model.state_symbols]
-            statdist_active /= statdist_active.sum()  # renormalize
-
-        opt_args = {}
-        # TODO: non-rev estimate of msmtools does not comply with its own api...
-        if statdist_active is None and self.reversible:
-            opt_args['return_statdist'] = True
+            statdist = self.stationary_distribution_constraint[count_model.state_symbols]
+            statdist /= statdist.sum()  # renormalize
 
         # Estimate transition matrix
-        P = msmest.transition_matrix(count_matrix, reversible=self.reversible,
-                                     mu=statdist_active, maxiter=self.maxiter,
-                                     maxerr=self.maxerr, **opt_args)
+        if self.allow_disconnected:
+            P = tmat.estimate_P(count_matrix, reversible=self.reversible, fixed_statdist=statdist,
+                                maxiter=self.maxiter, maxerr=self.maxerr)
+        else:
+            opt_args = {}
+            # TODO: non-rev estimate of msmtools does not comply with its own api...
+            if statdist is None and self.reversible:
+                opt_args['return_statdist'] = True
+            P = msmest.transition_matrix(count_matrix, reversible=self.reversible,
+                                         mu=statdist, maxiter=self.maxiter,
+                                         maxerr=self.maxerr, **opt_args)
         # msmtools returns a tuple for statdist_active=None.
         if isinstance(P, tuple):
-            P, statdist_active = P
+            P, statdist = P
+
+        if statdist is None and self.allow_disconnected:
+            statdist = tmat.stationary_distribution(P, C=count_matrix)
 
         # create model
-        self._model = MarkovStateModel(transition_matrix=P, stationary_distribution=statdist_active,
+        self._model = MarkovStateModel(transition_matrix=P, stationary_distribution=statdist,
                                        reversible=self.reversible, count_model=count_model)
 
         return self
