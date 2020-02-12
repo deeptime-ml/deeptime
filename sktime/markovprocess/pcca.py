@@ -65,7 +65,11 @@ def pcca(P, m, stationary_distribution=None):
 
     # symmetrize and renormalize to eliminate numerical errors
     X = np.dot(np.diag(pi_coarse), P_coarse)
+    # this coarse-graining can lead to negative elements. Setting them to zero here.
+    X = np.maximum(X, 0)
+    # and renormalize
     P_coarse = X / X.sum(axis=1)[:, None]
+
 
     return PCCAModel(P_coarse, pi_coarse, M, B)
 

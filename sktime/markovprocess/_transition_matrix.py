@@ -149,7 +149,6 @@ def transition_matrix_partial_rev(C, P, S, maxiter=1000000, maxerr=1e-8):
 def enforce_reversible_on_closed(P):
     """ Enforces transition matrix P to be reversible on its closed sets. """
     import msmtools.analysis as msmana
-    n = np.shape(P)[0]
     Prev = P.copy()
     # treat each weakly connected set separately
     sets = closed_sets(P)

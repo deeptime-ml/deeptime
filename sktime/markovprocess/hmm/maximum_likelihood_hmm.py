@@ -31,11 +31,8 @@ from sktime.markovprocess.hmm.output_model import GaussianOutputModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 
-_HMMModelStorage = collections.namedtuple('_HMMModelStorage', ['transition_matrix', 'output_model',
-                                                               'initial_distribution'])
 
-
-def _regularize_hidden(p0, P, reversible=True, stationary=False, C=None, eps=None):
+def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False, C=None, eps=None):
     """ Regularizes the hidden initial distribution and transition matrix.
 
     Makes sure that the hidden initial distribution and transition matrix have
@@ -47,7 +44,7 @@ def _regularize_hidden(p0, P, reversible=True, stationary=False, C=None, eps=Non
     ----------
     p0 : ndarray(n)
         Initial hidden distribution of the HMM
-    P : ndarray(n, n)
+    transition_matrix : ndarray(n, n)
         Hidden transition matrix
     reversible : bool
         HMM is reversible. Will make sure it is still reversible after modification.
@@ -72,29 +69,29 @@ def _regularize_hidden(p0, P, reversible=True, stationary=False, C=None, eps=Non
 
     """
     # input
-    n = P.shape[0]
+    n = transition_matrix.shape[0]
     if eps is None:  # default output probability, in order to avoid zero columns
         eps = 0.01 / n
 
     # REGULARIZE P
-    P = np.maximum(P, eps)
+    transition_matrix = np.maximum(transition_matrix, eps)
     # and renormalize
-    P /= P.sum(axis=1)[:, None]
+    transition_matrix /= transition_matrix.sum(axis=1)[:, None]
     # ensure reversibility
     if reversible:
-        P = enforce_reversible_on_closed(P)
+        transition_matrix = enforce_reversible_on_closed(transition_matrix)
 
     # REGULARIZE p0
     if stationary:
-        stationary_distribution(P, C=C)
+        stationary_distribution(transition_matrix, C=C)
     else:
         p0 = np.maximum(p0, eps)
         p0 /= p0.sum()
 
-    return p0, P
+    return p0, transition_matrix
 
 
-def _regularize_pobs(B, nonempty=None, separate=None, eps=None):
+def _regularize_pobs(output_probabilities, nonempty=None, separate=None, eps=None):
     """ Regularizes the output probabilities.
 
     Makes sure that the output probability distributions has
@@ -104,7 +101,7 @@ def _regularize_pobs(B, nonempty=None, separate=None, eps=None):
 
     Parameters
     ----------
-    B : ndarray(n, m)
+    output_probabilities : ndarray(n, m)
         HMM output probabilities
     nonempty : None or iterable of int
         Nonempty set. Only regularize on this subset.
@@ -121,8 +118,8 @@ def _regularize_pobs(B, nonempty=None, separate=None, eps=None):
 
     """
     # input
-    B = B.copy()  # modify copy
-    n, m = B.shape  # number of hidden / observable states
+    output_probabilities = output_probabilities.copy()  # modify copy
+    n, m = output_probabilities.shape  # number of hidden / observable states
     if eps is None:  # default output probability, in order to avoid zero columns
         eps = 0.01 / m
     # observable sets
@@ -130,16 +127,17 @@ def _regularize_pobs(B, nonempty=None, separate=None, eps=None):
         nonempty = np.arange(m)
 
     if separate is None:
-        B[:, nonempty] = np.maximum(B[:, nonempty], eps)
+        output_probabilities[:, nonempty] = np.maximum(output_probabilities[:, nonempty], eps)
     else:
         nonempty_nonseparate = np.array(list(set(nonempty) - set(separate)), dtype=int)
         nonempty_separate = np.array(list(set(nonempty).intersection(set(separate))), dtype=int)
-        B[:n - 1, nonempty_nonseparate] = np.maximum(B[:n - 1, nonempty_nonseparate], eps)
-        B[n - 1, nonempty_separate] = np.maximum(B[n - 1, nonempty_separate], eps)
+        output_probabilities[:n - 1, nonempty_nonseparate] = np.maximum(
+            output_probabilities[:n - 1, nonempty_nonseparate], eps)
+        output_probabilities[n - 1, nonempty_separate] = np.maximum(output_probabilities[n - 1, nonempty_separate], eps)
 
     # renormalize and return copy
-    B /= B.sum(axis=1)[:, None]
-    return B
+    output_probabilities /= output_probabilities.sum(axis=1)[:, None]
+    return output_probabilities
 
 
 def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
@@ -148,6 +146,9 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
     if np.any(msm.stationary_distribution <= 0):
         raise RuntimeError("If transition matrix is not connected, stationary distribution contains zeros and "
                            "therefore PCCA+ cannot be performed.")
+    count_matrix = msm.count_model.count_matrix
+    if issparse(count_matrix):
+        count_matrix = count_matrix.toarray()
     nonseparate = np.arange(msm.n_states)
     if separate is not None:
         nonseparate = np.setdiff1d(nonseparate, separate)
@@ -161,7 +162,7 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
     hidden_transition_matrix = pcca.coarse_grained_transition_matrix
     if reversible:
         hidden_transition_matrix = enforce_reversible_on_closed(hidden_transition_matrix)
-    hmm_counts = memberships.T.dot(msm.count_model.count_matrix).dot(memberships)
+    hmm_counts = memberships.T.dot(count_matrix).dot(memberships)
     hmm_pi = stationary_distribution(hidden_transition_matrix, C=hmm_counts)
     if separate is not None:
         output_probabilities = np.empty((n_hidden_states, msm.n_states))
@@ -171,16 +172,16 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
         output_probabilities = pcca.metastable_distributions
 
     # regularize
-    eps_A = 0.01 / n_hidden_states
+    eps_a = 0.01 / n_hidden_states
     hmm_pi, hidden_transition_matrix = _regularize_hidden(hmm_pi, hidden_transition_matrix, reversible=reversible,
-                                                          stationary=stationary, C=hmm_counts, eps=eps_A)
-    eps_B = 0.01 / msm.n_states
-    output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate, eps=eps_B)
+                                                          stationary=stationary, C=hmm_counts, eps=eps_a)
+    eps_b = 0.01 / msm.n_states
+    output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate, eps=eps_b)
     return HiddenMarkovStateModel(transition_model=hidden_transition_matrix, output_model=output_probabilities,
                                   initial_distribution=hmm_pi)
 
 
-def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, reversible, stationary, separate, states):
+def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, reversible: bool=True, stationary: bool = False, separate: Optional[np.ndarray] = None, states: Optional[np.ndarray] = None):
     counts = TransitionCountEstimator(lagtime, 'sliding').fit(dtrajs).fetch_model()
     if states is not None:
         counts = counts.submodel(states)
@@ -231,6 +232,9 @@ class MaximumLikelihoodHMSM(Estimator):
         for ecology," Bull. Amer. Meteorol. Soc., vol. 73, pp. 360-363, 1967.
 
     """
+
+    _HMMModelStorage = collections.namedtuple('_HMMModelStorage', ['transition_matrix', 'output_model',
+                                                                   'initial_distribution'])
 
     def __init__(self, initial_model: HiddenMarkovStateModel, stride: Union[int, str] = 1,
                  lagtime: int = 1, reversible: bool = True, stationary: bool = False,
@@ -438,8 +442,9 @@ class MaximumLikelihoodHMSM(Estimator):
             # new instance
             transition_matrix = np.copy(transition_matrix)
 
-        hmm_data = _HMMModelStorage(transition_matrix=transition_matrix, output_model=initial_model.output_model.copy(),
-                                    initial_distribution=initial_model.initial_distribution.copy())
+        hmm_data = MaximumLikelihoodHMSM._HMMModelStorage(transition_matrix=transition_matrix,
+                                                          output_model=initial_model.output_model.copy(),
+                                                          initial_distribution=initial_model.initial_distribution.copy())
 
         dtrajs = ensure_dtraj_list(dtrajs)
         dtrajs = compute_dtrajs_effective(dtrajs, lagtime=self.lagtime, n_states=initial_model.n_hidden_states,

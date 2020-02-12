@@ -898,7 +898,7 @@ class MarkovStateModel(Model):
         """
         import sktime.markovprocess._markovprocess_bindings.simulation as sim
         if start is None:
-            start = np.random.choice(self.n_states, self.stationary_distribution)
+            start = np.random.choice(self.n_states, p=self.stationary_distribution)
         if dt > 1:
             P = np.linalg.matrix_power(self.transition_matrix, dt)
         else:
