@@ -8,7 +8,7 @@ from sktime.numeric import mdot
 
 
 # TODO: should pass pi to msmtools once it's supported.
-def pcca(P, m):
+def pcca(P, m, stationary_distribution=None):
     """PCCA+ spectral clustering method with optimized memberships [1]_
 
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
@@ -22,6 +22,9 @@ def pcca(P, m):
 
     m : int
         Number of clusters to group to.
+
+    stationary_distribution : ndarray(n,), optional, default=None
+        Stationary distribution over the full state space, can be given if already computed.
 
     References
     ----------
@@ -41,9 +44,11 @@ def pcca(P, m):
     M = _algorithm_impl(P, m)
 
     # stationary distribution
-    # TODO: in msmtools we recomputed this from P, we actually want to use pi from the msm obj, but this caused #1208
-    from msmtools.analysis import stationary_distribution
-    pi = stationary_distribution(P)
+    if stationary_distribution is None:
+        from msmtools.analysis import stationary_distribution as statdist
+        pi = statdist(P)
+    else:
+        pi = stationary_distribution
 
     # coarse-grained stationary distribution
     pi_coarse = np.dot(M.T, pi)
