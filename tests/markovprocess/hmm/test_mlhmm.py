@@ -167,22 +167,75 @@ class TestMLHMM(unittest.TestCase):
             # positivity
             assert np.all(mu > 0.0)
             # this data: approximately equal probability
-            assert np.max(np.abs(mu[0]-mu[1])) < 0.05
+            assert np.max(np.abs(mu[0] - mu[1])) < 0.05
 
     def test_lifetimes(self):
-        for l in [self.hmm_lag1.transition_model.lifetimes, self.hmm_lag10.lifetimes]:
+        for l in [self.hmm_lag1.lifetimes, self.hmm_lag10.lifetimes]:
             assert len(l) == 2
             assert np.all(l > 0.0)
         # this data: lifetimes about 680
-        assert np.max(np.abs(self.hmm_lag10.lifetimes - 680)) < 20.0
+        np.testing.assert_(np.max(np.abs(self.hmm_lag10.lifetimes - 680)) < 20.0)
 
     def test_timescales(self):
         for l in [self.hmm_lag1.transition_model.timescales(2), self.hmm_lag10.transition_model.timescales(2)]:
-            assert len(l) == 1
-            assert np.all(l > 0.0)
+            np.testing.assert_equal(len(l), 1)
+            np.testing.assert_(l > 0.)
         # this data: lifetimes about 680
-        print(self.hmm_lag10.transition_model.timescales())
-        assert np.abs(self.hmm_lag10.transition_model.timescales(2)[0] - 340) < 20.0
+        np.testing.assert_(np.abs(self.hmm_lag10.transition_model.timescales(2)[0] - 340) < 20.0)
+
+
+class TestMLHMMPathologicalCases(unittest.TestCase):
+
+    def test_1state(self):
+        obs = np.array([0, 0, 0, 0, 0], dtype=int)
+        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=1, lagtime=1)
+        hmm = MaximumLikelihoodHMSM(init_hmm).fit(obs).fetch_model()
+        # hmm = bhmm.estimate_hmm([obs], n_states=1, lag=1, accuracy=1e-6)
+        p0_ref = np.array([1.0])
+        A_ref = np.array([[1.0]])
+        B_ref = np.array([[1.0]])
+        assert np.allclose(hmm.initial_distribution, p0_ref)
+        assert np.allclose(hmm.transition_model.transition_matrix, A_ref)
+        assert np.allclose(hmm.output_probabilities, B_ref)
+
+    def test_1state_fail(self):
+        obs = np.array([0, 0, 0, 0, 0], dtype=int)
+        with self.assertRaises(ValueError):
+            _ = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
+
+    def test_2state_step(self):
+        obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
+        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
+        hmm = MaximumLikelihoodHMSM(init_hmm, accuracy=1e-6).fit(obs).fetch_model()
+        p0_ref = np.array([1, 0])
+        A_ref = np.array([[0.8, 0.2],
+                          [0.0, 1.0]])
+        B_ref = np.array([[1, 0],
+                          [0, 1]])
+        perm = [1, 0]  # permutation
+        assert np.allclose(hmm.initial_distribution, p0_ref, atol=1e-5) \
+               or np.allclose(hmm.initial_distribution, p0_ref[perm], atol=1e-5)
+        assert np.allclose(hmm.transition_model.transition_matrix, A_ref, atol=1e-5) \
+               or np.allclose(hmm.transition_model.transition_matrix, A_ref[np.ix_(perm, perm)], atol=1e-5)
+        assert np.allclose(hmm.output_probabilities, B_ref, atol=1e-5) \
+               or np.allclose(hmm.output_probabilities, B_ref[[perm]], atol=1e-5)
+
+    def test_2state_2step(self):
+        obs = np.array([0, 1, 0], dtype=int)
+        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
+        hmm = MaximumLikelihoodHMSM(init_hmm).fit(obs).fetch_model()
+        p0_ref = np.array([1, 0])
+        A_ref = np.array([[0.0, 1.0],
+                          [1.0, 0.0]])
+        B_ref = np.array([[1, 0],
+                          [0, 1]])
+        perm = [1, 0]  # permutation
+        assert np.allclose(hmm.initial_distribution, p0_ref, atol=1e-5) \
+               or np.allclose(hmm.initial_distribution, p0_ref[perm], atol=1e-5)
+        assert np.allclose(hmm.transition_model.transition_matrix, A_ref, atol=1e-5) \
+               or np.allclose(hmm.transition_model.transition_matrix, A_ref[np.ix_(perm, perm)], atol=1e-5)
+        assert np.allclose(hmm.output_probabilities, B_ref, atol=1e-5) \
+               or np.allclose(hmm.output_probabilities, B_ref[[perm]], atol=1e-5)
 
 
 if __name__ == '__main__':

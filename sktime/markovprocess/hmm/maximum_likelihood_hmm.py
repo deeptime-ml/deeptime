@@ -588,7 +588,7 @@ class MaximumLikelihoodHMSM(Estimator):
         count_model = TransitionCountModel(count_matrix=transition_counts, lagtime=self.lagtime,
                                            physical_time=self.physical_time)
         transition_model = MarkovStateModel(hmm_data.transition_matrix, reversible=self.reversible,
-                                            count_model=initial_model.count_model)
+                                            count_model=count_model)
         model = HiddenMarkovStateModel(
             transition_model=transition_model,
             output_model=hmm_data.output_model,

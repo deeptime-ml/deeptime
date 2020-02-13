@@ -122,6 +122,10 @@ class HiddenMarkovStateModel(Model):
             return np.dot(self.transition_model.stationary_distribution, self.output_probabilities)
         raise RuntimeError("only available for discrete output model")
 
+    @property
+    def lifetimes(self):
+        return -self.transition_model.lagtime / np.log(np.diag(self.transition_model.transition_matrix))
+
     def compute_viterbi_paths(self, observations: List[np.ndarray]):
         """Computes the Viterbi paths using the current HMM model"""
         observations = ensure_dtraj_list(observations)
