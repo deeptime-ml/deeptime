@@ -11,7 +11,7 @@ def visited_set(dtrajs):
 
     Parameters
     ----------
-    dtraj : array_like or list of array_like
+    dtrajs : array_like or list of array_like
         Discretized trajectory or list of discretized trajectories
 
     Returns
@@ -165,7 +165,7 @@ def compute_dtrajs_effective(dtrajs, lagtime: Union[int, Q_], n_states: int, str
     return dtrajs_lagged_strided
 
 
-def compute_connected_sets(C, connectivity_threshold, directed=True):
+def compute_connected_sets(count_matrix, connectivity_threshold: float = 0, directed=True):
     """ Computes the connected sets of a count matrix C.
 
     C : (N, N) np.ndarray
@@ -182,15 +182,77 @@ def compute_connected_sets(C, connectivity_threshold, directed=True):
     import msmtools.estimation as msmest
     import scipy.sparse as scs
     if connectivity_threshold > 0:
-        if scs.issparse(C):
-            Cconn = C.tocsr(copy=True)
+        if scs.issparse(count_matrix):
+            Cconn = count_matrix.tocsr(copy=True)
             Cconn.data[Cconn.data < connectivity_threshold] = 0
             Cconn.eliminate_zeros()
         else:
-            Cconn = C.copy()
+            Cconn = count_matrix.copy()
             Cconn[np.where(Cconn < connectivity_threshold)] = 0
     else:
-        Cconn = C
+        Cconn = count_matrix
     # treat each connected set separately
     S = msmest.connected_sets(Cconn, directed=directed)
     return S
+
+
+def closed_sets(count_matrix, connectivity_threshold: float=0):
+    r"""
+    todo
+    Computes the strongly connected closed sets of C
+    Parameters
+    ----------
+    count_matrix
+    connectivity_threshold
+
+    Returns
+    -------
+
+    """
+    n = np.shape(count_matrix)[0]
+    S = compute_connected_sets(count_matrix, connectivity_threshold=connectivity_threshold, directed=True)
+    closed = []
+    for s in S:
+        mask = np.zeros(n, dtype=bool)
+        mask[s] = True
+        if count_matrix[np.ix_(mask, ~mask)].sum() == 0:
+            # closed set, take it
+            closed.append(s)
+    return closed
+
+
+def nonempty_set(count_matrix, connectivity_threshold: float = 0):
+    r"""
+    todo
+    Returns the set of states that have at least one incoming or outgoing count.
+    Parameters
+    ----------
+    count_matrix
+    connectivity_threshold
+
+    Returns
+    -------
+
+    """
+    # truncate to states with at least one observed incoming or outgoing count.
+    if connectivity_threshold > 0:
+        count_matrix = count_matrix.copy()
+        count_matrix[np.where(count_matrix < connectivity_threshold)] = 0
+    return np.where(count_matrix.sum(axis=0) + count_matrix.sum(axis=1) > 0)[0]
+
+
+def is_connected(count_matrix, connectivity_threshold: float=0, directed=True):
+    r"""
+    todo
+    Parameters
+    ----------
+    count_matrix
+    connectivity_threshold
+    directed
+
+    Returns
+    -------
+
+    """
+    sets = compute_connected_sets(count_matrix, connectivity_threshold=connectivity_threshold, directed=directed)
+    return len(sets) == 1

@@ -1,0 +1,67 @@
+//
+// Created by mho on 2/3/20.
+//
+
+#pragma once
+
+#include <random>
+
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
+#include <pybind11/functional.h>
+
+namespace py = pybind11;
+
+template<typename dtype>
+using np_array = py::array_t<dtype, py::array::c_style>;
+
+template<typename T, typename D>
+bool arraySameShape(const np_array<T>& lhs, const np_array<D>& rhs) {
+    if(lhs.ndim() != rhs.ndim()) {
+        return false;
+    }
+    for(decltype(lhs.ndim()) d = 0; d < lhs.ndim(); ++d) {
+        if(lhs.shape(d) != rhs.shape(d)) return false;
+    }
+    return true;
+}
+
+template<typename RealType>
+class dirichlet_distribution {
+public:
+    dirichlet_distribution() : gammas() {}
+    template<typename InputIterator>
+    dirichlet_distribution(InputIterator wbegin, InputIterator wend) {
+        params(wbegin, wend);
+    }
+
+    template<typename Generator>
+    std::vector<RealType> operator()(Generator& gen) {
+        std::vector<RealType> xs;
+        xs.reserve(gammas.size());
+        for(auto& gdist : gammas) {
+            // ignore zeros
+            xs.push_back(gdist(gen));
+            /*if(gdist.alpha() != 0) {
+            } else {
+                xs.push_back(0);
+            }*/
+        }
+        auto sum = std::accumulate(xs.begin(), xs.end(), 0.);
+        for(auto it = xs.begin(); it != xs.end(); ++it) {
+            *it /= sum;
+        }
+        return xs;
+    }
+
+    template<typename InputIterator>
+    void params(InputIterator wbegin, InputIterator wend) {
+        gammas.resize(0);
+        std::transform(wbegin, wend, std::back_inserter(gammas), [](const auto& weight) {
+            return std::gamma_distribution<RealType>(weight, 1);
+        });
+    }
+private:
+    std::vector<std::gamma_distribution<RealType>> gammas;
+};

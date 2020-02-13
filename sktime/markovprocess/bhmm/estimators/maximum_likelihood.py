@@ -20,7 +20,6 @@
 import numpy as np
 
 from sktime.base import Estimator
-from sktime.markovprocess.bhmm.estimators._tmatrix_disconnected import estimate_P, stationary_distribution
 from sktime.markovprocess.bhmm.hmm.generic_hmm import HMM
 from .. import hidden, init_hmm
 
@@ -52,27 +51,17 @@ class MaximumLikelihoodHMM(Estimator):
         type : str, optional, default=None
             Output model type from [None, 'gaussian', 'discrete'].
         reversible : bool, optional, default=True
-            If True, a prior that enforces reversible transition matrices (detailed
-            balance) is used; otherwise, a standard  non-reversible prior is used.
+
         stationary : bool, optional, default=False
-            If True, the initial distribution of hidden states is self-consistently
-            computed as the stationary distribution of the transition matrix. If
-            False, it will be estimated from the starting states.
+
         p : ndarray (n_states), optional, default=None
-            Initial or fixed stationary distribution. If given and stationary=True,
-            transition matrices will be estimated with the constraint that they
-            have p as their stationary distribution. If given and stationary=False,
-            p is the fixed initial distribution of hidden states.
+
         accuracy : float
-            convergence threshold for EM iteration. When two the likelihood does
-            not increase by more than accuracy, the iteration is stopped successfully.
+
         maxit : int
-            stopping criterion for EM iteration. When so many iterations are
-            performed without reaching the requested accuracy, the iteration is
-            stopped without convergence (a warning is given)
+
         maxit_P : int
-            maximum number of iterations for reversible transition matrix estimation.
-            Only used with reversible=True.
+
 
         """
         # Use user-specified initial model, if provided.
@@ -123,90 +112,6 @@ class MaximumLikelihoodHMM(Estimator):
 
     def fetch_model(self) -> HMM:
         return self._model
-
-    @staticmethod
-    def _forward_backward(model, obs, alpha, beta, gamma, pobs, counts):
-        """
-        Estimation step: Runs the forward-back algorithm on trajectory obs
-
-        Parameters
-        ----------
-        obs: np.ndarray
-            single observation corresponding to index itraj
-
-        Returns
-        -------
-        logprob : float
-            The probability to observe the observation sequence given the HMM
-            parameters
-        """
-        # get parameters
-        A = model.transition_matrix
-        pi = model.initial_distribution
-        T = len(obs)
-        # compute output probability matrix
-        model.output_model.p_obs(obs, out=pobs)
-        # forward variables
-        logprob, _ = hidden.forward(A, pobs, pi, T=T, alpha=alpha)
-        # backward variables
-        hidden.backward(A, pobs, T=T, beta_out=beta)
-        # gamma
-        hidden.state_probabilities(alpha, beta, T=T, gamma_out=gamma)
-        # count matrix
-        hidden.transition_counts(alpha, beta, A, pobs, T=T, out=counts)
-        return logprob
-
-    def _init_counts(self, gammas):
-        gamma0_sum = np.zeros(self._n_states)
-        # update state counts
-        for g in gammas:
-            gamma0_sum += g[0]
-        return gamma0_sum
-
-    @staticmethod
-    def _transition_counts(count_matrices):
-        C = np.add.reduce(count_matrices)
-        return C
-
-    def _update_model(self, model, observations, gammas, count_matrices, maxiter=10000000):
-        """
-        Maximization step: Updates the HMM model given the hidden state assignment and count matrices
-
-        Parameters
-        ----------
-        gammas : [ ndarray(T,N, dtype=float) ]
-            list of state probabilities for each trajectory
-        count_matrices : [ ndarray(N,N, dtype=float) ]
-            list of the Baum-Welch transition count matrices for each hidden
-            state trajectory
-        maxiter : int
-            maximum number of iterations of the transition matrix estimation if
-            an iterative method is used.
-
-        """
-        gamma0_sum = self._init_counts(gammas)
-        C = self._transition_counts(count_matrices)
-
-        # compute new transition matrix
-        T = estimate_P(C, reversible=model.reversible, fixed_statdist=self._fixed_stationary_distribution,
-                       maxiter=maxiter, maxerr=1e-12, mincount_connectivity=1e-16)
-        # estimate stationary or init distribution
-        if self._stationary:
-            if self._fixed_stationary_distribution is None:
-                pi = stationary_distribution(T, C=C, mincount_connectivity=1e-16)
-            else:
-                pi = self._fixed_stationary_distribution
-        else:
-            if self._fixed_initial_distribution is None:
-                pi = gamma0_sum / np.sum(gamma0_sum)
-            else:
-                pi = self._fixed_initial_distribution
-
-        # update model
-        model.update(pi, T)
-
-        # update output model
-        model.output_model.fit(observations, gammas)
 
     def fit(self, observations, **kw):
         """

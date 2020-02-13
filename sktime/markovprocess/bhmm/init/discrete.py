@@ -262,7 +262,7 @@ def init_discrete_hmm_spectral(C_full, n_states, reversible=True, stationary=Tru
         nmeta = n_states
     else:
         if np.max(separate) >= nfull:
-            raise ValueError(f'Separate set has indexes that do not exist in full state space: {np.max(separate)}')
+            raise ValueError(f'Separate set has indices that do not exist in full state space: {np.max(separate)}')
         active_nonseparate = np.array(list(set(active_set) - set(separate)))
         nmeta = n_states - 1
     # check if we can proceed
@@ -291,9 +291,10 @@ def init_discrete_hmm_spectral(C_full, n_states, reversible=True, stationary=Tru
 
     # COARSE-GRAINING WITH PCCA+
     if active_nonseparate.size > nmeta:
-        # TODO: if we do not have a connected matrix, we cannot compute pcca! (pi contains zeros -> NaNs in P)
         msm = MarkovStateModel(P_active_nonseparate)
-        assert np.all(msm.stationary_distribution > 0)
+        if np.any(msm.stationary_distribution <= 0):
+            raise RuntimeError("If transition matrix is not connected, stationary distribution can contain zeros and "
+                               "in that case PCCA+ cannot be performed.")
         pcca_obj = msm.pcca(n_metastable_sets=nmeta)
         M_active_nonseparate = pcca_obj.memberships  # memberships
         B_active_nonseparate = pcca_obj.metastable_distributions  # output probabilities

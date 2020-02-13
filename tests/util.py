@@ -2,6 +2,7 @@ from copy import deepcopy
 
 import numpy as np
 
+
 class GenerateTestMatrix(type):
     """
     Metaclass definition for parameterized testing. Usage as follows:
@@ -18,6 +19,7 @@ class GenerateTestMatrix(type):
     >>> if __name__ == '__main__':
     ...     unittest.main()
     """
+
     def __new__(mcs, name, bases, attr):
         from functools import partial
 
@@ -57,3 +59,8 @@ class GenerateTestMatrix(type):
 
         attr.update(new_test_methods)
         return type.__new__(mcs, name, bases, attr)
+
+
+def assert_array_not_equal(arr1, arr2, err_msg='', verbose=True):
+    with np.testing.assert_raises(AssertionError, msg=err_msg):
+        np.testing.assert_array_equal(arr1, arr2, verbose=verbose)

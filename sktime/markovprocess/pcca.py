@@ -8,7 +8,7 @@ from sktime.numeric import mdot
 
 
 # TODO: should pass pi to msmtools once it's supported.
-def pcca(P, m):
+def pcca(P, m, stationary_distribution=None):
     """PCCA+ spectral clustering method with optimized memberships [1]_
 
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
@@ -23,27 +23,36 @@ def pcca(P, m):
     m : int
         Number of clusters to group to.
 
+    stationary_distribution : ndarray(n,), optional, default=None
+        Stationary distribution over the full state space, can be given if already computed.
+
     References
     ----------
     [1] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
         application to Markov state models and data classification.
         Adv Data Anal Classif 7, 147-179 (2013).
     """
+    if m <= 0 or m > P.shape[0]:
+        raise ValueError("Number of metastable sets must be larger than 0 and can be at most as large as the number "
+                         "of states.")
     assert 0 < m <= P.shape[0]
     from scipy.sparse import issparse
     if issparse(P):
         warnings.warn('PCCA is only implemented for dense matrices, '
                       'converting sparse transition matrix to dense ndarray.', stacklevel=2)
         P = P.toarray()
+
+    # stationary distribution
+    if stationary_distribution is None:
+        from msmtools.analysis import stationary_distribution as statdist
+        pi = statdist(P)
+    else:
+        pi = stationary_distribution
+
     # memberships
     # TODO: can be improved. pcca computes stationary distribution internally, we don't need to compute it twice.
     from msmtools.analysis.dense.pcca import pcca as _algorithm_impl
     M = _algorithm_impl(P, m)
-
-    # stationary distribution
-    # TODO: in msmtools we recomputed this from P, we actually want to use pi from the msm obj, but this caused #1208
-    from msmtools.analysis import stationary_distribution
-    pi = stationary_distribution(P)
 
     # coarse-grained stationary distribution
     pi_coarse = np.dot(M.T, pi)
@@ -60,7 +69,9 @@ def pcca(P, m):
 
     # symmetrize and renormalize to eliminate numerical errors
     X = np.dot(np.diag(pi_coarse), P_coarse)
+    # and normalize
     P_coarse = X / X.sum(axis=1)[:, None]
+
 
     return PCCAModel(P_coarse, pi_coarse, M, B)
 

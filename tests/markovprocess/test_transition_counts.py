@@ -192,6 +192,18 @@ class TestTransitionCountModel(unittest.TestCase, metaclass=GenerateTestMatrix):
         np.testing.assert_(not subsubmodel.is_full_model)
         np.testing.assert_equal(subsubmodel.n_states, 1)
 
+    def test_symbols_to_states(self):
+        dtraj = np.array([0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1])
+        model = TransitionCountEstimator(lagtime=1, count_mode='sliding').fit(dtraj).fetch_model()
+        submodel = model.submodel([2, 3, 4, 6])
+        np.testing.assert_array_equal(submodel.state_symbols, [2, 3, 4, 6])
+        states = submodel.symbols_to_states([6, 2, 0])
+        for state in states:
+            # check that each returned state points to one of the requested symbols if still represented in model
+            # (symbol 0 is not contained in submodel)
+            np.testing.assert_(submodel.state_symbols[state] in (6, 2))
+        np.testing.assert_(0 not in submodel.state_symbols)
+
 
 if __name__ == '__main__':
     unittest.main()

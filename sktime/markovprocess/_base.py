@@ -3,7 +3,7 @@ import typing
 import numpy as np
 
 from sktime.base import Estimator, Model
-from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess.msm import MarkovStateModel
 from sktime.util import confidence_interval, ensure_dtraj_list
 
 
