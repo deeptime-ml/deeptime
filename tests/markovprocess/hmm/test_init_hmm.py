@@ -139,7 +139,6 @@ class TestInitHMMDiscrete(unittest.TestCase):
     def test_3state_prev(self):
         dtraj = np.array([0, 1, 2, 0, 3, 4])
         import msmtools.estimation as msmest
-        C = msmest.count_matrix(dtraj, 1).toarray()
         for rev in [True, False]:
             from bhmm import init_discrete_hmm
             hmm = init_discrete_hmm(dtraj, 3, reversible=rev)

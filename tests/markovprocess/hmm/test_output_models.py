@@ -118,7 +118,7 @@ class TestGaussian(unittest.TestCase):
         np.testing.assert_equal(m.n_hidden_states, 3)
         np.testing.assert_equal(m.ignore_outliers, True)
         for state in range(3):
-            traj = m.generate_observation_trajectory(np.array([state] * 500000))
+            traj = m.generate_observation_trajectory(np.array([state] * 700000))
             np.testing.assert_almost_equal(np.mean(traj), m.means[state], decimal=3)
             np.testing.assert_almost_equal(np.sqrt(np.var(traj)), m.sigmas[state], decimal=3)
 

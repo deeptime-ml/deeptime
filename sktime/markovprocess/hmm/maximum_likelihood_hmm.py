@@ -222,14 +222,14 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
     hidden_pi = stationary_distribution(hidden_transition_matrix, C=hidden_counts)
 
     output_probabilities = np.zeros((n_hidden_states, msm.count_model.n_states_full))
+    # we might have lost a few symbols, reduce nonsep symbols to the ones actually represented
+    nonseparate_symbols = msm.count_model.state_symbols[nonseparate_states]
     if separate_symbols is not None:
-        # we might have lost a few symbols, reduce nonsep symbols to the ones actually represented
-        nonseparate_symbols = msm.count_model.state_symbols[nonseparate_states]
         separate_symbols = msm.count_model.state_symbols[separate_states]
         output_probabilities[:n_hidden_states - 1, nonseparate_symbols] = pcca.metastable_distributions
         output_probabilities[-1, separate_symbols] = msm.stationary_distribution[separate_states]
     else:
-        output_probabilities = pcca.metastable_distributions
+        output_probabilities[:, nonseparate_symbols] = pcca.metastable_distributions
 
     # regularize
     eps_a = 0.01 / n_hidden_states if regularize else 0.
@@ -241,33 +241,34 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                   initial_distribution=hidden_pi)
 
 
-def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, mode='all-regularized', reversible: bool = True,
-                                     stationary: bool = False, separate: Optional[np.ndarray] = None,
-                                     states: Optional[np.ndarray] = None, regularize: bool = True,
-                                     connectivity_threshold: Union[str, float] = 0.):
-    if mode not in initial_guess_discrete_from_data.VALID_MODES:
+def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, mode='largest-regularized',
+                                     reversible: bool = True, stationary: bool = False,
+                                     separate: Optional[np.ndarray] = None, states: Optional[np.ndarray] = None,
+                                     regularize: bool = True, connectivity_threshold: Union[str, float] = 0.):
+    if mode not in initial_guess_discrete_from_data.VALID_MODES \
+            + [m + "-regularized" for m in initial_guess_discrete_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(initial_guess_discrete_from_data.VALID_MODES)))
     counts = TransitionCountEstimator(lagtime, 'sliding').fit(dtrajs).fetch_model()
     if states is not None:
         counts = counts.submodel(states)
-    if mode == 'all':
-        pass  # no-op
-    if mode == 'all-regularized':
+    if '-regularized' in mode:
         import msmtools.estimation as memest
         counts.count_matrix[...] += memest.prior_neighbor(counts.count_matrix, 0.001)
         nonempty = np.where(counts.count_matrix.sum(axis=0) + counts.count_matrix.sum(axis=1) > 0)[0]
         counts.count_matrix[nonempty, nonempty] = np.maximum(counts.count_matrix[nonempty, nonempty], 0.001)
-    if mode == 'largest':
+    if 'all' in mode:
+        pass  # no-op
+    if 'largest' in mode:
         counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
                                          sort_by_population=False)
-    if mode == 'populous':
+    if 'populous' in mode:
         counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
                                          sort_by_population=True)
     msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True, maxiter=10000).fit(counts).fetch_model()
     return initial_guess_discrete_from_msm(msm, n_hidden_states, reversible, stationary, separate, regularize)
 
 
-initial_guess_discrete_from_data.VALID_MODES = (None, 'all', 'all-regularized', 'largest', 'populous')
+initial_guess_discrete_from_data.VALID_MODES = ['all', 'largest', 'populous']
 
 
 def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):
@@ -385,7 +386,9 @@ class MaximumLikelihoodHMSM(Estimator):
         self.stationary = stationary
         if stationary:
             self.fixed_stationary_distribution = p
+            self.fixed_initial_distribution = None
         else:
+            self.fixed_stationary_distribution = None
             self.fixed_initial_distribution = p
         self.accuracy = accuracy
         self.maxit = maxit
@@ -497,7 +500,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def n_hidden_states(self) -> int:
-        return self._initial_model.n_hidden_states
+        return self.initial_transition_model.n_hidden_states
 
     @property
     def initial_transition_model(self) -> HiddenMarkovStateModel:
@@ -533,7 +536,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
         max_n_frames = max(len(obs) for obs in dtrajs)
         # pre-construct hidden variables
-        N = self.n_states
+        N = initial_model.n_hidden_states
         alpha = np.zeros((max_n_frames, N))
         beta = np.zeros((max_n_frames, N))
         gammas = [np.zeros((len(obs), N)) for obs in dtrajs]
@@ -560,7 +563,7 @@ class MaximumLikelihoodHMSM(Estimator):
                     converged = True
 
             # update model
-            self._update_model(hmm_data, dtrajs, gammas, count_matrices, maxiter=self._maxit_P)
+            self._update_model(hmm_data, dtrajs, gammas, count_matrices, maxiter=self.maxit_reversible)
 
             # connectivity change check
             tmatrix_nonzeros_new = hmm_data.transition_matrix.nonzero()
@@ -683,6 +686,6 @@ class MaximumLikelihoodHMSM(Estimator):
             else:
                 pi = self.fixed_initial_distribution
 
-        model.initial_distribution = pi
-        model.transition_matrix = T
+        model.initial_distribution[:] = pi
+        model.transition_matrix[:] = T
         model.output_model.fit(observations, gammas)
