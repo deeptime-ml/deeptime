@@ -39,7 +39,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
         T = 10000
         dtrajs = [MarkovStateModel(P).simulate(T)]
         # estimate initial HMM with 2 states - should be identical to P
-        hmm = initial_guess_discrete_from_data(dtrajs, n_states, lagtime=1)
+        hmm = initial_guess_discrete_from_data(dtrajs, n_states, lagtime=1, regularize=False)
         # Test if model fit is close to reference. Note that we do not have an exact reference, so we cannot set the
         # tolerance in a rigorous way to test statistical significance. These are just sanity checks.
         Tij = hmm.transition_model.transition_matrix
@@ -48,14 +48,12 @@ class TestInitHMMDiscrete(unittest.TestCase):
 
         np.testing.assert_(msmana.is_transition_matrix(Tij))
         np.testing.assert_allclose(B.sum(axis=1), np.ones(B.shape[0]))
-        # if (B[0,0]<B[1,0]):
-        #     B = B[np.array([1,0]),:]
         Tij_ref = np.array([[0.99, 0.01],
                             [0.01, 0.99]])
         Bref = np.array([[0.5, 0.5, 0.0, 0.0],
                          [0.0, 0.0, 0.5, 0.5]])
         np.testing.assert_array_almost_equal(Tij, Tij_ref, decimal=2)
-        if np.max(B-Bref) < .05:
+        if np.max(B - Bref) < .05:
             np.testing.assert_allclose(B, Bref, atol=0.06)
         else:
             np.testing.assert_allclose(B[[1, 0]], Bref, atol=0.06)
@@ -116,18 +114,19 @@ class TestInitHMMDiscrete(unittest.TestCase):
             np.testing.assert_equal(hmm.output_model.output_probabilities.shape, (1, 2))
             np.testing.assert_(np.all(hmm.output_model.output_probabilities > 0))
 
-
     def test_2state_2obs_unidirectional(self):
         dtraj = np.array([0, 0, 0, 0, 1])
         Aref_naked = np.array([[0.75, 0.25],
-                               [0   , 1   ]])
-        Bref_naked = np.array([[1.,  0.],
-                               [0.,  1.]])
+                               [0, 1]])
+        Bref_naked = np.array([[1., 0.],
+                               [0., 1.]])
         perm = [1, 0]  # permutation
         for rev in [True, False]:  # reversibiliy doesn't matter in this example
-            hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=2, lagtime=1, reversible=rev, regularize=False)
+            hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=2, lagtime=1, reversible=rev,
+                                                   regularize=False, mode='all')
             assert np.allclose(hmm.transition_model.transition_matrix, Aref_naked) \
-                   or np.allclose(hmm.transition_model.transition_matrix, Aref_naked[np.ix_(perm, perm)])  # test permutation
+                   or np.allclose(hmm.transition_model.transition_matrix,
+                                  Aref_naked[np.ix_(perm, perm)])  # test permutation
             assert np.allclose(hmm.output_model.output_probabilities, Bref_naked) \
                    or np.allclose(hmm.output_model.output_probabilities, Bref_naked[perm])  # test permutation
 
@@ -181,7 +180,9 @@ class TestInitHMMDiscrete(unittest.TestCase):
         # create empty labels
         dtraj += 2
         # include an empty label in separate
-        hmm0 = initial_guess_discrete_from_data(dtraj, 3, lagtime=1, separate=np.array([1, 2]))
+        from bhmm import init_discrete_hmm
+        hmm1 = init_discrete_hmm(dtraj, 3, lag=1)
+        hmm0 = initial_guess_discrete_from_data(dtraj, 3, lagtime=1, separate=np.array([1, 2]), mode='populous')
         piref = np.array([0.35801876, 0.55535398, 0.08662726])
         Aref = np.array([[0.76462978, 0.10261978, 0.13275044],
                          [0.06615566, 0.89464821, 0.03919614],
@@ -189,12 +190,11 @@ class TestInitHMMDiscrete(unittest.TestCase):
         Bref = np.array([[0, 0, 0, 1, 0],
                          [0, 0, 0, 0, 1],
                          [0, 0, 1, 0, 0]])
-        assert np.allclose(hmm0.initial_distribution, piref, atol=1e-5)
-        assert np.allclose(hmm0.transition_matrix, Aref, atol=1e-5)
-        assert np.max(np.abs(hmm0.output_model.output_probabilities - Bref)) < 0.01
+        np.testing.assert_array_almost_equal(hmm0.initial_distribution, piref, decimal=3)
+        np.testing.assert_array_almost_equal(hmm0.transition_model.transition_matrix, Aref, decimal=3)
+        np.testing.assert_(np.max(np.abs(hmm0.output_model.output_probabilities - Bref)) < 0.01)
 
     def test_state_splitting_fail(self):
         dtraj = np.array([0, 0, 1, 1])
         with self.assertRaises(ValueError):
             initial_guess_discrete_from_data(dtraj, 2, 1, separate=np.array([0, 2]))
-

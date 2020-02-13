@@ -177,30 +177,40 @@ def _coarse_grain_transition_matrix(P, M):
 
 def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                     reversible: bool = True, stationary: bool = False,
-                                    separate: np.array = None, regularize: bool = True) -> HiddenMarkovStateModel:
+                                    separate_symbols: np.array = None, regularize: bool = True) -> HiddenMarkovStateModel:
     count_matrix = msm.count_model.count_matrix
-    nonseparate = np.arange(msm.n_states)
+    nonseparate_symbols = np.arange(msm.count_model.n_states_full)
+    nonseparate_states = msm.count_model.symbols_to_states(nonseparate_symbols)
     nonseparate_msm = msm
-    if separate is not None:
-        nonseparate = np.setdiff1d(nonseparate, separate)
-        nonseparate_count_model = msm.count_model.submodel(nonseparate)
+    if separate_symbols is not None:
+        if np.max(separate_symbols) >= msm.count_model.n_states_full:
+            raise ValueError(f'Separate set has indices that do not exist in '
+                             f'full state space: {np.max(separate_symbols)}')
+        nonseparate_symbols = np.setdiff1d(nonseparate_symbols, separate_symbols)
+        nonseparate_states = msm.count_model.symbols_to_states(nonseparate_symbols)
+        nonseparate_count_model = msm.count_model.submodel(nonseparate_states)
         # make reversible
-        P_nonseparate = _transition_matrix.estimate_P(nonseparate_count_model.count_matrix, reversible=True)
-        nonseparate_msm = MarkovStateModel(P_nonseparate)
+        nonseparate_count_matrix = nonseparate_count_model.count_matrix
+        if issparse(nonseparate_count_matrix):
+            nonseparate_count_matrix = nonseparate_count_matrix.toarray()
+        P_nonseparate = _transition_matrix.estimate_P(nonseparate_count_matrix, reversible=True)
+        pi = _transition_matrix.stationary_distribution(P_nonseparate, C=nonseparate_count_matrix)
+        nonseparate_msm = MarkovStateModel(P_nonseparate, stationary_distribution=pi)
     if issparse(count_matrix):
         count_matrix = count_matrix.toarray()
 
     # if #metastable sets == #states, we can stop here
-    n_meta = n_hidden_states if separate is None else n_hidden_states - 1
+    n_meta = n_hidden_states if separate_symbols is None else n_hidden_states - 1
     if n_meta == nonseparate_msm.n_states:
         pcca = PCCAModel(nonseparate_msm.transition_matrix, nonseparate_msm.stationary_distribution, np.eye(n_meta),
                          np.eye(n_meta))
     else:
         pcca = nonseparate_msm.pcca(n_meta)
-    if separate is not None:
+    if separate_symbols is not None:
+        separate_states = msm.count_model.symbols_to_states(separate_symbols)
         memberships = np.zeros((msm.n_states, n_hidden_states))
-        memberships[nonseparate, :n_hidden_states - 1] = pcca.memberships
-        memberships[separate, -1] = 1
+        memberships[nonseparate_states, :n_hidden_states - 1] = pcca.memberships
+        memberships[separate_states, -1] = 1
     else:
         memberships = pcca.memberships
 
@@ -208,34 +218,56 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
     if reversible:
         hidden_transition_matrix = enforce_reversible_on_closed(hidden_transition_matrix)
 
-    hmm_counts = memberships.T.dot(count_matrix).dot(memberships)
-    hmm_pi = stationary_distribution(hidden_transition_matrix, C=hmm_counts)
+    hidden_counts = memberships.T.dot(count_matrix).dot(memberships)
+    hidden_pi = stationary_distribution(hidden_transition_matrix, C=hidden_counts)
 
-    if separate is not None:
-        output_probabilities = np.zeros((n_hidden_states, msm.n_states))
-        output_probabilities[:n_hidden_states - 1, nonseparate] = pcca.metastable_distributions
-        output_probabilities[-1, separate] = msm.stationary_distribution[separate]
+    output_probabilities = np.zeros((n_hidden_states, msm.count_model.n_states_full))
+    if separate_symbols is not None:
+        # we might have lost a few symbols, reduce nonsep symbols to the ones actually represented
+        nonseparate_symbols = msm.count_model.state_symbols[nonseparate_states]
+        separate_symbols = msm.count_model.state_symbols[separate_states]
+        output_probabilities[:n_hidden_states - 1, nonseparate_symbols] = pcca.metastable_distributions
+        output_probabilities[-1, separate_symbols] = msm.stationary_distribution[separate_states]
     else:
         output_probabilities = pcca.metastable_distributions
 
     # regularize
     eps_a = 0.01 / n_hidden_states if regularize else 0.
-    hmm_pi, hidden_transition_matrix = _regularize_hidden(hmm_pi, hidden_transition_matrix, reversible=reversible,
-                                                          stationary=stationary, C=hmm_counts, eps=eps_a)
+    hidden_pi, hidden_transition_matrix = _regularize_hidden(hidden_pi, hidden_transition_matrix, reversible=reversible,
+                                                             stationary=stationary, C=hidden_counts, eps=eps_a)
     eps_b = 0.01 / msm.n_states if regularize else 0.
-    output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate, eps=eps_b)
+    output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate_symbols, eps=eps_b)
     return HiddenMarkovStateModel(transition_model=hidden_transition_matrix, output_model=output_probabilities,
-                                  initial_distribution=hmm_pi)
+                                  initial_distribution=hidden_pi)
 
 
-def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, reversible: bool = True,
+def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, mode='all-regularized', reversible: bool = True,
                                      stationary: bool = False, separate: Optional[np.ndarray] = None,
-                                     states: Optional[np.ndarray] = None, regularize: bool = True):
+                                     states: Optional[np.ndarray] = None, regularize: bool = True,
+                                     connectivity_threshold: Union[str, float] = 0.):
+    if mode not in initial_guess_discrete_from_data.VALID_MODES:
+        raise ValueError("mode can only be one of [{}]".format(", ".join(initial_guess_discrete_from_data.VALID_MODES)))
     counts = TransitionCountEstimator(lagtime, 'sliding').fit(dtrajs).fetch_model()
     if states is not None:
         counts = counts.submodel(states)
+    if mode == 'all':
+        pass  # no-op
+    if mode == 'all-regularized':
+        import msmtools.estimation as memest
+        counts.count_matrix[...] += memest.prior_neighbor(counts.count_matrix, 0.001)
+        nonempty = np.where(counts.count_matrix.sum(axis=0) + counts.count_matrix.sum(axis=1) > 0)[0]
+        counts.count_matrix[nonempty, nonempty] = np.maximum(counts.count_matrix[nonempty, nonempty], 0.001)
+    if mode == 'largest':
+        counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
+                                         sort_by_population=False)
+    if mode == 'populous':
+        counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
+                                         sort_by_population=True)
     msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True, maxiter=10000).fit(counts).fetch_model()
     return initial_guess_discrete_from_msm(msm, n_hidden_states, reversible, stationary, separate, regularize)
+
+
+initial_guess_discrete_from_data.VALID_MODES = (None, 'all', 'all-regularized', 'largest', 'populous')
 
 
 def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):

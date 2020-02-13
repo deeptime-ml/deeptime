@@ -232,7 +232,8 @@ class TransitionCountModel(Model):
         return self._state_histogram
 
     def connected_sets(self, connectivity_threshold: float = 0., directed: bool = True,
-                       probability_constraint: Optional[np.ndarray] = None) -> List[np.ndarray]:
+                       probability_constraint: Optional[np.ndarray] = None,
+                       sort_by_population: bool = False) -> List[np.ndarray]:
         r""" Computes the connected sets of the counting matrix. A threshold can be set fixing a number of counts
         required to consider two states connected. In case of sliding window the number of counts is increased by a
         factor of `lagtime`. In case of 'sliding-effective' counting, the number of sliding window counts were
@@ -247,6 +248,8 @@ class TransitionCountModel(Model):
             Compute connected set for directed or undirected transition graph, default directed
         probability_constraint : (N,) ndarray, optional, default=None
             constraint on the whole state space, sets all counts to zero which have no probability
+        sort_by_population : bool, optional, default=False
+            This flag can be used to order the resulting list of sets in decreasing order by the most counts.
 
         Returns
         -------
@@ -270,8 +273,31 @@ class TransitionCountModel(Model):
                 count_matrix = count_matrix.tolil()
             count_matrix[pos, :] = 0.
             count_matrix[:, pos] = 0.
+        connected_sets = compute_connected_sets(count_matrix, connectivity_threshold, directed=directed)
+        if sort_by_population:
+            score = np.array([self.count_matrix[np.ix_(s, s)].sum() for s in connected_sets])
+            # want decreasing order therefore sort by -1 * score
+            connected_sets = [connected_sets[i] for i in np.argsort(-score)]
+        return connected_sets
 
-        return compute_connected_sets(count_matrix, connectivity_threshold, directed=directed)
+    def symbols_to_states(self, symbols):
+        r"""
+        Converts a set of symbols to state indices in this count model instance. The symbols which
+        are no longer present in this model are discarded. It can happen that the order is
+        changed or the result is smaller than the input length.
+
+        Parameters
+        ----------
+        symbols : array_like
+            the symbols to be mapped to state indices
+
+        Returns
+        -------
+        an array of states
+        """
+        # only take symbols which are still present in this model
+        symbols = np.intersect1d(np.asarray(symbols), self.state_symbols)
+        return np.argwhere(np.isin(self.state_symbols, symbols)).flatten()
 
     def submodel(self, states: np.ndarray):
         r"""This returns a count model that is restricted to a selection of states.
@@ -302,8 +328,8 @@ class TransitionCountModel(Model):
                                     count_matrix_full=self.count_matrix_full,
                                     state_histogram_full=self.state_histogram_full)
 
-    def submodel_largest(self, connectivity_threshold: Union[None, float] = 0., directed: Optional[bool] = None,
-                         probability_constraint: Optional[np.ndarray] = None):
+    def submodel_largest(self, connectivity_threshold: Union[str, float] = 0., directed: Optional[bool] = None,
+                         probability_constraint: Optional[np.ndarray] = None, sort_by_population: bool = False):
         r"""
         Restricts this model to the submodel corresponding to the largest connected set of states after eliminating
         states that fall below the specified connectivity threshold.
@@ -319,6 +345,9 @@ class TransitionCountModel(Model):
             directed.
         probability_constraint : (N,) ndarray, optional, default=None
             Constraint on the whole state space (n_states_full). Only considers states that have positive probability.
+        sort_by_population : bool, optional, default=False
+            This flag can be used to use the connected set with the largest population.
+
         Returns
         -------
         The submodel.
@@ -330,7 +359,8 @@ class TransitionCountModel(Model):
             connectivity_threshold = 1. / self.n_states_full
         connectivity_threshold = float(connectivity_threshold)
         connected_sets = self.connected_sets(connectivity_threshold=connectivity_threshold, directed=directed,
-                                             probability_constraint=probability_constraint)
+                                             probability_constraint=probability_constraint,
+                                             sort_by_population=sort_by_population)
         largest_connected_set = connected_sets[0]
         return self.submodel(largest_connected_set)
 
