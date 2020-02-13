@@ -241,14 +241,17 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                   initial_distribution=hidden_pi)
 
 
-def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, mode='largest-regularized',
+def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='largest-regularized',
                                      reversible: bool = True, stationary: bool = False,
                                      separate: Optional[np.ndarray] = None, states: Optional[np.ndarray] = None,
                                      regularize: bool = True, connectivity_threshold: Union[str, float] = 0.):
     if mode not in initial_guess_discrete_from_data.VALID_MODES \
             + [m + "-regularized" for m in initial_guess_discrete_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(initial_guess_discrete_from_data.VALID_MODES)))
-    counts = TransitionCountEstimator(lagtime, 'sliding').fit(dtrajs).fetch_model()
+
+    dtrajs = ensure_dtraj_list(dtrajs)
+    dtrajs = compute_dtrajs_effective(dtrajs, lagtime=lagtime, n_states=n_hidden_states, stride=stride)
+    counts = TransitionCountEstimator(1, 'sliding').fit(dtrajs).fetch_model()
     if states is not None:
         counts = counts.submodel(states)
     if '-regularized' in mode:
@@ -394,6 +397,9 @@ class MaximumLikelihoodHMSM(Estimator):
         self.maxit = maxit
         self.maxit_reversible = maxit_reversible
         self.physical_time = physical_time
+
+    def fetch_model(self) -> HiddenMarkovStateModel:
+        return self._model
 
     @property
     def physical_time(self) -> Q_:
@@ -581,8 +587,10 @@ class MaximumLikelihoodHMSM(Estimator):
 
         count_model = TransitionCountModel(count_matrix=transition_counts, lagtime=self.lagtime,
                                            physical_time=self.physical_time)
+        transition_model = MarkovStateModel(hmm_data.transition_matrix, reversible=self.reversible,
+                                            count_model=initial_model.count_model)
         model = HiddenMarkovStateModel(
-            transition_model=hmm_data.transition_matrix,
+            transition_model=transition_model,
             output_model=hmm_data.output_model,
             initial_distribution=hmm_data.initial_distribution,
             likelihoods=likelihoods,

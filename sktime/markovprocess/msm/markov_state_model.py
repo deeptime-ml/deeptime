@@ -180,6 +180,14 @@ class MarkovStateModel(Model):
     ################################################################################
 
     @property
+    def stationary(self):
+        """ Whether the MSM is stationary, i.e. whether the initial distribution is the stationary distribution
+         of the hidden transition matrix. """
+        # for disconnected matrices, the stationary distribution depends on the estimator, so we can't compute
+        # it directly. Therefore we test whether the initial distribution is stationary.
+        return np.allclose(np.dot(self.stationary_distribution, self.transition_matrix), self.stationary_distribution)
+
+    @property
     def stationary_distribution(self):
         """The stationary distribution on the MarkovStateModel states"""
         return self._stationary_distribution
