@@ -19,6 +19,15 @@ import unittest
 
 import numpy as np
 from sktime.markovprocess.generation import _markovprocess_generation_bindings as generation_bindings
+from sktime.markovprocess.hmm import MaximumLikelihoodHMSM
+from sktime.markovprocess.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
+from sktime.markovprocess.hmm.output_model import DiscreteOutputModel
+import itertools
+import msmtools.analysis
+
+def permutation_matrices(n):
+    for mat in itertools.permutations(np.eye(n)):
+        yield np.stack(mat)
 
 
 class TestHMMReconstruction(unittest.TestCase):
@@ -26,10 +35,13 @@ class TestHMMReconstruction(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # generate observations
-        n_steps = int(1e6)
+        cls.n_steps = int(1e5)
         cls.T_hidden = np.array([[0.7, 0.2, 0.1],
                                  [0.1, 0.8, 0.1],
                                  [0.1, 0.2, 0.7]])
+
+        cls.hidden_stationary_distribution = msmtools.analysis.stationary_distribution(cls.T_hidden)
+
         cls.n_hidden = cls.T_hidden.shape[0]
         n_obs_per_hidden_state = 5
         cls.n_observable = cls.n_hidden * n_obs_per_hidden_state
@@ -43,7 +55,7 @@ class TestHMMReconstruction(unittest.TestCase):
                                              np.arange((n_obs_per_hidden_state - 1) // 2,
                                                        cls.n_observable, n_obs_per_hidden_state)])
 
-        cls.hidden_state_traj = generation_bindings.trajectory(n_steps, 0, cls.T_hidden)
+        cls.hidden_state_traj = generation_bindings.trajectory(cls.n_steps, 0, cls.T_hidden)
         cls.observable_state_traj = np.zeros_like(cls.hidden_state_traj) - 1
         for state in range(cls.n_hidden):
             ix = np.where(cls.hidden_state_traj == state)[0]
@@ -52,21 +64,55 @@ class TestHMMReconstruction(unittest.TestCase):
                                                              size=ix.shape[0])
         assert -1 not in np.unique(cls.observable_state_traj)
 
-        # TODO: estimate hmm
+        parameter_options = {'reversible': [True, False],
+                             'init_heuristics': [initial_guess_discrete_from_data],
+                             'lagtime': [1]}
+
+        from itertools import product
+        sorted_kwargs = sorted(parameter_options)
+        params = list(product(*(parameter_options[key] for key in sorted_kwargs)))
+
+        def estimate_hmm(**kwargs):
+            init_heuristics = kwargs.pop('init_heuristics')
+            initial_hmm = init_heuristics(cls.observable_state_traj,
+                                          n_hidden_states=cls.n_hidden,
+                                          lagtime=kwargs['lagtime'])
+            hmm = MaximumLikelihoodHMSM(initial_hmm, **kwargs).fit(cls.observable_state_traj).fetch_model()
+            return hmm
+
+        test_models = [estimate_hmm(**dict(zip(sorted_kwargs, param))) for param in params]
+        cls.models = [(p, m) for p, m in zip(params, test_models)]
+
 
     def test_observation_probabilities(self):
         pass
 
     def test_stationary_distribution(self):
-        # compare against pi(self.T_hidden)
-        pass
+        for p, model in self.models:
+            minerr = 1e6
+            for perm in itertools.permutations(range(self.n_hidden)):
+                minerr = min(minerr, np.max(np.abs(model.transition_model.stationary_distribution[np.array(perm)] -
+                                                    self.hidden_stationary_distribution)))
+            np.testing.assert_almost_equal(minerr, 0, decimal=3)
 
     def test_hidden_transition_matrix(self):
-        pass
+        for p, model in self.models:
+            minerr = 1e6
+            for perm in permutation_matrices(self.n_hidden):
+                minerr = min(minerr, np.max(np.abs(perm.T @ model.transition_model.transition_matrix @ perm -
+                                                    self.T_hidden)))
+            np.testing.assert_almost_equal(minerr, 0, decimal=2)
 
+    @unittest.skip('investigate, large deviations')
     def test_hidden_path(self):
-        # assert that viterbi path comes close to self.hidden_stat_traj
-        pass
+        for p, model in self.models:
+            minerr = 1e6
+            for perm in itertools.permutations(range(self.n_hidden)):
+                viterbi_est = model.compute_viterbi_paths([self.observable_state_traj])[0]
+                minerr = min(minerr, (np.array(perm)[viterbi_est] != self.hidden_state_traj).sum()
+                             / self.n_steps)
+
+            np.testing.assert_almost_equal(minerr, 0, decimal=1)
 
     def test_heuristics(self):
         # can we do some rudimentary checks on the initial guess?
