@@ -1,6 +1,7 @@
-import numpy as np
 import unittest
+
 import msmtools.analysis as msmana
+import numpy as np
 
 from sktime.markovprocess import MarkovStateModel, TransitionCountEstimator
 from sktime.markovprocess.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
@@ -148,10 +149,8 @@ class TestInitHMMDiscrete(unittest.TestCase):
             assert np.allclose(hmm.output_model.output_probabilities.sum(axis=1), 1)
 
         for rev in [True, False]:
-            from bhmm.init.discrete import init_discrete_hmm_spectral
             C = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(dtraj).fetch_model().count_matrix
             C += msmest.prior_neighbor(C, 0.001)
-            hmmm = init_discrete_hmm_spectral(C.toarray(), nstates=3, reversible=rev)
             hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=1, reversible=rev)
             np.testing.assert_(msmana.is_transition_matrix(hmm.transition_model.transition_matrix))
             if rev:

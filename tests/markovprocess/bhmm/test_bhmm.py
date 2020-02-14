@@ -23,7 +23,6 @@ from os.path import abspath, join
 import numpy as np
 
 from sktime.markovprocess import bhmm
-from sktime.markovprocess.bhmm.output_models.discrete import DiscreteOutputModel
 from sktime.util import confidence_interval
 
 

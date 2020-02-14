@@ -23,7 +23,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         model = estimator.fit(dtraj).fetch_model()
         # sample strides the trajectory with "lag" and then counts instantaneous transitions
         # get counts 0 -> 0, 0 -> 1, 1 -> 0
-        np.testing.assert_array_equal(model.count_matrix.toarray(), np.array([[1., 1.], [1., 0.]]))
+        np.testing.assert_array_equal(model.count_matrix, np.array([[1., 1.], [1., 0.]]))
         np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sample", "expected sample counting mode, got {}".format(model.counting_mode)
         assert Q_("1 step") == model.physical_time, "no physical time specified, expecting 'step' " \
@@ -43,7 +43,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         model = estimator.fit(dtraj).fetch_model()
         # sliding window across trajectory counting transitions, overestimating total count:
         # 0 -> 0, 0 -> 0, 0 -> 1, 0-> 1, 1-> 0, 1-> 1
-        np.testing.assert_array_equal(model.count_matrix.toarray(), np.array([[2., 2.], [1., 1.]]))
+        np.testing.assert_array_equal(model.count_matrix, np.array([[2., 2.], [1., 1.]]))
         np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sliding", "expected sliding counting mode, got {}".format(model.counting_mode)
         assert Q_("1 step") == model.physical_time, "no physical time specified, expecting 'step' " \
@@ -64,7 +64,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         # sliding window across trajectory counting transitions, overestimating total count:
         # 0 -> 0, 0 -> 0, 0 -> 1, 0-> 1, 1-> 0, 1-> 1
         # then divide by lagtime
-        np.testing.assert_array_equal(model.count_matrix.toarray(), np.array([[2., 2.], [1., 1.]]) / 2.)
+        np.testing.assert_array_equal(model.count_matrix, np.array([[2., 2.], [1., 1.]]) / 2.)
         np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sliding-effective", \
             "expected sliding-effective counting mode, got {}".format(model.counting_mode)
@@ -84,8 +84,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         estimator = TransitionCountEstimator(lagtime=2, count_mode="effective")
         model = estimator.fit(dtraj).fetch_model()
         # effective counting
-        # todo actually compute this and see if it makes sense
-        np.testing.assert_array_equal(model.count_matrix.toarray(), np.array([[1.6, 1.6], [1., 1.]]))
+        np.testing.assert_array_equal(model.count_matrix, np.array([[1.6, 1.6], [1., 1.]]))
         np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "effective", "expected effective counting mode, " \
                                                    "got {}".format(model.counting_mode)

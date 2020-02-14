@@ -45,10 +45,11 @@ from tests.util import GenerateTestMatrix
 def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovStateModel:
     statdist_constraint = kw.pop('statdist', None)
     connectivity = kw.pop('connectivity_threshold', 0.)
-    count_model = TransitionCountEstimator(lagtime=lag, count_mode="sliding").fit(dtrajs).fetch_model()
+    sparse = kw.pop('sparse', False)
+    count_model = TransitionCountEstimator(lagtime=lag, count_mode="sliding", sparse=sparse).fit(dtrajs).fetch_model()
     count_model = count_model.submodel_largest(probability_constraint=statdist_constraint,
                                                connectivity_threshold=connectivity)
-    est = MaximumLikelihoodMSM(stationary_distribution_constraint=statdist_constraint, **kw)
+    est = MaximumLikelihoodMSM(stationary_distribution_constraint=statdist_constraint, sparse=sparse, **kw)
     est.fit(count_model)
     if return_estimator:
         return est, est.fetch_model()
@@ -201,9 +202,8 @@ class TestMSMSimple(unittest.TestCase):
         msm = estimate_markov_model(self.dtraj, self.tau)
         self.assertEqual(self.tau, msm.count_model.lagtime)
         assert_allclose(self.lcc_MSM, msm.count_model.connected_sets()[0])
-        # TODO: count matrices used to be dense if estimation mode is dense.
-        self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_model.count_matrix.toarray()))
-        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix.toarray()))
+        self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_model.count_matrix))
+        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix))
         self.assertTrue(np.allclose(self.P_MSM.toarray(), msm.transition_matrix))
         assert_allclose(self.mu_MSM, msm.stationary_distribution)
         assert_allclose(self.ts[1:], msm.timescales(self.k - 1))

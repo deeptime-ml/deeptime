@@ -46,7 +46,7 @@ class BayesianHMMPosterior(BayesianPosterior):
 
     def submodel_largest(self, strong=True, connectivity_threshold='1/n', observe_nonempty=True, dtrajs=None):
         dtrajs = ensure_dtraj_list(dtrajs)
-        states = self.prior.states_largest(strong=strong, connectivity_threshold=connectivity_threshold)
+        states = self.prior.states_largest(directed=strong, connectivity_threshold=connectivity_threshold)
         obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
         return self.submodel(states=states, obs=obs)
 
