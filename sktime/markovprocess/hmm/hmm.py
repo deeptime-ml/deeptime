@@ -6,7 +6,8 @@ import sktime.markovprocess.hmm._hmm_bindings as _bindings
 from sktime.base import Model
 from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess.hmm.output_model import OutputModel, DiscreteOutputModel
-from sktime.util import ensure_dtraj_list
+from sktime.markovprocess.sample import indices_by_distribution
+from sktime.util import ensure_dtraj_list, ensure_ndarray
 
 
 class HiddenMarkovStateModel(Model):
@@ -19,7 +20,8 @@ class HiddenMarkovStateModel(Model):
                  initial_count : Optional[np.ndarray] = None,
                  hidden_state_trajectories : Optional[List[np.ndarray]] = None,
                  stride: Union[int, str] = 1,
-                 observation_symbols: Optional[np.ndarray] = None):
+                 observation_symbols: Optional[np.ndarray] = None,
+                 observation_symbols_full: Optional[np.ndarray] = None):
         r"""
         Constructs a new hidden markov state model from a (m, m) hidden transition matrix (macro states), an
         observation probability matrix that maps from hidden to observable states (micro states), i.e., a (m, n)-matrix,
@@ -62,12 +64,18 @@ class HiddenMarkovStateModel(Model):
         self._hidden_state_trajectories = hidden_state_trajectories
         if observation_symbols is None and output_model.n_observable_states >= 0:
             observation_symbols = np.arange(output_model.n_observable_states)
+            observation_symbols_full = observation_symbols
         self._observation_symbols = observation_symbols
+        self._observation_symbols_full = observation_symbols_full
         self._stride = stride
 
     @property
     def stride(self):
         return self._stride
+
+    @property
+    def observation_symbols_full(self):
+        return self._observation_symbols_full
 
     @property
     def observation_symbols(self) -> Optional[np.ndarray]:
@@ -246,7 +254,8 @@ class HiddenMarkovStateModel(Model):
                                        initial_distribution=initial_distribution, likelihoods=self.likelihoods,
                                        state_probabilities=self.state_probabilities, initial_count=initial_count,
                                        hidden_state_trajectories=self.hidden_state_trajectories,
-                                       observation_symbols=observation_symbols)
+                                       observation_symbols=observation_symbols,
+                                       observation_symbols_full=self.observation_symbols_full)
         return model
 
     def _select_states(self, connectivity_threshold, states):
@@ -421,6 +430,125 @@ class HiddenMarkovStateModel(Model):
 
         """
         return np.argmax(self.output_probabilities, axis=0)
+
+    def simulate(self, N, start=None, stop=None, dt=1):
+        """
+        Generates a realization of the Hidden Markov Model
+
+        Parameters
+        ----------
+        N : int
+            trajectory length in steps of the lag time
+        start : int, optional, default = None
+            starting hidden state. If not given, will sample from the stationary
+            distribution of the hidden transition matrix.
+        stop : int or int-array-like, optional, default = None
+            stopping hidden set. If given, the trajectory will be stopped before
+            N steps once a hidden state of the stop set is reached
+        dt : int
+            trajectory will be saved every dt time steps.
+            Internally, the dt'th power of P is taken to ensure a more efficient simulation.
+
+        Returns
+        -------
+        htraj : (N/dt, ) ndarray
+            The hidden state trajectory with length N/dt
+        otraj : (N/dt, ) ndarray
+            The observable state discrete trajectory with length N/dt
+
+        """
+
+        from scipy import stats
+        # generate output distributions
+        output_distributions = [stats.rv_discrete(values=(np.arange(self.output_probabilities.shape[1]), pobs_i))
+                                for pobs_i in self.output_probabilities]
+        # sample hidden trajectory
+        htraj = self.transition_model.simulate(N, start=start, stop=stop, dt=dt)
+        otraj = np.zeros(htraj.size, dtype=int)
+        # for each time step, sample microstate
+        for t, h in enumerate(htraj):
+            otraj[t] = output_distributions[h].rvs()  # current cluster
+        return htraj, otraj
+
+    def transform_discrete_trajectories_to_observed_symbols(self, dtrajs):
+        r"""A list of integer arrays with the discrete trajectories mapped to the currently used set of observation
+        symbols. For example, if there has been a subselection of the model for connectivity='largest', the indices
+        will be given within the connected set, frames that do not correspond to a considered symbol are set to -1.
+
+        Parameters
+        ----------
+        dtrajs : array_like or list of array_like
+            discretized trajectories
+
+        Returns
+        -------
+        array_like or list of array_like
+            Curated discretized trajectories so that unconsidered symbols are mapped to -1.
+        """
+        dtrajs = ensure_dtraj_list(dtrajs)
+        mapping = -1 * np.ones(self.observation_symbols_full.size, dtype=np.int32)
+        mapping[self.observation_symbols] = np.arange(self.observation_symbols.size)
+        return [mapping[dtraj] for dtraj in dtrajs]
+
+    def sample_by_observation_probabilities(self, dtrajs, nsample):
+        r"""Generates samples according to the current observation probability distribution
+
+        Parameters
+        ----------
+        nsample : int
+            Number of samples per distribution. If replace = False, the number of returned samples per state could be
+            smaller if less than nsample indexes are available for a state.
+
+        Returns
+        -------
+        indexes : length m list of ndarray( (nsample, 2) )
+            List of the sampled indices by distribution.
+            Each element is an index array with a number of rows equal to nsample, with rows consisting of a
+            tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
+
+        """
+        from sktime.markovprocess.sample import compute_index_states
+        mapped = self.transform_discrete_trajectories_to_observed_symbols(dtrajs)
+        observable_state_indices = compute_index_states(mapped)
+        return indices_by_distribution(observable_state_indices, self.output_probabilities, nsample)
+
+    # ================================================================================================================
+    # Micro- / observable state properties
+    # ================================================================================================================
+
+    def _project_to_hidden(self, a, ndim=None, allow_none=None):
+        a = ensure_ndarray(a, ndim=ndim, allow_None=allow_none)
+        if allow_none and a is None:
+            return None
+        if len(a) != self.n_states_obs:
+            raise ValueError("Input array has incompatible shape, needs to have "
+                             "length {} but had length {}.".format(len(a), self.n_states_obs))
+        return np.dot(self.output_probabilities, a)
+
+    def expectation_obs(self, a):
+        return self.transition_model.expectation(self._project_to_hidden(a))
+
+    def correlation_obs(self, a, b=None, maxtime=None, k=None, ncv=None):
+        # basic checks for a and b
+        a = self._project_to_hidden(a)
+        b = self._project_to_hidden(b, ndim=1, allow_none=True)
+        return self.transition_model.correlation(a, b=b, maxtime=maxtime, k=k, ncv=ncv)
+
+    def fingerprint_correlation_obs(self, a, b=None, k=None, ncv=None):
+        # basic checks for a and b
+        a = self._project_to_hidden(a, ndim=1)
+        b = self._project_to_hidden(b, ndim=1, allow_none=True)
+        return self.transition_model.fingerprint_correlation(a, b=b, k=k, ncv=ncv)
+
+    def relaxation_obs(self, p0, a, maxtime=None, k=None, ncv=None):
+        p0 = self._project_to_hidden(p0, ndim=1)
+        a = self._project_to_hidden(a, ndim=1)
+        return self.transition_model.relaxation(p0, a, maxtime=maxtime, k=k, ncv=ncv)
+
+    def fingerprint_relaxation_obs(self, p0, a, k=None, ncv=None):
+        p0 = self._project_to_hidden(p0, ndim=1)
+        a = self._project_to_hidden(a, ndim=1)
+        return self.transition_model.fingerprint_relaxation(p0, a, k=k, ncv=ncv)
 
 
 def viterbi(transition_matrix: np.ndarray, state_probability_trajectory: np.ndarray, initial_distribution: np.ndarray):

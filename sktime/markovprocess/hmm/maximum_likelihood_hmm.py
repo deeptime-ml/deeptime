@@ -177,12 +177,29 @@ def _coarse_grain_transition_matrix(P, M):
 
 def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                     reversible: bool = True, stationary: bool = False,
-                                    separate_symbols: np.array = None, regularize: bool = True) -> HiddenMarkovStateModel:
+                                    separate_symbols = None, regularize: bool = True) -> HiddenMarkovStateModel:
+    r"""
+
+    Parameters
+    ----------
+    msm
+    n_hidden_states
+    reversible
+    stationary
+    separate_symbols : array_like, optional, default=None
+        separate symbols
+    regularize
+
+    Returns
+    -------
+
+    """
     count_matrix = msm.count_model.count_matrix
     nonseparate_symbols = np.arange(msm.count_model.n_states_full)
     nonseparate_states = msm.count_model.symbols_to_states(nonseparate_symbols)
     nonseparate_msm = msm
     if separate_symbols is not None:
+        separate_symbols = np.asanyarray(separate_symbols)
         if np.max(separate_symbols) >= msm.count_model.n_states_full:
             raise ValueError(f'Separate set has indices that do not exist in '
                              f'full state space: {np.max(separate_symbols)}')
@@ -243,8 +260,29 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
 
 def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='largest-regularized',
                                      reversible: bool = True, stationary: bool = False,
-                                     separate: Optional[np.ndarray] = None, states: Optional[np.ndarray] = None,
+                                     separate = None, states: Optional[np.ndarray] = None,
                                      regularize: bool = True, connectivity_threshold: Union[str, float] = 0.):
+    r"""
+
+    Parameters
+    ----------
+    dtrajs
+    n_hidden_states
+    lagtime
+    stride
+    mode
+    reversible
+    stationary
+    separate : array_like, optional, default=None
+        blub
+    states
+    regularize
+    connectivity_threshold
+
+    Returns
+    -------
+
+    """
     if mode not in initial_guess_discrete_from_data.VALID_MODES \
             + [m + "-regularized" for m in initial_guess_discrete_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(initial_guess_discrete_from_data.VALID_MODES)))
