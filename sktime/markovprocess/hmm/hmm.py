@@ -203,7 +203,7 @@ class HiddenMarkovStateModel(Model):
         observations = ensure_dtraj_list(observations)
         A = self.transition_model.transition_matrix
         pi = self.initial_distribution
-        state_probabilities = self.output_model.to_state_probability_trajectory(observations)
+        state_probabilities = [self.output_model.to_state_probability_trajectory(obs) for obs in observations]
         paths = [viterbi(A, obs, pi) for obs in state_probabilities]
         return paths
 
