@@ -44,6 +44,10 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
+    def submodel(self, states: Optional[np.ndarray] = None, obs: Optional[np.ndarray] = None):
+        pass
+
+    @abc.abstractmethod
     def fit(self, observations: List[np.ndarray], weights: List[np.ndarray]):
         r"""
         Fits the output model given the observations and weights.
@@ -125,6 +129,19 @@ class DiscreteOutputModel(OutputModel):
         self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
         return self
 
+    def submodel(self, states: Optional[np.ndarray] = None, obs: Optional[np.ndarray] = None):
+        if states is None:
+            states = np.arange(self.output_probabilities.shape[0])
+        if obs is None:
+            obs = np.arange(self.output_probabilities.shape[1])
+        B = np.copy(self.output_probabilities[np.ix_(states, obs)])
+        B /= B.sum(axis=1)[:, None]
+        if self.prior is not None:
+            prior = np.copy(self.prior[np.ix_(states, obs)])
+        else:
+            prior = None
+        return DiscreteOutputModel(B, prior, self.ignore_outliers)
+
     def sample(self, observations_per_state: List[np.ndarray]) -> None:
         r"""
 
@@ -202,6 +219,12 @@ class GaussianOutputModel(OutputModel):
 
         """
         return _bindings.gaussian.generate_observation_trajectory(hidden_state_trajectory, self.means, self.sigmas)
+
+    def submodel(self, states: Optional[np.ndarray] = None, obs: Optional[np.ndarray] = None):
+        if states is None:
+            states = np.arange(self.means.shape[0])
+        return GaussianOutputModel(len(states), means=self.means[states], sigmas=self.sigmas[states],
+                                   ignore_outliers=self.ignore_outliers)
 
     def fit(self, observations: List[np.ndarray], weights: List[np.ndarray]):
         """

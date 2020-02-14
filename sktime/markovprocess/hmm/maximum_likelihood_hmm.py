@@ -251,7 +251,7 @@ def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1,
 
     dtrajs = ensure_dtraj_list(dtrajs)
     dtrajs = compute_dtrajs_effective(dtrajs, lagtime=lagtime, n_states=n_hidden_states, stride=stride)
-    counts = TransitionCountEstimator(1, 'sliding').fit(dtrajs).fetch_model()
+    counts = TransitionCountEstimator(1, 'sliding', sparse=False).fit(dtrajs).fetch_model()
     if states is not None:
         counts = counts.submodel(states)
     if '-regularized' in mode:
@@ -598,7 +598,7 @@ class MaximumLikelihoodHMSM(Estimator):
             initial_count=self._init_counts(gammas),
             hidden_state_trajectories=[viterbi(hmm_data.transition_matrix, obs, hmm_data.initial_distribution)
                                        for obs in dtrajs],
-            count_model=count_model
+            stride=self.stride
         )
         self._model = model
         return self
