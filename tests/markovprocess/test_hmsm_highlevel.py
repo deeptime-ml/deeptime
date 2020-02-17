@@ -21,17 +21,42 @@ import numpy as np
 from sktime.markovprocess.generation import _markovprocess_generation_bindings as generation_bindings
 from sktime.markovprocess.hmm import MaximumLikelihoodHMSM
 from sktime.markovprocess.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
-from sktime.markovprocess.hmm.output_model import DiscreteOutputModel
 import itertools
 import msmtools.analysis
+from ..util import GenerateTestMatrix
+
+
+parameter_options = {'reversible': [True, False],
+                     'init_heuristics': [initial_guess_discrete_from_data],
+                     'lagtime': [1]}
+
+sorted_kwargs = sorted(parameter_options)
+parameter_grid = list(itertools.product(*(parameter_options[key] for key in sorted_kwargs)))
+kwarg_grid = [{k: v for k, v in zip(sorted_kwargs, param_tuple)} for param_tuple in
+              parameter_grid]
+
 
 def permutation_matrices(n):
     for mat in itertools.permutations(np.eye(n)):
         yield np.stack(mat)
 
 
-class TestHMMReconstruction(unittest.TestCase):
+def compile_test_signature(parameters):
+    s = ''
+    for n, p in zip(sorted_kwargs, parameters):
+        s += f'{n}: {p} '
+    return s
 
+
+class TestHMMReconstruction(unittest.TestCase, metaclass=GenerateTestMatrix):
+    global sorted_kwargs
+
+    params = {
+        '_test_observation_probabilities': kwarg_grid,
+        '_test_stationary_distribution': kwarg_grid,
+        '_test_hidden_transition_matrix': kwarg_grid,
+        '_test_hidden_path': kwarg_grid
+    }
     @classmethod
     def setUpClass(cls):
         # generate observations
@@ -51,7 +76,7 @@ class TestHMMReconstruction(unittest.TestCase):
             return prop / prop.sum()
 
         cls.observed_alphabet = np.arange(cls.n_observable)
-        cls.output_probabilities = np.array([gaussian(cls.observed_alphabet, mu, 2.5) for mu in
+        cls.output_probabilities = np.array([gaussian(cls.observed_alphabet, mu, 2.) for mu in
                                              np.arange((n_obs_per_hidden_state - 1) // 2,
                                                        cls.n_observable, n_obs_per_hidden_state)])
 
@@ -64,14 +89,6 @@ class TestHMMReconstruction(unittest.TestCase):
                                                              size=ix.shape[0])
         assert -1 not in np.unique(cls.observable_state_traj)
 
-        parameter_options = {'reversible': [True, False],
-                             'init_heuristics': [initial_guess_discrete_from_data],
-                             'lagtime': [1]}
-
-        from itertools import product
-        sorted_kwargs = sorted(parameter_options)
-        params = list(product(*(parameter_options[key] for key in sorted_kwargs)))
-
         def estimate_hmm(**kwargs):
             init_heuristics = kwargs.pop('init_heuristics')
             initial_hmm = init_heuristics(cls.observable_state_traj,
@@ -80,43 +97,48 @@ class TestHMMReconstruction(unittest.TestCase):
             hmm = MaximumLikelihoodHMSM(initial_hmm, **kwargs).fit(cls.observable_state_traj).fetch_model()
             return hmm
 
-        test_models = [estimate_hmm(**dict(zip(sorted_kwargs, param))) for param in params]
-        cls.models = [(p, m) for p, m in zip(params, test_models)]
+        test_models = [estimate_hmm(**dict(zip(sorted_kwargs, param))) for param in parameter_grid]
+        cls.models = {compile_test_signature(p): m for p, m in zip(parameter_grid, test_models)}
 
+    def _test_observation_probabilities(self, **kwargs):
+        test_sign = compile_test_signature([kwargs[key] for key in sorted_kwargs])
+        model = self.models[test_sign]
 
-    def test_observation_probabilities(self):
-        pass
+        minerr = 1e6
+        for perm in itertools.permutations(range(self.n_hidden)):
+            err = np.max(np.abs(model.output_probabilities[np.array(perm)] -
+                                self.output_probabilities))
+            minerr = min(minerr, err)
+        np.testing.assert_almost_equal(minerr, 0, decimal=2, err_msg=f'failed for {test_sign}')
 
-    def test_stationary_distribution(self):
-        for p, model in self.models:
-            minerr = 1e6
-            for perm in itertools.permutations(range(self.n_hidden)):
-                minerr = min(minerr, np.max(np.abs(model.transition_model.stationary_distribution[np.array(perm)] -
-                                                    self.hidden_stationary_distribution)))
-            np.testing.assert_almost_equal(minerr, 0, decimal=3)
+    def _test_stationary_distribution(self, **kwargs):
+        test_sign = compile_test_signature([kwargs[key] for key in sorted_kwargs])
+        model = self.models[test_sign]
+        minerr = 1e6
+        for perm in itertools.permutations(range(self.n_hidden)):
+            minerr = min(minerr, np.max(np.abs(model.transition_model.stationary_distribution[np.array(perm)] -
+                                                self.hidden_stationary_distribution)))
+        np.testing.assert_almost_equal(minerr, 0, decimal=2)
 
-    def test_hidden_transition_matrix(self):
-        for p, model in self.models:
-            minerr = 1e6
-            for perm in permutation_matrices(self.n_hidden):
-                minerr = min(minerr, np.max(np.abs(perm.T @ model.transition_model.transition_matrix @ perm -
-                                                    self.T_hidden)))
-            np.testing.assert_almost_equal(minerr, 0, decimal=2)
+    def _test_hidden_transition_matrix(self, **kwargs):
+        test_sign = compile_test_signature([kwargs[key] for key in sorted_kwargs])
+        model = self.models[test_sign]
+        minerr = 1e6
+        for perm in permutation_matrices(self.n_hidden):
+            minerr = min(minerr, np.max(np.abs(perm.T @ model.transition_model.transition_matrix @ perm -
+                                                self.T_hidden)))
+        np.testing.assert_almost_equal(minerr, 0, decimal=2)
 
-    @unittest.skip('investigate, large deviations')
-    def test_hidden_path(self):
-        for p, model in self.models:
-            minerr = 1e6
-            for perm in itertools.permutations(range(self.n_hidden)):
-                viterbi_est = model.compute_viterbi_paths([self.observable_state_traj])[0]
-                minerr = min(minerr, (np.array(perm)[viterbi_est] != self.hidden_state_traj).sum()
-                             / self.n_steps)
+    def _test_hidden_path(self, **kwargs):
+        test_sign = compile_test_signature([kwargs[key] for key in sorted_kwargs])
+        model = self.models[test_sign]
+        minerr = 1e6
+        for perm in itertools.permutations(range(self.n_hidden)):
+            viterbi_est = model.compute_viterbi_paths([self.observable_state_traj])[0]
+            minerr = min(minerr, (np.array(perm)[viterbi_est] != self.hidden_state_traj).sum()
+                         / self.n_steps)
 
-            np.testing.assert_almost_equal(minerr, 0, decimal=1)
-
-    def test_heuristics(self):
-        # can we do some rudimentary checks on the initial guess?
-        pass
+        np.testing.assert_almost_equal(minerr, 0, decimal=1)
 
 
 if __name__ == "__main__":
