@@ -93,6 +93,17 @@ class HiddenMarkovStateModel(Model):
         self._stride = stride
 
     @property
+    def lagtime(self) -> int:
+        r""" The lagtime this model was estimated at.
+
+        Returns
+        -------
+        lagtime : int
+            The lagtime.
+        """
+        return self.transition_model.lagtime
+
+    @property
     def stride(self):
         r"""
         The stride parameter which was used to subsample the discrete trajectories when estimating the hidden

@@ -109,8 +109,6 @@ def _regularize_pobs(output_probabilities, nonempty=None, separate=None, eps=Non
     separate : None or iterable of int
         Force the given set of observed states to stay in a separate hidden state.
         The remaining n_states-1 states will be assigned by a metastable decomposition.
-    reversible : bool
-        HMM is reversible. Will make sure it is still reversible after modification.
 
     Returns
     -------
@@ -283,6 +281,7 @@ def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1,
     -------
 
     """
+    # todo docs
     if mode not in initial_guess_discrete_from_data.VALID_MODES \
             + [m + "-regularized" for m in initial_guess_discrete_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(initial_guess_discrete_from_data.VALID_MODES)))
@@ -313,6 +312,7 @@ initial_guess_discrete_from_data.VALID_MODES = ['all', 'largest', 'populous']
 
 
 def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):
+    # todo docs
     from sklearn.mixture import GaussianMixture
     # todo we dont actually want to depend on sklearn
     dtrajs = ensure_dtraj_list(dtrajs)
@@ -694,8 +694,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @staticmethod
     def _reduce_transition_counts(count_matrices):
-        C = np.add.reduce(count_matrices)
-        return C
+        return np.add.reduce(count_matrices)
 
     def _update_model(self, model: _HMMModelStorage, observations: List[np.ndarray], gammas: List[np.ndarray],
                       count_matrices: List[np.ndarray], maxiter: int = int(1e7)):
