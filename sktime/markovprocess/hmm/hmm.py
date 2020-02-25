@@ -397,6 +397,42 @@ class HiddenMarkovStateModel(Model):
         paths = [viterbi(A, obs, pi) for obs in state_probabilities]
         return paths
 
+    def collect_observations_in_state(self, observations: List[np.ndarray], state_index: int):
+        """Collect a vector of all observations belonging to a specified hidden state.
+
+        Parameters
+        ----------
+        observations : list of numpy.array
+            List of observed trajectories.
+        state_index : int
+            The index of the hidden state for which corresponding observations are to be retrieved.
+
+        Returns
+        -------
+        collected_observations : numpy.array with shape (nsamples,)
+            The collected vector of observations belonging to the specified hidden state.
+
+        Raises
+        ------
+        RuntimeError
+            A RuntimeError is raised if the HMM model does not yet have a hidden state trajectory associated with it.
+
+        """
+        if not self.hidden_state_trajectories:
+            raise RuntimeError('HMM model does not have a hidden state trajectory.')
+
+        collected_observations = [
+            o_t[np.where(s_t == state_index)[0]] for s_t, o_t in zip(self.hidden_state_trajectories, observations)
+        ]
+        return np.hstack(collected_observations)
+        #dtype = observations[0].dtype
+        #collected_observations = np.array([], dtype=dtype)
+        #for (s_t, o_t) in zip(self.hidden_state_trajectories, observations):
+        #    indices = np.where(s_t == state_index)[0]
+        #    collected_observations = np.append(collected_observations, o_t[indices])##
+        #
+        #return collected_observations
+
     ################################################################################
     # Generation of trajectories and samples
     ################################################################################

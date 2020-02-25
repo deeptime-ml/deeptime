@@ -68,7 +68,7 @@ PYBIND11_MODULE(_hmm_bindings, m) {
         util.def("state_probabilities", &stateProbabilities<double>, "alpha"_a, "beta"_a, "gamma_out"_a, "T"_a = py::none(), docs::STATE_PROBS);
         util.def("transition_counts", &transitionCounts<float>, "alpha"_a, "beta"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "counts_out"_a, "T"_a = py::none(), docs::TRANSITION_COUNTS);
         util.def("transition_counts", &transitionCounts<double>, "alpha"_a, "beta"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "counts_out"_a, "T"_a = py::none(), docs::TRANSITION_COUNTS);
-        util.def("samplePath", &samplePath<float>, "alpha"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "T"_a = py::none(), "seed"_a = -1, docs::SAMPLE_PATH);
-        util.def("samplePath", &samplePath<double>, "alpha"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "T"_a = py::none(), "seed"_a = -1, docs::SAMPLE_PATH);
+        util.def("sample_path", &samplePath<float>, "alpha"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "T"_a = py::none(), "seed"_a = -1, docs::SAMPLE_PATH);
+        util.def("sample_path", &samplePath<double>, "alpha"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "T"_a = py::none(), "seed"_a = -1, docs::SAMPLE_PATH);
     }
 }
