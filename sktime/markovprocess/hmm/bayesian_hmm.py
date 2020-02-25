@@ -22,6 +22,7 @@ from msmtools.dtraj import number_of_states
 from msmtools.estimation import sample_tmatrix, transition_matrix
 
 from sktime.base import Estimator
+from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess._base import BayesianPosterior
 from sktime.markovprocess._transition_matrix import stationary_distribution
 from sktime.markovprocess.bhmm import discrete_hmm, bayesian_hmm
@@ -246,7 +247,7 @@ class BayesianHMSM(Estimator):
 
     def _update_transition_matrix(self, model: HiddenMarkovStateModel):
         """ Updates the hidden-state transition matrix and the initial distribution """
-        C = model.count_matrix() + self.prior_C  # posterior count matrix
+        C = model.transition_model.count_model.count_matrix + self.prior_C  # posterior count matrix
 
         # check if we work with these options
         if self.reversible and not is_connected(C, directed=True):
@@ -265,14 +266,15 @@ class BayesianHMSM(Estimator):
         if self.stationary:  # p0 is consistent with P
             p0 = stationary_distribution(Tij, C=C)
         else:
-            n0 = model.count_init().astype(float)
+            n0 = model.initial_count.astype(float)
             first_timestep_counts_with_prior = n0 + self.prior_n0
             positive = first_timestep_counts_with_prior > 0
             p0 = np.zeros_like(n0)
             p0[positive] = np.random.dirichlet(first_timestep_counts_with_prior[positive])  # sample p0 from posterior
 
         # update HMM with new sample
-        model.update(p0, Tij)
+        model.transition_model.update_transition_matrix(Tij)
+        model.transition_model.update_stationary_distribution(p0)
 
     def fit(self, data, n_burn_in: int = 0, n_thin: int = 0, **kwargs):
         dtrajs = ensure_dtraj_list(data)
@@ -382,9 +384,10 @@ class BayesianHMSM(Estimator):
             pobs = sample.output_model.output_probabilities
             Bobs = pobs[:, prior.observation_symbols]
             pobs = Bobs / Bobs.sum(axis=1)[:, None]  # renormalize
-            samples.append(HiddenMarkovStateModel(P, pobs, stationary_distribution=pi,
-                                                  count_model=prior_count_model, initial_counts=sample.initial_count,
-                                                  reversible=self.reversible, initial_distribution=init_dist))
+            transition_model = MarkovStateModel(P, stationary_distribution=pi, count_model=prior_count_model,
+                                                reversible=self.reversible)
+            samples.append(HiddenMarkovStateModel(transition_model, pobs, initial_count=sample.initial_count,
+                                                  initial_distribution=init_dist))
 
         # set new model
         self._model = model

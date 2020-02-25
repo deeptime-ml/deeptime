@@ -23,6 +23,7 @@ from math import ceil
 
 import msmtools.analysis as msmana
 import numpy as np
+from cached_property import cached_property
 from scipy.sparse import issparse
 
 from sktime.base import Model
@@ -61,29 +62,11 @@ class MarkovStateModel(Model):
             In case the MSM was estimated from data, the transition count model can be provided for statistical
             information about the data. Some properties of the model require a count model so that they can be computed.
         """
-        self._sparse = issparse(transition_matrix)
         self._is_reversible = reversible
         self._ncv = ncv
 
-        if transition_matrix is None:
-            raise ValueError("Markov state model requires a transition matrix, but it was None.")
-        else:
-            if not msmana.is_transition_matrix(transition_matrix, tol=1e-8):
-                raise ValueError('The input transition matrix is not a stochastic matrix '
-                                 '(elements >= 0, rows sum up to 1).')
-            self._transition_matrix = transition_matrix
-
-        self._n_states = np.shape(transition_matrix)[0]
-        if self._is_reversible is None:
-            self._is_reversible = msmana.is_reversible(self.transition_matrix)
-
-        if stationary_distribution is None:
-            from msmtools.analysis import stationary_distribution as compute_sd
-            stationary_distribution = compute_sd(self.transition_matrix)
-        if not np.allclose(np.sum(stationary_distribution), 1., atol=1e-14):
-            raise ValueError("Stationary distribution did not sum up to 1 "
-                             "(sum={})".format(np.sum(stationary_distribution)))
-        self._stationary_distribution = stationary_distribution
+        self._transition_matrix = None
+        self.update_transition_matrix(transition_matrix)
 
         if n_eigenvalues is None:
             if self.sparse:
@@ -94,12 +77,22 @@ class MarkovStateModel(Model):
                 n_eigenvalues = self.n_states
         self._n_eigenvalues = n_eigenvalues
         self._count_model = count_model
-        # initially None, compute lazily
         self._eigenvalues = None
+
+        self._stationary_distribution = None
+        self.update_stationary_distribution(stationary_distribution)
 
     ################################################################################
     # Basic attributes
     ################################################################################
+
+    def _invalidate_caches(self):
+        r""" Invalidates all cached properties and causes them to be re-evaluated """
+        for member in self.__class__.__dict__.values():
+            if isinstance(member, cached_property) and member.func.__name__ in self.__dict__:
+                del self.__dict__[member.func.__name__]
+        self._eigenvalues = None
+        self._stationary_distribution = None
 
     @property
     def count_model(self) -> Optional[TransitionCountModel]:
@@ -132,20 +125,31 @@ class MarkovStateModel(Model):
         """ The transition matrix on the active set. """
         return self._transition_matrix
 
-    @property
+    def update_transition_matrix(self, value: np.ndarray):
+        """ Sets the transition matrix and invalidates all cached and derived properties. """
+        if value is None:
+            raise ValueError("Markov state model requires a transition matrix, but it was None.")
+        else:
+            if not msmana.is_transition_matrix(value, tol=1e-8):
+                raise ValueError('The input transition matrix is not a stochastic matrix '
+                                 '(elements >= 0, rows sum up to 1).')
+            self._transition_matrix = value
+            self._invalidate_caches()
+
+    @cached_property
     def reversible(self) -> bool:
         """Returns whether the MarkovStateModel is reversible """
-        return self._is_reversible
+        return msmana.is_reversible(self.transition_matrix) if self._is_reversible is None else self._is_reversible
 
     @property
     def sparse(self) -> bool:
         """Returns whether the MarkovStateModel is sparse """
-        return self._sparse
+        return issparse(self.transition_matrix)
 
     @property
     def n_states(self) -> int:
         """ Number of active states on which all computations and estimations are done """
-        return self._n_states
+        return np.shape(self.transition_matrix)[0]
 
     @property
     def n_eigenvalues(self) -> int:
@@ -187,7 +191,7 @@ class MarkovStateModel(Model):
     # Spectral quantities
     ################################################################################
 
-    @property
+    @cached_property
     def stationary(self):
         """ Whether the MSM is stationary, i.e. whether the initial distribution is the stationary distribution
          of the hidden transition matrix. """
@@ -195,10 +199,27 @@ class MarkovStateModel(Model):
         # it directly. Therefore we test whether the initial distribution is stationary.
         return np.allclose(np.dot(self.stationary_distribution, self.transition_matrix), self.stationary_distribution)
 
-    @property
+    @cached_property
     def stationary_distribution(self):
         """The stationary distribution on the MarkovStateModel states"""
-        return self._stationary_distribution
+        if self._stationary_distribution is None:
+            from msmtools.analysis import stationary_distribution as compute_sd
+            stationary_distribution = compute_sd(self.transition_matrix)
+            if not np.allclose(np.sum(stationary_distribution), 1., atol=1e-14):
+                raise ValueError("Stationary distribution did not sum up to 1 "
+                                 "(sum={})".format(np.sum(stationary_distribution)))
+        else:
+            stationary_distribution = self._stationary_distribution
+
+        return stationary_distribution
+
+    def update_stationary_distribution(self, value: np.ndarray):
+        r""" Explicitly sets the stationary distribution, re-normalizes """
+        if value is not None:
+            self._stationary_distribution = np.copy(value) / np.sum(value)
+        else:
+            self._stationary_distribution = None
+        self._invalidate_caches()
 
     def _compute_eigenvalues(self, neig):
         """ Conducts the eigenvalue decomposition and stores k eigenvalues """
@@ -430,7 +451,7 @@ class MarkovStateModel(Model):
         A : int or int array
             set of states
         """
-        if np.max(A) > self._n_states:
+        if np.max(A) > self.n_states:
             raise ValueError('Chosen set contains states that are not included in the active set.')
 
     def mfpt(self, A, B):

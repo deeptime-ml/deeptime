@@ -18,12 +18,12 @@
 import unittest
 
 import numpy as np
-from sktime.markovprocess.generation import _markovprocess_generation_bindings as generation_bindings
+from sktime.markovprocess._markovprocess_bindings import simulation as generation_bindings
 from sktime.markovprocess.hmm import MaximumLikelihoodHMSM
 from sktime.markovprocess.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
 import itertools
 import msmtools.analysis
-from ...util import GenerateTestMatrix
+from tests.util import GenerateTestMatrix
 
 parameter_options = {'reversible': [True, False],
                      'init_heuristics': [initial_guess_discrete_from_data],

@@ -1,3 +1,4 @@
+from functools import wraps
 from typing import Union, Optional, List
 
 import numpy as np
@@ -11,6 +12,16 @@ from sktime.markovprocess.util import count_states, compute_connected_sets
 from sktime.util import submatrix, ensure_dtraj_list
 
 __author__ = 'noe, clonker'
+
+
+def requires_state_histogram(func):
+    @wraps(func)
+    def wrap(self, *args, **kw):
+        if self.state_histogram is None:
+            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+        return func(*args, **kw)
+
+    return wrap
 
 
 class TransitionCountModel(Model):
