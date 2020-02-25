@@ -128,9 +128,12 @@ class TestTransitionCountModel(unittest.TestCase, metaclass=GenerateTestMatrix):
             np.testing.assert_equal(model.total_count, 100 + 10 + 10 + 10)
             np.testing.assert_equal(model.visited_set, [0, 1, 2, 3])
         else:
-            np.testing.assert_raises(RuntimeError, model.selected_count_fraction)
-            np.testing.assert_raises(RuntimeError, model.total_count)
-            np.testing.assert_raises(RuntimeError, model.visited_set)
+            with np.testing.assert_raises(RuntimeError):
+                print(model.selected_count_fraction)
+            with np.testing.assert_raises(RuntimeError):
+                print(model.total_count)
+            with np.testing.assert_raises(RuntimeError):
+                print(model.visited_set)
 
         np.testing.assert_equal(model.count_matrix, count_matrix)
         np.testing.assert_equal(model.selected_state_fraction, 1.)
@@ -155,9 +158,12 @@ class TestTransitionCountModel(unittest.TestCase, metaclass=GenerateTestMatrix):
             np.testing.assert_equal(submodel.visited_set, [0, 1])
         else:
             np.testing.assert_equal(submodel.state_histogram, None)
-            np.testing.assert_raises(RuntimeError, submodel.selected_count_fraction)
-            np.testing.assert_raises(RuntimeError, submodel.total_count)
-            np.testing.assert_raises(RuntimeError, submodel.visited_set)
+            with np.testing.assert_raises(RuntimeError):
+                print(submodel.selected_count_fraction)
+            with np.testing.assert_raises(RuntimeError):
+                print(submodel.total_count)
+            with np.testing.assert_raises(RuntimeError):
+                print(submodel.visited_set)
         np.testing.assert_equal(submodel.count_matrix, np.array([[1, 1], [1, 1]]))
         np.testing.assert_equal(submodel.selected_state_fraction, 0.5)
         sets = submodel.connected_sets(connectivity_threshold=0, directed=True, probability_constraint=None)
@@ -178,9 +184,12 @@ class TestTransitionCountModel(unittest.TestCase, metaclass=GenerateTestMatrix):
             np.testing.assert_equal(subsubmodel.visited_set, [0])
         else:
             np.testing.assert_equal(subsubmodel.state_histogram, None)
-            np.testing.assert_raises(RuntimeError, subsubmodel.selected_count_fraction)
-            np.testing.assert_raises(RuntimeError, subsubmodel.total_count)
-            np.testing.assert_raises(RuntimeError, subsubmodel.visited_set)
+            with np.testing.assert_raises(RuntimeError):
+                print(subsubmodel.selected_count_fraction)
+            with np.testing.assert_raises(RuntimeError):
+                print(subsubmodel.total_count)
+            with np.testing.assert_raises(RuntimeError):
+                print(subsubmodel.visited_set)
         np.testing.assert_equal(subsubmodel.count_matrix, np.array([[1]]))
         np.testing.assert_equal(subsubmodel.selected_state_fraction, 0.25)
         sets = subsubmodel.connected_sets(connectivity_threshold=0, directed=True, probability_constraint=None)

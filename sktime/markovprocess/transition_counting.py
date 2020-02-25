@@ -19,7 +19,7 @@ def requires_state_histogram(func):
     def wrap(self, *args, **kw):
         if self.state_histogram is None:
             raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
-        return func(*args, **kw)
+        return func(self, *args, **kw)
 
     return wrap
 
@@ -209,12 +209,10 @@ class TransitionCountModel(Model):
         return float(self.n_states) / float(self.n_states_full)
 
     @property
+    @requires_state_histogram
     def selected_count_fraction(self) -> float:
         """The fraction of counts represented in this count model."""
-        if self.state_histogram is not None:
-            return float(np.sum(self.state_histogram)) / float(np.sum(self.state_histogram_full))
-        else:
-            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+        return float(np.sum(self.state_histogram)) / float(np.sum(self.state_histogram_full))
 
     @property
     def n_states(self) -> int:
@@ -222,20 +220,16 @@ class TransitionCountModel(Model):
         return self.count_matrix.shape[0]
 
     @property
+    @requires_state_histogram
     def total_count(self) -> int:
         """Total number of counts"""
-        if self.state_histogram is not None:
-            return self._state_histogram.sum()
-        else:
-            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+        return self._state_histogram.sum()
 
     @property
+    @requires_state_histogram
     def visited_set(self) -> np.ndarray:
         """ The set of visited states. """
-        if self.state_histogram is not None:
-            return np.argwhere(self.state_histogram > 0)[:, 0]
-        else:
-            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+        return np.argwhere(self.state_histogram > 0)[:, 0]
 
     @property
     def state_histogram(self) -> Optional[np.ndarray]:
