@@ -23,7 +23,7 @@ from sktime.markovprocess.hmm import MaximumLikelihoodHMSM
 from sktime.markovprocess.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
 import itertools
 import msmtools.analysis
-from ..util import GenerateTestMatrix
+from ...util import GenerateTestMatrix
 
 
 parameter_options = {'reversible': [True, False],
