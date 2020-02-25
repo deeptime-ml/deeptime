@@ -3,7 +3,7 @@ from typing import Union, Optional, List
 import numpy as np
 import scipy
 from msmtools import estimation as msmest
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, issparse
 
 from sktime.base import Estimator, Model
 from sktime.markovprocess import Q_
@@ -405,7 +405,7 @@ class TransitionCountEstimator(Estimator):
         J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
     """
 
-    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step'):
+    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step', sparse=False):
         r"""
         Constructs a transition count estimator that can be used to estimate ``TransitionCountModel``s.
 
@@ -449,6 +449,15 @@ class TransitionCountEstimator(Estimator):
         self.lagtime = lagtime
         self.count_mode = count_mode
         self.physical_time = physical_time
+        self.sparse = sparse
+
+    @property
+    def sparse(self) -> bool:
+        return self._sparse
+
+    @sparse.setter
+    def sparse(self, value: bool):
+        self._sparse = bool(value)
 
     @property
     def physical_time(self) -> Q_:
@@ -495,13 +504,15 @@ class TransitionCountEstimator(Estimator):
         count_mode = self.count_mode
         lagtime = self.lagtime
         if count_mode == 'sliding' or count_mode == 'sliding-effective':
-            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True)
+            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True, sparse_return=self.sparse)
             if count_mode == 'sliding-effective':
                 count_matrix /= lagtime
         elif count_mode == 'sample':
-            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False)
+            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False, sparse_return=self.sparse)
         elif count_mode == 'effective':
             count_matrix = msmest.effective_count_matrix(dtrajs, lagtime)
+            if not self.sparse and issparse(count_matrix):
+                count_matrix = count_matrix.toarray()
         else:
             raise ValueError('Count mode {} is unknown.'.format(count_mode))
 

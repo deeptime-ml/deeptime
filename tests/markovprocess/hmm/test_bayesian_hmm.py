@@ -21,9 +21,7 @@ import numpy as np
 
 from sktime import datasets
 from sktime.datasets import double_well_discrete
-from sktime.markovprocess.hmm.bayesian_hmsm import BayesianHMSM, BayesianHMMPosterior
 from sktime.util import confidence_interval
-from tests.markovprocess.test_hmsm import estimate_hidden_markov_model
 
 
 class TestBHMM(unittest.TestCase):
@@ -275,7 +273,7 @@ class TestBHMM(unittest.TestCase):
                 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])
 
         h = BayesianHMSM.default(dtrj, n_states=3, lagtime=2).fit(dtrj).fetch_model()
-        hs = h.submodel_largest(strong=True, connectivity_threshold=5, observe_nonempty=True, dtrajs=dtrj)
+        hs = h.submodel_largest(directed=True, connectivity_threshold=5, observe_nonempty=True, dtrajs=dtrj)
 
         models_to_check = [hs.prior] + hs.samples
         for i, m in enumerate(models_to_check):

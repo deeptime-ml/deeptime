@@ -109,8 +109,6 @@ def _regularize_pobs(output_probabilities, nonempty=None, separate=None, eps=Non
     separate : None or iterable of int
         Force the given set of observed states to stay in a separate hidden state.
         The remaining n_states-1 states will be assigned by a metastable decomposition.
-    reversible : bool
-        HMM is reversible. Will make sure it is still reversible after modification.
 
     Returns
     -------
@@ -177,12 +175,29 @@ def _coarse_grain_transition_matrix(P, M):
 
 def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                     reversible: bool = True, stationary: bool = False,
-                                    separate_symbols: np.array = None, regularize: bool = True) -> HiddenMarkovStateModel:
+                                    separate_symbols = None, regularize: bool = True) -> HiddenMarkovStateModel:
+    r"""
+
+    Parameters
+    ----------
+    msm
+    n_hidden_states
+    reversible
+    stationary
+    separate_symbols : array_like, optional, default=None
+        separate symbols
+    regularize
+
+    Returns
+    -------
+
+    """
     count_matrix = msm.count_model.count_matrix
     nonseparate_symbols = np.arange(msm.count_model.n_states_full)
     nonseparate_states = msm.count_model.symbols_to_states(nonseparate_symbols)
     nonseparate_msm = msm
     if separate_symbols is not None:
+        separate_symbols = np.asanyarray(separate_symbols)
         if np.max(separate_symbols) >= msm.count_model.n_states_full:
             raise ValueError(f'Separate set has indices that do not exist in '
                              f'full state space: {np.max(separate_symbols)}')
@@ -243,15 +258,37 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
 
 def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='largest-regularized',
                                      reversible: bool = True, stationary: bool = False,
-                                     separate: Optional[np.ndarray] = None, states: Optional[np.ndarray] = None,
+                                     separate = None, states: Optional[np.ndarray] = None,
                                      regularize: bool = True, connectivity_threshold: Union[str, float] = 0.):
+    r"""
+
+    Parameters
+    ----------
+    dtrajs
+    n_hidden_states
+    lagtime
+    stride
+    mode
+    reversible
+    stationary
+    separate : array_like, optional, default=None
+        blub
+    states
+    regularize
+    connectivity_threshold
+
+    Returns
+    -------
+
+    """
+    # todo docs
     if mode not in initial_guess_discrete_from_data.VALID_MODES \
             + [m + "-regularized" for m in initial_guess_discrete_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(initial_guess_discrete_from_data.VALID_MODES)))
 
     dtrajs = ensure_dtraj_list(dtrajs)
     dtrajs = compute_dtrajs_effective(dtrajs, lagtime=lagtime, n_states=n_hidden_states, stride=stride)
-    counts = TransitionCountEstimator(1, 'sliding').fit(dtrajs).fetch_model()
+    counts = TransitionCountEstimator(1, 'sliding', sparse=False).fit(dtrajs).fetch_model()
     if states is not None:
         counts = counts.submodel(states)
     if '-regularized' in mode:
@@ -275,6 +312,7 @@ initial_guess_discrete_from_data.VALID_MODES = ['all', 'largest', 'populous']
 
 
 def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):
+    # todo docs
     from sklearn.mixture import GaussianMixture
     # todo we dont actually want to depend on sklearn
     dtrajs = ensure_dtraj_list(dtrajs)
@@ -598,7 +636,7 @@ class MaximumLikelihoodHMSM(Estimator):
             initial_count=self._init_counts(gammas),
             hidden_state_trajectories=[viterbi(hmm_data.transition_matrix, obs, hmm_data.initial_distribution)
                                        for obs in dtrajs],
-            count_model=count_model
+            stride=self.stride
         )
         self._model = model
         return self
@@ -656,8 +694,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @staticmethod
     def _reduce_transition_counts(count_matrices):
-        C = np.add.reduce(count_matrices)
-        return C
+        return np.add.reduce(count_matrices)
 
     def _update_model(self, model: _HMMModelStorage, observations: List[np.ndarray], gammas: List[np.ndarray],
                       count_matrices: List[np.ndarray], maxiter: int = int(1e7)):

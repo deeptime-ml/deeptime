@@ -38,9 +38,7 @@ class BayesianHMMPosterior(Model):
         self.prior = prior
         self.samples = samples
 
-    def __iter__(self):
-        for s in self.samples:
-            yield s
+
 
 
 class BayesianHMMSampler(Estimator):
