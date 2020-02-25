@@ -25,7 +25,6 @@ import itertools
 import msmtools.analysis
 from ...util import GenerateTestMatrix
 
-
 parameter_options = {'reversible': [True, False],
                      'init_heuristics': [initial_guess_discrete_from_data],
                      'lagtime': [1]}
