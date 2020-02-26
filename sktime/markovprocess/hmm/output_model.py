@@ -159,12 +159,29 @@ class DiscreteOutputModel(OutputModel):
 
 class GaussianOutputModel(OutputModel):
 
-    def __init__(self, n_states: int, means: Optional[np.ndarray] = None, sigmas: Optional[np.ndarray] = None,
+    def __init__(self, n_states: int, means=None, sigmas=None,
                  ignore_outliers: bool = True):
+        r"""
+
+        Parameters
+        ----------
+        n_states : int
+            number of hidden states
+        means : array_like, optional, default=None
+            means of the output Gaussians, length must match number of hidden states
+        sigmas : array_like, optional, default=None
+            sigmas of the output Gaussians, length must match number of hidden states
+        ignore_outliers : bool, optional, default=True
+            whether to ignore outliers which could cause numerical instabilities
+        """
         if means is None:
             means = np.zeros((n_states,))
+        else:
+            means = np.asarray(means)
         if sigmas is None:
             sigmas = np.zeros((n_states,))
+        else:
+            sigmas = np.asarray(sigmas)
         if means.ndim != 1 or sigmas.ndim != 1:
             raise ValueError("Means and sigmas must be one-dimensional.")
         if means.shape[0] != n_states or sigmas.shape[0] != n_states:
@@ -211,7 +228,7 @@ class GaussianOutputModel(OutputModel):
 
         >>> nobs = 1000
         >>> output_model = GaussianOutputModel(n_states=3, means=[-1, 0, +1], sigmas=[0.5, 1, 2])
-        >>> s_t = np.random.randint(0, output_model.n_states, size=[nobs])
+        >>> s_t = np.random.randint(0, output_model.n_hidden_states, size=[nobs])
 
         Generate a synthetic trajectory
 
@@ -249,9 +266,9 @@ class GaussianOutputModel(OutputModel):
         >>> observations = [ np.random.randn(nobs) for _ in range(ntrajectories) ] # random observations
         >>> weights = [ np.random.dirichlet([2, 3, 4], size=nobs) for _ in range(ntrajectories) ] # random weights
 
-        Update the observation model parameters my a maximum-likelihood fit.
+        Update the observation model parameters my a maximum-likelihood fit. Fit returns self.
 
-        >>> output_model.fit(observations, weights)
+        >>> output_model = output_model.fit(observations, weights)
 
         """
         if self.means.dtype == np.float32:

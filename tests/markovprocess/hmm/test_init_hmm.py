@@ -140,12 +140,11 @@ class TestInitHMMDiscrete(unittest.TestCase):
         dtraj = np.array([0, 1, 2, 0, 3, 4])
         import msmtools.estimation as msmest
         for rev in [True, False]:
-            from bhmm import init_discrete_hmm
-            hmm = init_discrete_hmm(dtraj, 3, reversible=rev)
-            assert msmana.is_transition_matrix(hmm.transition_matrix)
+            hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=1, reversible=rev)
+            assert msmana.is_transition_matrix(hmm.transition_model.transition_matrix)
             if rev:
-                assert msmana.is_reversible(hmm.transition_matrix)
-            assert np.allclose(hmm.output_model.output_probabilities.sum(axis=1), 1)
+                assert msmana.is_reversible(hmm.transition_model.transition_matrix)
+            assert np.allclose(hmm.output_probabilities.sum(axis=1), 1)
 
         for rev in [True, False]:
             C = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(dtraj).fetch_model().count_matrix
@@ -177,8 +176,6 @@ class TestInitHMMDiscrete(unittest.TestCase):
         # create empty labels
         dtraj += 2
         # include an empty label in separate
-        from bhmm import init_discrete_hmm
-        hmm1 = init_discrete_hmm(dtraj, 3, lag=1)
         hmm0 = initial_guess_discrete_from_data(dtraj, 3, lagtime=1, separate=np.array([1, 2]), mode='populous')
         piref = np.array([0.35801876, 0.55535398, 0.08662726])
         Aref = np.array([[0.76462978, 0.10261978, 0.13275044],
