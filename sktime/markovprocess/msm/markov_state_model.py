@@ -23,7 +23,6 @@ from math import ceil
 
 import msmtools.analysis as msmana
 import numpy as np
-from cached_property import cached_property
 from scipy.sparse import issparse
 
 from sktime.base import Model
@@ -32,11 +31,12 @@ from sktime.markovprocess.reactive_flux import ReactiveFlux
 from sktime.markovprocess.sample import ensure_dtraj_list, compute_index_states
 from sktime.markovprocess.transition_counting import TransitionCountModel
 from sktime.numeric import mdot
-from sktime.util import ensure_ndarray, submatrix
+from sktime.util import ensure_ndarray, submatrix, cached_property
 
 
 class MarkovStateModel(Model):
     r"""Markov model with a given transition matrix."""
+
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
                  count_model=None):
         r"""
@@ -89,8 +89,8 @@ class MarkovStateModel(Model):
     def _invalidate_caches(self):
         r""" Invalidates all cached properties and causes them to be re-evaluated """
         for member in self.__class__.__dict__.values():
-            if isinstance(member, cached_property) and member.func.__name__ in self.__dict__:
-                del self.__dict__[member.func.__name__]
+            if isinstance(member, cached_property):
+                member.invalidate()
         self._eigenvalues = None
         self._stationary_distribution = None
 
@@ -1079,14 +1079,14 @@ class MarkovStateModel(Model):
                     ratio=timescale_ratios[nhidden - 2],
                 ), stacklevel=2)
         # run HMM estimate
-        from sktime.markovprocess.maximum_likelihood_hmsm import MaximumLikelihoodHMSM
-        estimator = MaximumLikelihoodHMSM(lagtime=self.lagtime, n_states=nhidden, msm_init=self,
-                                          reversible=self.reversible, physical_time=self.count_model.physical_time)
-        estimator.fit(dtrajs)
-        model = estimator.fetch_model()
+        from sktime.markovprocess.hmm import MaximumLikelihoodHMSM, initial_guess_discrete_from_msm
+        init_hmm = initial_guess_discrete_from_msm(self, nhidden, reversible=self.reversible)
+        est = MaximumLikelihoodHMSM(init_hmm, lagtime=self.lagtime, reversible=self.reversible,
+                                    physical_time=self.count_model.physical_time)
+        hmsm = est.fit(dtrajs).fetch_model()
         if return_estimator:
-            return estimator, model
-        return model
+            return est, hmsm
+        return hmsm
 
     def score(self, dtrajs, score_method='VAMP2', score_k=10):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes [1]_ [2]_
