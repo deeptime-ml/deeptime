@@ -34,8 +34,7 @@ from msmtools.generation import generate_traj
 from msmtools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import assert_allclose
 
-from sktime.markovprocess import BayesianMSM
-from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
+from sktime.markovprocess.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel
 from sktime.markovprocess._base import score_cv
 from sktime.markovprocess.transition_counting import TransitionCountEstimator
 from sktime.markovprocess.util import count_states

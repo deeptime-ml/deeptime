@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as _np
 
-from sktime.markovprocess import MarkovStateModel as _MarkovStateModel
+from sktime.markovprocess.msm import MarkovStateModel as _MarkovStateModel
 
 __author__ = 'noe, marscher, clonker'
 

@@ -5,7 +5,6 @@ import numpy as np
 import sktime.markovprocess.hmm._hmm_bindings as _bindings
 
 from sktime.base import Model
-from sktime.markovprocess import MarkovStateModel, TransitionCountModel
 from sktime.markovprocess.hmm.output_model import OutputModel, DiscreteOutputModel
 from sktime.markovprocess.sample import indices_by_distribution
 from sktime.numeric import mdot
@@ -20,7 +19,7 @@ class HiddenMarkovStateModel(Model):
     discrete output model can be used.
     """
 
-    def __init__(self, transition_model: Union[np.ndarray, MarkovStateModel],
+    def __init__(self, transition_model,
                  output_model: Union[np.ndarray, OutputModel],
                  initial_distribution: Optional[np.ndarray] = None,
                  likelihoods: Optional[np.ndarray] = None,
@@ -37,7 +36,7 @@ class HiddenMarkovStateModel(Model):
 
         Parameters
         ----------
-        transition_model : (m,m) ndarray or MarkovStateModel
+        transition_model : (m,m) ndarray or from sktime.markovprocess import MarkovStateModel
             Transition matrix for hidden (macro) states
         output_model : (m,n) ndarray or OutputModel
             observation probability matrix from hidden to observable (micro) states or OutputModel instance which yields
@@ -64,6 +63,7 @@ class HiddenMarkovStateModel(Model):
             Full set of symbols in observations. If None, it is assumed to coincide with observation_symbols.
         """
         if isinstance(transition_model, np.ndarray):
+            from sktime.markovprocess.msm import MarkovStateModel
             transition_model = MarkovStateModel(transition_model)
         if isinstance(output_model, np.ndarray):
             output_model = DiscreteOutputModel(output_model)
@@ -152,23 +152,25 @@ class HiddenMarkovStateModel(Model):
         return self.output_model.n_observable_states
 
     @property
-    def count_model(self) -> Optional[TransitionCountModel]:
+    def count_model(self):
         r"""
         Yields the count model for the micro (hidden) states. The count matrix is estimated from Viterbi paths.
 
         Returns
         -------
-        The count model for the micro states.
+        count_model : sktime.markovprocess.TransitionCountModel
+            The count model for the micro states.
         """
         return self.transition_model.count_model
 
     @property
-    def transition_model(self) -> MarkovStateModel:
+    def transition_model(self):
         r""" Yields the transition model for the hidden states.
 
         Returns
         -------
-        The transition model.
+        model : sktime.markovprocess.msm.MarkovStateModel
+            The transition model.
         """
         return self._transition_model
 

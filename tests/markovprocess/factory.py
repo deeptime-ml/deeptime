@@ -3,7 +3,8 @@ import typing
 import numpy as np
 
 import sktime.datasets as datasets
-from sktime.markovprocess import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior, TransitionCountEstimator
+from sktime.markovprocess import TransitionCountEstimator
+from sktime.markovprocess.msm import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior
 
 __all__ = ['msm_double_well', 'bmsm_double_well']
 

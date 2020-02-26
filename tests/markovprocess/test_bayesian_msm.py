@@ -19,7 +19,8 @@ import unittest
 
 import numpy as np
 
-from sktime.markovprocess import MarkovStateModel, BayesianPosterior, BayesianMSM, TransitionCountEstimator
+from sktime.markovprocess import TransitionCountEstimator
+from sktime.markovprocess.msm import MarkovStateModel, BayesianPosterior, BayesianMSM
 from sktime.util import confidence_interval
 from tests.markovprocess.factory import bmsm_double_well
 

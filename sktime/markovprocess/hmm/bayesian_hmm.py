@@ -17,19 +17,19 @@
 from typing import Optional, Union, List
 
 import numpy as np
+import sktime.markovprocess.hmm._hmm_bindings as _bindings
 from msmtools.analysis import is_connected
 from msmtools.dtraj import number_of_states
 from msmtools.estimation import sample_tmatrix, transition_matrix
 
 from sktime.base import Estimator
-from sktime.markovprocess import MarkovStateModel
 from sktime.markovprocess._base import BayesianPosterior
 from sktime.markovprocess._transition_matrix import stationary_distribution
-from sktime.markovprocess.hmm import HiddenMarkovStateModel, MaximumLikelihoodHMSM
+from sktime.markovprocess.hmm import HiddenMarkovStateModel
 from sktime.markovprocess.hmm.output_model import DiscreteOutputModel
+from sktime.markovprocess.msm import MarkovStateModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
-import sktime.markovprocess.hmm._hmm_bindings as _bindings
 
 __author__ = 'noe'
 

@@ -27,7 +27,8 @@ import msmtools.analysis as msmana
 import numpy as np
 from numpy.testing import assert_allclose
 
-from sktime.markovprocess import MarkovStateModel, ReactiveFlux, TransitionCountModel
+from sktime.markovprocess import TransitionCountModel
+from sktime.markovprocess.msm import MarkovStateModel
 
 
 class TestReactiveFluxFunctions(unittest.TestCase):

@@ -22,12 +22,13 @@ import sktime.markovprocess.hmm._hmm_bindings as _bindings
 from scipy.sparse import issparse
 
 from sktime.base import Estimator
-from sktime.markovprocess import TransitionCountModel, Q_, MarkovStateModel, TransitionCountEstimator, \
-    MaximumLikelihoodMSM, _transition_matrix
+from sktime.markovprocess import Q_
+from sktime.markovprocess.transition_counting import TransitionCountEstimator, TransitionCountModel
 from sktime.markovprocess._transition_matrix import estimate_P, stationary_distribution, enforce_reversible_on_closed
 from sktime.markovprocess.hmm import HiddenMarkovStateModel
 from sktime.markovprocess.hmm.hmm import viterbi
 from sktime.markovprocess.hmm.output_model import GaussianOutputModel
+from sktime.markovprocess.msm import MarkovStateModel, MaximumLikelihoodMSM
 from sktime.markovprocess.pcca import PCCAModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
@@ -208,8 +209,8 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
         nonseparate_count_matrix = nonseparate_count_model.count_matrix
         if issparse(nonseparate_count_matrix):
             nonseparate_count_matrix = nonseparate_count_matrix.toarray()
-        P_nonseparate = _transition_matrix.estimate_P(nonseparate_count_matrix, reversible=True)
-        pi = _transition_matrix.stationary_distribution(P_nonseparate, C=nonseparate_count_matrix)
+        P_nonseparate = estimate_P(nonseparate_count_matrix, reversible=True)
+        pi = stationary_distribution(P_nonseparate, C=nonseparate_count_matrix)
         nonseparate_msm = MarkovStateModel(P_nonseparate, stationary_distribution=pi)
     if issparse(count_matrix):
         count_matrix = count_matrix.toarray()

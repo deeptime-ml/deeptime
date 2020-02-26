@@ -3,8 +3,9 @@ import unittest
 import msmtools.analysis as msmana
 import numpy as np
 
-from sktime.markovprocess import MarkovStateModel, TransitionCountEstimator
+from sktime.markovprocess import TransitionCountEstimator
 from sktime.markovprocess.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
+from sktime.markovprocess.msm import MarkovStateModel
 
 
 class TestInitHMMDiscrete(unittest.TestCase):
