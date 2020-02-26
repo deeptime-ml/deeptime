@@ -10,6 +10,9 @@ template<typename dtype>
 np_array<std::int32_t> viterbiPath(const np_array<dtype> &transitionMatrix, const np_array<dtype> &stateProbabilityTraj,
                                    const np_array<dtype> &initialDistribution) {
     auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
+    if(transitionMatrix.shape(1) != transitionMatrix.shape(0)) {
+        throw std::invalid_argument("Transition matrix must be a square matrix");
+    }
     auto T = static_cast<std::size_t>(stateProbabilityTraj.shape(0));
     np_array<std::int32_t> path(std::vector<std::size_t>{T});
     auto pathBuf = path.mutable_data();
@@ -17,8 +20,6 @@ np_array<std::int32_t> viterbiPath(const np_array<dtype> &transitionMatrix, cons
     auto pobsBuf = stateProbabilityTraj.data();
     auto piBuf = initialDistribution.data();
     {
-        py::gil_scoped_release gil;
-
         std::fill(pathBuf, pathBuf + path.size(), 0);
 
         std::size_t i, j, t, maxi;
