@@ -37,7 +37,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
                       [0.00, 0.01, 0.89, 0.10],
                       [0.00, 0.00, 0.10, 0.90]])
         # generate realization
-        T = 10000
+        T = 50000
         dtrajs = [MarkovStateModel(P).simulate(T)]
         # estimate initial HMM with 2 states - should be identical to P
         hmm = initial_guess_discrete_from_data(dtrajs, n_states, lagtime=1, regularize=False)
@@ -46,7 +46,6 @@ class TestInitHMMDiscrete(unittest.TestCase):
         Tij = hmm.transition_model.transition_matrix
         B = hmm.output_model.output_probabilities
         # Test stochasticity
-
         np.testing.assert_(msmana.is_transition_matrix(Tij))
         np.testing.assert_allclose(B.sum(axis=1), np.ones(B.shape[0]))
         Tij_ref = np.array([[0.99, 0.01],

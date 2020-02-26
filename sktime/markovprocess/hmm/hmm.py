@@ -773,7 +773,10 @@ class HiddenMarkovStateModel(Model):
 
         transition_model = self.transition_model.submodel(states)
 
-        initial_count = self.initial_count[states].copy()
+        if self.initial_count is not None:
+            initial_count = self.initial_count[states].copy()
+        else:
+            initial_count = None
         initial_distribution = self.initial_distribution[states] / np.sum(self.initial_distribution[states])
 
         # observation matrix
@@ -953,6 +956,10 @@ class HiddenMarkovStateModel(Model):
         """
         lcc = self.transition_model.count_model.connected_sets(connectivity_threshold=connectivity_threshold)[0]
         return self.submodel(lcc)
+
+    # ================================================================================================================
+    # Properties inherited from transition model
+    # ================================================================================================================
 
 
 def viterbi(transition_matrix: np.ndarray, state_probability_trajectory: np.ndarray, initial_distribution: np.ndarray):
