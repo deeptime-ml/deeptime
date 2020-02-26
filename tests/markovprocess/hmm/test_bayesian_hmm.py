@@ -41,9 +41,9 @@ class TestBHMM(unittest.TestCase):
         cls.lag = 10
         cls.est = BayesianHMSM.default(
             dtrajs=obs, n_states=cls.n_states, lagtime=cls.lag, reversible=True, n_samples=cls.n_samples
-        ).fit(obs)
+        )
         # cls.est = bayesian_hidden_markov_model([obs], cls.n_states, cls.lag, reversible=True, n_samples=cls.n_samples)
-        cls.bhmm = cls.est.fetch_model()
+        cls.bhmm = cls.est.fit(obs).fetch_model()
         assert isinstance(cls.bhmm, BayesianHMMPosterior)
 
     def test_reversible(self):
@@ -248,18 +248,18 @@ class TestBHMM(unittest.TestCase):
             assert np.all(l > 0.0)
 
     def test_lifetimes_stats(self):
-        samples = np.array([m.lifetimes for m in self.bhmm])
+        stats = self.bhmm.gather_stats('lifetimes')
         # mean
-        mean = samples.mean(axis=0)
+        mean = stats.mean
         # test shape and consistency
         assert np.array_equal(mean.shape, (self.n_states,))
         assert np.all(mean > 0.0)
         # std
-        std = samples.std(axis=0)
+        std = stats.std
         # test shape
         assert np.array_equal(std.shape, (self.n_states,))
         # conf
-        L, R = confidence_interval(samples)
+        L, R = stats.L, stats.R
         # test shape
         assert np.array_equal(L.shape, (self.n_states,))
         assert np.array_equal(R.shape, (self.n_states,))
@@ -331,28 +331,6 @@ class TestBHMMSpecialCases(unittest.TestCase):
         for strajs in hmm_bayes.hidden_state_trajectories_samples:
             assert strajs[0][0] == 2
             assert strajs[0][6] == 2
-
-    @unittest.skip("This tests if bhmm prior was estimated with same data as fit is called, "
-                   "this is no longer checked.")
-    def test_initialized_bhmm(self):
-        obs = datasets.double_well_discrete().dtraj
-
-        est, init_hmm = estimate_hidden_markov_model(obs, 2, 10, return_estimator=True)
-        bay_hmm_est = BayesianHMSM(n_states=est.n_states, lagtime=init_hmm.lagtime,
-                                   stride=est.stride, init_hmsm=init_hmm)
-        bay_hmm_est.fit(obs)
-        bay_hmm = bay_hmm_est.fetch_model()
-        bay_hmm = bay_hmm.submodel_largest(dtrajs=obs)
-
-        assert np.isclose(bay_hmm.prior.stationary_distribution.sum(), 1)
-        assert all(np.isclose(m.stationary_distribution.sum(), 1) for m in bay_hmm)
-
-        with self.assertRaises(NotImplementedError) as ctx:
-            obs = np.copy(obs)
-            assert obs[0] != np.min(obs)
-            obs[0] = np.min(obs)
-            bay_hmm_est.fit(obs)
-            self.assertIn('same data', ctx.exception.message)
 
     # def test_initialized_bhmm_newstride(self):
     #     obs = np.random.randint(0, 2, size=1000)
