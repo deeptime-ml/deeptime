@@ -1,7 +1,7 @@
 import unittest
 
 from sktime.datasets import double_well_discrete
-from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess.msm import MarkovStateModel
 
 
 class TestDoubleWell(unittest.TestCase):

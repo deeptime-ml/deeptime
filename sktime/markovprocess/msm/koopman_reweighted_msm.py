@@ -3,7 +3,7 @@ import warnings
 import numpy as _np
 from msmtools.estimation import effective_count_matrix
 
-from sktime.markovprocess import MarkovStateModel
+from sktime.markovprocess.msm import MarkovStateModel
 from sktime.markovprocess._base import _MSMBaseEstimator
 from sktime.markovprocess.transition_counting import TransitionCountEstimator, TransitionCountModel
 from sktime.util import submatrix
