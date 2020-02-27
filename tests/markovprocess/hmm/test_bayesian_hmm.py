@@ -152,26 +152,26 @@ class TestBHMM(unittest.TestCase):
         assert np.all(R + tol >= mean)
 
     def test_eigenvectors_right_samples(self):
-        samples = np.array([m.transition_model.eigenvectors_right() for m in self.bhmm])
+        stats = self.bhmm.gather_stats('transition_model/eigenvectors_right', store_samples=True)
         # shape
-        np.testing.assert_equal(np.shape(samples), (self.n_samples, self.n_states, self.n_states))
+        np.testing.assert_equal(np.shape(stats.samples), (self.n_samples, self.n_states, self.n_states))
         # consistency
-        for evec in samples:
+        for evec in stats.samples:
             assert np.sign(evec[0, 0]) == np.sign(evec[1, 0])
             assert np.sign(evec[0, 1]) != np.sign(evec[1, 1])
 
         # mean
-        mean = samples.mean(axis=0)
+        mean = stats.mean
         # test shape and consistency
         np.testing.assert_equal(mean.shape, (self.n_states, self.n_states))
         assert np.sign(mean[0, 0]) == np.sign(mean[1, 0])
         assert np.sign(mean[0, 1]) != np.sign(mean[1, 1])
         # std
-        std = samples.std(axis=0)
+        std = stats.std
         # test shape
         assert np.array_equal(std.shape, (self.n_states, self.n_states))
         # conf
-        L, R = confidence_interval(samples)
+        L, R = stats.L, stats.R
         # test shape
         assert np.array_equal(L.shape, (self.n_states, self.n_states))
         assert np.array_equal(R.shape, (self.n_states, self.n_states))

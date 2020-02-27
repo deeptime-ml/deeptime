@@ -933,7 +933,7 @@ class MarkovStateModel(Model):
         (N/dt,) ndarray
             The state trajectory with length N/dt
         """
-        import sktime.markovprocess._markovprocess_bindings.simulation as sim
+        from .._markovprocess_bindings import simulation as sim
         if start is None:
             start = np.random.choice(self.n_states, p=self.stationary_distribution)
         if dt > 1:

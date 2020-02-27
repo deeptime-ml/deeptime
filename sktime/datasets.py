@@ -1,4 +1,4 @@
-import sktime.data.double_well as _double_well
+from .data.double_well import DoubleWellDiscrete as _DoubleWellDiscrete
 
 
 def double_well_discrete():
@@ -9,4 +9,4 @@ def double_well_discrete():
     -------
     an object that contains a markov state model corresponding to the process and the discrete trajectory
     """
-    return _double_well.DoubleWellDiscrete()
+    return _DoubleWellDiscrete()

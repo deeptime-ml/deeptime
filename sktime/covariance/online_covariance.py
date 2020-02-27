@@ -8,7 +8,7 @@ from sktime.data.util import timeshifted_split
 from sktime.numeric.eigen import spd_inv_split, sort_by_norm
 from .util.running_moments import running_covar as running_covar
 
-__all__ = ['OnlineCovariance']
+__all__ = ['OnlineCovariance', 'OnlineCovarianceModel']
 
 __author__ = 'paul, nueske, marscher, clonker'
 

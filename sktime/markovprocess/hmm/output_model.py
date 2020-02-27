@@ -2,8 +2,7 @@ import abc
 from typing import Optional, List
 
 import numpy as np
-
-import sktime.markovprocess.hmm._hmm_bindings.output_models as _bindings
+from sktime.markovprocess.hmm._hmm_bindings import output_models as _bindings
 
 from sktime.base import Model
 

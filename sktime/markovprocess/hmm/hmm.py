@@ -2,13 +2,13 @@ from numbers import Integral
 from typing import Union, Optional, List, Iterable
 
 import numpy as np
-import sktime.markovprocess.hmm._hmm_bindings as _bindings
 
 from sktime.base import Model
 from sktime.markovprocess.hmm.output_model import OutputModel, DiscreteOutputModel
 from sktime.markovprocess.sample import indices_by_distribution
 from sktime.numeric import mdot
 from sktime.util import ensure_dtraj_list, ensure_ndarray
+from ._hmm_bindings.util import viterbi as viterbi_impl
 
 
 class HiddenMarkovStateModel(Model):
@@ -985,6 +985,6 @@ def viterbi(transition_matrix: np.ndarray, state_probability_trajectory: np.ndar
     if state_probability_trajectory.ndim == 1 and transition_matrix.shape[0] == 1:
         # if there is only one state, pad so that there is an additional dimension
         state_probability_trajectory = state_probability_trajectory[..., None]
-    return _bindings.util.viterbi(transition_matrix=transition_matrix,
-                                  state_probability_trajectory=state_probability_trajectory,
-                                  initial_distribution=initial_distribution)
+    return viterbi_impl(transition_matrix=transition_matrix,
+                   state_probability_trajectory=state_probability_trajectory,
+                   initial_distribution=initial_distribution)

@@ -1,3 +1,3 @@
-
-from sktime.covariance.util.moments import moments_XX, moments_XXXY, moments_block
-from sktime.covariance.util.moments import covar, covars
+from .util.moments import moments_XX, moments_XXXY, moments_block, covar, covars
+from .online_covariance import OnlineCovarianceModel
+from .online_covariance import OnlineCovariance

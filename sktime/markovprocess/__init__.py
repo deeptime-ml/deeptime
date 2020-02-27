@@ -9,10 +9,7 @@ pint.set_application_registry(ureg)
 
 del pint
 
-from . import msm
-from . import hmm
-
-from ._base import BayesianPosterior
+from ._base import BayesianPosterior, _MSMBaseEstimator
 from .pcca import pcca
 from .transition_counting import TransitionCountEstimator, TransitionCountModel
 

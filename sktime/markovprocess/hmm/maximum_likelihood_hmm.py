@@ -18,7 +18,6 @@ import collections
 from typing import List, Union, Optional
 
 import numpy as np
-import sktime.markovprocess.hmm._hmm_bindings as _bindings
 from scipy.sparse import issparse
 
 from sktime.base import Estimator
@@ -32,6 +31,7 @@ from sktime.markovprocess.msm import MarkovStateModel, MaximumLikelihoodMSM
 from sktime.markovprocess.pcca import PCCAModel
 from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
+from sktime.markovprocess.hmm._hmm_bindings import util as _util
 
 
 def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False, C=None, eps=None):
@@ -680,13 +680,13 @@ class MaximumLikelihoodHMSM(Estimator):
         # compute output probability matrix
         pobs = model.output_model.to_state_probability_trajectory(obs)
         # forward variables
-        logprob = _bindings.util.forward(A, pobs, pi, alpha_out=alpha, T=T)
+        logprob = _util.forward(A, pobs, pi, alpha_out=alpha, T=T)
         # backward variables
-        _bindings.util.backward(A, pobs, beta_out=beta, T=T)
+        _util.backward(A, pobs, beta_out=beta, T=T)
         # gamma
-        _bindings.util.state_probabilities(alpha, beta, gamma_out=gamma, T=T)
+        _util.state_probabilities(alpha, beta, gamma_out=gamma, T=T)
         # count matrix
-        _bindings.util.transition_counts(alpha, beta, A, pobs, counts_out=counts, T=T)
+        _util.transition_counts(alpha, beta, A, pobs, counts_out=counts, T=T)
         return logprob, pobs
 
     def _init_counts(self, gammas):

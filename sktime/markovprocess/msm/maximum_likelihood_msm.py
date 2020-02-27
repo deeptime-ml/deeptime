@@ -20,9 +20,9 @@ import numpy as np
 from msmtools import estimation as msmest
 from scipy.sparse import issparse
 
-from sktime.markovprocess._base import _MSMBaseEstimator
-from sktime.markovprocess.msm import MarkovStateModel
-from sktime.markovprocess.transition_counting import TransitionCountModel
+from .markov_state_model import MarkovStateModel
+from .._base import _MSMBaseEstimator
+from ..transition_counting import TransitionCountModel
 
 __all__ = ['MaximumLikelihoodMSM']
 
@@ -126,7 +126,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         return self._model
 
     def fit(self, data, y=None, **kw):
-        import sktime.markovprocess._transition_matrix as tmat
+        from .. import _transition_matrix as tmat
         if not isinstance(data, (TransitionCountModel, np.ndarray)):
             raise ValueError("Can only fit on a TransitionCountModel or a count matrix directly.")
 
