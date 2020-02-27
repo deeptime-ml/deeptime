@@ -9,11 +9,7 @@ pint.set_application_registry(ureg)
 
 del pint
 
-
-from .markov_state_model import MarkovStateModel
-from ._base import BayesianPosterior
-from .maximum_likelihood_msm import MaximumLikelihoodMSM
-from .bayesian_msm import BayesianMSM
+from ._base import BayesianPosterior, _MSMBaseEstimator
 from .pcca import pcca
 from .transition_counting import TransitionCountEstimator, TransitionCountModel
 

@@ -116,7 +116,7 @@ def indices_by_state(indices, nsample, subset=None, replace=True):
     return res
 
 
-def indices_by_distribution(indices, distributions, nsample):
+def indices_by_distribution(indices: typing.List[np.ndarray], distributions, nsample):
     """Samples trajectory/time indices according to the given probability distributions
 
     Parameters

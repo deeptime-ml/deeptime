@@ -4,12 +4,12 @@ def configuration(parent_package='', top_path=None):
     config = Configuration('markovprocess', parent_package, top_path)
 
     config.add_extension('_markovprocess_bindings',
-                         sources=['src/markovprocess_module.cpp'],
-                         include_dirs=['include'],
+                         sources=['_bindings/src/markovprocess_module.cpp'],
+                         include_dirs=['_bindings/include'],
                          language='c++',
                          )
 
-    config.add_subpackage('bhmm')
-    config.add_subpackage('generation')
+    config.add_subpackage('msm')
+    config.add_subpackage('hmm')
 
     return config

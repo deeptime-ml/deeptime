@@ -34,8 +34,7 @@ from msmtools.generation import generate_traj
 from msmtools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import assert_allclose
 
-from sktime.markovprocess import BayesianMSM
-from sktime.markovprocess import MaximumLikelihoodMSM, MarkovStateModel
+from sktime.markovprocess.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel
 from sktime.markovprocess._base import score_cv
 from sktime.markovprocess.transition_counting import TransitionCountEstimator
 from sktime.markovprocess.util import count_states
@@ -45,10 +44,11 @@ from tests.util import GenerateTestMatrix
 def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovStateModel:
     statdist_constraint = kw.pop('statdist', None)
     connectivity = kw.pop('connectivity_threshold', 0.)
-    count_model = TransitionCountEstimator(lagtime=lag, count_mode="sliding").fit(dtrajs).fetch_model()
+    sparse = kw.pop('sparse', False)
+    count_model = TransitionCountEstimator(lagtime=lag, count_mode="sliding", sparse=sparse).fit(dtrajs).fetch_model()
     count_model = count_model.submodel_largest(probability_constraint=statdist_constraint,
                                                connectivity_threshold=connectivity)
-    est = MaximumLikelihoodMSM(stationary_distribution_constraint=statdist_constraint, **kw)
+    est = MaximumLikelihoodMSM(stationary_distribution_constraint=statdist_constraint, sparse=sparse, **kw)
     est.fit(count_model)
     if return_estimator:
         return est, est.fetch_model()
@@ -70,7 +70,7 @@ class TestMSMBasic(unittest.TestCase, metaclass=GenerateTestMatrix):
     }
 
     def _test_estimator_params(self, reversible, statdist, sparse, maxiter, maxerr):
-        if np.any(statdist > 1) or np.any(statdist < 0):
+        if statdist is not None and (np.any(statdist > 1) or np.any(statdist < 0)):
             with self.assertRaises(ValueError):
                 MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=statdist,
                                      sparse=sparse, maxiter=maxiter, maxerr=maxerr)
@@ -78,7 +78,7 @@ class TestMSMBasic(unittest.TestCase, metaclass=GenerateTestMatrix):
             msm = MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=statdist,
                                        sparse=sparse, maxiter=maxiter, maxerr=maxerr)
             np.testing.assert_equal(msm.reversible, reversible)
-            np.testing.assert_equal(msm.stationary_distribution_constraint, statdist)
+            np.testing.assert_equal(msm.stationary_distribution_constraint, statdist / np.sum(statdist) if statdist is not None else None)
             np.testing.assert_equal(msm.sparse, sparse)
             np.testing.assert_equal(msm.maxiter, maxiter)
             np.testing.assert_equal(msm.maxerr, maxerr)
@@ -201,9 +201,8 @@ class TestMSMSimple(unittest.TestCase):
         msm = estimate_markov_model(self.dtraj, self.tau)
         self.assertEqual(self.tau, msm.count_model.lagtime)
         assert_allclose(self.lcc_MSM, msm.count_model.connected_sets()[0])
-        # TODO: count matrices used to be dense if estimation mode is dense.
-        self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_model.count_matrix.toarray()))
-        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix.toarray()))
+        self.assertTrue(np.allclose(self.Ccc_MSM.toarray(), msm.count_model.count_matrix))
+        self.assertTrue(np.allclose(self.C_MSM.toarray(), msm.count_model.count_matrix))
         self.assertTrue(np.allclose(self.P_MSM.toarray(), msm.transition_matrix))
         assert_allclose(self.mu_MSM, msm.stationary_distribution)
         assert_allclose(self.ts[1:], msm.timescales(self.k - 1))
@@ -1116,7 +1115,7 @@ class TestMSMSimplePathologicalCases(unittest.TestCase, metaclass=GenerateTestMa
             self.assertEqual(submodel.count_matrix.shape[0], len(cset))
 
             if cmat_ref is not None:
-                np.testing.assert_array_equal(submodel.count_matrix.toarray(), cmat_ref)
+                np.testing.assert_array_equal(submodel.count_matrix, cmat_ref)
 
     def _test_msm_submodel_statdist(self, lag, reversible, count_mode):
         count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode).fit(self.dtrajs).fetch_model()
@@ -1125,10 +1124,19 @@ class TestMSMSimplePathologicalCases(unittest.TestCase, metaclass=GenerateTestMa
             submodel = count_model.submodel(cset)
             estimator = MaximumLikelihoodMSM(reversible=reversible).fit(submodel)
             msm = estimator.fetch_model()
+            C = submodel.count_matrix
+            P = C / np.sum(C, axis=-1)[:, None]
 
-            np.testing.assert_array_almost_equal(msm.stationary_distribution,
-                                                 np.array([1./len(cset) for _ in cset]),
-                                                 decimal=1)
+            import scipy.linalg as salg
+            eigval, eigvec = salg.eig(P, left=True, right=False)
+
+            pi = np.real(eigvec)[:, np.where(np.real(eigval) > 1. - 1e-3)[0]].squeeze()
+            if np.any(pi < 0):
+                pi *= -1.
+            pi = pi / np.sum(pi)
+            np.testing.assert_array_almost_equal(msm.stationary_distribution, pi,
+                                                 decimal=1, err_msg="Failed for cset {} with "
+                                                                    "cmat {}".format(cset, submodel.count_matrix))
 
     def _test_msm_invalid_statdist_constraint(self, reversible, count_mode):
         pass # TODO: fix code to pass test

@@ -1,4 +1,7 @@
+from copy import deepcopy
+
 import numpy as np
+
 
 class GenerateTestMatrix(type):
     """
@@ -16,7 +19,17 @@ class GenerateTestMatrix(type):
     >>> if __name__ == '__main__':
     ...     unittest.main()
     """
+
     def __new__(mcs, name, bases, attr):
+        from functools import partial
+
+        # needed for python2
+        class partialmethod(partial):
+            def __get__(self, instance, owner):
+                if instance is None:
+                    return self
+                return partial(self.func, instance,
+                               *(self.args or ()), **(self.keywords or {}))
         new_test_methods = {}
 
         test_templates = {k: v for k, v in attr.items() if k.startswith('_test')}
@@ -28,7 +41,7 @@ class GenerateTestMatrix(type):
                 test_param = dict()
 
             for ix, param_set in enumerate(test_param):
-                func = lambda *args: attr[test](*args, **param_set)
+                func = partialmethod(attr[test], **param_set)
                 # only 'primitive' types should be used as part of test name.
                 vals_str = ''
                 for v in param_set.values():
@@ -46,3 +59,8 @@ class GenerateTestMatrix(type):
 
         attr.update(new_test_methods)
         return type.__new__(mcs, name, bases, attr)
+
+
+def assert_array_not_equal(arr1, arr2, err_msg='', verbose=True):
+    with np.testing.assert_raises(AssertionError, msg=err_msg):
+        np.testing.assert_array_equal(arr1, arr2, verbose=verbose)

@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as _np
 
-from sktime.markovprocess import MarkovStateModel as _MarkovStateModel
+from ..markovprocess.msm import MarkovStateModel
 
 __author__ = 'noe, marscher, clonker'
 
@@ -18,7 +18,7 @@ def _load_double_well_discrete():
     # avoid side effects, since we are caching these arrays!
     dtraj.flags.writeable = False
     transition_matrix.flags.writeable = False
-    msm = _MarkovStateModel(transition_matrix)
+    msm = MarkovStateModel(transition_matrix)
     return dtraj, msm
 
 

@@ -1,9 +1,10 @@
+from functools import wraps
 from typing import Union, Optional, List
 
 import numpy as np
 import scipy
 from msmtools import estimation as msmest
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, issparse
 
 from sktime.base import Estimator, Model
 from sktime.markovprocess import Q_
@@ -11,6 +12,16 @@ from sktime.markovprocess.util import count_states, compute_connected_sets
 from sktime.util import submatrix, ensure_dtraj_list
 
 __author__ = 'noe, clonker'
+
+
+def requires_state_histogram(func):
+    @wraps(func)
+    def wrap(self, *args, **kw):
+        if self.state_histogram is None:
+            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+        return func(self, *args, **kw)
+
+    return wrap
 
 
 class TransitionCountModel(Model):
@@ -198,12 +209,10 @@ class TransitionCountModel(Model):
         return float(self.n_states) / float(self.n_states_full)
 
     @property
+    @requires_state_histogram
     def selected_count_fraction(self) -> float:
         """The fraction of counts represented in this count model."""
-        if self.state_histogram is not None:
-            return float(np.sum(self.state_histogram)) / float(np.sum(self.state_histogram_full))
-        else:
-            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+        return float(np.sum(self.state_histogram)) / float(np.sum(self.state_histogram_full))
 
     @property
     def n_states(self) -> int:
@@ -211,20 +220,16 @@ class TransitionCountModel(Model):
         return self.count_matrix.shape[0]
 
     @property
+    @requires_state_histogram
     def total_count(self) -> int:
         """Total number of counts"""
-        if self.state_histogram is not None:
-            return self._state_histogram.sum()
-        else:
-            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+        return self._state_histogram.sum()
 
     @property
+    @requires_state_histogram
     def visited_set(self) -> np.ndarray:
         """ The set of visited states. """
-        if self.state_histogram is not None:
-            return np.argwhere(self.state_histogram > 0)[:, 0]
-        else:
-            raise RuntimeError("The model was not provided with a state histogram, this property cannot be evaluated.")
+        return np.argwhere(self.state_histogram > 0)[:, 0]
 
     @property
     def state_histogram(self) -> Optional[np.ndarray]:
@@ -232,7 +237,8 @@ class TransitionCountModel(Model):
         return self._state_histogram
 
     def connected_sets(self, connectivity_threshold: float = 0., directed: bool = True,
-                       probability_constraint: Optional[np.ndarray] = None) -> List[np.ndarray]:
+                       probability_constraint: Optional[np.ndarray] = None,
+                       sort_by_population: bool = False) -> List[np.ndarray]:
         r""" Computes the connected sets of the counting matrix. A threshold can be set fixing a number of counts
         required to consider two states connected. In case of sliding window the number of counts is increased by a
         factor of `lagtime`. In case of 'sliding-effective' counting, the number of sliding window counts were
@@ -247,6 +253,8 @@ class TransitionCountModel(Model):
             Compute connected set for directed or undirected transition graph, default directed
         probability_constraint : (N,) ndarray, optional, default=None
             constraint on the whole state space, sets all counts to zero which have no probability
+        sort_by_population : bool, optional, default=False
+            This flag can be used to order the resulting list of sets in decreasing order by the most counts.
 
         Returns
         -------
@@ -270,8 +278,31 @@ class TransitionCountModel(Model):
                 count_matrix = count_matrix.tolil()
             count_matrix[pos, :] = 0.
             count_matrix[:, pos] = 0.
+        connected_sets = compute_connected_sets(count_matrix, connectivity_threshold, directed=directed)
+        if sort_by_population:
+            score = np.array([self.count_matrix[np.ix_(s, s)].sum() for s in connected_sets])
+            # want decreasing order therefore sort by -1 * score
+            connected_sets = [connected_sets[i] for i in np.argsort(-score)]
+        return connected_sets
 
-        return compute_connected_sets(count_matrix, connectivity_threshold, directed=directed)
+    def symbols_to_states(self, symbols):
+        r"""
+        Converts a set of symbols to state indices in this count model instance. The symbols which
+        are no longer present in this model are discarded. It can happen that the order is
+        changed or the result is smaller than the input length.
+
+        Parameters
+        ----------
+        symbols : array_like
+            the symbols to be mapped to state indices
+
+        Returns
+        -------
+        an array of states
+        """
+        # only take symbols which are still present in this model
+        symbols = np.intersect1d(np.asarray(symbols), self.state_symbols)
+        return np.argwhere(np.isin(self.state_symbols, symbols)).flatten()
 
     def submodel(self, states: np.ndarray):
         r"""This returns a count model that is restricted to a selection of states.
@@ -302,8 +333,8 @@ class TransitionCountModel(Model):
                                     count_matrix_full=self.count_matrix_full,
                                     state_histogram_full=self.state_histogram_full)
 
-    def submodel_largest(self, connectivity_threshold: Union[None, float] = 0., directed: Optional[bool] = None,
-                         probability_constraint: Optional[np.ndarray] = None):
+    def submodel_largest(self, connectivity_threshold: Union[str, float] = 0., directed: Optional[bool] = None,
+                         probability_constraint: Optional[np.ndarray] = None, sort_by_population: bool = False):
         r"""
         Restricts this model to the submodel corresponding to the largest connected set of states after eliminating
         states that fall below the specified connectivity threshold.
@@ -319,6 +350,9 @@ class TransitionCountModel(Model):
             directed.
         probability_constraint : (N,) ndarray, optional, default=None
             Constraint on the whole state space (n_states_full). Only considers states that have positive probability.
+        sort_by_population : bool, optional, default=False
+            This flag can be used to use the connected set with the largest population.
+
         Returns
         -------
         The submodel.
@@ -330,7 +364,8 @@ class TransitionCountModel(Model):
             connectivity_threshold = 1. / self.n_states_full
         connectivity_threshold = float(connectivity_threshold)
         connected_sets = self.connected_sets(connectivity_threshold=connectivity_threshold, directed=directed,
-                                             probability_constraint=probability_constraint)
+                                             probability_constraint=probability_constraint,
+                                             sort_by_population=sort_by_population)
         largest_connected_set = connected_sets[0]
         return self.submodel(largest_connected_set)
 
@@ -375,7 +410,7 @@ class TransitionCountEstimator(Estimator):
         J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
     """
 
-    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step'):
+    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step', sparse=False):
         r"""
         Constructs a transition count estimator that can be used to estimate ``TransitionCountModel``s.
 
@@ -419,6 +454,15 @@ class TransitionCountEstimator(Estimator):
         self.lagtime = lagtime
         self.count_mode = count_mode
         self.physical_time = physical_time
+        self.sparse = sparse
+
+    @property
+    def sparse(self) -> bool:
+        return self._sparse
+
+    @sparse.setter
+    def sparse(self, value: bool):
+        self._sparse = bool(value)
 
     @property
     def physical_time(self) -> Q_:
@@ -465,13 +509,15 @@ class TransitionCountEstimator(Estimator):
         count_mode = self.count_mode
         lagtime = self.lagtime
         if count_mode == 'sliding' or count_mode == 'sliding-effective':
-            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True)
+            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True, sparse_return=self.sparse)
             if count_mode == 'sliding-effective':
                 count_matrix /= lagtime
         elif count_mode == 'sample':
-            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False)
+            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False, sparse_return=self.sparse)
         elif count_mode == 'effective':
             count_matrix = msmest.effective_count_matrix(dtrajs, lagtime)
+            if not self.sparse and issparse(count_matrix):
+                count_matrix = count_matrix.toarray()
         else:
             raise ValueError('Count mode {} is unknown.'.format(count_mode))
 

@@ -2,9 +2,8 @@ import typing
 
 import numpy as np
 
-from sktime.base import Estimator, Model
-from sktime.markovprocess import MarkovStateModel
-from sktime.util import confidence_interval, ensure_dtraj_list
+from ..base import Estimator, Model
+from ..util import confidence_interval
 
 
 def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None):
@@ -108,11 +107,42 @@ class _MSMBaseEstimator(Estimator):
 
 
 class BayesianPosterior(Model):
-    def __init__(self,
-                 prior: typing.Optional[MarkovStateModel] = None,
-                 samples: typing.Optional[typing.List[MarkovStateModel]] = None):
-        self.prior = prior
-        self.samples = samples
+    def __init__(self, prior=None, samples=None):
+        r"""
+
+        Parameters
+        ----------
+        prior : sktime.markovprocess.msm.MarkovStateModel, optional, default=None
+            the prior
+        samples : list of sktime.markovprocess.msm.MarkovStateModel, optional, default=None
+            sampled models
+        """
+        self._prior = prior
+        self._samples = samples
+
+    @property
+    def samples(self):
+        r"""
+        The sampled models
+
+        Returns
+        -------
+        models : list of sktime.markovprocess.msm.MarkovStateModel or None
+            samples
+        """
+        return self._samples
+
+    @property
+    def prior(self):
+        r"""
+        The prior model.
+
+        Returns
+        -------
+        prior : sktime.markovprocess.msm.MarkovStateModel or None
+            the prior
+        """
+        return self._prior
 
     def __iter__(self):
         for s in self.samples:
@@ -135,7 +165,7 @@ class BayesianPosterior(Model):
             samples=[sample.submodel(states) for sample in self.samples]
         )
 
-    def gather_stats(self, quantity, store_samples=False, *args, **kwargs):
+    def gather_stats(self, quantity, store_samples=False, delimiter='/', *args, **kwargs):
         """ obtain statistics about a sampled quantity
 
         Parameters
@@ -145,11 +175,20 @@ class BayesianPosterior(Model):
 
         store_samples: bool, optional, default=False
             whether to store the samples (array).
-        *args:
+        delimiter : str, optional, default='/'
+            separator to call members of members
+        args: pass-through
+        kwargs : pass-through
 
         """
         from sktime.util import call_member
-        samples = [call_member(s, quantity, *args, **kwargs) for s in self]
+        samples = self.samples
+        if delimiter in quantity:
+            qs = quantity.split(delimiter)
+            quantity = qs[-1]
+            for q in qs[:-1]:
+                samples = [call_member(s, q) for s in samples]
+        samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
         return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples)
 
 
