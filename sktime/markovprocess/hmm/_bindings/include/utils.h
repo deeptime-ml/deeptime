@@ -6,23 +6,54 @@
 
 #include "common.h"
 
+/**
+ * computes viterbi path
+ * @tparam dtype dtype
+ * @param transitionMatrix (N, N) transition matrix
+ * @param stateProbabilityTraj (T, N) pobs
+ * @param initialDistribution (N,) init dist
+ * @return (T, )ndarray
+ */
 template<typename dtype>
 np_array<std::int32_t> viterbiPath(const np_array<dtype> &transitionMatrix, const np_array<dtype> &stateProbabilityTraj,
                                    const np_array<dtype> &initialDistribution) {
-    auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
-    if(transitionMatrix.shape(1) != transitionMatrix.shape(0)) {
-        throw std::invalid_argument("Transition matrix must be a square matrix");
+    if (transitionMatrix.ndim() < 1 || stateProbabilityTraj.ndim() < 1) {
+        throw std::invalid_argument("transition matrix and pobs need to be at least 1-dimensional.");
     }
+    auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
     auto T = static_cast<std::size_t>(stateProbabilityTraj.shape(0));
+    {
+        // check shapes
+        if (transitionMatrix.ndim() != 2) throw std::invalid_argument("transition matrix must be 2-dimensional");
+        if (transitionMatrix.shape(1) != transitionMatrix.shape(0)) {
+            throw std::invalid_argument("Transition matrix must be (N, N) but was (" + std::to_string(N) + ", " +
+                                        std::to_string(transitionMatrix.shape(1)) + ")");
+        }
+        if (stateProbabilityTraj.ndim() != 2) throw std::invalid_argument("pobs must be 2-dimensional");
+        if (static_cast<std::size_t>(stateProbabilityTraj.shape(1)) != N) {
+            std::stringstream ss;
+            ss << "State probablity trajectory must be (T, N) = (" << T << ", " << N << ") dimensional but was (";
+            ss << stateProbabilityTraj.shape(0) << ", " << stateProbabilityTraj.shape(1) << ")";
+            throw std::invalid_argument(ss.str());
+        }
+        if (initialDistribution.ndim() != 1) throw std::invalid_argument("initial distribution must be 1-dimensional");
+        if (static_cast<std::size_t>(initialDistribution.shape(0)) != N) {
+            throw std::invalid_argument(
+                    "initial distribution must have length N = " + std::to_string(N) + " but had len=" +
+                    std::to_string(initialDistribution.shape(0)));
+        }
+        if (T == 0 || N == 0) {
+            throw std::invalid_argument("Needs T and N to be at least 1, i.e., no empty arrays permitted.");
+        }
+    }
     np_array<std::int32_t> path(std::vector<std::size_t>{T});
     auto pathBuf = path.mutable_data();
     auto ABuf = transitionMatrix.data();
     auto pobsBuf = stateProbabilityTraj.data();
     auto piBuf = initialDistribution.data();
     {
-        std::fill(pathBuf, pathBuf + path.size(), 0);
+        std::fill(pathBuf, pathBuf + T, 0);
 
-        std::size_t i, j, t, maxi;
         dtype sum;
         auto vData = std::unique_ptr<dtype[]>(new dtype[N]);
         auto v = vData.get();
@@ -30,33 +61,34 @@ np_array<std::int32_t> viterbiPath(const np_array<dtype> &transitionMatrix, cons
         auto vnext = vnextData.get();
         auto hData = std::unique_ptr<dtype[]>(new dtype[N]);
         auto h = hData.get();
-        auto ptr = std::unique_ptr<std::int32_t[]>(new std::int32_t[T * N]);
+        auto pathTmpBuf = std::unique_ptr<std::int32_t[]>(new std::int32_t[T * N]);
+        auto ptr = pathTmpBuf.get();
 
         // initialization of v
         sum = 0.0;
-        for (i = 0; i < N; i++) {
+        for (std::size_t i = 0; i < N; i++) {
             v[i] = pobsBuf[i] * piBuf[i];
             sum += v[i];
         }
         // normalize
-        for (i = 0; i < N; i++) {
+        for (std::size_t i = 0; i < N; i++) {
             v[i] /= sum;
         }
 
         // iteration of v
-        for (t = 1; t < T; t++) {
+        for (std::size_t t = 1; t < T; t++) {
             sum = 0.0;
-            for (j = 0; j < N; j++) {
-                for (i = 0; i < N; i++) {
+            for (std::size_t j = 0; j < N; j++) {
+                for (std::size_t i = 0; i < N; i++) {
                     h[i] = v[i] * ABuf[i * N + j];
                 }
-                maxi = std::distance(h, std::max_element(h, h + N));
+                auto maxi = std::distance(h, std::max_element(h, h + N));
                 ptr[t * N + j] = maxi;
                 vnext[j] = pobsBuf[t * N + j] * v[maxi] * ABuf[maxi * N + j];
                 sum += vnext[j];
             }
             // normalize
-            for (i = 0; i < N; i++) {
+            for (std::size_t i = 0; i < N; i++) {
                 vnext[i] /= sum;
             }
             // update v
@@ -65,7 +97,7 @@ np_array<std::int32_t> viterbiPath(const np_array<dtype> &transitionMatrix, cons
 
         // path reconstruction
         pathBuf[T - 1] = std::distance(v, std::max_element(v, v + N));
-        for (t = T - 1; t >= 1; t--) {
+        for (std::size_t t = T - 1; t >= 1; t--) {
             pathBuf[t - 1] = ptr[t * N + pathBuf[t]];
         }
 
@@ -87,7 +119,8 @@ dtype forward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &pO
     if (T > static_cast<std::size_t>(pObs.shape(0))) {
         throw std::invalid_argument("T must be at most the length of pobs.");
     }
-    if (alpha.ndim() != pObs.ndim() || static_cast<std::size_t>(alpha.shape(0)) < T || alpha.shape(1) != pObs.shape(1)) {
+    if (alpha.ndim() != pObs.ndim() || static_cast<std::size_t>(alpha.shape(0)) < T ||
+        alpha.shape(1) != pObs.shape(1)) {
         throw std::invalid_argument("Shape mismatch: Shape of state probability trajectory must match shape of alphas");
     }
 
@@ -227,10 +260,10 @@ void stateProbabilities(const np_array<dtype> &alpha, const np_array<dtype> &bet
         dtype rowSum = 0;
         for (std::size_t n = 0; n < N; ++n) {
             *(gammaPtr + t * N + n) = *(alphaPtr + t * N + n) * *(betaPtr + t * N + n);
-            rowSum += gammaPtr[t*N + n];
+            rowSum += gammaPtr[t * N + n];
         }
         for (std::size_t n = 0; n < N; ++n) {
-            if(rowSum != 0.) {
+            if (rowSum != 0.) {
                 gammaPtr[t * N + n] /= rowSum;
             }
         }
@@ -307,7 +340,7 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
             return py::cast<std::size_t>(pyT);
         }
     }();
-    if(static_cast<std::size_t>(pobs.shape(0)) < T || static_cast<std::size_t>(alpha.shape(0)) < T) {
+    if (static_cast<std::size_t>(pobs.shape(0)) < T || static_cast<std::size_t>(alpha.shape(0)) < T) {
         throw std::invalid_argument("T must be at most length of state probability trajectory and alphas.");
     }
     auto N = static_cast<std::size_t>(transitionMatrix.shape(0));

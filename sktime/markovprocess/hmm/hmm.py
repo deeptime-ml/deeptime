@@ -982,6 +982,9 @@ def viterbi(transition_matrix: np.ndarray, state_probability_trajectory: np.ndar
         maximum likelihood hidden path
 
     """
+    if state_probability_trajectory.ndim == 1 and transition_matrix.shape[0] == 1:
+        # if there is only one state, pad so that there is an additional dimension
+        state_probability_trajectory = state_probability_trajectory[..., None]
     return _bindings.util.viterbi(transition_matrix=transition_matrix,
                                   state_probability_trajectory=state_probability_trajectory,
                                   initial_distribution=initial_distribution)

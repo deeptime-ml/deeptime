@@ -628,6 +628,10 @@ class MaximumLikelihoodHMSM(Estimator):
                                            physical_time=self.physical_time)
         transition_model = MarkovStateModel(hmm_data.transition_matrix, reversible=self.reversible,
                                             count_model=count_model)
+        hidden_state_trajs = [
+            viterbi(hmm_data.transition_matrix, hmm_data.output_model.to_state_probability_trajectory(obs),
+                    hmm_data.initial_distribution) for obs in dtrajs
+        ]
         model = HiddenMarkovStateModel(
             transition_model=transition_model,
             output_model=hmm_data.output_model,
@@ -635,8 +639,7 @@ class MaximumLikelihoodHMSM(Estimator):
             likelihoods=likelihoods,
             state_probabilities=gammas,
             initial_count=self._init_counts(gammas),
-            hidden_state_trajectories=[viterbi(hmm_data.transition_matrix, obs, hmm_data.initial_distribution)
-                                       for obs in dtrajs],
+            hidden_state_trajectories=hidden_state_trajs,
             stride=self.stride
         )
         self._model = model
