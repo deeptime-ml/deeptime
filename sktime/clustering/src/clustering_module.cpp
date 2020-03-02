@@ -147,6 +147,11 @@ PYBIND11_MODULE(_clustering_bindings, m) {
         }
     }, "chunk"_a, "centers"_a, "n_threads"_a, "metric"_a = nullptr);
 
-    py::class_<Metric>(m, "Metric");
+    py::class_<Metric>(m, "Metric", R"delim(
+The metric class. It should not be directly instantiated from python, but is rather meant as a C++ interface. Since
+clustering is computationally expensive and the metric is called often, it makes sense to export this functionality
+from Python into an extension. To this end the abstract Metric class as defined in `clustering/include/metric.h` can
+be implemented and exposed to python. Afterwards it can be used in the clustering module.
+)delim");
     py::class_<EuclideanMetric, Metric>(m, "EuclideanMetric").def(py::init<>());
 }

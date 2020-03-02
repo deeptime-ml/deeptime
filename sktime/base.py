@@ -81,6 +81,14 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
 class Model(_base_methods_mixin):
 
     def copy(self):
+        r"""
+        Makes a deep copy of this model.
+
+        Returns
+        -------
+        copy : Model
+            A new copy of this model.
+        """
         import copy
         return copy.deepcopy(self)
 

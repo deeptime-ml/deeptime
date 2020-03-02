@@ -29,9 +29,13 @@ clustering - Algorithms (:mod:`sktime.clustering`)
 
     KmeansClustering
     MiniBatchKmeansClustering
+    KMeansClusteringModel
     RegularSpaceClustering
+    ClusterModel
+    _clustering_bindings.Metric
 """
 
-from .kmeans import KmeansClustering
-from .kmeans import MiniBatchKmeansClustering
+from .kmeans import KmeansClustering, MiniBatchKmeansClustering, KMeansClusteringModel
 from .regspace import RegularSpaceClustering
+from .cluster_model import ClusterModel
+from ._clustering_bindings import Metric
