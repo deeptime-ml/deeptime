@@ -18,11 +18,11 @@
 
 
 r"""
-===============================================================================
-clustering - Algorithms (:mod:`sktime.clustering`)
-===============================================================================
-
 .. currentmodule: sktime.clustering
+
+===============================================================================
+K-Means
+===============================================================================
 
 .. autosummary::
     :toctree: generated/
@@ -30,8 +30,24 @@ clustering - Algorithms (:mod:`sktime.clustering`)
     KmeansClustering
     MiniBatchKmeansClustering
     KMeansClusteringModel
+
+===============================================================================
+Regular space clustering
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+
     RegularSpaceClustering
     ClusterModel
+
+===============================================================================
+Adding a new metric
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+
     _clustering_bindings.Metric
 """
 
