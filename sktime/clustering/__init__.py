@@ -19,15 +19,16 @@
 
 r"""
 ===============================================================================
-clustering - Algorithms (:mod:`pyemma.coordinates.clustering`)
+clustering - Algorithms (:mod:`sktime.clustering`)
 ===============================================================================
 
-.. currentmodule: pyemma.coordinates.clustering
+.. currentmodule: sktime.clustering
 
 .. autosummary::
     :toctree: generated/
 
     KmeansClustering
+    MiniBatchKmeansClustering
     RegularSpaceClustering
 """
 

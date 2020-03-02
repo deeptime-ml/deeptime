@@ -51,6 +51,8 @@ class KmeansClustering(Estimator, Transformer):
                  tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None, random_state=None):
         r"""
+        Initializes a new KMeans clustering estimator.
+
         Parameters
         ----------
         n_clusters : int

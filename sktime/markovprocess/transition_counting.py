@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Callable
 
 import numpy as np
 import scipy
@@ -14,7 +14,21 @@ from sktime.util import submatrix, ensure_dtraj_list
 __author__ = 'noe, clonker'
 
 
-def requires_state_histogram(func):
+def requires_state_histogram(func : Callable) -> Callable:
+    """
+    Decorator marking properties which can only be evaluated if the TransitionCountModel contains statistics over the
+    data, i.e., a state histogram.
+
+    Parameters
+    ----------
+    func : Callable
+        the to-be decorated property
+
+    Returns
+    -------
+    wrapper : Callable
+        the decorated property
+    """
     @wraps(func)
     def wrap(self, *args, **kw):
         if self.state_histogram is None:
