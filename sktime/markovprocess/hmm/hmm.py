@@ -634,7 +634,7 @@ class HiddenMarkovStateModel(Model):
         -------
         hidden state vector corresponding to observable state vector
         """
-        a = ensure_ndarray(a, ndim=ndim, allow_None=allow_none)
+        a = ensure_ndarray(a, ndim=ndim, allow_none=allow_none)
         if allow_none and a is None:
             return None
         if len(a) != self.n_observation_states:

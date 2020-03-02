@@ -11,6 +11,8 @@ from sktime.clustering.cluster_model import ClusterModel
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering', 'KMeansClusteringModel']
 
+from ..util import handle_n_jobs
+
 
 class KMeansClusteringModel(ClusterModel):
     r"""
@@ -71,22 +73,28 @@ class KMeansClusteringModel(ClusterModel):
 
 
 class KmeansClustering(Estimator, Transformer):
-    r""" K-means clustering. """
+    r"""
+    Clusters the data in a way that minimizes the cost function
+
+    .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf{x}_j \in S_i} \left\| \mathbf{x}_j - \boldsymbol\mu_i \right\|^2
+
+    where :math:`S_i` are clusters with centers of mass :math:`\mu_i` and :math:`\mathbf{x}_j` data points
+    associated to their clusters.
+
+    The outcome is very dependent on the initialization, in particular we offer "kmeans++" and "uniform". The latter
+    picks initial centers random-uniformly over the provided data set. The former tries to find an initialization
+    which is covering the spatial configuration of the dataset more or less uniformly. For details see [1]_.
+
+    References
+    ----------
+    .. [1] Arthur, David, and Sergei Vassilvitskii. k-means++: The advantages of careful seeding. Stanford, 2006.
+    """
 
     def __init__(self, n_clusters: int, max_iter: int = 5, metric=None,
                  tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None, random_state=None):
         r"""
-        Initializes a new estimator which minimizes the cost function
-
-        .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf{x}_j \in S_i} \left\| \mathbf{x}_j - \boldsymbol\mu_i \right\|^2
-
-        where :math:`S_i` are clusters with centers of mass :math:`\mu_i` and `\mathbf{x}_j` data points associated to
-        their clusters.
-
-        The outcome is very dependent on the initialization, in particular we offer "kmeans++" and "uniform". The latter
-        picks initial centers random-uniformly over the provided data set. The former tries to find an initialization
-        which is covering the spatial configuration of the dataset more or less uniformly. For details see [1]_.
+        Initializes a new k-means cluster estimator.
 
         Parameters
         ----------
@@ -97,18 +105,18 @@ class KmeansClustering(Estimator, Transformer):
             maximum number of iterations before stopping.
 
         metric : subclass of :class:`_clustering_bindings.Metric`
-            metric to use during clustering, default None evaluates to euclidean metric, otherwise instance of a subclass
-            of `sktime.clustering._bindings.Metric`
+            metric to use during clustering, default None evaluates to euclidean metric, otherwise instance of a
+            subclass of :class:`_clustering__bindings.Metric`.
 
         tolerance : float
-            Stop iteration when the relative change in the cost function
+            Stop iteration when the relative change in the cost function (inertia)
 
             .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf x \in S_i} \left\| \mathbf x - \boldsymbol\mu_i \right\|^2
 
             is smaller than tolerance.
 
-        init_strategy : string
-            can be either 'kmeans++' or 'uniform', determining how the initial cluster centers are being chosen
+        init_strategy : str
+            one of 'kmeans++', 'uniform'; determining how the initial cluster centers are being chosen
 
         fixed_seed : bool or int
             if True, the seed gets set to 42. Use time based seeding otherwise. If an integer is given, use this to
@@ -120,10 +128,6 @@ class KmeansClustering(Estimator, Transformer):
         initial_centers: None or np.ndarray[k, dim]
             This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
             the centers are directly passed to the kmeans iteration algorithm.
-
-        References
-        ----------
-        .. [1] Arthur, David, and Sergei Vassilvitskii. k-means++: The advantages of careful seeding. Stanford, 2006.
         """
         super(KmeansClustering, self).__init__()
 
@@ -170,11 +174,7 @@ class KmeansClustering(Estimator, Transformer):
 
     @n_jobs.setter
     def n_jobs(self, value: Optional[int]):
-        if value is None:
-            # todo: sensible choice?
-            # todo in sklearn: None -> 1 job, -1 -> all cpus (logical)
-            value = 1
-        self._n_jobs = value
+        self._n_jobs = handle_n_jobs(value)
 
     @property
     def n_clusters(self) -> int:

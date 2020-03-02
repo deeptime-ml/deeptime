@@ -1,14 +1,25 @@
 import numbers
-from typing import Callable, Any
+from typing import Optional
 from weakref import WeakKeyDictionary
 
 import numpy as np
 
 
-def ensure_ndarray(arr, shape: tuple = None, ndim: int = None, dtype=None, size=None, allow_None=False) -> [np.ndarray,
-                                                                                                            None]:
-    if allow_None and arr is None:
-        return None
+def handle_n_jobs(value: Optional[int]):
+    if value is None:
+        return 1
+    else:
+        return value
+
+
+def ensure_ndarray(arr, shape: tuple = None, ndim: int = None, dtype=None, size=None,
+                   allow_none=False) -> [np.ndarray, None]:
+    if arr is None:
+        if allow_none:
+            return None
+        else:
+            raise ValueError("None not allowed!")
+    assert arr is not None
     if not isinstance(arr, np.ndarray):
         arr = np.asarray(arr, dtype=dtype)
     if shape is not None and arr.shape != shape:
