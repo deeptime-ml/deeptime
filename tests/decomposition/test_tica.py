@@ -159,13 +159,13 @@ class TestTICAExtensive(unittest.TestCase):
         np.testing.assert_allclose(self.model_nonrev.cov_0t, self.cov_ref_0t_nr)
 
     def test_dimension(self):
-        assert self.model_unscaled.output_dimension() == 1
-        assert self.model_nonrev.output_dimension() == 1
+        assert self.model_unscaled.output_dimension == 1
+        assert self.model_nonrev.output_dimension == 1
         # Test other variants
         model = TICA(lagtime=self.lagtime, dim=1.0).fit(self.data).fetch_model()
-        assert model.output_dimension() == 2
+        assert model.output_dimension == 2
         model = TICA(lagtime=self.lagtime, dim=.9).fit(self.data).fetch_model()
-        assert model.output_dimension() == 1
+        assert model.output_dimension == 1
 
         invalid_dims = [0, 0.0, 1.1, -1]
         for invalid_dim in invalid_dims:
