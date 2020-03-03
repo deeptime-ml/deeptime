@@ -423,7 +423,9 @@ class OnlineCovariance(Estimator):
 
 class KoopmanModel(Model, Transformer):
     r""" A model which contains the Koopman operator in a modified basis `(PC|1)` and can transform data into Koopman
-    weights according to [1]_.
+    weights.
+
+    Weights are computed according to [1]_.
 
     References
     ----------
