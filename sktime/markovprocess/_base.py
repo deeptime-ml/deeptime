@@ -240,7 +240,9 @@ class QuantityStatistics(Model):
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
              score_k=10, random_state=None):
-    r""" Scores the MSM using the variational approach for Markov processes [1]_ [2]_ and cross-validation [3]_ .
+    r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
+
+    Implementation and ideas following [1]_ [2]_ and cross-validation [3]_.
 
     Divides the data into training and test data, fits a MSM using the training
     data using the parameters of this estimator, and scores is using the test
