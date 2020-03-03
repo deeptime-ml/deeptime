@@ -19,8 +19,7 @@ import unittest
 
 import numpy as np
 
-from sktime import datasets
-from sktime.datasets import double_well_discrete
+from sktime.data import datasets
 from sktime.markovprocess.hmm import initial_guess_discrete_from_data, MaximumLikelihoodHMSM
 from sktime.markovprocess.hmm.bayesian_hmm import BayesianHMSM, BayesianHMMPosterior
 from sktime.util import confidence_interval, ensure_dtraj_list
@@ -31,7 +30,7 @@ class TestBHMM(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # load observations
-        obs = double_well_discrete().dtraj
+        obs = datasets.double_well_discrete().dtraj
 
         # hidden states
         cls.n_states = 2

@@ -2,21 +2,11 @@ import typing
 
 import numpy as np
 
-import sktime.datasets as datasets
+import sktime.data.datasets as datasets
 from sktime.markovprocess import TransitionCountEstimator
 from sktime.markovprocess.msm import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior
 
 __all__ = ['msm_double_well', 'bmsm_double_well']
-
-
-def bayesian_markov_model(dtrajs, lag, return_estimator=False, **kwargs) \
-        -> (typing.Optional[BayesianMSM], BayesianPosterior):
-    est = BayesianMSM(lagtime=lag, **kwargs)
-    est.fit(dtrajs)
-    model = est.fetch_model()
-    if return_estimator:
-        return est, model
-    return model
 
 
 def msm_double_well(lagtime=100, reversible=True, **kwargs) -> MaximumLikelihoodMSM:

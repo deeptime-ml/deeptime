@@ -23,9 +23,14 @@ def _load_double_well_discrete():
 
 
 class DoubleWellDiscrete(object):
-    """ MCMC process in a symmetric double well potential, spatially discretized to 100 bins """
+    r""" MCMC process in a symmetric double well potential, spatially discretized to 100 bins. """
 
     def __init__(self):
+        r""" New instance of the object.
+
+        Initializes a new instance of :class:`DoubleWellDiscrete` encapsulating discrete trajectories and
+        markov state model (see :class:`MarkovStateModel`) with exact transition matrix.
+        """
         dtraj, msm = _load_double_well_discrete()
         self._dtraj = dtraj
         self._analytic_msm = msm
@@ -55,7 +60,18 @@ class DoubleWellDiscrete(object):
         return self.dtraj_n([40, 45, 50, 55, 60])
 
     def dtraj_n(self, divides):
-        """ 100K frames trajectory at timestep 10, arbitrary n-state discretization. """
+        r""" 100K frames trajectory at timestep 10, arbitrary n-state discretization.
+
+        Parameters
+        ----------
+        divides : (n, dtype=int) ndarray
+            The state boundaries.
+
+        Returns
+        -------
+        dtraj : (T,) ndarray
+            Discrete trajectory with :code:`len(divides)` states.
+        """
         disc = _np.zeros(100, dtype=int)
         divides = _np.concatenate([divides, [100]])
         for i in range(len(divides) - 1):
@@ -69,37 +85,35 @@ class DoubleWellDiscrete(object):
 
     @property
     def analytic_msm(self):
-        """ Returns an MSM object with the exact transition matrix """
+        """ Returns a :class:`MarkovStateModel` instance with the exact transition matrix. """
         return self._analytic_msm
 
     def simulate_trajectory(self, n_steps, start=None, stop=None, dt=1) -> _np.ndarray:
-        """
-        Generates a discrete trajectory of length less or equal n_steps.
+        """ Generates a discrete trajectory of length less or equal n_steps.
+
         Parameters
         ----------
-        n_steps: number of steps to simulate
-        start: starting hidden state (optional)
-        stop: stopping hidden set (optional), if not None this can lead to fewer than n_steps steps
-        dt: time step
+        n_steps : int
+            maximum number of steps to simulate
+        start : int, optional, default=None
+            Starting state. If None is given, it is sampled from the stationary distribution.
+        stop : int, optional, default=None
+            Stopping state. If not None and encountered, stops the simulation. This can lead to fewer
+            than n_steps steps.
+        dt : int, optional, default=1
+            Time step to apply when simulating the trajectory.
+
         Returns
         -------
-        a discrete trajectory
+        dtraj : (T, 1) ndarray
+            A discrete trajectory.
         """
         return self.analytic_msm.simulate(n_steps, start=start, stop=stop, dt=dt)
 
     def simulate_trajectories(self, n_trajectories: int, n_steps: int,
                               start=None, stop=None, dt=1) -> List[_np.ndarray]:
         """
-        Generates n_trajectories random trajectories of length n_steps each with time step dt
-        Parameters
-        ----------
-        n_trajectories: number of trajectories
-        n_steps: number of steps per trajectory
-        start: starting hidden state, sampled from stationary distribution of hidden transition matrix if None
-        stop: stopping hidden set, optional
-        dt: discrete time step
-        Returns
-        -------
-        discrete trajectories: a list of discrete trajectories
+        Simulates :code:`n_trajectories` discrete trajectories. For a more detailed description of the arguments, see
+        :meth:`simulate_trajectory`.
         """
         return [self.simulate_trajectory(n_steps, start=start, stop=stop, dt=dt) for _ in range(n_trajectories)]
