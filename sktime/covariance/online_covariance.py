@@ -4,12 +4,12 @@ from typing import Optional
 import numpy as np
 from scipy.linalg import eig
 
-from ..base import Estimator, Model
+from ..base import Estimator, Model, Transformer
 from ..data.util import timeshifted_split
 from ..numeric.eigen import spd_inv_split, sort_by_norm
 from .util.running_moments import running_covar as running_covar
 
-__all__ = ['OnlineCovariance', 'OnlineCovarianceModel', 'KoopmanEstimator', 'KoopmanWeights']
+__all__ = ['OnlineCovariance', 'OnlineCovarianceModel', 'KoopmanEstimator', 'KoopmanModel']
 
 __author__ = 'paul, nueske, marscher, clonker'
 
@@ -300,12 +300,13 @@ class OnlineCovariance(Estimator):
 
     @lagtime.setter
     def lagtime(self, value: int):
+        if value < 0:
+            raise ValueError("Negative lagtime are not supported.")
         self._lagtime = value
 
     @property
     def is_lagged(self) -> bool:
-        r"""
-        Determines whether this estimator also computes time-lagged covariances.
+        r""" Determines whether this estimator also computes time-lagged covariances.
 
         :type: bool
         """
@@ -394,6 +395,13 @@ class OnlineCovariance(Estimator):
         return self
 
     def fetch_model(self) -> OnlineCovarianceModel:
+        r""" Finalizes the covariance computation by aggregating all moment storages.
+
+        Returns
+        -------
+        model : OnlineCovarianceModel
+            The covariance model.
+        """
         cov_00 = cov_tt = cov_0t = mean_0 = mean_t = None
         if self.compute_c0t:
             cov_0t = self._rc.cov_XY(self.bessels_correction)
@@ -413,46 +421,193 @@ class OnlineCovariance(Estimator):
         return self._model
 
 
-class KoopmanWeights(Model):
+class KoopmanModel(Model, Transformer):
+    r""" A model which contains the Koopman operator in a modified basis `(PC|1)` and can transform data into Koopman
+    weights according to [1]_.
 
-    def __init__(self, u=None, u_const=0):
-        self.u = u
-        self.u_const = u_const
+    References
+    ----------
+    .. [1] Wu, H., Nüske, F., Paul, F., Klus, S., Koltai, P., and Noé, F. (2016). Variational approximation
+           of molecular kinetics from short off-equilibrium simulations. stat, 1050, 20.
+    """
+
+    def __init__(self, u, u_const, koopman_operator, whitening_transformation=None, covariances=None):
+        r"""Initializes a new Koopman model.
+
+        Parameters
+        ----------
+        u : ndarray
+            Reweighting vector in input basis
+        u_const : float
+            Constant offset for reweighting in input basis.
+        koopman_operator : ndarray
+            Koopman operator in modified basis.
+        whitening_transformation : ndarray, optional, default=None
+            Whitening transformation.
+        covariances : OnlineCovarianceModel, optional, default=None
+            Estimated covariances.
+        """
+        self._u = u
+        self._u_const = u_const
+        self._koopman_operator = koopman_operator
+        self._whitening_transformation = whitening_transformation
+        self._covariances = covariances
 
     def weights(self, X):
-        assert self.u is not None and self.u_const is not None
-        return X.dot(self.u) + self.u_const
+        r""" Applies reweighting vectors to data, yielding corresponding weights.
+
+        Parameters
+        ----------
+        X : (T, d) ndarray
+            The input data.
+
+        Returns
+        -------
+        weights : (T, 1) ndarray
+            Weights for input data.
+        """
+        return X.dot(self.weights_input) + self.const_weight_input
+
+    def transform(self, data):
+        r""" Same as :meth:`weights`. """
+        return self.weights(data)
+
+    @property
+    def weights_input(self) -> np.ndarray:
+        r""" Yields the reweighting vector in input basis.
+
+        :type: (T, d) ndarray
+        """
+        return self._u
+    
+    @property
+    def const_weight_input(self) -> float:
+        r""" Yields the constant offset for reweighting in input basis.
+
+        :type: float
+        """
+        return self._u_const
+
+    @property
+    def koopman_operator(self) -> np.ndarray:
+        r""" The Koopman operator in modified basis (PC|1).
+
+        :type: ndarray
+        """
+        return self._koopman_operator
+
+    @property
+    def whitening_transformation(self) -> np.ndarray:
+        r""" Estimated whitening transformation for data
+
+        :type: ndarray or None
+        """
+        return self._whitening_transformation
+
+    @property
+    def covariances(self) -> OnlineCovarianceModel:
+        r""" Covariance model which was used to compute the Koopman model.
+
+        :type: OnlineCovarianceModel or None
+        """
+        return self._covariances
 
 
-class KoopmanEstimator(Estimator):
+class KoopmanEstimator(Estimator, Transformer):
+    r"""Computes Koopman operator and weights that can be plugged into the :class:`OnlineCovariance` estimator.
+    The weights are determined by the procedure described in [1]_.
 
-    def __init__(self, lagtime, epsilon=1e-6, ncov=int(2**10000)):
+    References
+    ----------
+    .. [1] Wu, H., Nüske, F., Paul, F., Klus, S., Koltai, P., and Noé, F. (2016). Variational approximation
+           of molecular kinetics from short off-equilibrium simulations. stat, 1050, 20.
+    """
+
+    def __init__(self, lagtime, epsilon=1e-6, ncov='inf'):
+        r""" Initializes a new Koopman estimator.
+
+        Parameters
+        ----------
+        lagtime : int
+            The lag time at which the operator is estimated.
+        epsilon : float, optional, default=1e-6
+            Truncation parameter. Eigenvalues with norms smaller than this cutoff will be removed.
+        ncov : int or str, optional, default=infinity
+            Depth of moment storage. Per default no moments are collapsed while estimating covariances, perform
+            aggregation only at the very end after all data has been processed.
+        """
         super(KoopmanEstimator, self).__init__()
         self.epsilon = epsilon
-        self._cov = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, remove_data_mean=True, reversible=False,
-                                     bessels_correction=False, ncov=ncov)
+        if ncov == 'inf':
+            ncov = int(2**10000)
+        self._cov = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, remove_data_mean=True,
+                                     reversible=False, bessels_correction=False, ncov=ncov)
 
-    def fit(self, data, y=None, lagtime=None):
+    def fit(self, data, lagtime=None, **kw):
+        r""" Fits a new model.
+
+        Parameters
+        ----------
+        data : (T, d) ndarray
+            The input data.
+        lagtime : int, optional, default=None
+            Optional override for estimator's :attr:`lagtime`.
+        **kw
+            Ignored keyword args for scikit-learn compatibility.
+
+        Returns
+        -------
+        self : KoopmanEstimator
+            Reference to self.
+        """
+        self._model = None
         self._cov.fit(data, lagtime=lagtime)
-        self.fetch_model()  # pre-compute Koopman operator
         return self
 
     def partial_fit(self, data):
+        r""" Updates the current model using a chunk of data.
+
+        Parameters
+        ----------
+        data : (T, d) ndarray
+            A chunk of data.
+
+        Returns
+        -------
+        self : KoopmanEstimator
+            Reference to self.
+        """
         self._cov.partial_fit(data)
         return self
 
+    def transform(self, data):
+        r""" Computes weights for a chunk of data. This requires that a model was :meth:`fit`.
+
+        Parameters
+        ----------
+        data : (T, d) ndarray
+            A chunk of data.
+
+        Returns
+        -------
+        weights : (T, 1) ndarray
+            Koopman weights.
+        """
+        return self.fetch_model().transform(data)
+
     @staticmethod
     def _compute_u(K):
-        """
-        Estimate an approximation of the ratio of stationary over empirical distribution from the basis.
+        r"""Estimate an approximation of the ratio of stationary over empirical distribution from the basis.
+
         Parameters:
         -----------
-        K0, ndarray(M+1, M+1),
-            time-lagged correlation matrix for the whitened and padded data set.
+        K0 : (M+1, M+1) ndarray
+            Time-lagged correlation matrix for the whitened and padded data set.
+
         Returns:
         --------
-        u : ndarray(M,)
-            coefficients of the ratio stationary / empirical dist. from the whitened and expanded basis.
+        weights : (M,) ndarray
+            Coefficients of the ratio stationary / empirical distribution from the whitened and expanded basis.
         """
         M = K.shape[0] - 1
         # Compute right and left eigenvectors:
@@ -465,7 +620,14 @@ class KoopmanEstimator(Estimator):
         u = u / np.dot(u, v)
         return u
 
-    def fetch_model(self) -> KoopmanWeights:
+    def fetch_model(self) -> KoopmanModel:
+        r""" Finalizes the model.
+
+        Returns
+        -------
+        koopman_model : KoopmanModel
+            The Koopman model, in particular containing operator and weights.
+        """
         cov = self._cov.fetch_model()
 
         R = spd_inv_split(cov.cov_00, epsilon=self.epsilon, canonical_signs=True)
@@ -483,14 +645,21 @@ class KoopmanEstimator(Estimator):
         u_input[0:N] = R.dot(u[0:-1])  # in input basis
         u_input[N] = u[-1] - cov.mean_0.dot(R.dot(u[0:-1]))
 
-        self._model = KoopmanWeights(u=u_input[:-1], u_const=u_input[-1])
+        self._model = KoopmanModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=K, whitening_transformation=R,
+                                   covariances=cov)
 
         return self._model
 
     @property
-    def lagtime(self):
+    def lagtime(self) -> int:
+        r""" The lagtime at which the Koopman operator is estimated.
+
+        :getter: Yields the currently configured lagtime.
+        :setter: Sets a new lagtime, must be >= 0.
+        :type: int
+        """
         return self._cov.lagtime
 
     @lagtime.setter
-    def lagtime(self, value):
+    def lagtime(self, value: int):
         self._cov.lagtime = value

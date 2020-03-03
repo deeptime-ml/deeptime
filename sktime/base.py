@@ -130,6 +130,18 @@ class Transformer(object):
 
     @abc.abstractmethod
     def transform(self, data):
+        r"""Transforms the input data.
+
+        Parameters
+        ----------
+        data : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """
         pass
 
 

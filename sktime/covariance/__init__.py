@@ -19,7 +19,7 @@ Koopman reweighting
     :toctree: generated/
 
     KoopmanEstimator
-    KoopmanWeights
+    KoopmanModel
 
 ===============================================================================
 Implementations
@@ -38,4 +38,4 @@ Implementations
 
 from .util.moments import moments_XX, moments_XXXY, moments_block, covar, covars
 from .online_covariance import OnlineCovariance, OnlineCovarianceModel
-from .online_covariance import KoopmanEstimator, KoopmanWeights
+from .online_covariance import KoopmanEstimator, KoopmanModel
