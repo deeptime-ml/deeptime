@@ -454,7 +454,7 @@ class TICA(Estimator, Transformer):
         elif isinstance(value, Real) and (value <= 0. or float(value) > 1.0):
             raise ValueError("TICA: Invalid dimension parameter, if it is given in terms of a floating point, "
                              "can only be in the interval (0, 1].")
-        elif not isinstance(value, (Integral, Real)):
+        elif value is not None and not isinstance(value, (Integral, Real)):
             raise ValueError("Invalid type for dimension, got {}".format(value))
         self._dim = value
 

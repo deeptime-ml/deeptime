@@ -129,7 +129,7 @@ class Estimator(_base_methods_mixin):
 class Transformer(object):
 
     @abc.abstractmethod
-    def transform(self, data):
+    def transform(self, data, **kwargs):
         r"""Transforms the input data.
 
         Parameters

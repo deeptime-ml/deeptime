@@ -20,106 +20,167 @@
 
 
 import warnings
+from collections import namedtuple
+from numbers import Real, Integral
+from typing import Optional, Union
 
 import numpy as np
 
-from sktime.base import Model, Estimator
-from sktime.covariance.online_covariance import OnlineCovariance
-from sktime.numeric import mdot
-from sktime.numeric.eigen import spd_inv_split, spd_inv_sqrt
+from ..base import Model, Estimator
+from ..covariance.online_covariance import OnlineCovariance, OnlineCovarianceModel
+from ..numeric import mdot
+from ..numeric.eigen import spd_inv_split, spd_inv_sqrt
+from ..util import cached_property
 
 __all__ = ['VAMP', 'VAMPModel']
 
 
 class VAMPModel(Model):
+    r""" Model which was estimated from a :class:`VAMP` estimator.
 
-    def __init__(self, mean_0=None, mean_t=None, cov_00=None, cov_tt=None, cov_0t=None, dim=None, epsilon=1e-6,
+    See Also
+    --------
+    VAMP : vamp estimator
+    """
+
+    _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
+                                                                    'left_singular_vecs', 'right_singular_vecs'])
+
+    def __init__(self, cov: OnlineCovarianceModel, dim=None, epsilon=1e-6,
                  scaling=None, right=True):
-        self.mean_0 = mean_0
-        self.mean_t = mean_t
-        self.cov_00 = cov_00
-        self.cov_tt = cov_tt
-        self.cov_0t = cov_0t
-        self._svd_performed = False
-        self.dim = dim
-        self.epsilon = epsilon
-        self.scaling = scaling
-        self.right = right
+        r""" Creates a new model instance.
+
+        Parameters
+        ----------
+        cov : OnlineCovarianceModel
+            Estimated covariances.
+        dim : int or float or None, optional, default=None
+            Dimension parameter, see :attr:`VAMP.dim` for a more detailed description. The effective dimension can be
+            obtained from :attr:`output_dimension`.
+        epsilon : float, optional, default=1e-6
+            Singular value cutoff parameter, see :attr:`VAMP.epsilon`.
+        scaling : str or None, optional, default=None
+            Scaling parameter, see :attr:`VAMP.scaling`.
+        right : bool, optional, default=True
+            Whether right or left eigenvectors should be used for projection.
+        """
+        self._cov = cov
+        self._dim = dim
+        self._epsilon = epsilon
+        self._scaling = scaling
+        self._right = right
+
+    def _invalidate_caches(self):
+        r""" Invalidates all cached properties and causes them to be re-evaluated """
+        for member in self.__class__.__dict__.values():
+            if isinstance(member, cached_property):
+                member.invalidate()
+        self._eigenvalues = None
+        self._stationary_distribution = None
 
     @property
-    def scaling(self):
-        """Scaling of projection. Can be None or 'kinetic map', 'km' """
+    def right(self) -> bool:
+        r""" Whether right or left eigenvectors should be used for projection. """
+        return self._right
+
+    @right.setter
+    def right(self, value: bool):
+        self._right = value
+
+    @property
+    def epsilon(self) -> float:
+        r""" Singular value cutoff. """
+        return self._epsilon
+
+    @property
+    def dim(self) -> Optional[Real]:
+        r""" Dimension parameter used for estimating this model. Affects the effective :attr:`output_dimension`.
+
+        :getter: Yields the currently configured dim parameter.
+        :setter: Sets a new dimension cutoff, triggers re-evaluation of decomposition.
+        :type: int or float or None
+        """
+        return self._dim
+
+    @dim.setter
+    def dim(self, value: Optional[Real]):
+        if isinstance(value, Integral) and value <= 0:
+            # first test against Integral as `isinstance(1, Real)` also evaluates to True
+            raise ValueError("Invalid dimension parameter, if it is given in terms of the dimension (integer), "
+                             "must be positive.")
+        elif isinstance(value, Real) and (value <= 0. or float(value) > 1.0):
+            raise ValueError("Invalid dimension parameter, if it is given in terms of a floating point, "
+                             "can only be in the interval (0, 1].")
+        elif value is not None and not isinstance(value, (Integral, Real)):
+            raise ValueError("Invalid type for dimension, got {}".format(value))
+        self._dim = value
+        self._invalidate_caches()
+
+    @property
+    def scaling(self) -> Optional[str]:
+        """Scaling of projection. Can be :code:`None`, 'kinetic map', or 'km' """
         return self._scaling
 
-    @scaling.setter
-    def scaling(self, value):
-        if value not in (None, 'km', 'kinetic map'):
-            raise ValueError('unexpected value (%s) of "scaling". Must be one of ("km", "kinetic map", None).' % value)
-        self._scaling = value
-
     @property
-    def singular_vectors_left(self):
+    def singular_vectors_left(self) -> np.ndarray:
         """Tranformation matrix that represents the linear map from mean-free feature space
         to the space of left singular functions."""
-        if not self._svd_performed:
-            self._diagonalize()
-        return self._U
+        return self._decomposition.left_singular_vecs
 
     @property
-    def singular_vectors_right(self):
+    def singular_vectors_right(self) -> np.ndarray:
         """Tranformation matrix that represents the linear map from mean-free feature space
         to the space of right singular functions."""
-        if not self._svd_performed:
-            self._diagonalize()
-        return self._V
+        return self._decomposition.right_singular_vecs
 
     @property
-    def singular_values(self):
-        """The singular values of the half-weighted Koopman matrix"""
-        if not self._svd_performed:
-            self._diagonalize()
-        return self._singular_values
+    def singular_values(self) -> np.ndarray:
+        """ The singular values of the half-weighted Koopman matrix. """
+        return self._decomposition.singular_values
 
     @property
-    def cov_00(self):
-        return self._cov_00
-
-    @cov_00.setter
-    def cov_00(self, val):
-        self._svd_performed = False
-        self._cov_00 = val
+    def cov(self) -> OnlineCovarianceModel:
+        r""" Estimated covariances. """
+        return self._cov
 
     @property
-    def cov_0t(self):
-        return self._cov_0t
-
-    @cov_0t.setter
-    def cov_0t(self, val):
-        self._svd_performed = False
-        self._cov_0t = val
+    def mean_0(self) -> np.ndarray:
+        r""" Shortcut to :attr:`mean_0 <sktime.covariance.OnlineCovarianceModel.mean_0>`. """
+        return self.cov.mean_0
 
     @property
-    def cov_tt(self):
-        return self._cov_tt
+    def mean_t(self) -> np.ndarray:
+        r""" Shortcut to :attr:`mean_t <sktime.covariance.OnlineCovarianceModel.mean_t>`. """
+        return self.cov.mean_t
 
-    @cov_tt.setter
-    def cov_tt(self, val):
-        self._svd_performed = False
-        self._cov_tt = val
+    @property
+    def cov_00(self) -> np.ndarray:
+        r""" Shortcut to :attr:`cov_00 <sktime.covariance.OnlineCovarianceModel.cov_00>`. """
+        return self.cov.cov_00
+
+    @property
+    def cov_0t(self) -> np.ndarray:
+        r""" Shortcut to :attr:`cov_0t <sktime.covariance.OnlineCovarianceModel.cov_0t>`. """
+        return self.cov.cov_0t
+
+    @property
+    def cov_tt(self) -> np.ndarray:
+        r""" Shortcut to :attr:`cov_tt <sktime.covariance.OnlineCovarianceModel.cov_tt>`. """
+        return self.cov.cov_tt
 
     @staticmethod
-    def _cumvar(singular_values):
+    def _cumvar(singular_values) -> np.ndarray:
         cumvar = np.cumsum(singular_values ** 2)
         cumvar /= cumvar[-1]
         return cumvar
 
     @property
-    def cumvar(self):
-        """ cumulative kinetic variance """
+    def cumvar(self) -> np.ndarray:
+        """ Cumulative kinetic variance. """
         return VAMPModel._cumvar(self.singular_values)
 
     @staticmethod
-    def _dimension(rank0, rankt, dim, singular_values):
+    def _dimension(rank0, rankt, dim, singular_values) -> int:
         """ output dimension """
         if dim is None or (isinstance(dim, float) and dim == 1.0):
             return min(rank0, rankt)
@@ -128,19 +189,15 @@ class VAMPModel(Model):
         else:
             return np.min([rank0, rankt, dim])
 
-    def dimension(self):
-        """ output dimension """
-        if self.cov_00 is None:  # no data yet
-            if isinstance(self.dim, int):  # return user choice
-                warnings.warn('Returning user-input for dimension, since this model has not yet been estimated.')
-                return self.dim
-            raise RuntimeError('This model has not been initialized yet (cov_00 etc.).')
+    @property
+    def output_dimension(self) -> int:
+        """ Effective Output dimension. """
+        rank0 = self._decomposition.rank0
+        rankt = self._decomposition.rankt
+        return self._dimension(rank0, rankt, self.dim, self.singular_values)
 
-        if not self._svd_performed:
-            self._diagonalize()
-        return self._dimension(self._rank0, self._rankt, self.dim, self.singular_values)
-
-    def expectation(self, observables, statistics, lag_multiple=1, observables_mean_free=False, statistics_mean_free=False):
+    def expectation(self, observables, statistics, lag_multiple=1, observables_mean_free=False,
+                    statistics_mean_free=False):
         r"""Compute future expectation of observable or covariance using the approximated Koopman operator.
 
         Parameters
@@ -212,7 +269,7 @@ class VAMPModel(Model):
         where :math:`r_{i}=\langle\psi_{i},f\rangle_{\rho_{0}}` and
         :math:`\boldsymbol{\Sigma}=\mathrm{diag(\boldsymbol{\sigma})}` .
         """
-        dim = self.dimension()
+        dim = self.output_dimension
 
         S = np.diag(np.concatenate(([1.0], self.singular_values[0:dim])))
         V = self.singular_vectors_right[:, 0:dim]
@@ -250,7 +307,8 @@ class VAMPModel(Model):
             # compute future expectation
             return Q.dot(P)[:, 0]
 
-    def _diagonalize(self):
+    @cached_property
+    def _decomposition(self) -> _DiagonalizationResults:
         """Performs SVD on covariance matrices and save left, right singular vectors and values in the model.
 
         Parameters
@@ -264,18 +322,18 @@ class VAMPModel(Model):
               induce a kinetic map.
         """
         L0 = spd_inv_split(self.cov_00, epsilon=self.epsilon)
-        self._rank0 = L0.shape[1] if L0.ndim == 2 else 1
+        rank0 = L0.shape[1] if L0.ndim == 2 else 1
         Lt = spd_inv_split(self.cov_tt, epsilon=self.epsilon)
-        self._rankt = Lt.shape[1] if Lt.ndim == 2 else 1
+        rankt = Lt.shape[1] if Lt.ndim == 2 else 1
 
         W = np.dot(L0.T, self.cov_0t).dot(Lt)
         from scipy.linalg import svd
         A, s, BT = svd(W, compute_uv=True, lapack_driver='gesvd')
 
-        self._singular_values = s
+        singular_values = s
 
         # don't pass any values in the argument list that call _diagonalize again!!!
-        m = VAMPModel._dimension(self._rank0, self._rankt, self.dim, self._singular_values)
+        m = VAMPModel._dimension(rank0, rankt, self.dim, singular_values)
 
         U = np.dot(L0, A[:, :m])
         V = np.dot(Lt, BT[:m, :].T)
@@ -285,17 +343,19 @@ class VAMPModel(Model):
             U *= s[np.newaxis, 0:m]  # scaled left singular functions induce a kinetic map
             V *= s[np.newaxis, 0:m]  # scaled right singular functions induce a kinetic map wrt. backward propagator
 
-        self._U = U
-        self._V = V
-        self._svd_performed = True
+        return VAMPModel._DiagonalizationResults(
+            rank0=rank0, rankt=rankt, singular_values=singular_values, left_singular_vecs=U, right_singular_vecs=V
+        )
 
-    def transform(self, X):
+    def transform(self, data, right=None):
         r"""Projects the data onto the dominant singular functions.
 
         Parameters
         ----------
-        X : ndarray(n, m)
+        data : ndarray(n, m)
             the input data
+        right : bool or None, optional, default=None
+            Whether to use left or right eigenvectors for projection, overrides :attr:`right` if not None.
 
         Returns
         -------
@@ -306,13 +366,13 @@ class VAMPModel(Model):
             functions.
         """
         # TODO: in principle get_output should not return data for *all* frames!
-        if self.right:
-            X_meanfree = X - self.mean_t
-            Y = np.dot(X_meanfree, self.singular_vectors_right[:, 0:self.dimension()])
+        right = self.right if right is None else right
+        if right:
+            X_meanfree = data - self.mean_t
+            Y = np.dot(X_meanfree, self.singular_vectors_right[:, :self.output_dimension])
         else:
-            X_meanfree = X - self.mean_0
-            Y = np.dot(X_meanfree, self.singular_vectors_left[:, 0:self.dimension()])
-
+            X_meanfree = data - self.mean_0
+            Y = np.dot(X_meanfree, self.singular_vectors_left[:, :self.output_dimension])
         return Y
 
     def score(self, test_model=None, score_method='VAMP2'):
@@ -359,8 +419,8 @@ class VAMPModel(Model):
         # TODO: implement for TICA too
         if test_model is None:
             test_model = self
-        Uk = self.singular_vectors_left[:, 0:self.dimension()]
-        Vk = self.singular_vectors_right[:, 0:self.dimension()]
+        Uk = self.singular_vectors_left[:, 0:self.output_dimension]
+        Vk = self.singular_vectors_right[:, 0:self.output_dimension]
         res = None
         if score_method == 'VAMP1' or score_method == 'VAMP2':
             A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk))
@@ -372,8 +432,9 @@ class VAMPModel(Model):
             elif score_method == 'VAMP2':
                 res = np.linalg.norm(ABC, ord='fro')**2
         elif score_method == 'VAMPE':
-            Sk = np.diag(self.singular_values[0:self.dimension()])
-            res = np.trace(2.0 * mdot(Vk, Sk, Uk.T, test_model.cov_0t) - mdot(Vk, Sk, Uk.T, test_model.cov_00, Uk, Sk, Vk.T, test_model.cov_tt))
+            Sk = np.diag(self.singular_values[0:self.output_dimension])
+            res = np.trace(2.0 * mdot(Vk, Sk, Uk.T, test_model.cov_0t)
+                           - mdot(Vk, Sk, Uk.T, test_model.cov_00, Uk, Sk, Vk.T, test_model.cov_tt))
         else:
             raise ValueError('"score" should be one of VAMP1, VAMP2 or VAMPE')
         # add the contribution (+1) of the constant singular functions to the result
@@ -382,194 +443,292 @@ class VAMPModel(Model):
 
 
 class VAMP(Estimator):
-    r"""Variational approach for Markov processes (VAMP)"""
+    r"""Variational approach for Markov processes (VAMP).
 
-    def __init__(self, lagtime=1, dim=None, scaling=None, right=False, epsilon=1e-6,
-                 ncov=float('inf')):
-        r""" Variational approach for Markov processes (VAMP) [1]_.
+    The implementation is based on [1]_, [2]_.
 
-          Parameters
-          ----------
-          dim : float or int, default=None
-              Number of dimensions to keep:
+    See Also
+    --------
+    VAMPModel : type of model produced by this estimator
 
-              * if dim is not set (None) all available ranks are kept:
-                  `n_components == min(n_samples, n_uncorrelated_features)`
-              * if dim is an integer >= 1, this number specifies the number
-                of dimensions to keep.
-              * if dim is a float with ``0 < dim < 1``, select the number
-                of dimensions such that the amount of kinetic variance
-                that needs to be explained is greater than the percentage
-                specified by dim.
-          scaling : None or string
-              Scaling to be applied to the VAMP order parameters upon transformation
+    Notes
+    -----
+    VAMP is a method for dimensionality reduction of Markov processes.
 
-              * None: no scaling will be applied, variance of the order parameters is 1
-              * 'kinetic map' or 'km': order parameters are scaled by singular value.
-                Only the left singular functions induce a kinetic map wrt the
-                conventional forward propagator. The right singular functions induce
-                a kinetic map wrt the backward propagator.
-          right : boolean
-              Whether to compute the right singular functions.
-              If `right==True`, `get_output()` will return the right singular
-              functions. Otherwise, `get_output()` will return the left singular
-              functions.
-              Beware that only `frames[tau:, :]` of each trajectory returned
-              by `get_output()` contain valid values of the right singular
-              functions. Conversely, only `frames[0:-tau, :]` of each
-              trajectory returned by `get_output()` contain valid values of
-              the left singular functions. The remaining frames might
-              possibly be interpreted as some extrapolation.
-          epsilon : float
-              eigenvalue cutoff. Eigenvalues of :math:`C_{00}` and :math:`C_{11}`
-              with norms <= epsilon will be cut off. The remaining number of
-              eigenvalues together with the value of `dim` define the size of the output.
-          ncov : int, default=infinity
-              limit the memory usage of the algorithm from [3]_ to an amount that corresponds
-              to ncov additional copies of each correlation matrix
+    The Koopman operator :math:`\mathcal{K}` is an integral operator
+    that describes conditional future expectation values. Let
+    :math:`p(\mathbf{x},\,\mathbf{y})` be the conditional probability
+    density of visiting an infinitesimal phase space volume around
+    point :math:`\mathbf{y}` at time :math:`t+\tau` given that the phase
+    space point :math:`\mathbf{x}` was visited at the earlier time
+    :math:`t`. Then the action of the Koopman operator on a function
+    :math:`f` can be written as follows:
 
-          Notes
-          -----
-          VAMP is a method for dimensionality reduction of Markov processes.
+    .. math::
 
-          The Koopman operator :math:`\mathcal{K}` is an integral operator
-          that describes conditional future expectation values. Let
-          :math:`p(\mathbf{x},\,\mathbf{y})` be the conditional probability
-          density of visiting an infinitesimal phase space volume around
-          point :math:`\mathbf{y}` at time :math:`t+\tau` given that the phase
-          space point :math:`\mathbf{x}` was visited at the earlier time
-          :math:`t`. Then the action of the Koopman operator on a function
-          :math:`f` can be written as follows:
+      \mathcal{K}f=\int p(\mathbf{x},\,\mathbf{y})f(\mathbf{y})\,\mathrm{dy}=\mathbb{E}\left[f(\mathbf{x}_{t+\tau}\mid\mathbf{x}_{t}=\mathbf{x})\right]
 
-          .. math::
+    The Koopman operator is defined without any reference to an
+    equilibrium distribution. Therefore it is well-defined in
+    situations where the dynamics is irreversible or/and non-stationary
+    such that no equilibrium distribution exists.
 
-              \mathcal{K}f=\int p(\mathbf{x},\,\mathbf{y})f(\mathbf{y})\,\mathrm{dy}=\mathbb{E}\left[f(\mathbf{x}_{t+\tau}\mid\mathbf{x}_{t}=\mathbf{x})\right]
+    If we approximate :math:`f` by a linear superposition of ansatz
+    functions :math:`\boldsymbol{\chi}` of the conformational
+    degrees of freedom (features), the operator :math:`\mathcal{K}`
+    can be approximated by a (finite-dimensional) matrix :math:`\mathbf{K}`.
 
-          The Koopman operator is defined without any reference to an
-          equilibrium distribution. Therefore it is well-defined in
-          situations where the dynamics is irreversible or/and non-stationary
-          such that no equilibrium distribution exists.
+    The approximation is computed as follows: From the time-dependent
+    input features :math:`\boldsymbol{\chi}(t)`, we compute the mean
+    :math:`\boldsymbol{\mu}_{0}` (:math:`\boldsymbol{\mu}_{1}`) from
+    all data excluding the last (first) :math:`\tau` steps of every
+    trajectory as follows:
 
-          If we approximate :math:`f` by a linear superposition of ansatz
-          functions :math:`\boldsymbol{\chi}` of the conformational
-          degrees of freedom (features), the operator :math:`\mathcal{K}`
-          can be approximated by a (finite-dimensional) matrix :math:`\mathbf{K}`.
+    .. math::
 
-          The approximation is computed as follows: From the time-dependent
-          input features :math:`\boldsymbol{\chi}(t)`, we compute the mean
-          :math:`\boldsymbol{\mu}_{0}` (:math:`\boldsymbol{\mu}_{1}`) from
-          all data excluding the last (first) :math:`\tau` steps of every
-          trajectory as follows:
+      \boldsymbol{\mu}_{0}	:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\boldsymbol{\chi}(t)
 
-          .. math::
+      \boldsymbol{\mu}_{1}	:=\frac{1}{T-\tau}\sum_{t=\tau}^{T}\boldsymbol{\chi}(t)
 
-              \boldsymbol{\mu}_{0}	:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\boldsymbol{\chi}(t)
+    Next, we compute the instantaneous covariance matrices
+    :math:`\mathbf{C}_{00}` and :math:`\mathbf{C}_{11}` and the
+    time-lagged covariance matrix :math:`\mathbf{C}_{01}` as follows:
 
-              \boldsymbol{\mu}_{1}	:=\frac{1}{T-\tau}\sum_{t=\tau}^{T}\boldsymbol{\chi}(t)
+    .. math::
 
-          Next, we compute the instantaneous covariance matrices
-          :math:`\mathbf{C}_{00}` and :math:`\mathbf{C}_{11}` and the
-          time-lagged covariance matrix :math:`\mathbf{C}_{01}` as follows:
+      \mathbf{C}_{00}	:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]
 
-          .. math::
+      \mathbf{C}_{11}	:=\frac{1}{T-\tau}\sum_{t=\tau}^{T}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]
 
-              \mathbf{C}_{00}	:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]
+      \mathbf{C}_{01}	:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\left[\boldsymbol{\chi}(t+\tau)-\boldsymbol{\mu}_{1}\right]
 
-              \mathbf{C}_{11}	:=\frac{1}{T-\tau}\sum_{t=\tau}^{T}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]
+    The Koopman matrix is then computed as follows:
 
-              \mathbf{C}_{01}	:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\left[\boldsymbol{\chi}(t+\tau)-\boldsymbol{\mu}_{1}\right]
+    .. math::
 
-          The Koopman matrix is then computed as follows:
+      \mathbf{K}=\mathbf{C}_{00}^{-1}\mathbf{C}_{01}
 
-          .. math::
+    It can be shown [1]_ that the leading singular functions of the
+    half-weighted Koopman matrix
 
-              \mathbf{K}=\mathbf{C}_{00}^{-1}\mathbf{C}_{01}
+    .. math::
 
-          It can be shown [1]_ that the leading singular functions of the
-          half-weighted Koopman matrix
+      \bar{\mathbf{K}}:=\mathbf{C}_{00}^{-\frac{1}{2}}\mathbf{C}_{01}\mathbf{C}_{11}^{-\frac{1}{2}}
 
-          .. math::
+    encode the best reduced dynamical model for the time series.
 
-              \bar{\mathbf{K}}:=\mathbf{C}_{00}^{-\frac{1}{2}}\mathbf{C}_{01}\mathbf{C}_{11}^{-\frac{1}{2}}
+    The singular functions can be computed by first performing the
+    singular value decomposition
 
-          encode the best reduced dynamical model for the time series.
+    .. math::
 
-          The singular functions can be computed by first performing the
-          singular value decomposition
+      \bar{\mathbf{K}}=\mathbf{U}^{\prime}\mathbf{S}\mathbf{V}^{\prime}
 
-          .. math::
+    and then mapping the input conformation to the left singular
+    functions :math:`\boldsymbol{\psi}` and right singular
+    functions :math:`\boldsymbol{\phi}` as follows:
 
-              \bar{\mathbf{K}}=\mathbf{U}^{\prime}\mathbf{S}\mathbf{V}^{\prime}
+    .. math::
 
-          and then mapping the input conformation to the left singular
-          functions :math:`\boldsymbol{\psi}` and right singular
-          functions :math:`\boldsymbol{\phi}` as follows:
+      \boldsymbol{\psi}(t):=\mathbf{U}^{\prime\top}\mathbf{C}_{00}^{-\frac{1}{2}}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]
 
-          .. math::
-
-              \boldsymbol{\psi}(t):=\mathbf{U}^{\prime\top}\mathbf{C}_{00}^{-\frac{1}{2}}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]
-
-              \boldsymbol{\phi}(t):=\mathbf{V}^{\prime\top}\mathbf{C}_{11}^{-\frac{1}{2}}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]
+      \boldsymbol{\phi}(t):=\mathbf{V}^{\prime\top}\mathbf{C}_{11}^{-\frac{1}{2}}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]
 
 
-          References
-          ----------
-          .. [1] Wu, H. and Noe, F. 2017. Variational approach for learning Markov processes from time series data.
-              arXiv:1707.04659v1
-          .. [2] Noe, F. and Clementi, C. 2015. Kinetic distance and kinetic maps from molecular dynamics simulation.
-              J. Chem. Theory. Comput. doi:10.1021/acs.jctc.5b00553
-          .. [3] Chan, T. F., Golub G. H., LeVeque R. J. 1979. Updating formulae and pairwise algorithms for
-             computing sample variances. Technical Report STAN-CS-79-773, Department of Computer Science, Stanford University.
-          """
+    References
+    ----------
+    .. [1] Wu, H. and Noe, F. 2017. Variational approach for learning Markov processes from time series data.
+      arXiv:1707.04659v1
+    .. [2] Noe, F. and Clementi, C. 2015. Kinetic distance and kinetic maps from molecular dynamics simulation.
+      J. Chem. Theory. Comput. doi:10.1021/acs.jctc.5b00553
+    .. [3] Chan, T. F., Golub G. H., LeVeque R. J. 1979. Updating formulae and pairwise algorithms for
+     computing sample variances. Technical Report STAN-CS-79-773, Department of Computer Science, Stanford University.
+    """
+
+    def __init__(self, lagtime: int, dim: Optional[Real] = None, scaling: Optional[str] = None, right: bool = False,
+                 epsilon: float = 1e-6, ncov: Union[int] = float('inf')):
+        r""" Creates a new VAMP estimator.
+
+        Parameters
+        ----------
+        lagtime : int
+            The lagtime to be used for estimating covariances.
+        dim : float or int, optional, default=None
+            Number of dimensions to keep:
+
+            * if dim is not set (None) all available ranks are kept:
+              :code:`n_components == min(n_samples, n_uncorrelated_features)`
+            * if dim is an integer >= 1, this number specifies the number
+              of dimensions to keep.
+            * if dim is a float with ``0 < dim <= 1``, select the number
+              of dimensions such that the amount of kinetic variance
+              that needs to be explained is greater than the percentage
+              specified by dim.
+        scaling : str, optional, default=None
+            Scaling to be applied to the VAMP order parameters upon transformation
+
+            * None: no scaling will be applied, variance of the order parameters is 1
+            * 'kinetic_map' or 'km': order parameters are scaled by singular value.
+              Only the left singular functions induce a kinetic map wrt the
+              conventional forward propagator. The right singular functions induce
+              a kinetic map wrt the backward propagator.
+        right: bool, optional, default=None
+            Whether to compute the right singular functions.
+
+            If :code:`right==True`, :meth:`transform` and :meth:`VAMPModel.transform` will use the right singular
+            functions.
+
+            Beware that only `frames[tau:, :]` of each trajectory returned
+            by :meth:`transform` contain valid values of the right singular
+            functions. Conversely, only `frames[0:-tau, :]` of each
+            trajectory returned by :meth:`transform` contain valid values of
+            the left singular functions. The remaining frames might
+            possibly be interpreted as some extrapolation.
+        epsilon : float, optional, default=1e-6
+            Eigenvalue cutoff. Eigenvalues of :math:`C_{00}` and :math:`C_{11}`
+            with norms <= epsilon will be cut off. The remaining number of
+            eigenvalues together with the value of `dim` define the size of the output.
+        ncov : int or float('inf'), optional, default=float('inf')
+            Limit the memory usage of the algorithm from [3]_ to an amount that corresponds
+            to ncov additional copies of each correlation matrix.
+        """
+        super(VAMP, self).__init__()
         self.dim = dim
         self.scaling = scaling
         self.right = right
         self.epsilon = epsilon
         self.ncov = ncov
-        self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=True, remove_data_mean=True,
-                                       reversible=False, bessels_correction=False, ncov=self.ncov)
+        self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=True,
+                                       remove_data_mean=True, reversible=False, bessels_correction=False,
+                                       ncov=self.ncov)
         self.lagtime = lagtime
-        super(VAMP, self).__init__()
+
+    @property
+    def epsilon(self):
+        r""" Eigenvalue cutoff.
+
+        :getter: Yields current eigenvalue cutoff.
+        :setter: Sets new eigenvalue cutoff.
+        :type: float
+        """
+        return self._epsilon
+
+    @epsilon.setter
+    def epsilon(self, value):
+        self._epsilon = value
+
+    @property
+    def right(self) -> bool:
+        r""" Whether to use right singular functions instead of left singular functions.
+
+        :type: bool
+        """
+        return self._right
+
+    @right.setter
+    def right(self, value: bool):
+        self._right = value
+
+    @property
+    def scaling(self) -> Optional[str]:
+        r""" Scaling parameter to be applied to order parameters upon transformation. Can be one of None, 'kinetic_map',
+        or 'km'.
+
+        :getter: Yields currently configured scaling parameter.
+        :setter: Sets a new scaling parameter (None, 'kinetic_map', or 'km')
+        :type: str or None
+        """
+        return self._scaling
+
+    @scaling.setter
+    def scaling(self, value: Optional[str]):
+        valid = (None, 'km', 'kinetic_map')
+        if value not in valid:
+            raise ValueError("Invalid scaling parameter \"{}\", can only be one of {}".format(value, valid))
+        self._scaling = value
+
+    @property
+    def dim(self) -> Optional[Real]:
+        r""" Dimension attribute. Can either be int or float. In case of
+
+        * :code:`int` it evaluates it as the actual dimension, must be strictly greater 0,
+        * :code:`float` it evaluates it as percentage of the captured kinetic variance, i.e., must be in :math:`(0,1]`,
+        * :code:`None` all components are used.
+
+        :getter: yields the dimension
+        :setter: sets a new dimension
+        :type: int or float
+        """
+        return self._dim
+
+    @dim.setter
+    def dim(self, value: Optional[Real]):
+        if isinstance(value, Integral) and value <= 0:
+            # first test against Integral as `isinstance(1, Real)` also evaluates to True
+            raise ValueError("Invalid dimension parameter, if it is given in terms of the dimension (integer), "
+                             "must be positive.")
+        elif isinstance(value, Real) and (value <= 0. or float(value) > 1.0):
+            raise ValueError("Invalid dimension parameter, if it is given in terms of a floating point, "
+                             "can only be in the interval (0, 1].")
+        elif value is not None and not isinstance(value, (Integral, Real)):
+            raise ValueError("Invalid type for dimension, got {}".format(value))
+        self._dim = value
 
     def fit(self, data, **kw):
-        self._model = VAMPModel(dim=self.dim, epsilon=self.epsilon, scaling=self.scaling, right=self.right)
-        self._covar.fit(data, **kw)
-        self.fetch_model()
-        return self
-
-    def partial_fit(self, X):
-        """ incrementally update the covariances and mean.
+        r""" Fits a new :class:`VAMPModel` which can be obtained by a subsequent call to :meth:`fetch_model`.
 
         Parameters
         ----------
-        X: array, list of arrays, PyEMMA reader
+        data : (T, d) ndarray
+            Input timeseries. If presented with multiple trajectories, :meth:`partial_fit` should be used.
+        **kw
+            Ignored keyword arguments for scikit-learn compatibility.
+
+        Returns
+        -------
+        self : VAMP
+            Reference to self.
+        """
+        self._covar.fit(data, **kw)
+        return self
+
+    def partial_fit(self, data):
+        """ Incrementally update the covariances and mean.
+
+        Parameters
+        ----------
+        data: (T, d) ndarray
             input data.
 
-        Notes
-        -----
-        The projection matrix is first being calculated upon its first access.
+        Returns
+        -------
+        self : VAMP
+            Reference to self.
         """
-        if self._model is None:
-            self._model = VAMPModel(dim=self.dim, epsilon=self.epsilon, scaling=self.scaling, right=self.right)
-        self._covar.partial_fit(X)
+        self._covar.partial_fit(data)
         return self
 
     def fetch_model(self) -> VAMPModel:
+        r""" Finalizes current model and yields new :class:`VAMPModel`.
+
+        Returns
+        -------
+        model : VAMPModel
+            The estimated model.
+        """
         covar_model = self._covar.fetch_model()
-
-        self._model.cov_00 = covar_model.cov_00
-        self._model.cov_0t = covar_model.cov_0t
-        self._model.cov_tt = covar_model.cov_tt
-
-        self._model.mean_0 = covar_model.mean_0
-        self._model.mean_t = covar_model.mean_t
-        self._model._diagonalize()
-        return self._model
+        return VAMPModel(cov=covar_model, dim=self.dim, epsilon=self.epsilon, scaling=self.scaling, right=self.right)
 
     @property
-    def lagtime(self):
+    def lagtime(self) -> int:
+        r""" Lagtime at which to compute covariances.
+
+        :getter: Yields currently configured lagtime.
+        :setter: Configures a new lagtime.
+        :type: int
+        """
         return self._covar.lagtime
 
     @lagtime.setter
-    def lagtime(self, value):
+    def lagtime(self, value: int):
         self._covar.lagtime = value

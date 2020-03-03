@@ -30,16 +30,6 @@ from sktime.markovprocess._base import cvsplit_dtrajs
 from tests.markovprocess.test_msm import estimate_markov_model
 
 
-def estimate_vamp(data, lag, partial_fit=False, return_estimator=False, **kwargs) -> VAMPModel:
-    estimator = VAMP(lagtime=lag, **kwargs)
-    estimator.fit(data)
-
-    m = estimator.fetch_model()
-    if return_estimator:
-        return estimator, m
-    return m
-
-
 def random_matrix(n, rank=None, eps=0.01):
     m = np.random.randn(n, n)
     u, s, v = np.linalg.svd(m)
@@ -76,10 +66,9 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         # test
         tau = 50
-        vamp = estimate_vamp(trajs, lag=tau, scaling=None)
-        vamp.right = True
+        vamp = VAMP(lagtime=tau, scaling=None, right=True).fit(trajs).fetch_model()
 
-        assert vamp.dimension() <= rank
+        assert vamp.output_dimension <= rank
 
         atol = np.finfo(np.float32).eps * 10.0
         rtol = np.finfo(np.float32).resolution
@@ -88,48 +77,48 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
         mean_right = phi.sum(axis=0) / phi.shape[0]
         cov_right = phi.T.dot(phi) / phi.shape[0]
         np.testing.assert_allclose(mean_right, 0.0, rtol=rtol, atol=atol)
-        np.testing.assert_allclose(cov_right, np.eye(vamp.dimension()), rtol=rtol, atol=atol)
+        np.testing.assert_allclose(cov_right, np.eye(vamp.output_dimension), rtol=rtol, atol=atol)
 
         vamp.right = False
+        # vamp = estimate_vamp(trajs, lag=tau, scaling=None, right=False)
         psi_trajs = [vamp.transform(X)[0:-tau, :] for X in trajs]
         psi = np.concatenate(psi_trajs)
         mean_left = psi.sum(axis=0) / psi.shape[0]
         cov_left = psi.T.dot(psi) / psi.shape[0]
         np.testing.assert_allclose(mean_left, 0.0, rtol=rtol, atol=atol)
-        np.testing.assert_allclose(cov_left, np.eye(vamp.dimension()), rtol=rtol, atol=atol)
+        np.testing.assert_allclose(cov_left, np.eye(vamp.output_dimension), rtol=rtol, atol=atol)
 
         # compute correlation between left and right
         assert phi.shape[0] == psi.shape[0]
         C01_psi_phi = psi.T.dot(phi) / phi.shape[0]
         n = max(C01_psi_phi.shape)
         C01_psi_phi = C01_psi_phi[0:n, :][:, 0:n]
-        np.testing.assert_allclose(C01_psi_phi, np.diag(vamp.singular_values[0:vamp.dimension()]), rtol=rtol, atol=atol)
+        np.testing.assert_allclose(C01_psi_phi, np.diag(vamp.singular_values[0:vamp.output_dimension]), rtol=rtol, atol=atol)
 
         if test_partial_fit:
-            vamp2 = estimate_vamp(data=trajs, lag=tau, scaling=None, partial_fit=True)
-
-            model_params = vamp.get_params()
-            model_params2 = vamp2.get_params()
+            vamp2 = VAMP(lagtime=tau, scaling=None).fit(trajs).fetch_model()
 
             atol = 1e-14
             rtol = 1e-5
 
-            for n in model_params.keys():
-                if model_params[n] is not None and model_params2[n] is not None:
-                    if n not in ('U', 'V'):
-                        np.testing.assert_allclose(model_params[n], model_params2[n], rtol=rtol, atol=atol,
-                                                   err_msg='failed for model param %s' % n)
-                    else:
-                        assert_allclose_ignore_phase(model_params[n], model_params2[n], atol=atol)
+            np.testing.assert_allclose(vamp.singular_values, vamp2.singular_values)
+            np.testing.assert_allclose(vamp.mean_0, vamp2.mean_0, atol=atol, rtol=rtol)
+            np.testing.assert_allclose(vamp.mean_t, vamp2.mean_t, atol=atol, rtol=rtol)
+            np.testing.assert_allclose(vamp.cov_00, vamp2.cov_00, atol=atol, rtol=rtol)
+            np.testing.assert_allclose(vamp.cov_0t, vamp2.cov_0t, atol=atol, rtol=rtol)
+            np.testing.assert_allclose(vamp.cov_tt, vamp2.cov_tt, atol=atol, rtol=rtol)
+            np.testing.assert_allclose(vamp.epsilon, vamp2.epsilon, atol=atol, rtol=rtol)
+            np.testing.assert_allclose(vamp.output_dimension, vamp2.output_dimension, atol=atol, rtol=rtol)
+            np.testing.assert_equal(vamp.scaling, vamp2.scaling)
+            assert_allclose_ignore_phase(vamp.singular_vectors_left, vamp2.singular_vectors_left, atol=atol)
+            assert_allclose_ignore_phase(vamp.singular_vectors_right, vamp2.singular_vectors_right, atol=rtol)
 
             # vamp2.singular_values # trigger diagonalization
-            vamp2.right = True
             for t, ref in zip(trajs, phi_trajs):
-                assert_allclose_ignore_phase(vamp2.transform(t[tau:]), ref, rtol=rtol, atol=atol)
+                assert_allclose_ignore_phase(vamp2.transform(t[tau:], right=True), ref, rtol=rtol, atol=atol)
 
-            vamp2.right = False
             for t, ref in zip(trajs, psi_trajs):
-                assert_allclose_ignore_phase(vamp2.transform(t[0:-tau]), ref, rtol=rtol, atol=atol)
+                assert_allclose_ignore_phase(vamp2.transform(t[0:-tau], right=False), ref, rtol=rtol, atol=atol)
 
 
 def generate(T, N_steps, s0=0):
@@ -168,7 +157,8 @@ class TestVAMPModel(unittest.TestCase):
             trajs.append(traj)
             p0 += traj[:-lag, :].sum(axis=0)
             p1 += traj[lag:, :].sum(axis=0)
-        estimator, vamp = estimate_vamp(trajs, lag=lag, scaling=None, dim=1.0, return_estimator=True)
+        estimator = VAMP(lagtime=lag, scaling=None, dim=1.0)
+        vamp = estimator.fit(trajs).fetch_model()
         msm = estimate_markov_model(dtrajs, lag=lag, reversible=False)
         cls.trajs = trajs
         cls.dtrajs = dtrajs
@@ -217,8 +207,8 @@ class TestVAMPModel(unittest.TestCase):
         for d in (0.2, 0.5, 0.8, 0.9, 1.0):
             self.vamp.dim = d
             special_cumvar = np.asarray([0] + self.vamp.cumvar.tolist())
-            self.assertLessEqual(d, special_cumvar[self.vamp.dimension()], )
-            self.assertLessEqual(special_cumvar[self.vamp.dimension() - 1], d)
+            self.assertLessEqual(d, special_cumvar[self.vamp.output_dimension], )
+            self.assertLessEqual(special_cumvar[self.vamp.output_dimension - 1], d)
 
     def test_self_score_with_MSM(self):
         T = self.msm.transition_matrix
@@ -245,33 +235,33 @@ class TestVAMPModel(unittest.TestCase):
             msm_train = estimate_markov_model(dtrajs=dtrajs_train, lag=self.lag, reversible=False)
             score_msm = msm_train.score(dtrajs_test, score_method=m, score_k=None)
 
-            vamp_train = estimate_vamp(data=trajs_train, lag=self.lag, dim=1.0)
-            vamp_test = estimate_vamp(data=trajs_test, lag=self.lag, dim=1.0)
+            vamp_train = VAMP(lagtime=self.lag, dim=1.0).fit(trajs_train).fetch_model()
+            vamp_test = VAMP(lagtime=self.lag, dim=1.0).fit(trajs_test).fetch_model()
             score_vamp = vamp_train.score(test_model=vamp_test, score_method=m)
 
             self.assertAlmostEqual(score_msm, score_vamp, places=2 if m == 'VAMPE' else 3, msg=m)
 
     def test_kinetic_map(self):
         lag = 10
-        vamp = estimate_vamp(self.trajs, lag=lag, scaling='km', right=False)
+        vamp = VAMP(lagtime=lag, scaling='km', right=False).fit(self.trajs).fetch_model()
         transformed = [vamp.transform(X)[:-lag] for X in self.trajs]
         std = np.std(np.concatenate(transformed), axis=0)
-        np.testing.assert_allclose(std, vamp.singular_values[:vamp.dimension()], atol=1e-4, rtol=1e-4)
+        np.testing.assert_allclose(std, vamp.singular_values[:vamp.output_dimension], atol=1e-4, rtol=1e-4)
 
 
 class TestVAMPWithEdgeCaseData(unittest.TestCase):
     def test_1D_data(self):
         x = np.random.randn(10, 1)
-        vamp = estimate_vamp([x], 1, right=True)  # just test that this doesn't raise
+        vamp = VAMP(lagtime=1, right=True).fit([x]).fetch_model()
         # Doing VAMP with 1-D data is just centering and normalizing the data.
         assert_allclose_ignore_phase(vamp.transform(x), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
         from sktime.numeric.eigen import ZeroRankError
         with self.assertRaises(ZeroRankError):
-            estimate_vamp([np.ones((10, 2))], 1)
+            print(VAMP(lagtime=1).fit([np.ones((10, 2))]).fetch_model().singular_values)
         with self.assertRaises(ZeroRankError):
-            estimate_vamp([np.ones(10)], 1)
+            print(VAMP(lagtime=1).fit([np.ones((10, 1))]).fetch_model().singular_values)
 
 
 if __name__ == "__main__":
