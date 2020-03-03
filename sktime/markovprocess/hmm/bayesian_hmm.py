@@ -91,6 +91,7 @@ class BayesianHMMPosterior(BayesianPosterior):
 
 
 class BayesianHMSM(Estimator):
+    r""" Estimator for a Bayesian Hidden Markov state model. """
 
     def __init__(self, initial_hmm: HiddenMarkovStateModel,
                  n_samples: int = 100,
@@ -102,11 +103,11 @@ class BayesianHMSM(Estimator):
                  reversible: bool = True,
                  stationary: bool = False):
         r"""
-        Estimator for a Bayesian Hidden Markov state model.
+        Creates a new estimator instance.
 
         Parameters
         ----------
-        initial_hmm : :class:`HMSM <sktime.markovprocess.hidden_markov_model.HMSM>`
+        initial_hmm : :class:`HMSM <sktime.markovprocess.hmm.HiddenMarkovStateModel>`
            Single-point estimate of HMSM object around which errors will be evaluated.
            There is a static method available that can be used to generate a default prior.
         n_samples : int, optional, default=100

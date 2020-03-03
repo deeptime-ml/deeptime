@@ -28,13 +28,15 @@ __all__ = ['MaximumLikelihoodMSM']
 
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
-    r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics.
+    r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <sktime.markovprocess.msm.MarkovStateModel>`)
+    given discrete trajectory statistics.
+
+    Implementation according to [1]_.
 
     References
     ----------
-    .. [1] H. Wu and F. Noe: Variational approach for learning Markov processes from time series data
-        (in preparation)
-
+    .. [1] Wu, Hao, and Frank Noé. "Variational approach for learning Markov processes from time series data."
+           Journal of Nonlinear Science 30.1 (2020): 23-66.
     """
 
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
@@ -78,6 +80,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     @property
     def allow_disconnected(self) -> bool:
+        r""" If set to true, the resulting transition matrix may have disconnected and transient states. """
         return self._allow_disconnected
 
     @allow_disconnected.setter
@@ -87,27 +90,19 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     @property
     def stationary_distribution_constraint(self) -> Optional[np.ndarray]:
         r"""
-        Yields the stationary distribution constraint that can either be None (no constraint) or constrains the
+        The stationary distribution constraint that can either be None (no constraint) or constrains the
         count and transition matrices to states with positive stationary vector entries.
 
-        Returns
-        -------
-        The stationary vector constraint, can be None
+        :getter: Yields the currently configured constraint vector, can be None.
+        :setter: Sets a stationary distribution constraint by giving a stationary vector as value. The estimated count-
+                 and transition-matrices are restricted to states that have positive entries. In case the vector is not
+                 normalized, setting it here implicitly copies and normalizes it.
+        :type: ndarray or None
         """
         return self._stationary_distribution_constraint
 
     @stationary_distribution_constraint.setter
     def stationary_distribution_constraint(self, value: Optional[np.ndarray]):
-        r"""
-        Sets a stationary distribution constraint by giving a stationary vector as value. The estimated count- and
-        transition-matrices are restricted to states that have positive entries. In case the vector is not normalized,
-        setting it here implicitly copies and normalizes it.
-
-        Parameters
-        ----------
-        value : np.ndarray or None
-            the stationary vector
-        """
         if value is not None and (np.any(value < 0) or np.any(value > 1)):
             raise ValueError("not a distribution, contained negative entries and/or entries > 1.")
         if value is not None and np.sum(value) != 1.0:
@@ -116,16 +111,36 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self._stationary_distribution_constraint = value
 
     def fetch_model(self) -> Optional[MarkovStateModel]:
-        r"""
-        Yields the most recent markov state model that was estimated. Can be None if fit was not called.
+        r"""Yields the most recent :class:`MarkovStateModel` that was estimated. Can be None if fit was not called.
 
         Returns
         -------
-        The most recent markov state model or None
+        model : MarkovStateModel or None
+            The most recent markov state model or None.
         """
         return self._model
 
-    def fit(self, data, y=None, **kw):
+    def fit(self, data, **kw):
+        r""" Fits a new markov state model according to data.
+
+        Parameters
+        ----------
+        data : TransitionCountModel or (n, n) ndarray
+            input data, can either be :class:`TransitionCountModel <sktime.markovprocess.TransitionCountModel>` or
+            a 2-dimensional ndarray which is interpreted as count matrix.
+        **kw
+            Dummy parameters for scikit-learn compatibility.
+
+        Returns
+        -------
+        self : MaximumLikelihoodMSM
+            Reference to self.
+
+        See Also
+        --------
+        sktime.markovprocess.TransitionCountModel : Transition count model
+        sktime.markovprocess.TransitionCountEstimator : Estimating transition count models from data
+        """
         from .. import _transition_matrix as tmat
         if not isinstance(data, (TransitionCountModel, np.ndarray)):
             raise ValueError("Can only fit on a TransitionCountModel or a count matrix directly.")
