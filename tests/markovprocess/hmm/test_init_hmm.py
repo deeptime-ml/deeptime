@@ -159,7 +159,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
     def test_state_splitting(self):
         dtraj = np.array([0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2,
                           0, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 2, 2])
-        hmm0 = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=1, separate=np.array([0]))
+        hmm0 = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=1, separate_symbols=np.array([0]))
         piref = np.array([0.35801876, 0.55535398, 0.08662726])
         Aref = np.array([[0.76462978, 0.10261978, 0.13275044],
                          [0.06615566, 0.89464821, 0.03919614],
@@ -177,7 +177,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
         # create empty labels
         dtraj += 2
         # include an empty label in separate
-        hmm0 = initial_guess_discrete_from_data(dtraj, 3, lagtime=1, separate=np.array([1, 2]), mode='populous')
+        hmm0 = initial_guess_discrete_from_data(dtraj, 3, lagtime=1, separate_symbols=np.array([1, 2]), mode='populous')
         piref = np.array([0.35801876, 0.55535398, 0.08662726])
         Aref = np.array([[0.76462978, 0.10261978, 0.13275044],
                          [0.06615566, 0.89464821, 0.03919614],
@@ -192,4 +192,4 @@ class TestInitHMMDiscrete(unittest.TestCase):
     def test_state_splitting_fail(self):
         dtraj = np.array([0, 0, 1, 1])
         with self.assertRaises(ValueError):
-            initial_guess_discrete_from_data(dtraj, 2, 1, separate=np.array([0, 2]))
+            initial_guess_discrete_from_data(dtraj, 2, 1, separate_symbols=np.array([0, 2]))

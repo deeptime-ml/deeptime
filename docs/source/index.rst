@@ -5,7 +5,7 @@ Documentation
 The scikit-time API documentation. Scikit-time is divided into the following main packages:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    index_clustering
    index_covariance

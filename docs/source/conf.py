@@ -79,6 +79,10 @@ napoleon_use_ivar = True
 napoleon_use_param = True
 napoleon_use_rtype = True
 
+# -- Alabaster theme settings -------------------------------------------------
+html_theme_options = {
+    'page_width': '80%'
+}
 
 def setup(app):
     class AutoAutoSummary(Autosummary):

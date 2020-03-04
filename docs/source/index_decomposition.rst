@@ -1,7 +1,7 @@
 .. _ref-decomposition:
 
-Data package (sktime.decomposition)
-===================================
+Decomposition package (sktime.decomposition)
+============================================
 
 The *decomposition* package contains algorithms which can be used to project data onto dominant slow processes.
 
