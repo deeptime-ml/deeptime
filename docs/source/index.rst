@@ -12,3 +12,4 @@ The scikit-time API documentation. Scikit-time is divided into the following mai
    index_decomposition
    index_markovprocess
    index_data
+   index_numeric
