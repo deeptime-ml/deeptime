@@ -408,7 +408,9 @@ def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=Fal
 
     References
     ----------
-    .. [1] http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf
+    .. [1] Chan, Tony F., Gene Howard Golub, and Randall J. LeVeque. "Updating formulae and a pairwise algorithm
+           for computing sample variances." COMPSTAT 1982 5th Symposium held
+           at Toulouse 1982. Physica, Heidelberg, 1982.
 
     """
     return RunningCovar(compute_XX=xx, compute_XY=xy, compute_YY=yy, sparse_mode=sparse_mode, modify_data=modify_data,

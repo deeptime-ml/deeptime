@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import pkg_resources
 
-from sktime.covariance.online_covariance import KoopmanWeights
+from sktime.covariance.online_covariance import KoopmanModel
 from sktime.data.util import timeshifted_split
 from sktime.numeric.eigen import sort_by_norm
 import numpy.linalg as scl
@@ -114,7 +114,8 @@ class TestKoopmanTICA(unittest.TestCase):
         u_input = np.zeros(N + 1)
         u_input[0:N] = cls.R.dot(u_mod[0:-1])  # in input basis
         u_input[N] = u_mod[-1] - cls.mean_x.dot(cls.R.dot(u_mod[0:-1]))
-        cls.weight_obj = KoopmanWeights(u=u_input[:-1], u_const=u_input[-1])
+        cls.weight_obj = KoopmanModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=cls.K,
+                                      whitening_transformation=cls.R, covariances=None)
 
         # Compute weights over all data points:
         cls.wtraj = []
@@ -209,8 +210,8 @@ class TestKoopmanTICA(unittest.TestCase):
             est.partial_fit(traj)
         m = est.fetch_model()
 
-        np.testing.assert_allclose(m.u, self.weight_obj.u)
-        np.testing.assert_allclose(m.u_const, self.weight_obj.u_const)
+        np.testing.assert_allclose(m.weights_input, self.weight_obj.weights_input)
+        np.testing.assert_allclose(m.const_weight_input, self.weight_obj.const_weight_input)
 
     def test_koopman_estimator_fit(self):
         from sktime.covariance.online_covariance import KoopmanEstimator
@@ -218,5 +219,5 @@ class TestKoopmanTICA(unittest.TestCase):
         est.fit(self.data)
         m = est.fetch_model()
 
-        np.testing.assert_allclose(m.u, self.weight_obj.u)
-        np.testing.assert_allclose(m.u_const, self.weight_obj.u_const)
+        np.testing.assert_allclose(m.weights_input, self.weight_obj.weights_input)
+        np.testing.assert_allclose(m.const_weight_input, self.weight_obj.const_weight_input)

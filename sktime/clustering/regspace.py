@@ -1,42 +1,27 @@
 import warnings
+from typing import Optional
 
 import numpy as np
 
-from sktime.base import Estimator
-from sktime.clustering.cluster_model import ClusterModel
+from ..base import Estimator
+from .cluster_model import ClusterModel
 
-from sktime.clustering._clustering_bindings import Metric, EuclideanMetric
-from sktime.clustering._clustering_bindings import regspace as _regspace_ext
+from . import _clustering_bindings as _bd
+from ._clustering_bindings import regspace as _regspace_ext
 
 __all__ = ['RegularSpaceClustering']
 
+from ..util import handle_n_jobs
+
 
 class RegularSpaceClustering(Estimator):
-    """Clusters data objects in such a way, that cluster centers are at least in
-    distance of dmin to each other according to the given metric.
-    The assignment of data objects to cluster centers is performed by
-    Voronoi partioning.
+    """Clusters data objects in such a way, that cluster centers are at least in distance of dmin to each other
+    according to the given metric. The assignment of data objects to cluster centers is performed by Voronoi partioning.
 
-    Regular space clustering [Prinz_2011]_ is very similar to Hartigan's leader
-    algorithm [Hartigan_1975]_. It consists of two passes through
-    the data. Initially, the first data point is added to the list of centers.
-    For every subsequent data point, if it has a greater distance than dmin from
-    every center, it also becomes a center. In the second pass, a Voronoi
-    discretization with the computed centers is used to partition the data.
-
-
-    Parameters
-    ----------
-    dmin : float
-        minimum distance between all clusters.
-    metric : str
-        metric to use during clustering ('euclidean', 'minRMSD')
-    max_centers : int
-        if this cutoff is hit during finding the centers,
-        the algorithm will abort.
-    n_jobs : int or None, default None
-        Number of threads to use during assignment of the data.
-        If None, all available CPUs will be used.
+    Regular space clustering [Prinz_2011]_ is very similar to Hartigan's leader algorithm [Hartigan_1975]_. It consists
+    of two passes through the data. Initially, the first data point is added to the list of centers. For every
+    subsequent data point, if it has a greater distance than dmin from every center, it also becomes a center.
+    In the second pass, a Voronoi discretization with the computed centers is used to partition the data.
 
     References
     ----------
@@ -50,30 +35,57 @@ class RegularSpaceClustering(Estimator):
     """
 
     def __init__(self, dmin, max_centers=1000, metric=None, n_jobs=None):
+        r"""
+        Initializes a new regular space clustering estimator.
+
+        Parameters
+        ----------
+        dmin : float
+            Minimum distance between all clusters.
+        max_centers : int
+            If this threshold is met during finding the centers, the algorithm will terminate.
+        metric : _clustering_bindings.Metric, optional, default=None
+            The metric to use during clustering. Must be subclass of :class:`_clustering_bindings.Metric` or None, in
+            which case it defaults to a Euclidean metric.
+        n_jobs : int, optional, default=None
+            Number of threads to use during estimation.
+        """
         super(RegularSpaceClustering, self).__init__()
         self.dmin = dmin
-        if metric is None:
-            metric = EuclideanMetric()
         self.metric = metric
         self.max_centers = max_centers
         self.n_jobs = n_jobs
 
     @property
-    def metric(self):
+    def metric(self) -> _bd.Metric:
+        r"""
+        The metric that is used for clustering.
+
+        :getter: Yields a subclass of :class:`_clustering_bindings.Metric`.
+        :setter: Set a subclass of :class:`_clustering_bindings.Metric` to be used in clustering. Value can be `None`,
+                 in which case the metric defaults to an Euclidean metric.
+        :type: _clustering_bindings.Metric.
+        """
         return self._metric
 
     @metric.setter
-    def metric(self, value):
-        if value == 'euclidean':
-            value = EuclideanMetric()
+    def metric(self, value: Optional[_bd.Metric]):
+        if value is None:
+            value = _bd.EuclideanMetric()
 
-        if not isinstance(value, Metric):
-            raise ValueError(f"Unknown metric {value}, must be subclass of _clustering_bindings.Metric")
+        if not isinstance(value, _bd.Metric):
+            raise ValueError(f"Metric must be subclass of _clustering_bindings.Metric.")
         self._metric = value
 
     @property
-    def dmin(self):
-        """Minimum distance between cluster centers."""
+    def dmin(self) -> float:
+        r"""
+        Minimum distance between cluster centers.
+
+        :getter: Yields the currently set minimum distance.
+        :setter: Sets a new minimum distance, must be non-negative.
+        :type: float
+        """
         return self._dmin
 
     @dmin.setter
@@ -84,10 +96,14 @@ class RegularSpaceClustering(Estimator):
         self._dmin = d
 
     @property
-    def max_centers(self):
-        """
-        Cutoff during clustering. If reached no more data is taken into account.
-        You might then consider a larger value or a larger dmin value.
+    def max_centers(self) -> int:
+        r"""
+        Cutoff during clustering. If reached no more data is taken into account. You might then consider a larger
+        value or a larger dmin value.
+
+        :getter: Current maximum number of cluster centers.
+        :setter: Sets a new maximum number of cluster centers, must be non-negative.
+        :type: int
         """
         return self._max_centers
 
@@ -99,28 +115,64 @@ class RegularSpaceClustering(Estimator):
         self._max_centers = value
 
     @property
-    def n_clusters(self):
+    def n_clusters(self) -> int:
+        r""" Alias to :attr:`max_centers`. """
         return self.max_centers
 
     @n_clusters.setter
     def n_clusters(self, val: int):
         self.max_centers = val
 
+    @property
+    def n_jobs(self) -> int:
+        r"""
+        The number of threads to use during estimation.
+
+        :getter: Yields the number of threads to use, -1 is an allowed value for all available threads.
+        :setter: Sets the number of threads to use, can be None in which case it defaults to 1 thread.
+        :type: int
+        """
+        return self._n_jobs
+
+    @n_jobs.setter
+    def n_jobs(self, value):
+        self._n_jobs = handle_n_jobs(value)
+
     def fetch_model(self) -> ClusterModel:
+        """
+        Fetches the current model. Can be `None` in case :meth:`fit` was not called yet.
+
+        Returns
+        -------
+        model : ClusterModel or None
+            The latest estimated model or None.
+        """
         return self._model
 
     def fit(self, data, n_jobs=None):
-        ########
-        # Calculate clustercenters:
-        # 1. choose first datapoint as centroid
-        # 2. for all X: calc distances to all clustercenters
-        # 3. add new centroid, if min(distance to all other clustercenters) >= dmin
-        ########
-        # temporary list to store cluster centers
+        r"""
+        Fits this estimator onto data. The estimation is carried out by
+
+        #. Choosing first data frame as centroid
+        #. for all frames :math:`x\in X`: Calculate distance to all cluster centers
+        #. Add a new centroid if minimal distance to all other cluster centers is larger or equal :attr:`dmin`.
+
+        Parameters
+        ----------
+        data : (T, n) ndarray
+            the data to fit
+        n_jobs : int, optional, default=None
+            Number of jobs, superseeds :attr:`n_jobs` if set to an integer value
+
+        Returns
+        -------
+        self : RegularSpaceClustering
+            reference to self
+        """
 
         n_jobs = self.n_jobs if n_jobs is None else n_jobs
         if n_jobs is None:
-            n_jobs = 0
+            n_jobs = 1
 
         if data.ndim == 1:
             data = data[:, np.newaxis]

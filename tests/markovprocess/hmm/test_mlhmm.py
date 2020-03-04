@@ -527,7 +527,7 @@ class TestMLHMM(unittest.TestCase):
     def test_separate_states(self):
         dtrajs = [np.array([0, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1]),
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
-        init_hmm = initial_guess_discrete_from_data(dtrajs, n_hidden_states=3, lagtime=1, separate=[0])
+        init_hmm = initial_guess_discrete_from_data(dtrajs, n_hidden_states=3, lagtime=1, separate_symbols=[0])
         hmm = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(dtrajs).fetch_model().submodel_largest(dtrajs=dtrajs)
         # we expect zeros in all samples at the following indices:
         pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))

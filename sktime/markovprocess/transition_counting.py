@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Callable
 
 import numpy as np
 import scipy
@@ -14,7 +14,21 @@ from sktime.util import submatrix, ensure_dtraj_list
 __author__ = 'noe, clonker'
 
 
-def requires_state_histogram(func):
+def requires_state_histogram(func : Callable) -> Callable:
+    """
+    Decorator marking properties which can only be evaluated if the TransitionCountModel contains statistics over the
+    data, i.e., a state histogram.
+
+    Parameters
+    ----------
+    func : Callable
+        the to-be decorated property
+
+    Returns
+    -------
+    wrapper : Callable
+        the decorated property
+    """
     @wraps(func)
     def wrap(self, *args, **kw):
         if self.state_histogram is None:
@@ -26,27 +40,31 @@ def requires_state_histogram(func):
 
 class TransitionCountModel(Model):
     r""" Statistics, count matrices, and connectivity from discrete trajectories. These statistics can be used to, e.g.,
-    construct MSMs. This model can create submodels (see (:func:`sktime.markovprocess.TransitionCountModel.submodel`)
+    construct MSMs. This model can create submodels (see :func:`submodel`)
     that are restricted to a certain selection of states. This subselection can be made by
 
     * analyzing the connected sets of the
-      count matrix (:func:`sktime.markovprocess.TransitionCountModel.connected_sets`)
+      count matrix (:func:`connected_sets`)
     * pruning states by thresholding with a mincount_connectivity parameter,
     * or simply providing a subset of states manually.
+
+    See Also
+    --------
+    TransitionCountEstimator : estimator which can produce this kind of model
     """
 
-    def __init__(self, count_matrix: Union[np.ndarray, coo_matrix], counting_mode: Optional[str] = None,
+    def __init__(self, count_matrix, counting_mode: Optional[str] = None,
                  lagtime: int = 1, state_histogram: Optional[np.ndarray] = None,
-                 physical_time: Union[Q_, str] = '1 step',
+                 physical_time='1 step',
                  state_symbols: Optional[np.ndarray] = None,
-                 count_matrix_full: Union[None, np.ndarray, coo_matrix] = None,
+                 count_matrix_full=None,
                  state_histogram_full: Optional[np.ndarray] = None):
         r"""Creates a new TransitionCountModel. This can be used to, e.g., construct Markov state models. The minimal
         requirement for instantiation is a count matrix, but statistics of the data can also be provided.
 
         Parameters
         ----------
-        count_matrix : array_like
+        count_matrix : (N, N) ndarray or sparse matrix
             The count matrix. In case it was estimated with 'sliding', it contains a factor of `lagtime` more counts
             than are statistically uncorrelated.
         counting_mode : str, optional, default=None
@@ -156,7 +174,8 @@ class TransitionCountModel(Model):
 
         Returns
         -------
-        whether this counting model represents all states of the data
+        is_full_model : bool
+            Whether this counting model represents all states of the data.
         """
         return self.n_states == self.n_states_full
 
@@ -248,7 +267,8 @@ class TransitionCountModel(Model):
         ----------
         connectivity_threshold : float, optional, default=0.
             Number of counts required to consider two states connected. When the count matrix was estimated with
-            effective mode or sliding-effective mode, a threshold of :math:`1 / n_states_full` is commonly used.
+            effective mode or sliding-effective mode, a threshold of :math:`1 / \mathrm{n_states_full}` is
+            commonly used.
         directed : bool, optional, default=True
             Compute connected set for directed or undirected transition graph, default directed
         probability_constraint : (N,) ndarray, optional, default=None
@@ -298,7 +318,8 @@ class TransitionCountModel(Model):
 
         Returns
         -------
-        an array of states
+        states : ndarray
+            An array of states.
         """
         # only take symbols which are still present in this model
         symbols = np.intersect1d(np.asarray(symbols), self.state_symbols)
@@ -314,7 +335,8 @@ class TransitionCountModel(Model):
 
         Returns
         -------
-        A submodel restricted to the requested states.
+        submodel : TransitionCountModel
+            A submodel restricted to the requested states.
         """
         if np.max(states) >= self.n_states:
             raise ValueError("Tried restricting model to states that are not represented! "
@@ -355,7 +377,8 @@ class TransitionCountModel(Model):
 
         Returns
         -------
-        The submodel.
+        submodel : TransitionCountModel
+            The submodel.
         """
         if directed is None:
             # if probability constraint is given, we want undirected per default
@@ -373,6 +396,7 @@ class TransitionCountModel(Model):
         r"""
         Computes a histogram over states represented in the count matrix. The magnitude of the values returned values
         depend on the mode which was used for counting.
+
         Returns
         -------
         A `(n_states,) np.ndarray` histogram over the collected counts per state.
@@ -382,14 +406,17 @@ class TransitionCountModel(Model):
 
 class TransitionCountEstimator(Estimator):
     r"""
-    Estimator which produces a ``TransitionCountModel`` given discretized trajectories. Hereby one can decide whether
-    the count mode should be:
+    Estimator which produces a :class:`TransitionCountModel` given discretized trajectories.
+    Hereby one can decide whether the count mode should be:
 
         * sample: A trajectory of length T will have :math:`T / \tau` counts at time indices
-          .. math:: (0 \rightarray \tau), (\tau \rightarray 2 \tau), ..., (((T/tau)-1) \tau \rightarray T)
+
+          .. math:: (0 \rightarrow \tau), (\tau \rightarrow 2 \tau), ..., (((T/ \tau )-1) \tau \rightarrow T)
 
         * sliding: A trajectory of length T will have :math:`T-\tau` counts at time indices
-          .. math:: (0 \rightarray \tau), (1 \rightarray \tau+1), ..., (T-\tau-1 \rightarray T-1)
+
+          .. math:: (0 \rightarrow \tau), (1 \rightarrow \tau+1), ..., (T-\tau-1 \rightarrow T-1)
+
           This introduces an overestimation of the actual count values by a factor of "lagtime". For
           maximum-likelihood MSMs this plays no role but it leads to wrong error bars in uncertainty estimation.
 
@@ -402,17 +429,20 @@ class TransitionCountEstimator(Estimator):
         * effective: Uses an estimate of the transition counts that are statistically uncorrelated. Recommended
           when used with a Bayesian MSM.
 
+    See Also
+    --------
+    TransitionCountModel : type of model this estimator produces
+
     References
     ----------
 
-    ..[1] Trendelkamp-Schroer B, H Wu, F Paul and F Noe. 2015:
-        Reversible Markov models of molecular kinetics: Estimation and uncertainty.
-        J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
+    .. [1] Trendelkamp-Schroer B, H Wu, F Paul and F Noe. 2015:
+       Reversible Markov models of molecular kinetics: Estimation and uncertainty.
+       J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
     """
 
     def __init__(self, lagtime: int, count_mode: str, physical_time='1 step', sparse=False):
-        r"""
-        Constructs a transition count estimator that can be used to estimate ``TransitionCountModel``s.
+        r"""Constructs a transition count estimator that can be used to estimate :class:`TransitionCountModel` s.
 
         Parameters
         ----------
@@ -420,15 +450,17 @@ class TransitionCountEstimator(Estimator):
             Distance between two frames in the discretized trajectories under which their potential change of state
             is considered a transition.
         count_mode : str
-            one of "sample", "sliding", "sliding-effective", and "effective". "sample" strides the trajectory with
-            lagtime :math:`\tau` and uses the strided counts as transitions. "sliding" uses a sliding window approach,
-            yielding counts that are statistically correlated and too large by a factor of
-            :math:`\tau`; in uncertainty estimation this yields wrong uncertainties. "sliding-effective" takes "sliding"
-            and divides it by :math:`\tau`, which can be shown to provide a likelihood that is the geometrical average
-            over shifted subsamples of the trajectory, :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc.
-            This geometrical average converges to the correct likelihood in the statistical limit [1]_. "effective"
-            uses an estimate of the transition counts that are statistically uncorrelated. Recommended when estimating
-            Bayesian MSMs.
+            one of "sample", "sliding", "sliding-effective", and "effective".
+
+            * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
+            * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
+              large by a factor of :math:`\tau`; in uncertainty estimation this yields wrong uncertainties.
+            * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
+              likelihood that is the geometrical average over shifted subsamples of the trajectory,
+              :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to
+              the correct likelihood in the statistical limit [1]_.
+            * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
+              Recommended when estimating Bayesian MSMs.
         physical_time : str, optional, default='1 step'
             Description of the physical time of the input trajectories. May be used
             by analysis algorithms such as plotting tools to pretty-print the axes.
@@ -442,13 +474,6 @@ class TransitionCountEstimator(Estimator):
             |  'us',  'microsecond*'
             |  'ms',  'millisecond*'
             |  's',   'second*'
-
-        References
-        ----------
-
-        ..[1] Trendelkamp-Schroer B, H Wu, F Paul and F Noe. 2015:
-            Reversible Markov models of molecular kinetics: Estimation and uncertainty.
-            J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
         """
         super().__init__()
         self.lagtime = lagtime
@@ -457,7 +482,25 @@ class TransitionCountEstimator(Estimator):
         self.sparse = sparse
 
     @property
+    def count_mode(self):
+        r""" The currently selected count mode. """
+        return self._count_mode
+
+    @count_mode.setter
+    def count_mode(self, value):
+        valids = ('sliding', 'sliding-effective', 'sample', 'effective')
+        if value not in valids:
+            raise ValueError("Invalid count mode \"{}\", possible values are {}.".format(value, valids))
+        self._count_mode = value
+
+    @property
     def sparse(self) -> bool:
+        r""" Whether the resulting count matrix is stored in sparse or dense mode.
+
+        :getter: Yields the currently configured sparsity setting.
+        :setter: Sets whether to store count matrices sparsely.
+        :type: bool
+        """
         return self._sparse
 
     @sparse.setter
@@ -465,30 +508,37 @@ class TransitionCountEstimator(Estimator):
         self._sparse = bool(value)
 
     @property
+    def lagtime(self) -> int:
+        r""" The lagtime at which transitions are counted. """
+        return self._lagtime
+
+    @lagtime.setter
+    def lagtime(self, value: int):
+        self._lagtime = value
+
+    @property
     def physical_time(self) -> Q_:
-        r""" yields a description of the physical time """
+        r"""
+        A description of the physical time for input trajectories. Specify by a number, whitespace, and unit.
+        Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
+
+        :getter: Yields a :class:`pint.Quantity` describing the physical time.
+        :setter: Sets a new physical time. Strings describing units are also accepted.
+        :type: pint.Quantity
+        """
         return self._physical_time
 
     @physical_time.setter
     def physical_time(self, value: str):
-        r"""
-        Sets a description of the physical time for input trajectories. Specify by a number, whitespace, and unit.
-        Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
-
-        Parameters
-        ----------
-        value : str
-            the physical time description
-        """
         self._physical_time = Q_(value)
 
     def fetch_model(self) -> Optional[TransitionCountModel]:
         r"""
-        Yields the latest estimated ``TransitionCountModel`. Might be `None` if fetched before any data was fit.
+        Yields the latest estimated :class:`TransitionCountModel`. Might be None if fetched before any data was fit.
 
         Returns
         -------
-        The latest ``TransitionCountModel`` or ``None``.
+        The latest :class:`TransitionCountModel` or None.
         """
         return self._model
 

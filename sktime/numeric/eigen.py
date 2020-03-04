@@ -1,4 +1,3 @@
-
 import numpy as _np
 
 __author__ = 'noe'
@@ -79,7 +78,7 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
     else:
         raise ValueError('method not implemented: ' + method)
 
-    s, V = sort_by_norm(s, V) # sort them
+    s, V = sort_by_norm(s, V)  # sort them
 
     # determine the cutoff. We know that C0 is an spd matrix,
     # so we select the truncation threshold such that everything that is negative vanishes
@@ -92,7 +91,8 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
     n = _np.shape(evnorms)[0]
     m = n - _np.searchsorted(evnorms[::-1], epsilon)
     if m == 0:
-        raise ZeroRankError('All eigenvalues are smaller than %g, rank reduction would discard all dimensions.'%epsilon)
+        raise ZeroRankError(
+            'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)
     Vm = V[:, 0:m]
     sm = s[0:m]
 
@@ -132,10 +132,10 @@ def spd_inv(W, epsilon=1e-10, method='QR'):
 
     """
     if (_np.shape(W)[0] == 1):
-        if W[0,0] < epsilon:
+        if W[0, 0] < epsilon:
             raise ZeroRankError(
                 'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)
-        Winv = 1./W[0,0]
+        Winv = 1. / W[0, 0]
     else:
         sm, Vm = spd_eig(W, epsilon=epsilon, method=method)
         Winv = _np.dot(Vm, _np.diag(1.0 / sm)).dot(Vm.T)
@@ -170,10 +170,10 @@ def spd_inv_sqrt(W, epsilon=1e-10, method='QR', return_rank=False):
 
     """
     if _np.shape(W)[0] == 1:
-        if W[0,0] < epsilon:
+        if W[0, 0] < epsilon:
             raise ZeroRankError(
                 'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)
-        Winv = 1./_np.sqrt(W[0, 0])
+        Winv = 1. / _np.sqrt(W[0, 0])
         sm = _np.ones(1)
     else:
         sm, Vm = spd_eig(W, epsilon=epsilon, method=method)
@@ -215,13 +215,13 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
 
     """
     if (_np.shape(W)[0] == 1):
-        if W[0,0] < epsilon:
+        if W[0, 0] < epsilon:
             raise ZeroRankError(
                 'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)
-        L = 1./_np.sqrt(W[0,0])
+        L = 1. / _np.sqrt(W[0, 0])
     else:
         sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
-        L = _np.dot(Vm, _np.diag(1.0/_np.sqrt(sm)))
+        L = _np.dot(Vm, _np.diag(1.0 / _np.sqrt(sm)))
 
     # return split
     return L

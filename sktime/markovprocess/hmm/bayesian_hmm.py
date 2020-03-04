@@ -31,7 +31,7 @@ from sktime.markovprocess.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 from ._hmm_bindings.util import forward, sample_path
 
-__author__ = 'noe'
+__author__ = 'noe, clonker'
 
 __all__ = [
     'BayesianHMMPosterior',
@@ -40,29 +40,94 @@ __all__ = [
 
 
 class BayesianHMMPosterior(BayesianPosterior):
-    r""" Bayesian Hidden Markov model with samples of posterior and prior. """
+    r""" Bayesian Hidden Markov model with samples of posterior and prior.
+
+    See Also
+    --------
+    BayesianHMSM : Estimator that can be used to estimate this type of posterior.
+    """
 
     def __init__(self,
                  prior: Optional[HiddenMarkovStateModel] = None,
                  samples: Optional[List[HiddenMarkovStateModel]] = (),
                  hidden_state_trajs: Optional[List[np.ndarray]] = ()):
+        r""" Creates a new Bayesian HMM posterior.
+
+        Parameters
+        ----------
+        prior : HiddenMarkovStateModel, optional, default=None
+            The prior.
+        samples : list of HiddenMarkovStateModel, optional, default=()
+            Sampled models.
+        hidden_state_trajs : list of ndarray, optional, default=()
+            Hidden state trajectories for sampled models.
+        """
         super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
-        self.hidden_state_trajectories_samples = hidden_state_trajs
+        self._hidden_state_trajectories_samples = hidden_state_trajs
 
     def submodel_largest(self, directed=True, connectivity_threshold='1/n', observe_nonempty=True, dtrajs=None):
+        r""" Creates a submodel from the largest connected set.
+
+        Parameters
+        ----------
+        directed : bool, optional, default=True
+            Whether the connectivity graph on the count matrix is interpreted as directed.
+        connectivity_threshold : float or '1/n', optional, default='1/n'.
+            Connectivity threshold. counts that are below the specified value are disregarded when finding connected
+            sets. In case of '1/n', the threshold gets resolved to :math:`1 / n\_states\_full`.
+        observe_nonempty : bool, optional, default=True
+            Whether to restrict to observable states which are observed in provided dtrajs. If True, dtrajs must not
+            be None.
+        dtrajs : array_like or list of array_like, optional, default=None
+            Time series on which is evaluated whether observable states in the model were actually observed.
+
+        Returns
+        -------
+        submodel : BayesianHMMPosterior
+            The submodel.
+        """
         dtrajs = ensure_dtraj_list(dtrajs)
         states = self.prior.states_largest(directed=directed, connectivity_threshold=connectivity_threshold)
         obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
         return self.submodel(states=states, obs=obs)
 
     def submodel_populous(self, directed=True, connectivity_threshold='1/n', observe_nonempty=True, dtrajs=None):
+        r""" Creates a submodel from the most populated connected set.
+
+        Parameters
+        ----------
+        directed : bool, optional, default=True
+            Whether the connectivity graph on the count matrix is interpreted as directed.
+        connectivity_threshold : float or '1/n', optional, default='1/n'.
+            Connectivity threshold. counts that are below the specified value are disregarded when finding connected
+            sets. In case of '1/n', the threshold gets resolved to :math:`1 / n\_states\_full`.
+        observe_nonempty : bool, optional, default=True
+            Whether to restrict to observable states which are observed in provided dtrajs. If True, dtrajs must not
+            be None.
+        dtrajs : array_like or list of array_like, optional, default=None
+            Time series on which is evaluated whether observable states in the model were actually observed and
+            which states were the most populated.
+
+        Returns
+        -------
+        submodel : BayesianHMMPosterior
+            The submodel.
+        """
         dtrajs = ensure_dtraj_list(dtrajs)
         states = self.prior.states_populous(strong=directed, connectivity_threshold=connectivity_threshold)
         obs = self.prior.nonempty_obs(dtrajs) if observe_nonempty else None
         return self.submodel(states=states, obs=obs)
 
     @property
+    def hidden_state_trajectories_samples(self):
+        r""" Hidden state trajectories of sampled HMMs. Available if the estimator was configured to save them,
+        see :attr:`BayesianHMSM.store_hidden`.
+        """
+        return self._hidden_state_trajectories_samples
+
+    @property
     def samples(self) -> Optional[List[HiddenMarkovStateModel]]:
+        r""" The sampled models. """
         return self._samples
 
     @samples.setter
@@ -71,6 +136,7 @@ class BayesianHMMPosterior(BayesianPosterior):
 
     @property
     def prior(self) -> HiddenMarkovStateModel:
+        r""" The prior model. """
         return self._prior
 
     @prior.setter
@@ -78,6 +144,21 @@ class BayesianHMMPosterior(BayesianPosterior):
         self._prior = value
 
     def submodel(self, states=None, obs=None):
+        r""" Creates a submodel from this model restricted to a selection of observable and hidden states.
+
+        Parameters
+        ----------
+        states : ndarray or None, optional, default=None
+            The hidden states to restrict to. If None there is no restriction.
+        obs : ndarray or None, optional, default=None
+            The observable states to restrict to. If None there is no restriction. Only makes sense with
+            :class:`DiscreteOutputModel`.
+
+        Returns
+        -------
+        submodel : BayesianHMMPosterior
+            The submodel.
+        """
         # restrict prior
         sub_model = self.prior.submodel(states=states, obs=obs)
         # restrict reduce samples
@@ -85,12 +166,9 @@ class BayesianHMMPosterior(BayesianPosterior):
                       for sample in self]
         return BayesianHMMPosterior(sub_model, subsamples, self.hidden_state_trajectories_samples)
 
-    def __iter__(self):
-        for s in self.samples:
-            yield s
-
 
 class BayesianHMSM(Estimator):
+    r""" Estimator for a Bayesian Hidden Markov state model. """
 
     def __init__(self, initial_hmm: HiddenMarkovStateModel,
                  n_samples: int = 100,
@@ -101,37 +179,40 @@ class BayesianHMSM(Estimator):
                  store_hidden: bool = False,
                  reversible: bool = True,
                  stationary: bool = False):
-        r"""
-        Estimator for a Bayesian Hidden Markov state model.
+        r""" Creates a new estimator instance. The theory and estimation procedure are described in [1]_, [2]_.
 
         Parameters
         ----------
-        initial_hmm : :class:`HMSM <sktime.markovprocess.hidden_markov_model.HMSM>`
+        initial_hmm : :class:`HMSM <sktime.markovprocess.hmm.HiddenMarkovStateModel>`
            Single-point estimate of HMSM object around which errors will be evaluated.
-           There is a static method available that can be used to generate a default prior.
+           There is a static method available that can be used to generate a default prior, see :meth:`default`.
         n_samples : int, optional, default=100
-           Number of Gibbs sampling steps
+           Number of sampled models.
         stride : str or int, default='effective'
            stride between two lagged trajectories extracted from the input
            trajectories. Given trajectory s[t], stride and lag will result
            in trajectories
-               s[0], s[tau], s[2 tau], ...
-               s[stride], s[stride + tau], s[stride + 2 tau], ...
+
+               :code:`s[0], s[tau], s[2 tau], ...`
+
+               :code:`s[stride], s[stride + tau], s[stride + 2 tau], ...`
+
            Setting stride = 1 will result in using all data (useful for
            maximum likelihood estimator), while a Bayesian estimator requires
            a longer stride in order to have statistically uncorrelated
            trajectories. Setting stride = 'effective' uses the largest
            neglected timescale as an estimate for the correlation time and
            sets the stride accordingly.
-        p0_prior : None, str, float or ndarray(n)
+        initial_distribution_prior : None, str, float or ndarray(n)
            Prior for the initial distribution of the HMM. Will only be active
            if stationary=False (stationary=True means that p0 is identical to
            the stationary distribution of the transition matrix).
            Currently implements different versions of the Dirichlet prior that
            is conjugate to the Dirichlet distribution of p0. p0 is sampled from:
 
-           .. math:
+           .. math::
                p0 \sim \prod_i (p0)_i^{a_i + n_i - 1}
+
            where :math:`n_i` are the number of times a hidden trajectory was in
            state :math:`i` at time step 0 and :math:`a_i` is the prior count.
            Following options are available:
@@ -154,12 +235,13 @@ class BayesianHMSM(Estimator):
            transition matrix priors as described in [3]_ if reversible=True. For the
            nonreversible case the posterior of transition matrix :math:`P` is:
 
-           .. math:
+           .. math::
                P \sim \prod_{i,j} p_{ij}^{b_{ij} + c_{ij} - 1}
+
            where :math:`c_{ij}` are the number of transitions found for hidden
            trajectories and :math:`b_{ij}` are prior counts.
 
-           * 'mixed' (default),  :math:`b_{ij} = p_{ij,init}`, where :math:`p_{ij,init}`
+           * 'mixed' (default),  :math:`b_{ij} = p_{ij,\mathrm{init}}`, where :math:`p_{ij,\mathrm{init}}`
              is the transition matrix of initial_model. That means one prior
              count will be used per row.
            * ndarray(n, n) or broadcastable,
@@ -172,7 +254,8 @@ class BayesianHMSM(Estimator):
              be sampled again. This option is not recommended unless you have
              a small HMM and a lot of data.
         store_hidden : bool, optional, default=False
-           store hidden trajectories in sampled HMMs
+           Store hidden trajectories in sampled HMMs, see
+           :attr:`BayesianHMMPosterior.hidden_state_trajectories_samples`.
         reversible : bool, optional, default=True
            If True, a prior that enforces reversible transition matrices (detailed balance) is used;
            otherwise, a standard  non-reversible prior is used.
@@ -193,7 +276,7 @@ class BayesianHMSM(Estimator):
         .. [3] Trendelkamp-Schroer, B., H. Wu, F. Paul and F. Noe:
            Estimation and uncertainty of reversible Markov models.
            J. Chem. Phys. 143, 174101 (2015).
-       """
+        """
         super().__init__()
         self.initial_hmm = initial_hmm
         self.n_samples = n_samples
@@ -216,16 +299,20 @@ class BayesianHMSM(Estimator):
                 stationary: bool = False,
                 physical_time: str = '1 step',
                 prior_submodel: bool = True):
-        """
-        Computes a default prior for a BHMSM and uses that for error estimation.
+        """ Computes a default prior for a BHMSM and uses that for error estimation.
         For a more detailed description of the arguments please
-        refer to :class:`HMSM <sktime.markovprocess.hidden_markov_model.HMSM>` or
-        :class:`BayesianHMSM <sktime.markovprocess.bayesian_hmsm.BayesianHMSM>`.
+        refer to :class:`HMSM <sktime.markovprocess.hmm.HiddenMarkovStateModel>` or
+        :meth:`__init__`.
+
+        Returns
+        -------
+        estimator : BayesianHMSM
+            Estimator that is initialized with a default prior model.
         """
         from sktime.markovprocess.hmm import initial_guess_discrete_from_data, MaximumLikelihoodHMSM
         dtrajs = ensure_dtraj_list(dtrajs)
         init_hmm = initial_guess_discrete_from_data(dtrajs, n_states, lagtime, stride=stride, reversible=reversible,
-                                                    stationary=stationary, separate=separate)
+                                                    stationary=stationary, separate_symbols=separate)
         hmm = MaximumLikelihoodHMSM(init_hmm, stride=stride, lagtime=lagtime, reversible=reversible,
                                     stationary=stationary, physical_time=physical_time).fit(dtrajs).fetch_model()
         if prior_submodel:
@@ -238,6 +325,11 @@ class BayesianHMSM(Estimator):
 
     @property
     def stationary(self):
+        r""" If True, the stationary distribution of the transition matrix will be used as initial distribution.
+        Only use True if you are confident that the observation trajectories are started from a global
+        equilibrium. If False, the initial distribution will be estimated as usual from the first step
+        of the hidden trajectories.
+        """
         return self._stationary
 
     @stationary.setter
@@ -246,6 +338,9 @@ class BayesianHMSM(Estimator):
 
     @property
     def reversible(self):
+        r""" If True, a prior that enforces reversible transition matrices (detailed balance) is used;
+        otherwise, a standard  non-reversible prior is used.
+        """
         return self._reversible
 
     @reversible.setter
@@ -254,6 +349,9 @@ class BayesianHMSM(Estimator):
 
     @property
     def store_hidden(self):
+        r"""  Store hidden trajectories in sampled HMMs, see
+        :attr:`BayesianHMMPosterior.hidden_state_trajectories_samples`.
+        """
         return self._store_hidden
 
     @store_hidden.setter
@@ -262,6 +360,7 @@ class BayesianHMSM(Estimator):
 
     @property
     def transition_matrix_prior(self):
+        r""" Prior for the transition matrix. For a more detailed description refer to :meth:`__init__`. """
         return self._transition_matrix_prior
 
     @transition_matrix_prior.setter
@@ -270,6 +369,7 @@ class BayesianHMSM(Estimator):
 
     @property
     def initial_distribution_prior(self) -> Optional[Union[str, float, np.ndarray]]:
+        r""" Prior for the initial distribution. For a more detailed description refer to :meth:`__init__`. """
         return self._initial_distribution_prior
 
     @initial_distribution_prior.setter
@@ -278,6 +378,9 @@ class BayesianHMSM(Estimator):
 
     @property
     def initial_hmm(self) -> HiddenMarkovStateModel:
+        r""" The prior HMM. An estimator with a default prior HMM can be generated using the static :meth:`default`
+        method.
+        """
         return self._initial_hmm
 
     @initial_hmm.setter
@@ -288,6 +391,7 @@ class BayesianHMSM(Estimator):
 
     @property
     def n_samples(self) -> int:
+        r""" Number of sampled models. """
         return self._n_samples
 
     @n_samples.setter
@@ -295,10 +399,20 @@ class BayesianHMSM(Estimator):
         self._n_samples = value
 
     def fetch_model(self) -> BayesianHMMPosterior:
+        r""" Yields the current model or None if :meth:`fit` was not yet called.
+
+        Returns
+        -------
+        posterior : BayesianHMMPosterior
+            The model.
+        """
         return self._model
 
     @property
     def _initial_distribution_prior_np(self) -> np.ndarray:
+        r"""
+        Internal method that evaluates the prior to its ndarray realization.
+        """
         if self.initial_distribution_prior is None or self.initial_distribution_prior == 'sparse':
             prior = np.zeros(self.initial_hmm.n_hidden_states)
         elif isinstance(self.initial_distribution_prior, np.ndarray):
@@ -320,6 +434,9 @@ class BayesianHMSM(Estimator):
 
     @property
     def _transition_matrix_prior_np(self) -> np.ndarray:
+        r"""
+        Internal method that evaluates the prior to its ndarray realization.
+        """
         n_states = self.initial_hmm.n_hidden_states
         if self.transition_matrix_prior is None or self.transition_matrix_prior == 'sparse':
             prior = np.zeros((n_states, n_states))
@@ -422,6 +539,24 @@ class BayesianHMSM(Estimator):
         model.transition_model.update_stationary_distribution(p0)
 
     def fit(self, data, n_burn_in: int = 0, n_thin: int = 1, **kwargs):
+        r""" Sample from the posterior.
+
+        Parameters
+        ----------
+        data : array_like or list of array_like
+            Input time series data.
+        n_burn_in : int, optional, default=0
+            The number of samples to discard to burn-in, following which :attr:`n_samples` samples will be generated.
+        n_thin : int, optional, default=1
+            The number of Gibbs sampling updates used to generate each returned sample.
+        **kwargs
+            Ignored kwargs for scikit-learn compatibility.
+
+        Returns
+        -------
+        self : BayesianHMSM
+            Reference to self.
+        """
         dtrajs = ensure_dtraj_list(data)
 
         # fetch priors

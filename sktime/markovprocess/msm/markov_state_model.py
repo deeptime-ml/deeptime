@@ -35,7 +35,13 @@ from sktime.util import ensure_ndarray, submatrix, cached_property
 
 
 class MarkovStateModel(Model):
-    r"""Markov model with a given transition matrix."""
+    r"""Markov model with a given transition matrix.
+
+    See Also
+    --------
+    MaximumLikelihoodMSM : maximum-likelihood estimator for MSMs
+    BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
+    """
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
                  count_model=None):
@@ -102,7 +108,8 @@ class MarkovStateModel(Model):
 
         Returns
         -------
-        The transition count model or None.
+        model : TransitionCountModel or None
+            The transition count model or None.
         """
         return self._count_model
 
@@ -172,7 +179,8 @@ class MarkovStateModel(Model):
             states to restrict to
         Returns
         -------
-        A onto the given states restricted MSM.
+        submodel : MarkovStateModel
+            A onto the given states restricted MSM.
         """
         if np.any(states >= self.n_states):
             raise ValueError("At least one of the given states is not contained in this model "
@@ -333,7 +341,7 @@ class MarkovStateModel(Model):
         Parameters
         ----------
         k : int
-            number of eigenvectors to be returned. By default uses value of :func:`n_eigenvalues`.
+            number of eigenvectors to be returned. By default uses value of :attr:`n_eigenvalues`.
 
         Returns
         -------
@@ -351,7 +359,7 @@ class MarkovStateModel(Model):
         Parameters
         ----------
         k : int
-            number of eigenvectors to be computed. By default uses value of :func:`n_eigenvalues`.
+            number of eigenvectors to be computed. By default uses value of :attr:`n_eigenvalues`.
 
         Returns
         -------
@@ -530,7 +538,7 @@ class MarkovStateModel(Model):
         r"""Time-correlation for equilibrium experiment.
 
         In order to simulate a time-correlation experiment (e.g. fluorescence
-        correlation spectroscopy [NDD11]_, dynamical neutron scattering [LYP13]_,
+        correlation spectroscopy [corr-1]_, dynamical neutron scattering [corr-2]_,
         ...), first compute the mean values of your experimental observable :math:`a`
         by MarkovStateModel state:
 
@@ -624,12 +632,12 @@ class MarkovStateModel(Model):
 
         References
         ----------
-        .. [NDD11] Noe, F., S. Doose, I. Daidone, M. Loellmann, J. D. Chodera, M. Sauer and J. C. Smith. 2011
-            Dynamical fingerprints for probing individual relaxation processes in biomolecular dynamics with simulations
-            and kinetic experiments. Proc. Natl. Acad. Sci. USA 108, 4822-4827.
-        .. [LYP13] Lindner, B., Z. Yi, J.-H. Prinz, J. C. Smith and F. Noe. 2013.
-            Dynamic Neutron Scattering from Conformational Dynamics I: Theory and Markov models.
-            J. Chem. Phys. 139, 175101.
+        .. [corr-1] Noe, F., S. Doose, I. Daidone, M. Loellmann, J. D. Chodera, M. Sauer and J. C. Smith. 2011
+                    Dynamical fingerprints for probing individual relaxation processes in biomolecular dynamics with
+                    simulations and kinetic experiments. Proc. Natl. Acad. Sci. USA 108, 4822-4827.
+        .. [corr-2] Lindner, B., Z. Yi, J.-H. Prinz, J. C. Smith and F. Noe. 2013.
+                    Dynamic Neutron Scattering from Conformational Dynamics I: Theory and Markov models.
+                    J. Chem. Phys. 139, 175101.
 
         """
         # input checking is done in low-level API
@@ -678,12 +686,12 @@ class MarkovStateModel(Model):
         ----------
         Spectral densities are commonly used in spectroscopy. Dynamical
         fingerprints are a useful representation for computational
-        spectroscopy results and have been introduced in [NDD11]_.
+        spectroscopy results and have been introduced in [fp-corr-1]_.
 
-        .. [NDD11] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
-            Chodera and J Smith. 2010. Dynamical fingerprints for probing
-            individual relaxation processes in biomolecular dynamics with
-            simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
+        .. [fp-corr-1] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
+                       Chodera and J Smith. 2010. Dynamical fingerprints for probing
+                       individual relaxation processes in biomolecular dynamics with
+                       simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
 
         """
         # input checking is done in low-level API
@@ -803,12 +811,12 @@ class MarkovStateModel(Model):
         ----------
         Spectral densities are commonly used in spectroscopy. Dynamical
         fingerprints are a useful representation for computational
-        spectroscopy results and have been introduced in [NDD11]_.
+        spectroscopy results and have been introduced in [fp-relax-1]_.
 
-        .. [NDD11] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
-            Chodera and J Smith. 2010. Dynamical fingerprints for probing
-            individual relaxation processes in biomolecular dynamics with
-            simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
+        .. [fp-relax-1] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
+                        Chodera and J Smith. 2010. Dynamical fingerprints for probing
+                        individual relaxation processes in biomolecular dynamics with
+                        simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
 
         """
         # input checking is done in low-level API
@@ -818,7 +826,7 @@ class MarkovStateModel(Model):
         return fr(self.transition_matrix, p0, a, tau=self.lagtime, k=k, ncv=ncv)
 
     def pcca(self, n_metastable_sets: int) -> PCCAModel:
-        r""" Runs PCCA+ [1]_ to compute a metastable decomposition of MarkovStateModel states
+        r""" Runs PCCA+ [pcca-1]_ to compute a metastable decomposition of MarkovStateModel states
 
         After calling this method you can access :func:`metastable_memberships`,
         :func:`metastable_distributions`, :func:`metastable_sets` and
@@ -841,10 +849,10 @@ class MarkovStateModel(Model):
 
         References
         ----------
-        .. [1] Roeblitz, S and M Weber. 2013. Fuzzy spectral clustering by
-            PCCA+: application to Markov state models and data
-            classification. Advances in Data Analysis and Classification 7
-            (2): 147-179
+        .. [pcca-1] Roeblitz, S and M Weber. 2013. Fuzzy spectral clustering by
+                    PCCA+: application to Markov state models and data
+                    classification. Advances in Data Analysis and Classification 7
+                    (2): 147-179
         """
         if not self.reversible:
             raise ValueError('Cannot compute PCCA+ for non-reversible matrices. '
@@ -1021,11 +1029,12 @@ class MarkovStateModel(Model):
         Parameters
         ----------
         dtrajs : array_like or list of array_like
-            discretized trajectories
+            Discretized trajectories.
 
         Returns
         -------
-        A list of arrays with trajectory/time indices for the provided discretized trajectories
+        state_indices : List of ndarray
+            A list of arrays with trajectory/time indices for the provided discretized trajectories.
         """
         if self.count_model is not None:
             dtrajs = self.count_model.transform_discrete_trajectories_to_submodel(dtrajs)
@@ -1036,7 +1045,7 @@ class MarkovStateModel(Model):
     ################################################################################
 
     def hmm(self, dtrajs, nhidden: int, return_estimator=False):
-        """Estimates a hidden Markov state model as described in [1]_
+        """Estimates a hidden Markov state model as described in [hmm-1]_.
 
         Parameters
         ----------
@@ -1052,11 +1061,12 @@ class MarkovStateModel(Model):
 
         Returns
         -------
-        hmsm : :class:`MaximumLikelihoodHMSM`
+        hmsm : sktime.markovprocess.hmm.HiddenMarkovStateModel
+            A hidden markov state model.
 
         References
         ----------
-        .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
+        .. [hmm-1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
             Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
             J. Chem. Phys. 139, 184114 (2013)
 
@@ -1089,7 +1099,9 @@ class MarkovStateModel(Model):
         return hmsm
 
     def score(self, dtrajs, score_method='VAMP2', score_k=10):
-        r""" Scores the MSM using the dtrajs using the variational approach for Markov processes [1]_ [2]_
+        r""" Scores the MSM using the dtrajs using the variational approach for Markov processes.
+
+        Implemented according to [score-1]_ and [score-2]_.
 
         Currently only implemented using dense matrices - will be slow for large state spaces.
 
@@ -1106,13 +1118,13 @@ class MarkovStateModel(Model):
         score_method : str, optional, default='VAMP2'
             Overwrite scoring method to be used if desired. If `None`, the estimators scoring
             method will be used.
-            Available scores are based on the variational approach for Markov processes [1]_ [2]_ :
+            Available scores are based on the variational approach for Markov processes [score-1]_ [score-2]_ :
 
-            *  'VAMP1'  Sum of singular values of the symmetrized transition matrix [2]_ .
+            *  'VAMP1'  Sum of singular values of the symmetrized transition matrix [score-2]_ .
                         If the MSM is reversible, this is equal to the sum of transition
-                        matrix eigenvalues, also called Rayleigh quotient [1]_ [3]_ .
-            *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [2]_ .
-                        If the MSM is reversible, this is equal to the kinetic variance [4]_ .
+                        matrix eigenvalues, also called Rayleigh quotient [score-1]_ [score-3]_ .
+            *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [score-2]_ .
+                        If the MSM is reversible, this is equal to the kinetic variance [score-4]_ .
 
         score_k : int or None
             The maximum number of eigenvalues or singular values used in the
@@ -1120,13 +1132,13 @@ class MarkovStateModel(Model):
 
         References
         ----------
-        .. [1] Noe, F. and F. Nueske: A variational approach to modeling slow processes
+        .. [score-1] Noe, F. and F. Nueske: A variational approach to modeling slow processes
             in stochastic dynamical systems. SIAM Multiscale Model. Simul. 11, 635-655 (2013).
-        .. [2] Wu, H and F. Noe: Variational approach for learning Markov processes
+        .. [score-2] Wu, H and F. Noe: Variational approach for learning Markov processes
             from time series data (in preparation)
-        .. [3] McGibbon, R and V. S. Pande: Variational cross-validation of slow
+        .. [score-3] McGibbon, R and V. S. Pande: Variational cross-validation of slow
             dynamical modes in molecular kinetics, J. Chem. Phys. 142, 124105 (2015)
-        .. [4] Noe, F. and C. Clementi: Kinetic distance and kinetic maps from molecular
+        .. [score-4] Noe, F. and C. Clementi: Kinetic distance and kinetic maps from molecular
             dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015)
 
         """

@@ -123,3 +123,6 @@ dmypy.json
 
 # downloaded test data
 tests/**/*.npz
+
+# sphinx generated rst
+docs/**/generated

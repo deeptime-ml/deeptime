@@ -1,3 +1,24 @@
+r"""
+.. currentmodule: sktime.markovprocess
+
+===============================================================================
+Transition counting and analysis tools
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+
+    pcca
+    PCCAModel
+
+    TransitionCountEstimator
+    TransitionCountModel
+
+    ReactiveFlux
+
+    score_cv
+"""
+
 import pint
 
 ureg = pint.UnitRegistry()
@@ -10,7 +31,7 @@ pint.set_application_registry(ureg)
 del pint
 
 from ._base import BayesianPosterior, _MSMBaseEstimator
-from .pcca import pcca
+from .pcca import pcca, PCCAModel
 from .transition_counting import TransitionCountEstimator, TransitionCountModel
 
 from .reactive_flux import ReactiveFlux

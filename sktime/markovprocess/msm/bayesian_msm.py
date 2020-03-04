@@ -5,12 +5,13 @@ import numpy as np
 from sktime.markovprocess._base import _MSMBaseEstimator, BayesianPosterior
 from sktime.markovprocess.msm import MarkovStateModel, MaximumLikelihoodMSM
 
-__author__ = 'noe, marscher'
+__author__ = 'noe, marscher, clonker'
 
 
 class BayesianMSM(_MSMBaseEstimator):
-    r""" Bayesian estimator for MSMs given discrete trajectory statistics
-    sparse : bool, optional, default = False
+    r""" Bayesian estimator for MSMs given discrete trajectory statistics.
+
+    Implementation following [1]_.
 
     References
     ----------
@@ -69,27 +70,19 @@ class BayesianMSM(_MSMBaseEstimator):
     @property
     def stationary_distribution_constraint(self) -> Optional[np.ndarray]:
         r"""
-        Yields the stationary distribution constraint that can either be None (no constraint) or constrains the
+        The stationary distribution constraint that can either be None (no constraint) or constrains the
         count and transition matrices to states with positive stationary vector entries.
 
-        Returns
-        -------
-        The stationary vector constraint, can be None
+        :getter: Retrieves the currently configured constraint, can be None.
+        :setter: Sets a stationary distribution constraint by giving a stationary vector as value. The estimated count-
+                 and transition-matrices are restricted to states that have positive entries. In case the vector is
+                 not normalized, setting it here implicitly copies and normalizes it.
+        :type: ndarray or None
         """
         return self._stationary_distribution_constraint
 
     @stationary_distribution_constraint.setter
     def stationary_distribution_constraint(self, value: Optional[np.ndarray]):
-        r"""
-        Sets a stationary distribution constraint by giving a stationary vector as value. The estimated count- and
-        transition-matrices are restricted to states that have positive entries. In case the vector is not normalized,
-        setting it here implicitly copies and normalizes it.
-
-        Parameters
-        ----------
-        value : np.ndarray or None
-            the stationary vector
-        """
         if value is not None and (np.any(value < 0) or np.any(value > 1)):
             raise ValueError("not a distribution, contained negative entries and/or entries > 1.")
         if value is not None and np.sum(value) != 1.0:
@@ -103,7 +96,8 @@ class BayesianMSM(_MSMBaseEstimator):
 
         Returns
         -------
-        The estimated model or None if fit was not called.
+        model : BayesianPosterior or None
+            The estimated model or None if fit was not called.
         """
         return self._model
 
@@ -119,6 +113,10 @@ class BayesianMSM(_MSMBaseEstimator):
         callback: callable, optional, default=None
             function to be called to indicate progress of sampling.
 
+        Returns
+        -------
+        self : BayesianMSM
+            Reference to self.
         """
         from sktime.markovprocess import TransitionCountModel
         if isinstance(data, TransitionCountModel) and data.counting_mode is not None \

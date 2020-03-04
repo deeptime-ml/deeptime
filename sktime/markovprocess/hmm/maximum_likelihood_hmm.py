@@ -176,22 +176,50 @@ def _coarse_grain_transition_matrix(P, M):
 
 def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                     reversible: bool = True, stationary: bool = False,
-                                    separate_symbols = None, regularize: bool = True) -> HiddenMarkovStateModel:
-    r"""
+                                    separate_symbols=None, regularize: bool = True) -> HiddenMarkovStateModel:
+    r""" Makes an initial guess for an :class:`HMM <sktime.markovprocess.hmm.HiddenMarkovStateModel>` with
+    discrete output model from an already existing MSM over observable states. The procedure is described in [1]_ and
+    uses PCCA+ [2]_ for coarse-graining the transition matrix and obtaining membership assignments.
 
     Parameters
     ----------
-    msm
-    n_hidden_states
-    reversible
-    stationary
+    msm : MarkovStateModel
+        The markov state model over observable state space.
+    n_hidden_states : int
+        The desired number of hidden states.
+    reversible : bool, optional, default=True
+        Whether the HMM transition matrix is estimated so that it is reversibe.
+    stationary : bool, optional, default=False
+        If True, the initial distribution of hidden states is self-consistently computed as the stationary
+        distribution of the transition matrix. If False, it will be estimated from the starting states.
+        Only set this to true if you're sure that the observation trajectories are initiated from a global
+        equilibrium distribution.
     separate_symbols : array_like, optional, default=None
-        separate symbols
-    regularize
+        Force the given set of observed states to stay in a separate hidden state.
+        The remaining nstates-1 states will be assigned by a metastable decomposition.
+    regularize : bool, optional, default=True
+        If set to True, makes sure that the hidden initial distribution and transition matrix have nonzero probabilities
+        by setting them to eps and then renormalizing. Avoids zeros that would cause estimation algorithms to crash or
+        get stuck in suboptimal states.
 
     Returns
     -------
+    hmm_init : HiddenMarkovStateModel
+        An initial guess for the HMM
 
+    See Also
+    --------
+    DiscreteOutputModel : The type of output model this heuristic uses.
+    initial_guess_discrete_from_data : Initial guess from data if no MSM is available yet
+    initial_guess_gaussian_from_data : Initial guess with :class:`Gaussian output model <sktime.markovprocess.hmm.GaussianOutputModel>`.
+
+    References
+    ----------
+    .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden Markov models for calculating kinetics and
+       metastable states of complex molecules. J. Chem. Phys. 139, 184114 (2013)
+    .. [2] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
+       application to Markov state models and data classification.
+       Adv Data Anal Classif 7, 147-179 (2013).
     """
     count_matrix = msm.count_model.count_matrix
     nonseparate_symbols = np.arange(msm.count_model.n_states_full)
@@ -259,30 +287,96 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
 
 def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='largest-regularized',
                                      reversible: bool = True, stationary: bool = False,
-                                     separate = None, states: Optional[np.ndarray] = None,
+                                     separate_symbols=None, states: Optional[np.ndarray] = None,
                                      regularize: bool = True, connectivity_threshold: Union[str, float] = 0.):
-    r"""
+    r"""Estimates an initial guess :class:`HMM <sktime.markovprocess.hmm.HiddenMarkovStateModel>` from given
+    discrete trajectories.
+
+    Following the procedure described in [1]_: First a :class:`MSM <sktime.markovprocess.msm.MarkovStateModel>` is
+    estimated, which is then subsequently coarse-grained with PCCA+ [2]_. After estimation of the MSM, this method
+    class :meth:`initial_guess_discrete_from_msm`.
 
     Parameters
     ----------
-    dtrajs
-    n_hidden_states
-    lagtime
-    stride
-    mode
-    reversible
-    stationary
-    separate : array_like, optional, default=None
-        blub
-    states
-    regularize
-    connectivity_threshold
+    dtrajs : array_like or list of array_like
+        A discrete trajectory or a list of discrete trajectories.
+    n_hidden_states : int
+        Number of hidden states.
+    lagtime : int
+        The lagtime at which transitions are counted.
+    stride : int or str, optional, default=1
+        stride between two lagged trajectories extracted from the input trajectories. Given trajectory :code:`s[t]`,
+        stride and lag will result in trajectories
+
+            :code:`s[0], s[lag], s[2 lag], ...`
+
+            :code:`s[stride], s[stride + lag], s[stride + 2 lag], ...`
+
+        Setting stride = 1 will result in using all data (useful for maximum likelihood estimator), while a Bayesian
+        estimator requires a longer stride in order to have statistically uncorrelated trajectories. Setting
+        :code:`stride='effective'` uses the largest neglected timescale as an estimate for the correlation time
+        and sets the stride accordingly.
+    mode : str, optional, default='largest-regularized'
+        The mode at which the markov state model is estimated. Since the process is assumed to be reversible and
+        finite statistics might lead to unconnected regions in state space, a subselection can automatically be made
+        and the count matrix can be regularized. The following options are available:
+
+        * 'all': all available states are taken into account
+        * 'largest': the largest connected state set is selected, see
+          :meth:`TransitionCountModel.submodel_largest <sktime.markovprocess.TransitionCountModel.submodel_largest>`.
+        * populus: the connected set with the largest population in the data, see
+          :meth:`TransitionCountModel.submodel_largest <sktime.markovprocess.TransitionCountModel.submodel_largest>`.
+
+        For regularization, each of the options can be suffixed by a '-regularized', e.g., 'largest-regularized'.
+        This means that the count matrix has no zero entries and everything is reversibly connected. In particular,
+        a prior of the form
+
+        .. math:: b_{ij}=\left \{ \begin{array}{rl}
+                     \alpha & \text{, if }c_{ij}+c_{ji}>0, \\
+                     0      & \text{, otherwise,}
+                     \end{array} \right .
+
+        with :math:`\alpha=10^{-3}` is added and all non-reversibly connected components are artifically connected
+        by adding backward paths.
+    reversible : bool, optional, default=True
+        Whether the HMM transition matrix is estimated so that it is reversibe.
+    stationary : bool, optional, default=False
+        If True, the initial distribution of hidden states is self-consistently computed as the stationary
+        distribution of the transition matrix. If False, it will be estimated from the starting states.
+        Only set this to true if you're sure that the observation trajectories are initiated from a global
+        equilibrium distribution.
+    separate_symbols : array_like, optional, default=None
+        Force the given set of observed states to stay in a separate hidden state.
+        The remaining nstates-1 states will be assigned by a metastable decomposition.
+    states : (dtype=int) ndarray, optional, default=None
+        Artifically restrict count model to selection of states, even before regularization.
+    regularize : bool, optional, default=True
+        If set to True, makes sure that the hidden initial distribution and transition matrix have nonzero probabilities
+        by setting them to eps and then renormalizing. Avoids zeros that would cause estimation algorithms to crash or
+        get stuck in suboptimal states.
+    connectivity_threshold : float or '1/n', optional, default=0.
+        Connectivity threshold. counts that are below the specified value are disregarded when finding connected
+        sets. In case of '1/n', the threshold gets resolved to :math:`1 / \mathrm{n\_states\_full}`.
 
     Returns
     -------
+    hmm_init : HiddenMarkovStateModel
+        An initial guess for the HMM
 
+    See Also
+    --------
+    DiscreteOutputModel : The type of output model this heuristic uses.
+    initial_guess_discrete_from_msm : Initial guess from an already existing :class:`MSM <sktime.markovprocess.msm.MarkovStateModel>`.
+    initial_guess_gaussian_from_data : Initial guess with :class:`Gaussian output model <sktime.markovprocess.hmm.GaussianOutputModel>`.
+
+    References
+    ----------
+    .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden Markov models for calculating kinetics and
+       metastable states of complex molecules. J. Chem. Phys. 139, 184114 (2013)
+    .. [2] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
+       application to Markov state models and data classification.
+       Adv Data Anal Classif 7, 147-179 (2013).
     """
-    # todo docs
     if mode not in initial_guess_discrete_from_data.VALID_MODES \
             + [m + "-regularized" for m in initial_guess_discrete_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(initial_guess_discrete_from_data.VALID_MODES)))
@@ -306,13 +400,39 @@ def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1,
         counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
                                          sort_by_population=True)
     msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True, maxiter=10000).fit(counts).fetch_model()
-    return initial_guess_discrete_from_msm(msm, n_hidden_states, reversible, stationary, separate, regularize)
+    return initial_guess_discrete_from_msm(msm, n_hidden_states, reversible, stationary, separate_symbols, regularize)
 
 
 initial_guess_discrete_from_data.VALID_MODES = ['all', 'largest', 'populous']
 
 
 def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):
+    r""" Makes an initial guess :class:`HMM <HiddenMarkovStateModel>` with Gaussian output model.
+
+    To this end, a Gaussian mixture model is estimated using `scikit-learn <https://scikit-learn.org/>`_.
+
+    Parameters
+    ----------
+    dtrajs : array_like or list of array_like
+        Trajectories which are used for making the initial guess.
+    n_hidden_states : int
+        Number of hidden states.
+    reversible : bool
+        Whether the hidden transition matrix is estimated so that it is reversible.
+
+    Returns
+    -------
+    hmm_init : HiddenMarkovStateModel
+        An initial guess for the HMM
+
+    See Also
+    --------
+    GaussianOutputModel : The type of output model this heuristic uses.
+    initial_guess_discrete_from_data : Initial guess with :class:`Discrete output model <sktime.markovprocess.hmm.DiscreteOutputModel>`.
+    initial_guess_discrete_from_msm : Initial guess from an already
+                                      existing :class:`MSM <sktime.markovprocess.msm.MarkovStateModel>`
+                                      with discrete output model.
+    """
     # todo docs
     from sklearn.mixture import GaussianMixture
     # todo we dont actually want to depend on sklearn
@@ -344,17 +464,17 @@ def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):
 
 
 class MaximumLikelihoodHMSM(Estimator):
-    """
-    Maximum likelihood Hidden Markov model (HMM).
+    """ Maximum likelihood Hidden Markov model (HMM) estimator.
 
-    This class is used to fit a maximum-likelihood HMM to data.
+    This class is used to fit a maximum-likelihood HMM to data. It uses an initial guess HMM with can be obtained with
+    one of the provided heuristics and then uses the Baum-Welch algorithm [1]_ to fit the inital guess to provided
+    data.
 
     References
     ----------
-    [1] L. E. Baum and J. A. Egon, "An inequality with applications to statistical
-        estimation for probabilistic functions of a Markov process and to a model
-        for ecology," Bull. Amer. Meteorol. Soc., vol. 73, pp. 360-363, 1967.
-
+    .. [1] L. E. Baum and J. A. Egon, "An inequality with applications to statistical
+           estimation for probabilistic functions of a Markov process and to a model
+           for ecology," Bull. Amer. Meteorol. Soc., vol. 73, pp. 360-363, 1967.
     """
 
     _HMMModelStorage = collections.namedtuple('_HMMModelStorage', ['transition_matrix', 'output_model',
@@ -378,8 +498,11 @@ class MaximumLikelihoodHMSM(Estimator):
         stride : int or str, optional, default=1
             stride between two lagged trajectories extracted from the input trajectories. Given trajectory s[t], stride
             and lag will result in trajectories
-                s[0], s[lag], s[2 lag], ...
-                s[stride], s[stride + lag], s[stride + 2 lag], ...
+
+                :code:`s[0], s[lag], s[2 lag], ...`
+
+                :code:`s[stride], s[stride + lag], s[stride + 2 lag], ...`
+
             Setting stride = 1 will result in using all data (useful for maximum likelihood estimator), while a
             Bayesian estimator requires a longer stride in order to have statistically uncorrelated trajectories.
             Setting stride = 'effective' uses the largest neglected timescale as an fit for the correlation time and
@@ -438,28 +561,33 @@ class MaximumLikelihoodHMSM(Estimator):
         self.physical_time = physical_time
 
     def fetch_model(self) -> HiddenMarkovStateModel:
+        r""" Yields the current HiddenMarkovStateModel or None if :meth:`fit` was not called yet.
+
+        Returns
+        -------
+        model : HiddenMarkovStateModel or None
+            The model.
+        """
         return self._model
 
     @property
     def physical_time(self) -> Q_:
-        r""" yields a description of the physical time """
+        r""" A description of the physical time.
+
+        :getter: Yields a description of physical time in terms of a pint Quantity object.
+        :setter: Sets a description of the physical time for input trajectories. Specify by a number, whitespace,
+                 and unit. Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
+        :type: pint.Quantity or str
+        """
         return self._physical_time
 
     @physical_time.setter
     def physical_time(self, value: str):
-        r"""
-        Sets a description of the physical time for input trajectories. Specify by a number, whitespace, and unit.
-        Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
-
-        Parameters
-        ----------
-        value : str
-            the physical time description
-        """
         self._physical_time = Q_(value)
 
     @property
     def maxit_reversible(self) -> int:
+        r"""Maximum number of iterations for reversible transition matrix estimation. Only used with reversible=True."""
         return self._maxit_reversible
 
     @maxit_reversible.setter
@@ -468,6 +596,9 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def fixed_stationary_distribution(self) -> Optional[np.ndarray]:
+        r"""Fix the stationary distribution to the provided value. Only used when :attr:`stationary` is True, otherwise
+        refer to :attr:`fixed_initial_distribution`.
+        """
         return self._fixed_stationary_distribution
 
     @fixed_stationary_distribution.setter
@@ -478,6 +609,9 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def fixed_initial_distribution(self) -> Optional[np.ndarray]:
+        r"""Fix the initial distribution to the provided value. Only used when :attr:`stationary` is False, otherwise
+        refer to :attr:`fixed_stationary_distribution`.
+        """
         return self._fixed_initial_distribution
 
     @fixed_initial_distribution.setter
@@ -488,6 +622,11 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def stationary(self) -> bool:
+        r""" If True, the initial distribution of hidden states is self-consistently computed as the stationary
+        distribution of the transition matrix. If False, it will be estimated from the starting states.
+        Only set this to true if you're sure that the observation trajectories are initiated from a global
+        equilibrium distribution.
+        """
         return self._stationary
 
     @stationary.setter
@@ -496,6 +635,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def accuracy(self) -> float:
+        r""" Convergence threshold for EM iteration. """
         return self._accuracy
 
     @accuracy.setter
@@ -504,6 +644,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def maxit(self) -> int:
+        r""" Stopping criterion for EM iteration. """
         return self._maxit
 
     @maxit.setter
@@ -512,6 +653,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def reversible(self) -> bool:
+        r""" Whether the hidden transition model should be estimated so that it is reversible. """
         return self._reversible
 
     @reversible.setter
@@ -520,6 +662,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def stride(self) -> Union[int, str]:
+        r""" Stride to be applied to the input data. Must be compatible with how the initial model was estimated. """
         return self._stride
 
     @stride.setter
@@ -534,6 +677,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def lagtime(self) -> int:
+        r""" The lag time at which transitions are counted. """
         return self._lagtime
 
     @lagtime.setter
@@ -545,10 +689,12 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @property
     def n_hidden_states(self) -> int:
+        r""" The number of hidden states, coincides with the number of hidden states in the initial model."""
         return self.initial_transition_model.n_hidden_states
 
     @property
     def initial_transition_model(self) -> HiddenMarkovStateModel:
+        r""" The initial transition model. """
         return self._initial_transition_model
 
     @initial_transition_model.setter
@@ -556,6 +702,22 @@ class MaximumLikelihoodHMSM(Estimator):
         self._initial_transition_model = value
 
     def fit(self, dtrajs, initial_model=None, **kwargs):
+        r""" Fits a new :class:`HMM <HiddenMarkovStateModel>` to data.
+
+        Parameters
+        ----------
+        dtrajs : array_like or list of array_like
+            Timeseries data.
+        initial_model : HiddenMarkovStateModel, optional, default=None
+            Override for :attr:`initial_transition_model`.
+        **kwargs
+            Ignored kwargs for scikit-learn compatibility.
+
+        Returns
+        -------
+        self : MaximumLikelihoodHMSM
+            Reference to self.
+        """
         if initial_model is None:
             initial_model = self.initial_transition_model
         if initial_model is None or not isinstance(initial_model, HiddenMarkovStateModel):
@@ -647,8 +809,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     @staticmethod
     def _forward_backward(model: _HMMModelStorage, obs, alpha, beta, gamma, counts):
-        """
-        Estimation step: Runs the forward-back algorithm on trajectory obs
+        """ Estimation step: Runs the forward-back algorithm on trajectory obs
 
         Parameters
         ----------

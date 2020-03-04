@@ -1,5 +1,6 @@
 import abc
 from inspect import signature
+from typing import Optional
 
 from sklearn.base import _pprint as pprint_sklearn
 
@@ -79,8 +80,20 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
 
 
 class Model(_base_methods_mixin):
+    r""" The model superclass. """
+
+    def __init__(self):
+        r""" Initializes a new model. No-op per default. This is where the stored attributes should be initialized. """
+        pass
 
     def copy(self):
+        r""" Makes a deep copy of this model.
+
+        Returns
+        -------
+        copy : Model
+            A new copy of this model.
+        """
         import copy
         return copy.deepcopy(self)
 
@@ -91,23 +104,50 @@ class Model(_base_methods_mixin):
 
 
 class Estimator(_base_methods_mixin):
-    """ Base class of all estimators """
+    r""" Base class of all estimators """
 
     """ class wide flag to control whether input of fit or partial_fit should be checked for modifications """
     _MUTABLE_INPUT_DATA = False
 
     def __init__(self, model=None):
+        r""" Initializes a new estimator.
+
+        Parameters
+        ----------
+        model : Model, optional, default=None
+            A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
+            capable of updating models, this can be used to resume the estimation process.
+        """
         self._model = model
 
     @abc.abstractmethod
     def fit(self, data, **kwargs):
-        """ performs a fit of this estimator with data. Creates a new model instance by default.
-        :param data:
-        :return: self
+        r""" Fits data to the estimator's internal :class:`Model` and overwrites it. This way, every call to
+        :meth:`fetch_model` yields an autonomous model instance. Sometimes a :code:`partial_fit` method is available,
+        in which case the model can get updated by the estimator.
+
+        Parameters
+        ----------
+        data : array_like
+            Data that is used to fit a model.
+        **kwargs
+            Additional kwargs.
+
+        Returns
+        -------
+        self : Estimator
+            Reference to self.
         """
         pass
 
-    def fetch_model(self) -> Model:
+    def fetch_model(self) -> Optional[Model]:
+        r""" Yields the estimated model. Can be None if :meth:`fit` was not called.
+
+        Returns
+        -------
+        model : Model or None
+            The estimated model or None.
+        """
         return self._model
 
     def __getattribute__(self, item):
@@ -119,9 +159,22 @@ class Estimator(_base_methods_mixin):
 
 
 class Transformer(object):
+    r""" Base class of all transformers. """
 
     @abc.abstractmethod
-    def transform(self, data):
+    def transform(self, data, **kwargs):
+        r"""Transforms the input data.
+
+        Parameters
+        ----------
+        data : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """
         pass
 
 

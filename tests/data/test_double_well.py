@@ -1,6 +1,6 @@
 import unittest
 
-from sktime.datasets import double_well_discrete
+from sktime.data import double_well_discrete
 from sktime.markovprocess.msm import MarkovStateModel
 
 

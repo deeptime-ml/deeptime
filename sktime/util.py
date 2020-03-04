@@ -1,14 +1,27 @@
+import collections
+import itertools
 import numbers
-from typing import Callable, Any
+from typing import Optional
 from weakref import WeakKeyDictionary
 
 import numpy as np
 
 
-def ensure_ndarray(arr, shape: tuple = None, ndim: int = None, dtype=None, size=None, allow_None=False) -> [np.ndarray,
-                                                                                                            None]:
-    if allow_None and arr is None:
-        return None
+def handle_n_jobs(value: Optional[int]):
+    if value is None:
+        return 1
+    else:
+        return value
+
+
+def ensure_ndarray(arr, shape: tuple = None, ndim: int = None, dtype=None, size=None,
+                   allow_none=False) -> [np.ndarray, None]:
+    if arr is None:
+        if allow_none:
+            return None
+        else:
+            raise ValueError("None not allowed!")
+    assert arr is not None
     if not isinstance(arr, np.ndarray):
         arr = np.asarray(arr, dtype=dtype)
     if shape is not None and arr.shape != shape:
@@ -61,6 +74,51 @@ def ensure_dtraj_list(dtrajs):
     if len(dtrajs) > 0 and isinstance(dtrajs[0], numbers.Integral):
         return [ensure_ndarray(dtrajs, dtype=np.int32)]
     return [ensure_ndarray(t, dtype=np.int32) for t in dtrajs]
+
+
+def is_iterable(I):
+    return isinstance(I, collections.Iterable)
+
+
+def is_iterable_of_types(l, supertype):
+    r""" Checks whether all elements of l are of type `supertype`. """
+    return is_iterable(l) and all(issubclass(t, supertype) for t, _ in itertools.groupby(l, type))
+
+
+def ensure_timeseries_data(input_data):
+    r""" Ensures that the input data is a time series. This means it must be an iterable of ndarrays or an ndarray
+    with dtype :attr:`np.float32` or :attr:`np.float64`.
+
+    Parameters
+    ----------
+    input_data : ndarray or list of ndarray, dtype float32 or float64
+        the input data
+
+    Returns
+    -------
+    data : list of ndarray
+        timeseries data
+    """
+    if not isinstance(input_data, list):
+        if not isinstance(input_data, np.ndarray):
+            raise ValueError('input data can not be converted to a list of arrays')
+        elif isinstance(input_data, np.ndarray):
+            if input_data.dtype not in (np.float32, np.float64):
+                raise ValueError('only float and double dtype is supported')
+            return [input_data]
+    else:
+        for i, x in enumerate(input_data):
+            if not isinstance(x, np.ndarray):
+                raise ValueError(f'element {i} of given input data list is not an array.')
+            else:
+                if x.dtype not in (np.float32, np.float64):
+                    raise ValueError('only float and double dtype is supported')
+                input_data[i] = x
+    grouped = itertools.groupby(input_data, type)
+    unique_types = [t for t, _ in grouped]
+    if len(unique_types) > 1:
+        raise ValueError("All arrays must be of same dtype, but got dtypes {}".format(unique_types))
+    return input_data
 
 
 def confidence_interval(data, conf=0.95):

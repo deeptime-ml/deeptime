@@ -605,9 +605,9 @@ def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0
 
 def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='auto', sparse_tol=0.0,
                column_selection=None, diag_only=False):
-    r""" Computes the first two unnormalized moments of X
+    r""" Computes the first two unnormalized moments of X.
 
-    Computes :math:`s = \sum_t x_t` and :math:`C = X^\top X` while exploiting
+    Computes :math:`s = \sum_t x_t` and :math:`C = X^{\top} X` while exploiting
     zero or constant columns in the data matrix.
 
     Parameters
@@ -631,9 +631,9 @@ def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mod
     sparse_tol: float
         Threshold for considering column to be zero in order to save computing
         effort when the data is sparse or almost sparse.
-        If max(abs(X[:, i])) < sparse_tol, then row i (and also column i if Y
+        If :code:`max(abs(X[:, i])) < sparse_tol`, then row i (and also column i if Y
         is not given) of the covariance matrix will be set to zero. If Y is
-        given and max(abs(Y[:, i])) < sparse_tol, then column i of the
+        given and :code:`max(abs(Y[:, i])) < sparse_tol`, then column i of the
         covariance matrix will be set to zero.
     column_selection: ndarray(k, dtype=int) or None
         Indices of those columns that are to be computed. If None, all columns are computed.
@@ -699,22 +699,22 @@ def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mod
 def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
                  modify_data=False, sparse_mode='auto', sparse_tol=0.0,
                  column_selection=None, diag_only=False):
-    r""" Computes the first two unnormalized moments of X and Y
+    r""" Computes the first two unnormalized moments of X and Y.
 
     If symmetrize is False, computes
 
-    .. math:
-        s_x  &=& \sum_t x_t
-        s_y  &=& \sum_t y_t
-        C_XX &=& X^\top X
-        C_XY &=& X^\top Y
+    .. math::
+        s_x  &= \sum_t x_t\\
+        s_y  &= \sum_t y_t\\
+        C_{XX} &= X^{\top} X\\
+        C_{XY} &= X^{\top} Y
 
     If symmetrize is True, computes
 
-    .. math:
-        s_x = s_y &=& \frac{1}{2} \sum_t(x_t + y_t)
-        C_XX      &=& \frac{1}{2} (X^\top X + Y^\top Y)
-        C_XY      &=& \frac{1}{2} (X^\top Y + Y^\top X)
+    .. math::
+        s_x = s_y &= \frac{1}{2} \sum_t (x_t + y_t)\\
+        C_XX      &= \frac{1}{2} (X^\top X + Y^\top Y)\\
+        C_XY      &= \frac{1}{2} (X^\top Y + Y^\top X)
 
     while exploiting zero or constant columns in the data matrix.
 
@@ -842,17 +842,17 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
 def moments_block(X, Y, remove_mean=False, modify_data=False,
                   sparse_mode='auto', sparse_tol=0.0,
                   column_selection=None, diag_only=False):
-    r""" Computes the first two unnormalized moments of X and Y
+    r""" Computes the first two unnormalized moments of X and Y forward and backward.
 
     Computes
 
-    .. math:
-        s_x  &=& \sum_t x_t
-        s_y  &=& \sum_t y_t
-        C_XX &=& X^\top X
-        C_XY &=& X^\top Y
-        C_YX &=& Y^\top X
-        C_YY &=& Y^\top Y
+    .. math::
+        s_x  &= \sum_t x_t\\
+        s_y  &= \sum_t y_t\\
+        C_{XX} &= X^\top X\\
+        C_{XY} &= X^\top Y\\
+        C_{YX} &= Y^\top X\\
+        C_{YY} &= Y^\top Y
 
     while exploiting zero or constant columns in the data matrix.
 
@@ -894,7 +894,6 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
     C : [[ndarray(M,M), ndarray(M,N)], [ndarray(N,M),ndarray(N,N)]]
         list of two lists with two elements.
         C[0,0] = Cxx, C[0,1] = Cxy, C[1,0] = Cyx, C[1,1] = Cyy
-
     """
     # diag_only is only implemented for dense mode
     if diag_only and sparse_mode is not 'dense':
@@ -974,15 +973,11 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
 
 
 def covar(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='auto', sparse_tol=0.0):
-    """ Computes the covariance matrix of X
+    """ Computes the covariance matrix of X.
 
-    Computes
+    Computes :math:`C_{XX} = X^{\\top} X` while exploiting zero or constant columns in the data matrix.
 
-    .. math:
-        C_XX &=& X^\top X
-
-    while exploiting zero or constant columns in the data matrix.
-    WARNING: Directly use moments_XX if you can. This function does an additional
+    WARNING: Directly use :meth:`moments_XX` if you can. This function does an additional
     constant-matrix multiplication and does not return the mean.
 
     Parameters
@@ -1006,9 +1001,9 @@ def covar(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='au
     sparse_tol: float
         Threshold for considering column to be zero in order to save computing
         effort when the data is sparse or almost sparse.
-        If max(abs(X[:, i])) < sparse_tol, then row i (and also column i if Y
+        If :code:`max(abs(X[:, i])) < sparse_tol`, then row i (and also column i if Y
         is not given) of the covariance matrix will be set to zero. If Y is
-        given and max(abs(Y[:, i])) < sparse_tol, then column i of the
+        given and :code:`max(abs(Y[:, i])) < sparse_tol`, then column i of the
         covariance matrix will be set to zero.
 
     Returns
@@ -1028,22 +1023,26 @@ def covar(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='au
 
 def covars(X, Y, remove_mean=False, modify_data=False, symmetrize=False, weights=None, sparse_mode='auto',
            sparse_tol=0.0):
-    """ Computes the covariance and cross-covariance matrix of X and Y
+    """ Computes the covariance and cross-covariance matrix of X and Y.
 
     If symmetrize is False, computes
 
-    .. math:
-        C_XX &=& X^\top X
-        C_XY &=& X^\top Y
+    .. math::
+
+        C_{XX} &= X^{\\top} X
+
+        C_{XY} &= X^{\\top} Y
 
     If symmetrize is True, computes
 
-    .. math:
-        C_XX      &=& \frac{1}{2} (X^\top X + Y^\top Y)
-        C_XY      &=& \frac{1}{2} (X^\top Y + Y^\top X)
+    .. math::
+
+        C_{XX} &= \\frac{1}{2} (X^{\\top} X + Y^{\\top} Y)
+
+        C_{XY} &= \\frac{1}{2} (X^{\\top} Y + Y^{\\top} X)
 
     while exploiting zero or constant columns in the data matrix.
-    WARNING: Directly use moments_XXXY if you can. This function does an additional
+    WARNING: Directly use :meth:`moments_XXXY` if you can. This function does an additional
     constant-matrix multiplication and does not return the mean.
 
     Parameters

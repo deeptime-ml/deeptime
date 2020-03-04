@@ -12,11 +12,19 @@ from ._hmm_bindings.util import viterbi as viterbi_impl
 
 
 class HiddenMarkovStateModel(Model):
-    """
-    Hidden Markov state model consisting of a transition model (MSM) on the hidden states, an output model which
-    maps from the hidden states to a distribution of observable states, and an initial distribution on the hidden
-    states. Some properties require a crisp assignment to states in the observable space, in which case only a
-    discrete output model can be used.
+    """ Hidden Markov state model consisting of a transition model
+    (:class:`MSM <sktime.markovprocess.msm.MarkovStateModel>`) on the hidden states, an
+    :class:`output model <OutputModel>` which maps from the hidden states to a distribution of observable states,
+    and optionally an initial distribution on the hidden states. Some properties require a crisp assignment to
+    states in the observable space, in which case only a discrete output model can be used.
+
+    See Also
+    --------
+    initial_guess_discrete_from_data : initial guess from data with discrete output model
+    initial_guess_discrete_from_msm : initial guess from MSM with discrete output model
+    initial_guess_gaussian_from_data : initial guess from data with Gaussian output model
+    MaximumLikelihoodHMSM : maximum likelihood estimation of HMSMs
+    BayesianHMSM : Bayesian sampling of models for confidences.
     """
 
     def __init__(self, transition_model,
@@ -341,7 +349,7 @@ class HiddenMarkovStateModel(Model):
         transition matrix :math:`P_c` as:
 
         .. math::
-            P (k \tau) = {\Pi}^-1 \chi^{\top} ({\Pi}_c) P_c^k (\tau) \chi
+            P (k \tau) = {\Pi}^{-1} \chi^{\top} ({\Pi}_c) P_c^k (\tau) \chi
 
         where :math:`\chi` is the output probability matrix, :math:`\Pi_c` is a diagonal matrix with the
         metastable-state (coarse) stationary distribution and :math:`\Pi` is a diagonal matrix with the
@@ -371,7 +379,7 @@ class HiddenMarkovStateModel(Model):
         -------
         l : ndarray(n_states)
             state lifetimes in units of the input trajectory time step,
-            defined by :math:`-\tau / ln \mid p_{ii} \mid, i = 1,...,n_states`, where
+            defined by :math:`-\tau / \ln \mid p_{ii} \mid, i = 1,...,n_\mathrm{states}`, where
             :math:`p_{ii}` are the diagonal entries of the hidden transition matrix.
         """
         return -self.transition_model.lagtime / np.log(np.diag(self.transition_model.transition_matrix))
@@ -541,7 +549,6 @@ class HiddenMarkovStateModel(Model):
         .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
             Markov models for calculating kinetics and metastable states of
             complex molecules. J. Chem. Phys. 139, 184114 (2013)
-
         """
         nonzero = np.nonzero(self.stationary_distribution_obs)[0]
         M = np.zeros((self.n_observation_states, self.transition_model.n_states))
@@ -634,7 +641,7 @@ class HiddenMarkovStateModel(Model):
         -------
         hidden state vector corresponding to observable state vector
         """
-        a = ensure_ndarray(a, ndim=ndim, allow_None=allow_none)
+        a = ensure_ndarray(a, ndim=ndim, allow_none=allow_none)
         if allow_none and a is None:
             return None
         if len(a) != self.n_observation_states:

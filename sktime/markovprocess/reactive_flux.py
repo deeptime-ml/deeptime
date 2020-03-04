@@ -34,26 +34,7 @@ class ReactiveFlux(Model):
     total transition rate or mean first passage time, and they can be coarse-grained onto a set discretization
     of the node set.
 
-    Fluxes can be computed in EMMA using transition path theory - see :func:`msmtools.tpt`
-
-    Parameters
-    ----------
-    A : array_like
-        List of integer state labels for set A
-    B : array_like
-        List of integer state labels for set B
-    flux : (n,n) ndarray or scipy sparse matrix
-        effective or net flux of A->B pathways
-    mu : (n,) ndarray (optional)
-        Stationary vector
-    qminus : (n,) ndarray (optional)
-        Backward committor for A->B reaction
-    qplus : (n,) ndarray (optional)
-        Forward committor for A-> B reaction
-    gross_flux : (n,n) ndarray or scipy sparse matrix
-        gross flux of A->B pathways, if available
-    physical_time : Quantity or None, optional
-        when the originating model has a lag time, output units will be scaled by it.
+    Fluxes can be computed using transition path theory - see [1]_ and :func:`msmtools.tpt`.
 
     Notes
     -----
@@ -63,8 +44,34 @@ class ReactiveFlux(Model):
     --------
     msmtools.tpt
 
+    References
+    ----------
+    .. [1] P. Metzner, C. Schuette and E. Vanden-Eijnden.
+           Transition Path Theory for Markov Jump Processes.
+           Multiscale Model Simul 7: 1192-1219 (2009)
     """
     def __init__(self, A, B, flux, mu=None, qminus=None, qplus=None, gross_flux=None, physical_time='1 step'):
+        r""" Constructs a new reactive flux model instance.
+
+        Parameters
+        ----------
+        A : array_like
+            List of integer state labels for set A
+        B : array_like
+            List of integer state labels for set B
+        flux : (n,n) ndarray or scipy sparse matrix
+            effective or net flux of A->B pathways
+        mu : (n,) ndarray (optional)
+            Stationary vector
+        qminus : (n,) ndarray (optional)
+            Backward committor for A->B reaction
+        qplus : (n,) ndarray (optional)
+            Forward committor for A-> B reaction
+        gross_flux : (n,n) ndarray or scipy sparse matrix
+            gross flux of A->B pathways, if available
+        physical_time : Quantity or None, optional
+            when the originating model has a lag time, output units will be scaled by it.
+        """
         # set data
         self._A = A
         self._B = B
@@ -73,18 +80,15 @@ class ReactiveFlux(Model):
         self._qminus = qminus
         self._qplus = qplus
         self._gross_flux = gross_flux
-        self.physical_time = physical_time
+        self._dt_model = Q_(physical_time)
         # compute derived quantities:
         self._totalflux = tptapi.total_flux(flux, A)
         self._kAB = tptapi.rate(self._totalflux, mu, qminus)
 
     @property
     def physical_time(self) -> Q_:
+        r""" Description of phyiscal time. """
         return self._dt_model
-
-    @physical_time.setter
-    def physical_time(self, value):
-        self._dt_model = Q_(value)
 
     @property
     def n_states(self):
@@ -96,18 +100,10 @@ class ReactiveFlux(Model):
         """set of reactant (source) states."""
         return self._A
 
-    @A.setter
-    def A(self, val):
-        self._A = val
-
     @property
     def B(self):
         """set of product (target) states"""
         return self._B
-
-    @B.setter
-    def B(self, val):
-        self._B = val
 
     @property
     def I(self):
@@ -119,10 +115,6 @@ class ReactiveFlux(Model):
         """stationary distribution"""
         return self._mu
 
-    @stationary_distribution.setter
-    def stationary_distribution(self, val):
-        self._mu = val
-
     @property
     def net_flux(self):
         """effective or net flux"""
@@ -130,7 +122,7 @@ class ReactiveFlux(Model):
 
     @property
     def gross_flux(self):
-        """gross A-->B flux"""
+        """gross :math:`A\\rightarrow B` flux"""
         return self._gross_flux / self._dt_model
 
     @property
@@ -150,12 +142,12 @@ class ReactiveFlux(Model):
 
     @property
     def rate(self):
-        """rate (inverse mfpt) of A-->B transitions"""
+        """rate (inverse mfpt) of :math:`A\\rightarrow B` transitions"""
         return self._kAB / self._dt_model
 
     @property
     def mfpt(self):
-        """mean-first-passage-time (inverse rate) of A-->B transitions"""
+        """mean-first-passage-time (inverse rate) of :math:`A\\rightarrow B` transitions"""
         return self._dt_model / self._kAB
 
     def pathways(self, fraction=1.0, maxiter=1000):
@@ -174,13 +166,6 @@ class ReactiveFlux(Model):
             List of dominant reaction pathways
         capacities: list
             List of capacities corresponding to each reactions pathway in paths
-
-        References
-        ----------
-        .. [1] P. Metzner, C. Schuette and E. Vanden-Eijnden.
-            Transition Path Theory for Markov Jump Processes.
-            Multiscale Model Simul 7: 1192-1219 (2009)
-
         """
         return pathways(self._flux, self.A, self.B,
                         fraction=fraction, maxiter=maxiter)

@@ -91,6 +91,7 @@ class _MSMBaseEstimator(Estimator):
 
     @property
     def reversible(self) -> bool:
+        r""" If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel """
         return self._reversible
 
     @reversible.setter
@@ -99,6 +100,11 @@ class _MSMBaseEstimator(Estimator):
 
     @property
     def sparse(self) -> bool:
+        r"""  If true compute count matrix, transition matrix and all derived quantities using sparse matrix algebra.
+        In this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
+        This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely
+        to be much more efficient.
+        """
         return self._sparse
 
     @sparse.setter
@@ -107,15 +113,21 @@ class _MSMBaseEstimator(Estimator):
 
 
 class BayesianPosterior(Model):
+    r""" Bayesian posterior from bayesian MSM sampling.
+
+    See Also
+    --------
+    sktime.markovprocess.msm.BayesianMSM : bayesian posterior estimator
+    """
     def __init__(self, prior=None, samples=None):
-        r"""
+        r""" Creates a new instance of this type of model.
 
         Parameters
         ----------
         prior : sktime.markovprocess.msm.MarkovStateModel, optional, default=None
-            the prior
+            The prior.
         samples : list of sktime.markovprocess.msm.MarkovStateModel, optional, default=None
-            sampled models
+            Sampled models.
         """
         self._prior = prior
         self._samples = samples
@@ -158,7 +170,8 @@ class BayesianPosterior(Model):
 
         Returns
         -------
-        A posterior with prior and samples restricted to specified states.
+        submodel : BayesianPosterior
+            A posterior with prior and samples restricted to specified states.
         """
         return BayesianPosterior(
             prior=self.prior.submodel(states),
@@ -166,7 +179,7 @@ class BayesianPosterior(Model):
         )
 
     def gather_stats(self, quantity, store_samples=False, delimiter='/', *args, **kwargs):
-        """ obtain statistics about a sampled quantity
+        """ Obtain statistics about a sampled quantity. Can also be a chained call, separated by the delimiter.
 
         Parameters
         ----------
@@ -177,9 +190,15 @@ class BayesianPosterior(Model):
             whether to store the samples (array).
         delimiter : str, optional, default='/'
             separator to call members of members
-        args: pass-through
-        kwargs : pass-through
+        *args
+            pass-through
+        **kwargs
+            pass-through
 
+        Returns
+        -------
+        statistics : QuantityStatistics
+            The statistics
         """
         from sktime.util import call_member
         samples = self.samples
@@ -212,7 +231,6 @@ class QuantityStatistics(Model):
         element-wise lower bounds
     R : ndarray(shape)
         element-wise upper bounds
-
     """
 
     def __init__(self, samples: typing.List[np.ndarray], quantity, store_samples=False):
@@ -240,7 +258,9 @@ class QuantityStatistics(Model):
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
              score_k=10, random_state=None):
-    r""" Scores the MSM using the variational approach for Markov processes [1]_ [2]_ and cross-validation [3]_ .
+    r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
+
+    Implementation and ideas following [1]_ [2]_ and cross-validation [3]_.
 
     Divides the data into training and test data, fits a MSM using the training
     data using the parameters of this estimator, and scores is using the test

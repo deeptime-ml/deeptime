@@ -9,8 +9,9 @@ from sktime.numeric import mdot
 
 # TODO: should pass pi to msmtools once it's supported.
 def pcca(P, m, stationary_distribution=None):
-    """PCCA+ spectral clustering method with optimized memberships [1]_
+    """PCCA+ spectral clustering method with optimized memberships.
 
+    Implementation according to [1]_.
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
     This function does not assume that the transition matrix is fully connected. Disconnected sets
     will automatically define the first metastable states, with perfect membership assignments.
@@ -28,9 +29,9 @@ def pcca(P, m, stationary_distribution=None):
 
     References
     ----------
-    [1] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
-        application to Markov state models and data classification.
-        Adv Data Anal Classif 7, 147-179 (2013).
+    .. [1] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
+           application to Markov state models and data classification.
+           Adv Data Anal Classif 7, 147-179 (2013).
     """
     if m <= 0 or m > P.shape[0]:
         raise ValueError("Number of metastable sets must be larger than 0 and can be at most as large as the number "
@@ -78,42 +79,47 @@ def pcca(P, m, stationary_distribution=None):
 
 class PCCAModel(Model):
     """
-    Model for PCCA+ spectral clustering method with optimized memberships [1]_
+    Model for PCCA+ spectral clustering method with optimized memberships.
+
+    PCCA+ spectral clustering is described in [1]_ .
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
     This function does not assume that the transition matrix is fully connected. Disconnected sets
     will automatically define the first metastable states, with perfect membership assignments.
 
-    Parameters
-    ----------
-    P_coarse : ndarray (n,n)
-        Coarse transition matrix.
-    pi_coarse : ndarray (n,)
-        Coarse stationary distribution
-    memberships : ndarray (n,m)
-        The pcca memberships to clusters
-    metastable_distributions : ndarray (m, n)
-        metastable distributions
-
     References
     ----------
-    [1] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
-        application to Markov state models and data classification.
-        Adv Data Anal Classif 7, 147-179 (2013).
-    [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
-        Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
-        J. Chem. Phys. 139, 184114 (2013)
+    .. [1] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
+           application to Markov state models and data classification.
+           Adv Data Anal Classif 7, 147-179 (2013).
+    .. [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
+           Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
+           J. Chem. Phys. 139, 184114 (2013)
     """
 
     def __init__(self, P_coarse, pi_coarse, memberships, metastable_distributions):
+        r""" Creates a new model instance.
+
+        Parameters
+        ----------
+        P_coarse : ndarray (n,n)
+            Coarse transition matrix.
+        pi_coarse : ndarray (n,)
+            Coarse stationary distribution
+        memberships : ndarray (n,m)
+            The pcca memberships to clusters
+        metastable_distributions : ndarray (m, n)
+            metastable distributions
+        """
         self._P_coarse = P_coarse
         self._pi_coarse = pi_coarse
         self._memberships = memberships
         self._metastable_distributions = metastable_distributions
-        self.m = self._memberships.shape[1]
+        self._m = self._memberships.shape[1]
 
     @property
     def n_metastable(self):
-        return self.m
+        r""" Number of metastable states. """
+        return self._m
 
     @property
     def memberships(self):
@@ -149,10 +155,12 @@ class PCCAModel(Model):
 
     @property
     def coarse_grained_transition_matrix(self):
+        r""" Coarse grained transition matrix with :attr:`n_metastable` states. """
         return self._P_coarse
 
     @property
     def coarse_grained_stationary_probability(self):
+        r""" Stationary distribution for :attr:`coarse_grained_transition_matrix`. """
         return self._pi_coarse
 
     @property
@@ -193,6 +201,6 @@ class PCCAModel(Model):
         """
         res = []
         assignment = self.assignments
-        for i in range(self.m):
+        for i in range(self.n_metastable):
             res.append(np.where(assignment == i)[0])
         return res

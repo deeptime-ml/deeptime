@@ -18,19 +18,40 @@
 
 
 r"""
-===============================================================================
-clustering - Algorithms (:mod:`pyemma.coordinates.clustering`)
-===============================================================================
+.. currentmodule: sktime.clustering
 
-.. currentmodule: pyemma.coordinates.clustering
+===============================================================================
+K-Means
+===============================================================================
 
 .. autosummary::
     :toctree: generated/
 
     KmeansClustering
+    MiniBatchKmeansClustering
+    KMeansClusteringModel
+
+===============================================================================
+Regular space clustering
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+
     RegularSpaceClustering
+    ClusterModel
+
+===============================================================================
+Adding a new metric
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+
+    _clustering_bindings.Metric
 """
 
-from .kmeans import KmeansClustering
-from .kmeans import MiniBatchKmeansClustering
+from .kmeans import KmeansClustering, MiniBatchKmeansClustering, KMeansClusteringModel
 from .regspace import RegularSpaceClustering
+from .cluster_model import ClusterModel
+from ._clustering_bindings import Metric

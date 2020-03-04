@@ -372,10 +372,10 @@ class TestCovarEstimatorWeightsList(unittest.TestCase):
         weights = [np.random.random(n) for _ in range(3)]
         weights[0] = weights[0][:-3]
         with self.assertRaises(ValueError):
-            OnlineCovariance(compute_c0t=True).fit(data, weights=weights)
+            OnlineCovariance(1, compute_c0t=True).fit(data, weights=weights)
 
         with self.assertRaises(ValueError):
-            OnlineCovariance(compute_c0t=True).fit(data, weights=weights[:10])
+            OnlineCovariance(1, compute_c0t=True).fit(data, weights=weights[:10])
 
     def test_re_estimate_weight_types(self):
         # check different types are allowed and re-estimation works
