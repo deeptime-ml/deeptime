@@ -6,8 +6,8 @@ from sklearn.pipeline import Pipeline
 
 import sktime.clustering.kmeans as kmeans
 import sktime.decomposition.tica as tica
-import sktime.markovprocess.msm as msm
-from sktime.markovprocess import TransitionCountEstimator
+import sktime.markov.msm as msm
+from sktime.markov import TransitionCountEstimator
 
 
 class TestSkLearnCompat(unittest.TestCase):

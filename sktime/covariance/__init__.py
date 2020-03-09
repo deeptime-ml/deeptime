@@ -8,8 +8,8 @@ Estimation
 .. autosummary::
     :toctree: generated/
 
-    OnlineCovariance
-    OnlineCovarianceModel
+    Covariance
+    CovarianceModel
 
 ===============================================================================
 Koopman reweighting
@@ -37,5 +37,5 @@ Implementations
 """
 
 from .util.moments import moments_XX, moments_XXXY, moments_block, covar, covars
-from .online_covariance import OnlineCovariance, OnlineCovarianceModel
-from .online_covariance import KoopmanEstimator, KoopmanModel
+from .covariance import Covariance, CovarianceModel
+from .covariance import KoopmanEstimator, KoopmanModel

@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 
 from ..base import Model, Estimator, Transformer
-from ..covariance.online_covariance import OnlineCovariance
+from ..covariance.covariance import Covariance
 from ..numeric.eigen import eig_corr
 from ..util import cached_property
 
@@ -21,8 +21,8 @@ class TICAModel(Model, Transformer):
     --------
     TICA : TICA estimator
     """
-    def __init__(self, lagtime: int, mean_0: np.ndarray, cov_00: np.ndarray, cov_0t: np.ndarray,
-                 dim: Optional[Real], epsilon=1e-6, scaling=None):
+    def __init__(self, lagtime: int, mean_0: np.ndarray, cov_00: np.ndarray, cov_0t: np.ndarray, dim: Optional[Real],
+                 epsilon=1e-6, scaling=None):
         r"""
         Initializes a new TICA model.
 
@@ -44,6 +44,7 @@ class TICAModel(Model, Transformer):
         scaling : str, optional, default=None
             Scaling parameter, see :attr:`TICA.scaling`.
         """
+        super().__init__()
         self._lagtime = lagtime
         self._cov_00 = cov_00
         self._cov_0t = cov_0t
@@ -53,13 +54,15 @@ class TICAModel(Model, Transformer):
         self._scaling = scaling
         self._rank = None
 
-    def transform(self, data):
+    def transform(self, data, **kw):
         r""" Removes mean from data and projects it into the TICA basis.
 
         Parameters
         ----------
         data : ndarray
             Input data.
+        **kw
+            Ignored kwargs
 
         Returns
         -------
@@ -385,9 +388,9 @@ class TICA(Estimator, Transformer):
 
         # online cov parameters
         self.reversible = reversible
-        self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=False,
-                                       remove_data_mean=True, reversible=self.reversible, bessels_correction=False,
-                                       ncov=ncov)
+        self._covar = Covariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=False,
+                                 remove_data_mean=True, reversible=self.reversible, bessels_correction=False,
+                                 ncov=ncov)
 
     @property
     def epsilon(self) -> float:
@@ -458,13 +461,15 @@ class TICA(Estimator, Transformer):
             raise ValueError("Invalid type for dimension, got {}".format(value))
         self._dim = value
 
-    def transform(self, data):
+    def transform(self, data, **kw):
         r"""Projects the data onto the dominant independent components.
 
         Parameters
         ----------
         data : ndarray(n, m)
             the input data
+        **kw
+            Ignored kwargs
 
         Returns
         -------
@@ -473,16 +478,19 @@ class TICA(Estimator, Transformer):
         """
         return self.fetch_model().transform(data)
 
-    def partial_fit(self, X, weights=None, column_selection=None):
+    def partial_fit(self, data, weights=None, column_selection=None):
         """ incrementally update the covariances and mean.
 
         Parameters
         ----------
-        X: array, list of arrays
+        data : array, list of arrays
             input data.
-            :param weights:
+        weights : array or list of arrays, optional, default=None
+            Optional reweighting factors.
+        column_selection : ndarray, optional, default=None
+            Columns of the trajectories to restrict estimation to. Must be given in terms of an index array.
         """
-        self._covar.partial_fit(X, weights=weights, column_selection=column_selection)
+        self._covar.partial_fit(data, weights=weights, column_selection=column_selection)
         return self
 
     def fit(self, data, lagtime=None, weights=None, column_selection=None, **kw):

@@ -90,7 +90,7 @@ class KmeansClustering(Estimator, Transformer):
     .. [1] Arthur, David, and Sergei Vassilvitskii. k-means++: The advantages of careful seeding. Stanford, 2006.
     """
 
-    def __init__(self, n_clusters: int, max_iter: int = 5, metric=None,
+    def __init__(self, n_clusters: int, max_iter: int = 500, metric=None,
                  tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None, random_state=None):
         r"""
@@ -255,7 +255,7 @@ class KmeansClustering(Estimator, Transformer):
         """
         return self._model
 
-    def transform(self, data):
+    def transform(self, data, **kw):
         """
         Transforms a trajectory to a discrete trajectory by assigning each frame to its respective cluster center.
 
@@ -263,6 +263,9 @@ class KmeansClustering(Estimator, Transformer):
         ----------
         data : (T, n) ndarray
             trajectory with `T` frames and data points in `n` dimensions.
+        **kw
+            ignored kwargs for scikit-learn compatibility
+
         Returns
         -------
         discrete_trajectory : (T, 1) ndarray, dtype=int
@@ -338,7 +341,7 @@ class KmeansClustering(Estimator, Transformer):
             return data[self.random_state.randint(0, len(data), size=self.n_clusters)]
         elif self.init_strategy == 'kmeans++':
             return _bd.kmeans.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, n_jobs,
-                                                 callback, self.metric)
+                                                callback, self.metric)
         else:
             raise ValueError(f"Unknown cluster center initialization strategy \"{strategy}\", supported are "
                              f"\"uniform\" and \"kmeans++\"")

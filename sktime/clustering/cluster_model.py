@@ -25,6 +25,7 @@ class ClusterModel(Model, Transformer):
         converged : bool, optional, default=False
             Whether the estimation converged.
         """
+        super().__init__()
         self._n_clusters = n_clusters
         self._cluster_centers = cluster_centers
         self._metric = metric

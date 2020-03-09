@@ -8,7 +8,7 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('covariance')
     config.add_subpackage('data')
     config.add_subpackage('decomposition')
-    config.add_subpackage('markovprocess')
+    config.add_subpackage('markov')
     config.add_subpackage('numeric')
 
     from Cython.Build import cythonize

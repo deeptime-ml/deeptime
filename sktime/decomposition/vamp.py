@@ -14,9 +14,9 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
+"""
 @author: paul, marscher, wu, noe
-'''
+"""
 
 
 import warnings
@@ -27,7 +27,7 @@ from typing import Optional, Union
 import numpy as np
 
 from ..base import Model, Estimator
-from ..covariance.online_covariance import OnlineCovariance, OnlineCovarianceModel
+from ..covariance.covariance import Covariance, CovarianceModel
 from ..numeric import mdot
 from ..numeric.eigen import spd_inv_split, spd_inv_sqrt
 from ..util import cached_property
@@ -46,13 +46,12 @@ class VAMPModel(Model):
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
                                                                     'left_singular_vecs', 'right_singular_vecs'])
 
-    def __init__(self, cov: OnlineCovarianceModel, dim=None, epsilon=1e-6,
-                 scaling=None, right=True):
+    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6, scaling=None, right=True):
         r""" Creates a new model instance.
 
         Parameters
         ----------
-        cov : OnlineCovarianceModel
+        cov : CovarianceModel
             Estimated covariances.
         dim : int or float or None, optional, default=None
             Dimension parameter, see :attr:`VAMP.dim` for a more detailed description. The effective dimension can be
@@ -64,6 +63,7 @@ class VAMPModel(Model):
         right : bool, optional, default=True
             Whether right or left eigenvectors should be used for projection.
         """
+        super().__init__()
         self._cov = cov
         self._dim = dim
         self._epsilon = epsilon
@@ -139,33 +139,33 @@ class VAMPModel(Model):
         return self._decomposition.singular_values
 
     @property
-    def cov(self) -> OnlineCovarianceModel:
+    def cov(self) -> CovarianceModel:
         r""" Estimated covariances. """
         return self._cov
 
     @property
     def mean_0(self) -> np.ndarray:
-        r""" Shortcut to :attr:`mean_0 <sktime.covariance.OnlineCovarianceModel.mean_0>`. """
+        r""" Shortcut to :attr:`mean_0 <sktime.covariance.CovarianceModel.mean_0>`. """
         return self.cov.mean_0
 
     @property
     def mean_t(self) -> np.ndarray:
-        r""" Shortcut to :attr:`mean_t <sktime.covariance.OnlineCovarianceModel.mean_t>`. """
+        r""" Shortcut to :attr:`mean_t <sktime.covariance.CovarianceModel.mean_t>`. """
         return self.cov.mean_t
 
     @property
     def cov_00(self) -> np.ndarray:
-        r""" Shortcut to :attr:`cov_00 <sktime.covariance.OnlineCovarianceModel.cov_00>`. """
+        r""" Shortcut to :attr:`cov_00 <sktime.covariance.CovarianceModel.cov_00>`. """
         return self.cov.cov_00
 
     @property
     def cov_0t(self) -> np.ndarray:
-        r""" Shortcut to :attr:`cov_0t <sktime.covariance.OnlineCovarianceModel.cov_0t>`. """
+        r""" Shortcut to :attr:`cov_0t <sktime.covariance.CovarianceModel.cov_0t>`. """
         return self.cov.cov_0t
 
     @property
     def cov_tt(self) -> np.ndarray:
-        r""" Shortcut to :attr:`cov_tt <sktime.covariance.OnlineCovarianceModel.cov_tt>`. """
+        r""" Shortcut to :attr:`cov_tt <sktime.covariance.CovarianceModel.cov_tt>`. """
         return self.cov.cov_tt
 
     @staticmethod
@@ -598,9 +598,9 @@ class VAMP(Estimator):
         self.right = right
         self.epsilon = epsilon
         self.ncov = ncov
-        self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=True,
-                                       remove_data_mean=True, reversible=False, bessels_correction=False,
-                                       ncov=self.ncov)
+        self._covar = Covariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=True,
+                                 remove_data_mean=True, reversible=False, bessels_correction=False,
+                                 ncov=self.ncov)
         self.lagtime = lagtime
 
     @property

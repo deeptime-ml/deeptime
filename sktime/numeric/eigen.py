@@ -28,10 +28,10 @@ def sort_by_norm(evals, evecs):
     # norms
     evnorms = _np.abs(evals)
     # sort
-    I = _np.argsort(evnorms)[::-1]
+    indices = _np.argsort(evnorms)[::-1]
     # permute
-    evals2 = evals[I]
-    evecs2 = evecs[:, I]
+    evals2 = evals[indices]
+    evecs2 = evecs[:, indices]
     # done
     return evals2, evecs2
 
@@ -131,7 +131,7 @@ def spd_inv(W, epsilon=1e-10, method='QR'):
         the Moore-Penrose inverse of the symmetric positive-definite matrix :math:`W`
 
     """
-    if (_np.shape(W)[0] == 1):
+    if _np.shape(W)[0] == 1:
         if W[0, 0] < epsilon:
             raise ZeroRankError(
                 'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)
@@ -154,14 +154,16 @@ def spd_inv_sqrt(W, epsilon=1e-10, method='QR', return_rank=False):
     ----------
     W : ndarray((m,m), dtype=float)
         Symmetric positive-definite (spd) matrix.
-    epsilon : float
-        Truncation parameter. Eigenvalues with norms smaller than this cutoff will
-        be removed.
-    method : str
+    epsilon : float, optional, default=1e-10
+        Truncation parameter. Eigenvalues with norms smaller than this cutoff will be removed.
+    method : str, optional, default='QR'
         Method to perform the decomposition of :math:`W` before inverting. Options are:
 
         * 'QR': QR-based robust eigenvalue decomposition of W
         * 'schur': Schur decomposition of W
+
+    return_rank : bool, optional, default=False
+        Whether to return the rank of W.
 
     Returns
     -------
@@ -205,8 +207,9 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
         * 'QR': QR-based robust eigenvalue decomposition of W
         * 'schur': Schur decomposition of W
 
-     canonical_signs : boolean, default = False
+    canonical_signs : boolean, default = False
         Fix signs in L, s. t. the largest element of in every row of L is positive.
+
 
     Returns
     -------
@@ -214,7 +217,7 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
         Matrix :math:`L` from the decomposition :math:`W^{-1} = L L^T`.
 
     """
-    if (_np.shape(W)[0] == 1):
+    if _np.shape(W)[0] == 1:
         if W[0, 0] < epsilon:
             raise ZeroRankError(
                 'All eigenvalues are smaller than %g, rank reduction would discard all dimensions.' % epsilon)

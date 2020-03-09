@@ -731,8 +731,6 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
     weights : None or ndarray(T, )
         weights assigned to each trajectory point of X. If None, all data points have weight one.
         If ndarray, each data point is assigned a separate weight.
-    time_lagged : bool,
-        indicates that Y is a time-lagged version of X.
     modify_data : bool
         If remove_mean=True, the mean will be removed in the data matrix X,
         without creating an independent copy. This option is faster but might

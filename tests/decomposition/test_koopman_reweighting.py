@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import pkg_resources
 
-from sktime.covariance.online_covariance import KoopmanModel
+from sktime.covariance import KoopmanModel
 from sktime.data.util import timeshifted_split
 from sktime.numeric.eigen import sort_by_norm
 import numpy.linalg as scl
@@ -203,7 +203,7 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(out_traj_eq, ev_traj_eq)
 
     def test_koopman_estimator_partial_fit(self):
-        from sktime.covariance.online_covariance import KoopmanEstimator
+        from sktime.covariance import KoopmanEstimator
         est = KoopmanEstimator(lagtime=self.tau)
         data_lagged = timeshifted_split(self.data, lagtime=self.tau, n_splits=10)
         for traj in data_lagged:
@@ -214,7 +214,7 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(m.const_weight_input, self.weight_obj.const_weight_input)
 
     def test_koopman_estimator_fit(self):
-        from sktime.covariance.online_covariance import KoopmanEstimator
+        from sktime.covariance import KoopmanEstimator
         est = KoopmanEstimator(lagtime=self.tau)
         est.fit(self.data)
         m = est.fetch_model()
