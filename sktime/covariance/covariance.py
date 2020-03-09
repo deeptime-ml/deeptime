@@ -9,15 +9,15 @@ from ..data.util import timeshifted_split
 from ..numeric.eigen import spd_inv_split, sort_by_norm
 from .util.running_moments import running_covar as running_covar
 
-__all__ = ['OnlineCovariance', 'OnlineCovarianceModel', 'KoopmanEstimator', 'KoopmanModel']
+__all__ = ['Covariance', 'CovarianceModel', 'KoopmanEstimator', 'KoopmanModel']
 
 __author__ = 'paul, nueske, marscher, clonker'
 
 from ..util import ensure_timeseries_data
 
 
-class OnlineCovarianceModel(Model):
-    r""" A model which in particular carries the estimated covariances, means from a :class:`OnlineCovariance`.
+class CovarianceModel(Model):
+    r""" A model which in particular carries the estimated covariances, means from a :class:`Covariance`.
     """
     def __init__(self, cov_00=None, cov_0t=None, cov_tt=None, mean_0=None, mean_t=None, bessels_correction=True):
         r"""
@@ -26,11 +26,11 @@ class OnlineCovarianceModel(Model):
         Parameters
         ----------
         cov_00 : (n, n) ndarray, optional, default=None
-            The instantaneous covariances if computed (see :attr:`OnlineCovariance.compute_c00`).
+            The instantaneous covariances if computed (see :attr:`Covariance.compute_c00`).
         cov_0t : (n, n) ndarray, optional, default=None
-            The time-lagged covariances if computed (see :attr:`OnlineCovariance.compute_c0t`).
+            The time-lagged covariances if computed (see :attr:`Covariance.compute_c0t`).
         cov_tt : (n, n) ndarray, optional, default=None
-            The time-lagged instantaneous covariances if computed (see :attr:`OnlineCovariance.compute_ctt`).
+            The time-lagged instantaneous covariances if computed (see :attr:`Covariance.compute_ctt`).
         mean_0 : (n,) ndarray, optional, default=None
             The instantaneous means if computed.
         mean_t : (n,) ndarray, optional, default=None
@@ -38,6 +38,7 @@ class OnlineCovarianceModel(Model):
         bessels_correction : bool, optional, default=True
             Whether Bessel's correction was used during estimation.
         """
+        super(CovarianceModel, self).__init__()
         self._cov_00 = cov_00
         self._cov_0t = cov_0t
         self._cov_tt = cov_tt
@@ -94,7 +95,7 @@ class OnlineCovarianceModel(Model):
         return self._bessel
 
 
-class OnlineCovariance(Estimator):
+class Covariance(Estimator):
     r"""Compute (potentially lagged) covariances between data in an online fashion.
 
     This means computing
@@ -144,14 +145,14 @@ class OnlineCovariance(Estimator):
             statistical weight using the pairwise combination algorithm described in [1]_.
         diag_only: bool
             If True, the computation is restricted to the diagonal entries (autocorrelations) only.
-        model : OnlineCovarianceModel, optional, default=None
+        model : CovarianceModel, optional, default=None
             A model instance with which the estimator can be initialized.
         """
 
         if (compute_c0t or compute_ctt) and lagtime is None:
             raise ValueError('lagtime parameter mandatory due to requested covariance matrices.')
 
-        super(OnlineCovariance, self).__init__(model=model)
+        super(Covariance, self).__init__(model=model)
         self.lagtime = lagtime
         self.compute_c00 = compute_c00
         self.compute_c0t = compute_c0t
@@ -334,7 +335,7 @@ class OnlineCovariance(Estimator):
 
         Returns
         -------
-        self : OnlineCovariance
+        self : Covariance
             Reference to self.
         """
         data = ensure_timeseries_data(data)
@@ -394,12 +395,12 @@ class OnlineCovariance(Estimator):
                               'Input is too high-dimensional ({} dimensions). '.format(x.shape[1]))
         return self
 
-    def fetch_model(self) -> OnlineCovarianceModel:
+    def fetch_model(self) -> CovarianceModel:
         r""" Finalizes the covariance computation by aggregating all moment storages.
 
         Returns
         -------
-        model : OnlineCovarianceModel
+        model : CovarianceModel
             The covariance model.
         """
         cov_00 = cov_tt = cov_0t = mean_0 = mean_t = None
@@ -415,7 +416,7 @@ class OnlineCovariance(Estimator):
         if self.compute_ctt or self.compute_c0t:
             mean_t = self._rc.mean_Y()
         if self._model is None:
-            self._model = OnlineCovarianceModel()
+            self._model = CovarianceModel()
         self._model.__init__(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
                              bessels_correction=self.bessels_correction)
         return self._model
@@ -446,7 +447,7 @@ class KoopmanModel(Model, Transformer):
             Koopman operator in modified basis.
         whitening_transformation : ndarray, optional, default=None
             Whitening transformation.
-        covariances : OnlineCovarianceModel, optional, default=None
+        covariances : CovarianceModel, optional, default=None
             Estimated covariances.
         """
         self._u = u
@@ -507,16 +508,16 @@ class KoopmanModel(Model, Transformer):
         return self._whitening_transformation
 
     @property
-    def covariances(self) -> OnlineCovarianceModel:
+    def covariances(self) -> CovarianceModel:
         r""" Covariance model which was used to compute the Koopman model.
 
-        :type: OnlineCovarianceModel or None
+        :type: CovarianceModel or None
         """
         return self._covariances
 
 
 class KoopmanEstimator(Estimator, Transformer):
-    r"""Computes Koopman operator and weights that can be plugged into the :class:`OnlineCovariance` estimator.
+    r"""Computes Koopman operator and weights that can be plugged into the :class:`Covariance` estimator.
     The weights are determined by the procedure described in [1]_.
 
     References
@@ -542,8 +543,8 @@ class KoopmanEstimator(Estimator, Transformer):
         self.epsilon = epsilon
         if ncov == 'inf':
             ncov = int(2**10000)
-        self._cov = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, remove_data_mean=True,
-                                     reversible=False, bessels_correction=False, ncov=ncov)
+        self._cov = Covariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, remove_data_mean=True,
+                               reversible=False, bessels_correction=False, ncov=ncov)
 
     def fit(self, data, lagtime=None, **kw):
         r""" Fits a new model.

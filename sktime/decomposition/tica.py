@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 
 from ..base import Model, Estimator, Transformer
-from ..covariance.online_covariance import OnlineCovariance
+from ..covariance.covariance import Covariance
 from ..numeric.eigen import eig_corr
 from ..util import cached_property
 
@@ -385,9 +385,9 @@ class TICA(Estimator, Transformer):
 
         # online cov parameters
         self.reversible = reversible
-        self._covar = OnlineCovariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=False,
-                                       remove_data_mean=True, reversible=self.reversible, bessels_correction=False,
-                                       ncov=ncov)
+        self._covar = Covariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=False,
+                                 remove_data_mean=True, reversible=self.reversible, bessels_correction=False,
+                                 ncov=ncov)
 
     @property
     def epsilon(self) -> float:
