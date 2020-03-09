@@ -470,7 +470,8 @@ class BayesianHMSM(Estimator):
             for obs in observations
         ]
 
-    def _sample_hidden_state_trajectory(self, model: HiddenMarkovStateModel, obs, temp_alpha):
+    @staticmethod
+    def _sample_hidden_state_trajectory(model: HiddenMarkovStateModel, obs, temp_alpha):
         """Sample a hidden state trajectory from the conditional distribution P(s | T, E, o)
 
         Parameters
@@ -500,7 +501,8 @@ class BayesianHMSM(Estimator):
 
         return S
 
-    def _update_emission_probabilities(self, model: HiddenMarkovStateModel, observations):
+    @staticmethod
+    def _update_emission_probabilities(model: HiddenMarkovStateModel, observations):
         """Sample a new set of emission probabilites from the conditional distribution P(E | S, O) """
         observations_by_state = [model.collect_observations_in_state(observations, state)
                                  for state in range(model.n_hidden_states)]

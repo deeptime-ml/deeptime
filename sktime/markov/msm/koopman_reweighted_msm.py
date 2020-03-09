@@ -167,7 +167,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         # Rank decision:
         rank_ind = rank_decision(smean, sdev, tol=self.tol_rank)
         # Estimate OOM components:
-        Xi, omega, sigma, l = oom_components(count_model.count_matrix.toarray(), C2t, rank_ind=rank_ind,
+        Xi, omega, sigma, eigenvalues = oom_components(count_model.count_matrix.toarray(), C2t, rank_ind=rank_ind,
                                              lcc=count_model.active_set)
         # Compute transition matrix:
         P, lcc_new = equilibrium_transition_matrix(Xi, omega, sigma, reversible=self.reversible)
@@ -186,7 +186,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
 
         self._model = KoopmanReweightedMSM(
             transition_matrix=P,
-            eigenvalues_OOM=l,
+            eigenvalues_OOM=eigenvalues,
             sigma=sigma,
             omega=omega,
             count_model=count_model,

@@ -212,6 +212,8 @@ def vamp_e_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_tes
         U = U[:, :k]
         S = np.diag(s[:k])
         V = V[:, :k]
+    else:
+        S = np.diag(s)
     score = np.trace(2.0 * mdot(V, S, U.T, C0t_test) - mdot(V, S, U.T, C00_test, U, S, V.T, Ctt_test))
     return score
 

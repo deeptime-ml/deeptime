@@ -22,7 +22,7 @@ int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
     // compare first and last row to get constant candidates
     std::size_t i, j;
     std::size_t ro;
-    std::size_t M = np_X.shape(0), N = np_X.shape(1);
+    std::size_t M = static_cast<std::size_t>(np_X.shape(0)), N = static_cast<std::size_t>(np_X.shape(1));
     dtype diff;
     std::size_t nconstant = N;  // current number of constant columns
     auto cols = np_cols.mutable_data(0);

@@ -10,7 +10,7 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
 
     Parameters
     ----------
-    dtraj : array_like or list of array_like
+    dtrajs : array_like or list of array_like
         Discretized trajectory or list of discretized trajectories. Negative elements will be ignored
     subset : ndarray((n)), optional, default = None
         array of states to be indexed. By default all states in dtrajs will be used

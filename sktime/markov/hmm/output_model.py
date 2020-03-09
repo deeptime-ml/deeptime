@@ -2,9 +2,9 @@ import abc
 from typing import Optional, List
 
 import numpy as np
-from sktime.markov.hmm._hmm_bindings import output_models as _bindings
+from ._hmm_bindings import output_models as _bindings
 
-from sktime.base import Model
+from ...base import Model
 
 
 class OutputModel(Model, metaclass=abc.ABCMeta):
@@ -34,6 +34,7 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
             :code:`ignore_outliers=False` means that an Exception or in the worst case an
             unhandled crash will occur if an outlier is observed.
         """
+        super().__init__()
         self._n_hidden_states = n_hidden_states
         self._n_observable_states = n_observable_states
         self._ignore_outliers = ignore_outliers
@@ -220,7 +221,7 @@ class DiscreteOutputModel(OutputModel):
 
         Parameters
         ----------
-        obs : ndarray((T), dtype=int)
+        observations : ndarray((T), dtype=int)
             a discrete trajectory of length T
 
         Return

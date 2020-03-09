@@ -14,9 +14,9 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
+"""
 @author: paul, marscher, wu, noe
-'''
+"""
 
 
 import warnings
@@ -46,8 +46,7 @@ class VAMPModel(Model):
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
                                                                     'left_singular_vecs', 'right_singular_vecs'])
 
-    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6,
-                 scaling=None, right=True):
+    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6, scaling=None, right=True):
         r""" Creates a new model instance.
 
         Parameters
@@ -64,6 +63,7 @@ class VAMPModel(Model):
         right : bool, optional, default=True
             Whether right or left eigenvectors should be used for projection.
         """
+        super().__init__()
         self._cov = cov
         self._dim = dim
         self._epsilon = epsilon

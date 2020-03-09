@@ -1,3 +1,4 @@
+import abc
 import typing
 
 import numpy as np
@@ -25,7 +26,8 @@ def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None
         True for splitting trajectories for sliding count, False if lag-sampling will be applied
     shift : None or int
         Start of first full tau-window. If None, shift will be randomly generated
-
+    random_state : None or int or np.random.RandomState
+        Random seed to use.
     """
     from sklearn.utils.random import check_random_state
     dtrajs_new = []
@@ -55,7 +57,8 @@ def cvsplit_dtrajs(dtrajs, random_state=None):
     ----------
     dtrajs : list of ndarray(int)
         Discrete trajectories
-
+    random_state : None or int or np.random.RandomState
+        Random seed to use.
     """
     from sklearn.utils.random import check_random_state
     if len(dtrajs) == 1:
@@ -68,7 +71,7 @@ def cvsplit_dtrajs(dtrajs, random_state=None):
     return dtrajs_train, dtrajs_test
 
 
-class _MSMBaseEstimator(Estimator):
+class _MSMBaseEstimator(Estimator, metaclass=abc.ABCMeta):
     r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
 
     Parameters
@@ -129,6 +132,7 @@ class BayesianPosterior(Model):
         samples : list of sktime.markov.msm.MarkovStateModel, optional, default=None
             Sampled models.
         """
+        super().__init__()
         self._prior = prior
         self._samples = samples
 
@@ -234,6 +238,7 @@ class QuantityStatistics(Model):
     """
 
     def __init__(self, samples: typing.List[np.ndarray], quantity, store_samples=False):
+        super().__init__()
         self.quantity = quantity
         # TODO: shall we refer to the original object?
         # we re-add the (optional) quantity, because the creation of a new array will strip it.
@@ -299,6 +304,8 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
     score_k : int or None
         The maximum number of eigenvalues or singular values used in the
         score. If set to None, all available eigenvalues will be used.
+    random_state : None or int or np.random.RandomState
+        Random seed to use.
 
     References
     ----------

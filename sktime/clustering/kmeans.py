@@ -341,7 +341,7 @@ class KmeansClustering(Estimator, Transformer):
             return data[self.random_state.randint(0, len(data), size=self.n_clusters)]
         elif self.init_strategy == 'kmeans++':
             return _bd.kmeans.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, n_jobs,
-                                                 callback, self.metric)
+                                                callback, self.metric)
         else:
             raise ValueError(f"Unknown cluster center initialization strategy \"{strategy}\", supported are "
                              f"\"uniform\" and \"kmeans++\"")

@@ -68,6 +68,7 @@ class MarkovStateModel(Model):
             In case the MSM was estimated from data, the transition count model can be provided for statistical
             information about the data. Some properties of the model require a count model so that they can be computed.
         """
+        super().__init__()
         self._is_reversible = reversible
         self._ncv = ncv
 
@@ -751,8 +752,8 @@ class MarkovStateModel(Model):
             evaluated. Internally, the correlation function can only be computed in integer multiples of the
             Markov model lag time, and therefore the actual last time point will be computed at
             :math:`\mathrm{ceil}(\mathrm{maxtime} / \tau)`.
-            By default (None), the maxtime will be set equal to the 5 times the slowest relaxation time of the MarkovStateModel,
-            because after this time the signal is constant.
+            By default (None), the maxtime will be set equal to the 5 times the slowest relaxation time of the
+            MarkovStateModel, because after this time the signal is constant.
         k : int (optional)
             Number of eigenvalues and eigenvectors to use for computation
         ncv : int (optional)
@@ -957,8 +958,8 @@ class MarkovStateModel(Model):
         r"""Uses the MarkovStateModel to assign a probability weight to each trajectory frame.
 
         This is a powerful function for the calculation of arbitrary observables in the trajectories one has
-        started the analysis with. The stationary probability of the MarkovStateModel will be used to reweigh all states.
-        Returns a list of weight arrays, one for each trajectory, and with a number of elements equal to
+        started the analysis with. The stationary probability of the MarkovStateModel will be used to reweigh all
+        states. Returns a list of weight arrays, one for each trajectory, and with a number of elements equal to
         trajectory frames. Given :math:`N` trajectories of lengths :math:`T_1` to :math:`T_N`, this function
         returns corresponding weights:
 

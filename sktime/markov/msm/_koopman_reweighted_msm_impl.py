@@ -271,17 +271,17 @@ def oom_components(Ct, C2t, rank_ind=None, lcc=None, tol_one=1e-2):
     sigma = np.dot(F1.T, c)
     # Compute eigenvalues:
     Xi_S = np.sum(Xi, axis=1)
-    l, R = scl.eig(Xi_S.T)
+    eigenvalues, right_eigenvectors = scl.eig(Xi_S.T)
     # Restrict eigenvalues to reasonable range:
-    ind = np.where(np.logical_and(np.abs(l) <= (1 + tol_one), np.real(l) >= 0.0))[0]
-    l = l[ind]
-    R = R[:, ind]
+    ind = np.where(np.logical_and(np.abs(eigenvalues) <= (1 + tol_one), np.real(eigenvalues) >= 0.0))[0]
+    eigenvalues = eigenvalues[ind]
+    right_eigenvectors = right_eigenvectors[:, ind]
     # Sort and extract omega
-    l, R = sort_by_norm(l, R)
-    omega = np.real(R[:, 0])
+    eigenvalues, right_eigenvectors = sort_by_norm(eigenvalues, right_eigenvectors)
+    omega = np.real(right_eigenvectors[:, 0])
     omega = omega / np.dot(omega, sigma)
 
-    return Xi, omega, sigma, l
+    return Xi, omega, sigma, eigenvalues
 
 
 def equilibrium_transition_matrix(Xi, omega, sigma, reversible=True, return_lcc=True):

@@ -12,8 +12,8 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
 
     def __repr__(self):
         name = '{cls}-{id}:'.format(id=id(self), cls=self.__class__.__name__)
-        return '{name}{params}]'.format(name=name,
-                                        params=pprint_sklearn(self.get_params(), offset=len(name), )
+        return '{name}{params}]'.format(
+            name=name, params=pprint_sklearn(self.get_params(), offset=len(name), )
         )
 
     def get_params(self):

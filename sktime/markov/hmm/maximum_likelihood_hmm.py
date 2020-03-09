@@ -31,7 +31,7 @@ from sktime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
 from sktime.markov.pcca import PCCAModel
 from sktime.markov.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
-from sktime.markov.hmm._hmm_bindings import util as _util
+from ._hmm_bindings import util as _util
 
 
 def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False, C=None, eps=None):

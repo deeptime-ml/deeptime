@@ -27,14 +27,10 @@ class HiddenMarkovStateModel(Model):
     BayesianHMSM : Bayesian sampling of models for confidences.
     """
 
-    def __init__(self, transition_model,
-                 output_model: Union[np.ndarray, OutputModel],
-                 initial_distribution: Optional[np.ndarray] = None,
-                 likelihoods: Optional[np.ndarray] = None,
-                 state_probabilities: Optional[List[np.ndarray]] = None,
-                 initial_count : Optional[np.ndarray] = None,
-                 hidden_state_trajectories : Optional[Iterable[np.ndarray]] = None,
-                 stride: Union[int, str] = 1,
+    def __init__(self, transition_model, output_model: Union[np.ndarray, OutputModel],
+                 initial_distribution: Optional[np.ndarray] = None, likelihoods: Optional[np.ndarray] = None,
+                 state_probabilities: Optional[List[np.ndarray]] = None, initial_count: Optional[np.ndarray] = None,
+                 hidden_state_trajectories: Optional[Iterable[np.ndarray]] = None, stride: Union[int, str] = 1,
                  observation_symbols: Optional[np.ndarray] = None,
                  observation_symbols_full: Optional[np.ndarray] = None):
         r"""
@@ -70,6 +66,7 @@ class HiddenMarkovStateModel(Model):
         observation_symbols_full : array_like, optional, default=None
             Full set of symbols in observations. If None, it is assumed to coincide with observation_symbols.
         """
+        super().__init__()
         if isinstance(transition_model, np.ndarray):
             from sktime.markov.msm import MarkovStateModel
             transition_model = MarkovStateModel(transition_model)
@@ -435,13 +432,6 @@ class HiddenMarkovStateModel(Model):
             o_t[np.where(s_t == state_index)[0]] for s_t, o_t in zip(self.hidden_state_trajectories, observations)
         ]
         return np.hstack(collected_observations)
-        #dtype = observations[0].dtype
-        #collected_observations = np.array([], dtype=dtype)
-        #for (s_t, o_t) in zip(self.hidden_state_trajectories, observations):
-        #    indices = np.where(s_t == state_index)[0]
-        #    collected_observations = np.append(collected_observations, o_t[indices])##
-        #
-        #return collected_observations
 
     ################################################################################
     # Generation of trajectories and samples
@@ -511,9 +501,10 @@ class HiddenMarkovStateModel(Model):
 
         Parameters
         ----------
+        dtrajs : discrete trajectory
+            Input observation trajectory or list of trajectories
         nsample : int
-            Number of samples per distribution. If replace = False, the number of returned samples per state could be
-            smaller if less than nsample indexes are available for a state.
+            Number of samples per distribution.
 
         Returns
         -------
@@ -993,5 +984,5 @@ def viterbi(transition_matrix: np.ndarray, state_probability_trajectory: np.ndar
         # if there is only one state, pad so that there is an additional dimension
         state_probability_trajectory = state_probability_trajectory[..., None]
     return viterbi_impl(transition_matrix=transition_matrix,
-                   state_probability_trajectory=state_probability_trajectory,
-                   initial_distribution=initial_distribution)
+                        state_probability_trajectory=state_probability_trajectory,
+                        initial_distribution=initial_distribution)

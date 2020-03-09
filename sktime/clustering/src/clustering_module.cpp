@@ -114,7 +114,7 @@ void registerRegspace(py::module &module) {
                                           max_n_clusters, metric ? metric : &euclidean,
                                           n_threads);
         } else {
-            clustering::regspace::cluster(py::cast<np_array<double>>(bufChunk), py_centers, static_cast<double>(dmin),
+            clustering::regspace::cluster(py::cast<np_array<double>>(bufChunk), py_centers, dmin,
                                           max_n_clusters, metric ? metric : &euclidean,
                                           n_threads);
         }

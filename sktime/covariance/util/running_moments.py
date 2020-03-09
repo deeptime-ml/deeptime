@@ -235,7 +235,8 @@ class RunningCovar(object):
             weights assigned to each trajectory point. If None, all data points have weight one. If float,
             the same weight will be given to all data points. If ndarray, each data point is assigned a separate
             weight.
-
+        column_selection : ndarray((d,), dtype=int), optional, default=None
+            Optional column subselection.
         """
 
         # check input

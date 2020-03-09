@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from sktime.covariance.online_covariance import Covariance
+from sktime.covariance.covariance import Covariance
 
 __author__ = 'noe'
 

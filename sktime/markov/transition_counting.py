@@ -14,7 +14,7 @@ from sktime.util import submatrix, ensure_dtraj_list
 __author__ = 'noe, clonker'
 
 
-def requires_state_histogram(func : Callable) -> Callable:
+def requires_state_histogram(func: Callable) -> Callable:
     """
     Decorator marking properties which can only be evaluated if the TransitionCountModel contains statistics over the
     data, i.e., a state histogram.
@@ -53,11 +53,9 @@ class TransitionCountModel(Model):
     TransitionCountEstimator : estimator which can produce this kind of model
     """
 
-    def __init__(self, count_matrix, counting_mode: Optional[str] = None,
-                 lagtime: int = 1, state_histogram: Optional[np.ndarray] = None,
-                 physical_time='1 step',
-                 state_symbols: Optional[np.ndarray] = None,
-                 count_matrix_full=None,
+    def __init__(self, count_matrix, counting_mode: Optional[str] = None, lagtime: int = 1,
+                 state_histogram: Optional[np.ndarray] = None, physical_time='1 step',
+                 state_symbols: Optional[np.ndarray] = None, count_matrix_full=None,
                  state_histogram_full: Optional[np.ndarray] = None):
         r"""Creates a new TransitionCountModel. This can be used to, e.g., construct Markov state models. The minimal
         requirement for instantiation is a count matrix, but statistics of the data can also be provided.
@@ -102,6 +100,7 @@ class TransitionCountModel(Model):
             Histogram over all state symbols. If None, the provided state_histogram  is assumed to take that role.
         """
 
+        super().__init__()
         if count_matrix is None:
             raise ValueError("count matrix was None")
 

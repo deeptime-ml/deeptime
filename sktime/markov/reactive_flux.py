@@ -73,6 +73,7 @@ class ReactiveFlux(Model):
             when the originating model has a lag time, output units will be scaled by it.
         """
         # set data
+        super().__init__()
         self._A = A
         self._B = B
         self._flux = flux
@@ -170,7 +171,8 @@ class ReactiveFlux(Model):
         return pathways(self._flux, self.A, self.B,
                         fraction=fraction, maxiter=maxiter)
 
-    def _pathways_to_flux(self, paths, pathfluxes, n=None):
+    @staticmethod
+    def _pathways_to_flux(paths, pathfluxes, n=None):
         """Sums up the flux from the pathways given
 
         Parameters

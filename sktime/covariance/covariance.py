@@ -450,6 +450,7 @@ class KoopmanModel(Model, Transformer):
         covariances : CovarianceModel, optional, default=None
             Estimated covariances.
         """
+        super().__init__()
         self._u = u
         self._u_const = u_const
         self._koopman_operator = koopman_operator
@@ -471,7 +472,7 @@ class KoopmanModel(Model, Transformer):
         """
         return X.dot(self.weights_input) + self.const_weight_input
 
-    def transform(self, data):
+    def transform(self, data, **kw):
         r""" Same as :meth:`weights`. """
         return self.weights(data)
 
@@ -583,13 +584,15 @@ class KoopmanEstimator(Estimator, Transformer):
         self._cov.partial_fit(data)
         return self
 
-    def transform(self, data):
+    def transform(self, data, **kw):
         r""" Computes weights for a chunk of data. This requires that a model was :meth:`fit`.
 
         Parameters
         ----------
         data : (T, d) ndarray
             A chunk of data.
+        **kw
+            Ignored kwargs.
 
         Returns
         -------

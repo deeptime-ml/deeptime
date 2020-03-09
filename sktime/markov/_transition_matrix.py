@@ -55,22 +55,22 @@ def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=
             if C[np.ix_(mask, ~mask)].sum() > np.finfo(C.dtype).eps:  # outgoing transitions - use partial rev algo.
                 transition_matrix_partial_rev(C, P, mask, maxiter=maxiter, maxerr=maxerr)
             else:  # closed set - use standard estimator
-                I = np.ix_(mask, mask)
+                indices = np.ix_(mask, mask)
                 if s.size > 1:  # leave diagonal 1 if single closed state.
-                    P[I] = msmest.transition_matrix(C[I], reversible=True, warn_not_converged=False,
+                    P[indices] = msmest.transition_matrix(C[indices], reversible=True, warn_not_converged=False,
                                                     maxiter=maxiter, maxerr=maxerr)
     else:  # nonreversible or given equilibrium distribution - weakly connected sets
         S = compute_connected_sets(C, connectivity_threshold=mincount_connectivity, directed=False)
         for s in S:
-            I = np.ix_(s, s)
+            indices = np.ix_(s, s)
             if not reversible:
-                Csub = C[I]
+                Csub = C[indices]
                 # any zero rows? must set Cii = 1 to avoid dividing by zero
                 zero_rows = np.where(Csub.sum(axis=1) == 0)[0]
                 Csub[zero_rows, zero_rows] = 1.0
-                P[I] = msmest.transition_matrix(Csub, reversible=False)
+                P[indices] = msmest.transition_matrix(Csub, reversible=False)
             elif reversible and fixed_statdist is not None:
-                P[I] = msmest.transition_matrix(C[I], reversible=True, fixed_statdist=fixed_statdist,
+                P[indices] = msmest.transition_matrix(C[indices], reversible=True, fixed_statdist=fixed_statdist,
                                                 maxiter=maxiter, maxerr=maxerr)
             else:  # unknown case
                 raise NotImplementedError('Transition estimation for the case reversible=' + str(reversible) +
@@ -102,6 +102,8 @@ def transition_matrix_partial_rev(C, P, S, maxiter=1000000, maxerr=1e-8):
         full transition matrix to write to. Will overwrite P[S]
     S : ndarray, bool
         boolean selection of reversible set with outgoing transitions
+    maxiter : int, optional, default = 1000000
+        Maximum number of iterations, iteration termination condition.
     maxerr : float
         maximum difference in matrix sums between iterations (infinity norm) in order to stop.
     """
@@ -152,14 +154,14 @@ def enforce_reversible_on_closed(P):
     # treat each weakly connected set separately
     sets = closed_sets(P)
     for s in sets:
-        I = np.ix_(s, s)
+        indices = np.ix_(s, s)
         # compute stationary probability
-        pi_s = msmana.stationary_distribution(P[I])
+        pi_s = msmana.stationary_distribution(P[indices])
         # symmetrize
-        X_s = pi_s[:, None] * P[I]
+        X_s = pi_s[:, None] * P[indices]
         X_s = 0.5 * (X_s + X_s.T)
         # normalize
-        Prev[I] = X_s / X_s.sum(axis=1)[:, None]
+        Prev[indices] = X_s / X_s.sum(axis=1)[:, None]
     return Prev
 
 
@@ -223,16 +225,16 @@ def rdl_decomposition(P, reversible=True):
     # treat each strongly connected set separately
     S = msmest.connected_sets(P)
     for s in S:
-        I = np.ix_(s, s)
+        indices = np.ix_(s, s)
         if len(s) > 1:
-            r, d, l = msmana.rdl_decomposition(P[s, :][:, s], norm=norm)
+            right_eigvec, eigval_diag, left_eigvec = msmana.rdl_decomposition(P[s, :][:, s], norm=norm)
             # write to full
-            R[I] = r
-            D[I] = d
-            L[I] = l
+            R[indices] = right_eigvec
+            D[indices] = eigval_diag
+            L[indices] = left_eigvec
         else:  # just one element. Write 1's
-            R[I] = 1
-            D[I] = 1
-            L[I] = 1
+            R[indices] = 1
+            D[indices] = 1
+            L[indices] = 1
     # done
     return R, D, L

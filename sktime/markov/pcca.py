@@ -73,7 +73,6 @@ def pcca(P, m, stationary_distribution=None):
     # and normalize
     P_coarse = X / X.sum(axis=1)[:, None]
 
-
     return PCCAModel(P_coarse, pi_coarse, M, B)
 
 
@@ -110,6 +109,7 @@ class PCCAModel(Model):
         metastable_distributions : ndarray (m, n)
             metastable distributions
         """
+        super().__init__()
         self._P_coarse = P_coarse
         self._pi_coarse = pi_coarse
         self._memberships = memberships
