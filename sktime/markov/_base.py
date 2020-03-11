@@ -237,7 +237,7 @@ class QuantityStatistics(Model):
         element-wise upper bounds
     """
 
-    def __init__(self, samples: typing.List[np.ndarray], quantity, store_samples=False):
+    def __init__(self, samples: typing.List[np.ndarray], quantity, confidence=0.95, store_samples=False):
         super().__init__()
         self.quantity = quantity
         # TODO: shall we refer to the original object?
@@ -255,7 +255,7 @@ class QuantityStatistics(Model):
             self.samples = np.empty(0) * unit
         self.mean = samples.mean(axis=0)
         self.std = samples.std(axis=0)
-        self.L, self.R = confidence_interval(samples)
+        self.L, self.R = confidence_interval(samples, conf=confidence)
         if unit is not None:
             self.L *= unit
             self.R *= unit

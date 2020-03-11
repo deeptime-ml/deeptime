@@ -1,4 +1,5 @@
 import abc
+from collections import defaultdict
 from inspect import signature
 from typing import Optional
 
@@ -16,7 +17,7 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
             name=name, params=pprint_sklearn(self.get_params(), offset=len(name), )
         )
 
-    def get_params(self):
+    def get_params(self, deep=False):
         r"""Get parameters of this kernel.
 
         Returns
@@ -44,10 +45,54 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
                                "specify their parameters in the signature"
                                " of their __init__ (no varargs)."
                                " %s doesn't follow this convention."
-                               % (cls, ))
+                               % (cls,))
         for arg in args:
             params[arg] = getattr(self, arg, None)
         return params
+
+    def set_params(self, **params):
+        """
+        Set the parameters of this estimator.
+
+        The method works on simple estimators as well as on nested objects
+        (such as pipelines). The latter have parameters of the form
+        ``<component>__<parameter>`` so that it's possible to update each
+        component of a nested object.
+
+        Parameters
+        ----------
+        **params : dict
+            Estimator parameters.
+
+        Returns
+        -------
+        self : object
+            Estimator instance.
+        """
+        if not params:
+            # Simple optimization to gain speed (inspect is slow)
+            return self
+        valid_params = self.get_params(deep=True)
+
+        nested_params = defaultdict(dict)  # grouped by prefix
+        for key, value in params.items():
+            key, delim, sub_key = key.partition('__')
+            if key not in valid_params:
+                raise ValueError('Invalid parameter %s for estimator %s. '
+                                 'Check the list of available parameters '
+                                 'with `estimator.get_params().keys()`.' %
+                                 (key, self))
+
+            if delim:
+                nested_params[key][sub_key] = value
+            else:
+                setattr(self, key, value)
+                valid_params[key] = value
+
+        for key, sub_params in nested_params.items():
+            valid_params[key].set_params(**sub_params)
+
+        return self
 
     def __getstate__(self):
         try:
@@ -180,6 +225,7 @@ class Transformer(object):
 
 class _ImmutableInputData(object):
     """A function decorator for Estimator.fit() to make input data immutable """
+
     def __init__(self, fit_method):
         self.fit_method = fit_method
         self._data = None
@@ -248,3 +294,12 @@ class _ImmutableInputData(object):
 
 class InputFormatError(ValueError):
     """Input data for Estimator is not allowed."""
+
+
+class ModelSampler(object):
+
+    def __init__(self, estimator: Estimator, params=None):
+        if params is None:
+            params = {}
+        self._estimator = estimator
+        self._params = params

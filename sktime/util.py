@@ -9,7 +9,7 @@ import numpy as np
 
 def handle_n_jobs(value: Optional[int]):
     if value is None:
-        return 1
+        return -1
     else:
         return value
 

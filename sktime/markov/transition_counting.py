@@ -6,7 +6,7 @@ import scipy
 from msmtools import estimation as msmest
 from scipy.sparse import coo_matrix, issparse
 
-from sktime.base import Estimator, Model
+from sktime.base import Estimator, Model, Transformer
 from sktime.markov import Q_
 from sktime.markov.util import count_states, compute_connected_sets
 from sktime.util import submatrix, ensure_dtraj_list
@@ -403,7 +403,7 @@ class TransitionCountModel(Model):
         return self.count_matrix.sum(axis=1)
 
 
-class TransitionCountEstimator(Estimator):
+class TransitionCountEstimator(Estimator, Transformer):
     r"""
     Estimator which produces a :class:`TransitionCountModel` given discretized trajectories.
     Hereby one can decide whether the count mode should be:
@@ -528,8 +528,11 @@ class TransitionCountEstimator(Estimator):
         return self._physical_time
 
     @physical_time.setter
-    def physical_time(self, value: str):
-        self._physical_time = Q_(value)
+    def physical_time(self, value: Union[str, Q_]):
+        if not isinstance(value, Q_):
+            self._physical_time = Q_(value)
+        else:
+            self._physical_time = value
 
     def fetch_model(self) -> Optional[TransitionCountModel]:
         r"""
@@ -578,3 +581,21 @@ class TransitionCountEstimator(Estimator):
         )
 
         return self
+
+    def transform(self, data, **kwargs):
+        r""" Transforms data into its respective count model.
+        This allows to use scikit-learn Pipelines to build and score markov state models.
+
+        Parameters
+        ----------
+        data : array_like or list of array_like
+            input data
+        **kwargs
+            ignored
+
+        Returns
+        -------
+        counts : TransitionCountModel
+            The estimated count matrix together with statistics over the data.
+        """
+        return self.fit(data).fetch_model()

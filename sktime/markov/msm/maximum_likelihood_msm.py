@@ -120,7 +120,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         """
         return self._model
 
-    def fit(self, data, **kw):
+    def fit(self, data, *args, **kw):
         r""" Fits a new markov state model according to data.
 
         Parameters
@@ -128,6 +128,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         data : TransitionCountModel or (n, n) ndarray
             input data, can either be :class:`TransitionCountModel <sktime.markov.TransitionCountModel>` or
             a 2-dimensional ndarray which is interpreted as count matrix.
+        *args
+            Dummy parameters for scikit-learn compatibility.
         **kw
             Dummy parameters for scikit-learn compatibility.
 
