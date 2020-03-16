@@ -588,15 +588,16 @@ class BayesianHMSM(Estimator):
 
         # EVALUATE STRIDE
         init_stride = self.initial_hmm.stride
-        if self.stride == 'effective':
+        stride = self.stride
+        if stride == 'effective':
             from sktime.markov.util import compute_effective_stride
-            self.stride = compute_effective_stride(dtrajs, prior.lagtime, prior.n_hidden_states)
+            stride = compute_effective_stride(dtrajs, prior.lagtime, prior.n_hidden_states)
 
         # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
         dtrajs_lagged_strided = compute_dtrajs_effective(
-            dtrajs, lagtime=prior.lagtime, n_states=prior.n_hidden_states, stride=self.stride
+            dtrajs, lagtime=prior.lagtime, n_states=prior.n_hidden_states, stride=stride
         )
-        if self.stride != init_stride:
+        if stride != init_stride:
             symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
             if not len(np.intersect1d(self.initial_hmm.observation_symbols, symbols)) == len(symbols):
                 raise ValueError('Choice of stride has excluded a different set of microstates than in '
@@ -605,7 +606,7 @@ class BayesianHMSM(Estimator):
 
         # here we blow up the output matrix (if needed) to the FULL state space because we want to use dtrajs in the
         # Bayesian HMM sampler. This is just an initialization.
-        n_states_full = number_of_states(dtrajs)
+        n_states_full = number_of_states(dtrajs_lagged_strided)
 
         if prior.n_observation_states < n_states_full:
             eps = 0.01 / n_states_full  # default output probability, in order to avoid zero columns
@@ -618,7 +619,7 @@ class BayesianHMSM(Estimator):
         else:
             full_obs_probabilities = prior.output_probabilities
 
-        maxT = max(len(o) for o in dtrajs)
+        maxT = max(len(o) for o in dtrajs_lagged_strided)
 
         # pre-construct hidden variables
         temp_alpha = np.zeros((maxT, prior.n_hidden_states))
@@ -626,19 +627,20 @@ class BayesianHMSM(Estimator):
         try:
             # sample model is copy of prior
             sample_model = HiddenMarkovStateModel(prior.transition_model.copy(),
-                                                  output_model=DiscreteOutputModel(full_obs_probabilities),
-                                                  initial_distribution=prior.initial_distribution,
-                                                  initial_count=prior.initial_count)
+                                                  output_model=DiscreteOutputModel(full_obs_probabilities.copy()),
+                                                  initial_distribution=prior.initial_distribution.copy(),
+                                                  initial_count=prior.initial_count.copy())
             # Run burn-in.
             for _ in range(n_burn_in):
-                self._update(sample_model, dtrajs, temp_alpha, transition_matrix_prior, initial_distribution_prior)
+                self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior, initial_distribution_prior)
 
             # Collect data.
             models = []
-            for _ in range(self.n_samples):
+            import tqdm
+            for _ in tqdm.tqdm(range(self.n_samples)):
                 # Run a number of Gibbs sampling updates to generate each sample.
                 for _ in range(n_thin):
-                    self._update(sample_model, dtrajs, temp_alpha, transition_matrix_prior, initial_distribution_prior)
+                    self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior, initial_distribution_prior)
                 # Save a copy of the current model.
                 model_copy = sample_model.copy()
                 # the viterbi path is discarded, but is needed to get a new transition matrix for each model.
@@ -651,11 +653,10 @@ class BayesianHMSM(Estimator):
             del temp_alpha
 
         # repackage samples as HMSM objects and re-normalize after restricting to observable set
-        if model.prior.n_observation_states != len(model.prior.observation_symbols_full):
-            for sample in model.samples:
-                sample.submodel(states=None, obs=model.prior.observation_symbols)
         samples = []
         for sample in model.samples:  # restrict to observable set if necessary
+            if model.prior.n_observation_states != len(model.prior.observation_symbols_full):
+                sample = sample.submodel(states=None, obs=model.prior.observation_symbols)
             P = sample.transition_model.transition_matrix
             pi = sample.transition_model.stationary_distribution
             init_dist = sample.initial_distribution
@@ -667,6 +668,7 @@ class BayesianHMSM(Estimator):
                                                 reversible=self.reversible)
             samples.append(HiddenMarkovStateModel(transition_model, pobs, initial_count=sample.initial_count,
                                                   initial_distribution=init_dist))
+        model.samples = samples
 
         # set new model
         self._model = model
