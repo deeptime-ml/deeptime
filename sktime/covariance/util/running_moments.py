@@ -200,8 +200,8 @@ class RunningCovar(object):
             raise ValueError('Combining compute_YY and symmetrize=True is meaningless.')
         if symmetrize and not compute_XY:
             warnings.warn('symmetrize=True has no effect with compute_XY=False.')
-        if diag_only and sparse_mode is not 'dense':
-            if sparse_mode is 'sparse':
+        if diag_only and sparse_mode != 'dense':
+            if sparse_mode == 'sparse':
                 warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
             sparse_mode = 'dense'
         # storage

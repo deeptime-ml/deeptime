@@ -204,8 +204,8 @@ class Covariance(Estimator):
     @sparse_mode.setter
     def sparse_mode(self, value: str):
         valid_modes = ('auto', 'sparse', 'dense')
-        if self.diag_only and value is not 'dense':
-            if value is 'sparse':
+        if self.diag_only and value != 'dense':
+            if value == 'sparse':
                 import warnings
                 warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense '
                               'mode.')

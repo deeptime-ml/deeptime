@@ -316,7 +316,7 @@ class BayesianHMSM(Estimator):
         hmm = MaximumLikelihoodHMSM(init_hmm, stride=stride, lagtime=lagtime, reversible=reversible,
                                     stationary=stationary, physical_time=physical_time).fit(dtrajs).fetch_model()
         if prior_submodel:
-            hmm = hmm.submodel_largest(connectivity_threshold='1/n', observe_nonempty=True, dtrajs=dtrajs)
+            hmm = hmm.submodel_largest(connectivity_threshold=0, observe_nonempty=False, dtrajs=dtrajs)
         estimator = BayesianHMSM(hmm, n_samples=n_samples, stride=stride,
                                  initial_distribution_prior=initial_distribution_prior,
                                  transition_matrix_prior=transition_matrix_prior,
@@ -572,15 +572,8 @@ class BayesianHMSM(Estimator):
         model.prior = self.initial_hmm.copy()
 
         prior = model.prior
-        prior_count_model = prior.count_model
-        # check if we have a valid initial model (todo: do we need this?)
-        # if self.reversible and not is_connected(prior_count_model.count_matrix):
-        #     raise NotImplementedError(f'Encountered disconnected count matrix:\n{prior_count_model.count_matrix} '
-        #                               f'with reversible Bayesian HMM sampler using lag={self.initial_hmm.lagtime}'
-        #                               f' and stride={self.stride}. Consider using shorter lag, '
-        #                               'or shorter stride (to use more of the data), '
-        #                               'or using a lower value for mincount_connectivity.')
-        # check if we work with these options
+
+        # check if we are strongly connected in the reversible case (plus prior)
         if self.reversible and not is_connected(transition_matrix + transition_matrix_prior, directed=True):
             raise NotImplementedError('Trying to sample disconnected HMM with option reversible:\n '
                                       f'{transition_matrix}\n Use prior to connect, select connected subset, '
@@ -624,6 +617,8 @@ class BayesianHMSM(Estimator):
         # pre-construct hidden variables
         temp_alpha = np.zeros((maxT, prior.n_hidden_states))
 
+        has_all_obs_symbols = model.prior.n_observation_states != len(model.prior.observation_symbols_full)
+
         try:
             # sample model is copy of prior
             sample_model = HiddenMarkovStateModel(prior.transition_model.copy(),
@@ -646,29 +641,17 @@ class BayesianHMSM(Estimator):
                 # the viterbi path is discarded, but is needed to get a new transition matrix for each model.
                 if not self.store_hidden:
                     model_copy.hidden_state_trajectory = None
-                models.append(model_copy)
+
+                # potentially restrict sampled models to observed space
+                # since model_copy is defined on full space, observation_symbols are also observation states
+                if has_all_obs_symbols:
+                    models.append(model_copy)
+                else:
+                    models.append(model_copy.submodel(states=None, obs=model.prior.observation_symbols))
 
             model.samples = models
         finally:
             del temp_alpha
-
-        # repackage samples as HMSM objects and re-normalize after restricting to observable set
-        samples = []
-        for sample in model.samples:  # restrict to observable set if necessary
-            if model.prior.n_observation_states != len(model.prior.observation_symbols_full):
-                sample = sample.submodel(states=None, obs=model.prior.observation_symbols)
-            P = sample.transition_model.transition_matrix
-            pi = sample.transition_model.stationary_distribution
-            init_dist = sample.initial_distribution
-
-            pobs = sample.output_probabilities
-            Bobs = pobs[:, prior.observation_symbols]
-            pobs = Bobs / Bobs.sum(axis=1)[:, None]  # make row stochastic
-            transition_model = MarkovStateModel(P, stationary_distribution=pi, count_model=prior_count_model,
-                                                reversible=self.reversible)
-            samples.append(HiddenMarkovStateModel(transition_model, pobs, initial_count=sample.initial_count,
-                                                  initial_distribution=init_dist))
-        model.samples = samples
 
         # set new model
         self._model = model
