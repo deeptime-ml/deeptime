@@ -105,13 +105,26 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
         auto priorBegin = prior.data(currentState);
         // add prior onto histogram
         std::transform(hist.begin(), hist.end(), priorBegin, hist.begin(), std::plus<>());
-        dirichlet.params(hist.begin(), hist.end());
+
+        std::vector<std::size_t> positivesMapping;
+        positivesMapping.reserve(hist.size());
+
+        std::vector<dtype> reducedHist;
+        reducedHist.reserve(hist.size());
+        for(std::size_t i = 0; i < hist.size(); ++i) {
+            if(hist.at(i) > 0) {
+                positivesMapping.push_back(i);
+                reducedHist.push_back(hist.at(i));
+            }
+        }
+
+        dirichlet.params(reducedHist.begin(), reducedHist.end());
         auto probs = dirichlet(generator);
 
         for (std::size_t i = 0; i < probs.size(); ++i) {
-            //if(probs[i] != 0) {
-            outputProbabilities.mutable_at(currentState, i) = probs[i];
-            //}
+            // if(probs[i] != 0) {
+            outputProbabilities.mutable_at(currentState, positivesMapping[i]) = probs[i];
+            // }
         }
 
         ++currentState;
