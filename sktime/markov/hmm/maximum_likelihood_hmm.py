@@ -400,7 +400,7 @@ def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1,
         counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
                                          sort_by_population=True)
     msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True,
-                               maxiter=10000, maxerr=1e-2).fit(counts).fetch_model()
+                               maxiter=10000).fit(counts).fetch_model()
     return initial_guess_discrete_from_msm(msm, n_hidden_states, reversible, stationary, separate_symbols, regularize)
 
 

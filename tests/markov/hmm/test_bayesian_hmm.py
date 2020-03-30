@@ -51,7 +51,8 @@ class TestBHMM(unittest.TestCase):
 
     def test_lag(self):
         assert self.bhmm.prior.lagtime == self.lag
-        assert all(s.lagtime == self.lag for s in self.bhmm)
+        lags = [sample.lagtime for sample in self.bhmm]
+        np.testing.assert_allclose(self.lag, lags)
 
     def test_n_states(self):
         assert self.bhmm.prior.n_hidden_states == self.n_states

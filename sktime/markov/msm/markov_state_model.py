@@ -225,7 +225,11 @@ class MarkovStateModel(Model):
     def update_stationary_distribution(self, value: np.ndarray):
         r""" Explicitly sets the stationary distribution, re-normalizes """
         if value is not None:
-            self._stationary_distribution = np.copy(value) / np.sum(value)
+            sum = np.sum(value)
+            if sum != 0.:
+                self._stationary_distribution = np.copy(value) / sum
+            else:
+                self._stationary_distribution = np.copy(value)
         else:
             self._stationary_distribution = None
         self._invalidate_caches()

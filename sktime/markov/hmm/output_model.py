@@ -244,9 +244,12 @@ class DiscreteOutputModel(OutputModel):
         # update output probability matrix (numerator)
         for obs, w in zip(observations, weights):
             _bindings.discrete.update_p_out(obs, w, self._output_probabilities)
-        # normalize
-        self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
+        self.normalize()
         return self
+
+    def normalize(self):
+        r""" Normalizes output probabilities so they are row-stochastic. """
+        self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
 
     def submodel(self, states: Optional[np.ndarray] = None, obs: Optional[np.ndarray] = None):
         if states is None:
@@ -286,6 +289,17 @@ class DiscreteOutputModel(OutputModel):
         """
         # todo why ignore observation states w/o counts in a hidden state parameter sample?
         _bindings.discrete.sample(observations_per_state, self.output_probabilities, self.prior)
+        # from numpy.random import dirichlet
+        # N, M = self._output_probabilities.shape  # nstates, nsymbols
+        # for i, obs_by_state in enumerate(observations_per_state):
+        #     # count symbols found in data
+        #     count = np.bincount(obs_by_state, minlength=M).astype(float)
+        #     # sample dirichlet distribution
+        #     count += self.prior[i]
+        #     positive = count > 0
+        #     # if counts at all: can't sample, so leave output probabilities as they are.
+        #     self._output_probabilities[i, positive] = dirichlet(count[positive])
+        # self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
 
 
 class GaussianOutputModel(OutputModel):

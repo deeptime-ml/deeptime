@@ -345,6 +345,9 @@ class QuantityStatistics(object):
             self.L *= unit
             self.R *= unit
 
+    def __str__(self):
+        return "QuantityStatistics(mean={}, std={})".format(self.mean, self.std)
+
 
 class cached_property(property):
     r"""

@@ -185,9 +185,9 @@ class TestInitHMMDiscrete(unittest.TestCase):
         Bref = np.array([[0, 0, 0, 1, 0],
                          [0, 0, 0, 0, 1],
                          [0, 0, 1, 0, 0]])
+        np.testing.assert_(np.max(np.abs(hmm0.output_model.output_probabilities - Bref)) < 0.01)
         np.testing.assert_array_almost_equal(hmm0.initial_distribution, piref, decimal=3)
         np.testing.assert_array_almost_equal(hmm0.transition_model.transition_matrix, Aref, decimal=3)
-        np.testing.assert_(np.max(np.abs(hmm0.output_model.output_probabilities - Bref)) < 0.01)
 
     def test_state_splitting_fail(self):
         dtraj = np.array([0, 0, 1, 1])
