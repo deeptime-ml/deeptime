@@ -14,6 +14,8 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import collections
+from copy import deepcopy
 from typing import Optional, Union, List
 
 import numpy as np
@@ -26,7 +28,9 @@ from sktime.markov._base import BayesianPosterior
 from sktime.markov._transition_matrix import stationary_distribution
 from sktime.markov.hmm import HiddenMarkovStateModel
 from sktime.markov.hmm.output_model import DiscreteOutputModel
+from sktime.markov.hmm.util import observations_in_state
 from sktime.markov.msm import MarkovStateModel
+from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
 from ._hmm_bindings.util import forward, sample_path
@@ -169,6 +173,11 @@ class BayesianHMMPosterior(BayesianPosterior):
 
 class BayesianHMSM(Estimator):
     r""" Estimator for a Bayesian Hidden Markov state model. """
+
+    _SampleStorage = collections.namedtuple(
+        '_SampleStorage', ['transition_matrix', 'output_model', 'stationary_distribution', 'initial_distribution',
+                           'counts', 'hidden_trajs']
+    )
 
     def __init__(self, initial_hmm: HiddenMarkovStateModel,
                  n_samples: int = 100,
@@ -314,7 +323,8 @@ class BayesianHMSM(Estimator):
         init_hmm = initial_guess_discrete_from_data(dtrajs, n_states, lagtime, stride=stride, reversible=reversible,
                                                     stationary=stationary, separate_symbols=separate)
         hmm = MaximumLikelihoodHMSM(init_hmm, stride=stride, lagtime=lagtime, reversible=reversible,
-                                    stationary=stationary, physical_time=physical_time).fit(dtrajs).fetch_model()
+                                    stationary=stationary, physical_time=physical_time,
+                                    accuracy=1e-2).fit(dtrajs).fetch_model()
         if prior_submodel:
             hmm = hmm.submodel_largest(connectivity_threshold=0, observe_nonempty=False, dtrajs=dtrajs)
         estimator = BayesianHMSM(hmm, n_samples=n_samples, stride=stride,
@@ -456,22 +466,21 @@ class BayesianHMSM(Estimator):
             raise ValueError(f'Initial distribution prior mode undefined: {self.transition_matrix_prior}')
         return prior
 
-    def _update(self, model: HiddenMarkovStateModel, observations, temp_alpha,
+    def _update(self, model: _SampleStorage, observations, temp_alpha,
                 transition_matrix_prior, initial_distribution_prior):
         """Update the current model using one round of Gibbs sampling."""
         self._update_hidden_state_trajectories(model, observations, temp_alpha)
         self._update_emission_probabilities(model, observations)
         self._update_transition_matrix(model, transition_matrix_prior, initial_distribution_prior)
 
-    def _update_hidden_state_trajectories(self, model: HiddenMarkovStateModel, observations, temp_alpha):
+    def _update_hidden_state_trajectories(self, model: _SampleStorage, observations, temp_alpha):
         """Sample a new set of state trajectories from the conditional distribution P(S | T, E, O)"""
-        model._hidden_state_trajectories = [
-            self._sample_hidden_state_trajectory(model, obs, temp_alpha)
-            for obs in observations
-        ]
+        model.hidden_trajs.clear()
+        for obs in observations:
+            model.hidden_trajs.append(self._sample_hidden_state_trajectory(model, obs, temp_alpha))
 
     @staticmethod
-    def _sample_hidden_state_trajectory(model: HiddenMarkovStateModel, obs, temp_alpha):
+    def _sample_hidden_state_trajectory(model: _SampleStorage, obs, temp_alpha=None):
         """Sample a hidden state trajectory from the conditional distribution P(s | T, E, o)
 
         Parameters
@@ -489,29 +498,46 @@ class BayesianHMSM(Estimator):
         T = obs.shape[0]
 
         # Convenience access.
-        A = model.transition_model.transition_matrix
+        A = model.transition_matrix
         pi = model.initial_distribution
+
+        if temp_alpha is None:
+            temp_alpha = np.zeros((obs.shape[0], A.shape[0]), dtype=A.dtype)
 
         # compute output probability matrix
         pobs = model.output_model.to_state_probability_trajectory(obs)
         # compute forward variables
         forward(A, pobs, pi, T=T, alpha_out=temp_alpha)
         # sample path
+        # S = hidden.sample_path(temp_alpha, A, pobs, T=T)
         S = sample_path(temp_alpha, A, pobs, T=T)
+        # S = BayesianHMSM.sample_path2(temp_alpha, A, pobs, T=T)
 
         return S
 
     @staticmethod
-    def _update_emission_probabilities(model: HiddenMarkovStateModel, observations):
+    def _update_emission_probabilities(model: _SampleStorage, observations):
         """Sample a new set of emission probabilites from the conditional distribution P(E | S, O) """
-        observations_by_state = [model.collect_observations_in_state(observations, state)
-                                 for state in range(model.n_hidden_states)]
+        observations_by_state = [observations_in_state(model.hidden_trajs, observations, state)
+                                 for state in range(model.transition_matrix.shape[0])]
+        # import bhmm
+        # m = bhmm.output_models.DiscreteOutputModel(model.output_probabilities)
+        # m.sample(observations_by_state)
+        # model.output_model._output_probabilities = m.output_probabilities
         model.output_model.sample(observations_by_state)
+        # model.output_model.sample(observations_by_state)
 
-    def _update_transition_matrix(self, model: HiddenMarkovStateModel, transition_matrix_prior,
+    def _update_transition_matrix(self, model: _SampleStorage, transition_matrix_prior,
                                   initial_distribution_prior):
         """ Updates the hidden-state transition matrix and the initial distribution """
-        C = model.transition_model.count_model.count_matrix + transition_matrix_prior
+        import msmtools.estimation as msmest
+        C = msmest.count_matrix(
+            model.hidden_trajs, 1,
+            nstates=model.transition_matrix.shape[0]
+        ).toarray()
+        model.counts[...] = C
+
+        C = C + transition_matrix_prior
 
         # check if we work with these options
         if self.reversible and not is_connected(C, directed=True):
@@ -530,15 +556,28 @@ class BayesianHMSM(Estimator):
         if self.stationary:  # p0 is consistent with P
             p0 = stationary_distribution(Tij, C=C)
         else:
-            n0 = model.initial_count.astype(float)
+            n0 = self._count_init(model.hidden_trajs, model.transition_matrix.shape[0])
             first_timestep_counts_with_prior = n0 + initial_distribution_prior
             positive = first_timestep_counts_with_prior > 0
             p0 = np.zeros_like(n0)
             p0[positive] = np.random.dirichlet(first_timestep_counts_with_prior[positive])  # sample p0 from posterior
 
         # update HMM with new sample
-        model.transition_model.update_transition_matrix(Tij)
-        model.transition_model.update_stationary_distribution(p0)
+        model.transition_matrix[...] = Tij
+        model.stationary_distribution[...] = p0
+
+    @staticmethod
+    def _count_init(hidden_state_trajectories, n_hidden_states):
+        """Compute the counts at the first time step
+
+        Returns
+        -------
+        n : ndarray(nstates)
+            n[i] is the number of trajectories starting in state i
+
+        """
+        n = [traj[0] for traj in hidden_state_trajectories]
+        return np.bincount(n, minlength=n_hidden_states)
 
     def fit(self, data, n_burn_in: int = 0, n_thin: int = 1, **kwargs):
         r""" Sample from the posterior.
@@ -617,37 +656,50 @@ class BayesianHMSM(Estimator):
         # pre-construct hidden variables
         temp_alpha = np.zeros((maxT, prior.n_hidden_states))
 
-        has_all_obs_symbols = model.prior.n_observation_states != len(model.prior.observation_symbols_full)
+        has_all_obs_symbols = model.prior.n_observation_states == len(model.prior.observation_symbols_full)
 
         try:
-            # sample model is copy of prior
-            sample_model = HiddenMarkovStateModel(prior.transition_model.copy(),
-                                                  output_model=DiscreteOutputModel(full_obs_probabilities.copy()),
-                                                  initial_distribution=prior.initial_distribution.copy(),
-                                                  initial_count=prior.initial_count.copy())
+            # sample model is basically copy of prior
+            sample_model = BayesianHMSM._SampleStorage(
+                transition_matrix=prior.transition_model.transition_matrix,
+                output_model=DiscreteOutputModel(full_obs_probabilities.copy()),
+                initial_distribution=prior.initial_distribution.copy(),
+                stationary_distribution=prior.transition_model.stationary_distribution.copy(),
+                counts=prior.count_model.count_matrix,
+                hidden_trajs=[]
+            )
+
             # Run burn-in.
             for _ in range(n_burn_in):
-                self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior, initial_distribution_prior)
+                self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior,
+                             initial_distribution_prior)
 
             # Collect data.
             models = []
-            import tqdm
-            for _ in tqdm.tqdm(range(self.n_samples)):
+            for _ in range(self.n_samples):
                 # Run a number of Gibbs sampling updates to generate each sample.
                 for _ in range(n_thin):
-                    self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior, initial_distribution_prior)
+                    self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior,
+                                 initial_distribution_prior)
                 # Save a copy of the current model.
-                model_copy = sample_model.copy()
-                # the viterbi path is discarded, but is needed to get a new transition matrix for each model.
+                model_copy = deepcopy(sample_model)
+                model_copy.output_model.normalize()
+                # the Viterbi path is discarded, but is needed to get a new transition matrix for each model.
                 if not self.store_hidden:
-                    model_copy.hidden_state_trajectory = None
+                    model_copy.hidden_trajs.clear()
 
                 # potentially restrict sampled models to observed space
                 # since model_copy is defined on full space, observation_symbols are also observation states
-                if has_all_obs_symbols:
-                    models.append(model_copy)
-                else:
-                    models.append(model_copy.submodel(states=None, obs=model.prior.observation_symbols))
+                count_model = TransitionCountModel(model_copy.counts, lagtime=prior.lagtime)
+                models.append(HiddenMarkovStateModel(
+                    transition_model=MarkovStateModel(model_copy.transition_matrix,
+                                                      stationary_distribution=model_copy.stationary_distribution,
+                                                      reversible=self.reversible, count_model=count_model),
+                    output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
+                    hidden_state_trajectories=model_copy.hidden_trajs))
+
+            if not has_all_obs_symbols:
+                models = [m.submodel(states=None, obs=model.prior.observation_symbols) for m in models]
 
             model.samples = models
         finally:
