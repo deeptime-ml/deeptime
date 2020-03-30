@@ -428,10 +428,8 @@ class HiddenMarkovStateModel(Model):
         if not self.hidden_state_trajectories:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
 
-        collected_observations = [
-            o_t[np.where(s_t == state_index)[0]] for s_t, o_t in zip(self.hidden_state_trajectories, observations)
-        ]
-        return np.hstack(collected_observations)
+        from sktime.markov.hmm.util import observations_in_state
+        return observations_in_state(self.hidden_state_trajectories, observations, state_index)
 
     ################################################################################
     # Generation of trajectories and samples
