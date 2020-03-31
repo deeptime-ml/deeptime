@@ -7,6 +7,7 @@
 
 #include "kmeans.h"
 #include "threading_utils.h"
+#include "distribution_utils.h"
 
 #include <random>
 #include <atomic>
@@ -249,7 +250,8 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
 
     const auto data = np_data.template unchecked<2>();
     /* initialize random device and pick first center randomly */
-    std::default_random_engine generator(random_seed);
+    auto &generator = sktime::rnd::staticGenerator();
+    //std::default_random_engine generator(random_seed);
     std::uniform_int_distribution<size_t> uniform_dist(0, n_frames - 1);
     auto first_center_index = uniform_dist(generator);
     /* and mark it as assigned */

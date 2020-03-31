@@ -49,7 +49,7 @@ np_array<dtype> generateObservationTrajectory(const np_array<State> &hiddenState
 
     #pragma omp parallel
     {
-        std::default_random_engine generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+        // std::default_random_engine generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
         std::discrete_distribution<> ddist;
 
         #pragma omp for
@@ -58,7 +58,7 @@ np_array<dtype> generateObservationTrajectory(const np_array<State> &hiddenState
             auto begin = outputProbabilities.data(state, 0);
             auto end = begin + nObs;
             ddist.param(decltype(ddist)::param_type(begin, end));
-            auto obs = ddist(generator);
+            auto obs = ddist(sktime::rnd::staticGenerator());
             *(outputPtr + t) = obs;
         }
     }
@@ -94,8 +94,8 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
     auto nObs = outputProbabilities.shape(1);
     ssize_t currentState{0};
 
-    std::default_random_engine generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
-    dirichlet_distribution<dtype> dirichlet;
+    // std::default_random_engine generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+    sktime::rnd::dirichlet_distribution<dtype> dirichlet;
 
     for (const np_array<State> &observations : observationsPerState) {
         std::vector<dtype> hist(nObs, 0);
@@ -119,7 +119,7 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
         }
 
         dirichlet.params(reducedHist.begin(), reducedHist.end());
-        auto probs = dirichlet(generator);
+        auto probs = dirichlet(sktime::rnd::staticGenerator());
 
         for (std::size_t i = 0; i < probs.size(); ++i) {
             // if(probs[i] != 0) {
@@ -226,12 +226,12 @@ generateObservationTrajectory(const np_array<dtype> &hiddenStateTrajectory, cons
     np_array<dtype> output({static_cast<std::size_t>(nTimesteps)});
     auto ptr = output.mutable_data();
 
-    std::default_random_engine generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+    // std::default_random_engine generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
     std::normal_distribution<dtype> dist{0, 1};
 
     for (decltype(nTimesteps) t = 0; t < nTimesteps; ++t) {
         auto state = hiddenStateTrajectory.at(t);
-        *(ptr + t) = sigmas.at(state) * dist(generator) + means.at(state);
+        *(ptr + t) = sigmas.at(state) * dist(sktime::rnd::staticGenerator()) + means.at(state);
     }
     return output;
 }
