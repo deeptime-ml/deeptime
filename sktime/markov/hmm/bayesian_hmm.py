@@ -488,11 +488,11 @@ class BayesianHMSM(Estimator):
         """Sample a new set of emission probabilites from the conditional distribution P(E | S, O) """
         observations_by_state = [observations_in_state(model.hidden_trajs, observations, state)
                                  for state in range(model.transition_matrix.shape[0])]
-        import bhmm
-        m = bhmm.output_models.DiscreteOutputModel(model.output_model.output_probabilities)
-        m.sample(observations_by_state)
-        model.output_model._output_probabilities = m.output_probabilities
-        # model.output_model.sample(observations_by_state)
+        #import bhmm
+        #m = bhmm.output_models.DiscreteOutputModel(model.output_model.output_probabilities)
+        #m.sample(observations_by_state)
+        #model.output_model._output_probabilities = m.output_probabilities
+        model.output_model.sample(observations_by_state)
 
     @staticmethod
     def _update_transition_matrix(model: _SampleStorage, transition_matrix_prior,
@@ -638,8 +638,7 @@ class BayesianHMSM(Estimator):
 
             # Collect data.
             models = []
-            import tqdm
-            for _ in tqdm.tqdm(range(self.n_samples)):
+            for _ in range(self.n_samples):
                 # Run a number of Gibbs sampling updates to generate each sample.
                 for _ in range(n_thin):
                     self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior,
