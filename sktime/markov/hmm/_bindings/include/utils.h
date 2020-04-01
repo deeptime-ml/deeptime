@@ -353,7 +353,7 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
         path[T - 1] = ddist(generator); //_random_choice(psel, N);
 
         // Work backwards from T-2 to 0.
-        for (std::int32_t t = T - 2; t >= 0; --t) {
+        for (std::int64_t t = T - 2; t >= 0; --t) {
             // Compute P(s_t = i | s_{t+1}..s_T).
             for (std::size_t i = 0; i < N; ++i) {
                 psel[i] = alpha.at(t, i) * transitionMatrix.at(i, path[t+1]); // alphaBuf[(t - 1) * N + i] * transitionMatrixPtr[i * N + path[t]];

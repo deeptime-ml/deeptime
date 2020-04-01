@@ -282,7 +282,7 @@ class QuantityStatistics(object):
     """
 
     @staticmethod
-    def gather(samples, quantity, store_samples=False, delimiter='/', *args, **kwargs):
+    def gather(samples, quantity, store_samples=False, delimiter='/', confidence: float = 0.95, *args, **kwargs):
         r"""Obtain statistics about a sampled quantity. Can also be a chained call, separated by the delimiter.
 
         Parameters
@@ -295,6 +295,8 @@ class QuantityStatistics(object):
             Whether to store the samples (array).
         delimiter : str, optional, default='/'
             Separator to call members of members.
+        confidence : float, optional, default=0.95
+            Confidence parameter for the confidence intervals.
         *args
             pass through
         **kwargs
@@ -311,7 +313,7 @@ class QuantityStatistics(object):
             for q in qs[:-1]:
                 samples = [call_member(s, q) for s in samples]
         samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
-        return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples)
+        return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples, confidence=confidence)
 
     def __init__(self, samples: List[np.ndarray], quantity, confidence=0.95, store_samples=False):
         r""" Creates a new container instance.

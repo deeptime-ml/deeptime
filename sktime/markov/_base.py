@@ -1,10 +1,8 @@
 import abc
-import typing
 
 import numpy as np
 
 from ..base import Estimator, Model
-from ..util import confidence_interval
 
 
 def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None):
@@ -182,7 +180,7 @@ class BayesianPosterior(Model):
             samples=[sample.submodel(states) for sample in self.samples]
         )
 
-    def gather_stats(self, quantity, store_samples=False, delimiter='/', *args, **kwargs):
+    def gather_stats(self, quantity, store_samples=False, delimiter='/', confidence=0.95, *args, **kwargs):
         """ Obtain statistics about a sampled quantity. Can also be a chained call, separated by the delimiter.
 
         Parameters
@@ -193,6 +191,8 @@ class BayesianPosterior(Model):
             whether to store the samples (array).
         delimiter : str, optional, default='/'
             separator to call members of members
+        confidence : float, optional, default=0.95
+            Size of the confidence intervals.
         *args
             pass-through
         **kwargs
@@ -204,7 +204,8 @@ class BayesianPosterior(Model):
             The statistics
         """
         from sktime.util import QuantityStatistics
-        return QuantityStatistics.gather(self.samples, quantity, store_samples, delimiter, *args, **kwargs)
+        return QuantityStatistics.gather(self.samples, quantity=quantity, store_samples=store_samples,
+                                         delimiter=delimiter, confidence=confidence, *args, **kwargs)
 
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
