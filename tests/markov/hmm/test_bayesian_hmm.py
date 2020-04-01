@@ -39,7 +39,7 @@ class TestBHMM(unittest.TestCase):
 
         cls.lag = 10
         cls.est = BayesianHMSM.default(
-            dtrajs=obs, n_states=cls.n_states, lagtime=cls.lag, reversible=True, n_samples=cls.n_samples
+            dtrajs=obs, n_hidden_states=cls.n_states, lagtime=cls.lag, reversible=True, n_samples=cls.n_samples
         )
         # cls.est = bayesian_hidden_markov_model([obs], cls.n_states, cls.lag, reversible=True, n_samples=cls.n_samples)
         cls.bhmm = cls.est.fit(obs).fetch_model()
@@ -274,7 +274,7 @@ class TestBHMM(unittest.TestCase):
                 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
                 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])
 
-        h = BayesianHMSM.default(dtrj, n_states=3, lagtime=2).fit(dtrj).fetch_model()
+        h = BayesianHMSM.default(dtrj, n_hidden_states=3, lagtime=2).fit(dtrj).fetch_model()
         hs = h.submodel_largest(directed=True, connectivity_threshold=5, observe_nonempty=True, dtrajs=dtrj)
 
         models_to_check = [hs.prior] + hs.samples
@@ -322,7 +322,7 @@ class TestBHMMSpecialCases(unittest.TestCase):
     def test_separate_states(self):
         dtrajs = [np.array([0, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1]),
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
-        hmm_bayes = BayesianHMSM.default(dtrajs, n_states=3, lagtime=1, separate=[0], n_samples=100)\
+        hmm_bayes = BayesianHMSM.default(dtrajs, n_hidden_states=3, lagtime=1, separate=[0], n_samples=100)\
             .fit(dtrajs).fetch_model()
         # we expect zeros in all samples at the following indexes:
         pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))

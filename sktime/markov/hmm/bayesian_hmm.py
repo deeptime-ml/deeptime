@@ -297,7 +297,7 @@ class BayesianHMSM(Estimator):
         self.stationary = stationary
 
     @staticmethod
-    def default(dtrajs, n_states: int, lagtime: int, n_samples: int = 100,
+    def default(dtrajs, n_hidden_states: int, lagtime: int, n_samples: int = 100,
                 stride: Union[str, int] = 'effective',
                 initial_distribution_prior: Optional[Union[str, float, np.ndarray]] = 'mixed',
                 transition_matrix_prior: Optional[Union[str, np.ndarray]] = 'mixed',
@@ -319,8 +319,9 @@ class BayesianHMSM(Estimator):
         """
         from sktime.markov.hmm import initial_guess_discrete_from_data, MaximumLikelihoodHMSM
         dtrajs = ensure_dtraj_list(dtrajs)
-        init_hmm = initial_guess_discrete_from_data(dtrajs, n_states, lagtime, stride=stride, reversible=reversible,
-                                                    stationary=stationary, separate_symbols=separate)
+        init_hmm = initial_guess_discrete_from_data(dtrajs, n_hidden_states=n_hidden_states, lagtime=lagtime,
+                                                    stride=stride, reversible=reversible, stationary=stationary,
+                                                    separate_symbols=separate)
         hmm = MaximumLikelihoodHMSM(init_hmm, stride=stride, lagtime=lagtime, reversible=reversible,
                                     stationary=stationary, physical_time=physical_time,
                                     accuracy=1e-2).fit(dtrajs).fetch_model()
@@ -328,8 +329,8 @@ class BayesianHMSM(Estimator):
             hmm = hmm.submodel_largest(connectivity_threshold=0, observe_nonempty=False, dtrajs=dtrajs)
         estimator = BayesianHMSM(hmm, n_samples=n_samples, stride=stride,
                                  initial_distribution_prior=initial_distribution_prior,
-                                 transition_matrix_prior=transition_matrix_prior,
-                                 store_hidden=store_hidden, reversible=reversible, stationary=stationary)
+                                 transition_matrix_prior=transition_matrix_prior, store_hidden=store_hidden,
+                                 reversible=reversible, stationary=stationary)
         return estimator
 
     @property
@@ -623,11 +624,11 @@ class BayesianHMSM(Estimator):
         try:
             # sample model is basically copy of prior
             sample_model = BayesianHMSM._SampleStorage(
-                transition_matrix=prior.transition_model.transition_matrix,
+                transition_matrix=prior.transition_model.transition_matrix.copy(),
                 output_model=DiscreteOutputModel(full_obs_probabilities.copy()),
                 initial_distribution=prior.initial_distribution.copy(),
                 stationary_distribution=prior.transition_model.stationary_distribution.copy(),
-                counts=prior.count_model.count_matrix,
+                counts=prior.count_model.count_matrix.copy(),
                 hidden_trajs=[]
             )
 
