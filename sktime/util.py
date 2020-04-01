@@ -1,7 +1,7 @@
 import collections
 import itertools
 import numbers
-from typing import Optional
+from typing import Optional, List
 from weakref import WeakKeyDictionary
 
 import numpy as np
@@ -264,6 +264,93 @@ def call_member(obj, f, *args, **kwargs):
 
     # attribute or property
     return method
+
+
+class QuantityStatistics(object):
+    """ Container for statistical quantities computed on samples.
+
+    Attributes
+    ----------
+    mean: array(n)
+        mean along axis=0
+    std: array(n)
+        std deviation along axis=0
+    L : ndarray(shape)
+        element-wise lower bounds
+    R : ndarray(shape)
+        element-wise upper bounds
+    """
+
+    @staticmethod
+    def gather(samples, quantity=None, store_samples=False, delimiter='/', confidence: float = 0.95, *args, **kwargs):
+        r"""Obtain statistics about a sampled quantity. Can also be a chained call, separated by the delimiter.
+
+        Parameters
+        ----------
+        samples : list of object
+            The samples which contain sought after quantities.
+        quantity : str, optional, default=None
+            Name of attribute, which will be evaluated on samples. If None, no quantity is evaluated and the samples
+            are assumed to already be the quantity that is to be evaluated.
+        store_samples : bool, optional, default=False
+            Whether to store the samples (array).
+        delimiter : str, optional, default='/'
+            Separator to call members of members.
+        confidence : float, optional, default=0.95
+            Confidence parameter for the confidence intervals.
+        *args
+            pass through
+        **kwargs
+            pass through
+
+        Returns
+        -------
+        statistics : QuantityStatistics
+            The collected statistics.
+        """
+        if quantity is not None and delimiter in quantity:
+            qs = quantity.split(delimiter)
+            quantity = qs[-1]
+            for q in qs[:-1]:
+                samples = [call_member(s, q) for s in samples]
+        if quantity is not None:
+            samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
+        return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples, confidence=confidence)
+
+    def __init__(self, samples: List[np.ndarray], quantity, confidence=0.95, store_samples=False):
+        r""" Creates a new container instance.
+
+        Parameters
+        ----------
+        samples: list of ndarrays
+            the samples
+        store_samples: bool, default=False
+            whether to store the samples (array).
+        """
+        super().__init__()
+        self.quantity = quantity
+        # TODO: shall we refer to the original object?
+        # we re-add the (optional) quantity, because the creation of a new array will strip it.
+        unit = getattr(samples[0], 'u', None)
+        if unit is not None:
+            samples = np.array(tuple(x.magnitude for x in samples))
+        else:
+            samples = np.array(samples)
+        if unit is not None:
+            samples *= unit
+        if store_samples:
+            self.samples = samples
+        else:
+            self.samples = np.empty(0) * unit
+        self.mean = samples.mean(axis=0)
+        self.std = samples.std(axis=0)
+        self.L, self.R = confidence_interval(samples, conf=confidence)
+        if unit is not None:
+            self.L *= unit
+            self.R *= unit
+
+    def __str__(self):
+        return "QuantityStatistics(mean={}, std={})".format(self.mean, self.std)
 
 
 class cached_property(property):

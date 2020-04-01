@@ -1,30 +1,17 @@
-//
-// Created by mho on 2/3/20.
-//
-
 #pragma once
 
+#include <thread>
 #include <random>
+#include <ctime>
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/stl.h>
-#include <pybind11/functional.h>
+#include "common.h"
 
-namespace py = pybind11;
+namespace sktime::rnd {
 
-template<typename dtype>
-using np_array = py::array_t<dtype, py::array::c_style>;
-
-template<typename T, typename D>
-bool arraySameShape(const np_array<T>& lhs, const np_array<D>& rhs) {
-    if(lhs.ndim() != rhs.ndim()) {
-        return false;
-    }
-    for(decltype(lhs.ndim()) d = 0; d < lhs.ndim(); ++d) {
-        if(lhs.shape(d) != rhs.shape(d)) return false;
-    }
-    return true;
+template<typename Generator = std::default_random_engine>
+Generator& staticGenerator() {
+    static thread_local Generator generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+    return generator;
 }
 
 template<typename RealType>
@@ -65,3 +52,5 @@ public:
 private:
     std::vector<std::gamma_distribution<RealType>> gammas;
 };
+
+}

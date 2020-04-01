@@ -80,7 +80,9 @@ class TestDiscrete(unittest.TestCase):
             np.array([1] * 30000 + [2] * 70000)  # state 1
         ]
         m.sample(obs_per_state)
-        np.testing.assert_array_almost_equal(m.output_probabilities, np.array([[.5, .5, 0.], [0, .3, .7]]), decimal=2)
+        # the output probabilities of the unpopulated states are left as-is (can't sample), hence we compare against
+        # [[.5, .5, .1], [.1, .3, .7]] instead of [[.5, .5, .0], [.0, .3, .7]]
+        np.testing.assert_array_almost_equal(m.output_probabilities, np.array([[.5, .5, .1], [.1, .3, .7]]), decimal=2)
 
     def test_fit(self):
         output_probabilities = np.array([

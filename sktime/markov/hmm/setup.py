@@ -1,3 +1,5 @@
+import os
+
 
 def configuration(parent_package='', top_path=None):
     from numpy.distutils.misc_util import Configuration
@@ -5,7 +7,7 @@ def configuration(parent_package='', top_path=None):
 
     config.add_extension('_hmm_bindings',
                          sources=['_bindings/src/hmm_module.cpp'],
-                         include_dirs=['_bindings/include'],
+                         include_dirs=['_bindings/include', os.path.join(top_path, 'sktime', 'src', 'include')],
                          language='c++',
                          extra_compile_args=['-fvisibility=hidden']
                          )

@@ -244,9 +244,12 @@ class DiscreteOutputModel(OutputModel):
         # update output probability matrix (numerator)
         for obs, w in zip(observations, weights):
             _bindings.discrete.update_p_out(obs, w, self._output_probabilities)
-        # normalize
-        self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
+        self.normalize()
         return self
+
+    def normalize(self):
+        r""" Normalizes output probabilities so they are row-stochastic. """
+        self._output_probabilities /= np.sum(self._output_probabilities, axis=1)[:, None]
 
     def submodel(self, states: Optional[np.ndarray] = None, obs: Optional[np.ndarray] = None):
         if states is None:

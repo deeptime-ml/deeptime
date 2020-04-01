@@ -4,7 +4,10 @@
 
 #pragma once
 
+#include <thread>
+
 #include "common.h"
+#include "distribution_utils.h"
 
 /**
  * computes viterbi path
@@ -321,28 +324,9 @@ void transitionCounts(const np_array<dtype> &alpha, const np_array<dtype> &beta,
     }
 }
 
-template<typename Iter1, typename Iter2>
-void normalize(Iter1 begin, Iter2 end) {
-    auto sum = std::accumulate(begin, end, typename std::iterator_traits<Iter1>::value_type());
-    for (auto it = begin; it != end; ++it) {
-        *it /= sum;
-    }
-}
-
 template<typename dtype>
 np_array<std::int32_t>
-samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix, const np_array<dtype> &pobs,
-           const py::object &pyT, int seed = -1) {
-    std::size_t T = [&pyT, &pobs]() {
-        if (pyT.is_none()) {
-            return static_cast<std::size_t>(pobs.shape(0));
-        } else {
-            return py::cast<std::size_t>(pyT);
-        }
-    }();
-    if (static_cast<std::size_t>(pobs.shape(0)) < T || static_cast<std::size_t>(alpha.shape(0)) < T) {
-        throw std::invalid_argument("T must be at most length of state probability trajectory and alphas.");
-    }
+samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix, std::size_t T, int seed = -1) {
     auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
 
     np_array<std::int32_t> pathArray(std::vector<std::size_t>{T});
@@ -351,32 +335,34 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
     auto pselPtr = std::unique_ptr<dtype[]>(new dtype[N]);
     auto psel = pselPtr.get();
 
-    auto alphaBuf = alpha.data();
-    auto transitionMatrixPtr = transitionMatrix.data();
+    //auto alphaBuf = alpha.data();
+    //auto transitionMatrixPtr = transitionMatrix.data();
     {
-        py::gil_scoped_release gil;
-        std::default_random_engine generator(seed);
+        // py::gil_scoped_release gil;
+        //std::default_random_engine generator(seed >= 0 ? seed : clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+        auto &generator = sktime::rnd::staticGenerator();
 
         // Sample final state.
         for (std::size_t i = 0; i < N; i++) {
-            psel[i] = alphaBuf[(T - 1) * N + i];
+            psel[i] = alpha.at(T-1, i);
         }
+        //normalize(psel, psel + N);
 
         std::discrete_distribution<> ddist(psel, psel + N);
-        normalize(psel, psel + N);
         // Draw from this distribution.
-        path[T - 1] = ddist(generator); //_random_choice(psel, N);
+        path[T - 1] = ddist(generator);
 
         // Work backwards from T-2 to 0.
-        for (std::size_t t = T - 1; t >= 1; t--) {
+        for (std::int64_t t = T - 2; t >= 0; --t) {
             // Compute P(s_t = i | s_{t+1}..s_T).
-            for (std::size_t i = 0; i < N; i++) {
-                psel[i] = alphaBuf[(t - 1) * N + i] * transitionMatrixPtr[i * N + path[t]];
+            for (std::size_t i = 0; i < N; ++i) {
+                psel[i] = alpha.at(t, i) * transitionMatrix.at(i, path[t+1]);
             }
+            //normalize(psel, psel + N);
             ddist.param(decltype(ddist)::param_type(psel, psel + N));
 
             // Draw from this distribution.
-            path[t - 1] = ddist(generator); //_random_choice(psel, N);
+            path[t] = ddist(generator);
         }
     }
 

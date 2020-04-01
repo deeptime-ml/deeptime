@@ -37,3 +37,5 @@ from .transition_counting import TransitionCountEstimator, TransitionCountModel
 from .reactive_flux import ReactiveFlux
 
 from ._base import score_cv
+from . import msm
+from . import hmm

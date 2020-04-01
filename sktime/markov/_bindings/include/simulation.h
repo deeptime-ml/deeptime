@@ -8,6 +8,7 @@
 #include <random>
 
 #include "common.h"
+#include "distribution_utils.h"
 
 template<typename dtype, bool RELEASE_GIL>
 np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, const py::object& stop, long seed) {
@@ -24,7 +25,7 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
     if (seed == -1) {
         seed = std::chrono::system_clock::now().time_since_epoch().count();
     }
-    std::default_random_engine generator (seed);
+    auto &generator = sktime::rnd::staticGenerator();
 
     std::discrete_distribution<> ddist;
 

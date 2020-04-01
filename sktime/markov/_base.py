@@ -1,10 +1,8 @@
 import abc
-import typing
 
 import numpy as np
 
 from ..base import Estimator, Model
-from ..util import confidence_interval
 
 
 def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None):
@@ -182,18 +180,19 @@ class BayesianPosterior(Model):
             samples=[sample.submodel(states) for sample in self.samples]
         )
 
-    def gather_stats(self, quantity, store_samples=False, delimiter='/', *args, **kwargs):
+    def gather_stats(self, quantity, store_samples=False, delimiter='/', confidence=0.95, *args, **kwargs):
         """ Obtain statistics about a sampled quantity. Can also be a chained call, separated by the delimiter.
 
         Parameters
         ----------
         quantity: str
             name of attribute, which will be evaluated on samples
-
         store_samples: bool, optional, default=False
             whether to store the samples (array).
         delimiter : str, optional, default='/'
             separator to call members of members
+        confidence : float, optional, default=0.95
+            Size of the confidence intervals.
         *args
             pass-through
         **kwargs
@@ -204,61 +203,9 @@ class BayesianPosterior(Model):
         statistics : QuantityStatistics
             The statistics
         """
-        from sktime.util import call_member
-        samples = self.samples
-        if delimiter in quantity:
-            qs = quantity.split(delimiter)
-            quantity = qs[-1]
-            for q in qs[:-1]:
-                samples = [call_member(s, q) for s in samples]
-        samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
-        return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples)
-
-
-class QuantityStatistics(Model):
-    """ Container for statistical quantities computed on samples.
-
-    Parameters
-    ----------
-    samples: list of ndarrays
-        the samples
-    store_samples: bool, default=False
-        whether to store the samples (array).
-
-    Attributes
-    ----------
-    mean: array(n)
-        mean along axis=0
-    std: array(n)
-        std deviation along axis=0
-    L : ndarray(shape)
-        element-wise lower bounds
-    R : ndarray(shape)
-        element-wise upper bounds
-    """
-
-    def __init__(self, samples: typing.List[np.ndarray], quantity, store_samples=False):
-        super().__init__()
-        self.quantity = quantity
-        # TODO: shall we refer to the original object?
-        # we re-add the (optional) quantity, because the creation of a new array will strip it.
-        unit = getattr(samples[0], 'u', None)
-        if unit is not None:
-            samples = np.array(tuple(x.magnitude for x in samples))
-        else:
-            samples = np.array(samples)
-        if unit is not None:
-            samples *= unit
-        if store_samples:
-            self.samples = samples
-        else:
-            self.samples = np.empty(0) * unit
-        self.mean = samples.mean(axis=0)
-        self.std = samples.std(axis=0)
-        self.L, self.R = confidence_interval(samples)
-        if unit is not None:
-            self.L *= unit
-            self.R *= unit
+        from sktime.util import QuantityStatistics
+        return QuantityStatistics.gather(self.samples, quantity=quantity, store_samples=store_samples,
+                                         delimiter=delimiter, confidence=confidence, *args, **kwargs)
 
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',

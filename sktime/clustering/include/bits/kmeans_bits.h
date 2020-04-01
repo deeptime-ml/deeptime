@@ -7,6 +7,7 @@
 
 #include "kmeans.h"
 #include "threading_utils.h"
+#include "distribution_utils.h"
 
 #include <random>
 #include <atomic>
@@ -208,7 +209,7 @@ inline T costFunction(const np_array<T>& np_data, const np_array<T>& np_centers,
 
 template<typename T>
 inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
-                                   const Metric *metric, unsigned int random_seed,
+                                   const Metric *metric, std::int64_t random_seed,
                                    int n_threads, py::object& callback) {
     if (static_cast<std::size_t>(np_data.shape(0)) < k) {
         std::stringstream ss;
@@ -249,7 +250,12 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
 
     const auto data = np_data.template unchecked<2>();
     /* initialize random device and pick first center randomly */
-    std::default_random_engine generator(random_seed);
+    std::unique_ptr<std::default_random_engine> seededEngine;
+    if(random_seed >= 0) {
+        seededEngine = std::make_unique<std::default_random_engine>(random_seed);
+    }
+
+    auto &generator = random_seed == -1 ? sktime::rnd::staticGenerator() : *seededEngine;
     std::uniform_int_distribution<size_t> uniform_dist(0, n_frames - 1);
     auto first_center_index = uniform_dist(generator);
     /* and mark it as assigned */

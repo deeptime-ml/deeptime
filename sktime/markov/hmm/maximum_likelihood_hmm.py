@@ -399,7 +399,8 @@ def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1,
     if 'populous' in mode:
         counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
                                          sort_by_population=True)
-    msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True, maxiter=10000).fit(counts).fetch_model()
+    msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True, maxerr=1e-3,
+                               maxiter=10000).fit(counts).fetch_model()
     return initial_guess_discrete_from_msm(msm, n_hidden_states, reversible, stationary, separate_symbols, regularize)
 
 
@@ -433,9 +434,7 @@ def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):
                                       existing :class:`MSM <sktime.markov.msm.MarkovStateModel>`
                                       with discrete output model.
     """
-    # todo docs
     from sklearn.mixture import GaussianMixture
-    # todo we dont actually want to depend on sklearn
     dtrajs = ensure_dtraj_list(dtrajs)
     collected_observations = np.concatenate(dtrajs)
     gmm = GaussianMixture(n_components=n_hidden_states)
@@ -766,7 +765,7 @@ class MaximumLikelihoodHMSM(Estimator):
             # convergence check
             if it > 0:
                 dL = loglik - likelihoods[it - 1]
-                if dL < self._accuracy:
+                if dL < self.accuracy:
                     converged = True
 
             # update model

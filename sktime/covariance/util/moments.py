@@ -654,8 +654,8 @@ def moments_XX(X, remove_mean=False, modify_data=False, weights=None, sparse_mod
     if weights is not None:
         assert X.shape[0] == weights.shape[0], 'X and weights_x must have equal length'
     # diag_only is only implemented for dense mode
-    if diag_only and sparse_mode is not 'dense':
-        if sparse_mode is 'sparse':
+    if diag_only and sparse_mode != 'dense':
+        if sparse_mode == 'sparse':
             import warnings
             warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
         sparse_mode = 'dense'
@@ -772,8 +772,8 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
     if weights is not None:
         assert X.shape[0] == weights.shape[0], 'X and weights_x must have equal length'
     # diag_only is only implemented for dense mode
-    if diag_only and sparse_mode is not 'dense':
-        if sparse_mode is 'sparse':
+    if diag_only and sparse_mode != 'dense':
+        if sparse_mode == 'sparse':
             import warnings
             warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
         sparse_mode = 'dense'
@@ -894,8 +894,8 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
         C[0,0] = Cxx, C[0,1] = Cxy, C[1,0] = Cyx, C[1,1] = Cyy
     """
     # diag_only is only implemented for dense mode
-    if diag_only and sparse_mode is not 'dense':
-        if sparse_mode is 'sparse':
+    if diag_only and sparse_mode != 'dense':
+        if sparse_mode == 'sparse':
             import warnings
             warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
         sparse_mode = 'dense'
