@@ -25,7 +25,7 @@ T costFunction(const np_array<T>& np_data, const np_array<T>& np_centers, const 
 
 template<typename T>
 np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k, const Metric *metric,
-                            unsigned int random_seed, int n_threads, py::object& callback);
+                            std::int64_t random_seed, int n_threads, py::object& callback);
 
 }
 }

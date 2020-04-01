@@ -82,7 +82,7 @@ void registerKmeans(py::module &mod) {
         }
         return result;
     }, "chunk"_a, "centers"_a, "n threads"_a, "metric"_a = nullptr);
-    mod.def("init_centers_kmpp", [](py::object np_data, std::size_t k, unsigned int random_seed, int n_threads,
+    mod.def("init_centers_kmpp", [](py::object np_data, std::size_t k, std::int64_t random_seed, int n_threads,
                                     py::object& callback, const Metric *metric) {
         metric = metric ? metric : &euclidean;
         auto bufChunk = py::array::ensure(np_data);

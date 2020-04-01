@@ -434,9 +434,7 @@ def initial_guess_gaussian_from_data(dtrajs, n_hidden_states, reversible):
                                       existing :class:`MSM <sktime.markov.msm.MarkovStateModel>`
                                       with discrete output model.
     """
-    # todo docs
     from sklearn.mixture import GaussianMixture
-    # todo we dont actually want to depend on sklearn
     dtrajs = ensure_dtraj_list(dtrajs)
     collected_observations = np.concatenate(dtrajs)
     gmm = GaussianMixture(n_components=n_hidden_states)
