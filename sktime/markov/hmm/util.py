@@ -1,5 +1,5 @@
 import numpy as np
-import sktime.markov.hmm._hmm_bindings as _bindings
+from . import _hmm_bindings as _bindings
 
 
 def observations_in_state(hidden_state_trajectories, observed_state_trajectories, hidden_state):
