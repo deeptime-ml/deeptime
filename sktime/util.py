@@ -282,15 +282,16 @@ class QuantityStatistics(object):
     """
 
     @staticmethod
-    def gather(samples, quantity, store_samples=False, delimiter='/', confidence: float = 0.95, *args, **kwargs):
+    def gather(samples, quantity=None, store_samples=False, delimiter='/', confidence: float = 0.95, *args, **kwargs):
         r"""Obtain statistics about a sampled quantity. Can also be a chained call, separated by the delimiter.
 
         Parameters
         ----------
         samples : list of object
             The samples which contain sought after quantities.
-        quantity : str
-            Name of attribute, which will be evaluated on samples.
+        quantity : str, optional, default=None
+            Name of attribute, which will be evaluated on samples. If None, no quantity is evaluated and the samples
+            are assumed to already be the quantity that is to be evaluated.
         store_samples : bool, optional, default=False
             Whether to store the samples (array).
         delimiter : str, optional, default='/'
@@ -307,12 +308,13 @@ class QuantityStatistics(object):
         statistics : QuantityStatistics
             The collected statistics.
         """
-        if delimiter in quantity:
+        if quantity is not None and delimiter in quantity:
             qs = quantity.split(delimiter)
             quantity = qs[-1]
             for q in qs[:-1]:
                 samples = [call_member(s, q) for s in samples]
-        samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
+        if quantity is not None:
+            samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
         return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples, confidence=confidence)
 
     def __init__(self, samples: List[np.ndarray], quantity, confidence=0.95, store_samples=False):
