@@ -49,7 +49,6 @@ np_array<dtype> generateObservationTrajectory(const np_array<State> &hiddenState
 
     #pragma omp parallel
     {
-        // std::default_random_engine generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
         std::discrete_distribution<> ddist;
 
         #pragma omp for
