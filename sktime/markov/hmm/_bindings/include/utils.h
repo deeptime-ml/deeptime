@@ -344,25 +344,25 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
 
         // Sample final state.
         for (std::size_t i = 0; i < N; i++) {
-            psel[i] = alpha.at(T-1, i); // [(T - 1) * N + i];
+            psel[i] = alpha.at(T-1, i);
         }
         //normalize(psel, psel + N);
 
         std::discrete_distribution<> ddist(psel, psel + N);
         // Draw from this distribution.
-        path[T - 1] = ddist(generator); //_random_choice(psel, N);
+        path[T - 1] = ddist(generator);
 
         // Work backwards from T-2 to 0.
         for (std::int64_t t = T - 2; t >= 0; --t) {
             // Compute P(s_t = i | s_{t+1}..s_T).
             for (std::size_t i = 0; i < N; ++i) {
-                psel[i] = alpha.at(t, i) * transitionMatrix.at(i, path[t+1]); // alphaBuf[(t - 1) * N + i] * transitionMatrixPtr[i * N + path[t]];
+                psel[i] = alpha.at(t, i) * transitionMatrix.at(i, path[t+1]);
             }
             //normalize(psel, psel + N);
             ddist.param(decltype(ddist)::param_type(psel, psel + N));
 
             // Draw from this distribution.
-            path[t] = ddist(generator); //_random_choice(psel, N);
+            path[t] = ddist(generator);
         }
     }
 

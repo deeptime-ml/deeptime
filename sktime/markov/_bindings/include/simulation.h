@@ -26,7 +26,6 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
         seed = std::chrono::system_clock::now().time_since_epoch().count();
     }
     auto &generator = sktime::rnd::staticGenerator();
-    // std::default_random_engine generator (seed);
 
     std::discrete_distribution<> ddist;
 
