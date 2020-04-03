@@ -9,8 +9,20 @@
 namespace sktime::rnd {
 
 template<typename Generator = std::default_random_engine>
-Generator& staticGenerator() {
-    static thread_local Generator generator(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+Generator seededGenerator(std::uint32_t seed) {
+    return std::default_random_engine(seed);
+}
+
+template<typename Generator = std::default_random_engine>
+Generator randomlySeededGenerator() {
+    std::random_device r;
+    std::seed_seq seed{r(), r(), r(), r(), r(), r(), r(), r()};
+    return Generator(seed);
+}
+
+template<typename Generator = std::default_random_engine>
+Generator& staticThreadLocalGenerator() {
+    static thread_local Generator generator(randomlySeededGenerator<Generator>());
     return generator;
 }
 

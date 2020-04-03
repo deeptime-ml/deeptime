@@ -22,6 +22,7 @@ import numpy as np
 from sktime.data import datasets
 from sktime.markov.hmm import initial_guess_discrete_from_data, MaximumLikelihoodHMSM
 from sktime.markov.hmm.bayesian_hmm import BayesianHMSM, BayesianHMMPosterior
+from sktime.markov.hmm._hmm_bindings.util import count_matrix
 from sktime.util import confidence_interval, ensure_dtraj_list
 
 
@@ -44,6 +45,13 @@ class TestBHMM(unittest.TestCase):
         # cls.est = bayesian_hidden_markov_model([obs], cls.n_states, cls.lag, reversible=True, n_samples=cls.n_samples)
         cls.bhmm = cls.est.fit(obs).fetch_model()
         assert isinstance(cls.bhmm, BayesianHMMPosterior)
+
+    def test_counting(self):
+        dtrajs = [np.array([0, 1, 0, 0, 0, 1, 2, 3, 0], dtype=np.int32)]
+        C = count_matrix(dtrajs, lag=2, n_states=4)
+        np.testing.assert_array_equal(C, np.array(
+            [[2, 1, 1, 0], [1, 0, 0, 1], [1, 0, 0, 0], [0, 0, 0, 0]]
+        ))
 
     def test_reversible(self):
         assert self.bhmm.prior.transition_model.reversible

@@ -11,7 +11,7 @@ PYBIND11_MODULE(_markov_bindings, m) {
     }
     {
         auto simMod = m.def_submodule("simulation");
-        simMod.def("trajectory", &trajectory<float, true>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
-        simMod.def("trajectory", &trajectory<double, true>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
+        simMod.def("trajectory", &trajectory<float>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
+        simMod.def("trajectory", &trajectory<double>, "N"_a, "start"_a, "P"_a, "stop"_a = py::none(), "seed"_a = -1);
     }
 }

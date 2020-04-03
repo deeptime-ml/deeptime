@@ -15,6 +15,8 @@
 #include <pybind11/pytypes.h>
 #include <mutex>
 
+using namespace sktime;
+
 namespace clustering {
 namespace kmeans {
 
@@ -250,12 +252,8 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
 
     const auto data = np_data.template unchecked<2>();
     /* initialize random device and pick first center randomly */
-    std::unique_ptr<std::default_random_engine> seededEngine;
-    if(random_seed >= 0) {
-        seededEngine = std::make_unique<std::default_random_engine>(random_seed);
-    }
+    auto generator = random_seed < 0 ? rnd::randomlySeededGenerator() : rnd::seededGenerator(random_seed);
 
-    auto &generator = random_seed == -1 ? sktime::rnd::staticGenerator() : *seededEngine;
     std::uniform_int_distribution<size_t> uniform_dist(0, n_frames - 1);
     auto first_center_index = uniform_dist(generator);
     /* and mark it as assigned */
@@ -278,7 +276,8 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
     /* iterate over all data points j, measuring the squared distance between j and the initial center i: */
     /* squared_distances[i] = distance(x_j, x_i)*distance(x_j, x_i) */
     T dist_sum = static_cast<T>(0);
-#pragma omp parallel for reduction(+:dist_sum)
+
+    #pragma omp parallel for reduction(+:dist_sum)
     for (std::size_t i = 0; i < n_frames; i++) {
         if (i != first_center_index) {
             auto value = metric->compute(&data(i, 0), &data(first_center_index, 0), dim);
@@ -323,7 +322,8 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
 
         /* now find the maximum squared distance for each trial... */
         std::atomic_bool terminate(false);
-#pragma omp parallel for
+
+        #pragma omp parallel for
         for (std::size_t i = 0; i < n_frames; i++) {
             if (terminate.load()) {
                 continue;
@@ -334,7 +334,8 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
                         terminate.store(true);
                         break;
                     }
-#pragma omp critical
+
+                    #pragma omp critical
                     {
                         if (next_center_candidates.at(j) != i) {
                             auto value = metric->compute(&data(i, 0), &data(next_center_candidates.at(j), 0), dim);
@@ -394,12 +395,14 @@ inline np_array<T> initCentersKMpp(const np_array<T>& np_data, std::size_t k,
                 /* the squared distance to the previously picked centers. If so, update the squared_distances */
                 /* array by the new value and also update the dist_sum value by removing the old value and adding */
                 /* the new one. */
-#pragma omp parallel for
+
+                #pragma omp parallel for
                 for (std::size_t i = 0; i < n_frames; ++i) {
                     if (taken_points[i] == 0) {
                         auto value = metric->compute(&data(i, 0), &data(best_candidate, 0), dim);
                         auto d = value * value;
-#pragma omp critical
+
+                        #pragma omp critical
                         {
                             if (d < squared_distances[i]) {
                                 dist_sum += d - squared_distances[i];

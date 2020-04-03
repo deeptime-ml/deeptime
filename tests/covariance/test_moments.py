@@ -83,7 +83,7 @@ class TestMoments(unittest.TestCase):
                                           weights=weights, column_selection=column_selection)
         assert np.allclose(C_XX, C_XX_ref[:, column_selection])
         # diagonal only
-        if sparse_mode is not 'sparse':
+        if sparse_mode != 'sparse':
             w, s_X, C_XX = moments.moments_XX(X, remove_mean=remove_mean, modify_data=False,
                                               sparse_mode=sparse_mode, weights=weights, diag_only=True)
             assert np.allclose(C_XX, np.diag(C_XX_ref))
@@ -200,7 +200,7 @@ class TestMoments(unittest.TestCase):
         assert np.allclose(C_XX, C_XX_ref[:, column_selection])
         assert np.allclose(C_XY, C_XY_ref[:, column_selection])
         # diagonal only
-        if sparse_mode is not 'sparse' and X.shape[1] == Y.shape[1]:
+        if sparse_mode != 'sparse' and X.shape[1] == Y.shape[1]:
             w1, s_X, s_Y, C_XX, C_XY = moments.moments_XXXY(X, Y, remove_mean=remove_mean, modify_data=False,
                                                             symmetrize=symmetrize, sparse_mode=sparse_mode, sparse_tol=sparse_tol,
                                                             weights=weights, diag_only=True)
@@ -389,7 +389,7 @@ class TestMoments(unittest.TestCase):
         assert np.allclose(C[1][0], C_YX_ref[:, column_selection])
         assert np.allclose(C[1][1], C_YY_ref[:, column_selection])
         # diagonal only
-        if sparse_mode is not 'sparse' and X.shape[1] == Y.shape[1]:
+        if sparse_mode != 'sparse' and X.shape[1] == Y.shape[1]:
             w1, s, C = moments.moments_block(X, Y, remove_mean=remove_mean, modify_data=False,
                                              sparse_mode=sparse_mode, sparse_tol=sparse_tol, diag_only=True)
             assert np.allclose(C[0][0], np.diag(C_XX_ref))

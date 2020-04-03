@@ -10,23 +10,20 @@
 #include "common.h"
 #include "distribution_utils.h"
 
-template<typename dtype, bool RELEASE_GIL>
+template<typename dtype>
 np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, const py::object& stop, long seed) {
     std::unique_ptr<py::gil_scoped_release> gil;
-    if (RELEASE_GIL) {
-        gil = std::make_unique<py::gil_scoped_release>();
-    }
-
     auto nStates = P.shape(0);
 
     np_array<int> result (N);
-    int* data = result.mutable_data(0);
+    auto* data = result.mutable_data(0);
+
     data[0] = start;
     if (seed == -1) {
         seed = std::chrono::system_clock::now().time_since_epoch().count();
     }
-    auto &generator = sktime::rnd::staticGenerator();
 
+    auto generator = seed < 0 ? sktime::rnd::randomlySeededGenerator() : sktime::rnd::seededGenerator(seed);
     std::discrete_distribution<> ddist;
 
     const dtype* pPtr = P.data();

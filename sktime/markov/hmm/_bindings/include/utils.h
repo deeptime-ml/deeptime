@@ -335,22 +335,15 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
     auto pselPtr = std::unique_ptr<dtype[]>(new dtype[N]);
     auto psel = pselPtr.get();
 
-    //auto alphaBuf = alpha.data();
-    //auto transitionMatrixPtr = transitionMatrix.data();
     {
-        // py::gil_scoped_release gil;
-        //std::default_random_engine generator(seed >= 0 ? seed : clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
-        auto &generator = sktime::rnd::staticGenerator();
-
         // Sample final state.
         for (std::size_t i = 0; i < N; i++) {
             psel[i] = alpha.at(T-1, i);
         }
-        //normalize(psel, psel + N);
 
         std::discrete_distribution<> ddist(psel, psel + N);
         // Draw from this distribution.
-        path[T - 1] = ddist(generator);
+        path[T - 1] = ddist(sktime::rnd::staticThreadLocalGenerator());
 
         // Work backwards from T-2 to 0.
         for (std::int64_t t = T - 2; t >= 0; --t) {
@@ -362,9 +355,32 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
             ddist.param(decltype(ddist)::param_type(psel, psel + N));
 
             // Draw from this distribution.
-            path[t] = ddist(generator);
+            path[t] = ddist(sktime::rnd::staticThreadLocalGenerator());
         }
     }
 
     return pathArray;
+}
+
+template<typename dtype>
+np_array<dtype> countMatrix(py::list dtrajs, std::uint32_t lag, std::uint32_t nStates) {
+    np_array<dtype> result ({nStates, nStates});
+    auto* buf = result.mutable_data();
+    std::fill(buf, buf + nStates * nStates, static_cast<dtype>(0));
+
+    for(auto traj : dtrajs) {
+        auto npTraj = traj.cast<np_array<dtype>>();
+
+        auto T = npTraj.shape(0);
+
+        if (T > lag) {
+            for(std::size_t t = 0; t < static_cast<std::size_t>(T - lag); ++t) {
+                auto state1 = npTraj.at(t);
+                auto state2 = npTraj.at(t+lag);
+                ++buf[nStates * state1 + state2];
+            }
+        }
+    }
+
+    return result;
 }
