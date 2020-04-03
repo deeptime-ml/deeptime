@@ -1,6 +1,34 @@
-from copy import deepcopy
+import time
 
 import numpy as np
+
+
+class timing(object):
+    """A timing context manager
+
+    Examples
+    --------
+    >>> long_function = lambda : None
+    >>> with timing('long_function'):
+    ...     long_function()
+    long_function: 0.000 seconds
+    """
+
+    def __init__(self, name='block'):
+        self.name = name
+        self.time = 0
+        self.start = None
+        self.end = None
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, ty, val, tb):
+        self.end = time.time()
+        self.time = self.end - self.start
+        print("%s: %0.3f seconds" % (self.name, self.time))
+        return False
 
 
 class GenerateTestMatrix(type):
@@ -30,6 +58,7 @@ class GenerateTestMatrix(type):
                     return self
                 return partial(self.func, instance,
                                *(self.args or ()), **(self.keywords or {}))
+
         new_test_methods = {}
 
         test_templates = {k: v for k, v in attr.items() if k.startswith('_test')}
