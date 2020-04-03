@@ -361,3 +361,26 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
 
     return pathArray;
 }
+
+template<typename dtype>
+np_array<dtype> countMatrix(py::list dtrajs, std::uint32_t lag, std::uint32_t nStates) {
+    np_array<dtype> result ({nStates, nStates});
+    auto* buf = result.mutable_data();
+    std::fill(buf, buf + nStates * nStates, static_cast<dtype>(0));
+
+    for(auto traj : dtrajs) {
+        auto npTraj = traj.cast<np_array<dtype>>();
+
+        auto T = npTraj.shape(0);
+
+        if (T > lag) {
+            for(std::size_t t = 0; t < static_cast<std::size_t>(T - lag); ++t) {
+                auto state1 = npTraj.at(t);
+                auto state2 = npTraj.at(t+lag);
+                ++buf[nStates * state1 + state2];
+            }
+        }
+    }
+
+    return result;
+}

@@ -33,6 +33,7 @@ from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import compute_dtrajs_effective
 from sktime.util import ensure_dtraj_list
+from sktime.markov.hmm._hmm_bindings import util as _bd_util
 
 __author__ = 'noe, clonker'
 
@@ -500,13 +501,8 @@ class BayesianHMSM(Estimator):
                                   initial_distribution_prior, reversible: bool = True, stationary: bool = False,
                                   n_sampling_steps: int = 1000):
         """ Updates the hidden-state transition matrix and the initial distribution """
-        import msmtools.estimation as msmest
-        C = msmest.count_matrix(
-            model.hidden_trajs, lag=1,
-            nstates=model.transition_matrix.shape[0]
-        ).toarray()
+        C = _bd_util.count_matrix(model.hidden_trajs, 1, model.transition_matrix.shape[0])
         model.counts[...] = C
-
         C = C + transition_matrix_prior
 
         # check if we work with these options

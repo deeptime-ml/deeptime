@@ -70,5 +70,6 @@ PYBIND11_MODULE(_hmm_bindings, m) {
         util.def("transition_counts", &transitionCounts<double>, "alpha"_a, "beta"_a, "transition_matrix"_a, "state_probability_trajectory"_a, "counts_out"_a, "T"_a = py::none(), docs::TRANSITION_COUNTS);
         util.def("sample_path", &samplePath<float>, "alpha"_a, "transition_matrix"_a, "T"_a , "seed"_a = -1, docs::SAMPLE_PATH);
         util.def("sample_path", &samplePath<double>, "alpha"_a, "transition_matrix"_a, "T"_a, "seed"_a = -1, docs::SAMPLE_PATH);
+        util.def("count_matrix", &countMatrix<std::int32_t>, "dtrajs"_a, "lag"_a, "n_states"_a);
     }
 }
