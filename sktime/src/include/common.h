@@ -8,7 +8,7 @@
 namespace py = pybind11;
 
 template<typename dtype>
-using np_array = py::array_t<dtype, py::array::c_style>;
+using np_array = py::array_t<dtype, py::array::c_style | py::array::forcecast>;
 
 template<typename T, typename D>
 bool arraySameShape(const np_array<T>& lhs, const np_array<D>& rhs) {

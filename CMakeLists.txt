@@ -27,6 +27,8 @@ endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/pybind11)
 
+set(common_includes "${CMAKE_CURRENT_LIST_DIR}/sktime/src/include")
+
 add_subdirectory(sktime/covariance/util/covar_c)
 add_subdirectory(sktime/clustering)
 add_subdirectory(sktime/markov/_bindings)
