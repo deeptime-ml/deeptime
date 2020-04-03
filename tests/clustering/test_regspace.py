@@ -83,7 +83,9 @@ class TestRegSpaceClustering(unittest.TestCase):
     def test_regspace_nthreads(self):
         self.clustering.fit(self.src, n_jobs=1)
         cl2 = RegularSpaceClustering(dmin=self.dmin, n_jobs=2).fit(self.src).fetch_model()
-        np.testing.assert_equal(self.clustering.fetch_model().cluster_centers, cl2.cluster_centers)
+        centers1 = self.clustering.fetch_model().cluster_centers
+        centers2 = cl2.cluster_centers
+        np.testing.assert_equal(centers1, centers2)
 
 
 if __name__ == "__main__":

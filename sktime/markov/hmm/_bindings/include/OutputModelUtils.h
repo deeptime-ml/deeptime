@@ -9,6 +9,7 @@
 #include <iomanip>
 
 #include "common.h"
+#include "thread_utils.h"
 
 namespace hmm {
 namespace output_models {
@@ -41,27 +42,39 @@ np_array<dtype> generateObservationTrajectory(const np_array<State> &hiddenState
     if (hiddenStateTrajectory.ndim() != 1) {
         throw std::invalid_argument("generate observation trajectory needs 1-dimensional hidden state trajectory");
     }
-    auto nTimesteps = hiddenStateTrajectory.shape(0);
+    auto nTimesteps = static_cast<std::size_t>(hiddenStateTrajectory.shape(0));
     auto nObs = outputProbabilities.shape(1);
 
-    np_array<dtype> output({static_cast<std::size_t>(nTimesteps)});
+    np_array<dtype> output({nTimesteps});
     auto outputPtr = output.mutable_data();
 
-    #pragma omp parallel
     {
-        std::discrete_distribution<> ddist;
+        auto nThreads = std::thread::hardware_concurrency();
+        std::vector<sktime::thread::scoped_thread> threads;
+        threads.reserve(nThreads);
+        std::size_t grainSize = std::max(static_cast<std::size_t>(1), nTimesteps / nThreads);
 
-        #pragma omp for
-        for (decltype(nTimesteps) t = 0; t < nTimesteps; ++t) {
-            auto state = hiddenStateTrajectory.at(t);
-            auto begin = outputProbabilities.data(state, 0);
-            auto end = begin + nObs;
-            ddist.param(decltype(ddist)::param_type(begin, end));
-            auto obs = ddist(sktime::rnd::staticGenerator());
-            *(outputPtr + t) = obs;
+        const auto* hiddenStateTrajectoryBuf = hiddenStateTrajectory.data();
+        const auto* outputProbabilitiesBuf = outputProbabilities.data();
+
+        for(std::size_t nextIndex = 0; nextIndex < nTimesteps; nextIndex += grainSize) {
+            std::size_t beginIndex = nextIndex;
+            std::size_t endIndex = std::min(nextIndex+grainSize, nTimesteps);
+            threads.emplace_back([hiddenStateTrajectoryBuf, outputProbabilitiesBuf,
+                                  beginIndex, endIndex, outputPtr, nObs]{
+                auto generator = sktime::rnd::randomlySeededGenerator();
+                std::discrete_distribution<> ddist;
+                for(std::size_t t = beginIndex; t < endIndex; ++t) {
+                    auto state = hiddenStateTrajectoryBuf[t];
+                    auto begin = outputProbabilitiesBuf + state * nObs;  // outputProbabilities.at(state, 0)
+                    auto end = outputProbabilitiesBuf + (state+1) * nObs;  // outputProbabilities.at(state+1, 0)
+                    ddist.param(decltype(ddist)::param_type(begin, end));
+                    auto obs = ddist(generator);
+                    *(outputPtr + t) = obs;
+                }
+            });
         }
     }
-
     return output;
 }
 
@@ -93,13 +106,41 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
     auto nObs = outputProbabilities.shape(1);
     ssize_t currentState{0};
 
+    auto& generator = sktime::rnd::staticThreadLocalGenerator();
     sktime::rnd::dirichlet_distribution<dtype> dirichlet;
 
     for (const np_array<State> &observations : observationsPerState) {
+
         std::vector<dtype> hist(nObs, 0);
+        auto* histPtr = hist.data();
+
+        #ifdef USE_OPENMP
+
+        #pragma omp parallel
+        {
+            std::vector<dtype> histPrivate(nObs, 0);
+
+            #pragma omp for
+            for(ssize_t i = 0; i < observations.size(); ++i) {
+                ++histPrivate.at(observations.at(i));
+            }
+
+            #pragma omp critical
+            {
+                for(int n=0; n<nObs; ++n) {
+                    histPtr[n] += histPrivate[n];
+                }
+            }
+        }
+
+        #else
+
         for (ssize_t i = 0; i < observations.size(); ++i) {
             ++hist.at(observations.at(i));
         }
+
+        #endif // USE_OPENMP
+
         auto priorBegin = prior.data(currentState);
         // add prior onto histogram
         std::transform(hist.begin(), hist.end(), priorBegin, hist.begin(), std::plus<>());
@@ -117,12 +158,10 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
         }
 
         dirichlet.params(reducedHist.begin(), reducedHist.end());
-        auto probs = dirichlet(sktime::rnd::staticGenerator());
+        auto probs = dirichlet(generator);
 
         for (std::size_t i = 0; i < probs.size(); ++i) {
-            // if(probs[i] != 0) {
             outputProbabilities.mutable_at(currentState, positivesMapping[i]) = probs[i];
-            // }
         }
 
         ++currentState;
@@ -225,10 +264,9 @@ generateObservationTrajectory(const np_array<dtype> &hiddenStateTrajectory, cons
     auto ptr = output.mutable_data();
 
     std::normal_distribution<dtype> dist{0, 1};
-
     for (decltype(nTimesteps) t = 0; t < nTimesteps; ++t) {
         auto state = hiddenStateTrajectory.at(t);
-        *(ptr + t) = sigmas.at(state) * dist(sktime::rnd::staticGenerator()) + means.at(state);
+        *(ptr + t) = sigmas.at(state) * dist(sktime::rnd::staticThreadLocalGenerator()) + means.at(state);
     }
     return output;
 }
