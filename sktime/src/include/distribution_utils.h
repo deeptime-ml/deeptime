@@ -22,7 +22,7 @@ Generator randomlySeededGenerator() {
 
 template<typename Generator = std::default_random_engine>
 Generator& staticThreadLocalGenerator() {
-    static thread_local Generator generator(randomlySeededGenerator());
+    static thread_local Generator generator(randomlySeededGenerator<Generator>());
     return generator;
 }
 
