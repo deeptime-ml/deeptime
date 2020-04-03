@@ -136,8 +136,6 @@ dtype forward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &pO
 
     dtype sum, logprob, scaling;
     {
-        py::gil_scoped_release gil;
-
         // first alpha and scaling factors
         scaling = 0.0;
         for (std::size_t i = 0; i < N; i++) {
@@ -204,8 +202,6 @@ void backward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &po
 
     auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
     {
-        py::gil_scoped_release gil;
-
         std::size_t i, j, t;
         dtype sum, scaling;
 
@@ -298,9 +294,7 @@ void transitionCounts(const np_array<dtype> &alpha, const np_array<dtype> &beta,
 
     auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
 
-    py::gil_scoped_release gil;
-
-    std::fill(countsBuf, countsBuf + counts.size(), 0.0);
+    std::fill(countsBuf, countsBuf + N*N, 0.0);
 
     dtype sum;
 
@@ -383,4 +377,15 @@ np_array<dtype> countMatrix(py::list dtrajs, std::uint32_t lag, std::uint32_t nS
     }
 
     return result;
+}
+
+template<typename dtype>
+dtype forwardBackward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &pObs,
+    const np_array<dtype> &pi, np_array<dtype> &alpha, np_array<dtype> &beta, np_array<dtype> &gamma, np_array<dtype> &counts, const py::object &pyT) {
+
+    auto logprob = forward(transitionMatrix, pObs, pi, alpha, pyT);
+    backward(transitionMatrix, pObs, beta, pyT);
+    stateProbabilities(alpha, beta, gamma, pyT);
+    transitionCounts(alpha, beta, transitionMatrix, pObs, counts, pyT);
+    return logprob;
 }
