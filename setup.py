@@ -59,9 +59,12 @@ class Build(build_ext):
         np_inc = _np_inc()
         pybind_inc = 'lib/pybind11/include'
         # TODO: this is platform dependent, e.g. win should be treated differently.
-        cxx_flags = ['-std=c++14']
+        if self.compiler.compiler_type == 'msvc':
+            cxx_flags = ['/EHsc', '/std:c++latest', '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()]
+            extra_link_args.append('/machine:X64')
+        else:
+            cxx_flags = ['-std=c++14']
         has_openmp = supports_omp(self.compiler)
-
         if has_openmp:
             extra_compile_args += ['-fopenmp' if sys.platform != 'darwin' else '-fopenmp=libiomp5']
             if sys.platform.startswith('linux'):
@@ -77,8 +80,6 @@ class Build(build_ext):
             ext.include_dirs.append(pybind_inc)
             if ext.language == 'c++':
                 ext.extra_compile_args += cxx_flags
-
-            if has_openmp:
                 ext.extra_compile_args += extra_compile_args
                 ext.extra_link_args += extra_link_args
                 ext.define_macros += define_macros
