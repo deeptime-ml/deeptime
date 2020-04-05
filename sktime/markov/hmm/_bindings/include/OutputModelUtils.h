@@ -203,9 +203,13 @@ constexpr dtype pi() { return 3.141592653589793238462643383279502884e+00; }
  */
 template<typename dtype>
 constexpr dtype sample(dtype o, dtype mu, dtype sigma) {
+    #ifndef _WIN32
     double c = 1.0 / (std::sqrt(2.0 * pi<dtype>()) * sigma);
     double d = (o - mu) / sigma;
     return c * exp(-0.5 * d * d);
+    #else
+    return exp(-0.5 * ((o - mu) / sigma) * ((o - mu) / sigma)) / (std::sqrt(2.0 * pi<dtype>()) * sigma);
+    #endif
 }
 
 template<typename dtype>
