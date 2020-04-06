@@ -7,6 +7,9 @@ if(DEFINED PROJECT_NAME)
 endif()
 project(sktime LANGUAGES C CXX VERSION 0.0.0)
 
+find_package(OpenMP REQUIRED)
+add_definitions(-DUSE_OPENMP)
+
 if (NOT SKTIME_IS_SUBPROJECT)
     option(SKTIME_BUILD_TESTING "Build sktime tests" ON)
 endif()
@@ -26,6 +29,8 @@ if(SKTIME_BUILD_TESTING)
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/pybind11)
+
+set(common_includes "${CMAKE_CURRENT_LIST_DIR}/sktime/src/include")
 
 add_subdirectory(sktime/covariance/util/covar_c)
 add_subdirectory(sktime/clustering)

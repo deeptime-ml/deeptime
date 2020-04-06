@@ -85,15 +85,18 @@ np_array<dtype> toOutputProbabilityTrajectory(const np_array<State> &observation
         throw std::invalid_argument("observations trajectory needs to be one-dimensional.");
     }
     auto nHidden = static_cast<std::size_t>(outputProbabilities.shape(0));
+    auto nObs = static_cast<std::size_t>(outputProbabilities.shape(1));
+    const auto* P = outputProbabilities.data();
+    const auto* obs = observations.data();
 
     np_array<dtype> output(std::vector<std::size_t>{static_cast<std::size_t>(observations.shape(0)), nHidden});
-    auto outputPtr = output.mutable_data(0);
+    auto* outputPtr = output.mutable_data();
+    auto T = observations.shape(0);
 
-    #pragma omp parallel for
-    for (ssize_t t = 0; t < observations.shape(0); ++t) {
-        auto obsState = observations.at(t);
+    #pragma omp parallel for collapse(2) default(none) firstprivate(P, obs, nHidden, nObs, T, outputPtr)
+    for (ssize_t t = 0; t < T; ++t) {
         for (std::size_t i = 0; i < nHidden; ++i) {
-            *(outputPtr + t * nHidden + i) = outputProbabilities.at(i, obsState);
+            outputPtr[t*nHidden + i] = P[obs[t] + i*nObs];
         }
     }
 
@@ -113,21 +116,23 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
 
         std::vector<dtype> hist(nObs, 0);
         auto* histPtr = hist.data();
+        auto T = observations.size();
+        auto* observationsBuf = observations.data();
 
         #ifdef USE_OPENMP
 
-        #pragma omp parallel
+        #pragma omp parallel default(none) firstprivate(nObs, histPtr, T, observationsBuf)
         {
             std::vector<dtype> histPrivate(nObs, 0);
 
             #pragma omp for
-            for(ssize_t i = 0; i < observations.size(); ++i) {
-                ++histPrivate.at(observations.at(i));
+            for(ssize_t i = 0; i < T; ++i) {
+                ++histPrivate.at(observationsBuf[i]);
             }
 
             #pragma omp critical
             {
-                for(int n=0; n<nObs; ++n) {
+                for(int n = 0; n < nObs; ++n) {
                     histPtr[n] += histPrivate[n];
                 }
             }

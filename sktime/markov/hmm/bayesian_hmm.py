@@ -490,10 +490,6 @@ class BayesianHMSM(Estimator):
         """Sample a new set of emission probabilites from the conditional distribution P(E | S, O) """
         observations_by_state = [observations_in_state(model.hidden_trajs, observations, state)
                                  for state in range(model.transition_matrix.shape[0])]
-        #import bhmm
-        #m = bhmm.output_models.DiscreteOutputModel(model.output_model.output_probabilities)
-        #m.sample(observations_by_state)
-        #model.output_model._output_probabilities = m.output_probabilities
         model.output_model.sample(observations_by_state)
 
     @staticmethod
@@ -524,7 +520,7 @@ class BayesianHMSM(Estimator):
             n0 = BayesianHMSM._count_init(model.hidden_trajs, model.transition_matrix.shape[0])
             first_timestep_counts_with_prior = n0 + initial_distribution_prior
             positive = first_timestep_counts_with_prior > 0
-            p0 = np.zeros_like(n0)
+            p0 = np.zeros(n0.shape, dtype=model.transition_matrix.dtype)
             p0[positive] = np.random.dirichlet(first_timestep_counts_with_prior[positive])  # sample p0 from posterior
 
         # update HMM with new sample

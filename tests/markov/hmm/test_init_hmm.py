@@ -20,7 +20,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
         init_hmm = initial_guess_discrete_from_data(dtrajs, n_hidden_states=2, lagtime=1)
         # test
         A = init_hmm.transition_model.transition_matrix
-        B = init_hmm.output_model.output_probabilities
+        B = init_hmm.output_probabilities
         # Test stochasticity
         np.testing.assert_(msmana.is_transition_matrix(A))
         np.testing.assert_allclose(B.sum(axis=1), np.ones(B.shape[0]))
@@ -45,7 +45,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
         # Test if model fit is close to reference. Note that we do not have an exact reference, so we cannot set the
         # tolerance in a rigorous way to test statistical significance. These are just sanity checks.
         Tij = hmm.transition_model.transition_matrix
-        B = hmm.output_model.output_probabilities
+        B = hmm.output_probabilities
         # Test stochasticity
         np.testing.assert_(msmana.is_transition_matrix(Tij))
         np.testing.assert_allclose(B.sum(axis=1), np.ones(B.shape[0]))
@@ -75,7 +75,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
         hmm = initial_guess_discrete_from_data(dtrajs, n_states, 1)
         # Test stochasticity and reversibility
         Tij = hmm.transition_model.transition_matrix
-        B = hmm.output_model.output_probabilities
+        B = hmm.output_probabilities
         np.testing.assert_(msmana.is_transition_matrix(Tij))
         np.testing.assert_(msmana.is_reversible(Tij))
         np.testing.assert_allclose(B.sum(axis=1), np.ones(B.shape[0]))
@@ -91,7 +91,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
         for rev in [True, False]:  # reversibiliy doesn't matter in this example
             hmm = initial_guess_discrete_from_data(dtraj, 1, 1, reversible=rev)
             np.testing.assert_allclose(hmm.transition_model.transition_matrix, Aref)
-            np.testing.assert_allclose(hmm.output_model.output_probabilities, Bref)
+            np.testing.assert_allclose(hmm.output_probabilities, Bref)
 
     def test_2state_2obs_deadend(self):
         dtraj = np.array([0, 0, 0, 0, 1])
@@ -100,7 +100,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
             hmm = initial_guess_discrete_from_data(dtraj, 1, 1, reversible=rev)
             np.testing.assert_allclose(hmm.transition_model.transition_matrix, Aref)
             # output must be 1 x 2, and no zeros
-            B = hmm.output_model.output_probabilities
+            B = hmm.output_probabilities
             np.testing.assert_equal(B.shape, (1, 2))
             np.testing.assert_array_less(0, B)
 
@@ -112,8 +112,8 @@ class TestInitHMMDiscrete(unittest.TestCase):
             np.testing.assert_(msmana.is_transition_matrix(hmm.transition_model.transition_matrix))
             np.testing.assert_allclose(hmm.transition_model.transition_matrix, Aref)
             # output must be 1 x 2, and no zeros
-            np.testing.assert_equal(hmm.output_model.output_probabilities.shape, (1, 2))
-            np.testing.assert_(np.all(hmm.output_model.output_probabilities > 0))
+            np.testing.assert_equal(hmm.output_probabilities.shape, (1, 2))
+            np.testing.assert_(np.all(hmm.output_probabilities > 0))
 
     def test_2state_2obs_unidirectional(self):
         dtraj = np.array([0, 0, 0, 0, 1])
@@ -128,8 +128,8 @@ class TestInitHMMDiscrete(unittest.TestCase):
             assert np.allclose(hmm.transition_model.transition_matrix, Aref_naked) \
                    or np.allclose(hmm.transition_model.transition_matrix,
                                   Aref_naked[np.ix_(perm, perm)])  # test permutation
-            assert np.allclose(hmm.output_model.output_probabilities, Bref_naked) \
-                   or np.allclose(hmm.output_model.output_probabilities, Bref_naked[perm])  # test permutation
+            assert np.allclose(hmm.output_probabilities, Bref_naked) \
+                   or np.allclose(hmm.output_probabilities, Bref_naked[perm])  # test permutation
 
     def test_3state_fail(self):
         dtraj = np.array([0, 1, 0, 0, 1, 1])
@@ -154,7 +154,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
             np.testing.assert_(msmana.is_transition_matrix(hmm.transition_model.transition_matrix))
             if rev:
                 np.testing.assert_(msmana.is_reversible(hmm.transition_model.transition_matrix))
-            np.testing.assert_allclose(hmm.output_model.output_probabilities.sum(axis=1), 1.)
+            np.testing.assert_allclose(hmm.output_probabilities.sum(axis=1), 1.)
 
     def test_state_splitting(self):
         dtraj = np.array([0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -168,7 +168,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
                          [0, 0, 1],
                          [1, 0, 0]])
         np.testing.assert_array_almost_equal(hmm0.transition_model.transition_matrix, Aref, decimal=2)
-        np.testing.assert_array_almost_equal(hmm0.output_model.output_probabilities, Bref, decimal=2)
+        np.testing.assert_array_almost_equal(hmm0.output_probabilities, Bref, decimal=2)
         np.testing.assert_array_almost_equal(hmm0.initial_distribution, piref, decimal=2)
 
     def test_state_splitting_empty(self):
@@ -185,7 +185,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
         Bref = np.array([[0, 0, 0, 1, 0],
                          [0, 0, 0, 0, 1],
                          [0, 0, 1, 0, 0]])
-        np.testing.assert_(np.max(np.abs(hmm0.output_model.output_probabilities - Bref)) < 0.01)
+        np.testing.assert_(np.max(np.abs(hmm0.output_probabilities - Bref)) < 0.01)
         np.testing.assert_array_almost_equal(hmm0.transition_model.transition_matrix, Aref, decimal=2)
         np.testing.assert_array_almost_equal(hmm0.initial_distribution, piref, decimal=2)
 
