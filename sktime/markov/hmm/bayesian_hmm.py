@@ -520,7 +520,7 @@ class BayesianHMSM(Estimator):
             n0 = BayesianHMSM._count_init(model.hidden_trajs, model.transition_matrix.shape[0])
             first_timestep_counts_with_prior = n0 + initial_distribution_prior
             positive = first_timestep_counts_with_prior > 0
-            p0 = np.zeros_like(n0)
+            p0 = np.zeros(n0.shape, dtype=model.transition_matrix.dtype)
             p0[positive] = np.random.dirichlet(first_timestep_counts_with_prior[positive])  # sample p0 from posterior
 
         # update HMM with new sample
