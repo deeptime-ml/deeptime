@@ -346,23 +346,33 @@ void samplePathImpl(const dtype* const alpha, const dtype* const transitionMatri
     // Sample final state.
     for (std::size_t i = 0; i < N; i++) {
         psel[i] = alpha[(T-1)*N + i];
+        if (i > 0) {
+            psel[i] += psel[i-1];
+        }
     }
-    std::discrete_distribution<> ddist(psel, psel + N);
+
+    auto sample = [&generator, N, psel]() {
+        static thread_local std::uniform_real_distribution<dtype> uiDist (0, 1);
+        auto p = uiDist(generator) * psel[N - 1];  // uniform between 0 and psel[N-1] which is cumulative
+        auto it = std::lower_bound(psel, psel + N, p);
+        return std::distance(psel, it);
+    };
 
     // Draw from this distribution.
-    path[T - 1] = ddist(generator);
+    path[T - 1] = sample();
 
     // Work backwards from T-2 to 0.
     for (std::int64_t t = T - 2; t >= 0; --t) {
         // Compute P(s_t = i | s_{t+1}..s_T).
         for (std::size_t i = 0; i < N; ++i) {
             psel[i] = alpha[t*N + i] * transitionMatrix[i*N + path[t+1]];
+            if (i > 0) {
+                psel[i] += psel[i - 1];
+            }
         }
-        //normalize(psel, psel + N);
-        ddist.param(decltype(ddist)::param_type(psel, psel + N));
 
         // Draw from this distribution.
-        path[t] = ddist(generator);
+        path[t] = sample();
     }
 }
 
