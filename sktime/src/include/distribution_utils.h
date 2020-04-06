@@ -6,7 +6,8 @@
 
 #include "common.h"
 
-namespace sktime::rnd {
+namespace sktime {
+namespace rnd {
 
 template<typename Generator = std::default_random_engine>
 Generator seededGenerator(std::uint32_t seed) {
@@ -65,4 +66,5 @@ private:
     std::vector<std::gamma_distribution<RealType>> gammas;
 };
 
+}
 }

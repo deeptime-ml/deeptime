@@ -116,21 +116,23 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
 
         std::vector<dtype> hist(nObs, 0);
         auto* histPtr = hist.data();
+        auto T = observations.size();
+        auto* observationsBuf = observations.data();
 
         #ifdef USE_OPENMP
 
-        #pragma omp parallel
+        #pragma omp parallel default(none) firstprivate(nObs, histPtr, T, observationsBuf)
         {
             std::vector<dtype> histPrivate(nObs, 0);
 
             #pragma omp for
-            for(ssize_t i = 0; i < observations.size(); ++i) {
-                ++histPrivate.at(observations.at(i));
+            for(ssize_t i = 0; i < T; ++i) {
+                ++histPrivate.at(observationsBuf[i]);
             }
 
             #pragma omp critical
             {
-                for(int n=0; n<nObs; ++n) {
+                for(int n = 0; n < nObs; ++n) {
                     histPtr[n] += histPrivate[n];
                 }
             }

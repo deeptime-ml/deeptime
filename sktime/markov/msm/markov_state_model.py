@@ -72,7 +72,6 @@ class MarkovStateModel(Model):
         self._is_reversible = reversible
         self._ncv = ncv
 
-        self._transition_matrix = None
         self.update_transition_matrix(transition_matrix)
 
         if n_eigenvalues is None:
@@ -133,7 +132,7 @@ class MarkovStateModel(Model):
         """ The transition matrix on the active set. """
         return self._transition_matrix
 
-    def update_transition_matrix(self, value: np.ndarray):
+    def update_transition_matrix(self, value: Optional[np.ndarray]):
         """ Sets the transition matrix and invalidates all cached and derived properties. """
         if value is None:
             raise ValueError("Markov state model requires a transition matrix, but it was None.")
@@ -222,7 +221,7 @@ class MarkovStateModel(Model):
 
         return stationary_distribution
 
-    def update_stationary_distribution(self, value: np.ndarray):
+    def update_stationary_distribution(self, value: Optional[np.ndarray]):
         r""" Explicitly sets the stationary distribution, re-normalizes """
         if value is not None:
             self._stationary_distribution = np.copy(value) / np.sum(value)

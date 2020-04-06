@@ -113,10 +113,11 @@ template<typename dtype>
 dtype forwardImpl(const dtype*const  transitionMatrix, const dtype*const  pObs, const dtype*const pi,
                   dtype* const alpha, std::size_t N, std::size_t T) {
 
-    dtype sum, logprob, scaling;
+    dtype logprob, scaling;
     {
         // first alpha and scaling factors
         scaling = 0.0;
+        //#pragma omp parallel for reduction(+:scaling) default(none) firstprivate(N, alpha, pi, pObs)
         for (std::size_t i = 0; i < N; i++) {
             alpha[i] = pi[i] * pObs[i];
             scaling += alpha[i];
@@ -127,6 +128,7 @@ dtype forwardImpl(const dtype*const  transitionMatrix, const dtype*const  pObs, 
 
         // scale first alpha
         if (scaling != 0) {
+            //#pragma omp parallel for default(none) firstprivate(N, alpha, scaling)
             for (std::size_t i = 0; i < N; i++) {
                 alpha[i] /= scaling;
             }
@@ -136,8 +138,9 @@ dtype forwardImpl(const dtype*const  transitionMatrix, const dtype*const  pObs, 
         for (std::size_t t = 0; t < T - 1; t++) {
             scaling = 0.0;
             // compute new alpha and scaling
+            //#pragma omp parallel for reduction(+:scaling) default(none) firstprivate(N, alpha, transitionMatrix, pObs, t)
             for (std::size_t j = 0; j < N; j++) {
-                sum = 0.0;
+                dtype sum = 0.0;
                 for (std::size_t i = 0; i < N; i++) {
                     sum += alpha[t * N + i] * transitionMatrix[i * N + j];
                 }
@@ -146,6 +149,7 @@ dtype forwardImpl(const dtype*const  transitionMatrix, const dtype*const  pObs, 
             }
             // scale this row
             if (scaling != 0) {
+                //#pragma omp parallel for default(none) firstprivate(N, alpha, scaling, t)
                 for (std::size_t j = 0; j < N; j++) {
                     alpha[(t + 1) * N + j] /= scaling;
                 }
@@ -246,7 +250,7 @@ void backward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &po
 template<typename dtype>
 void stateProbabilitiesImpl(const dtype* const alpha, const dtype* const beta, dtype* const gamma,
                             std::size_t N, std::size_t T) {
-    #pragma omp parallel for
+    #pragma omp parallel for default(none) firstprivate(T, N, alpha, beta, gamma)
     for (std::size_t t = 0; t < T; ++t) {
         dtype rowSum = 0;
         for (std::size_t n = 0; n < N; ++n) {
@@ -333,6 +337,35 @@ void transitionCounts(const np_array<dtype> &alpha, const np_array<dtype> &beta,
     transitionCountsImpl(alphaBuf, betaBuf, transitionMatrixPtr, pObsBuf, countsBuf, N, T);
 }
 
+template<typename dtype, typename Generator>
+void samplePathImpl(const dtype* const alpha, const dtype* const transitionMatrix, std::size_t N, std::size_t T,
+                    Generator& generator, std::int32_t* path) {
+    auto pselPtr = std::unique_ptr<dtype[]>(new dtype[N]);
+    auto psel = pselPtr.get();
+
+    // Sample final state.
+    for (std::size_t i = 0; i < N; i++) {
+        psel[i] = alpha[(T-1)*N + i];
+    }
+    std::discrete_distribution<> ddist(psel, psel + N);
+
+    // Draw from this distribution.
+    path[T - 1] = ddist(generator);
+
+    // Work backwards from T-2 to 0.
+    for (std::int64_t t = T - 2; t >= 0; --t) {
+        // Compute P(s_t = i | s_{t+1}..s_T).
+        for (std::size_t i = 0; i < N; ++i) {
+            psel[i] = alpha[t*N + i] * transitionMatrix[i*N + path[t+1]];
+        }
+        //normalize(psel, psel + N);
+        ddist.param(decltype(ddist)::param_type(psel, psel + N));
+
+        // Draw from this distribution.
+        path[t] = ddist(generator);
+    }
+}
+
 template<typename dtype>
 np_array<std::int32_t>
 samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix, std::size_t T, int seed = -1) {
@@ -341,33 +374,12 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
     np_array<std::int32_t> pathArray(std::vector<std::size_t>{T});
     auto path = pathArray.mutable_data();
 
-    auto pselPtr = std::unique_ptr<dtype[]>(new dtype[N]);
-    auto psel = pselPtr.get();
-
-    {
-        // Sample final state.
-        for (std::size_t i = 0; i < N; i++) {
-            psel[i] = alpha.at(T-1, i);
-        }
-
-        std::discrete_distribution<> ddist(psel, psel + N);
-        // Draw from this distribution.
-        path[T - 1] = ddist(sktime::rnd::staticThreadLocalGenerator());
-
-        // Work backwards from T-2 to 0.
-        for (std::int64_t t = T - 2; t >= 0; --t) {
-            // Compute P(s_t = i | s_{t+1}..s_T).
-            for (std::size_t i = 0; i < N; ++i) {
-                psel[i] = alpha.at(t, i) * transitionMatrix.at(i, path[t+1]);
-            }
-            //normalize(psel, psel + N);
-            ddist.param(decltype(ddist)::param_type(psel, psel + N));
-
-            // Draw from this distribution.
-            path[t] = ddist(sktime::rnd::staticThreadLocalGenerator());
-        }
+    if (seed < 0) {
+        samplePathImpl(alpha.data(), transitionMatrix.data(), N, T, sktime::rnd::staticThreadLocalGenerator(), path);
+    } else {
+        auto generator = sktime::rnd::seededGenerator(static_cast<std::uint32_t>(seed));
+        samplePathImpl(alpha.data(), transitionMatrix.data(), N, T, generator, path);
     }
-
     return pathArray;
 }
 

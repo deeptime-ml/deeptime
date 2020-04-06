@@ -360,6 +360,7 @@ class HiddenMarkovStateModel(Model):
             construct this HMSM will be returned. If a higher power is given,
 
         """
+        # noinspection PyInterpreter
         Pi_c = np.diag(self.transition_model.stationary_distribution)
         P_c = self.transition_model.transition_matrix
         P_c_k = np.linalg.matrix_power(P_c, k)  # take a power if needed
