@@ -238,8 +238,8 @@ void backward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &po
     }();
 
     if (beta.ndim() != pobs.ndim() || static_cast<std::size_t>(beta.shape(0)) < T || beta.shape(1) != pobs.shape(1)) {
-        throw std::invalid_argument("Shape mismatch: Beta must have at least size T and otherwise shape of beta must "
-                                    "match shape of state probability trajectory.");
+        throw std::invalid_argument("Shape mismatch: Beta must have at least length T and the length of the second "
+                                    "dimension of beta must match that of the state probability trajectory.");
     }
 
     auto N = static_cast<std::size_t>(transitionMatrix.shape(0));
