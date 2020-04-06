@@ -7,10 +7,12 @@ source:
   path: ../..
 
 build:
+  skip: true  # [win and vc<14]
   script_env:
-   - OMP_NUM_THREADS
-   - AGENT_BUILDDIRECTORY
-  script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
+    - OMP_NUM_THREADS
+    - AGENT_BUILDDIRECTORY
+  script:
+    - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
 
 requirements:
   build:
@@ -22,7 +24,7 @@ requirements:
   host:
     - cython
     - intel-openmp # [osx]
-    - numpy
+    - numpy >=1.14
     - python
     - scipy
     - setuptools
@@ -30,6 +32,7 @@ requirements:
 
   run:
     - intel-openmp # [osx]
+    - vs2015_runtime  # [win]
     - msmtools
     - {{ pin_compatible('numpy') }}
     - python

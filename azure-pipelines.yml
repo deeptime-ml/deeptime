@@ -3,5 +3,4 @@ stages:
   jobs:
   - template: ./devtools/azure-pipelines-linux.yml
   - template: ./devtools/azure-pipelines-osx.yml
-  #- template: ./devtools/azure-pipelines-win.yml
-
+  - template: ./devtools/azure-pipelines-win.yml
