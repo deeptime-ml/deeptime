@@ -7,6 +7,9 @@ if(DEFINED PROJECT_NAME)
 endif()
 project(sktime LANGUAGES C CXX VERSION 0.0.0)
 
+find_package(OpenMP REQUIRED)
+add_definitions(-DUSE_OPENMP)
+
 if (NOT SKTIME_IS_SUBPROJECT)
     option(SKTIME_BUILD_TESTING "Build sktime tests" ON)
 endif()
