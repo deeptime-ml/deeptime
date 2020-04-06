@@ -839,16 +839,7 @@ class MaximumLikelihoodHMSM(Estimator):
         T = len(obs)
         # compute output probability matrix
         pobs = model.output_model.to_state_probability_trajectory(obs)
-        # forward variables
-        # logprob = _util.forward(A, pobs, pi, alpha_out=alpha, T=T)
-        # # backward variables
-        # _util.backward(A, pobs, beta_out=beta, T=T)
-        # # gamma
-        # # _util.state_probabilities(alpha, beta, gamma_out=gamma, T=T)
-        # from sktime.markov.hmm.util import state_probabilities
-        # state_probabilities(alpha, beta, T=T, gamma_out=gamma)
-        # # count matrix
-        # _util.transition_counts(alpha, beta, A, pobs, counts_out=counts, T=T)
+        # run forward - backward pass
         logprob = _util.forward_backward(A, pobs, pi, alpha, beta, gamma, counts, T)
         return logprob, pobs
 
