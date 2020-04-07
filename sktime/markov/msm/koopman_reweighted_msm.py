@@ -2,60 +2,71 @@ import warnings
 
 import numpy as _np
 from msmtools.estimation import effective_count_matrix
-
-from sktime.markov.msm import MarkovStateModel
+from scipy.sparse import issparse
 from sktime.markov._base import _MSMBaseEstimator
+from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
 from sktime.util import submatrix
-from ._koopman_reweighted_msm_impl import (bootstrapping_count_matrix, bootstrapping_dtrajs, twostep_count_matrix,
-                                           rank_decision, oom_components, equilibrium_transition_matrix)
 
-__author__ = 'Feliks Nüske, Fabian Paul, marscher'
+from . import _koopman_reweighted_msm_impl as _impl
+
+__author__ = 'Feliks Nüske, Fabian Paul, marscher, clonker'
 
 
 class KoopmanReweightedMSM(MarkovStateModel):
-    def __init__(self, eigenvalues_OOM=None, sigma=None, omega=None, *args, **kwargs):
-        super(KoopmanReweightedMSM, self).__init__(*args, **kwargs)
-        self._eigenvalues_oom = eigenvalues_OOM
-        self._Xi = oom_components
+    def __init__(self, transition_matrix, c2t=None, oom_components=None,
+                 stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
+                 count_model=None, eigenvalues_oom=None, sigma=None, omega=None):
+        super(KoopmanReweightedMSM, self).__init__(
+            transition_matrix, stationary_distribution=stationary_distribution, reversible=reversible,
+            n_eigenvalues=n_eigenvalues, ncv=ncv, count_model=count_model
+        )
+        self._eigenvalues_oom = eigenvalues_oom
+        self._oom_components = oom_components
         self._omega = omega
         self._sigma = sigma
+        self._c2t = c2t
         if sigma is not None:
             self._oom_rank = sigma.size
 
     @property
-    def eigenvalues_OOM(self):
+    def twostep_count_matrix(self):
+        r""" Two-step count matrices for all states. C2t[:, n, :] is a count matrix for each n. """
+        return self._c2t
+
+    @property
+    def eigenvalues_oom(self):
         """System eigenvalues estimated by OOM."""
         return self._eigenvalues_oom
 
     @property
-    def timescales_OOM(self):
+    def timescales_oom(self):
         """System timescales estimated by OOM."""
         return -self.lagtime / _np.log(_np.abs(self._eigenvalues_oom[1:]))
 
     @property
-    def OOM_rank(self):
+    def oom_rank(self):
         """Return OOM model rank."""
         return self._oom_rank
 
     @property
-    def OOM_components(self):
+    def oom_components(self):
         """Return OOM components."""
-        return self._Xi
+        return self._oom_components
 
     @property
-    def OOM_omega(self):
+    def oom_omega(self):
         """ Return OOM initial state vector."""
         return self._omega
 
     @property
-    def OOM_sigma(self):
+    def oom_sigma(self):
         """Return OOM evaluator vector."""
         return self._sigma
 
 
 class OOMReweightedMSM(_MSMBaseEstimator):
-    r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
+    r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics.
 
     Parameters
     ----------
@@ -107,7 +118,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     nbs : int, optional, default=10000
         number of re-samplings for rank decision in OOM estimation.
 
-    rank_Ct : str, optional
+    rank_mode : str, optional
         Re-sampling method for model rank selection. Can be
         * 'bootstrap_counts': Directly re-sample transitions based on effective count matrix.
 
@@ -130,55 +141,58 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     """
 
     def __init__(self, lagtime, reversible=True, count_mode='sliding', sparse=False,
-                 time_unit='1 step', nbs=10000, rank_Ct='bootstrap_counts', tol_rank=10.0,
+                 time_unit='1 step', nbs=10000, rank_mode='bootstrap_counts', tol_rank=10.0,
                  connectivity_threshold='1/n'):
-
+        super(OOMReweightedMSM, self).__init__(reversible=reversible, sparse=sparse)
         # Check count mode:
         self.count_mode = str(count_mode).lower()
         if self.count_mode not in ('sliding', 'sample'):
-            raise ValueError(
-                'count mode {} is unknown. Only \'sliding\' and \'sample\' are allowed.'.format(count_mode))
-        if rank_Ct not in ('bootstrap_counts', 'bootstrap_trajs'):
-            raise ValueError('rank_Ct must be either \'bootstrap_counts\' or \'bootstrap_trajs\'')
-
-        super(OOMReweightedMSM, self).__init__(lagtime=lagtime, reversible=reversible, count_mode=count_mode,
-                                               sparse=sparse,
-                                               time_unit=time_unit, connectivity_threshold=connectivity_threshold)
+            raise ValueError(f'count mode {count_mode} is unknown. Only \'sliding\' and \'sample\' are allowed.')
+        if rank_mode not in ('bootstrap_counts', 'bootstrap_trajs'):
+            raise ValueError('rank_mode must be either \'bootstrap_counts\' or \'bootstrap_trajs\'')
         self.nbs = nbs
         self.tol_rank = tol_rank
-        self.rank_Ct = rank_Ct
+        self.rank_mode = rank_mode
+        self.lagtime = lagtime
+        self.time_unit = time_unit
+        self.connectivity_threshold = connectivity_threshold
+
+    def fetch_model(self) -> KoopmanReweightedMSM:
+        return self._model
 
     def fit(self, dtrajs, **kw):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
-        count_model = TransitionCountEstimator(lagtime=self.lagtime, mincount_connectivity=self.connectivity_threshold,
-                                               count_mode=self.count_mode).fit(dtrajs).fetch_model()
+        count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)\
+            .fit(dtrajs).fetch_model()
+        count_model = count_model.submodel_largest(connectivity_threshold=self.connectivity_threshold)
 
         # Estimate transition matrix using re-sampling:
-        if self.rank_Ct == 'bootstrap_counts':
-            Ceff_full = effective_count_matrix(dtrajs_lag, self.lagtime)
-            Ceff = submatrix(Ceff_full, count_model.active_set)
-            smean, sdev = bootstrapping_count_matrix(Ceff, nbs=self.nbs)
+        if self.rank_mode == 'bootstrap_counts':
+            effective_count_mat = effective_count_matrix(dtrajs_lag, self.lagtime)
+            Ceff = submatrix(effective_count_mat, count_model.state_symbols)
+            smean, sdev = _impl.bootstrapping_count_matrix(Ceff, nbs=self.nbs)
         else:
-            smean, sdev = bootstrapping_dtrajs(dtrajs_lag, self.lagtime, count_model.n_states, nbs=self.nbs,
-                                               active_set=count_model.active_set)
+            smean, sdev = _impl.bootstrapping_dtrajs(dtrajs_lag, self.lagtime, count_model.n_states, nbs=self.nbs,
+                                                     active_set=count_model.state_symbols)
         # Estimate two step count matrices:
-        C2t = twostep_count_matrix(dtrajs, self.lagtime, count_model.n_states)
+        C2t = _impl.twostep_count_matrix(dtrajs, self.lagtime, count_model.n_states)
         # Rank decision:
-        rank_ind = rank_decision(smean, sdev, tol=self.tol_rank)
+        rank_ind = _impl.rank_decision(smean, sdev, tol=self.tol_rank)
         # Estimate OOM components:
-        Xi, omega, sigma, eigenvalues = oom_components(count_model.count_matrix.toarray(), C2t, rank_ind=rank_ind,
-                                             lcc=count_model.active_set)
+        if issparse(count_model.count_matrix):
+            cmat = count_model.count_matrix.toarray()
+        else:
+            cmat = count_model.count_matrix
+        Xi, omega, sigma, eigenvalues = _impl.oom_components(cmat, C2t, rank_ind=rank_ind,
+                                                             lcc=count_model.state_symbols)
         # Compute transition matrix:
-        P, lcc_new = equilibrium_transition_matrix(Xi, omega, sigma, reversible=self.reversible)
+        P, lcc_new = _impl.equilibrium_transition_matrix(Xi, omega, sigma, reversible=self.reversible)
 
         # Update active set and derived quantities:
-        # todo: dont re-initialize, this is only due to active set (see bhmm impl)
         if lcc_new.size < count_model.n_states:
             assert isinstance(count_model, TransitionCountModel)
-            count_model.__init__(self.lagtime, active_set=count_model.active_set[lcc_new],
-                                 physical_time=count_model.physical_time, connected_sets=count_model.connected_sets,
-                                 count_matrix=count_model.count_matrix)
+            count_model = count_model.submodel(count_model.symbols_to_states(lcc_new))
             warnings.warn("Caution: Re-estimation of count matrix resulted in reduction of the active set.")
 
         # update models
@@ -186,7 +200,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
 
         self._model = KoopmanReweightedMSM(
             transition_matrix=P,
-            eigenvalues_OOM=eigenvalues,
+            eigenvalues_oom=eigenvalues,
             sigma=sigma,
             omega=omega,
             count_model=count_model,

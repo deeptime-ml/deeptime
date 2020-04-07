@@ -1,4 +1,5 @@
 import abc
+from typing import Optional, Callable
 
 import numpy as np
 
@@ -209,7 +210,7 @@ class BayesianPosterior(Model):
 
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
-             score_k=10, random_state=None):
+             score_k=10, fit_fetch: Optional[Callable] = None, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
     Implementation and ideas following [1]_ [2]_ and cross-validation [3]_.
@@ -251,6 +252,9 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
     score_k : int or None
         The maximum number of eigenvalues or singular values used in the
         score. If set to None, all available eigenvalues will be used.
+    fit_fetch : callable, optional, default=None
+        Can be provided for a custom fit and fetch method. Should be a function pointer or lambda which
+        takes a list of discrete trajectories as input and yields an estimated MSM.
     random_state : None or int or np.random.RandomState
         Random seed to use.
 
@@ -277,8 +281,11 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
         dtrajs_split = blocksplit_dtrajs(dtrajs, lag=lagtime, sliding=sliding, random_state=random_state)
         dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split, random_state=random_state)
 
-        cc = TransitionCountEstimator(lagtime, count_mode).fit(dtrajs_train).fetch_model().submodel_largest()
-        model = estimator.fit(cc).fetch_model()
+        if fit_fetch is not None:
+            model = fit_fetch(dtrajs_train)
+        else:
+            cc = TransitionCountEstimator(lagtime, count_mode).fit(dtrajs_train).fetch_model().submodel_largest()
+            model = estimator.fit(cc).fetch_model()
         s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
         scores.append(s)
     return np.array(scores)
