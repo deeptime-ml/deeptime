@@ -210,7 +210,7 @@ class BayesianPosterior(Model):
 
 
 def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
-             score_k=10, fit_fetch: Optional[Callable] = None, random_state=None):
+             score_k: int = 10, blocksplit: bool = True, fit_fetch: Optional[Callable] = None, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
     Implementation and ideas following [1]_ [2]_ and cross-validation [3]_.
@@ -249,6 +249,8 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
         *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [2]_ .
                     If the MSM is reversible, this is equal to the kinetic variance [4]_ .
 
+    blocksplit : bool, optional, default=True
+        Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
     score_k : int or None
         The maximum number of eigenvalues or singular values used in the
         score. If set to None, all available eigenvalues will be used.
@@ -278,7 +280,12 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
     sliding = count_mode == 'sliding'
     scores = []
     for fold in range(n):
-        dtrajs_split = blocksplit_dtrajs(dtrajs, lag=lagtime, sliding=sliding, random_state=random_state)
+        if blocksplit:
+            dtrajs_split = blocksplit_dtrajs(dtrajs, lag=lagtime, sliding=sliding, random_state=random_state)
+        else:
+            dtrajs_split = dtrajs
+            if len(dtrajs_split) <= 1:
+                raise ValueError("Need at least two trajectories if blocksplit is not used to decompose the data.")
         dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split, random_state=random_state)
 
         if fit_fetch is not None:

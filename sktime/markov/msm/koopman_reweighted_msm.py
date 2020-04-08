@@ -163,8 +163,8 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     def fit(self, dtrajs, **kw):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
-        count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)\
-            .fit(dtrajs).fetch_model()
+        count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, sparse=self.sparse)\
+            .fit(dtrajs_lag).fetch_model()
         count_model = count_model.submodel_largest(connectivity_threshold=self.connectivity_threshold)
 
         # Estimate transition matrix using re-sampling:
@@ -176,7 +176,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
             smean, sdev = _impl.bootstrapping_dtrajs(dtrajs_lag, self.lagtime, count_model.n_states, nbs=self.nbs,
                                                      active_set=count_model.state_symbols)
         # Estimate two step count matrices:
-        C2t = _impl.twostep_count_matrix(dtrajs, self.lagtime, count_model.n_states)
+        c2t = _impl.twostep_count_matrix(dtrajs, self.lagtime, count_model.n_states)
         # Rank decision:
         rank_ind = _impl.rank_decision(smean, sdev, tol=self.tol_rank)
         # Estimate OOM components:
@@ -184,7 +184,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
             cmat = count_model.count_matrix.toarray()
         else:
             cmat = count_model.count_matrix
-        Xi, omega, sigma, eigenvalues = _impl.oom_components(cmat, C2t, rank_ind=rank_ind,
+        Xi, omega, sigma, eigenvalues = _impl.oom_components(cmat, c2t, rank_ind=rank_ind,
                                                              lcc=count_model.state_symbols)
         # Compute transition matrix:
         P, lcc_new = _impl.equilibrium_transition_matrix(Xi, omega, sigma, reversible=self.reversible)
@@ -195,16 +195,14 @@ class OOMReweightedMSM(_MSMBaseEstimator):
             count_model = count_model.submodel(count_model.symbols_to_states(lcc_new))
             warnings.warn("Caution: Re-estimation of count matrix resulted in reduction of the active set.")
 
-        # update models
-        count_model.C2t = C2t
-
         self._model = KoopmanReweightedMSM(
             transition_matrix=P,
             eigenvalues_oom=eigenvalues,
             sigma=sigma,
             omega=omega,
             count_model=count_model,
-            oom_components=Xi
+            oom_components=Xi,
+            c2t=c2t
         )
 
         return self

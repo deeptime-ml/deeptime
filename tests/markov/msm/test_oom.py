@@ -69,7 +69,7 @@ def oom_transformations(Ct, C2t, rank):
     return Xi, omega, sigma, l
 
 
-def TransitionMatrix(Xi, omega, sigma, reversible=True):
+def compute_transition_matrix(Xi, omega, sigma, reversible=True):
     N = Xi.shape[1]
     Ct_Eq = np.zeros((N, N))
     for i in range(N):
@@ -87,403 +87,235 @@ def TransitionMatrix(Xi, omega, sigma, reversible=True):
     return Tt_Eq
 
 
-class TestMSMFiveState(object):
-
-    @classmethod
-    def setup_class(cls):
-        # Load the data:
+class FiveStateSetup(object):
+    def __init__(self):
         data = np.load(pkg_resources.resource_filename('pyemma.msm.tests', "data/TestData_OOM_MSM.npz"))
-        cls.dtrajs = [data['arr_%d' % k] for k in range(1000)]
+        self.dtrajs = [data['arr_%d' % k] for k in range(1000)]
 
         # Number of states:
-        cls.N = 5
+        self.N = 5
         # Lag time:
-        cls.tau = 5
+        self.tau = 5
         # Rank:
-        cls.rank = 3
+        self.rank = 3
         # Build models:
-        cls.msmrev = OOMReweightedMSM(lagtime=cls.tau, rank_mode='bootstrap_trajs').fit(cls.dtrajs)
-        cls.msm = OOMReweightedMSM(lagtime=cls.tau, reversible=False, rank_mode='bootstrap_trajs').fit(cls.dtrajs)
-        cls.msmrev_sparse = OOMReweightedMSM(lagtime=cls.tau, sparse=True, rank_mode='bootstrap_trajs').fit(cls.dtrajs)
-        cls.msm_sparse = OOMReweightedMSM(lagtime=cls.tau, reversible=False, sparse=True, rank_mode='bootstrap_trajs') \
-            .fit(cls.dtrajs)
-        cls.msms = [cls.msmrev, cls.msm, cls.msmrev_sparse, cls.msm_sparse]
+        self.msmrev = OOMReweightedMSM(lagtime=self.tau, rank_mode='bootstrap_trajs').fit(self.dtrajs)
+        self.msm = OOMReweightedMSM(lagtime=self.tau, reversible=False, rank_mode='bootstrap_trajs').fit(self.dtrajs)
+        self.msmrev_sparse = OOMReweightedMSM(lagtime=self.tau, sparse=True, rank_mode='bootstrap_trajs').fit(
+            self.dtrajs)
+        self.msm_sparse = OOMReweightedMSM(lagtime=self.tau, reversible=False, sparse=True, rank_mode='bootstrap_trajs') \
+            .fit(self.dtrajs)
+        self.msms = [self.msmrev, self.msm, self.msmrev_sparse, self.msm_sparse]
 
         # Reference count matrices at lag time tau and 2*tau:
-        cls.C2t = data['C2t']
-        cls.Ct = np.sum(cls.C2t, axis=1)
+        self.C2t = data['C2t']
+        self.Ct = np.sum(self.C2t, axis=1)
 
         # Compute OOM-components:
-        cls.Xi, cls.omega, cls.sigma, cls.l = oom_transformations(cls.Ct, cls.C2t, cls.rank)
+        self.Xi, self.omega, self.sigma, self.l = oom_transformations(self.Ct, self.C2t, self.rank)
+
         # Compute corrected transition matrix:
-        Tt_rev = TransitionMatrix(cls.Xi, cls.omega, cls.sigma, reversible=True)
-        Tt = TransitionMatrix(cls.Xi, cls.omega, cls.sigma, reversible=False)
+        Tt_rev = compute_transition_matrix(self.Xi, self.omega, self.sigma, reversible=True)
+        Tt = compute_transition_matrix(self.Xi, self.omega, self.sigma, reversible=False)
 
         # Build reference models:
-        cls.rmsmrev = MarkovStateModel(Tt_rev)
-        cls.rmsm = MarkovStateModel(Tt)
+        self.rmsmrev = MarkovStateModel(Tt_rev)
+        self.rmsm = MarkovStateModel(Tt)
 
         " Compute further reference quantities:"
         # Commitor and MFPT:
         a = np.array([0, 1])
         b = np.array([4])
-        cls.comm_forward = cls.rmsm.committor_forward(a, b)
-        cls.comm_forward_rev = cls.rmsmrev.committor_forward(a, b)
-        cls.comm_backward = cls.rmsm.committor_backward(a, b)
-        cls.comm_backward_rev = cls.rmsmrev.committor_backward(a, b)
-        cls.mfpt = cls.tau * cls.rmsm.mfpt(a, b)
-        cls.mfpt_rev = cls.tau * cls.rmsmrev.mfpt(a, b)
+        self.comm_forward = self.rmsm.committor_forward(a, b)
+        self.comm_forward_rev = self.rmsmrev.committor_forward(a, b)
+        self.comm_backward = self.rmsm.committor_backward(a, b)
+        self.comm_backward_rev = self.rmsmrev.committor_backward(a, b)
+        self.mfpt = self.tau * self.rmsm.mfpt(a, b)
+        self.mfpt_rev = self.tau * self.rmsmrev.mfpt(a, b)
         # PCCA:
-        pcca = cls.rmsmrev.pcca(3)
-        cls.pcca_ass = pcca.assignments
-        cls.pcca_dist = pcca.metastable_distributions
-        cls.pcca_mem = pcca.memberships
-        cls.pcca_sets = pcca.sets
+        pcca = self.rmsmrev.pcca(3)
+        self.pcca_ass = pcca.assignments
+        self.pcca_dist = pcca.metastable_distributions
+        self.pcca_mem = pcca.memberships
+        self.pcca_sets = pcca.sets
         # Experimental quantities:
         a = np.array([1, 2, 3, 4, 5])
         b = np.array([1, -1, 0, -2, 4])
         p0 = np.array([0.5, 0.2, 0.2, 0.1, 0.0])
-        pi = cls.rmsm.stationary_distribution
-        pi_rev = cls.rmsmrev.stationary_distribution
+        pi = self.rmsm.stationary_distribution
+        pi_rev = self.rmsmrev.stationary_distribution
         _, _, L_rev = ma.rdl_decomposition(Tt_rev)
-        cls.exp = np.dot(cls.rmsm.stationary_distribution, a)
-        cls.exp_rev = np.dot(cls.rmsmrev.stationary_distribution, a)
-        cls.corr_rev = np.zeros(10)
-        cls.rel = np.zeros(10)
-        cls.rel_rev = np.zeros(10)
+        self.exp = np.dot(self.rmsm.stationary_distribution, a)
+        self.exp_rev = np.dot(self.rmsmrev.stationary_distribution, a)
+        self.corr_rev = np.zeros(10)
+        self.rel = np.zeros(10)
+        self.rel_rev = np.zeros(10)
         for k in range(10):
             Ck_rev = np.dot(np.diag(pi_rev), np.linalg.matrix_power(Tt_rev, k))
-            cls.corr_rev[k] = np.dot(a.T, np.dot(Ck_rev, b))
-            cls.rel[k] = np.dot(p0.T, np.dot(np.linalg.matrix_power(Tt, k), a))
-            cls.rel_rev[k] = np.dot(p0.T, np.dot(np.linalg.matrix_power(Tt_rev, k), a))
-        cls.fing_cor = np.dot(a.T, L_rev.T) * np.dot(b.T, L_rev.T)
-        cls.fing_rel = np.dot(a.T, L_rev.T) * np.dot((p0 / pi_rev).T, L_rev.T)
+            self.corr_rev[k] = np.dot(a.T, np.dot(Ck_rev, b))
+            self.rel[k] = np.dot(p0.T, np.dot(np.linalg.matrix_power(Tt, k), a))
+            self.rel_rev[k] = np.dot(p0.T, np.dot(np.linalg.matrix_power(Tt_rev, k), a))
+        self.fing_cor = np.dot(a.T, L_rev.T) * np.dot(b.T, L_rev.T)
+        self.fing_rel = np.dot(a.T, L_rev.T) * np.dot((p0 / pi_rev).T, L_rev.T)
 
-    # ---------------------------------
-    # SCORE
-    # ---------------------------------
 
-    def test_score(self):
-        for msm in self.msms:
-            dtrajs_test = self.dtrajs[0:500]
-            s1 = msm.fetch_model().score(dtrajs_test, score_method='VAMP1', score_k=2)
-            assert 1.0 <= s1 <= 2.0
-            s2 = msm.fetch_model().score(dtrajs_test, score_method='VAMP2', score_k=2)
-            assert 1.0 <= s2 <= 2.0
-            # se = msm.score(dtrajs_test, score_method='VAMPE', score_k=2)
-            # se_inf = msm.score(dtrajs_test, score_method='VAMPE', score_k=None)
+@pytest.fixture(scope="module")
+def five_state_msm():
+    return FiveStateSetup()
 
-    @pytest.mark.parametrize("reversible,sparse", [(True, True), (True, False), (False, True), (False, False)])
-    def test_score_cv(self, reversible, sparse):
-        msm = OOMReweightedMSM(lagtime=5, reversible=reversible, sparse=sparse)
-        s1 = score_cv(msm, self.dtrajs[:500], lagtime=1, n=2, score_method='VAMP1', score_k=2,
-                      fit_fetch=lambda dtrajs: msm.fit(dtrajs).fetch_model()).mean()
-        np.testing.assert_(1.0 <= s1 <= 2.0)
-        s2 = score_cv(msm, self.dtrajs[:500], lagtime=1, n=2, score_method='VAMP2', score_k=2,
-                      fit_fetch=lambda dtrajs: msm.fit(dtrajs).fetch_model()).mean()
-        np.testing.assert_(1.0 <= s2 <= 2.0)
-        # se = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', score_k=2).mean()
-        # se_inf = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', score_k=None).mean()
 
-    # ---------------------------------
-    # BASIC PROPERTIES
-    # ---------------------------------
+# ---------------------------------
+# SCORE
+# ---------------------------------
 
-    def test_reversible(self):
-        # Reversible
-        assert self.msmrev.is_reversible
-        assert self.msmrev_sparse.is_reversible
-        assert self.msmrev_eff.is_reversible
-        # Non-reversible
-        assert not self.msm.is_reversible
-        assert not self.msm_sparse.is_reversible
+def test_score(five_state_msm):
+    for msm in five_state_msm.msms:
+        dtrajs_test = five_state_msm.dtrajs[0:500]
+        s1 = msm.fetch_model().score(dtrajs_test, score_method='VAMP1', score_k=2)
+        assert 1.0 <= s1 <= 2.0
+        s2 = msm.fetch_model().score(dtrajs_test, score_method='VAMP2', score_k=2)
+        assert 1.0 <= s2 <= 2.0
 
-    def test_sparse(self):
-        np.testing.assert_(not self.msmrev_model.sparse)
-        np.testing.assert_(not self.msm_model.sparse)
 
-    def _lagtime(self, msm):
-        assert (msm.lagtime == self.tau)
+@pytest.mark.parametrize("reversible,sparse", [(True, True), (True, False), (False, True), (False, False)])
+def test_score_cv(five_state_msm, reversible, sparse):
+    msm = OOMReweightedMSM(lagtime=5, reversible=reversible, sparse=sparse)
+    s1 = score_cv(msm, five_state_msm.dtrajs[:500], lagtime=5, n=2, score_method='VAMP1', score_k=2, blocksplit=False,
+                  fit_fetch=lambda dtrajs: msm.fit(dtrajs).fetch_model()).mean()
+    np.testing.assert_(1.0 <= s1 <= 2.0)
+    s2 = score_cv(msm, five_state_msm.dtrajs[:500], lagtime=5, n=2, score_method='VAMP2', score_k=2, blocksplit=False,
+                  fit_fetch=lambda dtrajs: msm.fit(dtrajs).fetch_model()).mean()
+    np.testing.assert_(1.0 <= s2 <= 2.0)
+    # se = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', score_k=2).mean()
+    # se_inf = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', score_k=None).mean()
 
-    def test_lagtime(self):
-        for estimator in [self.msm, self.msmrev, self.msmrev_sparse, self.msm_sparse, self.msmrev_eff]:
-            np.testing.assert_equal(estimator.lagtime, self.tau)
-            np.testing.assert_equal(estimator.fetch_model().lagtime, self.tau)
 
-    def test_active_set(self):
-        assert np.all(self.msmrev.active_set == np.arange(self.N, dtype=int))
-        assert np.all(self.msmrev_sparse.active_set == np.arange(self.N, dtype=int))
-        assert np.all(self.msm.active_set == np.arange(self.N, dtype=int))
-        assert np.all(self.msm_sparse.active_set == np.arange(self.N, dtype=int))
-        assert np.all(self.msmrev_eff.active_set == np.arange(self.N, dtype=int))
+# ---------------------------------
+# BASIC PROPERTIES
+# ---------------------------------
 
-    def test_largest_connected_set(self):
-        assert np.all(self.msmrev.largest_connected_set == np.arange(self.N, dtype=int))
-        assert np.all(self.msmrev_sparse.largest_connected_set == np.arange(self.N, dtype=int))
-        assert np.all(self.msm.largest_connected_set == np.arange(self.N, dtype=int))
-        assert np.all(self.msm_sparse.largest_connected_set == np.arange(self.N, dtype=int))
-        assert np.all(self.msmrev_eff.largest_connected_set == np.arange(self.N, dtype=int))
+def test_reversible(five_state_msm):
+    # Reversible
+    np.testing.assert_(five_state_msm.msmrev.reversible)
+    np.testing.assert_(five_state_msm.msmrev_sparse.reversible)
+    # Non-reversible
+    np.testing.assert_(not five_state_msm.msm.reversible)
+    np.testing.assert_(not five_state_msm.msm_sparse.reversible)
 
-    def _nstates(self, msm):
-        # should always be <= full
-        assert (msm.nstates <= msm.nstates_full)
-        # THIS DATASET:
-        assert (msm.nstates == 5)
 
-    def test_nstates(self):
-        self._nstates(self.msmrev)
-        self._nstates(self.msm)
-        self._nstates(self.msmrev_sparse)
-        self._nstates(self.msm_sparse)
-        self._nstates(self.msmrev_eff)
-
-    def _connected_sets(self, msm):
-        cs = msm.connected_sets
-        assert (len(cs) >= 1)
-        # MODE LARGEST:
-        assert (np.all(cs[0] == msm.active_set))
-
-    def test_connected_sets(self):
-        self._connected_sets(self.msmrev)
-        self._connected_sets(self.msm)
-        self._connected_sets(self.msmrev_sparse)
-        self._connected_sets(self.msm_sparse)
-        self._connected_sets(self.msmrev_eff)
-
-    def _connectivity(self, msm):
-        # HERE:
-        assert (msm.connectivity == 'largest')
-
-    def test_connectivity(self):
-        self._connectivity(self.msmrev)
-        self._connectivity(self.msm)
-        self._connectivity(self.msmrev_sparse)
-        self._connectivity(self.msm_sparse)
-        self._connectivity(self.msmrev_eff)
-
-    def _count_matrix_active(self, msm, sparse=False):
-        if sparse:
-            C = msm.count_matrix_active.toarray()
+def test_basic_oom_properties(five_state_msm):
+    for est in five_state_msm.msms:
+        model = est.fetch_model()
+        np.testing.assert_equal(est.lagtime, five_state_msm.tau)
+        np.testing.assert_equal(model.lagtime, five_state_msm.tau)
+        np.testing.assert_(model.count_model.is_full_model)
+        np.testing.assert_equal(len(model.count_model.connected_sets()), 1)
+        np.testing.assert_equal(model.n_states, 5)
+        if est.sparse:
+            np.testing.assert_allclose(five_state_msm.Ct, model.count_model.count_matrix.toarray(),
+                                       rtol=1e-5, atol=1e-8)
+            np.testing.assert_allclose(five_state_msm.Ct, model.count_model.count_matrix_full.toarray(),
+                                       rtol=1e-5, atol=1e-8)
         else:
-            C = msm.count_matrix_active
-        assert np.allclose(C, self.Ct)
+            np.testing.assert_allclose(five_state_msm.Ct, model.count_model.count_matrix, rtol=1e-5, atol=1e-8)
+            np.testing.assert_allclose(five_state_msm.Ct, model.count_model.count_matrix_full, rtol=1e-5, atol=1e-8)
+        np.testing.assert_equal(model.count_model.selected_state_fraction, 1.0)
+        np.testing.assert_equal(model.count_model.selected_count_fraction, 1.0)
 
-    def test_count_matrix_active(self):
-        self._count_matrix_active(self.msmrev)
-        self._count_matrix_active(self.msm)
-        self._count_matrix_active(self.msmrev_sparse, sparse=True)
-        self._count_matrix_active(self.msm_sparse, sparse=True)
-        self._count_matrix_active(self.msmrev_eff)
 
-    def _count_matrix_full(self, msm, sparse=False):
-        if sparse:
-            C = msm.count_matrix_full.toarray()
-        else:
-            C = msm.count_matrix_full
-        assert np.allclose(C, self.Ct)
+# ---------------------------------
+# EIGENVALUES, EIGENVECTORS
+# ---------------------------------
 
-    def test_count_matrix_full(self):
-        self._count_matrix_full(self.msmrev)
-        self._count_matrix_full(self.msm)
-        self._count_matrix_full(self.msmrev_sparse, sparse=True)
-        self._count_matrix_full(self.msm_sparse, sparse=True)
-        self._count_matrix_full(self.msmrev_eff)
 
-    def _discrete_trajectories_full(self, msm):
-        assert (np.all(self.dtrajs[0] == msm.discrete_trajectories_full[0]))
-        assert len(self.dtrajs) == len(msm.discrete_trajectories_full)
-
-    def test_discrete_trajectories_full(self):
-        self._discrete_trajectories_full(self.msmrev)
-        self._discrete_trajectories_full(self.msm)
-        self._discrete_trajectories_full(self.msmrev_sparse)
-        self._discrete_trajectories_full(self.msm_sparse)
-        self._discrete_trajectories_full(self.msmrev_eff)
-
-    def _discrete_trajectories_active(self, msm):
-        assert (np.all(self.dtrajs[0] == msm.discrete_trajectories_active[0]))
-        assert len(self.dtrajs) == len(msm.discrete_trajectories_active)
-
-    def test_discrete_trajectories_active(self):
-        self._discrete_trajectories_active(self.msmrev)
-        self._discrete_trajectories_active(self.msm)
-        self._discrete_trajectories_active(self.msmrev_sparse)
-        self._discrete_trajectories_active(self.msm_sparse)
-        self._discrete_trajectories_active(self.msmrev_eff)
-
-    def _timestep(self, msm):
-        assert (msm.timestep_model.startswith('5'))
-        assert (msm.timestep_model.endswith('step'))
-
-    def test_timestep(self):
-        self._timestep(self.msmrev)
-        self._timestep(self.msm)
-        self._timestep(self.msmrev_sparse)
-        self._timestep(self.msm_sparse)
-        self._timestep(self.msmrev_eff)
-
-    def _transition_matrix(self, msm):
+def test_transition_matrix(five_state_msm):
+    for est in five_state_msm.msms:
+        msm = est.fetch_model()
         P = msm.transition_matrix
         # should be ndarray by default
-        assert (isinstance(P, np.ndarray) or isinstance(P, scipy.sparse.csr_matrix))
+        np.testing.assert_(isinstance(P, np.ndarray) or isinstance(P, scipy.sparse.csr_matrix))
         # shape
-        assert (np.all(P.shape == (msm.nstates, msm.nstates)))
+        np.testing.assert_equal(P.shape, (msm.n_states, msm.n_states))
         # test transition matrix properties
         import msmtools.analysis as msmana
-        assert (msmana.is_transition_matrix(P))
-        assert (msmana.is_connected(P))
+        np.testing.assert_(msmana.is_transition_matrix(P))
+        np.testing.assert_(msmana.is_connected(P))
         # REVERSIBLE
-        if msm.is_reversible:
-            assert (msmana.is_reversible(P))
+        if msm.reversible:
+            np.testing.assert_(msmana.is_reversible(P))
         # Test equality with model:
-        if isinstance(P, scipy.sparse.csr_matrix):
+        from scipy.sparse import issparse
+        if issparse(P):
             P = P.toarray()
-        if msm.is_reversible:
-            assert np.allclose(P, self.rmsmrev.transition_matrix)
+        if msm.reversible:
+            np.testing.assert_allclose(P, five_state_msm.rmsmrev.transition_matrix)
         else:
-            assert np.allclose(P, self.rmsm.transition_matrix)
+            np.testing.assert_allclose(P, five_state_msm.rmsm.transition_matrix)
 
-    def test_transition_matrix(self):
-        self._transition_matrix(self.msmrev)
-        self._transition_matrix(self.msm)
-        self._transition_matrix(self.msmrev_sparse)
-        self._transition_matrix(self.msm_sparse)
-        self._transition_matrix(self.msmrev_eff)
 
-    # ---------------------------------
-    # SIMPLE STATISTICS
-    # ---------------------------------
-
-    def _active_state_fraction(self, msm):
-        # should always be a fraction
-        assert (0.0 <= msm.active_state_fraction <= 1.0)
-        # For this data set:
-        assert (msm.active_state_fraction == 1.0)
-
-    def test_active_state_fraction(self):
-        # should always be a fraction
-        self._active_state_fraction(self.msmrev)
-        self._active_state_fraction(self.msm)
-        self._active_state_fraction(self.msmrev_sparse)
-        self._active_state_fraction(self.msm_sparse)
-        self._active_state_fraction(self.msmrev_eff)
-
-    def _active_count_fraction(self, msm):
-        # should always be a fraction
-        assert (0.0 <= msm.active_count_fraction <= 1.0)
-        # special case for this data set:
-        assert (msm.active_count_fraction == 1.0)
-
-    def test_active_count_fraction(self):
-        self._active_count_fraction(self.msmrev)
-        self._active_count_fraction(self.msm)
-        self._active_count_fraction(self.msmrev_sparse)
-        self._active_count_fraction(self.msm_sparse)
-        self._active_count_fraction(self.msmrev_eff)
-
-    # ---------------------------------
-    # EIGENVALUES, EIGENVECTORS
-    # ---------------------------------
-
-    def _statdist(self, msm):
-        mu = msm.stationary_distribution
+def test_stationary_distribution(five_state_msm):
+    for est in five_state_msm.msms:
+        msm = est.fetch_model()
         # should strictly positive (irreversibility)
-        assert (np.all(mu > 0))
+        np.testing.assert_(np.all(msm.stationary_distribution > 0))
         # should sum to one
-        assert (np.abs(np.sum(mu) - 1.0) < 1e-10)
+        np.testing.assert_almost_equal(np.sum(msm.stationary_distribution), 1.)
         # Should match model:
-        if msm.is_reversible:
-            assert np.allclose(mu, self.rmsmrev.stationary_distribution)
+        if msm.reversible:
+            np.testing.assert_array_almost_equal(msm.stationary_distribution,
+                                                 five_state_msm.rmsmrev.stationary_distribution)
         else:
-            assert np.allclose(mu, self.rmsm.stationary_distribution)
+            np.testing.assert_array_almost_equal(msm.stationary_distribution,
+                                                 five_state_msm.rmsm.stationary_distribution)
 
-    def test_statdist(self):
-        self._statdist(self.msmrev)
-        self._statdist(self.msm)
-        self._statdist(self.msmrev_sparse)
-        self._statdist(self.msm_sparse)
-        self._statdist(self.msmrev_eff)
 
-    def _eigenvalues(self, msm):
+def test_eigenvalues(five_state_msm):
+    for est in five_state_msm.msms:
+        msm = est.fetch_model()
         ev = msm.eigenvalues()
         # stochasticity
-        assert (np.max(np.abs(ev)) <= 1 + 1e-12)
+        np.testing.assert_(np.max(np.abs(ev)) <= 1 + 1e-12)
         # irreducible
-        assert (np.max(np.abs(ev[1:])) < 1)
+        np.testing.assert_(np.max(np.abs(ev[1:])) < 1)
         # ordered?
         evabs = np.abs(ev)
         for i in range(0, len(evabs) - 1):
-            assert (evabs[i] >= evabs[i + 1])
+            np.testing.assert_(evabs[i] >= evabs[i + 1])
         # REVERSIBLE:
-        if msm.is_reversible:
-            assert (np.all(np.isreal(ev)))
+        if msm.reversible:
+            np.testing.assert_(np.all(np.isreal(ev)))
 
-    def test_eigenvalues(self):
-        self._eigenvalues(self.msmrev)
-        self._eigenvalues(self.msm)
-        self._eigenvalues(self.msmrev_sparse)
-        self._eigenvalues(self.msm_sparse)
-        self._eigenvalues(self.msmrev_eff)
 
-    def _eigenvectors_left(self, msm):
+def test_eigenvectors(five_state_msm):
+    for est in five_state_msm.msms:
+        msm = est.fetch_model()
         L = msm.eigenvectors_left()
-        k = msm.nstates
-        # shape should be right
-        assert (np.all(L.shape == (k, msm.nstates)))
-        # first one should be identical to stat.dist
-        l1 = L[0, :]
-        err = msm.stationary_distribution - l1
-        assert (np.max(np.abs(err)) < 1e-10)
-        # sums should be 1, 0, 0, ...
-        assert (np.allclose(np.sum(L[1:, :], axis=1), np.zeros(k - 1)))
-        # REVERSIBLE:
-        if msm.is_reversible:
-            assert (np.all(np.isreal(L)))
-
-    def test_eigenvectors_left(self):
-        self._eigenvectors_left(self.msmrev)
-        self._eigenvectors_left(self.msm)
-        self._eigenvectors_left(self.msmrev_sparse)
-        self._eigenvectors_left(self.msm_sparse)
-        self._eigenvectors_left(self.msmrev_eff)
-
-    def _eigenvectors_right(self, msm):
+        D = np.diag(msm.eigenvalues())
         R = msm.eigenvectors_right()
-        k = msm.nstates
-        # shape should be right
-        assert (np.all(R.shape == (msm.nstates, k)))
+        np.testing.assert_equal(L.shape, (msm.n_states, msm.n_states))
+        np.testing.assert_equal(R.shape, (msm.n_states, msm.n_states))
+
+        # orthogonality constraint
+        np.testing.assert_allclose(np.dot(R, L), np.eye(msm.n_states), rtol=1e-5, atol=1e-8)
+
+        l1 = L[0, :]
         # should be all ones
         r1 = R[:, 0]
-        assert (np.allclose(r1, np.ones(msm.nstates)))
+        np.testing.assert_allclose(r1, np.ones(msm.n_states), rtol=1e-5, atol=1e-8)
+        err = msm.stationary_distribution - l1
+        np.testing.assert_(np.max(np.abs(err)) < 1e-10)
+        # sums should be 1, 0, 0, ...
+        np.testing.assert_(np.allclose(np.sum(L[1:, :], axis=1), np.zeros(msm.n_states - 1)))
         # REVERSIBLE:
-        if msm.is_reversible:
-            assert (np.all(np.isreal(R)))
-
-    def test_eigenvectors_right(self):
-        self._eigenvectors_right(self.msmrev)
-        self._eigenvectors_right(self.msm)
-        self._eigenvectors_right(self.msmrev_sparse)
-        self._eigenvectors_right(self.msm_sparse)
-        self._eigenvectors_right(self.msmrev_eff)
-
-    def _eigenvectors_RDL(self, msm):
-        R = msm.eigenvectors_right()
-        D = np.diag(msm.eigenvalues())
-        L = msm.eigenvectors_left()
-        # orthogonality constraint
-        assert (np.allclose(np.dot(R, L), np.eye(msm.nstates)))
-        # REVERSIBLE: also true for LR because reversible matrix
-        if msm.is_reversible:
-            assert (np.allclose(np.dot(L, R), np.eye(msm.nstates)))
+        if msm.reversible:
+            np.testing.assert_(np.all(np.isreal(L)))
+            np.testing.assert_(np.all(np.isreal(R)))
+            np.testing.assert_allclose(np.dot(L, R), np.eye(msm.n_states), rtol=1e-5, atol=1e-8)
         # recover transition matrix
-        assert (np.allclose(np.dot(R, np.dot(D, L)), msm.transition_matrix))
+        np.testing.assert_allclose(np.dot(R, np.dot(D, L)), msm.transition_matrix, rtol=1e-5, atol=1e-8)
 
-    def test_eigenvectors_RDL(self):
-        self._eigenvectors_RDL(self.msmrev)
-        self._eigenvectors_RDL(self.msm)
-        self._eigenvectors_RDL(self.msmrev_sparse)
-        self._eigenvectors_RDL(self.msm_sparse)
-        self._eigenvectors_RDL(self.msmrev_eff)
+
+class TestMSMFiveState(object):
 
     def _timescales(self, msm):
         if not msm.is_reversible:
@@ -912,8 +744,8 @@ class TestMSM_Incomplete(unittest.TestCase):
         # Compute OOM-components:
         cls.Xi, cls.omega, cls.sigma, cls.l = oom_transformations(cls.Ct_active, cls.C2t_active, cls.rank)
         # Compute corrected transition matrix:
-        Tt_rev = TransitionMatrix(cls.Xi, cls.omega, cls.sigma, reversible=True)
-        Tt = TransitionMatrix(cls.Xi, cls.omega, cls.sigma, reversible=False)
+        Tt_rev = compute_transition_matrix(cls.Xi, cls.omega, cls.sigma, reversible=True)
+        Tt = compute_transition_matrix(cls.Xi, cls.omega, cls.sigma, reversible=False)
 
         # Build reference models:
         cls.rmsmrev = markov_model(Tt_rev)
