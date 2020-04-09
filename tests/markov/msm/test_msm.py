@@ -293,12 +293,12 @@ class TestMSMDoubleWell(unittest.TestCase):
             cc = TransitionCountEstimator(lagtime=10, count_mode="sliding").fit(dtrajs).fetch_model().submodel_largest()
             return estimator.fit(cc).fetch_model()
 
-        s1 = score_cv(fit_fetch, self.dtraj, lagtime=10, n=5, score_method='VAMP1', score_k=2).mean()
+        s1 = score_cv(fit_fetch, dtrajs=self.dtraj, lagtime=10, n=5, score_method='VAMP1', score_k=2).mean()
         assert 1.0 <= s1 <= 2.0
-        s2 = score_cv(fit_fetch, self.dtraj, lagtime=10, n=5, score_method='VAMP2', score_k=2).mean()
+        s2 = score_cv(fit_fetch, dtrajs=self.dtraj, lagtime=10, n=5, score_method='VAMP2', score_k=2).mean()
         assert 1.0 <= s2 <= 2.0
-        se = score_cv(fit_fetch, self.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=2).mean()
-        se_inf = score_cv(fit_fetch, self.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=None).mean()
+        se = score_cv(fit_fetch, dtrajs=self.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=2).mean()
+        se_inf = score_cv(fit_fetch, dtrajs=self.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=None).mean()
 
     def test_score_cv(self):
         self._score_cv(MaximumLikelihoodMSM(reversible=True))
