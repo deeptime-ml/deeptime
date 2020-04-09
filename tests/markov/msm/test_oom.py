@@ -19,6 +19,7 @@
 r"""Unit test for the OOM-based MSM estimation.
 
 """
+import os
 
 import msmtools.analysis as ma
 import msmtools.estimation as msmest
@@ -90,7 +91,7 @@ def compute_transition_matrix(Xi, omega, sigma, reversible=True):
 class FiveStateSetup(object):
     def __init__(self, complete: bool = True):
         self.complete = complete
-        data = np.load(pkg_resources.resource_filename('pyemma.msm.tests', "data/TestData_OOM_MSM.npz"))
+        data = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources', 'TestData_OOM_MSM.npz'))
         if complete:
             self.dtrajs = [data['arr_%d' % k] for k in range(1000)]
         else:
