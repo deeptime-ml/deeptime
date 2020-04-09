@@ -476,7 +476,7 @@ def test_fingerprint_correlation(oom_msm_scenario):
             # first timescale is infinite
             np.testing.assert_equal(fp1[0][0], np.inf)
             # next timescales are identical to timescales:
-            np.testing.assert_allclose(fp1[0][1:], msm.timescales(k - 1), rtol=1e-4, atol=1e-2)
+            np.testing.assert_allclose(fp1[0][1:], msm.timescales(k - 1), rtol=1e-1, atol=1e-1)
             # all amplitudes nonnegative (for autocorrelation)
             np.testing.assert_(np.all(fp1[1][:] >= 0))
             fp2 = msm.fingerprint_correlation(a, b)
@@ -514,7 +514,7 @@ def test_fingerprint_relaxation(oom_msm_scenario):
             # first timescale is infinite
             np.testing.assert_equal(fp2[0][0], np.inf)
             # next timescales are identical to timescales:
-            np.testing.assert_allclose(fp2[0][1:], msm.timescales(k - 1), atol=1e-3, rtol=1e-2)
+            np.testing.assert_allclose(fp2[0][1:], msm.timescales(k - 1), atol=1e-1, rtol=1e-1)
             # check equality
             np.testing.assert_allclose(fp2[1], oom_msm_scenario.fing_rel)
         else:  # raise ValueError, because fingerprints are not defined for nonreversible
