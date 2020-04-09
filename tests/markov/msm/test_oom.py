@@ -30,7 +30,7 @@ import pkg_resources
 import pytest
 import scipy.linalg as scl
 import scipy.sparse
-from sktime.markov import score_cv
+from sktime.markov import score_cv, sample
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.msm.koopman_reweighted_msm import OOMReweightedMSM
 from sktime.markov.sample import compute_index_states, indices_by_sequence
@@ -88,34 +88,72 @@ def compute_transition_matrix(Xi, omega, sigma, reversible=True):
 
     return Tt_Eq
 
+thecount_full = 0
+thecount_not_full = 0
 
 class FiveStateSetup(object):
-    def __init__(self):
+    def __init__(self, complete: bool = True):
+        self.complete = complete
+        if complete:
+            global thecount_full
+            thecount_full += 1
+            if thecount_full > 1:
+                raise ValueError("fuck")
+        if not complete:
+            global thecount_not_full
+            thecount_not_full += 1
+            if thecount_not_full > 1:
+                raise ValueError("fuck incomplete")
         data = np.load(pkg_resources.resource_filename('pyemma.msm.tests', "data/TestData_OOM_MSM.npz"))
-        self.dtrajs = [data['arr_%d' % k] for k in range(1000)]
-
+        if complete:
+            self.dtrajs = [data['arr_%d' % k] for k in range(1000)]
+        else:
+            excluded = [
+                21, 25, 30, 40, 66, 72, 74, 91, 116, 158, 171, 175, 201, 239, 246, 280, 300, 301, 310, 318,
+                322, 323, 339, 352, 365, 368, 407, 412, 444, 475, 486, 494, 510, 529, 560, 617, 623, 637,
+                676, 689, 728, 731, 778, 780, 811, 828, 838, 845, 851, 859, 868, 874, 895, 933, 935, 938,
+                958, 961, 968, 974, 984, 990, 999
+            ]
+            self.dtrajs = [data['arr_%d' % k] for k in np.setdiff1d(np.arange(1000), excluded)]
         # Number of states:
         self.N = 5
         # Lag time:
         self.tau = 5
         # Rank:
-        self.rank = 3
+        if complete:
+            self.rank = 3
+        else:
+            self.rank = 2
+
         # Build models:
         self.msmrev = OOMReweightedMSM(lagtime=self.tau, rank_mode='bootstrap_trajs').fit(self.dtrajs)
-        self.msm = OOMReweightedMSM(lagtime=self.tau, reversible=False, rank_mode='bootstrap_trajs').fit(self.dtrajs)
-        self.msmrev_sparse = OOMReweightedMSM(lagtime=self.tau, sparse=True, rank_mode='bootstrap_trajs').fit(
-            self.dtrajs)
-        self.msm_sparse = OOMReweightedMSM(lagtime=self.tau, reversible=False, sparse=True, rank_mode='bootstrap_trajs') \
+        self.msmrev_sparse = OOMReweightedMSM(lagtime=self.tau, sparse=True, rank_mode='bootstrap_trajs') \
             .fit(self.dtrajs)
+        self.msm = OOMReweightedMSM(lagtime=self.tau, reversible=False, rank_mode='bootstrap_trajs').fit(self.dtrajs)
+        self.msm_sparse = OOMReweightedMSM(lagtime=self.tau, reversible=False, sparse=True,
+                                           rank_mode='bootstrap_trajs').fit(self.dtrajs)
         self.estimators = [self.msmrev, self.msm, self.msmrev_sparse, self.msm_sparse]
         self.msms = [est.fetch_model() for est in self.estimators]
 
         # Reference count matrices at lag time tau and 2*tau:
-        self.C2t = data['C2t']
+        if complete:
+            self.C2t = data['C2t']
+        else:
+            self.C2t = data['C2t_s']
         self.Ct = np.sum(self.C2t, axis=1)
 
+        if complete:
+            self.Ct_active = self.Ct
+            self.C2t_active = self.C2t
+            self.active_faction = 1.
+        else:
+            lcc = msmest.largest_connected_set(self.Ct)
+            self.Ct_active = msmest.largest_connected_submatrix(self.Ct, lcc=lcc)
+            self.C2t_active = self.C2t[:4, :4, :4]
+            self.active_fraction = np.sum(self.Ct_active) / np.sum(self.Ct)
+
         # Compute OOM-components:
-        self.Xi, self.omega, self.sigma, self.l = oom_transformations(self.Ct, self.C2t, self.rank)
+        self.Xi, self.omega, self.sigma, self.l = oom_transformations(self.Ct_active, self.C2t_active, self.rank)
 
         # Compute corrected transition matrix:
         Tt_rev = compute_transition_matrix(self.Xi, self.omega, self.sigma, reversible=True)
@@ -125,10 +163,14 @@ class FiveStateSetup(object):
         self.rmsmrev = MarkovStateModel(Tt_rev)
         self.rmsm = MarkovStateModel(Tt)
 
-        " Compute further reference quantities:"
+        # Active count fraction:
+        self.hist = 1.0 * count_states(self.dtrajs)
+        self.active_count_frac = np.sum(self.hist[:4]) / np.sum(self.hist) if not complete else 1.
+        self.active_state_frac = 0.8 if not complete else 1.
+
         # Commitor and MFPT:
         a = np.array([0, 1])
-        b = np.array([4])
+        b = np.array([4]) if complete else np.array([3])
         self.comm_forward = self.rmsm.committor_forward(a, b)
         self.comm_forward_rev = self.rmsmrev.committor_forward(a, b)
         self.comm_backward = self.rmsm.committor_backward(a, b)
@@ -136,7 +178,7 @@ class FiveStateSetup(object):
         self.mfpt = self.tau * self.rmsm.mfpt(a, b)
         self.mfpt_rev = self.tau * self.rmsmrev.mfpt(a, b)
         # PCCA:
-        pcca = self.rmsmrev.pcca(3)
+        pcca = self.rmsmrev.pcca(3 if complete else 2)
         self.pcca_ass = pcca.assignments
         self.pcca_dist = pcca.metastable_distributions
         self.pcca_mem = pcca.memberships
@@ -145,6 +187,10 @@ class FiveStateSetup(object):
         a = np.array([1, 2, 3, 4, 5])
         b = np.array([1, -1, 0, -2, 4])
         p0 = np.array([0.5, 0.2, 0.2, 0.1, 0.0])
+        if not complete:
+            a = a[:-1]
+            b = b[:-1]
+            p0 = p0[:-1]
         pi = self.rmsm.stationary_distribution
         pi_rev = self.rmsmrev.stationary_distribution
         _, _, L_rev = ma.rdl_decomposition(Tt_rev)
@@ -158,6 +204,7 @@ class FiveStateSetup(object):
             self.corr_rev[k] = np.dot(a.T, np.dot(Ck_rev, b))
             self.rel[k] = np.dot(p0.T, np.dot(np.linalg.matrix_power(Tt, k), a))
             self.rel_rev[k] = np.dot(p0.T, np.dot(np.linalg.matrix_power(Tt_rev, k), a))
+
         self.fing_cor = np.dot(a.T, L_rev.T) * np.dot(b.T, L_rev.T)
         self.fing_rel = np.dot(a.T, L_rev.T) * np.dot((p0 / pi_rev).T, L_rev.T)
 
@@ -165,6 +212,16 @@ class FiveStateSetup(object):
 @pytest.fixture(scope="module")
 def five_state_msm():
     return FiveStateSetup()
+
+
+@pytest.fixture(scope="module")
+def five_state_msm_incomplete():
+    return FiveStateSetup(complete=False)
+
+
+@pytest.fixture(params=['five_state_msm', 'five_state_msm_incomplete'])
+def oom_msm_scenario(request):
+    return request.getfixturevalue(request.param)
 
 
 # ---------------------------------
@@ -197,33 +254,91 @@ def test_score_cv(five_state_msm, reversible, sparse):
 # BASIC PROPERTIES
 # ---------------------------------
 
-def test_reversible(five_state_msm):
-    # Reversible
-    np.testing.assert_(five_state_msm.msmrev.reversible)
-    np.testing.assert_(five_state_msm.msmrev_sparse.reversible)
-    # Non-reversible
-    np.testing.assert_(not five_state_msm.msm.reversible)
-    np.testing.assert_(not five_state_msm.msm_sparse.reversible)
 
-
-def test_basic_oom_properties(five_state_msm):
-    for est in five_state_msm.estimators:
+def test_basic_oom_properties(oom_msm_scenario):
+    for est in oom_msm_scenario.estimators:
         model = est.fetch_model()
-        np.testing.assert_equal(est.lagtime, five_state_msm.tau)
-        np.testing.assert_equal(model.lagtime, five_state_msm.tau)
-        np.testing.assert_(model.count_model.is_full_model)
+        np.testing.assert_equal(est.lagtime, oom_msm_scenario.tau)
+        np.testing.assert_equal(model.lagtime, oom_msm_scenario.tau)
+        np.testing.assert_(model.count_model.is_full_model == oom_msm_scenario.complete)
         np.testing.assert_equal(len(model.count_model.connected_sets()), 1)
-        np.testing.assert_equal(model.n_states, 5)
+        np.testing.assert_equal(model.n_states, 5 if oom_msm_scenario.complete else 4)
         if est.sparse:
-            np.testing.assert_allclose(five_state_msm.Ct, model.count_model.count_matrix.toarray(),
+            np.testing.assert_allclose(oom_msm_scenario.Ct_active, model.count_model.count_matrix.toarray(),
                                        rtol=1e-5, atol=1e-8)
-            np.testing.assert_allclose(five_state_msm.Ct, model.count_model.count_matrix_full.toarray(),
+            np.testing.assert_allclose(oom_msm_scenario.Ct, model.count_model.count_matrix_full.toarray(),
                                        rtol=1e-5, atol=1e-8)
         else:
-            np.testing.assert_allclose(five_state_msm.Ct, model.count_model.count_matrix, rtol=1e-5, atol=1e-8)
-            np.testing.assert_allclose(five_state_msm.Ct, model.count_model.count_matrix_full, rtol=1e-5, atol=1e-8)
-        np.testing.assert_equal(model.count_model.selected_state_fraction, 1.0)
-        np.testing.assert_equal(model.count_model.selected_count_fraction, 1.0)
+            np.testing.assert_allclose(oom_msm_scenario.Ct_active, model.count_model.count_matrix,
+                                       rtol=1e-5, atol=1e-8)
+            np.testing.assert_allclose(oom_msm_scenario.Ct, model.count_model.count_matrix_full,
+                                       rtol=1e-5, atol=1e-8)
+        np.testing.assert_equal(model.count_model.selected_state_fraction, oom_msm_scenario.active_state_frac)
+        np.testing.assert_equal(model.count_model.selected_count_fraction, oom_msm_scenario.active_count_frac)
+
+
+
+
+def _nstates(self, msm):
+    # should always be <= full
+    assert (msm.nstates <= msm.nstates_full)
+    # THIS DATASET:
+    assert (msm.nstates == 4)
+
+def test_nstates(self):
+    self._nstates(self.msmrev)
+    self._nstates(self.msm)
+    self._nstates(self.msmrev_sparse)
+    self._nstates(self.msm_sparse)
+
+def _connected_sets(self, msm):
+    cs = msm.connected_sets
+    assert (len(cs) >= 1)
+    # MODE LARGEST:
+    assert (np.all(cs[0] == msm.active_set))
+
+def test_connected_sets(self):
+    self._connected_sets(self.msmrev)
+    self._connected_sets(self.msm)
+    self._connected_sets(self.msmrev_sparse)
+    self._connected_sets(self.msm_sparse)
+
+def _connectivity(self, msm):
+    # HERE:
+    assert (msm.connectivity == 'largest')
+
+def test_connectivity(self):
+    self._connectivity(self.msmrev)
+    self._connectivity(self.msm)
+    self._connectivity(self.msmrev_sparse)
+    self._connectivity(self.msm_sparse)
+
+def _count_matrix_active(self, msm, sparse=False):
+    if sparse:
+        C = msm.count_matrix_active.toarray()
+    else:
+        C = msm.count_matrix_active
+    assert np.allclose(C, self.Ct_active)
+
+def test_count_matrix_active(self):
+    self._count_matrix_active(self.msmrev)
+    self._count_matrix_active(self.msm)
+    self._count_matrix_active(self.msmrev_sparse, sparse=True)
+    self._count_matrix_active(self.msm_sparse, sparse=True)
+
+def _count_matrix_full(self, msm, sparse=False):
+    if sparse:
+        C = msm.count_matrix_full.toarray()
+    else:
+        C = msm.count_matrix_full
+    assert np.allclose(C, self.Ct)
+
+def test_count_matrix_full(self):
+    self._count_matrix_full(self.msmrev)
+    self._count_matrix_full(self.msm)
+    self._count_matrix_full(self.msmrev_sparse, sparse=True)
+    self._count_matrix_full(self.msm_sparse, sparse=True)
+
 
 
 # ---------------------------------
@@ -488,247 +603,43 @@ def test_generate_trajectory(five_state_msm):
         np.testing.assert_equal(ix.shape, (10, 2))
 
 
-class TestMSMFiveState(object):
-
-    def _sample_by_state(self, msm):
-        nsample = 100
-        ss = msm.sample_by_state(nsample)
+def test_sample_by_state(five_state_msm):
+    for msm in five_state_msm.msms:
+        n_samples = 100
+        ss = sample.by_state(five_state_msm.dtrajs, n_samples)
         # must have the right size
-        assert (len(ss) == msm.nstates)
+        np.testing.assert_equal(len(ss), msm.n_states)
         # must be correctly assigned
-        dtrajs_active = msm.discrete_trajectories_active
+        dtrajs_active = msm.count_model.transform_discrete_trajectories_to_submodel(five_state_msm.dtrajs)
         for i, samples in enumerate(ss):
             # right shape
-            assert (np.all(samples.shape == (nsample, 2)))
+            np.testing.assert_equal(samples.shape, (n_samples, 2))
             for row in samples:
-                assert (dtrajs_active[row[0]][row[1]] == i)
+                np.testing.assert_equal(dtrajs_active[row[0]][row[1]], i)
 
-    def test_sample_by_state(self):
-        self._sample_by_state(self.msmrev)
-        self._sample_by_state(self.msm)
-        self._sample_by_state(self.msmrev_sparse)
-        self._sample_by_state(self.msm_sparse)
-        self._sample_by_state(self.msmrev_eff)
 
-    def _trajectory_weights(self, msm):
-        W = msm.trajectory_weights()
-        # should sum to 1
-        wsum = 0
-        for w in W:
-            wsum += np.sum(w)
-        assert (np.abs(wsum - 1.0) < 1e-6)
+def test_trajectory_weights(five_state_msm):
+    for msm in five_state_msm.msms:
+        weights = msm.compute_trajectory_weights(five_state_msm.dtrajs)
+        wsum = sum(np.sum(w) for w in weights)
+        np.testing.assert_almost_equal(wsum, 1., err_msg="should sum to 1")
 
-    def test_trajectory_weights(self):
-        self._trajectory_weights(self.msmrev)
-        self._trajectory_weights(self.msm)
-        self._trajectory_weights(self.msmrev_sparse)
-        self._trajectory_weights(self.msm_sparse)
-        self._trajectory_weights(self.msmrev_eff)
 
-    def test_simulate_MSM(self):
-        msm = self.msm
-        N = 100
-        start = 1
-        traj = msm.simulate(N=N, start=start)
-        assert (len(traj) <= N)
-        assert (len(np.unique(traj)) <= len(msm.transition_matrix))
-        assert (start == traj[0])
+def test_simulate(five_state_msm):
+    for msm in five_state_msm.msms:
+        traj = msm.simulate(N=100, start=1)
+        np.testing.assert_(len(traj) <= 100)
+        np.testing.assert_(len(np.unique(traj)) <= msm.n_states)
+        np.testing.assert_equal(1, traj[0])
 
 
 class TestMSM_Incomplete(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        # Load the data:
-        data = np.load(pkg_resources.resource_filename('pyemma.msm.tests', "data/TestData_OOM_MSM.npz"))
-        indices = np.array([21, 25, 30, 40, 66, 72, 74, 91, 116, 158, 171, 175, 201, 239, 246, 280, 300, 301, 310, 318,
-                            322, 323, 339, 352, 365, 368, 407, 412, 444, 475, 486, 494, 510, 529, 560, 617, 623, 637,
-                            676, 689, 728, 731, 778, 780, 811, 828, 838, 845, 851, 859, 868, 874, 895, 933, 935, 938,
-                            958, 961, 968, 974, 984, 990, 999])
-        cls.dtrajs = []
-        for k in range(1000):
-            if k not in indices:
-                cls.dtrajs.append(data['arr_%d' % k])
-
-        # Number of states:
-        cls.N = 5
-        # Lag time:
-        cls.tau = 5
-        # Rank:
-        cls.rank = 2
-        # Build models:
-        cls.msmrev = estimate_markov_model(cls.dtrajs, lag=cls.tau, weights='oom')
-        cls.msm = estimate_markov_model(cls.dtrajs, lag=cls.tau, reversible=False, weights='oom')
-
-        """Sparse"""
-        cls.msmrev_sparse = estimate_markov_model(cls.dtrajs, lag=cls.tau, sparse=True, weights='oom')
-        cls.msm_sparse = estimate_markov_model(cls.dtrajs, lag=cls.tau, reversible=False, sparse=True, weights='oom')
-
-        # Reference count matrices at lag time tau and 2*tau:
-        cls.C2t = data['C2t_s']
-        cls.Ct = np.sum(cls.C2t, axis=1)
-        # Restrict to active set:
-        lcc = msmest.largest_connected_set(cls.Ct)
-        cls.Ct_active = msmest.largest_connected_submatrix(cls.Ct, lcc=lcc)
-        cls.C2t_active = cls.C2t[:4, :4, :4]
-        cls.active_fraction = np.sum(cls.Ct_active) / np.sum(cls.Ct)
-
-        # Compute OOM-components:
-        cls.Xi, cls.omega, cls.sigma, cls.l = oom_transformations(cls.Ct_active, cls.C2t_active, cls.rank)
-        # Compute corrected transition matrix:
-        Tt_rev = compute_transition_matrix(cls.Xi, cls.omega, cls.sigma, reversible=True)
-        Tt = compute_transition_matrix(cls.Xi, cls.omega, cls.sigma, reversible=False)
-
-        # Build reference models:
-        cls.rmsmrev = markov_model(Tt_rev)
-        cls.rmsm = markov_model(Tt)
-
-        "Compute further referenc quantities:"
-        # Active count fraction:
-        cls.hist = 1.0 * count_states(cls.dtrajs)
-        cls.active_count_frac = np.sum(cls.hist[:4]) / np.sum(cls.hist)
-
-        # Commitor and MFPT:
-        a = np.array([0, 1])
-        b = np.array([3])
-        cls.comm_forward = cls.rmsm.committor_forward(a, b)
-        cls.comm_forward_rev = cls.rmsmrev.committor_forward(a, b)
-        cls.comm_backward = cls.rmsm.committor_backward(a, b)
-        cls.comm_backward_rev = cls.rmsmrev.committor_backward(a, b)
-        cls.mfpt = cls.tau * cls.rmsm.mfpt(a, b)
-        cls.mfpt_rev = cls.tau * cls.rmsmrev.mfpt(a, b)
-        # PCCA:
-        cls.rmsmrev.pcca(2)
-        cls.pcca_ass = cls.rmsmrev.metastable_assignments
-        cls.pcca_dist = cls.rmsmrev.metastable_distributions
-        cls.pcca_mem = cls.rmsmrev.metastable_memberships
-        cls.pcca_sets = cls.rmsmrev.metastable_sets
-        # Experimental quantities:
-        a = np.array([1, 2, 3, 4])
-        b = np.array([1, -1, 0, -2])
-        p0 = np.array([0.5, 0.2, 0.2, 0.1])
-        pi = cls.rmsm.stationary_distribution
-        pi_rev = cls.rmsmrev.stationary_distribution
-        _, _, L_rev = ma.rdl_decomposition(Tt_rev)
-        cls.exp = np.dot(pi, a)
-        cls.exp_rev = np.dot(pi_rev, a)
-        cls.corr_rev = np.zeros(10)
-        cls.rel = np.zeros(10)
-        cls.rel_rev = np.zeros(10)
-        for k in range(10):
-            Ck_rev = np.dot(np.diag(pi_rev), np.linalg.matrix_power(Tt_rev, k))
-            cls.corr_rev[k] = np.dot(a.T, np.dot(Ck_rev, b))
-            cls.rel[k] = np.dot(p0.T, np.dot(np.linalg.matrix_power(Tt, k), a))
-            cls.rel_rev[k] = np.dot(p0.T, np.dot(np.linalg.matrix_power(Tt_rev, k), a))
-        cls.fing_cor = np.dot(a.T, L_rev.T) * np.dot(b.T, L_rev.T)
-        cls.fing_rel = np.dot(a.T, L_rev.T) * np.dot((p0 / pi_rev).T, L_rev.T)
 
     # ---------------------------------
     # BASIC PROPERTIES
     # ---------------------------------
 
-    def test_invalid_inputs(self):
-        with self.assertRaises(ValueError):
-            estimate_markov_model(self.dtrajs, lag=self.tau, weights=2)
-        with self.assertRaises(ValueError):
-            estimate_markov_model(self.dtrajs, lag=self.tau, weights='koopman')
 
-    def test_reversible(self):
-        # Reversible
-        assert self.msmrev.is_reversible
-        assert self.msmrev_sparse.is_reversible
-        # Non-reversible
-        assert not self.msm.is_reversible
-        assert not self.msm_sparse.is_reversible
-
-    def _sparse(self, msm):
-        assert not (msm.is_sparse)
-
-    def test_sparse(self):
-        self._sparse(self.msmrev_sparse)
-        self._sparse(self.msm_sparse)
-
-    def _lagtime(self, msm):
-        assert (msm.lagtime == self.tau)
-
-    def test_lagtime(self):
-        self._lagtime(self.msmrev)
-        self._lagtime(self.msm)
-        self._lagtime(self.msmrev_sparse)
-        self._lagtime(self.msm_sparse)
-
-    def test_active_set(self):
-
-        assert np.all(self.msmrev.active_set == np.arange(self.N - 1, dtype=int))
-        assert np.all(self.msmrev_sparse.active_set == np.arange(self.N - 1, dtype=int))
-        assert np.all(self.msm.active_set == np.arange(self.N - 1, dtype=int))
-        assert np.all(self.msm_sparse.active_set == np.arange(self.N - 1, dtype=int))
-
-    def test_largest_connected_set(self):
-        assert np.all(self.msmrev.largest_connected_set == np.arange(self.N - 1, dtype=int))
-        assert np.all(self.msmrev_sparse.largest_connected_set == np.arange(self.N - 1, dtype=int))
-        assert np.all(self.msm.largest_connected_set == np.arange(self.N - 1, dtype=int))
-        assert np.all(self.msm_sparse.largest_connected_set == np.arange(self.N - 1, dtype=int))
-
-    def _nstates(self, msm):
-        # should always be <= full
-        assert (msm.nstates <= msm.nstates_full)
-        # THIS DATASET:
-        assert (msm.nstates == 4)
-
-    def test_nstates(self):
-        self._nstates(self.msmrev)
-        self._nstates(self.msm)
-        self._nstates(self.msmrev_sparse)
-        self._nstates(self.msm_sparse)
-
-    def _connected_sets(self, msm):
-        cs = msm.connected_sets
-        assert (len(cs) >= 1)
-        # MODE LARGEST:
-        assert (np.all(cs[0] == msm.active_set))
-
-    def test_connected_sets(self):
-        self._connected_sets(self.msmrev)
-        self._connected_sets(self.msm)
-        self._connected_sets(self.msmrev_sparse)
-        self._connected_sets(self.msm_sparse)
-
-    def _connectivity(self, msm):
-        # HERE:
-        assert (msm.connectivity == 'largest')
-
-    def test_connectivity(self):
-        self._connectivity(self.msmrev)
-        self._connectivity(self.msm)
-        self._connectivity(self.msmrev_sparse)
-        self._connectivity(self.msm_sparse)
-
-    def _count_matrix_active(self, msm, sparse=False):
-        if sparse:
-            C = msm.count_matrix_active.toarray()
-        else:
-            C = msm.count_matrix_active
-        assert np.allclose(C, self.Ct_active)
-
-    def test_count_matrix_active(self):
-        self._count_matrix_active(self.msmrev)
-        self._count_matrix_active(self.msm)
-        self._count_matrix_active(self.msmrev_sparse, sparse=True)
-        self._count_matrix_active(self.msm_sparse, sparse=True)
-
-    def _count_matrix_full(self, msm, sparse=False):
-        if sparse:
-            C = msm.count_matrix_full.toarray()
-        else:
-            C = msm.count_matrix_full
-        assert np.allclose(C, self.Ct)
-
-    def test_count_matrix_full(self):
-        self._count_matrix_full(self.msmrev)
-        self._count_matrix_full(self.msm)
-        self._count_matrix_full(self.msmrev_sparse, sparse=True)
-        self._count_matrix_full(self.msm_sparse, sparse=True)
 
     def _discrete_trajectories_full(self, msm):
         assert (np.all(self.dtrajs[0] == msm.discrete_trajectories_full[0]))

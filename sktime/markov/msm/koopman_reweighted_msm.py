@@ -165,7 +165,7 @@ class OOMReweightedMSM(_MSMBaseEstimator):
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
         count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, sparse=self.sparse)\
             .fit(dtrajs_lag).fetch_model()
-        count_model = count_model.submodel_largest(connectivity_threshold=self.connectivity_threshold)
+        count_model = count_model.submodel_largest(connectivity_threshold=self.connectivity_threshold, directed=True)
 
         # Estimate transition matrix using re-sampling:
         if self.rank_mode == 'bootstrap_counts':
@@ -173,17 +173,17 @@ class OOMReweightedMSM(_MSMBaseEstimator):
             Ceff = submatrix(effective_count_mat, count_model.state_symbols)
             smean, sdev = _impl.bootstrapping_count_matrix(Ceff, nbs=self.nbs)
         else:
-            smean, sdev = _impl.bootstrapping_dtrajs(dtrajs_lag, self.lagtime, count_model.n_states, nbs=self.nbs,
+            smean, sdev = _impl.bootstrapping_dtrajs(dtrajs_lag, self.lagtime, count_model.n_states_full, nbs=self.nbs,
                                                      active_set=count_model.state_symbols)
         # Estimate two step count matrices:
-        c2t = _impl.twostep_count_matrix(dtrajs, self.lagtime, count_model.n_states)
+        c2t = _impl.twostep_count_matrix(dtrajs, self.lagtime, count_model.n_states_full)
         # Rank decision:
         rank_ind = _impl.rank_decision(smean, sdev, tol=self.tol_rank)
         # Estimate OOM components:
-        if issparse(count_model.count_matrix):
-            cmat = count_model.count_matrix.toarray()
+        if issparse(count_model.count_matrix_full):
+            cmat = count_model.count_matrix_full.toarray()
         else:
-            cmat = count_model.count_matrix
+            cmat = count_model.count_matrix_full
         Xi, omega, sigma, eigenvalues = _impl.oom_components(cmat, c2t, rank_ind=rank_ind,
                                                              lcc=count_model.state_symbols)
         # Compute transition matrix:

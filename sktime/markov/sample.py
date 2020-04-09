@@ -201,7 +201,7 @@ def by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
     return indices_by_sequence(indices, sequence)
 
 
-def by_state(dtrajs, nsample, subset=None, replace=True):
+def by_state(dtrajs, n_samples, subset=None, replace=True):
     """Generates samples of the connected states.
 
     For each state in the active set of states, generates nsample samples with trajectory/time indices.
@@ -213,7 +213,7 @@ def by_state(dtrajs, nsample, subset=None, replace=True):
     ----------
     dtrajs : List[np.ndarray]
         underlying discrete trajectories
-    nsample : int
+    n_samples : int
         Number of samples per state. If replace = False, the number of returned samples per state could be smaller
         if less than nsample indices are available for a state.
     subset : ndarray((n)), optional, default = None
@@ -237,7 +237,8 @@ def by_state(dtrajs, nsample, subset=None, replace=True):
 
     """
     # generate connected state indices
-    return indices_by_state(self.active_state_indices, nsample, subset=subset, replace=replace)
+    indices = compute_index_states(dtrajs, subset=subset)
+    return indices_by_state(indices, n_samples, subset=subset, replace=replace)
 
 
 # TODO: add sample_metastable() for sampling from metastable (pcca or hmm) states.
