@@ -29,6 +29,7 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
     dtrajs = ensure_dtraj_list(dtrajs)
     return bd.sample.index_states(dtrajs, subset)
 
+
 ################################################################################
 # sampling from state indices
 ################################################################################
@@ -44,7 +45,7 @@ def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
         within the trajectory.
-    sequence : array of integers
+    sequence : ndarray of integers
         A sequence of discrete states. For each state, a trajectory/time index will be sampled at which dtrajs
         have an occurrences of this state
 
@@ -57,11 +58,11 @@ def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
 
     """
     N = len(sequence)
-    res = np.zeros((N,2), dtype=int)
+    res = np.zeros((N, 2), dtype=int)
     for t in range(N):
         s = sequence[t]
         i = np.random.randint(indices[s].shape[0])
-        res[t,:] = indices[s][i, :]
+        res[t, :] = indices[s][i, :]
 
     return res
 
@@ -108,10 +109,10 @@ def indices_by_state(indices, nsample, subset=None, replace=True):
             res[i] = np.zeros((0, 2), dtype=int)
         elif replace:
             I = np.random.choice(m_available, nsample, replace=True)
-            res[i] = indices[s][I,:]
+            res[i] = indices[s][I, :]
         else:
-            I = np.random.choice(m_available, min(m_available,nsample), replace=False)
-            res[i] = indices[s][I,:]
+            I = np.random.choice(m_available, min(m_available, nsample), replace=False)
+            res[i] = indices[s][I, :]
 
     return res
 
@@ -156,7 +157,6 @@ def indices_by_distribution(indices: typing.List[np.ndarray], distributions, nsa
     return res
 
 
-
 def by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
     """Generates a synthetic discrete trajectory of length N and simulation time stride * lag time * N
 
@@ -197,7 +197,8 @@ def by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
         in order to save this synthetic trajectory as a trajectory file with molecular structures
 
     """
-    return indices_by_sequence(self.active_state_indices, sequence)
+    indices = compute_index_states(dtrajs)
+    return indices_by_sequence(indices, sequence)
 
 
 def by_state(dtrajs, nsample, subset=None, replace=True):

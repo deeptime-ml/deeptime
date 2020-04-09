@@ -33,6 +33,8 @@ import scipy.sparse
 from sktime.markov import score_cv
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.msm.koopman_reweighted_msm import OOMReweightedMSM
+from sktime.markov.sample import compute_index_states, indices_by_sequence
+from sktime.markov.util import count_states
 from sktime.numeric import sort_by_norm
 
 
@@ -105,7 +107,8 @@ class FiveStateSetup(object):
             self.dtrajs)
         self.msm_sparse = OOMReweightedMSM(lagtime=self.tau, reversible=False, sparse=True, rank_mode='bootstrap_trajs') \
             .fit(self.dtrajs)
-        self.msms = [self.msmrev, self.msm, self.msmrev_sparse, self.msm_sparse]
+        self.estimators = [self.msmrev, self.msm, self.msmrev_sparse, self.msm_sparse]
+        self.msms = [est.fetch_model() for est in self.estimators]
 
         # Reference count matrices at lag time tau and 2*tau:
         self.C2t = data['C2t']
@@ -169,7 +172,7 @@ def five_state_msm():
 # ---------------------------------
 
 def test_score(five_state_msm):
-    for msm in five_state_msm.msms:
+    for msm in five_state_msm.estimators:
         dtrajs_test = five_state_msm.dtrajs[0:500]
         s1 = msm.fetch_model().score(dtrajs_test, score_method='VAMP1', score_k=2)
         assert 1.0 <= s1 <= 2.0
@@ -204,7 +207,7 @@ def test_reversible(five_state_msm):
 
 
 def test_basic_oom_properties(five_state_msm):
-    for est in five_state_msm.msms:
+    for est in five_state_msm.estimators:
         model = est.fetch_model()
         np.testing.assert_equal(est.lagtime, five_state_msm.tau)
         np.testing.assert_equal(model.lagtime, five_state_msm.tau)
@@ -229,8 +232,7 @@ def test_basic_oom_properties(five_state_msm):
 
 
 def test_transition_matrix(five_state_msm):
-    for est in five_state_msm.msms:
-        msm = est.fetch_model()
+    for msm in five_state_msm.msms:
         P = msm.transition_matrix
         # should be ndarray by default
         np.testing.assert_(isinstance(P, np.ndarray) or isinstance(P, scipy.sparse.csr_matrix))
@@ -254,8 +256,7 @@ def test_transition_matrix(five_state_msm):
 
 
 def test_stationary_distribution(five_state_msm):
-    for est in five_state_msm.msms:
-        msm = est.fetch_model()
+    for msm in five_state_msm.msms:
         # should strictly positive (irreversibility)
         np.testing.assert_(np.all(msm.stationary_distribution > 0))
         # should sum to one
@@ -270,8 +271,7 @@ def test_stationary_distribution(five_state_msm):
 
 
 def test_eigenvalues(five_state_msm):
-    for est in five_state_msm.msms:
-        msm = est.fetch_model()
+    for msm in five_state_msm.msms:
         ev = msm.eigenvalues()
         # stochasticity
         np.testing.assert_(np.max(np.abs(ev)) <= 1 + 1e-12)
@@ -287,376 +287,208 @@ def test_eigenvalues(five_state_msm):
 
 
 def test_eigenvectors(five_state_msm):
-    for est in five_state_msm.msms:
-        msm = est.fetch_model()
+    for msm in five_state_msm.msms:
         L = msm.eigenvectors_left()
         D = np.diag(msm.eigenvalues())
         R = msm.eigenvectors_right()
         np.testing.assert_equal(L.shape, (msm.n_states, msm.n_states))
         np.testing.assert_equal(R.shape, (msm.n_states, msm.n_states))
-
-        # orthogonality constraint
-        np.testing.assert_allclose(np.dot(R, L), np.eye(msm.n_states), rtol=1e-5, atol=1e-8)
+        np.testing.assert_allclose(np.dot(R, L), np.eye(msm.n_states), rtol=1e-5, atol=1e-8,
+                                   err_msg="orthogonality constraint")
 
         l1 = L[0, :]
-        # should be all ones
         r1 = R[:, 0]
-        np.testing.assert_allclose(r1, np.ones(msm.n_states), rtol=1e-5, atol=1e-8)
+        np.testing.assert_allclose(r1, np.ones(msm.n_states), rtol=1e-5, atol=1e-8, err_msg="should be all ones")
         err = msm.stationary_distribution - l1
         np.testing.assert_(np.max(np.abs(err)) < 1e-10)
-        # sums should be 1, 0, 0, ...
-        np.testing.assert_(np.allclose(np.sum(L[1:, :], axis=1), np.zeros(msm.n_states - 1)))
-        # REVERSIBLE:
+        np.testing.assert_allclose(np.sum(L[1:, :], axis=1), np.zeros(msm.n_states - 1),
+                                   err_msg="sums should be 1, 0, 0, ...")
         if msm.reversible:
             np.testing.assert_(np.all(np.isreal(L)))
             np.testing.assert_(np.all(np.isreal(R)))
             np.testing.assert_allclose(np.dot(L, R), np.eye(msm.n_states), rtol=1e-5, atol=1e-8)
-        # recover transition matrix
-        np.testing.assert_allclose(np.dot(R, np.dot(D, L)), msm.transition_matrix, rtol=1e-5, atol=1e-8)
+        np.testing.assert_allclose(np.dot(R, np.dot(D, L)), msm.transition_matrix, rtol=1e-5, atol=1e-8,
+                                   err_msg="recover transition matrix")
 
 
-class TestMSMFiveState(object):
+def test_timescales(five_state_msm):
+    for msm in five_state_msm.msms:
+        ts = msm.timescales()
 
-    def _timescales(self, msm):
-        if not msm.is_reversible:
-            with warnings.catch_warnings(record=True) as w:
-                ts = msm.timescales()
+        np.testing.assert_(np.all(ts > 0), msg="should be all positive")
+        if msm.reversible:
+            ts_ref = five_state_msm.rmsmrev.timescales()
+            np.testing.assert_(np.all(np.isreal(ts)), msg="REVERSIBLE: should be all real")
         else:
-            ts = msm.timescales()
+            ts_ref = five_state_msm.rmsm.timescales()
+        np.testing.assert_almost_equal(ts, five_state_msm.tau * ts_ref, decimal=2)
 
-        # should be all positive
-        assert (np.all(ts > 0))
-        # REVERSIBLE: should be all real
-        if msm.is_reversible:
-            ts_ref = self.rmsmrev.timescales()
-            assert (np.all(np.isreal(ts)))
-            # HERE:
-            np.testing.assert_almost_equal(ts, self.tau * ts_ref, decimal=2)
-        else:
-            ts_ref = self.rmsm.timescales()
-            # HERE:
-            np.testing.assert_almost_equal(ts, self.tau * ts_ref, decimal=2)
 
-    def test_timescales(self):
-        self._timescales(self.msmrev)
-        self._timescales(self.msm)
-        self._timescales(self.msmrev_sparse)
-        self._timescales(self.msm_sparse)
-        self._timescales(self.msmrev_eff)
+def test_oom_properties(five_state_msm):
+    for est in five_state_msm.estimators:
+        msm = est.fetch_model()
+        np.testing.assert_array_almost_equal(msm.eigenvalues_oom, five_state_msm.l)
+        np.testing.assert_array_almost_equal(msm.oom_components, five_state_msm.Xi)
+        np.testing.assert_array_almost_equal(msm.oom_omega, five_state_msm.omega)
+        np.testing.assert_array_almost_equal(msm.oom_sigma, five_state_msm.sigma)
 
-    def _eigenvalues_OOM(self, msm):
-        assert np.allclose(msm.eigenvalues_oom, self.l)
 
-    def test_eigenvalues_OOM(self):
-        self._eigenvalues_OOM(self.msmrev)
-        self._eigenvalues_OOM(self.msm)
-        self._eigenvalues_OOM(self.msmrev_sparse)
-        self._eigenvalues_OOM(self.msm_sparse)
-        self._eigenvalues_OOM(self.msmrev_eff)
-
-    def _oom_components(self, msm):
-        Xi = msm.oom_components
-        omega = msm.oom_omega
-        sigma = msm.oom_sigma
-        assert np.allclose(Xi, self.Xi)
-        assert np.allclose(omega, self.omega)
-        assert np.allclose(sigma, self.sigma)
-
-    def test_oom_components(self):
-        self._oom_components(self.msmrev)
-        self._oom_components(self.msm)
-        self._oom_components(self.msmrev_sparse)
-        self._oom_components(self.msm_sparse)
-        self._oom_components(self.msmrev_eff)
-
-    # ---------------------------------
-    # FIRST PASSAGE PROBLEMS
-    # ---------------------------------
-
-    def _committor(self, msm):
+def test_committor(five_state_msm):
+    for est in five_state_msm.estimators:
+        msm = est.fetch_model()
         a = np.array([0, 1])
         b = np.array([4])
         q_forward = msm.committor_forward(a, b)
-        if msm.is_reversible:
-            assert np.allclose(q_forward, self.comm_forward_rev)
+        if msm.reversible:
+            np.testing.assert_allclose(q_forward, five_state_msm.comm_forward_rev)
         else:
-            assert np.allclose(q_forward, self.comm_forward)
+            np.testing.assert_allclose(q_forward, five_state_msm.comm_forward)
         q_backward = msm.committor_backward(a, b)
-        if msm.is_reversible:
-            assert np.allclose(q_backward, self.comm_backward_rev)
+        if msm.reversible:
+            np.testing.assert_allclose(q_backward, five_state_msm.comm_backward_rev)
         else:
-            assert np.allclose(q_backward, self.comm_backward)
+            np.testing.assert_allclose(q_backward, five_state_msm.comm_backward)
         # REVERSIBLE:
-        if msm.is_reversible:
-            assert (np.allclose(q_forward + q_backward, np.ones(msm.nstates)))
+        if msm.reversible:
+            np.testing.assert_allclose(q_forward + q_backward, np.ones(msm.n_states))
 
-    def test_committor(self):
-        self._committor(self.msmrev)
-        self._committor(self.msm)
-        self._committor(self.msmrev_sparse)
-        self._committor(self.msm_sparse)
-        self._committor(self.msmrev_eff)
 
-    def _mfpt(self, msm):
-        a = np.array([0, 1])
-        b = np.array([4])
-        t = msm.mfpt(a, b)
-        assert (t > 0)
-        # HERE:
-        if msm.is_reversible:
-            np.testing.assert_allclose(t, self.mfpt_rev, rtol=1e-3, atol=1e-6)
+def test_mfpt(five_state_msm):
+    for msm in five_state_msm.msms:
+        t = msm.mfpt(A=np.array([0, 1]), B=np.array([4]))
+        np.testing.assert_(t > 0)
+        if msm.reversible:
+            np.testing.assert_allclose(t, five_state_msm.mfpt_rev, rtol=1e-3, atol=1e-6)
         else:
-            np.testing.assert_allclose(t, self.mfpt, rtol=1e-3, atol=1e-6)
+            np.testing.assert_allclose(t, five_state_msm.mfpt, rtol=1e-3, atol=1e-6)
 
-    def test_mfpt(self):
-        self._mfpt(self.msmrev)
-        self._mfpt(self.msm)
-        self._mfpt(self.msmrev_sparse)
-        self._mfpt(self.msm_sparse)
-        self._mfpt(self.msmrev_eff)
 
-    # ---------------------------------
-    # PCCA
-    # ---------------------------------
+def test_pcca(five_state_msm):
+    for msm in five_state_msm.msms:
+        if msm.reversible:
+            pcca = msm.pcca(3)
+            np.testing.assert_equal(len(pcca.assignments), msm.n_states)
+            np.testing.assert_array_almost_equal(pcca.assignments, five_state_msm.pcca_ass)
 
-    def _pcca_assignment(self, msm):
-        if msm.is_reversible:
-            msm.pcca(3)
-            ass = msm.metastable_assignments
-            # test: number of states
-            assert (len(ass) == msm.nstates)
-            # should be equal (zero variance) within metastable sets
-            assert np.all(ass == self.pcca_ass)
-        else:
-            with self.assertRaises(ValueError):
-                msm.pcca(3)
+            np.testing.assert_equal(pcca.metastable_distributions.shape, (3, msm.n_states))
+            np.testing.assert_(np.all(pcca.metastable_distributions >= 0))
+            np.testing.assert_array_almost_equal(pcca.metastable_distributions, five_state_msm.pcca_dist)
 
-    def test_pcca_assignment(self):
-        self._pcca_assignment(self.msmrev)
-        self._pcca_assignment(self.msm)
-        with warnings.catch_warnings(record=True) as w:
-            self._pcca_assignment(self.msmrev_sparse)
-        with warnings.catch_warnings(record=True) as w:
-            self._pcca_assignment(self.msm_sparse)
-        self._pcca_assignment(self.msmrev_eff)
+            np.testing.assert_equal(pcca.memberships.shape, (msm.n_states, 3))
+            np.testing.assert_(np.all(pcca.memberships >= 0))
+            np.testing.assert_allclose(pcca.memberships.sum(axis=1), 1.)
+            np.testing.assert_array_almost_equal(pcca.memberships, five_state_msm.pcca_mem)
 
-    def _pcca_distributions(self, msm):
-        if msm.is_reversible:
-            msm.pcca(3)
-            pccadist = msm.metastable_distributions
-            # should be right size
-            assert (np.all(pccadist.shape == (3, msm.nstates)))
-            # should be nonnegative
-            assert (np.all(pccadist >= 0))
-            # check equality:
-            assert np.allclose(pccadist, self.pcca_dist)
-        else:
-            with self.assertRaises(ValueError):
-                msm.pcca(3)
-
-    def test_pcca_distributions(self):
-        self._pcca_distributions(self.msmrev)
-        self._pcca_distributions(self.msm)
-        self._pcca_distributions(self.msmrev_sparse)
-        self._pcca_distributions(self.msm_sparse)
-        self._pcca_distributions(self.msmrev_eff)
-
-    def _pcca_memberships(self, msm):
-        if msm.is_reversible:
-            msm.pcca(3)
-            M = msm.metastable_memberships
-            # should be right size
-            assert (np.all(M.shape == (msm.nstates, 3)))
-            # should be nonnegative
-            assert (np.all(M >= 0))
-            # should add up to one:
-            assert (np.allclose(np.sum(M, axis=1), np.ones(msm.nstates)))
-            # check equality:
-            assert np.allclose(M, self.pcca_mem)
-        else:
-            with self.assertRaises(ValueError):
-                msm.pcca(3)
-
-    def test_pcca_memberships(self):
-        self._pcca_memberships(self.msmrev)
-        self._pcca_memberships(self.msm)
-        self._pcca_memberships(self.msmrev_sparse)
-        self._pcca_memberships(self.msm_sparse)
-        self._pcca_memberships(self.msmrev_eff)
-
-    def _pcca_sets(self, msm):
-        if msm.is_reversible:
-            msm.pcca(3)
-            S = msm.metastable_sets
-            assignment = msm.metastable_assignments
-            # should coincide with assignment
-            for i, s in enumerate(S):
+            for i, s in enumerate(pcca.sets):
                 for j in range(len(s)):
-                    assert (assignment[s[j]] == i)
+                    assert (pcca.assignments[s[j]] == i)
         else:
-            with self.assertRaises(ValueError):
+            with np.testing.assert_raises(ValueError):
                 msm.pcca(3)
 
-    def test_pcca_sets(self):
-        self._pcca_sets(self.msmrev)
-        self._pcca_sets(self.msm)
-        self._pcca_sets(self.msmrev_sparse)
-        self._pcca_sets(self.msm_sparse)
-        self._pcca_sets(self.msmrev_eff)
 
-    # ---------------------------------
-    # EXPERIMENTAL STUFF
-    # ---------------------------------
-
-    def _expectation(self, msm):
-        a = np.array([1, 2, 3, 4, 5])
-        e = msm.expectation(a)
-        # approximately equal for both
-        if msm.is_reversible:
-            assert np.allclose(e, self.exp_rev)
+def test_expectation_correlation_relaxation(five_state_msm):
+    for msm in five_state_msm.msms:
+        expectation = msm.expectation(np.array([1, 2, 3, 4, 5]))
+        if msm.reversible:
+            np.testing.assert_allclose(expectation, five_state_msm.exp_rev)
         else:
-            assert np.allclose(e, self.exp)
+            np.testing.assert_allclose(expectation, five_state_msm.exp)
 
-    def test_expectation(self):
-        self._expectation(self.msmrev)
-        self._expectation(self.msm)
-        self._expectation(self.msmrev_sparse)
-        self._expectation(self.msm_sparse)
-        self._expectation(self.msmrev_eff)
-
-    def _correlation(self, msm):
-        a = [1, 2, 3, 4, 5]
-        b = [1, -1, 0, -2, 4]
-        with self.assertRaises(AssertionError):
-            msm.correlation(a, 1)
+        with np.testing.assert_raises(AssertionError):
+            msm.correlation([1, 2, 3, 4, 5], 1)
         # test equality:
-        _, cor = msm.correlation(a, b, maxtime=50)
-        if msm.is_reversible:
-            assert np.allclose(cor, self.corr_rev)
+        _, cor = msm.correlation([1, 2, 3, 4, 5], [1, -1, 0, -2, 4], maxtime=50)
+        if msm.reversible:
+            np.testing.assert_allclose(cor, five_state_msm.corr_rev)
 
-    def test_correlation(self):
-        self._correlation(self.msmrev)
-        self._correlation(self.msmrev_eff)
-
-    def _relaxation(self, msm):
         a = [1, 2, 3, 4, 5]
         p0 = [0.5, 0.2, 0.2, 0.1, 0.0]
         times, rel1 = msm.relaxation(msm.stationary_distribution, a, maxtime=50, k=5)
         # should be constant because we are in equilibrium
-        assert (np.allclose(rel1 - rel1[0], np.zeros((np.shape(rel1)[0]))))
+        np.testing.assert_allclose(rel1 - rel1[0], 0, atol=1e-5)
         times, rel2 = msm.relaxation(p0, a, maxtime=50, k=5)
         # check equality:
-        if msm.is_reversible:
-            assert np.allclose(rel2, self.rel_rev)
+        if msm.reversible:
+            np.testing.assert_allclose(rel2, five_state_msm.rel_rev)
         else:
-            assert np.allclose(rel2, self.rel)
+            np.testing.assert_allclose(rel2, five_state_msm.rel)
 
-    def test_relaxation(self):
-        self._relaxation(self.msmrev)
-        self._relaxation(self.msm)
-        self._relaxation(self.msmrev_sparse)
-        self._relaxation(self.msm_sparse)
-        self._relaxation(self.msmrev_eff)
 
-    def _fingerprint_correlation(self, msm):
+def test_fingerprint_correlation(five_state_msm):
+    for msm in five_state_msm.msms:
         a = [1, 2, 3, 4, 5]
         b = np.array([1, -1, 0, -2, 4])
-        if msm.is_reversible:
+        if msm.reversible:
             fp1 = msm.fingerprint_correlation(a, k=5)
             # first timescale is infinite
-            assert (fp1[0][0] == np.inf)
+            np.testing.assert_equal(fp1[0][0], np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp1[0][1:], msm.timescales(4)))
+            np.testing.assert_allclose(fp1[0][1:], msm.timescales(4))
             # all amplitudes nonnegative (for autocorrelation)
-            assert (np.all(fp1[1][:] >= 0))
+            np.testing.assert_(np.all(fp1[1][:] >= 0))
             fp2 = msm.fingerprint_correlation(a, b)
-            assert np.allclose(fp2[1], self.fing_cor)
+            np.testing.assert_allclose(fp2[1], five_state_msm.fing_cor)
         else:  # raise ValueError, because fingerprints are not defined for nonreversible
-            with self.assertRaises(ValueError):
+            with np.testing.assert_raises(ValueError):
                 msm.fingerprint_correlation(a, k=5)
-            with self.assertRaises(ValueError):
+            with np.testing.assert_raises(ValueError):
                 msm.fingerprint_correlation(a, b, k=5)
 
-    def test_fingerprint_correlation(self):
-        self._fingerprint_correlation(self.msmrev)
-        self._fingerprint_correlation(self.msm)
-        self._fingerprint_correlation(self.msmrev_sparse)
-        self._fingerprint_correlation(self.msm_sparse)
-        self._fingerprint_correlation(self.msmrev_eff)
 
-    def _fingerprint_relaxation(self, msm):
+def test_fingerprint_relaxation(five_state_msm):
+    for msm in five_state_msm.msms:
         a = [1, 2, 3, 4, 5]
         p0 = [0.5, 0.2, 0.2, 0.1, 0.0]
-        if msm.is_reversible:
+        if msm.reversible:
             # raise assertion error because size is wrong:
-            with self.assertRaises(AssertionError):
+            with np.testing.assert_raises(AssertionError):
                 msm.fingerprint_relaxation(msm.stationary_distribution, [0, 1], k=5)
             # equilibrium relaxation should be constant
             fp1 = msm.fingerprint_relaxation(msm.stationary_distribution, a, k=5)
             # first timescale is infinite
-            assert (fp1[0][0] == np.inf)
+            np.testing.assert_equal(fp1[0][0], np.inf)
             # next timescales are identical to timescales:
             np.testing.assert_allclose(fp1[0][1:], msm.timescales(4), atol=1E-02)
             # dynamical amplitudes should be near 0 because we are in equilibrium
-            assert (np.max(np.abs(fp1[1][1:])) < 1e-10)
+            np.testing.assert_(np.max(np.abs(fp1[1][1:])) < 1e-10)
             # off-equilibrium relaxation
             fp2 = msm.fingerprint_relaxation(p0, a, k=5)
             # first timescale is infinite
-            assert (fp2[0][0] == np.inf)
+            np.testing.assert_equal(fp2[0][0], np.inf)
             # next timescales are identical to timescales:
-            assert (np.allclose(fp2[0][1:], msm.timescales(4)))
+            np.testing.assert_allclose(fp2[0][1:], msm.timescales(4))
             # check equality
-            assert np.allclose(fp2[1], self.fing_rel)
+            np.testing.assert_allclose(fp2[1], five_state_msm.fing_rel)
         else:  # raise ValueError, because fingerprints are not defined for nonreversible
-            with self.assertRaises(ValueError):
+            with np.testing.assert_raises(ValueError):
                 msm.fingerprint_relaxation(msm.stationary_distribution, a, k=5)
-            with self.assertRaises(ValueError):
+            with np.testing.assert_raises(ValueError):
                 msm.fingerprint_relaxation(p0, a)
 
-    def test_fingerprint_relaxation(self):
-        self._fingerprint_relaxation(self.msmrev)
-        self._fingerprint_relaxation(self.msm)
-        self._fingerprint_relaxation(self.msmrev_sparse)
-        self._fingerprint_relaxation(self.msm_sparse)
-        self._fingerprint_relaxation(self.msmrev_eff)
 
-    # ---------------------------------
-    # STATISTICS, SAMPLING
-    # ---------------------------------
+def test_active_state_indices(five_state_msm):
+    for msm in five_state_msm.msms:
+        dtrajs_proj = msm.count_model.transform_discrete_trajectories_to_submodel(five_state_msm.dtrajs)
+        indices = compute_index_states(dtrajs_proj)
+        np.testing.assert_equal(len(indices), msm.n_states)
+        hist = count_states(five_state_msm.dtrajs)
+        for state in range(msm.n_states):
+            np.testing.assert_equal(indices[state].shape[0], hist[msm.count_model.state_symbols[state]])
+            np.testing.assert_equal(indices[state].shape[1], 2)
 
-    def _active_state_indexes(self, msm):
-        I = msm.active_state_indexes
-        assert (len(I) == msm.nstates)
-        # compare to histogram
-        import pyemma.util.discrete_trajectories as dt
-        hist = dt.count_states(msm.discrete_trajectories_full)
-        # number of frames should match on active subset
-        A = msm.active_set
-        for i in range(A.shape[0]):
-            assert (I[i].shape[0] == hist[A[i]])
-            assert (I[i].shape[1] == 2)
 
-    def test_active_state_indexes(self):
-        self._active_state_indexes(self.msmrev)
-        self._active_state_indexes(self.msm)
-        self._active_state_indexes(self.msmrev_sparse)
-        self._active_state_indexes(self.msm_sparse)
-        self._active_state_indexes(self.msmrev_eff)
+def test_generate_trajectory(five_state_msm):
+    for msm in five_state_msm.msms:
+        dtrajs_proj = msm.count_model.transform_discrete_trajectories_to_submodel(five_state_msm.dtrajs)
+        indices = compute_index_states(dtrajs_proj)
 
-    def _generate_traj(self, msm):
-        T = 10
-        gt = msm.generate_traj(T)
-        # Test: should have the right dimension
-        assert (np.all(gt.shape == (T, 2)))
+        traj = msm.simulate(10)
+        ix = indices_by_sequence(indices, traj)
+        np.testing.assert_equal(ix.shape, (10, 2))
 
-    def test_generate_traj(self):
-        self._generate_traj(self.msmrev)
-        self._generate_traj(self.msm)
-        with warnings.catch_warnings(record=True) as w:
-            self._generate_traj(self.msmrev_sparse)
-        with warnings.catch_warnings(record=True) as w:
-            self._generate_traj(self.msm_sparse)
-        self._generate_traj(self.msmrev_eff)
+
+class TestMSMFiveState(object):
 
     def _sample_by_state(self, msm):
         nsample = 100
