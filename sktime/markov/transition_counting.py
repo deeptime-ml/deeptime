@@ -560,18 +560,7 @@ class TransitionCountEstimator(Estimator, Transformer):
         # Compute count matrix
         count_mode = self.count_mode
         lagtime = self.lagtime
-        if count_mode == 'sliding' or count_mode == 'sliding-effective':
-            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True, sparse_return=self.sparse)
-            if count_mode == 'sliding-effective':
-                count_matrix /= lagtime
-        elif count_mode == 'sample':
-            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False, sparse_return=self.sparse)
-        elif count_mode == 'effective':
-            count_matrix = msmest.effective_count_matrix(dtrajs, lagtime)
-            if not self.sparse and issparse(count_matrix):
-                count_matrix = count_matrix.toarray()
-        else:
-            raise ValueError('Count mode {} is unknown.'.format(count_mode))
+        count_matrix = TransitionCountEstimator.count(count_mode, dtrajs, lagtime, sparse=self.sparse)
 
         # initially state symbols, full count matrix, and full histogram can be left None because they coincide
         # with the input arguments
@@ -581,6 +570,22 @@ class TransitionCountEstimator(Estimator, Transformer):
         )
 
         return self
+
+    @staticmethod
+    def count(count_mode, dtrajs, lagtime, sparse: bool = False):
+        if count_mode == 'sliding' or count_mode == 'sliding-effective':
+            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True, sparse_return=sparse)
+            if count_mode == 'sliding-effective':
+                count_matrix /= lagtime
+        elif count_mode == 'sample':
+            count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False, sparse_return=sparse)
+        elif count_mode == 'effective':
+            count_matrix = msmest.effective_count_matrix(dtrajs, lagtime)
+            if not sparse and issparse(count_matrix):
+                count_matrix = count_matrix.toarray()
+        else:
+            raise ValueError('Count mode {} is unknown.'.format(count_mode))
+        return count_matrix
 
     def transform(self, data, **kwargs):
         r""" Transforms data into its respective count model.

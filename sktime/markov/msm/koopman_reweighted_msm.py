@@ -9,6 +9,7 @@ from sktime.markov.transition_counting import TransitionCountEstimator, Transiti
 from sktime.util import submatrix
 
 from . import _koopman_reweighted_msm_impl as _impl
+from ..util import count_states
 
 __author__ = 'Feliks Nüske, Fabian Paul, marscher, clonker'
 
@@ -163,8 +164,14 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     def fit(self, dtrajs, **kw):
         # remove last lag steps from dtrajs:
         dtrajs_lag = [traj[:-self.lagtime] for traj in dtrajs]
-        count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode, sparse=self.sparse)\
-            .fit(dtrajs_lag).fetch_model()
+
+        # statistics are collected over full trajectories
+        histogram = count_states(dtrajs, ignore_negative=True)
+        # because of double counting, only count lagged trajs
+        count_matrix = TransitionCountEstimator.count(count_mode=self.count_mode, dtrajs=dtrajs_lag,
+                                                      lagtime=self.lagtime, sparse=self.sparse)
+        count_model = TransitionCountModel(count_matrix, counting_mode=self.count_mode, lagtime=self.lagtime,
+                                           state_histogram=histogram)
         count_model = count_model.submodel_largest(connectivity_threshold=self.connectivity_threshold, directed=True)
 
         # Estimate transition matrix using re-sampling:
