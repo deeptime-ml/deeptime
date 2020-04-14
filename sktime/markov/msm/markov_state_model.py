@@ -945,10 +945,12 @@ class MarkovStateModel(Model):
         from .._markov_bindings import simulation as sim
         if start is None:
             start = np.random.choice(self.n_states, p=self.stationary_distribution)
-        if dt > 1:
-            P = np.linalg.matrix_power(self.transition_matrix, dt)
+        if self.sparse:
+            P = self.transition_matrix.toarray()
         else:
             P = self.transition_matrix
+        if dt > 1:
+            P = np.linalg.matrix_power(P, dt)
         return sim.trajectory(N=N, start=start, P=P, stop=stop, seed=-1)
 
     ################################################################################
