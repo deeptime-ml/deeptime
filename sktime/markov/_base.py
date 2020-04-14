@@ -226,7 +226,7 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
 
     Parameters
     ----------
-    fit_fetch : callable, optional, default=None
+    fit_fetch : callable
         Can be provided for a custom fit and fetch method. Should be a function pointer or lambda which
         takes a list of discrete trajectories as input and yields an estimated MSM or MSM-like model.
     dtrajs : list of array_like
@@ -252,6 +252,8 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
 
     blocksplit : bool, optional, default=True
         Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
+        In case no blocksplitting is performed, individual dtrajs are used for training and validation. This means that
+        at least two dtrajs must be provided (`len(dtrajs) >= 2`), otherwise this method raises an exception.
     score_k : int or None
         The maximum number of eigenvalues or singular values used in the
         score. If set to None, all available eigenvalues will be used.
@@ -284,7 +286,9 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
             if len(dtrajs_split) <= 1:
                 raise ValueError("Need at least two trajectories if blocksplit is not used to decompose the data.")
         dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split, random_state=random_state)
-
+        # this is supposed to construct a markov state model from data directly, for example what fit_fetch could do is
+        # counts = TransitionCountEstimator(args).fit(dtrajs_tain).fetch_model()
+        # model = MLMSMEstimator(args).fit(counts).fetch_model()
         model = fit_fetch(dtrajs_train)
         s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
         scores.append(s)
