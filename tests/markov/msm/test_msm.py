@@ -64,7 +64,7 @@ def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovSt
 @pytest.mark.parametrize("maxerr", [1e-3])
 def test_estimator_params(reversible, statdist, sparse, maxiter, maxerr):
     if statdist is not None and (np.any(statdist > 1) or np.any(statdist < 0)):
-        with np.testing.assert_raises(ValueError):
+        with assert_raises(ValueError):
             MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=statdist,
                                  sparse=sparse, maxiter=maxiter, maxerr=maxerr)
     else:
@@ -206,7 +206,7 @@ class TestMSMRevPi(unittest.TestCase):
         pi_invalid = np.array([0.1, 0.9])
         active_set = np.array([0, 1])
         msm = estimate_markov_model(dtraj, 1, statdist=pi_valid)
-        np.testing.assert_equal(msm.count_model.state_symbols, active_set)
+        assert_equal(msm.count_model.state_symbols, active_set)
         with self.assertRaises(ValueError):
             estimate_markov_model(dtraj, 1, statdist=pi_invalid)
 
@@ -215,7 +215,7 @@ class TestMSMRevPi(unittest.TestCase):
         dtraj_invalid = np.array([1, 1, 1, 1, 1, 1, 1])
         dtraj_valid = np.array([0, 2, 0, 2, 2, 0, 1, 1])
         msm = estimate_markov_model(dtraj_valid, lag=1, statdist=pi)
-        np.testing.assert_equal(msm.count_model.state_symbols, np.array([0, 2]))
+        assert_equal(msm.count_model.state_symbols, np.array([0, 2]))
         with self.assertRaises(ValueError):
             estimate_markov_model(dtraj_invalid, lag=1, statdist=pi)
 
@@ -225,10 +225,10 @@ def test_score(double_well_msm_all):
     dtrajs_test = scenario.dtraj[80000:]
     msm.score(dtrajs_test)
     s1 = msm.score(dtrajs_test, score_method='VAMP1', score_k=2)
-    np.testing.assert_(1.0 <= s1 <= 2.0)
+    assert_(1.0 <= s1 <= 2.0)
 
     s2 = msm.score(dtrajs_test, score_method='VAMP2', score_k=2)
-    np.testing.assert_(1.0 <= s2 <= 2.0)
+    assert_(1.0 <= s2 <= 2.0)
 
 
 def test_score_cv(double_well_msm_all):
@@ -460,9 +460,9 @@ def test_mfpt(double_well_msm_nostatdist_constraint):
     t = msm.mfpt(a, b)
     assert (t > 0)
     if msm.reversible:
-        np.testing.assert_allclose(t, 872.69, rtol=1e-3, atol=1e-6)
+        assert_allclose(t, 872.69, rtol=1e-3, atol=1e-6)
     else:
-        np.testing.assert_allclose(t, 872.07, rtol=1e-3, atol=1e-6)
+        assert_allclose(t, 872.07, rtol=1e-3, atol=1e-6)
 
 
 def test_pcca(double_well_msm_nostatdist_constraint):
@@ -719,8 +719,8 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         msm_one_over_n = estimate_markov_model(self.dtraj, lag=1, connectivity_threshold='1/n')
         msm_restrict_connectivity = estimate_markov_model(self.dtraj, lag=1,
                                                           connectivity_threshold=self.mincount_connectivity)
-        np.testing.assert_equal(msm_one_over_n.count_model.state_symbols, self.active_set_unrestricted)
-        np.testing.assert_equal(msm_restrict_connectivity.count_model.state_symbols, self.active_set_restricted)
+        assert_equal(msm_one_over_n.count_model.state_symbols, self.active_set_unrestricted)
+        assert_equal(msm_restrict_connectivity.count_model.state_symbols, self.active_set_restricted)
 
     # TODO: move to test_bayesian_msm
     def test_bmsm(self):
@@ -729,10 +729,10 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         msm_restricted = BayesianMSM().fit(cc.submodel_largest(connectivity_threshold=self.mincount_connectivity)) \
             .fetch_model()
 
-        np.testing.assert_equal(msm.prior.count_model.state_symbols, self.active_set_unrestricted)
-        np.testing.assert_equal(msm.samples[0].count_model.state_symbols, self.active_set_unrestricted)
-        np.testing.assert_equal(msm_restricted.prior.count_model.state_symbols, self.active_set_restricted)
-        np.testing.assert_equal(msm_restricted.samples[0].count_model.state_symbols, self.active_set_restricted)
+        assert_equal(msm.prior.count_model.state_symbols, self.active_set_unrestricted)
+        assert_equal(msm.samples[0].count_model.state_symbols, self.active_set_unrestricted)
+        assert_equal(msm_restricted.prior.count_model.state_symbols, self.active_set_restricted)
+        assert_equal(msm_restricted.samples[0].count_model.state_symbols, self.active_set_restricted)
         i = id(msm_restricted.prior.count_model)
         assert all(id(x.count_model) == i for x in msm_restricted.samples)
 
@@ -787,7 +787,7 @@ class TestMSMSimplePathologicalCases(unittest.TestCase, metaclass=GenerateTestMa
             self.assertEqual(submodel.count_matrix.shape[0], len(cset))
 
             if cmat_ref is not None:
-                np.testing.assert_array_equal(submodel.count_matrix, cmat_ref)
+                assert_array_equal(submodel.count_matrix, cmat_ref)
 
     def _test_msm_submodel_statdist(self, lag, reversible, count_mode):
         count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode).fit(self.dtrajs).fetch_model()
@@ -806,7 +806,7 @@ class TestMSMSimplePathologicalCases(unittest.TestCase, metaclass=GenerateTestMa
             if np.any(pi < 0):
                 pi *= -1.
             pi = pi / np.sum(pi)
-            np.testing.assert_array_almost_equal(msm.stationary_distribution, pi,
+            assert_array_almost_equal(msm.stationary_distribution, pi,
                                                  decimal=1, err_msg="Failed for cset {} with "
                                                                     "cmat {}".format(cset, submodel.count_matrix))
 
