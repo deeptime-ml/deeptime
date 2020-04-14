@@ -946,12 +946,12 @@ class MarkovStateModel(Model):
         if start is None:
             start = np.random.choice(self.n_states, p=self.stationary_distribution)
         if self.sparse:
-            P = self.transition_matrix.toarray()
+            transition_matrix = self.transition_matrix.toarray()
         else:
-            P = self.transition_matrix
+            transition_matrix = self.transition_matrix
         if dt > 1:
-            P = np.linalg.matrix_power(P, dt)
-        return sim.trajectory(N=N, start=start, P=P, stop=stop, seed=-1)
+            transition_matrix = np.linalg.matrix_power(transition_matrix, dt)
+        return sim.trajectory(N=N, start=start, P=transition_matrix, stop=stop, seed=-1)
 
     ################################################################################
     # For general statistics
