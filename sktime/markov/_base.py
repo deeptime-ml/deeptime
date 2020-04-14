@@ -210,7 +210,7 @@ class BayesianPosterior(Model):
 
 
 def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
-             score_k: int = 10, blocksplit: bool = True, random_state=None):
+             score_k: Optional[int] = 10, blocksplit: bool = True, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
     Implementation and ideas following [1]_ [2]_ and cross-validation [3]_.
