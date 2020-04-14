@@ -24,7 +24,6 @@ import os
 import msmtools.analysis as ma
 import msmtools.estimation as msmest
 import numpy as np
-import pkg_resources
 import pytest
 import scipy.linalg as scl
 import scipy.sparse
