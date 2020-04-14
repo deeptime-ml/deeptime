@@ -369,10 +369,10 @@ def test_timescales(oom_msm_scenario):
 
 def test_oom_properties(oom_msm_scenario):
     for msm in oom_msm_scenario.msms:
-        np.testing.assert_array_almost_equal(msm.eigenvalues_oom, oom_msm_scenario.l)
+        np.testing.assert_array_almost_equal(msm.oom_eigenvalues, oom_msm_scenario.l)
         np.testing.assert_array_almost_equal(msm.oom_components, oom_msm_scenario.Xi)
-        np.testing.assert_array_almost_equal(msm.oom_omega, oom_msm_scenario.omega)
-        np.testing.assert_array_almost_equal(msm.oom_sigma, oom_msm_scenario.sigma)
+        np.testing.assert_array_almost_equal(msm.oom_information_state_vector, oom_msm_scenario.omega)
+        np.testing.assert_array_almost_equal(msm.oom_evaluator, oom_msm_scenario.sigma)
 
 
 def test_committor(oom_msm_scenario):

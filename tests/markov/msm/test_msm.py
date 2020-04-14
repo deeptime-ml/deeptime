@@ -290,8 +290,9 @@ class TestMSMDoubleWell(unittest.TestCase):
 
     def _score_cv(self, estimator):
         def fit_fetch(dtrajs):
-            cc = TransitionCountEstimator(lagtime=10, count_mode="sliding").fit(dtrajs).fetch_model().submodel_largest()
-            return estimator.fit(cc).fetch_model()
+            count_model = TransitionCountEstimator(lagtime=10, count_mode="sliding").fit(dtrajs)\
+                .fetch_model().submodel_largest()
+            return estimator.fit(count_model).fetch_model()
 
         s1 = score_cv(fit_fetch, dtrajs=self.dtraj, lagtime=10, n=5, score_method='VAMP1', score_k=2).mean()
         assert 1.0 <= s1 <= 2.0

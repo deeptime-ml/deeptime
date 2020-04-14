@@ -40,6 +40,7 @@ class MarkovStateModel(Model):
     See Also
     --------
     MaximumLikelihoodMSM : maximum-likelihood estimator for MSMs
+    OOMReweightedMSM : estimator for MSMs which uses Koopman reweighting
     BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
     """
 

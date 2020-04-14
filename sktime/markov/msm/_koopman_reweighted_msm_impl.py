@@ -226,9 +226,9 @@ def oom_components(Ct, C2t, rank_ind=None, lcc=None, tol_one=1e-2):
     -------
     Xi : ndarray(M, N, M)
         matrix of set-observable operators
-    omega: ndarray(M,)
+    oom_information_state_vector: ndarray(M,)
         information state vector of OOM
-    sigma : ndarray(M,)
+    oom_evaluator : ndarray(M,)
         evaluator of OOM
     l : ndarray(M,)
         eigenvalues from OOM
