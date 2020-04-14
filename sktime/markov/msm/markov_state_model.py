@@ -40,6 +40,7 @@ class MarkovStateModel(Model):
     See Also
     --------
     MaximumLikelihoodMSM : maximum-likelihood estimator for MSMs
+    OOMReweightedMSM : estimator for MSMs which uses Koopman reweighting
     BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
     """
 
@@ -944,11 +945,13 @@ class MarkovStateModel(Model):
         from .._markov_bindings import simulation as sim
         if start is None:
             start = np.random.choice(self.n_states, p=self.stationary_distribution)
-        if dt > 1:
-            P = np.linalg.matrix_power(self.transition_matrix, dt)
+        if self.sparse:
+            transition_matrix = self.transition_matrix.toarray()
         else:
-            P = self.transition_matrix
-        return sim.trajectory(N=N, start=start, P=P, stop=stop, seed=-1)
+            transition_matrix = self.transition_matrix
+        if dt > 1:
+            transition_matrix = np.linalg.matrix_power(transition_matrix, dt)
+        return sim.trajectory(N=N, start=start, P=transition_matrix, stop=stop, seed=-1)
 
     ################################################################################
     # For general statistics

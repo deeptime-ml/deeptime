@@ -1,4 +1,5 @@
 import abc
+from typing import Optional, Callable
 
 import numpy as np
 
@@ -208,8 +209,8 @@ class BayesianPosterior(Model):
                                          delimiter=delimiter, confidence=confidence, *args, **kwargs)
 
 
-def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
-             score_k=10, random_state=None):
+def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
+             score_k: Optional[int] = 10, blocksplit: bool = True, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
     Implementation and ideas following [1]_ [2]_ and cross-validation [3]_.
@@ -225,8 +226,9 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
 
     Parameters
     ----------
-    estimator : MSMBaseEstimator like
-        estimator to produce models for CV.
+    fit_fetch : callable
+        Can be provided for a custom fit and fetch method. Should be a function pointer or lambda which
+        takes a list of discrete trajectories as input and yields an estimated MSM or MSM-like model.
     dtrajs : list of array_like
         Test data (discrete trajectories).
     lagtime : int
@@ -248,6 +250,10 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
         *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [2]_ .
                     If the MSM is reversible, this is equal to the kinetic variance [4]_ .
 
+    blocksplit : bool, optional, default=True
+        Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
+        In case no blocksplitting is performed, individual dtrajs are used for training and validation. This means that
+        at least two dtrajs must be provided (`len(dtrajs) >= 2`), otherwise this method raises an exception.
     score_k : int or None
         The maximum number of eigenvalues or singular values used in the
         score. If set to None, all available eigenvalues will be used.
@@ -266,7 +272,6 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
         dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015).
 
     """
-    from sktime.markov import TransitionCountEstimator
     from sktime.util import ensure_dtraj_list
     dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
     if count_mode not in ('sliding', 'sample'):
@@ -274,11 +279,17 @@ def score_cv(estimator: _MSMBaseEstimator, dtrajs, lagtime, n=10, count_mode="sl
     sliding = count_mode == 'sliding'
     scores = []
     for fold in range(n):
-        dtrajs_split = blocksplit_dtrajs(dtrajs, lag=lagtime, sliding=sliding, random_state=random_state)
+        if blocksplit:
+            dtrajs_split = blocksplit_dtrajs(dtrajs, lag=lagtime, sliding=sliding, random_state=random_state)
+        else:
+            dtrajs_split = dtrajs
+            if len(dtrajs_split) <= 1:
+                raise ValueError("Need at least two trajectories if blocksplit is not used to decompose the data.")
         dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split, random_state=random_state)
-
-        cc = TransitionCountEstimator(lagtime, count_mode).fit(dtrajs_train).fetch_model().submodel_largest()
-        model = estimator.fit(cc).fetch_model()
+        # this is supposed to construct a markov state model from data directly, for example what fit_fetch could do is
+        # counts = TransitionCountEstimator(args).fit(dtrajs_tain).fetch_model()
+        # model = MLMSMEstimator(args).fit(counts).fetch_model()
+        model = fit_fetch(dtrajs_train)
         s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
         scores.append(s)
     return np.array(scores)
