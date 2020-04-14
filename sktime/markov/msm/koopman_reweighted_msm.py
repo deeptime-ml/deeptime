@@ -1,6 +1,7 @@
 import warnings
+from typing import Optional
 
-import numpy as _np
+import numpy as np
 from msmtools.estimation import effective_count_matrix
 from scipy.sparse import issparse
 from sktime.markov._base import _MSMBaseEstimator
@@ -23,9 +24,11 @@ class KoopmanReweightedMSM(MarkovStateModel):
     BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
     """
 
-    def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
-                 twostep_count_matrices=None, oom_components=None, count_model=None,
-                 oom_eigenvalues=None, oom_evaluator=None, oom_information_state_vector=None):
+    def __init__(self, transition_matrix: np.ndarray, stationary_distribution: Optional[np.ndarray] = None,
+                 reversible: Optional[bool] = None, n_eigenvalues: Optional[int] = None, ncv: Optional[int] = None,
+                 twostep_count_matrices: Optional[np.ndarray] = None, oom_components: Optional[np.ndarray] = None,
+                 count_model: Optional[TransitionCountModel] = None, oom_eigenvalues: Optional[np.ndarray] = None,
+                 oom_evaluator: Optional[np.ndarray] = None, oom_information_state_vector: Optional[np.ndarray] = None):
         r""" Constructs a new Markov state model by providing a transition matrix. Additionally byproducts of
         Koopman reweighted msm estimation can be stored.
 
@@ -49,7 +52,7 @@ class KoopmanReweightedMSM(MarkovStateModel):
             Two-step count matrices for all states, each :code:`twostep_count_matrices[:, i, :]` is a count matrix
             for each :math:`i=1,\ldots,n`.
         oom_components : (m, n, m) ndarray, optional, default=None
-            Matrix of set-observable operators, where :code:`m` is the rank based on the rank decision made during 
+            Matrix of set-observable operators, where :code:`m` is the rank based on the rank decision made during
             estimation.
         oom_eigenvalues : (m,) ndarray, optional, default=None
             The eigenvalues from OOM.
@@ -83,7 +86,7 @@ class KoopmanReweightedMSM(MarkovStateModel):
     @property
     def oom_timescales(self):
         """System timescales estimated by OOM."""
-        return -self.lagtime / _np.log(_np.abs(self._oom_eigenvalues[1:]))
+        return -self.lagtime / np.log(np.abs(self._oom_eigenvalues[1:]))
 
     @property
     def oom_rank(self):
