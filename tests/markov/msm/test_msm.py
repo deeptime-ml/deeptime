@@ -22,9 +22,8 @@ r"""Unit test for the MSM module
 .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
 """
-import itertools
+import collections
 import unittest
-import warnings
 
 import msmtools.analysis as msmana
 import msmtools.estimation as msmest
@@ -33,13 +32,11 @@ import pytest
 import scipy.sparse
 from msmtools.generation import generate_traj
 from msmtools.util.birth_death_chain import BirthDeathChain
-
+from numpy.testing import *
 from sktime.markov._base import score_cv
 from sktime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountEstimator
 from sktime.markov.util import count_states
-from tests.util import GenerateTestMatrix
-from numpy.testing import *
 
 
 def estimate_markov_model(dtrajs, lag, return_estimator=False, **kw) -> MarkovStateModel:
@@ -737,105 +734,110 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         assert all(id(x.count_model) == i for x in msm_restricted.samples)
 
 
-class TestMSMSimplePathologicalCases(unittest.TestCase, metaclass=GenerateTestMatrix):
+DisconnectedStatesScenario = collections.namedtuple("DisconnectedStatesScenario",
+                                                    ["dtrajs", "connected_sets", "count_matrices"])
+
+
+@pytest.fixture
+def disconnected_states():
     """
     example that covers disconnected states handling
     2 <- 0 <-> 1 <-> 3 - 7 -> 4 <-> 5 - 6
-
     """
-    lag_reversible_countmode_params = [dict(lag=lag, reversible=r, count_mode=cm)
-                                       for lag, r, cm in itertools.product(
-            [1, 2], [True, False], ['sliding', 'sample'])]
-    lag_countmode_params = [dict(lag=lag, count_mode=cm)
-                            for lag, cm in itertools.product(
-            [1, 2], ['sliding', 'sample'])]
-    params = {
-        '_test_msm_submodel_statdist': lag_reversible_countmode_params,
-        '_test_raises_disconnected': lag_countmode_params,
-        '_test_msm_invalid_statdist_constraint': [dict(reversible=True, count_mode='ulrich')],
-        '_test_connected_sets': lag_countmode_params,
-        '_test_sub_counts': [dict(count_mode=cm)
-                             for cm in ['sliding', 'sample']]
-    }
-
-    @classmethod
-    def setUpClass(cls):
-        dtrajs = [np.array([1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 2, 2, 2, 2]),
-                  np.array([0, 1, 1, 0, 0, 3, 3, 3, 0, 1, 3, 1, 3, 0, 3, 3, 1, 1]),
-                  np.array([4, 5, 5, 5, 4, 4, 5, 5, 4, 4, 5, 4, 4, 4, 5, 4, 5, 5]),
-                  np.array([6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]),
-                  np.array([7, 7, 7, 7, 7, 4, 5, 4, 5, 4, 5, 4, 4, 4, 5, 5, 5, 4])]
-        cls.dtrajs = dtrajs
-        cls.connected_sets = [[0, 1, 3], [4, 5], [2], [6], [7]]
-        cmat_set1 = np.array([[3, 7, 2],
-                              [6, 3, 2],
-                              [2, 2, 3]], dtype=np.int)
-        cmat_set2 = np.array([[6, 9],
-                              [8, 6]], dtype=np.int)
-        cls.count_matrices = [cmat_set1, cmat_set2, None, None, None]
-
-    def _test_connected_sets(self, lag, count_mode):
-        count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode).fit(self.dtrajs).fetch_model()
-        assert all([set(c) in set(map(frozenset, self.connected_sets)) for c in count_model.connected_sets()])
-
-    def _test_sub_counts(self, count_mode):
-        count_model = TransitionCountEstimator(lagtime=1, count_mode=count_mode).fit(self.dtrajs).fetch_model()
-        for cset, cmat_ref in zip(count_model.connected_sets(), self.count_matrices):
-            submodel = count_model.submodel(cset)
-            self.assertEqual(len(submodel.connected_sets()), 1)
-            self.assertEqual(len(submodel.connected_sets()[0]), len(cset))
-            self.assertEqual(submodel.count_matrix.shape[0], len(cset))
-
-            if cmat_ref is not None:
-                assert_array_equal(submodel.count_matrix, cmat_ref)
-
-    def _test_msm_submodel_statdist(self, lag, reversible, count_mode):
-        count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode).fit(self.dtrajs).fetch_model()
-
-        for cset in count_model.connected_sets():
-            submodel = count_model.submodel(cset)
-            estimator = MaximumLikelihoodMSM(reversible=reversible).fit(submodel)
-            msm = estimator.fetch_model()
-            C = submodel.count_matrix
-            P = C / np.sum(C, axis=-1)[:, None]
-
-            import scipy.linalg as salg
-            eigval, eigvec = salg.eig(P, left=True, right=False)
-
-            pi = np.real(eigvec)[:, np.where(np.real(eigval) > 1. - 1e-3)[0]].squeeze()
-            if np.any(pi < 0):
-                pi *= -1.
-            pi = pi / np.sum(pi)
-            assert_array_almost_equal(msm.stationary_distribution, pi,
-                                                 decimal=1, err_msg="Failed for cset {} with "
-                                                                    "cmat {}".format(cset, submodel.count_matrix))
-
-    def _test_msm_invalid_statdist_constraint(self, reversible, count_mode):
-        pass  # TODO: fix code to pass test
-        # pi = np.ones(4) / 4.
-        # for cset in self.count_model.connected_sets():
-        #     submodel = self.count_model.submodel(cset)
-        #
-        #     with self.assertRaises(RuntimeError):
-        #         MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=pi).fit(submodel)
-
-    def _test_raises_disconnected(self, lag, count_mode):
-        count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode).fit(self.dtrajs).fetch_model()
-
-        with self.assertRaises(AssertionError):
-            MaximumLikelihoodMSM(reversible=True).fit(count_model)
-
-        non_reversibly_connected_set = [0, 1, 2, 3]
-        submodel = count_model.submodel(non_reversibly_connected_set)
-
-        with self.assertRaises(AssertionError):
-            MaximumLikelihoodMSM(reversible=True).fit(submodel)
-
-        fully_disconnected_set = [6, 2]
-        submodel = count_model.submodel(fully_disconnected_set)
-        with self.assertRaises(AssertionError):
-            MaximumLikelihoodMSM(reversible=True).fit(submodel)
+    dtrajs = [np.array([1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 2, 2, 2, 2]),
+              np.array([0, 1, 1, 0, 0, 3, 3, 3, 0, 1, 3, 1, 3, 0, 3, 3, 1, 1]),
+              np.array([4, 5, 5, 5, 4, 4, 5, 5, 4, 4, 5, 4, 4, 4, 5, 4, 5, 5]),
+              np.array([6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]),
+              np.array([7, 7, 7, 7, 7, 4, 5, 4, 5, 4, 5, 4, 4, 4, 5, 5, 5, 4])]
+    connected_sets = [[0, 1, 3], [4, 5], [2], [6], [7]]
+    cmat_set1 = np.array([[3, 7, 2],
+                          [6, 3, 2],
+                          [2, 2, 3]], dtype=np.int)
+    cmat_set2 = np.array([[6, 9],
+                          [8, 6]], dtype=np.int)
+    count_matrices = [cmat_set1, cmat_set2, None, None, None]
+    return DisconnectedStatesScenario(dtrajs=dtrajs, connected_sets=connected_sets, count_matrices=count_matrices)
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.parametrize("lag", [1, 2])
+@pytest.mark.parametrize("count_mode", ["sliding", "sample"])
+def test_connected_sets(disconnected_states, lag, count_mode):
+    count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode).fit(
+        disconnected_states.dtrajs).fetch_model()
+    assert all(
+        [set(c) in set(map(frozenset, disconnected_states.connected_sets)) for c in count_model.connected_sets()])
+
+
+@pytest.mark.parametrize("count_mode", ["sliding", "sample"])
+def test_sub_counts(disconnected_states, count_mode):
+    count_model = TransitionCountEstimator(lagtime=1, count_mode=count_mode) \
+        .fit(disconnected_states.dtrajs).fetch_model()
+    for cset, cmat_ref in zip(count_model.connected_sets(), disconnected_states.count_matrices):
+        submodel = count_model.submodel(cset)
+        assert_equal(len(submodel.connected_sets()), 1)
+        assert_equal(len(submodel.connected_sets()[0]), len(cset))
+        assert_equal(submodel.count_matrix.shape[0], len(cset))
+
+        if cmat_ref is not None:
+            assert_array_equal(submodel.count_matrix, cmat_ref)
+
+
+@pytest.mark.parametrize("lag", [1, 2])
+@pytest.mark.parametrize("reversible", [True, False])
+@pytest.mark.parametrize("count_mode", ["sliding", "sample"])
+def test_msm_submodel_statdist(disconnected_states, lag, reversible, count_mode):
+    count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode).fit(
+        disconnected_states.dtrajs).fetch_model()
+
+    for cset in count_model.connected_sets():
+        submodel = count_model.submodel(cset)
+        estimator = MaximumLikelihoodMSM(reversible=reversible).fit(submodel)
+        msm = estimator.fetch_model()
+        C = submodel.count_matrix
+        P = C / np.sum(C, axis=-1)[:, None]
+
+        import scipy.linalg as salg
+        eigval, eigvec = salg.eig(P, left=True, right=False)
+
+        pi = np.real(eigvec)[:, np.where(np.real(eigval) > 1. - 1e-3)[0]].squeeze()
+        if np.any(pi < 0):
+            pi *= -1.
+        pi = pi / np.sum(pi)
+        assert_array_almost_equal(msm.stationary_distribution, pi,
+                                  decimal=1, err_msg="Failed for cset {} with "
+                                                     "cmat {}".format(cset, submodel.count_matrix))
+
+
+@pytest.mark.parametrize("lagtime", [1, 2])
+@pytest.mark.parametrize("reversible", [True, False])
+@pytest.mark.parametrize("count_mode", ["sliding", "sample"])
+def test_msm_invalid_statdist_constraint(disconnected_states, lagtime, reversible, count_mode):
+    pi = np.ones(4) / 4.
+    count_model = TransitionCountEstimator(lagtime=lagtime, count_mode=count_mode) \
+        .fit(disconnected_states.dtrajs).fetch_model()
+    for cset in count_model.connected_sets():
+        submodel = count_model.submodel(cset)
+
+        with assert_raises(ValueError):
+            MaximumLikelihoodMSM(reversible=reversible, stationary_distribution_constraint=pi).fit(submodel)
+
+
+@pytest.mark.parametrize("lag", [1, 2])
+@pytest.mark.parametrize("count_mode", ["sliding", "sample"])
+def test_raises_disconnected(disconnected_states, lag, count_mode):
+    count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode) \
+        .fit(disconnected_states.dtrajs).fetch_model()
+
+    with assert_raises(AssertionError):
+        MaximumLikelihoodMSM(reversible=True).fit(count_model)
+
+    non_reversibly_connected_set = [0, 1, 2, 3]
+    submodel = count_model.submodel(non_reversibly_connected_set)
+
+    with assert_raises(AssertionError):
+        MaximumLikelihoodMSM(reversible=True).fit(submodel)
+
+    fully_disconnected_set = [6, 2]
+    submodel = count_model.submodel(fully_disconnected_set)
+    with assert_raises(AssertionError):
+        MaximumLikelihoodMSM(reversible=True).fit(submodel)
