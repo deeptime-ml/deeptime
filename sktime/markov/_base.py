@@ -71,22 +71,23 @@ def cvsplit_dtrajs(dtrajs, random_state=None):
 
 
 class _MSMBaseEstimator(Estimator, metaclass=abc.ABCMeta):
-    r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics
-
-    Parameters
-    ----------
-    reversible : bool, optional, default = True
-        If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel
-
-    sparse : bool, optional, default = False
-        If true compute count matrix, transition matrix and all derived
-        quantities using sparse matrix algebra. In this case python sparse
-        matrices will be returned by the corresponding functions instead of
-        numpy arrays. This behavior is suggested for very large numbers of
-        states (e.g. > 4000) because it is likely to be much more efficient.
+    r"""Maximum likelihood estimator for MSMs given discrete trajectory statistics.
     """
 
     def __init__(self, reversible=True, sparse=False):
+        r""" Creates a new base estimator instance.
+
+        Parameters
+        ----------
+        reversible : bool, optional, default = True
+            If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel
+        sparse : bool, optional, default = False
+            If true compute count matrix, transition matrix and all derived
+            quantities using sparse matrix algebra. In this case python sparse
+            matrices will be returned by the corresponding functions instead of
+            numpy arrays. This behavior is suggested for very large numbers of
+            states (e.g. > 4000) because it is likely to be much more efficient.
+        """
         super(_MSMBaseEstimator, self).__init__()
         self.reversible = reversible
         self.sparse = sparse
