@@ -17,6 +17,7 @@
 
 __author__ = 'Simon Olsson'
 
+import logging
 from typing import Optional
 
 import numpy as np
@@ -24,7 +25,7 @@ from msmtools import estimation as msmest
 
 from sktime.markov import TransitionCountModel
 from sktime.markov.msm import MarkovStateModel
-from sktime.util import confidence_interval
+from sktime.util import confidence_interval, ensure_dtraj_list, ensure_traj_list
 from .._base import _MSMBaseEstimator
 
 
@@ -42,7 +43,7 @@ class AMMOptimizerState(object):
         self.count_matrix_row_sums = count_matrix_row_sums
         self.X = np.empty_like(symmetrized_count_matrix)
 
-        self.m_hat = np.ndarray()
+        self.m_hat = np.empty(())
         self._slope_obs = None
         self.update_m_hat()
         self.d_m_hat = 1e-1 * np.ones_like(self.m_hat)
@@ -164,6 +165,10 @@ class AugmentedMSM(MarkovStateModel):
         self.score = None
         self.hmm = None
 
+    @property
+    def optimizer_state(self):
+        return self._amm_optimizer_state
+
 
 class AugmentedMSMEstimator(_MSMBaseEstimator):
 
@@ -176,6 +181,35 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         self.support_confidence = support_ci
         self.max_cache = max_cache
         self.maxiter = maxiter
+        self._log = logging.getLogger(__name__)
+
+    @staticmethod
+    def estimator_from_feature_trajectories(discrete_trajectories, feature_trajectories, n_states, m, sigmas,
+                                            eps=0.05, support_ci=1.0, maxiter=500, max_cache=3000):
+        discrete_trajectories = ensure_dtraj_list(discrete_trajectories)
+        feature_trajectories = ensure_traj_list(feature_trajectories, np.float32)
+        # check input
+        if np.all(sigmas > 0):
+            _w = 1. / (2 * sigmas ** 2.)
+        else:
+            raise ValueError('Zero or negative standard errors supplied. Please revise input')
+        if feature_trajectories[0].ndim < 2:
+            raise ValueError("Supplied feature trajectories have inappropriate dimensions (%d), "
+                             "should be at least 2." % feature_trajectories[0].ndim)
+        if len(discrete_trajectories) != len(feature_trajectories):
+            raise ValueError("A different number of dtrajs and ftrajs were supplied as input. "
+                             "They must have exactly a one-to-one correspondence.")
+        if not np.all([len(dt) == len(ft) for dt, ft in zip(discrete_trajectories, feature_trajectories)]):
+            raise ValueError("One or more supplied dtraj-ftraj pairs do not have the same length.")
+        # MAKE E matrix
+        fta = np.concatenate(feature_trajectories)
+        dta = np.concatenate(discrete_trajectories)
+        _E = np.zeros((n_states, fta.shape[1]))
+        for i, s in enumerate(range(n_states)):
+            _E[i, :] = fta[np.where(dta == s)].mean(axis=0)
+        # transition matrix estimator
+        return AugmentedMSMEstimator(E=_E, m=m, w=_w, eps=eps,
+                                     support_ci=support_ci, maxiter=maxiter, max_cache=max_cache)
 
     @property
     def expectations_by_state(self):
@@ -282,7 +316,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             frac *= 0.1
 
             if frac < 1e-12:
-                self.logger.info("Small gradient fraction")
+                self._log.info("Small gradient fraction")
                 break
 
             state.d_m_hat = state.m_hat - mhat_old
@@ -304,12 +338,10 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         else:
             count_model = data
 
-        if len(self.experimental_measurement_weights) != count_model.n_states_full:
-            raise ValueError("Experimental weights must span full state space. In case some are excluded from "
-                             "estimation due to connectivity issues they can be set to an arbitrary positive value.")
-        if len(self.experimental_measurements) != count_model.n_states_full:
-            raise ValueError("Experimental measurements must span full state space. In case some are excluded from "
-                             "estimation due to connectivity issues they can be set to an arbitrary value.")
+        if len(self.experimental_measurement_weights) != self.expectations_by_state.shape[1]:
+            raise ValueError("Experimental weights must span full observable space.")
+        if len(self.experimental_measurements) != self.expectations_by_state.shape[1]:
+            raise ValueError("Experimental measurements must span full observable state space.")
 
         # slice out active states from E matrix
         expectations_selected = self.expectations_by_state[count_model.state_symbols]
@@ -318,8 +350,8 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         counts_row_sums = np.sum(count_model.count_matrix, axis=1)
         expectations_confidence_interval = confidence_interval(expectations_selected, conf=self.support_confidence)
 
-        measurements = self.experimental_measurements[count_model.state_symbols]
-        measurement_weights = self.experimental_measurement_weights[count_model.state_symbols]
+        measurements = self.experimental_measurements
+        measurement_weights = self.experimental_measurement_weights
 
         count_outside = []
         count_inside = []
@@ -329,7 +361,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         for emi, ema, mm, mw in zip(expectations_confidence_interval[0], expectations_confidence_interval[1],
                                     measurements, measurement_weights):
             if mm < emi or ema < mm:
-                self.logger.info("Experimental value %f is outside the support (%f,%f)" % (mm, emi, ema))
+                self._log.info("Experimental value %f is outside the support (%f,%f)" % (mm, emi, ema))
                 count_outside.append(i)
             else:
                 count_inside.append(i)
@@ -375,7 +407,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             if not np.all(state.pi_hat > 0):
                 state.pi_hat = pi_hat_old.copy()
                 die = True
-                self.logger.warning("pihat does not have a finite probability for all states, terminating")
+                self._log.warning("pihat does not have a finite probability for all states, terminating")
             state.update_m_hat()
             state.update_Q()
 
@@ -384,7 +416,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
                 state.update_X_and_pi()
                 if np.any(state.X[nonzero_counts] < 0) and i > 0:
                     die = True
-                    self.logger.warning(
+                    self._log.warning(
                         "Warning: new X is not proportional to C... reverting to previous step and terminating")
                     state.X = X_old
 
@@ -399,21 +431,21 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             if len(count_outside) > 0:
                 if i > 1 and np.all((np.abs(state.d_m_hat) / self.uncertainties) < self.convergence_criterion_lagrange) \
                         and not converged:
-                    self.logger.info("Converged Lagrange multipliers after %i steps..." % i)
+                    self._log.info("Converged Lagrange multipliers after %i steps..." % i)
                     converged = True
             # Special case
             else:
                 if np.abs(state.log_likelihoods[-2] - state.log_likelihoods[-1]) < 1e-8:
-                    self.logger.info("Converged Lagrange multipliers after %i steps..." % i)
+                    self._log.info("Converged Lagrange multipliers after %i steps..." % i)
                     converged = True
             # if Lagrange multipliers are converged, check whether log-likelihood has converged
             if converged and np.abs(state.log_likelihoods[-2] - state.log_likelihoods[-1]) < 1e-8:
-                self.logger.info("Converged pihat after %i steps..." % i)
+                self._log.info("Converged pihat after %i steps..." % i)
                 die = True
             if die:
                 break
             if i == self.maxiter:
-                self.logger.info("Failed to converge within %i iterations. "
+                self._log.info("Failed to converge within %i iterations. "
                                  "Consider increasing max_iter(now=%i)" % (i, self.max_iter))
             i += 1
 

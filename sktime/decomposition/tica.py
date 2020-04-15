@@ -192,7 +192,7 @@ class TICAModel(Model, Transformer):
         if self.scaling == 'kinetic_map':  # scale by eigenvalues
             eigenvectors *= eigenvalues[None, :]
         elif self.scaling == 'commute_map':  # scale by (regularized) timescales
-            timescales = 1 - self.lagtime / np.log(np.abs(eigenvalues))
+            timescales = 1. - self.lagtime / np.log(np.abs(eigenvalues))
             # dampen timescales smaller than the lag time, as in section 2.5 of ref. [5]
             regularized_timescales = 0.5 * timescales * np.maximum(
                 np.tanh(np.pi * ((timescales - self.lagtime) / self.lagtime) + 1), 0)
