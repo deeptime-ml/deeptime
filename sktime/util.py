@@ -203,6 +203,9 @@ def confidence_interval(data, conf=0.95):
         # return
         return m, l, r
 
+    if conf == 1.:
+        return np.min(data, axis=0), np.max(data, axis=0)
+
     if data.ndim == 1:
         mean, lower, upper = _confidence_interval_1d(data)
         return lower, upper
