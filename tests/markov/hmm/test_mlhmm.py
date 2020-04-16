@@ -10,7 +10,7 @@ from sktime.markov.hmm.hmm import viterbi
 from sktime.markov.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
 from sktime.markov.hmm.output_model import DiscreteOutputModel
 from sktime.markov.util import count_states
-from tests.markov.msm.test_msm import estimate_markov_model
+from tests.markov.msm.test_mlmsm import estimate_markov_model
 from tests.util import assert_array_not_equal
 
 

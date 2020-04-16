@@ -216,7 +216,7 @@ class TransitionCountModel(Model):
         return self._count_matrix
 
     @property
-    def count_matrix_full(self) -> np.ndarray:
+    def count_matrix_full(self):
         r""" The count matrix on full set of discrete states, irrespective as to whether they are selected or not.
         """
         return self._count_matrix_full
