@@ -22,6 +22,7 @@ from typing import Optional
 
 import numpy as np
 from msmtools import estimation as msmest
+from scipy.sparse import issparse
 
 from sktime.markov import TransitionCountModel
 from sktime.markov.msm import MarkovStateModel
@@ -343,11 +344,15 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         if len(self.experimental_measurements) != self.expectations_by_state.shape[1]:
             raise ValueError("Experimental measurements must span full observable state space.")
 
+        count_matrix = count_model.count_matrix
+        if issparse(count_matrix):
+            count_matrix = count_matrix.toarray()
+
         # slice out active states from E matrix
         expectations_selected = self.expectations_by_state[count_model.state_symbols]
-        count_matrix_symmetric = 0.5 * (count_model.count_matrix + count_model.count_matrix.T)
+        count_matrix_symmetric = 0.5 * (count_matrix + count_matrix.T)
         nonzero_counts = np.nonzero(count_matrix_symmetric)
-        counts_row_sums = np.sum(count_model.count_matrix, axis=1)
+        counts_row_sums = np.sum(count_matrix, axis=1)
         expectations_confidence_interval = confidence_interval(expectations_selected, conf=self.support_confidence)
 
         measurements = self.experimental_measurements
@@ -368,14 +373,16 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             i = i + 1
 
         # A number of initializations
-        transition_matrix, stationary_distribution = msmest.tmatrix(count_model.count_matrix, reversible=True,
+        transition_matrix, stationary_distribution = msmest.tmatrix(count_matrix, reversible=True,
                                                                     return_statdist=True)
+        if issparse(transition_matrix):
+            transition_matrix = transition_matrix.toarray()
         # Determine number of slices of R-tensors computable at once with the given cache size
         slices_z = np.floor(self.max_cache / (transition_matrix.nbytes / 1.e6)).astype(int)
         # Optimizer state
         state = AMMOptimizerState(expectations_selected, measurements, measurement_weights,
                                   stationary_distribution, slices_z, count_matrix_symmetric, counts_row_sums)
-        ll_old = state.log_likelihood_biased(count_model.count_matrix, transition_matrix)
+        ll_old = state.log_likelihood_biased(count_matrix, transition_matrix)
 
         state.log_likelihoods.append(ll_old)
         # make sure everything is initialized
@@ -384,7 +391,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         state.update_Q()
         state.update_X_and_pi()
 
-        ll_old = state.log_likelihood_biased(count_model.count_matrix, transition_matrix)
+        ll_old = state.log_likelihood_biased(count_matrix, transition_matrix)
         state.log_likelihood_old = ll_old
         state.update_G()
 
@@ -421,10 +428,10 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
                     state.X = X_old
 
             if not converged:
-                self._newton_lagrange(state, count_model.count_matrix)
+                self._newton_lagrange(state, count_matrix)
             else:  # once Lagrange multipliers are converged compute likelihood here
                 transition_matrix = state.X / state.pi[:, None]
-                _ll_new = state.log_likelihood_biased(count_model.count_matrix, transition_matrix)
+                _ll_new = state.log_likelihood_biased(count_matrix, transition_matrix)
                 state.log_likelihoods.append(_ll_new)
 
             # General case fixed-point iteration
@@ -446,10 +453,10 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
                 break
             if i == self.maxiter:
                 self._log.info("Failed to converge within %i iterations. "
-                                 "Consider increasing max_iter(now=%i)" % (i, self.max_iter))
+                               "Consider increasing max_iter(now=%i)" % (i, self.max_iter))
             i += 1
 
-        transition_matrix = msmest.tmatrix(count_model.count_matrix, reversible=True, mu=state.pi_hat)
+        transition_matrix = msmest.tmatrix(count_matrix, reversible=True, mu=state.pi_hat)
         self._model = AugmentedMSM(transition_matrix=transition_matrix, stationary_distribution=state.pi_hat,
                                    reversible=True, count_model=count_model, amm_optimizer_state=state)
         return self
