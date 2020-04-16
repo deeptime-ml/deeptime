@@ -25,6 +25,8 @@ Created on 02.02.2015
 import unittest
 
 import numpy as np
+import pytest
+
 from sktime.data.util import timeshifted_split
 from sktime.decomposition.tica import TICA
 from sktime.numeric.eigen import ZeroRankError
@@ -68,6 +70,17 @@ class TestTICA(unittest.TestCase):
             tica_obj.transform(z)
         except ZeroRankError:
             self.fail('ZeroRankError was raised unexpectedly.')
+
+
+def test_dim_parameter():
+    np.testing.assert_equal(TICA(lagtime=1, dim=3).dim, 3)
+    np.testing.assert_equal(TICA(lagtime=1, dim=0.5).dim, 0.5)
+    with np.testing.assert_raises(ValueError):
+        TICA(lagtime=1, dim=-1)  # negative int
+    with np.testing.assert_raises(ValueError):
+        TICA(lagtime=1, dim=5.5)  # float > 1
+    with np.testing.assert_raises(ValueError):
+        TICA(lagtime=1, dim=-0.1)  # negative float
 
 
 def generate_hmm_test_data():

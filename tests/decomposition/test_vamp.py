@@ -27,7 +27,7 @@ import numpy as np
 from sktime.data.util import timeshifted_split
 from sktime.decomposition.vamp import VAMP
 from sktime.markov._base import cvsplit_dtrajs
-from tests.markov.msm.test_msm import estimate_markov_model
+from tests.markov.msm.test_mlmsm import estimate_markov_model
 
 
 def random_matrix(n, rank=None, eps=0.01):
