@@ -108,7 +108,7 @@ class AMMOptimizerState(object):
     def log_likelihood_biased(self, count_matrix, transition_matrix):
         """ Evaluate AMM likelihood. """
         ll_unbiased = msmest.log_likelihood(count_matrix, transition_matrix)
-        ll_bias = -np.sum(self.w * (self.m_hat - self.E) ** 2.)
+        ll_bias = -np.sum(self.w * (self.m_hat - self.m) ** 2.)
         return ll_unbiased + ll_bias
 
     def _get_Rk(self, k):
@@ -207,7 +207,9 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         dta = np.concatenate(discrete_trajectories)
         _E = np.zeros((n_states, fta.shape[1]))
         for i, s in enumerate(range(n_states)):
-            _E[i, :] = fta[np.where(dta == s)].mean(axis=0)
+            indices = np.where(dta == s)
+            if len(indices[0]) > 0:
+                _E[i, :] = fta[indices].mean(axis=0)
         # transition matrix estimator
         return AugmentedMSMEstimator(E=_E, m=m, w=_w, eps=eps,
                                      support_ci=support_ci, maxiter=maxiter, max_cache=max_cache)
