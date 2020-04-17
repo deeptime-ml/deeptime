@@ -217,17 +217,6 @@ class TestMSMRevPi(unittest.TestCase):
             estimate_markov_model(dtraj_invalid, lag=1, statdist=pi)
 
 
-def test_score(double_well_msm_all):
-    scenario, est, msm = double_well_msm_all
-    dtrajs_test = scenario.dtraj[80000:]
-    msm.score(dtrajs_test)
-    s1 = msm.score(dtrajs_test, score_method='VAMP1', score_k=2)
-    assert_(1.0 <= s1 <= 2.0)
-
-    s2 = msm.score(dtrajs_test, score_method='VAMP2', score_k=2)
-    assert_(1.0 <= s2 <= 2.0)
-
-
 def test_score_cv(double_well_msm_all):
     scenario, est, msm = double_well_msm_all
 
@@ -244,102 +233,8 @@ def test_score_cv(double_well_msm_all):
     se_inf = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=None).mean()
 
 
-def test_timescales(double_well_msm_nostatdist_constraint):
-    scenario, est, msm = double_well_msm_nostatdist_constraint
-    if not msm.sparse:
-        ts = msm.timescales()
-    else:
-        k = 4
-        ts = msm.timescales(k)
-
-    # should be all positive
-    assert_(np.all(ts > 0))
-    assert_(est.stationary_distribution_constraint is None, msg="fixture only yields scenarios w/o statdist constraint")
-    if msm.reversible:
-        # REVERSIBLE: should be all real
-        ts_ref = np.array([310.87, 8.5, 5.09])
-        assert_(np.all(np.isreal(ts)))
-        assert_almost_equal(ts[:3], ts_ref, decimal=2)
-    else:
-        ts_ref = np.array([310.49376926, 8.48302712, 5.02649564])
-        assert_almost_equal(ts[:3], ts_ref, decimal=2)
 
 
-def test_committor(double_well_msm_all):
-    scenario, est, msm = double_well_msm_all
-    a = 16
-    b = 48
-    q_forward = msm.committor_forward(a, b)
-    assert_equal(q_forward[a], 0)
-    assert_equal(q_forward[b], 1)
-    assert_(np.all(q_forward[:30] < 0.5))
-    assert_(np.all(q_forward[40:] > 0.5))
-    q_backward = msm.committor_backward(a, b)
-    assert_equal(q_backward[a], 1)
-    assert_equal(q_backward[b], 0)
-    assert_(np.all(q_backward[:30] > 0.5))
-    assert_(np.all(q_backward[40:] < 0.5))
-    # REVERSIBLE:
-    if msm.reversible:
-        assert (np.allclose(q_forward + q_backward, np.ones(msm.n_states)))
-
-
-def test_mfpt(double_well_msm_nostatdist_constraint):
-    scenario, est, msm = double_well_msm_nostatdist_constraint
-    a = 16
-    b = 48
-    t = msm.mfpt(a, b)
-    assert (t > 0)
-    if msm.reversible:
-        assert_allclose(t, 872.69, rtol=1e-3, atol=1e-6)
-    else:
-        assert_allclose(t, 872.07, rtol=1e-3, atol=1e-6)
-
-
-def test_pcca(double_well_msm_nostatdist_constraint):
-    scenario, est, msm = double_well_msm_nostatdist_constraint
-    if msm.reversible:
-        pcca = msm.pcca(2)
-        assignments = pcca.assignments
-        # test: number of states
-        assert_equal(len(assignments), msm.n_states)
-        assert_equal(pcca.n_metastable, 2)
-        # test: should be 0 or 1
-        assert_(np.all(assignments >= 0))
-        assert_(np.all(assignments <= 1))
-        # should be equal (zero variance) within metastable sets
-        assert_(np.std(assignments[:30]) == 0)
-        assert_(np.std(assignments[40:]) == 0)
-
-        pccadist = pcca.metastable_distributions
-        # should be right size
-        assert_equal(pccadist.shape, (2, msm.n_states))
-        # should be nonnegative
-        assert_(np.all(pccadist >= 0))
-        # should roughly add up to stationary:
-        cgdist = np.array([msm.stationary_distribution[pcca.sets[0]].sum(),
-                           msm.stationary_distribution[pcca.sets[1]].sum()])
-        ds = cgdist[0] * pccadist[0] + cgdist[1] * pccadist[1]
-        ds /= ds.sum()
-        assert_array_almost_equal(ds, msm.stationary_distribution, decimal=3)
-
-        memberships = pcca.memberships
-        # should be right size
-        assert_equal(memberships.shape, (msm.n_states, 2))
-        # should be nonnegative
-        assert_(np.all(memberships >= 0))
-        # should add up to one:
-        assert_array_almost_equal(memberships.sum(axis=1), np.ones(msm.n_states))
-
-        sets = pcca.sets
-        assignment = pcca.assignments
-        # should coincide with assignment
-        for i, s in enumerate(sets):
-            for j in range(len(s)):
-                assert (assignment[s[j]] == i)
-    else:
-        with assert_raises(ValueError):
-            msm.pcca(2)
 
 
 def test_expectation(double_well_msm_nostatdist_constraint):

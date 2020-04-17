@@ -7,14 +7,7 @@ import sktime
 from sktime.markov import TransitionCountEstimator
 from sktime.markov.msm import MaximumLikelihoodMSM
 from sktime.markov.msm.augmented_msm import AugmentedMSMEstimator
-from tests.markov.msm.util import _make_reference_data
-
-MLMSM_PARAMS = [("MLMSM", True, False, False), ("MLMSM", True, True, False), ("MLMSM", False, False, False),
-                ("MLMSM", True, False, True), ("MLMSM", True, True, True), ("MLMSM", False, False, True)]
-MLMSM_IDS = ["mle(reversible)", "mle(reversible_pi)", "mle(nonreversible)", "mle(reversible_sparse)",
-             "mle(reversible_pi_sparse)", "mle(nonreversible_sparse)"]
-AMM_PARAMS = [("AMM", "sliding")]
-AMM_IDS = ["amm(count=sliding)"]
+from tests.markov.msm.util import _make_reference_data, MLMSM_PARAMS, MLMSM_IDS, AMM_IDS, AMM_PARAMS
 
 
 @pytest.fixture(scope="module")

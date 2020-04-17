@@ -7,6 +7,13 @@ from sktime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
 from sktime.markov.msm.augmented_msm import AugmentedMSM, AugmentedMSMEstimator
 import numpy as np
 
+MLMSM_PARAMS = [("MLMSM", True, False, False), ("MLMSM", True, True, False), ("MLMSM", False, False, False),
+                ("MLMSM", True, False, True), ("MLMSM", True, True, True), ("MLMSM", False, False, True)]
+MLMSM_IDS = ["mle(reversible)", "mle(reversible_pi)", "mle(nonreversible)", "mle(reversible_sparse)",
+             "mle(reversible_pi_sparse)", "mle(nonreversible_sparse)"]
+AMM_PARAMS = [("AMM", "sliding")]
+AMM_IDS = ["amm(count=sliding)"]
+
 
 class DoubleWellScenario(object):
 
@@ -21,6 +28,7 @@ class DoubleWellScenario(object):
         else:
             count_model = count_model.submodel_largest()
         self._counts = count_model
+        self.statdist_constraint = statdist_constraint
 
     @property
     def counts(self):
@@ -76,6 +84,7 @@ class DoubleWellScenarioMLMSM(DoubleWellScenario):
 
     @property
     def timescales(self):
+        r""" reference timescales for sliding window counting """
         return self._timescales
 
 
@@ -94,7 +103,7 @@ class DoubleWellScenarioAMM(DoubleWellScenario):
         amm = est_amm.fit(self.counts).fetch_model()
         self._msm = amm
         self._msm_estimator = est_amm
-        self._timescales = np.array([364.])  # reference?
+        self._timescales = np.array([270.83, 8.77, 5.21])  # reference?
 
     @property
     def msm(self) -> AugmentedMSM:
@@ -106,6 +115,7 @@ class DoubleWellScenarioAMM(DoubleWellScenario):
 
     @property
     def timescales(self):
+        r""" reference timescales for sliding window counting """
         return self._timescales
 
 
@@ -118,3 +128,16 @@ def _make_reference_data(dataset: str, msm_type: str, reversible: bool, statdist
                                            sparse=sparse, count_mode=count_mode)
         elif msm_type == "AMM":
             return DoubleWellScenarioAMM(sparse=sparse, count_mode=count_mode)
+
+
+def make_double_well(config):
+    msm_type = config[0]
+    if msm_type == "AMM":
+        count_mode = config[1]
+        return _make_reference_data(dataset="doublewell", msm_type=msm_type, reversible=True, statdist_constraint=False,
+                                    sparse=False, count_mode=count_mode)
+    if msm_type == "MLMSM":
+        msm_type, reversible, statdist_constraint, sparse = config
+        return _make_reference_data(
+            dataset="doublewell", msm_type=msm_type, reversible=reversible,
+            statdist_constraint=statdist_constraint, sparse=sparse, count_mode="sliding")
