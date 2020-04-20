@@ -279,3 +279,194 @@ class TestMSMBasicProperties(object):
         else:
             with assert_raises(ValueError):
                 msm.pcca(2)
+
+    def test_expectation(self, setting):
+        scenario = make_double_well(setting)
+        if scenario.statdist_constraint:
+            pytest.skip("no reference value for statdist constraint case.")
+        assert_almost_equal(scenario.msm.expectation(list(range(scenario.msm.n_states))), scenario.expectation,
+                            decimal=2)
+
+    def test_correlation(self, setting):
+        scenario = make_double_well(setting)
+        msm = scenario.msm
+        k = msm.n_states if not msm.sparse else 4
+        # raise assertion error because size is wrong:
+        a = [1, 2, 3]
+        with assert_raises(AssertionError):
+            msm.correlation(a, 1)
+        maxtime = 100000
+        # should decrease
+        a = list(range(msm.n_states))
+        times, corr1 = msm.correlation(a, maxtime=maxtime, k=k)
+        assert_equal(len(corr1), maxtime / msm.lagtime)
+        assert_equal(len(times), maxtime / msm.lagtime)
+        assert_(corr1[0] > corr1[-1])
+        a = list(range(msm.n_states))
+        times, corr2 = msm.correlation(a, a, maxtime=maxtime, k=k)
+        # should be identical to autocorr
+        assert_almost_equal(corr1, corr2)
+        # Test: should be increasing in time
+        b = list(range(msm.n_states))[::-1]
+        times, corr3 = msm.correlation(a, b, maxtime=maxtime, k=k)
+        assert_equal(len(times), maxtime / msm.lagtime)
+        assert_equal(len(corr3), maxtime / msm.lagtime)
+        assert_(corr3[0] < corr3[-1])
+
+    def test_relaxation(self, setting):
+        scenario = make_double_well(setting)
+        msm = scenario.msm
+        if msm.sparse:
+            k = 4
+        else:
+            k = msm.n_states
+        pi_perturbed = (msm.stationary_distribution ** 2)
+        pi_perturbed /= pi_perturbed.sum()
+        a = list(range(msm.n_states))
+        if isinstance(msm, AugmentedMSM):
+            a = a[::-1]
+        maxtime = 100000
+        times, rel1 = msm.relaxation(msm.stationary_distribution, a, maxtime=maxtime, k=k)
+        # should be constant because we are in equilibrium
+        assert_array_almost_equal(rel1 - rel1[0], np.zeros((np.shape(rel1)[0])))
+        times, rel2 = msm.relaxation(pi_perturbed, a, maxtime=maxtime, k=k)
+        # should relax
+        assert_equal(len(times), maxtime / msm.count_model.lagtime)
+        assert_equal(len(rel2), maxtime / msm.count_model.lagtime)
+        assert_(rel2[0] < rel2[-1])
+
+    def test_fingerprint_correlation(self, setting):
+        scenario = make_double_well(setting)
+        msm = scenario.msm
+        if msm.sparse:
+            k = 4
+        else:
+            k = msm.n_states
+
+        if msm.reversible:
+            # raise assertion error because size is wrong:
+            a = [1, 2, 3]
+            with assert_raises(AssertionError):
+                msm.fingerprint_correlation(a, 1, k=k)
+            # should decrease
+            a = list(range(msm.n_states))
+            fp1 = msm.fingerprint_correlation(a, k=k)
+            # first timescale is infinite
+            assert_equal(fp1[0][0], np.inf)
+            # next timescales are identical to timescales:
+            assert_array_almost_equal(fp1[0][1:], msm.timescales(k - 1))
+            # all amplitudes nonnegative (for autocorrelation)
+            assert_(np.all(fp1[1][:] >= 0))
+            # identical call
+            b = list(range(msm.n_states))
+            fp2 = msm.fingerprint_correlation(a, b, k=k)
+            assert_almost_equal(fp1[0], fp2[0])
+            assert_almost_equal(fp1[1], fp2[1])
+            # should be - of the above, apart from the first
+            b = list(range(msm.n_states))[::-1]
+            fp3 = msm.fingerprint_correlation(a, b, k=k)
+            assert_almost_equal(fp1[0], fp3[0])
+            assert_almost_equal(fp1[1][1:], -fp3[1][1:])
+        else:  # raise ValueError, because fingerprints are not defined for nonreversible
+            with assert_raises(ValueError):
+                a = list(range(msm.n_states))
+                msm.fingerprint_correlation(a, k=k)
+            with assert_raises(ValueError):
+                a = list(range(msm.n_states))
+                b = list(range(msm.n_states))
+                msm.fingerprint_correlation(a, b, k=k)
+
+    def test_fingerprint_relaxation(self, setting):
+        scenario = make_double_well(setting)
+        msm = scenario.msm
+        if msm.sparse:
+            k = 4
+        else:
+            k = msm.n_states
+
+        if msm.reversible:
+            # raise assertion error because size is wrong:
+            a = [1, 2, 3]
+            with assert_raises(AssertionError):
+                msm.fingerprint_relaxation(msm.stationary_distribution, a, k=k)
+            # equilibrium relaxation should be constant
+            a = list(range(msm.n_states))
+            fp1 = msm.fingerprint_relaxation(msm.stationary_distribution, a, k=k)
+            # first timescale is infinite
+            assert_equal(fp1[0][0], np.inf)
+            # next timescales are identical to timescales:
+            assert_array_almost_equal(fp1[0][1:], msm.timescales(k - 1))
+            # dynamical amplitudes should be near 0 because we are in equilibrium
+            assert_(np.max(np.abs(fp1[1][1:])) < 1e-10)
+            # off-equilibrium relaxation
+            pi_perturbed = (msm.stationary_distribution ** 2)
+            pi_perturbed /= pi_perturbed.sum()
+            fp2 = msm.fingerprint_relaxation(pi_perturbed, a, k=k)
+            # first timescale is infinite
+            assert_equal(fp2[0][0], np.inf)
+            # next timescales are identical to timescales:
+            assert_array_almost_equal(fp2[0][1:], msm.timescales(k - 1))
+            # dynamical amplitudes should be significant because we are not in equilibrium
+            assert_(np.max(np.abs(fp2[1][1:])) > 0.1)
+        else:  # raise ValueError, because fingerprints are not defined for nonreversible
+            with assert_raises(ValueError):
+                a = list(range(msm.n_states))
+                msm.fingerprint_relaxation(msm.stationary_distribution, a, k=k)
+            with assert_raises(ValueError):
+                pi_perturbed = (msm.stationary_distribution ** 2)
+                pi_perturbed /= pi_perturbed.sum()
+                a = list(range(msm.n_states))
+                msm.fingerprint_relaxation(pi_perturbed, a)
+
+    def test_active_state_indices(self, setting):
+        scenario = make_double_well(setting)
+        from sktime.markov.sample import compute_index_states
+        I = compute_index_states(scenario.data.dtraj, subset=scenario.msm.count_model.state_symbols)
+        assert (len(I) == scenario.msm.n_states)
+        # compare to histogram
+        from sktime.markov.util import count_states
+        hist = count_states(scenario.data.dtraj)
+        # number of frames should match on active subset
+        A = scenario.msm.count_model.state_symbols
+        for i in range(A.shape[0]):
+            assert I[i].shape[0] == hist[A[i]]
+            assert I[i].shape[1] == 2
+
+    def test_trajectory_weights(self, setting):
+        scenario = make_double_well(setting)
+        weights = scenario.msm.compute_trajectory_weights(scenario.data.dtraj)
+        assert_almost_equal(weights[0].sum(), 1., decimal=6, err_msg="Weights should sum up to 1")
+
+    def test_simulate(self, setting):
+        msm = make_double_well(setting).msm
+        N = 400
+        start = 1
+        traj = msm.simulate(N=N, start=start)
+        assert_(len(traj) <= N)
+        assert_(len(np.unique(traj)) <= msm.n_states)
+        assert_equal(start, traj[0])
+
+    # ----------------------------------
+    # MORE COMPLEX TESTS / SANITY CHECKS
+    # ----------------------------------
+    def test_two_state_kinetics(self, setting):
+        msm = make_double_well(setting).msm
+        if msm.sparse:
+            k = 4
+        else:
+            k = msm.n_states
+        # sanity check: k_forward + k_backward = 1.0/t2 for the two-state process
+        l2 = msm.eigenvectors_left(k)[1, :]
+        core1 = np.argmin(l2)
+        core2 = np.argmax(l2)
+        # transition time from left to right and vice versa
+        t12 = msm.mfpt(core1, core2)
+        t21 = msm.mfpt(core2, core1)
+        # relaxation time
+        t2 = msm.timescales(k)[0]
+        # the following should hold roughly = k12 + k21 = k2.
+        # sum of forward/backward rates can be a bit smaller because we are using small cores and
+        # therefore underestimate rates
+        ksum = 1.0 / t12 + 1.0 / t21
+        k2 = 1.0 / t2
+        assert_almost_equal(k2, ksum, decimal=3)

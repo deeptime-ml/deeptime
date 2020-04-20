@@ -157,7 +157,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         if self.stationary_distribution_constraint is not None:
             if len(self.stationary_distribution_constraint) != count_model.n_states_full:
                 raise ValueError(f"Stationary distribution constraint must be defined over full "
-                                 f"set of states ({count_model.n_states_full}), but only contained "
+                                 f"set of states ({count_model.n_states_full}), but contained "
                                  f"{len(self.stationary_distribution_constraint)} elements.")
             if np.any(self.stationary_distribution_constraint[count_model.state_symbols]) == 0.:
                 raise ValueError("The count matrix contains symbols that have no probability in the stationary "

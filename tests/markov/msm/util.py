@@ -69,6 +69,7 @@ class DoubleWellScenarioMLMSM(DoubleWellScenario):
         est.fit(self.counts)
         self._msm = est.fetch_model()
         self._msm_estimator = est
+        self._expectation = 31.73
         if not reversible:
             self._timescales = np.array([310.49376926, 8.48302712, 5.02649564])
         else:
@@ -87,6 +88,10 @@ class DoubleWellScenarioMLMSM(DoubleWellScenario):
         r""" reference timescales for sliding window counting """
         return self._timescales
 
+    @property
+    def expectation(self):
+        return self._expectation
+
 
 class DoubleWellScenarioAMM(DoubleWellScenario):
     def __init__(self, sparse, count_mode="sliding"):
@@ -104,6 +109,7 @@ class DoubleWellScenarioAMM(DoubleWellScenario):
         self._msm = amm
         self._msm_estimator = est_amm
         self._timescales = np.array([270.83, 8.77, 5.21])  # reference?
+        self._expectation = 39.02
 
     @property
     def msm(self) -> AugmentedMSM:
@@ -117,6 +123,10 @@ class DoubleWellScenarioAMM(DoubleWellScenario):
     def timescales(self):
         r""" reference timescales for sliding window counting """
         return self._timescales
+
+    @property
+    def expectation(self):
+        return self._expectation
 
 
 @functools.lru_cache(maxsize=None)

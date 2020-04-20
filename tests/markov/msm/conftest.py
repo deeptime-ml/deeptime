@@ -101,9 +101,10 @@ def double_well_msm(double_well):
     amm_sd = list(set(double_well.dtraj))
 
     amm_ftraj = amm_expectations[[amm_sd.index(d) for d in double_well.dtraj], :]
-    est_amm = AugmentedMSMEstimator.estimator_from_feature_trajectories(double_well.dtraj, amm_ftraj, n_states=66,
+    est_amm = AugmentedMSMEstimator.estimator_from_feature_trajectories(double_well.dtraj, amm_ftraj,
+                                                                        n_states=np.max(double_well.dtraj)+1,
                                                                         m=amm_m, sigmas=amm_sigmas)
-    count_model = TransitionCountEstimator(lagtime=double_well.dtraj, count_mode="sliding", sparse=False) \
+    count_model = TransitionCountEstimator(lagtime=double_well.lagtime, count_mode="sliding", sparse=False) \
         .fit(double_well.dtraj).fetch_model()
     count_model = count_model.submodel_largest()
     amm = est_amm.fit(count_model)
@@ -111,8 +112,8 @@ def double_well_msm(double_well):
     def get(mode, **kw):
         r""" Yields the scenario as well as estimator and msm
         estimated with flags reversible / fixed statdist / sparse. """
-        if mode == "ml":
-            reversible, statdist_constraint, sparse = kw
+        if mode == "MLMSM":
+            reversible, statdist_constraint, sparse = kw['reversible'], kw['statdist_constraint'], kw['sparse']
             if reversible:
                 if statdist_constraint:
                     if sparse:

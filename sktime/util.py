@@ -1,5 +1,6 @@
 import collections
 import itertools
+import numbers
 from typing import Optional, List
 from weakref import WeakKeyDictionary
 
@@ -70,14 +71,16 @@ def submatrix(M, sel):
 
 def ensure_traj_list(trajs, dtype):
     """Makes sure that trajs is a list of trajectories (array of dtype)"""
-    if len(trajs) > 0 and not isinstance(trajs, (list, tuple)):
+    if len(trajs) > 0 and not isinstance(trajs, (list, tuple)) and not isinstance(trajs[0], dtype):
         return [ensure_ndarray(trajs, dtype=dtype)]
     return [ensure_ndarray(t, dtype=dtype) for t in trajs]
 
 
 def ensure_dtraj_list(dtrajs):
     """Makes sure that dtrajs is a list of discrete trajectories (array of int)"""
-    return ensure_traj_list(dtrajs, np.int32)
+    if len(dtrajs) > 0 and isinstance(dtrajs[0], numbers.Integral):
+        return [ensure_ndarray(dtrajs, dtype=np.int32)]
+    return [ensure_ndarray(t, dtype=np.int32) for t in dtrajs]
 
 
 def is_iterable(I):
