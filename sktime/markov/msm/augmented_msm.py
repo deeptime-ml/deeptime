@@ -70,7 +70,7 @@ class AMMOptimizerState(object):
         self.m_hat = np.empty(())
         self._slope_obs = None
         self.update_m_hat()
-        self.d_m_hat = 1e-1 * np.ones_like(self.m_hat)
+        self.delta_m_hat = 1e-1 * np.ones_like(self.m_hat)
         self.R_slices = np.empty(())
         self.R_slices_i = 0
         self.update_R_slices(0)
@@ -456,7 +456,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
                 self._log.info("Small gradient fraction")
                 break
 
-            state.d_m_hat = state.m_hat - mhat_old
+            state.delta_m_hat = state.m_hat - mhat_old
             state.log_likelihood_prev = float(_ll_new)
 
         state.log_likelihoods.append(_ll_new)
@@ -599,7 +599,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
             # General case fixed-point iteration
             if len(count_outside) > 0:
-                if i > 1 and np.all((np.abs(state.d_m_hat) / self.uncertainties) < self.convergence_criterion_lagrange)\
+                if i > 1 and np.all((np.abs(state.delta_m_hat) / self.uncertainties) < self.convergence_criterion_lagrange)\
                         and not converged:
                     self._log.info(f"Converged Lagrange multipliers after {i} steps...")
                     converged = True
