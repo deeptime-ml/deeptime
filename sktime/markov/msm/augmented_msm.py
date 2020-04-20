@@ -522,10 +522,12 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
         i = 0
         # Determine which experimental values are outside the support as defined by the Confidence interval
-        for emi, ema, mm, mw in zip(expectations_confidence_interval[0], expectations_confidence_interval[1],
-                                    measurements, measurement_weights):
-            if mm < emi or ema < mm:
-                self._log.info("Experimental value %f is outside the support (%f,%f)" % (mm, emi, ema))
+        for confidence_lower, confidence_upper, measurement, weight in zip(
+                expectations_confidence_interval[0], expectations_confidence_interval[1],
+                measurements, measurement_weights):
+            if measurement < confidence_lower or confidence_upper < measurement:
+                self._log.info(f"Experimental value {measurement} is outside the "
+                               f"support ({confidence_lower, confidence_upper})")
                 count_outside.append(i)
             else:
                 count_inside.append(i)
@@ -597,24 +599,25 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
             # General case fixed-point iteration
             if len(count_outside) > 0:
-                if i > 1 and np.all((np.abs(state.d_m_hat) / self.uncertainties) < self.convergence_criterion_lagrange) \
+                if i > 1 and np.all((np.abs(state.d_m_hat) / self.uncertainties) < self.convergence_criterion_lagrange)\
                         and not converged:
-                    self._log.info("Converged Lagrange multipliers after %i steps..." % i)
+                    self._log.info(f"Converged Lagrange multipliers after {i} steps...")
                     converged = True
             # Special case
             else:
                 if np.abs(state.log_likelihoods[-2] - state.log_likelihoods[-1]) < 1e-8:
-                    self._log.info("Converged Lagrange multipliers after %i steps..." % i)
+                    self._log.info(f"Converged Lagrange multipliers after {i} steps...")
                     converged = True
             # if Lagrange multipliers are converged, check whether log-likelihood has converged
             if converged and np.abs(state.log_likelihoods[-2] - state.log_likelihoods[-1]) < 1e-8:
-                self._log.info("Converged pihat after %i steps..." % i)
+                self._log.info(f"Converged pihat after {i} steps...")
                 die = True
             if die:
                 break
             if i == self.maxiter:
-                self._log.info("Failed to converge within %i iterations. "
-                               "Consider increasing max_iter(now=%i)" % (i, self.max_iter))
+                ll_diff = np.abs(state.log_likelihoods[-2] - state.log_likelihoods[-1])
+                self._log.info(f"Failed to converge within {i} iterations. Log-likelihoods lastly changed by {ll_diff}."
+                               f" Consider increasing max_iter(now={self.max_iter})")
             i += 1
 
         transition_matrix = msmest.tmatrix(count_matrix, reversible=True, mu=state.pi_hat)
