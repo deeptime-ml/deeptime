@@ -6,6 +6,51 @@ import pytest
 import sktime
 from sktime.markov import TransitionCountEstimator
 from sktime.markov.msm import MaximumLikelihoodMSM
+from sktime.markov.msm.augmented_msm import AugmentedMSMEstimator
+from tests.markov.msm.util import _make_reference_data, MLMSM_PARAMS, MLMSM_IDS, AMM_IDS, AMM_PARAMS
+
+
+@pytest.fixture(scope="module")
+def reference_data():
+    return _make_reference_data
+
+
+@pytest.fixture(scope="module")
+def make_double_well_data():
+    def _make_double_well_data(msm_type, reversible, statdist_constraint, sparse, count_mode):
+        return _make_reference_data("doublewell", msm_type, reversible, statdist_constraint, sparse, count_mode)
+
+    return _make_double_well_data
+
+
+@pytest.fixture(scope="module", params=MLMSM_PARAMS, ids=MLMSM_IDS)
+def double_well_mlmsm(request):
+    msm_type, reversible, statdist_constraint, sparse = request.param
+    scenario = _make_reference_data(
+        dataset="doublewell", msm_type=msm_type, reversible=reversible,
+        statdist_constraint=statdist_constraint, sparse=sparse, count_mode="sliding")
+    return scenario
+
+
+@pytest.fixture(scope="module", params=AMM_PARAMS, ids=AMM_IDS)
+def double_well_amm(request):
+    msm_type, count_mode = request.param
+    return _make_reference_data(dataset="doublewell", msm_type=msm_type, reversible=True, statdist_constraint=False,
+                                sparse=False, count_mode=count_mode)
+
+
+@pytest.fixture(scope="module", params=MLMSM_PARAMS+AMM_PARAMS, ids=MLMSM_IDS+AMM_IDS)
+def double_well_all(request):
+    if request.param[0] == "AMM":
+        msm_type, count_mode = request.param
+        return _make_reference_data(dataset="doublewell", msm_type=msm_type, reversible=True, statdist_constraint=False,
+                                    sparse=False, count_mode=count_mode)
+    if request.param[0] == "MLMSM":
+        msm_type, reversible, statdist_constraint, sparse = request.param
+        return _make_reference_data(
+            dataset="doublewell", msm_type=msm_type, reversible=reversible,
+            statdist_constraint=statdist_constraint, sparse=sparse, count_mode="sliding")
+    raise ValueError("unknown request param {}".format(request.param[0]))
 
 DoubleWellScenario = collections.namedtuple("DoubleWellScenario", [
     "dtraj", "lagtime", "stationary_distribution", "n_states", "selected_count_fraction"
@@ -49,40 +94,62 @@ def double_well_msm(double_well):
                                                    sparse=True,
                                                    maxerr=maxerr)
 
-    def get(reversible, statdist_constraint, sparse):
+    amm_expectations = np.linspace(0.01, 2. * np.pi, 66).reshape(-1, 1) ** 0.5
+    amm_m = np.array([1.9])
+    amm_w = np.array([2.0])
+    amm_sigmas = 1. / np.sqrt(2) / np.sqrt(amm_w)
+    amm_sd = list(set(double_well.dtraj))
+
+    amm_ftraj = amm_expectations[[amm_sd.index(d) for d in double_well.dtraj], :]
+    est_amm = AugmentedMSMEstimator.estimator_from_feature_trajectories(double_well.dtraj, amm_ftraj,
+                                                                        n_states=np.max(double_well.dtraj)+1,
+                                                                        experimental_measurements=amm_m,
+                                                                        sigmas=amm_sigmas)
+    count_model = TransitionCountEstimator(lagtime=double_well.lagtime, count_mode="sliding", sparse=False) \
+        .fit(double_well.dtraj).fetch_model()
+    count_model = count_model.submodel_largest()
+    amm = est_amm.fit(count_model)
+
+    def get(mode, **kw):
         r""" Yields the scenario as well as estimator and msm
         estimated with flags reversible / fixed statdist / sparse. """
-        if reversible:
-            if statdist_constraint:
-                if sparse:
-                    return double_well, estrevpi_sparse, msmrevpi_sparse
+        if mode == "MLMSM":
+            reversible, statdist_constraint, sparse = kw['reversible'], kw['statdist_constraint'], kw['sparse']
+            if reversible:
+                if statdist_constraint:
+                    if sparse:
+                        return double_well, estrevpi_sparse, msmrevpi_sparse
+                    else:
+                        return double_well, estrevpi, msmrevpi
                 else:
-                    return double_well, estrevpi, msmrevpi
+                    if sparse:
+                        return double_well, estrev_sparse, msmrev_sparse
+                    else:
+                        return double_well, estrev, msmrev
             else:
-                if sparse:
-                    return double_well, estrev_sparse, msmrev_sparse
+                if statdist_constraint:
+                    raise ValueError("nonreversible mle with fixed stationary distribution not implemented")
                 else:
-                    return double_well, estrev, msmrev
-        else:
-            if statdist_constraint:
-                raise ValueError("nonreversible mle with fixed stationary distribution not implemented")
-            else:
-                if sparse:
-                    return double_well, est_sparse, msm_sparse
-                else:
-                    return double_well, est, msm
+                    if sparse:
+                        return double_well, est_sparse, msm_sparse
+                    else:
+                        return double_well, est, msm
+        elif mode == "amm":
+            return double_well, est_amm, amm
 
     return get
 
 
-@pytest.fixture(scope="module", params=[
-    (True, False, False), (True, True, False), (False, False, False),
-    (True, False, True), (True, True, True), (False, False, True)
-], ids=["reversible", "reversible_pi", "nonreversible",
-        "reversible_sparse", "reversible_pi_sparse", "nonreversible_sparse"])
+@pytest.fixture(scope="module", params=MLMSM_PARAMS, ids=MLMSM_IDS)
 def double_well_msm_all(request, double_well_msm):
-    reversible, statdist_constraint, sparse = request.param
-    return double_well_msm(reversible=reversible, statdist_constraint=statdist_constraint, sparse=sparse)
+    mode, reversible, statdist_constraint, sparse = request.param
+    return double_well_msm(mode, reversible=reversible, statdist_constraint=statdist_constraint, sparse=sparse)
+
+
+@pytest.fixture(scope="module", params=MLMSM_PARAMS + AMM_PARAMS, ids=MLMSM_IDS + AMM_IDS)
+def double_well_msm_amm_all(request, double_well_msm):
+    mode, reversible, statdist_constraint, sparse = request.param
+    return double_well_msm(mode, reversible=reversible, statdist_constraint=statdist_constraint, sparse=sparse)
 
 
 @pytest.fixture(scope="module", params=[

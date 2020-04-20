@@ -192,7 +192,7 @@ class TICAModel(Model, Transformer):
         if self.scaling == 'kinetic_map':  # scale by eigenvalues
             eigenvectors *= eigenvalues[None, :]
         elif self.scaling == 'commute_map':  # scale by (regularized) timescales
-            timescales = 1 - self.lagtime / np.log(np.abs(eigenvalues))
+            timescales = 1. - self.lagtime / np.log(np.abs(eigenvalues))
             # dampen timescales smaller than the lag time, as in section 2.5 of ref. [5]
             regularized_timescales = 0.5 * timescales * np.maximum(
                 np.tanh(np.pi * ((timescales - self.lagtime) / self.lagtime) + 1), 0)
@@ -435,7 +435,7 @@ class TICA(Estimator, Transformer):
         self._covar.ncov = value
 
     @property
-    def dim(self) -> Optional[Real]:
+    def dim(self) -> Optional[float]:
         r""" Dimension attribute. Can either be int or float. In case of
 
         * :code:`int` it evaluates it as the actual dimension, must be strictly greater 0,
@@ -450,10 +450,11 @@ class TICA(Estimator, Transformer):
 
     @dim.setter
     def dim(self, value: Optional[Real]):
-        if isinstance(value, Integral) and value <= 0:
-            # first test against Integral as `isinstance(1, Real)` also evaluates to True
-            raise ValueError("TICA: Invalid dimension parameter, if it is given in terms of the dimension (integer), "
-                             "must be positive.")
+        if isinstance(value, Integral):
+            if value <= 0:
+                # first test against Integral as `isinstance(1, Real)` also evaluates to True
+                raise ValueError("TICA: Invalid dimension parameter, if it is given in terms of the "
+                                 "dimension (integer), must be positive.")
         elif isinstance(value, Real) and (value <= 0. or float(value) > 1.0):
             raise ValueError("TICA: Invalid dimension parameter, if it is given in terms of a floating point, "
                              "can only be in the interval (0, 1].")

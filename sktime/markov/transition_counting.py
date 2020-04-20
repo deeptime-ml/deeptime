@@ -216,7 +216,7 @@ class TransitionCountModel(Model):
         return self._count_matrix
 
     @property
-    def count_matrix_full(self) -> np.ndarray:
+    def count_matrix_full(self):
         r""" The count matrix on full set of discrete states, irrespective as to whether they are selected or not.
         """
         return self._count_matrix_full
@@ -440,7 +440,7 @@ class TransitionCountEstimator(Estimator, Transformer):
        J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
     """
 
-    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step', sparse=False):
+    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step', n_states=None, sparse=False):
         r"""Constructs a transition count estimator that can be used to estimate :class:`TransitionCountModel` s.
 
         Parameters
@@ -473,12 +473,21 @@ class TransitionCountEstimator(Estimator, Transformer):
             |  'us',  'microsecond*'
             |  'ms',  'millisecond*'
             |  's',   'second*'
+        n_states : int, optional, default=None
+            Normally, the shape of the count matrix is a consequence of the number of encountered states in given
+            discrete trajectories. However sometimes (for instance when scoring), only a portion of the discrete
+            trajectories is passed but the count matrix should still have the correct shape. Then, this argument
+            can be used to artificially set the number of states to the correct value.
+        sparse : bool, optional, default=False
+            Whether sparse matrices should be used for counting. This can make sense when the number of states is very
+            large.
         """
         super().__init__()
         self.lagtime = lagtime
         self.count_mode = count_mode
         self.physical_time = physical_time
         self.sparse = sparse
+        self.n_states = n_states
 
     @property
     def count_mode(self):
@@ -505,6 +514,21 @@ class TransitionCountEstimator(Estimator, Transformer):
     @sparse.setter
     def sparse(self, value: bool):
         self._sparse = bool(value)
+
+    @property
+    def n_states(self) -> Optional[bool]:
+        r""" The number of states in discrete trajectories. Can be used to override the effective shape
+        of the resulting count matrix.
+
+        :getter: Yields the currently set number of states or None.
+        :setter: Sets the number of states to use or None.
+        :type: bool or None
+        """
+        return self._n_states
+
+    @n_states.setter
+    def n_states(self, value):
+        self._n_states = value
 
     @property
     def lagtime(self) -> int:
@@ -561,6 +585,14 @@ class TransitionCountEstimator(Estimator, Transformer):
         count_mode = self.count_mode
         lagtime = self.lagtime
         count_matrix = TransitionCountEstimator.count(count_mode, dtrajs, lagtime, sparse=self.sparse)
+        if self.n_states is not None and self.n_states > count_matrix.shape[0]:
+            histogram = np.pad(histogram, pad_width=[(0, self.n_states - count_matrix.shape[0])])
+            if issparse(count_matrix):
+                count_matrix = scipy.sparse.csr_matrix((count_matrix.data, count_matrix.indices, count_matrix.indptr),
+                                                       shape=(self.n_states, self.n_states))
+            else:
+                n_pad = self.n_states - count_matrix.shape[0]
+                count_matrix = np.pad(count_matrix, pad_width=[(0, n_pad), (0, n_pad)])
 
         # initially state symbols, full count matrix, and full histogram can be left None because they coincide
         # with the input arguments
@@ -568,7 +600,6 @@ class TransitionCountEstimator(Estimator, Transformer):
             count_matrix=count_matrix, counting_mode=count_mode, lagtime=lagtime, state_histogram=histogram,
             physical_time=self.physical_time
         )
-
         return self
 
     @staticmethod

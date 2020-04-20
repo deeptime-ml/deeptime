@@ -69,6 +69,13 @@ def submatrix(M, sel):
     return C_cc
 
 
+def ensure_traj_list(trajs, dtype):
+    """Makes sure that trajs is a list of trajectories (array of dtype)"""
+    if len(trajs) > 0 and not isinstance(trajs, (list, tuple)) and not isinstance(trajs[0], dtype):
+        return [ensure_ndarray(trajs, dtype=dtype)]
+    return [ensure_ndarray(t, dtype=dtype) for t in trajs]
+
+
 def ensure_dtraj_list(dtrajs):
     """Makes sure that dtrajs is a list of discrete trajectories (array of int)"""
     if len(dtrajs) > 0 and isinstance(dtrajs[0], numbers.Integral):
@@ -202,6 +209,9 @@ def confidence_interval(data, conf=0.95):
 
         # return
         return m, l, r
+
+    if conf == 1.:
+        return np.min(data, axis=0), np.max(data, axis=0)
 
     if data.ndim == 1:
         mean, lower, upper = _confidence_interval_1d(data)
