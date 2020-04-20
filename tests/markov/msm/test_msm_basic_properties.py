@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 from numpy.testing import *
 
-from markov.msm.util import MLMSM_PARAMS, AMM_PARAMS, MLMSM_IDS, AMM_IDS, make_double_well
+from tests.markov.msm.util import MLMSM_PARAMS, AMM_PARAMS, MLMSM_IDS, AMM_IDS, make_double_well
 from sktime.markov.msm import MaximumLikelihoodMSM
 from sktime.markov.msm.augmented_msm import AugmentedMSM
 
