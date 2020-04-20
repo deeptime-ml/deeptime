@@ -31,15 +31,38 @@ from .._base import _MSMBaseEstimator
 
 
 class AMMOptimizerState(object):
-    def __init__(self, E, m, w, pi, slices_z, symmetrized_count_matrix, count_matrix_row_sums):
-        self.lagrange = np.zeros_like(m)
-        self.pi = pi
-        self.pi_hat = np.copy(pi)
+    r""" State of the optimization in AMMs. Is later attached to the MSM object for evaluation purposes. """
+
+    def __init__(self, expectations_by_state, experimental_measurements, experimental_measurement_weights,
+                 stationary_distribution, tensor_cache_size, symmetrized_count_matrix, count_matrix_row_sums):
+        r""" Creates a new AMM optimizer state.
+
+        Parameters
+        ----------
+        expectations_by_state : (N, K) ndarray
+            See :meth:`AugmentedMSMEstimator.__init__`.
+        experimental_measurements : (K,) ndarray
+            See :meth:`AugmentedMSMEstimator.__init__`.
+        experimental_measurement_weights : (K,) ndarray
+            See :meth:`AugmentedMSMEstimator.__init__`.
+        stationary_distribution : (N, N) ndarray
+            Reversibly estimated stationary distribution from count matrix.
+        tensor_cache_size : int
+            Number of slices of the R tensor simultaneously stored. This value is computed from the cache size
+            set in :meth:`AugmentedMSMEstimator.__init__`.
+        symmetrized_count_matrix : (N, N) ndarray
+            Symmetrized count matrix :math:`C_\mathrm{sym} = 0.5 (C + C^\top)` .
+        count_matrix_row_sums : (N, ) ndarray
+            Row sums of count matrix.
+        """
+        self.lagrange = np.zeros_like(experimental_measurements)
+        self.pi = stationary_distribution
+        self.pi_hat = np.copy(stationary_distribution)
         self.m_hat = None
-        self.m = m
-        self.w = w
-        self.E = E
-        self.slices_z = slices_z
+        self.experimental_measurements = experimental_measurements
+        self.experimental_measurement_weights = experimental_measurement_weights
+        self.expectations_by_state = expectations_by_state
+        self.tensor_cache_size = tensor_cache_size
         self.symmetrized_count_matrix = symmetrized_count_matrix
         self.count_matrix_row_sums = count_matrix_row_sums
         self.X = np.empty_like(symmetrized_count_matrix)
@@ -51,54 +74,62 @@ class AMMOptimizerState(object):
         self.R_slices = np.empty(())
         self.R_slices_i = 0
         self.update_R_slices(0)
-        self.Q = np.zeros((self.n_states, self.n_states), dtype=E.dtype)
+        self.Q = np.zeros((self.n_states, self.n_states), dtype=expectations_by_state.dtype)
         self.G = np.empty(())
-        self._log_likelihood_old = None
+        self._log_likelihood_prev = None
         self.log_likelihoods = []
 
     @property
-    def log_likelihood_old(self):
-        return self._log_likelihood_old
+    def log_likelihood_prev(self):
+        r""" Property storing the previous log likelihood. Used in optimization procedure.
 
-    @log_likelihood_old.setter
-    def log_likelihood_old(self, value):
-        self._log_likelihood_old = value
+        :getter: gets the previous log likelihood
+        :setter: sets the previous log likelihood
+        :type: float
+        """
+        return self._log_likelihood_prev
+
+    @log_likelihood_prev.setter
+    def log_likelihood_prev(self, value):
+        self._log_likelihood_prev = value
 
     @property
     def n_states(self):
-        return self.E.shape[0]
+        r""" Number of discrete states (N) that fall into the considered state set. """
+        return self.expectations_by_state.shape[0]
 
     @property
     def n_experimental_observables(self):
-        return self.E.shape[1]
+        r""" Number of experimental observables (K). """
+        return self.expectations_by_state.shape[1]
 
     @property
     def slope_obs(self) -> np.ndarray:
+        r""" Numerically computed slope for Newton algorithm. """
         return self._slope_obs
 
     def update_m_hat(self):
-        """ Updates m_hat (expectation of observable of the Augmented Markov model) """
-        self.m_hat = self.pi_hat.dot(self.E)
-        self._slope_obs = self.m_hat - self.m
+        r""" Updates m_hat (expectation of observable of the Augmented Markov model) """
+        self.m_hat = self.pi_hat.dot(self.expectations_by_state)
+        self._slope_obs = self.m_hat - self.experimental_measurements
 
     def update_R_slices(self, i):
         """ Computation of multiple slices of R tensor.
 
-            When _estimate(.) is called the R-tensor is split into segments whose maximum size is
-            specified by max_cache argument (see constructor).
-            _Rsi specifies which of the segments are currently in cache.
-             For equations check SI of [1].
+        When estimate(.) is called the R-tensor is split into segments whose maximum size is
+        specified by max_cache argument (see constructor).
+        R_slices_i specifies which of the segments are currently in cache. For equations check SI of [1].
 
         """
-        pek = self.pi_hat[:, None] * self.E[:, i * self.slices_z:(i + 1) * self.slices_z]
+        pek = self.pi_hat[:, None] * self.expectations_by_state[:, i * self.tensor_cache_size:(i + 1) * self.tensor_cache_size]
         pp = self.pi_hat[:, None] + self.pi_hat[None, :]
-        ppmhat = pp * self.m_hat[i * self.slices_z:(i + 1) * self.slices_z, None, None]
+        ppmhat = pp * self.m_hat[i * self.tensor_cache_size:(i + 1) * self.tensor_cache_size, None, None]
         self.R_slices = (pek[:, None, :] + pek[None, :, :]).T - ppmhat
         self.R_slices_i = i
 
     def update_pi_hat(self):
-        r""" Update stationary distribution estimate of Augmented Markov model (\hat pi) """
-        expons = np.einsum('i,ji->j', self.lagrange, self.E)
+        r""" Update stationary distribution estimate of Augmented Markov model ( :math:`\hat pi` ) """
+        expons = np.einsum('i,ji->j', self.lagrange, self.expectations_by_state)
         # expons = (self.lagrange[:, None]*self.E_active.T).sum(axis=0)
         expons = expons - np.max(expons)
 
@@ -108,32 +139,40 @@ class AMMOptimizerState(object):
     def log_likelihood_biased(self, count_matrix, transition_matrix):
         """ Evaluate AMM likelihood. """
         ll_unbiased = msmest.log_likelihood(count_matrix, transition_matrix)
-        ll_bias = -np.sum(self.w * (self.m_hat - self.m) ** 2.)
+        ll_bias = -np.sum(self.experimental_measurement_weights * (self.m_hat - self.experimental_measurements) ** 2.)
         return ll_unbiased + ll_bias
 
     def _get_Rk(self, k):
-        """
-          Convienence function to get cached value of an Rk slice of the R tensor.
-          If we are outside cache, update the cache and return appropriate slice.
+        """ Convenience function to get cached value of an Rk slice of the R tensor.
+        If we are outside cache, update the cache and return appropriate slice.
 
+        Parameters
+        ----------
+        k : int
+            k-th slice.
+
+        Returns
+        -------
+            The k-th slice of the R tensor.
         """
-        if k > (self.R_slices_i + 1) * self.slices_z or k < self.R_slices_i * self.slices_z:
-            self.update_R_slices(np.floor(k / self.slices_z).astype(int))
-            return self.R_slices[k % self.slices_z]
+        if k > (self.R_slices_i + 1) * self.tensor_cache_size or k < self.R_slices_i * self.tensor_cache_size:
+            self.update_R_slices(np.floor(k / self.tensor_cache_size).astype(int))
+            return self.R_slices[k % self.tensor_cache_size]
         else:
-            return self.R_slices[k % self.slices_z]
+            return self.R_slices[k % self.tensor_cache_size]
 
     def update_Q(self):
         """ Compute Q, a weighted sum of the R-tensor.
 
-            See SI of [1].
+        See SI of [1].
         """
         self.Q.fill(0.)
         for k in range(self.n_experimental_observables):
-            self.Q = self.Q + self.w[k] * self.slope_obs[k] * self._get_Rk(k)
+            self.Q = self.Q + self.experimental_measurement_weights[k] * self.slope_obs[k] * self._get_Rk(k)
         self.Q *= -2.
 
     def update_X_and_pi(self):
+        r""" Updates estimate X and stationary distribution. """
         # evaluate count-over-pi
         c_over_pi = self.count_matrix_row_sums / self.pi
         D = c_over_pi[:, None] + c_over_pi + self.Q
@@ -145,15 +184,24 @@ class AMMOptimizerState(object):
         self.pi = np.sum(self.X, axis=1)
 
     def update_G(self):
-        """ Update G.
-            Observable covariance.
-            See SI of [1].
+        """ Update G, the observable covariance.
+
+        See SI of [1].
         """
-        self.G = (np.dot(self.E.T, self.E * self.pi_hat[:, None]) -
+        self.G = (np.dot(self.expectations_by_state.T, self.expectations_by_state * self.pi_hat[:, None]) -
                   self.m_hat[:, None] * self.m_hat[None, :])
 
 
 class AugmentedMSM(MarkovStateModel):
+    r""" An augmented Markov state model.
+
+    Implementation following [1]_.
+
+    References
+    ----------
+    .. [1] Olsson S, Wu H, Paul F, Clementi C, Noe F: Combining experimental and simulation data of molecular
+    processes via augmented Markov models. PNAS 114, 8265-8270 (2017).
+    """
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
                  count_model=None, amm_optimizer_state=None):
@@ -168,16 +216,48 @@ class AugmentedMSM(MarkovStateModel):
 
     @property
     def optimizer_state(self):
+        r""" The optimizer state after optimization. Can be None if instantiated directly. """
         return self._amm_optimizer_state
 
 
 class AugmentedMSMEstimator(_MSMBaseEstimator):
+    r""" Estimator for augmented Markov state models. This type of MSMs can be used if experimental data is available.
+    """
 
-    def __init__(self, E=None, m=None, w=None, eps=0.05, support_ci=1.00, maxiter=500, max_cache=3000):
+    def __init__(self, expectations_by_state, experimental_measurements, experimental_measurement_weights,
+                 eps=0.05, support_ci=1.00, maxiter=500, max_cache=3000):
+        r""" Creates a new AMM estimator instance. This estimator is based on expectation values from experiments.
+        In case the experimental data is a time series matching a discrete time series, a convenience function
+        :meth:`estimator_from_feature_trajectories` is offered.
+
+        Parameters
+        ----------
+        expectations_by_state : (n, k) ndarray
+            Expectations by state. n Markov states, k experimental observables; each index is
+            average over members of the Markov state.
+        experimental_measurements : (k,) ndarray
+            The experimental measurements.
+        experimental_measurement_weights : (k,) ndarray
+            Experimental measurements weights.
+        eps : float, optional, default=0.05
+            Additional convergence criterion used when some experimental data
+            are outside the support of the simulation. The value of the eps
+            parameter is the threshold of the relative change in the predicted
+            observables as a function of fixed-point iteration:
+
+            $$ \mathrm{eps} > \frac{\mid o_{\mathrm{pred}}^{(i+1)}-o_{\mathrm{pred}}^{(i)}\mid }{\sigma}. $$
+
+        support_ci : float, optional, default=1.0
+            Confidence interval for determination whether experimental data are inside or outside Markov model support.
+        maxiter : int, optional, default=500
+            Optional parameter with specifies the maximum number of updates for Lagrange multiplier estimation.
+        max_cache : int, optional, default=3000
+            Maximum size (in megabytes) of cache when computing R tensor (Supporting information in [1]).
+        """
         super().__init__(sparse=False, reversible=True)
-        self.expectations_by_state = E
-        self.experimental_measurements = m
-        self.experimental_measurement_weights = w
+        self.expectations_by_state = expectations_by_state
+        self.experimental_measurements = experimental_measurements
+        self.experimental_measurement_weights = experimental_measurement_weights
         self.convergence_criterion_lagrange = eps
         self.support_confidence = support_ci
         self.max_cache = max_cache
@@ -185,8 +265,40 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         self._log = logging.getLogger(__name__)
 
     @staticmethod
-    def estimator_from_feature_trajectories(discrete_trajectories, feature_trajectories, n_states, m, sigmas,
-                                            eps=0.05, support_ci=1.0, maxiter=500, max_cache=3000):
+    def estimator_from_feature_trajectories(discrete_trajectories, feature_trajectories, n_states,
+                                            experimental_measurements, sigmas, eps=0.05, support_ci=1.0,
+                                            maxiter=500, max_cache=3000):
+        r""" Creates an AMM estimator from discrete trajectories and corresponding experimental data.
+        
+        Parameters
+        ----------
+        discrete_trajectories : array_like or list of array_like
+            Discrete trajectories, stored as integer ndarrays (arbitrary size) or a single ndarray for
+            only one trajectory.
+        feature_trajectories : array_like or list of array_like
+            The same shape (number of trajectories and timesteps) as dtrajs. Each timestep in each trajectory should
+            match the shape of the measurements and sigmas, K.
+        n_states : int
+            Number of markov states in full state space.
+        experimental_measurements : (K,) ndarray
+            Experimental averages.
+        sigmas : (K,) ndarray
+            Standard error for each experimental observable.
+        eps : float, default = 0.05
+            Convergence criterium, see :meth:`__init__`.
+        support_ci : float, default=1.0
+            Confidence interval, see :meth:`__init__`.
+        maxiter : int, optional, default=500
+            Maximum number of iterations.
+        max_cache : int, optional, default=3000
+            Parameter which specifies the maximum size of cache used
+            when performing estimation of AMM, in megabytes.
+
+        Returns
+        -------
+        estimator : AugmentedMSMEstimator
+            An estimator parameterized expectations by state based on feature trajectories.
+        """
         discrete_trajectories = ensure_dtraj_list(discrete_trajectories)
         feature_trajectories = ensure_traj_list(feature_trajectories, np.float32)
         # check input
@@ -211,11 +323,16 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             if len(indices[0]) > 0:
                 _E[i, :] = fta[indices].mean(axis=0)
         # transition matrix estimator
-        return AugmentedMSMEstimator(E=_E, m=m, w=_w, eps=eps,
+        return AugmentedMSMEstimator(expectations_by_state=_E, experimental_measurements=experimental_measurements,
+                                     experimental_measurement_weights=_w, eps=eps,
                                      support_ci=support_ci, maxiter=maxiter, max_cache=max_cache)
 
     @property
     def expectations_by_state(self):
+        r""" The expectations by state (N) for each observable (K).
+
+        :type: (N, K) ndarray
+        """
         return self._E
 
     @expectations_by_state.setter
@@ -224,6 +341,10 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
     @property
     def experimental_measurements(self):
+        r""" Experimental measurement averages (K).
+
+        :type: (K,) ndarray
+        """
         return self._m
 
     @experimental_measurements.setter
@@ -232,6 +353,10 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
     @property
     def experimental_measurement_weights(self):
+        r""" Weights for experimental measurement averages (K).
+
+        :type: (K,) ndarray
+        """
         return self._w
 
     @experimental_measurement_weights.setter
@@ -243,6 +368,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
     @property
     def uncertainties(self):
+        r""" Uncertainties based on measurement weights. """
         if self.experimental_measurement_weights is not None:
             return np.sqrt(1. / 2. / self.w)
         else:
@@ -250,6 +376,13 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
     @property
     def convergence_criterion_lagrange(self):
+        r""" Additional convergence criterion used when some experimental data
+        are outside the support of the simulation. The value of the eps
+        parameter is the threshold of the relative change in the predicted
+        observables as a function of fixed-point iteration:
+
+        $$ \mathrm{eps} > \frac{\mid o_{\mathrm{pred}}^{(i+1)}-o_{\mathrm{pred}}^{(i)}\mid }{\sigma}. $$
+        """
         return self._eps
 
     @convergence_criterion_lagrange.setter
@@ -258,6 +391,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
     @property
     def support_confidence(self):
+        r""" Confidence interval size for markov states. """
         return self._support_ci
 
     @support_confidence.setter
@@ -266,6 +400,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
     @property
     def max_cache(self):
+        r""" Cache size during computation. """
         return self._max_cache
 
     @max_cache.setter
@@ -274,6 +409,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
     @property
     def maxiter(self):
+        r""" Maximum number of Newton iterations. """
         return self._maxiter
 
     @maxiter.setter
@@ -281,23 +417,21 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         self._maxiter = value
 
     def _newton_lagrange(self, state: AMMOptimizerState, count_matrix):
-        """
-          This function performs a Newton update of the Lagrange multipliers.
-          The iteration is constrained by strictly improving the AMM likelihood, and yielding meaningful stationary
-          properties.
-
-          TODO: clean up and optimize code.
+        """ This function performs a Newton update of the Lagrange multipliers.
+        The iteration is constrained by strictly improving the AMM likelihood, and yielding meaningful stationary
+        properties.
         """
         # initialize a number of values
         l_old = state.lagrange.copy()
         _ll_new = -np.inf
         frac = 1.
         mhat_old = state.m_hat.copy()
-        while state.log_likelihood_old > _ll_new or np.any(state.pi_hat < 1e-12):
+        while state.log_likelihood_prev > _ll_new or np.any(state.pi_hat < 1e-12):
             state.update_pi_hat()
             state.update_G()
             # Lagrange slope calculation
-            dl = 2. * (frac * state.G * state.w[:, None] * state.slope_obs[:, None]).sum(axis=0)
+            dl = 2. * (frac * state.G * state.experimental_measurement_weights[:, None]
+                       * state.slope_obs[:, None]).sum(axis=0)
             # update Lagrange multipliers
             state.lagrange = l_old - frac * dl
             state.update_pi_hat()
@@ -323,14 +457,37 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
                 break
 
             state.d_m_hat = state.m_hat - mhat_old
-            state.log_likelihood_old = float(_ll_new)
+            state.log_likelihood_prev = float(_ll_new)
 
         state.log_likelihoods.append(_ll_new)
 
     def fetch_model(self) -> Optional[AugmentedMSM]:
+        r""" Yields the most recently estimated AMM or None if :meth:`fit` was not called yet.
+
+        Returns
+        -------
+        amm : AugmentedMSM or None
+            The AMM instance.
+        """
         return self._model
 
     def fit(self, data, *args, **kw):
+        r""" Fits an AMM.
+
+        Parameters
+        ----------
+        data : TransitionCountModel or (N, N) ndarray
+            Count matrix over data.
+        *args
+            scikit-learn compatibility argument
+        **kw
+            scikit-learn compatibility argument
+
+        Returns
+        -------
+        self : AugmentedMSMEstimator
+            Reference to self.
+        """
         if not isinstance(data, (TransitionCountModel, np.ndarray)):
             raise ValueError("Can only fit on a TransitionCountModel or a count matrix directly.")
 
@@ -394,16 +551,18 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         state.update_X_and_pi()
 
         ll_old = state.log_likelihood_biased(count_matrix, transition_matrix)
-        state.log_likelihood_old = ll_old
+        state.log_likelihood_prev = ll_old
         state.update_G()
 
         #
         # Main estimation algorithm
         # 2-step algorithm, lagrange multipliers and pihat have different convergence criteria
-        # when the lagrange multipliers have converged, pihat is updated until the log-likelihood has converged (changes are smaller than 1e-3).
+        # when the lagrange multipliers have converged, pihat is updated until the log-likelihood has converged
+        # (changes are smaller than 1e-3).
         # These do not always converge together, but usually within a few steps of each other.
         # A better heuristic for the latter may be necessary. For realistic cases (the two ubiquitin examples in [1])
-        # this yielded results very similar to those with more stringent convergence criteria (changes smaller than 1e-9) with convergence times
+        # this yielded results very similar to those with more stringent convergence criteria
+        # (changes smaller than 1e-9) with convergence times
         # which are seconds instead of tens of minutes.
         #
 

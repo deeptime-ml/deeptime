@@ -104,7 +104,8 @@ class DoubleWellScenarioAMM(DoubleWellScenario):
         amm_ftraj = amm_expectations[[amm_sd.index(d) for d in self.data.dtraj], :]
         est_amm = AugmentedMSMEstimator.estimator_from_feature_trajectories(self.data.dtraj, amm_ftraj,
                                                                             n_states=self.counts.n_states_full,
-                                                                            m=amm_m, sigmas=amm_sigmas)
+                                                                            experimental_measurements=amm_m,
+                                                                            sigmas=amm_sigmas)
         amm = est_amm.fit(self.counts).fetch_model()
         self._msm = amm
         self._msm_estimator = est_amm

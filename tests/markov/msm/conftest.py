@@ -103,7 +103,8 @@ def double_well_msm(double_well):
     amm_ftraj = amm_expectations[[amm_sd.index(d) for d in double_well.dtraj], :]
     est_amm = AugmentedMSMEstimator.estimator_from_feature_trajectories(double_well.dtraj, amm_ftraj,
                                                                         n_states=np.max(double_well.dtraj)+1,
-                                                                        m=amm_m, sigmas=amm_sigmas)
+                                                                        experimental_measurements=amm_m,
+                                                                        sigmas=amm_sigmas)
     count_model = TransitionCountEstimator(lagtime=double_well.lagtime, count_mode="sliding", sparse=False) \
         .fit(double_well.dtraj).fetch_model()
     count_model = count_model.submodel_largest()

@@ -58,12 +58,13 @@ def test_amm_sanity(fixed_seed):
     """ Feature trajectory """
     ftraj = E[dtraj, :]
 
-    amm_estimator = AugmentedMSMEstimator(E=E, m=m, w=w)
+    amm_estimator = AugmentedMSMEstimator(expectations_by_state=E, experimental_measurements=m,
+                                          experimental_measurement_weights=w)
     counts = TransitionCountEstimator(lagtime=tau, count_mode="sliding").fit(dtraj).fetch_model()
 
     amm = amm_estimator.fit(counts).fetch_model()
     amm_convenience_estimator = AugmentedMSMEstimator.estimator_from_feature_trajectories(
-        dtraj, ftraj, n_states=counts.n_states_full, m=m, sigmas=sigmas)
+        dtraj, ftraj, n_states=counts.n_states_full, experimental_measurements=m, sigmas=sigmas)
     amm_convenience = amm_convenience_estimator.fit(counts).fetch_model()
     assert_equal(tau, amm.lagtime)
     assert_array_almost_equal(E, amm_estimator.expectations_by_state)
