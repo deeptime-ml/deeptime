@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__author__ = 'Simon Olsson'
+__author__ = 'Simon Olsson, clonker'
 
 import logging
 from typing import Optional
