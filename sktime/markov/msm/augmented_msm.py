@@ -200,7 +200,7 @@ class AugmentedMSM(MarkovStateModel):
     References
     ----------
     .. [1] Olsson S, Wu H, Paul F, Clementi C, Noe F: Combining experimental and simulation data of molecular
-    processes via augmented Markov models. PNAS 114, 8265-8270 (2017).
+           processes via augmented Markov models. PNAS 114, 8265-8270 (2017).
     """
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
@@ -245,7 +245,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             parameter is the threshold of the relative change in the predicted
             observables as a function of fixed-point iteration:
 
-            $$ \mathrm{eps} > \frac{\mid o_{\mathrm{pred}}^{(i+1)}-o_{\mathrm{pred}}^{(i)}\mid }{\sigma}. $$
+            $$ \\mathrm{eps} > \\frac{\\mid o_{\\mathrm{pred}}^{(i+1)}-o_{\\mathrm{pred}}^{(i)}\\mid }{\\sigma}. $$
 
         support_ci : float, optional, default=1.0
             Confidence interval for determination whether experimental data are inside or outside Markov model support.
