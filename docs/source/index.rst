@@ -1,16 +1,21 @@
-=============
-Documentation
-=============
-
-The scikit-time API documentation. Scikit-time is divided into the following main packages:
+===========
+Scikit-time
+===========
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
+    :caption: Documentation
 
-   index_base
-   index_clustering
-   index_covariance
-   index_decomposition
-   index_markov
-   index_data
-   index_numeric
+    notebooks/getting_started
+    notebooks/clustering
+    notebooks/msm
+    notebooks/hmm
+
+========
+API docs
+========
+.. toctree::
+   :maxdepth: 1
+   :caption: API docs
+
+   api/index

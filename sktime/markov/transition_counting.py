@@ -449,7 +449,7 @@ class TransitionCountEstimator(Estimator, Transformer):
             Distance between two frames in the discretized trajectories under which their potential change of state
             is considered a transition.
         count_mode : str
-            one of "sample", "sliding", "sliding-effective", and "effective".
+            One of "sample", "sliding", "sliding-effective", and "effective".
 
             * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
             * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
@@ -603,7 +603,39 @@ class TransitionCountEstimator(Estimator, Transformer):
         return self
 
     @staticmethod
-    def count(count_mode, dtrajs, lagtime, sparse: bool = False):
+    def count(count_mode: str, dtrajs: List[np.ndarray], lagtime: int, sparse: bool = False):
+        r""" Computes a count matrix based on a counting mode, some discrete trajectories, a lagtime, and
+        whether to use sparse matrices.
+
+        Parameters
+        ----------
+        count_mode : str
+            The counting mode to use. One of "sample", "sliding", "sliding-effective", and "effective".
+            See :meth:`__init__` for a more detailed description.
+        dtrajs : array_like or list of array_like
+            Discrete trajectories, i.e., a list of arrays which contain non-negative integer values. A single ndarray
+            can also be passed, which is then treated as if it was a list with that one ndarray in it.
+        lagtime : int
+            Distance between two frames in the discretized trajectories under which their potential change of state
+            is considered a transition.
+        sparse : bool, default=False
+            Whether to use sparse matrices or dense matrices. Sparse matrices can make sense when dealing with a lot of
+            states.
+
+        Returns
+        -------
+        count_matrix : (N, N) ndarray or sparse array
+            The computed count matrix. Can be ndarray or sparse depending on whether sparse was set to true or false.
+            N is the number of encountered states, i.e., :code:`np.max(dtrajs)+1`.
+
+        Example
+        -------
+        >>> dtrajs = [np.array([0,0,1,1]), np.array([0,0,1])]
+        >>> count_matrix = TransitionCountEstimator.count(
+        ...     count_mode="sliding", dtrajs=dtrajs, lagtime=1, sparse=False
+        ... )
+        >>> np.testing.assert_equal(count_matrix, np.array([[2, 2], [0, 1]]))
+        """
         if count_mode == 'sliding' or count_mode == 'sliding-effective':
             count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=True, sparse_return=sparse)
             if count_mode == 'sliding-effective':

@@ -1,7 +1,7 @@
 .. _ref-data:
 
-Data package (sktime.data)
-==========================
+sktime.data
+===========
 The *data* package contains example systems.
 
 .. automodule:: sktime.data

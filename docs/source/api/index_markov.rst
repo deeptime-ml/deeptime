@@ -1,7 +1,7 @@
 .. _ref-markov:
 
-Markov package (sktime.markov)
-==============================
+sktime.markov
+=============
 
 The *markov* package contains algorithms which can be used to estimate (hidden) markov state models and apply
 analysis tools like PCCA+, TPT, bayesian sampling for confidence intervals.
@@ -11,8 +11,8 @@ analysis tools like PCCA+, TPT, bayesian sampling for confidence intervals.
 .. toctree::
    :maxdepth: 1
 
-MSM subpackage (sktime.markov.msm)
-----------------------------------
+sktime.markov.msm
+-----------------
 
 Package containing tools for estimation and analysis of Markov state models.
 
@@ -21,8 +21,8 @@ Package containing tools for estimation and analysis of Markov state models.
 .. toctree::
    :maxdepth: 1
 
-HMSM subpackage (sktime.markov.hmm)
------------------------------------
+sktime.markov.hmm
+-----------------
 
 Package containing tools for estimation and analysis of hidden Markov state models.
 
