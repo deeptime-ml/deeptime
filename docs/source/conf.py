@@ -36,7 +36,9 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.mathjax',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.napoleon',
+    'nbsphinx',
+    'sphinxcontrib.bibtex'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -45,7 +47,8 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+# Exclude build directory and Jupyter backup files:
+exclude_patterns = ['_build', '**.ipynb_checkpoints']
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -81,8 +84,18 @@ napoleon_use_rtype = True
 
 # -- Alabaster theme settings -------------------------------------------------
 html_theme_options = {
-    'page_width': '80%'
+    'page_width': '65%',
+    'body_max_width': 'auto'
 }
+
+# -- nbsphinx settings --------------------------------------------------------
+
+# List of arguments to be passed to the kernel that executes the notebooks:
+nbsphinx_execute_arguments = [
+    "--InlineBackend.figure_formats={'svg', 'pdf'}",
+    "--InlineBackend.rc={'figure.dpi': 96}",
+]
+
 
 def setup(app):
     class AutoAutoSummary(Autosummary):

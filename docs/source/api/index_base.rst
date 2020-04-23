@@ -1,9 +1,9 @@
 .. _ref-base:
 .. currentmodule:: sktime.base
 
-==========================
-Base package (sktime.base)
-==========================
+===========
+sktime.base
+===========
 This module contains all base classes of scikit-time. They are the important when developing new estimators.
 
 Writing a custom estimator

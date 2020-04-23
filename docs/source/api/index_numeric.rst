@@ -1,7 +1,7 @@
 .. _ref-numeric:
 
-Numeric package (sktime.numeric)
-================================
+sktime.numeric
+==============
 The *numeric* package contains numerical utilities.
 
 .. automodule:: sktime.numeric

@@ -461,17 +461,9 @@ class HiddenMarkovStateModel(Model):
             The observable state discrete trajectory with length N/dt
 
         """
-
-        from scipy import stats
-        # generate output distributions
-        output_distributions = [stats.rv_discrete(values=(np.arange(self.output_probabilities.shape[1]), pobs_i))
-                                for pobs_i in self.output_probabilities]
         # sample hidden trajectory
         htraj = self.transition_model.simulate(N, start=start, stop=stop, dt=dt)
-        otraj = np.zeros(htraj.size, dtype=int)
-        # for each time step, sample microstate
-        for t, h in enumerate(htraj):
-            otraj[t] = output_distributions[h].rvs()  # current cluster
+        otraj = self.output_model.generate_observation_trajectory(htraj)
         return htraj, otraj
 
     def transform_discrete_trajectories_to_observed_symbols(self, dtrajs):

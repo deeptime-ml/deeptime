@@ -41,7 +41,7 @@ private:
     template<typename T>
     T _compute(const T* xs, const T* ys, std::size_t dim) const {
         double sum = 0.0;
-#pragma omp simd reduction(+:sum)
+        #pragma omp simd reduction(+:sum)
         for (size_t i = 0; i < dim; ++i) {
             auto d = xs[i] - ys[i];
             sum += d * d;
