@@ -401,15 +401,44 @@ class MiniBatchKmeansClustering(KmeansClustering):
     KmeansClustering : k-means clustering without mini-batching
     """
 
-    def __init__(self, n_clusters, max_iter=5, metric=None, tolerance=1e-5, init_strategy='kmeans++',
+    def __init__(self, n_clusters, batch_size=100, max_iter=5, metric=None, tolerance=1e-5, init_strategy='kmeans++',
                  n_jobs=None, initial_centers=None):
         """
-        Constructs a Minibatch k-means estimator. For a detailed argument description, see :class:`KmeansClustering`.
+        Constructs a Minibatch k-means estimator. For a more detailed argument description,
+        see :class:`KmeansClustering`.
+
+        The only additional parameter is batch_size, which determines the maximum sample size if calling
+        :meth:`fit()`.
         """
         super(MiniBatchKmeansClustering, self).__init__(n_clusters, max_iter, metric,
                                                         tolerance, init_strategy, False,
                                                         n_jobs=n_jobs,
                                                         initial_centers=initial_centers)
+        self.batch_size = batch_size
+
+    def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
+        r""" Perform clustering on whole data. """
+        n_jobs = self.n_jobs if n_jobs is None else n_jobs
+        if data.ndim == 1:
+            data = data[:, np.newaxis]
+        if initial_centers is not None:
+            self.initial_centers = initial_centers
+        if self.initial_centers is None:
+            self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
+        indices = np.arange(len(data))
+        self._model = KMeansClusteringModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
+                                            tolerance=self.tolerance, inertia=float('inf'))
+        for epoch in range(self.max_iter):
+            np.random.shuffle(indices)
+            if len(data) > self.batch_size:
+                split = np.array_split(indices, len(data) // self.batch_size)
+            else:
+                split = [indices]
+            for chunk_indices in split:
+                self.partial_fit(data[chunk_indices], n_jobs=n_jobs)
+                if self._model.converged:
+                    break
+        return self
 
     def partial_fit(self, data, n_jobs=None):
         r"""
