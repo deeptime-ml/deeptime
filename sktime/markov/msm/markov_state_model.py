@@ -44,8 +44,8 @@ class MarkovStateModel(Model):
     BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
     """
 
-    def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
-                 count_model=None):
+    def __init__(self, transition_matrix: np.ndarray,
+                 stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None, count_model=None):
         r"""
         Constructs a new markov state model based on a transition matrix.
 
@@ -133,11 +133,12 @@ class MarkovStateModel(Model):
         """ The transition matrix on the active set. """
         return self._transition_matrix
 
-    def update_transition_matrix(self, value: Optional[np.ndarray]):
+    def update_transition_matrix(self, value: np.ndarray):
         """ Sets the transition matrix and invalidates all cached and derived properties. """
         if value is None:
             raise ValueError("Markov state model requires a transition matrix, but it was None.")
         else:
+            value = np.asarray_chkfinite(value)
             if not msmana.is_transition_matrix(value, tol=1e-8):
                 raise ValueError('The input transition matrix is not a stochastic matrix '
                                  '(elements >= 0, rows sum up to 1).')
