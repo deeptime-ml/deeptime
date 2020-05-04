@@ -14,8 +14,7 @@ __author__ = 'marscher, clonker'
 class TICAModel(Model, Transformer):
     r""" Class which holds the results from the :class:`TICA` estimator.
 
-    Diagonalization to obtain rank, eigenvalues,
-    and eigenvectors is performed lazily.
+    Diagonalization to obtain rank, eigenvalues, and eigenvectors is performed lazily.
 
     See Also
     --------
@@ -232,15 +231,14 @@ class TICAModel(Model, Transformer):
     def feature_tic_correlation(self):
         r"""Instantaneous correlation matrix between mean-free input features and TICs
 
-        Denoting the input features as :math:`X_i` and the TICs as :math:`\theta_j`, the instantaneous, linear correlation
-        between them can be written as
+        Denoting the input features as :math:`X_i` and the TICs as :math:`\theta_j`, the instantaneous, linear
+        correlation between them can be written as
 
         .. math::
-
             \mathbf{Corr}(X_i - \mu_i, \mathbf{\theta}_j) = \frac{1}{\sigma_{X_i - \mu_i}}\sum_l \sigma_{(X_i - \mu_i)(X_l - \mu_l)} \mathbf{U}_{li}
 
-        The matrix :math:`\mathbf{U}` is the matrix containing, as column vectors, the eigenvectors of the TICA
-        generalized eigenvalue problem .
+        The matrix :math:`\mathbf{U}` is the matrix containing the eigenvectors of the TICA generalized
+        eigenvalue problem as column vectors.
 
         Returns
         -------
