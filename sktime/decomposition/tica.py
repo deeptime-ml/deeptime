@@ -112,6 +112,12 @@ class TICAModel(Model, Transformer):
         r""" Eigenvectors of the TICA problem, column-wise.
 
         :type: (N,M) ndarray
+
+        Examples
+        --------
+        >>> model = TICAModel(lagtime=1, mean_0=np.zeros((2,)), cov_00=np.eye(2), cov_0t=np.eye(2), dim=None)
+        >>> eigvec_0 = model.eigenvectors[:, 0]  # note, that these are the right eigenvectors
+        >>> eigvec_1 = model.eigenvectors[:, 1]  # so they are stored in a column-matrix
         """
         return self._rank_eigenvalues_eigenvectors[2]
 

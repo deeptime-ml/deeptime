@@ -138,7 +138,8 @@ class MarkovStateModel(Model):
         if value is None:
             raise ValueError("Markov state model requires a transition matrix, but it was None.")
         else:
-            value = np.asarray_chkfinite(value)
+            if not issparse(value):
+                value = np.asarray_chkfinite(value)
             if not msmana.is_transition_matrix(value, tol=1e-8):
                 raise ValueError('The input transition matrix is not a stochastic matrix '
                                  '(elements >= 0, rows sum up to 1).')
@@ -949,7 +950,8 @@ class MarkovStateModel(Model):
         --------
         >>> msm = MarkovStateModel(transition_matrix=np.array([[.7, .3], [.3, .7]]))
         >>> trajectory = msm.simulate(n_steps=15)
-        >>> print(trajectory)
+        >>> print(trajectory)  # doctest:+ELLIPSIS
+        [...]
         """
         from .._markov_bindings import simulation as sim
         if start is None:

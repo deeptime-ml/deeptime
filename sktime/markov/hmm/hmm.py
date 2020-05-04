@@ -435,13 +435,13 @@ class HiddenMarkovStateModel(Model):
     # Generation of trajectories and samples
     ################################################################################
 
-    def simulate(self, N, start=None, stop=None, dt=1):
+    def simulate(self, n_steps, start=None, stop=None, dt=1):
         """
         Generates a realization of the Hidden Markov Model
 
         Parameters
         ----------
-        N : int
+        n_steps : int
             trajectory length in steps of the lag time
         start : int, optional, default = None
             starting hidden state. If not given, will sample from the stationary
@@ -462,7 +462,7 @@ class HiddenMarkovStateModel(Model):
 
         """
         # sample hidden trajectory
-        htraj = self.transition_model.simulate(N, start=start, stop=stop, dt=dt)
+        htraj = self.transition_model.simulate(n_steps, start=start, stop=stop, dt=dt)
         otraj = self.output_model.generate_observation_trajectory(htraj)
         return htraj, otraj
 
