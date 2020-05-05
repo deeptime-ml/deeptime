@@ -367,6 +367,9 @@ class TICA(Estimator, Transformer):
             Eigenvalue norm cutoff. Eigenvalues of C0 with norms <= epsilon will be
             cut off. The remaining number of eigenvalues define the size
             of the output.
+        reversible : bool, default=True
+            Use symmetrized correlations :math:`\sum_t X_t + Y_t` and second moments
+            :math:`X_t^\top X_t + Y_t^\top Y_t` and :math:`Y_t^\top X_t + X_t^\top Y_t`.
         dim : None, int, or float, optional, default 0.95
             Number of dimensions (independent components) to project onto.
 
