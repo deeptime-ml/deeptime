@@ -8,8 +8,8 @@ def timeshifted_split(inputs, lagtime: int, chunksize=1000, n_splits=None):
     Parameters
     ----------
     inputs : (T, n) ndarray or list of (T_i, n) ndarrays
-        Input trajectory or trajectories. In case multiple trajectories are provided, they must have the dimension in
-        the second axis but may be of variable length.
+        Input trajectory or trajectories. In case multiple trajectories are provided, they must have the same dimension
+        in the second axis but may be of variable length.
     lagtime : int
         The lag time :math:`\tau` used to produce timeshifted blocks.
     chunksize : int, default=1000
