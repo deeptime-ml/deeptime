@@ -223,7 +223,7 @@ class TestKmeans(unittest.TestCase):
         cluster_kmeans(data, k=3, max_iter=2, callback_init_centers=callback_init,
                        callback_loop=callback_loop)
         assert init == 3
-        assert iter == 2
+        assert iter <= 2
 
 
 class TestKmeansResume(unittest.TestCase):

@@ -37,7 +37,11 @@ class Ellipsoids(object):
         Parameters
         ----------
         laziness : float in half-open interval (0.5, 1.], default=0.97
-            The probability to stay in either state rather than transitioning.
+            The probability to stay in either state rather than transitioning. This yields a transition matrix of
+
+            .. math:: P = \begin{pmatrix} \lambda & 1-\lambda \\ 1-\lambda & \lambda \end{pmatrix},
+
+            where :math:`\lambda` is the selected laziness parameter.
         seed : int, optional, default=None
             Optional random seed for reproducibility.
         """
