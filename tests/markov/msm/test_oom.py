@@ -567,7 +567,7 @@ def test_trajectory_weights(oom_msm_scenario):
 
 def test_simulate(oom_msm_scenario):
     for msm in oom_msm_scenario.msms:
-        traj = msm.simulate(N=100, start=1)
+        traj = msm.simulate(n_steps=100, start=1)
         np.testing.assert_(len(traj) <= 100)
         np.testing.assert_(len(np.unique(traj)) <= msm.n_states)
         np.testing.assert_equal(1, traj[0])

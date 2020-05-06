@@ -45,7 +45,7 @@ def test_amm_sanity(fixed_seed):
 
     bdc = BirthDeathChain(q, p)
     P = bdc.transition_matrix()
-    dtraj = MarkovStateModel(P).simulate(N=10000, start=0)
+    dtraj = MarkovStateModel(P).simulate(n_steps=10000, start=0)
     tau = 1
 
     k = 3

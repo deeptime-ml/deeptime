@@ -294,12 +294,3 @@ class _ImmutableInputData(object):
 
 class InputFormatError(ValueError):
     """Input data for Estimator is not allowed."""
-
-
-class ModelSampler(object):
-
-    def __init__(self, estimator: Estimator, params=None):
-        if params is None:
-            params = {}
-        self._estimator = estimator
-        self._params = params

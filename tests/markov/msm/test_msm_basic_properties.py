@@ -441,7 +441,7 @@ class TestMSMBasicProperties(object):
         msm = make_double_well(setting).msm
         N = 400
         start = 1
-        traj = msm.simulate(N=N, start=start)
+        traj = msm.simulate(n_steps=N, start=start)
         assert_(len(traj) <= N)
         assert_(len(np.unique(traj)) <= msm.n_states)
         assert_equal(start, traj[0])

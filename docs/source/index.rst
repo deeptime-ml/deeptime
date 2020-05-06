@@ -7,8 +7,9 @@ Scikit-time
     :caption: Documentation
 
     notebooks/getting_started
+    index_dimreduction
     notebooks/clustering
-    notebooks/msm
+    index_msm
     notebooks/hmm
 
 ========

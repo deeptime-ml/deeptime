@@ -482,7 +482,7 @@ class TestMLHMM(unittest.TestCase):
         hmsm = self.hmm_lag10_largest
         N = 400
         start = 1
-        traj, obs = hmsm.simulate(N=N, start=start)
+        traj, obs = hmsm.simulate(n_steps=N, start=start)
         assert len(traj) <= N
         assert len(np.unique(traj)) <= len(hmsm.transition_model.transition_matrix)
 

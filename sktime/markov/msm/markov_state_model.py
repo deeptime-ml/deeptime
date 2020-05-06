@@ -44,8 +44,8 @@ class MarkovStateModel(Model):
     BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
     """
 
-    def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
-                 count_model=None):
+    def __init__(self, transition_matrix: np.ndarray,
+                 stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None, count_model=None):
         r"""
         Constructs a new markov state model based on a transition matrix.
 
@@ -133,11 +133,13 @@ class MarkovStateModel(Model):
         """ The transition matrix on the active set. """
         return self._transition_matrix
 
-    def update_transition_matrix(self, value: Optional[np.ndarray]):
+    def update_transition_matrix(self, value: np.ndarray):
         """ Sets the transition matrix and invalidates all cached and derived properties. """
         if value is None:
             raise ValueError("Markov state model requires a transition matrix, but it was None.")
         else:
+            if not issparse(value):
+                value = np.asarray_chkfinite(value)
             if not msmana.is_transition_matrix(value, tol=1e-8):
                 raise ValueError('The input transition matrix is not a stochastic matrix '
                                  '(elements >= 0, rows sum up to 1).')
@@ -919,28 +921,37 @@ class MarkovStateModel(Model):
         return ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux,
                             physical_time=self.count_model.physical_time if self.count_model is not None else '1 step')
 
-    def simulate(self, N, start=None, stop=None, dt=1):
-        """
-        Generates a realization of the Markov Model
+    def simulate(self, n_steps: int, start: Optional[int] = None, stop: Optional[int] = None, dt: int = 1,
+                 seed: int = -1):
+        r"""Generates a realization of the Markov Model.
 
         Parameters
         ----------
-        N : int
+        n_steps : int
             trajectory length in steps of the lag time
         start : int, optional, default = None
             starting state
         stop : int or int-array-like, optional, default = None
             stopping hidden set. If given, the trajectory will be stopped before
             N steps once a hidden state of the stop set is reached
-        dt : int
+        dt : int, default=1
             trajectory will be saved every dt time steps.
             Internally, the dt'th power of P is taken to ensure a more efficient simulation.
-
+        seed : int, default=-1
+            If non-negative, this fixes the seed used for sampling to the provided value so that
+            results are reproducible.
 
         Returns
         -------
         (N/dt,) ndarray
             The state trajectory with length N/dt
+
+        Examples
+        --------
+        >>> msm = MarkovStateModel(transition_matrix=np.array([[.7, .3], [.3, .7]]))
+        >>> trajectory = msm.simulate(n_steps=15)
+        >>> print(trajectory)  # doctest:+ELLIPSIS
+        [...]
         """
         from .._markov_bindings import simulation as sim
         if start is None:
@@ -951,7 +962,7 @@ class MarkovStateModel(Model):
             transition_matrix = self.transition_matrix
         if dt > 1:
             transition_matrix = np.linalg.matrix_power(transition_matrix, dt)
-        return sim.trajectory(N=N, start=start, P=transition_matrix, stop=stop, seed=-1)
+        return sim.trajectory(N=n_steps, start=start, P=transition_matrix, stop=stop, seed=seed)
 
     ################################################################################
     # For general statistics

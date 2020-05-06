@@ -14,8 +14,7 @@ __author__ = 'marscher, clonker'
 class TICAModel(Model, Transformer):
     r""" Class which holds the results from the :class:`TICA` estimator.
 
-    Diagonalization to obtain rank, eigenvalues,
-    and eigenvectors is performed lazily.
+    Diagonalization to obtain rank, eigenvalues, and eigenvectors is performed lazily.
 
     See Also
     --------
@@ -112,6 +111,12 @@ class TICAModel(Model, Transformer):
         r""" Eigenvectors of the TICA problem, column-wise.
 
         :type: (N,M) ndarray
+
+        Examples
+        --------
+        >>> model = TICAModel(lagtime=1, mean_0=np.zeros((2,)), cov_00=np.eye(2), cov_0t=np.eye(2), dim=None)
+        >>> eigvec_0 = model.eigenvectors[:, 0]  # note, that these are the right eigenvectors
+        >>> eigvec_1 = model.eigenvectors[:, 1]  # so they are stored in a column-matrix
         """
         return self._rank_eigenvalues_eigenvectors[2]
 
@@ -226,15 +231,14 @@ class TICAModel(Model, Transformer):
     def feature_tic_correlation(self):
         r"""Instantaneous correlation matrix between mean-free input features and TICs
 
-        Denoting the input features as :math:`X_i` and the TICs as :math:`\theta_j`, the instantaneous, linear correlation
-        between them can be written as
+        Denoting the input features as :math:`X_i` and the TICs as :math:`\theta_j`, the instantaneous, linear
+        correlation between them can be written as
 
         .. math::
-
             \mathbf{Corr}(X_i - \mu_i, \mathbf{\theta}_j) = \frac{1}{\sigma_{X_i - \mu_i}}\sum_l \sigma_{(X_i - \mu_i)(X_l - \mu_l)} \mathbf{U}_{li}
 
-        The matrix :math:`\mathbf{U}` is the matrix containing, as column vectors, the eigenvectors of the TICA
-        generalized eigenvalue problem .
+        The matrix :math:`\mathbf{U}` is the matrix containing the eigenvectors of the TICA generalized
+        eigenvalue problem as column vectors.
 
         Returns
         -------
@@ -363,6 +367,9 @@ class TICA(Estimator, Transformer):
             Eigenvalue norm cutoff. Eigenvalues of C0 with norms <= epsilon will be
             cut off. The remaining number of eigenvalues define the size
             of the output.
+        reversible : bool, default=True
+            Use symmetrized correlations :math:`\sum_t X_t + Y_t` and second moments
+            :math:`X_t^\top X_t + Y_t^\top Y_t` and :math:`Y_t^\top X_t + X_t^\top Y_t`.
         dim : None, int, or float, optional, default 0.95
             Number of dimensions (independent components) to project onto.
 
