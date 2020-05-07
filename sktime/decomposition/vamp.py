@@ -437,8 +437,8 @@ class VAMPModel(Model):
                            - mdot(Vk, Sk, Uk.T, test_model.cov_00, Uk, Sk, Vk.T, test_model.cov_tt))
         else:
             raise ValueError('"score" should be one of VAMP1, VAMP2 or VAMPE')
+        assert res is not None
         # add the contribution (+1) of the constant singular functions to the result
-        assert res
         return res + 1
 
 
