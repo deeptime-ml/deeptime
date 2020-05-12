@@ -120,14 +120,14 @@ Distances<dtype> computeDistances(const dtype* xs, std::size_t nXs,
     if(!metric->isEuclidean()) {
         dtype* outPtr = result.data();
         if (squared) {
-#pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, metric, outPtr)
+            #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, metric, outPtr)
             for (std::size_t i = 0; i < nXs; ++i) {
                 for (std::size_t j = 0; j < nYs; ++j) {
                     outPtr[i * nYs + j] = metric->compute_squared(xs + i * dim, ys + j * dim, dim);
                 }
             }
         } else {
-#pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, metric, outPtr)
+            #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, metric, outPtr)
             for (std::size_t i = 0; i < nXs; ++i) {
                 for (std::size_t j = 0; j < nYs; ++j) {
                     outPtr[i * nYs + j] = metric->compute(xs + i * dim, ys + j * dim, dim);
@@ -150,7 +150,7 @@ Distances<dtype> computeDistances(const dtype* xs, std::size_t nXs,
         }
         {
             // compute -2 * XY
-#pragma omp parallel for collapse(2)
+            #pragma omp parallel for collapse(2)
             for (std::size_t i = 0; i < nXs; ++i) {
                 for (std::size_t j = 0; j < nYs; ++j) {
                     outPtr[i * nYs + j] = std::inner_product(xs + i * dim, xs + i*dim + dim, ys + j*dim, static_cast<double>(0));
@@ -160,9 +160,9 @@ Distances<dtype> computeDistances(const dtype* xs, std::size_t nXs,
             }
         }
         if (!squared) {
-#pragma omp parallel for
-            for(auto it = result.begin(); it != result.end(); ++it) {
-                *it = std::sqrt(*it);
+            #pragma omp parallel for
+            for(std::size_t i = 0; i < result.size(); ++i) {
+                *(result.data() + i) = std::sqrt(*(result.data() + i));
             }
         }
     }
