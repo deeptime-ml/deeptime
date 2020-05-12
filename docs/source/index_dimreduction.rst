@@ -36,33 +36,29 @@ When to use VAMP
 VAMP is a strict generalization of TICA and is applicable in a wider range of settings, however it has some
 differences in terms of the numerics involved as well as the estimated model's interpretability.
 
+Numerically, VAMP works with a singular value decomposition while TICA works with an eigenvalue decomposition.
+These singular values should theoretically be real and coincide with the TICA eigenvalues if the data comes
+from a reversible and in-equilibrium setting. Numerically as well as due to sampling, they still might be complex.
+This means in particular that they are hard to interpret and there is no simple relationship to, e.g., timescales.
 
+On the other hand, VAMP deals with off-equilibrium cases consistently in which TICA becomes heavily biased (except
+for special cases).
 
-- The type of decomposition used in TICA is an eigenvalue decomposition, VAMP uses a singular value decomposition.
-  These singular values are in theory identical to the eigenvalues if the data is reversible and in equilibrium.
+One can divide off-equilibrium cases into three subcategories (as presented in :cite:`koltai2018optimal`):
 
+1. *Time-inhomogeneous dynamics*, e.g, the observed system is driven by a time-dependent external force,
+2. *Time-homogeneous non-reversible dynamics*, i.e., detailed balance is not obeyed and the observations might be
+   of a non-stationary regime.
+3. *Reversible dynamics but non-stationary data*, i.e., the system possesses a stationary distribution with respect
+   to which it obeys detailed balance, but the empirical of the available data did not converge to this stationary
+   distribution.
 
-- tica gives eigenvalues, vamp gives singular values
+The third of the described cases is salvageable with TICA when a special reweighting procedure
+(`Koopman reweighting <notebooks/tica.ipynb#Koopman-reweighting>`_) is used.
 
-  - singular values are (theoretically) same to eigenvalues if reversible & equilibrium
-  - tica needs EVD, vamp needs SVD
-  - tica: real eigenvalues (in [-1, 1]), eigenvectors, stat dist <-> perron frobenius thm
+The point of view then transitions from a "metastability" one to "coherent sets" - metastabilies' analogon in
+off-equilibirum cases and commonly encountered in, e.g., fluid dynamics. The rough idea is that one can then
+identify regions which (approximately) stay together under temporal propagation.
 
-- only eigenvalues are directly related to timescales
-- tica allows to make a prior assumption that data is reversible and in equilibrium
-  - or reversible with detailed balance
+- the score should be mentioned
 
-- if you are in the molecular kinetics context, and the reversibility assumption makes sense for your system
-  (conceptually) AND your data (no rare events), i would always vote tica
-  - cause you get the interpretability via eignevalue decomposition and perron frobenius
-
-- 3 irreversible cases are:
-
-  - 1. "truly" irreversible like turbulence,
-  - 2. reversible dynamics combined w/ a time-dependent force like a potential,
-  - 3. or reversible dynamics but not enough sampling to mitigate rare event effects
-  - in all those 3 cases, you'd want vamp, cause the tica bias would be too much
-  - except maybe the 3rd you can do the reweighting whatever
-
-- gets at this, where when you lose the eigenvalues, you lose the "metastability" idea and get
-  more in the "coherence" realm of eg fluid dynamics
