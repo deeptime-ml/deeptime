@@ -26,8 +26,8 @@ and are contained in the closed interval :math:`\lambda_i\in[-1, 1]`. This has g
 interpretability.
 
 As soon as the data is off equilibrium though, TICA estimates can become heavily biased.
-A salvageable case is the one of reversible underlying dynamics but not enough sampling to support this: a
-`reweighting procedure <notebooks/tica.ipynb#Koopman-reweighting>`_ can be employed :cite:`wu2016variational`.
+A salvageable case is if the underlying dynamics is reversible but there is not enough sampling to support this: a
+`reweighting procedure <notebooks/tica.ipynb#Koopman-reweighting>`_ can be applied :cite:`wu2016variational`.
 
 
 When to use VAMP
@@ -35,6 +35,8 @@ When to use VAMP
 
 VAMP is a strict generalization of TICA and is applicable in a wider range of settings, however it has some
 differences in terms of the numerics involved as well as the estimated model's interpretability.
+
+
 
 - The type of decomposition used in TICA is an eigenvalue decomposition, VAMP uses a singular value decomposition.
   These singular values are in theory identical to the eigenvalues if the data is reversible and in equilibrium.

@@ -204,6 +204,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
         # create model
         self._model = MarkovStateModel(transition_matrix=P, stationary_distribution=statdist,
-                                       reversible=self.reversible, count_model=count_model)
+                                       reversible=self.reversible, count_model=count_model,
+                                       transition_matrix_tolerance=self.maxerr)
 
         return self

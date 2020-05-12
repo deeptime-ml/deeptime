@@ -2,7 +2,8 @@
 
 #include <thread>
 
-namespace sktime::thread {
+namespace sktime {
+namespace thread {
 
 class scoped_thread {
     std::thread t;
@@ -58,4 +59,5 @@ public:
     scoped_thread &operator=(const scoped_thread &) = delete;
 };
 
+}
 }
