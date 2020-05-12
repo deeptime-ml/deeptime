@@ -21,7 +21,9 @@ class KMeansClusteringModel(ClusterModel):
 
     See Also
     --------
-    ClusterModel : Superclass.
+    ClusterModel : The superclass.
+    KmeansClustering : The k-means estimator, which can produce this kind of model.
+    MiniBatchKmeansClustering : The mini batch k-means estimator, which can produce this kind of model.
     """
 
     def __init__(self, n_clusters, cluster_centers, metric, tolerance, inertias=None, converged=False):
@@ -120,6 +122,11 @@ class KmeansClustering(Estimator, Transformer):
     References
     ----------
     .. [1] Arthur, David, and Sergei Vassilvitskii. k-means++: The advantages of careful seeding. Stanford, 2006.
+
+    See Also
+    --------
+    KMeansClusteringModel : the corresponding model class
+    MiniBatchKmeansClustering : An online version of this estimator which uses mini-batching.
     """
 
     def __init__(self, n_clusters: int, max_iter: int = 500, metric=None,
@@ -430,6 +437,7 @@ class MiniBatchKmeansClustering(KmeansClustering):
     See Also
     --------
     KmeansClustering : k-means clustering without mini-batching
+    KMeansClusteringModel : the corresponding model class
     """
 
     def __init__(self, n_clusters, batch_size=100, max_iter=5, metric=None, tolerance=1e-5, init_strategy='kmeans++',
