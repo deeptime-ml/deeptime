@@ -269,6 +269,9 @@ class VAMPModel(Model):
         where :math:`r_{i}=\langle\psi_{i},f\rangle_{\rho_{0}}` and
         :math:`\boldsymbol{\Sigma}=\mathrm{diag(\boldsymbol{\sigma})}` .
         """
+        if lag_multiple <= 0:
+            raise ValueError("lag_multiple <= 0 not implemented")
+
         dim = self.output_dimension
 
         S = np.diag(np.concatenate(([1.0], self.singular_values[0:dim])))
@@ -346,6 +349,11 @@ class VAMPModel(Model):
         return VAMPModel._DiagonalizationResults(
             rank0=rank0, rankt=rankt, singular_values=singular_values, left_singular_vecs=U, right_singular_vecs=V
         )
+
+    @property
+    def koopman_operator(self):
+        r""" Yields the reduced koopman operator :math:`\tilde{K}`. """
+        return self.singular_vectors_left @ np.diag(self.singular_values) @ self.singular_vectors_right
 
     def transform(self, data, right=None):
         r"""Projects the data onto the dominant singular functions.

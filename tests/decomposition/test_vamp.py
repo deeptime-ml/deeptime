@@ -23,6 +23,7 @@
 import unittest
 
 import numpy as np
+import pytest
 
 from sktime.data.util import timeshifted_split
 from sktime.decomposition.vamp import VAMP
@@ -39,6 +40,18 @@ def random_matrix(n, rank=None, eps=0.01):
         rank = n
     s = np.concatenate((np.maximum(s, eps)[0:rank], np.zeros(n - rank)))
     return u.dot(np.diag(s)).dot(v)
+
+
+@pytest.mark.parametrize("with_statistics", [True, False], ids=["w/ statistics", "w/o statistics"])
+def test_expectation_sanity(with_statistics):
+    data = np.random.normal(size=(10000, 5))
+    model = VAMP(lagtime=1).fit(data).fetch_model()
+    observations = np.random.normal(size=(100, 5))
+    if with_statistics:
+        statistics = np.random.normal(size=(100, 5)).T
+    else:
+        statistics = None
+    model.expectation(observations.T, statistics)
 
 
 class TestVAMPEstimatorSelfConsistency(unittest.TestCase):

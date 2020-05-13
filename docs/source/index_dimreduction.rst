@@ -36,6 +36,11 @@ When to use VAMP
 VAMP is a strict generalization of TICA and is applicable in a wider range of settings, however it has some
 differences in terms of the numerics involved as well as the estimated model's interpretability.
 
+First and foremost it extends to off-equilibrium cases and is equipped with a set of scoring functions (the so-called
+VAMP scores), which allow to rank a selection of input features. Intuitively these scores measure the amount of
+"slowness" that can be captured with a feature selection. It is however **not** possible to compare scores
+over several lag-time selections.
+
 Numerically, VAMP works with a singular value decomposition while TICA works with an eigenvalue decomposition.
 These singular values should theoretically be real and coincide with the TICA eigenvalues if the data comes
 from a reversible and in-equilibrium setting. Numerically as well as due to sampling, they still might be complex.
@@ -59,6 +64,3 @@ The third of the described cases is salvageable with TICA when a special reweigh
 The point of view then transitions from a "metastability" one to "coherent sets" - metastabilies' analogon in
 off-equilibirum cases and commonly encountered in, e.g., fluid dynamics. The rough idea is that one can then
 identify regions which (approximately) stay together under temporal propagation.
-
-- the score should be mentioned
-
