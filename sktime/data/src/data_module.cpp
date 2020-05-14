@@ -38,9 +38,9 @@ PYBIND11_MODULE(_data_bindings, m) {
         .def("predict_positions", &PBF::predictPositions)
         .def("update_neighborlist", &PBF::updateNeighborlist)
         .def("calculate_lambdas", &PBF::calculateLambdas)
-        .def("run", [](PBF& self, std::uint32_t steps) {
-            auto traj = self.run(steps);
-            np_array<dtype> npTraj ({static_cast<std::size_t>(steps+1), static_cast<std::size_t>(DIM*self.nParticles())});
+        .def("run", [](PBF& self, std::uint32_t steps, dtype drift) {
+            auto traj = self.run(steps, drift);
+            np_array<dtype> npTraj ({static_cast<std::size_t>(steps), static_cast<std::size_t>(DIM*self.nParticles())});
             std::copy(traj.begin(), traj.end(), npTraj.mutable_data());
             return npTraj;
         })
