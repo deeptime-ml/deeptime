@@ -34,16 +34,16 @@ PBF makePbf(np_array<dtype> pos, np_array<dtype> gridSize, dtype interactionRadi
 }
 
 PYBIND11_MODULE(_data_bindings, m) {
-    m.def("voodoo", [](np_array<dtype> pos, np_array<dtype> gridSize, dtype interactionRadius, int nJobs) {
-        {
-            auto pbf = makePbf(pos, gridSize, interactionRadius, nJobs);
-        }
-    });
-    py::class_<PBF, std::unique_ptr<PBF>>(m, "PBF").def(py::init(&makePbf), py::keep_alive<1, 2>())
+    py::class_<PBF>(m, "PBF").def(py::init(&makePbf))
         .def("predict_positions", &PBF::predictPositions)
         .def("update_neighborlist", &PBF::updateNeighborlist)
         .def("calculate_lambdas", &PBF::calculateLambdas)
-        .def("run", &PBF::run)
+        .def("run", [](PBF& self, std::uint32_t steps) {
+            auto traj = self.run(steps);
+            np_array<dtype> npTraj ({static_cast<std::size_t>(steps+1), static_cast<std::size_t>(DIM*self.nParticles())});
+            std::copy(traj.begin(), traj.end(), npTraj.mutable_data());
+            return npTraj;
+        })
         .def_property("n_solver_iterations", &PBF::nSolverIterations, &PBF::setNSolverIterations)
         .def_property("gravity", &PBF::gravity, &PBF::setGravity)
         .def_property("timestep", &PBF::dt, &PBF::setDt)

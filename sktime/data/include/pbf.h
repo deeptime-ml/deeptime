@@ -49,6 +49,12 @@ void forEachParticle(ParticleCollection<dim, dtype> &collection, F op) {
 }
 
 namespace util {
+template<class T>
+constexpr const T& clamp( const T& v, const T& lo, const T& hi ) {
+    assert( !(hi < lo) );
+    return (v < lo) ? lo : (hi < v) ? hi : v;
+}
+
 template<int dim, typename dtype>
 dtype distance(const dtype *p1, const dtype *p2) {
     dtype d{0};
@@ -118,9 +124,8 @@ public:
 
     NeighborList(std::array<dtype, DIM> gridSize, dtype interactionRadius, std::size_t nParticles)
             : _gridSize(gridSize) {
-        std::array<std::uint32_t, DIM> nCells;
         for (int i = 0; i < DIM; ++i) {
-            _cellSize[i] = gridSize[i] / interactionRadius;
+            _cellSize[i] = interactionRadius;
             if (gridSize[i] <= 0) throw std::invalid_argument("grid sizes must be positive.");
             nCells[i] = gridSize[i] / _cellSize[i];
         }
@@ -130,6 +135,8 @@ public:
     }
 
     void update(ParticleCollection<DIM, dtype> &collection, int nJobs) {
+        std::fill(std::begin(list), std::end(list), 0);
+        std::fill(std::begin(head), std::end(head), thread::copyable_atomic<std::size_t>());
         auto updateOp = [this](std::size_t particleId, dtype *pos, dtype *vel) {
             auto boxId = positionToBoxIx(pos);
 
@@ -148,11 +155,14 @@ public:
             if (nJobs == 0) {
                 nJobs = std::thread::hardware_concurrency();
             }
+            if(nJobs <= 1) {
+                throw std::logic_error("At this point nJobs should be >= 2");
+            }
             std::size_t grainSize = collection.nParticles() / nJobs;
             auto *pptr = collection.positions();
             std::vector<sktime::thread::scoped_thread> jobs;
-            for (std::size_t i = 0; i < nJobs - 1; ++i) {
-                auto *pptrNext = pptr + grainSize;
+            for (int i = 0; i < nJobs - 1; ++i) {
+                auto *pptrNext = std::min(pptr + grainSize * DIM, collection.positions() + collection.nParticles() * DIM);
                 if (pptr != pptrNext) {
                     std::size_t idStart = i * grainSize;
                     jobs.emplace_back([&updateOp, idStart, pptr, pptrNext]() {
@@ -166,7 +176,7 @@ public:
             }
             if (pptr != collection.positions() + DIM * collection.nParticles()) {
                 auto pptrNext = collection.positions() + DIM * collection.nParticles();
-                std::size_t idStart = static_cast<std::size_t>(std::distance(pptr, pptrNext));
+                std::size_t idStart = (nJobs - 1) * grainSize;
                 jobs.emplace_back([&updateOp, idStart, pptr, pptrNext]() {
                     auto id = idStart;
                     for (auto *p = pptr; p != pptrNext; p += DIM, ++id) {
@@ -180,7 +190,8 @@ public:
     typename Index<DIM>::GridDims gridPos(const dtype *pos) const {
         std::array<std::uint32_t, DIM> projections;
         for (auto i = 0u; i < DIM; ++i) {
-            projections[i] = std::floor((pos[i] + .5 * domain[i]) / _cellSize[i]);
+            projections[i] = static_cast<std::uint32_t>(std::max(0.d, std::floor((pos[i] + .5 * _gridSize[i]) / _cellSize[i])));
+            projections[i] = util::clamp(projections[i], 0U, nCells[i]-1);
         }
         return projections;
     }
@@ -197,19 +208,23 @@ public:
         auto neighborId = (*head.at(boxId)).load();
         while (neighborId != 0) {
             if (neighborId != id) {
-                fun(neighborId, collection.position(id), collection.velocity(id));
+                fun(neighborId, collection.position(neighborId), collection.velocity(neighborId));
             }
             neighborId = list.at(neighborId);
         }
     }
 
+    const std::array<dtype, DIM> &gridSize() const {
+        return _gridSize;
+    }
+
 private:
-    std::array<dtype, DIM> _cellSize;
-    std::array<dtype, DIM> _gridSize;
-    const dtype *domain;
-    std::vector<thread::copyable_atomic<std::size_t>> head;
-    std::vector<std::size_t> list;
-    Index<DIM> _index;
+    std::array<dtype, DIM> _cellSize {};
+    std::array<dtype, DIM> _gridSize {};
+    std::vector<thread::copyable_atomic<std::size_t>> head {};
+    std::vector<std::size_t> list {};
+    Index<DIM> _index {};
+    std::array<std::uint32_t, DIM> nCells {};
 };
 
 template<int DIM, typename dtype>
@@ -217,8 +232,10 @@ class ParticleCollection {
 public:
     static constexpr int dim = DIM;
 
+    ParticleCollection() = default;
+
     ParticleCollection(std::vector<dtype> particles, std::size_t nParticles)
-            : _particles(std::move(particles)), _nParticles(nParticles), _velocities(nParticles * dim, 0) {
+            : _nParticles(nParticles), _particles(std::move(particles)), _velocities(nParticles * dim, 0) {
     }
 
     std::size_t nParticles() const { return _nParticles; }
@@ -254,21 +271,22 @@ public:
 
 
 private:
-    std::vector<dtype> _particles;
-    std::vector<dtype> _velocities;
-    std::size_t _nParticles;
+    std::size_t _nParticles {};
+    std::vector<dtype> _particles {};
+    std::vector<dtype> _velocities {};
 };
 
 template<int DIM, typename dtype>
 class PBF {
 public:
-    PBF() : _particles(nullptr, 0), nJobs(0), _interactionRadius(0), _neighborList(), _positions(), lambdas() {}
+    PBF() : nJobs(0), _interactionRadius(0) , _particles(nullptr, 0), _neighborList(), _positions(), lambdas() {}
 
     PBF(std::vector<dtype> particles, std::size_t nParticles, std::array<dtype, DIM> gridSize,
             dtype interactionRadius, int nJobs)
-            : _particles(std::move(particles), nParticles), nJobs(nJobs), _interactionRadius(interactionRadius),
-              _neighborList(gridSize, interactionRadius, nParticles), _positions(nParticles, 0),
-              lambdas(nParticles, 0) {
+            : nJobs(nJobs), _interactionRadius(interactionRadius),  _positions(nParticles * DIM, 0),
+              lambdas(nParticles, 0),
+              _particles(std::move(particles), nParticles) ,
+              _neighborList(gridSize, interactionRadius, nParticles) {
         detail::setNJobs(nJobs);
         std::copy(_particles.positions(), _particles.positions() + nParticles * DIM, _positions.data());
     }
@@ -301,7 +319,8 @@ public:
             dtype rho0 = this->_rho0;
             dtype h = this->_interactionRadius;
 
-            std::array<dtype, DIM> grad_pi_Ci;
+            std::array<dtype, DIM> grad_pi_Ci {};
+            std::fill(grad_pi_Ci.begin(), grad_pi_Ci.end(), 0);
             auto neighborOp = [pos, vel, rho0, h, &rho, &grad_pi_Ci, &sum_k_grad_Ci](std::size_t neighborId,
                                                                                     dtype *neighborPos,
                                                                                     dtype *neighborVel) {
@@ -337,8 +356,15 @@ public:
     }
 
     void updatePositions() {
-        auto updateOp = [this](std::size_t id, dtype *pos, dtype *vel) {
+        auto posmax = _neighborList.gridSize();
+        auto posmin = posmax;
+        for(auto i = 0u; i < DIM; ++i) {
+            posmin[i] = -1 * 0.5 * posmax[i];
+            posmax[i] *= 0.5;
+        }
+        auto updateOp = [this, posmin, posmax](std::size_t id, dtype *pos, dtype *vel) {
             std::array<dtype, DIM> posDelta;
+            std::fill(posDelta.begin(), posDelta.end(), 0);
 
             const auto &lambdas = this->lambdas;
             auto lambda = lambdas.at(id);
@@ -358,8 +384,11 @@ public:
                 }
             };
 
+            _neighborList.forEachNeighbor(id, _particles, neighborOp);
+
             for(auto i = 0u; i < DIM; ++i) {
                 pos[i] += posDelta[i] / _rho0;
+                pos[i] = util::clamp(pos[i], posmin[i], posmax[i]);
             }
         };
 
@@ -375,9 +404,15 @@ public:
                 prevPos[i] = pos[i];
             }
         };
+        detail::forEachParticle(_particles, updateOp);
     }
 
-    void run(std::uint32_t steps) {
+    std::vector<dtype> run(std::uint32_t steps) {
+        std::vector<dtype> trajectory;
+        trajectory.reserve((steps + 1) * DIM * _particles.nParticles());
+        auto backInserterIt = std::back_inserter(trajectory);
+        // copy initial state into trajectory
+        std::copy(_positions.begin(), _positions.end(), backInserterIt);
         for (auto step = 0U; step < steps; ++step) {
             predictPositions();
             updateNeighborlist();
@@ -386,8 +421,12 @@ public:
                 updatePositions();
             }
             update();
+            std::copy(_positions.begin(), _positions.end(), backInserterIt);
         }
+        return trajectory;
     }
+
+    std::size_t nParticles() const { return _particles.nParticles(); }
 
     void setGravity(dtype gravity) { _gravity = gravity; }
 
@@ -418,12 +457,12 @@ public:
     dtype tensileInstabilityK() const { return _tensileInstabilityK; }
 
 private:
-    std::vector<dtype> lambdas;
-    std::vector<dtype> _positions;
-    ParticleCollection<DIM, dtype> _particles;
-    NeighborList<DIM, dtype> _neighborList;
-    int nJobs;
-    dtype _interactionRadius;
+    int nJobs {};
+    dtype _interactionRadius {};
+    std::vector<dtype> _positions {};
+    std::vector<dtype> lambdas {};
+    ParticleCollection<DIM, dtype> _particles {};
+    NeighborList<DIM, dtype> _neighborList {};
 
     std::uint32_t _nSolverIterations = 5;
     dtype _gravity = 10.;
