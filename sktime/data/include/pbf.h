@@ -191,7 +191,7 @@ public:
     typename Index<DIM>::GridDims gridPos(const dtype *pos) const {
         std::array<std::uint32_t, DIM> projections;
         for (auto i = 0u; i < DIM; ++i) {
-            projections[i] = static_cast<std::uint32_t>(std::max(0.d, std::floor(
+            projections[i] = static_cast<std::uint32_t>(std::max(static_cast<dtype>(0.), std::floor(
                     (pos[i] + .5 * _gridSize[i]) / _cellSize[i])));
             projections[i] = util::clamp(projections[i], 0U, nCells[i] - 1);
         }
@@ -349,7 +349,7 @@ public:
 
             std::array<dtype, DIM> grad_pi_Ci{};
             std::fill(grad_pi_Ci.begin(), grad_pi_Ci.end(), 0);
-            auto neighborOp = [pos, vel, rho0, h, &rho, &grad_pi_Ci, &sum_k_grad_Ci](std::size_t neighborId,
+            auto neighborOp = [pos, rho0, h, &rho, &grad_pi_Ci, &sum_k_grad_Ci](std::size_t neighborId,
                                                                                      dtype *neighborPos,
                                                                                      dtype *neighborVel) {
                 // compute rho_i (equation 2)
@@ -491,12 +491,12 @@ private:
     NeighborList<DIM, dtype> _neighborList{};
 
     std::uint32_t _nSolverIterations = 5;
-    dtype _gravity = 10.;
-    dtype _dt = 0.016;
-    dtype _rho0 = 1.;
-    dtype _epsilon = 5.;
-    dtype _tensileInstabilityScale = 1. / util::Wpoly6(static_cast<dtype>(0.2), _interactionRadius);
-    dtype _tensileInstabilityK = 0.1;
+    dtype _gravity = static_cast<dtype>(10.);
+    dtype _dt = static_cast<dtype>(0.016);
+    dtype _rho0 = static_cast<dtype>(1.);
+    dtype _epsilon = static_cast<dtype>(5.);
+    dtype _tensileInstabilityScale = static_cast<dtype>(1. / util::Wpoly6(static_cast<dtype>(0.2), _interactionRadius));
+    dtype _tensileInstabilityK = static_cast<dtype>(0.1);
 };
 
 }
