@@ -1,6 +1,7 @@
 #pragma once
 
 #include <thread>
+#include <atomic>
 
 namespace sktime {
 namespace thread {

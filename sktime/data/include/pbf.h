@@ -77,7 +77,7 @@ dtype length(const dtype *p) {
 }
 
 template<typename dtype>
-dtype Wpoly6(dtype r, dtype h = 2.0) {
+dtype Wpoly6(dtype r, dtype h) {
     if (r > h)
         return 0;
     float tmp = h * h - r * r;
@@ -85,7 +85,7 @@ dtype Wpoly6(dtype r, dtype h = 2.0) {
 }
 
 template<typename dtype>
-dtype Wspiky(dtype r, dtype h = 2.0) {
+dtype Wspiky(dtype r, dtype h) {
     if (r > h)
         return 0;
     float tmp = h - r;
@@ -93,7 +93,7 @@ dtype Wspiky(dtype r, dtype h = 2.0) {
 }
 
 template<int dim, typename dtype>
-std::array<dtype, dim> gradWspiky(const dtype *pos, const dtype *posNeighbor, dtype h = 2.0) {
+std::array<dtype, dim> gradWspiky(const dtype *pos, const dtype *posNeighbor, dtype h) {
     std::array<dtype, dim> result;
     for (auto i = 0U; i < dim; ++i) {
         result[i] = pos[i] - posNeighbor[i];
@@ -114,13 +114,17 @@ template<int DIM, typename dtype>
 class NeighborList {
     static_assert(DIM > 0 && DIM == 2, "Only 2-dimensional NL currently supported.");
 public:
-    NeighborList(std::array<std::uint32_t, DIM> gridSize, const dtype *const domain, std::size_t nParticles)
-            : _gridSize(gridSize), domain(domain), _index(gridSize) {
+    NeighborList() : _gridSize() {}
 
+    NeighborList(std::array<dtype, DIM> gridSize, dtype interactionRadius, std::size_t nParticles)
+            : _gridSize(gridSize) {
+        std::array<std::uint32_t, DIM> nCells;
         for (int i = 0; i < DIM; ++i) {
-            if (gridSize[i] == 0) throw std::invalid_argument("grid sizes must be positive.");
-            _gridDims[i] = domain[i] / gridSize[i];
+            _cellSize[i] = gridSize[i] / interactionRadius;
+            if (gridSize[i] <= 0) throw std::invalid_argument("grid sizes must be positive.");
+            nCells[i] = gridSize[i] / _cellSize[i];
         }
+        _index = Index<DIM>(nCells);
         head.resize(_index.size());
         list.resize(nParticles + 1);
     }
@@ -176,7 +180,7 @@ public:
     typename Index<DIM>::GridDims gridPos(const dtype *pos) const {
         std::array<std::uint32_t, DIM> projections;
         for (auto i = 0u; i < DIM; ++i) {
-            projections[i] = std::floor((pos[i] + .5 * domain[i]) / _gridDims[i]);
+            projections[i] = std::floor((pos[i] + .5 * domain[i]) / _cellSize[i]);
         }
         return projections;
     }
@@ -200,8 +204,8 @@ public:
     }
 
 private:
-    std::array<dtype, DIM> _gridDims;
-    std::array<std::uint32_t, DIM> _gridSize;
+    std::array<dtype, DIM> _cellSize;
+    std::array<dtype, DIM> _gridSize;
     const dtype *domain;
     std::vector<thread::copyable_atomic<std::size_t>> head;
     std::vector<std::size_t> list;
@@ -213,8 +217,9 @@ class ParticleCollection {
 public:
     static constexpr int dim = DIM;
 
-    ParticleCollection(dtype *particles, std::size_t nParticles)
-            : _particles(particles), _nParticles(nParticles), _velocities(nParticles * dim, 0) {}
+    ParticleCollection(std::vector<dtype> particles, std::size_t nParticles)
+            : _particles(std::move(particles)), _nParticles(nParticles), _velocities(nParticles * dim, 0) {
+    }
 
     std::size_t nParticles() const { return _nParticles; }
 
@@ -223,19 +228,19 @@ public:
     const std::vector<dtype> &velocities() const { return _velocities; }
 
     dtype *const positions() {
-        return _particles;
+        return _particles.data();
     }
 
     const dtype *const positions() const {
-        return _particles;
+        return _particles.data();
     }
 
     dtype *const position(std::size_t id) {
-        return _particles + id * DIM;
+        return _particles.data() + id * DIM;
     }
 
     const dtype *const position(std::size_t id) const {
-        return _particles + id * DIM;
+        return _particles.data() + id * DIM;
     }
 
     dtype *const velocity(std::size_t id) {
@@ -246,8 +251,10 @@ public:
         return _velocities.data() + id * DIM;
     }
 
+
+
 private:
-    dtype *const _particles;
+    std::vector<dtype> _particles;
     std::vector<dtype> _velocities;
     std::size_t _nParticles;
 };
@@ -255,13 +262,23 @@ private:
 template<int DIM, typename dtype>
 class PBF {
 public:
-    PBF(dtype *particles, std::size_t nParticles, std::array<dtype, DIM> domain,
-        std::array<std::uint32_t, DIM> gridSize, int nJobs)
-            : _particles(particles, nParticles), _domain(domain), nJobs(nJobs),
-              _neighborList(gridSize, _domain.data(), nParticles),
+    PBF() : _particles(nullptr, 0), nJobs(0), _interactionRadius(0), _neighborList(), _positions(), lambdas() {}
+
+    PBF(std::vector<dtype> particles, std::size_t nParticles, std::array<dtype, DIM> gridSize,
+            dtype interactionRadius, int nJobs)
+            : _particles(std::move(particles), nParticles), nJobs(nJobs), _interactionRadius(interactionRadius),
+              _neighborList(gridSize, interactionRadius, nParticles), _positions(nParticles, 0),
               lambdas(nParticles, 0) {
         detail::setNJobs(nJobs);
+        std::copy(_particles.positions(), _particles.positions() + nParticles * DIM, _positions.data());
     }
+
+    PBF(PBF &&) = default;
+    PBF& operator=(PBF&&) = default;
+
+    PBF(const PBF&) = delete;
+    virtual ~PBF() = default;
+    PBF& operator=(const PBF&) = delete;
 
     void predictPositions() {
         auto update = [this](std::size_t, dtype *pos, dtype *velocity) {
@@ -282,30 +299,32 @@ public:
             dtype sum_k_grad_Ci = 0;
             dtype rho = 0;
             dtype rho0 = this->_rho0;
+            dtype h = this->_interactionRadius;
 
             std::array<dtype, DIM> grad_pi_Ci;
-            _neighborList.forEachNeighbor(id, _particles,
-                                          [pos, vel, rho0, &rho, &grad_pi_Ci, &sum_k_grad_Ci](std::size_t neighborId,
-                                                                                              dtype *neighborPos,
-                                                                                              dtype *neighborVel) {
-                                              // compute rho_i (equation 2)
-                                              float len = util::distance<DIM>(pos, neighborPos);
-                                              float tmp = util::Wpoly6(len);
-                                              rho += tmp;
+            auto neighborOp = [pos, vel, rho0, h, &rho, &grad_pi_Ci, &sum_k_grad_Ci](std::size_t neighborId,
+                                                                                    dtype *neighborPos,
+                                                                                    dtype *neighborVel) {
+                // compute rho_i (equation 2)
+                float len = util::distance<DIM>(pos, neighborPos);
+                float tmp = util::Wpoly6(len, h);
+                rho += tmp;
 
-                                              // sum gradients of Ci (equation 8 and parts of equation 9)
-                                              // use j as k so that we can stay in the same loop
-                                              auto grad_pk_Ci = util::gradWspiky<DIM>(pos, neighborPos);
+                // sum gradients of Ci (equation 8 and parts of equation 9)
+                // use j as k so that we can stay in the same loop
+                auto grad_pk_Ci = util::gradWspiky<DIM>(pos, neighborPos, h);
 
-                                              for (auto i = 0u; i < DIM; ++i) {
-                                                  grad_pk_Ci[i] /= rho0;
-                                              }
-                                              sum_k_grad_Ci += util::dot<DIM>(grad_pk_Ci.data(), grad_pk_Ci.data());
+                for (auto i = 0u; i < DIM; ++i) {
+                    grad_pk_Ci[i] /= rho0;
+                }
+                sum_k_grad_Ci += util::dot<DIM>(grad_pk_Ci.data(), grad_pk_Ci.data());
 
-                                              for (auto i = 0u; i < DIM; ++i) {
-                                                  grad_pi_Ci[i] += grad_pk_Ci[i];
-                                              }
-                                          });
+                for (auto i = 0u; i < DIM; ++i) {
+                    grad_pi_Ci[i] += grad_pk_Ci[i];
+                }
+            };
+
+            _neighborList.forEachNeighbor(id, _particles, neighborOp);
             sum_k_grad_Ci += util::dot<DIM>(grad_pi_Ci.data(), grad_pi_Ci.data());
 
             // compute lambda_i (equations 1 and 9)
@@ -318,11 +337,44 @@ public:
     }
 
     void updatePositions() {
-        // todo update positions based on lambdas
+        auto updateOp = [this](std::size_t id, dtype *pos, dtype *vel) {
+            std::array<dtype, DIM> posDelta;
+
+            const auto &lambdas = this->lambdas;
+            auto lambda = lambdas.at(id);
+            auto tis = _tensileInstabilityScale;
+            auto k = _tensileInstabilityK;
+            auto h = _interactionRadius;
+
+            auto neighborOp = [lambda, tis, k, h, pos, &lambdas, &posDelta](std::size_t nId, dtype *nPos, dtype *nVel) {
+                auto nLambda = lambdas.at(nId);
+
+                dtype corr = tis * util::Wpoly6(util::distance<DIM>(pos, nPos), h);
+                corr = -k * corr * corr * corr * corr;
+
+                auto conv = util::gradWspiky<DIM>(pos, nPos, h);
+                for(auto i = 0u; i < DIM; ++i) {
+                    posDelta[i] += (lambda + nLambda + corr) * conv[i];
+                }
+            };
+
+            for(auto i = 0u; i < DIM; ++i) {
+                pos[i] += posDelta[i] / _rho0;
+            }
+        };
+
+        detail::forEachParticle(_particles, updateOp);
     }
 
     void update() {
-        // todo update positions and velocities
+        auto updateOp = [this](std::size_t id, dtype* pos, dtype* vel) {
+            dtype* prevPos = _positions.data() + id * DIM;
+            // update velocities and previous positions
+            for(auto i = 0u; i < DIM; ++i) {
+                vel[i] = (pos[i] - prevPos[i]) / _dt;
+                prevPos[i] = pos[i];
+            }
+        };
     }
 
     void run(std::uint32_t steps) {
@@ -357,18 +409,29 @@ public:
 
     std::uint32_t nSolverIterations() const { return _nSolverIterations; };
 
+    void setTensileInstabilityScale(dtype tis) { _tensileInstabilityScale = tis; }
+
+    dtype tensileInstabilityScale() const { return _tensileInstabilityScale; }
+
+    void setTensileInstabilityK(dtype k) { _tensileInstabilityK = k; }
+
+    dtype tensileInstabilityK() const { return _tensileInstabilityK; }
+
 private:
-    std::array<dtype, DIM> _domain; // initialize this first as at least neighborList depends on it
+    std::vector<dtype> lambdas;
+    std::vector<dtype> _positions;
     ParticleCollection<DIM, dtype> _particles;
     NeighborList<DIM, dtype> _neighborList;
-    std::vector<dtype> lambdas;
     int nJobs;
+    dtype _interactionRadius;
 
     std::uint32_t _nSolverIterations = 5;
     dtype _gravity = 10.;
     dtype _dt = 0.016;
     dtype _rho0 = 1.;
     dtype _epsilon = 5.;
+    dtype _tensileInstabilityScale = 1. / util::Wpoly6(static_cast<dtype>(0.2), _interactionRadius);
+    dtype _tensileInstabilityK = 0.1;
 };
 
 }
