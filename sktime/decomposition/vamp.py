@@ -671,12 +671,13 @@ class VAMP(Estimator):
 
     @dim.setter
     def dim(self, value: Optional[Real]):
-        if isinstance(value, Integral) and value <= 0:
-            # first test against Integral as `isinstance(1, Real)` also evaluates to True
-            raise ValueError("Invalid dimension parameter, if it is given in terms of the dimension (integer), "
-                             "must be positive.")
+        if isinstance(value, Integral):
+            if value <= 0:
+                # first test against Integral as `isinstance(1, Real)` also evaluates to True
+                raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of the "
+                                 "dimension (integer), must be positive.")
         elif isinstance(value, Real) and (value <= 0. or float(value) > 1.0):
-            raise ValueError("Invalid dimension parameter, if it is given in terms of a floating point, "
+            raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of a floating point, "
                              "can only be in the interval (0, 1].")
         elif value is not None and not isinstance(value, (Integral, Real)):
             raise ValueError("Invalid type for dimension, got {}".format(value))

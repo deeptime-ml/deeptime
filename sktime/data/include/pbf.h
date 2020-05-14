@@ -191,8 +191,8 @@ public:
     typename Index<DIM>::GridDims gridPos(const dtype *pos) const {
         std::array<std::uint32_t, DIM> projections;
         for (auto i = 0u; i < DIM; ++i) {
-            projections[i] = static_cast<std::uint32_t>(std::max(static_cast<dtype>(0.), std::floor(
-                    (pos[i] + .5 * _gridSize[i]) / _cellSize[i])));
+            projections[i] = static_cast<std::uint32_t>(
+                    std::max(static_cast<dtype>(0.), static_cast<dtype>(std::floor((pos[i] + .5 * _gridSize[i]) / _cellSize[i]))));
             projections[i] = util::clamp(projections[i], 0U, nCells[i] - 1);
         }
         return projections;
