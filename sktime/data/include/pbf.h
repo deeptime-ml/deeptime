@@ -326,9 +326,9 @@ public:
     void predictPositions(dtype drift) {
         auto update = [this, drift](std::size_t, dtype *pos, dtype *velocity) {
             velocity[1] += -1 * _gravity * _dt;
-            if (drift > 0 && pos[0] > 0) {
+            //if ((drift > 0 && pos[0] > 0) || (drift < 0 && pos[0] < 0)) {
                 velocity[0] -= drift * _gravity * _dt;
-            }
+            //}
             for (auto i = 0u; i < DIM; ++i) {
                 pos[i] += _dt * velocity[i];
             }
@@ -474,9 +474,16 @@ public:
 
     std::uint32_t nSolverIterations() const { return _nSolverIterations; };
 
-    void setTensileInstabilityScale(dtype tis) { _tensileInstabilityScale = tis; }
+    void setTensileInstabilityDistance(dtype deltaQ) {
+        if(deltaQ >= _interactionRadius || deltaQ <= 0) {
+            throw std::invalid_argument("Tensile instability distance should be positive but smaller than the "
+                                        "interaction radius.");
+        }
+        _tensileInstabilityDistance = deltaQ;
+        _tensileInstabilityScale = static_cast<dtype>(1. / util::Wpoly6(static_cast<dtype>(0.2), _interactionRadius));
+    }
 
-    dtype tensileInstabilityScale() const { return _tensileInstabilityScale; }
+    dtype tensileInstabilityDistance() const { return _tensileInstabilityDistance; }
 
     void setTensileInstabilityK(dtype k) { _tensileInstabilityK = k; }
 
@@ -495,6 +502,7 @@ private:
     dtype _dt = static_cast<dtype>(0.016);
     dtype _rho0 = static_cast<dtype>(1.);
     dtype _epsilon = static_cast<dtype>(5.);
+    dtype _tensileInstabilityDistance = static_cast<dtype>(0.2);
     dtype _tensileInstabilityScale = static_cast<dtype>(1. / util::Wpoly6(static_cast<dtype>(0.2), _interactionRadius));
     dtype _tensileInstabilityK = static_cast<dtype>(0.1);
 };

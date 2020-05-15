@@ -48,7 +48,9 @@ PYBIND11_MODULE(_data_bindings, m) {
         .def_property("gravity", &PBF::gravity, &PBF::setGravity)
         .def_property("timestep", &PBF::dt, &PBF::setDt)
         .def_property("epsilon", &PBF::epsilon, &PBF::setEpsilon)
-        .def_property("equilibrium_density", &PBF::rho0, &PBF::setRho0)
-        .def_property("tensile_instability_scale", &PBF::tensileInstabilityScale, &PBF::setTensileInstabilityScale)
+        .def_property("rest_density", &PBF::rho0, &PBF::setRho0)
+        .def_property("tensile_instability_distance", &PBF::tensileInstabilityDistance,
+                      &PBF::setTensileInstabilityDistance)
         .def_property("tensile_instability_k", &PBF::tensileInstabilityK, &PBF::setTensileInstabilityK);
 }
+ 

@@ -1,11 +1,16 @@
+import numpy as np
+import sktime.data._data_bindings as bd
+
+from ..util import handle_n_jobs
+
 try:
     import matplotlib.pyplot as plt
     import matplotlib.animation as animation
-    import numpy as np
-    import sktime.data._data_bindings as bd
+
 
     class AnimatedScatter(object):
         """An animated scatter plot using matplotlib.animations.FuncAnimation."""
+
         def __init__(self, numpoints=50):
             self.numpoints = numpoints
             self.stream = self.data_stream()
@@ -30,12 +35,12 @@ try:
         def data_stream(self):
             n_steps = 500
             interaction_distance = 1.5
-            init_pos_x = np.arange(-24, 24, interaction_distance*.9).astype(np.float32)
-            init_pos_y = np.arange(12, 24, interaction_distance*.9).astype(np.float32)
+            init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
+            init_pos_y = np.arange(12, 24, interaction_distance * .9).astype(np.float32)
             init_pos = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
 
-            init_pos_x = np.arange(-24, 24, interaction_distance*.9).astype(np.float32)
-            init_pos_y = np.arange(-24, -18, interaction_distance*.9).astype(np.float32)
+            init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
+            init_pos_y = np.arange(-24, -18, interaction_distance * .9).astype(np.float32)
             init_pos_lower = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
 
             init_pos = np.concatenate((init_pos, init_pos_lower), axis=0)
@@ -91,7 +96,7 @@ try:
             # Set x and y data...
             self.scat.set_offsets(data[:, :2])
             # Set sizes...
-            self.scat.set_sizes(300 * abs(data[:, 2])**1.5 + 100)
+            self.scat.set_sizes(300 * abs(data[:, 2]) ** 1.5 + 100)
             # Set colors..
             self.scat.set_array(data[:, 3])
 
@@ -100,6 +105,36 @@ try:
             return self.scat,
 except ImportError:
     pass
+
+
+class PBF(object):
+
+    def __init__(self, domain_size: np.ndarray, initial_positions: np.ndarray,
+                 interaction_distance: float, n_jobs=None, n_solver_iterations: int = 5,
+                 gravity: float = 10., epsilon: float = 10., timestep: float = 0.016, rest_density: float = 1.,
+                 tensile_instability_distance: float = .2, tensile_instability_k: float = 0.1):
+        if np.atleast_1d(domain_size).ndim != 1 or domain_size.shape[0] != 2 or np.any(domain_size <= 0):
+            raise ValueError("Invalid domain size: must be positive and 1-dimensional of length two.")
+        if initial_positions.ndim != 2 or initial_positions.shape[1] != 2:
+            raise ValueError("initial positions must be a 2-dimensional numpy array of shape (N, 2), where N is"
+                             "the number of particles.")
+        if interaction_distance <= 0:
+            raise ValueError("Interaction distance must be positive.")
+        domain_size = domain_size.astype(np.float32, subok=False, copy=False)
+        initial_positions = initial_positions.astype(np.float32, subok=False, copy=False)
+
+        self._engine = bd.PBF(initial_positions, domain_size, interaction_distance, handle_n_jobs(n_jobs))
+        self._engine.n_solver_iterations = n_solver_iterations
+        self._engine.gravity = gravity
+        self._engine.epsilon = epsilon
+        self._engine.timestep = timestep
+        self._engine.rest_density = rest_density
+        self._engine.tensile_instability_distance = tensile_instability_distance
+        self._engine.tensile_instability_k = tensile_instability_k
+
+    def run(self, n_steps: int, drift: float):
+        return self._engine.run(n_steps, drift)
+
 
 if __name__ == '__main__':
     a = AnimatedScatter()
