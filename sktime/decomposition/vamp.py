@@ -26,7 +26,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from ..base import Model, Estimator
+from ..base import Model, Estimator, Transformer
 from ..covariance.covariance import Covariance, CovarianceModel
 from ..numeric import mdot
 from ..numeric.eigen import spd_inv_split, spd_inv_sqrt
@@ -35,7 +35,7 @@ from ..util import cached_property
 __all__ = ['VAMP', 'VAMPModel']
 
 
-class VAMPModel(Model):
+class VAMPModel(Model, Transformer):
     r""" Model which was estimated from a :class:`VAMP` estimator.
 
     See Also
@@ -450,7 +450,7 @@ class VAMPModel(Model):
         return res + 1
 
 
-class VAMP(Estimator):
+class VAMP(Estimator, Transformer):
     r"""Variational approach for Markov processes (VAMP).
 
     The implementation is based on [1]_, [2]_.
@@ -700,6 +700,26 @@ class VAMP(Estimator):
         """
         self._covar.fit(data, **kw)
         return self
+
+    def transform(self, data, right=None):
+        r""" Projects given timeseries onto dominant singular functions. This method dispatches to
+        :meth:`VAMPModel.transform`.
+
+        Parameters
+        ----------
+        data : (T, n) ndarray
+            Input timeseries data.
+        right : bool or None, optional, default=None
+            Whether to use left or right eigenvectors for projection, overrides :attr:`right` if not None.
+
+        Returns
+        -------
+        Y : (T, m) ndarray
+            The projected data.
+            If `right` is True, projection will be on the right singular functions. Otherwise, projection will be on
+            the left singular functions.
+        """
+        return self.fetch_model().transform(data, right=right)
 
     def partial_fit(self, data):
         """ Incrementally update the covariances and mean.
