@@ -19,7 +19,9 @@ from ..util import ensure_timeseries_data
 class CovarianceModel(Model):
     r""" A model which in particular carries the estimated covariances, means from a :class:`Covariance`.
     """
-    def __init__(self, cov_00=None, cov_0t=None, cov_tt=None, mean_0=None, mean_t=None, bessels_correction=True):
+    def __init__(self, cov_00: Optional[np.ndarray] = None, cov_0t: Optional[np.ndarray] = None,
+                 cov_tt: Optional[np.ndarray] = None, mean_0: Optional[np.ndarray] = None,
+                 mean_t: Optional[np.ndarray] = None, bessels_correction: bool = True, lagtime: Optional[int] = None):
         r"""
         Initializes a new online covariance model.
 
@@ -37,6 +39,8 @@ class CovarianceModel(Model):
             The time-shifted means if computed.
         bessels_correction : bool, optional, default=True
             Whether Bessel's correction was used during estimation.
+        lagtime : int, default=None
+            The lagtime that was used during estimation.
         """
         super(CovarianceModel, self).__init__()
         self._cov_00 = cov_00
@@ -45,6 +49,7 @@ class CovarianceModel(Model):
         self._mean_0 = mean_0
         self._mean_t = mean_t
         self._bessel = bessels_correction
+        self._lagtime = lagtime
 
     @property
     def cov_00(self) -> Optional[np.ndarray]:
@@ -93,6 +98,14 @@ class CovarianceModel(Model):
         :type: bool
         """
         return self._bessel
+
+    @property
+    def lagtime(self):
+        r""" The lagtime at which estimation was performed.
+
+        :type: int or None
+        """
+        return self._lagtime
 
 
 class Covariance(Estimator):
@@ -415,10 +428,8 @@ class Covariance(Estimator):
             mean_0 = self._rc.mean_X()
         if self.compute_ctt or self.compute_c0t:
             mean_t = self._rc.mean_Y()
-        if self._model is None:
-            self._model = CovarianceModel()
-        self._model.__init__(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
-                             bessels_correction=self.bessels_correction)
+        self._model = CovarianceModel(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
+                                      bessels_correction=self.bessels_correction, lagtime=self.lagtime)
         return self._model
 
 

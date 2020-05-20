@@ -373,7 +373,6 @@ class VAMPModel(Model, Transformer):
             functions. Otherwise, projection will be on the left singular
             functions.
         """
-        # TODO: in principle get_output should not return data for *all* frames!
         right = self.right if right is None else right
         if right:
             X_meanfree = data - self.mean_t
