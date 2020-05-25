@@ -64,3 +64,60 @@ The third of the described cases is salvageable with TICA when a special reweigh
 The point of view then transitions from a "metastability" one to "coherent sets" - metastabilies' analogon in
 off-equilibirum cases and commonly encountered in, e.g., fluid dynamics. The rough idea is that one can then
 identify regions which (approximately) stay together under temporal propagation.
+
+
+Performance, numerical stability, and memory consumption
+========================================================
+
+The implementations of `TICA <notebooks/tica.ipynb>`_ and its generalization `VAMP <notebooks/vamp.ipynb>`_
+are based on estimating covariance matrices using the `covariance estimator <api/generated/sktime.covariance.Covariance.rst#sktime.covariance.Covariance>`_.
+This estimator makes use of an online algorithm proposed in :cite:`chan1982updating` so that not the entire data has
+to be kept in memory.
+
+In particular, this means that TICA and VAMP not only have a :code:`fit`-method (`tica.fit() <api/generated/sktime.decomposition.TICA.rst#sktime.decomposition.TICA.fit>`_,
+`vamp.fit() <api/generated/sktime.decomposition.VAMP.rst#sktime.decomposition.VAMP.fit>`_), but also a
+:code:`partial_fit`-method (`tica.partial_fit() <api/generated/sktime.decomposition.TICA.rst#sktime.decomposition.TICA.partial_fit>`_,
+`vamp.partial_fit() <api/generated/sktime.decomposition.VAMP.rst#sktime.decomposition.VAMP.partial_fit>`_).
+
+.. code-block:: python
+
+    estimator = sktime.decomposition.TICA(lagtime=tau)  # creating an estimator
+    estimator = sktime.decomposition.VAMP(lagtime=tau)  # either TICA or VAMP
+
+Since toy data usually easily fits into memory, loading data from, e.g., a database or network is simulated with the
+`timeshifted_split() <api/generated/sktime.data.timeshifted_split.rst#sktime.data.timeshifted_split>`_ utility function.
+It splits the data into timeshifted blocks :math:`X_t` and :math:`X_{t+\tau}`.
+
+These blocks are not trajectory-overlapping, i.e., if two or more trajectories are provided then the blocks are
+always completely contained in exactly one of these.
+
+Note how here we provide both blocks, the block :math:`X_t` and the block :math:`X_{t+\tau}` as a tuple.
+This is different to :code:`fit()` where the splitting and shifting is performed internally; in which case it
+suffices to provide the whole dataset as argument.
+
+.. code-block:: python
+
+    for X, Y in sktime.data.timeshifted_split(feature_trajectory, lagtime=tau, chunksize=100):
+        estimator.partial_fit((X, Y))
+
+Furthermore, the online algorithm of :cite:`chan1982updating` uses a tree-like moment storage with copies of
+intermediate covariance and mean estimates. During the learning procedure, these moment storages are combined so
+that the tree never exceeds a certain depth. This depth can be set by the `ncov` estimator parameter:
+
+.. code-block:: python
+
+    estimator = sktime.decomposition.TICA(lagtime=1, ncov=50)
+    for X, Y in sktime.data.timeshifted_split(feature_trajectory, lagtime=1, chunksize=10):
+        tica.partial_fit((X, Y))
+
+Another factor to consider is numerical stability. While memory consumption can increase with
+larger `ncov`, the stability generally improves.
+
+What's next?
+============
+
+While a dimensionality reduction is always of great use because it makes it easier to look at the data,
+one can take further steps.
+
+A commonly performed pipeline would be to `cluster <notebooks/clustering.ipynb>`_ the projected data and then
+building a `markov state model <index_msm.rst>`_ on the resulting discretized state space.

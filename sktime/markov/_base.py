@@ -49,24 +49,24 @@ def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None
     return dtrajs_new
 
 
-def cvsplit_dtrajs(dtrajs, random_state=None):
+def cvsplit_dtrajs(trajs, random_state=None):
     """ Splits the trajectories into a training and test set with approximately equal number of trajectories
 
     Parameters
     ----------
-    dtrajs : list of ndarray(int)
+    trajs : list of ndarray(int)
         Discrete trajectories
     random_state : None or int or np.random.RandomState
         Random seed to use.
     """
     from sklearn.utils.random import check_random_state
-    if len(dtrajs) == 1:
+    if len(trajs) == 1:
         raise ValueError('Only have a single trajectory. Cannot be split into train and test set')
     random_state = check_random_state(random_state)
-    I0 = random_state.choice(len(dtrajs), int(len(dtrajs) / 2), replace=False)
-    I1 = np.array(list(set(list(np.arange(len(dtrajs)))) - set(list(I0))))
-    dtrajs_train = [dtrajs[i] for i in I0]
-    dtrajs_test = [dtrajs[i] for i in I1]
+    I0 = random_state.choice(len(trajs), int(len(trajs) / 2), replace=False)
+    I1 = np.array(list(set(list(np.arange(len(trajs)))) - set(list(I0))))
+    dtrajs_train = [trajs[i] for i in I0]
+    dtrajs_test = [trajs[i] for i in I1]
     return dtrajs_train, dtrajs_test
 
 

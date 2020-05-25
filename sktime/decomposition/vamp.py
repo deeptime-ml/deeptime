@@ -19,7 +19,6 @@
 """
 
 
-import warnings
 from collections import namedtuple
 from numbers import Real, Integral
 from typing import Optional, Union
@@ -46,7 +45,7 @@ class VAMPModel(Model, Transformer):
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
                                                                     'left_singular_vecs', 'right_singular_vecs'])
 
-    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6, scaling=None, right=True):
+    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6, scaling=None, right=False):
         r""" Creates a new model instance.
 
         Parameters
@@ -60,7 +59,7 @@ class VAMPModel(Model, Transformer):
             Singular value cutoff parameter, see :attr:`VAMP.epsilon`.
         scaling : str or None, optional, default=None
             Scaling parameter, see :attr:`VAMP.scaling`.
-        right : bool, optional, default=True
+        right : bool, optional, default=False
             Whether right or left eigenvectors should be used for projection.
         """
         super().__init__()
@@ -312,18 +311,7 @@ class VAMPModel(Model, Transformer):
 
     @cached_property
     def _decomposition(self) -> _DiagonalizationResults:
-        """Performs SVD on covariance matrices and save left, right singular vectors and values in the model.
-
-        Parameters
-        ----------
-        scaling : None or string, default=None
-            Scaling to be applied to the VAMP modes upon transformation
-            * None: no scaling will be applied, variance of the singular
-              functions is 1
-            * 'kinetic map' or 'km': singular functions are scaled by
-              singular value. Note that only the left singular functions
-              induce a kinetic map.
-        """
+        """Performs SVD on covariance matrices and save left, right singular vectors and values in the model."""
         L0 = spd_inv_split(self.cov_00, epsilon=self.epsilon)
         rank0 = L0.shape[1] if L0.ndim == 2 else 1
         Lt = spd_inv_split(self.cov_tt, epsilon=self.epsilon)
@@ -423,7 +411,6 @@ class VAMPModel(Model, Transformer):
         .. [2] Noe, F. and Clementi, C. 2015. Kinetic distance and kinetic maps from molecular dynamics simulation.
             J. Chem. Theory. Comput. doi:10.1021/acs.jctc.5b00553
         """
-        # TODO: implement for TICA too
         if test_model is None:
             test_model = self
         Uk = self.singular_vectors_left[:, 0:self.output_dimension]
