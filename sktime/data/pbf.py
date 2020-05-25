@@ -1,5 +1,5 @@
 import numpy as np
-import sktime.data._data_bindings as bd
+from . import _data_bindings as bd
 
 from ..util import handle_n_jobs
 
