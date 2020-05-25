@@ -51,6 +51,7 @@ PYBIND11_MODULE(_data_bindings, m) {
         .def_property("rest_density", &PBF::rho0, &PBF::setRho0)
         .def_property("tensile_instability_distance", &PBF::tensileInstabilityDistance,
                       &PBF::setTensileInstabilityDistance)
-        .def_property("tensile_instability_k", &PBF::tensileInstabilityK, &PBF::setTensileInstabilityK);
+        .def_property("tensile_instability_k", &PBF::tensileInstabilityK, &PBF::setTensileInstabilityK)
+        .def_property_readonly("n_particles", &PBF::nParticles)
+        .def_property_readonly("domain_size", &PBF::gridSize);
 }
- 

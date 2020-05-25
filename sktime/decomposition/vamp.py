@@ -338,10 +338,41 @@ class VAMPModel(Model, Transformer):
             rank0=rank0, rankt=rankt, singular_values=singular_values, left_singular_vecs=U, right_singular_vecs=V
         )
 
-    @property
-    def koopman_operator(self):
-        r""" Yields the reduced koopman operator :math:`\tilde{K}`. """
-        return self.singular_vectors_left @ np.diag(self.singular_values) @ self.singular_vectors_right
+    def forward(self, trajectory: np.ndarray, component: Optional[int] = None):
+        r"""Applies the forward transform to the trajectory in non-whitened space. This is achieved by
+        transforming each frame :math:`X_t` with
+
+        .. math::
+            \hat{X}_{t+\tau} = (V^\top)^{-1} \Sigma U^\top (X_t - \mu_0),
+
+        where :math:`V` are the left singular vectors, :math:`\Sigma` the singular values, and :math:`U` the right
+        singular vectors.
+
+        Parameters
+        ----------
+        trajectory : (T, n) ndarray
+            The input trajectory
+        component : int or None
+            The component to project onto. If None, all processes are taken into account, if integer sets all singular
+            values to zero but the "component"th one.
+
+        Returns
+        -------
+        predictions : (T, n) ndarray
+            The predicted trajectory.
+        """
+        if component is not None:
+            singval = np.zeros((len(self.singular_values), len(self.singular_values)))
+            singval[component, component] = self.singular_values[component]
+        else:
+            singval = np.diag(self.singular_values)
+
+        output_trajectory = np.empty_like(trajectory)
+        VT_inv = np.linalg.pinv(self.singular_vectors_right.T)
+        for t, frame in enumerate(trajectory):
+            output_trajectory[t] = VT_inv @ singval @ np.dot(self.singular_vectors_left.T, frame - self.mean_0)
+
+        return output_trajectory
 
     def transform(self, data, right=None):
         r"""Projects the data onto the dominant singular functions.
@@ -417,9 +448,9 @@ class VAMPModel(Model, Transformer):
         Vk = self.singular_vectors_right[:, 0:self.output_dimension]
         res = None
         if score_method == 'VAMP1' or score_method == 'VAMP2':
-            A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk))
+            A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk), epsilon=self.epsilon)
             B = Uk.T.dot(test_model.cov_0t).dot(Vk)
-            C = spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk))
+            C = spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk), epsilon=self.epsilon)
             ABC = mdot(A, B, C)
             if score_method == 'VAMP1':
                 res = np.linalg.norm(ABC, ord='nuc')

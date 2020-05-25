@@ -224,11 +224,11 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
         L = 1. / _np.sqrt(W[0, 0])
     else:
         if epsilon == 0.:
-            sm, Vm = _np.linalg.eigh(W)
+            sm, Vm = _np.linalg.eigh(.5 * (W + W.T))
             sm, Vm = sort_by_norm(sm, Vm)
             # threshold eigenvalues to be >= 0 and sqrt of the eigenvalues to be >= 1e-16 so that no
             # division by zero can occur
-            L = _np.dot(Vm, _np.diag(1.0 / _np.maximum(_np.sqrt(_np.maximum(sm, 0.)), 1e-16)))
+            L = _np.dot(Vm, _np.diag(1.0 / _np.maximum(_np.sqrt(_np.maximum(sm, 1e-12)), 1e-12)))
         else:
             sm, Vm = spd_eig(W, epsilon=epsilon, method=method, canonical_signs=canonical_signs)
             L = _np.dot(Vm, _np.diag(1.0 / _np.sqrt(sm)))

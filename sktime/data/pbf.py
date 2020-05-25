@@ -3,116 +3,53 @@ import sktime.data._data_bindings as bd
 
 from ..util import handle_n_jobs
 
-try:
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
-
-
-    class AnimatedScatter(object):
-        """An animated scatter plot using matplotlib.animations.FuncAnimation."""
-
-        def __init__(self, numpoints=50):
-            self.numpoints = numpoints
-            self.stream = self.data_stream()
-
-            # Setup the figure and axes...
-            self.fig, self.ax = plt.subplots()
-            # Then setup FuncAnimation.
-            self.ani = animation.FuncAnimation(self.fig, self.update, interval=50,
-                                               init_func=self.setup_plot, blit=True, repeat=False, save_count=5000)
-
-        def setup_plot(self):
-            """Initial drawing of the scatter plot."""
-            x, y, s, c = next(self.stream).T
-            self.scat = self.ax.scatter(x, y, c=c, s=s, vmin=0, vmax=1,
-                                        cmap="jet", edgecolor="k")
-            l = 25
-            self.ax.axis([-l, l, -l, l])
-            # For FuncAnimation's sake, we need to return the artist we'll be using
-            # Note that it expects a sequence of artists, thus the trailing comma.
-            return self.scat,
-
-        def data_stream(self):
-            n_steps = 500
-            interaction_distance = 1.5
-            init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
-            init_pos_y = np.arange(12, 24, interaction_distance * .9).astype(np.float32)
-            init_pos = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
-
-            init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
-            init_pos_y = np.arange(-24, -18, interaction_distance * .9).astype(np.float32)
-            init_pos_lower = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
-
-            init_pos = np.concatenate((init_pos, init_pos_lower), axis=0)
-
-            n_particles = len(init_pos)
-            # init_pos[n_particles//2 : ] += .01
-            pbf = bd.PBF(init_pos, np.array([50, 50], dtype=np.float32), interaction_distance, 8)
-            pbf.n_solver_iterations = 5
-            # pbf.gravity = 2.
-            pbf.epsilon = 10
-            # pbf.timestep = 1e-8
-            pbf.equilibrium_density = 1.
-
-            print("n solve", pbf.n_solver_iterations)
-            print("gravity", pbf.gravity)
-            print("dt", pbf.timestep)
-            print("eps", pbf.epsilon)
-            print("rho0", pbf.equilibrium_density)
-            print("tis", pbf.tensile_instability_scale)
-            print("tik", pbf.tensile_instability_k)
-
-            import tqdm
-            traj_total = None
-            for i in tqdm.tqdm(range(10)):
-                traj = pbf.run(n_steps, 1.5 if i % 2 != 0 else 0)
-                if traj_total is None:
-                    traj_total = traj
-                else:
-                    traj_total = np.concatenate((traj_total, traj), axis=0)
-            traj = traj_total.reshape((-1, n_particles, 2))
-            traj = traj[::10]
-            """Generate a random walk (brownian motion). Data is scaled to produce
-            a soft "flickering" effect."""
-            # xy = (np.random.random((self.numpoints, 2))-0.5)*10
-            s = np.empty((n_particles,))
-            s.fill(0.5)
-            c = np.empty((n_particles,))
-            c.fill(0.5)
-            # s, c = np.random.random((self.numpoints, 2)).T
-
-            for t in tqdm.tqdm(range(len(traj))):
-                yield np.c_[traj[t, :, 0], traj[t, :, 1], s, c]
-            # while True:
-            #     # xy += 0.03 * (np.random.random((self.numpoints, 2)) - 0.5)
-            #     # s += 0.05 * (np.random.random(self.numpoints) - 0.5)
-            #     # c += 0.02 * (np.random.random(self.numpoints) - 0.5)
-            #     yield np.c_[xy[:,0], xy[:,1], s, c]
-
-        def update(self, i):
-            """Update the scatter plot."""
-            data = next(self.stream)
-
-            # Set x and y data...
-            self.scat.set_offsets(data[:, :2])
-            # Set sizes...
-            self.scat.set_sizes(300 * abs(data[:, 2]) ** 1.5 + 100)
-            # Set colors..
-            self.scat.set_array(data[:, 3])
-
-            # We need to return the updated artist for FuncAnimation to draw..
-            # Note that it expects a sequence of artists, thus the trailing comma.
-            return self.scat,
-except ImportError:
-    pass
-
 
 class PBF(object):
+    r""" A position based fluids :cite:`macklin2013position` simulator for two-dimensional systems.
+
+    Its underlying principle is by definition of a rest density :math:`\rho_0`, which the particles in the system
+    try to reach by a smoothed particle hydrodynamics style simulation [1]_ [2]_.
+
+    References
+    ----------
+    .. [1] Gingold, Robert A., and Joseph J. Monaghan. "Smoothed particle hydrodynamics: theory and application
+           to non-spherical stars." Monthly notices of the royal astronomical society 181.3 (1977): 375-389.
+    .. [2] Lucy, Leon B. "A numerical approach to the testing of the fission hypothesis." The astronomical
+          journal 82 (1977): 1013-1024.
+    """
 
     def __init__(self, domain_size: np.ndarray, initial_positions: np.ndarray,
                  interaction_distance: float, n_jobs=None, n_solver_iterations: int = 5,
                  gravity: float = 10., epsilon: float = 10., timestep: float = 0.016, rest_density: float = 1.,
                  tensile_instability_distance: float = .2, tensile_instability_k: float = 0.1):
+        r"""Creates a new simulator instance.
+
+        Parameters
+        ----------
+        domain_size : (2,) ndarray
+            A 1-dimensional ndarray with two elements describing the extension of the simulation box.
+        initial_positions : (N, 2) ndarray
+            A 2-dimensional ndarray describing the :math:`N` particles' initial positions.
+        interaction_distance : float
+            Interaction distance for particles, influences the cell size for the neighbor list.
+        n_jobs : int or None, default=None
+            Number threads to use for simulation.
+        n_solver_iterations : int, default=5
+            The number of solver iterations for particle position updates. The more, the slower the simulation but also
+            the more accurate.
+        gravity : float, default=10
+            Gravity parameter which acts on particles' velolicites in each time step as constant force.
+        epsilon : float, default=10
+            Damping parameter. The higher, the more damping.
+        timestep : float, default=0.016
+            The timestep used for propagation.
+        rest_density : float, defaul=1.
+            The rest density :math:`\rho_0`.
+        tensile_instability_distance : float, default=0.2
+            Parameter responsible for surface-tension-like effects.
+        tensile_instability_k : float, default=0.1
+            Also controls surface-tension effects.
+        """
         if np.atleast_1d(domain_size).ndim != 1 or domain_size.shape[0] != 2 or np.any(domain_size <= 0):
             raise ValueError("Invalid domain size: must be positive and 1-dimensional of length two.")
         if initial_positions.ndim != 2 or initial_positions.shape[1] != 2:
@@ -132,12 +69,199 @@ class PBF(object):
         self._engine.tensile_instability_distance = tensile_instability_distance
         self._engine.tensile_instability_k = tensile_instability_k
 
-    def run(self, n_steps: int, drift: float):
+    def run(self, n_steps: int, drift: float = 0.):
+        r""" Performs `n_steps` many simulation steps and returns a trajectory of recorded particle positions.
+
+        Parameters
+        ----------
+        n_steps : int
+            Number of steps to run.
+        drift : float, default=0
+            Drift that is added to particles' velocity in `x` direction.
+
+        Returns
+        -------
+        trajectory : (n_steps, 2) ndarray
+            Output trajectory.
+        """
         return self._engine.run(n_steps, drift)
 
+    def simulate_oscillatory_force(self, n_oscillations, n_steps, drift=0.3):
+        r""" Runs `2*n_oscillations*n_steps` many simulation steps in total by applying the drift alternatingly
+        in positive and  negative direction for `n_steps` each, `n_oscillation` times.
 
-if __name__ == '__main__':
-    a = AnimatedScatter()
-    a.ani.save("out.mp4", codec="h264")
-    print("done")
-    # plt.show()
+        Parameters
+        ----------
+        n_oscillations : int
+            Number of oscillations.
+        n_steps : int
+            Number of steps per run with a certain drift setting. Is then run again with the negated drift.
+        drift : float
+            The magnitude of the drift force into x direction.
+
+        Returns
+        -------
+        trajectory : (T, n) ndarray
+            Output trajectory.
+        """
+        n_runs = 2 * n_oscillations
+        traj_total = np.empty((n_runs * n_steps, self.n_particles * 2))
+        for i in range(n_runs):
+            traj = self.run(n_steps, drift if i % 2 == 0 else -drift)
+            traj_total[i * n_steps:(i + 1) * n_steps] = traj
+        return traj_total
+
+    def transform_to_density(self, trajectory, n_grid_x=20, n_grid_y=10, n_jobs=None):
+        r"""Transforms a two-dimensional PBF particle trajectory to a trajectory of densities by performing KDEs.
+        Since we have the prior knowledge that no particles get lost on the way, the densities are
+        normalized frame-wise.
+
+        Parameters
+        ----------
+        trajectory : (T, n, 2) ndarray
+            The input trajectory for n particles.
+        n_grid_x : int, default=20
+            Number of evaluation points of simulation box in x direction.
+        n_grid_y : int, default=10
+            Number of evaluation points of simulation box in y direction.
+        n_jobs : int or None, default=None
+            Number of jobs to use when transforming to densities.
+
+        Returns
+        -------
+        trajectory : (T, n_grid_x * n_grid_y) ndarray
+            Output trajectory
+        """
+        return _transform_to_density_impl(self.domain_size, trajectory, n_grid_x, n_grid_y, n_jobs)
+
+    def make_animation(self, trajectories, stride=1, mode="scatter", **kw):
+        r""" Creates a matplotlib animation object consisting of either scatter plots of contour plots for plotting
+        particles and densities, respectively.
+
+        Parameters
+        ----------
+        trajectories : list of ndarray
+            Input trajectories. Must all have same shape.
+        stride : int, default=1
+            Apply stride to frames so that fewer data is presented.
+        mode : str, default="scatter"
+            Aside from "scatter" this also supports "contourf" for densities.
+        **kw
+            Optional keyword arguments. When mode is "contourf", the keywords "n_grid_x" and "n_grid_y" must be
+            provided, as in :meth:`transform_to_density`.
+
+        Returns
+        -------
+        animation : FuncAnimation
+            Matplotlib animation object.
+        """
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        import matplotlib.animation as animation
+
+        if not isinstance(trajectories, (list, tuple)):
+            trajectories = [trajectories]
+        trajectories = [traj.reshape((len(traj), -1, 2))[::stride] for traj in trajectories]
+
+        n_particles = self.n_particles
+
+        domain_size = self.domain_size
+
+        backend_ = mpl.get_backend()
+        mpl.use("Agg")  # Prevent showing stuff
+
+        fig, axes = plt.subplots(1, len(trajectories), figsize=(len(trajectories)*8, 8))
+        if not isinstance(axes, np.ndarray):
+            axes = np.asanyarray(axes)
+        for ax in axes.flat:
+            ax.set_xlim((-domain_size[0] / 2, domain_size[0] / 2))
+            ax.set_ylim((-domain_size[1] / 2, domain_size[1] / 2))
+
+        s = np.empty((n_particles,))
+        s.fill(300)
+        c = np.empty((n_particles,))
+        c.fill(0.5)
+        plot_handles = []
+
+        # needed for contourf
+        grid = None
+        gridx = None
+        gridy = None
+
+        if mode == "scatter":
+            for traj, ax in zip(trajectories, axes.flat):
+                handle = ax.scatter(traj[0, :, 0], traj[0, :, 1], s=s, c=c, vmin=0, vmax=1,
+                                    cmap="jet", edgecolor="k")
+                plot_handles.append(handle)
+        elif mode == "contourf":
+            n_grid_x = kw['n_grid_x']
+            n_grid_y = kw['n_grid_y']
+
+            gridx = np.linspace(-domain_size[0] / 2, domain_size[0] / 2, num=n_grid_x).astype(np.float32)
+            gridy = np.linspace(-domain_size[1] / 2, domain_size[1] / 2, num=n_grid_y).astype(np.float32)
+            grid = np.meshgrid(gridx, gridy)
+
+            for k, ax in enumerate(axes.flat):
+                handle = ax.contourf(grid[0], grid[1], trajectories[k][0].reshape((len(gridy), len(gridx))))
+                plot_handles.append(handle)
+        else:
+            raise ValueError("Unknown mode {}".format(mode))
+
+        def update_scatter(i):
+            for traj, handle in zip(trajectories, plot_handles):
+                X = traj[i]
+                handle.set_offsets(X)
+            return plot_handles
+
+        def update_contourf(i):
+            out = []
+            for k, ax in enumerate(axes.flat):
+                X = trajectories[k][i]
+                for tp in plot_handles[k].collections:
+                    tp.remove()
+                plot_handles[k] = ax.contourf(grid[0], grid[1], X.reshape((len(gridy), len(gridx))))
+                out += plot_handles[k].collections
+            return out
+
+        update = update_scatter if mode == "scatter" else update_contourf
+        ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=False,
+                                      frames=len(trajectories[0]))
+
+        mpl.use(backend_)  # Reset backend
+        return ani
+
+    @property
+    def domain_size(self):
+        r""" The size of the domain. """
+        return self._engine.domain_size
+
+    @property
+    def n_particles(self):
+        r""" Number of particles in the simulation. """
+        return self._engine.n_particles
+
+
+def _transform_to_density_impl_worker(args):
+    t, frame, kde_input = args[0], args[1], args[2]
+    from scipy.stats import gaussian_kde
+    out = gaussian_kde(frame.T, bw_method=0.2).evaluate(kde_input.T)
+    out /= out.sum()
+    return t, out
+
+
+def _transform_to_density_impl(domain_size, trajectory, n_grid_x=20, n_grid_y=10, n_jobs=None):
+    trajectory = trajectory.reshape((len(trajectory), -1, 2))
+
+    gridx = np.linspace(-domain_size[0] / 2, domain_size[0] / 2, num=n_grid_x).astype(np.float32)
+    gridy = np.linspace(-domain_size[1] / 2, domain_size[1] / 2, num=n_grid_y).astype(np.float32)
+    grid = np.meshgrid(gridx, gridy)
+    kde_input = np.dstack(grid).reshape(-1, 2)
+    traj_kde = np.empty((len(trajectory), len(kde_input)))
+
+    import multiprocessing as mp
+    with mp.Pool(processes=handle_n_jobs(n_jobs)) as pool:
+        args = [(t, trajectory[t], kde_input) for t in range(len(trajectory))]
+        for result in pool.imap_unordered(_transform_to_density_impl_worker, args):
+            traj_kde[result[0]] = result[1]
+
+    return traj_kde

@@ -10,6 +10,7 @@ API
 
     double_well_discrete
     ellipsoids
+    pbf
 
 ===============================================================================
 Utilities
@@ -29,9 +30,11 @@ Implementations
 
     DoubleWellDiscrete
     Ellipsoids
+    PBF
 """
 
 from .util import timeshifted_split
 from .double_well import DoubleWellDiscrete
 from .ellipsoids import Ellipsoids
-from .datasets import double_well_discrete, ellipsoids
+from .pbf import PBF
+from .datasets import double_well_discrete, ellipsoids, pbf

@@ -326,9 +326,7 @@ public:
     void predictPositions(dtype drift) {
         auto update = [this, drift](std::size_t, dtype *pos, dtype *velocity) {
             velocity[1] += -1 * _gravity * _dt;
-            //if ((drift > 0 && pos[0] > 0) || (drift < 0 && pos[0] < 0)) {
-                velocity[0] -= drift * _gravity * _dt;
-            //}
+            velocity[0] -= drift * _gravity * _dt;
             for (auto i = 0u; i < DIM; ++i) {
                 pos[i] += _dt * velocity[i];
             }
@@ -473,6 +471,8 @@ public:
     void setNSolverIterations(std::uint32_t n) { _nSolverIterations = n; }
 
     std::uint32_t nSolverIterations() const { return _nSolverIterations; };
+
+    auto gridSize() const { return _neighborList.gridSize(); }
 
     void setTensileInstabilityDistance(dtype deltaQ) {
         if(deltaQ >= _interactionRadius || deltaQ <= 0) {
