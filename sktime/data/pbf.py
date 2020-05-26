@@ -10,6 +10,39 @@ class PBF(object):
     Its underlying principle is by definition of a rest density :math:`\rho_0`, which the particles in the system
     try to reach by a smoothed particle hydrodynamics style simulation [1]_ [2]_.
 
+    In some more detail:
+
+    Each particle has positions :math:`p_1,\ldots,p_n \in\mathbb{R}^d` and
+    velocity :math:`v_1,\ldots,v_n\in\mathbb{R^d}`. For the local density a standard SPH estimator is used
+
+    .. math ::
+        \rho_i = \sum_i m_i W(p_i - p_j, h),
+
+    where :math:`m_i` refers to the particle's mass (here :math:`m_i \equiv 1` for simplicity), :math:`W` is a
+    convolution kernel with interaction distance :math:`h`, i.e., particles with distance larger than :math:`h`
+    get assigned a weight of zero in the convolution operation.
+
+    The whole system has an underlying family of density constraints
+
+    .. math ::
+        C_i(p_1,\ldots,p_n) = \frac{\rho_i}{\rho_0} - 1.
+
+    The simulation algorithm tries to fulfill this constraint by updating each particle's position, i.e., it tries to
+    find :math:`\Delta p_k` so that
+
+    .. math ::
+        C_k(p_1,\ldots,p_k + \Delta p_k,\ldots,p_n) = 0.
+
+    This is done by performing Newton's optimization method along the constraint's gradient. Because of potentially
+    vanishing gradients, the optimization is regularized / dampened with a parameter :math:`\varepsilon`. In this
+    implementation, larger values of :math:`\varepsilon` lead to more regularization.
+
+    When a particle has only very few neighbors, it might not be possible to reach the rest density. This can lead
+    to particle clumping (i.e., areas of negative pressures). One remedy is an artificial internal pressure term,
+    here referred to as tensile instability. It modifies the weighting inside the convolution kernel itself.
+    The default parameters `tensile_instability_distance` and `tensile_instability_k` are the suggested ones in the
+    PBF publication.
+
     References
     ----------
     .. [1] Gingold, Robert A., and Joseph J. Monaghan. "Smoothed particle hydrodynamics: theory and application
@@ -147,8 +180,14 @@ class PBF(object):
         mode : str, default="scatter"
             Aside from "scatter" this also supports "contourf" for densities.
         **kw
-            Optional keyword arguments. When mode is "contourf", the keywords "n_grid_x" and "n_grid_y" must be
-            provided, as in :meth:`transform_to_density`.
+            Optional keyword arguments. The following are supported:
+
+            * "n_grid_x", required when in mode "contourf" (see :meth:`transform_to_density`)
+            * "n_grid_y", required when in mode "contourf" (see :meth:`transform_to_density`)
+            * "figsize" controls figure size, defaults to (n_traj * 8, 6)
+            * "ncols" controls number of columns, defaults to n_traj
+            * "nrows" controls number of rows, defaults to 1
+            * "titles" optional list of strings for titles
 
         Returns
         -------
@@ -170,12 +209,18 @@ class PBF(object):
         backend_ = mpl.get_backend()
         mpl.use("Agg")  # Prevent showing stuff
 
-        fig, axes = plt.subplots(1, len(trajectories), figsize=(len(trajectories)*8, 8))
+        figsize = kw.get("figsize", (len(trajectories)*8, 6))
+        ncols = kw.get("ncols", len(trajectories))
+        nrows = kw.get("nrows", 1)
+        titles = kw.get("titles", [None] * len(trajectories))
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
         if not isinstance(axes, np.ndarray):
             axes = np.asanyarray(axes)
-        for ax in axes.flat:
+        for title, ax in zip(titles, axes.flat):
             ax.set_xlim((-domain_size[0] / 2, domain_size[0] / 2))
             ax.set_ylim((-domain_size[1] / 2, domain_size[1] / 2))
+            if title is not None:
+                ax.set_title(title)
 
         s = np.empty((n_particles,))
         s.fill(300)

@@ -343,7 +343,7 @@ class VAMPModel(Model, Transformer):
         transforming each frame :math:`X_t` with
 
         .. math::
-            \hat{X}_{t+\tau} = (V^\top)^{-1} \Sigma U^\top (X_t - \mu_0),
+            \hat{X}_{t+\tau} = (V^\top)^{-1} \Sigma U^\top (X_t - \mu_0) + \mu_t,
 
         where :math:`V` are the left singular vectors, :math:`\Sigma` the singular values, and :math:`U` the right
         singular vectors.
@@ -370,7 +370,7 @@ class VAMPModel(Model, Transformer):
         output_trajectory = np.empty_like(trajectory)
         VT_inv = np.linalg.pinv(self.singular_vectors_right.T)
         for t, frame in enumerate(trajectory):
-            output_trajectory[t] = VT_inv @ singval @ np.dot(self.singular_vectors_left.T, frame - self.mean_0)
+            output_trajectory[t] = VT_inv @ singval @ np.dot(self.singular_vectors_left.T, frame - self.mean_0) + self.mean_t
 
         return output_trajectory
 
