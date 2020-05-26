@@ -8,7 +8,8 @@ class PBFSimulator(object):
     r""" A position based fluids :cite:`macklin2013position` simulator for two-dimensional systems.
 
     Its underlying principle is by definition of a rest density :math:`\rho_0`, which the particles in the system
-    try to reach by a smoothed particle hydrodynamics style simulation [1]_ [2]_.
+    try to reach by a smoothed particle hydrodynamics style simulation [1]_ [2]_. Up to numerics the simulation is
+    deterministic given a set of parameters.
 
     In some more detail:
 

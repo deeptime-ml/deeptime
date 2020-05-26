@@ -51,7 +51,8 @@ def ellipsoids(laziness=0.97, seed=None):
 
 
 def position_based_fluids(n_burn_in=5000, n_jobs=None):
-    r""" Creates a position based fluids :cite:`macklin2013position` simulator.
+    r""" Creates a position based fluids :cite:`macklin2013position` simulator. Up to numerics the simulation is
+    deterministic.
 
     The simulation box has dimensions :math:`[-40, 40]\times [-25, 25]` and the initial positions of the particles are
     around the top boundary of the box. For simplicity of use, the initial positions are fixed in this method and yield

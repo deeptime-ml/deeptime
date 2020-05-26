@@ -44,7 +44,7 @@ class KMeansClusteringModel(ClusterModel):
             can be constructed purely from cluster centers and metric.
         inertias : (t,) ndarray or None, optional, default=None
             Value of the cost function over :code:`t` iterations. Defaults to `None` so that clustering models
-            can be constructed purely from cluster centers and metic.
+            can be constructed purely from cluster centers and metric.
         converged : bool, optional, default=False
             Whether the convergence criterium was met.
         """
