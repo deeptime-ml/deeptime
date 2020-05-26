@@ -4,7 +4,7 @@ from . import _data_bindings as bd
 from ..util import handle_n_jobs
 
 
-class PBF(object):
+class PBFSimulator(object):
     r""" A position based fluids :cite:`macklin2013position` simulator for two-dimensional systems.
 
     Its underlying principle is by definition of a rest density :math:`\rho_0`, which the particles in the system
@@ -62,7 +62,8 @@ class PBF(object):
         domain_size : (2,) ndarray
             A 1-dimensional ndarray with two elements describing the extension of the simulation box.
         initial_positions : (N, 2) ndarray
-            A 2-dimensional ndarray describing the :math:`N` particles' initial positions.
+            A 2-dimensional ndarray describing the :math:`N` particles' initial positions. This also fixes the number
+            of particles. It is preserved during runs of the simulation.
         interaction_distance : float
             Interaction distance for particles, influences the cell size for the neighbor list.
         n_jobs : int or None, default=None
@@ -71,7 +72,7 @@ class PBF(object):
             The number of solver iterations for particle position updates. The more, the slower the simulation but also
             the more accurate.
         gravity : float, default=10
-            Gravity parameter which acts on particles' velolicites in each time step as constant force.
+            Gravity parameter which acts on particles' velocities in each time step as constant force.
         epsilon : float, default=10
             Damping parameter. The higher, the more damping.
         timestep : float, default=0.016

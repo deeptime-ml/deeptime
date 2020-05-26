@@ -2,7 +2,7 @@ import numpy as np
 
 from .double_well import DoubleWellDiscrete
 from .ellipsoids import Ellipsoids
-from .pbf import PBF
+from .pbf import PBFSimulator
 
 
 def double_well_discrete():
@@ -50,21 +50,24 @@ def ellipsoids(laziness=0.97, seed=None):
     return Ellipsoids(laziness=laziness, seed=seed)
 
 
-def pbf(n_burn_in=5000, n_jobs=None):
+def position_based_fluids(n_burn_in=5000, n_jobs=None):
     r""" Creates a position based fluids :cite:`macklin2013position` simulator.
 
-    The simulation box has dimensions :math:`[-40, 40]\times [-25, 25]` and the initial positions are positioned
-    around the top boundary of the box. The interaction distance is set to :math:`d = 1.5` and `n_burn_in` steps are
+    The simulation box has dimensions :math:`[-40, 40]\times [-25, 25]` and the initial positions of the particles are
+    around the top boundary of the box. For simplicity of use, the initial positions are fixed in this method and yield
+    972 particles. For custom positioning, please use the simulator directly.
+
+    The interaction distance is set to :math:`d = 1.5` and `n_burn_in` steps are
     performed to equilibrate the system before returning the simulator.
 
-    For more details see :class:`PBF <sktime.data.PBF>`.
+    For more details see :class:`PBFSimulator <sktime.data.PBFSimulator>`.
 
     .. plot::
 
         import matplotlib.pyplot as plt
         import sktime
 
-        ftraj = sktime.data.pbf(n_burn_in=150).run(300)
+        ftraj = sktime.data.position_based_fluids(n_burn_in=150).run(300)
         f, axes = plt.subplots(3, 2, figsize=(15, 10))
         for i, ax in enumerate(axes.flat):
             ax.scatter(*(ftraj[i*50].reshape(-1, 2).T))
@@ -82,7 +85,7 @@ def pbf(n_burn_in=5000, n_jobs=None):
 
     Returns
     -------
-    pbf : PBF
+    simulator : PBFSimulator
         The PBF simulator.
     """
     interaction_distance = 1.5
@@ -90,7 +93,8 @@ def pbf(n_burn_in=5000, n_jobs=None):
     init_pos_y = np.arange(-12, 24, interaction_distance * .9).astype(np.float32)
     init_pos = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
     domain = np.array([80, 50])
-    pbf = PBF(domain_size=domain, initial_positions=init_pos, interaction_distance=interaction_distance, n_jobs=n_jobs)
+    pbf = PBFSimulator(domain_size=domain, initial_positions=init_pos, interaction_distance=interaction_distance,
+                       n_jobs=n_jobs)
     # equilibrate
     pbf.run(n_burn_in, 0)
 

@@ -1,7 +1,7 @@
 import collections
 import random
 import warnings
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 
@@ -26,7 +26,8 @@ class KMeansClusteringModel(ClusterModel):
     MiniBatchKmeansClustering : The mini batch k-means estimator, which can produce this kind of model.
     """
 
-    def __init__(self, n_clusters, cluster_centers, metric, tolerance, inertias=None, converged=False):
+    def __init__(self, n_clusters, cluster_centers, metric, tolerance: Optional[float] = None,
+                 inertias: Optional[List[float]] = None, converged: bool = False):
         r"""
         Initializes a new KmeansClustering model.
 
@@ -38,10 +39,12 @@ class KMeansClusteringModel(ClusterModel):
             The d-dimensional cluster centers, length of the array should coincide with :attr:`n_clusters`.
         metric : _clustering_bindings.Metric
             The metric that was used
-        tolerance : float
-            Tolerance which was used as convergence criterium.
-        inertias : (t,) ndarray, optional, default=None
-            Value of the cost function over :code:`t` iterations.
+        tolerance : float, optional, default=None
+            Tolerance which was used as convergence criterium. Defaults to `None` so that clustering models
+            can be constructed purely from cluster centers and metric.
+        inertias : (t,) ndarray or None, optional, default=None
+            Value of the cost function over :code:`t` iterations. Defaults to `None` so that clustering models
+            can be constructed purely from cluster centers and metic.
         converged : bool, optional, default=False
             Whether the convergence criterium was met.
         """

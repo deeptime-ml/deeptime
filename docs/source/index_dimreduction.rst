@@ -29,6 +29,10 @@ As soon as the data is off equilibrium though, TICA estimates can become heavily
 A salvageable case is if the underlying dynamics is reversible but there is not enough sampling to support this: a
 `reweighting procedure <notebooks/tica.ipynb#Koopman-reweighting>`_ can be applied :cite:`wu2016variational`.
 
+Furthermore, TICA might yield biased results if the data contains rare events. If the underlying
+distribution is expected to obey microscopic reversibility, not enough sampling might have been performed to actually
+reflect this in the estimated model.
+
 
 When to use VAMP
 ================

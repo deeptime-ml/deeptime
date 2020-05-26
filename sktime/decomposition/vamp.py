@@ -21,7 +21,7 @@
 
 from collections import namedtuple
 from numbers import Real, Integral
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 import numpy as np
 
@@ -338,7 +338,7 @@ class VAMPModel(Model, Transformer):
             rank0=rank0, rankt=rankt, singular_values=singular_values, left_singular_vecs=U, right_singular_vecs=V
         )
 
-    def forward(self, trajectory: np.ndarray, component: Optional[int] = None):
+    def forward(self, trajectory: np.ndarray, component: Optional[Union[int, List[int]]] = None):
         r"""Applies the forward transform to the trajectory in non-whitened space. This is achieved by
         transforming each frame :math:`X_t` with
 
@@ -352,9 +352,9 @@ class VAMPModel(Model, Transformer):
         ----------
         trajectory : (T, n) ndarray
             The input trajectory
-        component : int or None
-            The component to project onto. If None, all processes are taken into account, if integer sets all singular
-            values to zero but the "component"th one.
+        component : int or list of int or None
+            The component(s) to project onto. If None, all processes are taken into account, if integer
+            sets all singular values to zero but the "component"th one.
 
         Returns
         -------
@@ -363,7 +363,10 @@ class VAMPModel(Model, Transformer):
         """
         if component is not None:
             singval = np.zeros((len(self.singular_values), len(self.singular_values)))
-            singval[component, component] = self.singular_values[component]
+            if not isinstance(component, (list, tuple)):
+                component = [component]
+            for ii in component:
+                singval[ii, ii] = self.singular_values[ii]
         else:
             singval = np.diag(self.singular_values)
 

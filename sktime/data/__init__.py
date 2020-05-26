@@ -10,7 +10,7 @@ API
 
     double_well_discrete
     ellipsoids
-    pbf
+    position_based_fluids
 
 ===============================================================================
 Utilities
@@ -30,11 +30,11 @@ Implementations
 
     DoubleWellDiscrete
     Ellipsoids
-    PBF
+    PBFSimulator
 """
 
 from .util import timeshifted_split
 from .double_well import DoubleWellDiscrete
 from .ellipsoids import Ellipsoids
-from .pbf import PBF
-from .datasets import double_well_discrete, ellipsoids, pbf
+from .pbf import PBFSimulator
+from .datasets import double_well_discrete, ellipsoids, position_based_fluids
