@@ -105,8 +105,10 @@ std::array<dtype, dim> gradWspiky(const dtype *pos, const dtype *posNeighbor, dt
         result[i] = pos[i] - posNeighbor[i];
     }
     dtype l = util::length<dim>(result.data());
-    if (l > h || l == 0)
-        return std::array<dtype, dim>();
+    if (l > h || l == 0) {
+        std::fill(result.begin(), result.end(), 0);
+        return result;
+    }
     float tmp = h - l;
     for (auto i = 0u; i < dim; ++i) {
         result[i] = (-3 * 4.774648292756860 * tmp * tmp) * result[i] / (l * h * h * h * h * h * h);
