@@ -60,7 +60,8 @@ class VAMPModel(Model, Transformer):
         scaling : str or None, optional, default=None
             Scaling parameter, see :attr:`VAMP.scaling`.
         right : bool, optional, default=False
-            Whether right or left eigenvectors should be used for projection.
+            Whether right or left eigenvectors should be used for projection. In case `right==False` (default),
+            left eigenvectors are used, right eigenvectors otherwise.
         """
         super().__init__()
         self._cov = cov
