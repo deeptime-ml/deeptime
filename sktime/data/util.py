@@ -1,7 +1,9 @@
+from typing import Optional
+
 import numpy as np
 
 
-def timeshifted_split(inputs, lagtime: int, chunksize=1000, n_splits=None):
+def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int = 1, n_splits: Optional[int] = None):
     r""" Utility function which splits input trajectories into pairs of timeshifted data :math:`(X_t, X_{t+\tau})`.
     In case multiple trajectories are provided, the timeshifted pairs are always within the same trajectory.
 
@@ -14,6 +16,8 @@ def timeshifted_split(inputs, lagtime: int, chunksize=1000, n_splits=None):
         The lag time :math:`\tau` used to produce timeshifted blocks.
     chunksize : int, default=1000
         The chunk size, i.e., the maximal length of the blocks.
+    stride: int, default=1
+        Optional stride which is applied *after* creating a tau-shifted version of the dataset.
     n_splits : int, optional, default=None
         Alternative to chunksize - this determines the number of timeshifted blocks that is drawn from each provided
         trajectory. Supersedes whatever was provided as chunksize.
@@ -57,8 +61,8 @@ def timeshifted_split(inputs, lagtime: int, chunksize=1000, n_splits=None):
 
     for data in inputs:
         data = np.asarray_chkfinite(data)
-        data_lagged = data[lagtime:]
-        data = data[:-lagtime]
+        data_lagged = data[lagtime:][::stride]
+        data = data[:-lagtime][::stride]
 
         if n_splits is not None:
             assert n_splits >= 1

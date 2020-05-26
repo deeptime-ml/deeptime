@@ -44,8 +44,8 @@ class MarkovStateModel(Model):
     BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
     """
 
-    def __init__(self, transition_matrix: np.ndarray,
-                 stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None, count_model=None):
+    def __init__(self, transition_matrix: np.ndarray, stationary_distribution=None, reversible=None,
+                 n_eigenvalues=None, ncv=None, count_model=None, transition_matrix_tolerance=1e-8):
         r"""
         Constructs a new markov state model based on a transition matrix.
 
@@ -68,10 +68,14 @@ class MarkovStateModel(Model):
         count_model : TransitionCountModel, optional, default=None
             In case the MSM was estimated from data, the transition count model can be provided for statistical
             information about the data. Some properties of the model require a count model so that they can be computed.
+        transition_matrix_tolerance : float, default=1e-8
+            The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
+            row sums of 1).
         """
         super().__init__()
         self._is_reversible = reversible
         self._ncv = ncv
+        self._transition_matrix_tolerance = transition_matrix_tolerance
 
         self.update_transition_matrix(transition_matrix)
 
@@ -133,6 +137,12 @@ class MarkovStateModel(Model):
         """ The transition matrix on the active set. """
         return self._transition_matrix
 
+    @property
+    def transition_matrix_tolerance(self):
+        r""" The tolerance under which a matrix is considered a transition matrix. This means that all elements
+        must be non-negative and the row sums must be 1. """
+        return self._transition_matrix_tolerance
+
     def update_transition_matrix(self, value: np.ndarray):
         """ Sets the transition matrix and invalidates all cached and derived properties. """
         if value is None:
@@ -140,9 +150,10 @@ class MarkovStateModel(Model):
         else:
             if not issparse(value):
                 value = np.asarray_chkfinite(value)
-            if not msmana.is_transition_matrix(value, tol=1e-8):
-                raise ValueError('The input transition matrix is not a stochastic matrix '
-                                 '(elements >= 0, rows sum up to 1).')
+            if not msmana.is_transition_matrix(value, tol=self.transition_matrix_tolerance):
+                raise ValueError(f'The input transition matrix is not a stochastic matrix '
+                                 f'(elements >= 0, rows sum up to 1) up to '
+                                 f'tolerance {self._transition_matrix_tolerance}.')
             self._transition_matrix = value
             self._invalidate_caches()
 

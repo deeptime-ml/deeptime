@@ -1,6 +1,7 @@
+import collections
 import random
 import warnings
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 
@@ -20,10 +21,13 @@ class KMeansClusteringModel(ClusterModel):
 
     See Also
     --------
-    ClusterModel : Superclass.
+    ClusterModel : The superclass.
+    KmeansClustering : The k-means estimator, which can produce this kind of model.
+    MiniBatchKmeansClustering : The mini batch k-means estimator, which can produce this kind of model.
     """
 
-    def __init__(self, n_clusters, cluster_centers, metric, tolerance, inertia=np.inf, converged=False):
+    def __init__(self, n_clusters, cluster_centers, metric, tolerance: Optional[float] = None,
+                 inertias: Optional[List[float]] = None, converged: bool = False):
         r"""
         Initializes a new KmeansClustering model.
 
@@ -35,15 +39,17 @@ class KMeansClusteringModel(ClusterModel):
             The d-dimensional cluster centers, length of the array should coincide with :attr:`n_clusters`.
         metric : _clustering_bindings.Metric
             The metric that was used
-        tolerance : float
-            Tolerance which was used as convergence criterium.
-        inertia : float, optional, default=np.inf
-            Value of the cost function at the end of the estimation.
+        tolerance : float, optional, default=None
+            Tolerance which was used as convergence criterium. Defaults to `None` so that clustering models
+            can be constructed purely from cluster centers and metric.
+        inertias : (t,) ndarray or None, optional, default=None
+            Value of the cost function over :code:`t` iterations. Defaults to `None` so that clustering models
+            can be constructed purely from cluster centers and metric.
         converged : bool, optional, default=False
             Whether the convergence criterium was met.
         """
         super().__init__(n_clusters, cluster_centers, metric, converged=converged)
-        self._inertia = inertia
+        self._inertias = inertias
         self._tolerance = tolerance
 
     @property
@@ -61,15 +67,46 @@ class KMeansClusteringModel(ClusterModel):
 
     @property
     def inertia(self):
+        r"""Sum of squared distances to assigned centers of training data
+
+        .. math:: \sum_{i=1}^k \sum_{x\in S_i} d(x, \mu_i)^2,
+
+        where :math:`x` are the frames assigned to their respective cluster center :math:`S_i`.
+
+        :type: float or None
         """
-        Sum of squared distances to centers.
+        if self._inertias is not None and len(self._inertias) > 0:
+            return self._inertias[-1]
+        else:
+            return None
+
+    @property
+    def inertias(self):
+        r""" Series of inertias over the the iterations of k-means.
+
+        :type: (t, dtype=float) ndarray or None
+        """
+        return self._inertias
+
+    def score(self, data: np.ndarray, n_jobs: Optional[int] = None) -> float:
+        r""" Computes how well the model fits to given data by computing the
+        :meth:`inertia <sktime.clustering.kmeans.KMeansClusteringModel.inertia>`.
+
+        Parameters
+        ----------
+        data : (T, d) ndarray, dtype=float or double
+            dataset with T entries and d dimensions
+        n_jobs : int, optional, default=None
+            number of jobs to use
 
         Returns
         -------
-        float
-            the intertia
+        score : float
+            the inertia
         """
-        return self._inertia
+        if n_jobs is None:
+            n_jobs = 0
+        return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, self.metric)
 
 
 class KmeansClustering(Estimator, Transformer):
@@ -88,6 +125,11 @@ class KmeansClustering(Estimator, Transformer):
     References
     ----------
     .. [1] Arthur, David, and Sergei Vassilvitskii. k-means++: The advantages of careful seeding. Stanford, 2006.
+
+    See Also
+    --------
+    KMeansClusteringModel : the corresponding model class
+    MiniBatchKmeansClustering : An online version of this estimator which uses mini-batching.
     """
 
     def __init__(self, n_clusters: int, max_iter: int = 500, metric=None,
@@ -378,17 +420,16 @@ class KmeansClustering(Estimator, Transformer):
 
         # run k-means with all the data
         converged = False
-        cluster_centers, code, iterations, cost = _bd.kmeans.cluster_loop(data, self.initial_centers, self.n_clusters,
-                                                                          n_jobs, self.max_iter, self.tolerance,
-                                                                          callback_loop, self.metric)
+        cluster_centers, code, iterations, cost = _bd.kmeans.cluster_loop(data, self.initial_centers.copy(),
+                                                                          self.n_clusters, n_jobs, self.max_iter,
+                                                                          self.tolerance, callback_loop, self.metric)
         if code == 0:
             converged = True
         else:
-            warnings.warn("Algorithm did not reach convergence criterion"
-                          " of {t} in {i} iterations. Consider increasing max_iter.".format(t=self.tolerance,
-                                                                                            i=self.max_iter))
+            warnings.warn(f"Algorithm did not reach convergence criterion"
+                          f" of {self.tolerance} in {self.max_iter} iterations. Consider increasing max_iter.")
         self._model = KMeansClusteringModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance,
-                                            cluster_centers=cluster_centers, inertia=cost, converged=converged)
+                                            cluster_centers=cluster_centers, inertias=cost, converged=converged)
 
         return self
 
@@ -399,6 +440,7 @@ class MiniBatchKmeansClustering(KmeansClustering):
     See Also
     --------
     KmeansClustering : k-means clustering without mini-batching
+    KMeansClusteringModel : the corresponding model class
     """
 
     def __init__(self, n_clusters, batch_size=100, max_iter=5, metric=None, tolerance=1e-5, init_strategy='kmeans++',
@@ -427,7 +469,7 @@ class MiniBatchKmeansClustering(KmeansClustering):
             self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
         indices = np.arange(len(data))
         self._model = KMeansClusteringModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
-                                            tolerance=self.tolerance, inertia=float('inf'))
+                                            tolerance=self.tolerance, inertias=np.array([float('inf')]))
         for epoch in range(self.max_iter):
             np.random.shuffle(indices)
             if len(data) > self.batch_size:
@@ -461,7 +503,7 @@ class MiniBatchKmeansClustering(KmeansClustering):
         """
         if self._model is None:
             self._model = KMeansClusteringModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
-                                                tolerance=self.tolerance, inertia=float('inf'))
+                                                tolerance=self.tolerance, inertias=np.array([float('inf')]))
         if data.ndim == 1:
             data = data[:, np.newaxis]
         n_jobs = self.n_jobs if n_jobs is None else n_jobs
@@ -476,7 +518,7 @@ class MiniBatchKmeansClustering(KmeansClustering):
         cost = _bd.kmeans.cost_function(data, self._model.cluster_centers, n_jobs, self.metric)
 
         rel_change = np.abs(cost - self._model.inertia) / cost if cost != 0.0 else 0.0
-        self._model._inertia = cost
+        self._model._inertias = np.append(self._model._inertias, cost)
 
         if rel_change <= self.tolerance:
             self._model._converged = True

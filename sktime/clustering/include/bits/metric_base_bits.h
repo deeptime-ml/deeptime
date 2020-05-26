@@ -11,14 +11,19 @@
 #endif
 
 template<>
-inline float Metric::compute<float>(const float* xs, const float* ys, std::size_t dim) const {
-    return this->compute_f(xs, ys, dim);
+inline float Metric::compute_squared<float>(const float* xs, const float* ys, std::size_t dim) const {
+    return compute_squared_f(xs, ys, dim);
+}
+
+template<>
+inline double Metric::compute_squared<double>(const double* xs, const double* ys, std::size_t dim) const {
+    return compute_squared_d(xs, ys, dim);
 }
 
 template<typename T>
 inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
                                                 const np_array<T>& centers,
-                                                unsigned int n_threads,
+                                                int n_threads,
                                                 const Metric* metric) {
     if (chunk.ndim() != 2) {
         throw std::invalid_argument("provided chunk does not have two dimensions.");
@@ -47,20 +52,16 @@ inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
 #ifdef USE_OPENMP
     /* Create a parallel thread block. */
     omp_set_num_threads(n_threads);
-    assert(omp_get_num_threads() == n_threads);
 #endif
-#pragma omp parallel
+
+    #pragma omp parallel default(none) firstprivate(N_frames, N_centers, centers_buff, input_dim, metric, chunk_buff, dtraj_buff, dists)
     {
+        #pragma omp for
         for(size_t i = 0; i < N_frames; ++i) {
-            /* Parallelize distance calculations to cluster centers to avoid cache misses */
-#pragma omp for
             for(size_t j = 0; j < N_centers; ++j) {
                 dists[j] = metric->compute(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
             }
-#pragma omp flush(dists)
 
-            /* Only one thread can make actual assignment */
-#pragma omp single
             {
                 T mindist = std::numeric_limits<T>::max();
                 int argmin = -1;
@@ -72,8 +73,6 @@ inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
                 }
                 dtraj_buff(i) = argmin;
             }
-            /* Have all threads synchronize in progress through cluster assignments */
-#pragma omp barrier
         }
     }
     return dtraj;

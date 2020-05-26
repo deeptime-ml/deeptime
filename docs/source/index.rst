@@ -3,7 +3,7 @@ Scikit-time
 ===========
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
     :caption: Documentation
 
     notebooks/getting_started
@@ -16,7 +16,7 @@ Scikit-time
 API docs
 ========
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: API docs
 
    api/index

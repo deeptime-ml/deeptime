@@ -86,7 +86,23 @@ napoleon_use_rtype = True
 # -- Alabaster theme settings -------------------------------------------------
 html_theme_options = {
     'page_width': '65%',
-    'body_max_width': 'auto'
+    'sidebar_width': '250px',
+    'body_max_width': 'auto',
+    'fixed_sidebar': 'true',
+    'github_button': 'true',
+    'github_user': 'scikit-time',
+    'github_repo': 'scikit-time',
+    'github_type': 'star',
+    'sidebar_collapse': 'true'
+}
+html_sidebars = {
+    '**': [
+        'about.html',
+        'navigation.html',
+        'relations.html',
+        'searchbox.html',
+        'donate.html',
+    ]
 }
 
 # -- nbsphinx settings --------------------------------------------------------

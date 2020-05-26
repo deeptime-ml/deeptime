@@ -19,14 +19,13 @@
 """
 
 
-import warnings
 from collections import namedtuple
 from numbers import Real, Integral
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 import numpy as np
 
-from ..base import Model, Estimator
+from ..base import Model, Estimator, Transformer
 from ..covariance.covariance import Covariance, CovarianceModel
 from ..numeric import mdot
 from ..numeric.eigen import spd_inv_split, spd_inv_sqrt
@@ -35,7 +34,7 @@ from ..util import cached_property
 __all__ = ['VAMP', 'VAMPModel']
 
 
-class VAMPModel(Model):
+class VAMPModel(Model, Transformer):
     r""" Model which was estimated from a :class:`VAMP` estimator.
 
     See Also
@@ -46,7 +45,7 @@ class VAMPModel(Model):
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
                                                                     'left_singular_vecs', 'right_singular_vecs'])
 
-    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6, scaling=None, right=True):
+    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6, scaling=None, right=False):
         r""" Creates a new model instance.
 
         Parameters
@@ -60,8 +59,9 @@ class VAMPModel(Model):
             Singular value cutoff parameter, see :attr:`VAMP.epsilon`.
         scaling : str or None, optional, default=None
             Scaling parameter, see :attr:`VAMP.scaling`.
-        right : bool, optional, default=True
-            Whether right or left eigenvectors should be used for projection.
+        right : bool, optional, default=False
+            Whether right or left eigenvectors should be used for projection. In case `right==False` (default),
+            left eigenvectors are used, right eigenvectors otherwise.
         """
         super().__init__()
         self._cov = cov
@@ -269,6 +269,9 @@ class VAMPModel(Model):
         where :math:`r_{i}=\langle\psi_{i},f\rangle_{\rho_{0}}` and
         :math:`\boldsymbol{\Sigma}=\mathrm{diag(\boldsymbol{\sigma})}` .
         """
+        if lag_multiple <= 0:
+            raise ValueError("lag_multiple <= 0 not implemented")
+
         dim = self.output_dimension
 
         S = np.diag(np.concatenate(([1.0], self.singular_values[0:dim])))
@@ -309,18 +312,7 @@ class VAMPModel(Model):
 
     @cached_property
     def _decomposition(self) -> _DiagonalizationResults:
-        """Performs SVD on covariance matrices and save left, right singular vectors and values in the model.
-
-        Parameters
-        ----------
-        scaling : None or string, default=None
-            Scaling to be applied to the VAMP modes upon transformation
-            * None: no scaling will be applied, variance of the singular
-              functions is 1
-            * 'kinetic map' or 'km': singular functions are scaled by
-              singular value. Note that only the left singular functions
-              induce a kinetic map.
-        """
+        """Performs SVD on covariance matrices and save left, right singular vectors and values in the model."""
         L0 = spd_inv_split(self.cov_00, epsilon=self.epsilon)
         rank0 = L0.shape[1] if L0.ndim == 2 else 1
         Lt = spd_inv_split(self.cov_tt, epsilon=self.epsilon)
@@ -347,6 +339,45 @@ class VAMPModel(Model):
             rank0=rank0, rankt=rankt, singular_values=singular_values, left_singular_vecs=U, right_singular_vecs=V
         )
 
+    def forward(self, trajectory: np.ndarray, component: Optional[Union[int, List[int]]] = None):
+        r"""Applies the forward transform to the trajectory in non-whitened space. This is achieved by
+        transforming each frame :math:`X_t` with
+
+        .. math::
+            \hat{X}_{t+\tau} = (V^\top)^{-1} \Sigma U^\top (X_t - \mu_0) + \mu_t,
+
+        where :math:`V` are the left singular vectors, :math:`\Sigma` the singular values, and :math:`U` the right
+        singular vectors.
+
+        Parameters
+        ----------
+        trajectory : (T, n) ndarray
+            The input trajectory
+        component : int or list of int or None
+            The component(s) to project onto. If None, all processes are taken into account, if integer
+            sets all singular values to zero but the "component"th one.
+
+        Returns
+        -------
+        predictions : (T, n) ndarray
+            The predicted trajectory.
+        """
+        if component is not None:
+            singval = np.zeros((len(self.singular_values), len(self.singular_values)))
+            if not isinstance(component, (list, tuple)):
+                component = [component]
+            for ii in component:
+                singval[ii, ii] = self.singular_values[ii]
+        else:
+            singval = np.diag(self.singular_values)
+
+        output_trajectory = np.empty_like(trajectory)
+        VT_inv = np.linalg.pinv(self.singular_vectors_right.T)
+        for t, frame in enumerate(trajectory):
+            output_trajectory[t] = VT_inv @ singval @ np.dot(self.singular_vectors_left.T, frame - self.mean_0) + self.mean_t
+
+        return output_trajectory
+
     def transform(self, data, right=None):
         r"""Projects the data onto the dominant singular functions.
 
@@ -365,7 +396,6 @@ class VAMPModel(Model):
             functions. Otherwise, projection will be on the left singular
             functions.
         """
-        # TODO: in principle get_output should not return data for *all* frames!
         right = self.right if right is None else right
         if right:
             X_meanfree = data - self.mean_t
@@ -416,16 +446,15 @@ class VAMPModel(Model):
         .. [2] Noe, F. and Clementi, C. 2015. Kinetic distance and kinetic maps from molecular dynamics simulation.
             J. Chem. Theory. Comput. doi:10.1021/acs.jctc.5b00553
         """
-        # TODO: implement for TICA too
         if test_model is None:
             test_model = self
         Uk = self.singular_vectors_left[:, 0:self.output_dimension]
         Vk = self.singular_vectors_right[:, 0:self.output_dimension]
         res = None
         if score_method == 'VAMP1' or score_method == 'VAMP2':
-            A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk))
+            A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk), epsilon=self.epsilon)
             B = Uk.T.dot(test_model.cov_0t).dot(Vk)
-            C = spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk))
+            C = spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk), epsilon=self.epsilon)
             ABC = mdot(A, B, C)
             if score_method == 'VAMP1':
                 res = np.linalg.norm(ABC, ord='nuc')
@@ -437,12 +466,12 @@ class VAMPModel(Model):
                            - mdot(Vk, Sk, Uk.T, test_model.cov_00, Uk, Sk, Vk.T, test_model.cov_tt))
         else:
             raise ValueError('"score" should be one of VAMP1, VAMP2 or VAMPE')
+        assert res is not None
         # add the contribution (+1) of the constant singular functions to the result
-        assert res
         return res + 1
 
 
-class VAMP(Estimator):
+class VAMP(Estimator, Transformer):
     r"""Variational approach for Markov processes (VAMP).
 
     The implementation is based on [1]_, [2]_.
@@ -663,12 +692,13 @@ class VAMP(Estimator):
 
     @dim.setter
     def dim(self, value: Optional[Real]):
-        if isinstance(value, Integral) and value <= 0:
-            # first test against Integral as `isinstance(1, Real)` also evaluates to True
-            raise ValueError("Invalid dimension parameter, if it is given in terms of the dimension (integer), "
-                             "must be positive.")
+        if isinstance(value, Integral):
+            if value <= 0:
+                # first test against Integral as `isinstance(1, Real)` also evaluates to True
+                raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of the "
+                                 "dimension (integer), must be positive.")
         elif isinstance(value, Real) and (value <= 0. or float(value) > 1.0):
-            raise ValueError("Invalid dimension parameter, if it is given in terms of a floating point, "
+            raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of a floating point, "
                              "can only be in the interval (0, 1].")
         elif value is not None and not isinstance(value, (Integral, Real)):
             raise ValueError("Invalid type for dimension, got {}".format(value))
@@ -691,6 +721,26 @@ class VAMP(Estimator):
         """
         self._covar.fit(data, **kw)
         return self
+
+    def transform(self, data, right=None):
+        r""" Projects given timeseries onto dominant singular functions. This method dispatches to
+        :meth:`VAMPModel.transform`.
+
+        Parameters
+        ----------
+        data : (T, n) ndarray
+            Input timeseries data.
+        right : bool or None, optional, default=None
+            Whether to use left or right eigenvectors for projection, overrides :attr:`right` if not None.
+
+        Returns
+        -------
+        Y : (T, m) ndarray
+            The projected data.
+            If `right` is True, projection will be on the right singular functions. Otherwise, projection will be on
+            the left singular functions.
+        """
+        return self.fetch_model().transform(data, right=right)
 
     def partial_fit(self, data):
         """ Incrementally update the covariances and mean.
