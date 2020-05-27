@@ -552,9 +552,9 @@ class MarkovStateModel(Model):
         r"""Time-correlation for equilibrium experiment.
 
         In order to simulate a time-correlation experiment (e.g. fluorescence
-        correlation spectroscopy [corr-1]_, dynamical neutron scattering [corr-2]_,
-        ...), first compute the mean values of your experimental observable :math:`a`
-        by MarkovStateModel state:
+        correlation spectroscopy :cite:`msm-corr-noe2011dynamical`, dynamical neutron
+        scattering :cite:`msm-corr-lindner2013dynamic`, ...), first compute the mean values of your experimental
+        observable :math:`a` by MarkovStateModel state:
 
         .. math::
 
@@ -646,13 +646,11 @@ class MarkovStateModel(Model):
 
         References
         ----------
-        .. [corr-1] Noe, F., S. Doose, I. Daidone, M. Loellmann, J. D. Chodera, M. Sauer and J. C. Smith. 2011
-                    Dynamical fingerprints for probing individual relaxation processes in biomolecular dynamics with
-                    simulations and kinetic experiments. Proc. Natl. Acad. Sci. USA 108, 4822-4827.
-        .. [corr-2] Lindner, B., Z. Yi, J.-H. Prinz, J. C. Smith and F. Noe. 2013.
-                    Dynamic Neutron Scattering from Conformational Dynamics I: Theory and Markov models.
-                    J. Chem. Phys. 139, 175101.
-
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: msm-corr-
+            :labelprefix: corr-
         """
         # input checking is done in low-level API
         # compute number of tau steps
@@ -696,17 +694,17 @@ class MarkovStateModel(Model):
         amplitudes : (k,) ndarray
             Amplitudes for the correlation experiment
 
-        References
-        ----------
         Spectral densities are commonly used in spectroscopy. Dynamical
         fingerprints are a useful representation for computational
-        spectroscopy results and have been introduced in [fp-corr-1]_.
+        spectroscopy results and have been introduced in :cite:`msm-fp-corr-noe2011dynamical`.
 
-        .. [fp-corr-1] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
-                       Chodera and J Smith. 2010. Dynamical fingerprints for probing
-                       individual relaxation processes in biomolecular dynamics with
-                       simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
-
+        References
+        ----------
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: msm-fp-corr-
+            :labelprefix: fp-corr
         """
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
@@ -821,17 +819,16 @@ class MarkovStateModel(Model):
         amplitudes : (k,) ndarray
             Amplitudes for the relaxation experiment
 
+        Spectral densities are commonly used in spectroscopy. Dynamical fingerprints are a useful representation
+        for computational spectroscopy results and have been introduced in :cite:`msm-fp-relax-noe2011dynamical`.
+
         References
         ----------
-        Spectral densities are commonly used in spectroscopy. Dynamical
-        fingerprints are a useful representation for computational
-        spectroscopy results and have been introduced in [fp-relax-1]_.
-
-        .. [fp-relax-1] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
-                        Chodera and J Smith. 2010. Dynamical fingerprints for probing
-                        individual relaxation processes in biomolecular dynamics with
-                        simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
-
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: msm-fp-relax-
+            :labelprefix: fp-relax-
         """
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
@@ -840,11 +837,12 @@ class MarkovStateModel(Model):
         return fr(self.transition_matrix, p0, a, tau=self.lagtime, k=k, ncv=ncv)
 
     def pcca(self, n_metastable_sets: int) -> PCCAModel:
-        r""" Runs PCCA+ [pcca-1]_ to compute a metastable decomposition of MarkovStateModel states
+        r""" Runs PCCA+ :cite:`msm-pcca-roblitz2013fuzzy` to compute a metastable decomposition of
+        MarkovStateModel states.
 
         After calling this method you can access :func:`metastable_memberships`,
         :func:`metastable_distributions`, :func:`metastable_sets` and
-        :func:`metastable_assignments`.
+        :func:`metastable_assignments` of the returned object.
 
         Parameters
         ----------
@@ -863,10 +861,11 @@ class MarkovStateModel(Model):
 
         References
         ----------
-        .. [pcca-1] Roeblitz, S and M Weber. 2013. Fuzzy spectral clustering by
-                    PCCA+: application to Markov state models and data
-                    classification. Advances in Data Analysis and Classification 7
-                    (2): 147-179
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: msm-pcca-
+            :labelprefix: pcca-
         """
         if not self.reversible:
             raise ValueError('Cannot compute PCCA+ for non-reversible matrices. '
@@ -1070,7 +1069,7 @@ class MarkovStateModel(Model):
     ################################################################################
 
     def hmm(self, dtrajs, nhidden: int, return_estimator=False):
-        """Estimates a hidden Markov state model as described in [hmm-1]_.
+        """Estimates a hidden Markov state model as described in :cite:`msm-hmm-noe2013projected`.
 
         Parameters
         ----------
@@ -1091,10 +1090,11 @@ class MarkovStateModel(Model):
 
         References
         ----------
-        .. [hmm-1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
-            Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
-            J. Chem. Phys. 139, 184114 (2013)
-
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: msm-hmm-
+            :labelprefix: hmm-
         """
         # check if the time-scale separation is OK
         # if hmm.n_states = msm.n_states there is no problem. Otherwise, check spectral gap
@@ -1126,7 +1126,7 @@ class MarkovStateModel(Model):
     def score(self, dtrajs, score_method='VAMP2', score_k=10):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes.
 
-        Implemented according to [score-1]_ and [score-2]_.
+        Implemented according to :cite:`msm-score-noe2013variational` and :cite:`msm-score-wu2020variational`.
 
         Currently only implemented using dense matrices - will be slow for large state spaces.
 
@@ -1143,13 +1143,18 @@ class MarkovStateModel(Model):
         score_method : str, optional, default='VAMP2'
             Overwrite scoring method to be used if desired. If `None`, the estimators scoring
             method will be used.
-            Available scores are based on the variational approach for Markov processes [score-1]_ [score-2]_ :
+            Available scores are based on the variational approach for Markov processes
+            :cite:`msm-score-noe2013variational` :cite:`msm-score-wu2020variational`:
 
-            *  'VAMP1'  Sum of singular values of the symmetrized transition matrix [score-2]_ .
-                        If the MSM is reversible, this is equal to the sum of transition
-                        matrix eigenvalues, also called Rayleigh quotient [score-1]_ [score-3]_ .
-            *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [score-2]_ .
-                        If the MSM is reversible, this is equal to the kinetic variance [score-4]_ .
+            * 'VAMP1': Sum of singular values of the symmetrized transition matrix :cite:`msm-score-wu2020variational`.
+              If the MSM is reversible, this is equal to the sum of transition
+              matrix eigenvalues, also called Rayleigh quotient :cite:`msm-score-noe2013variational`
+              :cite:`msm-score-mcgibbon2015variational`.
+            * 'VAMP2': Sum of squared singular values of the symmetrized  transition matrix
+              :cite:`msm-score-wu2020variational`. If the MSM is reversible, this is equal to the
+              kinetic variance :cite:`msm-score-noe2015kinetic`.
+            * 'VAMPE': Approximation error of the estimated Koopman operator with respect to the true Koopman operator
+              up to an additive constant :cite:`msm-score-wu2020variational`.
 
         score_k : int or None
             The maximum number of eigenvalues or singular values used in the
@@ -1157,15 +1162,11 @@ class MarkovStateModel(Model):
 
         References
         ----------
-        .. [score-1] Noe, F. and F. Nueske: A variational approach to modeling slow processes
-            in stochastic dynamical systems. SIAM Multiscale Model. Simul. 11, 635-655 (2013).
-        .. [score-2] Wu, H and F. Noe: Variational approach for learning Markov processes
-            from time series data (in preparation)
-        .. [score-3] McGibbon, R and V. S. Pande: Variational cross-validation of slow
-            dynamical modes in molecular kinetics, J. Chem. Phys. 142, 124105 (2015)
-        .. [score-4] Noe, F. and C. Clementi: Kinetic distance and kinetic maps from molecular
-            dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015)
-
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: msm-score-
+            :labelprefix: score-
         """
         from sktime.markov.sample import ensure_dtraj_list
         dtrajs = ensure_dtraj_list(dtrajs)  # ensure format

@@ -178,8 +178,9 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                     reversible: bool = True, stationary: bool = False,
                                     separate_symbols=None, regularize: bool = True) -> HiddenMarkovStateModel:
     r""" Makes an initial guess for an :class:`HMM <sktime.markov.hmm.HiddenMarkovStateModel>` with
-    discrete output model from an already existing MSM over observable states. The procedure is described in [1]_ and
-    uses PCCA+ [2]_ for coarse-graining the transition matrix and obtaining membership assignments.
+    discrete output model from an already existing MSM over observable states. The procedure is described in
+    :cite:`hmm-init-msm-noe2013projected` and uses PCCA+ :cite:`hmm-init-msm-roblitz2013fuzzy` for
+    coarse-graining the transition matrix and obtaining membership assignments.
 
     Parameters
     ----------
@@ -215,11 +216,10 @@ def initial_guess_discrete_from_msm(msm: MarkovStateModel, n_hidden_states: int,
 
     References
     ----------
-    .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden Markov models for calculating kinetics and
-       metastable states of complex molecules. J. Chem. Phys. 139, 184114 (2013)
-    .. [2] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
-       application to Markov state models and data classification.
-       Adv Data Anal Classif 7, 147-179 (2013).
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: hmm-init-msm-
     """
     count_matrix = msm.count_model.count_matrix
     nonseparate_symbols = np.arange(msm.count_model.n_states_full)
@@ -292,9 +292,10 @@ def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1,
     r"""Estimates an initial guess :class:`HMM <sktime.markov.hmm.HiddenMarkovStateModel>` from given
     discrete trajectories.
 
-    Following the procedure described in [1]_: First a :class:`MSM <sktime.markov.msm.MarkovStateModel>` is
-    estimated, which is then subsequently coarse-grained with PCCA+ [2]_. After estimation of the MSM, this method
-    class :meth:`initial_guess_discrete_from_msm`.
+    Following the procedure described in :cite:`hmm-init-data-noe2013projected`: First
+    a :class:`MSM <sktime.markov.msm.MarkovStateModel>` is estimated, which is then subsequently
+    coarse-grained with PCCA+ :cite:`hmm-init-data-roblitz2013fuzzy`. After estimation of the MSM, this
+    method calls :meth:`initial_guess_discrete_from_msm`.
 
     Parameters
     ----------
@@ -369,13 +370,13 @@ def initial_guess_discrete_from_data(dtrajs, n_hidden_states, lagtime, stride=1,
     initial_guess_discrete_from_msm : Initial guess from an already existing :class:`MSM <sktime.markov.msm.MarkovStateModel>`.
     initial_guess_gaussian_from_data : Initial guess with :class:`Gaussian output model <sktime.markov.hmm.GaussianOutputModel>`.
 
+
     References
     ----------
-    .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden Markov models for calculating kinetics and
-       metastable states of complex molecules. J. Chem. Phys. 139, 184114 (2013)
-    .. [2] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
-       application to Markov state models and data classification.
-       Adv Data Anal Classif 7, 147-179 (2013).
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: hmm-init-data-
     """
     if mode not in initial_guess_discrete_from_data.VALID_MODES \
             + [m + "-regularized" for m in initial_guess_discrete_from_data.VALID_MODES]:
@@ -466,14 +467,15 @@ class MaximumLikelihoodHMSM(Estimator):
     """ Maximum likelihood Hidden Markov model (HMM) estimator.
 
     This class is used to fit a maximum-likelihood HMM to data. It uses an initial guess HMM with can be obtained with
-    one of the provided heuristics and then uses the Baum-Welch algorithm [1]_ to fit the inital guess to provided
-    data.
+    one of the provided heuristics and then uses the Baum-Welch algorithm :cite:`hmm-est-baum1967inequality` to fit
+    the inital guess to provided data.
 
     References
     ----------
-    .. [1] L. E. Baum and J. A. Egon, "An inequality with applications to statistical
-           estimation for probabilistic functions of a Markov process and to a model
-           for ecology," Bull. Amer. Meteorol. Soc., vol. 73, pp. 360-363, 1967.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: hmm-est-
     """
 
     _HMMModelStorage = collections.namedtuple('_HMMModelStorage', ['transition_matrix', 'output_model',

@@ -35,10 +35,7 @@ class Moments(object):
         return Moments(self.w, self.sx.copy(), self.sy.copy(), self.Mxy.copy())
 
     def combine(self, other, mean_free=False):
-        """
-        References
-        ----------
-        [1] http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf
+        """ According to `this report <http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>`__.
         """
         w1 = self.w
         w2 = other.w
@@ -181,12 +178,14 @@ class RunningCovar(object):
     nsave : int
         Depth of Moment storage. Moments computed from each chunk will be
         combined with Moments of similar statistical weight using the pairwise
-        combination algorithm described in [1]_.
+        combination algorithm described in :cite:`runningmoments-chan1982updating`.
 
     References
     ----------
-    .. [1] http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf
-
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: runningmoments-
     """
 
     # to get the Y mean, but this is currently not stored.
@@ -405,13 +404,14 @@ def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=Fal
     nsave : int
         Depth of Moment storage. Moments computed from each chunk will be
         combined with Moments of similar statistical weight using the pairwise
-        combination algorithm described in [1]_.
+        combination algorithm described in :cite:`running-covar-chan1982updating`.
 
     References
     ----------
-    .. [1] Chan, Tony F., Gene Howard Golub, and Randall J. LeVeque. "Updating formulae and a pairwise algorithm
-           for computing sample variances." COMPSTAT 1982 5th Symposium held
-           at Toulouse 1982. Physica, Heidelberg, 1982.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: running-covar-
 
     """
     return RunningCovar(compute_XX=xx, compute_XY=xy, compute_YY=yy, sparse_mode=sparse_mode, modify_data=modify_data,

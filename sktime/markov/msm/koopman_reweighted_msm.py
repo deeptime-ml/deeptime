@@ -112,12 +112,14 @@ class KoopmanReweightedMSM(MarkovStateModel):
 class OOMReweightedMSM(_MSMBaseEstimator):
     r"""OOM (observable operator model) MSM estimator for MSMs given discrete trajectory statistics.
 
-    Details can be found in [1]_ .
+    Details can be found in :cite:`oom-msm-est-wu2020variational`.
 
     References
     ----------
-    .. [1] H. Wu and F. Noe: Variational approach for learning Markov processes from time series data
-        (in preparation)
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: oom-msm-est-
     """
 
     def __init__(self, lagtime, reversible=True, count_mode='sliding', sparse=False,

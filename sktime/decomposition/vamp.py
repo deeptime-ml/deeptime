@@ -423,15 +423,17 @@ class VAMPModel(Model, Transformer):
             contained in self.
 
         score_method : str, optional, default='VAMP2'
-            Available scores are based on the variational approach for Markov processes [1]_:
+            Available scores are based on the variational approach
+            for Markov processes :cite:`vampscore-wu2020variational`:
 
-            *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix [1]_ .
+            *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix :cite:`vampscore-wu2020variational`.
                         If the model is reversible, this is equal to the sum of
-                        Koopman matrix eigenvalues, also called Rayleigh quotient [1]_.
-            *  'VAMP2'  Sum of squared singular values of the half-weighted Koopman matrix [1]_ .
-                        If the model is reversible, this is equal to the kinetic variance [2]_ .
+                        Koopman matrix eigenvalues, also called Rayleigh quotient :cite:`vampscore-wu2020variational`.
+            *  'VAMP2'  Sum of squared singular values of the half-weighted Koopman
+                        matrix :cite:`vampscore-wu2020variational`. If the model is reversible, this is
+                        equal to the kinetic variance :cite:`vampscore-noe2015kinetic`.
             *  'VAMPE'  Approximation error of the estimated Koopman operator with respect to
-                        the true Koopman operator up to an additive constant [1]_ .
+                        the true Koopman operator up to an additive constant :cite:`vampscore-wu2020variational` .
 
         Returns
         -------
@@ -441,10 +443,10 @@ class VAMPModel(Model, Transformer):
 
         References
         ----------
-        .. [1] Wu, H. and Noe, F. 2017. Variational approach for learning Markov processes from time series data.
-            arXiv:1707.04659v1
-        .. [2] Noe, F. and Clementi, C. 2015. Kinetic distance and kinetic maps from molecular dynamics simulation.
-            J. Chem. Theory. Comput. doi:10.1021/acs.jctc.5b00553
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: vampscore-
         """
         if test_model is None:
             test_model = self
@@ -474,7 +476,7 @@ class VAMPModel(Model, Transformer):
 class VAMP(Estimator, Transformer):
     r"""Variational approach for Markov processes (VAMP).
 
-    The implementation is based on [1]_, [2]_.
+    The implementation is based on :cite:`vamp-wu2020variational`, :cite:`vamp-noe2015kinetic`.
 
     See Also
     --------
@@ -537,7 +539,7 @@ class VAMP(Estimator, Transformer):
 
       \mathbf{K}=\mathbf{C}_{00}^{-1}\mathbf{C}_{01}
 
-    It can be shown [1]_ that the leading singular functions of the
+    It can be shown :cite:`vamp-wu2020variational` that the leading singular functions of the
     half-weighted Koopman matrix
 
     .. math::
@@ -566,12 +568,10 @@ class VAMP(Estimator, Transformer):
 
     References
     ----------
-    .. [1] Wu, H. and Noe, F. 2017. Variational approach for learning Markov processes from time series data.
-      arXiv:1707.04659v1
-    .. [2] Noe, F. and Clementi, C. 2015. Kinetic distance and kinetic maps from molecular dynamics simulation.
-      J. Chem. Theory. Comput. doi:10.1021/acs.jctc.5b00553
-    .. [3] Chan, T. F., Golub G. H., LeVeque R. J. 1979. Updating formulae and pairwise algorithms for
-     computing sample variances. Technical Report STAN-CS-79-773, Department of Computer Science, Stanford University.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: vamp-
     """
 
     def __init__(self, lagtime: int, dim: Optional[Real] = None, scaling: Optional[str] = None, right: bool = False,
@@ -618,7 +618,7 @@ class VAMP(Estimator, Transformer):
             with norms <= epsilon will be cut off. The remaining number of
             eigenvalues together with the value of `dim` define the size of the output.
         ncov : int or float('inf'), optional, default=float('inf')
-            Limit the memory usage of the algorithm from [3]_ to an amount that corresponds
+            Limit the memory usage of the algorithm from :cite:`vamp-chan1982updating` to an amount that corresponds
             to ncov additional copies of each correlation matrix.
         """
         super(VAMP, self).__init__()

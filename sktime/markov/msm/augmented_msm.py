@@ -195,12 +195,14 @@ class AMMOptimizerState(object):
 class AugmentedMSM(MarkovStateModel):
     r""" An augmented Markov state model.
 
-    Implementation following [1]_.
+    Implementation following :cite:`amm-olsson2017combining`.
 
     References
     ----------
-    .. [1] Olsson S, Wu H, Paul F, Clementi C, Noe F: Combining experimental and simulation data of molecular
-           processes via augmented Markov models. PNAS 114, 8265-8270 (2017).
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: amm-
     """
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
@@ -252,7 +254,8 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         maxiter : int, optional, default=500
             Optional parameter with specifies the maximum number of updates for Lagrange multiplier estimation.
         max_cache : int, optional, default=3000
-            Maximum size (in megabytes) of cache when computing R tensor (Supporting information in [1]).
+            Maximum size (in megabytes) of cache when computing R tensor (Supporting information
+            in :cite:`amm-olsson2017combining`).
         """
         super().__init__(sparse=False, reversible=True)
         self.expectations_by_state = expectations_by_state

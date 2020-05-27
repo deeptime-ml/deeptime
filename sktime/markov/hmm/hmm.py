@@ -515,8 +515,8 @@ class HiddenMarkovStateModel(Model):
 
     @property
     def metastable_memberships(self):
-        r""" Computes the memberships of observable states to metastable sets by
-            Bayesian inversion as described in [1]_.
+        r""" Computes the memberships of observable states to metastable sets by Bayesian inversion as
+        described in :cite:`hmm-memberships-noe2013projected`.
 
         Returns
         -------
@@ -527,9 +527,10 @@ class HiddenMarkovStateModel(Model):
 
         References
         ----------
-        .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
-            Markov models for calculating kinetics and metastable states of
-            complex molecules. J. Chem. Phys. 139, 184114 (2013)
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: hmm-memberships-
         """
         nonzero = np.nonzero(self.stationary_distribution_obs)[0]
         M = np.zeros((self.n_observation_states, self.transition_model.n_states))

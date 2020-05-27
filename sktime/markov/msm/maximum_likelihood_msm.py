@@ -31,12 +31,14 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <sktime.markov.msm.MarkovStateModel>`)
     given discrete trajectory statistics.
 
-    Implementation according to [1]_.
+    Implementation according to :cite:`mlmsm-wu2020variational`.
 
     References
     ----------
-    .. [1] Wu, Hao, and Frank Noé. "Variational approach for learning Markov processes from time series data."
-           Journal of Nonlinear Science 30.1 (2020): 23-66.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: mlmsm-
     """
 
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,

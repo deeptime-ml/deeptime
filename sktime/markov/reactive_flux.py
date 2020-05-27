@@ -34,7 +34,8 @@ class ReactiveFlux(Model):
     total transition rate or mean first passage time, and they can be coarse-grained onto a set discretization
     of the node set.
 
-    Fluxes can be computed using transition path theory - see [1]_ and :func:`msmtools.tpt`.
+    Fluxes can be computed using transition path theory - see :cite:`reactiveflux-metzner2009transition`
+    and :func:`msmtools.tpt`.
 
     Notes
     -----
@@ -46,9 +47,10 @@ class ReactiveFlux(Model):
 
     References
     ----------
-    .. [1] P. Metzner, C. Schuette and E. Vanden-Eijnden.
-           Transition Path Theory for Markov Jump Processes.
-           Multiscale Model Simul 7: 1192-1219 (2009)
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: reactiveflux-
     """
     def __init__(self, A, B, flux, mu=None, qminus=None, qplus=None, gross_flux=None, physical_time='1 step'):
         r""" Constructs a new reactive flux model instance.

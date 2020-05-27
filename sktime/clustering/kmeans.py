@@ -120,11 +120,15 @@ class KmeansClustering(Estimator, Transformer):
 
     The outcome is very dependent on the initialization, in particular we offer "kmeans++" and "uniform". The latter
     picks initial centers random-uniformly over the provided data set. The former tries to find an initialization
-    which is covering the spatial configuration of the dataset more or less uniformly. For details see [1]_.
+    which is covering the spatial configuration of the dataset more or less uniformly. For details
+    see :cite:`kmeans-arthur2006k`.
 
     References
     ----------
-    .. [1] Arthur, David, and Sergei Vassilvitskii. k-means++: The advantages of careful seeding. Stanford, 2006.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: kmeans-
 
     See Also
     --------
