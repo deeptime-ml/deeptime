@@ -116,14 +116,15 @@ class Covariance(Estimator):
     .. math:: \mathrm{cov}[ X_t, Y_t ] = \mathbb{E}[(X_t - \mathbb{E}[X_t])(Y_t - \mathbb{E}[Y_t])],
 
     where :math:`X_t` and :math:`Y_t` are contiguous blocks of frames from the timeseries data. The estimator
-    implements the online algorithm proposed in [1]_, report available in [2]_.
+    implements the online algorithm proposed in :cite:`covariance-chan1982updating`, report available
+    `here <http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>`__.
 
     References
     ----------
-    .. [1] Chan, Tony F., Gene Howard Golub, and Randall J. LeVeque. "Updating formulae and a pairwise algorithm
-           for computing sample variances." COMPSTAT 1982 5th Symposium held
-           at Toulouse 1982. Physica, Heidelberg, 1982.
-    .. [2] http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: covariance-
     """
     def __init__(self, lagtime, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
                  reversible=False, bessels_correction=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
@@ -155,7 +156,8 @@ class Covariance(Estimator):
                 * 'sparse' : always use sparse mode if possible
         ncov : int, optional, default=5
             Depth of moment storage. Moments computed from each chunk will be combined with Moments of similar
-            statistical weight using the pairwise combination algorithm described in [1]_.
+            statistical weight using the pairwise combination algorithm
+            described in :cite:`covariance-chan1982updating`.
         diag_only: bool
             If True, the computation is restricted to the diagonal entries (autocorrelations) only.
         model : CovarianceModel, optional, default=None
@@ -437,12 +439,14 @@ class KoopmanModel(Model, Transformer):
     r""" A model which contains the Koopman operator in a modified basis `(PC|1)` and can transform data into Koopman
     weights.
 
-    Weights are computed according to [1]_.
+    Weights are computed according to :cite:`koopmanmodel-wu2016variational`.
 
     References
     ----------
-    .. [1] Wu, H., Nüske, F., Paul, F., Klus, S., Koltai, P., and Noé, F. (2016). Variational approximation
-           of molecular kinetics from short off-equilibrium simulations. stat, 1050, 20.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: koopmanmodel-
     """
 
     def __init__(self, u, u_const, koopman_operator, whitening_transformation=None, covariances=None):
@@ -530,12 +534,14 @@ class KoopmanModel(Model, Transformer):
 
 class KoopmanEstimator(Estimator, Transformer):
     r"""Computes Koopman operator and weights that can be plugged into the :class:`Covariance` estimator.
-    The weights are determined by the procedure described in [1]_.
+    The weights are determined by the procedure described in :cite:`koopmanestimator-wu2016variational`.
 
     References
     ----------
-    .. [1] Wu, H., Nüske, F., Paul, F., Klus, S., Koltai, P., and Noé, F. (2016). Variational approximation
-           of molecular kinetics from short off-equilibrium simulations. stat, 1050, 20.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: koopmanestimator-
     """
 
     def __init__(self, lagtime, epsilon=1e-6, ncov='inf'):

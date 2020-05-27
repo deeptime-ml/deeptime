@@ -11,7 +11,7 @@ from sktime.numeric import mdot
 def pcca(P, m, stationary_distribution=None):
     """PCCA+ spectral clustering method with optimized memberships.
 
-    Implementation according to [1]_.
+    Implementation according to :cite:`pcca-roblitz2013fuzzy`.
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
     This function does not assume that the transition matrix is fully connected. Disconnected sets
     will automatically define the first metastable states, with perfect membership assignments.
@@ -29,9 +29,10 @@ def pcca(P, m, stationary_distribution=None):
 
     References
     ----------
-    .. [1] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
-           application to Markov state models and data classification.
-           Adv Data Anal Classif 7, 147-179 (2013).
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: pcca-
     """
     if m <= 0 or m > P.shape[0]:
         raise ValueError("Number of metastable sets must be larger than 0 and can be at most as large as the number "
@@ -80,19 +81,17 @@ class PCCAModel(Model):
     """
     Model for PCCA+ spectral clustering method with optimized memberships.
 
-    PCCA+ spectral clustering is described in [1]_ .
+    PCCA+ spectral clustering is described in :cite:`pccamodel-roblitz2013fuzzy`.
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
     This function does not assume that the transition matrix is fully connected. Disconnected sets
     will automatically define the first metastable states, with perfect membership assignments.
 
     References
     ----------
-    .. [1] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
-           application to Markov state models and data classification.
-           Adv Data Anal Classif 7, 147-179 (2013).
-    .. [2] F. Noe, H. Wu, J.-H. Prinz and N. Plattner:
-           Projected and hidden Markov models for calculating kinetics and metastable states of complex molecules
-           J. Chem. Phys. 139, 184114 (2013)
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: pccamodel-
     """
 
     def __init__(self, P_coarse, pi_coarse, memberships, metastable_distributions):
@@ -142,7 +141,7 @@ class PCCAModel(Model):
 
         Returns the probability distributions of active set states within
         each metastable set by combining the PCCA+ method with
-        Bayesian inversion as described in [2]_.
+        Bayesian inversion as described in :cite:`pccamodel-noe2013projected`.
 
         Returns
         -------
@@ -168,7 +167,7 @@ class PCCAModel(Model):
         """ Assignment of states to metastable sets using PCCA++
 
         Computes the assignment to metastable sets for active set states using
-        the PCCA++ method [1]_.
+        the PCCA++ method :cite:`pccamodel-roblitz2013fuzzy`.
 
         This is only recommended for visualization purposes. You *cannot* compute
         any actual quantity of the coarse-grained kinetics without employing the
@@ -187,7 +186,7 @@ class PCCAModel(Model):
         """ Metastable sets using PCCA+
 
         Computes the metastable sets of active set states within each
-        metastable set using the PCCA+ method [1]_.
+        metastable set using the PCCA+ method :cite:`pccamodel-roblitz2013fuzzy`.
 
         This is only recommended for visualization purposes. You *cannot*
         compute any actual quantity of the coarse-grained kinetics without

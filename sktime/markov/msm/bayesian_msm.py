@@ -11,13 +11,14 @@ __author__ = 'noe, marscher, clonker'
 class BayesianMSM(_MSMBaseEstimator):
     r""" Bayesian estimator for MSMs given discrete trajectory statistics.
 
-    Implementation following [1]_.
+    Implementation following :cite:`bmm-est-trendelkamp2015estimation`.
 
     References
     ----------
-    .. [1] Trendelkamp-Schroer, B., H. Wu, F. Paul and F. Noe: Estimation and
-       uncertainty of reversible Markov models. J. Chem. Phys.
-       J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: bmm-est-
     """
 
     def __init__(self, n_samples: int = 100, n_steps: int = None, reversible: bool = True,

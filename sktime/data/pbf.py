@@ -5,11 +5,11 @@ from ..util import handle_n_jobs
 
 
 class PBFSimulator(object):
-    r""" A position based fluids :cite:`macklin2013position` simulator for two-dimensional systems.
+    r""" A position based fluids :cite:`pbf-macklin2013position` simulator for two-dimensional systems.
 
     Its underlying principle is by definition of a rest density :math:`\rho_0`, which the particles in the system
-    try to reach by a smoothed particle hydrodynamics style simulation [1]_ [2]_. Up to numerics the simulation is
-    deterministic given a set of parameters.
+    try to reach by a smoothed particle hydrodynamics style simulation :cite:`pbf-gingold1977smoothed`
+    :cite:`pbf-lucy1977numerical`. Up to numerics the simulation is deterministic given a set of parameters.
 
     In some more detail:
 
@@ -46,10 +46,10 @@ class PBFSimulator(object):
 
     References
     ----------
-    .. [1] Gingold, Robert A., and Joseph J. Monaghan. "Smoothed particle hydrodynamics: theory and application
-           to non-spherical stars." Monthly notices of the royal astronomical society 181.3 (1977): 375-389.
-    .. [2] Lucy, Leon B. "A numerical approach to the testing of the fission hypothesis." The astronomical
-          journal 82 (1977): 1013-1024.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: pbf-
     """
 
     def __init__(self, domain_size: np.ndarray, initial_positions: np.ndarray,

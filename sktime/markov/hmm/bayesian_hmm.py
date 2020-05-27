@@ -188,7 +188,8 @@ class BayesianHMSM(Estimator):
                  store_hidden: bool = False,
                  reversible: bool = True,
                  stationary: bool = False):
-        r""" Creates a new estimator instance. The theory and estimation procedure are described in [1]_, [2]_.
+        r""" Creates a new estimator instance. The theory and estimation procedure are described
+        in :cite:`bhmmest-noe2013projected`, :cite:`bhmmest-chodera2011bayesian`.
 
         Parameters
         ----------
@@ -241,7 +242,7 @@ class BayesianHMSM(Estimator):
         transition_matrix_prior : str or ndarray(n, n)
            Prior for the HMM transition matrix.
            Currently implements Dirichlet priors if reversible=False and reversible
-           transition matrix priors as described in [3]_ if reversible=True. For the
+           transition matrix priors as described in :cite:`bhmmest-trendelkamp2015estimation` if reversible=True. For the
            nonreversible case the posterior of transition matrix :math:`P` is:
 
            .. math::
@@ -276,15 +277,10 @@ class BayesianHMSM(Estimator):
 
         References
         ----------
-        .. [1] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden
-           Markov models for calculating kinetics and metastable states of complex
-           molecules. J. Chem. Phys. 139, 184114 (2013)
-        .. [2] J. D. Chodera Et Al: Bayesian hidden Markov model analysis of
-           single-molecule force spectroscopy: Characterizing kinetics under
-           measurement uncertainty. arXiv:1108.1430 (2011)
-        .. [3] Trendelkamp-Schroer, B., H. Wu, F. Paul and F. Noe:
-           Estimation and uncertainty of reversible Markov models.
-           J. Chem. Phys. 143, 174101 (2015).
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: bhmmest-
         """
         super().__init__()
         self.initial_hmm = initial_hmm

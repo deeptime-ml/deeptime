@@ -422,8 +422,9 @@ class TransitionCountEstimator(Estimator, Transformer):
         * sliding-effective: See sliding mode, just that the resulting count matrix is divided by the lagtime after
           counting. This which can be shown to provide a likelihood that is the geometrical average
           over shifted subsamples of the trajectory, :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc.
-          This geometrical average converges to the correct likelihood in the statistical limit [1]_. "effective"
-          uses an estimate of the transition counts that are statistically uncorrelated.
+          This geometrical average converges to the correct likelihood in the statistical limit
+          :cite:`counting-trendelkamp2015estimation`. "effective" uses an estimate of the transition
+          counts that are statistically uncorrelated.
 
         * effective: Uses an estimate of the transition counts that are statistically uncorrelated. Recommended
           when used with a Bayesian MSM.
@@ -434,10 +435,10 @@ class TransitionCountEstimator(Estimator, Transformer):
 
     References
     ----------
-
-    .. [1] Trendelkamp-Schroer B, H Wu, F Paul and F Noe. 2015:
-       Reversible Markov models of molecular kinetics: Estimation and uncertainty.
-       J. Chem. Phys. 143, 174101 (2015); https://doi.org/10.1063/1.4934536
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: counting-
     """
 
     def __init__(self, lagtime: int, count_mode: str, physical_time='1 step', n_states=None, sparse=False):
@@ -457,7 +458,7 @@ class TransitionCountEstimator(Estimator, Transformer):
             * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
               likelihood that is the geometrical average over shifted subsamples of the trajectory,
               :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to
-              the correct likelihood in the statistical limit [1]_.
+              the correct likelihood in the statistical limit :cite:`counting-trendelkamp2015estimation`.
             * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
               Recommended when estimating Bayesian MSMs.
         physical_time : str, optional, default='1 step'

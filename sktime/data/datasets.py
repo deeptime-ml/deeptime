@@ -51,8 +51,8 @@ def ellipsoids(laziness=0.97, seed=None):
 
 
 def position_based_fluids(n_burn_in=5000, n_jobs=None):
-    r""" Creates a position based fluids :cite:`macklin2013position` simulator. Up to numerics the simulation is
-    deterministic.
+    r""" Creates a position based fluids (PBF) simulator. It was introduced in :cite:`data-api-macklin2013position`.
+    Up to numerics the simulation is deterministic.
 
     The simulation box has dimensions :math:`[-40, 40]\times [-25, 25]` and the initial positions of the particles are
     around the top boundary of the box. For simplicity of use, the initial positions are fixed in this method and yield
@@ -88,6 +88,13 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
     -------
     simulator : PBFSimulator
         The PBF simulator.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: data-api-
     """
     interaction_distance = 1.5
     init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)

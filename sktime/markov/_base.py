@@ -214,7 +214,8 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
              score_k: Optional[int] = 10, blocksplit: bool = True, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
-    Implementation and ideas following [1]_ [2]_ and cross-validation [3]_.
+    Implementation and ideas following :cite:`msmscore-noe2013variational` :cite:`msmscore-wu2020variational` and 
+    cross-validation :cite:`msmscore-mcgibbon2015variational`.
 
     Divides the data into training and test data, fits a MSM using the training
     data using the parameters of this estimator, and scores is using the test
@@ -243,13 +244,16 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
     score_method : str, optional, default='VAMP2'
         Overwrite scoring method to be used if desired. If `None`, the estimators scoring
         method will be used.
-        Available scores are based on the variational approach for Markov processes [1]_ [2]_ :
+        Available scores are based on the variational approach for Markov processes :cite:`msmscore-noe2013variational`
+        :cite:`msmscore-wu2020variational`:
 
-        *  'VAMP1'  Sum of singular values of the symmetrized transition matrix [2]_ .
+        *  'VAMP1'  Sum of singular values of the symmetrized transition matrix :cite:`msmscore-wu2020variational` .
                     If the MSM is reversible, this is equal to the sum of transition
-                    matrix eigenvalues, also called Rayleigh quotient [1]_ [3]_ .
-        *  'VAMP2'  Sum of squared singular values of the symmetrized transition matrix [2]_ .
-                    If the MSM is reversible, this is equal to the kinetic variance [4]_ .
+                    matrix eigenvalues, also called Rayleigh quotient :cite:`msmscore-noe2013variational`
+                    :cite:`msmscore-mcgibbon2015variational` .
+        *  'VAMP2'  Sum of squared singular values of the symmetrized transition
+                    matrix :cite:`msmscore-wu2020variational`. If the MSM is reversible, this is equal to
+                    the kinetic variance :cite:`msmscore-noe2015kinetic`.
 
     blocksplit : bool, optional, default=True
         Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
@@ -263,15 +267,10 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
 
     References
     ----------
-    .. [1] Noe, F. and F. Nueske: A variational approach to modeling slow processes
-        in stochastic dynamical systems. SIAM Multiscale Model. Simul. 11, 635-655 (2013).
-    .. [2] Wu, H and F. Noe: Variational approach for learning Markov processes
-        from time series data (in preparation).
-    .. [3] McGibbon, R and V. S. Pande: Variational cross-validation of slow
-        dynamical modes in molecular kinetics, J. Chem. Phys. 142, 124105 (2015).
-    .. [4] Noe, F. and C. Clementi: Kinetic distance and kinetic maps from molecular
-        dynamics simulation. J. Chem. Theory Comput. 11, 5002-5011 (2015).
-
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: msmscore-
     """
     from sktime.util import ensure_dtraj_list
     dtrajs = ensure_dtraj_list(dtrajs)  # ensure format

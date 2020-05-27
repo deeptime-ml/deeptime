@@ -261,7 +261,7 @@ class TICA(Estimator, Transformer):
     construction of a Markov model. When the input data is the result of a
     Markov process (such as thermostatted molecular dynamics), TICA finds in
     fact an approximation to the eigenfunctions and eigenvalues of the
-    underlying Markov operator [1]_.
+    underlying Markov operator :cite:`tica-perez2013identification`.
 
     It estimates a TICA transformation from *data*. The resulting model can be used to obtain eigenvalues, eigenvectors,
     or project input data onto the slowest TICA components.
@@ -278,7 +278,7 @@ class TICA(Estimator, Transformer):
 
     where w is a vector of weights for each time step. By default, these weights
     are all equal to one, but different weights are possible, like the re-weighting
-    to equilibrium described in [6]_. Subsequently, the eigenvalue problem
+    to equilibrium described in :cite:`tica-wu2017variational`. Subsequently, the eigenvalue problem
 
     .. math:: C_{\tau} r_i = C_0 \lambda_i r_i,
 
@@ -293,9 +293,10 @@ class TICA(Estimator, Transformer):
     When used as a dimension reduction method, the input data is projected
     onto the dominant independent components.
 
-    TICA was originally introduced for signal processing in [2]_. It was
+    TICA was originally introduced for signal processing in :cite:`tica-molgedey1994separation`. It was
     introduced to molecular dynamics and as a method for the construction
-    of Markov models in [1]_ and [3]_. It was shown in [1]_ that when applied
+    of Markov models in :cite:`tica-perez2013identification` and :cite:`tica-schwantes2013improvements`. It was shown 
+    in :cite:`tica-perez2013identification` that when applied
     to molecular dynamics data, TICA is an approximation to the eigenvalues
     and eigenvectors of the true underlying dynamics.
 
@@ -318,8 +319,7 @@ class TICA(Estimator, Transformer):
     >>> model_var = estimator.fetch_model()
     >>> projected_data = model_var.transform(data)
 
-    For a brief explaination why TICA outperforms PCA to extract a good reaction
-    coordinate have a look `here
+    For a brief explaination why TICA outperforms PCA to extract a good reaction coordinate have a look `here
     <http://docs.markovmodel.org/lecture_tica.html#Example:-TICA-versus-PCA-in-a-stretched-double-well-potential>`_.
 
     See also
@@ -328,31 +328,10 @@ class TICA(Estimator, Transformer):
 
     References
     ----------
-
-    .. [1] Perez-Hernandez G, F Paul, T Giorgino, G De Fabritiis and F Noe. 2013.
-       Identification of slow molecular order parameters for Markov model construction
-       J. Chem. Phys. 139, 015102. doi:10.1063/1.4811489
-
-    .. [2] L. Molgedey and H. G. Schuster. 1994.
-       Separation of a mixture of independent signals using time delayed correlations
-       Phys. Rev. Lett. 72, 3634.
-
-    .. [3] Schwantes C, V S Pande. 2013.
-       Improvements in Markov State Model Construction Reveal Many Non-Native Interactions in the Folding of NTL9
-       J. Chem. Theory. Comput. 9, 2000-2009. doi:10.1021/ct300878a
-
-    .. [4] Noe, F. and Clementi, C. 2015. Kinetic distance and kinetic maps from molecular dynamics simulation.
-        J. Chem. Theory. Comput. doi:10.1021/acs.jctc.5b00553
-
-    .. [5] Noe, F., Banisch, R., Clementi, C. 2016. Commute maps: separating slowly-mixing molecular configurations
-       for kinetic modeling. J. Chem. Theory. Comput. doi:10.1021/acs.jctc.6b00762
-
-    .. [6] Wu, H., Nueske, F., Paul, F., Klus, S., Koltai, P., and Noe, F. 2016. Bias reduced variational
-        approximation of molecular kinetics from short off-equilibrium simulations. J. Chem. Phys. (submitted),
-        https://arxiv.org/abs/1610.06773.
-
-    .. [7] Chan, T. F., Golub G. H., LeVeque R. J. 1979. Updating formulae and pairwiese algorithms for
-        computing sample variances. Technical Report STAN-CS-79-773, Department of Computer Science, Stanford University.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tica-
     """
 
     def __init__(self, lagtime: int, epsilon: float = 1e-6, reversible: bool = True, dim: Optional[Real] = 0.95,
@@ -382,9 +361,10 @@ class TICA(Estimator, Transformer):
             that needs to be explained is greater than the percentage
             specified by dim.
         scaling: str or None, default='kinetic_map'
-            Can be set to :code:`None`, 'kinetic_map', or 'commute_map'. For more details see :attr:`scaling`.
+            Can be set to :code:`None`, 'kinetic_map' (:cite:`tica-noe2015kinetic`), 
+            or 'commute_map' (:cite:`tica-noe2016commute`). For more details see :attr:`scaling`.
         ncov : int, default=infinity
-            Limit the memory usage of the algorithm from [7]_ to an amount that corresponds
+            Limit the memory usage of the algorithm from :cite:`tica-chan1982updating` to an amount that corresponds
             to ncov additional copies of each correlation matrix. Influences performance and numerical stability.
         """
         super(TICA, self).__init__()
@@ -414,10 +394,10 @@ class TICA(Estimator, Transformer):
 
         * None: unscaled.
         * 'kinetic_map': Eigenvectors will be scaled by eigenvalues. As a result, Euclidean
-          distances in the transformed data approximate kinetic distances [4]_.
+          distances in the transformed data approximate kinetic distances :cite:`tica-noe2015kinetic`.
           This is a good choice when the data is further processed by clustering.
         * 'commute_map': Eigenvector i will be scaled by sqrt(timescale_i / 2). As a result,
-          Euclidean distances in the transformed data will approximate commute distances [5]_.
+          Euclidean distances in the transformed data will approximate commute distances :cite:`tica-noe2016commute`.
 
         :getter: Yields the currently configured scaling.
         :setter: Sets a new scaling.
@@ -434,7 +414,7 @@ class TICA(Estimator, Transformer):
 
     @property
     def ncov(self):
-        r""" Depth of the moments storage in [7]_. This parameter influences performance and numerical stability. """
+        r""" Depth of the moments storage in :cite:`tica-chan1982updating`. This parameter influences performance and numerical stability. """
         return self._ncov
 
     @ncov.setter

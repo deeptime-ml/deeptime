@@ -27,7 +27,7 @@ interpretability.
 
 As soon as the data is off equilibrium though, TICA estimates can become heavily biased.
 A salvageable case is if the underlying dynamics is reversible but there is not enough sampling to support this: a
-`reweighting procedure <notebooks/tica.ipynb#Koopman-reweighting>`_ can be applied :cite:`wu2016variational`.
+`reweighting procedure <notebooks/tica.ipynb#Koopman-reweighting>`_ can be applied :cite:`ix-dimredux-wu2016variational`.
 
 Furthermore, TICA might yield biased results if the data contains rare events. If the underlying
 distribution is expected to obey microscopic reversibility, not enough sampling might have been performed to actually
@@ -53,7 +53,7 @@ This means in particular that they are hard to interpret and there is no simple 
 On the other hand, VAMP deals with off-equilibrium cases consistently in which TICA becomes heavily biased (except
 for special cases).
 
-One can divide off-equilibrium cases into three subcategories (as presented in :cite:`koltai2018optimal`):
+One can divide off-equilibrium cases into three subcategories (as presented in :cite:`ix-dimredux-koltai2018optimal`):
 
 1. *Time-inhomogeneous dynamics*, e.g, the observed system is driven by a time-dependent external force,
 2. *Time-homogeneous non-reversible dynamics*, i.e., detailed balance is not obeyed and the observations might be
@@ -75,7 +75,7 @@ Performance, numerical stability, and memory consumption
 
 The implementations of `TICA <notebooks/tica.ipynb>`_ and its generalization `VAMP <notebooks/vamp.ipynb>`_
 are based on estimating covariance matrices using the `covariance estimator <api/generated/sktime.covariance.Covariance.rst#sktime.covariance.Covariance>`_.
-This estimator makes use of an online algorithm proposed in :cite:`chan1982updating` so that not the entire data has
+This estimator makes use of an online algorithm proposed in :cite:`ix-dimredux-chan1982updating` so that not the entire data has
 to be kept in memory.
 
 In particular, this means that TICA and VAMP not only have a :code:`fit`-method (`tica.fit() <api/generated/sktime.decomposition.TICA.rst#sktime.decomposition.TICA.fit>`_,
@@ -104,7 +104,7 @@ suffices to provide the whole dataset as argument.
     for X, Y in sktime.data.timeshifted_split(feature_trajectory, lagtime=tau, chunksize=100):
         estimator.partial_fit((X, Y))
 
-Furthermore, the online algorithm of :cite:`chan1982updating` uses a tree-like moment storage with copies of
+Furthermore, the online algorithm of :cite:`ix-dimredux-chan1982updating` uses a tree-like moment storage with copies of
 intermediate covariance and mean estimates. During the learning procedure, these moment storages are combined so
 that the tree never exceeds a certain depth. This depth can be set by the `ncov` estimator parameter:
 
@@ -125,3 +125,10 @@ one can take further steps.
 
 A commonly performed pipeline would be to `cluster <notebooks/clustering.ipynb>`_ the projected data and then
 building a `markov state model <index_msm.rst>`_ on the resulting discretized state space.
+
+.. rubric:: References
+
+.. bibliography:: /references.bib
+    :style: unsrt
+    :filter: docname in docnames
+    :keyprefix: ix-dimredux-

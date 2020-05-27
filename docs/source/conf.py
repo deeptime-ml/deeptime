@@ -16,6 +16,11 @@
 
 
 # -- Project information -----------------------------------------------------
+import logging
+from logging import LogRecord
+
+import sphinx.util
+import sphinxcontrib.bibtex
 from docutils.parsers.rst import directives
 from sphinx.ext.autosummary import Autosummary, get_documenter
 from sphinx.util.inspect import safe_getattr
@@ -26,6 +31,19 @@ author = 'AI4Science Group'
 
 # The full version, including alpha/beta/rc tags
 release = '0.1'
+
+# -- Disable certain warnings ------------------------------------------------
+
+sphinxlog_adapter = sphinx.util.logging.getLogger(sphinxcontrib.bibtex.__name__)
+
+
+class DuplicateLabelForKeysFilter(logging.Filter):
+
+    def filter(self, record: LogRecord) -> int:
+        return not (record.msg.startswith("duplicate label for keys") and record.levelno == logging.WARN)
+
+
+sphinxlog_adapter.logger.addFilter(DuplicateLabelForKeysFilter())
 
 # -- General configuration ---------------------------------------------------
 
@@ -66,7 +84,7 @@ html_static_path = ['_static']
 # -- Autosummary settings -----------------------------------------------------
 autosummary_generate = True
 autodoc_default_options = {
-    'members':  True,
+    'members': True,
     'member-order': 'groupwise',
     'inherited-members': True
 }
@@ -156,4 +174,5 @@ def setup(app):
                     self.content = ["~%s.%s" % (clazz, attrib) for attrib in attribs if not attrib.startswith('_')]
             finally:
                 return super(AutoAutoSummary, self).run()
+
     app.add_directive('autoautosummary', AutoAutoSummary)

@@ -20,11 +20,3 @@ API docs
    :caption: API docs
 
    api/index
-
-==========
-References
-==========
-
-.. bibliography:: references.bib
-    :all:
-    :style: alpha

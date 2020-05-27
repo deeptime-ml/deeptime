@@ -18,10 +18,10 @@ Output models
 Maximum-likelihood estimation of HMMs
 -------------------------------------
 
-Since the maximum-likelihood estimation (via Baum-Welch [1]_) of
+Since the maximum-likelihood estimation (via Baum-Welch :cite:`hmminit-baum1967inequality`) of
 :class:`HMMs <sktime.markov.hmm.HiddenMarkovStateModel>` is likely to
 get stuck in local maxima, a good initial guess is important for a high-quality model. The following methods aim to
-provide heuristics which can yield such an initial guess and can be found in [3]_.
+provide heuristics which can yield such an initial guess and can be found in :cite:`hmminit-noe2013projected`.
 
 For a HMM with a :class:`discrete output model <sktime.markov.hmm.DiscreteOutputModel>`, the following main
 steps are involved:
@@ -62,8 +62,8 @@ Bayesian hidden markov state models
 Bayesian HMMs can provide confidence estimates. They are estimated by starting from a reference HMM and then use
 Gibbs sampling.
 
-See [2]_ for a manuscript describing the theory behind using Gibbs sampling to sample from Bayesian hidden Markov model
-posteriors.
+See :cite:`hmminit-chodera2011bayesian` for a manuscript describing the theory behind using Gibbs 
+sampling to sample from Bayesian hidden Markov model posteriors.
 
 .. autosummary::
     :toctree: generated/
@@ -73,14 +73,10 @@ posteriors.
 
 References
 ----------
-.. [1] L. E. Baum and J. A. Egon, "An inequality with applications to statistical estimation for probabilistic
-       functions of a Markov process and to a model for ecology,"
-       Bull. Amer. Meteorol. Soc., vol. 73, pp. 360-363, 1967.
-.. [2] Bayesian hidden Markov model analysis of single-molecule force spectroscopy: Characterizing kinetics under
-       measurement uncertainty. John D. Chodera, Phillip Elms, Frank Noé, Bettina Keller, Christian M. Kaiser,
-       Aaron Ewall-Wice, Susan Marqusee, Carlos Bustamante, Nina Singhal Hinrichs http://arxiv.org/abs/1108.1430
-.. [3] F. Noe, H. Wu, J.-H. Prinz and N. Plattner: Projected and hidden Markov models for calculating kinetics and
-       metastable states of complex molecules. J. Chem. Phys. 139, 184114 (2013)
+.. bibliography:: /references.bib
+    :style: unsrt
+    :filter: docname in docnames
+    :keyprefix: hmminit-
 """
 
 from .hmm import HiddenMarkovStateModel
