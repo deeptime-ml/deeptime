@@ -7,6 +7,11 @@ are a stochastic model describing chains of events where the state of one partic
 the state prior to it, i.e., considering the chain of events :math:`(\ldots,X_{t-2}, X_{t-1}, X_t)` with a set of
 possible states :math:`S`, the probability of encountering a particular state :math:`X_{t+1}\in S` is a conditional
 probability on :math:`X_t\in S`.
+
+The standard formulation - which is also employed here - assumes that :math:`S` is discrete and of finite cardinality.
+This means that when related back to continuous-space processes, these discrete states represent a Voronoi tessellation
+of state space and can be obtained via indicator functions.
+
 These conditional probabilities are often described as so-called
 *transition matrix* :math:`P\in \mathbb{R}^{n\times n}`, where :math:`n = |S|`, the number of states.
 Assuming that :math:`S` is represented by the enumeration :math:`\{1,\ldots,n\}`, it is
@@ -27,7 +32,9 @@ models from discrete-state timeseries data. If the data's domain is not discrete
 `clustering <notebooks/clustering.ipynb>`__ can be employed to assign each frame to a state.
 
 In the following, we introduce the core object, the :class:`MarkovStateModel <sktime.markov.msm.MarkovStateModel>`,
-as well as a variety of estimators. When estimating a MSM from time series data, it is important to collect statistics
+as well as a variety of estimators.
+
+When estimating a MSM from time series data, it is important to collect statistics
 over the encountered state transitions. This is covered in `transition counting <notebooks/transition-counting.ipynb>`__.
 
 .. toctree::
