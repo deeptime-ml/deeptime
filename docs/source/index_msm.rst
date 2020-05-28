@@ -1,6 +1,6 @@
-==================================
-Markov state models and estimation
-==================================
+===================
+Markov state models
+===================
 
 Here we introduce several types of markov state models as well as analysis tools related to them. At the very core,
 are a stochastic model describing chains of events where the state of one particular point in time only depends on
@@ -35,9 +35,13 @@ over the encountered state transitions. This is covered in `transition counting 
 
     notebooks/transition-counting
     notebooks/mlmsm
-    notebooks/bayesian-msm
-    notebooks/amm
-    notebooks/oom-msm
+    notebooks/hmm
+
+Furthermore, scikit-time implements :class:`Augmented Markov models <sktime.markov.msm.AugmentedMSMEstimator>`
+:cite:`ix-msm-olsson2017combining` which can be used when experimental data is available, as well as
+:class:`Observable Operator Model MSMs <sktime.markov.msm.OOMReweightedMSM>` :cite:`ix-msm-nuske2017markov` which is
+an unbiased estimator for the MSM transition matrix that corrects for the effect of starting out of equilibrium,
+even when short lag times are used.
 
 .. rubric:: References
 
