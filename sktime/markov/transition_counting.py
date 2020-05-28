@@ -423,11 +423,11 @@ class TransitionCountEstimator(Estimator, Transformer):
           counting. This which can be shown to provide a likelihood that is the geometrical average
           over shifted subsamples of the trajectory, :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc.
           This geometrical average converges to the correct likelihood in the statistical limit
-          :cite:`counting-trendelkamp2015estimation`. "effective" uses an estimate of the transition
-          counts that are statistically uncorrelated.
+          :cite:`counting-trendelkamp2015estimation`.
 
         * effective: Uses an estimate of the transition counts that are statistically uncorrelated. Recommended
-          when used with a Bayesian MSM.
+          when used with a Bayesian MSM. A description of the estimation procedure
+          can be found in :cite:`counting-noe2015statistical`.
 
     See Also
     --------
