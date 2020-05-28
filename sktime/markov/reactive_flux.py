@@ -23,7 +23,7 @@ __all__ = ['ReactiveFlux']
 
 
 class ReactiveFlux(Model):
-    r"""A->B reactive flux from transition path theory (TPT)
+    r"""A->B reactive flux from transition path theory (TPT).
 
     This object describes a reactive flux, i.e. a network of fluxes from a set of source states A, to a set of
     sink states B, via a set of intermediate nodes. Every node has three properties: the stationary probability mu,

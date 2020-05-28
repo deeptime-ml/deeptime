@@ -111,8 +111,7 @@ class KoopmanReweightedMSM(MarkovStateModel):
 
 class OOMReweightedMSM(_MSMBaseEstimator):
     r"""OOM (observable operator model) MSM estimator for MSMs given discrete trajectory statistics.
-
-    Details can be found in :cite:`oom-msm-est-wu2020variational`.
+    Here, each transition is re-weighted using OOM theory. Details can be found in :cite:`oom-msm-est-nuske2017markov`.
 
     References
     ----------

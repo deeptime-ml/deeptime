@@ -10,7 +10,6 @@ Scikit-time
     index_dimreduction
     notebooks/clustering
     index_msm
-    notebooks/hmm
 
 ========
 API docs
