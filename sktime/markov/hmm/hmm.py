@@ -20,9 +20,9 @@ class HiddenMarkovStateModel(Model):
 
     See Also
     --------
-    initial_guess_discrete_from_data : initial guess from data with discrete output model
-    initial_guess_discrete_from_msm : initial guess from MSM with discrete output model
-    initial_guess_gaussian_from_data : initial guess from data with Gaussian output model
+    init.discrete.metastable_from_data : initial guess from data with discrete output model
+    init.discrete.metastable_from_msm : initial guess from MSM with discrete output model
+    init.gaussian.from_data : initial guess from data with Gaussian output model
     MaximumLikelihoodHMSM : maximum likelihood estimation of HMSMs
     BayesianHMSM : Bayesian sampling of models for confidences.
     """

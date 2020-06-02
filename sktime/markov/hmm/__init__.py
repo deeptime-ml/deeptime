@@ -38,8 +38,16 @@ steps are involved:
 .. autosummary::
     :toctree: generated/
 
-    initial_guess_discrete_from_data
-    initial_guess_discrete_from_msm
+    init.discrete.metastable_from_data
+    init.discrete.metastable_from_msm
+
+A non data-driven way to initialize a HMM is implemented by setting the transition matrix and initial distribution to
+uniform, and drawing a random row-stochastic emission probability matrix:
+
+.. autosummary::
+    :toctree: generated/
+
+    init.discrete.random
 
 For a HMM with a :class:`gaussian output model <sktime.markov.hmm.GaussianOutputModel>`, a Gaussian mixture
 model is estimated. This particular heuristic requires an installation of `scikit-learn <https://scikit-learn.org/>`_.
@@ -47,7 +55,7 @@ model is estimated. This particular heuristic requires an installation of `sciki
 .. autosummary::
     :toctree: generated/
 
-    initial_guess_gaussian_from_data
+    init.gaussian.from_data
 
 Estimation and resulting model:
 
@@ -80,7 +88,7 @@ References
 """
 
 from .hmm import HiddenMarkovStateModel
-from .maximum_likelihood_hmm import MaximumLikelihoodHMSM, initial_guess_discrete_from_data, \
-    initial_guess_discrete_from_msm, initial_guess_gaussian_from_data
+from .maximum_likelihood_hmm import MaximumLikelihoodHMSM
 from .bayesian_hmm import BayesianHMSM, BayesianHMMPosterior
 from .output_model import OutputModel, DiscreteOutputModel, GaussianOutputModel
+from . import init

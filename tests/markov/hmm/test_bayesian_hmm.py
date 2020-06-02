@@ -18,9 +18,10 @@
 import unittest
 
 import numpy as np
+import sktime
 
 from sktime.data import datasets
-from sktime.markov.hmm import initial_guess_discrete_from_data, MaximumLikelihoodHMSM
+from sktime.markov.hmm import MaximumLikelihoodHMSM
 from sktime.markov.hmm.bayesian_hmm import BayesianHMSM, BayesianHMMPosterior
 from sktime.markov.hmm._hmm_bindings.util import count_matrix
 from sktime.util import confidence_interval, ensure_dtraj_list
@@ -300,7 +301,7 @@ class TestBHMMPathological(unittest.TestCase):
     def test_2state_rev_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
         dtrajs = ensure_dtraj_list(obs)
-        init_hmm = initial_guess_discrete_from_data(dtrajs, 2, 1, regularize=False)
+        init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(dtrajs, 2, 1, regularize=False)
         hmm = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(dtrajs).fetch_model()
         # this will generate disconnected count matrices and should fail:
         with self.assertRaises(NotImplementedError):
@@ -308,7 +309,8 @@ class TestBHMMPathological(unittest.TestCase):
 
     def test_2state_nonrev_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
-        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1, regularize=False)
+        init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
+                                                                        regularize=False)
         mle = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(obs).fetch_model()
         bhmm = BayesianHMSM(mle, reversible=False, n_samples=2000).fit(obs).fetch_model()
         tmatrix_samples = np.array([s.transition_model.transition_matrix for s in bhmm])
@@ -318,7 +320,8 @@ class TestBHMMPathological(unittest.TestCase):
 
     def test_2state_rev_2step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0], dtype=int)
-        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1, regularize=False)
+        init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
+                                                                        regularize=False)
         mle = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(obs).fetch_model()
         bhmm = BayesianHMSM(mle, reversible=False, n_samples=100).fit(obs).fetch_model()
         tmatrix_samples = np.array([s.transition_model.transition_matrix for s in bhmm])
