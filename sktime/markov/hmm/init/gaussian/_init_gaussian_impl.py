@@ -58,6 +58,7 @@ def from_data(dtrajs, n_hidden_states, reversible):
             Nij += np.outer(pobs[t, :], pobs[t + 1, :])
 
     # Compute transition matrix maximum likelihood estimate.
-    Tij = msmest.transition_matrix(Nij, reversible=reversible)
-    pi = msmana.stationary_distribution(Tij)
-    return HiddenMarkovStateModel(transition_model=Tij, output_model=output_model, initial_distribution=pi)
+    transition_matrix = msmest.transition_matrix(Nij, reversible=reversible)
+    initial_distribution = msmana.stationary_distribution(transition_matrix)
+    return HiddenMarkovStateModel(transition_model=transition_matrix, output_model=output_model,
+                                  initial_distribution=initial_distribution)

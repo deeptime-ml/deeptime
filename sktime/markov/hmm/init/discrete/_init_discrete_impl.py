@@ -3,7 +3,9 @@ from typing import Optional, Union
 import numpy as np
 from scipy.sparse import issparse
 
-def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False, C=None, eps=None):
+
+def _regularize_hidden(initial_distribution, transition_matrix, reversible=True, stationary=False, count_matrix=None,
+                       eps=None):
     """ Regularizes the hidden initial distribution and transition matrix.
 
     Makes sure that the hidden initial distribution and transition matrix have
@@ -13,7 +15,7 @@ def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False,
 
     Parameters
     ----------
-    p0 : ndarray(n)
+    initial_distribution : ndarray(n)
         Initial hidden distribution of the HMM
     transition_matrix : ndarray(n, n)
         Hidden transition matrix
@@ -22,7 +24,7 @@ def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False,
     stationary : bool
         p0 is the stationary distribution of P. In this case, will not regularize
         p0 separately. If stationary=False, the regularization will be applied to p0.
-    C : ndarray(n, n)
+    count_matrix : ndarray(n, n)
         Hidden count matrix. Only needed for stationary=True and P disconnected.
     eps : float or None
         minimum value of the resulting transition matrix. Default: evaluates
@@ -56,12 +58,12 @@ def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False,
     # REGULARIZE p0
     if stationary:
         from sktime.markov._transition_matrix import stationary_distribution
-        stationary_distribution(transition_matrix, C=C)
+        stationary_distribution(transition_matrix, C=count_matrix)
     else:
-        p0 = np.maximum(p0, eps)
-        p0 /= p0.sum()
+        initial_distribution = np.maximum(initial_distribution, eps)
+        initial_distribution /= initial_distribution.sum()
 
-    return p0, transition_matrix
+    return initial_distribution, transition_matrix
 
 
 def _regularize_pobs(output_probabilities, nonempty=None, separate=None, eps=None):
@@ -84,7 +86,7 @@ def _regularize_pobs(output_probabilities, nonempty=None, separate=None, eps=Non
 
     Returns
     -------
-    B : ndarray(n, m)
+    output_probabilities : ndarray(n, m)
         Regularized output probabilities
 
     """
@@ -116,8 +118,8 @@ def _coarse_grain_transition_matrix(P, M):
 
     Computes
 
-    .. math:
-        Pc = (M' M)^-1 M' P M
+    .. math::
+        P_c = (M' M)^-1 M' P M
 
     Parameters
     ----------
@@ -128,7 +130,7 @@ def _coarse_grain_transition_matrix(P, M):
 
     Returns
     -------
-    Pc : ndarray(m, m)
+    P_coarse : ndarray(m, m)
         coarse-grained transition matrix.
 
     """
@@ -197,6 +199,11 @@ def metastable_from_msm(msm, n_hidden_states: int,
         :filter: docname in docnames
         :keyprefix: hmm-init-msm-
     """
+    from sktime.markov._transition_matrix import stationary_distribution
+    from sktime.markov._transition_matrix import estimate_P
+    from sktime.markov.msm import MarkovStateModel
+    from sktime.markov import PCCAModel
+
     count_matrix = msm.count_model.count_matrix
     nonseparate_symbols = np.arange(msm.count_model.n_states_full)
     nonseparate_states = msm.count_model.symbols_to_states(nonseparate_symbols)
@@ -213,11 +220,8 @@ def metastable_from_msm(msm, n_hidden_states: int,
         nonseparate_count_matrix = nonseparate_count_model.count_matrix
         if issparse(nonseparate_count_matrix):
             nonseparate_count_matrix = nonseparate_count_matrix.toarray()
-        from sktime.markov._transition_matrix import estimate_P
         P_nonseparate = estimate_P(nonseparate_count_matrix, reversible=True)
-        from sktime.markov._transition_matrix import stationary_distribution
         pi = stationary_distribution(P_nonseparate, C=nonseparate_count_matrix)
-        from sktime.markov.msm import MarkovStateModel
         nonseparate_msm = MarkovStateModel(P_nonseparate, stationary_distribution=pi)
     if issparse(count_matrix):
         count_matrix = count_matrix.toarray()
@@ -225,7 +229,6 @@ def metastable_from_msm(msm, n_hidden_states: int,
     # if #metastable sets == #states, we can stop here
     n_meta = n_hidden_states if separate_symbols is None else n_hidden_states - 1
     if n_meta == nonseparate_msm.n_states:
-        from sktime.markov import PCCAModel
         pcca = PCCAModel(nonseparate_msm.transition_matrix, nonseparate_msm.stationary_distribution, np.eye(n_meta),
                          np.eye(n_meta))
     else:
@@ -260,7 +263,7 @@ def metastable_from_msm(msm, n_hidden_states: int,
     # regularize
     eps_a = 0.01 / n_hidden_states if regularize else 0.
     hidden_pi, hidden_transition_matrix = _regularize_hidden(hidden_pi, hidden_transition_matrix, reversible=reversible,
-                                                             stationary=stationary, C=hidden_counts, eps=eps_a)
+                                                             stationary=stationary, count_matrix=hidden_counts, eps=eps_a)
     eps_b = 0.01 / msm.n_states if regularize else 0.
     output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate_symbols, eps=eps_b)
     from sktime.markov.hmm import HiddenMarkovStateModel
@@ -401,7 +404,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
 metastable_from_data.VALID_MODES = ['all', 'largest', 'populous']
 
 
-def random(n_observation_states: int, n_hidden_states: int, seed: Optional[int] = None):
+def random_guess(n_observation_states: int, n_hidden_states: int, seed: Optional[int] = None):
     r"""Initializes a :class:`HMM <sktime.markov.hmm.HiddenMarkovStateModel>` with a set number of hidden and
     observable states by setting the transition matrix uniform and drawing a random row-stochastic matrix as
     output probabilities.

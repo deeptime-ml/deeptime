@@ -47,7 +47,7 @@ uniform, and drawing a random row-stochastic emission probability matrix:
 .. autosummary::
     :toctree: generated/
 
-    init.discrete.random
+    init.discrete.random_guess
 
 For a HMM with a :class:`gaussian output model <sktime.markov.hmm.GaussianOutputModel>`, a Gaussian mixture
 model is estimated. This particular heuristic requires an installation of `scikit-learn <https://scikit-learn.org/>`_.
@@ -87,8 +87,8 @@ References
     :keyprefix: hmminit-
 """
 
+from sktime.markov.hmm import init
 from .hmm import HiddenMarkovStateModel
 from .maximum_likelihood_hmm import MaximumLikelihoodHMSM
 from .bayesian_hmm import BayesianHMSM, BayesianHMMPosterior
 from .output_model import OutputModel, DiscreteOutputModel, GaussianOutputModel
-from . import init
