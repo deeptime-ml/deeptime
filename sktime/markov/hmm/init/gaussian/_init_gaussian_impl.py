@@ -1,8 +1,5 @@
 import numpy as np
 
-from sktime.markov.hmm import HiddenMarkovStateModel, GaussianOutputModel
-from sktime.util import ensure_dtraj_list
-
 
 def from_data(dtrajs, n_hidden_states, reversible):
     r""" Makes an initial guess :class:`HMM <HiddenMarkovStateModel>` with Gaussian output model.
@@ -35,7 +32,12 @@ def from_data(dtrajs, n_hidden_states, reversible):
         Initial guess from an already existing :class:`MSM <sktime.markov.msm.MarkovStateModel>` with discrete
         output model.
     """
+    from sktime.markov.hmm import HiddenMarkovStateModel, GaussianOutputModel
     from sklearn.mixture import GaussianMixture
+    from sktime.util import ensure_dtraj_list
+    import msmtools.estimation as msmest
+    import msmtools.analysis as msmana
+
     dtrajs = ensure_dtraj_list(dtrajs)
     collected_observations = np.concatenate(dtrajs)
     gmm = GaussianMixture(n_components=n_hidden_states)
@@ -56,8 +58,6 @@ def from_data(dtrajs, n_hidden_states, reversible):
             Nij += np.outer(pobs[t, :], pobs[t + 1, :])
 
     # Compute transition matrix maximum likelihood estimate.
-    import msmtools.estimation as msmest
-    import msmtools.analysis as msmana
     Tij = msmest.transition_matrix(Nij, reversible=reversible)
     pi = msmana.stationary_distribution(Tij)
     return HiddenMarkovStateModel(transition_model=Tij, output_model=output_model, initial_distribution=pi)

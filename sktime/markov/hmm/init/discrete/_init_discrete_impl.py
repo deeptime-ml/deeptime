@@ -3,14 +3,6 @@ from typing import Optional, Union
 import numpy as np
 from scipy.sparse import issparse
 
-from sktime.markov import PCCAModel, TransitionCountEstimator
-from sktime.markov._transition_matrix import enforce_reversible_on_closed, stationary_distribution, estimate_P
-from sktime.markov.hmm import HiddenMarkovStateModel
-from sktime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
-from sktime.markov.util import compute_dtrajs_effective
-from sktime.util import ensure_dtraj_list
-
-
 def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False, C=None, eps=None):
     """ Regularizes the hidden initial distribution and transition matrix.
 
@@ -58,10 +50,12 @@ def _regularize_hidden(p0, transition_matrix, reversible=True, stationary=False,
     transition_matrix /= transition_matrix.sum(axis=1)[:, None]
     # ensure reversibility
     if reversible:
+        from sktime.markov._transition_matrix import enforce_reversible_on_closed
         transition_matrix = enforce_reversible_on_closed(transition_matrix)
 
     # REGULARIZE p0
     if stationary:
+        from sktime.markov._transition_matrix import stationary_distribution
         stationary_distribution(transition_matrix, C=C)
     else:
         p0 = np.maximum(p0, eps)
@@ -151,9 +145,9 @@ def _coarse_grain_transition_matrix(P, M):
     return P_coarse
 
 
-def metastable_from_msm(msm: MarkovStateModel, n_hidden_states: int,
+def metastable_from_msm(msm, n_hidden_states: int,
                         reversible: bool = True, stationary: bool = False,
-                        separate_symbols=None, regularize: bool = True) -> HiddenMarkovStateModel:
+                        separate_symbols=None, regularize: bool = True):
     r""" Makes an initial guess for an :class:`HMM <sktime.markov.hmm.HiddenMarkovStateModel>` with
     discrete output model from an already existing MSM over observable states. The procedure is described in
     :cite:`hmm-init-msm-noe2013projected` and uses PCCA+ :cite:`hmm-init-msm-roblitz2013fuzzy` for
@@ -219,8 +213,11 @@ def metastable_from_msm(msm: MarkovStateModel, n_hidden_states: int,
         nonseparate_count_matrix = nonseparate_count_model.count_matrix
         if issparse(nonseparate_count_matrix):
             nonseparate_count_matrix = nonseparate_count_matrix.toarray()
+        from sktime.markov._transition_matrix import estimate_P
         P_nonseparate = estimate_P(nonseparate_count_matrix, reversible=True)
+        from sktime.markov._transition_matrix import stationary_distribution
         pi = stationary_distribution(P_nonseparate, C=nonseparate_count_matrix)
+        from sktime.markov.msm import MarkovStateModel
         nonseparate_msm = MarkovStateModel(P_nonseparate, stationary_distribution=pi)
     if issparse(count_matrix):
         count_matrix = count_matrix.toarray()
@@ -228,6 +225,7 @@ def metastable_from_msm(msm: MarkovStateModel, n_hidden_states: int,
     # if #metastable sets == #states, we can stop here
     n_meta = n_hidden_states if separate_symbols is None else n_hidden_states - 1
     if n_meta == nonseparate_msm.n_states:
+        from sktime.markov import PCCAModel
         pcca = PCCAModel(nonseparate_msm.transition_matrix, nonseparate_msm.stationary_distribution, np.eye(n_meta),
                          np.eye(n_meta))
     else:
@@ -243,6 +241,7 @@ def metastable_from_msm(msm: MarkovStateModel, n_hidden_states: int,
 
     hidden_transition_matrix = _coarse_grain_transition_matrix(msm.transition_matrix, memberships)
     if reversible:
+        from sktime.markov._transition_matrix import enforce_reversible_on_closed
         hidden_transition_matrix = enforce_reversible_on_closed(hidden_transition_matrix)
 
     hidden_counts = memberships.T.dot(count_matrix).dot(memberships)
@@ -264,6 +263,7 @@ def metastable_from_msm(msm: MarkovStateModel, n_hidden_states: int,
                                                              stationary=stationary, C=hidden_counts, eps=eps_a)
     eps_b = 0.01 / msm.n_states if regularize else 0.
     output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate_symbols, eps=eps_b)
+    from sktime.markov.hmm import HiddenMarkovStateModel
     return HiddenMarkovStateModel(transition_model=hidden_transition_matrix, output_model=output_probabilities,
                                   initial_distribution=hidden_pi)
 
@@ -370,6 +370,10 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
             + [m + "-regularized" for m in metastable_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(metastable_from_data.VALID_MODES)))
 
+    from sktime.util import ensure_dtraj_list
+    from sktime.markov.util import compute_dtrajs_effective
+    from sktime.markov import TransitionCountEstimator
+
     dtrajs = ensure_dtraj_list(dtrajs)
     dtrajs = compute_dtrajs_effective(dtrajs, lagtime=lagtime, n_states=n_hidden_states, stride=stride)
     counts = TransitionCountEstimator(1, 'sliding', sparse=False).fit(dtrajs).fetch_model()
@@ -388,6 +392,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
     if 'populous' in mode:
         counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
                                          sort_by_population=True)
+    from sktime.markov.msm import MaximumLikelihoodMSM
     msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True, maxerr=1e-3,
                                maxiter=10000).fit(counts).fetch_model()
     return metastable_from_msm(msm, n_hidden_states, reversible, stationary, separate_symbols, regularize)
@@ -420,4 +425,5 @@ def random(n_observation_states: int, n_hidden_states: int, seed: Optional[int] 
     P.fill(1. / n_hidden_states)
     B = state.uniform(size=(n_hidden_states, n_observation_states))
     B /= B.sum(axis=-1, keepdims=True)
+    from sktime.markov.hmm import HiddenMarkovStateModel
     return HiddenMarkovStateModel(transition_model=P, output_model=B)
