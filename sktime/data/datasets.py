@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def double_well_discrete():
     r"""MCMC process in a symmetric double well potential, spatially discretized to 100 bins.
     The discrete trajectory contains 100000 steps, discrete time step dt=10. The result object allows access to
@@ -7,14 +8,14 @@ def double_well_discrete():
 
     Returns
     -------
-    dataset : DoubleWellDiscrete
+    dataset : sktime.data.double_well_dataset.DoubleWellDiscrete
         an object that contains a markov state model corresponding to the process and the discrete trajectory
     """
     from sktime.data.double_well_dataset import DoubleWellDiscrete
     return DoubleWellDiscrete()
 
 
-def ellipsoids(laziness=0.97, seed=None):
+def ellipsoids(laziness: float = 0.97, seed=None):
     r""" Example data of a two-state markov chain which can be featurized into two parallel ellipsoids and optionally
     rotated into higher-dimensional space.
 
@@ -40,7 +41,7 @@ def ellipsoids(laziness=0.97, seed=None):
 
     Returns
     -------
-    dataset : Ellipsoids
+    dataset : sktime.data.ellipsoids_dataset.Ellipsoids
         an object that contains methods to create discrete and continuous observations
     """
     from sktime.data.ellipsoids_dataset import Ellipsoids
@@ -83,7 +84,7 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
 
     Returns
     -------
-    simulator : PBFSimulator
+    simulator : sktime.data.pbf_simulator.PBFSimulator
         The PBF simulator.
 
     References
