@@ -7,7 +7,7 @@ import sktime.markov.hmm._hmm_bindings as _bindings
 from sktime.markov.hmm import init
 from sktime.data.double_well import DoubleWellDiscrete
 from sktime.markov.hmm import MaximumLikelihoodHMSM
-from sktime.markov.hmm.hmm import viterbi
+from sktime.markov.hmm.hidden_markov_model import viterbi
 from sktime.markov.hmm.output_model import DiscreteOutputModel
 from sktime.markov.util import count_states
 from tests.markov.msm.test_mlmsm import estimate_markov_model

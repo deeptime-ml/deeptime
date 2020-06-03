@@ -24,7 +24,7 @@ from sktime.base import Estimator
 from sktime.markov import Q_
 from sktime.markov._transition_matrix import estimate_P, stationary_distribution
 from sktime.markov.hmm import HiddenMarkovStateModel
-from sktime.markov.hmm.hmm import viterbi
+from sktime.markov.hmm.hidden_markov_model import viterbi
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import compute_dtrajs_effective
