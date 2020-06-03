@@ -1,10 +1,5 @@
 import numpy as np
 
-from .double_well import DoubleWellDiscrete
-from .ellipsoids import Ellipsoids
-from .pbf import PBFSimulator
-
-
 def double_well_discrete():
     r"""MCMC process in a symmetric double well potential, spatially discretized to 100 bins.
     The discrete trajectory contains 100000 steps, discrete time step dt=10. The result object allows access to
@@ -15,6 +10,7 @@ def double_well_discrete():
     dataset : DoubleWellDiscrete
         an object that contains a markov state model corresponding to the process and the discrete trajectory
     """
+    from sktime.data.double_well_dataset import DoubleWellDiscrete
     return DoubleWellDiscrete()
 
 
@@ -22,7 +18,7 @@ def ellipsoids(laziness=0.97, seed=None):
     r""" Example data of a two-state markov chain which can be featurized into two parallel ellipsoids and optionally
     rotated into higher-dimensional space.
 
-    See :class:`Ellipsoids <sktime.data.Ellipsoids>` for more details.
+    See :class:`Ellipsoids <sktime.data.ellipsoids_dataset.Ellipsoids>` for more details.
 
     .. plot::
 
@@ -47,6 +43,7 @@ def ellipsoids(laziness=0.97, seed=None):
     dataset : Ellipsoids
         an object that contains methods to create discrete and continuous observations
     """
+    from sktime.data.ellipsoids_dataset import Ellipsoids
     return Ellipsoids(laziness=laziness, seed=seed)
 
 
@@ -61,7 +58,7 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
     The interaction distance is set to :math:`d = 1.5` and `n_burn_in` steps are
     performed to equilibrate the system before returning the simulator.
 
-    For more details see :class:`PBFSimulator <sktime.data.PBFSimulator>`.
+    For more details see :class:`PBFSimulator <sktime.data.pbf_simulator.PBFSimulator>`.
 
     .. plot::
 
@@ -96,6 +93,7 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
         :filter: docname in docnames
         :keyprefix: data-api-
     """
+    from sktime.data.pbf_simulator import PBFSimulator
     interaction_distance = 1.5
     init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
     init_pos_y = np.arange(-12, 24, interaction_distance * .9).astype(np.float32)

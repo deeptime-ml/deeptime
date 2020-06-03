@@ -87,8 +87,9 @@ References
     :keyprefix: hmminit-
 """
 
-from . import init
 from .hidden_markov_model import HiddenMarkovStateModel
 from .maximum_likelihood_hmm import MaximumLikelihoodHMSM
 from .bayesian_hmm import BayesianHMSM, BayesianHMMPosterior
 from .output_model import OutputModel, DiscreteOutputModel, GaussianOutputModel
+
+from . import init

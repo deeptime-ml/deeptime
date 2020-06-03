@@ -1,14 +1,12 @@
-import collections
 import random
 import warnings
 from typing import Optional, List
 
 import numpy as np
 
-from . import _clustering_bindings as _bd
-
 from sktime.base import Estimator, Transformer
 from sktime.clustering.cluster_model import ClusterModel
+from . import _clustering_bindings as _bd
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering', 'KMeansClusteringModel']
 
