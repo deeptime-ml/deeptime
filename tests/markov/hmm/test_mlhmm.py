@@ -4,10 +4,10 @@ import msmtools
 import numpy as np
 import sktime.markov.hmm._hmm_bindings as _bindings
 
-from sktime.data.double_well import DoubleWellDiscrete
+from sktime.markov.hmm import init
+from sktime.data.double_well_dataset import DoubleWellDiscrete
 from sktime.markov.hmm import MaximumLikelihoodHMSM
-from sktime.markov.hmm.hmm import viterbi
-from sktime.markov.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
+from sktime.markov.hmm.hidden_markov_model import viterbi
 from sktime.markov.hmm.output_model import DiscreteOutputModel
 from sktime.markov.util import count_states
 from tests.markov.msm.test_mlmsm import estimate_markov_model
@@ -102,11 +102,11 @@ class TestMLHMM(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         dtraj = DoubleWellDiscrete().dtraj
-        initial_hmm_10 = initial_guess_discrete_from_data(dtraj, n_hidden_states=2, lagtime=10)
+        initial_hmm_10 = init.discrete.metastable_from_data(dtraj, n_hidden_states=2, lagtime=10)
         cls.hmm_lag10 = MaximumLikelihoodHMSM(initial_hmm_10, lagtime=10).fit(dtraj).fetch_model()
         cls.hmm_lag10_largest = cls.hmm_lag10.submodel_largest(dtrajs=dtraj)
         cls.msm_lag10 = estimate_markov_model(dtraj, 10, reversible=True)
-        initial_hmm_1 = initial_guess_discrete_from_data(dtraj, n_hidden_states=2, lagtime=1)
+        initial_hmm_1 = init.discrete.metastable_from_data(dtraj, n_hidden_states=2, lagtime=1)
         cls.hmm_lag1 = MaximumLikelihoodHMSM(initial_hmm_1).fit(dtraj).fetch_model()
         cls.hmm_lag1_largest = cls.hmm_lag1.submodel_largest(dtrajs=dtraj)
         cls.msm_lag1 = estimate_markov_model(dtraj, 1, reversible=True)
@@ -516,7 +516,7 @@ class TestMLHMM(unittest.TestCase):
                            0, 2, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
                            1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
                            0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])]
-        init_hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=2)
+        init_hmm = init.discrete.metastable_from_data(dtraj, n_hidden_states=3, lagtime=2)
         hmm = MaximumLikelihoodHMSM(init_hmm, lagtime=2).fit(dtraj).fetch_model()
         hmm_sub = hmm.submodel_largest(connectivity_threshold=5, dtrajs=dtraj)
 
@@ -527,7 +527,7 @@ class TestMLHMM(unittest.TestCase):
     def test_separate_states(self):
         dtrajs = [np.array([0, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1]),
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
-        init_hmm = initial_guess_discrete_from_data(dtrajs, n_hidden_states=3, lagtime=1, separate_symbols=[0])
+        init_hmm = init.discrete.metastable_from_data(dtrajs, n_hidden_states=3, lagtime=1, separate_symbols=[0])
         hmm = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(dtrajs).fetch_model().submodel_largest(dtrajs=dtrajs)
         # we expect zeros in all samples at the following indices:
         pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))
@@ -538,7 +538,7 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
 
     def test_1state(self):
         obs = np.array([0, 0, 0, 0, 0], dtype=int)
-        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=1, lagtime=1)
+        init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=1, lagtime=1)
         hmm = MaximumLikelihoodHMSM(init_hmm).fit(obs).fetch_model()
         # hmm = bhmm.estimate_hmm([obs], n_states=1, lag=1, accuracy=1e-6)
         p0_ref = np.array([1.0])
@@ -551,11 +551,11 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
     def test_1state_fail(self):
         obs = np.array([0, 0, 0, 0, 0], dtype=int)
         with self.assertRaises(ValueError):
-            _ = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
+            _ = init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1)
 
     def test_2state_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
-        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
+        init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1)
         hmm = MaximumLikelihoodHMSM(init_hmm, accuracy=1e-6).fit(obs).fetch_model()
         p0_ref = np.array([1, 0])
         A_ref = np.array([[0.8, 0.2],
@@ -572,7 +572,7 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
 
     def test_2state_2step(self):
         obs = np.array([0, 1, 0], dtype=int)
-        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
+        init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1)
         hmm = MaximumLikelihoodHMSM(init_hmm).fit(obs).fetch_model()
         p0_ref = np.array([1, 0])
         A_ref = np.array([[0.0, 1.0],

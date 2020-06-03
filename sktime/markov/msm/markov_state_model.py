@@ -1114,8 +1114,8 @@ class MarkovStateModel(Model):
                     ratio=timescale_ratios[nhidden - 2],
                 ), stacklevel=2)
         # run HMM estimate
-        from sktime.markov.hmm import MaximumLikelihoodHMSM, initial_guess_discrete_from_msm
-        init_hmm = initial_guess_discrete_from_msm(self, nhidden, reversible=self.reversible)
+        from sktime.markov.hmm import MaximumLikelihoodHMSM, init
+        init_hmm = init.discrete.metastable_from_msm(self, nhidden, reversible=self.reversible)
         est = MaximumLikelihoodHMSM(init_hmm, lagtime=self.lagtime, reversible=self.reversible,
                                     physical_time=self.count_model.physical_time)
         hmsm = est.fit(dtrajs).fetch_model()

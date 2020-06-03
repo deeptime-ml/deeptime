@@ -314,11 +314,11 @@ class BayesianHMSM(Estimator):
         estimator : BayesianHMSM
             Estimator that is initialized with a default prior model.
         """
-        from sktime.markov.hmm import initial_guess_discrete_from_data, MaximumLikelihoodHMSM
+        from sktime.markov.hmm import init, MaximumLikelihoodHMSM
         dtrajs = ensure_dtraj_list(dtrajs)
-        init_hmm = initial_guess_discrete_from_data(dtrajs, n_hidden_states=n_hidden_states, lagtime=lagtime,
-                                                    stride=stride, reversible=reversible, stationary=stationary,
-                                                    separate_symbols=separate)
+        init_hmm = init.discrete.metastable_from_data(dtrajs, n_hidden_states=n_hidden_states, lagtime=lagtime,
+                                                      stride=stride, reversible=reversible, stationary=stationary,
+                                                      separate_symbols=separate)
         hmm = MaximumLikelihoodHMSM(init_hmm, stride=stride, lagtime=lagtime, reversible=reversible,
                                     stationary=stationary, physical_time=physical_time,
                                     accuracy=1e-2).fit(dtrajs).fetch_model()

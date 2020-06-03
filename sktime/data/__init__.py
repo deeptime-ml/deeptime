@@ -28,13 +28,10 @@ Implementations
 .. autosummary::
     :toctree: generated/impl/
 
-    DoubleWellDiscrete
-    Ellipsoids
-    PBFSimulator
+    double_well_dataset.DoubleWellDiscrete
+    ellipsoids_dataset.Ellipsoids
+    pbf_simulator.PBFSimulator
 """
 
 from .util import timeshifted_split
-from .double_well import DoubleWellDiscrete
-from .ellipsoids import Ellipsoids
-from .pbf import PBFSimulator
 from .datasets import double_well_discrete, ellipsoids, position_based_fluids

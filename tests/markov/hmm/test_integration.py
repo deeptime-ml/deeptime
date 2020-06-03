@@ -20,13 +20,13 @@ import unittest
 import numpy as np
 from sktime.markov._markov_bindings import simulation as generation_bindings
 from sktime.markov.hmm import MaximumLikelihoodHMSM
-from sktime.markov.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
+import sktime
 import itertools
 import msmtools.analysis
 from tests.util import GenerateTestMatrix
 
 parameter_options = {'reversible': [True, False],
-                     'init_heuristics': [initial_guess_discrete_from_data],
+                     'init_heuristics': [sktime.markov.hmm.init.discrete.metastable_from_data],
                      'lagtime': [1]}
 
 sorted_kwargs = sorted(parameter_options)

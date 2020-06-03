@@ -1,7 +1,6 @@
 from typing import Optional
 
 import numpy as np
-from ..markov.msm import MarkovStateModel
 
 __author__ = "clonker"
 
@@ -48,13 +47,14 @@ class Ellipsoids(object):
         if laziness <= 0.5 or laziness > 1:
             raise ValueError("Laziness must be at least 0.5 and at most 1.0 but was {}".format(laziness))
         transition_matrix = np.array([[laziness, 1-laziness], [1-laziness, laziness]])
+        from sktime.markov.msm import MarkovStateModel
         self._msm = MarkovStateModel(transition_matrix)
         self._rnd = np.random.RandomState(seed=seed)
         self._seed = seed
         self._cov = np.array([[5.7, 5.65], [5.65, 5.7]])
 
     @property
-    def msm(self) -> MarkovStateModel:
+    def msm(self):
         r""" Yields the underlying markov state model. """
         return self._msm
 

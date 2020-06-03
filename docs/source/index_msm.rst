@@ -8,6 +8,16 @@ the state prior to it, i.e., considering the chain of events :math:`(\ldots,X_{t
 possible states :math:`S`, the probability of encountering a particular state :math:`X_{t+1}\in S` is a conditional
 probability on :math:`X_t\in S`.
 
+A great deal is written about MSMs in the literature, so we omit many crucial discussions here.
+The 2018 review by Husic and Pande :cite:`ix-msm-husic2018markov` is a good place to start for a high-level
+discussion of Markov state models
+and a chronology of their development in the context of molecular kinetics. Figure 3 is particularly helpful for
+understanding the many "flavors" of MSM analyses developed.
+A comprehensive overview of the mathematics was presented by Prinz et al :cite:`ix-msm-prinz2011markov`,
+including the MLE estimator used in Maximum Likelhood MSMs. This content is also covered
+in Chapter 4 of a useful book on Markov state models :cite:`ix-msm-bowman2013introduction`, which is a valuable
+resource for many aspects of Markov state modeling (see book Figure 1.1).
+
 The standard formulation - which is also employed here - assumes that :math:`S` is discrete and of finite cardinality.
 This means that when related back to continuous-space processes, these discrete states represent a Voronoi tessellation
 of state space and can be obtained via indicator functions.
@@ -42,7 +52,6 @@ over the encountered state transitions. This is covered in `transition counting 
 
     notebooks/transition-counting
     notebooks/mlmsm
-    notebooks/hmm
 
 Furthermore, scikit-time implements :class:`Augmented Markov models <sktime.markov.msm.AugmentedMSMEstimator>`
 :cite:`ix-msm-olsson2017combining` which can be used when experimental data is available, as well as
