@@ -7,10 +7,26 @@ from . import _clustering_bindings as _bd
 class ClusterModel(Model, Transformer):
     r"""
     A generic clustering model. Stores the number of cluster centers, the position of cluster centers, the metric
-    that was used to compute the cluster centers and whether the estimation converged.
+    that was used to compute the cluster centers and whether the estimation converged. It can be used to transform
+    data by assigning each frame to its closest cluster center.
+
+    Example
+    -------
+    Let us create an artificial cluster model with three cluster centers in a three-dimensional space. The cluster
+    centers are just the canonical basis vectors :math:`c_1 = (1,0,0)^\top`, :math:`c_2 = (0,1,0)^\top`, and
+    :math:`c_3 = (0,0,1)^\top`.
+
+    We can transform data with the model. The data are five frames sampled around the third cluster center.
+
+    >>> model = ClusterModel(n_clusters=3, cluster_centers=np.eye(3))
+    >>> data = np.random.normal(loc=[0, 0, 1], scale=0.01, size=(5, 3))
+    >>> assignments = model.transform(data)
+    >>> print(assignments)
+    [2 2 2 2 2]
     """
 
-    def __init__(self, n_clusters: int, cluster_centers: np.ndarray, metric: _bd.Metric, converged: bool = False):
+    def __init__(self, n_clusters: int, cluster_centers: np.ndarray, metric: _bd.Metric = _bd.EuclideanMetric(),
+                 converged: bool = False):
         r"""
         Initializes a new cluster model.
 
@@ -20,8 +36,8 @@ class ClusterModel(Model, Transformer):
             Number of cluster centers.
         cluster_centers : (k, d) ndarray
             The cluster centers, length of the array should match :attr:`n_clusters`.
-        metric : _clustering_bindings.Metric
-            The metric that was used for estimation
+        metric : _clustering_bindings.Metric, default=EuclideanMetric
+            The metric that was used for estimation, defaults to Euclidean metric.
         converged : bool, optional, default=False
             Whether the estimation converged.
         """

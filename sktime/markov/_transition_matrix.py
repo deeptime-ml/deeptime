@@ -205,36 +205,3 @@ def stationary_distribution(P, C=None, mincount_connectivity=0):
     # reinforce normalization
     pi /= np.sum(pi)
     return pi
-
-
-def rdl_decomposition(P, reversible=True):
-    # TODO: this treatment is probably not meaningful for weakly connected matrices.
-    import msmtools.estimation as msmest
-    import msmtools.analysis as msmana
-    # output matrices
-    n = np.shape(P)[0]
-    if reversible:
-        dtype = np.float64
-        norm = 'reversible'
-    else:
-        dtype = complex
-        norm = 'standard'
-    R = np.zeros((n, n), dtype=dtype)
-    D = np.zeros((n, n), dtype=dtype)
-    L = np.zeros((n, n), dtype=dtype)
-    # treat each strongly connected set separately
-    S = msmest.connected_sets(P)
-    for s in S:
-        indices = np.ix_(s, s)
-        if len(s) > 1:
-            right_eigvec, eigval_diag, left_eigvec = msmana.rdl_decomposition(P[s, :][:, s], norm=norm)
-            # write to full
-            R[indices] = right_eigvec
-            D[indices] = eigval_diag
-            L[indices] = left_eigvec
-        else:  # just one element. Write 1's
-            R[indices] = 1
-            D[indices] = 1
-            L[indices] = 1
-    # done
-    return R, D, L
