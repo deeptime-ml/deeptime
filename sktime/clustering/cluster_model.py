@@ -1,7 +1,7 @@
 import numpy as np
 from sktime.base import Model, Transformer
 
-import sktime.clustering._clustering_bindings as _bd
+from . import _clustering_bindings as _bd
 
 
 class ClusterModel(Model, Transformer):
