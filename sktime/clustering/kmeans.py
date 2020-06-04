@@ -14,8 +14,9 @@ from ..util import handle_n_jobs
 
 
 class KMeansClusteringModel(ClusterModel):
-    r"""
-    The K-means clustering model. Stores all important information which are result of the estimation procedure.
+    r"""The K-means clustering model. Stores all important information which are result of the estimation procedure.
+    It can also be used to transform data by assigning each frame to its closest cluster center. For an example
+    please see the documentation of the superclass :class:`ClusterModel`.
 
     See Also
     --------
@@ -26,8 +27,7 @@ class KMeansClusteringModel(ClusterModel):
 
     def __init__(self, n_clusters, cluster_centers, metric, tolerance: Optional[float] = None,
                  inertias: Optional[List[float]] = None, converged: bool = False):
-        r"""
-        Initializes a new KmeansClustering model.
+        r"""Initializes a new KmeansClustering model.
 
         Parameters
         ----------
@@ -58,7 +58,7 @@ class KMeansClusteringModel(ClusterModel):
 
         Returns
         -------
-        float
+        tolerance : float
             the tolerance
         """
         return self._tolerance
@@ -108,8 +108,7 @@ class KMeansClusteringModel(ClusterModel):
 
 
 class KmeansClustering(Estimator, Transformer):
-    r"""
-    Clusters the data in a way that minimizes the cost function
+    r"""Clusters the data in a way that minimizes the cost function
 
     .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf{x}_j \in S_i} \left\| \mathbf{x}_j - \boldsymbol\mu_i \right\|^2
 
