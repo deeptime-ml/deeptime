@@ -7,6 +7,7 @@ General numerical tools
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     mdot
 
@@ -16,6 +17,7 @@ Numerical tools for eigenvalue problems
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     eig_corr
     sort_by_norm

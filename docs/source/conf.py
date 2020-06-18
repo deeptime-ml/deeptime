@@ -111,7 +111,9 @@ html_theme_options = {
     'github_user': 'scikit-time',
     'github_repo': 'scikit-time',
     'github_type': 'star',
-    'sidebar_collapse': 'true'
+    'sidebar_collapse': 'true',
+
+    'sidebar_header': '#96929c'
 }
 html_sidebars = {
     '**': [
@@ -131,8 +133,16 @@ nbsphinx_execute_arguments = [
     "--InlineBackend.rc={'figure.dpi': 96}",
 ]
 
+# hack to always update index rst so that static files are copied over during incremental build
+def env_get_outdated(app, env, added, changed, removed):
+    return ['index']
+
 
 def setup(app):
+    app.connect('env-get-outdated', env_get_outdated)
+    app.add_css_file('custom.css')
+    app.add_css_file('perfect-scrollbar/css/perfect-scrollbar.min.css')
+
     class AutoAutoSummary(Autosummary):
 
         option_spec = {

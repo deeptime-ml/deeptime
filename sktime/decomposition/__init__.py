@@ -7,6 +7,7 @@ TICA
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     TICA
     TICAModel
@@ -17,6 +18,7 @@ VAMP
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     VAMP
     VAMPModel

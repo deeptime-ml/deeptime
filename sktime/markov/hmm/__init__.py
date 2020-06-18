@@ -9,6 +9,7 @@ Output models
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     OutputModel
     DiscreteOutputModel
@@ -37,6 +38,7 @@ steps are involved:
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     init.discrete.metastable_from_data
     init.discrete.metastable_from_msm
@@ -46,6 +48,7 @@ uniform, and drawing a random row-stochastic emission probability matrix:
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     init.discrete.random_guess
 
@@ -54,6 +57,7 @@ model is estimated. This particular heuristic requires an installation of `sciki
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     init.gaussian.from_data
 
@@ -61,6 +65,7 @@ Estimation and resulting model:
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     MaximumLikelihoodHMSM
     HiddenMarkovStateModel
@@ -75,6 +80,7 @@ sampling to sample from Bayesian hidden Markov model posteriors.
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     BayesianHMSM
     BayesianHMMPosterior

@@ -7,6 +7,7 @@ Transition counting and analysis tools
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     pcca
     PCCAModel

@@ -51,8 +51,10 @@ Now estimator and model can be used:
     mean_model = MeanEstimator(axis=-1).fit(data).fetch_model()
     print(mean_model.mean)
 
+.. currentmodule:: sktime.base
 .. autosummary::
    :toctree: generated/
+   :template: class_nomodule.rst
 
    Model
    Estimator
@@ -80,7 +82,9 @@ To add this kind of functionality, one can use the :class:`Transformer` interfac
 It usually also makes sense to implement the transformer interface for estimators whose models are transformers
 by simply calling :code:`self.fetch_model().transform(data)`, i.e., dispatching the transform call to the current model.
 
+.. currentmodule:: sktime.base
 .. autosummary::
    :toctree: generated/
+   :template: class_nomodule.rst
 
    Transformer
