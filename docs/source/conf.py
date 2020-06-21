@@ -53,11 +53,11 @@ sphinxlog_adapter.logger.addFilter(DuplicateLabelForKeysFilter())
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
     'nbsphinx',
     'sphinxcontrib.bibtex',
     'matplotlib.sphinxext.plot_directive',
+    'sphinxcontrib.katex',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
