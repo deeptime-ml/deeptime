@@ -23,7 +23,7 @@ They are structured following a possible workflow of a timeseries analysis. That
     3. and estimating an msm or hmm based on said discrete time series for further analysis.
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 3
     :caption: Documentation
 
     index_dimreduction
@@ -37,7 +37,7 @@ Here, all publicly accessible API methods are documented. This documentation is 
 available arguments for the implemented methods, although less narrative in nature.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    :caption: API docs
 
    api/index

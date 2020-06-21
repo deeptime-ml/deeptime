@@ -26,6 +26,7 @@ K-Means
 
 .. autosummary::
     :toctree: generated/
+    :template: class_nomodule.rst
 
     KmeansClustering
     MiniBatchKmeansClustering
@@ -37,6 +38,7 @@ Regular space clustering
 
 .. autosummary::
     :toctree: generated/
+    :template: class_nomodule.rst
 
     RegularSpaceClustering
     ClusterModel
@@ -47,6 +49,7 @@ Adding a new metric
 
 .. autosummary::
     :toctree: generated/
+    :template: class_nomodule.rst
 
     _clustering_bindings.Metric
 """

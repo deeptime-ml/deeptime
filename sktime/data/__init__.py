@@ -7,6 +7,7 @@ API
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     double_well_discrete
     ellipsoids
@@ -18,6 +19,7 @@ Utilities
 
 .. autosummary::
     :toctree: generated/
+    :template: base_nomodule.rst
 
     timeshifted_split
 
@@ -27,6 +29,7 @@ Implementations
 
 .. autosummary::
     :toctree: generated/impl/
+    :template: base_nomodule.rst
 
     double_well_dataset.DoubleWellDiscrete
     ellipsoids_dataset.Ellipsoids
