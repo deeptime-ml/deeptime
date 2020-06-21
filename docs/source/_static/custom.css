@@ -1,9 +1,6 @@
 body {
     height: 100vh;
 }
-div.section {
-    padding: 2rem 4rem 2rem 3rem;
-}
 div.document {
     margin-top: 0;
     margin-left: 0;
@@ -12,8 +9,8 @@ div.document {
     height: 100vh;
 }
 div.bodywrapper {
-    margin-left: unset;
-    margin-right: unset;
+    margin-left: 6rem;
+    margin-right: 6rem;
     box-shadow: 0 0 50px 18px #e8e8e8;
 }
 div.documentwrapper {
@@ -28,7 +25,7 @@ div.documentwrapper {
     min-width: 0;
     margin-left: 18rem;
     width: auto;
-    clear: both;
+    float: none;
 }
 div.sphinxsidebar {
     background-color: rgb(55, 53, 61);
@@ -41,6 +38,7 @@ div.sphinxsidebar {
     position: relative;
     touch-action: auto;
     width: 18rem;
+    height: 100vh;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -96,4 +94,7 @@ a.current {
 
 div.sphinxsidebarwrapper a.current ul {
     color: #605C69
+}
+li.toctree-l1 {
+    margin-left: 1rem;
 }
