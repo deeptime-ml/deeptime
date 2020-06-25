@@ -1,5 +1,6 @@
 import numpy as _np
 
+
 def mdot(*args):
     """Computes a matrix product of multiple ndarrays
 
@@ -24,3 +25,19 @@ def mdot(*args):
         except ValueError as ve:
             raise ValueError(f'argument {i} and {i + 1} are not shape compatible:\n{ve}')
     return x
+
+
+def is_diagonal_matrix(matrix: _np.ndarray) -> bool:
+    r""" Checks whether a provided matrix is a diagonal matrix, i.e., :math:`A = \mathrm{diag}(a_1,\ldots,\a_n)`.
+
+    Parameters
+    ----------
+    matrix : ndarray
+        The matrix for which this check is performed.
+
+    Returns
+    -------
+    is_diagonal : bool
+        True if the matrix is a diagonal matrix, otherwise False.
+    """
+    return _np.all(matrix == _np.diag(_np.diagonal(matrix)))

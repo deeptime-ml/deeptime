@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import pkg_resources
 
-from sktime.covariance import KoopmanModel
+from sktime.covariance import KoopmanWeightingModel
 from sktime.data.util import timeshifted_split
 from sktime.numeric.eigen import sort_by_norm
 import numpy.linalg as scl
@@ -114,8 +114,8 @@ class TestKoopmanTICA(unittest.TestCase):
         u_input = np.zeros(N + 1)
         u_input[0:N] = cls.R.dot(u_mod[0:-1])  # in input basis
         u_input[N] = u_mod[-1] - cls.mean_x.dot(cls.R.dot(u_mod[0:-1]))
-        cls.weight_obj = KoopmanModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=cls.K,
-                                      whitening_transformation=cls.R, covariances=None)
+        cls.weight_obj = KoopmanWeightingModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=cls.K,
+                                               whitening_transformation=cls.R, covariances=None)
 
         # Compute weights over all data points:
         cls.wtraj = []
@@ -203,8 +203,8 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(out_traj_eq, ev_traj_eq)
 
     def test_koopman_estimator_partial_fit(self):
-        from sktime.covariance import KoopmanEstimator
-        est = KoopmanEstimator(lagtime=self.tau)
+        from sktime.covariance import KoopmanWeightingEstimator
+        est = KoopmanWeightingEstimator(lagtime=self.tau)
         data_lagged = timeshifted_split(self.data, lagtime=self.tau, n_splits=10)
         for traj in data_lagged:
             est.partial_fit(traj)
@@ -214,8 +214,8 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(m.const_weight_input, self.weight_obj.const_weight_input)
 
     def test_koopman_estimator_fit(self):
-        from sktime.covariance import KoopmanEstimator
-        est = KoopmanEstimator(lagtime=self.tau)
+        from sktime.covariance import KoopmanWeightingEstimator
+        est = KoopmanWeightingEstimator(lagtime=self.tau)
         est.fit(self.data)
         m = est.fetch_model()
 

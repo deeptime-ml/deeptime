@@ -41,4 +41,4 @@ Implementations
 
 from .util.moments import moments_XX, moments_XXXY, moments_block, covar, covars
 from .covariance import Covariance, CovarianceModel
-from .covariance import KoopmanEstimator, KoopmanModel
+from .covariance import KoopmanWeightingEstimator, KoopmanWeightingModel

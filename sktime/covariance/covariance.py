@@ -9,7 +9,7 @@ from ..data.util import timeshifted_split
 from ..numeric.eigen import spd_inv_split, sort_by_norm
 from .util.running_moments import running_covar as running_covar
 
-__all__ = ['Covariance', 'CovarianceModel', 'KoopmanEstimator', 'KoopmanModel']
+__all__ = ['Covariance', 'CovarianceModel', 'KoopmanWeightingEstimator', 'KoopmanWeightingModel']
 
 __author__ = 'paul, nueske, marscher, clonker'
 
@@ -435,7 +435,7 @@ class Covariance(Estimator):
         return self._model
 
 
-class KoopmanModel(Model, Transformer):
+class KoopmanWeightingModel(Model, Transformer):
     r""" A model which contains the Koopman operator in a modified basis `(PC|1)` and can transform data into Koopman
     weights.
 
@@ -532,7 +532,7 @@ class KoopmanModel(Model, Transformer):
         return self._covariances
 
 
-class KoopmanEstimator(Estimator, Transformer):
+class KoopmanWeightingEstimator(Estimator, Transformer):
     r"""Computes Koopman operator and weights that can be plugged into the :class:`Covariance` estimator.
     The weights are determined by the procedure described in :cite:`koopmanestimator-wu2016variational`.
 
@@ -557,7 +557,7 @@ class KoopmanEstimator(Estimator, Transformer):
             Depth of moment storage. Per default no moments are collapsed while estimating covariances, perform
             aggregation only at the very end after all data has been processed.
         """
-        super(KoopmanEstimator, self).__init__()
+        super(KoopmanWeightingEstimator, self).__init__()
         self.epsilon = epsilon
         if ncov == 'inf':
             ncov = int(2**10000)
@@ -578,7 +578,7 @@ class KoopmanEstimator(Estimator, Transformer):
 
         Returns
         -------
-        self : KoopmanEstimator
+        self : KoopmanWeightingEstimator
             Reference to self.
         """
         self._model = None
@@ -595,7 +595,7 @@ class KoopmanEstimator(Estimator, Transformer):
 
         Returns
         -------
-        self : KoopmanEstimator
+        self : KoopmanWeightingEstimator
             Reference to self.
         """
         self._cov.partial_fit(data)
@@ -643,12 +643,12 @@ class KoopmanEstimator(Estimator, Transformer):
         u = u / np.dot(u, v)
         return u
 
-    def fetch_model(self) -> KoopmanModel:
+    def fetch_model(self) -> KoopmanWeightingModel:
         r""" Finalizes the model.
 
         Returns
         -------
-        koopman_model : KoopmanModel
+        koopman_model : KoopmanWeightingModel
             The Koopman model, in particular containing operator and weights.
         """
         cov = self._cov.fetch_model()
@@ -668,8 +668,8 @@ class KoopmanEstimator(Estimator, Transformer):
         u_input[0:N] = R.dot(u[0:-1])  # in input basis
         u_input[N] = u[-1] - cov.mean_0.dot(R.dot(u[0:-1]))
 
-        self._model = KoopmanModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=K, whitening_transformation=R,
-                                   covariances=cov)
+        self._model = KoopmanWeightingModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=K, whitening_transformation=R,
+                                            covariances=cov)
 
         return self._model
 

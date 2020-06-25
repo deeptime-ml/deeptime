@@ -374,3 +374,12 @@ def test_raises_disconnected(disconnected_states, lag, count_mode):
     submodel = count_model.submodel(fully_disconnected_set)
     with assert_raises(AssertionError):
         MaximumLikelihoodMSM(reversible=True).fit(submodel)
+
+
+def test_nonreversible_disconnected():
+    msm1 = MarkovStateModel([[.7, .3], [.3, .7]])
+    msm2 = MarkovStateModel([[.9, .05, .05], [.3, .6, .1], [.1, .1, .8]])
+    traj = np.concatenate([msm1.simulate(10000), 2 + msm2.simulate(10000)])
+    counts = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(traj).fetch_model()
+    msm = MaximumLikelihoodMSM(reversible=False).fit(counts).fetch_model()
+    print(msm.transition_matrix)
