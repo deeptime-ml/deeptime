@@ -3,7 +3,8 @@ from typing import Optional, Union, List
 import numpy as np
 
 from ..base import Model, Transformer
-from ..numeric import is_diagonal_matrix
+from ..covariance import CovarianceModel
+from ..numeric import is_diagonal_matrix, spd_inv_sqrt, mdot
 from ..util import cached_property
 
 
@@ -22,6 +23,16 @@ class KoopmanBasisTransform(object):
     def __init__(self, mean, transformation_matrix):
         self._mean = mean
         self._transformation_matrix = transformation_matrix
+
+    @property
+    def transformation_matrix(self) -> np.ndarray:
+        r""" The transformation matrix :math:`T`. """
+        return self._transformation_matrix
+
+    @property
+    def mean(self) -> np.ndarray:
+        r""" The mean :math:`\mu`. """
+        return self._mean
 
     @cached_property
     def backward_transformation_matrix(self):
@@ -73,7 +84,7 @@ class KoopmanModel(Model, Transformer):
     .. math:: \mathbb{E}[g(x_{t+\tau}] = K^\top \mathbb{E}[f(x_t)],
 
     where :math:`K\in\mathbb{R}^{n\times m}` is the Koopman operator, :math:`x_t` the system's state at time :math:`t`,
-    and $f$ and $g$ observables of the system's state.
+    and :math:`f` and :math:`g` observables of the system's state.
     """
 
     def __init__(self, operator: np.ndarray,
@@ -191,7 +202,7 @@ class KoopmanModel(Model, Transformer):
         forward : bool, default=True
             Whether to use forward or backward transform for projection.
         propagate : bool, default=False
-            Whether to propagate the projection with :math:`K^\top`.
+            Whether to propagate the projection with :math:`K^\top` (or :math:`(K^\top)^{-1} in the backward case).
 
         Returns
         -------
@@ -206,3 +217,158 @@ class KoopmanModel(Model, Transformer):
         else:
             transform = self.basis_transform_backward(data, dim=self._output_dimension)
             return self.operator_inverse.T @ transform if propagate else transform
+
+
+class CovarianceKoopmanModel(KoopmanModel):
+    r"""A type of Koopman model which was obtained through diagonalization of covariance matrices. This leads to
+    a Koopman operator which is a diagonal matrix and can be used to project onto specific processes of the system.
+
+    The estimators which produce this kind of model are :class:`VAMP <sktime.decomposition.VAMP>` and
+    :class:`TICA <sktime.decomposition.TICA>`."""
+
+    def __init__(self, operator: np.ndarray, basis_transform_forward: Optional[KoopmanBasisTransform],
+                 basis_transform_backward: Optional[KoopmanBasisTransform], cov: CovarianceModel, scaling=None,
+                 epsilon=1e-6):
+        r""" For a description of parameters `operator`, `basis_transform_forward`, and `basis_transform_backward`,
+        please see :meth:`KoopmanModel.__init__`.
+
+        Parameters
+        ----------
+        cov : CovarianceModel
+            Covariances :math:`C_{00}`, :math:`C_{0t}`, and :math:`C_{tt}`.
+        scaling : str or None, default=None
+            Scaling parameter which was applied to singular values for additional structure in the projected space.
+            See the respective estimator for details.
+        epsilon : float, default=1e-6
+            Eigenvalue / singular value cutoff. Eigenvalues (or singular values) of :math:`C_{00}` and :math:`C_{11}`
+            with norms <= epsilon were cut off. The remaining number of eigenvalues together with the value of `dim`
+            define the effective output dimension.
+        """
+        super().__init__(operator, basis_transform_forward, basis_transform_backward)
+        self._cov = cov
+        self._scaling = scaling
+        self._epsilon = epsilon
+
+    @property
+    def scaling(self) -> Optional[str]:
+        """Scaling of projection. Can be :code:`None`, 'kinetic map', or 'km' """
+        return self._scaling
+
+    @property
+    def singular_vectors_left(self) -> np.ndarray:
+        """Transformation matrix that represents the linear map from mean-free feature space
+        to the space of left singular functions."""
+        return self.basis_transform_forward.transformation_matrix
+
+    @property
+    def singular_vectors_right(self) -> np.ndarray:
+        """Transformation matrix that represents the linear map from mean-free feature space
+        to the space of right singular functions."""
+        return self.basis_transform_backward.transformation_matrix
+
+    @property
+    def singular_values(self) -> np.ndarray:
+        """ The singular values of the half-weighted Koopman matrix. """
+        return np.diag(self.operator)
+
+    @property
+    def cov(self) -> CovarianceModel:
+        r""" Estimated covariances. """
+        return self._cov
+
+    @property
+    def mean_0(self) -> np.ndarray:
+        r""" Shortcut to :attr:`mean_0 <sktime.covariance.CovarianceModel.mean_0>`. """
+        return self.cov.mean_0
+
+    @property
+    def mean_t(self) -> np.ndarray:
+        r""" Shortcut to :attr:`mean_t <sktime.covariance.CovarianceModel.mean_t>`. """
+        return self.cov.mean_t
+
+    @property
+    def cov_00(self) -> np.ndarray:
+        r""" Shortcut to :attr:`cov_00 <sktime.covariance.CovarianceModel.cov_00>`. """
+        return self.cov.cov_00
+
+    @property
+    def cov_0t(self) -> np.ndarray:
+        r""" Shortcut to :attr:`cov_0t <sktime.covariance.CovarianceModel.cov_0t>`. """
+        return self.cov.cov_0t
+
+    @property
+    def cov_tt(self) -> np.ndarray:
+        r""" Shortcut to :attr:`cov_tt <sktime.covariance.CovarianceModel.cov_tt>`. """
+        return self.cov.cov_tt
+
+    @property
+    def epsilon(self) -> float:
+        r""" Singular value cutoff. """
+        return self._epsilon
+
+    def score(self, test_model=None, score_method='VAMP2'):
+        """Compute the VAMP score for this model or the cross-validation score between self and a second model.
+
+        Parameters
+        ----------
+        test_model : CovarianceKoopmanModel, optional, default=None
+
+            If `test_model` is not None, this method computes the cross-validation score
+            between self and `test_model`. It is assumed that self was estimated from
+            the "training" data and `test_model` was estimated from the "test" data. The
+            score is computed for one realization of self and `test_model`. Estimation
+            of the average cross-validation score and partitioning of data into test and
+            training part is not performed by this method.
+
+            If `test_model` is None, this method computes the VAMP score for the model
+            contained in self.
+
+        score_method : str, optional, default='VAMP2'
+            Available scores are based on the variational approach
+            for Markov processes :cite:`vampscore-wu2020variational`:
+
+            *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix :cite:`vampscore-wu2020variational`.
+                        If the model is reversible, this is equal to the sum of
+                        Koopman matrix eigenvalues, also called Rayleigh quotient :cite:`vampscore-wu2020variational`.
+            *  'VAMP2'  Sum of squared singular values of the half-weighted Koopman
+                        matrix :cite:`vampscore-wu2020variational`. If the model is reversible, this is
+                        equal to the kinetic variance :cite:`vampscore-noe2015kinetic`.
+            *  'VAMPE'  Approximation error of the estimated Koopman operator with respect to
+                        the true Koopman operator up to an additive constant :cite:`vampscore-wu2020variational` .
+
+        Returns
+        -------
+        score : float
+            If `test_model` is not None, returns the cross-validation VAMP score between
+            self and `test_model`. Otherwise return the selected VAMP-score of self.
+
+        References
+        ----------
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: vampscore-
+        """
+        if test_model is None:
+            test_model = self
+        Uk = self.singular_vectors_left[:, 0:self.output_dimension]
+        Vk = self.singular_vectors_right[:, 0:self.output_dimension]
+        res = None
+        if score_method == 'VAMP1' or score_method == 'VAMP2':
+            A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk), epsilon=self.epsilon)
+            B = Uk.T.dot(test_model.cov_0t).dot(Vk)
+            C = spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk), epsilon=self.epsilon)
+            ABC = mdot(A, B, C)
+            if score_method == 'VAMP1':
+                res = np.linalg.norm(ABC, ord='nuc')
+            elif score_method == 'VAMP2':
+                res = np.linalg.norm(ABC, ord='fro')**2
+        elif score_method == 'VAMPE':
+            Sk = np.diag(self.singular_values[0:self.output_dimension])
+            res = np.trace(2.0 * mdot(Vk, Sk, Uk.T, test_model.cov_0t)
+                           - mdot(Vk, Sk, Uk.T, test_model.cov_00, Uk, Sk, Vk.T, test_model.cov_tt))
+        else:
+            raise ValueError('"score" should be one of VAMP1, VAMP2 or VAMPE')
+        assert res is not None
+        # add the contribution (+1) of the constant singular functions to the result
+        return res + 1

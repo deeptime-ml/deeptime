@@ -18,13 +18,13 @@
 @author: paul, marscher, wu, noe
 """
 
-
 from collections import namedtuple
 from numbers import Real, Integral
 from typing import Optional, Union, List
 
 import numpy as np
 
+from .koopman import CovarianceKoopmanModel, KoopmanBasisTransform
 from ..base import Model, Estimator, Transformer
 from ..covariance.covariance import Covariance, CovarianceModel
 from ..numeric import mdot
@@ -45,7 +45,7 @@ class VAMPModel(Model, Transformer):
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
                                                                     'left_singular_vecs', 'right_singular_vecs'])
 
-    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6, scaling=None, right=False):
+    def __init__(self, cov: CovarianceModel, dim=None, epsilon=1e-6, scaling=None):
         r""" Creates a new model instance.
 
         Parameters
@@ -58,8 +58,8 @@ class VAMPModel(Model, Transformer):
         epsilon : float, optional, default=1e-6
             Singular value cutoff parameter, see :attr:`VAMP.epsilon`.
         scaling : str or None, optional, default=None
-            Scaling parameter, see :attr:`VAMP.scaling`.
-        right : bool, optional, default=False
+            Scaling parameter which was applied to singular values for additional structure in the projected space.
+            See the respective estimator for details.
             Whether right or left eigenvectors should be used for projection. In case `right==False` (default),
             left eigenvectors are used, right eigenvectors otherwise.
         """
@@ -374,7 +374,8 @@ class VAMPModel(Model, Transformer):
         output_trajectory = np.empty_like(trajectory)
         VT_inv = np.linalg.pinv(self.singular_vectors_right.T)
         for t, frame in enumerate(trajectory):
-            output_trajectory[t] = VT_inv @ singval @ np.dot(self.singular_vectors_left.T, frame - self.mean_0) + self.mean_t
+            output_trajectory[t] = VT_inv @ singval @ np.dot(self.singular_vectors_left.T,
+                                                             frame - self.mean_0) + self.mean_t
 
         return output_trajectory
 
@@ -461,7 +462,7 @@ class VAMPModel(Model, Transformer):
             if score_method == 'VAMP1':
                 res = np.linalg.norm(ABC, ord='nuc')
             elif score_method == 'VAMP2':
-                res = np.linalg.norm(ABC, ord='fro')**2
+                res = np.linalg.norm(ABC, ord='fro') ** 2
         elif score_method == 'VAMPE':
             Sk = np.diag(self.singular_values[0:self.output_dimension])
             res = np.trace(2.0 * mdot(Vk, Sk, Uk.T, test_model.cov_0t)
@@ -627,10 +628,64 @@ class VAMP(Estimator, Transformer):
         self.right = right
         self.epsilon = epsilon
         self.ncov = ncov
-        self._covar = Covariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=True,
-                                 remove_data_mean=True, reversible=False, bessels_correction=False,
-                                 ncov=self.ncov)
         self.lagtime = lagtime
+
+    _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
+                                                                    'left_singular_vecs', 'right_singular_vecs'])
+
+    @staticmethod
+    def _cumvar(singular_values) -> np.ndarray:
+        cumvar = np.cumsum(singular_values ** 2)
+        cumvar /= cumvar[-1]
+        return cumvar
+
+    @staticmethod
+    def _dimension(rank0, rankt, dim, singular_values) -> int:
+        """ output dimension """
+        if dim is None or (isinstance(dim, float) and dim == 1.0):
+            return min(rank0, rankt)
+        if isinstance(dim, float):
+            return np.searchsorted(VAMP._cumvar(singular_values), dim) + 1
+        else:
+            return np.min([rank0, rankt, dim])
+
+    @staticmethod
+    def _decomposition(covariances, epsilon, scaling, dim) -> _DiagonalizationResults:
+        """Performs SVD on covariance matrices and save left, right singular vectors and values in the model."""
+        L0 = spd_inv_split(covariances.cov_00, epsilon=epsilon)
+        rank0 = L0.shape[1] if L0.ndim == 2 else 1
+        Lt = spd_inv_split(covariances.cov_tt, epsilon=epsilon)
+        rankt = Lt.shape[1] if Lt.ndim == 2 else 1
+
+        W = np.dot(L0.T, covariances.cov_0t).dot(Lt)
+        from scipy.linalg import svd
+        A, s, BT = svd(W, compute_uv=True, lapack_driver='gesvd')
+
+        singular_values = s
+
+        # don't pass any values in the argument list that call _diagonalize again!!!
+        m = VAMP._dimension(rank0, rankt, dim, singular_values)
+
+        U = np.dot(L0, A[:, :m])
+        V = np.dot(Lt, BT[:m, :].T)
+
+        # scale vectors
+        if scaling is not None:
+            U *= s[np.newaxis, 0:m]  # scaled left singular functions induce a kinetic map
+            V *= s[np.newaxis, 0:m]  # scaled right singular functions induce a kinetic map wrt. backward propagator
+
+        return VAMP._DiagonalizationResults(
+            rank0=rank0, rankt=rankt, singular_values=singular_values, left_singular_vecs=U, right_singular_vecs=V
+        )
+
+    @staticmethod
+    def from_data(data: np.ndarray, lagtime, dim, scaling, epsilon, ncov):
+        covar = Covariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, compute_ctt=True,
+                           remove_data_mean=True, reversible=False, bessels_correction=False,
+                           ncov=ncov)
+        covariances = covar.fit(data).fetch_model()
+        estimator = VAMP(lagtime, dim, scaling, epsilon, ncov)
+        return estimator.fit(covariances).fetch_model()
 
     @property
     def epsilon(self):
@@ -719,7 +774,13 @@ class VAMP(Estimator, Transformer):
         self : VAMP
             Reference to self.
         """
-        self._covar.fit(data, **kw)
+        decomposition = VAMP._decomposition(data, self.epsilon, self.scaling, self.dim)
+        self._model = CovarianceKoopmanModel(
+            operator=np.diag(decomposition.singular_values),
+            basis_transform_forward=KoopmanBasisTransform(data.mean_0, decomposition.left_singular_vecs),
+            basis_transform_backward=KoopmanBasisTransform(data.mean_t, decomposition.right_singular_vecs),
+            cov=self.covariances, scaling=self.scaling, epsilon=self.epsilon
+        )
         return self
 
     def transform(self, data, right=None):
@@ -742,23 +803,7 @@ class VAMP(Estimator, Transformer):
         """
         return self.fetch_model().transform(data, right=right)
 
-    def partial_fit(self, data):
-        """ Incrementally update the covariances and mean.
-
-        Parameters
-        ----------
-        data: (T, d) ndarray
-            input data.
-
-        Returns
-        -------
-        self : VAMP
-            Reference to self.
-        """
-        self._covar.partial_fit(data)
-        return self
-
-    def fetch_model(self) -> VAMPModel:
+    def fetch_model(self) -> CovarianceKoopmanModel:
         r""" Finalizes current model and yields new :class:`VAMPModel`.
 
         Returns
@@ -766,8 +811,7 @@ class VAMP(Estimator, Transformer):
         model : VAMPModel
             The estimated model.
         """
-        covar_model = self._covar.fetch_model()
-        return VAMPModel(cov=covar_model, dim=self.dim, epsilon=self.epsilon, scaling=self.scaling, right=self.right)
+        return self._model
 
     @property
     def lagtime(self) -> int:
