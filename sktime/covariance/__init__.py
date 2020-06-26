@@ -7,7 +7,7 @@ Estimation
 
 .. autosummary::
     :toctree: generated/
-    :template: base_nomodule.rst
+    :template: class_nomodule.rst
 
     Covariance
     CovarianceModel
@@ -20,8 +20,8 @@ Koopman reweighting
     :toctree: generated/
     :template: class_nomodule.rst
 
-    KoopmanEstimator
-    KoopmanModel
+    KoopmanWeightingEstimator
+    KoopmanWeightingModel
 
 ===============================================================================
 Implementations
@@ -29,7 +29,7 @@ Implementations
 
 .. autosummary::
     :toctree: generated/
-    :template: base_nomodule.rst
+    :template: class_nomodule.rst
 
     covar
     covars

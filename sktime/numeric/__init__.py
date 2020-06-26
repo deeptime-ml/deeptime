@@ -7,7 +7,7 @@ General numerical tools
 
 .. autosummary::
     :toctree: generated/
-    :template: base_nomodule.rst
+    :template: class_nomodule.rst
 
     mdot
     is_diagonal_matrix
@@ -18,7 +18,7 @@ Numerical tools for eigenvalue problems
 
 .. autosummary::
     :toctree: generated/
-    :template: base_nomodule.rst
+    :template: class_nomodule.rst
 
     eig_corr
     sort_by_norm
