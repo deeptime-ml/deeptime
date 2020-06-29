@@ -36,6 +36,6 @@ VAMP
     VAMP
 """
 
-from .tica import TICA, TICAModel
+from .tica import TICA
 from .vamp import VAMP
 from .koopman import KoopmanBasisTransform, IdentityKoopmanBasisTransform, KoopmanModel, CovarianceKoopmanModel

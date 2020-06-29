@@ -205,8 +205,8 @@ class VAMP(Estimator, Transformer):
             rank0=rank0, rankt=rankt, singular_values=singular_values, left_singular_vecs=U, right_singular_vecs=V
         )
 
-    @staticmethod
-    def covariance_estimator(lagtime: int, ncov: Union[int] = float('inf')):
+    @classmethod
+    def covariance_estimator(cls, lagtime: int, ncov: Union[int] = float('inf')):
         r""" Yields a properly configured covariance estimator so that its model can be used as input for the vamp
         estimator.
 
@@ -226,9 +226,9 @@ class VAMP(Estimator, Transformer):
         return Covariance(lagtime=lagtime, compute_c0t=True, compute_ctt=True, remove_data_mean=True, reversible=False,
                           bessels_correction=False, ncov=ncov)
 
-    @staticmethod
-    def from_data(data: Union[np.ndarray, List[np.ndarray]], lagtime: int, dim: Optional[Real] = None,
-                  scaling: Optional[str] = None, epsilon: float = 1e-6) -> CovarianceKoopmanModel:
+    @classmethod
+    def from_data(cls, data: Union[np.ndarray, List[np.ndarray]], lagtime: int, dim: Optional[Real] = None,
+                  scaling: Optional[str] = None, epsilon: float = 1e-6, weights=None) -> CovarianceKoopmanModel:
         r""" Estimates a :class:`CovarianceKoopmanModel` directly from time-series data using the :class:`Covariance`
         estimator. For parameters `dim`, `scaling`, `epsilon`.
 
@@ -250,9 +250,9 @@ class VAMP(Estimator, Transformer):
         model : CovarianceKoopmanModel
             The estimated model.
         """
-        covar = VAMP.covariance_estimator(lagtime=lagtime)
-        covariances = covar.fit(data).fetch_model()
-        estimator = VAMP(dim, scaling, epsilon)
+        covar = cls.covariance_estimator(lagtime=lagtime)
+        covariances = covar.fit(data, weights=weights).fetch_model()
+        estimator = cls(dim=dim, scaling=scaling, epsilon=epsilon)
         return estimator.fit(covariances).fetch_model()
 
     @property
@@ -315,6 +315,16 @@ class VAMP(Estimator, Transformer):
             raise ValueError("Invalid type for dimension, got {}".format(value))
         self._dim = value
 
+    def _decompose(self, covariances: CovarianceModel):
+        decomposition = self._decomposition(covariances, self.epsilon, self.scaling, self.dim)
+        return CovarianceKoopmanModel(
+            operator=np.diag(decomposition.singular_values),
+            basis_transform_forward=KoopmanBasisTransform(covariances.mean_0, decomposition.left_singular_vecs),
+            basis_transform_backward=KoopmanBasisTransform(covariances.mean_t, decomposition.right_singular_vecs),
+            rank_0=decomposition.rank0, rank_t=decomposition.rankt,
+            dim=self.dim, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
+        )
+
     def fit(self, data, **kw):
         r""" Fits a new :class:`CovarianceKoopmanModel` which can be obtained by a
         subsequent call to :meth:`fetch_model`.
@@ -332,14 +342,7 @@ class VAMP(Estimator, Transformer):
         self : VAMP
             Reference to self.
         """
-        decomposition = VAMP._decomposition(data, self.epsilon, self.scaling, self.dim)
-        self._model = CovarianceKoopmanModel(
-            operator=np.diag(decomposition.singular_values),
-            basis_transform_forward=KoopmanBasisTransform(data.mean_0, decomposition.left_singular_vecs),
-            basis_transform_backward=KoopmanBasisTransform(data.mean_t, decomposition.right_singular_vecs),
-            rank_0=decomposition.rank0, rank_t=decomposition.rankt,
-            dim=self.dim, cov=data, scaling=self.scaling, epsilon=self.epsilon
-        )
+        self._model = self._decompose(data)
         return self
 
     def transform(self, data, forward=True):

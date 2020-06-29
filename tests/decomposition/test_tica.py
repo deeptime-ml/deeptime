@@ -40,12 +40,11 @@ class TestTICA(unittest.TestCase):
         np.random.seed(0)
         data = np.random.randn(23000, 3)
 
-        est = TICA(lagtime=lag, dim=1)
-        for X, Y in timeshifted_split(data, lagtime=lag, chunksize=chunk):
-            est.partial_fit((X, Y))
-        model1 = est.fetch_model().copy()
+        model1 = TICA.from_data(data, lagtime=lag, dim=1)
         # ------- run again with new chunksize -------
-        est.fit(data)
+        covars = TICA.covariance_estimator(lagtime=lag).fit(data).fetch_model()
+        est = TICA(dim=1)
+        est.fit(covars)
         model2 = est.fetch_model().copy()
 
         assert model1 != model2

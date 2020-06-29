@@ -265,6 +265,8 @@ class CovarianceKoopmanModel(KoopmanModel):
             with norms <= epsilon were cut off. The remaining number of eigenvalues together with the value of `dim`
             define the effective output dimension.
         """
+        if not is_diagonal_matrix(operator):
+            raise ValueError("Koopman operator must be diagonal matrix!")
         output_dim = CovarianceKoopmanModel.effective_output_dimension(rank_0, rank_t, dim, np.diag(operator))
         super().__init__(operator, basis_transform_forward, basis_transform_backward, output_dimension=output_dim)
         self._cov = cov
@@ -565,7 +567,6 @@ class CovarianceKoopmanModel(KoopmanModel):
                 R[:, 0] = statistics.T.dot(m_0)
             R[:, 1:] = statistics.T.dot(self.cov_00).dot(U)
 
-        if statistics is not None:
             # compute lagged covariance
             return Q.dot(P).dot(R.T)
             # TODO: discuss whether we want to return this or the transpose
@@ -573,3 +574,49 @@ class CovarianceKoopmanModel(KoopmanModel):
         else:
             # compute future expectation
             return Q.dot(P)[:, 0]
+
+    def timescales(self, lagtime):
+        r"""Implied timescales of the TICA transformation
+
+        For each :math:`i`-th eigenvalue, this returns
+
+        .. math::
+
+            t_i = -\frac{\tau}{\log(|\lambda_i|)}
+
+        where :math:`\tau` is the :attr:`lagtime` of the TICA object and :math:`\lambda_i` is the `i`-th
+        :attr:`eigenvalue <eigenvalues>` of the TICA object.
+
+        Returns
+        -------
+        timescales: 1D np.array
+            numpy array with the implied timescales. In principle, one should expect as many timescales as
+            input coordinates were available. However, less eigenvalues will be returned if the TICA matrices
+            were not full rank or :attr:`dim` contained a floating point percentage, i.e., was interpreted as
+            variance cutoff.
+        """
+        if not np.all(np.isreal(self.singular_values)):
+            raise ValueError("This is only meaningful for real singular values.")
+        return - lagtime / np.log(np.abs(self.singular_values))
+
+    @property
+    def feature_component_correlation(self):
+        r"""Instantaneous correlation matrix between mean-free input features and projection components.
+
+        Denoting the input features as :math:`X_i` and the projection components as :math:`\theta_j`, the
+        instantaneous, linear correlation between them can be written as
+
+        .. math::
+            \mathbf{Corr}(X_i - \mu_i, \mathbf{\theta}_j) = \frac{1}{\sigma_{X_i - \mu_i}}\sum_l \sigma_{(X_i - \mu_i)(X_l - \mu_l)} \mathbf{U}_{li}
+
+        The matrix :math:`\mathbf{U}` is the matrix containing the eigenvectors of the generalized
+        eigenvalue problem as column vectors.
+
+        Returns
+        -------
+        corr : ndarray(n,m)
+            Correlation matrix between input features and projection components. There is a row for each
+            feature and a column for each component.
+        """
+        feature_sigma = np.sqrt(np.diag(self.cov_00))
+        return np.dot(self.cov_00, self.singular_vectors_left[:, : self.output_dimension]) / feature_sigma[:, None]

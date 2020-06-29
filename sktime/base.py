@@ -195,6 +195,15 @@ class Estimator(_base_methods_mixin):
         """
         return self._model
 
+    @property
+    def has_model(self) -> bool:
+        r""" Property reporting whether this estimator contains an estimated model. This assumes that the model
+        is initialized with `None` otherwise.
+
+        :type: bool
+        """
+        return self._model is not None
+
     def __getattribute__(self, item):
         if (item == 'fit' or item == 'partial_fit') and not self._MUTABLE_INPUT_DATA:
             fit = super(Estimator, self).__getattribute__(item)

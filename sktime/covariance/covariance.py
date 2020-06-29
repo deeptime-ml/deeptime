@@ -21,7 +21,8 @@ class CovarianceModel(Model):
     """
     def __init__(self, cov_00: Optional[np.ndarray] = None, cov_0t: Optional[np.ndarray] = None,
                  cov_tt: Optional[np.ndarray] = None, mean_0: Optional[np.ndarray] = None,
-                 mean_t: Optional[np.ndarray] = None, bessels_correction: bool = True, lagtime: Optional[int] = None):
+                 mean_t: Optional[np.ndarray] = None, bessels_correction: bool = True,
+                 symmetrized: bool = False, lagtime: Optional[int] = None):
         r"""
         Initializes a new online covariance model.
 
@@ -50,6 +51,7 @@ class CovarianceModel(Model):
         self._mean_t = mean_t
         self._bessel = bessels_correction
         self._lagtime = lagtime
+        self._symmetrized = symmetrized
 
     @property
     def cov_00(self) -> Optional[np.ndarray]:
@@ -100,12 +102,20 @@ class CovarianceModel(Model):
         return self._bessel
 
     @property
-    def lagtime(self):
+    def lagtime(self) -> Optional[int]:
         r""" The lagtime at which estimation was performed.
 
         :type: int or None
         """
         return self._lagtime
+
+    @property
+    def symmetrized(self) -> bool:
+        r""" Whether correlations and second moments are symmetrized in time.
+
+        :type: bool
+        """
+        return self._symmetrized
 
 
 class Covariance(Estimator):
@@ -339,8 +349,16 @@ class Covariance(Estimator):
             size in the second dimension, i.e., the elements of :code:`[x.shape[1] for x in data]` must all be equal.
         lagtime : int, optional, default=None
             Override for :attr:`lagtime`.
-        weights : array_like or list of array_like, optional, default=None
-            Optional weights for the input data. Must be of matching shape.
+        weights : array_like or list of array_like or object, optional, default=None
+
+            * Optional weights for the input data. Must be of matching shape.
+
+            * Can also be another arbitrary object. The only requirement is that weights possesses a method weights(X),
+              that accepts a trajectory X (np.ndarray(T, n)) and returns a vector of
+              re-weighting factors (np.ndarray(T,)). See, e.g.,
+
+              * :class:`KoopmanEstimator <sktime.covariance.KoopmanEstimator>`
+
         n_splits : int, optional, default=None
             The number of times the data is split uniformly when performing the covariance estimation. If no value
             is given, it estimates the number of splits by :code:`min(trajectory_lengths) // 100` if the shortest
@@ -431,7 +449,8 @@ class Covariance(Estimator):
         if self.compute_ctt or self.compute_c0t:
             mean_t = self._rc.mean_Y()
         self._model = CovarianceModel(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
-                                      bessels_correction=self.bessels_correction, lagtime=self.lagtime)
+                                      bessels_correction=self.bessels_correction, lagtime=self.lagtime,
+                                      symmetrized=self.reversible)
         return self._model
 
 
