@@ -1,4 +1,3 @@
-from numbers import Real
 from typing import Optional, Union
 
 import numpy as np
@@ -72,14 +71,14 @@ class TICA(VAMP):
     >>> from sktime.decomposition import TICA
     >>> data = np.random.random((100,3))
     >>> # fixed output dimension
-    >>> estimator = TICA(lagtime=2, dim=1).fit(data)
+    >>> estimator = TICA(dim=1).fit(data, lagtime=2)
     >>> model_onedim = estimator.fetch_model()
     >>> projected_data = model_onedim.transform(data)
     >>> np.testing.assert_equal(projected_data.shape[1], 1)
 
     or invoke it with a percentage value of to-be captured kinetic variance (80% in the example)
 
-    >>> estimator = TICA(lagtime=2, dim=0.8).fit(data)
+    >>> estimator = TICA(dim=0.8).fit(data, lagtime=2)
     >>> model_var = estimator.fetch_model()
     >>> projected_data = model_var.transform(data)
 
@@ -88,7 +87,7 @@ class TICA(VAMP):
 
     See also
     --------
-    :class:`TICAModel` : TICA estimation output model
+    :class:`CovarianceKoopmanModel <sktime.decomposition.CovarianceKoopmanModel>` : TICA estimation output model
 
     References
     ----------
@@ -98,7 +97,8 @@ class TICA(VAMP):
         :keyprefix: tica-
     """
 
-    def __init__(self, epsilon: float = 1e-6, dim: Optional[Real] = 0.95, scaling: Optional[str] = 'kinetic_map'):
+    def __init__(self, epsilon: float = 1e-6, dim: Optional[Union[int, float]] = 0.95,
+                 scaling: Optional[str] = 'kinetic_map'):
         r"""Constructs a new TICA estimator.
 
         Parameters
@@ -190,23 +190,22 @@ class TICA(VAMP):
             raise ValueError("Scaling parameter is allowed to be one of {}".format(valid_scalings))
         self._scaling = value
 
-    def fit(self, data: CovarianceModel, **kw):
-        r""" Fit a new :class:`CovarianceKoopmanModel` based on provided data.
+    def fit_from_covariances(self, covariances: Union[Covariance, CovarianceModel]):
+        r"""Fits a model based on provided symmetrized covariances.
 
         Parameters
         ----------
-        data : CovarianceModel
-            timeseries data
-        **kw
-            Ignored keyword arguments for scikit-learn compatibility.
+        covariances : Covariance or CovarianceModel
+            The covariances
 
         Returns
         -------
         self : TICA
             Reference to self.
         """
-        if not data.symmetrized:
+        covariances = self._to_covariance_model(covariances)
+        if not covariances.symmetrized:
             raise ValueError("The covariance model must be estimated such that the "
                              "autocorrelations are symmetric!")
-        self._model = self._decompose(data)
+        self._model = self._decompose(covariances)
         return self

@@ -162,7 +162,7 @@ class TestKoopmanTICA(unittest.TestCase):
 
         def tica(data, lag, weights=None, **params):
             from sktime.decomposition.tica import TICA
-            return TICA.from_data(data, lagtime=lag, weights=weights, dim=0.95, **params)
+            return TICA(dim=0.95, **params).fit_from_timeseries(data, lagtime=lag, weights=weights).fetch_model()
 
         # Set up the model:
         cls.koop_rev = tica(cls.data, lag=cls.tau, scaling=None)

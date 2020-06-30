@@ -23,7 +23,6 @@ TICA
     :template: class_nomodule.rst
 
     TICA
-    TICAModel
 
 ===============================================================================
 VAMP

@@ -46,7 +46,7 @@ def random_matrix(n, rank=None, eps=0.01):
 @pytest.mark.parametrize("with_statistics", [True, False], ids=["w/ statistics", "w/o statistics"])
 def test_expectation_sanity(with_statistics):
     data = np.random.normal(size=(10000, 5))
-    vamp = VAMP.from_data(data, lagtime=1)
+    vamp = VAMP().fit_from_timeseries(data, lagtime=1).fetch_model()
     observations = np.random.normal(size=(100, 5))
     if with_statistics:
         statistics = np.random.normal(size=(100, 5)).T
@@ -80,7 +80,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         # test
         tau = 50
-        vamp = VAMP.from_data(trajs, lagtime=tau, scaling=None)
+        vamp = VAMP(scaling=None).fit(trajs, lagtime=tau).fetch_model()
 
         assert vamp.output_dimension <= rank
 
@@ -111,7 +111,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
                                    atol=atol)
 
         if test_partial_fit:
-            vamp2 = VAMP.from_data(trajs, lagtime=tau, scaling=None)
+            vamp2 = VAMP().fit(trajs, lagtime=tau).fetch_model()
 
             atol = 1e-14
             rtol = 1e-5
@@ -249,15 +249,15 @@ class TestVAMPModel(unittest.TestCase):
             msm_train = estimate_markov_model(dtrajs=dtrajs_train, lag=self.lag, reversible=False)
             score_msm = msm_train.score(dtrajs_test, score_method=m, score_k=None)
 
-            vamp_train = VAMP.from_data(trajs_train, lagtime=self.lag, dim=1.0)
-            vamp_test = VAMP.from_data(trajs_test, lagtime=self.lag, dim=1.0)
+            vamp_train = VAMP(dim=1.0).fit_from_timeseries(trajs_train, lagtime=self.lag).fetch_model()
+            vamp_test = VAMP(dim=1.0).fit_from_timeseries(trajs_test, lagtime=self.lag).fetch_model()
             score_vamp = vamp_train.score(test_model=vamp_test, score_method=m)
 
             self.assertAlmostEqual(score_msm, score_vamp, places=2 if m == 'VAMPE' else 3, msg=m)
 
     def test_kinetic_map(self):
         lag = 10
-        vamp = VAMP.from_data(self.trajs, lagtime=lag, scaling='km')
+        vamp = VAMP(scaling='km').fit_from_timeseries(self.trajs, lagtime=lag).fetch_model()
         transformed = [vamp.transform(X)[:-lag] for X in self.trajs]
         std = np.std(np.concatenate(transformed), axis=0)
         np.testing.assert_allclose(std, vamp.singular_values[:vamp.output_dimension], atol=1e-4, rtol=1e-4)
@@ -266,16 +266,16 @@ class TestVAMPModel(unittest.TestCase):
 class TestVAMPWithEdgeCaseData(unittest.TestCase):
     def test_1D_data(self):
         x = np.random.randn(10, 1)
-        vamp = VAMP.from_data([x], lagtime=1)
+        vamp = VAMP().fit([x], lagtime=1).fetch_model()
         # Doing VAMP with 1-D data is just centering and normalizing the data.
         assert_allclose_ignore_phase(vamp.transform(x, forward=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
         from sktime.numeric.eigen import ZeroRankError
         with self.assertRaises(ZeroRankError):
-            print(VAMP.from_data(np.ones((10, 2)), lagtime=1).singular_values)
+            print(VAMP().fit(np.ones((10, 2)), lagtime=1).fetch_model().singular_values)
         with self.assertRaises(ZeroRankError):
-            print(VAMP.from_data(np.ones((10, 1)), lagtime=1).singular_values)
+            print(VAMP().fit(np.ones((10, 1)), lagtime=1).fetch_model().singular_values)
 
 
 if __name__ == "__main__":

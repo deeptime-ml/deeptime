@@ -133,7 +133,7 @@ class VAMP(Estimator, Transformer):
         :keyprefix: vamp-
     """
 
-    def __init__(self, dim: Optional[Real] = None, scaling: Optional[str] = None,
+    def __init__(self, dim: Optional[Union[int, float]] = None, scaling: Optional[str] = None,
                  epsilon: float = 1e-6):
         r""" Creates a new VAMP estimator.
 
@@ -226,9 +226,32 @@ class VAMP(Estimator, Transformer):
         return Covariance(lagtime=lagtime, compute_c0t=True, compute_ctt=True, remove_data_mean=True, reversible=False,
                           bessels_correction=False, ncov=ncov)
 
-    @classmethod
-    def from_data(cls, data: Union[np.ndarray, List[np.ndarray]], lagtime: int, dim: Optional[Real] = None,
-                  scaling: Optional[str] = None, epsilon: float = 1e-6, weights=None) -> CovarianceKoopmanModel:
+    @staticmethod
+    def _to_covariance_model(covariances: Union[Covariance, CovarianceModel]) -> CovarianceModel:
+        if isinstance(covariances, Covariance):
+            covariances = covariances.fetch_model()
+        return covariances
+
+    def fit_from_covariances(self, covariances: Union[Covariance, CovarianceModel]):
+        r"""Fits from existing covariance model (or covariance estimator containing model).
+
+        Parameters
+        ----------
+        covariances : CovarianceModel or Covariance
+            Covariance model containing covariances or Covariance estimator containing a covariance model. The model
+            in particular has matrices :math:`C_{00}, C_{0t}, C_{tt}`.
+
+        Returns
+        -------
+        self : VAMP
+            Reference to self.
+        """
+        covariances = self._to_covariance_model(covariances)
+        self._model = self._decompose(covariances)
+        return self
+
+    def fit_from_timeseries(self, data: Union[np.ndarray, List[np.ndarray]], lagtime: int,
+                            weights=None):
         r""" Estimates a :class:`CovarianceKoopmanModel` directly from time-series data using the :class:`Covariance`
         estimator. For parameters `dim`, `scaling`, `epsilon`.
 
@@ -238,22 +261,17 @@ class VAMP(Estimator, Transformer):
             Input time-series.
         lagtime : int
             Lagtime for covariance matrix estimation, must be positive.
-        scaling
-            Please see :meth:`__init__`.
-        dim
-            Please see :meth:`__init__`.
-        epsilon
-            Please see :meth:`__init__`.
+        weights
+            See the :class:`Covariance <sktime.covariance.Covariance>` estimator.
 
         Returns
         -------
-        model : CovarianceKoopmanModel
-            The estimated model.
+        self : VAMP
+            Reference to self.
         """
-        covar = cls.covariance_estimator(lagtime=lagtime)
-        covariances = covar.fit(data, weights=weights).fetch_model()
-        estimator = cls(dim=dim, scaling=scaling, epsilon=epsilon)
-        return estimator.fit(covariances).fetch_model()
+        covariance_estimator = self.covariance_estimator(lagtime=lagtime)
+        covariances = covariance_estimator.fit(data, weights=weights).fetch_model()
+        return self.fit_from_covariances(covariances)
 
     @property
     def epsilon(self):
@@ -288,7 +306,7 @@ class VAMP(Estimator, Transformer):
         self._scaling = value
 
     @property
-    def dim(self) -> Optional[Real]:
+    def dim(self) -> Optional[Union[int, float]]:
         r""" Dimension attribute. Can either be int or float. In case of
 
         * :code:`int` it evaluates it as the actual dimension, must be strictly greater 0,
@@ -302,7 +320,7 @@ class VAMP(Estimator, Transformer):
         return self._dim
 
     @dim.setter
-    def dim(self, value: Optional[Real]):
+    def dim(self, value: Optional[Union[int, float]]):
         if isinstance(value, Integral):
             if value <= 0:
                 # first test against Integral as `isinstance(1, Real)` also evaluates to True
@@ -325,15 +343,19 @@ class VAMP(Estimator, Transformer):
             dim=self.dim, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
         )
 
-    def fit(self, data, **kw):
+    def fit(self, data, *args, **kw):
         r""" Fits a new :class:`CovarianceKoopmanModel` which can be obtained by a
         subsequent call to :meth:`fetch_model`.
 
         Parameters
         ----------
-        data : CovarianceModel
+        data : CovarianceModel or Covariance or timeseries
             Covariance matrices :math:`C_{00}, C_{0t}, C_{tt}` in form of a CovarianceModel instance. If the model
             should be fitted directly from data, please see :meth:`from_data`.
+            Optionally, this can also be timeseries data directly, in which case the keyword argument 'lagtime'
+            must be provided.
+        *args
+            Optional arguments
         **kw
             Ignored keyword arguments for scikit-learn compatibility.
 
@@ -342,7 +364,12 @@ class VAMP(Estimator, Transformer):
         self : VAMP
             Reference to self.
         """
-        self._model = self._decompose(data)
+        if isinstance(data, (Covariance, CovarianceModel)):
+            self.fit_from_covariances(data)
+        else:
+            if 'lagtime' not in kw.keys():
+                raise ValueError("Cannot fit on timeseries data without a lagtime!")
+            self.fit_from_timeseries(data, lagtime=kw.pop('lagtime'), weights=kw.pop('weights', None))
         return self
 
     def transform(self, data, forward=True):

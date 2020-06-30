@@ -27,7 +27,6 @@ import unittest
 import numpy as np
 import pytest
 
-from sktime.data.util import timeshifted_split
 from sktime.decomposition.tica import TICA
 from sktime.numeric.eigen import ZeroRankError
 
@@ -35,17 +34,16 @@ from sktime.numeric.eigen import ZeroRankError
 class TestTICA(unittest.TestCase):
 
     def test_fit_reset(self):
-        chunk = 40
         lag = 100
         np.random.seed(0)
         data = np.random.randn(23000, 3)
 
-        model1 = TICA.from_data(data, lagtime=lag, dim=1)
+        estimator = TICA(dim=1)
+        model1 = estimator.fit_from_timeseries(data, lagtime=lag).fetch_model()
         # ------- run again with new chunksize -------
-        covars = TICA.covariance_estimator(lagtime=lag).fit(data).fetch_model()
-        est = TICA(dim=1)
-        est.fit(covars)
-        model2 = est.fetch_model().copy()
+        covars = TICA.covariance_estimator(lagtime=lag).fit(data)
+        estimator.fit_from_covariances(covars)
+        model2 = estimator.fetch_model()
 
         assert model1 != model2
         np.testing.assert_array_almost_equal(model1.mean_0, model2.mean_0)
@@ -57,14 +55,16 @@ class TestTICA(unittest.TestCase):
         o = np.ones((100, 10))
         z_lagged = (z[:-10], z[10:])
         o_lagged = (o[:-10], o[10:])
-        tica_obj = TICA(lagtime=1)
-        model = tica_obj.partial_fit(z_lagged).fetch_model()
+        tica_obj = TICA()
+        cov_estimator = TICA.covariance_estimator(lagtime=1)
+        cov_estimator.partial_fit(z_lagged)
         with self.assertRaises(ZeroRankError):
+            model = tica_obj.fit(cov_estimator.fetch_model())
             _ = model.timescales(lagtime=1)
-        with self.assertRaises(ZeroRankError):
             tica_obj.transform(z)
-        model = tica_obj.partial_fit(o_lagged).fetch_model()
+        cov_estimator.partial_fit(o_lagged)
         try:
+            model = tica_obj.fit(cov_estimator).fetch_model()
             _ = model.timescales(lagtime=1)
             tica_obj.transform(z)
         except ZeroRankError:
@@ -72,14 +72,14 @@ class TestTICA(unittest.TestCase):
 
 
 def test_dim_parameter():
-    np.testing.assert_equal(TICA(lagtime=1, dim=3).dim, 3)
-    np.testing.assert_equal(TICA(lagtime=1, dim=0.5).dim, 0.5)
+    np.testing.assert_equal(TICA(dim=3).dim, 3)
+    np.testing.assert_equal(TICA(dim=0.5).dim, 0.5)
     with np.testing.assert_raises(ValueError):
-        TICA(lagtime=1, dim=-1)  # negative int
+        TICA(dim=-1)  # negative int
     with np.testing.assert_raises(ValueError):
-        TICA(lagtime=1, dim=5.5)  # float > 1
+        TICA(dim=5.5)  # float > 1
     with np.testing.assert_raises(ValueError):
-        TICA(lagtime=1, dim=-0.1)  # negative float
+        TICA(dim=-0.1)  # negative float
 
 
 def generate_hmm_test_data():
@@ -137,52 +137,40 @@ class TestTICAExtensive(unittest.TestCase):
         cls.data = test_data['data']
 
         # perform unscaled TICA
-        cls.model_unscaled = TICA(lagtime=cls.lagtime, dim=1, scaling=None).fit(cls.data).fetch_model()
+        cls.model_unscaled = TICA(dim=1, scaling=None).fit_from_timeseries(cls.data, lagtime=cls.lagtime).fetch_model()
         cls.transformed_data_unscaled = cls.model_unscaled.transform(cls.data)
-
-        # non-reversible TICA
-        cls.model_nonrev = TICA(lagtime=cls.lagtime, dim=1, scaling=None, reversible=False).fit(cls.data) \
-            .fetch_model()
-        cls.transformed_data_nonrev = cls.model_nonrev.transform(cls.data)
 
     def test_variances(self):
         vars_unscaled = np.var(self.transformed_data_unscaled, axis=0)
-        vars_nonrev = np.var(self.transformed_data_nonrev, axis=0)
         assert np.max(np.abs(vars_unscaled - 1.0)) < 0.01
-        assert np.max(np.abs(vars_nonrev - 1.0)) < 0.01
 
     def test_kinetic_map(self):
-        tica = TICA(lagtime=self.lagtime, dim=None, scaling='kinetic_map').fit(self.data).fetch_model()
+        tica = TICA(scaling='km', dim=None).fit(self.data, lagtime=self.lagtime).fetch_model()
         O = tica.transform(self.data)
         vars = np.var(O, axis=0)
-        refs = tica.eigenvalues ** 2
+        refs = tica.singular_values ** 2
         assert np.max(np.abs(vars - refs)) < 0.01
 
     def test_cumvar(self):
-        assert len(self.model_unscaled.cumvar) == 2
-        assert np.allclose(self.model_unscaled.cumvar[-1], 1.0)
-        assert len(self.model_nonrev.cumvar) == 2
-        assert np.allclose(self.model_nonrev.cumvar[-1], 1.0)
+        assert len(self.model_unscaled.cumulative_kinetic_variance) == 2
+        assert np.allclose(self.model_unscaled.cumulative_kinetic_variance[-1], 1.0)
 
     def test_cov(self):
         np.testing.assert_allclose(self.model_unscaled.cov_00, self.cov_ref_00)
-        np.testing.assert_allclose(self.model_nonrev.cov_00, self.cov_ref_00_nr)
         np.testing.assert_allclose(self.model_unscaled.cov_0t, self.cov_ref_0t)
-        np.testing.assert_allclose(self.model_nonrev.cov_0t, self.cov_ref_0t_nr)
 
     def test_dimension(self):
         assert self.model_unscaled.output_dimension == 1
-        assert self.model_nonrev.output_dimension == 1
         # Test other variants
-        model = TICA(lagtime=self.lagtime, dim=1.0).fit(self.data).fetch_model()
+        model = TICA(dim=1.0).fit(self.data, lagtime=self.lagtime).fetch_model()
         assert model.output_dimension == 2
-        model = TICA(lagtime=self.lagtime, dim=.9).fit(self.data).fetch_model()
+        model = TICA(dim=.9).fit(self.data, lagtime=self.lagtime).fetch_model()
         assert model.output_dimension == 1
 
         invalid_dims = [0, 0.0, 1.1, -1]
         for invalid_dim in invalid_dims:
             with self.assertRaises(ValueError):
-                TICA(lagtime=self.lagtime, dim=invalid_dim)
+                TICA(dim=invalid_dim)
 
 
 if __name__ == "__main__":
