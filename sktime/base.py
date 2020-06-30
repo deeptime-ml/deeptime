@@ -136,7 +136,7 @@ class Model(_base_methods_mixin):
 
         Returns
         -------
-        copy : Model
+        copy
             A new copy of this model.
         """
         import copy
@@ -194,6 +194,15 @@ class Estimator(_base_methods_mixin):
             The estimated model or None.
         """
         return self._model
+
+    @property
+    def has_model(self) -> bool:
+        r""" Property reporting whether this estimator contains an estimated model. This assumes that the model
+        is initialized with `None` otherwise.
+
+        :type: bool
+        """
+        return self._model is not None
 
     def __getattribute__(self, item):
         if (item == 'fit' or item == 'partial_fit') and not self._MUTABLE_INPUT_DATA:
@@ -261,10 +270,10 @@ class _ImmutableInputData(object):
                     self._data.append(x)
                 else:
                     raise InputFormatError(f'Invalid input element in position {i}, only numpy.ndarrays allowed.')
-        elif isinstance(value, Model):
+        elif isinstance(value, (Model, Estimator)):
             self._data.append(value)
         else:
-            raise InputFormatError(f'Only model, ndarray or list/tuple of ndarray allowed. '
+            raise InputFormatError(f'Only estimator, model, ndarray or list/tuple of ndarray allowed. '
                                    f'But was of type {type(value)}: {value}.')
 
     def __enter__(self):

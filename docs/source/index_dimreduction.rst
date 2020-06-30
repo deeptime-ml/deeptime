@@ -78,11 +78,6 @@ are based on estimating covariance matrices using the `covariance estimator <api
 This estimator makes use of an online algorithm proposed in :cite:`ix-dimredux-chan1982updating` so that not the entire data has
 to be kept in memory.
 
-In particular, this means that TICA and VAMP not only have a :code:`fit`-method (`tica.fit() <api/generated/sktime.decomposition.TICA.rst#sktime.decomposition.TICA.fit>`_,
-`vamp.fit() <api/generated/sktime.decomposition.VAMP.rst#sktime.decomposition.VAMP.fit>`_), but also a
-:code:`partial_fit`-method (`tica.partial_fit() <api/generated/sktime.decomposition.TICA.rst#sktime.decomposition.TICA.partial_fit>`_,
-`vamp.partial_fit() <api/generated/sktime.decomposition.VAMP.rst#sktime.decomposition.VAMP.partial_fit>`_).
-
 .. code-block:: python
 
     estimator = sktime.decomposition.TICA(lagtime=tau)  # creating an estimator

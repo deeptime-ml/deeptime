@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import pkg_resources
 
-from sktime.covariance import KoopmanModel
+from sktime.covariance import KoopmanWeightingModel
 from sktime.data.util import timeshifted_split
 from sktime.numeric.eigen import sort_by_norm
 import numpy.linalg as scl
@@ -114,8 +114,8 @@ class TestKoopmanTICA(unittest.TestCase):
         u_input = np.zeros(N + 1)
         u_input[0:N] = cls.R.dot(u_mod[0:-1])  # in input basis
         u_input[N] = u_mod[-1] - cls.mean_x.dot(cls.R.dot(u_mod[0:-1]))
-        cls.weight_obj = KoopmanModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=cls.K,
-                                      whitening_transformation=cls.R, covariances=None)
+        cls.weight_obj = KoopmanWeightingModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=cls.K,
+                                               whitening_transformation=cls.R, covariances=None)
 
         # Compute weights over all data points:
         cls.wtraj = []
@@ -162,9 +162,7 @@ class TestKoopmanTICA(unittest.TestCase):
 
         def tica(data, lag, weights=None, **params):
             from sktime.decomposition.tica import TICA
-            t = TICA(lagtime=lag, **params)
-            t.fit(data, weights=weights)
-            return t.fetch_model()
+            return TICA(dim=0.95, **params).fit_from_timeseries(data, lagtime=lag, weights=weights).fetch_model()
 
         # Set up the model:
         cls.koop_rev = tica(cls.data, lag=cls.tau, scaling=None)
@@ -183,14 +181,14 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(self.koop_eq.cov_0t, self.Ct_eq)
 
     def test_eigenvalues(self):
-        np.testing.assert_allclose(self.koop_rev.eigenvalues, self.ls)
-        np.testing.assert_allclose(self.koop_eq.eigenvalues, self.lr)
+        np.testing.assert_allclose(self.koop_rev.singular_values, self.ls)
+        np.testing.assert_allclose(self.koop_eq.singular_values, self.lr)
         np.testing.assert_allclose(self.koop_rev.timescales(self.tau), self.tss)
         np.testing.assert_allclose(self.koop_eq.timescales(self.tau), self.tsr)
 
     def test_eigenvectors(self):
-        np.testing.assert_allclose(self.koop_rev.eigenvectors, self.Rs)
-        np.testing.assert_allclose(self.koop_eq.eigenvectors, self.Rr)
+        np.testing.assert_allclose(self.koop_rev.singular_vectors_left, self.Rs)
+        np.testing.assert_allclose(self.koop_eq.singular_vectors_left, self.Rr)
 
     def test_transform(self):
         traj = self.data[0] - self.mean_rev[None, :]
@@ -203,8 +201,8 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(out_traj_eq, ev_traj_eq)
 
     def test_koopman_estimator_partial_fit(self):
-        from sktime.covariance import KoopmanEstimator
-        est = KoopmanEstimator(lagtime=self.tau)
+        from sktime.covariance import KoopmanWeightingEstimator
+        est = KoopmanWeightingEstimator(lagtime=self.tau)
         data_lagged = timeshifted_split(self.data, lagtime=self.tau, n_splits=10)
         for traj in data_lagged:
             est.partial_fit(traj)
@@ -214,8 +212,8 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(m.const_weight_input, self.weight_obj.const_weight_input)
 
     def test_koopman_estimator_fit(self):
-        from sktime.covariance import KoopmanEstimator
-        est = KoopmanEstimator(lagtime=self.tau)
+        from sktime.covariance import KoopmanWeightingEstimator
+        est = KoopmanWeightingEstimator(lagtime=self.tau)
         est.fit(self.data)
         m = est.fetch_model()
 

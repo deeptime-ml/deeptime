@@ -7,7 +7,7 @@
 .. autoclass:: {{ objname }}
 
    {% block methods %}
-   .. automethod:: __init__
+   .. automethod:: {{ name }}.__init__
 
    {% if methods %}
    .. rubric:: {{ _('Methods') }}

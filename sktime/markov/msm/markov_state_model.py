@@ -44,14 +44,14 @@ class MarkovStateModel(Model):
     BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
     """
 
-    def __init__(self, transition_matrix: np.ndarray, stationary_distribution=None, reversible=None,
+    def __init__(self, transition_matrix, stationary_distribution=None, reversible=None,
                  n_eigenvalues=None, ncv=None, count_model=None, transition_matrix_tolerance=1e-8):
         r"""
         Constructs a new markov state model based on a transition matrix.
 
         Parameters
         ----------
-        transition_matrix : (n,n) ndarray
+        transition_matrix : (n,n) array_like
             The transition matrix.
         stationary_distribution : ndarray(n), optional, default=None
             Stationary distribution. Can be optionally given in case if it was already computed.

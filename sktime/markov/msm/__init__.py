@@ -5,7 +5,7 @@ Maximum-likelihood MSMs (ML-MSM) and Bayesian sampling
 ------------------------------------------------------
 .. autosummary::
     :toctree: generated/
-    :template: base_nomodule.rst
+    :template: class_nomodule.rst
 
     MaximumLikelihoodMSM
     MarkovStateModel
@@ -18,7 +18,7 @@ Observable operator model MSMs (OOMs)
 -------------------------------------
 .. autosummary::
     :toctree: generated/
-    :template: base_nomodule.rst
+    :template: class_nomodule.rst
 
     OOMReweightedMSM
     KoopmanReweightedMSM
@@ -27,7 +27,7 @@ Augmented markov models (AMMs)
 ------------------------------
 .. autosummary::
     :toctree: generated/
-    :template: base_nomodule.rst
+    :template: class_nomodule.rst
 
     AugmentedMSMEstimator
     AugmentedMSM

@@ -9,7 +9,7 @@ from ..data.util import timeshifted_split
 from ..numeric.eigen import spd_inv_split, sort_by_norm
 from .util.running_moments import running_covar as running_covar
 
-__all__ = ['Covariance', 'CovarianceModel', 'KoopmanEstimator', 'KoopmanModel']
+__all__ = ['Covariance', 'CovarianceModel', 'KoopmanWeightingEstimator', 'KoopmanWeightingModel']
 
 __author__ = 'paul, nueske, marscher, clonker'
 
@@ -21,7 +21,8 @@ class CovarianceModel(Model):
     """
     def __init__(self, cov_00: Optional[np.ndarray] = None, cov_0t: Optional[np.ndarray] = None,
                  cov_tt: Optional[np.ndarray] = None, mean_0: Optional[np.ndarray] = None,
-                 mean_t: Optional[np.ndarray] = None, bessels_correction: bool = True, lagtime: Optional[int] = None):
+                 mean_t: Optional[np.ndarray] = None, bessels_correction: bool = True,
+                 symmetrized: bool = False, lagtime: Optional[int] = None):
         r"""
         Initializes a new online covariance model.
 
@@ -50,6 +51,7 @@ class CovarianceModel(Model):
         self._mean_t = mean_t
         self._bessel = bessels_correction
         self._lagtime = lagtime
+        self._symmetrized = symmetrized
 
     @property
     def cov_00(self) -> Optional[np.ndarray]:
@@ -100,12 +102,20 @@ class CovarianceModel(Model):
         return self._bessel
 
     @property
-    def lagtime(self):
+    def lagtime(self) -> Optional[int]:
         r""" The lagtime at which estimation was performed.
 
         :type: int or None
         """
         return self._lagtime
+
+    @property
+    def symmetrized(self) -> bool:
+        r""" Whether correlations and second moments are symmetrized in time.
+
+        :type: bool
+        """
+        return self._symmetrized
 
 
 class Covariance(Estimator):
@@ -339,8 +349,16 @@ class Covariance(Estimator):
             size in the second dimension, i.e., the elements of :code:`[x.shape[1] for x in data]` must all be equal.
         lagtime : int, optional, default=None
             Override for :attr:`lagtime`.
-        weights : array_like or list of array_like, optional, default=None
-            Optional weights for the input data. Must be of matching shape.
+        weights : array_like or list of array_like or object, optional, default=None
+
+            * Optional weights for the input data. Must be of matching shape.
+
+            * Can also be another arbitrary object. The only requirement is that weights possesses a method weights(X),
+              that accepts a trajectory X (np.ndarray(T, n)) and returns a vector of
+              re-weighting factors (np.ndarray(T,)). See, e.g.,
+
+              * :class:`KoopmanEstimator <sktime.covariance.KoopmanEstimator>`
+
         n_splits : int, optional, default=None
             The number of times the data is split uniformly when performing the covariance estimation. If no value
             is given, it estimates the number of splits by :code:`min(trajectory_lengths) // 100` if the shortest
@@ -431,11 +449,12 @@ class Covariance(Estimator):
         if self.compute_ctt or self.compute_c0t:
             mean_t = self._rc.mean_Y()
         self._model = CovarianceModel(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
-                                      bessels_correction=self.bessels_correction, lagtime=self.lagtime)
+                                      bessels_correction=self.bessels_correction, lagtime=self.lagtime,
+                                      symmetrized=self.reversible)
         return self._model
 
 
-class KoopmanModel(Model, Transformer):
+class KoopmanWeightingModel(Model, Transformer):
     r""" A model which contains the Koopman operator in a modified basis `(PC|1)` and can transform data into Koopman
     weights.
 
@@ -532,7 +551,7 @@ class KoopmanModel(Model, Transformer):
         return self._covariances
 
 
-class KoopmanEstimator(Estimator, Transformer):
+class KoopmanWeightingEstimator(Estimator, Transformer):
     r"""Computes Koopman operator and weights that can be plugged into the :class:`Covariance` estimator.
     The weights are determined by the procedure described in :cite:`koopmanestimator-wu2016variational`.
 
@@ -557,7 +576,7 @@ class KoopmanEstimator(Estimator, Transformer):
             Depth of moment storage. Per default no moments are collapsed while estimating covariances, perform
             aggregation only at the very end after all data has been processed.
         """
-        super(KoopmanEstimator, self).__init__()
+        super(KoopmanWeightingEstimator, self).__init__()
         self.epsilon = epsilon
         if ncov == 'inf':
             ncov = int(2**10000)
@@ -578,7 +597,7 @@ class KoopmanEstimator(Estimator, Transformer):
 
         Returns
         -------
-        self : KoopmanEstimator
+        self : KoopmanWeightingEstimator
             Reference to self.
         """
         self._model = None
@@ -595,7 +614,7 @@ class KoopmanEstimator(Estimator, Transformer):
 
         Returns
         -------
-        self : KoopmanEstimator
+        self : KoopmanWeightingEstimator
             Reference to self.
         """
         self._cov.partial_fit(data)
@@ -643,12 +662,12 @@ class KoopmanEstimator(Estimator, Transformer):
         u = u / np.dot(u, v)
         return u
 
-    def fetch_model(self) -> KoopmanModel:
+    def fetch_model(self) -> KoopmanWeightingModel:
         r""" Finalizes the model.
 
         Returns
         -------
-        koopman_model : KoopmanModel
+        koopman_model : KoopmanWeightingModel
             The Koopman model, in particular containing operator and weights.
         """
         cov = self._cov.fetch_model()
@@ -668,8 +687,8 @@ class KoopmanEstimator(Estimator, Transformer):
         u_input[0:N] = R.dot(u[0:-1])  # in input basis
         u_input[N] = u[-1] - cov.mean_0.dot(R.dot(u[0:-1]))
 
-        self._model = KoopmanModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=K, whitening_transformation=R,
-                                   covariances=cov)
+        self._model = KoopmanWeightingModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=K, whitening_transformation=R,
+                                            covariances=cov)
 
         return self._model
 
