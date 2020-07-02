@@ -35,8 +35,8 @@ from msmtools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import *
 
 from sktime.markov._base import score_cv
-from sktime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel
-from sktime.markov.transition_counting import TransitionCountEstimator
+from sktime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel, MarkovStateModelCollection
+from sktime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
 
 
 def estimate_markov_model(dtrajs, lag, **kw) -> MarkovStateModel:
@@ -391,7 +391,7 @@ def test_nonreversible_disconnected():
     msm1 = MarkovStateModel([[.7, .3], [.3, .7]])
     msm2 = MarkovStateModel([[.9, .05, .05], [.3, .6, .1], [.1, .1, .8]])
     traj = np.concatenate([msm1.simulate(1000000), 2 + msm2.simulate(1000000)])
-    counts = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(traj).fetch_model()
+    counts = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(traj)
     msm = MaximumLikelihoodMSM(reversible=True).fit(counts).fetch_model()
     assert_equal(msm.transition_matrix.shape, (3, 3))
     assert_equal(msm.stationary_distribution.shape, (3,))
@@ -399,8 +399,42 @@ def test_nonreversible_disconnected():
     assert_equal(msm.state_symbols(1), [0, 1])
     msm.select(1)
     assert_equal(msm.transition_matrix.shape, (2, 2))
-    assert_equal(msm.stationary_distribution.shape, (2, ))
+    assert_equal(msm.stationary_distribution.shape, (2,))
     assert_equal(msm.state_symbols(), [0, 1])
     assert_equal(msm.state_symbols(0), [2, 3, 4])
     with assert_raises(IndexError):
         msm.select(2)
+
+
+def test_invalid_arguments():
+    with assert_raises(ValueError):
+        # negative counts
+        MaximumLikelihoodMSM().fit(-1 * np.ones((5, 5))).fetch_model()
+    with assert_raises(ValueError):
+        # non quadratic count matrix
+        MaximumLikelihoodMSM().fit(np.ones((3, 5))).fetch_model()
+    with assert_raises(ValueError):
+        # stationary distribution not over whole state space
+        MaximumLikelihoodMSM(stationary_distribution_constraint=np.array([1 / 3, 1 / 3, 1 / 3])).fit(np.ones((5, 5)))
+    with assert_raises(ValueError):
+        # no counts but statdist constraint
+        MaximumLikelihoodMSM(stationary_distribution_constraint=np.array([.5, .5])).fit(np.zeros((2, 2)))
+    with assert_raises(ValueError):
+        # fit with transition count estimator that hasn't been fit
+        MaximumLikelihoodMSM().fit(TransitionCountEstimator(1, "sliding"))
+    with assert_raises(ValueError):
+        # fit with bogus object
+        MaximumLikelihoodMSM().fit(object())
+    with assert_raises(ValueError):
+        # fit from timeseries without lagtime
+        MaximumLikelihoodMSM().fit(np.array([0, 1, 2, 3, 4, 5, 6]))
+    with assert_raises(ValueError):
+        # empty collection is not allowed
+        MarkovStateModelCollection([], [], False, [], 1.)
+    with assert_raises(ValueError):
+        # number of elements in lists must match
+        MarkovStateModelCollection([np.array([[.5, .5], [.5, .5]])], [], False, [], 1.)
+    with assert_raises(ValueError):
+        # number of states in lists must match
+        MarkovStateModelCollection([np.array([[.5, .5], [.5, .5]])], [None], False,
+                                   [TransitionCountModel(np.ones((3, 3)))], 1.)

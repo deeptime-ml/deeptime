@@ -103,6 +103,8 @@ class TransitionCountModel(Model):
         super().__init__()
         if count_matrix is None:
             raise ValueError("count matrix was None")
+        if (not issparse(count_matrix) and np.any(count_matrix < 0)) or count_matrix.min() < 0:
+            raise ValueError("Count matrix elements must all be non-negative")
 
         self._count_matrix = count_matrix
         self._counting_mode = counting_mode
