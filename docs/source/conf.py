@@ -141,7 +141,8 @@ def env_get_outdated(app, env, added, changed, removed):
 def setup(app):
     app.connect('env-get-outdated', env_get_outdated)
     app.add_css_file('custom.css')
-    app.add_css_file('perfect-scrollbar/css/perfect-scrollbar.min.css')
+    app.add_css_file('perfect-scrollbar/css/perfect-scrollbar.css')
+    app.add_js_file('perfect-scrollbar/js/perfect-scrollbar.min.js')
 
     class AutoAutoSummary(Autosummary):
 

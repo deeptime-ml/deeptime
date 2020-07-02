@@ -75,8 +75,8 @@ def test_estimator_params(reversible, statdist, sparse, maxiter, maxerr):
 
 def test_weakly_connected_count_matrix():
     count_matrix = np.array([[10, 1, 0, 0], [0, 1, 1, 0], [0, 1, 1, 1], [0, 0, 0, 1]], dtype=np.float32)
-    with assert_raises(BaseException, msg="count matrix not strongly connected, expected failure in rev. case"):
-        MaximumLikelihoodMSM().fit(count_matrix)
+    assert_equal(MaximumLikelihoodMSM().fit(count_matrix).fetch_model().n_connected_msms, 3,
+                 err_msg="Count matrix not strongly connected, should decay into three sets.")
     # count matrix weakly connected, this should work
     msm = MaximumLikelihoodMSM(reversible=False).fit(count_matrix).fetch_model()
     assert_equal(msm.reversible, False)
@@ -267,8 +267,9 @@ class TestMSMMinCountConnectivity(unittest.TestCase):
         assert all(id(x.count_model) == i for x in msm_restricted.samples)
 
 
-DisconnectedStatesScenario = collections.namedtuple("DisconnectedStatesScenario",
-                                                    ["dtrajs", "connected_sets", "count_matrices"])
+DisconnectedStatesScenario = collections.namedtuple(
+    "DisconnectedStatesScenario", ["dtrajs", "connected_sets", "weakly_connected_sets", "count_matrices"]
+)
 
 
 @pytest.fixture
@@ -283,13 +284,15 @@ def disconnected_states():
               np.array([6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]),
               np.array([7, 7, 7, 7, 7, 4, 5, 4, 5, 4, 5, 4, 4, 4, 5, 5, 5, 4])]
     connected_sets = [[0, 1, 3], [4, 5], [2], [6], [7]]
+    weakly_connected_sets = [[0, 1, 2, 3], [4, 5, 7], [6]]
     cmat_set1 = np.array([[3, 7, 2],
                           [6, 3, 2],
                           [2, 2, 3]], dtype=np.int)
     cmat_set2 = np.array([[6, 9],
                           [8, 6]], dtype=np.int)
     count_matrices = [cmat_set1, cmat_set2, None, None, None]
-    return DisconnectedStatesScenario(dtrajs=dtrajs, connected_sets=connected_sets, count_matrices=count_matrices)
+    return DisconnectedStatesScenario(dtrajs=dtrajs, connected_sets=connected_sets,
+                                      weakly_connected_sets=weakly_connected_sets, count_matrices=count_matrices)
 
 
 @pytest.mark.parametrize("lag", [1, 2])
@@ -357,23 +360,31 @@ def test_msm_invalid_statdist_constraint(disconnected_states, lagtime, reversibl
 
 @pytest.mark.parametrize("lag", [1, 2])
 @pytest.mark.parametrize("count_mode", ["sliding", "sample"])
-def test_raises_disconnected(disconnected_states, lag, count_mode):
+def test_reversible_disconnected(disconnected_states, lag, count_mode):
+    r"""disconnected states: 2 <- 0 <-> 1 <-> 3 | 7 -> 4 <-> 5 | 6"""
     count_model = TransitionCountEstimator(lagtime=lag, count_mode=count_mode) \
         .fit(disconnected_states.dtrajs).fetch_model()
 
-    with assert_raises(AssertionError):
-        MaximumLikelihoodMSM(reversible=True).fit(count_model)
+    msm = MaximumLikelihoodMSM(reversible=True).fit(count_model).fetch_model()
+    assert_equal(msm.n_connected_msms, len(disconnected_states.connected_sets))
+    for i, subset in enumerate(disconnected_states.connected_sets):
+        # can do this because subsets are ordered in decreasing cardinality
+        assert_equal(msm.state_symbols(i), subset)
 
     non_reversibly_connected_set = [0, 1, 2, 3]
     submodel = count_model.submodel(non_reversibly_connected_set)
 
-    with assert_raises(AssertionError):
-        MaximumLikelihoodMSM(reversible=True).fit(submodel)
+    msm = MaximumLikelihoodMSM(reversible=True).fit(submodel).fetch_model()
+    assert_equal(msm.n_connected_msms, 2)
+    assert_equal(msm.state_symbols(0), [0, 1, 3])
+    assert_equal(msm.state_symbols(1), [2])
 
     fully_disconnected_set = [6, 2]
     submodel = count_model.submodel(fully_disconnected_set)
-    with assert_raises(AssertionError):
-        MaximumLikelihoodMSM(reversible=True).fit(submodel)
+    msm = MaximumLikelihoodMSM(reversible=True).fit(submodel).fetch_model()
+    assert_equal(msm.n_connected_msms, 2)
+    assert_equal(msm.state_symbols(0), [6])
+    assert_equal(msm.state_symbols(1), [2])
 
 
 def test_nonreversible_disconnected():
