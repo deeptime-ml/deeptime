@@ -146,6 +146,12 @@ class TransitionCountModel(Model):
         return self.count_matrix_full.shape[0]
 
     @property
+    def states(self) -> np.ndarray:
+        r""" The states in this model, i.e., a iota range from 0 (inclusive) to :meth:`n_states` (exclusive).
+        See also: :meth:`state_symbols`. """
+        return np.arange(self.n_states)
+
+    @property
     def state_symbols(self) -> np.ndarray:
         r""" Symbols (states) that are represented in this count model. """
         return self._state_symbols
@@ -337,6 +343,7 @@ class TransitionCountModel(Model):
         submodel : TransitionCountModel
             A submodel restricted to the requested states.
         """
+        states = np.atleast_1d(states)
         if np.max(states) >= self.n_states:
             raise ValueError("Tried restricting model to states that are not represented! "
                              "States range from 0 to {}.".format(np.max(states)))
