@@ -704,17 +704,23 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
     If symmetrize is False, computes
 
     .. math::
+
+        \begin{aligned}
         s_x  &= \sum_t x_t\\
         s_y  &= \sum_t y_t\\
         C_{XX} &= X^{\top} X\\
         C_{XY} &= X^{\top} Y
+        \end{aligned}
 
     If symmetrize is True, computes
 
     .. math::
+
+        \begin{aligned}
         s_x = s_y &= \frac{1}{2} \sum_t (x_t + y_t)\\
         C_XX      &= \frac{1}{2} (X^\top X + Y^\top Y)\\
         C_XY      &= \frac{1}{2} (X^\top Y + Y^\top X)
+        \end{aligned}
 
     while exploiting zero or constant columns in the data matrix.
 
@@ -845,12 +851,15 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
     Computes
 
     .. math::
+
+        \begin{aligned}
         s_x  &= \sum_t x_t\\
         s_y  &= \sum_t y_t\\
         C_{XX} &= X^\top X\\
         C_{XY} &= X^\top Y\\
         C_{YX} &= Y^\top X\\
         C_{YY} &= Y^\top Y
+        \end{aligned}
 
     while exploiting zero or constant columns in the data matrix.
 
@@ -1021,23 +1030,25 @@ def covar(X, remove_mean=False, modify_data=False, weights=None, sparse_mode='au
 
 def covars(X, Y, remove_mean=False, modify_data=False, symmetrize=False, weights=None, sparse_mode='auto',
            sparse_tol=0.0):
-    """ Computes the covariance and cross-covariance matrix of X and Y.
+    r""" Computes the covariance and cross-covariance matrix of X and Y.
 
     If symmetrize is False, computes
 
     .. math::
 
-        C_{XX} &= X^{\\top} X
-
-        C_{XY} &= X^{\\top} Y
+        \begin{aligned}
+        C_{XX} &= X^{\top} X \\
+        C_{XY} &= X^{\top} Y
+        \end{aligned}
 
     If symmetrize is True, computes
 
     .. math::
 
-        C_{XX} &= \\frac{1}{2} (X^{\\top} X + Y^{\\top} Y)
-
-        C_{XY} &= \\frac{1}{2} (X^{\\top} Y + Y^{\\top} X)
+        \begin{aligned}
+        C_{XX} &= \frac{1}{2} (X^{\top} X + Y^{\top} Y)\\
+        C_{XY} &= \frac{1}{2} (X^{\top} Y + Y^{\top} X)
+        \end{aligned}
 
     while exploiting zero or constant columns in the data matrix.
     WARNING: Directly use :meth:`moments_XXXY` if you can. This function does an additional

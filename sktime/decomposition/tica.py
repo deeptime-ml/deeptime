@@ -33,8 +33,10 @@ class TICA(VAMP):
 
     .. math::
 
+        \begin{aligned}
         C_0 &=      (X_t - \mu)^T \mathrm{diag}(w) (X_t - \mu) \\
         C_{\tau} &= (X_t - \mu)^T \mathrm{diag}(w) (X_{t + \tau} - \mu)
+        \end{aligned}
 
     where :math:`w` is a vector of weights for each time step. By default, these weights
     are all equal to one, but different weights are possible, like the re-weighting
