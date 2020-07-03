@@ -249,7 +249,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
                                                  transition_matrix_tolerance=self.transition_matrix_tolerance)
         return self
 
-    def fit_from_discrete_timeseries(self, discrete_timeseries: Union[np.ndarray, List[np.ndarray]], lagtime: int):
+    def fit_from_discrete_timeseries(self, discrete_timeseries: Union[np.ndarray, List[np.ndarray]],
+                                     lagtime: int, count_mode: str = "sliding"):
         r"""Fits a model directly from discrete time series data. This type of data can either be a single
         trajectory in form of a 1d integer numpy array or a list thereof.
 
@@ -259,13 +260,19 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             Discrete timeseries data.
         lagtime : int
             The lag time under which to estimate state transitions and ultimately also the transition matrix.
+        count_mode : str, default="sliding"
+            The count mode to use for estimating transition counts. For maximum-likelihood estimation, the recommended
+            choice is "sliding". If the MSM should be used for sampling in a
+            :class:`BayesianMSM <sktime.markov.msm.BayesianMSM>`, the recommended choice is "effective", which yields
+            transition counts that are statistically uncorrelated. A description can be found
+            in :cite:`mlmsm-noe2015statistical`.
 
         Returns
         -------
         self : MaximumLikelihoodMSM
             Reference to self.
         """
-        count_model = TransitionCountEstimator(lagtime=lagtime, count_mode="sliding")\
+        count_model = TransitionCountEstimator(lagtime=lagtime, count_mode=count_mode)\
             .fit(discrete_timeseries).fetch_model()
         return self.fit_from_counts(count_model)
 
@@ -279,7 +286,9 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             a 2-dimensional ndarray which is interpreted as count matrix or a discrete timeseries (or a list thereof)
             directly.
 
-            In the case of a timeseries, a lagtime must be provided in the keyword arguments.
+            In the case of a timeseries, a lagtime must be provided in the keyword arguments. In this case, also the
+            keyword argument "count_mode" can be used, which defaults to "sliding".
+            See also :meth:`fit_from_discrete_timeseries`.
         *args
             Dummy parameters for scikit-learn compatibility.
         **kw
@@ -348,4 +357,4 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         else:
             if 'lagtime' not in kw.keys():
                 raise ValueError("To fit directly from a discrete timeseries, a lagtime must be provided!")
-            return self.fit_from_discrete_timeseries(data, kw['lagtime'])
+            return self.fit_from_discrete_timeseries(data, kw['lagtime'], kw.pop("count_mode", "sliding"))
