@@ -26,6 +26,8 @@ from ..transition_counting import TransitionCountModel, TransitionCountEstimator
 
 __all__ = ['MaximumLikelihoodMSM']
 
+from ...numeric import is_square_matrix
+
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <sktime.markov.msm.MarkovStateModel>`)
@@ -137,7 +139,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         from .. import _transition_matrix as tmat
 
         if isinstance(counts, np.ndarray):
-            if counts.ndim != 2 or counts.shape[0] != counts.shape[1] or np.any(counts < 0.):
+            if not is_square_matrix(counts) or np.any(counts < 0.):
                 raise ValueError("If fitting a count matrix directly, only non-negative square matrices can be used.")
             count_model = TransitionCountModel(counts)
         elif isinstance(counts, TransitionCountModel):

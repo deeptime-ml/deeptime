@@ -1,4 +1,5 @@
 import numpy as _np
+from scipy.sparse import issparse
 
 
 def mdot(*args):
@@ -49,7 +50,7 @@ def is_square_matrix(arr: _np.ndarray) -> bool:
 
     Parameters
     ----------
-    arr : ndarray
+    arr : ndarray or sparse array
         The array to check.
 
     Returns
@@ -57,4 +58,4 @@ def is_square_matrix(arr: _np.ndarray) -> bool:
     is_square_matrix : bool
         Whether the array is a square matrix.
     """
-    return arr.ndim == 2 and arr.shape[0] == arr.shape[1]
+    return (issparse(arr) or isinstance(arr, _np.ndarray)) and arr.ndim == 2 and arr.shape[0] == arr.shape[1]

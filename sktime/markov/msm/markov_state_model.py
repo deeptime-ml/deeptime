@@ -119,6 +119,14 @@ class MarkovStateModel(Model):
         return self._count_model
 
     @property
+    def has_count_model(self) -> bool:
+        r""" Yields whether this Markov state model has a count model.
+
+        :type: bool
+        """
+        return self._count_model is not None
+
+    @property
     def lagtime(self) -> int:
         r""" The lagtime this model was estimated at. In case no count model was provided, this property defaults
         to a lagtime of `1`.
