@@ -31,9 +31,11 @@ from ...numeric import is_square_matrix
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <sktime.markov.msm.MarkovStateModel>`)
-    given discrete trajectory statistics. While at it's core this estimator produces instances of MSMs, it actually
-    yields MSM collections (:class:`MarkovStateModelCollection`) which contain as many MSMs as there are connected
-    sets in the counting.
+    given discrete trajectories or statistics thereof. This estimator produces instances of MSMs in form of
+    MSM collections (:class:`MarkovStateModelCollection`) which contain as many MSMs as there are connected
+    sets in the counting. A collection of MSMs per default behaves exactly like an ordinary MSM model on the largest
+    connected set. The connected set can be switched, changing the state of the collection to be have like an MSM on
+    the selected state subset.
 
     Implementation according to :cite:`mlmsm-wu2020variational`.
 
@@ -145,8 +147,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         elif isinstance(counts, TransitionCountModel):
             count_model = counts
         else:
-            raise ValueError(f"Unknown type of counts {counts}, only supported n x n ndarray, TransitionCountModel,"
-                             f" or TransitionCountEstimator with count model.")
+            raise ValueError(f"Unknown type of counts {counts}, only n x n ndarray, TransitionCountModel,"
+                             f" or TransitionCountEstimators with a count model are supported.")
 
         if self.stationary_distribution_constraint is not None:
             if len(self.stationary_distribution_constraint) != count_model.n_states_full:
@@ -219,7 +221,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             if counts.has_model:
                 counts = counts.fetch_model()
             else:
-                raise ValueError("Can only fit on transition count estimator if it has been fit to data previously.")
+                raise ValueError("Can only fit on transition count estimator if the estimator "
+                                 "has been fit to data previously.")
         elif isinstance(counts, np.ndarray):
             counts = TransitionCountModel(counts)
         elif isinstance(counts, TransitionCountModel):
@@ -294,8 +297,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
         Examples
         --------
-        This example is demonstrating how to fit a Markov state model collection from data which decays into a
-        collection of two.
+        This example is demonstrating how to fit a Markov state model collection from data which decomposes into a
+        collection of two sets of states with corresponding transition matrices.
 
         >>> from sktime.markov.msm import MarkovStateModel  # import MSM
         >>> msm1 = MarkovStateModel([[.7, .3], [.3, .7]])  # create first MSM

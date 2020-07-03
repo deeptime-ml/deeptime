@@ -1341,6 +1341,18 @@ class MarkovStateModelCollection(MarkovStateModel):
             raise IndexError(f"There are only {self.n_connected_msms} MSMs in this collection, but "
                              f"information about MSM {model_index} was requested.")
 
+    @property
+    def state_fractions(self):
+        r""" Yields the fractions of states represented in each of the models in this collection. """
+        return [counts.selected_state_fraction for counts in self._count_models]
+
+    @property
+    def count_fractions(self):
+        r""" Yields the fraction of counts represented in each of the models in this collection. Calling this method
+        assumes that the MSMs in the collection stem from actual data with state statistics embedded in the count
+        models. """
+        return [counts.selected_count_fraction if counts is not None else None for counts in self._count_models]
+
     def select(self, model_index):
         r""" Selects a different model in the collection. Changes the behavior of the collection to mimic a MSM
         associated to respective transition matrix, stationary distribution, and count model.
