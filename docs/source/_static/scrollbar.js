@@ -1,2 +1,6 @@
 const sideContainer = document.getElementsByClassName('sphinxsidebar');
-Ps.initialize(sideContainer[0]);
+
+const ps = new PerfectScrollbar(".sphinxsidebar", {
+    wheelPropagation: true
+});
+ps.update()

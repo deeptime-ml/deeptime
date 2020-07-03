@@ -14,22 +14,28 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from typing import Optional
+from typing import Optional, Union, List
 
 import numpy as np
 from msmtools import estimation as msmest
 from scipy.sparse import issparse
 
-from .markov_state_model import MarkovStateModel
+from .markov_state_model import MarkovStateModelCollection
 from .._base import _MSMBaseEstimator
-from ..transition_counting import TransitionCountModel
+from ..transition_counting import TransitionCountModel, TransitionCountEstimator
 
 __all__ = ['MaximumLikelihoodMSM']
+
+from ...numeric import is_square_matrix
 
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <sktime.markov.msm.MarkovStateModel>`)
-    given discrete trajectory statistics.
+    given discrete trajectories or statistics thereof. This estimator produces instances of MSMs in form of
+    MSM collections (:class:`MarkovStateModelCollection`) which contain as many MSMs as there are connected
+    sets in the counting. A collection of MSMs per default behaves exactly like an ordinary MSM model on the largest
+    connected set. The connected set can be switched, changing the state of the collection to be have like an MSM on
+    the selected state subset.
 
     Implementation according to :cite:`mlmsm-wu2020variational`.
 
@@ -42,7 +48,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     """
 
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
-                 sparse: bool = False, allow_disconnected: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8):
+                 sparse: bool = False, allow_disconnected: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8,
+                 connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-8):
         r"""
         Constructs a new maximum-likelihood msm estimator.
 
@@ -71,6 +78,11 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
             :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
             probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
+        transition_matrix_tolerance : float, default=1e-8
+            The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
+            row sums of 1).
+        connectivity_threshold : float, optional, default=0.
+            Number of counts required to consider two states connected.
         """
 
         super(MaximumLikelihoodMSM, self).__init__(reversible=reversible, sparse=sparse)
@@ -79,6 +91,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self.allow_disconnected = allow_disconnected
         self.maxiter = maxiter
         self.maxerr = maxerr
+        self.connectivity_threshold = connectivity_threshold
+        self.transition_matrix_tolerance = transition_matrix_tolerance
 
     @property
     def allow_disconnected(self) -> bool:
@@ -112,49 +126,29 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             value = np.copy(value) / np.sum(value)
         self._stationary_distribution_constraint = value
 
-    def fetch_model(self) -> Optional[MarkovStateModel]:
-        r"""Yields the most recent :class:`MarkovStateModel` that was estimated. Can be None if fit was not called.
+    def fetch_model(self) -> Optional[MarkovStateModelCollection]:
+        r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
+        Can be None if fit was not called.
 
         Returns
         -------
-        model : MarkovStateModel or None
+        model : MarkovStateModelCollection or None
             The most recent markov state model or None.
         """
         return self._model
 
-    def fit(self, data, *args, **kw):
-        r""" Fits a new markov state model according to data.
-
-        Parameters
-        ----------
-        data : TransitionCountModel or (n, n) ndarray
-            input data, can either be :class:`TransitionCountModel <sktime.markov.TransitionCountModel>` or
-            a 2-dimensional ndarray which is interpreted as count matrix.
-        *args
-            Dummy parameters for scikit-learn compatibility.
-        **kw
-            Dummy parameters for scikit-learn compatibility.
-
-        Returns
-        -------
-        self : MaximumLikelihoodMSM
-            Reference to self.
-
-        See Also
-        --------
-        sktime.markov.TransitionCountModel : Transition count model
-        sktime.markov.TransitionCountEstimator : Estimating transition count models from data
-        """
+    def _fit_connected(self, counts):
         from .. import _transition_matrix as tmat
-        if not isinstance(data, (TransitionCountModel, np.ndarray)):
-            raise ValueError("Can only fit on a TransitionCountModel or a count matrix directly.")
 
-        if isinstance(data, np.ndarray):
-            if data.ndim != 2 or data.shape[0] != data.shape[1] or np.any(data < 0.):
+        if isinstance(counts, np.ndarray):
+            if not is_square_matrix(counts) or np.any(counts < 0.):
                 raise ValueError("If fitting a count matrix directly, only non-negative square matrices can be used.")
-            count_model = TransitionCountModel(data)
+            count_model = TransitionCountModel(counts)
+        elif isinstance(counts, TransitionCountModel):
+            count_model = counts
         else:
-            count_model = data
+            raise ValueError(f"Unknown type of counts {counts}, only n x n ndarray, TransitionCountModel,"
+                             f" or TransitionCountEstimators with a count model are supported.")
 
         if self.stationary_distribution_constraint is not None:
             if len(self.stationary_distribution_constraint) != count_model.n_states_full:
@@ -203,10 +197,164 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
         if statdist is None and self.allow_disconnected:
             statdist = tmat.stationary_distribution(P, C=count_matrix)
+        return (
+            P, statdist, counts
+        )
 
-        # create model
-        self._model = MarkovStateModel(transition_matrix=P, stationary_distribution=statdist,
-                                       reversible=self.reversible, count_model=count_model,
-                                       transition_matrix_tolerance=self.maxerr)
+    def _needs_strongly_connected_sets(self):
+        return self.reversible and self.stationary_distribution_constraint is None
 
+    def fit_from_counts(self, counts: Union[np.ndarray, TransitionCountEstimator, TransitionCountModel]):
+        r""" Fits a model from counts in form of a (n, n) count matrix, a :class:`TransitionCountModel` or an instance
+        of `TransitionCountEstimator`, which has been fit on data previously.
+
+        Parameters
+        ----------
+        counts : (n, n) ndarray or TransitionCountModel or TransitionCountEstimator
+
+        Returns
+        -------
+        self : MaximumLikelihoodMSM
+            Reference to self.
+        """
+        if isinstance(counts, TransitionCountEstimator):
+            if counts.has_model:
+                counts = counts.fetch_model()
+            else:
+                raise ValueError("Can only fit on transition count estimator if the estimator "
+                                 "has been fit to data previously.")
+        elif isinstance(counts, np.ndarray):
+            counts = TransitionCountModel(counts)
+        elif isinstance(counts, TransitionCountModel):
+            counts = counts
+        else:
+            raise ValueError("Unknown type of counts argument, can only be one of TransitionCountModel, "
+                             "TransitionCountEstimator, (N, N) ndarray. But was: {}".format(type(counts)))
+        if not self.allow_disconnected:
+            sets = counts.connected_sets(connectivity_threshold=self.connectivity_threshold,
+                                         directed=self._needs_strongly_connected_sets())
+        else:
+            sets = [counts.states]
+        transition_matrices = []
+        statdists = []
+        count_models = []
+        for subset in sets:
+            sub_counts = counts.submodel(subset)
+            fit_result = self._fit_connected(sub_counts)
+            transition_matrices.append(fit_result[0])
+            statdists.append(fit_result[1])
+            count_models.append(fit_result[2])
+        self._model = MarkovStateModelCollection(transition_matrices, statdists, reversible=self.reversible,
+                                                 count_models=count_models,
+                                                 transition_matrix_tolerance=self.transition_matrix_tolerance)
         return self
+
+    def fit_from_discrete_timeseries(self, discrete_timeseries: Union[np.ndarray, List[np.ndarray]],
+                                     lagtime: int, count_mode: str = "sliding"):
+        r"""Fits a model directly from discrete time series data. This type of data can either be a single
+        trajectory in form of a 1d integer numpy array or a list thereof.
+
+        Parameters
+        ----------
+        discrete_timeseries : ndarray or list of ndarray
+            Discrete timeseries data.
+        lagtime : int
+            The lag time under which to estimate state transitions and ultimately also the transition matrix.
+        count_mode : str, default="sliding"
+            The count mode to use for estimating transition counts. For maximum-likelihood estimation, the recommended
+            choice is "sliding". If the MSM should be used for sampling in a
+            :class:`BayesianMSM <sktime.markov.msm.BayesianMSM>`, the recommended choice is "effective", which yields
+            transition counts that are statistically uncorrelated. A description can be found
+            in :cite:`mlmsm-noe2015statistical`.
+
+        Returns
+        -------
+        self : MaximumLikelihoodMSM
+            Reference to self.
+        """
+        count_model = TransitionCountEstimator(lagtime=lagtime, count_mode=count_mode)\
+            .fit(discrete_timeseries).fetch_model()
+        return self.fit_from_counts(count_model)
+
+    def fit(self, data, *args, **kw):
+        r""" Fits a new markov state model according to data.
+
+        Parameters
+        ----------
+        data : TransitionCountModel or (n, n) ndarray or discrete timeseries
+            Input data, can either be :class:`TransitionCountModel <sktime.markov.TransitionCountModel>` or
+            a 2-dimensional ndarray which is interpreted as count matrix or a discrete timeseries (or a list thereof)
+            directly.
+
+            In the case of a timeseries, a lagtime must be provided in the keyword arguments. In this case, also the
+            keyword argument "count_mode" can be used, which defaults to "sliding".
+            See also :meth:`fit_from_discrete_timeseries`.
+        *args
+            Dummy parameters for scikit-learn compatibility.
+        **kw
+            Parameters for scikit-learn compatibility and optionally lagtime if fitting with time series data.
+
+        Returns
+        -------
+        self : MaximumLikelihoodMSM
+            Reference to self.
+
+        See Also
+        --------
+        TransitionCountModel : Transition count model
+        TransitionCountEstimator : Estimating transition count models from data
+
+        Examples
+        --------
+        This example is demonstrating how to fit a Markov state model collection from data which decomposes into a
+        collection of two sets of states with corresponding transition matrices.
+
+        >>> from sktime.markov.msm import MarkovStateModel  # import MSM
+        >>> msm1 = MarkovStateModel([[.7, .3], [.3, .7]])  # create first MSM
+        >>> msm2 = MarkovStateModel([[.9, .05, .05], [.3, .6, .1], [.1, .1, .8]])  # create second MSM
+
+        Now, simulate a trajectory where the states of msm2 are shifted by a fixed number `2`, i.e., msm1 describes
+        states [0, 1] and msm2 describes states [2, 3, 4] in the generated trajectory.
+
+        >>> traj = np.concatenate([msm1.simulate(1000000), 2 + msm2.simulate(1000000)])  # simulate trajectory
+
+        Given the trajectory, we fit a collection of MSMs:
+
+        >>> model = MaximumLikelihoodMSM(reversible=True).fit(traj, lagtime=1).fetch_model()
+
+        The model behaves like a MSM on the largest connected set, but the behavior can be changed by selecting,
+        e.g., the second largest connected set:
+
+        >>> model.state_symbols()
+        array([2, 3, 4])
+        >>> model.select(1)  # change to second largest connected set
+        >>> model.state_symbols()
+        array([0, 1])
+
+        And this is all the models contained in the collection:
+
+        >>> model.n_connected_msms
+        2
+
+        Alternatively, one can fit with a previously estimated count model (that can be restricted to a subset
+        of states):
+
+        >>> counts = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(traj).fetch_model()
+        >>> counts = counts.submodel([0, 1])  # select submodel with state symbols [0, 1]
+        >>> msm = MaximumLikelihoodMSM(reversible=True).fit(counts).fetch_model()
+        >>> msm.state_symbols()
+        array([0, 1])
+
+        And this is the only model in the collection:
+
+        >>> msm.n_connected_msms
+        1
+        """
+        if isinstance(data, (TransitionCountModel, TransitionCountEstimator)):
+            return self.fit_from_counts(data)
+        elif isinstance(data, np.ndarray) and data.ndim == 2 and data.shape[0] == data.shape[1]:
+            return self.fit_from_counts(data)
+        else:
+            if 'lagtime' not in kw.keys():
+                raise ValueError("To fit directly from a discrete timeseries, a lagtime must be provided!")
+            return self.fit_from_discrete_timeseries(data, kw['lagtime'], kw.pop("count_mode", "sliding"))

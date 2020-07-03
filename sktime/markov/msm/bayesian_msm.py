@@ -2,10 +2,13 @@ from typing import Optional, Callable
 
 import numpy as np
 
+from sktime.base import Estimator
 from sktime.markov._base import _MSMBaseEstimator, BayesianPosterior
 from sktime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
 
 __author__ = 'noe, marscher, clonker'
+
+from sktime.numeric import is_square_matrix
 
 
 class BayesianMSM(_MSMBaseEstimator):
@@ -182,11 +185,11 @@ class BayesianMSM(_MSMBaseEstimator):
 
         Parameters
         ----------
-        data : (N,N) count matrix or TransitionCountModel
+        data : (N,N) count matrix or TransitionCountModel or MaximumLikelihoodMSM or MarkovStateModel
             a count matrix or a transition count model that was estimated from data
 
         callback: callable, optional, default=None
-            function to be called to indicate progress of sampling.
+            Function to be called to indicate progress of sampling.
 
         Returns
         -------
@@ -198,35 +201,68 @@ class BayesianMSM(_MSMBaseEstimator):
                 and "effective" not in data.counting_mode:
             raise ValueError("The transition count model was not estimated using an effective counting method, "
                              "therefore counts are likely to be strongly correlated yielding wrong confidences.")
-        mle = MaximumLikelihoodMSM(
-            reversible=self.reversible, stationary_distribution_constraint=self.stationary_distribution_constraint,
-            sparse=self.sparse, maxiter=self.maxiter, maxerr=self.maxerr
-        ).fit(data).fetch_model()
 
+        if isinstance(data, Estimator):
+            if data.has_model:
+                data = data.fetch_model()
+            else:
+                raise ValueError("Can only use estimators as input if they have been fit previously.")
+
+        if isinstance(data, TransitionCountModel) or is_square_matrix(data):
+            msm = MaximumLikelihoodMSM(
+                reversible=self.reversible, stationary_distribution_constraint=self.stationary_distribution_constraint,
+                sparse=self.sparse, maxiter=self.maxiter, maxerr=self.maxerr
+            ).fit(data).fetch_model()
+        elif isinstance(data, MarkovStateModel):
+            msm = data
+        else:
+            raise ValueError("Unsupported input data, can only be count matrix (or TransitionCountModel, "
+                             "TransitionCountEstimator) or a MarkovStateModel instance or an estimator producing " 
+                             "Markov state models.")
+
+        return self.fit_from_msm(msm, callback=callback)
+
+    def fit_from_msm(self, msm: MarkovStateModel, callback=None):
+        r""" Fits a bayesian posterior from a given Markov state model. The MSM must contain a count model to be able
+        to produce confidences. Note that the count model should be produced using effective counting, otherwise
+        counts are correlated and computed confidences are wrong.
+
+        Parameters
+        ----------
+        msm : MarkovStateModel
+            The Markov state model to use as sampling start point.
+        callback : callable, optional, default=None
+            Function to be called to indicate progress of sampling.
+
+        Returns
+        -------
+        self : BayesianMSM
+            Reference to self.
+        """
+        if not msm.has_count_model:
+            raise ValueError("Can only sample confidences with a count model. The counting mode should be 'effective'"
+                             " to avoid correlations between counts and therefore wrong confidences.")
         # transition matrix sampler
         from msmtools.estimation import tmatrix_sampler
         from math import sqrt
         if self.n_steps is None:
             # heuristic for number of steps to decorrelate
-            self.n_steps = int(sqrt(mle.count_model.n_states_full))
+            self.n_steps = int(sqrt(msm.count_model.n_states_full))
         # use the same count matrix as the MLE. This is why we have effective as a default
         if self.stationary_distribution_constraint is None:
-            tsampler = tmatrix_sampler(mle.count_model.count_matrix, reversible=self.reversible,
-                                       T0=mle.transition_matrix, nsteps=self.n_steps)
+            tsampler = tmatrix_sampler(msm.count_model.count_matrix, reversible=self.reversible,
+                                       T0=msm.transition_matrix, nsteps=self.n_steps)
         else:
             # Use the stationary distribution on the active set of states
-            statdist_active = mle.stationary_distribution
+            statdist_active = msm.stationary_distribution
             # We can not use the MLE as T0. Use the initialization in the reversible pi sampler
-            tsampler = tmatrix_sampler(mle.count_model.count_matrix, reversible=self.reversible,
+            tsampler = tmatrix_sampler(msm.count_model.count_matrix, reversible=self.reversible,
                                        mu=statdist_active, nsteps=self.n_steps)
-
         sample_Ps, sample_mus = tsampler.sample(nsamples=self.n_samples, return_statdist=True, call_back=callback)
         # construct sampled MSMs
         samples = [
-            MarkovStateModel(P, stationary_distribution=pi, reversible=self.reversible, count_model=mle.count_model)
+            MarkovStateModel(P, stationary_distribution=pi, reversible=self.reversible, count_model=msm.count_model)
             for P, pi in zip(sample_Ps, sample_mus)
         ]
-
-        self._model = BayesianPosterior(prior=mle, samples=samples)
-
+        self._model = BayesianPosterior(prior=msm, samples=samples)
         return self

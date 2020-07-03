@@ -11,6 +11,7 @@ General numerical tools
 
     mdot
     is_diagonal_matrix
+    is_square_matrix
 
 ===============================================================================
 Numerical tools for eigenvalue problems
@@ -30,6 +31,6 @@ Numerical tools for eigenvalue problems
 
 """
 
-from .utils import mdot, is_diagonal_matrix
+from .utils import mdot, is_diagonal_matrix, is_square_matrix
 from .eigen import eig_corr, sort_by_norm, spd_eig, spd_inv, spd_inv_split, spd_inv_sqrt, ZeroRankError
 

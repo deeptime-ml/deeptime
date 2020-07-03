@@ -1,4 +1,5 @@
 import numpy as _np
+from scipy.sparse import issparse
 
 
 def mdot(*args):
@@ -41,3 +42,20 @@ def is_diagonal_matrix(matrix: _np.ndarray) -> bool:
         True if the matrix is a diagonal matrix, otherwise False.
     """
     return _np.all(matrix == _np.diag(_np.diagonal(matrix)))
+
+
+def is_square_matrix(arr: _np.ndarray) -> bool:
+    r""" Determines whether an array is a square matrix. This means that ndim must be 2 and shape[0] must be equal
+    to shape[1].
+
+    Parameters
+    ----------
+    arr : ndarray or sparse array
+        The array to check.
+
+    Returns
+    -------
+    is_square_matrix : bool
+        Whether the array is a square matrix.
+    """
+    return (issparse(arr) or isinstance(arr, _np.ndarray)) and arr.ndim == 2 and arr.shape[0] == arr.shape[1]

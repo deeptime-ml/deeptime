@@ -30,7 +30,7 @@ from sktime.markov.pcca import pcca, PCCAModel
 from sktime.markov.reactive_flux import ReactiveFlux
 from sktime.markov.sample import ensure_dtraj_list, compute_index_states
 from sktime.markov.transition_counting import TransitionCountModel
-from sktime.numeric import mdot
+from sktime.numeric import mdot, is_square_matrix
 from sktime.util import ensure_ndarray, submatrix, cached_property
 
 
@@ -99,7 +99,7 @@ class MarkovStateModel(Model):
 
     def _invalidate_caches(self):
         r""" Invalidates all cached properties and causes them to be re-evaluated """
-        for member in self.__class__.__dict__.values():
+        for member in MarkovStateModel.__dict__.values():
             if isinstance(member, cached_property):
                 member.invalidate()
         self._eigenvalues = None
@@ -117,6 +117,14 @@ class MarkovStateModel(Model):
             The transition count model or None.
         """
         return self._count_model
+
+    @property
+    def has_count_model(self) -> bool:
+        r""" Yields whether this Markov state model has a count model.
+
+        :type: bool
+        """
+        return self._count_model is not None
 
     @property
     def lagtime(self) -> int:
@@ -1213,3 +1221,157 @@ class MarkovStateModel(Model):
         from sktime.metrics import vamp_score
         return vamp_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_test,
                           k=score_k, score=score_method)
+
+
+class MarkovStateModelCollection(MarkovStateModel):
+    r"""A collection of Markov state models. An instance of this itself behaves like a
+    :class:`MSM <MarkovStateModel>`, defaulting to the first (transition matrix, stationary distribution,
+    count model) triplet provided. The model can be switched by a call to :meth:`select`.
+
+    See Also
+    --------
+    MarkovStateModel : Markov state model.
+    MaximumLikelihoodMSM : Type of estimator that produces this model.
+    """
+
+    def __init__(self, transition_matrices: List[np.ndarray],
+                 stationary_distributions: List[np.ndarray],
+                 reversible: Optional[bool],
+                 count_models: List[TransitionCountModel],
+                 transition_matrix_tolerance: float):
+        r"""Creates a new collection of Markov state models.
+
+        Parameters
+        ----------
+        transition_matrices : list of (n, n) ndarray
+            List of transition matrices. Each of them must be row-stochastic.
+        stationary_distributions : list of `None` or list of (n, ) ndarray
+            List of stationary distributions belonging to transition matrices.
+            If list of None, it will be evaluated upon construction of the instance.
+        reversible : bool or None
+            Whether the transition matrices are reversible with respect to its stationary distribution.
+            If None, this is determined from the transition matrix.
+        count_models : List of count models or list of None
+            List of count models belonging to transition matrices.
+        transition_matrix_tolerance : float
+            Tolerance under which a matrix is considered to be a transition matrix.
+        """
+        n = len(transition_matrices)
+        if n == 0:
+            raise ValueError("Needs at least one transition matrix!")
+        if len(stationary_distributions) != n or len(count_models) != n:
+            raise ValueError(f"Got {n} transition matrices but {len(stationary_distributions)} "
+                             f"stationary distributions and {len(count_models)} count models. For a one-to-one "
+                             f"correspondence, these must match.")
+        for i in range(n):
+            if not is_square_matrix(transition_matrices[i]):
+                raise ValueError("Transition matrices must be square matrices!")
+            n_states = transition_matrices[i].shape[0]
+            if stationary_distributions[i] is not None and len(stationary_distributions[i]) != n_states:
+                raise ValueError("Lengths of stationary distributions must match respective number of states.")
+            if count_models[i] is not None and count_models[i].n_states != n_states:
+                raise ValueError("Number of states in count models must match states described in transition matrices.")
+        self._transition_matrices = transition_matrices
+        self._stationary_distributions = stationary_distributions
+        self._reversible = reversible
+        self._count_models = count_models
+        self._transition_matrix_tolerance = transition_matrix_tolerance
+        self._current_model = 0
+        super(MarkovStateModelCollection, self).__init__(
+            transition_matrix=self._transition_matrices[self.current_model],
+            stationary_distribution=self._stationary_distributions[self.current_model],
+            reversible=reversible,
+            count_model=count_models[self.current_model],
+            transition_matrix_tolerance=transition_matrix_tolerance
+        )
+
+    @property
+    def current_model(self) -> int:
+        r""" The currently selected model index.
+
+        :type: int
+        """
+        return self._current_model
+
+    @property
+    def n_connected_msms(self) -> int:
+        r"""Number of markov state models in this collection.
+
+        :type: int
+        """
+        return len(self._transition_matrices)
+
+    def state_symbols(self, model_index: Optional[int] = None) -> np.ndarray:
+        r""" Yields the state symbols of a particular model in this collection. Can only be called if the corresponding
+        model has a count model.
+
+        Parameters
+        ----------
+        model_index : int, optional, default=None
+            The model index. If None, this evaluates to :meth:`current_model`.
+
+        Returns
+        -------
+        symbols : (n,) ndarray
+            The state symbols associated with the model index. If model index is None, it is defaulted to the
+            current model.
+        """
+        if model_index is None:
+            model_index = self.current_model
+        self._validate_model_index(model_index)
+        if self._count_models[model_index] is None:
+            raise ValueError("This can only be evaluated if count models are provided at construction time.")
+        return self._count_models[model_index].state_symbols
+
+    def _validate_model_index(self, model_index):
+        r"""Validates whether the model index is valid (ie not out of bounds). If it is in bounds, this is a no-op,
+        otherwise raises an IndexError.
+
+        Parameters
+        ----------
+        model_index : int
+            The model index
+
+        Raises
+        ------
+        IndexError
+            If the model index is out of bounds.
+        """
+        if model_index >= self.n_connected_msms:
+            raise IndexError(f"There are only {self.n_connected_msms} MSMs in this collection, but "
+                             f"information about MSM {model_index} was requested.")
+
+    @property
+    def state_fractions(self):
+        r""" Yields the fractions of states represented in each of the models in this collection. """
+        return [counts.selected_state_fraction for counts in self._count_models]
+
+    @property
+    def count_fractions(self):
+        r""" Yields the fraction of counts represented in each of the models in this collection. Calling this method
+        assumes that the MSMs in the collection stem from actual data with state statistics embedded in the count
+        models. """
+        return [counts.selected_count_fraction if counts is not None else None for counts in self._count_models]
+
+    def select(self, model_index):
+        r""" Selects a different model in the collection. Changes the behavior of the collection to mimic a MSM
+        associated to respective transition matrix, stationary distribution, and count model.
+
+        Parameters
+        ----------
+        model_index : int
+            The model index.
+
+        Raises
+        ------
+        IndexError
+            If model index is out of bounds.
+
+        """
+        self._validate_model_index(model_index)
+        self._invalidate_caches()
+        super().__init__(transition_matrix=self._transition_matrices[model_index],
+                         stationary_distribution=self._stationary_distributions[model_index],
+                         reversible=self.reversible, count_model=self._count_models[model_index],
+                         transition_matrix_tolerance=self.transition_matrix_tolerance)
+        self._current_model = model_index

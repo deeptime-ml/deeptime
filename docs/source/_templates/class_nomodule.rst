@@ -4,10 +4,12 @@
 
 .. currentmodule:: {{ module }}
 
-.. autoclass:: {{ objname }}
+.. auto{{objtype}}:: {{ objname }}
 
    {% block methods %}
+   {% if objtype == "class" %}
    .. automethod:: {{ name }}.__init__
+   {% endif %}
 
    {% if methods %}
    .. rubric:: {{ _('Methods') }}

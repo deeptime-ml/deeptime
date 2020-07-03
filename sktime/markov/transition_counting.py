@@ -103,6 +103,8 @@ class TransitionCountModel(Model):
         super().__init__()
         if count_matrix is None:
             raise ValueError("count matrix was None")
+        if (not issparse(count_matrix) and np.any(count_matrix < 0)) or count_matrix.min() < 0:
+            raise ValueError("Count matrix elements must all be non-negative")
 
         self._count_matrix = count_matrix
         self._counting_mode = counting_mode
@@ -144,6 +146,12 @@ class TransitionCountModel(Model):
     def n_states_full(self) -> int:
         r""" Full number of states represented in the underlying data. """
         return self.count_matrix_full.shape[0]
+
+    @property
+    def states(self) -> np.ndarray:
+        r""" The states in this model, i.e., a iota range from 0 (inclusive) to :meth:`n_states` (exclusive).
+        See also: :meth:`state_symbols`. """
+        return np.arange(self.n_states)
 
     @property
     def state_symbols(self) -> np.ndarray:
@@ -337,6 +345,7 @@ class TransitionCountModel(Model):
         submodel : TransitionCountModel
             A submodel restricted to the requested states.
         """
+        states = np.atleast_1d(states)
         if np.max(states) >= self.n_states:
             raise ValueError("Tried restricting model to states that are not represented! "
                              "States range from 0 to {}.".format(np.max(states)))
