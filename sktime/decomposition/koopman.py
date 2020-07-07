@@ -431,6 +431,11 @@ class CovarianceKoopmanModel(KoopmanModel):
             If `test_model` is not None, returns the cross-validation VAMP score between
             self and `test_model`. Otherwise return the selected VAMP-score of self.
 
+        Notes
+        -----
+        The VAMP-:math:`r` and VAMP-E scores are computed according to :cite:`vampscore-wu2020variational`,
+        Equation (33) and Equation (30), respectively.
+
         References
         ----------
         .. bibliography:: /references.bib
@@ -444,18 +449,20 @@ class CovarianceKoopmanModel(KoopmanModel):
         Vk = self.singular_vectors_right[:, 0:self.output_dimension]
         res = None
         if score_method == 'VAMP1' or score_method == 'VAMP2':
+            # see https://arxiv.org/pdf/1707.04659.pdf eqn. (33)
             A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk), epsilon=self.epsilon)
             B = Uk.T.dot(test_model.cov_0t).dot(Vk)
             C = spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk), epsilon=self.epsilon)
-            ABC = mdot(A, B, C)
+            ABC = A @ B @ C
             if score_method == 'VAMP1':
                 res = np.linalg.norm(ABC, ord='nuc')
             elif score_method == 'VAMP2':
                 res = np.linalg.norm(ABC, ord='fro')**2
         elif score_method == 'VAMPE':
-            Sk = np.diag(self.singular_values[0:self.output_dimension])
-            res = np.trace(2.0 * mdot(Vk, Sk, Uk.T, test_model.cov_0t)
-                           - mdot(Vk, Sk, Uk.T, test_model.cov_00, Uk, Sk, Vk.T, test_model.cov_tt))
+            K = np.diag(self.singular_values[0:self.output_dimension])
+            # see https://arxiv.org/pdf/1707.04659.pdf eqn. (30)
+            res = np.trace(2.0 * K @ Uk.T @ test_model.cov_0t @ Vk
+                           - K @ Uk.T @ test_model.cov_00 @ Uk @ K @ Vk.T @ test_model.cov_tt @ Vk)
         else:
             raise ValueError('"score" should be one of VAMP1, VAMP2 or VAMPE')
         assert res is not None
@@ -575,7 +582,7 @@ class CovarianceKoopmanModel(KoopmanModel):
             # compute future expectation
             return Q.dot(P)[:, 0]
 
-    def timescales(self, lagtime):
+    def timescales(self, lagtime: Optional[int] = None):
         r"""Implied timescales of the TICA transformation
 
         For each :math:`i`-th eigenvalue, this returns
@@ -587,6 +594,12 @@ class CovarianceKoopmanModel(KoopmanModel):
         where :math:`\tau` is the :attr:`lagtime` of the TICA object and :math:`\lambda_i` is the `i`-th
         :attr:`eigenvalue <eigenvalues>` of the TICA object.
 
+        Parameters
+        ----------
+        lagtime : int, optional, default=None
+            The lagtime with respect to which to compute the timescale. If :code:`None`, this defaults to the
+            lagtime under which the covariances were estimated.
+
         Returns
         -------
         timescales: 1D np.array
@@ -594,9 +607,16 @@ class CovarianceKoopmanModel(KoopmanModel):
             input coordinates were available. However, less eigenvalues will be returned if the TICA matrices
             were not full rank or :attr:`dim` contained a floating point percentage, i.e., was interpreted as
             variance cutoff.
+
+        Raises
+        ------
+        ValueError
+            If any of the singular values not real, i.e., has a non-zero imaginary component.
         """
         if not np.all(np.isreal(self.singular_values)):
             raise ValueError("This is only meaningful for real singular values.")
+        if lagtime is None:
+            lagtime = self._cov.lagtime
         return - lagtime / np.log(np.abs(self.singular_values))
 
     @property

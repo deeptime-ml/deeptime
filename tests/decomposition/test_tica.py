@@ -19,15 +19,17 @@
 """
 Created on 02.02.2015
 
-@author: marscher
+@author: marscher, clonker
 """
 
 import unittest
 
 import numpy as np
-import pytest
 
+from sktime.data import ellipsoids
+from sktime.decomposition import VAMP
 from sktime.decomposition.tica import TICA
+from sktime.markov.msm import MarkovStateModel
 from sktime.numeric.eigen import ZeroRankError
 
 
@@ -71,6 +73,25 @@ class TestTICA(unittest.TestCase):
             self.fail('ZeroRankError was raised unexpectedly.')
 
 
+def test_vamp_consistency():
+    trajectory = ellipsoids(seed=13).observations(10000, n_dim=50)
+    cov_estimator = VAMP.covariance_estimator(lagtime=1)
+    cov_estimator.reversible = True
+    cov_estimator.fit(trajectory)
+    koopman1 = VAMP(dim=2).fit(cov_estimator).fetch_model()
+    koopman2 = TICA(dim=2, scaling=None).fit(trajectory, lagtime=1).fetch_model()
+    np.testing.assert_array_almost_equal(koopman1.singular_values, koopman2.singular_values, decimal=1)
+    np.testing.assert_array_almost_equal(
+        np.abs(koopman1.singular_vectors_left),
+        np.abs(koopman2.singular_vectors_left),
+        decimal=2)
+    np.testing.assert_array_almost_equal(
+        np.abs(koopman1.singular_vectors_right),
+        np.abs(koopman2.singular_vectors_right),
+        decimal=2)
+    np.testing.assert_array_almost_equal(koopman1.timescales(), koopman2.timescales(), decimal=2)
+
+
 def test_dim_parameter():
     np.testing.assert_equal(TICA(dim=3).dim, 3)
     np.testing.assert_equal(TICA(dim=0.5).dim, 0.5)
@@ -83,8 +104,6 @@ def test_dim_parameter():
 
 
 def generate_hmm_test_data():
-    import msmtools.generation as msmgen
-
     state = np.random.RandomState(123)
 
     # generate HMM with two Gaussians
@@ -95,9 +114,8 @@ def generate_hmm_test_data():
     widths = [np.array([0.3, 2]), np.array([0.3, 2])]
     # continuous trajectory
     X = np.zeros((T, 2))
-    X2 = np.zeros((T, 2))
     # hidden trajectory
-    dtraj = msmgen.generate_traj(P, T)
+    dtraj = MarkovStateModel(P).simulate(n_steps=T)
     means = np.array(means)
     widths = np.array(widths)
 

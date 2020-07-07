@@ -4,6 +4,17 @@ Dimensionality reduction
 
 Here we introduce the dimensionality reduction / decomposition techniques implemented in the package.
 
+.. rubric:: Koopman operator methods
+
+VAMP (:class:`API docs<sktime.decomposition.VAMP>`) its special case TICA (:class:`API docs<sktime.decomposition.TICA>`)
+yield approximations to the Koopman operator
+
+.. math::
+    \mathbb{E}[g(x_{t+\tau})] = K^\top \mathbb{E}[f(x_t)],
+
+where :math:`K\in\mathbb{R}^{n\times m}` is a finite-dimensional Koopman matrix which propagates the observable
+:math:`f` of the system's state :math:`x_t` to the observable :math:`g` at state :math:`x_{t+\tau}`.
+
 .. toctree::
     :maxdepth: 2
 
