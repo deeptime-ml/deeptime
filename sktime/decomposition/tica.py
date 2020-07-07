@@ -161,7 +161,10 @@ class TICA(VAMP):
 
     @property
     def epsilon(self) -> float:
-        r""" Eigenvalue norm cutoff. """
+        r""" Eigenvalue norm cutoff.
+
+        :type: float
+        """
         return self._epsilon
 
     @epsilon.setter

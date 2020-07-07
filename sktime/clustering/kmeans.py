@@ -6,7 +6,7 @@ import numpy as np
 
 from sktime.base import Estimator, Transformer
 from sktime.clustering.cluster_model import ClusterModel
-from . import _clustering_bindings as _bd
+from . import _clustering_bindings as _bd, metrics
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering', 'KMeansClusteringModel']
 
@@ -25,7 +25,7 @@ class KMeansClusteringModel(ClusterModel):
     MiniBatchKmeansClustering : The mini batch k-means estimator, which can produce this kind of model.
     """
 
-    def __init__(self, n_clusters, cluster_centers, metric, tolerance: Optional[float] = None,
+    def __init__(self, n_clusters, cluster_centers, metric: str, tolerance: Optional[float] = None,
                  inertias: Optional[List[float]] = None, converged: bool = False):
         r"""Initializes a new KmeansClustering model.
 
@@ -35,7 +35,7 @@ class KMeansClusteringModel(ClusterModel):
             The number of cluster centers.
         cluster_centers : (k, d) ndarray
             The d-dimensional cluster centers, length of the array should coincide with :attr:`n_clusters`.
-        metric : _clustering_bindings.Metric
+        metric : str
             The metric that was used
         tolerance : float, optional, default=None
             Tolerance which was used as convergence criterium. Defaults to `None` so that clustering models
@@ -104,7 +104,7 @@ class KMeansClusteringModel(ClusterModel):
         """
         if n_jobs is None:
             n_jobs = 0
-        return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, self.metric)
+        return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, metrics[self.metric]())
 
 
 class KmeansClustering(Estimator, Transformer):
@@ -133,8 +133,8 @@ class KmeansClustering(Estimator, Transformer):
     MiniBatchKmeansClustering : An online version of this estimator which uses mini-batching.
     """
 
-    def __init__(self, n_clusters: int, max_iter: int = 500, metric=None,
-                 tolerance=1e-5, init_strategy='kmeans++', fixed_seed=False,
+    def __init__(self, n_clusters: int, max_iter: int = 500, metric='euclidean',
+                 tolerance=1e-5, init_strategy: str = 'kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None, random_state=None):
         r"""
         Initializes a new k-means cluster estimator.
@@ -143,32 +143,25 @@ class KmeansClustering(Estimator, Transformer):
         ----------
         n_clusters : int
             amount of cluster centers.
-
-        max_iter : int
+        max_iter : int, default=500
             maximum number of iterations before stopping.
-
-        metric : subclass of :class:`_clustering_bindings.Metric`
-            metric to use during clustering, default None evaluates to euclidean metric, otherwise instance of a
-            subclass of :class:`_clustering__bindings.Metric`.
-
-        tolerance : float
+        metric : str, default='euclidean'
+            Metric to use during clustering, default evaluates to euclidean metric. For a list of available metrics,
+            see the :data:`metric registry <sktime.clustering.metrics>`.
+        tolerance : float, default=1e-5
             Stop iteration when the relative change in the cost function (inertia)
 
             .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf x \in S_i} \left\| \mathbf x - \boldsymbol\mu_i \right\|^2
 
             is smaller than tolerance.
-
-        init_strategy : str
+        init_strategy : str, default='kmeans++'
             one of 'kmeans++', 'uniform'; determining how the initial cluster centers are being chosen
-
-        fixed_seed : bool or int
+        fixed_seed : bool or int, default=False
             if True, the seed gets set to 42. Use time based seeding otherwise. If an integer is given, use this to
             initialize the random generator.
-
-        n_jobs : int or None, default None
+        n_jobs : int or None, default=None
             Number of threads to use during clustering and assignment of data. If None, one core will be used.
-
-        initial_centers: None or np.ndarray[k, dim]
+        initial_centers: None or np.ndarray[k, dim], default=None
             This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
             the centers are directly passed to the kmeans iteration algorithm.
         """
@@ -266,25 +259,21 @@ class KmeansClustering(Estimator, Transformer):
         self._tolerance = value
 
     @property
-    def metric(self) -> _bd.Metric:
+    def metric(self) -> str:
         r"""
         The metric that is used for clustering.
-
-        :getter: Yields a subclass of :class:`_clustering_bindings.Metric`.
-        :setter: Set a subclass of :class:`_clustering_bindings.Metric` to be used in clustering. Value can be `None`,
-                 in which case the metric defaults to an Euclidean metric.
-        :type: _clustering_bindings.Metric.
 
         See Also
         --------
         _clustering_bindings.Metric : The metric class, can be subclassed
+        metrics : Metrics registry which maps from metric label to actual implementation
         """
         return self._metric
 
     @metric.setter
-    def metric(self, value: Optional[_bd.Metric]):
-        if value is None:
-            value = _bd.EuclideanMetric()
+    def metric(self, value: str):
+        if value not in metrics.available:
+            raise ValueError(f"Unknown metric {value}, available metrics: {metrics.available}")
         self._metric = value
 
     def fetch_model(self) -> Optional[KMeansClusteringModel]:
@@ -384,7 +373,7 @@ class KmeansClustering(Estimator, Transformer):
             return data[self.random_state.randint(0, len(data), size=self.n_clusters)]
         elif self.init_strategy == 'kmeans++':
             return _bd.kmeans.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, n_jobs,
-                                                callback, self.metric)
+                                                callback, metrics[self.metric]())
         else:
             raise ValueError(f"Unknown cluster center initialization strategy \"{strategy}\", supported are "
                              f"\"uniform\" and \"kmeans++\"")
@@ -421,9 +410,9 @@ class KmeansClustering(Estimator, Transformer):
 
         # run k-means with all the data
         converged = False
-        cluster_centers, code, iterations, cost = _bd.kmeans.cluster_loop(data, self.initial_centers.copy(),
-                                                                          self.n_clusters, n_jobs, self.max_iter,
-                                                                          self.tolerance, callback_loop, self.metric)
+        cluster_centers, code, iterations, cost = _bd.kmeans.cluster_loop(
+            data, self.initial_centers.copy(), self.n_clusters, n_jobs, self.max_iter,
+            self.tolerance, callback_loop, metrics[self.metric]())
         if code == 0:
             converged = True
         else:
@@ -444,8 +433,8 @@ class MiniBatchKmeansClustering(KmeansClustering):
     KMeansClusteringModel : the corresponding model class
     """
 
-    def __init__(self, n_clusters, batch_size=100, max_iter=5, metric=None, tolerance=1e-5, init_strategy='kmeans++',
-                 n_jobs=None, initial_centers=None):
+    def __init__(self, n_clusters, batch_size=100, max_iter=5, metric='euclidean', tolerance=1e-5,
+                 init_strategy='kmeans++', n_jobs=None, initial_centers=None):
         """
         Constructs a Minibatch k-means estimator. For a more detailed argument description,
         see :class:`KmeansClustering`.
@@ -515,8 +504,9 @@ class MiniBatchKmeansClustering(KmeansClustering):
             else:
                 self._model._cluster_centers = np.copy(self.initial_centers)
 
-        self._model._cluster_centers = _bd.kmeans.cluster(data, self._model.cluster_centers, n_jobs, self.metric)
-        cost = _bd.kmeans.cost_function(data, self._model.cluster_centers, n_jobs, self.metric)
+        metric_instance = metrics[self.metric]()
+        self._model._cluster_centers = _bd.kmeans.cluster(data, self._model.cluster_centers, n_jobs, metric_instance)
+        cost = _bd.kmeans.cost_function(data, self._model.cluster_centers, n_jobs, metric_instance)
 
         rel_change = np.abs(cost - self._model.inertia) / cost if cost != 0.0 else 0.0
         self._model._inertias = np.append(self._model._inertias, cost)
