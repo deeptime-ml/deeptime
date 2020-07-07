@@ -1,3 +1,7 @@
+div.nboutput.container div.output_area {
+    overflow-x: hidden !important;
+}
+
 html {
     overflow: hidden;
 }
@@ -13,6 +17,7 @@ div.bodywrapper {
     margin-right: 6rem;
     box-shadow: 0 0 50px 18px #e8e8e8;
     overflow-y: hidden;
+    max-width: 65rem;
 }
 div.documentwrapper {
     background-color: #f5f5f5;

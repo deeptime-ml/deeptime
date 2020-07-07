@@ -58,6 +58,7 @@ extensions = [
     'sphinxcontrib.bibtex',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.katex',
+    'sphinx_gallery.gen_gallery'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -87,6 +88,14 @@ autodoc_default_options = {
     'members': True,
     'member-order': 'groupwise',
     'inherited-members': True
+}
+
+# -- Gallery settings ---------------------------------------------------------
+
+sphinx_gallery_conf = {
+    'examples_dirs': '../../examples',  # path to your example scripts
+    'gallery_dirs': 'auto_examples',  # path to where to save gallery generated output
+    'capture_repr': ()
 }
 
 # -- Napoleon settings --------------------------------------------------------
@@ -132,6 +141,7 @@ nbsphinx_execute_arguments = [
     "--InlineBackend.figure_formats={'svg', 'pdf'}",
     "--InlineBackend.rc={'figure.dpi': 96}",
 ]
+
 
 # hack to always update index rst so that static files are copied over during incremental build
 def env_get_outdated(app, env, added, changed, removed):

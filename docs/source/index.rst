@@ -31,6 +31,8 @@ They are structured following a possible workflow of a timeseries analysis. That
     index_msm
     notebooks/hmm
 
+    auto_examples/index
+
 ----------------------------------------
 
 Here, all publicly accessible API methods are documented. This documentation is more detailed in terms of different
