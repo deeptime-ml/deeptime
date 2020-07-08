@@ -41,7 +41,8 @@ over several lag-time selections.
 
     * - `VAMP <notebooks/vamp.ipynb>`__
       - (approximate) Markovianity of the time series under lag-time :math:`\tau`
-      - * Uses a singular value decomposition of covariances.
+      - * Is canonical correlation analysis (CCA) in time, i.e., temporal CCA (TCCA)
+        * Uses a singular value decomposition of covariances.
         * Deals with off-equilibrium data consistently.
         * The singular functions can be clustered to find coherent sets.
 
@@ -50,6 +51,8 @@ over several lag-time selections.
         with symmetric covariances (equivalently: reversible with detailed balance)
       - * Under these assumptions (also supported by the collected data), TICA can yield better and more
           interpretable results than VAMP as it uses them as a prior.
+        * Algorithmically identical to EDMD, which is in practice also used for dynamics
+          that do not fulfill detailed balance.
         * Singular values of the decomposition are also eigenvalues and relate to relaxation timescales.
         * Coherence becomes metastability.
         * Might yield biased results if the observed process contains rare events which are not sufficiently
