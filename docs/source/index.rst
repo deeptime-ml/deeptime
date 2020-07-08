@@ -30,8 +30,7 @@ They are structured following a possible workflow of a timeseries analysis. That
     notebooks/clustering
     index_msm
     notebooks/hmm
-
-    auto_examples/index
+    examples/index
 
 ----------------------------------------
 

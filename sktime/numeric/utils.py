@@ -29,7 +29,7 @@ def mdot(*args):
 
 
 def is_diagonal_matrix(matrix: _np.ndarray) -> bool:
-    r""" Checks whether a provided matrix is a diagonal matrix, i.e., :math:`A = \mathrm{diag}(a_1,\ldots,\a_n)`.
+    r""" Checks whether a provided matrix is a diagonal matrix, i.e., :math:`A = \mathrm{diag}(a_1,\ldots, a_n)`.
 
     Parameters
     ----------

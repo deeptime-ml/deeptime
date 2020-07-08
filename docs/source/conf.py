@@ -82,6 +82,9 @@ html_theme = 'alabaster'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# prerender tex
+katex_prerender = True
+
 # -- Autosummary settings -----------------------------------------------------
 autosummary_generate = True
 autodoc_default_options = {
@@ -94,7 +97,7 @@ autodoc_default_options = {
 
 sphinx_gallery_conf = {
     'examples_dirs': '../../examples',  # path to your example scripts
-    'gallery_dirs': 'auto_examples',  # path to where to save gallery generated output
+    'gallery_dirs': 'examples',  # path to where to save gallery generated output
     'capture_repr': ()
 }
 
