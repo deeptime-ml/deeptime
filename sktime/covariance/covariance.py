@@ -261,6 +261,10 @@ class Covariance(Estimator):
 
     @reversible.setter
     def reversible(self, value: bool):
+        if self.compute_ctt and value:
+            raise ValueError("Computing covariances reversibly and also computing cov_tt is meaningless, as then"
+                             "cov_tt = cov_00. Please set compute_ctt to False if symmetrized covariances are desired.")
+            self.compute_ctt = False
         self._reversible = value
 
     @property
