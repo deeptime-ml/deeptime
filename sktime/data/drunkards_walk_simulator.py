@@ -38,20 +38,22 @@ class DrunkardsWalk(object):
             for j in range(self.grid_size[1]):
                 coord = (i, j)
                 state = self.coordinate_to_state(coord)  # row in the transition matrix
+                next_steps = []
+                for offset_i in [-1, 0, 1]:
+                    for offset_j in [-1, 0, 1]:
+                        if offset_i != 0 or offset_j != 0:
+                            next_step = (coord[0] + offset_i, coord[1] + offset_j)
+                            if self.is_valid_coordinate(next_step):
+                                next_steps.append(next_step)
+                #  uniform probability
+                probabilities = [1. for _ in range(len(next_steps))]
                 if state == self.home_state or state == self.bar_state:
-                    transition_matrix[state, state] = 1.
-                else:
-                    next_steps = []
-                    for offset_i in [-1, 0, 1]:
-                        for offset_j in [-1, 0, 1]:
-                            if offset_i != 0 or offset_j != 0:
-                                next_step = (coord[0] + offset_i, coord[1] + offset_j)
-                                if self.is_valid_coordinate(next_step):
-                                    next_steps.append(next_step)
-                    #  uniform probability
-                    p = 1. / len(next_steps)
-                    for step in next_steps:
-                        transition_matrix[state, self.coordinate_to_state(step)] = p
+                    # very high probability to stay in home/bar
+                    next_steps.append(coord)
+                    probabilities.append(1e5)
+                probabilities = np.array(probabilities) / np.sum(probabilities)
+                for p, step in zip(probabilities, next_steps):
+                    transition_matrix[state, self.coordinate_to_state(step)] = p
 
         from sktime.markov.msm import MarkovStateModel
         self._msm = MarkovStateModel(transition_matrix)
@@ -115,7 +117,7 @@ class DrunkardsWalk(object):
         """
         return self._msm
 
-    def walk(self, start: Tuple[int, int], n_steps: int, seed: int = -1):
+    def walk(self, start: Tuple[int, int], n_steps: int, stop: bool = True, seed: int = -1):
         r""" Simulates a random walk on the grid.
 
         Parameters
@@ -123,7 +125,9 @@ class DrunkardsWalk(object):
         start : (i, j) tuple
             Start coordinate on the grid.
         n_steps : int
-            Number of steps to simulate.
+            Maximum number of steps to simulate.
+        stop : bool, default=False
+            Whether to stop the simulation once home or bar have been reached
         seed : int, default=-1
             Random seed.
 
@@ -133,5 +137,9 @@ class DrunkardsWalk(object):
             A random walk in coordinate space.
         """
         assert self.is_valid_coordinate(start), "Start must be within bounds."
-        states = self.msm.simulate(n_steps, start=self.coordinate_to_state(start), seed=seed)
+        if stop:
+            stopping_states = np.array([self.home_state, self.bar_state])
+        else:
+            stopping_states = None
+        states = self.msm.simulate(n_steps, start=self.coordinate_to_state(start), stop=stopping_states, seed=seed)
         return np.array([self.state_to_coordinate(state) for state in states])

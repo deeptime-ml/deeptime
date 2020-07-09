@@ -28,10 +28,10 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
 
     const dtype* pPtr = P.data();
 
-    int stopState = -1;
+    std::vector<int> stopState;
     bool hasStop = false;
     if(!stop.is_none()) {
-        stopState = py::cast<int>(stop);
+        stopState = py::cast<std::vector<int>>(stop);
         hasStop = true;
     }
 
@@ -46,7 +46,7 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
             auto prevState = data[t - 1];
             ddist.param({pPtr + prevState * nStates, pPtr + (prevState + 1) * nStates});
             data[t] = ddist(generator);
-            if(data[t] == stopState) {
+            if(std::find(stopState.begin(), stopState.end(), data[t]) != stopState.end()) {
                 result.resize({std::distance(data, data + t + 1)});
                 break;
             }

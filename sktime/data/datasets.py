@@ -124,24 +124,33 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
 
     .. plot::
 
-        import sktime
         import numpy as np
+        import sktime
+
         import matplotlib.pyplot as plt
         from matplotlib.collections import LineCollection
+        import scipy
+        from scipy.interpolate import CubicSpline
 
-        sim = sktime.data.drunkards_walk()
-        walk = sim.walk(start=(3, 5), n_steps=200, seed=32)
+        sim = sktime.data.drunkards_walk(bar_location=(0, 0), home_location=(9, 9))
+        walk = sim.walk(start=(7, 2), n_steps=250, seed=17)
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
         ax.scatter(*sim.home_location, marker='*', label='Home', c='red', s=150, zorder=5)
         ax.scatter(*sim.bar_location, marker='*', label='Bar', c='orange', s=150, zorder=5)
-        ax.scatter(3, 5, marker='*', label='Start', c='black', s=150, zorder=5)
+        ax.scatter(7, 2, marker='*', label='Start', c='black', s=150, zorder=5)
 
-        points = walk.reshape(-1, 1, 2)
+        x = np.r_[walk[:, 0]]
+        y = np.r_[walk[:, 1]]
+        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
+        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
+        ax.scatter(x, y, label='Visited intermediates')
+
+        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
         segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        coll = LineCollection(segments, cmap='cool')
-        coll.set_array(np.linspace(.5, 1, num=len(points), endpoint=True))
+        coll = LineCollection(segments, cmap='cool', linestyle='dotted')
+        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
         coll.set_linewidth(2)
         ax.add_collection(coll)
 
@@ -151,8 +160,6 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
         ax.set_ylabel('coordinate y')
         ax.grid()
         ax.legend()
-
-        plt.show()
 
     Parameters
     ----------
