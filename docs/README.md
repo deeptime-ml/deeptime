@@ -22,6 +22,12 @@ To build the documentation, we require [sphinx](https://www.sphinx-doc.org/) wit
 
 Further requirements are a working installation of [jupyter notebook](https://jupyter.org/) and scikit-time.
 
+Once all requirements are satisfied, a call to
+```shell script
+make html
+```
+from the `docs` directory builds the documentation, the output can be found under `docs/builds/html`.
+
 Working with references
 -----------------------
 If you want to document something in the library and work with references, there is a global 

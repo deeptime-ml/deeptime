@@ -1051,7 +1051,7 @@ def covars(X, Y, remove_mean=False, modify_data=False, symmetrize=False, weights
         \end{aligned}
 
     while exploiting zero or constant columns in the data matrix.
-    WARNING: Directly use :meth:`moments_XXXY` if you can. This function does an additional
+    WARNING: Directly use :meth:`moments_XXXY` if you can. The `covars` function does an additional
     constant-matrix multiplication and does not return the mean.
 
     Parameters

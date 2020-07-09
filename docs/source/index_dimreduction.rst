@@ -23,8 +23,8 @@ yield approximations to the Koopman operator
 where :math:`K\in\mathbb{R}^{n\times m}` is a finite-dimensional Koopman matrix which propagates the observable
 :math:`f` of the system's state :math:`x_t` to the observable :math:`g` at state :math:`x_{t+\tau}`.
 
-For a given lagtime :math:`\tau`, there are `scoring functions <vamp.ipynb#Scoring>`__ to evaluate the quality
-of the estimated model. Intuitively these scores measure the amount of
+For a given lagtime :math:`\tau`, there are `scoring functions <notebooks/vamp.ipynb#Scoring>`__
+to evaluate the quality of the estimated model. Intuitively these scores measure the amount of
 "slowness" that can be captured with a feature selection. It is **not** possible to compare scores
 over several lag-time selections.
 

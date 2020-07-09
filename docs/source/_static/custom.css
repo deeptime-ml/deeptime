@@ -31,7 +31,7 @@ div.documentwrapper {
     margin-left: 18rem;
     width: auto;
     float: none;
-    overflow: hidden;
+    overflow: auto;
     position: relative;
 }
 div.sphinxsidebar {
