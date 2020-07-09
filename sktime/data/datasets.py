@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 
 
@@ -106,3 +108,65 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
     pbf.run(n_burn_in, 0)
 
     return pbf
+
+
+def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
+                   bar_location: Tuple[int, int] = (9, 9),
+                   home_location: Tuple[int, int] = (0, 0)):
+    r"""This example dataset simulates the steps a drunkard living in a two-dimensional plane takes finding
+    either the bar or the home as two absorbing states.
+
+    The drunkard can take steps in a 3x3 stencil with uniform probability (as possible, in the corners the only
+    possibilities are the ones that do not lead out of the grid). The transition matrix
+    :math:`P\in\mathbb{R}^{nm\times nm}`  possesses one absorbing state for home and bar, respectively,
+    and uniform two-dimensional jump probabilities in between. The grid is of size :math:`n\times m` and a point
+    :math:`(i,j)` is identified with state :math:`i+nj` in the transition matrix.
+
+    .. plot::
+
+        import sktime
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from matplotlib.collections import LineCollection
+
+        sim = sktime.data.drunkards_walk()
+        walk = sim.walk(start=(3, 5), n_steps=200, seed=32)
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        ax.scatter(*sim.home_location, marker='*', label='Home', c='red', s=150, zorder=5)
+        ax.scatter(*sim.bar_location, marker='*', label='Bar', c='orange', s=150, zorder=5)
+        ax.scatter(3, 5, marker='*', label='Start', c='black', s=150, zorder=5)
+
+        points = walk.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        coll = LineCollection(segments, cmap='cool')
+        coll.set_array(np.linspace(.5, 1, num=len(points), endpoint=True))
+        coll.set_linewidth(2)
+        ax.add_collection(coll)
+
+        ax.set_xticks(np.arange(10))
+        ax.set_yticks(np.arange(10))
+        ax.set_xlabel('coordinate x')
+        ax.set_ylabel('coordinate y')
+        ax.grid()
+        ax.legend()
+
+        plt.show()
+
+    Parameters
+    ----------
+    grid_size : tuple
+        The grid size, must be tuple of length two.
+    bar_location : tuple
+        The bar location, must be valid coordinate and tuple of length two.
+    home_location : tuple
+        The home location, must be valid coordinate and tuple of length two.
+
+    Returns
+    -------
+    simulator : :class:`DrunkardsWalk <sktime.data.drunkards_walk_simulator.DrunkardsWalk>`
+        Simulator instance.
+    """
+    from sktime.data.drunkards_walk_simulator import DrunkardsWalk
+    return DrunkardsWalk(grid_size, bar_location=bar_location, home_location=home_location)

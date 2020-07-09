@@ -52,6 +52,8 @@ over the encountered state transitions. This is covered in `transition counting 
 
     notebooks/transition-counting
     notebooks/mlmsm
+    notebooks/pcca
+    notebooks/tpt
 
 Furthermore, scikit-time implements :class:`Augmented Markov models <sktime.markov.msm.AugmentedMSMEstimator>`
 :cite:`ix-msm-olsson2017combining` which can be used when experimental data is available, as well as
