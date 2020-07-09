@@ -3,7 +3,6 @@ import unittest
 import mdshare
 import numpy as np
 from sklearn.pipeline import Pipeline
-
 import sktime.clustering.kmeans as kmeans
 import sktime.decomposition.tica as tica
 import sktime.markov.msm as msm
@@ -11,7 +10,6 @@ from sktime.markov import TransitionCountEstimator
 
 
 class TestSkLearnCompat(unittest.TestCase):
-
     """
     pipelining
     cross validation

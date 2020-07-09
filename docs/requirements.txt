@@ -1,0 +1,10 @@
+numpy
+scipy
+scikit-learn
+scikit-time
+sphinx
+nbsphinx
+sphinxcontrib-bibtex
+matplotlib
+sphinxcontrib-katex
+sphinx-gallery

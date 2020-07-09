@@ -1,7 +1,7 @@
 import numpy as np
 from sktime.base import Model, Transformer
 
-from . import _clustering_bindings as _bd
+from . import _clustering_bindings as _bd, metrics
 
 
 class ClusterModel(Model, Transformer):
@@ -25,7 +25,7 @@ class ClusterModel(Model, Transformer):
     [2 2 2 2 2]
     """
 
-    def __init__(self, n_clusters: int, cluster_centers: np.ndarray, metric: _bd.Metric = _bd.EuclideanMetric(),
+    def __init__(self, n_clusters: int, cluster_centers: np.ndarray, metric: str = 'euclidean',
                  converged: bool = False):
         r"""
         Initializes a new cluster model.
@@ -36,7 +36,7 @@ class ClusterModel(Model, Transformer):
             Number of cluster centers.
         cluster_centers : (k, d) ndarray
             The cluster centers, length of the array should match :attr:`n_clusters`.
-        metric : _clustering_bindings.Metric, default=EuclideanMetric
+        metric : str, default='euclidean'
             The metric that was used for estimation, defaults to Euclidean metric.
         converged : bool, optional, default=False
             Whether the estimation converged.
@@ -72,14 +72,15 @@ class ClusterModel(Model, Transformer):
         return self._n_clusters
 
     @property
-    def metric(self) -> _bd.Metric:
+    def metric(self) -> str:
         """
         The metric that was used.
 
         Returns
         -------
-        metric : _clustering_bindings.Metric
-            A subclass of :class:`_clustering_bindings.Metric`.
+        metric : str
+            Name of the metric that was used. The name is related to the implementation via
+            the :data:`metric registry <sktime.clustering.metrics>`.
         """
         return self._metric
 
@@ -116,5 +117,5 @@ class ClusterModel(Model, Transformer):
 
         if n_jobs is None:
             n_jobs = 0
-        dtraj = _bd.assign(data, self.cluster_centers, n_jobs, self.metric)
+        dtraj = _bd.assign(data, self.cluster_centers, n_jobs, metrics[self.metric]())
         return dtraj

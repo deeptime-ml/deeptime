@@ -581,8 +581,10 @@ class MarkovStateModel(Model):
 
         .. math::
 
+            \begin{aligned}
             acf_a(k\tau)     &= \mathbf{a}^\top \mathrm{diag}(\boldsymbol{\pi}) \mathbf{P(\tau)}^k \mathbf{a} \\
             ccf_{a,b}(k\tau) &= \mathbf{a}^\top \mathrm{diag}(\boldsymbol{\pi}) \mathbf{P(\tau)}^k \mathbf{b}
+            \end{aligned}
 
         where :math:`acf` stands for autocorrelation function and :math:`ccf`
         stands for cross-correlation function, :math:`\mathbf{P(\tau)}` is the

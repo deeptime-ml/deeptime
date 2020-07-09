@@ -2,81 +2,103 @@
 Dimensionality reduction
 ========================
 
-Here we introduce the dimensionality reduction / decomposition techniques implemented in the package.
-
 .. toctree::
+    :hidden:
     :maxdepth: 2
 
     notebooks/tica
     notebooks/vamp
 
-When to use TICA
-================
+Here we introduce the dimensionality reduction / decomposition techniques implemented in the package.
 
-If the observed process is reversible with detailed balance (i.e., forward and backward in time is indistinguishable)
-and the data also supports this (i.e., there are no rare events), then TICA is able to apply
-this as a prior assumption.
+.. rubric:: Koopman operator methods
 
-Furthermore, it works on an eigenvalue decomposition, where the eigenvalues are directly related to
-timescales via
+`VAMP <notebooks/vamp.ipynb>`__ (:class:`API docs<sktime.decomposition.VAMP>`) and its
+special case `TICA <notebooks/tica.ipynb>`__ (:class:`API docs<sktime.decomposition.TICA>`)
+yield approximations to the Koopman operator
 
-.. math:: t_i = -\frac{\tau}{\ln |\lambda_i|}
+.. math::
+    \mathbb{E}[g(x_{t+\tau})] = K^\top \mathbb{E}[f(x_t)],
 
-and are contained in the closed interval :math:`\lambda_i\in[-1, 1]`. This has great benefits in terms of
-interpretability.
+where :math:`K\in\mathbb{R}^{n\times m}` is a finite-dimensional Koopman matrix which propagates the observable
+:math:`f` of the system's state :math:`x_t` to the observable :math:`g` at state :math:`x_{t+\tau}`.
 
-As soon as the data is off equilibrium though, TICA estimates can become heavily biased.
-A salvageable case is if the underlying dynamics is reversible but there is not enough sampling to support this: a
-`reweighting procedure <notebooks/tica.ipynb#Koopman-reweighting>`_ can be applied :cite:`ix-dimredux-wu2016variational`.
-
-Furthermore, TICA might yield biased results if the data contains rare events. If the underlying
-distribution is expected to obey microscopic reversibility, not enough sampling might have been performed to actually
-reflect this in the estimated model.
-
-
-When to use VAMP
-================
-
-VAMP is a strict generalization of TICA and is applicable in a wider range of settings, however it has some
-differences in terms of the numerics involved as well as the estimated model's interpretability.
-
-First and foremost it extends to off-equilibrium cases and is equipped with a set of scoring functions (the so-called
-VAMP scores), which allow to rank a selection of input features. Intuitively these scores measure the amount of
-"slowness" that can be captured with a feature selection. It is however **not** possible to compare scores
+For a given lagtime :math:`\tau`, there are `scoring functions <notebooks/vamp.ipynb#Scoring>`__
+to evaluate the quality of the estimated model. Intuitively these scores measure the amount of
+"slowness" that can be captured with a feature selection. It is **not** possible to compare scores
 over several lag-time selections.
 
-Numerically, VAMP works with a singular value decomposition while TICA works with an eigenvalue decomposition.
-These singular values should theoretically be real and coincide with the TICA eigenvalues if the data comes
-from a reversible and in-equilibrium setting. Numerically as well as due to sampling, they still might be complex.
-This means in particular that they are hard to interpret and there is no simple relationship to, e.g., timescales.
+.. rubric:: When to use which method
 
-On the other hand, VAMP deals with off-equilibrium cases consistently in which TICA becomes heavily biased (except
-for special cases).
+.. list-table::
+    :header-rows: 1
+    :align: left
+    :widths: 10 30 40
 
-One can divide off-equilibrium cases into three subcategories (as presented in :cite:`ix-dimredux-koltai2018optimal`):
+    * - Method
+      - Assumptions
+      - Notes
 
-1. *Time-inhomogeneous dynamics*, e.g, the observed system is driven by a time-dependent external force,
-2. *Time-homogeneous non-reversible dynamics*, i.e., detailed balance is not obeyed and the observations might be
-   of a non-stationary regime.
-3. *Reversible dynamics but non-stationary data*, i.e., the system possesses a stationary distribution with respect
-   to which it obeys detailed balance, but the empirical of the available data did not converge to this stationary
-   distribution.
+    * - `VAMP <notebooks/vamp.ipynb>`__
+      - (approximate) Markovianity of the time series under lag-time :math:`\tau`
+      - * Is canonical correlation analysis (CCA) in time, i.e., temporal CCA (TCCA)
+        * Uses a singular value decomposition of covariances.
+        * Deals with off-equilibrium data consistently.
+        * The singular functions can be clustered to find coherent sets.
 
-The third of the described cases is salvageable with TICA when a special reweighting procedure
-(`Koopman reweighting <notebooks/tica.ipynb#Koopman-reweighting>`_) is used.
+    * - `TICA <notebooks/tica.ipynb>`__
+      - Assumptions of VAMP and the time series should be stationary
+        with symmetric covariances (equivalently: reversible with detailed balance)
+      - * Under these assumptions (also supported by the collected data), TICA can yield better and more
+          interpretable results than VAMP as it uses them as a prior.
+        * Algorithmically identical to EDMD, which is in practice also used for dynamics
+          that do not fulfill detailed balance.
+        * Singular values of the decomposition are also eigenvalues and relate to relaxation timescales.
+        * Coherence becomes metastability.
+        * Might yield biased results if the observed process contains rare events which are not sufficiently
+          reflected in the time-series.
 
-The point of view then transitions from a "metastability" one to "coherent sets" - metastabilies' analogon in
-off-equilibirum cases and commonly encountered in, e.g., fluid dynamics. The rough idea is that one can then
-identify regions which (approximately) stay together under temporal propagation.
+.. rubric:: What's next?
+
+While a dimensionality reduction is always of great use because it makes it easier to look at the data,
+one can take further steps.
+
+A commonly performed pipeline would be to `cluster <notebooks/clustering.ipynb>`_ the projected data and then
+building a `markov state model <index_msm.rst>`_ on the resulting discretized state space.
+
+..
+    !! This block is commented out !!
+
+    Furthermore, TICA might yield biased results if the data contains rare events. If the underlying
+    distribution is expected to obey microscopic reversibility, not enough sampling might have been performed to
+    actually reflect this in the estimated model.
+
+    Numerically, VAMP works with a singular value decomposition while TICA works with an eigenvalue decomposition.
+    These singular values should theoretically be real and coincide with the TICA eigenvalues if the data comes
+    from a reversible and in-equilibrium setting. Numerically as well as due to sampling, they still might be complex.
+    This means in particular that they are hard to interpret and there is no simple relationship to, e.g., timescales.
+
+    On the other hand,
 
 
-Performance, numerical stability, and memory consumption
-========================================================
 
-The implementations of `TICA <notebooks/tica.ipynb>`_ and its generalization `VAMP <notebooks/vamp.ipynb>`_
-are based on estimating covariance matrices using the `covariance estimator <api/generated/sktime.covariance.Covariance.rst#sktime.covariance.Covariance>`_.
-This estimator makes use of an online algorithm proposed in :cite:`ix-dimredux-chan1982updating` so that not the entire data has
-to be kept in memory.
+    The third of the described cases is salvageable with TICA when a special reweighting procedure
+    (`Koopman reweighting <notebooks/tica.ipynb#Koopman-reweighting>`_) is used.
+
+    The point of view then transitions from a "metastability" one to "coherent sets" - metastabilies' analogon in
+    off-equilibirum cases and commonly encountered in, e.g., fluid dynamics. The rough idea is that one can then
+    identify regions which (approximately) stay together under temporal propagation.
+
+
+.. rubric:: Estimating covariances and how to deal with large amounts of data
+
+While the implementations of `TICA <notebooks/tica.ipynb>`_ and its generalization `VAMP <notebooks/vamp.ipynb>`_
+can be fit directly by a time series that is kept in the computer's memory, this might not always be possible.
+
+The implementations are based on estimating covariance matrices, by default using the
+`covariance estimator <api/generated/sktime.covariance.Covariance.rst#sktime.covariance.Covariance>`_.
+
+This estimator makes use of an online algorithm, so that it can be fit in a streaming fashion:
 
 .. code-block:: python
 
@@ -99,7 +121,7 @@ suffices to provide the whole dataset as argument.
     for X, Y in sktime.data.timeshifted_split(feature_trajectory, lagtime=tau, chunksize=100):
         estimator.partial_fit((X, Y))
 
-Furthermore, the online algorithm of :cite:`ix-dimredux-chan1982updating` uses a tree-like moment storage with copies of
+Furthermore, the online algorithm uses a tree-like moment storage with copies of
 intermediate covariance and mean estimates. During the learning procedure, these moment storages are combined so
 that the tree never exceeds a certain depth. This depth can be set by the `ncov` estimator parameter:
 
@@ -111,19 +133,3 @@ that the tree never exceeds a certain depth. This depth can be set by the `ncov`
 
 Another factor to consider is numerical stability. While memory consumption can increase with
 larger `ncov`, the stability generally improves.
-
-What's next?
-============
-
-While a dimensionality reduction is always of great use because it makes it easier to look at the data,
-one can take further steps.
-
-A commonly performed pipeline would be to `cluster <notebooks/clustering.ipynb>`_ the projected data and then
-building a `markov state model <index_msm.rst>`_ on the resulting discretized state space.
-
-.. rubric:: References
-
-.. bibliography:: /references.bib
-    :style: unsrt
-    :filter: docname in docnames
-    :keyprefix: ix-dimredux-

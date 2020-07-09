@@ -6,7 +6,7 @@ import numpy as np
 from ..base import Estimator
 from .cluster_model import ClusterModel
 
-from . import _clustering_bindings as _bd
+from . import _clustering_bindings as _bd, metrics
 from ._clustering_bindings import regspace as _regspace_ext
 
 __all__ = ['RegularSpaceClustering']
@@ -32,7 +32,7 @@ class RegularSpaceClustering(Estimator):
         :keyprefix: regspace-
     """
 
-    def __init__(self, dmin, max_centers=1000, metric=None, n_jobs=None):
+    def __init__(self, dmin, max_centers=1000, metric: str = 'euclidean', n_jobs=None):
         r"""
         Initializes a new regular space clustering estimator.
 
@@ -42,9 +42,9 @@ class RegularSpaceClustering(Estimator):
             Minimum distance between all clusters.
         max_centers : int
             If this threshold is met during finding the centers, the algorithm will terminate.
-        metric : _clustering_bindings.Metric, optional, default=None
-            The metric to use during clustering. Must be subclass of :class:`_clustering_bindings.Metric` or None, in
-            which case it defaults to a Euclidean metric.
+        metric : str, default='euclidean'
+            The metric to use during clustering. For a list of available metrics,
+            see the :data:`metric registry <sktime.clustering.metrics>`.
         n_jobs : int, optional, default=None
             Number of threads to use during estimation.
         """
@@ -55,24 +55,18 @@ class RegularSpaceClustering(Estimator):
         self.n_jobs = n_jobs
 
     @property
-    def metric(self) -> _bd.Metric:
+    def metric(self) -> str:
         r"""
         The metric that is used for clustering.
 
-        :getter: Yields a subclass of :class:`_clustering_bindings.Metric`.
-        :setter: Set a subclass of :class:`_clustering_bindings.Metric` to be used in clustering. Value can be `None`,
-                 in which case the metric defaults to an Euclidean metric.
-        :type: _clustering_bindings.Metric.
+        :type: str.
         """
         return self._metric
 
     @metric.setter
-    def metric(self, value: Optional[_bd.Metric]):
-        if value is None:
-            value = _bd.EuclideanMetric()
-
-        if not isinstance(value, _bd.Metric):
-            raise ValueError(f"Metric must be subclass of _clustering_bindings.Metric.")
+    def metric(self, value: str):
+        if value not in metrics.available:
+            raise ValueError(f"Unknown metric {value}, available metrics: {metrics.available}")
         self._metric = value
 
     @property
@@ -178,7 +172,7 @@ class RegularSpaceClustering(Estimator):
         clustercenters = []
         converged = False
         try:
-            _regspace_ext.cluster(data, clustercenters, self.dmin, self.max_centers, n_jobs, self.metric)
+            _regspace_ext.cluster(data, clustercenters, self.dmin, self.max_centers, n_jobs, metrics[self.metric]())
             converged = True
         except _regspace_ext.MaxCentersReachedException:
             warnings.warn('Maximum number of cluster centers reached.'
