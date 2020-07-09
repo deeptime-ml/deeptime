@@ -76,6 +76,7 @@ class TestTICA(unittest.TestCase):
 def test_vamp_consistency():
     trajectory = ellipsoids(seed=13).observations(10000, n_dim=50)
     cov_estimator = VAMP.covariance_estimator(lagtime=1)
+    cov_estimator.compute_ctt = False
     cov_estimator.reversible = True
     cov_estimator.fit(trajectory)
     koopman1 = VAMP(dim=2).fit(cov_estimator).fetch_model()
