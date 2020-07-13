@@ -18,7 +18,7 @@ class DrunkardsWalk(object):
     """
 
     def __init__(self, grid_size: Tuple[int, int], bar_location: Coordinate, home_location: Coordinate,
-                 barriers=None, barrier_weight: float = 100.):
+                 barriers=None):
         r""" Creates a new drunkard's walk instance on a two-dimensional grid with predefined bar and home locations.
 
         Parameters
@@ -31,8 +31,6 @@ class DrunkardsWalk(object):
             The home location, must be valid coordinate and tuple of length two.
         barriers : List of tuple of two integers or None, default=None
             Initial barrier locations. Can also be added post-hoc by calling :meth:`add_barrier`.
-        barrier_weight : float, default=100.
-            Determines the probability to jump onto the barrier as :math:`1 / \mathrm{weight}`.
         """
         if barriers is None:
             barriers = []
@@ -43,7 +41,6 @@ class DrunkardsWalk(object):
         self.home_location = home_location
         self.home_state = self.coordinate_to_state(self.home_location)
         self.barriers = barriers
-        self.barrier_weight = barrier_weight
 
         from sktime.markov.msm import MarkovStateModel
         self._msm = MarkovStateModel(transition_matrix=np.eye(self.n_states, dtype=np.float64))
@@ -68,7 +65,7 @@ class DrunkardsWalk(object):
                 probabilities = []
                 for next_step in next_steps:
                     if self.barriers is not None and next_step in self.barriers:
-                        probabilities.append(1./self.barrier_weight)
+                        probabilities.append(0.)
                     else:
                         probabilities.append(1.)
                 if state == self.home_state or state == self.bar_state:
@@ -87,12 +84,9 @@ class DrunkardsWalk(object):
         r""" Adds a barrier to the grid by assigning probabilities
 
         .. math::
-            P_{ij} = \mathbb{P}(X_{n+1} = j\in\mathrm{barriers} : X_n=i\text{ next to barrier}) = \frac{1}{w},
+            P_{ij} = \mathbb{P}(X_{n+1} = j\in\mathrm{barriers} : X_n=i\text{ next to barrier}) = 0.
 
-        where :math:`w` is the barrier weight. Note that the actual value in the transition matrix might differ,
-        as the rows are normalized in a post-processing step. If the weight is greater than one, the actual value
-        can only be smaller than :math:`1/w`, though. The barrier is interpreted as a straight line
-        between begin and end, discretized onto states using
+        The barrier is interpreted as a straight line between begin and end, discretized onto states using
         Bresenham's line algorithm :cite:`drunkardswalk-bresenham1965algorithm`.
 
         Parameters
@@ -222,3 +216,65 @@ class DrunkardsWalk(object):
             stopping_states = None
         states = self.msm.simulate(n_steps, start=self.coordinate_to_state(start), stop=stopping_states, seed=seed)
         return np.array([self.state_to_coordinate(state) for state in states])
+
+    @staticmethod
+    def plot_path(ax, path, intermediates: bool = True, color_lerp: bool = True, **plot_kw):
+        import scipy.interpolate as interp
+        from matplotlib.collections import LineCollection
+
+        path = np.asarray(path)
+
+        x = np.r_[path[:, 0]]
+        y = np.r_[path[:, 1]]
+        f, u = interp.splprep([x, y], s=0, per=False)
+        xint, yint = interp.splev(np.linspace(0, 1, 50000), f)
+        if intermediates:
+            ax.scatter(x, y, label='Visited intermediates')
+
+        if color_lerp:
+            points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
+            segments = np.concatenate([points[:-1], points[1:]], axis=1)
+            coll = LineCollection(segments, cmap='cool', linestyle='dotted', **plot_kw)
+            coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
+            coll.set_linewidth(2)
+            ax.add_collection(coll)
+        else:
+            ax.plot(xint, yint, **plot_kw)
+
+    def plot_2d_map(self, ax):
+        import numpy as np
+        from matplotlib.patches import Rectangle
+
+        ax.scatter(*self.home_location, marker='*', label='Home', c='red', s=150, zorder=5)
+        ax.scatter(*self.bar_location, marker='*', label='Bar', c='orange', s=150, zorder=5)
+
+
+        ax.set_xticks(np.arange(10))
+        ax.set_yticks(np.arange(10))
+        ax.set_xlabel('coordinate x')
+        ax.set_ylabel('coordinate y')
+
+        rect = None
+        for state in range(self.n_states):
+            coord = self.state_to_coordinate(state)
+            if coord == self.home_location or coord == self.bar_location:
+                ax.add_patch(Rectangle((coord[0] - .5, coord[1] - .5), 1., 1., alpha=.3, color='green'))
+            elif coord in self.barriers:
+                rect = Rectangle((coord[0] - .5, coord[1] - .5), 1., 1., alpha=.5, color='red', lw=3.)
+                ax.add_patch(rect)
+
+        for grid_point in np.arange(-.5, self.grid_size[0] + .5, 1):
+            ax.axhline(grid_point, linestyle='-', color='grey', lw=.5)
+
+        for grid_point in np.arange(-.5, self.grid_size[1] + .5, 1):
+            ax.axvline(grid_point, linestyle='-', color='grey', lw=.5)
+
+        handles, labels = ax.get_legend_handles_labels()
+        if rect is not None:
+            handles.append(rect)
+            labels.append("Barrier")
+
+        ax.set_xlim([-.5, self.grid_size[0] - .5])
+        ax.set_ylim([-.5, self.grid_size[1] - .5])
+
+        return handles, labels
