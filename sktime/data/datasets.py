@@ -172,7 +172,7 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
 
     Returns
     -------
-    simulator : :class:`DrunkardsWalk <sktime.data.drunkards_walk_simulator.DrunkardsWalk>`
+    simulator : sktime.data.drunkards_walk_simulator.DrunkardsWalk
         Simulator instance.
     """
     from sktime.data.drunkards_walk_simulator import DrunkardsWalk

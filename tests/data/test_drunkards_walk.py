@@ -1,5 +1,25 @@
+import numpy as np
 from numpy.testing import *
 import sktime
+
+
+def test_barrier():
+    sim = sktime.data.drunkards_walk(bar_location=(0, 0), home_location=(9, 9))
+
+    sim.add_barrier((0, 9), (5, 8))
+    sim.add_barrier((5, 0), (5, 4))
+    transition_matrix = sim.msm.transition_matrix
+
+    for coord_next_to_barrier in [(6, 0), (6, 1), (6, 2), (6, 3), (6, 4)]:
+        state = sim.coordinate_to_state(coord_next_to_barrier)
+        x0, y0 = coord_next_to_barrier
+        barrier_coord = (x0 - 1, y0)
+        assert_(barrier_coord in sim.barriers)
+        barrier_state = sim.coordinate_to_state(barrier_coord)
+        assert_(transition_matrix[state, barrier_state] <= 1./sim.barrier_weight)
+    assert_(np.all(transition_matrix >= 0))
+    for state in range(sim.n_states):
+        assert_almost_equal(transition_matrix[state, :].sum(), 1.)
 
 
 def test_state_coordinates_conversion():
