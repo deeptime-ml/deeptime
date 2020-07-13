@@ -1,5 +1,5 @@
 import itertools
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 
@@ -17,7 +17,7 @@ class DrunkardsWalk(object):
     :math:`(i,j)` is identified with state :math:`i+nj` in the transition matrix.
     """
 
-    def __init__(self, grid_size: Tuple[int, int], bar_location: Coordinate, home_location: Coordinate,
+    def __init__(self, grid_size: Tuple[int, int], bar_location: List[Coordinate], home_location: List[Coordinate],
                  barriers=None):
         r""" Creates a new drunkard's walk instance on a two-dimensional grid with predefined bar and home locations.
 
@@ -36,15 +36,18 @@ class DrunkardsWalk(object):
             barriers = []
         self.n_states = grid_size[0] * grid_size[1]
         self.grid_size = grid_size
-        self.bar_location = bar_location
-        self.bar_state = self.coordinate_to_state(self.bar_location)
-        self.home_location = home_location
-        self.home_state = self.coordinate_to_state(self.home_location)
+        self.bar_location = bar_location if isinstance(bar_location, list) else [bar_location]
+        self.bar_state = [self.coordinate_to_state(state) for state in self.bar_location]
+        self.home_location = home_location if isinstance(home_location, list) else [home_location]
+        self.home_state = [self.coordinate_to_state(state) for state in self.home_location]
         self.barriers = barriers
 
         from sktime.markov.msm import MarkovStateModel
         self._msm = MarkovStateModel(transition_matrix=np.eye(self.n_states, dtype=np.float64))
         self._update_transition_matrix()
+
+    def _is_home_or_bar_state(self, state):
+        return state in self.home_state or state in self.bar_state
 
     def _update_transition_matrix(self) -> None:
         r"""Updates the MSM so that the state of the simulator is reflected in the transition matrix.
@@ -64,12 +67,16 @@ class DrunkardsWalk(object):
                 #  uniform probability
                 probabilities = []
                 for next_step in next_steps:
+                    next_state = self.coordinate_to_state(next_step)
                     if self.barriers is not None and next_step in self.barriers:
                         probabilities.append(0.)
                     else:
-                        probabilities.append(1.)
-                if state == self.home_state or state == self.bar_state:
-                    # very high probability to stay in home/bar
+                        if self._is_home_or_bar_state(state) and self._is_home_or_bar_state(next_state):
+                            probabilities.append(100.)
+                        else:
+                            probabilities.append(1.)
+                if state in self.home_state or state in self.bar_state:
+                    # high probability to stay in home/bar
                     next_steps.append(coord)
                     probabilities.append(100.)
                 else:
