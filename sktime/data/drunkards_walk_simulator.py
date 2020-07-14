@@ -45,6 +45,7 @@ class DrunkardsWalk(object):
         self.home_location = np.atleast_2d(self.home_location)
         self.home_state = [self.coordinate_to_state(state) for state in self.home_location]
         self.barriers = barriers
+        self.barrier_states = [self.coordinate_to_state(barrier) for barrier in self.barriers]
         self.barrier_weights = [None]*len(barriers)
 
         from sktime.markov.msm import MarkovStateModel
@@ -88,7 +89,9 @@ class DrunkardsWalk(object):
                             probabilities.append(100.)
                         else:
                             probabilities.append(1.)
-                if state in self.home_state or state in self.bar_state:
+                if self._is_home_or_bar_state(state) or \
+                        (state in self.barrier_states and
+                         self.barrier_weights[self.barrier_states.index(state)] is None):
                     # high probability to stay in home/bar
                     next_steps.append(coord)
                     probabilities.append(100.)
@@ -152,6 +155,7 @@ class DrunkardsWalk(object):
 
         self.barriers = list(itertools.chain(self.barriers, barrier))
         self.barrier_weights = list(itertools.chain(self.barrier_weights, [weight]*len(barrier)))
+        self.barrier_states = [self.coordinate_to_state(barrier) for barrier in self.barriers]
         self._update_transition_matrix()
 
     def coordinate_to_state(self, coord: Coordinate) -> int:
@@ -301,9 +305,13 @@ class DrunkardsWalk(object):
         return edge_colors
 
     @plotting_function
-    def plot_2d_map(self, ax, barriers: bool = True):
+    def plot_2d_map(self, ax, barriers: bool = True, barrier_mode: str = 'filled'):
         import numpy as np
         from matplotlib.patches import Rectangle
+
+        valid_barrier_modes = ('filled', 'hollow')
+        if barrier_mode not in valid_barrier_modes:
+            raise ValueError(f"Barrier mode '{barrier_mode}' not supported, valid modes are {valid_barrier_modes}.")
 
         ax.scatter(*self.home_location.T, marker='*', label='Home', c='red', s=150, zorder=5)
         ax.scatter(*self.bar_location.T, marker='*', label='Bar', c='orange', s=150, zorder=5)
@@ -323,9 +331,13 @@ class DrunkardsWalk(object):
                 weight = self.barrier_weights[barrier_ix]
                 if weight is None:
                     rect = Rectangle((coord[0] - .5, coord[1] - .5), 1., 1., alpha=.5, color='red', lw=3.)
+                    if barrier_mode == 'hollow':
+                        rect.set_facecolor('none')
                     ax.add_patch(rect)
                 else:
                     rect = Rectangle((coord[0] - .5, coord[1] - .5), 1., 1., alpha=.2, color='red', lw=3.)
+                    if barrier_mode == 'hollow':
+                        rect.set_facecolor('none')
                     ax.add_patch(rect)
 
         for grid_point in np.arange(-.5, self.grid_size[0] + .5, 1):
