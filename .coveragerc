@@ -1,0 +1,4 @@
+[report]
+exclude_lines =
+    @plotting_function
+    pragma: no cover

@@ -15,8 +15,6 @@ def test_barrier():
         x0, y0 = coord_next_to_barrier
         barrier_coord = (x0 - 1, y0)
         assert_(barrier_coord in sim.barriers)
-        barrier_state = sim.coordinate_to_state(barrier_coord)
-        assert_(transition_matrix[state, barrier_state] <= 1./sim.barrier_weight)
     assert_(np.all(transition_matrix >= 0))
     for state in range(sim.n_states):
         assert_almost_equal(transition_matrix[state, :].sum(), 1.)

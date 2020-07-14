@@ -1,7 +1,9 @@
 import itertools
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import numpy as np
+
+from ..util import plotting_function
 
 Coordinate = Tuple[int, int]
 
@@ -36,11 +38,14 @@ class DrunkardsWalk(object):
             barriers = []
         self.n_states = grid_size[0] * grid_size[1]
         self.grid_size = grid_size
-        self.bar_location = bar_location if isinstance(bar_location, list) else [bar_location]
+        self.bar_location = bar_location if isinstance(bar_location, (tuple, list, np.ndarray)) else [bar_location]
+        self.bar_location = np.atleast_2d(self.bar_location)
         self.bar_state = [self.coordinate_to_state(state) for state in self.bar_location]
-        self.home_location = home_location if isinstance(home_location, list) else [home_location]
+        self.home_location = home_location if isinstance(home_location, (tuple, list, np.ndarray)) else [home_location]
+        self.home_location = np.atleast_2d(self.home_location)
         self.home_state = [self.coordinate_to_state(state) for state in self.home_location]
         self.barriers = barriers
+        self.barrier_weights = [None]*len(barriers)
 
         from sktime.markov.msm import MarkovStateModel
         self._msm = MarkovStateModel(transition_matrix=np.eye(self.n_states, dtype=np.float64))
@@ -48,6 +53,9 @@ class DrunkardsWalk(object):
 
     def _is_home_or_bar_state(self, state):
         return state in self.home_state or state in self.bar_state
+
+    def _is_home_or_bar_coord(self, coord):
+        return self._is_home_or_bar_state(self.coordinate_to_state(coord))
 
     def _update_transition_matrix(self) -> None:
         r"""Updates the MSM so that the state of the simulator is reflected in the transition matrix.
@@ -69,7 +77,12 @@ class DrunkardsWalk(object):
                 for next_step in next_steps:
                     next_state = self.coordinate_to_state(next_step)
                     if self.barriers is not None and next_step in self.barriers:
-                        probabilities.append(0.)
+                        barrier_ix = self.barriers.index(next_step)
+                        weight = self.barrier_weights[barrier_ix]
+                        if weight is None:
+                            probabilities.append(0.)
+                        else:
+                            probabilities.append(1./weight)
                     else:
                         if self._is_home_or_bar_state(state) and self._is_home_or_bar_state(next_state):
                             probabilities.append(100.)
@@ -87,7 +100,7 @@ class DrunkardsWalk(object):
                     transition_matrix[state, self.coordinate_to_state(step)] = p
         self.msm.update_transition_matrix(transition_matrix)
 
-    def add_barrier(self, begin: Coordinate, end: Coordinate):
+    def add_barrier(self, begin: Coordinate, end: Coordinate, weight: Optional[float] = None):
         r""" Adds a barrier to the grid by assigning probabilities
 
         .. math::
@@ -102,6 +115,8 @@ class DrunkardsWalk(object):
             Begin coordinate of the barrier.
         end : tuple of two integers
             End coordinate of the barrier.
+        weight : float or None, default=None
+            If not None, the probability of jumping onto the barrier is set to :math:`1/w` before row-normalization.
 
         References
         ----------
@@ -136,6 +151,7 @@ class DrunkardsWalk(object):
                 barrier.append((x0, y0 - sy))
 
         self.barriers = list(itertools.chain(self.barriers, barrier))
+        self.barrier_weights = list(itertools.chain(self.barrier_weights, [weight]*len(barrier)))
         self._update_transition_matrix()
 
     def coordinate_to_state(self, coord: Coordinate) -> int:
@@ -197,7 +213,7 @@ class DrunkardsWalk(object):
         """
         return self._msm
 
-    def walk(self, start: Coordinate, n_steps: int, stop: bool = True, seed: int = -1):
+    def walk(self, start: Coordinate, n_steps: int, stop: bool = True, return_states: bool = False, seed: int = -1):
         r""" Simulates a random walk on the grid.
 
         Parameters
@@ -208,6 +224,8 @@ class DrunkardsWalk(object):
             Maximum number of steps to simulate.
         stop : bool, default=False
             Whether to stop the simulation once home or bar have been reached
+        return_states : bool, default=False
+            Whether to return states instead of coordinates. Default is False.
         seed : int, default=-1
             Random seed.
 
@@ -218,13 +236,17 @@ class DrunkardsWalk(object):
         """
         assert self.is_valid_coordinate(start), "Start must be within bounds."
         if stop:
-            stopping_states = np.array([self.home_state, self.bar_state])
+            stopping_states = np.concatenate([self.home_state, self.bar_state])
         else:
             stopping_states = None
         states = self.msm.simulate(n_steps, start=self.coordinate_to_state(start), stop=stopping_states, seed=seed)
-        return np.array([self.state_to_coordinate(state) for state in states])
+        if not return_states:
+            return np.array([self.state_to_coordinate(state) for state in states])
+        else:
+            return states
 
     @staticmethod
+    @plotting_function
     def plot_path(ax, path, intermediates: bool = True, color_lerp: bool = True, **plot_kw):
         import scipy.interpolate as interp
         from matplotlib.collections import LineCollection
@@ -248,13 +270,43 @@ class DrunkardsWalk(object):
         else:
             ax.plot(xint, yint, **plot_kw)
 
-    def plot_2d_map(self, ax):
+    @plotting_function
+    def plot_network(self, ax, F, cmap=None, connection_threshold: float = 0.):
+        import networkx as nx
+        import matplotlib.pyplot as plt
+
+        if cmap is None:
+            cmap = plt.cm.jet
+
+        G = nx.DiGraph()
+        for state in range(self.n_states):
+            G.add_node(state)
+
+        edge_colors = []
+        for state in range(self.n_states):
+            for other_state in range(self.n_states):
+                w = F[state, other_state]
+                if w > connection_threshold:
+                    G.add_edge(state, other_state, weight=w)
+                    edge_colors.append(F[state, other_state])
+
+        positions = np.zeros((self.n_states, 2))
+        for i in range(self.n_states):
+            positions[i] = self.state_to_coordinate(i)
+        layout = {k: positions[k] for k in G.nodes.keys()}
+
+        nx.draw_networkx_nodes(G, layout, node_size=30, ax=ax)
+        nx.draw_networkx_edges(G, layout, ax=ax, arrowstyle='->', edge_cmap=cmap, edge_color=edge_colors,
+                               connectionstyle='arc3, rad=0.1')
+        return edge_colors
+
+    @plotting_function
+    def plot_2d_map(self, ax, barriers: bool = True):
         import numpy as np
         from matplotlib.patches import Rectangle
 
-        ax.scatter(*self.home_location, marker='*', label='Home', c='red', s=150, zorder=5)
-        ax.scatter(*self.bar_location, marker='*', label='Bar', c='orange', s=150, zorder=5)
-
+        ax.scatter(*self.home_location.T, marker='*', label='Home', c='red', s=150, zorder=5)
+        ax.scatter(*self.bar_location.T, marker='*', label='Bar', c='orange', s=150, zorder=5)
 
         ax.set_xticks(np.arange(10))
         ax.set_yticks(np.arange(10))
@@ -264,11 +316,17 @@ class DrunkardsWalk(object):
         rect = None
         for state in range(self.n_states):
             coord = self.state_to_coordinate(state)
-            if coord == self.home_location or coord == self.bar_location:
+            if self._is_home_or_bar_coord(coord):
                 ax.add_patch(Rectangle((coord[0] - .5, coord[1] - .5), 1., 1., alpha=.3, color='green'))
-            elif coord in self.barriers:
-                rect = Rectangle((coord[0] - .5, coord[1] - .5), 1., 1., alpha=.5, color='red', lw=3.)
-                ax.add_patch(rect)
+            elif barriers and coord in self.barriers:
+                barrier_ix = self.barriers.index(coord)
+                weight = self.barrier_weights[barrier_ix]
+                if weight is None:
+                    rect = Rectangle((coord[0] - .5, coord[1] - .5), 1., 1., alpha=.5, color='red', lw=3.)
+                    ax.add_patch(rect)
+                else:
+                    rect = Rectangle((coord[0] - .5, coord[1] - .5), 1., 1., alpha=.2, color='red', lw=3.)
+                    ax.add_patch(rect)
 
         for grid_point in np.arange(-.5, self.grid_size[0] + .5, 1):
             ax.axhline(grid_point, linestyle='-', color='grey', lw=.5)

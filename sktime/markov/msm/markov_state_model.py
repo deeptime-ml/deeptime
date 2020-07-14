@@ -1349,11 +1349,21 @@ class MarkovStateModelCollection(MarkovStateModel):
         return [counts.selected_state_fraction for counts in self._count_models]
 
     @property
+    def state_fraction(self):
+        r""" The fraction of states represented in the selected model. """
+        return self.state_fractions[self.current_model]
+
+    @property
     def count_fractions(self):
         r""" Yields the fraction of counts represented in each of the models in this collection. Calling this method
         assumes that the MSMs in the collection stem from actual data with state statistics embedded in the count
         models. """
         return [counts.selected_count_fraction if counts is not None else None for counts in self._count_models]
+
+    @property
+    def count_fraction(self):
+        r""" The fraction of counts represented in the selected model. """
+        return self.count_fractions[self.current_model]
 
     def select(self, model_index):
         r""" Selects a different model in the collection. Changes the behavior of the collection to mimic a MSM

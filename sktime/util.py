@@ -1,4 +1,5 @@
 import collections
+import functools
 import itertools
 import numbers
 import os
@@ -423,3 +424,19 @@ class cached_property(property):
 
     def invalidate(self):
         self.cache.clear()
+
+
+def plotting_function(fn):  # pragma: no cover
+    r""" Decorator marking a function that is a plotting utility. This will exclude it from coverage and test
+    whether dependencies are installed. """
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kw):
+        try:
+            import matplotlib
+            import networkx
+        except (ModuleNotFoundError, ImportError):
+            raise RuntimeError("Plotting functions require matplotlib and networkx to be installed.")
+        return fn(*args, **kw)
+
+    return wrapper
