@@ -137,8 +137,8 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
-        ax.scatter(*sim.home_location, marker='*', label='Home', c='red', s=150, zorder=5)
-        ax.scatter(*sim.bar_location, marker='*', label='Bar', c='orange', s=150, zorder=5)
+        ax.scatter(*sim.home_location.T, marker='*', label='Home', c='red', s=150, zorder=5)
+        ax.scatter(*sim.bar_location.T, marker='*', label='Bar', c='orange', s=150, zorder=5)
         ax.scatter(7, 2, marker='*', label='Start', c='black', s=150, zorder=5)
 
         x = np.r_[walk[:, 0]]
