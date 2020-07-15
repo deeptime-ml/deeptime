@@ -252,6 +252,23 @@ class DrunkardsWalk(object):
     @staticmethod
     @plotting_function
     def plot_path(ax, path, intermediates: bool = True, color_lerp: bool = True, **plot_kw):
+        r""" Plots a path onto a drunkard's walk map. The path is interpolated with splines and, if desired, has a
+        linearly interpolated color along its path.
+
+        Parameters
+        ----------
+        ax : matplotlib axis
+            The axis to plot onto.
+        path : (N, 2) ndarray
+            The path in terms of 2-dimensional coordinates.
+        intermediates : bool, default=True
+            Whether to scatterplot the states that were visited in the path.
+        color_lerp : bool, default=True
+            Whether to perform a linear interpolation along a colormap while the path progresses through the map.
+        plot_kw
+            Additional args that go into either a `ax.plot` call (`lerp=False`) or into a `LineCollection(...)` call
+            (`lerp=True`).
+        """
         import scipy.interpolate as interp
         from matplotlib.collections import LineCollection
 
@@ -276,6 +293,25 @@ class DrunkardsWalk(object):
 
     @plotting_function
     def plot_network(self, ax, F, cmap=None, connection_threshold: float = 0.):
+        r""" Plots a flux network onto a matplotlib axis assuming that the states are ordered according to a iota
+        range (i.e., {0, 1, ..., n_states-1}) on the grid.
+
+        Parameters
+        ----------
+        ax : matplotlib axis
+            The axis to plot onto.
+        F : (n_states, n_states) ndarray
+            The flux network, assigning to a state tuple `F[i,j]` a current.
+        cmap : matplotlib colormap, default=None
+            A colormap to use for the edges.
+        connection_threshold : float, default=0
+            A connection threshold in terms of minimal current to exceed to draw an edge.
+
+        Returns
+        -------
+        edge_colors : list
+            List of edge colors.
+        """
         import networkx as nx
         import matplotlib.pyplot as plt
 
@@ -306,6 +342,24 @@ class DrunkardsWalk(object):
 
     @plotting_function
     def plot_2d_map(self, ax, barriers: bool = True, barrier_mode: str = 'filled'):
+        r""" Plots the drunkard's map onto an already existing matplotlib axis. One can select whether to draw barriers
+        and if barriers should be drawn, whether they have a 'filled' face or be 'hollow' with just the border
+        being colored.
+
+        Parameters
+        ----------
+        ax : matplotlib axis
+            The axis.
+        barriers : bool, default=True
+            Whether to draw the barriers.
+        barrier_mode : str, default='filled'
+            How to draw barriers - can be one of 'filled' and 'hollow'.
+
+        Returns
+        -------
+        handles, labels
+            Handles and labels for a matplotlib legend.
+        """
         import numpy as np
         from matplotlib.patches import Rectangle
 
