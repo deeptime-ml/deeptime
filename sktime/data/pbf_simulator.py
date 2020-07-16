@@ -1,7 +1,7 @@
 import numpy as np
 from . import _data_bindings as bd
 
-from ..util import handle_n_jobs
+from ..util import handle_n_jobs, plotting_function
 
 
 class PBFSimulator(object):
@@ -169,6 +169,7 @@ class PBFSimulator(object):
         """
         return _transform_to_density_impl(self.domain_size, trajectory, n_grid_x, n_grid_y, n_jobs)
 
+    @plotting_function
     def make_animation(self, trajectories, stride=1, mode="scatter", **kw):
         r""" Creates a matplotlib animation object consisting of either scatter plots of contour plots for plotting
         particles and densities, respectively.

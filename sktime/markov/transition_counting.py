@@ -312,6 +312,21 @@ class TransitionCountModel(Model):
             connected_sets = [connected_sets[i] for i in np.argsort(-score)]
         return connected_sets
 
+    def states_to_symbols(self, states: np.ndarray) -> np.ndarray:
+        r""" Converts a list of states to a list of symbols which can be related back to the original data.
+
+        Parameters
+        ----------
+        states : (N,) ndarray
+            Array of states.
+
+        Returns
+        -------
+        symbols : (N,) ndarray
+            Array of symbols.
+        """
+        return self.state_symbols[states]
+
     def symbols_to_states(self, symbols):
         r"""
         Converts a set of symbols to state indices in this count model instance. The symbols which

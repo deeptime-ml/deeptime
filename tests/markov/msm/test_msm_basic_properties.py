@@ -51,6 +51,9 @@ class TestMSMBasicProperties(object):
 
         count_matrix = scenario.msm.count_model.count_matrix
         assert_equal(count_matrix.shape, (scenario.msm.n_states, scenario.msm.n_states))
+        if hasattr(scenario.msm, 'state_fraction'):  # msm collection
+            assert_equal(scenario.msm.state_fraction, scenario.msm.count_model.selected_state_fraction)
+            assert_equal(scenario.msm.count_fraction, scenario.msm.count_model.selected_count_fraction)
 
     def test_discrete_trajectories_active(self, setting):
         scenario = make_double_well(setting)

@@ -219,7 +219,7 @@ class ReactiveFlux(Model):
 
         Parameters
         ----------
-        tpt_sets : list of int-iterables
+        user_sets : list of int-iterables
             sets of states that shall be distinguished in the coarse-grained flux.
 
         Returns
