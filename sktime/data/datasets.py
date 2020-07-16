@@ -116,7 +116,7 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     r"""This example dataset simulates the steps a drunkard living in a two-dimensional plane takes finding
     either the bar or the home as two absorbing states.
 
-    The drunkard can take steps in a 3x3 stencil with uniform probability (as possible, in the corners the only
+    The drunkard can take steps in a 3x3 grid with uniform probability (as possible, in the corners the only
     possibilities are the ones that do not lead out of the grid). The transition matrix
     :math:`P\in\mathbb{R}^{nm\times nm}`  possesses one absorbing state for home and bar, respectively,
     and uniform two-dimensional jump probabilities in between. The grid is of size :math:`n\times m` and a point

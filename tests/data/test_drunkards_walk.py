@@ -34,9 +34,9 @@ def test_transition_matrix():
     walk = sktime.data.drunkards_walk((7, 8), bar_location=(0, 0), home_location=(6, 7))
     assert_equal(walk.msm.transition_matrix.shape, (7 * 8, 7 * 8))
     assert_allclose(walk.msm.transition_matrix.sum(-1), 1.)  # row-stochastic matrix
-    assert_equal(walk.bar_location, (0, 0))
-    assert_equal(walk.home_location, (6, 7))
-    assert_equal(walk.bar_state, 0)
-    assert_equal(walk.home_state, 6 + 7*7)
+    assert_equal(walk.bar_location.squeeze(), (0, 0))
+    assert_equal(walk.home_location.squeeze(), (6, 7))
+    assert_equal(walk.bar_state, [0])
+    assert_equal(walk.home_state, [6 + 7*7])
     assert_equal(walk.grid_size, (7, 8))
     assert_equal(walk.n_states, 7*8)
