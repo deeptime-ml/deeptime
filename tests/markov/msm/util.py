@@ -1,11 +1,11 @@
 import functools
 
-import numpy as np
-
 import sktime
 from sktime.markov import TransitionCountEstimator
-from sktime.markov.msm import MaximumLikelihoodMSM, MarkovStateModelCollection
+
+from sktime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
 from sktime.markov.msm.augmented_msm import AugmentedMSM, AugmentedMSMEstimator
+import numpy as np
 
 MLMSM_PARAMS = [("MLMSM", True, False, False), ("MLMSM", True, True, False), ("MLMSM", False, False, False),
                 ("MLMSM", True, False, True), ("MLMSM", True, True, True), ("MLMSM", False, False, True)]
@@ -76,7 +76,7 @@ class DoubleWellScenarioMLMSM(DoubleWellScenario):
             self._timescales = np.array([310.87, 8.5, 5.09])
 
     @property
-    def msm(self) -> MarkovStateModelCollection:
+    def msm(self) -> MarkovStateModel:
         return self._msm
 
     @property
