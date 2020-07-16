@@ -40,3 +40,6 @@ def test_transition_matrix():
     assert_equal(walk.home_state, [6 + 7*7])
     assert_equal(walk.grid_size, (7, 8))
     assert_equal(walk.n_states, 7*8)
+    trajectory = walk.walk((3, 3), 100000, stop=True)
+    last_coord = tuple(trajectory[-1])
+    assert_(last_coord == (0, 0) or last_coord == (6, 7))
