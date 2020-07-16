@@ -18,7 +18,7 @@ pytest_args = ("-vv "
                "--doctest-modules "
                "--junit-xml={junit_xml} "
                "--durations=20 "
-               "--cov-config {cov_config}"
+               "--cov-config {cov_config} "
                "--pyargs tests/ sktime"
                .format(cover_pkg=cover_pkg,
                        junit_xml=junit_xml,
