@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List, Union
 
 import numpy as np
 
@@ -111,8 +111,8 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
 
 
 def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
-                   bar_location: Tuple[int, int] = (9, 9),
-                   home_location: Tuple[int, int] = (0, 0)):
+                   bar_location: Union[Tuple[int, int], List[Tuple[int, int]]] = (9, 9),
+                   home_location: Union[Tuple[int, int], List[Tuple[int, int]]] = (0, 0)):
     r"""This example dataset simulates the steps a drunkard living in a two-dimensional plane takes finding
     either the bar or the home as two absorbing states.
 

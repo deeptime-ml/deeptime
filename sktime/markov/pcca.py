@@ -94,12 +94,13 @@ class PCCAModel(Model):
         :keyprefix: pccamodel-
     """
 
-    def __init__(self, P_coarse, pi_coarse, memberships, metastable_distributions):
+    def __init__(self, transition_matrix_coarse: np.ndarray, pi_coarse: np.ndarray, memberships: np.ndarray,
+                 metastable_distributions: np.ndarray):
         r""" Creates a new model instance.
 
         Parameters
         ----------
-        P_coarse : ndarray (n,n)
+        transition_matrix_coarse : ndarray (n,n)
             Coarse transition matrix.
         pi_coarse : ndarray (n,)
             Coarse stationary distribution
@@ -109,7 +110,7 @@ class PCCAModel(Model):
             metastable distributions
         """
         super().__init__()
-        self._P_coarse = P_coarse
+        self._transition_matrix_coarse = transition_matrix_coarse
         self._pi_coarse = pi_coarse
         self._memberships = memberships
         self._metastable_distributions = metastable_distributions
@@ -155,7 +156,7 @@ class PCCAModel(Model):
     @property
     def coarse_grained_transition_matrix(self):
         r""" Coarse grained transition matrix with :attr:`n_metastable` states. """
-        return self._P_coarse
+        return self._transition_matrix_coarse
 
     @property
     def coarse_grained_stationary_probability(self):
