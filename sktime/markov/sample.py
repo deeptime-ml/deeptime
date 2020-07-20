@@ -157,50 +157,6 @@ def indices_by_distribution(indices: typing.List[np.ndarray], distributions, nsa
     return res
 
 
-def by_sequence(dtrajs, sequence, N, start=None, stop=None, stride=1):
-    """Generates a synthetic discrete trajectory of length N and simulation time stride * lag time * N
-
-    This information can be used
-    in order to generate a synthetic molecular dynamics trajectory - see
-    :func:`pyemma.coordinates.save_traj`
-
-    Note that the time different between two samples is the Markov model lag time tau. When comparing
-    quantities computing from this synthetic trajectory and from the input trajectories, the time points of this
-    trajectory must be scaled by the lag time in order to have them on the same time scale.
-
-    Parameters
-    ----------
-    dtrajs : List[np.ndarray]
-        underlying discrete trajectories
-    sequence : np.ndarray
-        sequence of states that are being remapped to samples from dtrajs
-    N : int
-        Number of time steps in the output trajectory. The total simulation time is stride * lag time * N
-    start : int, optional, default = None
-        starting state. If not given, will sample from the stationary distribution of P
-    stop : int or int-array-like, optional, default = None
-        stopping set. If given, the trajectory will be stopped before N steps
-        once a state of the stop set is reached
-    stride : int, optional, default = 1
-        Multiple of lag time used as a time step. By default, the time step is equal to the lag time
-
-    Returns
-    -------
-    indices : ndarray( (N, 2) )
-        trajectory and time indices of the simulated trajectory. Each row consist of a tuple (i, t), where i is
-        the index of the trajectory and t is the time index within the trajectory.
-        Note that the time different between two samples is the Markov model lag time tau
-
-    See also
-    --------
-    pyemma.coordinates.save_traj
-        in order to save this synthetic trajectory as a trajectory file with molecular structures
-
-    """
-    indices = compute_index_states(dtrajs)
-    return indices_by_sequence(indices, sequence)
-
-
 def by_state(dtrajs, n_samples, subset=None, replace=True):
     """Generates samples of the connected states.
 
@@ -239,29 +195,3 @@ def by_state(dtrajs, n_samples, subset=None, replace=True):
     # generate connected state indices
     indices = compute_index_states(dtrajs, subset=subset)
     return indices_by_state(indices, n_samples, subset=subset, replace=replace)
-
-
-# TODO: add sample_metastable() for sampling from metastable (pcca or hmm) states.
-def by_distributions(self, distributions, nsample):
-    """Generates samples according to given probability distributions
-
-    Parameters
-    ----------
-    dtrajs : List[np.ndarray]
-        underlying discrete trajectories
-    distributions : list or array of ndarray ( (n) )
-        m distributions over states. Each distribution must be of length n and must sum up to 1.0
-    nsample : int
-        Number of samples per distribution. If replace = False, the number of returned samples per state could be
-        smaller if less than nsample indices are available for a state.
-
-    Returns
-    -------
-    indices : length m list of ndarray( (nsample, 2) )
-        List of the sampled indices by distribution.
-        Each element is an index array with a number of rows equal to nsample, with rows consisting of a
-        tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
-
-    """
-    # generate connected state indices
-    return indices_by_distribution(self.active_state_indices, distributions, nsample)

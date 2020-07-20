@@ -30,3 +30,15 @@ def test_timeshifed_split_nsplits(data):
     np.testing.assert_equal(n, 2)
     np.testing.assert_equal(np.concatenate(chunks), data[:-1])
     np.testing.assert_equal(np.concatenate(chunks_lagged), data[1:])
+
+
+def test_timeshifted_split_nolag():
+    x = np.arange(5000)
+    splits = []
+    for chunk in util.timeshifted_split(x, 0, n_splits=3):
+        splits.append(chunk)
+
+    np.testing.assert_equal(np.concatenate(splits), x)
+    np.testing.assert_equal(len(splits), 3)
+    for i in range(3):
+        np.testing.assert_(len(splits[i]) > 0)

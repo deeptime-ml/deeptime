@@ -2,3 +2,15 @@
 exclude_lines =
     @plotting_function
     pragma: no cover
+omit =
+    # omit setup.py files
+    */**/setup.py
+    # omit test directory
+    tests/*
+
+[run]
+omit =
+    # omit setup.py files
+    */**/setup.py
+    # omit test directory
+    tests/*

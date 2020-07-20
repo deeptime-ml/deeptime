@@ -136,8 +136,9 @@ class Covariance(Estimator):
         :filter: docname in docnames
         :keyprefix: covariance-
     """
-    def __init__(self, lagtime, compute_c00=True, compute_c0t=False, compute_ctt=False, remove_data_mean=False,
-                 reversible=False, bessels_correction=True, sparse_mode='auto', ncov=5, diag_only=False, model=None):
+    def __init__(self, lagtime: int, compute_c00: bool = True, compute_c0t: bool = False, compute_ctt: bool = False,
+                 remove_data_mean: bool = False, reversible: bool = False, bessels_correction: bool = True,
+                 sparse_mode: str = 'auto', ncov: int = 5, diag_only: bool = False, model=None):
         r""" Initializes a new online covariance estimator.
 
         Parameters
@@ -262,9 +263,9 @@ class Covariance(Estimator):
     @reversible.setter
     def reversible(self, value: bool):
         if self.compute_ctt and value:
-            raise ValueError("Computing covariances reversibly and also computing cov_tt is meaningless, as then"
-                             "cov_tt = cov_00. Please set compute_ctt to False if symmetrized covariances are desired.")
-            self.compute_ctt = False
+            raise ValueError("Computing covariances reversibly and also computing cov_tt is meaningless, as then "
+                             "cov_tt = cov_00. Please set compute_ctt to False prior setting reversible to True "
+                             "if symmetrized covariances are desired.")
         self._reversible = value
 
     @property
@@ -391,7 +392,7 @@ class Covariance(Estimator):
         assert lagtime is not None
 
         lazy_weights = False
-        wsplit = itertools.repeat(None)
+        wsplit = itertools.repeat((None, None))  # tuple of None that can be unpacked into two Nones
 
         if weights is not None:
             if hasattr(weights, 'weights'):
@@ -401,16 +402,18 @@ class Covariance(Estimator):
                     "Weights have incompatible shape "
                     f"(#weights={len(weights) if weights is not None else None} != {len(data[0])}=#frames.")
             elif isinstance(weights, np.ndarray):
-                wsplit = np.array_split(weights, n_splits)
+                wsplit = timeshifted_split(weights, lagtime=lagtime, n_splits=n_splits)
 
         if self.is_lagged:
-            for (x, y), w in zip(timeshifted_split(data, lagtime=lagtime, n_splits=n_splits), wsplit):
+            t = 0
+            for (x, y), (w, _) in zip(timeshifted_split(data, lagtime=lagtime, n_splits=n_splits), wsplit):
                 if lazy_weights:
                     w = weights.weights(x)
-                # weights can weights be shorter than actual data
+                # weights can be longer than actual data
                 if isinstance(w, np.ndarray):
                     w = w[:len(x)]
                 self.partial_fit((x, y), weights=w, column_selection=column_selection)
+                t += len(x)
         else:
             for x in data:
                 self.partial_fit(x, weights=weights, column_selection=column_selection)
@@ -428,8 +431,8 @@ class Covariance(Estimator):
         try:
             self._rc.add(x, y, column_selection=column_selection, weights=weights)
         except MemoryError:
-            raise MemoryError('Covariance matrix does not fit into memory. '
-                              'Input is too high-dimensional ({} dimensions). '.format(x.shape[1]))
+            raise MemoryError(f'Covariance matrix does not fit into memory. '
+                              f'Input is too high-dimensional ({x.shape[1]} dimensions).')
         return self
 
     def fetch_model(self) -> CovarianceModel:
@@ -693,8 +696,8 @@ class KoopmanWeightingEstimator(Estimator, Transformer):
         u_input[0:N] = R.dot(u[0:-1])  # in input basis
         u_input[N] = u[-1] - cov.mean_0.dot(R.dot(u[0:-1]))
 
-        self._model = KoopmanWeightingModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=K, whitening_transformation=R,
-                                            covariances=cov)
+        self._model = KoopmanWeightingModel(u=u_input[:-1], u_const=u_input[-1], koopman_operator=K,
+                                            whitening_transformation=R, covariances=cov)
 
         return self._model
 

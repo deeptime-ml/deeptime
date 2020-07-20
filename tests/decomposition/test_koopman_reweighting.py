@@ -203,6 +203,11 @@ class TestKoopmanTICA(unittest.TestCase):
     def test_koopman_estimator_partial_fit(self):
         from sktime.covariance import KoopmanWeightingEstimator
         est = KoopmanWeightingEstimator(lagtime=self.tau)
+        est.lagtime = 1
+        np.testing.assert_equal(est.lagtime, 1)
+        est.lagtime = self.tau
+        np.testing.assert_equal(est.lagtime, self.tau)
+
         data_lagged = timeshifted_split(self.data, lagtime=self.tau, n_splits=10)
         for traj in data_lagged:
             est.partial_fit(traj)
@@ -210,6 +215,11 @@ class TestKoopmanTICA(unittest.TestCase):
 
         np.testing.assert_allclose(m.weights_input, self.weight_obj.weights_input)
         np.testing.assert_allclose(m.const_weight_input, self.weight_obj.const_weight_input)
+
+        # weights and transform are identical
+        np.testing.assert_allclose(m.weights(self.data[0]), m.transform(self.data[0]))
+        # dispatches to model
+        np.testing.assert_allclose(m.weights(self.data[0]), est.transform(self.data[0]))
 
     def test_koopman_estimator_fit(self):
         from sktime.covariance import KoopmanWeightingEstimator

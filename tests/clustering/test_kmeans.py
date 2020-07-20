@@ -68,6 +68,8 @@ def test_3gaussian_1d_singletraj(seed, init_strategy):
     km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=seed, n_jobs=0, max_iter=500)
     np.testing.assert_equal(len(model1.cluster_centers), k)
     np.testing.assert_equal(len(model2.cluster_centers), k)
+    np.testing.assert_equal(model1.n_clusters, k)
+    np.testing.assert_equal(model2.n_clusters, k)
     np.testing.assert_(model1.converged)
     np.testing.assert_(model2.converged)
 
@@ -92,6 +94,54 @@ def test_3gaussian_1d_singletraj(seed, init_strategy):
 
 
 class TestKmeans(unittest.TestCase):
+
+    def test_properties(self):
+        k = 6
+        data = make_blobs(n_samples=500, random_state=45, centers=k, cluster_std=0.5, shuffle=False)[0]
+        small_data = make_blobs(n_samples=2, random_state=45, centers=k, cluster_std=0.5, shuffle=False)[0]
+
+        estimator = KmeansClustering(k, max_iter=10000, metric='euclidean', tolerance=1e-7, init_strategy='uniform',
+                                     fixed_seed=17, n_jobs=1, initial_centers=None)
+
+        with np.testing.assert_raises(ValueError):
+            estimator.initial_centers = np.random.normal(size=(7, 3))  # too many initial centers
+
+        with np.testing.assert_raises(ValueError):
+            estimator.metric = 'bogus'  # does not exist
+
+        with np.testing.assert_raises(ValueError):
+            estimator.init_strategy = 'bogus'  # does not exist
+
+        with np.testing.assert_raises(ValueError):
+            estimator.fixed_seed = 'test'  # not supported to use strings
+
+        with np.testing.assert_raises(ValueError):
+            estimator.transform(np.random.normal(size=(5, 3)))  # no model there yet
+
+        np.testing.assert_equal(estimator.n_clusters, k)
+        np.testing.assert_equal(estimator.max_iter, 10000)
+        np.testing.assert_equal(estimator.metric, 'euclidean')
+        np.testing.assert_equal(estimator.tolerance, 1e-7)
+        np.testing.assert_equal(estimator.init_strategy, 'uniform')
+        np.testing.assert_equal(estimator.fixed_seed, 17)
+        np.testing.assert_equal(estimator.n_jobs, 1)
+        np.testing.assert_equal(estimator.initial_centers, None)
+
+        with np.testing.assert_raises(ValueError):
+            estimator.fit(small_data)  # data is too small to pick initial centers
+
+        model = estimator.fit(data).fetch_model()
+        np.testing.assert_equal(model.n_clusters, k)
+        np.testing.assert_equal(model.tolerance, 1e-7)
+        np.testing.assert_equal(model.inertia, model.inertias[-1])
+        np.testing.assert_(np.abs(model.inertias[-2] - model.inertias[-1]) <= model.tolerance)
+        np.testing.assert_equal(model.metric, 'euclidean')
+
+    def test_data_are_centers(self):
+        data = np.random.normal(size=(5, 500))
+        km = KmeansClustering(n_clusters=5, initial_centers=data)
+        clustering = km.fit(data).fetch_model()
+        np.testing.assert_equal(clustering.transform(data), np.arange(5))
 
     def test_check_convergence_serial_parallel(self):
         """ check serial and parallel version of kmeans converge to the same centers.

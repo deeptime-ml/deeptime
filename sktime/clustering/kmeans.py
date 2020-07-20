@@ -135,7 +135,7 @@ class KmeansClustering(Estimator, Transformer):
 
     def __init__(self, n_clusters: int, max_iter: int = 500, metric='euclidean',
                  tolerance=1e-5, init_strategy: str = 'kmeans++', fixed_seed=False,
-                 n_jobs=None, initial_centers=None, random_state=None):
+                 n_jobs=None, initial_centers=None):
         r"""
         Initializes a new k-means cluster estimator.
 
@@ -173,9 +173,7 @@ class KmeansClustering(Estimator, Transformer):
         self.tolerance = tolerance
         self.init_strategy = init_strategy
         self.fixed_seed = fixed_seed
-        if random_state is None:
-            random_state = np.random.RandomState(self.fixed_seed)
-        self.random_state = random_state
+        self.random_state = np.random.RandomState(self.fixed_seed)
         self.n_jobs = n_jobs
         self.initial_centers = initial_centers
 
@@ -374,9 +372,6 @@ class KmeansClustering(Estimator, Transformer):
         elif self.init_strategy == 'kmeans++':
             return _bd.kmeans.init_centers_kmpp(data, self.n_clusters, self.fixed_seed, n_jobs,
                                                 callback, metrics[self.metric]())
-        else:
-            raise ValueError(f"Unknown cluster center initialization strategy \"{strategy}\", supported are "
-                             f"\"uniform\" and \"kmeans++\"")
 
     def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
         """ Perform the clustering.

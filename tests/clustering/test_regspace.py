@@ -5,23 +5,13 @@ import numpy as np
 
 from sktime.clustering import RegularSpaceClustering
 
-def RandomDataSource(a=None, b=None, n_samples=1000, dim=3):
-        """
-        creates random values in interval [a,b]
-        """
-        data = np.random.random((n_samples, dim))
-        if a is not None and b is not None:
-            data *= (b - a)
-            data += a
-        return data
-
 
 class TestRegSpaceClustering(unittest.TestCase):
 
     def setUp(self):
         self.dmin = 0.3
         self.clustering = RegularSpaceClustering(dmin=self.dmin)
-        self.src = RandomDataSource()
+        self.src = np.random.uniform(size=(1000, 3))
 
     def test_algorithm(self):
         model = self.clustering.fit(self.src).fetch_model()
@@ -45,15 +35,15 @@ class TestRegSpaceClustering(unittest.TestCase):
         dtraj = model.transform(self.src)
 
         # num states == num _clustercenters?
-        self.assertEqual(len(np.unique(dtraj)),  len(
+        self.assertEqual(len(np.unique(dtraj)), len(
             model.cluster_centers), "number of unique states in dtrajs"
-            " should be equal.")
+                                    " should be equal.")
 
         data_to_cluster = np.random.random((1000, 3))
         model.transform(data_to_cluster)
 
     def test_spread_data(self):
-        src = RandomDataSource(a=-2, b=2)
+        src = np.random.uniform(-2, 2, size=(1000, 3))
         self.clustering.dmin = 2
         self.clustering.fit(src)
 
@@ -87,6 +77,22 @@ class TestRegSpaceClustering(unittest.TestCase):
         centers2 = cl2.cluster_centers
         np.testing.assert_equal(centers1, centers2)
 
+    def test_properties(self):
+        est = RegularSpaceClustering(dmin=1e-8, max_centers=500, metric='euclidean', n_jobs=5)
+        np.testing.assert_equal(est.dmin, 1e-8)
+        np.testing.assert_equal(est.max_centers, 500)
+        np.testing.assert_equal(est.n_clusters, 500)
+        est.n_clusters = 30
+        np.testing.assert_equal(est.max_centers, 30)  # n_clusters and max_centers are aliases
+        np.testing.assert_equal(est.metric, 'euclidean')
+        np.testing.assert_equal(est.n_jobs, 5)
 
-if __name__ == "__main__":
-    unittest.main()
+        with np.testing.assert_raises(ValueError):
+            est.dmin = -.5  # negative, invalid!
+
+        with np.testing.assert_raises(ValueError):
+            est.metric = 'bogus'
+
+        with np.testing.assert_raises(ValueError):
+            est.max_centers = 0  # must be positive
+

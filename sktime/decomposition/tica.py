@@ -212,5 +212,7 @@ class TICA(VAMP):
         if not covariances.symmetrized:
             raise ValueError("The covariance model must be estimated such that the "
                              "autocorrelations are symmetric!")
+        if covariances.cov_0t is None:
+            raise ValueError("The covariance model must contain C0t!")
         self._model = self._decompose(covariances)
         return self
