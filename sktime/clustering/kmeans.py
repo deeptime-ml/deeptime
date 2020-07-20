@@ -164,8 +164,6 @@ class KmeansClustering(Estimator, Transformer):
         initial_centers: None or np.ndarray[k, dim], default=None
             This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
             the centers are directly passed to the kmeans iteration algorithm.
-        random_state : np.random.RandomState, optional, default=None
-            Possibility to override the fixed seed with a numpy random state.
         """
         super(KmeansClustering, self).__init__()
 

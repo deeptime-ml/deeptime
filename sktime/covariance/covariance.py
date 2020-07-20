@@ -409,7 +409,7 @@ class Covariance(Estimator):
             for (x, y), (w, _) in zip(timeshifted_split(data, lagtime=lagtime, n_splits=n_splits), wsplit):
                 if lazy_weights:
                     w = weights.weights(x)
-                # weights can weights be longer than actual data
+                # weights can be longer than actual data
                 if isinstance(w, np.ndarray):
                     w = w[:len(x)]
                 self.partial_fit((x, y), weights=w, column_selection=column_selection)
