@@ -195,14 +195,10 @@ class KoopmanModel(Model, Transformer):
                 operator[ii, ii] = self.operator[ii, ii]
         else:
             operator = self.operator
-        output_trajectory = np.empty_like(trajectory)
-        # todo i think this can be vectorized by just not looping over t?
-        for t, frame in enumerate(trajectory):
-            x = self.basis_transform_forward(trajectory[t])  # map into basis in which K is defined
-            x = operator.T @ x  # apply operator, we are now in the modified basis of g
-            x = self.basis_transform_backward(x, inverse=True)  # map back to observable basis
-            output_trajectory[t] = x
-        return output_trajectory
+        out = self.basis_transform_forward(trajectory)  # (T, N) -> (T, n) project into whitened space
+        out = out @ operator  # (T, n) -> (T, n) propagation in whitened space
+        out = self.basis_transform_backward(out, inverse=True)  # (T, n) -> (T, N) back into original space
+        return out
 
     def transform(self, data, forward=True, propagate=False, **kwargs):
         r"""Projects the data into the Koopman operator basis, possibly discarding non-relevant dimensions.
