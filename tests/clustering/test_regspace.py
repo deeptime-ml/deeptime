@@ -82,6 +82,8 @@ class TestRegSpaceClustering(unittest.TestCase):
         np.testing.assert_equal(est.dmin, 1e-8)
         np.testing.assert_equal(est.max_centers, 500)
         np.testing.assert_equal(est.n_clusters, 500)
+        est.n_clusters = 30
+        np.testing.assert_equal(est.max_centers, 30)  # n_clusters and max_centers are aliases
         np.testing.assert_equal(est.metric, 'euclidean')
         np.testing.assert_equal(est.n_jobs, 5)
 

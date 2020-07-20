@@ -171,8 +171,6 @@ class RunningCovar(object):
             * 'dense' : always use dense mode
             * 'sparse' : always use sparse mode if possible
             * 'auto' : automatic
-    column_selection: ndarray(k, dtype=int) or None
-        Indices of those columns that are to be computed. If None, all columns are computed.
     diag_only: bool
         If True, the computation is restricted to the diagonal entries (autocorrelations) only.
     nsave : int
@@ -412,7 +410,6 @@ def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=Fal
         :style: unsrt
         :filter: docname in docnames
         :keyprefix: running-covar-
-
     """
     return RunningCovar(compute_XX=xx, compute_XY=xy, compute_YY=yy, sparse_mode=sparse_mode, modify_data=modify_data,
                         remove_mean=remove_mean, symmetrize=symmetrize,

@@ -62,7 +62,10 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
     for data in inputs:
         data = np.asarray_chkfinite(data)
         data_lagged = data[lagtime:][::stride]
-        data = data[:-lagtime][::stride]
+        if lagtime > 0:
+            data = data[:-lagtime][::stride]
+        else:
+            data = data[0::stride]  # otherwise data is empty as slice over `data[:-0]`
 
         if n_splits is not None:
             assert n_splits >= 1
@@ -70,7 +73,10 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
                                    np.array_split(data_lagged, n_splits)):
                 if len(x) > 0:
                     assert len(x) == len(x_lagged)
-                    yield x, x_lagged
+                    if lagtime > 0:
+                        yield x, x_lagged
+                    else:
+                        yield x
                 else:
                     break
         else:
@@ -78,5 +84,8 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
             while t < len(data):
                 if t == len(data_lagged):
                     break
-                yield data[t:min(t+chunksize, len(data))], data_lagged[t:min(t+chunksize, len(data_lagged))]
+                if lagtime > 0:
+                    yield data[t:min(t+chunksize, len(data))], data_lagged[t:min(t+chunksize, len(data_lagged))]
+                else:
+                    yield data[t:min(t+chunksize, len(data))]
                 t += chunksize
