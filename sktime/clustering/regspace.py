@@ -1,13 +1,11 @@
 import warnings
-from typing import Optional
 
 import numpy as np
 
-from ..base import Estimator
-from .cluster_model import ClusterModel
-
-from . import _clustering_bindings as _bd, metrics
+from . import metrics
 from ._clustering_bindings import regspace as _regspace_ext
+from .cluster_model import ClusterModel
+from ..base import Estimator
 
 __all__ = ['RegularSpaceClustering']
 
@@ -32,16 +30,16 @@ class RegularSpaceClustering(Estimator):
         :keyprefix: regspace-
     """
 
-    def __init__(self, dmin, max_centers=1000, metric: str = 'euclidean', n_jobs=None):
+    def __init__(self, dmin: float, max_centers: int = 1000, metric: str = 'euclidean', n_jobs=None):
         r"""
         Initializes a new regular space clustering estimator.
 
         Parameters
         ----------
         dmin : float
-            Minimum distance between all clusters.
+            Minimum distance between all clusters, must be non-negative.
         max_centers : int
-            If this threshold is met during finding the centers, the algorithm will terminate.
+            If this threshold is met during finding the centers, the algorithm will terminate. Must be positive.
         metric : str, default='euclidean'
             The metric to use during clustering. For a list of available metrics,
             see the :data:`metric registry <sktime.clustering.metrics>`.
@@ -101,8 +99,8 @@ class RegularSpaceClustering(Estimator):
 
     @max_centers.setter
     def max_centers(self, value: int):
-        if value < 0:
-            raise ValueError("max_centers has to be non-negative")
+        if value <= 0:
+            raise ValueError("max_centers has to be positive")
 
         self._max_centers = value
 
