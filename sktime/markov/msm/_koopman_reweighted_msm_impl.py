@@ -1,6 +1,6 @@
-# This file is part of PyEMMA.
+# This file is part of scikit-time and PyEMMA.
 #
-# Copyright (c) 2014-2019 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
+# Copyright (c) 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
 #
 # PyEMMA is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
