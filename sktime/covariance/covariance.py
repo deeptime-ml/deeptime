@@ -136,14 +136,15 @@ class Covariance(Estimator):
         :filter: docname in docnames
         :keyprefix: covariance-
     """
-    def __init__(self, lagtime: int, compute_c00: bool = True, compute_c0t: bool = False, compute_ctt: bool = False,
-                 remove_data_mean: bool = False, reversible: bool = False, bessels_correction: bool = True,
-                 sparse_mode: str = 'auto', ncov: int = 5, diag_only: bool = False, model=None):
+    def __init__(self, lagtime: Optional[int] = None, compute_c00: bool = True, compute_c0t: bool = False,
+                 compute_ctt: bool = False, remove_data_mean: bool = False, reversible: bool = False,
+                 bessels_correction: bool = True, sparse_mode: str = 'auto', ncov: int = 5, diag_only: bool = False,
+                 model=None):
         r""" Initializes a new online covariance estimator.
 
         Parameters
         ----------
-        lagtime : int
+        lagtime : int, optional, default=None
             The lagtime, must be :math:`\geq 0` .
         compute_c00 : bool, optional, default=True
             Compute instantaneous correlations over the first part of the data. If :attr:`lagtime` ==0,
