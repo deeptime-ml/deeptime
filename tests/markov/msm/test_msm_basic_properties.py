@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import scipy
 from numpy.testing import *
+from scipy.sparse import issparse
 
 from tests.markov.msm.util import MLMSM_PARAMS, AMM_PARAMS, MLMSM_IDS, AMM_IDS, make_double_well
 from sktime.markov.msm import MaximumLikelihoodMSM
@@ -29,6 +30,36 @@ class TestMSMBasicProperties(object):
         assert_(len(scenario.msm.count_model.state_symbols) <= scenario.msm.count_model.n_states_full)
         # should be length of n_states
         assert_equal(len(scenario.msm.count_model.state_symbols), scenario.msm.count_model.n_states)
+
+    def test_propagate(self, setting):
+        scenario = make_double_well(setting)
+        sd = scenario.msm.propagate(scenario.msm.stationary_distribution, 10)
+        assert_array_almost_equal(sd, scenario.msm.stationary_distribution)
+
+    def test_compute_state_indices(self, setting):
+        scenario = make_double_well(setting)
+        dtrajs = [np.array([1, 0]), np.array([18, 19, 18, 33, 1, 0]), np.array([18, 19, 18, 1, 0])]
+        ix = scenario.msm.compute_state_indices(dtrajs)
+        for state, indices in enumerate(ix):
+            for traj, frame in indices:
+                assert_equal(dtrajs[traj][frame], scenario.msm.count_model.state_symbols[state])
+
+        with assert_raises(ValueError):
+            scenario.msm.compute_state_indices(np.array([0] * 22))  # state 0 is not represented
+
+    def test_hmm_coarse_graining_sanity(self, setting):
+        scenario = make_double_well(setting)
+        reversible = scenario.msm.reversible
+        sparse = scenario.msm.sparse
+        if isinstance(scenario.msm, AugmentedMSM):
+            assert_equal(scenario.msm.hmm, None)  # not supported for AMMs
+        elif reversible and not sparse:
+            hmm = scenario.msm.hmm(scenario.data.dtraj, nhidden=2)
+            assert_equal(hmm.n_hidden_states, 2)
+            assert_equal(hmm.n_observation_states, scenario.msm.count_model.n_states_full)
+        else:
+            with assert_raises(ValueError):
+                scenario.msm.hmm(scenario.data.dtraj, nhidden=2)
 
     def test_n_states_property(self, setting):
         scenario = make_double_well(setting)

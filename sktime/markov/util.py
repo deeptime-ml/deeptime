@@ -239,26 +239,6 @@ def closed_sets(count_matrix, connectivity_threshold: float=0):
     return closed
 
 
-def nonempty_set(count_matrix, connectivity_threshold: float = 0):
-    r"""
-    todo
-    Returns the set of states that have at least one incoming or outgoing count.
-    Parameters
-    ----------
-    count_matrix
-    connectivity_threshold
-
-    Returns
-    -------
-
-    """
-    # truncate to states with at least one observed incoming or outgoing count.
-    if connectivity_threshold > 0:
-        count_matrix = count_matrix.copy()
-        count_matrix[np.where(count_matrix < connectivity_threshold)] = 0
-    return np.where(count_matrix.sum(axis=0) + count_matrix.sum(axis=1) > 0)[0]
-
-
 def is_connected(count_matrix, connectivity_threshold: float=0, directed=True):
     r"""
     todo

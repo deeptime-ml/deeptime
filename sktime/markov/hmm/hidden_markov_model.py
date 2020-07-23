@@ -445,6 +445,7 @@ class HiddenMarkovStateModel(Model):
         """
         if not self.hidden_state_trajectories:
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
+        observations = ensure_dtraj_list(observations)
 
         from sktime.markov.hmm.util import observations_in_state
         return observations_in_state(self.hidden_state_trajectories, observations, state_index)

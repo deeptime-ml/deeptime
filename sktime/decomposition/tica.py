@@ -157,7 +157,7 @@ class TICA(VAMP):
         # diagonalize with low rank approximation
         try:
             eigenvalues, eigenvectors, rank = eig_corr(covariances.cov_00, covariances.cov_0t, epsilon,
-                                                       sign_maxelement=True, return_rank=True)
+                                                       canonical_signs=True, return_rank=True)
         except ZeroRankError:
             raise ZeroRankError('All input features are constant in all time steps. '
                                 'No dimension would be left after dimension reduction.')

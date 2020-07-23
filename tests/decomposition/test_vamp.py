@@ -27,6 +27,7 @@ import pytest
 
 from sktime.covariance import Covariance
 from sktime.data.util import timeshifted_split
+from sktime.decomposition import KoopmanModel
 from sktime.decomposition.vamp import VAMP
 from sktime.markov._base import cvsplit_dtrajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
@@ -44,15 +45,38 @@ def random_matrix(n, rank=None, eps=0.01):
 
 
 @pytest.mark.parametrize("with_statistics", [True, False], ids=["w/ statistics", "w/o statistics"])
-def test_expectation_sanity(with_statistics):
+@pytest.mark.parametrize("lag_multiple", [1, 2, 3], ids=lambda x: f"lag_multiple={x}")
+def test_expectation_sanity(with_statistics, lag_multiple):
     data = np.random.normal(size=(10000, 5))
     vamp = VAMP().fit_from_timeseries(data, lagtime=1).fetch_model()
-    observations = np.random.normal(size=(100, 5))
+    input_dimension = 5
+    n_observables = 10
+
+    observations = np.random.normal(size=(input_dimension, n_observables))
     if with_statistics:
-        statistics = np.random.normal(size=(100, 5)).T
+        n_statistics = 50
+        statistics = np.random.normal(size=(input_dimension, n_statistics))
     else:
         statistics = None
-    vamp.expectation(observations.T, statistics)
+    vamp.expectation(observations, statistics, lag_multiple=lag_multiple)
+
+
+@pytest.mark.parametrize('components', [None, 0, [0, 1]], ids=lambda x: f"components={x}")
+def test_forward(components):
+    K = np.diag(np.array([3., 2., 1.]))
+    model = KoopmanModel(K, basis_transform_forward=None, basis_transform_backward=None)
+    data = np.random.normal(size=(100, 3))
+    fwd = model.forward(data, components=components)
+    if components is not None:
+        components = np.atleast_1d(components)
+        # update K
+        K = K.copy()
+        for i in range(len(K)):
+            if i not in components:
+                K[i, i] = 0.
+    if components is None:
+        np.testing.assert_array_almost_equal(fwd, data @ K)
+
 
 
 class TestVAMPEstimatorSelfConsistency(unittest.TestCase):

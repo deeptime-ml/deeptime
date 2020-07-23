@@ -71,8 +71,8 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
 
         * 'QR': QR-based robust eigenvalue decomposition of W
         * 'schur': Schur decomposition of W
-    canonical_signs : boolean, default = False
-        Fix signs in V, s. t. the largest element of in every row of V is positive.
+    canonical_signs : bool, default = False
+        Fix signs in V, such that the largest element in every column of V is positive.
 
     Returns
     -------
@@ -255,7 +255,7 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
     return L
 
 
-def eig_corr(C0, Ct, epsilon=1e-10, method='QR', sign_maxelement=False, return_rank=False):
+def eig_corr(C0, Ct, epsilon=1e-10, method='QR', canonical_signs=False, return_rank=False):
     r""" Solve generalized eigenvalue problem with correlation matrices C0 and Ct
 
     Numerically robust solution of a generalized Hermitian (symmetric) eigenvalue
@@ -288,7 +288,7 @@ def eig_corr(C0, Ct, epsilon=1e-10, method='QR', sign_maxelement=False, return_r
 
         * 'QR': QR-based robust eigenvalue decomposition of W
         * 'schur': Schur decomposition of W
-    sign_maxelement : bool
+    canonical_signs : bool
         If True, re-scale each eigenvector such that its entry with maximal absolute value
         is positive.
     return_rank : bool, default=False
@@ -321,7 +321,7 @@ def eig_corr(C0, Ct, epsilon=1e-10, method='QR', sign_maxelement=False, return_r
     R = _np.dot(L, R_trans)
 
     # Change signs of eigenvectors:
-    if sign_maxelement:
+    if canonical_signs:
         for j in range(R.shape[1]):
             imax = _np.argmax(_np.abs(R[:, j]))
             R[:, j] *= _np.sign(R[imax, j])
