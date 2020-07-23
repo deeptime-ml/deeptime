@@ -1,4 +1,4 @@
-# This file is part of sktime.
+# This file is part of scikit-time.
 #
 # Copyright (c) 2020 Frank Noe (Freie Universitaet Berlin)
 # and John D. Chodera (Memorial Sloan-Kettering Cancer Center, New York)
