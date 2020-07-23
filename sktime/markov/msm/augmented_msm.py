@@ -441,7 +441,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             state.update_pi_hat()
             # a number of sanity checks
             while np.any(state.pi_hat < 1e-12) and frac > 0.05:
-                frac = frac * 0.5
+                frac *= 0.5
                 state.lagrange = l_old - frac * dl
                 state.update_pi_hat()
 

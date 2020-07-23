@@ -458,7 +458,7 @@ class MarkovStateModel(Model):
         if self.sparse:
             pk = np.array(p0)
             for i in range(k):
-                pk = pk.T.dot(self.transition_matrix)
+                pk = self.transition_matrix.T.dot(pk)
         else:  # dense: employ eigenvalue decomposition
             self._ensure_eigendecomposition(self.n_states)
             pk = mdot(p0.T,
@@ -1072,6 +1072,9 @@ class MarkovStateModel(Model):
         """
         if self.count_model is not None:
             dtrajs = self.count_model.transform_discrete_trajectories_to_submodel(dtrajs)
+        if all(np.all(dtraj == -1) for dtraj in dtrajs):
+            raise ValueError("None of the symbols in the discrete trajectories were represented in the "
+                             "Markov state model as states.")
         return compute_index_states(dtrajs)
 
     ################################################################################
@@ -1106,6 +1109,11 @@ class MarkovStateModel(Model):
             :keyprefix: msm-hmm-
             :labelprefix: hmm-
         """
+        if not self.reversible:
+            raise ValueError("Can only use HMM coarse-graining if the estimate was reversible. This is due to the use "
+                             "of PCCA+ as initial estimate of the hidden transition matrix.")
+        if self.sparse:
+            raise ValueError("Not implemented for sparse transition matrices.")
         # check if the time-scale separation is OK
         # if hmm.n_states = msm.n_states there is no problem. Otherwise, check spectral gap
         if self.n_states > nhidden:
@@ -1113,16 +1121,12 @@ class MarkovStateModel(Model):
             timescale_ratios = ts[:-1] / ts[1:]
             if timescale_ratios[nhidden - 2] < 1.5:
                 import warnings
-                warnings.warn('Requested coarse-grained model with {nhidden} metastable states at lag={lag}.'
-                              ' The ratio of relaxation timescales between'
-                              ' {nhidden} and {nhidden_1} states is only {ratio}'
-                              ' while we recommend at least 1.5.'
-                              ' It is possible that the resulting HMM is inaccurate. Handle with caution.'.format(
-                    lag=self.lagtime,
-                    nhidden=nhidden,
-                    nhidden_1=nhidden + 1,
-                    ratio=timescale_ratios[nhidden - 2],
-                ), stacklevel=2)
+                warnings.warn(f'Requested coarse-grained model with {nhidden} metastable states at lag={self.lagtime}.'
+                              f' The ratio of relaxation timescales between'
+                              f' {nhidden} and {nhidden+1} states is only {timescale_ratios[nhidden - 2]}'
+                              f' while we recommend at least 1.5.'
+                              f' It is possible that the resulting HMM is inaccurate. Handle with caution.',
+                              stacklevel=2)
         # run HMM estimate
         from sktime.markov.hmm import MaximumLikelihoodHMSM, init
         init_hmm = init.discrete.metastable_from_msm(self, nhidden, reversible=self.reversible)

@@ -131,6 +131,9 @@ class TestMLHMM(unittest.TestCase):
     # Test basic HMM properties
     # =============================================================================
 
+    def test_collect_observations_in_state_sanity(self):
+        self.hmm_lag1.collect_observations_in_state(self.dtrajs, 1)
+
     def test_output_model(self):
         assert isinstance(self.hmm_lag1.output_model, DiscreteOutputModel)
         assert isinstance(self.hmm_lag10.output_model, DiscreteOutputModel)
