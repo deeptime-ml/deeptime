@@ -2,16 +2,31 @@ import unittest
 
 import msmtools
 import numpy as np
+import pytest
 import sktime.markov.hmm._hmm_bindings as _bindings
 
-from sktime.markov.hmm import init
+from sktime.markov.hmm import init, BayesianHMSM
 from sktime.data.double_well_dataset import DoubleWellDiscrete
 from sktime.markov.hmm import MaximumLikelihoodHMSM
 from sktime.markov.hmm.hidden_markov_model import viterbi
 from sktime.markov.hmm.output_model import DiscreteOutputModel
+from sktime.markov.msm import MarkovStateModel
 from sktime.markov.util import count_states
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 from tests.util import assert_array_not_equal
+
+
+@pytest.mark.parametrize('mode', ['maximum-likelihood', 'bayesian'], ids=lambda mode: f"mode={mode}")
+@pytest.mark.parametrize('reversible', [True, False], ids=lambda rev: f"reversible={rev}")
+def test_disconnected_dtraj_sanity(mode, reversible):
+    msm1 = MarkovStateModel([[.8, .2], [.3, .7]])
+    msm2 = MarkovStateModel([[.9, .05, .05], [.3, .6, .1], [.1, .1, .8]])
+    dtrajs = [msm1.simulate(10000), 2 + msm2.simulate(10000), np.array([5]*100)]
+    init_hmm = init.discrete.random_guess(6, 3)
+    hmm = MaximumLikelihoodHMSM(init_hmm, lagtime=1, reversible=reversible) \
+        .fit(dtrajs).fetch_model()
+    if mode == 'bayesian':
+        BayesianHMSM(hmm.submodel_largest(dtrajs=dtrajs), reversible=reversible).fit(dtrajs)
 
 
 class TestAlgorithmsAgainstReference(unittest.TestCase):
@@ -115,7 +130,6 @@ class TestMLHMM(unittest.TestCase):
     # =============================================================================
     # Test basic HMM properties
     # =============================================================================
-
 
     def test_output_model(self):
         assert isinstance(self.hmm_lag1.output_model, DiscreteOutputModel)
@@ -236,14 +250,16 @@ class TestMLHMM(unittest.TestCase):
     def test_observation_probabilities(self):
         np.testing.assert_array_equal(self.hmm_lag1.output_probabilities.shape, (2, self.hmm_lag1.n_observation_states))
         np.testing.assert_allclose(self.hmm_lag1.output_probabilities.sum(axis=1), np.ones(2))
-        np.testing.assert_array_equal(self.hmm_lag10.output_probabilities.shape, (2, self.hmm_lag10.n_observation_states))
+        np.testing.assert_array_equal(self.hmm_lag10.output_probabilities.shape,
+                                      (2, self.hmm_lag10.n_observation_states))
         np.testing.assert_allclose(self.hmm_lag10.output_probabilities.sum(axis=1), np.ones(2))
 
     def test_transition_matrix_obs(self):
         assert np.array_equal(self.hmm_lag1_largest.transition_matrix_obs().shape,
                               (self.hmm_lag1_largest.n_observation_states, self.hmm_lag1_largest.n_observation_states))
         assert np.array_equal(self.hmm_lag10_largest.transition_matrix_obs().shape,
-                              (self.hmm_lag10_largest.n_observation_states, self.hmm_lag10_largest.n_observation_states))
+                              (
+                              self.hmm_lag10_largest.n_observation_states, self.hmm_lag10_largest.n_observation_states))
         for T in [self.hmm_lag1_largest.transition_matrix_obs(),
                   self.hmm_lag1_largest.transition_matrix_obs(k=2),
                   self.hmm_lag10_largest.transition_matrix_obs(),
@@ -323,7 +339,8 @@ class TestMLHMM(unittest.TestCase):
         np.testing.assert_(corr3[0] < corr3[-1])
 
         # test error case of incompatible vector size
-        np.testing.assert_raises(ValueError, hmsm.correlation_obs, np.arange(hmsm.n_hidden_states + hmsm.n_observation_states))
+        np.testing.assert_raises(ValueError, hmsm.correlation_obs,
+                                 np.arange(hmsm.n_hidden_states + hmsm.n_observation_states))
 
     def test_relaxation(self):
         # todo this only really tests the hidden msm relaxation
@@ -371,7 +388,8 @@ class TestMLHMM(unittest.TestCase):
         np.testing.assert_allclose(fp1[1][1:], -fp3[1][1:])
 
         # test error case of incompatible vector size
-        self.assertRaises(ValueError, hmsm.fingerprint_correlation_obs, np.arange(hmsm.n_hidden_states + hmsm.n_observation_states))
+        self.assertRaises(ValueError, hmsm.fingerprint_correlation_obs,
+                          np.arange(hmsm.n_hidden_states + hmsm.n_observation_states))
 
     def test_fingerprint_relaxation(self):
         hmsm = self.hmm_lag10_largest

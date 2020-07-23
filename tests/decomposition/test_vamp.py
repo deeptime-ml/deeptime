@@ -47,12 +47,16 @@ def random_matrix(n, rank=None, eps=0.01):
 def test_expectation_sanity(with_statistics):
     data = np.random.normal(size=(10000, 5))
     vamp = VAMP().fit_from_timeseries(data, lagtime=1).fetch_model()
-    observations = np.random.normal(size=(100, 5))
+    input_dimension = 5
+    n_observables = 10
+
+    observations = np.random.normal(size=(input_dimension, n_observables))
     if with_statistics:
-        statistics = np.random.normal(size=(100, 5)).T
+        n_statistics = 50
+        statistics = np.random.normal(size=(input_dimension, n_statistics))
     else:
         statistics = None
-    vamp.expectation(observations.T, statistics)
+    vamp.expectation(observations, statistics)
 
 
 class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
