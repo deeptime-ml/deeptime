@@ -25,13 +25,13 @@ r"""Unit test for the MSM module
 import collections
 import unittest
 
-import msmtools.analysis as msmana
-import msmtools.estimation as msmest
+import sktime.markov.tools.analysis as msmana
+import sktime.markov.tools.estimation as msmest
 import numpy as np
 import pytest
 import scipy.sparse
-from msmtools.generation import generate_traj
-from msmtools.util.birth_death_chain import BirthDeathChain
+from sktime.markov.tools.generation import generate_traj
+from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import *
 
 from sktime.markov._base import score_cv

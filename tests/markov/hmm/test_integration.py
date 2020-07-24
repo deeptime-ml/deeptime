@@ -15,14 +15,14 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import itertools
 import unittest
 
 import numpy as np
 from sktime.markov._markov_bindings import simulation as generation_bindings
+
+import sktime.markov.tools.analysis
 from sktime.markov.hmm import MaximumLikelihoodHMSM
-import sktime
-import itertools
-import msmtools.analysis
 from tests.util import GenerateTestMatrix
 
 parameter_options = {'reversible': [True, False],
@@ -64,7 +64,7 @@ class TestHMMReconstruction(unittest.TestCase, metaclass=GenerateTestMatrix):
                                  [0.1, 0.8, 0.1],
                                  [0.1, 0.2, 0.7]])
 
-        cls.hidden_stationary_distribution = msmtools.analysis.stationary_distribution(cls.T_hidden)
+        cls.hidden_stationary_distribution = sktime.markov.tools.analysis.stationary_distribution(cls.T_hidden)
 
         cls.n_hidden = cls.T_hidden.shape[0]
         n_obs_per_hidden_state = 5

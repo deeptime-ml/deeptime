@@ -1,6 +1,6 @@
 import unittest
 
-import msmtools
+import sktime.markov.tools
 import numpy as np
 import pytest
 import sktime.markov.hmm._hmm_bindings as _bindings
@@ -157,7 +157,7 @@ class TestMLHMM(unittest.TestCase):
         np.testing.assert_equal(self.hmm_lag10.transition_model.n_states, 2)
 
     def test_transition_matrix(self):
-        import msmtools.analysis as msmana
+        import sktime.markov.tools.analysis as msmana
         for P in [self.hmm_lag1.transition_model.transition_matrix, self.hmm_lag10.transition_model.transition_matrix]:
             np.testing.assert_(msmana.is_transition_matrix(P))
             np.testing.assert_(msmana.is_reversible(P))
@@ -267,8 +267,8 @@ class TestMLHMM(unittest.TestCase):
                   self.hmm_lag1_largest.transition_matrix_obs(k=2),
                   self.hmm_lag10_largest.transition_matrix_obs(),
                   self.hmm_lag10_largest.transition_matrix_obs(k=4)]:
-            np.testing.assert_(msmtools.analysis.is_transition_matrix(T))
-            np.testing.assert_(msmtools.analysis.is_reversible(T))
+            np.testing.assert_(sktime.markov.tools.analysis.is_transition_matrix(T))
+            np.testing.assert_(sktime.markov.tools.analysis.is_reversible(T))
 
     def test_stationary_distribution_obs(self):
         for hmsm in [self.hmm_lag1_largest, self.hmm_lag10_largest]:

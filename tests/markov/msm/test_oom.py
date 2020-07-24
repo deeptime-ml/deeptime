@@ -21,8 +21,8 @@ r"""Unit test for the OOM-based MSM estimation.
 """
 import os
 
-import msmtools.analysis as ma
-import msmtools.estimation as msmest
+import sktime.markov.tools.analysis as ma
+import sktime.markov.tools.estimation as msmest
 import numpy as np
 import pytest
 import scipy.linalg as scl
@@ -281,7 +281,7 @@ def test_transition_matrix(oom_msm_scenario):
         # shape
         np.testing.assert_equal(P.shape, (msm.n_states, msm.n_states))
         # test transition matrix properties
-        import msmtools.analysis as msmana
+        import sktime.markov.tools.analysis as msmana
         np.testing.assert_(msmana.is_transition_matrix(P))
         np.testing.assert_(msmana.is_connected(P))
         # REVERSIBLE

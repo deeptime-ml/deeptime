@@ -331,7 +331,7 @@ def stationary_distribution(T):
     >>> T = np.array([[0.9, 0.1, 0.0], [0.4, 0.2, 0.4], [0.0, 0.1, 0.9]])
     >>> mu = stationary_distribution(T)
     >>> mu
-    array([ 0.44444444, 0.11111111, 0.44444444])
+    array([0.44444444, 0.11111111, 0.44444444])
 
     """
     # is this a transition matrix?
@@ -409,7 +409,7 @@ def eigenvalues(T, k=None, ncv=None, reversible=False, mu=None):
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> w = eigenvalues(T)
     >>> w
-    array([ 1.0+0.j, 0.9+0.j, -0.1+0.j])
+    array([ 1. +0.j,  0.9+0.j, -0.1+0.j])
 
     """
     T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
@@ -468,7 +468,7 @@ def timescales(T, tau=1, k=None, ncv=None, reversible=False, mu=None):
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> ts = timescales(T)
     >>> ts
-    array([        inf,  9.49122158,  0.43429448])
+    array([       inf, 9.49122158, 0.43429448])
 
     """
     T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
@@ -548,9 +548,8 @@ def eigenvectors(T, k=None, right=True, ncv=None, reversible=False, mu=None):
 
     Matrix with right eigenvectors as columns
 
-    >>> R # doctest: +ELLIPSIS
-    array([[  5.77350269e-01,   7.07106781e-01,   9.90147543e-02], ...
-
+    >>> R  # doctest: +ELLIPSIS
+    array([[ 5.77350269e-01,  7.07106781e-01,  9.90147543e-02] ...
     """
     T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
     k = _check_k(T, k)
@@ -622,7 +621,7 @@ def rdl_decomposition(T, k=None, norm='auto', ncv=None, reversible=False, mu=Non
     Matrix with right eigenvectors as columns
 
     >>> R # doctest: +ELLIPSIS
-    array([[  1.00000000e+00,   1.04880885e+00,   3.16227766e-01], ...
+    array([[ 1.00000000e+00,  1.04880885e+00,  3.16227766e-01], ...
 
     Diagonal matrix with eigenvalues
 
@@ -633,7 +632,7 @@ def rdl_decomposition(T, k=None, norm='auto', ncv=None, reversible=False, mu=Non
 
     Matrix with left eigenvectors as rows
 
-    >>> L # +doctest: +ELLIPSIS
+    >>> L # doctest: +ELLIPSIS
     array([[  4.54545455e-01,   9.09090909e-02,   4.54545455e-01], ...
 
     """
@@ -709,7 +708,7 @@ def mfpt(T, target, origin=None, tau=1, mu=None):
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> m_t = mfpt(T, 0)
     >>> m_t
-    array([  0.,  12.,  22.])
+    array([ 0., 12., 22.])
 
     """
     # check inputs
@@ -866,12 +865,11 @@ def committor(T, A, B, forward=True, mu=None):
 
     >>> u_plus = committor(T, A, B)
     >>> u_plus
-    array([ 0. ,  0.5,  1. ])
+    array([0. , 0.5, 1. ])
 
     >>> u_minus = committor(T, A, B, forward=False)
     >>> u_minus
-    array([ 1.        ,  0.45454545,  0.        ])
-
+    array([1.        , 0.45454545, 0.        ])
     """
     T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
     A = _types.ensure_int_vector(A)
@@ -939,9 +937,9 @@ def expected_counts(T, p0, N):
     >>> EC = expected_counts(T, p0, N)
 
     >>> EC
-    array([[ 45.44616147,   5.0495735 ,   0.        ],
-           [  4.50413223,   0.        ,   4.50413223],
-           [  0.        ,   4.04960006,  36.44640052]])
+    array([[45.44616147,  5.0495735 ,  0.        ],
+           [ 4.50413223,  0.        ,  4.50413223],
+           [ 0.        ,  4.04960006, 36.44640052]])
 
     """
     # check input
@@ -994,9 +992,9 @@ def expected_counts_stationary(T, N, mu=None):
     >>> EC = expected_counts_stationary(T, N)
 
     >>> EC
-    array([[ 40.90909091,   4.54545455,   0.        ],
-           [  4.54545455,   0.        ,   4.54545455],
-           [  0.        ,   4.54545455,  40.90909091]])
+    array([[40.90909091,  4.54545455,  0.        ],
+           [ 4.54545455,  0.        ,  4.54545455],
+           [ 0.        ,  4.54545455, 40.90909091]])
 
     """
     # check input
@@ -1103,7 +1101,7 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
     >>> ts, amp = fingerprint_correlation(T, a)
 
     >>> ts
-    array([        inf,  9.49122158,  0.43429448])
+    array([       inf, 9.49122158, 0.43429448])
 
     >>> amp
     array([ 0.20661157,  0.22727273,  0.02066116])
@@ -1196,7 +1194,7 @@ def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
     >>> ts, amp = fingerprint_relaxation(T, p0, a)
 
     >>> ts
-    array([        inf,  9.49122158,  0.43429448])
+    array([       inf, 9.49122158, 0.43429448])
 
     >>> amp
     array([ 0.45454545,  0.5       ,  0.04545455])
@@ -1345,7 +1343,7 @@ def correlation(T, obs1, obs2=None, times=(1), maxtime=None, k=None, ncv=None, r
 
     >>> corr = correlation(T, a, times=times)
     >>> corr
-    array([ 0.40909091,  0.34081364,  0.28585667,  0.23424263])
+    array([0.40909091, 0.34081364, 0.28585667, 0.23424263])
 
     """
     # check if square matrix and remember size
@@ -1421,7 +1419,7 @@ def relaxation(T, p0, obs, times=(1), k=None, ncv=None):
 
     >>> rel = relaxation(T, p0, a, times=times)
     >>> rel
-    array([ 1.        ,  0.8407    ,  0.71979377,  0.60624287])
+    array([1.        , 0.8407    , 0.71979377, 0.60624287])
 
     """
     # check if square matrix and remember size

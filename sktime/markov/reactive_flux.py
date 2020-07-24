@@ -23,7 +23,7 @@ __moduleauthor__ = "Benjamin Trendelkamp-Schroer, Frank Noe, Martin Scherer"
 
 """
 import numpy as np
-from msmtools import flux as tptapi
+from .tools import flux as tptapi
 
 from sktime.base import Model
 from sktime.markov import Q_

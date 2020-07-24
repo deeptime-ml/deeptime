@@ -1,4 +1,3 @@
-
 # This file is part of PyEMMA.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -35,19 +34,16 @@ Now, Bar.foo.__doc__ == Bar().foo.__doc__ == Foo.foo.__doc__ == "Frobber"
 """
 from functools import wraps
 import warnings
-from decorator import decorator, decorate
 from inspect import stack
 
 __all__ = ['alias',
            'aliased',
-           'deprecated',
            'doc_inherit',
            'shortcut',
            ]
 
 
 class DocInherit(object):
-
     """
     Docstring inheriting method descriptor
 
@@ -93,7 +89,9 @@ class DocInherit(object):
         func.__doc__ = source.__doc__
         return func
 
+
 doc_inherit = DocInherit
+
 
 class alias(object):
     """
@@ -173,6 +171,7 @@ def shortcut(*names):
     >>> is_tmatrix(args) # doctest: +SKIP
 
     """
+
     def wrap(f):
         globals_ = f.__globals__
         for name in names:
@@ -180,48 +179,5 @@ def shortcut(*names):
             if '__all__' in globals_ and name not in globals_['__all__']:
                 globals_['__all__'].append(name)
         return f
+
     return wrap
-
-
-def deprecated(*optional_message):
-    """This is a decorator which can be used to mark functions
-    as deprecated. It will result in a warning being emitted
-    when the function is used.
-
-    Parameters
-    ----------
-    *optional_message : str
-        an optional user level hint which should indicate which feature to use otherwise.
-
-    """
-    def _deprecated(func, *args, **kw):
-        caller_stack = stack()[1:]
-        while len(caller_stack) > 0:
-            frame = caller_stack.pop(0)
-            filename = frame[1]
-            # skip callee frames if they are other decorators or this file(func)
-            if 'decorator' in filename or __file__ in filename:
-                continue
-            else: break
-        lineno = frame[2]
-        # avoid cyclic references!
-        del caller_stack, frame
-
-        user_msg = 'Call to deprecated function "%s". Called from %s line %i. %s' \
-                   % (func.__name__, filename, lineno, msg)
-
-        warnings.warn_explicit(
-            user_msg,
-            category=DeprecationWarning,
-            filename=filename,
-            lineno=lineno
-        )
-        return func(*args, **kw)
-    if len(optional_message) == 1 and callable(optional_message[0]):
-        # this is the function itself, decorate!
-        msg = ""
-        return decorate(optional_message[0], _deprecated)
-    else:
-        # actually got a message (or empty parenthesis)
-        msg = optional_message[0] if len(optional_message) > 0 else ""
-        return decorator(_deprecated)

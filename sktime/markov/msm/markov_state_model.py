@@ -21,7 +21,6 @@
 from typing import Optional, List
 from math import ceil
 
-import sktime.markov.tools.analysis as msmana
 import numpy as np
 from scipy.sparse import issparse
 
@@ -30,6 +29,7 @@ from sktime.markov.pcca import pcca, PCCAModel
 from sktime.markov.reactive_flux import ReactiveFlux
 from sktime.markov.sample import ensure_dtraj_list, compute_index_states
 from sktime.markov.transition_counting import TransitionCountModel
+from sktime.markov.tools import analysis as msmana
 from sktime.numeric import mdot, is_square_matrix
 from sktime.util import ensure_ndarray, submatrix, cached_property
 
@@ -910,7 +910,6 @@ class MarkovStateModel(Model):
             Reactive Flux model
         """
         from sktime.markov.tools.flux import flux_matrix, to_netflux
-        import sktime.markov.tools.analysis as msmana
         from sktime.util import ensure_ndarray
         from sktime.markov import ReactiveFlux
 
