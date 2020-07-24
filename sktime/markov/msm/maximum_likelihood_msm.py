@@ -19,7 +19,7 @@
 from typing import Optional, Union, List
 
 import numpy as np
-from msmtools import estimation as msmest
+from sktime.markov.tools import estimation as msmest
 from scipy.sparse import issparse
 
 from .markov_state_model import MarkovStateModelCollection

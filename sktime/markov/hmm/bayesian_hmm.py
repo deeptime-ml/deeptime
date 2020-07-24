@@ -21,9 +21,9 @@ from copy import deepcopy
 from typing import Optional, Union, List
 
 import numpy as np
-from msmtools.analysis import is_connected
-from msmtools.dtraj import number_of_states
-from msmtools.estimation import sample_tmatrix, transition_matrix
+from sktime.markov.tools.analysis import is_connected
+from sktime.markov.tools.dtraj import number_of_states
+from sktime.markov.tools.estimation import sample_tmatrix, transition_matrix
 
 from sktime.base import Estimator
 from sktime.markov._base import BayesianPosterior

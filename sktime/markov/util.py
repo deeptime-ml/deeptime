@@ -113,10 +113,10 @@ def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
     if msm_non_rev.n_states > n_states:
         # because we use non-reversible msm, we want to silence the ImaginaryEigenvalueWarning
         import warnings
-        from msmtools.util.exceptions import ImaginaryEigenValueWarning
+        from sktime.markov.tools.util.exceptions import ImaginaryEigenValueWarning
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=ImaginaryEigenValueWarning,
-                                    module='msmtools.analysis.dense.decomposition')
+                                    module='sktime.markov.tools.analysis.dense.decomposition')
             correlation_time = max(1, msm_non_rev.timescales()[n_states - 1])
         # use the smaller of these two pessimistic estimates
         stride = int(min(lagtime, 2 * correlation_time))
@@ -197,7 +197,7 @@ def compute_connected_sets(count_matrix, connectivity_threshold: float = 0, dire
     A list of arrays, each array representing a connected set by enumerating the respective states. The list is in
     descending order by size of connected set.
     """
-    import msmtools.estimation as msmest
+    import sktime.markov.tools.estimation as msmest
     import scipy.sparse as scs
     if connectivity_threshold > 0:
         if scs.issparse(count_matrix):

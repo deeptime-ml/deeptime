@@ -21,7 +21,7 @@
 from typing import Optional, List
 from math import ceil
 
-import msmtools.analysis as msmana
+import sktime.markov.tools.analysis as msmana
 import numpy as np
 from scipy.sparse import issparse
 
@@ -233,7 +233,7 @@ class MarkovStateModel(Model):
     def stationary_distribution(self):
         """The stationary distribution on the MarkovStateModel states"""
         if self._stationary_distribution is None:
-            from msmtools.analysis import stationary_distribution as compute_sd
+            from sktime.markov.tools.analysis import stationary_distribution as compute_sd
             stationary_distribution = compute_sd(self.transition_matrix)
             if not np.allclose(np.sum(stationary_distribution), 1., atol=1e-14):
                 raise ValueError("Stationary distribution did not sum up to 1 "
@@ -253,7 +253,7 @@ class MarkovStateModel(Model):
 
     def _compute_eigenvalues(self, neig):
         """ Conducts the eigenvalue decomposition and stores k eigenvalues """
-        from msmtools.analysis import eigenvalues as anaeig
+        from sktime.markov.tools.analysis import eigenvalues as anaeig
 
         if self.reversible:
             self._eigenvalues = anaeig(self.transition_matrix, k=neig, ncv=self._ncv,
@@ -293,7 +293,7 @@ class MarkovStateModel(Model):
         the normalized left eigenvectors.
 
         """
-        from msmtools.analysis import rdl_decomposition
+        from sktime.markov.tools.analysis import rdl_decomposition
 
         R, D, L = rdl_decomposition(self.transition_matrix, k=n_eigenvalues,
                                     norm='standard' if not self.reversible else 'reversible',
@@ -414,7 +414,7 @@ class MarkovStateModel(Model):
             self._ensure_eigenvalues()
         else:
             self._ensure_eigenvalues(neig=k + 1)
-        from msmtools.analysis.dense.decomposition import timescales_from_eigenvalues as timescales
+        from sktime.markov.tools.analysis.dense.decomposition import timescales_from_eigenvalues as timescales
 
         ts = timescales(self._eigenvalues, tau=self.lagtime)
         if k is None:
@@ -494,7 +494,7 @@ class MarkovStateModel(Model):
         B : int or int array
             set of target states
         """
-        from msmtools.analysis import mfpt
+        from sktime.markov.tools.analysis import mfpt
         self._assert_in_active(A)
         self._assert_in_active(B)
         return self.lagtime * mfpt(self.transition_matrix, B, origin=A, mu=self.stationary_distribution)
@@ -509,7 +509,7 @@ class MarkovStateModel(Model):
         B : int or int array
             set of target states
         """
-        from msmtools.analysis import committor
+        from sktime.markov.tools.analysis import committor
         self._assert_in_active(A)
         self._assert_in_active(B)
         return committor(self.transition_matrix, A, B, forward=True)
@@ -526,7 +526,7 @@ class MarkovStateModel(Model):
         """
         self._assert_in_active(A)
         self._assert_in_active(B)
-        from msmtools.analysis import committor
+        from sktime.markov.tools.analysis import committor
         return committor(self.transition_matrix, A, B, forward=False, mu=self.stationary_distribution)
 
     def expectation(self, a: np.ndarray):
@@ -669,7 +669,7 @@ class MarkovStateModel(Model):
             maxtime = 5 * self.timescales()[0]
         steps = np.arange(int(ceil(float(maxtime) / self.lagtime)))
         # compute correlation
-        from msmtools.analysis import correlation
+        from sktime.markov.tools.analysis import correlation
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
         res = correlation(self.transition_matrix, a, obs2=b, times=steps, k=k, ncv=ncv)
@@ -719,7 +719,7 @@ class MarkovStateModel(Model):
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
-        from msmtools.analysis import fingerprint_correlation as fc
+        from sktime.markov.tools.analysis import fingerprint_correlation as fc
         return fc(self.transition_matrix, a, obs2=b, tau=self.lagtime, k=k, ncv=ncv)
 
     def relaxation(self, p0, a, maxtime=None, k=None, ncv=None):
@@ -798,7 +798,7 @@ class MarkovStateModel(Model):
         kmax = int(ceil(float(maxtime) / self.lagtime))
         steps = np.array(list(range(kmax)), dtype=int)
         # compute relaxation function
-        from msmtools.analysis import relaxation
+        from sktime.markov.tools.analysis import relaxation
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
         res = relaxation(self.transition_matrix, p0, a, times=steps, k=k, ncv=ncv)
@@ -843,7 +843,7 @@ class MarkovStateModel(Model):
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
-        from msmtools.analysis import fingerprint_relaxation as fr
+        from sktime.markov.tools.analysis import fingerprint_relaxation as fr
         return fr(self.transition_matrix, p0, a, tau=self.lagtime, k=k, ncv=ncv)
 
     def pcca(self, n_metastable_sets: int) -> PCCAModel:
@@ -909,8 +909,8 @@ class MarkovStateModel(Model):
         :class:`ReactiveFlux <sktime.markov.ReactiveFlux>`
             Reactive Flux model
         """
-        from msmtools.flux import flux_matrix, to_netflux
-        import msmtools.analysis as msmana
+        from sktime.markov.tools.flux import flux_matrix, to_netflux
+        import sktime.markov.tools.analysis as msmana
         from sktime.util import ensure_ndarray
         from sktime.markov import ReactiveFlux
 
@@ -1040,7 +1040,7 @@ class MarkovStateModel(Model):
         statdist_full = np.zeros(self.count_model.n_states_full)
         statdist_full[self.count_model.state_symbols] = self.stationary_distribution
         # histogram observed states
-        from msmtools.dtraj import count_states
+        from sktime.markov.tools.dtraj import count_states
         hist = 1.0 * count_states(dtrajs)
         # simply read off stationary distribution and accumulate total weight
         W = []
@@ -1209,7 +1209,7 @@ class MarkovStateModel(Model):
         Ctt_train = np.diag(C0t_train.sum(axis=0))  # empirical cov
 
         # test data
-        from msmtools.estimation import count_matrix
+        from sktime.markov.tools.estimation import count_matrix
         C0t_test_raw = count_matrix(dtrajs, self.count_model.lagtime, sparse_return=False)
         # map to present active set
         active_set = self.count_model.state_symbols

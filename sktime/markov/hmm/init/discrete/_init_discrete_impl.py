@@ -401,7 +401,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
     if states is not None:
         counts = counts.submodel(states)
     if '-regularized' in mode:
-        import msmtools.estimation as memest
+        import sktime.markov.tools.estimation as memest
         counts.count_matrix[...] += memest.prior_neighbor(counts.count_matrix, 0.001)
         nonempty = np.where(counts.count_matrix.sum(axis=0) + counts.count_matrix.sum(axis=1) > 0)[0]
         counts.count_matrix[nonempty, nonempty] = np.maximum(counts.count_matrix[nonempty, nonempty], 0.001)

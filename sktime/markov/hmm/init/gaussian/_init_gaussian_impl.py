@@ -53,8 +53,8 @@ def from_data(dtrajs, n_hidden_states, reversible):
     from sktime.markov.hmm import HiddenMarkovStateModel, GaussianOutputModel
     from sklearn.mixture import GaussianMixture
     from sktime.util import ensure_dtraj_list
-    import msmtools.estimation as msmest
-    import msmtools.analysis as msmana
+    import sktime.markov.tools.estimation as msmest
+    import sktime.markov.tools.analysis as msmana
 
     dtrajs = ensure_dtraj_list(dtrajs)
     collected_observations = np.concatenate(dtrajs)

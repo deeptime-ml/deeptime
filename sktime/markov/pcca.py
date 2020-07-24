@@ -64,14 +64,14 @@ def pcca(P, m, stationary_distribution=None):
 
     # stationary distribution
     if stationary_distribution is None:
-        from msmtools.analysis import stationary_distribution as statdist
+        from sktime.markov.tools.analysis import stationary_distribution as statdist
         pi = statdist(P)
     else:
         pi = stationary_distribution
 
     # memberships
     # TODO: can be improved. pcca computes stationary distribution internally, we don't need to compute it twice.
-    from msmtools.analysis.dense.pcca import pcca as _algorithm_impl
+    from sktime.markov.tools.analysis.dense.pcca import pcca as _algorithm_impl
     M = _algorithm_impl(P, m)
 
     # coarse-grained stationary distribution

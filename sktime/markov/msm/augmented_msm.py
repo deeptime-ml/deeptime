@@ -22,7 +22,7 @@ import logging
 from typing import Optional
 
 import numpy as np
-from msmtools import estimation as msmest
+from sktime.markov.tools import estimation as msmest
 from scipy.sparse import issparse
 
 from sktime.markov import TransitionCountModel

@@ -21,7 +21,7 @@ from typing import Union, Optional, List, Callable
 
 import numpy as np
 import scipy
-from msmtools import estimation as msmest
+from sktime.markov.tools import estimation as msmest
 from scipy.sparse import coo_matrix, issparse
 
 from sktime.base import Estimator, Model, Transformer
