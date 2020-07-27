@@ -1,0 +1,19 @@
+language: c
+sudo: false
+
+env:
+  global:
+    - PATH=$HOME/miniconda/bin:$PATH
+  matrix:
+    - python=3.6  CONDA_PY=36  CONDA_NPY=111
+    - python=3.7  CONDA_PY=37  CONDA_NPY=115
+
+before_install:
+- tools/ci/travis/install_miniconda.sh
+- conda install conda-build=3.15 conda-verify -qy
+
+script:
+- conda build tools/conda-recipe --numpy=$CONDA_NPY -c conda-forge
+
+after_script:
+- bash <(curl -s https://codecov.io/bash) -f $HOME/coverage.xml -e CONDA_PY
