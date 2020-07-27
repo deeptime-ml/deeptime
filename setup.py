@@ -101,7 +101,6 @@ metadata = \
         cmdclass=cmdclass,
         zip_safe=False,
         install_requires=['numpy',
-                          'pint',
                           'scipy',
                           'scikit-learn>=0.21',
                           ],
