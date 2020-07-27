@@ -22,7 +22,7 @@ analysis of Markov models.
 __moduleauthor__ = "Benjamin Trendelkamp-Schroer, Frank Noe, Martin Scherer"
 
 """
-from typing import Optional
+from typing import Optional, Iterable
 
 import numpy as np
 from sktime.util import ensure_ndarray
@@ -56,7 +56,8 @@ class ReactiveFlux(Model):
 
     See also
     --------
-    sktime.markov.tools.tpt
+    compute_reactive_flux : Method that produces ReactiveFlux instances
+    sktime.markov.msm.MarkovStateModel.reactive_flux : TPT analysis based on a Markov state model
 
     References
     ----------
@@ -342,7 +343,7 @@ class ReactiveFlux(Model):
         return tpt_sets, res
 
 
-def compute_reactive_flux(transition_matrix, source_states, target_states,
+def compute_reactive_flux(transition_matrix: np.ndarray, source_states: Iterable[int], target_states: Iterable[int],
                           stationary_distribution=None, qminus=None, qplus=None,
                           transition_matrix_tolerance: Optional[float] = None) -> ReactiveFlux:
     r""" Computes the A->B reactive flux using transition path theory (TPT).
@@ -382,7 +383,7 @@ def compute_reactive_flux(transition_matrix, source_states, target_states,
 
     See also
     --------
-    sktime.markov.tools.analysis.committor, ReactiveFlux
+    ReactiveFlux
 
     References
     ----------
