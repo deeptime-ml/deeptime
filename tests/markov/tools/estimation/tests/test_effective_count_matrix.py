@@ -22,6 +22,9 @@ import os
 from os.path import abspath, join
 from os import pardir
 
+import pytest
+
+import sktime
 from sktime.markov.tools.estimation import count_matrix, effective_count_matrix
 
 """Unit tests for the transition_matrix module"""
@@ -85,7 +88,7 @@ class TestEffectiveCountMatrix(unittest.TestCase):
         assert np.array_equal(C.nonzero(), Ceff2.nonzero())
         assert np.all(Ceff2.toarray() <= C.toarray())
 
-    @unittest.skipIf(os.getenv('CI', False), 'need physical cores')
+    @pytest.mark.skipIf(os.getenv('CI', False), 'need physical cores')
     def test_njobs_speedup(self):
         artificial_dtraj = [np.random.randint(0, 100, size=10000) for _ in range(10)]
         import time
@@ -93,6 +96,7 @@ class TestEffectiveCountMatrix(unittest.TestCase):
             def __enter__(self):
                 self.start = time.time()
                 return self
+
             def __exit__(self, exc_type, exc_val, exc_tb):
                 self.stop = time.time()
                 self.diff = self.stop - self.start
@@ -113,20 +117,19 @@ class TestEffectiveCountMatrix_old_impl(unittest.TestCase):
     def test_compare_with_old_impl(self):
         # generated with v1.1@ from
         # pyemma.datasets.load_2well_discrete().dtraj_T100K_dt10_n6good
-        Ceff_ref = np.array([[2.21353316e+04,   2.13659736e+03,   4.63558176e+02,
-                              1.56043628e+02,   3.88680098e+01,   1.14317676e+01],
-                             [1.84456322e+03,   3.74107190e+02,   1.79811199e+02,
-                              9.29024530e+01,   5.59412620e+01,   2.59727288e+01],
-                             [3.45678646e+02,   1.42148228e+02,   8.19775293e+01,
-                              7.75353971e+01,   5.73438875e+01,   8.19775293e+01],
-                             [9.08206988e+01,   6.53466003e+01,   7.82682445e+01,
-                              7.71606750e+01,   8.38060919e+01,   2.84276171e+02],
-                             [3.56219388e+01,   3.43186971e+01,   7.64568442e+01,
-                              1.13816439e+02,   2.51960055e+02,   1.33451946e+03],
-                             [1.57044024e+01,   3.26168358e+01,   1.12346879e+02,
-                              4.34287128e+02,   1.88573632e+03,   2.35837843e+04]])
-        f = os.path.join(os.path.split(__file__)[0], 'testfiles/dwell.npz')
-        ref_dtraj = np.load(f)['dtraj_T100K_dt10_n6good'].astype('int32')
+        Ceff_ref = np.array([[2.21353316e+04, 2.13659736e+03, 4.63558176e+02,
+                              1.56043628e+02, 3.88680098e+01, 1.14317676e+01],
+                             [1.84456322e+03, 3.74107190e+02, 1.79811199e+02,
+                              9.29024530e+01, 5.59412620e+01, 2.59727288e+01],
+                             [3.45678646e+02, 1.42148228e+02, 8.19775293e+01,
+                              7.75353971e+01, 5.73438875e+01, 8.19775293e+01],
+                             [9.08206988e+01, 6.53466003e+01, 7.82682445e+01,
+                              7.71606750e+01, 8.38060919e+01, 2.84276171e+02],
+                             [3.56219388e+01, 3.43186971e+01, 7.64568442e+01,
+                              1.13816439e+02, 2.51960055e+02, 1.33451946e+03],
+                             [1.57044024e+01, 3.26168358e+01, 1.12346879e+02,
+                              4.34287128e+02, 1.88573632e+03, 2.35837843e+04]])
+        ref_dtraj = sktime.data.double_well_discrete().dtraj_n6good
         Ceff = effective_count_matrix(ref_dtraj, lag=10, average='row', mact=1.0).toarray()
         Ceff2 = effective_count_matrix(ref_dtraj, lag=10, average='row', mact=1.0, n_jobs=2).toarray()
 
