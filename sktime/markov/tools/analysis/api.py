@@ -549,7 +549,7 @@ def eigenvectors(T, k=None, right=True, ncv=None, reversible=False, mu=None):
     Matrix with right eigenvectors as columns
 
     >>> R  # doctest: +ELLIPSIS
-    array([[ 5.77350269e-01,  7.07106781e-01,  9.90147543e-02] ...
+    array([[ 5.77350269e-01,  7.07106781e-01,  9.90147543e-02]...
     """
     T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
     k = _check_k(T, k)
@@ -620,20 +620,22 @@ def rdl_decomposition(T, k=None, norm='auto', ncv=None, reversible=False, mu=Non
 
     Matrix with right eigenvectors as columns
 
-    >>> R # doctest: +ELLIPSIS
-    array([[ 1.00000000e+00,  1.04880885e+00,  3.16227766e-01], ...
+    >>> R  # doctest: +ELLIPSIS
+    array([[ 1.00000000e+00,  1.04880885e+00,  3.16227766e-01]...
+
 
     Diagonal matrix with eigenvalues
 
     >>> D
-    array([[ 1.0+0.j,  0.0+0.j,  0.0+0.j],
-           [ 0.0+0.j,  0.9+0.j,  0.0+0.j],
-           [ 0.0+0.j,  0.0+0.j, -0.1+0.j]])
+    array([[ 1. ,  0. ,  0. ],
+           [ 0. ,  0.9,  0. ],
+           [ 0. ,  0. , -0.1]])
 
     Matrix with left eigenvectors as rows
 
     >>> L # doctest: +ELLIPSIS
-    array([[  4.54545455e-01,   9.09090909e-02,   4.54545455e-01], ...
+    array([[ 4.54545455e-01,  9.09090909e-02,  4.54545455e-01]...
+
 
     """
     T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
@@ -1104,7 +1106,7 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
     array([       inf, 9.49122158, 0.43429448])
 
     >>> amp
-    array([ 0.20661157,  0.22727273,  0.02066116])
+    array([0.20661157, 0.22727273, 0.02066116])
 
     """
     # check if square matrix and remember size
@@ -1197,7 +1199,7 @@ def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
     array([       inf, 9.49122158, 0.43429448])
 
     >>> amp
-    array([ 0.45454545,  0.5       ,  0.04545455])
+    array([0.45454545, 0.5       , 0.04545455])
 
     """
     # check if square matrix and remember size

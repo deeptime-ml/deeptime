@@ -196,16 +196,16 @@ def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
     convenient printing we convert it to a dense ndarray.
 
     >>> C_sliding.toarray()
-    array([[ 1.,  2.],
-           [ 1.,  1.]])
+    array([[1., 2.],
+           [1., 1.]])
 
     Let us compare to the count-matrix we obtain using the lag
     approach
 
     >>> C_lag = count_matrix(dtraj, tau, sliding=False)
     >>> C_lag.toarray()
-    array([[ 0.,  1.],
-           [ 1.,  1.]])
+    array([[0., 1.],
+           [1., 1.]])
 
     """
     # convert dtraj input, if it contains out of nested python lists to
@@ -656,9 +656,9 @@ def prior_neighbor(C, alpha=0.001):
     >>> C = np.array([[10, 1, 0], [2, 0, 3], [0, 1, 4]])
     >>> B = prior_neighbor(C)
     >>> B
-    array([[ 0.001,  0.001,  0.   ],
-           [ 0.001,  0.   ,  0.001],
-           [ 0.   ,  0.001,  0.001]])
+    array([[0.001, 0.001, 0.   ],
+           [0.001, 0.   , 0.001],
+           [0.   , 0.001, 0.001]])
 
     """
 
@@ -699,9 +699,9 @@ def prior_const(C, alpha=0.001):
     >>> C = np.array([[10, 1, 0], [2, 0, 3], [0, 1, 4]])
     >>> B = prior_const(C)
     >>> B
-    array([[ 0.001,  0.001,  0.001],
-           [ 0.001,  0.001,  0.001],
-           [ 0.001,  0.001,  0.001]])
+    array([[0.001, 0.001, 0.001],
+           [0.001, 0.001, 0.001],
+           [0.001, 0.001, 0.001]])
 
     """
     if isdense(C):
@@ -880,26 +880,26 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
 
     >>> T_nrev = transition_matrix(C)
     >>> T_nrev
-    array([[ 0.83333333,  0.08333333,  0.08333333],
-           [ 0.4       ,  0.        ,  0.6       ],
-           [ 0.        ,  0.2       ,  0.8       ]])
+    array([[0.83333333, 0.08333333, 0.08333333],
+           [0.4       , 0.        , 0.6       ],
+           [0.        , 0.2       , 0.8       ]])
 
     Reversible estimate
 
     >>> T_rev = transition_matrix(C, reversible=True)
     >>> T_rev
-    array([[ 0.83333333,  0.10385551,  0.06281115],
-           [ 0.35074677,  0.        ,  0.64925323],
-           [ 0.04925323,  0.15074677,  0.8       ]])
+    array([[0.83333333, 0.10385551, 0.06281115],
+           [0.35074677, 0.        , 0.64925323],
+           [0.04925323, 0.15074677, 0.8       ]])
 
     Reversible estimate with given stationary vector
 
     >>> mu = np.array([0.7, 0.01, 0.29])
     >>> T_mu = transition_matrix(C, reversible=True, mu=mu)
     >>> T_mu
-    array([[ 0.94771371,  0.00612645,  0.04615984],
-           [ 0.42885157,  0.        ,  0.57114843],
-           [ 0.11142031,  0.01969477,  0.86888491]])
+    array([[0.94771371, 0.00612645, 0.04615984],
+           [0.42885157, 0.        , 0.57114843],
+           [0.11142031, 0.01969477, 0.86888491]])
 
     """
     if issparse(C):
