@@ -20,10 +20,10 @@ def test_weights():
     cov = Covariance(lagtime=5, compute_c00=True, compute_c0t=True, compute_ctt=False)
     model = cov.fit(data, weights=weights, n_splits=64).fetch_model()
     model2 = cov.fit(data[1002:], weights=weights[1002:], n_splits=55).fetch_model()
-    np.testing.assert_array_almost_equal(model.cov_00, model2.cov_00, decimal=3)
-    np.testing.assert_array_almost_equal(model.cov_0t, model2.cov_0t, decimal=3)
-    np.testing.assert_array_almost_equal(model.mean_0, model2.mean_0, decimal=3)
-    np.testing.assert_array_almost_equal(model.mean_t, model2.mean_t, decimal=3)
+    np.testing.assert_array_almost_equal(model.cov_00, model2.cov_00, decimal=2)
+    np.testing.assert_array_almost_equal(model.cov_0t, model2.cov_0t, decimal=2)
+    np.testing.assert_array_almost_equal(model.mean_0, model2.mean_0, decimal=2)
+    np.testing.assert_array_almost_equal(model.mean_t, model2.mean_t, decimal=2)
 
 
 def test_weights_incompatible():
