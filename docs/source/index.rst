@@ -38,7 +38,23 @@ Here, all publicly accessible API methods are documented. This documentation is 
 available arguments for the implemented methods, although less narrative in nature.
 
 .. toctree::
-   :maxdepth: 3
    :caption: API docs
+   :maxdepth: 2
 
-   api/index
+   api/index_base
+   api/index_clustering
+   api/index_covariance
+   api/index_decomposition
+   api/index_markov
+   api/index_data
+   api/index_numeric
+
+----------------------------------------
+
+.. toctree::
+   :caption: Other
+   :maxdepth: 1
+
+   changelog
+   imprint
+   license
