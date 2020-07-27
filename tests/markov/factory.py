@@ -40,7 +40,7 @@ def bmsm_double_well(lagtime=100, nsamples=100, reversible=True, constrain_to_co
     obs_macro = cg[obs_micro]
 
     distribution_constraint = pi_macro if constrain_to_coarse_pi else None
-    counting = TransitionCountEstimator(lagtime=lagtime, count_mode="effective", physical_time="4 ps")\
+    counting = TransitionCountEstimator(lagtime=lagtime, count_mode="effective")\
         .fit(obs_macro).fetch_model().submodel_largest(probability_constraint=distribution_constraint)
     est = BayesianMSM(reversible=reversible, n_samples=nsamples,
                       stationary_distribution_constraint=distribution_constraint, **kwargs)

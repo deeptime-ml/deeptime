@@ -39,8 +39,7 @@ __version__ = "2.0.0"
 __maintainer__ = "Martin Scherer"
 __email__ = "m.scherer AT fu-berlin DOT de"
 
-__all__ = ['tpt',
-           'flux_matrix',
+__all__ = ['flux_matrix',
            'to_netflux',
            'flux_production',
            'flux_producers',
@@ -53,104 +52,6 @@ __all__ = ['tpt',
 
 _type_not_supported = \
     TypeError("T is not a numpy.ndarray or a scipy.sparse matrix.")
-
-# ======================================================================
-# Main Factory
-# ======================================================================
-
-
-# DONE: Ben, Frank
-def tpt(T, A, B, mu=None, qminus=None, qplus=None, rate_matrix=False):
-    r""" Computes the A->B reactive flux using transition path theory (TPT)
-
-    Parameters
-    ----------
-    T : (M, M) ndarray or scipy.sparse matrix
-        Transition matrix (default) or Rate matrix (if rate_matrix=True)
-    A : array_like
-        List of integer state labels for set A
-    B : array_like
-        List of integer state labels for set B
-    mu : (M,) ndarray (optional)
-        Stationary vector
-    qminus : (M,) ndarray (optional)
-        Backward committor for A->B reaction
-    qplus : (M,) ndarray (optional)
-        Forward committor for A-> B reaction
-    rate_matrix = False : boolean
-        By default (False), T is a transition matrix.
-        If set to True, T is a rate matrix.
-
-    Returns
-    -------
-    tpt: sktime.markov.tools.flux.ReactiveFlux object
-        A python object containing the reactive A->B flux network
-        and several additional quantities, such as stationary probability,
-        committors and set definitions.
-
-    Notes
-    -----
-    The central object used in transition path theory is
-    the forward and backward comittor function.
-
-    TPT (originally introduced in [1]) for continous systems has a
-    discrete version outlined in [2]. Here, we use the transition
-    matrix formulation described in [3].
-
-    See also
-    --------
-    sktime.markov.tools.analysis.committor, ReactiveFlux
-
-    References
-    ----------
-    .. [1] W. E and E. Vanden-Eijnden.
-        Towards a theory of transition paths.
-        J. Stat. Phys. 123: 503-523 (2006)
-    .. [2] P. Metzner, C. Schuette and E. Vanden-Eijnden.
-        Transition Path Theory for Markov Jump Processes.
-        Multiscale Model Simul 7: 1192-1219 (2009)
-    .. [3] F. Noe, Ch. Schuette, E. Vanden-Eijnden, L. Reich and T. Weikl:
-        Constructing the Full Ensemble of Folding Pathways from Short Off-Equilibrium Simulations.
-        Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
-
-    """
-    import sktime.markov.tools.analysis as msmana
-
-    if len(A) == 0 or len(B) == 0:
-        raise ValueError('set A or B is empty')
-    n = T.shape[0]
-    if len(A) > n or len(B) > n or max(A) > n or max(B) > n:
-        raise ValueError('set A or B defines more states, than given transition matrix.')
-    if (rate_matrix is False) and (not msmana.is_transition_matrix(T)):
-        raise ValueError('given matrix T is not a transition matrix')
-    if (rate_matrix is True):
-        raise NotImplementedError(
-            'TPT with rate matrix is not yet implemented - But it is very simple, so feel free to do it.')
-
-    # we can compute the following properties from either dense or sparse T
-    # stationary dist
-    if mu is None:
-        mu = msmana.stationary_distribution(T)
-    # forward committor
-    if qplus is None:
-        qplus = msmana.committor(T, A, B, forward=True)
-    # backward committor
-    if qminus is None:
-        if msmana.is_reversible(T, mu=mu):
-            qminus = 1.0 - qplus
-        else:
-            qminus = msmana.committor(T, A, B, forward=False, mu=mu)
-    # gross flux
-    grossflux = flux_matrix(T, mu, qminus, qplus, netflux=False)
-    # net flux
-    netflux = to_netflux(grossflux)
-
-    # construct flux object
-    from .reactive_flux import ReactiveFlux
-
-    F = ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux)
-    # done
-    return F
 
 
 # ======================================================================
@@ -303,7 +204,8 @@ def flux_producers(F, rtol=1e-05, atol=1e-12):
         produce more outflux and thereby violate flux conservation.
 
     """
-    return dense.tpt.flux_producers(F)  # works for dense or sparse
+    # works for dense or sparse
+    return dense.tpt.flux_producers(F, rtol=rtol, atol=atol)
 
 
 def flux_consumers(F, rtol=1e-05, atol=1e-12):
@@ -326,7 +228,8 @@ def flux_consumers(F, rtol=1e-05, atol=1e-12):
         produce more outflux and thereby violate flux conservation.
 
     """
-    return dense.tpt.flux_consumers(F)  # works for dense or sparse
+    # works for dense or sparse
+    return dense.tpt.flux_consumers(F, rtol=rtol, atol=atol)
 
 
 def coarsegrain(F, sets):

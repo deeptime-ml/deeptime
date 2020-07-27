@@ -23,7 +23,6 @@ import numpy as np
 from scipy.sparse import issparse
 
 from sktime.base import Estimator
-from sktime.markov import Q_
 from sktime.markov._transition_matrix import estimate_P, stationary_distribution
 from sktime.markov.hmm import HiddenMarkovStateModel
 from sktime.markov.hmm.hidden_markov_model import viterbi
@@ -54,7 +53,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
     def __init__(self, initial_model: HiddenMarkovStateModel, stride: Union[int, str] = 1,
                  lagtime: int = 1, reversible: bool = True, stationary: bool = False,
-                 p: Optional[np.ndarray] = None, physical_time: str = '1 step', accuracy: float = 1e-3,
+                 p: Optional[np.ndarray] = None, accuracy: float = 1e-3,
                  maxit: int = 1000, maxit_reversible: int = 100000):
         r"""
         Initialize a maximum likelihood hidden Markov model estimator. The type of output model (gaussian or discrete)
@@ -93,19 +92,6 @@ class MaximumLikelihoodHMSM(Estimator):
             Initial or fixed stationary distribution. If given and stationary=True, transition matrices will be
             estimated with the constraint that they have the set parameter as their stationary distribution.
             If given and stationary=False, the parameter is the fixed initial distribution of hidden states.
-        physical_time : str, optional, default='1 step'
-            Description of the physical time corresponding to the trajectory time
-            step.  May be used by analysis algorithms such as plotting tools to
-            pretty-print the axes. By default '1 step', i.e. there is no physical
-            time unit. Specify by a number, whitespace and unit. Permitted units
-            are (* is an arbitrary string):
-
-            |  'fs',  'femtosecond*'
-            |  'ps',  'picosecond*'
-            |  'ns',  'nanosecond*'
-            |  'us',  'microsecond*'
-            |  'ms',  'millisecond*'
-            |  's',   'second*'
         accuracy : float, optional, default=1e-3
             Convergence threshold for EM iteration. When two the likelihood does not increase by more than
             accuracy, the iteration is stopped successfully.
@@ -130,7 +116,6 @@ class MaximumLikelihoodHMSM(Estimator):
         self.accuracy = accuracy
         self.maxit = maxit
         self.maxit_reversible = maxit_reversible
-        self.physical_time = physical_time
 
     def fetch_model(self) -> HiddenMarkovStateModel:
         r""" Yields the current HiddenMarkovStateModel or None if :meth:`fit` was not called yet.
@@ -141,21 +126,6 @@ class MaximumLikelihoodHMSM(Estimator):
             The model.
         """
         return self._model
-
-    @property
-    def physical_time(self) -> Q_:
-        r""" A description of the physical time.
-
-        :getter: Yields a description of physical time in terms of a pint Quantity object.
-        :setter: Sets a description of the physical time for input trajectories. Specify by a number, whitespace,
-                 and unit. Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
-        :type: pint.Quantity or str
-        """
-        return self._physical_time
-
-    @physical_time.setter
-    def physical_time(self, value: str):
-        self._physical_time = Q_(value)
 
     @property
     def maxit_reversible(self) -> int:
@@ -358,8 +328,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
         transition_counts = self._reduce_transition_counts(count_matrices)
 
-        count_model = TransitionCountModel(count_matrix=transition_counts, lagtime=self.lagtime,
-                                           physical_time=self.physical_time)
+        count_model = TransitionCountModel(count_matrix=transition_counts, lagtime=self.lagtime)
         transition_model = MarkovStateModel(hmm_data.transition_matrix, reversible=self.reversible,
                                             count_model=count_model)
         hidden_state_trajs = [

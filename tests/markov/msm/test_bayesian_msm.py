@@ -319,7 +319,6 @@ class TestBMSM(unittest.TestCase):
         # shape
         np.testing.assert_equal(np.shape(samples), (self.nsamples, self.n_states - 1))
         # consistency
-        u = msm.prior.count_model.physical_time
         lag = msm.prior.count_model.lagtime
         for l in samples:
             assert np.all(l > 0.0)

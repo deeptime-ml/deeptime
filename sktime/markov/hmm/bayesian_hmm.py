@@ -304,7 +304,6 @@ class BayesianHMSM(Estimator):
                 store_hidden: bool = False,
                 reversible: bool = True,
                 stationary: bool = False,
-                physical_time: str = '1 step',
                 prior_submodel: bool = True):
         """ Computes a default prior for a BHMSM and uses that for error estimation.
         For a more detailed description of the arguments please
@@ -322,8 +321,7 @@ class BayesianHMSM(Estimator):
                                                       stride=stride, reversible=reversible, stationary=stationary,
                                                       separate_symbols=separate)
         hmm = MaximumLikelihoodHMSM(init_hmm, stride=stride, lagtime=lagtime, reversible=reversible,
-                                    stationary=stationary, physical_time=physical_time,
-                                    accuracy=1e-2).fit(dtrajs).fetch_model()
+                                    stationary=stationary, accuracy=1e-2).fit(dtrajs).fetch_model()
         if prior_submodel:
             hmm = hmm.submodel_largest(connectivity_threshold=0, observe_nonempty=False, dtrajs=dtrajs)
         estimator = BayesianHMSM(hmm, n_samples=n_samples, stride=stride,

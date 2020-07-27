@@ -507,11 +507,6 @@ class TestMLHMM(unittest.TestCase):
         assert len(traj) <= N
         assert len(np.unique(traj)) <= len(hmsm.transition_model.transition_matrix)
 
-    def test_dt_model(self):
-        count_model = self.hmm_lag10_largest.transition_model.count_model
-        self.assertEqual((count_model.lagtime * count_model.physical_time).m, 10)
-        self.assertEqual(count_model.physical_time.units, '1 step')
-
     # ----------------------------------
     # MORE COMPLEX TESTS / SANITY CHECKS
     # ----------------------------------

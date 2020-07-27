@@ -112,8 +112,7 @@ def bootstrap_counts_singletraj(dtraj, lagtime, n):
     # check if length is sufficient
     L = len(dtraj)
     if lagtime > L:
-        raise ValueError(
-            'Cannot sample counts with lagtime ' + str(lagtime) + ' from a trajectory with length ' + str(L))
+        raise ValueError(f'Cannot sample counts with lagtime {lagtime} from a trajectory with length {L}.')
     # sample
     I = np.random.randint(0, L - lagtime - 1, size=n)
     J = I + lagtime

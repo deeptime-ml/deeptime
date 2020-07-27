@@ -131,13 +131,13 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         self.assertEqual(self.tpt1.n_states, self.P.n_states)
 
     def test_A(self):
-        self.assertEqual(self.tpt1.A, self.A)
+        self.assertEqual(self.tpt1.source_states, self.A)
 
     def test_I(self):
-        self.assertEqual(self.tpt1.I, self.I)
+        self.assertEqual(self.tpt1.intermediate_states, self.I)
 
     def test_B(self):
-        self.assertEqual(self.tpt1.B, self.B)
+        self.assertEqual(self.tpt1.target_states, self.B)
 
     def test_netflux(self):
         assert_allclose(self.tpt1.net_flux, self.ref_netflux, rtol=1e-02, atol=1e-07)
@@ -181,17 +181,17 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         assert_allclose(self.tpt1.major_flux(fraction=0.95), self.ref_majorflux_95percent, rtol=1e-02, atol=1e-07)
 
     def test_dt_model(self):
-        C = TransitionCountModel(np.array([[0.1, 0.9], [0.9, 0.1]]), lagtime=5, physical_time='s')
+        C = TransitionCountModel(np.array([[0.1, 0.9], [0.9, 0.1]]), lagtime=5)
         msm = MarkovStateModel(C.count_matrix, count_model=C)
         tpt = msm.reactive_flux([0], [1])
-        assert '5 second' in str(msm.count_model.lagtime * tpt.physical_time)
+        np.testing.assert_equal(msm.lagtime, 5)
 
     def test_coarse_grain(self):
         (tpt_sets, cgRF) = self.tpt2.coarse_grain(self.coarsesets2)
         self.assertEqual(tpt_sets, self.ref2_tpt_sets)
-        self.assertEqual(cgRF.A, self.ref2_cgA)
-        self.assertEqual(cgRF.I, self.ref2_cgI)
-        self.assertEqual(cgRF.B, self.ref2_cgB)
+        self.assertEqual(cgRF.source_states, self.ref2_cgA)
+        self.assertEqual(cgRF.intermediate_states, self.ref2_cgI)
+        self.assertEqual(cgRF.target_states, self.ref2_cgB)
         assert_allclose(cgRF.stationary_distribution, self.ref2_cgpstat)
         assert_allclose(cgRF.forward_committor, self.ref2_cgcommittor)
         assert_allclose(cgRF.backward_committor, self.ref2_cgbackwardcommittor)

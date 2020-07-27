@@ -25,7 +25,6 @@ from sktime.markov.tools import estimation as msmest
 from scipy.sparse import coo_matrix, issparse
 
 from sktime.base import Estimator, Model, Transformer
-from sktime.markov import Q_
 from sktime.markov.util import count_states, compute_connected_sets
 from sktime.util import submatrix, ensure_dtraj_list
 
@@ -72,7 +71,7 @@ class TransitionCountModel(Model):
     """
 
     def __init__(self, count_matrix, counting_mode: Optional[str] = None, lagtime: int = 1,
-                 state_histogram: Optional[np.ndarray] = None, physical_time='1 step',
+                 state_histogram: Optional[np.ndarray] = None,
                  state_symbols: Optional[np.ndarray] = None, count_matrix_full=None,
                  state_histogram_full: Optional[np.ndarray] = None):
         r"""Creates a new TransitionCountModel. This can be used to, e.g., construct Markov state models. The minimal
@@ -95,18 +94,6 @@ class TransitionCountModel(Model):
             The time offset which was used to count transitions in state.
         state_histogram : array_like, optional, default=None
             Histogram over the visited states in discretized trajectories.
-        physical_time : Unit or str, default='step'
-            Description of the physical time unit corresponding to one time step of the
-            transitioning process (aka lag time). May be used by analysis methods such as plotting
-            tools to pretty-print the axes.
-            By default 'step', i.e. there is no physical time unit. Permitted units are
-
-            *  'fs',  'femtosecond'
-            *  'ps',  'picosecond'
-            *  'ns',  'nanosecond'
-            *  'us',  'microsecond'
-            *  'ms',  'millisecond'
-            *  's',   'second'
         state_symbols : array_like, optional, default=None
             Symbols of the original discrete trajectory that are represented in the counting model. If None, the
             symbols are assumed to represent the data, i.e., a iota range over the number of states. Subselection
@@ -127,7 +114,6 @@ class TransitionCountModel(Model):
         self._count_matrix = count_matrix
         self._counting_mode = counting_mode
         self._lag = lagtime
-        self._physical_time = Q_(physical_time) if isinstance(physical_time, (str, int)) else physical_time
         self._state_histogram = state_histogram
 
         if state_symbols is None:
@@ -187,11 +173,6 @@ class TransitionCountModel(Model):
     def lagtime(self) -> int:
         """ The lag time at which the Markov model was estimated."""
         return self._lag
-
-    @property
-    def physical_time(self) -> Q_:
-        """Time interval between discrete steps of the time series."""
-        return self._physical_time
 
     @property
     def is_full_model(self) -> bool:
@@ -392,8 +373,7 @@ class TransitionCountModel(Model):
         else:
             sub_state_histogram = None
         return TransitionCountModel(sub_count_matrix, self.counting_mode, self.lagtime, sub_state_histogram,
-                                    state_symbols=sub_symbols, physical_time=self.physical_time,
-                                    count_matrix_full=self.count_matrix_full,
+                                    state_symbols=sub_symbols, count_matrix_full=self.count_matrix_full,
                                     state_histogram_full=self.state_histogram_full)
 
     def submodel_largest(self, connectivity_threshold: Union[str, float] = 0., directed: Optional[bool] = None,
@@ -483,7 +463,7 @@ class TransitionCountEstimator(Estimator, Transformer):
         :keyprefix: counting-
     """
 
-    def __init__(self, lagtime: int, count_mode: str, physical_time='1 step', n_states=None, sparse=False):
+    def __init__(self, lagtime: int, count_mode: str, n_states=None, sparse=False):
         r"""Constructs a transition count estimator that can be used to estimate :class:`TransitionCountModel` s.
 
         Parameters
@@ -503,19 +483,6 @@ class TransitionCountEstimator(Estimator, Transformer):
               the correct likelihood in the statistical limit :cite:`counting-trendelkamp2015estimation`.
             * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
               Recommended when estimating Bayesian MSMs.
-        physical_time : str, optional, default='1 step'
-            Description of the physical time of the input trajectories. May be used
-            by analysis algorithms such as plotting tools to pretty-print the axes.
-            By default '1 step', i.e. there is no physical time unit. Specify by a
-            number, whitespace and unit. Permitted units are (* is an arbitrary
-            string):
-
-            |  'fs',  'femtosecond*'
-            |  'ps',  'picosecond*'
-            |  'ns',  'nanosecond*'
-            |  'us',  'microsecond*'
-            |  'ms',  'millisecond*'
-            |  's',   'second*'
         n_states : int, optional, default=None
             Normally, the shape of the count matrix is a consequence of the number of encountered states in given
             discrete trajectories. However sometimes (for instance when scoring), only a portion of the discrete
@@ -528,7 +495,6 @@ class TransitionCountEstimator(Estimator, Transformer):
         super().__init__()
         self.lagtime = lagtime
         self.count_mode = count_mode
-        self.physical_time = physical_time
         self.sparse = sparse
         self.n_states = n_states
 
@@ -582,25 +548,6 @@ class TransitionCountEstimator(Estimator, Transformer):
     def lagtime(self, value: int):
         self._lagtime = value
 
-    @property
-    def physical_time(self) -> Q_:
-        r"""
-        A description of the physical time for input trajectories. Specify by a number, whitespace, and unit.
-        Permitted units are 'fs', 'ps', 'ns', 'us', 'ms', 's', and 'step'.
-
-        :getter: Yields a :class:`pint.Quantity` describing the physical time.
-        :setter: Sets a new physical time. Strings describing units are also accepted.
-        :type: pint.Quantity
-        """
-        return self._physical_time
-
-    @physical_time.setter
-    def physical_time(self, value: Union[str, Q_]):
-        if not isinstance(value, Q_):
-            self._physical_time = Q_(value)
-        else:
-            self._physical_time = value
-
     def fetch_model(self) -> Optional[TransitionCountModel]:
         r"""
         Yields the latest estimated :class:`TransitionCountModel`. Might be None if fetched before any data was fit.
@@ -640,8 +587,7 @@ class TransitionCountEstimator(Estimator, Transformer):
         # initially state symbols, full count matrix, and full histogram can be left None because they coincide
         # with the input arguments
         self._model = TransitionCountModel(
-            count_matrix=count_matrix, counting_mode=count_mode, lagtime=lagtime, state_histogram=histogram,
-            physical_time=self.physical_time
+            count_matrix=count_matrix, counting_mode=count_mode, lagtime=lagtime, state_histogram=histogram
         )
         return self
 

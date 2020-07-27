@@ -70,4 +70,3 @@ Pathway decomposition
 """
 
 from .api import *
-from .reactive_flux import *
