@@ -88,7 +88,7 @@ class TestEffectiveCountMatrix(unittest.TestCase):
         assert np.array_equal(C.nonzero(), Ceff2.nonzero())
         assert np.all(Ceff2.toarray() <= C.toarray())
 
-    @pytest.mark.skipIf(os.getenv('CI', False), 'need physical cores')
+    @pytest.skip('need physical cores')
     def test_njobs_speedup(self):
         artificial_dtraj = [np.random.randint(0, 100, size=10000) for _ in range(10)]
         import time
