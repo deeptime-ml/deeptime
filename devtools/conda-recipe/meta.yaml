@@ -36,7 +36,6 @@ requirements:
     - {{ pin_compatible('numpy') }}
     - python
     - scipy
-    - pint
 
 test:
   source_files:

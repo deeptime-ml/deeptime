@@ -22,6 +22,7 @@ r"""Unit test for the ReactiveFlux object
 """
 import unittest
 import numpy as np
+from sktime.markov import compute_reactive_flux
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.flux import api as msmapi
@@ -69,7 +70,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
                                                  [0., 0., 0., 0., 0.]])
 
         # Testing:
-        self.tpt1 = msmapi.tpt(self.P, self.A, self.B)
+        self.tpt1 = compute_reactive_flux(self.P, self.A, self.B)
 
         # 16-state toy system
         P2_nonrev = np.array([[0.5, 0.2, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -121,23 +122,23 @@ class TestReactiveFluxFunctions(unittest.TestCase):
                                         [0., 0., 0., 0., 0., 0.]])
 
         # Testing
-        self.tpt2 = msmapi.tpt(self.P2, self.A2, self.B2)
+        self.tpt2 = compute_reactive_flux(self.P2, self.A2, self.B2)
 
 
     def test_nstates(self):
-        self.assertEqual(self.tpt1.nstates, np.shape(self.P)[0])
+        self.assertEqual(self.tpt1.n_states, np.shape(self.P)[0])
 
     def test_A(self):
-        self.assertEqual(self.tpt1.A, self.A)
+        self.assertEqual(self.tpt1.source_states, self.A)
 
     def test_I(self):
-        self.assertEqual(self.tpt1.I, self.I)
+        self.assertEqual(self.tpt1.intermediate_states, self.I)
 
     def test_B(self):
-        self.assertEqual(self.tpt1.B, self.B)
+        self.assertEqual(self.tpt1.target_states, self.B)
 
     def test_flux(self):
-        assert_allclose(self.tpt1.flux, self.ref_netflux, rtol=1e-02, atol=1e-07)
+        assert_allclose(self.tpt1.net_flux, self.ref_netflux, rtol=1e-02, atol=1e-07)
 
     def test_netflux(self):
         assert_allclose(self.tpt1.net_flux, self.ref_netflux, rtol=1e-02, atol=1e-07)
@@ -146,7 +147,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         assert_allclose(self.tpt1.gross_flux, self.ref_grossflux, rtol=1e-02, atol=1e-07)
 
     def test_committor(self):
-        assert_allclose(self.tpt1.committor, self.ref_committor, rtol=1e-02, atol=1e-07)
+        assert_allclose(self.tpt1.forward_committor, self.ref_committor, rtol=1e-02, atol=1e-07)
 
     def test_forwardcommittor(self):
         assert_allclose(self.tpt1.forward_committor, self.ref_committor, rtol=1e-02, atol=1e-07)
@@ -186,14 +187,13 @@ class TestReactiveFluxFunctions(unittest.TestCase):
     def test_coarse_grain(self):
         (tpt_sets, cgRF) = self.tpt2.coarse_grain(self.coarsesets2)
         self.assertEqual(tpt_sets, self.ref2_tpt_sets)
-        self.assertEqual(cgRF.A, self.ref2_cgA)
-        self.assertEqual(cgRF.I, self.ref2_cgI)
-        self.assertEqual(cgRF.B, self.ref2_cgB)
+        self.assertEqual(cgRF.source_states, self.ref2_cgA)
+        self.assertEqual(cgRF.intermediate_states, self.ref2_cgI)
+        self.assertEqual(cgRF.target_states, self.ref2_cgB)
         assert_allclose(cgRF.stationary_distribution, self.ref2_cgpstat)
-        assert_allclose(cgRF.committor, self.ref2_cgcommittor)
         assert_allclose(cgRF.forward_committor, self.ref2_cgcommittor)
         assert_allclose(cgRF.backward_committor, self.ref2_cgbackwardcommittor)
-        assert_allclose(cgRF.flux, self.ref2_cgnetflux)
+        assert_allclose(cgRF.net_flux, self.ref2_cgnetflux)
         assert_allclose(cgRF.net_flux, self.ref2_cgnetflux)
         assert_allclose(cgRF.gross_flux, self.ref2_cggrossflux)
 

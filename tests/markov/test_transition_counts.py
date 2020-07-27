@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from sktime.markov import TransitionCountEstimator, Q_, TransitionCountModel
+from sktime.markov import TransitionCountEstimator, TransitionCountModel
 from tests.util import GenerateTestMatrix
 
 
@@ -11,11 +11,9 @@ class TestTransitionCountEstimator(unittest.TestCase):
     def test_properties(self):
         valid_count_modes = "sample", "sliding", "sliding-effective", "effective"
         for mode in valid_count_modes:
-            estimator = TransitionCountEstimator(lagtime=5, count_mode=mode, physical_time="10 ns")
+            estimator = TransitionCountEstimator(lagtime=5, count_mode=mode)
             self.assertEqual(estimator.count_mode, mode)
             np.testing.assert_equal(estimator.lagtime, 5)
-            assert Q_("10 ns") == estimator.physical_time, \
-                "expected 10 ns as physical time but got {}".format(estimator.physical_time)
 
     def test_sample_counting(self):
         dtraj = np.array([0, 0, 0, 0, 1, 1, 0, 1])
@@ -26,8 +24,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         np.testing.assert_array_equal(model.count_matrix, np.array([[1., 1.], [1., 0.]]))
         np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sample", "expected sample counting mode, got {}".format(model.counting_mode)
-        assert Q_("1 step") == model.physical_time, "no physical time specified, expecting 'step' " \
-                                                    "but got {}".format(model.physical_time)
+
         np.testing.assert_equal(model.state_symbols, [0, 1], err_msg="Trajectory only contained states 0 and 1")
         np.testing.assert_equal(model.n_states, 2)
         np.testing.assert_equal(model.state_histogram, [5, 3])
@@ -46,8 +43,6 @@ class TestTransitionCountEstimator(unittest.TestCase):
         np.testing.assert_array_equal(model.count_matrix, np.array([[2., 2.], [1., 1.]]))
         np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sliding", "expected sliding counting mode, got {}".format(model.counting_mode)
-        assert Q_("1 step") == model.physical_time, "no physical time specified, expecting 'step' " \
-                                                    "but got {}".format(model.physical_time)
         np.testing.assert_equal(model.state_symbols, [0, 1], err_msg="Trajectory only contained states 0 and 1")
         np.testing.assert_equal(model.n_states, 2)
         np.testing.assert_equal(model.state_histogram, [5, 3])
@@ -68,8 +63,6 @@ class TestTransitionCountEstimator(unittest.TestCase):
         np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sliding-effective", \
             "expected sliding-effective counting mode, got {}".format(model.counting_mode)
-        assert Q_("1 step") == model.physical_time, "no physical time specified, expecting 'step' " \
-                                                    "but got {}".format(model.physical_time)
         np.testing.assert_equal(model.state_symbols, [0, 1], err_msg="Trajectory only contained states 0 and 1")
         np.testing.assert_equal(model.n_states, 2)
         np.testing.assert_equal(model.state_histogram, [5, 3])
@@ -88,8 +81,6 @@ class TestTransitionCountEstimator(unittest.TestCase):
         np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "effective", "expected effective counting mode, " \
                                                    "got {}".format(model.counting_mode)
-        assert Q_("1 step") == model.physical_time, "no physical time specified, expecting 'step' " \
-                                                    "but got {}".format(model.physical_time)
         np.testing.assert_equal(model.state_symbols, [0, 1], err_msg="Trajectory only contained states 0 and 1")
         np.testing.assert_equal(model.n_states, 2)
         np.testing.assert_equal(model.state_histogram, [5, 3])
@@ -111,15 +102,13 @@ class TestTransitionCountModel(unittest.TestCase, metaclass=GenerateTestMatrix):
         np.testing.assert_equal(model.state_histogram_full, histogram)
         np.testing.assert_equal(model.lagtime, 1)
         np.testing.assert_equal(model.n_states_full, 4)
-        np.testing.assert_equal(model.physical_time, Q_("10 miles"))
         np.testing.assert_equal(model.count_matrix_full, count_matrix)
         np.testing.assert_equal(model.counting_mode, "effective")
 
     def _test_submodel(self, histogram):
         # three connected components: ((1, 2), (0), (3))
         count_matrix = np.array([[10., 0., 0., 0.], [0., 1., 1., 0.], [0., 1., 1., 0.], [0., 0., 0., 1]])
-        model = TransitionCountModel(count_matrix, counting_mode="effective", state_histogram=histogram,
-                                     physical_time="10 miles")
+        model = TransitionCountModel(count_matrix, counting_mode="effective", state_histogram=histogram)
 
         self._check_submodel_transitive_properties(histogram, count_matrix, model)
 

@@ -23,6 +23,7 @@ r"""Unit test for the TPT-functions of the analysis API
 
 import unittest
 import numpy as np
+from sktime.markov import compute_reactive_flux
 from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
 from tests.markov.tools.numeric import assert_allclose
 
@@ -53,13 +54,14 @@ class TestTPTDense(unittest.TestCase):
         self.T = self.bdc.transition_matrix()
 
         """Compute mu, qminus, qplus in constructor"""
-        self.tpt = flux.tpt(self.T, self.A, self.B)
+        self.tpt = compute_reactive_flux(self.T, self.A, self.B)
 
         """Use precomputed mu, qminus, qplus"""
         self.mu = self.bdc.stationary_distribution()
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         self.qplus = self.bdc.committor_forward(self.a, self.b)
-        self.tpt_fast = flux.tpt(self.T, self.A, self.B, mu=self.mu, qminus=self.qminus, qplus=self.qplus)
+        self.tpt_fast = compute_reactive_flux(self.T, self.A, self.B, stationary_distribution=self.mu,
+                                              qminus=self.qminus, qplus=self.qplus)
 
     def test_grossflux(self):
         flux = self.bdc.flux(self.a, self.b)
@@ -193,13 +195,14 @@ class TestTPTSparse(unittest.TestCase):
         self.T = T_sparse
 
         """Compute mu, qminus, qplus in constructor"""
-        self.tpt = flux.tpt(self.T, self.A, self.B)
+        self.tpt = compute_reactive_flux(self.T, self.A, self.B)
 
         """Use precomputed mu, qminus, qplus"""
         self.mu = self.bdc.stationary_distribution()
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         self.qplus = self.bdc.committor_forward(self.a, self.b)
-        self.tpt_fast = flux.tpt(self.T, self.A, self.B, mu=self.mu, qminus=self.qminus, qplus=self.qplus)
+        self.tpt_fast = compute_reactive_flux(self.T, self.A, self.B, stationary_distribution=self.mu,
+                                              qminus=self.qminus, qplus=self.qplus)
 
     def test_flux(self):
         flux = self.bdc.flux(self.a, self.b)

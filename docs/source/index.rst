@@ -39,7 +39,7 @@ available arguments for the implemented methods, although less narrative in natu
 
 .. toctree::
    :caption: API docs
-   :maxdepth: 2
+   :maxdepth: 3
 
    api/index_base
    api/index_clustering

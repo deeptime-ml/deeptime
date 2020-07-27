@@ -18,18 +18,17 @@
 # .. moduleauthor:: F. Noe <frank DOT noe AT fu-berlin DOT de>
 # .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
-from typing import Optional, List
 from math import ceil
+from typing import Optional, List
 
 import numpy as np
 from scipy.sparse import issparse
-
 from sktime.base import Model
 from sktime.markov.pcca import pcca, PCCAModel
 from sktime.markov.reactive_flux import ReactiveFlux
 from sktime.markov.sample import ensure_dtraj_list, compute_index_states
-from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.tools import analysis as msmana
+from sktime.markov.transition_counting import TransitionCountModel
 from sktime.numeric import mdot, is_square_matrix
 from sktime.util import ensure_ndarray, submatrix, cached_property
 
@@ -882,7 +881,7 @@ class MarkovStateModel(Model):
                              'Set reversible=True when constructing the MarkovStateModel.')
         return pcca(self.transition_matrix, n_metastable_sets, self.stationary_distribution)
 
-    def reactive_flux(self, A, B) -> ReactiveFlux:
+    def reactive_flux(self, source_states, target_states) -> ReactiveFlux:
         r""" A->B reactive flux from transition path theory (TPT)
 
         The returned :class:`ReactiveFlux <pyemma.msm.models.ReactiveFlux>` object
@@ -892,9 +891,9 @@ class MarkovStateModel(Model):
 
         Parameters
         ----------
-        A : array_like
+        source_states : array_like
             List of integer state labels for set A
-        B : array_like
+        target_states : array_like
             List of integer state labels for set B
 
         Returns
@@ -909,36 +908,15 @@ class MarkovStateModel(Model):
         :class:`ReactiveFlux <sktime.markov.ReactiveFlux>`
             Reactive Flux model
         """
-        from sktime.markov.tools.flux import flux_matrix, to_netflux
-        from sktime.util import ensure_ndarray
-        from sktime.markov import ReactiveFlux
+        from ..reactive_flux import compute_reactive_flux
 
-        T = self.transition_matrix
-        mu = self.stationary_distribution
-        A = ensure_ndarray(A, dtype=int)
-        B = ensure_ndarray(B, dtype=int)
-
-        if len(A) == 0 or len(B) == 0:
-            raise ValueError('set A or B is empty')
-        n = T.shape[0]
-        if len(A) > n or len(B) > n or max(A) > n or max(B) > n:
-            raise ValueError('set A or B defines more states, than given transition matrix.')
-
-        # forward committor
-        qplus = msmana.committor(T, A, B, forward=True)
-        # backward committor
-        if msmana.is_reversible(T, mu=mu):
-            qminus = 1.0 - qplus
-        else:
-            qminus = msmana.committor(T, A, B, forward=False, mu=mu)
-        # gross flux
-        grossflux = flux_matrix(T, mu, qminus, qplus, netflux=False)
-        # net flux
-        netflux = to_netflux(grossflux)
-
-        # construct flux object
-        return ReactiveFlux(A, B, netflux, mu=mu, qminus=qminus, qplus=qplus, gross_flux=grossflux,
-                            physical_time=self.count_model.physical_time if self.count_model is not None else '1 step')
+        return compute_reactive_flux(
+            transition_matrix=self.transition_matrix,
+            source_states=source_states,
+            target_states=target_states,
+            stationary_distribution=self.stationary_distribution,
+            transition_matrix_tolerance=None  # set to None explicitly so no check is performed
+        )
 
     def simulate(self, n_steps: int, start: Optional[int] = None, stop: Optional[int] = None, dt: int = 1,
                  seed: int = -1):
@@ -1129,8 +1107,7 @@ class MarkovStateModel(Model):
         # run HMM estimate
         from sktime.markov.hmm import MaximumLikelihoodHMSM, init
         init_hmm = init.discrete.metastable_from_msm(self, nhidden, reversible=self.reversible)
-        est = MaximumLikelihoodHMSM(init_hmm, lagtime=self.lagtime, reversible=self.reversible,
-                                    physical_time=self.count_model.physical_time)
+        est = MaximumLikelihoodHMSM(init_hmm, lagtime=self.lagtime, reversible=self.reversible)
         hmsm = est.fit(dtrajs).fetch_model()
         if return_estimator:
             return est, hmsm

@@ -20,7 +20,6 @@ from typing import Union
 
 import numpy as np
 
-from sktime.markov import Q_
 from sktime.util import ensure_dtraj_list
 
 
@@ -153,7 +152,7 @@ def lag_observations(observations, lag, stride=1):
     return obsnew
 
 
-def compute_dtrajs_effective(dtrajs, lagtime: Union[int, Q_], n_states: int, stride: Union[int, str]):
+def compute_dtrajs_effective(dtrajs, lagtime: int, n_states: int, stride: Union[int, str]):
     r"""
     Takes discrete trajectories as input and strides these with an effective stride. See methods
     `compute_effective_stride` and `lag_observations`.

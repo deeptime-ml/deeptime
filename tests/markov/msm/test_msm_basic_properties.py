@@ -93,11 +93,6 @@ class TestMSMBasicProperties(object):
         # HERE: states are shifted down from the beginning, because early states are missing
         assert_(dta[0][0] < scenario.data.dtraj[0])
 
-    def test_physical_time(self, setting):
-        scenario = make_double_well(setting)
-        assert_(str(scenario.msm.count_model.physical_time).startswith('1'))
-        assert_(str(scenario.msm.count_model.physical_time).endswith('step'))
-
     def test_transition_matrix(self, setting):
         scenario = make_double_well(setting)
         msm = scenario.msm

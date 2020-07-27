@@ -1,4 +1,3 @@
-
 # This file is part of MSMTools.
 #
 # Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
@@ -27,7 +26,7 @@ import sktime.markov.tools.analysis as msmana
 import numpy as np
 from numpy.testing import assert_allclose
 
-from sktime.markov import TransitionCountModel
+from sktime.markov import TransitionCountModel, compute_reactive_flux
 from sktime.markov.msm import MarkovStateModel
 
 
@@ -49,15 +48,15 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         cls.ref_committor = np.array([0., 0.35714286, 0.42857143, 0.35714286, 1.])
         cls.ref_backwardcommittor = np.array([1., 0.65384615, 0.53125, 0.65384615, 0.])
         cls.ref_grossflux = np.array([[0., 0.00771792, 0.00308717, 0., 0.],
-                                       [0., 0., 0.00308717, 0.00257264, 0.00720339],
-                                       [0., 0.00257264, 0., 0., 0.00360169],
-                                       [0., 0.00257264, 0., 0., 0.],
-                                       [0., 0., 0., 0., 0.]])
+                                      [0., 0., 0.00308717, 0.00257264, 0.00720339],
+                                      [0., 0.00257264, 0., 0., 0.00360169],
+                                      [0., 0.00257264, 0., 0., 0.],
+                                      [0., 0., 0., 0., 0.]])
         cls.ref_netflux = np.array([[0.00000000e+00, 7.71791768e-03, 3.08716707e-03, 0.00000000e+00, 0.00000000e+00],
-                                     [0.00000000e+00, 0.00000000e+00, 5.14527845e-04, 0.00000000e+00, 7.20338983e-03],
-                                     [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 3.60169492e-03],
-                                     [0.00000000e+00, 4.33680869e-19, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
-                                     [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00]])
+                                    [0.00000000e+00, 0.00000000e+00, 5.14527845e-04, 0.00000000e+00, 7.20338983e-03],
+                                    [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 3.60169492e-03],
+                                    [0.00000000e+00, 4.33680869e-19, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+                                    [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00]])
         cls.ref_totalflux = 0.0108050847458
         cls.ref_kAB = 0.0272727272727
         cls.ref_mfptAB = 36.6666666667
@@ -68,10 +67,10 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         cls.ref_paths_95percent = [[0, 1, 4], [0, 2, 4]]
         cls.ref_pathfluxes_95percent = np.array([0.00720338983051, 0.00308716707022])
         cls.ref_majorflux_95percent = np.array([[0., 0.00720339, 0.00308717, 0., 0.],
-                                                 [0., 0., 0., 0., 0.00720339],
-                                                 [0., 0., 0., 0., 0.00308717],
-                                                 [0., 0., 0., 0., 0.],
-                                                 [0., 0., 0., 0., 0.]])
+                                                [0., 0., 0., 0., 0.00720339],
+                                                [0., 0., 0., 0., 0.00308717],
+                                                [0., 0., 0., 0., 0.],
+                                                [0., 0., 0., 0., 0.]])
 
         # Testing:
         cls.tpt1 = cls.P.reactive_flux(cls.A, cls.B)
@@ -112,32 +111,44 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         cls.ref2_cgcommittor = np.array([0., 0.56060272, 0.73052426, 0.19770537, 0.36514272, 1.])
         cls.ref2_cgbackwardcommittor = np.array([1., 0.43939728, 0.26947574, 0.80229463, 0.63485728, 0.])
         cls.ref2_cggrossflux = np.array([[0., 0., 0., 0.00427986, 0.00282259, 0.],
-                                          [0., 0, 0.00234578, 0.00104307, 0., 0.00201899],
-                                          [0., 0.00113892, 0, 0., 0.00142583, 0.00508346],
-                                          [0., 0.00426892, 0., 0, 0.00190226, 0.],
-                                          [0., 0., 0.00530243, 0.00084825, 0, 0.],
-                                          [0., 0., 0., 0., 0., 0.]])
+                                         [0., 0, 0.00234578, 0.00104307, 0., 0.00201899],
+                                         [0., 0.00113892, 0, 0., 0.00142583, 0.00508346],
+                                         [0., 0.00426892, 0., 0, 0.00190226, 0.],
+                                         [0., 0., 0.00530243, 0.00084825, 0, 0.],
+                                         [0., 0., 0., 0., 0., 0.]])
         cls.ref2_cgnetflux = np.array([[0., 0., 0., 0.00427986, 0.00282259, 0.],
-                                        [0., 0., 0.00120686, 0., 0., 0.00201899],
-                                        [0., 0., 0., 0., 0., 0.00508346],
-                                        [0., 0.00322585, 0., 0., 0.00105401, 0.],
-                                        [0., 0., 0.0038766, 0., 0., 0.],
-                                        [0., 0., 0., 0., 0., 0.]])
+                                       [0., 0., 0.00120686, 0., 0., 0.00201899],
+                                       [0., 0., 0., 0., 0., 0.00508346],
+                                       [0., 0.00322585, 0., 0., 0.00105401, 0.],
+                                       [0., 0., 0.0038766, 0., 0., 0.],
+                                       [0., 0., 0., 0., 0., 0.]])
 
         # Testing
         cls.tpt2 = cls.P2.reactive_flux(cls.A2, cls.B2)
+
+    def test_invalid_inputs(self):
+        with np.testing.assert_raises(ValueError):
+            self.P.reactive_flux(source_states=[], target_states=[1])
+        with np.testing.assert_raises(ValueError):
+            self.P.reactive_flux(source_states=[1], target_states=[])
+        with np.testing.assert_raises(ValueError):
+            self.P.reactive_flux(source_states=np.arange(self.P.n_states + 1), target_states=[0])
+        with np.testing.assert_raises(ValueError):
+            self.P.reactive_flux(source_states=[0], target_states=np.arange(self.P.n_states + 1))
+        with np.testing.assert_raises(ValueError):
+            compute_reactive_flux(np.array([[.5, .6], [.3, .7]]), [0], [1])  # not a transition matrix
 
     def test_n_states(self):
         self.assertEqual(self.tpt1.n_states, self.P.n_states)
 
     def test_A(self):
-        self.assertEqual(self.tpt1.A, self.A)
+        self.assertEqual(self.tpt1.source_states, self.A)
 
     def test_I(self):
-        self.assertEqual(self.tpt1.I, self.I)
+        self.assertEqual(self.tpt1.intermediate_states, self.I)
 
     def test_B(self):
-        self.assertEqual(self.tpt1.B, self.B)
+        self.assertEqual(self.tpt1.target_states, self.B)
 
     def test_netflux(self):
         assert_allclose(self.tpt1.net_flux, self.ref_netflux, rtol=1e-02, atol=1e-07)
@@ -157,9 +168,11 @@ class TestReactiveFluxFunctions(unittest.TestCase):
     def test_rate(self):
         assert_allclose(self.tpt1.rate, self.ref_kAB, rtol=1e-02, atol=1e-07)
         assert_allclose(1.0 / self.tpt1.rate, self.ref_mfptAB, rtol=1e-02, atol=1e-07)
+        assert_allclose(self.tpt1.mfpt, self.ref_mfptAB, rtol=1e-02, atol=1e-07)
 
     """These tests are broken since the matrix is irreversible and no
     pathway-decomposition can be computed for irreversible matrices"""
+
     def test_pathways(self):
         # all paths
         paths, pathfluxes = self.tpt1.pathways()
@@ -168,7 +181,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
             self.assertTrue(np.all(np.array(paths[i]) == np.array(self.ref_paths[i])))
         assert_allclose(pathfluxes, self.ref_pathfluxes, rtol=1e-02, atol=1e-07)
         # major paths
-        paths, pathfluxes = self.tpt1.pathways(fraction = 0.95)
+        paths, pathfluxes = self.tpt1.pathways(fraction=0.95)
         self.assertEqual(len(paths), len(self.ref_paths_95percent))
         for i in range(len(paths)):
             self.assertTrue(np.all(np.array(paths[i]) == np.array(self.ref_paths_95percent[i])))
@@ -181,22 +194,22 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         assert_allclose(self.tpt1.major_flux(fraction=0.95), self.ref_majorflux_95percent, rtol=1e-02, atol=1e-07)
 
     def test_dt_model(self):
-        C = TransitionCountModel(np.array([[0.1, 0.9], [0.9, 0.1]]), lagtime=5, physical_time='s')
+        C = TransitionCountModel(np.array([[0.1, 0.9], [0.9, 0.1]]), lagtime=5)
         msm = MarkovStateModel(C.count_matrix, count_model=C)
         tpt = msm.reactive_flux([0], [1])
-        assert '5 second' in str(msm.count_model.lagtime * tpt.physical_time)
+        np.testing.assert_equal(msm.lagtime, 5)
 
     def test_coarse_grain(self):
-        (tpt_sets, cgRF) = self.tpt2.coarse_grain(self.coarsesets2)
+        tpt_sets, cg_flux = self.tpt2.coarse_grain(self.coarsesets2)
         self.assertEqual(tpt_sets, self.ref2_tpt_sets)
-        self.assertEqual(cgRF.A, self.ref2_cgA)
-        self.assertEqual(cgRF.I, self.ref2_cgI)
-        self.assertEqual(cgRF.B, self.ref2_cgB)
-        assert_allclose(cgRF.stationary_distribution, self.ref2_cgpstat)
-        assert_allclose(cgRF.forward_committor, self.ref2_cgcommittor)
-        assert_allclose(cgRF.backward_committor, self.ref2_cgbackwardcommittor)
-        assert_allclose(cgRF.net_flux, self.ref2_cgnetflux, rtol=1.e-5, atol=1.e-8)
-        assert_allclose(cgRF.gross_flux, self.ref2_cggrossflux, rtol=1.e-5, atol=1.e-8)
+        self.assertEqual(cg_flux.source_states, self.ref2_cgA)
+        self.assertEqual(cg_flux.intermediate_states, self.ref2_cgI)
+        self.assertEqual(cg_flux.target_states, self.ref2_cgB)
+        assert_allclose(cg_flux.stationary_distribution, self.ref2_cgpstat)
+        assert_allclose(cg_flux.forward_committor, self.ref2_cgcommittor)
+        assert_allclose(cg_flux.backward_committor, self.ref2_cgbackwardcommittor)
+        assert_allclose(cg_flux.net_flux, self.ref2_cgnetflux, rtol=1.e-5, atol=1.e-8)
+        assert_allclose(cg_flux.gross_flux, self.ref2_cggrossflux, rtol=1.e-5, atol=1.e-8)
 
 
 if __name__ == "__main__":

@@ -14,3 +14,5 @@ omit =
     */**/setup.py
     # omit test directory
     tests/*
+    # omit cython
+    */**/*.pyx
