@@ -108,7 +108,7 @@ class TestMSMBasicProperties(object):
         # shape
         assert_equal(P.shape, (msm.n_states, msm.n_states))
         # test transition matrix properties
-        import msmtools.analysis as msmana
+        import sktime.markov.tools.analysis as msmana
 
         assert_(msmana.is_transition_matrix(P))
         assert_(msmana.is_connected(P))

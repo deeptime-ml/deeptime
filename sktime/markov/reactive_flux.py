@@ -23,17 +23,14 @@ __moduleauthor__ = "Benjamin Trendelkamp-Schroer, Frank Noe, Martin Scherer"
 
 """
 import numpy as np
-from msmtools.analysis import committor
-from msmtools.flux import (to_netflux, flux_matrix, total_flux, rate, pathways, coarsegrain)
-
-from msmtools import flux as tptapi
-
-
-# TODO: we use a order preserving set data structure here, because we would loose order eg. in _compute_coarse_sets
-#from pyemma._ext.orderedset import OrderedSet as set
+from .tools import flux as tptapi
 
 from sktime.base import Model
 from sktime.markov import Q_
+from sktime.markov.tools.flux import (to_netflux, pathways, coarsegrain)
+
+# TODO: we use a order preserving set data structure here, because we would loose order eg. in _compute_coarse_sets
+# from pyemma._ext.orderedset import OrderedSet as set
 
 __all__ = ['ReactiveFlux']
 
@@ -51,7 +48,7 @@ class ReactiveFlux(Model):
     of the node set.
 
     Fluxes can be computed using transition path theory - see :cite:`reactiveflux-metzner2009transition`
-    and :func:`msmtools.tpt`.
+    and :func:`sktime.markov.tools.tpt`.
 
     Notes
     -----
@@ -59,7 +56,7 @@ class ReactiveFlux(Model):
 
     See also
     --------
-    msmtools.tpt
+    sktime.markov.tools.tpt
 
     References
     ----------

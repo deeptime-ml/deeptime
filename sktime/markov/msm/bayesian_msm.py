@@ -261,7 +261,7 @@ class BayesianMSM(_MSMBaseEstimator):
             raise ValueError("Can only sample confidences with a count model. The counting mode should be 'effective'"
                              " to avoid correlations between counts and therefore wrong confidences.")
         # transition matrix sampler
-        from msmtools.estimation import tmatrix_sampler
+        from sktime.markov.tools.estimation import tmatrix_sampler
         from math import sqrt
         if self.n_steps is None:
             # heuristic for number of steps to decorrelate

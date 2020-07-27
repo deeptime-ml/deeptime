@@ -10,7 +10,7 @@ class timing(object):
     --------
     >>> long_function = lambda : None
     >>> with timing('long_function'):  # doctest: +SKIP
-    ...     long_function()
+    ...     long_function()  # doctest: +SKIP
     long_function: 0.000 seconds
     """
 

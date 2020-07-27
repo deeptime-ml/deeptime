@@ -33,7 +33,6 @@ requirements:
   run:
     - intel-openmp # [osx]
     - vs2015_runtime  # [win]
-    - msmtools
     - {{ pin_compatible('numpy') }}
     - python
     - scipy

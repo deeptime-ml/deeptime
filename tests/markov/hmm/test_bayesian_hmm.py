@@ -72,14 +72,14 @@ class TestBHMM(unittest.TestCase):
         # shape
         assert np.array_equal(np.shape(Psamples), (self.n_samples, self.n_states, self.n_states))
         # consistency
-        import msmtools.analysis as msmana
+        import sktime.markov.tools.analysis as msmana
         for P in Psamples:
             assert msmana.is_transition_matrix(P)
             assert msmana.is_reversible(P)
 
     def test_transition_matrix_stats(self):
         stats = self.bhmm.gather_stats('transition_model/transition_matrix')
-        import msmtools.analysis as msmana
+        import sktime.markov.tools.analysis as msmana
         # mean
         Pmean = stats.mean
         # test shape and consistency

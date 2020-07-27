@@ -1,6 +1,6 @@
 import unittest
 
-import msmtools.analysis as msmana
+import sktime.markov.tools.analysis as msmana
 import numpy as np
 
 import sktime.markov.hmm.init as init
@@ -139,7 +139,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
 
     def test_3state_prev(self):
         dtraj = np.array([0, 1, 2, 0, 3, 4])
-        import msmtools.estimation as msmest
+        import sktime.markov.tools.estimation as msmest
         for rev in [True, False]:
             hmm = init.discrete.metastable_from_data(dtraj, n_hidden_states=3, lagtime=1, reversible=rev)
             assert msmana.is_transition_matrix(hmm.transition_model.transition_matrix)

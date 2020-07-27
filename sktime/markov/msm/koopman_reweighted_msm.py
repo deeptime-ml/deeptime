@@ -20,7 +20,7 @@ import warnings
 from typing import Optional
 
 import numpy as np
-from msmtools.estimation import effective_count_matrix
+from sktime.markov.tools.estimation import effective_count_matrix
 from scipy.sparse import issparse
 from sktime.markov._base import _MSMBaseEstimator
 from sktime.markov.msm import MarkovStateModel

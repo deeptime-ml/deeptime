@@ -23,7 +23,7 @@ r"""Unit test for the ReactiveFlux object
 """
 import unittest
 
-import msmtools.analysis as msmana
+import sktime.markov.tools.analysis as msmana
 import numpy as np
 from numpy.testing import assert_allclose
 

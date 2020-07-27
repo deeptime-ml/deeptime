@@ -119,14 +119,14 @@ class TestBMSM(unittest.TestCase):
         # shape
         assert np.array_equal(np.shape(Psamples), (self.nsamples, self.n_states, self.n_states))
         # consistency
-        import msmtools.analysis as msmana
+        import sktime.markov.tools.analysis as msmana
         for P in Psamples:
             assert msmana.is_transition_matrix(P)
             try:
                 assert msmana.is_reversible(P)
             except AssertionError:
                 # re-do calculation msmtools just performed to get details
-                from msmtools.analysis import stationary_distribution
+                from sktime.markov.tools.analysis import stationary_distribution
                 mu = stationary_distribution(P)
                 X = mu[:, np.newaxis] * P
                 np.testing.assert_allclose(X, np.transpose(X), atol=1e-12,
@@ -137,7 +137,7 @@ class TestBMSM(unittest.TestCase):
         self._transition_matrix_stats(self.bmsm_revpi)
 
     def _transition_matrix_stats(self, msm):
-        import msmtools.analysis as msmana
+        import sktime.markov.tools.analysis as msmana
         # mean
         Ps = np.array([s.transition_matrix for s in msm.samples])
         Pmean = Ps.mean(axis=0)

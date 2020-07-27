@@ -42,7 +42,7 @@ def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=
         Minimum count which counts as a connection.
 
     """
-    import msmtools.estimation as msmest
+    import sktime.markov.tools.estimation as msmest
     n = np.shape(C)[0]
     # output matrix. Set initially to Identity matrix in order to handle empty states
     P = np.eye(n, dtype=np.float64)
@@ -149,7 +149,7 @@ def transition_matrix_partial_rev(C, P, S, maxiter=1000000, maxerr=1e-8):
 
 def enforce_reversible_on_closed(P):
     """ Enforces transition matrix P to be reversible on its closed sets. """
-    import msmtools.analysis as msmana
+    import sktime.markov.tools.analysis as msmana
     Prev = P.copy()
     # treat each weakly connected set separately
     sets = closed_sets(P)
@@ -167,7 +167,7 @@ def enforce_reversible_on_closed(P):
 
 def is_reversible(P):
     """ Returns if P is reversible on its weakly connected sets """
-    import msmtools.analysis as msmana
+    import sktime.markov.tools.analysis as msmana
     # treat each weakly connected set separately
     sets = compute_connected_sets(P, directed=False)
     for s in sets:
@@ -184,8 +184,8 @@ def is_reversible(P):
 
 def stationary_distribution(P, C=None, mincount_connectivity=0):
     """ Simple estimator for stationary distribution for multiple strongly connected sets """
-    # can be replaced by msmtools.analysis.stationary_distribution in next msmtools release
-    from msmtools.analysis.dense.stationary_vector import stationary_distribution as msmstatdist
+    # can be replaced by sktime.markov.tools.analysis.stationary_distribution in next msmtools release
+    from sktime.markov.tools.analysis.dense.stationary_vector import stationary_distribution as msmstatdist
     if C is None:
         if is_connected(P, directed=True):
             return msmstatdist(P)
