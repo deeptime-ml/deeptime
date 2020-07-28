@@ -205,15 +205,17 @@ def is_connected(T, directed=True):
     Viewing the transition matrix as the adjency matrix of a
     (directed) graph the transition matrix is irreducible if and only
     if the corresponding graph has a single connected
-    component. Connectivity of a graph can be efficiently checked
-    using Tarjan's algorithm.
+    component. :cite:`tools-is-connected-hoel1986introduction`.
+
+    Connectivity of a graph can be efficiently checked
+    using Tarjan's algorithm. :cite:`tools-is-connected-tarjan1972depth`.
 
     References
     ----------
-    .. [1] Hoel, P G and S C Port and C J Stone. 1972. Introduction to
-        Stochastic Processes.
-    .. [2] Tarjan, R E. 1972. Depth-first search and linear graph
-        algorithms. SIAM Journal on Computing 1 (2): 146-160.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-is-connected-
 
     Examples
     --------
@@ -675,7 +677,8 @@ def mfpt(T, target, origin=None, tau=1, mu=None):
     Notes
     -----
     The mean first passage time :math:`\mathbf{E}_x[T_Y]` is the expected
-    hitting time of one state :math:`y` in :math:`Y` when starting in state :math:`x`.
+    hitting time of one state :math:`y` in :math:`Y` when starting
+    in state :math:`x`. :cite:`tools-mfpt-hoel1986introduction`.
 
     For a fixed target state :math:`y` it is given by
 
@@ -698,8 +701,10 @@ def mfpt(T, target, origin=None, tau=1, mu=None):
 
     References
     ----------
-    .. [1] Hoel, P G and S C Port and C J Stone. 1972. Introduction to
-        Stochastic Processes.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-mfpt-
 
     Examples
     --------
@@ -775,9 +780,9 @@ def committor(T, A, B, forward=True, mu=None):
     The committor assigns to each microstate a probability that being
     at this state, the set B will be hit next, rather than set A
     (forward committor), or that the set A has been hit previously
-    rather than set B (backward committor). See [1] for a
+    rather than set B (backward committor). See :cite:`tools-committor-metzner2009transition` for a
     detailed mathematical description. The present implementation
-    uses the equations given in [2].
+    uses the equations given in :cite:`tools-committor-noe2009constructing`.
 
     Parameters
     ----------
@@ -849,12 +854,10 @@ def committor(T, A, B, forward=True, mu=None):
 
     References
     ----------
-    .. [1] P. Metzner, C. Schuette and E. Vanden-Eijnden.
-        Transition Path Theory for Markov Jump Processes.
-        Multiscale Model Simul 7: 1192-1219 (2009).
-    .. [2] F. Noe, C. Schuette, E. Vanden-Eijnden, L. Reich and T.Weikl
-        Constructing the Full Ensemble of Folding Pathways from Short Off-Equilibrium Simulations.
-        Proc. Natl. Acad. Sci. USA, 106: 19011-19016 (2009).
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-committor-
 
     Examples
     --------
@@ -1014,7 +1017,8 @@ def expected_counts_stationary(T, N, mu=None):
 ################################################################################
 
 def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
-    r"""Dynamical fingerprint for equilibrium correlation experiment.
+    r"""Dynamical fingerprint for equilibrium correlation
+    experiment :cite:`tools-fingerprint-correlation-noe2011dynamical`.
 
     Parameters
     ----------
@@ -1045,10 +1049,10 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
 
     References
     ----------
-    .. [1] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
-        Chodera and J Smith. 2010. Dynamical fingerprints for probing
-        individual relaxation processes in biomolecular dynamics with
-        simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-fingerprint-correlation-
 
     Notes
     -----
@@ -1125,7 +1129,7 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
 
 
 def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
-    r"""Dynamical fingerprint for relaxation experiment.
+    r"""Dynamical fingerprint for relaxation experiment :cite:`tools-fingerprint-relaxation-noe2011dynamical`.
 
     The dynamical fingerprint is given by the implied time-scale
     spectrum together with the corresponding amplitudes.
@@ -1159,10 +1163,10 @@ def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
 
     References
     ----------
-    .. [1] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
-        Chodera and J Smith. 2010. Dynamical fingerprints for probing
-        individual relaxation processes in biomolecular dynamics with
-        simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-fingerprint-relaxation-
 
     Notes
     -----
@@ -1270,7 +1274,7 @@ def expectation(T, a, mu=None):
 
 
 def correlation(T, obs1, obs2=None, times=(1), maxtime=None, k=None, ncv=None, return_times=False):
-    r"""Time-correlation for equilibrium experiment.
+    r"""Time-correlation for equilibrium experiment :cite:`tools-correlation-noe2011dynamical`.
 
     Parameters
     ----------
@@ -1299,10 +1303,10 @@ def correlation(T, obs1, obs2=None, times=(1), maxtime=None, k=None, ncv=None, r
 
     References
     ----------
-    .. [1] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
-        Chodera and J Smith. 2010. Dynamical fingerprints for probing
-        individual relaxation processes in biomolecular dynamics with
-        simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-correlation-
 
     Notes
     -----
@@ -1363,8 +1367,8 @@ def correlation(T, obs1, obs2=None, times=(1), maxtime=None, k=None, ncv=None, r
         return dense.fingerprints.correlation(T, obs1, obs2=obs2, times=times, k=k)
 
 
-def relaxation(T, p0, obs, times=(1), k=None, ncv=None):
-    r"""Relaxation experiment.
+def relaxation(T, p0, obs, times=(1,), k=None, ncv=None):
+    r"""Relaxation experiment :cite:`tools-relaxation-noe2011dynamical`.
 
     The relaxation experiment describes the time-evolution
     of an expectation value starting in a non-equilibrium
@@ -1393,10 +1397,10 @@ def relaxation(T, p0, obs, times=(1), k=None, ncv=None):
 
     References
     ----------
-    .. [1] Noe, F, S Doose, I Daidone, M Loellmann, M Sauer, J D
-        Chodera and J Smith. 2010. Dynamical fingerprints for probing
-        individual relaxation processes in biomolecular dynamics with
-        simulations and kinetic experiments. PNAS 108 (12): 4822-4827.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-relaxation-
 
     Notes
     -----

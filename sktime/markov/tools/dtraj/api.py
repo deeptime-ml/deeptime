@@ -44,25 +44,12 @@ __version__ = "2.0.0"
 __maintainer__ = "Martin Scherer"
 __email__ = "m.scherer AT fu-berlin DOT de"
 
-__all__ = ['read_discrete_trajectory',
-           'write_discrete_trajectory',
-           'load_discrete_trajectory',
-           'save_discrete_trajectory',
-           'count_states',
-           'visited_set',
-           'number_of_states',
-           'index_states',
-           'sample_indexes_by_distribution',
-           'sample_indexes_by_state',
-           'sample_indexes_by_sequence']
+__all__ = ['read_discrete_trajectory', 'write_discrete_trajectory', 'load_discrete_trajectory',
+           'save_discrete_trajectory', 'count_states', 'visited_set', 'number_of_states', 'index_states',
+           'sample_indexes_by_distribution', 'sample_indexes_by_state', 'sample_indexes_by_sequence', 'read_dtraj',
+           'write_dtraj', 'load_dtraj', 'save_dtraj', 'count_states', 'nstates']
 
 # append shortcuts separately in order to avoid code syntax error
-__all__.append('read_dtraj')
-__all__.append('write_dtraj')
-__all__.append('load_dtraj')
-__all__.append('save_dtraj')
-__all__.append('count_states')
-__all__.append('nstates')
 
 
 ################################################################################

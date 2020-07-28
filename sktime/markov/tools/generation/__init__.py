@@ -17,13 +17,13 @@
 
 r"""
 
-=========================================================================
-generation - MSM generation tools (:mod:`sktime.markov.tools.generation`)
-=========================================================================
+====================
+MSM generation tools
+====================
 
 .. currentmodule:: sktime.markov.tools.generation
 
-This module contains function to generate simple MSMs.
+This module (:mod:`sktime.markov.tools.generation`) contains functions to generate simple MSMs.
 
 Metropolis-Hastings chain
 =========================

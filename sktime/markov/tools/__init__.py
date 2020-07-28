@@ -16,25 +16,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 r"""
-
 .. currentmodule:: sktime.markov.tools
-
 
 MSM functions
 =============
 Low-level functions for estimation and analysis of transition matrices and io.
-
-.. toctree::
-   :maxdepth: 1
-
-   dtraj
-   generation
-   estimation
-   analysis
-   flux
-
-
 """
+
 
 from . import analysis
 from . import estimation

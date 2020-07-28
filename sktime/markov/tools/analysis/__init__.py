@@ -17,13 +17,13 @@
 
 r"""
 
-=======================================================================
-analysis - MSM analysis functions (:mod:`sktime.markov.tools.analysis`)
-=======================================================================
+======================
+MSM analysis functions
+======================
 
 .. currentmodule:: sktime.markov.tools.analysis
 
-This module contains functions to analyze a created Markov model, which is
+This module (:mod:`sktime.markov.tools.analysis`) contains functions to analyze a created Markov model, which is
 specified with a transition matrix T.
 
 Validation
@@ -31,6 +31,7 @@ Validation
 
 .. autosummary::
    :toctree: generated/
+   :template: class_nomodule.rst
 
    is_transition_matrix - Positive entries and rows sum to one
    is_tmatrix
@@ -46,6 +47,7 @@ numpy-arrays and the ARPACK bindings for scipy sparse matrices.
 
 .. autosummary::
    :toctree: generated/
+   :template: class_nomodule.rst
 
    stationary_distribution - Invariant vector from eigendecomposition
    statdist

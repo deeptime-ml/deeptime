@@ -17,17 +17,20 @@
 
 r"""
 
-==========================================================================
-dtraj - Discrete trajectories functions (:mod:`sktime.markov.tools.dtraj`)
-==========================================================================
+===============================
+Discrete trajectories functions
+===============================
 
 .. currentmodule:: sktime.markov.tools.dtraj
+
+This module (:mod:`sktime.markov.tools.dtraj`) contains various utility functions dealing with discrete trajectories.
 
 Discrete trajectory io
 ======================
 
 .. autosummary::
    :toctree: generated/
+   :template: class_nomodule.rst
 
    read_discrete_trajectory - read microstate trajectory from ascii file
    read_dtraj
@@ -43,6 +46,7 @@ Simple statistics
 
 .. autosummary::
    :toctree: generated/
+   :template: class_nomodule.rst
 
    count_states
    visited_set
@@ -54,6 +58,7 @@ Sampling trajectory indexes
 
 .. autosummary::
    :toctree: generated/
+   :template: class_nomodule.rst
 
    sample_indexes_by_distribution
    sample_indexes_by_state
