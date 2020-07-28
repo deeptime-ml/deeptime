@@ -25,7 +25,6 @@ from sktime.base import Model
 from sktime.numeric import mdot
 
 
-# TODO: should pass pi to msmtools once it's supported.
 def pcca(P, m, stationary_distribution=None):
     """PCCA+ spectral clustering method with optimized memberships.
 
@@ -38,10 +37,8 @@ def pcca(P, m, stationary_distribution=None):
     ----------
     P : ndarray (n,n)
         Transition matrix.
-
     m : int
         Number of clusters to group to.
-
     stationary_distribution : ndarray(n,), optional, default=None
         Stationary distribution over the full state space, can be given if already computed.
 
@@ -64,15 +61,14 @@ def pcca(P, m, stationary_distribution=None):
 
     # stationary distribution
     if stationary_distribution is None:
-        from sktime.markov.tools.analysis import stationary_distribution as statdist
-        pi = statdist(P)
+        from sktime.markov.tools.analysis import stationary_distribution
+        pi = stationary_distribution(P)
     else:
         pi = stationary_distribution
 
     # memberships
-    # TODO: can be improved. pcca computes stationary distribution internally, we don't need to compute it twice.
-    from sktime.markov.tools.analysis.dense.pcca import pcca as _algorithm_impl
-    M = _algorithm_impl(P, m)
+    from .tools.analysis.dense.pcca import pcca as _algorithm_impl
+    M = _algorithm_impl(P, m, pi)
 
     # coarse-grained stationary distribution
     pi_coarse = np.dot(M.T, pi)
@@ -103,6 +99,11 @@ class PCCAModel(Model):
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
     This function does not assume that the transition matrix is fully connected. Disconnected sets
     will automatically define the first metastable states, with perfect membership assignments.
+
+    See Also
+    --------
+    pcca : method to obtain a model of this type from a transition matrix and a number of clusters
+    msm.MarkovStateModel.pcca : yields a PCCAModel from an existing Markov state model instance
 
     References
     ----------
