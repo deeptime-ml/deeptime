@@ -27,7 +27,7 @@ from __future__ import absolute_import
 import numpy as np
 cimport numpy as np
 
-from sktime.markov.tools.estimation.dense.mle.mle_trev_given_pi import mle_trev_given_pi
+from sktime.markov.tools.estimation.dense.mle import mle_trev_given_pi
 from sktime.markov.tools.analysis import is_connected
 
 DTYPE = np.float
