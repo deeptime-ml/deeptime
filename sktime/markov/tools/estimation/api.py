@@ -1287,7 +1287,7 @@ def tmatrix_sampler(C, reversible=False, mu=None, T0=None, nsteps=None, prior='s
 
     from .dense.tmat_sampling.tmatrix_sampler import TransitionMatrixSampler
     sampler = TransitionMatrixSampler(C, reversible=reversible, mu=mu, P0=T0,
-                                      nsteps=nsteps, prior=prior)
+                                      n_steps=nsteps, prior=prior)
     return sampler
 
 

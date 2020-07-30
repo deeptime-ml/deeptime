@@ -118,7 +118,6 @@ class SamplerRev(object):
         """Check sparsity pattern"""
         iC, jC = np.where( (self.C+self.C.T+np.eye(self.C.shape[0]))>0 )
         iV, jV = np.where( (self.V+self.V.T+np.eye(self.V.shape[0]))>0 )
-        #print 'equal perms?', np.array_equal(np.array(sorted([(i,j) for i,j in zip(iC, jC) if i!=j])), np.array(sorted([(i,j) for i,j in  zip(iV, jV) if i!=j])))
         if not np.array_equal(iC, iV):
             raise ValueError('Sparsity patterns of C and X are different.')
         if not np.array_equal(jC, jV):

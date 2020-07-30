@@ -51,7 +51,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
                  sparse: bool = False, allow_disconnected: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8,
-                 connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-8):
+                 connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-6):
         r"""
         Constructs a new maximum-likelihood msm estimator.
 

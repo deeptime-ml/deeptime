@@ -102,7 +102,7 @@ class TestSamplerReversiblePi(unittest.TestCase):
 
     def test_mean(self):
         """Create sampler object"""
-        sampler = TransitionMatrixSampler(self.C, reversible=True, mu=self.pi, nsteps=10)
+        sampler = TransitionMatrixSampler(self.C, reversible=True, mu=self.pi, n_steps=10)
 
         sample = np.zeros((self.N, 3, 3))
         for i in range(self.N):

@@ -7,11 +7,11 @@ def configuration(parent_package='', top_path=None):
 
     config.add_library('rnglib', sources=['src/rnglib/rnglib.c', 'src/rnglib/ranlib.c'])
 
-    config.add_extension('sampler_rev',
-                         sources=['sampler_rev.pyx',
-                                  'src/sample_rev.c'],
-                         include_dirs=['src/', np.get_include()],
-                         libraries=['rnglib'])
+    # config.add_extension('sampler_rev',
+    #                      sources=['sampler_rev.pyx',
+    #                               'src/sample_rev.c'],
+    #                      include_dirs=['src/', np.get_include()],
+    #                      libraries=['rnglib'])
 
     config.add_extension('sampler_revpi',
                          sources=['sampler_revpi.pyx',

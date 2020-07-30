@@ -7,8 +7,8 @@ from . import _mle_bindings
 
 def mle_trev(C, maxerr=1.0e-12, maxiter=int(1.0E6), warn_not_converged=True, return_statdist=False,
              eps_mu=1.0e-15):
-    from ....analysis import is_connected
-    from ....util.exceptions import NotConvergedWarning
+    from ...analysis import is_connected
+    from ...util.exceptions import NotConvergedWarning
 
     assert maxerr > 0, 'maxerr must be positive'
     assert maxiter > 0, 'maxiter must be positive'
@@ -16,6 +16,8 @@ def mle_trev(C, maxerr=1.0e-12, maxiter=int(1.0E6), warn_not_converged=True, ret
     assert is_connected(C, directed=True), 'C must be strongly connected'
 
     dtype = C.dtype
+
+    print('using dtype', dtype)
 
     C_sum = C.sum(axis=1).astype(dtype, order='C', copy=False)
     CCt = (C + C.T).astype(dtype, order='C', copy=False)
@@ -34,7 +36,7 @@ def mle_trev(C, maxerr=1.0e-12, maxiter=int(1.0E6), warn_not_converged=True, ret
 
 
 def mle_trev_given_pi(C, mu, maxerr=1.0E-12, maxiter=1000000):
-    from ....analysis import is_connected
+    from ...analysis import is_connected
 
     assert maxerr > 0, 'maxerr must be positive'
     assert maxiter > 0, 'maxiter must be positive'

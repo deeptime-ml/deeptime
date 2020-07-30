@@ -279,7 +279,9 @@ class BayesianMSM(_MSMBaseEstimator):
         sample_Ps, sample_mus = tsampler.sample(nsamples=self.n_samples, return_statdist=True, call_back=callback)
         # construct sampled MSMs
         samples = [
-            MarkovStateModel(P, stationary_distribution=pi, reversible=self.reversible, count_model=msm.count_model)
+            MarkovStateModel(P, stationary_distribution=pi, reversible=self.reversible,
+                             count_model=msm.count_model,
+                             transition_matrix_tolerance=msm.transition_matrix_tolerance)
             for P, pi in zip(sample_Ps, sample_mus)
         ]
         self._model = BayesianPosterior(prior=msm, samples=samples)
