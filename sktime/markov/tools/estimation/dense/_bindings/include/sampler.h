@@ -12,10 +12,216 @@
 namespace util {
 template<typename dtype>
 auto isPositive(dtype x) -> bool {
-    auto eps = std::numeric_limits<dtype>::min();  // smallest positive number for floating points
-    return x >= eps && !std::isnan(x) && !std::isinf(x);
+    return x > 0 && !std::isnan(x) && !std::isinf(x);
 }
 }
+
+template<typename dtype, typename Generator = std::default_random_engine>
+class RevPiSampler {
+public:
+    explicit RevPiSampler(int seed) : uniform(0, 1) {
+        if (seed < 0) {
+            generator = sktime::rnd::randomlySeededGenerator();
+        } else {
+            generator = sktime::rnd::seededGenerator(static_cast<std::uint32_t>(seed));
+        }
+    }
+
+    void update(const np_array<dtype> &arrC, np_array<dtype> &arrX, const np_array<dtype> &arrB) {
+        auto M = arrC.shape(0);
+
+        auto C = arrC.template unchecked<2>();
+        auto b = arrB.template unchecked<1>();
+        auto X = arrX.template mutable_unchecked<2>();
+
+        for (ssize_t k = 0; k < M; ++k) {
+            for (ssize_t l = 0; l < k; ++l) {
+                if (C(k, l) + C(k, l) > 0) {
+                    auto xkl = X(k, l);
+                    auto xkl_new = sample_quad(X(k, l), X(k, k), X(l, l),
+                                               C(k, l), C(l, k), C(k, k), C(l, l),
+                                               b(k), b(l));
+                    X(k, l) = xkl_new;
+                    X(k, k) += (xkl - xkl_new);
+                    X(l, k) = xkl_new;
+                    X(l, l) += (xkl - xkl_new);
+
+                    xkl = X(k, l);
+                    xkl_new = sample_quad_rw(X(k, l), X(k, k), X(l, l),
+                                             C(k, l), C(l, k), C(k, k), C(l, l),
+                                             b(k), b(l));
+                    X(k, l) = xkl_new;
+                    X(k, k) += (xkl - xkl_new);
+                    X(l, k) = xkl_new;
+                    X(l, l) += (xkl - xkl_new);
+                }
+            }
+        }
+    }
+
+private:
+    Generator generator;
+    std::gamma_distribution<dtype> gamma;
+    std::uniform_real_distribution<dtype> uniform;
+    std::normal_distribution<dtype> normal;
+
+    dtype maximum_point(dtype s, dtype a1, dtype a2, dtype a3) const {
+        dtype a = a2 + 1.0;
+        dtype b = a2 - a1 + (a2 + a3 + 1.0) / (s - 1.0);
+        dtype c = (a1 + 1.0) * s / (1.0 - s);
+        dtype vbar = (-b + std::sqrt(b * b - 4.0 * a * c)) / (2.0 * a);
+        return vbar;
+    }
+
+    dtype f(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
+        dtype r = s / (s - 1.0);
+        return (a1 + 1.0) * std::log(v) + a3 * std::log(r + v) - (a1 + a2 + a3 + 2.0) * std::log(1.0 + v);
+    }
+
+    dtype F(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
+        dtype r = s / (s - 1.0);
+        return (a1 + 1.0) / v + a3 / (r + v) - (a1 + a2 + a3 + 2) / (1.0 + v);
+    }
+
+    dtype DF(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
+        dtype r = s / (s - 1.0);
+        return -(a1 + 1.0) / (v * v) - a3 / ((r + v) * (r + v)) + (a1 + a2 + a3 + 2) / ((1.0 + v) * (1.0 + v));
+    }
+
+    dtype qacc(dtype w, dtype v, dtype s,
+         dtype a1, dtype a2, dtype a3,
+         dtype alpha, dtype beta) const {
+        dtype r;
+        r = s / (s - 1.0);
+        return beta * (w - v) + (a1 + 1.0 - alpha) * std::log(w / v) + a3 * std::log((r + w) / (r + v)) -
+               (a1 + a2 + a3 + 2.0) * std::log((1.0 + w) / (1.0 + v));
+    }
+
+    dtype qacc_rw(dtype w, dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
+        dtype r;
+        r = s / (s - 1.0);
+        return (a1 + 1.0) * std::log(w / v) + a3 * std::log((r + w) / (r + v))
+               - (a1 + a2 + a3 + 2.0) * std::log((1.0 + w) / (1.0 + v));
+    }
+
+    dtype sample_quad(dtype xkl, dtype xkk, dtype xll,
+                      dtype ckl, dtype clk, dtype ckk, dtype cll,
+                      dtype bk, dtype bl) {
+        dtype xlk, skl, slk, s2, s3, s, a1, a2, a3;
+        dtype vbar, alpha, beta, v, w;
+        dtype q, U;
+
+        xlk = xkl;
+
+        skl = xkk + xkl;
+        slk = xll + xlk;
+
+        if (skl <= slk) {
+            s2 = skl;
+            s3 = slk;
+            s = s3 / s2;
+            a1 = ckl + clk - 1.0;
+            a2 = ckk + bk - 1.0;
+            a3 = cll + bl - 1.0;
+        } else {
+            s2 = slk;
+            s3 = skl;
+            s = s3 / s2;
+            a1 = ckl + clk - 1.0;
+            a2 = cll + bl - 1.0;
+            a3 = ckk + bk - 1.0;
+        }
+
+        //Check if s-1>0
+        if (util::isPositive(s - 1.0)) {
+            vbar = maximum_point(s, a1, a2, a3);
+            beta = -1.0 * DF(vbar, s, a1, a2, a3) * vbar;
+            alpha = beta * vbar;
+
+            //Check if s2-xkl > 0
+            if (util::isPositive(s2 - xkl)) {
+                //Old sample
+                v = xkl / (s2 - xkl);
+
+                //Check if alpha > 0 and 1/beta > 0
+                if (util::isPositive(alpha) && util::isPositive(1.0 / beta)) {
+                    //Proposal
+                    gamma.param((typename decltype(gamma)::param_type) {alpha, gamma.beta()});
+                    w = 1.0 / beta * gamma(generator);
+
+                    //If w=0 -> reject
+                    if (util::isPositive(w)) {
+                        // If v=0 accept
+                        if (!util::isPositive(v)) {
+                            return s2 * w / (1.0 + w);
+                        } else {
+                            // Log acceptance probability
+                            q = qacc(w, v, s, a1, a2, a3, alpha, beta);
+
+                            // Metropolis step
+                            U = uniform(generator);
+                            if (std::log(U) < std::min(static_cast<dtype>(0), q)) {
+                                return s2 * w / (1.0 + w);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return xkl;
+    }
+
+    dtype sample_quad_rw(dtype xkl, dtype xkk, dtype xll,
+                         dtype ckl, dtype clk, dtype ckk, dtype cll,
+                         dtype bk, dtype bl) {
+        dtype xlk, skl, slk, s2, s3, s, a1, a2, a3;
+        dtype v, w;
+        dtype q, U;
+
+        xlk = xkl;
+
+        skl = xkk + xkl;
+        slk = xll + xlk;
+
+        if (skl <= slk) {
+            s2 = skl;
+            s3 = slk;
+            s = s3 / s2;
+            a1 = ckl + clk - 1.0;
+            a2 = ckk + bk - 1.0;
+            a3 = cll + bl - 1.0;
+        } else {
+            s2 = slk;
+            s3 = skl;
+            s = s3 / s2;
+            a1 = ckl + clk - 1.0;
+            a2 = cll + bl - 1.0;
+            a3 = ckk + bk - 1.0;
+        }
+        //Check if s2-xkl > 0
+        if (util::isPositive(s2 - xkl)) {
+            //Old sample
+            v = xkl / (s2 - xkl);
+            //Proposal
+            w = v * std::exp(normal(generator));
+            //If w=0 -> reject
+            if (util::isPositive(w)) {
+                //If v=0 accept
+                if (!util::isPositive(v)) {
+                    return s2 * w / (1.0 + w);
+                } else {
+                    q = qacc_rw(w, v, s, a1, a2, a3);
+                    //Metropolis step
+                    U = uniform(generator);
+                    if (std::log(U) < std::min(static_cast<dtype>(0), q)) {
+                        return s2 * w / (1.0 + w);
+                    }
+                }
+            }
+        }
+        return xkl;
+    }
+};
 
 template<typename dtype, typename Generator = std::default_random_engine>
 class RevSampler {
@@ -29,122 +235,7 @@ public:
         }
     }
 
-    void updateSparse(const np_array<dtype> &arrC, const np_array<dtype> &arrSumC, np_array<dtype> &arrX,
-                      const np_array<int> &arrI, const np_array<int> &arrJ,
-                      int n_step) {
-        dtype *X = arrX.mutable_data();
-        auto n = arrC.shape(0);
-        auto n_idx = arrI.shape(0);
-        std::vector<dtype> arrSumX(arrX.shape(0), static_cast<dtype>(0));
-        {
-            auto Xaccess = arrX.template unchecked<2>();
-            for (decltype(arrX.shape(0)) i = 0; i < arrX.shape(0); ++i) {
-                for (decltype(arrX.shape(1)) j = 0; j < arrX.shape(1); ++j) {
-                    arrSumX.at(i) += Xaccess(i, j);
-                }
-            }
-        }
-
-        auto *sumX = arrSumX.data();
-        auto C = arrC.template unchecked<2>();
-        auto sumC = arrSumC.template unchecked<1>();
-
-        const int *const I = arrI.data();
-        const int *const J = arrJ.data();
-
-        // row indexes
-        std::unique_ptr<int[]> rowIndices(new int[n + 1]);
-        generateRowIndices(I, n, n_idx, rowIndices.get());
-
-        for (int iter = 0; iter < n_step; iter++) {
-            // update all X row sums once every iteration and then only do cheap updates.
-            for (int i = 0; i < n; i++) {
-                sumX[i] = _sumRowSparse(X, n, i, J, rowIndices[i], rowIndices[i + 1]);
-            }
-
-            for (int k = 0; k < n_idx; k++) {
-                auto i = I[k];
-                auto j = J[k];
-                if (i == j) {
-                    if (util::isPositive(C(i, i)) && util::isPositive(sumC(i) - C(i, i))) {
-                        beta.param((typename decltype(beta)::param_type) {C(i, i), sumC(i) - C(i, i)});
-                        auto tmp1 = beta(generator);
-                        // auto tmp1 = sktime::rnd::genbet(C(i, i), sumC(i) - C(i, i), generator);
-                        auto tmp2 = tmp1 / (1 - tmp1) * (sumX[i] - X[i * n + i]);
-                        if (util::isPositive(tmp2)) {
-                            sumX[i] += tmp2 - X[i * n + i];  // update sumX
-                            X[i * n + i] = tmp2;
-                        }
-                    }
-                }
-                if (i < j)  // only work on the upper triangle, because we have symmetry.
-                {
-                    auto tmp1 = sumX[i] - X[i * n + j];
-                    auto tmp2 = sumX[j] - X[j * n + i];
-                    X[i * n + j] = _updateStep(X[i * n + j], tmp1, tmp2, C(i, j) + C(j, i),
-                                               sumC(i), sumC(j), 1);
-                    X[j * n + i] = X[i * n + j];
-                    // update X
-                    sumX[i] = tmp1 + X[i * n + j];
-                    sumX[j] = tmp2 + X[j * n + i];
-                }
-            }
-
-            _normalizeAllSparse(X, I, J, n, n_idx);
-        }
-
-    }
-
-private:
-
-    Generator generator;
-    std::normal_distribution<dtype> normal{0, 1};
-    std::gamma_distribution<dtype> gamma;
-    sktime::rnd::beta_distribution<dtype> beta;
-    std::uniform_real_distribution<dtype> uniform;
-
-
-    bool acceptStep(dtype log_prob_old, dtype log_prob_new) {
-        return log_prob_new > log_prob_old ||
-               uniform(generator) < std::exp(std::min(log_prob_new - log_prob_old, static_cast<dtype>(0)));
-    }
-
-    void generateRowIndices(const int *const I, int n, int n_idx, int *row_indexes) {
-        row_indexes[0] = 0;  // starts with row 0
-        int current_row = 0;
-        for (int k = 0; k < n_idx; k++) {
-            // still at same row? do nothing
-            if (I[k] == current_row)
-                continue;
-            // row has advanced one or multiple times. Update multiple row indexes until we are equal
-            while (I[k] > current_row) {
-                current_row++;
-                row_indexes[current_row] = k;
-            }
-        }
-        // stop sign
-        row_indexes[n] = n_idx;
-    }
-
-    double _sumRowSparse(dtype *X, int n, int i, const int *const J, int from, int to) {
-        int j;
-        double sum = 0.0;
-        for (j = from; j < to; j++)
-            sum += X[i * n + J[j]];
-        return sum;
-    }
-
-    void _normalizeAllSparse(dtype *X, const int *const I, const int *const J, int n, int n_idx) {
-        // sum all
-        dtype sum = 0.0;
-        for (int k = 0; k < n_idx; k++)
-            sum += X[I[k] * n + J[k]];
-        // normalize all
-        for (int k = 0; k < n_idx; k++)
-            X[I[k] * n + J[k]] /= sum;
-    }
-
-    dtype _updateStep(dtype v0, dtype v1, dtype v2, dtype c0, dtype c1, dtype c2, int random_walk_stepsize) {
+    dtype updateStep(dtype v0, dtype v1, dtype v2, dtype c0, dtype c1, dtype c2, dtype random_walk_stepsize) {
         /*
         update the sample v0 according to
         the distribution v0^(c0-1)*(v0+v1)^(-c1)*(v0+v2)^(-c2)
@@ -152,33 +243,32 @@ private:
         dtype a = c1 + c2 - c0;
         dtype b = (c1 - c0) * v2 + (c2 - c0) * v1;
         dtype c = -c0 * v1 * v2;
-        dtype v_bar = 0.5 * (-b + sqrt(b * b - 4 * a * c)) / a;
-        dtype h = c1 / (v_bar + v1) * ((v_bar + v1))
+        dtype v_bar = 0.5 * (-b + std::sqrt(b * b - 4 * a * c)) / a;
+        // dtype h = c1 + c2 - c0;
+        dtype h = c1 / ((v_bar + v1) * (v_bar + v1))
                   + c2 / ((v_bar + v2) * (v_bar + v2))
                   - c0 / (v_bar * v_bar);
         dtype k = -h * v_bar * v_bar;
         dtype theta = -1.0 / (h * v_bar);
-        dtype log_v0 = log(v0);
-        dtype v0_new = 0.0;
-        dtype log_v0_new = 0.0;
-        dtype log_prob_old = 0.0;
-        dtype log_prob_new = 0.0;
+        dtype log_v0 = std::log(v0);
+        dtype log_prob_old{0};
+        dtype log_prob_new{0};
 
         // about 1.5 sec: gamma and normf generation
         // about 1 sec: logs+exps in else blocks
 
         if (util::isPositive(k) && util::isPositive(theta)) {
-            gamma.param((typename decltype(gamma)::param_type) {static_cast<dtype>(1) / theta, k});
-            v0_new = gamma(generator); // gengam(1.0 / theta, k);
-            log_v0_new = log(v0_new);
+            gamma.param((typename decltype(gamma)::param_type) {k, theta});
+            auto v0_new = gamma(generator);
+            auto log_v0_new = std::log(v0_new);
             if (util::isPositive(v0_new)) {
                 if (v0 == 0) {
                     v0 = v0_new;
                     log_v0 = log_v0_new;
                 } else {
-                    log_prob_new = (c0 - 1) * log_v0_new - c1 * log(v0_new + v1) - c2 * log(v0_new + v2);
+                    log_prob_new = (c0 - 1) * log_v0_new - c1 * std::log(v0_new + v1) - c2 * std::log(v0_new + v2);
                     log_prob_new -= (k - 1) * log_v0_new - v0_new / theta;
-                    log_prob_old = (c0 - 1) * log_v0 - c1 * log(v0 + v1) - c2 * log(v0 + v2);
+                    log_prob_old = (c0 - 1) * log_v0 - c1 * std::log(v0 + v1) - c2 * std::log(v0 + v2);
                     log_prob_old -= (k - 1) * log_v0 - v0 / theta;
                     if (acceptStep(log_prob_old, log_prob_new)) {
                         v0 = v0_new;
@@ -188,15 +278,15 @@ private:
             }
         }
 
-        v0_new = v0 * exp(random_walk_stepsize * normal(generator));
-        log_v0_new = log(v0_new);
+        auto v0_new = v0 * std::exp(static_cast<dtype>(random_walk_stepsize) * normal(generator));
+        auto log_v0_new = std::log(v0_new);
         if (util::isPositive(v0_new)) {
             if (v0 == 0) {
                 v0 = v0_new;
                 log_v0 = log_v0_new;
             } else {
-                log_prob_new = c0 * log_v0_new - c1 * log(v0_new + v1) - c2 * log(v0_new + v2);
-                log_prob_old = c0 * log_v0 - c1 * log(v0 + v1) - c2 * log(v0 + v2);
+                log_prob_new = c0 * log_v0_new - c1 * std::log(v0_new + v1) - c2 * std::log(v0_new + v2);
+                log_prob_old = c0 * log_v0 - c1 * std::log(v0 + v1) - c2 * std::log(v0 + v2);
                 if (acceptStep(log_prob_old, log_prob_new)) {
                     v0 = v0_new;
                     log_v0 = log_v0_new;
@@ -205,6 +295,114 @@ private:
         }
 
         return v0;
+    }
+
+    void update(const np_array<dtype> &arrC, const np_array<dtype> &arrSumC, np_array<dtype> &arrX,
+                const np_array<int> &arrI, const np_array<int> &arrJ,
+                int n_step) {
+        dtype *X = arrX.mutable_data();
+        auto nStates = arrC.shape(0);
+        auto nIndices = arrI.shape(0);
+        // std::vector<dtype> arrSumX = sumX(arrX, nStates);
+        std::unique_ptr<dtype[]> sumX(new dtype[nStates]);
+        std::fill(sumX.get(), sumX.get() + nStates, 0);
+
+        // auto *sumX = arrSumX.data();
+        auto C = arrC.template unchecked<2>();
+        auto sumC = arrSumC.template unchecked<1>();
+
+        const int *const I = arrI.data();
+        const int *const J = arrJ.data();
+
+        // row indexes
+        std::unique_ptr<int[]> rowIndices(new int[nStates + 1]);
+        std::fill(rowIndices.get(), rowIndices.get() + nStates + 1, 0);
+        generateRowIndices(I, nStates, nIndices, rowIndices.get());
+
+        for (int iter = 0; iter < n_step; iter++) {
+            // update all X row sums once every iteration and then only do cheap updates.
+            for (int i = 0; i < nStates; i++) {
+                sumX[i] = _sumRowSparse(X, nStates, i, J, rowIndices[i], rowIndices[i + 1]);
+            }
+
+            for (int k = 0; k < nIndices; k++) {
+                auto i = I[k];
+                auto j = J[k];
+                if (i == j) {
+                    if (util::isPositive(C(i, i)) && util::isPositive(sumC(i) - C(i, i))) {
+                        beta.param((typename decltype(beta)::param_type) {C(i, i), sumC(i) - C(i, i)});
+                        // auto tmp1 = beta(generator);
+                        auto tmp1 = sktime::rnd::genbet(C(i, i), sumC(i) - C(i, i), generator);
+                        auto tmp2 = tmp1 / (1 - tmp1) * (sumX[i] - X[i * nStates + i]);
+                        if (util::isPositive(tmp2)) {
+                            sumX[i] += tmp2 - X[i * nStates + i];  // update sumX
+                            X[i * nStates + i] = tmp2;
+                        }
+                    }
+                } else if (i < j) {  // only work on the upper triangle, because we have symmetry.
+                    auto tmp1 = sumX[i] - X[i * nStates + j];
+                    auto tmp2 = sumX[j] - X[j * nStates + i];
+                    X[i * nStates + j] = updateStep(X[i * nStates + j], tmp1, tmp2, C(i, j) + C(j, i),
+                                                    sumC(i), sumC(j), 1);
+                    X[j * nStates + i] = X[i * nStates + j];
+                    // update X
+                    sumX[i] = tmp1 + X[i * nStates + j];
+                    sumX[j] = tmp2 + X[j * nStates + i];
+                }
+            }
+
+            _normalizeAllSparse(X, I, J, nStates, nIndices);
+        }
+    }
+
+private:
+    Generator generator;
+    std::normal_distribution<dtype> normal;  // standard normal by default ctor
+    std::gamma_distribution<dtype> gamma;
+    sktime::rnd::beta_distribution<dtype> beta;
+    std::uniform_real_distribution<dtype> uniform;
+
+    bool acceptStep(dtype log_prob_old, dtype log_prob_new) {
+        auto diff = log_prob_new - log_prob_old;
+        return diff > 0 /* this is faster */ ||
+               uniform(generator) < std::exp(std::min(diff, static_cast<dtype>(0)));
+    }
+
+    void generateRowIndices(const int *const I, int n, int n_idx, int *rowIndices) {
+        rowIndices[0] = 0;  // starts with row 0
+        int current_row = 0;
+        for (int k = 0; k < n_idx; k++) {
+            // still at same row? do nothing
+            if (I[k] == current_row)
+                continue;
+            // row has advanced one or multiple times. Update multiple row indexes until we are equal
+            while (I[k] > current_row) {
+                current_row++;
+                rowIndices[current_row] = k;
+            }
+        }
+        // stop sign
+        rowIndices[n] = n_idx;
+    }
+
+    dtype _sumRowSparse(const dtype *const X, int n, int i, const int *const J, int from, int to) const {
+        auto sum = static_cast<dtype>(0);
+        for (int j = from; j < to; j++) {
+            sum += X[i * n + J[j]];
+        }
+        return sum;
+    }
+
+    void _normalizeAllSparse(dtype *X, const int *const I, const int *const J, int n, int n_idx) {
+        // sum all
+        dtype sum = 0.0;
+        for (int k = 0; k < n_idx; k++) {
+            sum += X[I[k] * n + J[k]];
+        }
+        // normalize all
+        for (int k = 0; k < n_idx; k++) {
+            X[I[k] * n + J[k]] /= sum;
+        }
     }
 
 
