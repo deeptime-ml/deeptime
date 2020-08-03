@@ -66,42 +66,43 @@ private:
     std::normal_distribution<dtype> normal;
 
     dtype maximum_point(dtype s, dtype a1, dtype a2, dtype a3) const {
-        dtype a = a2 + 1.0;
-        dtype b = a2 - a1 + (a2 + a3 + 1.0) / (s - 1.0);
-        dtype c = (a1 + 1.0) * s / (1.0 - s);
-        dtype vbar = (-b + std::sqrt(b * b - 4.0 * a * c)) / (2.0 * a);
+        dtype a = a2 + static_cast<dtype>(1);
+        dtype b = a2 - a1 + (a2 + a3 + static_cast<dtype>(1)) / (s - static_cast<dtype>(1));
+        dtype c = (a1 + static_cast<dtype>(1)) * s / (static_cast<dtype>(1) - s);
+        dtype vbar = (-b + std::sqrt(b * b - static_cast<dtype>(4) * a * c)) / (static_cast<dtype>(2) * a);
         return vbar;
     }
 
     dtype f(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
-        dtype r = s / (s - 1.0);
-        return (a1 + 1.0) * std::log(v) + a3 * std::log(r + v) - (a1 + a2 + a3 + 2.0) * std::log(1.0 + v);
+        dtype r = s / (s - static_cast<dtype>(1));
+        return (a1 + static_cast<dtype>(1)) * std::log(v) + a3 * std::log(r + v)
+                - (a1 + a2 + a3 + static_cast<dtype>(1)) * std::log(static_cast<dtype>(1) + v);
     }
 
     dtype F(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
-        dtype r = s / (s - 1.0);
-        return (a1 + 1.0) / v + a3 / (r + v) - (a1 + a2 + a3 + 2) / (1.0 + v);
+        dtype r = s / (s - static_cast<dtype>(1));
+        return (a1 + static_cast<dtype>(1)) / v + a3 / (r + v)
+                - (a1 + a2 + a3 + static_cast<dtype>(2)) / (static_cast<dtype>(1) + v);
     }
 
     dtype DF(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
-        dtype r = s / (s - 1.0);
-        return -(a1 + 1.0) / (v * v) - a3 / ((r + v) * (r + v)) + (a1 + a2 + a3 + 2) / ((1.0 + v) * (1.0 + v));
+        dtype r = s / (s - static_cast<dtype>(1));
+        return -(a1 + static_cast<dtype>(1)) / (v * v) - a3 / ((r + v) * (r + v))
+               + (a1 + a2 + a3 + static_cast<dtype>(2)) / ((static_cast<dtype>(1) + v) * (static_cast<dtype>(1) + v));
     }
 
     dtype qacc(dtype w, dtype v, dtype s,
          dtype a1, dtype a2, dtype a3,
          dtype alpha, dtype beta) const {
-        dtype r;
-        r = s / (s - 1.0);
-        return beta * (w - v) + (a1 + 1.0 - alpha) * std::log(w / v) + a3 * std::log((r + w) / (r + v)) -
-               (a1 + a2 + a3 + 2.0) * std::log((1.0 + w) / (1.0 + v));
+        auto r = s / (s - static_cast<dtype>(1));
+        return beta * (w - v) + (a1 + static_cast<dtype>(1) - alpha) * std::log(w / v) + a3 * std::log((r + w) / (r + v)) -
+               (a1 + a2 + a3 + static_cast<dtype>(2)) * std::log((static_cast<dtype>(1) + w) / (static_cast<dtype>(1) + v));
     }
 
     dtype qacc_rw(dtype w, dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
-        dtype r;
-        r = s / (s - 1.0);
-        return (a1 + 1.0) * std::log(w / v) + a3 * std::log((r + w) / (r + v))
-               - (a1 + a2 + a3 + 2.0) * std::log((1.0 + w) / (1.0 + v));
+        auto r = s / (s - static_cast<dtype>(1));
+        return (a1 + static_cast<dtype>(1)) * std::log(w / v) + a3 * std::log((r + w) / (r + v))
+               - (a1 + a2 + a3 + static_cast<dtype>(2)) * std::log((static_cast<dtype>(2) + w) / (static_cast<dtype>(1) + v));
     }
 
     dtype sample_quad(dtype xkl, dtype xkk, dtype xll,
@@ -120,22 +121,22 @@ private:
             s2 = skl;
             s3 = slk;
             s = s3 / s2;
-            a1 = ckl + clk - 1.0;
-            a2 = ckk + bk - 1.0;
-            a3 = cll + bl - 1.0;
+            a1 = ckl + clk - static_cast<dtype>(1);
+            a2 = ckk + bk - static_cast<dtype>(1);
+            a3 = cll + bl - static_cast<dtype>(1);
         } else {
             s2 = slk;
             s3 = skl;
             s = s3 / s2;
-            a1 = ckl + clk - 1.0;
-            a2 = cll + bl - 1.0;
-            a3 = ckk + bk - 1.0;
+            a1 = ckl + clk - static_cast<dtype>(1);
+            a2 = cll + bl - static_cast<dtype>(1);
+            a3 = ckk + bk - static_cast<dtype>(1);
         }
 
         //Check if s-1>0
-        if (util::isPositive(s - 1.0)) {
+        if (util::isPositive(s - static_cast<dtype>(1))) {
             vbar = maximum_point(s, a1, a2, a3);
-            beta = -1.0 * DF(vbar, s, a1, a2, a3) * vbar;
+            beta = -static_cast<dtype>(1) * DF(vbar, s, a1, a2, a3) * vbar;
             alpha = beta * vbar;
 
             //Check if s2-xkl > 0
@@ -154,7 +155,7 @@ private:
                     if (util::isPositive(w)) {
                         // If v=0 accept
                         if (!util::isPositive(v)) {
-                            return s2 * w / (1.0 + w);
+                            return s2 * w / (static_cast<dtype>(1) + w);
                         } else {
                             // Log acceptance probability
                             q = qacc(w, v, s, a1, a2, a3, alpha, beta);
@@ -162,7 +163,7 @@ private:
                             // Metropolis step
                             U = uniform(generator);
                             if (std::log(U) < std::min(static_cast<dtype>(0), q)) {
-                                return s2 * w / (1.0 + w);
+                                return s2 * w / (static_cast<dtype>(1) + w);
                             }
                         }
                     }
@@ -188,16 +189,16 @@ private:
             s2 = skl;
             s3 = slk;
             s = s3 / s2;
-            a1 = ckl + clk - 1.0;
-            a2 = ckk + bk - 1.0;
-            a3 = cll + bl - 1.0;
+            a1 = ckl + clk - static_cast<dtype>(1);
+            a2 = ckk + bk - static_cast<dtype>(1);
+            a3 = cll + bl - static_cast<dtype>(1);
         } else {
             s2 = slk;
             s3 = skl;
             s = s3 / s2;
-            a1 = ckl + clk - 1.0;
-            a2 = cll + bl - 1.0;
-            a3 = ckk + bk - 1.0;
+            a1 = ckl + clk - static_cast<dtype>(1);
+            a2 = cll + bl - static_cast<dtype>(1);
+            a3 = ckk + bk - static_cast<dtype>(1);
         }
         //Check if s2-xkl > 0
         if (util::isPositive(s2 - xkl)) {
@@ -209,13 +210,13 @@ private:
             if (util::isPositive(w)) {
                 //If v=0 accept
                 if (!util::isPositive(v)) {
-                    return s2 * w / (1.0 + w);
+                    return s2 * w / (static_cast<dtype>(1) + w);
                 } else {
                     q = qacc_rw(w, v, s, a1, a2, a3);
                     //Metropolis step
                     U = uniform(generator);
                     if (std::log(U) < std::min(static_cast<dtype>(0), q)) {
-                        return s2 * w / (1.0 + w);
+                        return s2 * w / (static_cast<dtype>(1) + w);
                     }
                 }
             }
@@ -244,16 +245,16 @@ public:
         dtype a = c1 + c2 - c0;
         dtype b = (c1 - c0) * v2 + (c2 - c0) * v1;
         dtype c = -c0 * v1 * v2;
-        dtype v_bar = 0.5 * (-b + std::sqrt(b * b - 4 * a * c)) / a;
+        dtype v_bar = static_cast<dtype>(.5) * (-b + std::sqrt(b * b - static_cast<dtype>(4) * a * c)) / a;
         // dtype h = c1 + c2 - c0;
         dtype h = c1 / ((v_bar + v1) * (v_bar + v1))
                   + c2 / ((v_bar + v2) * (v_bar + v2))
                   - c0 / (v_bar * v_bar);
         dtype k = -h * v_bar * v_bar;
-        dtype theta = -1.0 / (h * v_bar);
+        dtype theta = -static_cast<dtype>(1) / (h * v_bar);
         dtype log_v0 = std::log(v0);
-        dtype log_prob_old{0};
-        dtype log_prob_new{0};
+        dtype log_prob_old;
+        dtype log_prob_new;
 
         // about 1.5 sec: gamma and normf generation
         // about 1 sec: logs+exps in else blocks
@@ -267,10 +268,10 @@ public:
                     v0 = v0_new;
                     log_v0 = log_v0_new;
                 } else {
-                    log_prob_new = (c0 - 1) * log_v0_new - c1 * std::log(v0_new + v1) - c2 * std::log(v0_new + v2);
-                    log_prob_new -= (k - 1) * log_v0_new - v0_new / theta;
-                    log_prob_old = (c0 - 1) * log_v0 - c1 * std::log(v0 + v1) - c2 * std::log(v0 + v2);
-                    log_prob_old -= (k - 1) * log_v0 - v0 / theta;
+                    log_prob_new = (c0 - static_cast<dtype>(1)) * log_v0_new - c1 * std::log(v0_new + v1) - c2 * std::log(v0_new + v2);
+                    log_prob_new -= (k - static_cast<dtype>(1)) * log_v0_new - v0_new / theta;
+                    log_prob_old = (c0 - static_cast<dtype>(1)) * log_v0 - c1 * std::log(v0 + v1) - c2 * std::log(v0 + v2);
+                    log_prob_old -= (k - static_cast<dtype>(1)) * log_v0 - v0 / theta;
                     if (acceptStep(log_prob_old, log_prob_new)) {
                         v0 = v0_new;
                         log_v0 = log_v0_new;
@@ -333,7 +334,7 @@ public:
                     if (util::isPositive(C(i, i)) && util::isPositive(sumC(i) - C(i, i))) {
                         beta.param(typename decltype(beta)::param_type {C(i, i), sumC(i) - C(i, i)});
                         auto tmp1 = beta(generator);
-                        auto tmp2 = tmp1 / (1 - tmp1) * (sumX[i] - X[i * nStates + i]);
+                        auto tmp2 = tmp1 / (static_cast<dtype>(1) - tmp1) * (sumX[i] - X[i * nStates + i]);
                         if (util::isPositive(tmp2)) {
                             sumX[i] += tmp2 - X[i * nStates + i];  // update sumX
                             X[i * nStates + i] = tmp2;
@@ -395,7 +396,7 @@ private:
 
     void _normalizeAllSparse(dtype *X, const int *const I, const int *const J, int n, int n_idx) {
         // sum all
-        dtype sum = 0.0;
+        auto sum = static_cast<dtype>(0);
         for (int k = 0; k < n_idx; k++) {
             sum += X[I[k] * n + J[k]];
         }

@@ -12,9 +12,9 @@
 namespace util {
 template<typename dtype>
 auto relativeError(const std::size_t n, const dtype *const a, const dtype *const b) -> dtype {
-    dtype max = 0.0;
+    auto max = static_cast<dtype>(0);
     for (auto i = 0U; i < n; i++) {
-        auto sum = 0.5 * (a[i] + b[i]);
+        auto sum = static_cast<dtype>(.5) * (a[i] + b[i]);
         if (sum > 0) {
             auto d = std::abs((a[i] - b[i]) / sum);
             if (d > max) {
@@ -26,7 +26,7 @@ auto relativeError(const std::size_t n, const dtype *const a, const dtype *const
 }
 
 template<typename dtype>
-static double distsq(const std::size_t n, const dtype *const a, const dtype *const b) {
+static dtype distsq(const std::size_t n, const dtype *const a, const dtype *const b) {
     dtype d = 0.0;
     #pragma omp parallel for reduction(+:d) default(none) firstprivate(n, a, b)
     for (std::size_t i = 0; i < n; i++) {
@@ -147,7 +147,7 @@ int mle_trev_given_pi_dense(np_array<dtype>& T_arr, const np_array<dtype> &C_arr
     for (std::size_t i = 0; i < n; i++) {
         lam_new[i] = 0.0;
         for (std::size_t j = 0; j < n; j++) {
-            lam_new[i] += 0.5 * (C(i, j) + C(j, i));
+            lam_new[i] += static_cast<dtype>(.5) * (C(i, j) + C(j, i));
         }
         if (lam_new[i] == 0) {
             throw std::logic_error("Some row and corresponding column of C have zero counts.");
