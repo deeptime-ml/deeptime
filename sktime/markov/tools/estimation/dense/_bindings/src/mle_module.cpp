@@ -29,4 +29,3 @@ PYBIND11_MODULE(_mle_bindings, m) {
     exportSampler<RevPiSampler<double>>(m, "RevPiSampler64");
     exportSampler<RevPiSampler<long double>>(m, "RevPiSampler128");
 }
-

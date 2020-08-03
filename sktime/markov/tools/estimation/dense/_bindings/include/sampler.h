@@ -147,7 +147,7 @@ private:
                 auto betaInv = static_cast<dtype>(1) / beta;
                 if (util::isPositive(alpha) && util::isPositive(betaInv)) {
                     //Proposal
-                    gamma.param((typename decltype(gamma)::param_type) {alpha, betaInv});
+                    gamma.param(typename decltype(gamma)::param_type {alpha, betaInv});
                     w = gamma(generator);
 
                     //If w=0 -> reject
@@ -259,7 +259,7 @@ public:
         // about 1 sec: logs+exps in else blocks
 
         if (util::isPositive(k) && util::isPositive(theta)) {
-            gamma.param((typename decltype(gamma)::param_type) {k, theta});
+            gamma.param(typename decltype(gamma)::param_type {k, theta});
             auto v0_new = gamma(generator);
             auto log_v0_new = std::log(v0_new);
             if (util::isPositive(v0_new)) {
@@ -331,7 +331,7 @@ public:
                 auto j = J[k];
                 if (i == j) {
                     if (util::isPositive(C(i, i)) && util::isPositive(sumC(i) - C(i, i))) {
-                        beta.param((typename decltype(beta)::param_type) {C(i, i), sumC(i) - C(i, i)});
+                        beta.param(typename decltype(beta)::param_type {C(i, i), sumC(i) - C(i, i)});
                         auto tmp1 = beta(generator);
                         auto tmp2 = tmp1 / (1 - tmp1) * (sumX[i] - X[i * nStates + i]);
                         if (util::isPositive(tmp2)) {
