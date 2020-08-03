@@ -17,11 +17,13 @@
 
 r"""
 
-=============================================================================
-estimation - MSM estimation from data (:mod:`sktime.markov.tools.estimation`)
-=============================================================================
+========================
+MSM estimation from data
+========================
 
 .. currentmodule:: sktime.markov.tools.estimation
+
+This module (:mod:`sktime.markov.tools.estimation`) contains utility functions dealing with MSM estimation from data.
 
 Countmatrix
 ===========

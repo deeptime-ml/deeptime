@@ -24,10 +24,13 @@ This module provides the unittest for the pcca module
 
 """
 import unittest
+
 import numpy as np
 
-from tests.markov.tools.numeric import assert_allclose
+from sktime.markov.tools.analysis import stationary_distribution
 from sktime.markov.tools.analysis.dense.pcca import pcca, coarsegrain, PCCA
+from sktime.markov.tools.estimation import connected_sets
+from tests.markov.tools.numeric import assert_allclose
 
 
 class TestPCCA(unittest.TestCase):
@@ -190,7 +193,11 @@ class TestPCCA(unittest.TestCase):
                       [0, 0, 0, 1, 0, 1, 0]])
 
         transition_matrix = L / np.sum(L, 1).reshape(-1, 1)
-        chi = pcca(transition_matrix, 2)
+        pi = np.zeros((transition_matrix.shape[0],))
+        for cs in connected_sets(transition_matrix):
+            P_sub = transition_matrix[cs, :][:, cs]
+            pi[cs] = stationary_distribution(P_sub)
+        chi = pcca(transition_matrix, 2, pi=pi)
         expected = np.array([[0., 1.],
                              [0., 1.],
                              [0., 1.],
@@ -199,6 +206,3 @@ class TestPCCA(unittest.TestCase):
                              [1., 0.],
                              [1., 0.]])
         np.testing.assert_equal(chi, expected)
-
-if __name__ == "__main__":
-    unittest.main()

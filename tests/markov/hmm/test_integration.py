@@ -1,38 +1,13 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import itertools
-import unittest
 
 import numpy as np
-from sktime.markov._markov_bindings import simulation as generation_bindings
+import pytest
 
-import sktime.markov.tools.analysis
+from sktime.markov import tools
+
+import sktime
 from sktime.markov.hmm import MaximumLikelihoodHMSM
-from tests.util import GenerateTestMatrix
-
-parameter_options = {'reversible': [True, False],
-                     'init_heuristics': [sktime.markov.hmm.init.discrete.metastable_from_data],
-                     'lagtime': [1]}
-
-sorted_kwargs = sorted(parameter_options)
-parameter_grid = list(itertools.product(*(parameter_options[key] for key in sorted_kwargs)))
-kwarg_grid = [{k: v for k, v in zip(sorted_kwargs, param_tuple)} for param_tuple in
-              parameter_grid]
+from sktime.markov.msm import MarkovStateModel
 
 
 def permutation_matrices(n):
@@ -40,105 +15,110 @@ def permutation_matrices(n):
         yield np.stack(mat)
 
 
-def compile_test_signature(parameters):
-    s = ''
-    for n, p in zip(sorted_kwargs, parameters):
-        s += f'{n}: {p} '
-    return s
+def pytest_generate_tests(metafunc):
+    if "hmm_scenario" in metafunc.fixturenames:
+        metafunc.parametrize("hmm_scenario", list(itertools.product(
+            [True, False],
+            ["random", "pcca"],
+            [1]
+        )), indirect=True, ids=lambda x: f"reversible={x[0]},init_strategy={x[1]},lagtime={x[2]}")
 
 
-class TestHMMReconstruction(unittest.TestCase, metaclass=GenerateTestMatrix):
-    global sorted_kwargs
+class HMMScenario(object):
 
-    params = {
-        '_test_observation_probabilities': kwarg_grid,
-        '_test_stationary_distribution': kwarg_grid,
-        '_test_hidden_transition_matrix': kwarg_grid,
-        '_test_hidden_path': kwarg_grid
-    }
-    @classmethod
-    def setUpClass(cls):
-        # generate observations
-        cls.n_steps = int(1e5)
-        cls.T_hidden = np.array([[0.7, 0.2, 0.1],
-                                 [0.1, 0.8, 0.1],
-                                 [0.1, 0.2, 0.7]])
+    def __init__(self, reversible: bool, init_strategy: str, lagtime: int):
+        self.reversible = reversible
+        self.init_strategy = init_strategy
+        self.lagtime = lagtime
 
-        cls.hidden_stationary_distribution = sktime.markov.tools.analysis.stationary_distribution(cls.T_hidden)
-
-        cls.n_hidden = cls.T_hidden.shape[0]
+        self.n_steps = int(1e5)
+        self.msm = MarkovStateModel(np.array([[0.7, 0.2, 0.1],
+                                              [0.1, 0.8, 0.1],
+                                              [0.1, 0.2, 0.7]]))
+        self.hidden_stationary_distribution = tools.analysis.stationary_distribution(self.msm.transition_matrix)
+        self.n_hidden = self.msm.n_states
         n_obs_per_hidden_state = 5
-        cls.n_observable = cls.n_hidden * n_obs_per_hidden_state
+        self.n_observable = self.n_hidden * n_obs_per_hidden_state
 
         def gaussian(x, mu, sigma):
             prop = 1 / np.sqrt(2. * np.pi * sigma ** 2) * np.exp(- (x - mu) ** 2 / (2 * sigma ** 2))
             return prop / prop.sum()
 
-        cls.observed_alphabet = np.arange(cls.n_observable)
-        cls.output_probabilities = np.array([gaussian(cls.observed_alphabet, mu, 2.) for mu in
-                                             np.arange((n_obs_per_hidden_state - 1) // 2,
-                                                       cls.n_observable, n_obs_per_hidden_state)])
+        self.observed_alphabet = np.arange(self.n_observable)
+        self.output_probabilities = np.array([gaussian(self.observed_alphabet, mu, 2.) for mu in
+                                              np.arange((n_obs_per_hidden_state - 1) // 2,
+                                                        self.n_observable, n_obs_per_hidden_state)])
 
-        cls.hidden_state_traj = generation_bindings.trajectory(cls.n_steps, 0, cls.T_hidden)
-        cls.observable_state_traj = np.zeros_like(cls.hidden_state_traj) - 1
-        for state in range(cls.n_hidden):
-            ix = np.where(cls.hidden_state_traj == state)[0]
-            cls.observable_state_traj[ix] = np.random.choice(cls.n_observable,
-                                                             p=cls.output_probabilities[state],
-                                                             size=ix.shape[0])
-        assert -1 not in np.unique(cls.observable_state_traj)
+        self.hidden_state_traj = self.msm.simulate(self.n_steps, 0)
+        self.observable_state_traj = np.zeros_like(self.hidden_state_traj) - 1
+        for state in range(self.n_hidden):
+            ix = np.where(self.hidden_state_traj == state)[0]
+            self.observable_state_traj[ix] = np.random.choice(self.n_observable,
+                                                              p=self.output_probabilities[state],
+                                                              size=ix.shape[0])
+        assert -1 not in np.unique(self.observable_state_traj)
 
-        def estimate_hmm(**kwargs):
-            init_heuristics = kwargs.pop('init_heuristics')
-            initial_hmm = init_heuristics(cls.observable_state_traj,
-                                          n_hidden_states=cls.n_hidden,
-                                          lagtime=kwargs['lagtime'])
-            hmm = MaximumLikelihoodHMSM(initial_hmm, **kwargs).fit(cls.observable_state_traj).fetch_model()
-            return hmm
-
-        test_models = [estimate_hmm(**dict(zip(sorted_kwargs, param))) for param in parameter_grid]
-        cls.models = {compile_test_signature(p): m for p, m in zip(parameter_grid, test_models)}
-
-    def _test_observation_probabilities(self, **kwargs):
-        test_sign = compile_test_signature([kwargs[key] for key in sorted_kwargs])
-        model = self.models[test_sign]
-
-        minerr = 1e6
-        for perm in itertools.permutations(range(self.n_hidden)):
-            err = np.max(np.abs(model.output_probabilities[np.array(perm)] -
-                                self.output_probabilities))
-            minerr = min(minerr, err)
-        np.testing.assert_almost_equal(minerr, 0, decimal=2, err_msg=f'failed for {test_sign}')
-
-    def _test_stationary_distribution(self, **kwargs):
-        test_sign = compile_test_signature([kwargs[key] for key in sorted_kwargs])
-        model = self.models[test_sign]
-        minerr = 1e6
-        for perm in itertools.permutations(range(self.n_hidden)):
-            minerr = min(minerr, np.max(np.abs(model.transition_model.stationary_distribution[np.array(perm)] -
-                                                self.hidden_stationary_distribution)))
-        np.testing.assert_almost_equal(minerr, 0, decimal=2)
-
-    def _test_hidden_transition_matrix(self, **kwargs):
-        test_sign = compile_test_signature([kwargs[key] for key in sorted_kwargs])
-        model = self.models[test_sign]
-        minerr = 1e6
-        for perm in permutation_matrices(self.n_hidden):
-            minerr = min(minerr, np.max(np.abs(perm.T @ model.transition_model.transition_matrix @ perm -
-                                                self.T_hidden)))
-        np.testing.assert_almost_equal(minerr, 0, decimal=2)
-
-    def _test_hidden_path(self, **kwargs):
-        test_sign = compile_test_signature([kwargs[key] for key in sorted_kwargs])
-        model = self.models[test_sign]
-        minerr = 1e6
-        for perm in itertools.permutations(range(self.n_hidden)):
-            viterbi_est = model.compute_viterbi_paths([self.observable_state_traj])[0]
-            minerr = min(minerr, (np.array(perm)[viterbi_est] != self.hidden_state_traj).sum()
-                         / self.n_steps)
-
-        np.testing.assert_almost_equal(minerr, 0, decimal=1)
+        if init_strategy == 'random':
+            self.init_hmm = sktime.markov.hmm.init.discrete.random_guess(
+                n_observation_states=self.n_observable, n_hidden_states=self.n_hidden
+            )
+        elif init_strategy == 'pcca':
+            self.init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(
+                self.observable_state_traj, n_hidden_states=self.n_hidden, lagtime=self.lagtime
+            )
+        else:
+            raise ValueError("unknown init strategy {}".format(init_strategy))
+        self.hmm = MaximumLikelihoodHMSM(self.init_hmm, reversible=self.reversible,
+                                         lagtime=self.lagtime).fit(self.observable_state_traj).fetch_model()
 
 
-if __name__ == "__main__":
-    unittest.main()
+scenario_map = dict()
+
+
+@pytest.fixture
+def hmm_scenario(request):
+    if request.param in scenario_map.keys():
+        return scenario_map[request.param]
+    else:
+        reversible, init_strategy, lagtime = request.param
+        scenario = HMMScenario(reversible, init_strategy, lagtime)
+        scenario_map[request.param] = scenario
+        return scenario
+
+
+def test_observation_probabilities(hmm_scenario):
+    minerr = 1e6
+    for perm in itertools.permutations(range(hmm_scenario.n_hidden)):
+        err = np.max(np.abs(hmm_scenario.output_probabilities[np.array(perm)] -
+                            hmm_scenario.hmm.output_probabilities))
+        minerr = min(minerr, err)
+    np.testing.assert_almost_equal(minerr, 0, decimal=2)
+
+
+def test_stationary_distribution(hmm_scenario):
+    model = hmm_scenario.hmm
+    minerr = 1e6
+    for perm in itertools.permutations(range(hmm_scenario.n_hidden)):
+        minerr = min(minerr, np.max(np.abs(model.transition_model.stationary_distribution[np.array(perm)] -
+                                           hmm_scenario.hidden_stationary_distribution)))
+    np.testing.assert_almost_equal(minerr, 0, decimal=2)
+
+
+def test_hidden_transition_matrix(hmm_scenario):
+    model = hmm_scenario.hmm
+    minerr = 1e6
+    for perm in permutation_matrices(hmm_scenario.n_hidden):
+        minerr = min(minerr, np.max(np.abs(perm.T @ model.transition_model.transition_matrix @ perm -
+                                           hmm_scenario.msm.transition_matrix)))
+    np.testing.assert_almost_equal(minerr, 0, decimal=2)
+
+
+def test_hidden_path(hmm_scenario):
+    model = hmm_scenario.hmm
+    minerr = 1e6
+    for perm in itertools.permutations(range(hmm_scenario.n_hidden)):
+        viterbi_est = model.compute_viterbi_paths([hmm_scenario.observable_state_traj])[0]
+        minerr = min(minerr, (np.array(perm)[viterbi_est] != hmm_scenario.hidden_state_traj).sum()
+                     / hmm_scenario.n_steps)
+
+    np.testing.assert_almost_equal(minerr, 0, decimal=1)

@@ -153,8 +153,7 @@ def is_connected(T, directed=True):
 
 
     """
-    nc = connected_components(T, directed=directed, connection='strong', \
-                              return_labels=False)
+    nc = connected_components(T, directed=directed, connection='strong', return_labels=False)
     return nc == 1
 
 

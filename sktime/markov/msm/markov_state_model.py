@@ -156,7 +156,11 @@ class MarkovStateModel(Model):
             raise ValueError("Markov state model requires a transition matrix, but it was None.")
         else:
             if not issparse(value):
-                value = np.asarray_chkfinite(value)
+                try:
+                    value = np.asarray_chkfinite(value)
+                except ValueError:
+                    print(value)
+                    raise
             if not msmana.is_transition_matrix(value, tol=self.transition_matrix_tolerance):
                 raise ValueError(f'The input transition matrix is not a stochastic matrix '
                                  f'(elements >= 0, rows sum up to 1) up to '

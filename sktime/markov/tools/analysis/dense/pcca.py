@@ -28,7 +28,7 @@ from scipy.sparse import issparse
 import math
 
 
-def _pcca_connected_isa(evec, n_clusters):
+def _pcca_connected_isa(eigenvectors, n_clusters):
     """
     PCCA+ spectral clustering method using the inner simplex algorithm.
 
@@ -48,8 +48,6 @@ def _pcca_connected_isa(evec, n_clusters):
 
     Returns
     -------
-    (chi, rot_mat)
-
     chi : ndarray (n x m)
         A matrix containing the probability or membership of each state to be assigned to each cluster.
         The rows sum to 1.
@@ -65,7 +63,7 @@ def _pcca_connected_isa(evec, n_clusters):
         Elsevier, New York, 2005, pp. 161-184
 
     """
-    (n, m) = evec.shape
+    (n, m) = eigenvectors.shape
 
     # do we have enough eigenvectors?
     if n_clusters > m:
@@ -73,14 +71,14 @@ def _pcca_connected_isa(evec, n_clusters):
                          + " eigenvector matrix to " + str(n_clusters) + " clusters.")
 
     # check if the first, and only the first eigenvector is constant
-    diffs = np.abs(np.max(evec, axis=0) - np.min(evec, axis=0))
+    diffs = np.abs(np.max(eigenvectors, axis=0) - np.min(eigenvectors, axis=0))
     assert diffs[0] < 1e-6, "First eigenvector is not constant. This indicates that the transition matrix " \
                             "is not connected or the eigenvectors are incorrectly sorted. Cannot do PCCA."
     assert diffs[1] > 1e-6, "An eigenvector after the first one is constant. " \
                             "Probably the eigenvectors are incorrectly sorted. Cannot do PCCA."
 
     # local copy of the eigenvectors
-    c = evec[:, list(range(n_clusters))]
+    c = eigenvectors[:, list(range(n_clusters))]
 
     ortho_sys = np.copy(c)
     max_dist = 0.0
@@ -115,16 +113,16 @@ def _pcca_connected_isa(evec, n_clusters):
 
     # obtain transformation matrix of eigenvectors to membership matrix
     rot_mat = np.linalg.inv(c[ind])
-    #print "Rotation matrix \n ", rot_mat
+    # print "Rotation matrix \n ", rot_mat
 
     # compute membership matrix
     chi = np.dot(c, rot_mat)
-    #print "chi \n ", chi
+    # print "chi \n ", chi
 
-    return (chi, rot_mat)
+    return chi, rot_mat
 
 
-def _opt_soft(eigvectors, rot_matrix, n_clusters):
+def _opt_soft(eigenvectors, rot_matrix, n_clusters):
     """
     Optimizes the PCCA+ rotation matrix such that the memberships are exclusively nonnegative.
 
@@ -134,7 +132,7 @@ def _opt_soft(eigvectors, rot_matrix, n_clusters):
         A matrix with the sorted eigenvectors in the columns. The stationary eigenvector should
         be first, then the one to the slowest relaxation process, etc.
 
-    rot_mat : ndarray (m x m)
+    rot_matrix : ndarray (m x m)
         nonoptimized rotation matrix
 
     n_clusters : int
@@ -154,7 +152,7 @@ def _opt_soft(eigvectors, rot_matrix, n_clusters):
 
     """
     # only consider first n_clusters eigenvectors
-    eigvectors = eigvectors[:, :n_clusters]
+    eigenvectors = eigenvectors[:, :n_clusters]
 
     # crop first row and first column from rot_matrix
     # rot_crop_matrix = rot_matrix[1:,1:]
@@ -180,18 +178,16 @@ def _opt_soft(eigvectors, rot_matrix, n_clusters):
 
     from scipy.optimize import fmin
 
-    rot_crop_vec_opt = fmin(susanna_func, rot_crop_vec, args=(eigvectors,), disp=False)
+    rot_crop_vec_opt = fmin(susanna_func, rot_crop_vec, args=(eigenvectors,), disp=False)
 
     rot_crop_matrix = np.reshape(rot_crop_vec_opt, (x, y))
-    rot_matrix = _fill_matrix(rot_crop_matrix, eigvectors)
+    rot_matrix = _fill_matrix(rot_crop_matrix, eigenvectors)
 
     return rot_matrix
 
-def _fill_matrix(rot_crop_matrix, eigvectors):
-    """
-    Helper function for opt_soft
 
-    """
+def _fill_matrix(rot_crop_matrix, eigvectors):
+    """ Helper function for opt_soft """
 
     (x, y) = rot_crop_matrix.shape
 
@@ -215,9 +211,8 @@ def _fill_matrix(rot_crop_matrix, eigvectors):
     return rot_matrix
 
 
-def _pcca_connected(P, n, return_rot=False):
-    """
-    PCCA+ spectral clustering method with optimized memberships [1]_
+def _pcca_connected(P, n, pi=None):
+    r"""PCCA+ spectral clustering method with optimized memberships [1]_
 
     Clusters the first n_cluster eigenvectors of a transition matrix in order to cluster the states.
     This function assumes that the transition matrix is fully connected.
@@ -226,28 +221,22 @@ def _pcca_connected(P, n, return_rot=False):
     ----------
     P : ndarray (n,n)
         Transition matrix.
-
     n : int
         Number of clusters to group to.
+    pi: ndarray(n,), optional, default=None
+        Stationary distribution if available.
 
     Returns
     -------
-    chi by default, or (chi,rot) if return_rot = True
-
     chi : ndarray (n x m)
         A matrix containing the probability or membership of each state to be assigned to each cluster.
         The rows sum to 1.
-
-    rot_mat : ndarray (m x m)
-        A rotation matrix that rotates the dominant eigenvectors to yield the PCCA memberships, i.e.:
-        chi = np.dot(evec, rot_matrix
 
     References
     ----------
     [1] S. Roeblitz and M. Weber, Fuzzy spectral clustering by PCCA+:
         application to Markov state models and data classification.
         Adv Data Anal Classif 7, 147-179 (2013).
-
     """
 
     # test connectivity
@@ -255,13 +244,17 @@ def _pcca_connected(P, n, return_rot=False):
 
     labels = connected_sets(P)
     n_components = len(labels)  # (n_components, labels) = connected_components(P, connection='strong')
-    if (n_components > 1):
+    if n_components > 1:
         raise ValueError("Transition matrix is disconnected. Cannot use pcca_connected.")
 
-    from sktime.markov.tools.analysis import stationary_distribution
-
-    pi = stationary_distribution(P)
-    # print "statdist = ",pi
+    if pi is None:
+        from sktime.markov.tools.analysis import stationary_distribution
+        pi = stationary_distribution(P)
+    else:
+        if pi.shape[0] != P.shape[0]:
+            raise ValueError(f"Stationary distribution must span entire state space but got {pi.shape[0]} states "
+                             f"instead of {P.shape[0]}.")
+        pi /= pi.sum()  # make sure it is normalized
 
     from sktime.markov.tools.analysis import is_reversible
 
@@ -287,14 +280,12 @@ def _pcca_connected(P, n, return_rot=False):
     # Is there a significant complex component?
     if not np.alltrue(np.isreal(evecs)):
         warnings.warn(
-            "The given transition matrix has complex eigenvectors, so it doesn't exactly fulfill detailed balance "
-            + "forcing eigenvectors to be real and continuing. Be aware that this is not theoretically solid.")
+            "The given transition matrix has complex eigenvectors, so it doesn't exactly fulfill detailed balance. "
+            "Forcing eigenvectors to be real and continuing. Be aware that this is not theoretically solid.")
     evecs = np.real(evecs)
 
     # create initial solution using PCCA+. This could have negative memberships
-    (chi, rot_matrix) = _pcca_connected_isa(evecs, n)
-
-    #print "initial chi = \n",chi
+    chi, rot_matrix = _pcca_connected_isa(evecs, n)
 
     # optimize the rotation matrix with PCCA++.
     rot_matrix = _opt_soft(evecs, rot_matrix, n)
@@ -303,19 +294,15 @@ def _pcca_connected(P, n, return_rot=False):
     memberships = np.dot(evecs[:, :], rot_matrix)
 
     # We might still have numerical errors. Force memberships to be in [0,1]
-    # print "memberships unnormalized: ",memberships
-    memberships = np.maximum(0.0, memberships)
-    memberships = np.minimum(1.0, memberships)
-    # print "memberships unnormalized: ",memberships
+    memberships = np.clip(memberships, 0., 1.)
+
     for i in range(0, np.shape(memberships)[0]):
         memberships[i] /= np.sum(memberships[i])
-
-    # print "final chi = \n",chi
 
     return memberships
 
 
-def pcca(P, m):
+def pcca(P: np.ndarray, m: int, pi: np.ndarray = None, transition_matrix_tol: float = 1e-12):
     """
     PCCA+ spectral clustering method with optimized memberships [1]_
 
@@ -327,14 +314,15 @@ def pcca(P, m):
     ----------
     P : ndarray (n,n)
         Transition matrix.
-
     m : int
         Number of clusters to group to.
+    pi : ndarray(n,), optional, default=None
+        Stationary distribution if available. Should be defined piecewise over the connected sets.
+    transition_matrix_tol : float, optional, default=1e-12
+        Tolerance under which P is checked to be a transition matrix.
 
     Returns
     -------
-    chi by default, or (chi,rot) if return_rot = True
-
     chi : ndarray (n x m)
         A matrix containing the probability or membership of each state to be assigned to each cluster.
         The rows sum to 1.
@@ -345,7 +333,6 @@ def pcca(P, m):
         application to Markov state models and data classification.
         Adv Data Anal Classif 7, 147-179 (2013).
     [2] F. Noe, multiset PCCA and HMMs, in preparation.
-
     """
     # imports
     from sktime.markov.tools.estimation import connected_sets
@@ -353,20 +340,22 @@ def pcca(P, m):
 
     # validate input
     n = np.shape(P)[0]
-    if (m > n):
-        raise ValueError("Number of metastable states m = " + str(m)+
-                         " exceeds number of states of transition matrix n = " + str(n))
-    if not is_transition_matrix(P):
+    if m > n:
+        raise ValueError(f"Number of metastable states m={m} exceeds number of states of transition matrix n={n}")
+    if not is_transition_matrix(P, tol=transition_matrix_tol):
         raise ValueError("Input matrix is not a transition matrix.")
+    if pi is not None and pi.ndim > 1:
+        raise ValueError("Stationary distribution must be given as one-dimensional array or left None.")
+    if pi is not None and pi.shape[0] != n:
+        raise ValueError(f"Stationary distribution must be defined on entire space, piecewise if the transition matrix "
+                         f"has multiple connected components. It covered {pi.shape[0]} != {n} states.")
 
     # prepare output
     chi = np.zeros((n, m))
 
     # test connectivity
     components = connected_sets(P)
-    # print "all labels ",labels
     n_components = len(components)  # (n_components, labels) = connected_components(P, connection='strong')
-    # print 'n_components'
 
     # store components as closed (with positive equilibrium distribution)
     # or as transition states (with vanishing equilibrium distribution)
@@ -376,7 +365,7 @@ def pcca(P, m):
         component = components[i]  # np.argwhere(labels==i).flatten()
         rest = list(set(range(n)) - set(component))
         # is component closed?
-        if (np.sum(P[component, :][:, rest]) == 0):
+        if np.sum(P[component, :][:, rest]) == 0:
             closed_components.append(component)
         else:
             transition_states.append(component)
@@ -388,9 +377,9 @@ def pcca(P, m):
         transition_states = np.concatenate(transition_states)
 
     # check if we have enough clusters to support the disconnected sets
-    if (m < len(closed_components)):
-        raise ValueError("Number of metastable states m = " + str(m) + " is too small. Transition matrix has " +
-                         str(len(closed_components)) + " disconnected components")
+    if m < len(closed_components):
+        raise ValueError(f"Number of metastable states m={m} is too small. Transition matrix "
+                         f"has {len(closed_components)} disconnected components.")
 
     # We collect eigenvalues in order to decide which
     closed_components_Psub = []
@@ -398,12 +387,12 @@ def pcca(P, m):
     closed_components_enum = []
     for i in range(n_closed_components):
         component = closed_components[i]
-        # print "component ",i," ",component
+
         # compute eigenvalues in submatrix
         Psub = P[component, :][:, component]
         closed_components_Psub.append(Psub)
         closed_components_ev.append(eigenvalues(Psub))
-        closed_components_enum.append(i * np.ones((component.size), dtype=int))
+        closed_components_enum.append(i * np.ones((component.size,), dtype=int))
 
     # flatten
     closed_components_ev_flat = np.hstack(closed_components_ev)
@@ -418,21 +407,20 @@ def pcca(P, m):
         m_by_component = np.shape(np.argwhere(component_indexes == i))[0]
 
         # if 1, then the result is trivial
-        if (m_by_component == 1):
+        if m_by_component == 1:
             chi[component, ipcca] = 1.0
             ipcca += 1
-        elif (m_by_component > 1):
-            #print "submatrix: ",closed_components_Psub[i]
-            chi[component, ipcca:ipcca + m_by_component] = _pcca_connected(closed_components_Psub[i], m_by_component)
+        elif m_by_component > 1:
+            # print "submatrix: ",closed_components_Psub[i]
+            chi[component, ipcca:ipcca + m_by_component] = _pcca_connected(
+                closed_components_Psub[i], m_by_component, pi=None if pi is None else pi[closed_components[i]]
+            )
             ipcca += m_by_component
         else:
-            raise RuntimeError("Component " + str(i) + " spuriously has " + str(m_by_component) + " pcca sets")
+            raise RuntimeError(f"Component {i} spuriously has {m_by_component} pcca sets")
 
     # finally assign all transition states
-    # print "chi\n", chi
-    # print "transition states: ",transition_states
-    # print "closed states: ", closed_states
-    if (transition_states.size > 0):
+    if transition_states.size > 0:
         # make all closed states absorbing, so we can see which closed state we hit first
         Pabs = P.copy()
         Pabs[closed_states, :] = 0.0
@@ -446,10 +434,10 @@ def pcca(P, m):
 
     # check if we have m metastable sets. If less than m, we must raise
     nmeta = np.count_nonzero(chi.sum(axis=0))
-    assert m <= nmeta, str(m) + " metastable states requested, but transition matrix only has " + str(nmeta) \
-                       + ". Consider using a prior or request less metastable states. "
+    if nmeta < m:
+        raise RuntimeError(f"{m} metastable states requested, but transition matrix only has {nmeta}. "
+                           f"Consider using a prior or request less metastable states.")
 
-    # print "chi\n", chi
     return chi
 
 
@@ -519,7 +507,8 @@ class PCCA(object):
         # TODO: can be improved: if we have eigendecomposition already, this can be exploited.
         # remember input
         if issparse(P):
-            warnings.warn('pcca is only implemented for dense matrices, converting sparse transition matrix to dense ndarray.')
+            warnings.warn('pcca is only implemented for dense matrices, '
+                          'converting sparse transition matrix to dense ndarray.')
             P = P.toarray()
         self.P = P
         self.m = m

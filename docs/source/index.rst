@@ -25,6 +25,7 @@ They are structured following a possible workflow of a timeseries analysis. That
 .. toctree::
     :maxdepth: 3
     :caption: Documentation
+    :hidden:
 
     index_dimreduction
     notebooks/clustering
@@ -32,28 +33,24 @@ They are structured following a possible workflow of a timeseries analysis. That
     notebooks/hmm
     examples/index
 
-----------------------------------------
-
-Here, all publicly accessible API methods are documented. This documentation is more detailed in terms of different
-available arguments for the implemented methods, although less narrative in nature.
-
 .. toctree::
    :caption: API docs
    :maxdepth: 3
+   :hidden:
 
    api/index_base
    api/index_clustering
    api/index_covariance
    api/index_decomposition
    api/index_markov
+   api/index_markov_tools
    api/index_data
    api/index_numeric
-
-----------------------------------------
 
 .. toctree::
    :caption: Other
    :maxdepth: 1
+   :hidden:
 
    changelog
    imprint

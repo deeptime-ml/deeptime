@@ -98,10 +98,11 @@ def flux_matrix(T, pi, qminus, qplus, netflux=True):
 
     The TPT (gross) flux is defined as
 
-    .. math:: f_{ij}=\left \{ \begin{array}{rl}
-                          \pi_i q_i^{(-)} p_{ij} q_j^{(+)} & i \neq j \\
-                          0                                & i=j\
-                          \end{array} \right .
+    .. math::
+        f_{ij}=\left \{ \begin{array}{rl}
+            \pi_i q_i^{(-)} p_{ij} q_j^{(+)} & i \neq j \\
+            0                                & i=j
+        \end{array} \right .
 
     The TPT net flux is then defined as
 

@@ -17,13 +17,13 @@
 
 r"""
 
-=============================================================================
-flux - Reactive flux an transition pathways (:mod:`sktime.markov.tools.flux`)
-=============================================================================
+=====================================
+Reactive flux and transition pathways
+=====================================
 
 .. currentmodule:: sktime.markov.tools.flux
 
-This module contains functions to compute reactive flux networks and
+This module (:mod:`sktime.markov.tools.flux`) contains functions to compute reactive flux networks and
 find dominant reaction pathways in such networks.
 
 TPT-object
