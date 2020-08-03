@@ -7,8 +7,11 @@ class SamplerRevPi(object):
         from sktime.markov.tools.estimation.dense.mle import mle_trev_given_pi
         from .._mle_bindings import RevPiSampler32, RevPiSampler64, RevPiSampler128
 
-        self.C = C
-        self.pi = pi
+        dtype = C.dtype
+        if dtype not in (np.float32, np.float64, np.float128):
+            dtype = np.float64
+        self.C = C.astype(dtype)
+        self.pi = pi.astype(dtype)
 
         if P_mle is None:
             P_mle = mle_trev_given_pi(C, pi)

@@ -332,8 +332,7 @@ public:
                 if (i == j) {
                     if (util::isPositive(C(i, i)) && util::isPositive(sumC(i) - C(i, i))) {
                         beta.param((typename decltype(beta)::param_type) {C(i, i), sumC(i) - C(i, i)});
-                        // auto tmp1 = beta(generator);
-                        auto tmp1 = sktime::rnd::genbet(C(i, i), sumC(i) - C(i, i), generator);
+                        auto tmp1 = beta(generator);
                         auto tmp2 = tmp1 / (1 - tmp1) * (sumX[i] - X[i * nStates + i]);
                         if (util::isPositive(tmp2)) {
                             sumX[i] += tmp2 - X[i * nStates + i];  // update sumX
