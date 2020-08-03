@@ -1,11 +1,11 @@
 import numpy as np
-from .._mle_bindings import RevPiSampler32, RevPiSampler64, RevPiSampler128
 
 
 class SamplerRevPi(object):
 
     def __init__(self, C, pi, P0=None, P_mle=None, eps=0.1, seed=-1):
         from sktime.markov.tools.estimation.dense.mle import mle_trev_given_pi
+        from .._mle_bindings import RevPiSampler32, RevPiSampler64, RevPiSampler128
 
         self.C = C
         self.pi = pi

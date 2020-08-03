@@ -1,11 +1,11 @@
 import numpy as np
-from .._mle_bindings import RevSampler32, RevSampler64, RevSampler128
 
 
 class SamplerRev(object):
     def __init__(self, C, P0=None, seed: int = -1):
         from sktime.markov.tools.estimation import tmatrix
         from sktime.markov.tools.analysis import stationary_distribution
+        from .._mle_bindings import RevSampler32, RevSampler64, RevSampler128
 
         if C.dtype not in (np.float32, np.float64, np.float128):
             dtype = np.float64
