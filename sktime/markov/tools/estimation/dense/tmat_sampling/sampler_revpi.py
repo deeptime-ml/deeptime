@@ -8,7 +8,7 @@ class SamplerRevPi(object):
         from .._mle_bindings import RevPiSampler32, RevPiSampler64, RevPiSampler128
 
         dtype = C.dtype
-        if dtype not in (np.float32, np.float64, np.float128):
+        if dtype not in (np.float32, np.float64, np.longdouble):
             dtype = np.float64
         self.C = C.astype(dtype)
         self.pi = pi.astype(dtype)
@@ -68,9 +68,9 @@ class SamplerRevPi(object):
             self.pi = self.pi.astype(np.float64)
         elif self.C.dtype == np.longdouble:
             self.xsampler = RevPiSampler128(seed)
-            self.X = self.X.astype(np.float128)
-            self.b = self.b.astype(np.float128)
-            self.pi = self.pi.astype(np.float128)
+            self.X = self.X.astype(np.longdouble)
+            self.b = self.b.astype(np.longdouble)
+            self.pi = self.pi.astype(np.longdouble)
         else:
             raise ValueError(f"Unknown dtype {self.C.dtype}")
 

@@ -14,7 +14,7 @@ def mle_trev(C, maxerr=1.0e-12, maxiter=int(1.0E6), warn_not_converged=True, ret
     assert C.shape[0] == C.shape[1], 'C must be a square matrix.'
     assert is_connected(C, directed=True), 'C must be strongly connected'
 
-    if not C.dtype in (np.float32, np.float64, np.float128):
+    if not C.dtype in (np.float32, np.float64, np.longdouble):
         C = C.astype(np.float64)
     dtype = C.dtype
 
@@ -43,7 +43,7 @@ def mle_trev_given_pi(C, mu, maxerr=1.0E-12, maxiter=1000000):
     assert is_connected(C, directed=False), 'C must be (weakly) connected'
 
     dtype = C.dtype
-    if dtype not in (np.float32, np.float64, np.float128):
+    if dtype not in (np.float32, np.float64, np.longdouble):
         dtype = np.float64
 
     c_C = C.astype(dtype, order='C', copy=False)

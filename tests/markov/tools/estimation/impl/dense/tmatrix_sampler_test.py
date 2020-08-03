@@ -56,7 +56,7 @@ def test_non_reversible(dtype):
     np.testing.assert_(max_deviation < 0.01)
 
 
-@pytest.mark.parametrize("dtype", (np.float32, np.float64, np.float128))
+@pytest.mark.parametrize("dtype", (np.float32, np.float64, np.longdouble))
 def test_reversible(dtype):
     C = 1.0 * np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]]).astype(dtype)
     P_mle = tmatrix(C, reversible=True)
@@ -77,7 +77,7 @@ def test_reversible(dtype):
     np.testing.assert_(np.all(diff <= std))
 
 
-@pytest.mark.parametrize("dtype", (np.float32, np.float64, np.float128))
+@pytest.mark.parametrize("dtype", (np.float32, np.float64, np.longdouble))
 def test_reversible_pi(dtype):
     C = np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]]).astype(dtype)
     pi = np.array([0.70532947, 0.00109989, 0.29357064])

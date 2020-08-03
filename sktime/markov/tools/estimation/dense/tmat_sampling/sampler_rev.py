@@ -7,7 +7,7 @@ class SamplerRev(object):
         from sktime.markov.tools.analysis import stationary_distribution
         from .._mle_bindings import RevSampler32, RevSampler64, RevSampler128
 
-        if C.dtype not in (np.float32, np.float64, np.float128):
+        if C.dtype not in (np.float32, np.float64, np.longdouble):
             dtype = np.float64
         else:
             dtype = C.dtype
