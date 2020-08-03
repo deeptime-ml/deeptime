@@ -338,7 +338,7 @@ def stationary_distribution(T):
     """
     # is this a transition matrix?
     if not is_transition_matrix(T):
-        raise ValueError("Input matrix is not a transition matrix."
+        raise ValueError("Input matrix is not a transition matrix. "
                          "Cannot compute stationary distribution")
     # is the stationary distribution unique?
     if not is_connected(T, directed=False):

@@ -144,10 +144,11 @@ private:
                 v = xkl / (s2 - xkl);
 
                 //Check if alpha > 0 and 1/beta > 0
-                if (util::isPositive(alpha) && util::isPositive(1.0 / beta)) {
+                auto betaInv = static_cast<dtype>(1) / beta;
+                if (util::isPositive(alpha) && util::isPositive(betaInv)) {
                     //Proposal
-                    gamma.param((typename decltype(gamma)::param_type) {alpha, gamma.beta()});
-                    w = 1.0 / beta * gamma(generator);
+                    gamma.param((typename decltype(gamma)::param_type) {alpha, betaInv});
+                    w = gamma(generator);
 
                     //If w=0 -> reject
                     if (util::isPositive(w)) {

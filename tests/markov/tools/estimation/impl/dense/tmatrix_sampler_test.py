@@ -55,7 +55,7 @@ class TestSamplerNonReversible(unittest.TestCase):
 
     def test_mean(self):
         """Create sampler object"""
-        sampler = TransitionMatrixSampler(self.C, reversible=False)
+        sampler = TransitionMatrixSampler(self.C.astype(np.float32), reversible=False)
 
         # Compute sample mean
         mean = np.zeros_like(self.C)
@@ -71,6 +71,7 @@ class TestSamplerReversible(unittest.TestCase):
 
     def setUp(self):
         self.C = 1.0 * np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]])
+        self.C = self.C.astype(np.float64)
         self.P_mle = tmatrix(self.C, reversible=True)
         self.N = 1000
 
@@ -85,7 +86,8 @@ class TestSamplerReversible(unittest.TestCase):
         std = np.std(sample, axis=0)
 
         # Check if sample mean and MLE agree within the sample standard deviation
-        self.assertTrue(np.all(np.abs(mean - self.P_mle) <= std))
+        diff = np.abs(mean - self.P_mle)
+        self.assertTrue(np.all(diff <= std))
 
 
 class TestSamplerReversiblePi(unittest.TestCase):

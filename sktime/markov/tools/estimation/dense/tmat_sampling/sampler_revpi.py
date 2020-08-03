@@ -54,10 +54,16 @@ class SamplerRevPi(object):
         """Init the xsampler"""
         if self.C.dtype == np.float32:
             self.xsampler = RevPiSampler32(seed)
+            self.X = self.X.astype(np.float32)
+            self.b = self.b.astype(np.float32)
         elif self.C.dtype == np.float64:
             self.xsampler = RevPiSampler64(seed)
+            self.X = self.X.astype(np.float64)
+            self.b = self.b.astype(np.float64)
         elif self.C.dtype == np.longdouble:
             self.xsampler = RevPiSampler128(seed)
+            self.X = self.X.astype(np.float128)
+            self.b = self.b.astype(np.float128)
         else:
             raise ValueError(f"Unknown dtype {self.C.dtype}")
 
@@ -85,7 +91,7 @@ class SamplerRevPi(object):
 
     def update(self, N=1):
         for i in range(N):
-            self.xsampler.update(self.X, self.C, self.b)
+            self.xsampler.update(self.C, self.X, self.b)
 
     def sample(self, N=1, return_statdist=False):
         self.update(N=N)

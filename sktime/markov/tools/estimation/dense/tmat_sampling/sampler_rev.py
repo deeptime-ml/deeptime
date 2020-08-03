@@ -6,7 +6,12 @@ from ....analysis import stationary_distribution, is_connected
 class SamplerRev(object):
     def __init__(self, C, P0=None, seed: int = -1):
         from sktime.markov.tools.estimation import tmatrix
-        self.C = C.astype(np.float64)
+        if C.dtype not in (np.float32, np.float64, np.float128):
+            dtype = np.float64
+        else:
+            dtype = C.dtype
+
+        self.C = C.astype(dtype)
 
         """Set up initial state of the chain"""
         if P0 is None:
@@ -15,7 +20,7 @@ class SamplerRev(object):
             assert P0.dtype == self.C.dtype
         else:
             P0 = P0.astype(self.C.dtype)
-        pi0 = stationary_distribution(P0, 1e-6).astype(self.C.dtype)
+        pi0 = stationary_distribution(P0).astype(self.C.dtype)
         V0 = pi0[:, np.newaxis] * P0
 
         self.V = V0
