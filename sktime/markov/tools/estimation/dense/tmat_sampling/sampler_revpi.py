@@ -1,13 +1,13 @@
 import numpy as np
 from .._mle_bindings import RevPiSampler32, RevPiSampler64, RevPiSampler128
-from ....analysis import is_connected
+
 
 class SamplerRevPi(object):
 
     def __init__(self, C, pi, P0=None, P_mle=None, eps=0.1, seed=-1):
         from sktime.markov.tools.estimation.dense.mle import mle_trev_given_pi
 
-        self.C = 1.0*C
+        self.C = C
         self.pi = pi
 
         if P_mle is None:
@@ -21,7 +21,7 @@ class SamplerRevPi(object):
             bdiag = np.zeros_like(cdiag)
             bdiag[ind] = 1.0
             B = np.diag(bdiag)
-            P0 = mle_trev_given_pi(C+B, pi)
+            P0 = mle_trev_given_pi(C + B, pi)
 
         """Diagonal prior parameters"""
         b = np.zeros(C.shape[0])
@@ -50,30 +50,35 @@ class SamplerRevPi(object):
         self.check_input()
 
         """Set up index arrays"""
-        self.I, self.J = np.where((self.C + self.C.T)>0.0)
+        self.I, self.J = np.where((self.C + self.C.T) > 0.0)
 
         """Init the xsampler"""
         if self.C.dtype == np.float32:
             self.xsampler = RevPiSampler32(seed)
             self.X = self.X.astype(np.float32)
             self.b = self.b.astype(np.float32)
+            self.pi = self.pi.astype(np.float32)
         elif self.C.dtype == np.float64:
             self.xsampler = RevPiSampler64(seed)
             self.X = self.X.astype(np.float64)
             self.b = self.b.astype(np.float64)
+            self.pi = self.pi.astype(np.float64)
         elif self.C.dtype == np.longdouble:
             self.xsampler = RevPiSampler128(seed)
             self.X = self.X.astype(np.float128)
             self.b = self.b.astype(np.float128)
+            self.pi = self.pi.astype(np.float128)
         else:
             raise ValueError(f"Unknown dtype {self.C.dtype}")
 
     def check_input(self):
-        if not np.all(self.C>=0):
+        from sktime.markov.tools.analysis import is_connected
+
+        if not np.all(self.C >= 0):
             raise ValueError("Count matrix contains negative elements")
         if not is_connected(self.C, directed=False):
             raise ValueError("Count matrix is not connected")
-        if not np.all(self.X>=0.0):
+        if not np.all(self.X >= 0.0):
             raise ValueError("P0 contains negative entries")
         if not np.allclose(self.X, self.X.T):
             raise ValueError("P0 is not reversible")
@@ -83,8 +88,8 @@ class SamplerRevPi(object):
         ind = np.diag_indices(C_sym.shape[0])
         C_sym[ind] = 0.0
         X_sym[ind] = 0.0
-        iC, jC = np.where( C_sym > 0.0 )
-        iV, jV = np.where( X_sym > 0.0 )
+        iC, jC = np.where(C_sym > 0.0)
+        iV, jV = np.where(X_sym > 0.0)
         if not np.array_equal(iC, iV):
             raise ValueError('Sparsity patterns of C and X are different.')
         if not np.array_equal(jC, jV):
@@ -96,7 +101,7 @@ class SamplerRevPi(object):
 
     def sample(self, N=1, return_statdist=False):
         self.update(N=N)
-        P = self.X/self.pi[:, np.newaxis]
+        P = self.X / self.pi[:, np.newaxis]
         if return_statdist:
             return P, self.pi
         else:

@@ -21,100 +21,76 @@ r"""Unit tests for the covariance module
 
 """
 
-import unittest
 import numpy as np
-
+import pytest
 from sktime.markov.tools.estimation import tmatrix
 from sktime.markov.tools.estimation.dense.tmat_sampling.tmatrix_sampler import TransitionMatrixSampler
 
 
-class TestSamplerNonReversible(unittest.TestCase):
+@pytest.mark.parametrize("dtype", (np.float32, np.float64))
+def test_non_reversible(dtype):
+    C = np.array([[7048, 6, 2], [6, 2, 3], [2, 3, 2933]], dtype=dtype)
 
-    def setUp(self):
-        """Store state of the rng"""
-        self.state = np.random.mtrand.get_state()
+    # Mean in the asymptotic limit, N_samples -> \infty
+    alpha = C
+    alpha0 = C.sum(axis=1)
 
-        # Reseed the rng to enforce 'deterministic' behavior"
-        np.random.mtrand.seed(42)
+    mean = alpha / alpha0[:, np.newaxis]
+    var = alpha * (alpha0[:, np.newaxis] - alpha) / (alpha0 ** 2 * (alpha0 + 1.0))[:, np.newaxis]
 
-        self.C = 1.0 * np.array([[7048, 6, 2], [6, 2, 3], [2, 3, 2933]])
+    N = 1000
+    """Create sampler object"""
+    sampler = TransitionMatrixSampler(C, reversible=False)
 
-        # Mean in the asymptotic limit, N_samples -> \infty
-        alpha = self.C
-        alpha0 = self.C.sum(axis=1)
+    # Compute sample mean
+    sampled_mean = np.zeros_like(C)
+    for i in range(N):
+        s = sampler.sample()
+        np.testing.assert_equal(s.dtype, dtype)
+        sampled_mean += s
+    sampled_mean *= 1.0 / N
 
-        self.mean = alpha / alpha0[:, np.newaxis]
-        self.var = alpha * (alpha0[:, np.newaxis] - alpha) / \
-                   (alpha0 ** 2 * (alpha0 + 1.0))[:, np.newaxis]
-
-        self.N = 1000
-
-    def tearDown(self):
-        """Revert the state of the rng"""
-        np.random.mtrand.set_state(self.state)
-
-    def test_mean(self):
-        """Create sampler object"""
-        sampler = TransitionMatrixSampler(self.C.astype(np.float32), reversible=False)
-
-        # Compute sample mean
-        mean = np.zeros_like(self.C)
-        for i in range(self.N):
-            mean += sampler.sample()
-        mean *= 1.0 / self.N
-
-        # Check if sample mean and true mean fall into the 2\sigma interval
-        self.assertTrue(np.all(np.abs(mean - self.mean) <= 2.0 * np.sqrt(self.var / self.N)))
+    # Check if sample mean and true mean fall into the 2\sigma interval
+    np.testing.assert_(np.all(np.abs(sampled_mean - mean) <= 2.0 * np.sqrt(var / N)))
 
 
-class TestSamplerReversible(unittest.TestCase):
+@pytest.mark.parametrize("dtype", (np.float32, np.float64, np.float128))
+def test_reversible(dtype):
+    C = 1.0 * np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]]).astype(dtype)
+    P_mle = tmatrix(C, reversible=True)
+    N = 1000
 
-    def setUp(self):
-        self.C = 1.0 * np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]])
-        self.C = self.C.astype(np.float64)
-        self.P_mle = tmatrix(self.C, reversible=True)
-        self.N = 1000
+    sampler = TransitionMatrixSampler(C, reversible=True)
 
-    def test_mean(self):
-        """Create sampler object"""
-        sampler = TransitionMatrixSampler(self.C, reversible=True)
+    sample = np.zeros((N, 3, 3))
+    for i in range(N):
+        s = sampler.sample()
+        np.testing.assert_equal(s.dtype, dtype)
+        sample[i, :, :] = s
+    mean = np.mean(sample, axis=0)
+    std = np.std(sample, axis=0)
 
-        sample = np.zeros((self.N, 3, 3))
-        for i in range(self.N):
-            sample[i, :, :] = sampler.sample()
-        mean = np.mean(sample, axis=0)
-        std = np.std(sample, axis=0)
-
-        # Check if sample mean and MLE agree within the sample standard deviation
-        diff = np.abs(mean - self.P_mle)
-        self.assertTrue(np.all(diff <= std))
+    # Check if sample mean and MLE agree within the sample standard deviation
+    diff = np.abs(mean - P_mle)
+    np.testing.assert_(np.all(diff <= std))
 
 
-class TestSamplerReversiblePi(unittest.TestCase):
+@pytest.mark.parametrize("dtype", (np.float32, np.float64, np.float128))
+def test_reversible_pi(dtype):
+    C = np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]]).astype(dtype)
+    pi = np.array([0.70532947, 0.00109989, 0.29357064])
+    P_mle = tmatrix(C, reversible=True, mu=pi)
 
-    def setUp(self):
-        self.C = 1.0 * np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]])
-        self.pi = np.array([0.70532947, 0.00109989, 0.29357064])
-        self.P_mle = tmatrix(self.C, reversible=True, mu=self.pi)
+    N = 1000
+    sampler = TransitionMatrixSampler(C, reversible=True, mu=pi, n_steps=10)
 
-        self.N = 1000
+    sample = np.zeros((N, 3, 3))
+    for i in range(N):
+        s = sampler.sample()
+        np.testing.assert_equal(s.dtype, dtype)
+        sample[i, :, :] = s
+    mean = np.mean(sample, axis=0)
+    std = np.std(sample, axis=0)
 
-    def tearDown(self):
-        pass
-
-    def test_mean(self):
-        """Create sampler object"""
-        sampler = TransitionMatrixSampler(self.C, reversible=True, mu=self.pi, n_steps=10)
-
-        sample = np.zeros((self.N, 3, 3))
-        for i in range(self.N):
-            sample[i, :, :] = sampler.sample()
-        mean = np.mean(sample, axis=0)
-        std = np.std(sample, axis=0)
-
-        # Check if sample mean and MLE agree within the sample standard deviation
-        self.assertTrue(np.all(np.abs(mean - self.P_mle) <= std))
-
-
-if __name__ == "__main__":
-    unittest.main()
+    # Check if sample mean and MLE agree within the sample standard deviation
+    np.testing.assert_(np.all(np.abs(mean - P_mle) <= std))

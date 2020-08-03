@@ -1,11 +1,12 @@
 import numpy as np
 from .._mle_bindings import RevSampler32, RevSampler64, RevSampler128
-from ....analysis import stationary_distribution, is_connected
 
 
 class SamplerRev(object):
     def __init__(self, C, P0=None, seed: int = -1):
         from sktime.markov.tools.estimation import tmatrix
+        from sktime.markov.tools.analysis import stationary_distribution
+
         if C.dtype not in (np.float32, np.float64, np.float128):
             dtype = np.float64
         else:
@@ -43,6 +44,7 @@ class SamplerRev(object):
             raise ValueError(f"Unknown dtype {self.C.dtype}")
 
     def check_input(self):
+        from sktime.markov.tools.analysis import is_connected
         if self.C.dtype not in (np.float32, np.float64, np.longdouble):
             raise ValueError("Only supports float32, float64, and longdouble dtype.")
         if not np.all(self.C >= 0):

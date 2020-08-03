@@ -23,8 +23,6 @@ r"""Transition matrix sampling for non-reversible stochastic matrices.
 
 import numpy as np
 
-from ....analysis import stationary_distribution
-
 
 def update_nrev(alpha, P):
     N = alpha.shape[0]
@@ -37,7 +35,7 @@ def update_nrev(alpha, P):
 class SamplerNonRev(object):
     def __init__(self, Z):
         """Posterior counts"""
-        self.Z = 1.0*Z
+        self.Z = Z
         """Alpha parameters for dirichlet sampling"""
         self.alpha = Z + 1.0
         """Initial state from single sample"""
@@ -48,6 +46,8 @@ class SamplerNonRev(object):
         update_nrev(self.alpha, self.P)
 
     def sample(self, N=1, return_statdist=False):
+        from ....analysis import stationary_distribution
+
         self.update(N=N)
         if return_statdist:
             pi = stationary_distribution(self.P)
