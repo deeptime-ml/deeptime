@@ -23,11 +23,11 @@ class TestSkLearnCompat(unittest.TestCase):
             transition_matrix = fh['transition_matrix']
 
         pipeline = Pipeline(steps=[
-            ('tica', tica.TICA(dim=1)),
+            ('tica', tica.TICA(dim=1, lagtime=1)),
             ('cluster', kmeans.KmeansClustering(n_clusters=2, max_iter=500)),
             ('counts', TransitionCountEstimator(lagtime=1, count_mode="sliding"))
         ])
-        pipeline.fit(data, tica__lagtime=1)
+        pipeline.fit(data)
         counts = pipeline[-1].fetch_model().submodel_largest()
         mlmsm = msm.MaximumLikelihoodMSM().fit(counts).fetch_model()
         P = mlmsm.pcca(2).coarse_grained_transition_matrix

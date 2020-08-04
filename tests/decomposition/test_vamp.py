@@ -48,7 +48,7 @@ def random_matrix(n, rank=None, eps=0.01):
 @pytest.mark.parametrize("lag_multiple", [1, 2, 3], ids=lambda x: f"lag_multiple={x}")
 def test_expectation_sanity(with_statistics, lag_multiple):
     data = np.random.normal(size=(10000, 5))
-    vamp = VAMP().fit_from_timeseries(data, lagtime=1).fetch_model()
+    vamp = VAMP(lagtime=1).fit_from_timeseries(data).fetch_model()
     input_dimension = 5
     n_observables = 10
 
@@ -104,7 +104,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         # test
         tau = 50
-        vamp = VAMP(scaling=None).fit(trajs, lagtime=tau).fetch_model()
+        vamp = VAMP(scaling=None, lagtime=tau).fit(trajs).fetch_model()
 
         assert vamp.output_dimension <= rank
 
@@ -135,7 +135,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
                                    atol=atol)
 
         if test_partial_fit:
-            vamp2 = VAMP().fit(trajs, lagtime=tau).fetch_model()
+            vamp2 = VAMP(lagtime=tau).fit(trajs).fetch_model()
 
             atol = 1e-14
             rtol = 1e-5
@@ -196,7 +196,7 @@ class TestVAMPModel(unittest.TestCase):
             trajs.append(traj)
             p0 += traj[:-lag, :].sum(axis=0)
             p1 += traj[lag:, :].sum(axis=0)
-        estimator = VAMP(scaling=None, dim=1.0)
+        estimator = VAMP(scaling=None, var_cutoff=1.0)
         cov = VAMP.covariance_estimator(lagtime=lag).fit(trajs).fetch_model()
         vamp = estimator.fit(cov).fetch_model()
         msm = estimate_markov_model(dtrajs, lag=lag, reversible=False)
@@ -243,7 +243,7 @@ class TestVAMPModel(unittest.TestCase):
 
     def test_cumvar_variance_cutoff(self):
         for d in (0.2, 0.5, 0.8, 0.9, 1.0):
-            self.vamp.dim = d
+            self.vamp.var_cutoff = d
             special_cumvar = np.asarray([0] + self.vamp.cumulative_kinetic_variance.tolist())
             self.assertLessEqual(d, special_cumvar[self.vamp.output_dimension], )
             self.assertLessEqual(special_cumvar[self.vamp.output_dimension - 1], d)
@@ -273,15 +273,15 @@ class TestVAMPModel(unittest.TestCase):
             msm_train = estimate_markov_model(dtrajs=dtrajs_train, lag=self.lag, reversible=False)
             score_msm = msm_train.score(dtrajs_test, score_method=m, score_k=None)
 
-            vamp_train = VAMP(dim=1.0).fit_from_timeseries(trajs_train, lagtime=self.lag).fetch_model()
-            vamp_test = VAMP(dim=1.0).fit_from_timeseries(trajs_test, lagtime=self.lag).fetch_model()
+            vamp_train = VAMP(lagtime=self.lag, var_cutoff=1.0).fit_from_timeseries(trajs_train).fetch_model()
+            vamp_test = VAMP(lagtime=self.lag, var_cutoff=1.0).fit_from_timeseries(trajs_test).fetch_model()
             score_vamp = vamp_train.score(test_model=vamp_test, score_method=m)
 
             self.assertAlmostEqual(score_msm, score_vamp, places=2 if m == 'VAMPE' else 3, msg=m)
 
     def test_kinetic_map(self):
         lag = 10
-        vamp = VAMP(scaling='km').fit_from_timeseries(self.trajs, lagtime=lag).fetch_model()
+        vamp = VAMP(lagtime=lag, scaling='km').fit_from_timeseries(self.trajs).fetch_model()
         transformed = [vamp.transform(X)[:-lag] for X in self.trajs]
         std = np.std(np.concatenate(transformed), axis=0)
         np.testing.assert_allclose(std, vamp.singular_values[:vamp.output_dimension], atol=1e-4, rtol=1e-4)
@@ -290,16 +290,16 @@ class TestVAMPModel(unittest.TestCase):
 class TestVAMPWithEdgeCaseData(unittest.TestCase):
     def test_1D_data(self):
         x = np.random.randn(10, 1)
-        vamp = VAMP().fit([x], lagtime=1).fetch_model()
+        vamp = VAMP(lagtime=1).fit([x]).fetch_model()
         # Doing VAMP with 1-D data is just centering and normalizing the data.
         assert_allclose_ignore_phase(vamp.transform(x, forward=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
         from sktime.numeric.eigen import ZeroRankError
         with self.assertRaises(ZeroRankError):
-            print(VAMP().fit(np.ones((10, 2)), lagtime=1).fetch_model().singular_values)
+            print(VAMP(lagtime=1).fit(np.ones((10, 2))).fetch_model().singular_values)
         with self.assertRaises(ZeroRankError):
-            print(VAMP().fit(np.ones((10, 1)), lagtime=1).fetch_model().singular_values)
+            print(VAMP(lagtime=1).fit(np.ones((10, 1))).fetch_model().singular_values)
 
 
 if __name__ == "__main__":

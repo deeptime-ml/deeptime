@@ -40,8 +40,8 @@ def test_fit_reset():
     np.random.seed(0)
     data = np.random.randn(23000, 3)
 
-    estimator = TICA(dim=1)
-    model1 = estimator.fit_from_timeseries(data, lagtime=lag).fetch_model()
+    estimator = TICA(dim=1, lagtime=lag)
+    model1 = estimator.fit_from_timeseries(data).fetch_model()
     # ------- run again with new chunksize -------
     covars = TICA.covariance_estimator(lagtime=lag).fit(data)
     estimator.fit_from_covariances(covars)
@@ -81,7 +81,7 @@ def test_vamp_consistency():
     cov_estimator.reversible = True
     cov_estimator.fit(trajectory)
     koopman1 = VAMP(dim=2).fit(cov_estimator).fetch_model()
-    koopman2 = TICA(dim=2, scaling=None).fit(trajectory, lagtime=1).fetch_model()
+    koopman2 = TICA(dim=2, scaling=None, lagtime=1).fit(trajectory).fetch_model()
     np.testing.assert_array_almost_equal(koopman1.singular_values, koopman2.singular_values, decimal=1)
     np.testing.assert_array_almost_equal(
         np.abs(koopman1.singular_vectors_left),
@@ -96,13 +96,13 @@ def test_vamp_consistency():
 
 def test_dim_parameter():
     np.testing.assert_equal(TICA(dim=3).dim, 3)
-    np.testing.assert_equal(TICA(dim=0.5).dim, 0.5)
+    np.testing.assert_equal(TICA(var_cutoff=.5).var_cutoff, 0.5)
     with np.testing.assert_raises(ValueError):
         TICA(dim=-1)  # negative int
     with np.testing.assert_raises(ValueError):
-        TICA(dim=5.5)  # float > 1
+        TICA(var_cutoff=5.5)  # float > 1
     with np.testing.assert_raises(ValueError):
-        TICA(dim=-0.1)  # negative float
+        TICA(var_cutoff=-0.1)  # negative float
 
 
 @pytest.mark.parametrize("scaling_param", [(None, True), ('kinetic_map', True), ('km', True),
@@ -190,7 +190,7 @@ class TestTICAExtensive(unittest.TestCase):
         cls.data = test_data['data']
 
         # perform unscaled TICA
-        cls.model_unscaled = TICA(dim=1, scaling=None).fit_from_timeseries(cls.data, lagtime=cls.lagtime).fetch_model()
+        cls.model_unscaled = TICA(dim=1, lagtime=cls.lagtime, scaling=None).fit_from_timeseries(cls.data).fetch_model()
         cls.transformed_data_unscaled = cls.model_unscaled.transform(cls.data)
 
     def test_variances(self):
@@ -198,7 +198,7 @@ class TestTICAExtensive(unittest.TestCase):
         assert np.max(np.abs(vars_unscaled - 1.0)) < 0.01
 
     def test_kinetic_map(self):
-        tica = TICA(scaling='km', dim=None).fit(self.data, lagtime=self.lagtime).fetch_model()
+        tica = TICA(scaling='km', dim=None, lagtime=self.lagtime).fit(self.data).fetch_model()
         O = tica.transform(self.data)
         vars = np.var(O, axis=0)
         refs = tica.singular_values ** 2
@@ -206,7 +206,7 @@ class TestTICAExtensive(unittest.TestCase):
 
     def test_commute_map(self):
         # todo: this is just a sanity check for now, something more meaningful should be tested
-        TICA(scaling='commute_map', dim=None).fit(self.data, lagtime=self.lagtime).fetch_model()
+        TICA(scaling='commute_map', dim=None, lagtime=self.lagtime).fit(self.data).fetch_model()
 
     def test_cumvar(self):
         assert len(self.model_unscaled.cumulative_kinetic_variance) == 2
@@ -219,9 +219,9 @@ class TestTICAExtensive(unittest.TestCase):
     def test_dimension(self):
         assert self.model_unscaled.output_dimension == 1
         # Test other variants
-        model = TICA(dim=1.0).fit(self.data, lagtime=self.lagtime).fetch_model()
+        model = TICA(var_cutoff=1.0, lagtime=self.lagtime).fit(self.data).fetch_model()
         assert model.output_dimension == 2
-        model = TICA(dim=.9).fit(self.data, lagtime=self.lagtime).fetch_model()
+        model = TICA(var_cutoff=.9, lagtime=self.lagtime).fit(self.data).fetch_model()
         assert model.output_dimension == 1
 
         invalid_dims = [0, 0.0, 1.1, -1]

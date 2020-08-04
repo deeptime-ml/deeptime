@@ -21,7 +21,7 @@
 
 from collections import namedtuple
 from numbers import Real, Integral
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Tuple
 
 import numpy as np
 
@@ -134,23 +134,30 @@ class VAMP(Estimator, Transformer):
         :keyprefix: vamp-
     """
 
-    def __init__(self, dim: Optional[Union[int, float]] = None, scaling: Optional[str] = None,
+    def __init__(self, lagtime: Optional[int] = None,
+                 dim: Optional[int] = None,
+                 var_cutoff: Optional[float] = None,
+                 scaling: Optional[str] = None,
                  epsilon: float = 1e-6):
         r""" Creates a new VAMP estimator.
 
         Parameters
         ----------
-        dim : float or int, optional, default=None
+        lagtime : int or None, optional, default=None
+            The lagtime under which covariances are estimated. This is only relevant when estimating from data, in case
+            covariances are provided this should either be None or exactly the value that was used to estimate
+            said covariances.
+        dim : int, optional, default=None
             Number of dimensions to keep:
 
             * if dim is not set (None) all available ranks are kept:
               :code:`n_components == min(n_samples, n_uncorrelated_features)`
             * if dim is an integer >= 1, this number specifies the number
               of dimensions to keep.
-            * if dim is a float with ``0 < dim <= 1``, select the number
-              of dimensions such that the amount of kinetic variance
-              that needs to be explained is greater than the percentage
-              specified by dim.
+        var_cutoff : float, optional, default=None
+            Determines the number of output dimensions by including dimensions until their cumulative kinetic variance
+            exceeds the fraction subspace variance. var_cutoff=1.0 means all numerically available dimensions
+            (see epsilon) will be used, unless set by dim. Setting var_cutoff smaller than 1.0 is exclusive with dim.
         scaling : str, optional, default=None
             Scaling to be applied to the VAMP order parameters upon transformation
 
@@ -166,8 +173,11 @@ class VAMP(Estimator, Transformer):
         """
         super(VAMP, self).__init__()
         self.dim = dim
+        self.var_cutoff = var_cutoff
         self.scaling = scaling
         self.epsilon = epsilon
+        self.lagtime = lagtime
+        self._covariance_estimator = None  # internal covariance estimator
 
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
                                                                     'left_singular_vecs', 'right_singular_vecs'])
@@ -179,7 +189,7 @@ class VAMP(Estimator, Transformer):
         return cumvar
 
     @staticmethod
-    def _decomposition(covariances, epsilon, scaling, dim) -> _DiagonalizationResults:
+    def _decomposition(covariances, epsilon, scaling, dim, var_cutoff) -> _DiagonalizationResults:
         """Performs SVD on covariance matrices and save left, right singular vectors and values in the model."""
         L0 = spd_inv_split(covariances.cov_00, epsilon=epsilon)
         rank0 = L0.shape[1] if L0.ndim == 2 else 1
@@ -192,7 +202,7 @@ class VAMP(Estimator, Transformer):
 
         singular_values = s
 
-        m = CovarianceKoopmanModel.effective_output_dimension(rank0, rankt, dim, singular_values)
+        m = CovarianceKoopmanModel.effective_output_dimension(rank0, rankt, dim, var_cutoff, singular_values)
 
         U = np.dot(L0, A[:, :m])
         V = np.dot(Lt, BT[:m, :].T)
@@ -233,6 +243,27 @@ class VAMP(Estimator, Transformer):
             covariances = covariances.fetch_model()
         return covariances
 
+    def partial_fit(self, data: Tuple[np.ndarray, np.ndarray]):
+        r""" Updates the covariance estimates through a new batch of data.
+
+        Parameters
+        ----------
+        data : tuple(ndarray, ndarray)
+            A tuple of ndarrays which have to have same shape and are :math:`X_t` and :math:`X_{t+\tau}`, respectively.
+            Here, :math:`\tau` denotes the lagtime.
+
+        Returns
+        -------
+        self : VAMP
+            Reference to self.
+        """
+        if self.lagtime is None:
+            raise ValueError("Calling partial fit requires that a lagtime is set.")
+        if self._covariance_estimator is None:
+            self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
+        self._covariance_estimator.partial_fit(data)
+        return self
+
     def fit_from_covariances(self, covariances: Union[Covariance, CovarianceModel]):
         r"""Fits from existing covariance model (or covariance estimator containing model).
 
@@ -247,11 +278,12 @@ class VAMP(Estimator, Transformer):
         self : VAMP
             Reference to self.
         """
+        self._covariance_estimator = None
         covariances = self._to_covariance_model(covariances)
         self._model = self._decompose(covariances)
         return self
 
-    def fit_from_timeseries(self, data: Union[np.ndarray, List[np.ndarray]], lagtime: int,
+    def fit_from_timeseries(self, data: Union[np.ndarray, List[np.ndarray]],
                             weights=None):
         r""" Estimates a :class:`CovarianceKoopmanModel` directly from time-series data using the :class:`Covariance`
         estimator. For parameters `dim`, `scaling`, `epsilon`.
@@ -260,8 +292,6 @@ class VAMP(Estimator, Transformer):
         ----------
         data : (T, n) ndarray or list thereof
             Input time-series.
-        lagtime : int
-            Lagtime for covariance matrix estimation, must be positive.
         weights
             See the :class:`Covariance <sktime.covariance.Covariance>` estimator.
 
@@ -270,8 +300,8 @@ class VAMP(Estimator, Transformer):
         self : VAMP
             Reference to self.
         """
-        covariance_estimator = self.covariance_estimator(lagtime=lagtime)
-        covariances = covariance_estimator.fit(data, weights=weights).fetch_model()
+        self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
+        covariances = self._covariance_estimator.fit(data, weights=weights).fetch_model()
         return self.fit_from_covariances(covariances)
 
     @property
@@ -287,6 +317,23 @@ class VAMP(Estimator, Transformer):
     @epsilon.setter
     def epsilon(self, value):
         self._epsilon = value
+
+    @property
+    def lagtime(self) -> Optional[int]:
+        r""" The lagtime under which covariances are estimated. Can be `None` in case covariances are provided
+        directly instead of estimating them inside this estimator.
+
+        :getter: Yields the current lagtime.
+        :setter: Sets a new lagtime, must be positive.
+        :type: int or None
+        """
+        return self._lagtime
+
+    @lagtime.setter
+    def lagtime(self, value: Optional[int]):
+        if value is not None and value <= 0:
+            raise ValueError(f"Lagtime needs to be strictly positive but was {value}")
+        self._lagtime = value
 
     @property
     def scaling(self) -> Optional[str]:
@@ -307,16 +354,32 @@ class VAMP(Estimator, Transformer):
         self._scaling = value
 
     @property
-    def dim(self) -> Optional[Union[int, float]]:
+    def var_cutoff(self) -> Optional[float]:
+        r""" Variational cutoff which can be used to further restrict the dimension. This takes precedence over the
+        :meth:`dim` property.
+
+        :getter: yields the currently set variation cutoff
+        :setter: sets a new cutoff
+        :type: float or None
+        """
+        return self._var_cutoff
+
+    @var_cutoff.setter
+    def var_cutoff(self, value: Optional[float]):
+        if value is not None and (value <= 0. or float(value) > 1.0):
+            raise ValueError("VAMP: Invalid var_cutoff parameter, can only be in the interval (0, 1].")
+        self._var_cutoff = value
+
+    @property
+    def dim(self) -> Optional[int]:
         r""" Dimension attribute. Can either be int or float. In case of
 
         * :code:`int` it evaluates it as the actual dimension, must be strictly greater 0,
-        * :code:`float` it evaluates it as percentage of the captured kinetic variance, i.e., must be in :math:`(0,1]`,
-        * :code:`None` all components are used.
+        * :code:`None` all numerically available components are used.
 
         :getter: yields the dimension
         :setter: sets a new dimension
-        :type: int or float
+        :type: int or None
         """
         return self._dim
 
@@ -327,21 +390,18 @@ class VAMP(Estimator, Transformer):
                 # first test against Integral as `isinstance(1, Real)` also evaluates to True
                 raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of the "
                                  "dimension (integer), must be positive.")
-        elif isinstance(value, Real) and (value <= 0. or float(value) > 1.0):
-            raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of a floating point, "
-                             "can only be in the interval (0, 1].")
-        elif value is not None and not isinstance(value, (Integral, Real)):
+        elif value is not None:
             raise ValueError("Invalid type for dimension, got {}".format(value))
         self._dim = value
 
     def _decompose(self, covariances: CovarianceModel):
-        decomposition = self._decomposition(covariances, self.epsilon, self.scaling, self.dim)
+        decomposition = self._decomposition(covariances, self.epsilon, self.scaling, self.dim, self.var_cutoff)
         return CovarianceKoopmanModel(
             operator=np.diag(decomposition.singular_values),
             basis_transform_forward=KoopmanBasisTransform(covariances.mean_0, decomposition.left_singular_vecs),
             basis_transform_backward=KoopmanBasisTransform(covariances.mean_t, decomposition.right_singular_vecs),
             rank_0=decomposition.rank0, rank_t=decomposition.rankt,
-            dim=self.dim, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
+            dim=self.dim, var_cutoff=self.var_cutoff, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
         )
 
     def fit(self, data, *args, **kw):
@@ -353,8 +413,7 @@ class VAMP(Estimator, Transformer):
         data : CovarianceModel or Covariance or timeseries
             Covariance matrices :math:`C_{00}, C_{0t}, C_{tt}` in form of a CovarianceModel instance. If the model
             should be fitted directly from data, please see :meth:`from_data`.
-            Optionally, this can also be timeseries data directly, in which case the keyword argument 'lagtime'
-            must be provided.
+            Optionally, this can also be timeseries data directly, in which case a 'lagtime' must be provided.
         *args
             Optional arguments
         **kw
@@ -368,9 +427,7 @@ class VAMP(Estimator, Transformer):
         if isinstance(data, (Covariance, CovarianceModel)):
             self.fit_from_covariances(data)
         else:
-            if 'lagtime' not in kw.keys():
-                raise ValueError("Cannot fit on timeseries data without a lagtime!")
-            self.fit_from_timeseries(data, lagtime=kw.pop('lagtime'), weights=kw.pop('weights', None))
+            self.fit_from_timeseries(data, weights=kw.pop('weights', None))
         return self
 
     def transform(self, data, forward=True):
@@ -402,4 +459,10 @@ class VAMP(Estimator, Transformer):
         model : CovarianceKoopmanModel
             The estimated model.
         """
+        if self._covariance_estimator is not None:
+            # This can only occur when partial_fit was called.
+            # A call to fit, fit_from_timeseries, fit_from_covariances ultimately always leads to a call to
+            # fit_from_covariances which sets the self._covariance_estimator to None.
+            self._model = self._decompose(self._covariance_estimator.fetch_model())
+            self._covariance_estimator = None
         return self._model
