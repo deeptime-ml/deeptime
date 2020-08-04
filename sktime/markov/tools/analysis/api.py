@@ -1468,7 +1468,7 @@ def _pcca_object(T, m):
 
 
 def pcca_memberships(T, m):
-    r"""Compute meta-stable sets using PCCA++ _[1] and return the membership of all states to these sets.
+    r"""Compute meta-stable sets using PCCA++ [1]_ and return the membership of all states to these sets.
 
     Parameters
     ----------

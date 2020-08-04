@@ -28,7 +28,7 @@ from sktime.markov.tools.estimation import sample_tmatrix, transition_matrix
 from sktime.base import Estimator
 from sktime.markov._base import BayesianPosterior
 from sktime.markov._transition_matrix import stationary_distribution
-from sktime.markov.hmm import HiddenMarkovStateModel
+from sktime.markov.hmm import HiddenMarkovModel
 from sktime.markov.hmm.output_model import DiscreteOutputModel
 from sktime.markov.hmm.util import observations_in_state, sample_hidden_state_trajectory
 from sktime.markov.msm import MarkovStateModel
@@ -41,7 +41,7 @@ __author__ = 'noe, clonker'
 
 __all__ = [
     'BayesianHMMPosterior',
-    'BayesianHMSM',
+    'BayesianHMM',
 ]
 
 
@@ -50,20 +50,20 @@ class BayesianHMMPosterior(BayesianPosterior):
 
     See Also
     --------
-    BayesianHMSM : Estimator that can be used to estimate this type of posterior.
+    BayesianHMM : Estimator that can be used to estimate this type of posterior.
     """
 
     def __init__(self,
-                 prior: Optional[HiddenMarkovStateModel] = None,
-                 samples: Optional[List[HiddenMarkovStateModel]] = (),
+                 prior: Optional[HiddenMarkovModel] = None,
+                 samples: Optional[List[HiddenMarkovModel]] = (),
                  hidden_state_trajs: Optional[List[np.ndarray]] = ()):
         r""" Creates a new Bayesian HMM posterior.
 
         Parameters
         ----------
-        prior : HiddenMarkovStateModel, optional, default=None
+        prior : HiddenMarkovModel, optional, default=None
             The prior.
-        samples : list of HiddenMarkovStateModel, optional, default=()
+        samples : list of HiddenMarkovModel, optional, default=()
             Sampled models.
         hidden_state_trajs : list of ndarray, optional, default=()
             Hidden state trajectories for sampled models.
@@ -127,26 +127,26 @@ class BayesianHMMPosterior(BayesianPosterior):
     @property
     def hidden_state_trajectories_samples(self):
         r""" Hidden state trajectories of sampled HMMs. Available if the estimator was configured to save them,
-        see :attr:`BayesianHMSM.store_hidden`.
+        see :attr:`BayesianHMM.store_hidden`.
         """
         return self._hidden_state_trajectories_samples
 
     @property
-    def samples(self) -> Optional[List[HiddenMarkovStateModel]]:
+    def samples(self) -> Optional[List[HiddenMarkovModel]]:
         r""" The sampled models. """
         return self._samples
 
     @samples.setter
-    def samples(self, value: Optional[List[HiddenMarkovStateModel]]):
+    def samples(self, value: Optional[List[HiddenMarkovModel]]):
         self._samples = value
 
     @property
-    def prior(self) -> HiddenMarkovStateModel:
+    def prior(self) -> HiddenMarkovModel:
         r""" The prior model. """
         return self._prior
 
     @prior.setter
-    def prior(self, value: HiddenMarkovStateModel):
+    def prior(self, value: HiddenMarkovModel):
         self._prior = value
 
     def submodel(self, states=None, obs=None):
@@ -173,7 +173,7 @@ class BayesianHMMPosterior(BayesianPosterior):
         return BayesianHMMPosterior(sub_model, subsamples, self.hidden_state_trajectories_samples)
 
 
-class BayesianHMSM(Estimator):
+class BayesianHMM(Estimator):
     r""" Estimator for a Bayesian Hidden Markov state model. """
 
     _SampleStorage = collections.namedtuple(
@@ -181,7 +181,7 @@ class BayesianHMSM(Estimator):
                            'counts', 'hidden_trajs']
     )
 
-    def __init__(self, initial_hmm: HiddenMarkovStateModel,
+    def __init__(self, initial_hmm: HiddenMarkovModel,
                  n_samples: int = 100,
                  n_transition_matrix_sampling_steps: int = 1000,
                  stride: Union[str, int] = 'effective',
@@ -195,8 +195,8 @@ class BayesianHMSM(Estimator):
 
         Parameters
         ----------
-        initial_hmm : :class:`HMSM <sktime.markov.hmm.HiddenMarkovStateModel>`
-           Single-point estimate of HMSM object around which errors will be evaluated.
+        initial_hmm : :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>`
+           Single-point estimate of HMM object around which errors will be evaluated.
            There is a static method available that can be used to generate a default prior, see :meth:`default`.
         n_samples : int, optional, default=100
            Number of sampled models.
@@ -305,29 +305,29 @@ class BayesianHMSM(Estimator):
                 reversible: bool = True,
                 stationary: bool = False,
                 prior_submodel: bool = True):
-        """ Computes a default prior for a BHMSM and uses that for error estimation.
+        """ Computes a default prior for a BHMM and uses that for error estimation.
         For a more detailed description of the arguments please
-        refer to :class:`HMSM <sktime.markov.hmm.HiddenMarkovStateModel>` or
+        refer to :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>` or
         :meth:`__init__`.
 
         Returns
         -------
-        estimator : BayesianHMSM
+        estimator : BayesianHMM
             Estimator that is initialized with a default prior model.
         """
-        from sktime.markov.hmm import init, MaximumLikelihoodHMSM
+        from sktime.markov.hmm import init, MaximumLikelihoodHMM
         dtrajs = ensure_dtraj_list(dtrajs)
         init_hmm = init.discrete.metastable_from_data(dtrajs, n_hidden_states=n_hidden_states, lagtime=lagtime,
                                                       stride=stride, reversible=reversible, stationary=stationary,
                                                       separate_symbols=separate)
-        hmm = MaximumLikelihoodHMSM(init_hmm, stride=stride, lagtime=lagtime, reversible=reversible,
-                                    stationary=stationary, accuracy=1e-2).fit(dtrajs).fetch_model()
+        hmm = MaximumLikelihoodHMM(init_hmm, stride=stride, lagtime=lagtime, reversible=reversible,
+                                   stationary=stationary, accuracy=1e-2).fit(dtrajs).fetch_model()
         if prior_submodel:
             hmm = hmm.submodel_largest(connectivity_threshold=0, observe_nonempty=False, dtrajs=dtrajs)
-        estimator = BayesianHMSM(hmm, n_samples=n_samples, stride=stride,
-                                 initial_distribution_prior=initial_distribution_prior,
-                                 transition_matrix_prior=transition_matrix_prior, store_hidden=store_hidden,
-                                 reversible=reversible, stationary=stationary)
+        estimator = BayesianHMM(hmm, n_samples=n_samples, stride=stride,
+                                initial_distribution_prior=initial_distribution_prior,
+                                transition_matrix_prior=transition_matrix_prior, store_hidden=store_hidden,
+                                reversible=reversible, stationary=stationary)
         return estimator
 
     @property
@@ -384,15 +384,15 @@ class BayesianHMSM(Estimator):
         self._initial_distribution_prior = value
 
     @property
-    def initial_hmm(self) -> HiddenMarkovStateModel:
+    def initial_hmm(self) -> HiddenMarkovModel:
         r""" The prior HMM. An estimator with a default prior HMM can be generated using the static :meth:`default`
         method.
         """
         return self._initial_hmm
 
     @initial_hmm.setter
-    def initial_hmm(self, value: HiddenMarkovStateModel):
-        if not isinstance(value, HiddenMarkovStateModel):
+    def initial_hmm(self, value: HiddenMarkovModel):
+        if not isinstance(value, HiddenMarkovModel):
             raise ValueError(f"Initial hmm must be of type HiddenMarkovModel, but was {value.__class__.__name__}.")
         self._initial_hmm = value
 
@@ -513,7 +513,7 @@ class BayesianHMSM(Estimator):
         if stationary:  # p0 is consistent with P
             p0 = stationary_distribution(Tij, C=C)
         else:
-            n0 = BayesianHMSM._count_init(model.hidden_trajs, model.transition_matrix.shape[0])
+            n0 = BayesianHMM._count_init(model.hidden_trajs, model.transition_matrix.shape[0])
             first_timestep_counts_with_prior = n0 + initial_distribution_prior
             positive = first_timestep_counts_with_prior > 0
             p0 = np.zeros(n0.shape, dtype=model.transition_matrix.dtype)
@@ -552,7 +552,7 @@ class BayesianHMSM(Estimator):
 
         Returns
         -------
-        self : BayesianHMSM
+        self : BayesianHMM
             Reference to self.
         """
         dtrajs = ensure_dtraj_list(data)
@@ -579,13 +579,13 @@ class BayesianHMSM(Estimator):
         dtrajs_lagged_strided = compute_dtrajs_effective(
             dtrajs, lagtime=prior.lagtime, n_states=prior.n_hidden_states, stride=self.stride
         )
-        # if stride is different to init_hmsm, check if microstates in lagged-strided trajs are compatible
+        # if stride is different to init_hmm, check if microstates in lagged-strided trajs are compatible
         if self.stride != self.initial_hmm.stride:
             symbols = np.unique(np.concatenate(dtrajs_lagged_strided))
             if not len(np.intersect1d(self.initial_hmm.observation_symbols, symbols)) == len(symbols):
                 raise ValueError('Choice of stride has excluded a different set of microstates than in '
-                                 'init_hmsm. Set of observed microstates in time-lagged strided trajectories '
-                                 'must match to the one used for init_hmsm estimation.')
+                                 'init_hmm. Set of observed microstates in time-lagged strided trajectories '
+                                 'must match to the one used for init_hmm estimation.')
 
         # here we blow up the output matrix (if needed) to the FULL state space because we want to use dtrajs in the
         # Bayesian HMM sampler. This is just an initialization.
@@ -611,7 +611,7 @@ class BayesianHMSM(Estimator):
 
         try:
             # sample model is basically copy of prior
-            sample_model = BayesianHMSM._SampleStorage(
+            sample_model = BayesianHMM._SampleStorage(
                 transition_matrix=prior.transition_model.transition_matrix.copy(),
                 output_model=DiscreteOutputModel(full_obs_probabilities.copy()),
                 initial_distribution=prior.initial_distribution.copy(),
@@ -656,7 +656,7 @@ class BayesianHMSM(Estimator):
         # potentially restrict sampled models to observed space
         # since model_copy is defined on full space, observation_symbols are also observation states
         count_model = TransitionCountModel(model_copy.counts, lagtime=prior.lagtime)
-        models.append(HiddenMarkovStateModel(
+        models.append(HiddenMarkovModel(
             transition_model=MarkovStateModel(model_copy.transition_matrix,
                                               stationary_distribution=model_copy.stationary_distribution,
                                               reversible=self.reversible, count_model=count_model),

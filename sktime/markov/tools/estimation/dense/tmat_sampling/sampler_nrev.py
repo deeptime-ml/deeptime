@@ -32,7 +32,7 @@ class SamplerNonRev(object):
         self.alpha = Z + 1.0
         """Initial state from single sample"""
         self.P = np.zeros_like(Z)
-        self.rnd = np.random.RandomState(seed)
+        self.rnd = np.random.RandomState(seed if isinstance(seed, int) and seed >= 0 else None)
         self.update()
 
     def update(self, N=1):

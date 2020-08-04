@@ -29,7 +29,7 @@ from sktime.util import ensure_dtraj_list, ensure_ndarray
 from ._hmm_bindings.util import viterbi as viterbi_impl
 
 
-class HiddenMarkovStateModel(Model):
+class HiddenMarkovModel(Model):
     """ Hidden Markov state model consisting of a transition model
     (:class:`MSM <sktime.markov.msm.MarkovStateModel>`) on the hidden states, an
     :class:`output model <OutputModel>` which maps from the hidden states to a distribution of observable states,
@@ -41,8 +41,8 @@ class HiddenMarkovStateModel(Model):
     init.discrete.metastable_from_data : initial guess from data with discrete output model
     init.discrete.metastable_from_msm : initial guess from MSM with discrete output model
     init.gaussian.from_data : initial guess from data with Gaussian output model
-    MaximumLikelihoodHMSM : maximum likelihood estimation of HMSMs
-    BayesianHMSM : Bayesian sampling of models for confidences.
+    MaximumLikelihoodHMM : maximum likelihood estimation of HMMs
+    BayesianHMM : Bayesian sampling of models for confidences.
     """
 
     def __init__(self, transition_model, output_model: Union[np.ndarray, OutputModel],
@@ -75,7 +75,7 @@ class HiddenMarkovStateModel(Model):
             When estimating the HMM the data's most likely hidden state trajectory is determined and can be saved
             with the model by providing this argument.
         stride : int or str('effective'), optional, default=1
-            Stride which was used to subsample discrete trajectories while estimating a HMSM. Can either be an integer
+            Stride which was used to subsample discrete trajectories while estimating a HMM. Can either be an integer
             value which determines the offset or 'effective', which makes an estimate of a stride at which subsequent
             discrete trajectory elements are uncorrelated.
         observation_symbols : array_like, optional, default=None
@@ -244,7 +244,7 @@ class HiddenMarkovStateModel(Model):
     @property
     def likelihoods(self) -> Optional[np.ndarray]:
         r"""
-        If the model comes from the MaximumLikelihoodHMSM estimator, this property contains the sequence of likelihoods
+        If the model comes from the MaximumLikelihoodHMM estimator, this property contains the sequence of likelihoods
         generated from the fitting iteration.
 
         Returns
@@ -353,8 +353,8 @@ class HiddenMarkovStateModel(Model):
     def transition_matrix_obs(self, k=1) -> np.ndarray:
         r""" Computes the transition matrix between observed states
 
-        Transition matrices for longer lag times than the one used to parametrize this HMSM can be obtained by setting
-        the k option. Note that a HMSM is not Markovian, thus we cannot compute transition matrices at longer lag times
+        Transition matrices for longer lag times than the one used to parametrize this HMM can be obtained by setting
+        the k option. Note that a HMM is not Markovian, thus we cannot compute transition matrices at longer lag times
         using the Chapman-Kolmogorow equality. I.e.:
 
         .. math::
@@ -375,7 +375,7 @@ class HiddenMarkovStateModel(Model):
         k : int, optional, default=1
             Multiple of the lag time.
             By default (k=1), the transition matrix at the lag time used to
-            construct this HMSM will be returned. If a higher power is given,
+            construct this HMM will be returned. If a higher power is given,
 
         """
         Pi_c = np.diag(self.transition_model.stationary_distribution)
@@ -770,7 +770,7 @@ class HiddenMarkovStateModel(Model):
               * None : all states - don't restrict
         Returns
         -------
-        hmm : HiddenMarkovStateModel
+        hmm : HiddenMarkovModel
             The restricted HMM.
         """
 
@@ -796,12 +796,12 @@ class HiddenMarkovStateModel(Model):
         if observation_symbols is not None:
             observation_symbols = observation_symbols[obs]
 
-        model = HiddenMarkovStateModel(transition_model=transition_model, output_model=output_model,
-                                       initial_distribution=initial_distribution, likelihoods=self.likelihoods,
-                                       state_probabilities=self.state_probabilities, initial_count=initial_count,
-                                       hidden_state_trajectories=self.hidden_state_trajectories,
-                                       observation_symbols=observation_symbols,
-                                       observation_symbols_full=self.observation_symbols_full)
+        model = HiddenMarkovModel(transition_model=transition_model, output_model=output_model,
+                                  initial_distribution=initial_distribution, likelihoods=self.likelihoods,
+                                  state_probabilities=self.state_probabilities, initial_count=initial_count,
+                                  hidden_state_trajectories=self.hidden_state_trajectories,
+                                  observation_symbols=observation_symbols,
+                                  observation_symbols_full=self.observation_symbols_full)
         return model
 
     def _select_states(self, connectivity_threshold, states) -> np.ndarray:
@@ -893,7 +893,7 @@ class HiddenMarkovStateModel(Model):
 
         Returns
         -------
-        sub_hmm : HiddenMarkovStateModel
+        sub_hmm : HiddenMarkovModel
             The restricted HMM.
         """
         states = self.states_largest(directed=directed, connectivity_threshold=connectivity_threshold)
@@ -935,8 +935,8 @@ class HiddenMarkovStateModel(Model):
 
         Returns
         -------
-        hmm : HiddenMarkovStateModel
-            The restricted HMSM.
+        hmm : HiddenMarkovModel
+            The restricted HMM.
 
         """
         states = self.states_populous(strong=directed, connectivity_threshold=connectivity_threshold)
@@ -961,7 +961,7 @@ class HiddenMarkovStateModel(Model):
 
         Returns
         -------
-        hmm : HiddenMarkovStateModel
+        hmm : HiddenMarkovModel
             The restricted HMM.
         """
         lcc = self.transition_model.count_model.connected_sets(connectivity_threshold=connectivity_threshold)[0]

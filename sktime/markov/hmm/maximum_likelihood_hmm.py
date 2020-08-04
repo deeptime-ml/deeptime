@@ -24,7 +24,7 @@ from scipy.sparse import issparse
 
 from sktime.base import Estimator
 from sktime.markov._transition_matrix import estimate_P, stationary_distribution
-from sktime.markov.hmm import HiddenMarkovStateModel
+from sktime.markov.hmm import HiddenMarkovModel
 from sktime.markov.hmm.hidden_markov_model import viterbi
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountModel
@@ -33,7 +33,7 @@ from sktime.util import ensure_dtraj_list
 from ._hmm_bindings import util as _util
 
 
-class MaximumLikelihoodHMSM(Estimator):
+class MaximumLikelihoodHMM(Estimator):
     """ Maximum likelihood Hidden Markov model (HMM) estimator.
 
     This class is used to fit a maximum-likelihood HMM to data. It uses an initial guess HMM with can be obtained with
@@ -51,7 +51,7 @@ class MaximumLikelihoodHMSM(Estimator):
     _HMMModelStorage = collections.namedtuple('_HMMModelStorage', ['transition_matrix', 'output_model',
                                                                    'initial_distribution'])
 
-    def __init__(self, initial_model: HiddenMarkovStateModel, stride: Union[int, str] = 1,
+    def __init__(self, initial_model: HiddenMarkovModel, stride: Union[int, str] = 1,
                  lagtime: int = 1, reversible: bool = True, stationary: bool = False,
                  p: Optional[np.ndarray] = None, accuracy: float = 1e-3,
                  maxit: int = 1000, maxit_reversible: int = 100000):
@@ -62,7 +62,7 @@ class MaximumLikelihoodHMSM(Estimator):
 
         Parameters
         ----------
-        initial_model : HiddenMarkovStateModel
+        initial_model : HiddenMarkovModel
             This model will be used to initialize the hidden markov model estimation routine. Since it is prone to
             get stuck in local optima, several initializations should be tried and scored and/or one of the available
             initialization heuristics should be applied, if appropriate.
@@ -117,12 +117,12 @@ class MaximumLikelihoodHMSM(Estimator):
         self.maxit = maxit
         self.maxit_reversible = maxit_reversible
 
-    def fetch_model(self) -> HiddenMarkovStateModel:
-        r""" Yields the current HiddenMarkovStateModel or None if :meth:`fit` was not called yet.
+    def fetch_model(self) -> HiddenMarkovModel:
+        r""" Yields the current HiddenMarkovModel or None if :meth:`fit` was not called yet.
 
         Returns
         -------
-        model : HiddenMarkovStateModel or None
+        model : HiddenMarkovModel or None
             The model.
         """
         return self._model
@@ -235,36 +235,36 @@ class MaximumLikelihoodHMSM(Estimator):
         return self.initial_transition_model.n_hidden_states
 
     @property
-    def initial_transition_model(self) -> HiddenMarkovStateModel:
+    def initial_transition_model(self) -> HiddenMarkovModel:
         r""" The initial transition model. """
         return self._initial_transition_model
 
     @initial_transition_model.setter
-    def initial_transition_model(self, value: HiddenMarkovStateModel) -> None:
+    def initial_transition_model(self, value: HiddenMarkovModel) -> None:
         self._initial_transition_model = value
 
     def fit(self, dtrajs, initial_model=None, **kwargs):
-        r""" Fits a new :class:`HMM <HiddenMarkovStateModel>` to data.
+        r""" Fits a new :class:`HMM <HiddenMarkovModel>` to data.
 
         Parameters
         ----------
         dtrajs : array_like or list of array_like
             Timeseries data.
-        initial_model : HiddenMarkovStateModel, optional, default=None
+        initial_model : HiddenMarkovModel, optional, default=None
             Override for :attr:`initial_transition_model`.
         **kwargs
             Ignored kwargs for scikit-learn compatibility.
 
         Returns
         -------
-        self : MaximumLikelihoodHMSM
+        self : MaximumLikelihoodHMM
             Reference to self.
         """
         if initial_model is None:
             initial_model = self.initial_transition_model
-        if initial_model is None or not isinstance(initial_model, HiddenMarkovStateModel):
+        if initial_model is None or not isinstance(initial_model, HiddenMarkovModel):
             raise ValueError("For estimation, an initial model of type "
-                             "`sktime.markov.hmm.HiddenMarkovStateModel` is required.")
+                             "`sktime.markov.hmm.HiddenMarkovModel` is required.")
 
         # copy initial model
         transition_matrix = initial_model.transition_model.transition_matrix
@@ -275,9 +275,9 @@ class MaximumLikelihoodHMSM(Estimator):
             # new instance
             transition_matrix = np.copy(transition_matrix)
 
-        hmm_data = MaximumLikelihoodHMSM._HMMModelStorage(transition_matrix=transition_matrix,
-                                                          output_model=initial_model.output_model.copy(),
-                                                          initial_distribution=initial_model.initial_distribution.copy())
+        hmm_data = MaximumLikelihoodHMM._HMMModelStorage(transition_matrix=transition_matrix,
+                                                         output_model=initial_model.output_model.copy(),
+                                                         initial_distribution=initial_model.initial_distribution.copy())
 
         dtrajs = ensure_dtraj_list(dtrajs)
         dtrajs = compute_dtrajs_effective(dtrajs, lagtime=self.lagtime, n_states=initial_model.n_hidden_states,
@@ -335,7 +335,7 @@ class MaximumLikelihoodHMSM(Estimator):
             viterbi(hmm_data.transition_matrix, hmm_data.output_model.to_state_probability_trajectory(obs),
                     hmm_data.initial_distribution) for obs in dtrajs
         ]
-        model = HiddenMarkovStateModel(
+        model = HiddenMarkovModel(
             transition_model=transition_model,
             output_model=hmm_data.output_model,
             initial_distribution=hmm_data.initial_distribution,
