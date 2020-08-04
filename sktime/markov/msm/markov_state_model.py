@@ -1079,8 +1079,8 @@ class MarkovStateModel(Model):
 
         Returns
         -------
-        hmsm : sktime.markov.hmm.HiddenMarkovStateModel
-            A hidden markov state model.
+        hmm : sktime.markov.hmm.HiddenMarkovModel
+            A hidden markov model.
 
         References
         ----------
@@ -1109,13 +1109,13 @@ class MarkovStateModel(Model):
                               f' It is possible that the resulting HMM is inaccurate. Handle with caution.',
                               stacklevel=2)
         # run HMM estimate
-        from sktime.markov.hmm import MaximumLikelihoodHMSM, init
+        from sktime.markov.hmm import MaximumLikelihoodHMM, init
         init_hmm = init.discrete.metastable_from_msm(self, nhidden, reversible=self.reversible)
-        est = MaximumLikelihoodHMSM(init_hmm, lagtime=self.lagtime, reversible=self.reversible)
-        hmsm = est.fit(dtrajs).fetch_model()
+        est = MaximumLikelihoodHMM(init_hmm, lagtime=self.lagtime, reversible=self.reversible)
+        hmm = est.fit(dtrajs).fetch_model()
         if return_estimator:
-            return est, hmsm
-        return hmsm
+            return est, hmm
+        return hmm
 
     def score(self, dtrajs, score_method='VAMP2', score_k=10):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes.

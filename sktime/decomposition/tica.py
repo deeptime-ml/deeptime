@@ -91,14 +91,14 @@ class TICA(VAMP):
     >>> from sktime.decomposition import TICA
     >>> data = np.random.random((100,3))
     >>> # fixed output dimension
-    >>> estimator = TICA(dim=1).fit(data, lagtime=2)
+    >>> estimator = TICA(dim=1, lagtime=2).fit(data)
     >>> model_onedim = estimator.fetch_model()
     >>> projected_data = model_onedim.transform(data)
     >>> np.testing.assert_equal(projected_data.shape[1], 1)
 
     or invoke it with a percentage value of to-be captured kinetic variance (80% in the example)
 
-    >>> estimator = TICA(dim=0.8).fit(data, lagtime=2)
+    >>> estimator = TICA(var_cutoff=0.8, lagtime=2).fit(data)
     >>> model_var = estimator.fetch_model()
     >>> projected_data = model_var.transform(data)
 
@@ -117,32 +117,36 @@ class TICA(VAMP):
         :keyprefix: tica-
     """
 
-    def __init__(self, epsilon: float = 1e-6, dim: Optional[Union[int, float]] = 0.95,
-                 scaling: Optional[str] = 'kinetic_map'):
+    def __init__(self, lagtime: Optional[int] = None, epsilon: float = 1e-6, dim: Optional[int] = None,
+                 var_cutoff: Optional[float] = None, scaling: Optional[str] = 'kinetic_map'):
         r"""Constructs a new TICA estimator.
 
         Parameters
         ----------
+        lagtime : int or None, optional, default=None
+            The lagtime under which covariances are estimated. This is only relevant when estimating from data, in case
+            covariances are provided this should either be None or exactly the value that was used to estimate
+            said covariances.
         epsilon : float, optional, default=1e-6
             Eigenvalue norm cutoff. Eigenvalues of C0 with norms <= epsilon will be
             cut off. The remaining number of eigenvalues define the size
             of the output.
-        dim : None, int, or float, optional, default 0.95
-            Number of dimensions (independent components) to project onto.
+        dim : int, optional, default=None
+            Number of dimensions to keep:
 
-          * if dim is not set (None) all available ranks are kept:
-              `n_components == min(n_samples, n_uncorrelated_features)`
-          * if dim is an integer >= 1, this number specifies the number
-            of dimensions to keep.
-          * if dim is a float with ``0 < dim <= 1``, select the number
-            of dimensions such that the amount of kinetic variance
-            that needs to be explained is greater than the percentage
-            specified by dim.
+            * if dim is not set (None) all available ranks are kept:
+              :code:`n_components == min(n_samples, n_uncorrelated_features)`
+            * if dim is an integer >= 1, this number specifies the number
+              of dimensions to keep.
+        var_cutoff : float, optional, default=None
+            Determines the number of output dimensions by including dimensions until their cumulative kinetic variance
+            exceeds the fraction subspace variance. var_cutoff=1.0 means all numerically available dimensions
+            (see epsilon) will be used, unless set by dim. Setting var_cutoff smaller than 1.0 is exclusive with dim.
         scaling: str or None, default='kinetic_map'
             Can be set to :code:`None`, 'kinetic_map' (:cite:`tica-noe2015kinetic`), 
             or 'commute_map' (:cite:`tica-noe2016commute`). For more details see :attr:`scaling`.
         """
-        super(TICA, self).__init__(dim=dim, scaling=scaling, epsilon=epsilon)
+        super(TICA, self).__init__(lagtime=lagtime, dim=dim, var_cutoff=var_cutoff, scaling=scaling, epsilon=epsilon)
 
     @classmethod
     def covariance_estimator(cls, lagtime: int, ncov: Union[int] = float('inf')):
@@ -151,7 +155,7 @@ class TICA(VAMP):
                           ncov=ncov)
 
     @staticmethod
-    def _decomposition(covariances, epsilon, scaling, dim) -> VAMP._DiagonalizationResults:
+    def _decomposition(covariances, epsilon, scaling, dim, var_cutoff) -> VAMP._DiagonalizationResults:
         from sktime.numeric.eigen import ZeroRankError
 
         # diagonalize with low rank approximation
@@ -233,4 +237,5 @@ class TICA(VAMP):
         if covariances.cov_0t is None:
             raise ValueError("The covariance model must contain C0t!")
         self._model = self._decompose(covariances)
+        self._covariance_estimator = None
         return self

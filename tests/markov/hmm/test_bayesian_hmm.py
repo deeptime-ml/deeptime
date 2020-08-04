@@ -21,8 +21,8 @@ import numpy as np
 import sktime
 
 from sktime.data import datasets
-from sktime.markov.hmm import MaximumLikelihoodHMSM
-from sktime.markov.hmm.bayesian_hmm import BayesianHMSM, BayesianHMMPosterior
+from sktime.markov.hmm import MaximumLikelihoodHMM
+from sktime.markov.hmm.bayesian_hmm import BayesianHMM, BayesianHMMPosterior
 from sktime.markov.hmm._hmm_bindings.util import count_matrix
 from sktime.util import confidence_interval, ensure_dtraj_list
 
@@ -40,7 +40,7 @@ class TestBHMM(unittest.TestCase):
         cls.n_samples = 100
 
         cls.lag = 10
-        cls.est = BayesianHMSM.default(
+        cls.est = BayesianHMM.default(
             dtrajs=obs, n_hidden_states=cls.n_states, lagtime=cls.lag, reversible=True, n_samples=cls.n_samples
         )
         # cls.est = bayesian_hidden_markov_model([obs], cls.n_states, cls.lag, reversible=True, n_samples=cls.n_samples)
@@ -283,7 +283,7 @@ class TestBHMM(unittest.TestCase):
                 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
                 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])
 
-        h = BayesianHMSM.default(dtrj, n_hidden_states=3, lagtime=2).fit(dtrj).fetch_model()
+        h = BayesianHMM.default(dtrj, n_hidden_states=3, lagtime=2).fit(dtrj).fetch_model()
         hs = h.submodel_largest(directed=True, connectivity_threshold=5, observe_nonempty=True, dtrajs=dtrj)
 
         models_to_check = [hs.prior] + hs.samples
@@ -302,17 +302,17 @@ class TestBHMMPathological(unittest.TestCase):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
         dtrajs = ensure_dtraj_list(obs)
         init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(dtrajs, 2, 1, regularize=False)
-        hmm = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(dtrajs).fetch_model()
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(dtrajs).fetch_model()
         # this will generate disconnected count matrices and should fail:
         with self.assertRaises(NotImplementedError):
-            BayesianHMSM(hmm).fit(obs)
+            BayesianHMM(hmm).fit(obs)
 
     def test_2state_nonrev_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
         init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
                                                                         regularize=False)
-        mle = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(obs).fetch_model()
-        bhmm = BayesianHMSM(mle, reversible=False, n_samples=2000).fit(obs).fetch_model()
+        mle = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
+        bhmm = BayesianHMM(mle, reversible=False, n_samples=2000).fit(obs).fetch_model()
         tmatrix_samples = np.array([s.transition_model.transition_matrix for s in bhmm])
         std = tmatrix_samples.std(axis=0)
         assert np.all(std[0] > 0)
@@ -322,8 +322,8 @@ class TestBHMMPathological(unittest.TestCase):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0], dtype=int)
         init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
                                                                         regularize=False)
-        mle = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(obs).fetch_model()
-        bhmm = BayesianHMSM(mle, reversible=False, n_samples=100).fit(obs).fetch_model()
+        mle = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
+        bhmm = BayesianHMM(mle, reversible=False, n_samples=100).fit(obs).fetch_model()
         tmatrix_samples = np.array([s.transition_model.transition_matrix for s in bhmm])
         std = tmatrix_samples.std(axis=0)
         assert np.all(std > 0)
@@ -333,7 +333,7 @@ class TestBHMMSpecialCases(unittest.TestCase):
     def test_separate_states(self):
         dtrajs = [np.array([0, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1]),
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
-        hmm_bayes = BayesianHMSM.default(dtrajs, n_hidden_states=3, lagtime=1, separate=[0], n_samples=100)\
+        hmm_bayes = BayesianHMM.default(dtrajs, n_hidden_states=3, lagtime=1, separate=[0], n_samples=100)\
             .fit(dtrajs).fetch_model()
         # we expect zeros in all samples at the following indexes:
         pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))

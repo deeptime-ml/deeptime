@@ -38,7 +38,7 @@ Maximum-likelihood estimation of HMMs
 -------------------------------------
 
 Since the maximum-likelihood estimation (via Baum-Welch :cite:`hmminit-baum1967inequality`) of
-:class:`HMMs <sktime.markov.hmm.HiddenMarkovStateModel>` is likely to
+:class:`HMMs <sktime.markov.hmm.HiddenMarkovModel>` is likely to
 get stuck in local maxima, a good initial guess is important for a high-quality model. The following methods aim to
 provide heuristics which can yield such an initial guess and can be found in :cite:`hmminit-noe2013projected`.
 
@@ -85,8 +85,8 @@ Estimation and resulting model:
     :toctree: generated/
     :template: class_nomodule.rst
 
-    MaximumLikelihoodHMSM
-    HiddenMarkovStateModel
+    MaximumLikelihoodHMM
+    HiddenMarkovModel
 
 Bayesian hidden markov state models
 -----------------------------------
@@ -100,7 +100,7 @@ sampling to sample from Bayesian hidden Markov model posteriors.
     :toctree: generated/
     :template: class_nomodule.rst
 
-    BayesianHMSM
+    BayesianHMM
     BayesianHMMPosterior
 
 References
@@ -111,9 +111,9 @@ References
     :keyprefix: hmminit-
 """
 
-from .hidden_markov_model import HiddenMarkovStateModel
-from .maximum_likelihood_hmm import MaximumLikelihoodHMSM
-from .bayesian_hmm import BayesianHMSM, BayesianHMMPosterior
+from .hidden_markov_model import HiddenMarkovModel
+from .maximum_likelihood_hmm import MaximumLikelihoodHMM
+from .bayesian_hmm import BayesianHMM, BayesianHMMPosterior
 from .output_model import OutputModel, DiscreteOutputModel, GaussianOutputModel
 
 from . import init

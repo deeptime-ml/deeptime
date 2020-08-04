@@ -6,7 +6,7 @@ import pytest
 from sktime.markov import tools
 
 import sktime
-from sktime.markov.hmm import MaximumLikelihoodHMSM
+from sktime.markov.hmm import MaximumLikelihoodHMM
 from sktime.markov.msm import MarkovStateModel
 
 
@@ -68,8 +68,8 @@ class HMMScenario(object):
             )
         else:
             raise ValueError("unknown init strategy {}".format(init_strategy))
-        self.hmm = MaximumLikelihoodHMSM(self.init_hmm, reversible=self.reversible,
-                                         lagtime=self.lagtime).fit(self.observable_state_traj).fetch_model()
+        self.hmm = MaximumLikelihoodHMM(self.init_hmm, reversible=self.reversible,
+                                        lagtime=self.lagtime).fit(self.observable_state_traj).fetch_model()
 
 
 scenario_map = dict()

@@ -122,7 +122,7 @@ def number_of_states(dtrajs, only_used=False):
 
 @shortcut('cmatrix')
 def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
-    r"""Generate a count matrix from given microstate trajectory.
+    r"""Generate a count matrix from given microstate trajectory [1]_.
 
     Parameters
     ----------
@@ -304,9 +304,9 @@ def bootstrap_trajectories(trajs, correlation_length):
         it's suggested to use full trajectories (set timescale to < 1) or come up with
         a rough estimate. For computing the error on specific observables, one may use
         shorter timescales, because the relevant correlation length is the integral of
-        the autocorrelation function of the observables of interest [3]. The slowest
+        the autocorrelation function of the observables of interest [3]_. The slowest
         implied timescale is an upper bound for that correlation length, and therefore
-        a conservative estimate [4].
+        a conservative estimate [4]_.
 
     Notes
     -----
@@ -316,7 +316,7 @@ def bootstrap_trajectories(trajs, correlation_length):
     put them into your estimator. The standard deviation of such a sample of
     the observable is a model for the standard error.
 
-    Implements a moving block bootstrapping procedure [1] for generation of
+    Implements a moving block bootstrapping procedure [1]_ for generation of
     randomly resampled count matrixes from discrete trajectories. The corrlation length
     determines the size of trajectory blocks that will remain contiguous.
     For a single trajectory N with correlation length t_corr < N,
@@ -329,7 +329,7 @@ def bootstrap_trajectories(trajs, correlation_length):
     For longer trajectories, segments of length t_corr are randomly generated.
 
     Note that like all error models for correlated time series data, Bootstrapping
-    just gives you a model for the error given a number of assumptions [2]. The most
+    just gives you a model for the error given a number of assumptions [2]_. The most
     critical decisions are: (1) is this approach meaningful at all (only if the
     trajectories are statistically independent realizations), and (2) select
     an appropriate timescale of the correlation length (see below).
@@ -422,12 +422,12 @@ def connected_sets(C, directed=True):
     Viewing the count matrix as the adjacency matrix of a (directed) graph
     the connected components are given by the connected components of that
     graph. Connected components of a graph can be efficiently computed
-    using Tarjan's algorithm.
+    using Tarjan's algorithm [1]_.
 
     References
     ----------
     .. [1] Tarjan, R E. 1972. Depth-first search and linear graph
-        algorithms. SIAM Journal on Computing 1 (2): 146-160.
+       algorithms. SIAM Journal on Computing 1 (2): 146-160.
 
     Examples
     --------
@@ -482,7 +482,7 @@ def largest_connected_set(C, directed=True):
     References
     ----------
     .. [1] Tarjan, R E. 1972. Depth-first search and linear graph
-        algorithms. SIAM Journal on Computing 1 (2): 146-160.
+       algorithms. SIAM Journal on Computing 1 (2): 146-160.
 
     Examples
     --------
@@ -535,7 +535,7 @@ def largest_connected_submatrix(C, directed=True, lcc=None):
     Viewing the count matrix as the adjacency matrix of a (directed)
     graph the larest connected submatrix is the adjacency matrix of
     the largest connected set of the corresponding graph. The largest
-    connected submatrix can be efficiently computed using Tarjan's algorithm.
+    connected submatrix can be efficiently computed using Tarjan's algorithm [1]_.
 
     References
     ----------
@@ -1146,6 +1146,7 @@ def error_perturbation(C, S):
     valued observable :math:`(f_1(T),\dots,f_K(T))` is defined as
 
     .. math:: S= \left( \left. \frac{\partial f_i(T)}{\partial t_{jk}} \right\rvert_{T_0} \right)
+
     evaluated at a suitable transition matrix :math:`T_0`.
 
     The sensitivity is the covariance matrix for the observable

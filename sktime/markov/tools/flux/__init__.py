@@ -26,15 +26,6 @@ Reactive flux and transition pathways
 This module (:mod:`sktime.markov.tools.flux`) contains functions to compute reactive flux networks and
 find dominant reaction pathways in such networks.
 
-TPT-object
-==========
-
-.. autosummary::
-   :toctree: generated/
-
-   tpt
-   ReactiveFlux
-
 Reactive flux
 =============
 

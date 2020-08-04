@@ -40,8 +40,7 @@ def test_non_reversible(dtype):
 
     N = 1000
     """Create sampler object"""
-    # from msmtools.estimation.dense.tmat_sampling.tmatrix_sampler import TransitionMatrixSampler
-    sampler = TransitionMatrixSampler(C, reversible=False)
+    sampler = TransitionMatrixSampler(C, reversible=False, seed=42)
 
     # Compute sample mean
     sampled_mean = np.zeros(C.shape)

@@ -168,7 +168,7 @@ def _coarse_grain_transition_matrix(P, M):
 def metastable_from_msm(msm, n_hidden_states: int,
                         reversible: bool = True, stationary: bool = False,
                         separate_symbols=None, regularize: bool = True):
-    r""" Makes an initial guess for an :class:`HMM <sktime.markov.hmm.HiddenMarkovStateModel>` with
+    r""" Makes an initial guess for an :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>` with
     discrete output model from an already existing MSM over observable states. The procedure is described in
     :cite:`hmm-init-msm-noe2013projected` and uses PCCA+ :cite:`hmm-init-msm-roblitz2013fuzzy` for
     coarse-graining the transition matrix and obtaining membership assignments.
@@ -196,7 +196,7 @@ def metastable_from_msm(msm, n_hidden_states: int,
 
     Returns
     -------
-    hmm_init : HiddenMarkovStateModel
+    hmm_init : HiddenMarkovModel
         An initial guess for the HMM
 
     See Also
@@ -284,16 +284,16 @@ def metastable_from_msm(msm, n_hidden_states: int,
                                                              stationary=stationary, count_matrix=hidden_counts, eps=eps_a)
     eps_b = 0.01 / msm.n_states if regularize else 0.
     output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate_symbols, eps=eps_b)
-    from sktime.markov.hmm import HiddenMarkovStateModel
-    return HiddenMarkovStateModel(transition_model=hidden_transition_matrix, output_model=output_probabilities,
-                                  initial_distribution=hidden_pi)
+    from sktime.markov.hmm import HiddenMarkovModel
+    return HiddenMarkovModel(transition_model=hidden_transition_matrix, output_model=output_probabilities,
+                             initial_distribution=hidden_pi)
 
 
 def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='largest-regularized',
                          reversible: bool = True, stationary: bool = False,
                          separate_symbols=None, states: Optional[np.ndarray] = None,
                          regularize: bool = True, connectivity_threshold: Union[str, float] = 0.):
-    r"""Estimates an initial guess :class:`HMM <sktime.markov.hmm.HiddenMarkovStateModel>` from given
+    r"""Estimates an initial guess :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>` from given
     discrete trajectories.
 
     Following the procedure described in :cite:`hmm-init-data-noe2013projected`: First
@@ -365,7 +365,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
 
     Returns
     -------
-    hmm_init : HiddenMarkovStateModel
+    hmm_init : HiddenMarkovModel
         An initial guess for the HMM
 
     See Also
@@ -423,7 +423,7 @@ metastable_from_data.VALID_MODES = ['all', 'largest', 'populous']
 
 
 def random_guess(n_observation_states: int, n_hidden_states: int, seed: Optional[int] = None):
-    r"""Initializes a :class:`HMM <sktime.markov.hmm.HiddenMarkovStateModel>` with a set number of hidden and
+    r"""Initializes a :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>` with a set number of hidden and
     observable states by setting the transition matrix uniform and drawing a random row-stochastic matrix as
     output probabilities.
 
@@ -438,7 +438,7 @@ def random_guess(n_observation_states: int, n_hidden_states: int, seed: Optional
 
     Returns
     -------
-    init_hmm : HiddenMarkovStateModel
+    init_hmm : HiddenMarkovModel
         A randomly initialized hidden markov state model.
     """
     state = np.random.RandomState(seed=seed)
@@ -446,5 +446,5 @@ def random_guess(n_observation_states: int, n_hidden_states: int, seed: Optional
     P.fill(1. / n_hidden_states)
     B = state.uniform(size=(n_hidden_states, n_observation_states))
     B /= B.sum(axis=-1, keepdims=True)
-    from sktime.markov.hmm import HiddenMarkovStateModel
-    return HiddenMarkovStateModel(transition_model=P, output_model=B)
+    from sktime.markov.hmm import HiddenMarkovModel
+    return HiddenMarkovModel(transition_model=P, output_model=B)

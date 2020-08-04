@@ -80,7 +80,7 @@ Committors and PCCA
    :toctree: generated/
 
    committor - Forward and backward committor
-   pcca - Perron cluster center analysis
+   pcca_memberships - Perron cluster center analysis
 
 Fingerprints
 ============

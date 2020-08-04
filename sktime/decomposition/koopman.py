@@ -259,7 +259,7 @@ class CovarianceKoopmanModel(KoopmanModel):
 
     def __init__(self, operator: np.ndarray, basis_transform_forward: Optional[KoopmanBasisTransform],
                  basis_transform_backward: Optional[KoopmanBasisTransform], cov: CovarianceModel,
-                 rank_0: int, rank_t: int, dim=None, scaling=None, epsilon=1e-6):
+                 rank_0: int, rank_t: int, dim=None, var_cutoff=None, scaling=None, epsilon=1e-6):
         r""" For a description of parameters `operator`, `basis_transform_forward`, `basis_transform_backward`,
         and `output_dimension`: please see :meth:`KoopmanModel.__init__`.
 
@@ -281,12 +281,14 @@ class CovarianceKoopmanModel(KoopmanModel):
         """
         if not is_diagonal_matrix(operator):
             raise ValueError("Koopman operator must be diagonal matrix!")
-        output_dim = CovarianceKoopmanModel.effective_output_dimension(rank_0, rank_t, dim, np.diag(operator))
+        output_dim = CovarianceKoopmanModel.effective_output_dimension(rank_0, rank_t, dim, var_cutoff,
+                                                                       np.diag(operator))
         super().__init__(operator, basis_transform_forward, basis_transform_backward, output_dimension=output_dim)
         self._cov = cov
         self._scaling = scaling
         self._epsilon = epsilon
         self._dim = dim
+        self._var_cutoff = var_cutoff
         self._rank_0 = rank_0
         self._rank_t = rank_t
 
@@ -364,45 +366,64 @@ class CovarianceKoopmanModel(KoopmanModel):
         return cumvar
 
     @staticmethod
-    def effective_output_dimension(rank0, rankt, dim, singular_values) -> int:
+    def effective_output_dimension(rank0, rankt, dim, var_cutoff, singular_values) -> int:
         r""" Computes effective output dimension. """
-        if dim is None or (isinstance(dim, float) and dim == 1.0):
+        if (dim is None and var_cutoff is None) or (var_cutoff is not None and var_cutoff == 1.0):
             return min(rank0, rankt)
-        if isinstance(dim, float):
-            return np.searchsorted(CovarianceKoopmanModel._cumvar(singular_values), dim) + 1
+        if var_cutoff is not None:
+            return np.searchsorted(CovarianceKoopmanModel._cumvar(singular_values), var_cutoff) + 1
         else:
-            return np.min([rank0, rankt, dim])
+            if dim is None:
+                return min(rank0, rankt)
+            else:
+                return np.min([rank0, rankt, dim])
+
+    def _update_output_dimension(self):
+        self._output_dimension = CovarianceKoopmanModel.effective_output_dimension(
+            self.whitening_rank_0, self.whitening_rank_t, self.dim, self.var_cutoff, self.singular_values
+        )
 
     @property
-    def dim(self) -> Optional[Real]:
-        r""" Dimension attribute. Can either be int or float. In case of
+    def var_cutoff(self) -> Optional[float]:
+        r""" Variance cutoff parameter. Can be set to include dimensions up to a certain threshold. Takes
+        precedence over the :meth:`dim` parameter.
+
+        :getter: Yields the current variance cutoff.
+        :setter: Sets a new variance cutoff
+        :type: float or None
+        """
+        return self._var_cutoff
+
+    @var_cutoff.setter
+    def var_cutoff(self, value):
+        if value <= 0. or float(value) > 1.0:
+            raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of a floating point, "
+                             "can only be in the interval (0, 1].")
+        self._var_cutoff = value
+        self._update_output_dimension()
+
+    @property
+    def dim(self) -> Optional[int]:
+        r""" Dimension attribute. Can either be int or None. In case of
 
         * :code:`int` it evaluates it as the actual dimension, must be strictly greater 0,
-        * :code:`float` it evaluates it as percentage of the captured kinetic variance, i.e., must be in :math:`(0,1]`,
-        * :code:`None` all components are used.
+        * :code:`None` all numerically available components are used.
 
         :getter: yields the dimension
         :setter: sets a new dimension
-        :type: int or float
+        :type: int or None
         """
         return self._dim
 
     @dim.setter
-    def dim(self, value: Optional[Real]):
-        if isinstance(value, Integral):
+    def dim(self, value: Optional[int]):
+        if isinstance(value, int):
             if value <= 0:
                 # first test against Integral as `isinstance(1, Real)` also evaluates to True
                 raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of the "
                                  "dimension (integer), must be positive.")
-        elif isinstance(value, Real) and (value <= 0. or float(value) > 1.0):
-            raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of a floating point, "
-                             "can only be in the interval (0, 1].")
-        elif value is not None and not isinstance(value, (Integral, Real)):
-            raise ValueError("Invalid type for dimension, got {}".format(value))
         self._dim = value
-        self._output_dimension = CovarianceKoopmanModel.effective_output_dimension(
-            self.whitening_rank_0, self.whitening_rank_t, self._dim, self.singular_values
-        )
+        self._update_output_dimension()
 
     @property
     def cumulative_kinetic_variance(self) -> np.ndarray:
