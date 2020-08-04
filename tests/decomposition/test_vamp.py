@@ -93,7 +93,7 @@ def full_rank_time_series():
     return traj
 
 
-@pytest.mark.parametrize("dim", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], ids=lambda x: f"dim={x}")
+@pytest.mark.parametrize("dim", [0, 1, 2, 3, 4, 5, 6, 7], ids=lambda x: f"dim={x}")
 def test_dim(full_rank_time_series, dim):
     if dim < 1:
         with np.testing.assert_raises(ValueError):
