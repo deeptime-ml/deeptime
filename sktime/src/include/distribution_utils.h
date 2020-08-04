@@ -28,19 +28,19 @@
 namespace sktime {
 namespace rnd {
 
-template<typename Generator = std::default_random_engine>
+template<typename Generator = std::mt19937>
 Generator seededGenerator(std::uint32_t seed) {
-    return std::default_random_engine(seed);
+    return Generator{seed};
 }
 
-template<typename Generator = std::default_random_engine>
+template<typename Generator = std::mt19937>
 Generator randomlySeededGenerator() {
     std::random_device r;
     std::seed_seq seed{r(), r(), r(), r(), r(), r(), r(), r()};
     return Generator(seed);
 }
 
-template<typename Generator = std::default_random_engine>
+template<typename Generator = std::mt19937>
 Generator &staticThreadLocalGenerator() {
     static thread_local Generator generator(randomlySeededGenerator<Generator>());
     return generator;

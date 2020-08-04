@@ -16,14 +16,14 @@ auto isPositive(dtype x) -> bool {
 }
 }
 
-template<typename dtype, typename Generator = std::default_random_engine>
+template<typename dtype, typename Generator = std::mt19937>
 class RevPiSampler {
 public:
     explicit RevPiSampler(int seed) : uniform(0, 1) {
         if (seed < 0) {
-            generator = sktime::rnd::randomlySeededGenerator();
+            generator = sktime::rnd::randomlySeededGenerator<Generator>();
         } else {
-            generator = sktime::rnd::seededGenerator(static_cast<std::uint32_t>(seed));
+            generator = sktime::rnd::seededGenerator<Generator>(static_cast<std::uint32_t>(seed));
         }
     }
 
@@ -225,15 +225,15 @@ private:
     }
 };
 
-template<typename dtype, typename Generator = std::default_random_engine>
+template<typename dtype, typename Generator = std::mt19937>
 class RevSampler {
 
 public:
     explicit RevSampler(int seed) : uniform(0, 1) {
         if (seed < 0) {
-            generator = sktime::rnd::randomlySeededGenerator();
+            generator = sktime::rnd::randomlySeededGenerator<Generator>();
         } else {
-            generator = sktime::rnd::seededGenerator(static_cast<std::uint32_t>(seed));
+            generator = sktime::rnd::seededGenerator<Generator>(static_cast<std::uint32_t>(seed));
         }
     }
 
