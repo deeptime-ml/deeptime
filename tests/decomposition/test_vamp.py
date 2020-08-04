@@ -79,9 +79,10 @@ def test_forward(components):
 
 @pytest.fixture
 def full_rank_time_series():
-    """ Yields a time series of which the propagator has full rank (10 in this case as data is mean-free). """
-    d = 11
-    Q = np.linalg.qr(np.random.normal(size=(d, d)))[0]
+    """ Yields a time series of which the propagator has full rank (7 in this case as data is mean-free). """
+    random_state = np.random.RandomState(42)
+    d = 8
+    Q = np.linalg.qr(random_state.normal(size=(d, d)))[0]
     K = Q @ (np.diag(np.arange(1, d + 1)).astype(np.float64) / d) @ Q.T
     model = KoopmanModel(K, basis_transform_forward=None, basis_transform_backward=None)
     x = np.ones((1, d,)) * 100000
@@ -119,18 +120,33 @@ def test_var_cutoff(full_rank_time_series, var_cutoff):
             VAMP(lagtime=1, var_cutoff=var_cutoff).fit(full_rank_time_series).fetch_model()
 
 
-@pytest.mark.parametrize("dim", [2, 3], ids=lambda x: f"dim={x}")
-@pytest.mark.parametrize("var_cutoff", [.5, 1.], ids=lambda x: f"var_cutoff={x}")
-def test_dim_and_var_cutoff(full_rank_time_series, dim, var_cutoff):
-    # basically dim should be ignored here since var_cutoff takes precedence
-    est = VAMP(lagtime=1, var_cutoff=var_cutoff).fit(full_rank_time_series)
+@pytest.mark.parametrize("dim", [None, 2, 3], ids=lambda x: f"dim={x}")
+@pytest.mark.parametrize("var_cutoff", [None, .5, 1.], ids=lambda x: f"var_cutoff={x}")
+@pytest.mark.parametrize("partial_fit", [False, True], ids=lambda x: f"partial_fit={x}")
+def test_dim_and_var_cutoff(full_rank_time_series, dim, var_cutoff, partial_fit):
+    # basically dim should be ignored here since var_cutoff takes precedence if it is None
+    est = VAMP(lagtime=1, dim=dim, var_cutoff=var_cutoff)
+    if partial_fit:
+        for chunk in timeshifted_split(full_rank_time_series, lagtime=1, chunksize=15):
+            est.partial_fit(chunk)
+        est2 = VAMP(lagtime=1, dim=dim, var_cutoff=var_cutoff).fit(full_rank_time_series)
+        np.testing.assert_array_almost_equal(est.fetch_model().operator, est2.fetch_model().operator)
+    else:
+        est.fit(full_rank_time_series)
     projection = est.transform(full_rank_time_series)
     np.testing.assert_equal(projection.shape[0], full_rank_time_series.shape[0])
-    if var_cutoff == 1.:
-        # data is internally mean-free
-        np.testing.assert_equal(projection.shape[1], full_rank_time_series.shape[1] - 1)
+    if var_cutoff is not None:
+        if var_cutoff == 1.:
+            # data is internally mean-free
+            np.testing.assert_equal(projection.shape[1], full_rank_time_series.shape[1] - 1)
+        else:
+            np.testing.assert_array_less(projection.shape[1], full_rank_time_series.shape[1])
     else:
-        np.testing.assert_array_less(projection.shape[1], full_rank_time_series.shape[1])
+        if dim is None:
+            # data is internally mean-free
+            np.testing.assert_equal(projection.shape[1], full_rank_time_series.shape[1] - 1)
+        else:
+            np.testing.assert_equal(projection.shape[1], dim)
 
 
 class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
