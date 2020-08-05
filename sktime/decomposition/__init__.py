@@ -19,7 +19,21 @@
 r"""
 .. currentmodule: sktime.decomposition
 
-.. rubric:: Koopman model
+===============================================================================
+Estimators
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    VAMP
+    TICA
+
+===============================================================================
+Models
+===============================================================================
+
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
@@ -29,19 +43,6 @@ r"""
     KoopmanBasisTransform
     IdentityKoopmanBasisTransform
 
-.. rubric:: TICA
-.. autosummary::
-    :toctree: generated/
-    :template: class_nomodule.rst
-
-    TICA
-
-.. rubric:: VAMP
-.. autosummary::
-    :toctree: generated/
-    :template: class_nomodule.rst
-
-    VAMP
 """
 
 from .tica import TICA

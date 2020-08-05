@@ -8,7 +8,7 @@
 
    {% block methods %}
    {% if objtype == "class" %}
-   .. automethod:: {{ name }}.__init__
+   .. automethod:: __init__
    {% endif %}
 
    {% if methods %}
