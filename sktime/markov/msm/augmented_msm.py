@@ -248,7 +248,8 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             parameter is the threshold of the relative change in the predicted
             observables as a function of fixed-point iteration:
 
-            $$ \\mathrm{eps} > \\frac{\\mid o_{\\mathrm{pred}}^{(i+1)}-o_{\\mathrm{pred}}^{(i)}\\mid }{\\sigma}. $$
+            .. math::
+                \mathrm{eps} > \frac{\mid o_{\mathrm{pred}}^{(i+1)}-o_{\mathrm{pred}}^{(i)}\mid }{\sigma}.
 
         support_ci : float, optional, default=1.0
             Confidence interval for determination whether experimental data are inside or outside Markov model support.
@@ -257,6 +258,13 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
         max_cache : int, optional, default=3000
             Maximum size (in megabytes) of cache when computing R tensor (Supporting information
             in :cite:`amm-olsson2017combining`).
+
+        References
+        ----------
+        .. bibliography:: /references.bib
+            :style: unsrt
+            :filter: docname in docnames
+            :keyprefix: amm-
         """
         super().__init__(sparse=False, reversible=True)
         self.expectations_by_state = expectations_by_state

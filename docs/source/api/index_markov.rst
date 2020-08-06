@@ -1,38 +1,77 @@
-.. _ref-markov:
+.. _ref-markov-hmm:
+.. currentmodule:: sktime.markov
 
+===============================================================================
 sktime.markov
-=============
+===============================================================================
 
-The *markov* package contains algorithms which can be used to estimate (hidden) markov state models and apply
+The *markov* package contains algorithms which can be used to estimate markov state models and apply
 analysis tools like PCCA+, TPT, bayesian sampling for confidence intervals.
 
-.. automodule:: sktime.markov
+Estimators
+==========
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
 
-.. toctree::
-   :maxdepth: 1
+    msm.MaximumLikelihoodMSM
+    msm.BayesianMSM
 
-sktime.markov.msm
------------------
 
-Package containing tools for estimation and analysis of Markov state models.
+Models
+======
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
 
-.. automodule:: sktime.markov.msm
+    msm.MarkovStateModel
+    msm.MarkovStateModelCollection
+    msm.BayesianPosterior
+    msm.QuantityStatistics
 
-.. toctree::
-   :maxdepth: 1
+Analysis tools
+==============
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
 
-sktime.markov.hmm
------------------
+    pcca
+    compute_reactive_flux
+    score_cv
 
-Package containing tools for estimation and analysis of hidden Markov state models.
+With output models
 
-They consist out of a hidden state :class:`MSM <sktime.markov.msm.MarkovStateModel>` which holds information
-on how hidden states can transition between one another and an
-:class:`OutputModel <sktime.markov.hmm.OutputModel>`, which maps hidden states to discrete observable states in
-case of an  :class:`DiscreteOutputModel <sktime.markov.hmm.DiscreteOutputModel>` or to continuous observables
-in case of an :class:`GaussianOutputModel <sktime.markov.hmm.GaussianOutputModel>`.
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
 
-.. automodule:: sktime.markov.hmm
+    PCCAModel
+    ReactiveFlux
 
-.. toctree::
-   :maxdepth: 1
+
+Utilities and alternatives
+==========================
+
+Transition counting
+-------------------
+An alternative to estimating Markov state models directly from discrete timeseries is to first estimate (and
+potentially subselect) a count matrix and then use that for estimation.
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    TransitionCountEstimator
+    TransitionCountModel
+
+Special MSM estimators and models
+---------------------------------
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    msm.OOMReweightedMSM
+    msm.KoopmanReweightedMSM
+
+    msm.AugmentedMSMEstimator
+    msm.AugmentedMSM

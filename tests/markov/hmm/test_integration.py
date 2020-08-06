@@ -60,7 +60,7 @@ class HMMScenario(object):
 
         if init_strategy == 'random':
             self.init_hmm = sktime.markov.hmm.init.discrete.random_guess(
-                n_observation_states=self.n_observable, n_hidden_states=self.n_hidden
+                n_observation_states=self.n_observable, n_hidden_states=self.n_hidden, seed=17
             )
         elif init_strategy == 'pcca':
             self.init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(

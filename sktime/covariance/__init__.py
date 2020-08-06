@@ -20,7 +20,7 @@ r"""
 .. currentmodule: sktime.covariance
 
 ===============================================================================
-Estimation
+Estimators
 ===============================================================================
 
 .. autosummary::
@@ -28,25 +28,27 @@ Estimation
     :template: class_nomodule.rst
 
     Covariance
-    CovarianceModel
+    KoopmanWeightingEstimator
+
 
 ===============================================================================
-Koopman reweighting
+Models
 ===============================================================================
 
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
 
-    KoopmanWeightingEstimator
+    CovarianceModel
     KoopmanWeightingModel
 
+
 ===============================================================================
-Implementations
+Utilities
 ===============================================================================
 
 .. autosummary::
-    :toctree: generated/
+    :toctree: generated/impl/
     :template: class_nomodule.rst
 
     covar
