@@ -14,7 +14,8 @@ class TestLowlevelNumerics(unittest.TestCase):
        d2 = np.random.randint(1,high=100)
        a = np.random.randn(d0,d1)
        b = np.random.randn(d1,d2)
-       assert np.allclose(a.dot(b), kahandot.kdot(a,b))
+       kab = kahandot.kdot(a,b)
+       np.testing.assert_allclose(kab, a.dot(b))
 
 class TestEstimators(unittest.TestCase):
     @classmethod

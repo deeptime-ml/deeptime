@@ -13,4 +13,3 @@ PYBIND11_MODULE(_mle_sparse_bindings, m) {
     m.def("mle_trev_given_pi_sparse", &mle_trev_given_pi_sparse<double>);
     m.def("mle_trev_given_pi_sparse", &mle_trev_given_pi_sparse<long double>);
 }
- 
