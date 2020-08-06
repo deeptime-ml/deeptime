@@ -9,33 +9,6 @@
 
 #include "common.h"
 
-namespace util {
-template<typename dtype>
-auto relativeError(const std::size_t n, const dtype *const a, const dtype *const b) -> dtype {
-    auto max = static_cast<dtype>(0);
-    for (auto i = 0U; i < n; i++) {
-        auto sum = static_cast<dtype>(.5) * (a[i] + b[i]);
-        if (sum > 0) {
-            auto d = std::abs((a[i] - b[i]) / sum);
-            if (d > max) {
-                max = d;
-            }
-        }
-    }
-    return max;
-}
-
-template<typename dtype>
-static dtype distsq(const std::size_t n, const dtype *const a, const dtype *const b) {
-    dtype d = 0.0;
-    #pragma omp parallel for reduction(+:d) default(none) firstprivate(n, a, b)
-    for (std::size_t i = 0; i < n; i++) {
-        d += (a[i] - b[i]) * (a[i] - b[i]);
-    }
-    return d;
-}
-}
-
 template<typename dtype>
 int mle_trev_dense(np_array<dtype> &T_arr, const np_array<dtype> &CCt_arr,
                    const np_array<dtype> &sum_C_arr, const std::size_t dim,

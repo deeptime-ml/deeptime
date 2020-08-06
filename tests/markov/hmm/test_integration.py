@@ -110,7 +110,7 @@ def test_hidden_transition_matrix(hmm_scenario):
     for perm in permutation_matrices(hmm_scenario.n_hidden):
         minerr = min(minerr, np.max(np.abs(perm.T @ model.transition_model.transition_matrix @ perm -
                                            hmm_scenario.msm.transition_matrix)))
-    np.testing.assert_almost_equal(minerr, 0, decimal=2)
+    np.testing.assert_almost_equal(minerr, 0, decimal=1)
 
 
 def test_hidden_path(hmm_scenario):
