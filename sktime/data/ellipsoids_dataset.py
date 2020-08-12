@@ -48,6 +48,9 @@ class Ellipsoids(object):
        plt.show()
     """
 
+    state_0_mean = np.array([0., 0.])
+    state_1_mean = np.array([0., 5.])
+
     def __init__(self, laziness: float = 0.97, seed: Optional[int] = None):
         r""" Creates a new ellipsoids example data instance.
 
@@ -148,10 +151,10 @@ class Ellipsoids(object):
         state_1_indices = np.where(dtraj == 1)[0]  # indices where the state is 1
         # fill allocated space with samples
         ftraj[state_0_indices] = self.random_state.multivariate_normal(
-            mean=[0.0, 0.0], cov=self.covariance_matrix, size=len(state_0_indices)
+            mean=self.state_0_mean, cov=self.covariance_matrix, size=len(state_0_indices)
         )
         ftraj[state_1_indices] = self.random_state.multivariate_normal(
-            mean=[0.0, 5.0], cov=self.covariance_matrix, size=len(state_1_indices)
+            mean=self.state_1_mean, cov=self.covariance_matrix, size=len(state_1_indices)
         )
         if n_dim == 2:
             # feature trajectory is already 2-dimensional
