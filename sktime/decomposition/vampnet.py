@@ -158,7 +158,7 @@ class NumPyAccessor(object):
             else:
                 self._module.double()
             with torch.no_grad():
-                flag = data.flags.WRITEABLE
+                flag = data.flags.writeable
                 data.setflags(write=True)
                 data_tensor = torch.tensor(data, device=self._device, requires_grad=False)
                 data.setflags(flag)
