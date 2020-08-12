@@ -34,7 +34,7 @@ dividers = [make_axes_locatable(axes[i]) for i in range(len(axes))]
 caxes = [divider.append_axes("right", size="5%", pad=0.05) for divider in dividers]
 
 titles = ["Gross flux", "Net flux"]
-fluxes = [flux.gross_flux.m, flux.net_flux.m]
+fluxes = [flux.gross_flux, flux.net_flux]
 
 cmap = plt.cm.copper_r
 thresh = [0, 1e-12]

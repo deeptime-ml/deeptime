@@ -8,6 +8,7 @@ Dimensionality reduction
 
     notebooks/tica
     notebooks/vamp
+    notebooks/vampnets
 
 Here we introduce the dimensionality reduction / decomposition techniques implemented in the package.
 

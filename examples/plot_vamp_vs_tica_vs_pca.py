@@ -30,13 +30,13 @@ ellipsoids = sktime.data.ellipsoids(seed=17)
 discrete_trajectory = ellipsoids.discrete_trajectory(n_steps=1000)
 feature_trajectory = ellipsoids.map_discrete_to_observations(discrete_trajectory)
 
-vamp = sktime.decomposition.VAMP(dim=1)
-vamp = vamp.fit(feature_trajectory, lagtime=1).fetch_model()
+vamp = sktime.decomposition.VAMP(dim=1, lagtime=1)
+vamp = vamp.fit(feature_trajectory).fetch_model()
 vamp_projection = vamp.transform(feature_trajectory)
 dxy_vamp = vamp.singular_vectors_left[:, 0]  # dominant vamp component
 
-tica = sktime.decomposition.TICA(dim=1)
-tica = tica.fit(feature_trajectory, lagtime=1).fetch_model()
+tica = sktime.decomposition.TICA(dim=1, lagtime=1)
+tica = tica.fit(feature_trajectory).fetch_model()
 tica_projection = tica.transform(feature_trajectory)
 dxy_tica = tica.singular_vectors_left[:, 0]  # dominant tica component
 
