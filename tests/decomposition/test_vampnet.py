@@ -2,10 +2,12 @@ import numpy as np
 import pytest
 
 import sktime
-from sktime.decomposition.vampnet import sym_inverse, covariances, score_vamp2, loss_vamp2
+from sktime.decomposition import VAMP
+from sktime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss
 
 try:
     import torch
+    import torch.nn as nn
 except (ImportError, ModuleNotFoundError):
     pytest.skip("Skipping tests which depend on PyTorch because it is not installed in the environment.",
                 allow_module_level=True)
@@ -38,7 +40,8 @@ def test_covariances(remove_mean):
         np.testing.assert_array_almost_equal(reference_covs.cov_tt, ctt.numpy())
 
 
-def test_vamp2():
+@pytest.mark.parametrize('method', ["VAMP1", "VAMP2"])
+def test_score(method):
     data = sktime.data.ellipsoids().observations(1000, n_dim=5)
     tau = 10
 
@@ -46,5 +49,30 @@ def test_vamp2():
     with torch.no_grad():
         data_instantaneous = torch.from_numpy(data[:-tau].astype(np.float64))
         data_shifted = torch.from_numpy(data[tau:].astype(np.float64))
-        score = score_vamp2(data_instantaneous, data_shifted)
-        np.testing.assert_array_almost_equal(score.numpy(), vamp_model.score(score_method='VAMP2'))
+        score_value = score(data_instantaneous, data_shifted, method=method)
+        np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method))
+
+
+def test_estimator():
+    data = sktime.data.ellipsoids()
+    obs = data.observations(10000, n_dim=10).astype(np.float32)
+
+    # reference model w/o learnt featurization
+    vamp_model = VAMP(lagtime=1).fit(obs).fetch_model()
+
+    # set up the lobe
+    lobe = nn.Sequential(nn.Linear(10, 10), nn.ELU(), nn.Linear(10, 10), nn.ELU(), nn.Linear(10, 3), nn.Softmax(1))
+    # train the lobe
+    opt = torch.optim.Adam(lobe.parameters(), lr=5e-4)
+    for _ in range(50):
+        for X, Y in sktime.data.timeshifted_split(obs, lagtime=1, chunksize=512):
+            opt.zero_grad()
+            lval = loss(lobe(torch.from_numpy(X)), lobe(torch.from_numpy(Y)))
+            lval.backward()
+            opt.step()
+
+    # now let's compare
+    lobe.eval()
+    vampnet = VAMPNet(1, lobe=lobe)
+    vampnet_model = vampnet.fit(obs).fetch_model()
+    np.testing.assert_array_less(vamp_model.timescales(), vampnet_model.timescales())

@@ -1,4 +1,10 @@
 import warnings
+from typing import Optional, Union, List, Tuple
+
+import numpy as np
+
+from . import VAMP, CovarianceKoopmanModel, KoopmanBasisTransform
+from ..covariance import Covariance, CovarianceModel
 
 try:
     import torch
@@ -46,7 +52,25 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False):
     return torch.chain_matmul(eigvec_t, diag, eigvec)
 
 
-def koopman_matrix(x, y):
+def koopman_matrix(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    r""" Computes the Koopman matrix
+
+    .. math:: K = C_{00}^{-1/2}C_{0t}C_{tt}^{-1/2}
+
+    based on data over which the covariance matrices :math:`C_{\cdot\cdot}` are computed.
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        Instantaneous data.
+    y : torch.Tensor
+        Time-lagged data.
+
+    Returns
+    -------
+    K : torch.Tensor
+        The Koopman matrix.
+    """
     c00, c0t, ctt = covariances(x, y, remove_mean=True)
     c00_sqrt_inv = sym_inverse(c00, ret_sqrt=True)
     ctt_sqrt_inv = sym_inverse(ctt, ret_sqrt=True)
@@ -97,18 +121,77 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
     return cov_00, cov_01, cov_11
 
 
-def score(data_instantaneous: torch.Tensor, data_shifted: torch.Tensor, method='VAMP2'):
+def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
     if method not in score.valid_methods:
         raise ValueError(f"Invalid method '{method}', supported are {score.valid_methods}")
-    assert data_instantaneous.shape == data_shifted.shape
+    assert data.shape == data_lagged.shape
 
-    koopman = koopman_matrix(data_instantaneous, data_shifted)
-    vamp_score = torch.norm(koopman, p='fro')
-    return 1 + torch.square(vamp_score)
+    if method == 'VAMP1':
+        koopman = koopman_matrix(data, data_lagged)
+        vamp_score = torch.norm(koopman, p='nuc')
+    elif method == 'VAMP2':
+        koopman = koopman_matrix(data, data_lagged)
+        vamp_score = torch.square(torch.norm(koopman, p='fro'))
+    else:
+        raise RuntimeError("This should have been caught earlier.")
+    return 1 + vamp_score
 
 
-score.valid_methods = ('VAMP2',)
+score.valid_methods = ('VAMP1', 'VAMP2',)
 
 
-def loss_vamp2(data_instantaneous: torch.Tensor, data_shifted: torch.Tensor):
-    return -1. * score(data_instantaneous, data_shifted)
+def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
+    return -1. * score(data, data_lagged, method=method)
+
+
+class NumPyAccessor(object):
+    def __init__(self, module: nn.Module):
+        self._module = module
+        self._device = next(self._module.parameters()).device
+
+    def __call__(self, data):
+        with torch.no_grad():
+            if data.dtype not in (np.float32, np.float64):
+                raise ValueError("only supports float and double precision arrays")
+            if data.dtype == np.float32:
+                self._module.float()
+            else:
+                self._module.double()
+            with torch.no_grad():
+                data_tensor = torch.tensor(data, device=self._device, requires_grad=False)
+                return self._module(data_tensor).cpu().numpy()
+
+
+class VAMPNet(VAMP):
+
+    def __init__(self, lagtime: int,
+                 lobe: nn.Module,
+                 lobe_timelagged: Optional[nn.Module] = None,
+                 dim: Optional[int] = None,
+                 var_cutoff: Optional[float] = None,
+                 scaling: Optional[str] = None,
+                 epsilon: float = 1e-6):
+        super().__init__(lagtime=lagtime, dim=dim, var_cutoff=var_cutoff, scaling=scaling, epsilon=epsilon)
+        self.lagtime = lagtime
+        self.lobe = NumPyAccessor(lobe)
+        self.lobe_timelagged = self.lobe if lobe_timelagged is None else NumPyAccessor(lobe_timelagged)
+
+    def fit_from_timeseries(self, data: Union[np.ndarray, List[np.ndarray]], weights=None):
+        data_feat = self.lobe(data)
+        return super().fit_from_timeseries(data_feat, weights=weights)
+
+    def partial_fit(self, data: Tuple[np.ndarray, np.ndarray]):
+        data_feat = (self.lobe(data[0]), self.lobe_timelagged(data[1]))
+        return super().partial_fit(data_feat)
+
+    def _decompose(self, covariances: CovarianceModel):
+        decomposition = self._decomposition(covariances, self.epsilon, self.scaling, self.dim, self.var_cutoff)
+        return CovarianceKoopmanModel(
+            operator=np.diag(decomposition.singular_values),
+            basis_transform_forward=KoopmanBasisTransform(covariances.mean_0, decomposition.left_singular_vecs),
+            basis_transform_backward=KoopmanBasisTransform(covariances.mean_t, decomposition.right_singular_vecs),
+            feature_transform_forward=self.lobe,
+            feature_transform_backward=self.lobe_timelagged,
+            rank_0=decomposition.rank0, rank_t=decomposition.rankt,
+            dim=self.dim, var_cutoff=self.var_cutoff, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
+        )

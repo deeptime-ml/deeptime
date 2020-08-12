@@ -120,6 +120,8 @@ class KoopmanModel(Model, Transformer):
     def __init__(self, operator: np.ndarray,
                  basis_transform_forward: Optional[KoopmanBasisTransform],
                  basis_transform_backward: Optional[KoopmanBasisTransform],
+                 feature_transform_forward: lambda x: x,
+                 feature_transform_backward: lambda x: x,
                  output_dimension=None):
         r""" Creates a new Koopman model.
 
@@ -135,6 +137,8 @@ class KoopmanModel(Model, Transformer):
             If `None`, this defaults to the identity operation
         """
         super().__init__()
+        self._feature_transform_forward = feature_transform_forward
+        self._feature_transform_backward = feature_transform_backward
         if basis_transform_forward is None:
             basis_transform_forward = IdentityKoopmanBasisTransform()
         if basis_transform_backward is None:
@@ -213,6 +217,7 @@ class KoopmanModel(Model, Transformer):
                 operator[ii, ii] = self.operator[ii, ii]
         else:
             operator = self.operator
+        trajectory = self._feature_transform_forward(trajectory)
         out = self.basis_transform_forward(trajectory)  # (T, N) -> (T, n) project into whitened space
         out = out @ operator  # (T, n) -> (T, n) propagation in whitened space
         out = self.basis_transform_backward(out, inverse=True)  # (T, n) -> (T, N) back into original space
@@ -243,9 +248,11 @@ class KoopmanModel(Model, Transformer):
             functions. Otherwise, projection will be on the left singular functions.
         """
         if forward:
+            data = self._feature_transform_forward(data)
             transform = self.basis_transform_forward(data, dim=self.output_dimension)
             return self.operator.T @ transform if propagate else transform
         else:
+            data = self._feature_transform_backward(data)
             transform = self.basis_transform_backward(data, dim=self.output_dimension)
             return self.operator_inverse.T @ transform if propagate else transform
 
@@ -259,7 +266,8 @@ class CovarianceKoopmanModel(KoopmanModel):
 
     def __init__(self, operator: np.ndarray, basis_transform_forward: Optional[KoopmanBasisTransform],
                  basis_transform_backward: Optional[KoopmanBasisTransform], cov: CovarianceModel,
-                 rank_0: int, rank_t: int, dim=None, var_cutoff=None, scaling=None, epsilon=1e-6):
+                 rank_0: int, rank_t: int, dim=None, var_cutoff=None, scaling=None, epsilon=1e-6,
+                 feature_transform_forward=lambda x: x, feature_transform_backward=lambda x: x):
         r""" For a description of parameters `operator`, `basis_transform_forward`, `basis_transform_backward`,
         and `output_dimension`: please see :meth:`KoopmanModel.__init__`.
 
@@ -283,7 +291,8 @@ class CovarianceKoopmanModel(KoopmanModel):
             raise ValueError("Koopman operator must be diagonal matrix!")
         output_dim = CovarianceKoopmanModel.effective_output_dimension(rank_0, rank_t, dim, var_cutoff,
                                                                        np.diag(operator))
-        super().__init__(operator, basis_transform_forward, basis_transform_backward, output_dimension=output_dim)
+        super().__init__(operator, basis_transform_forward, basis_transform_backward,
+                         feature_transform_forward, feature_transform_backward, output_dimension=output_dim)
         self._cov = cov
         self._scaling = scaling
         self._epsilon = epsilon
