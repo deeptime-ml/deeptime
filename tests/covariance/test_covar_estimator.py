@@ -6,12 +6,6 @@ from sktime.covariance.covariance import Covariance
 
 __author__ = 'noe, clonker'
 
-state = np.random.RandomState(123)
-
-data = state.rand(5000, 2)
-weights = state.randn(len(data))
-mean_const = state.rand(2)
-
 
 def test_weights():
     weights = np.concatenate([np.ones((1001,)) * 1e-16, np.ones((3999,))])
@@ -24,6 +18,23 @@ def test_weights():
     np.testing.assert_array_almost_equal(model.cov_0t, model2.cov_0t, decimal=2)
     np.testing.assert_array_almost_equal(model.mean_0, model2.mean_0, decimal=2)
     np.testing.assert_array_almost_equal(model.mean_t, model2.mean_t, decimal=2)
+
+
+def test_whitening_on_whitened():
+    data = np.random.normal(size=(1000, 50))
+    from sklearn.decomposition import PCA
+    data = PCA(whiten=True).fit_transform(data)
+    cov = Covariance().fit(data).fetch_model()
+    whitened = cov.whiten(data)
+    np.testing.assert_array_almost_equal(whitened, data)
+
+
+def test_whitening():
+    data = np.random.normal(size=(5000, 50))
+    data = Covariance().fit(data).fetch_model().whiten(data)
+    cov = Covariance().fit(data).fetch_model()
+    np.testing.assert_array_almost_equal(cov.cov_00, np.eye(50), decimal=3)
+    np.testing.assert_array_almost_equal(cov.mean_0, np.zeros_like(cov.mean_0))
 
 
 def test_weights_incompatible():
@@ -41,7 +52,10 @@ class TestCovarEstimator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.lag = 10
-        cls.data = data
+        cls.state = np.random.RandomState(123)
+        cls.data = cls.state.rand(5000, 2)
+        cls.weights = cls.state.randn(len(cls.data))
+        cls.mean_const = cls.state.rand(2)
         cls.X = cls.data[:-cls.lag, :]
         cls.Y = cls.data[cls.lag:, :]
         cls.T = cls.X.shape[0]
@@ -56,7 +70,7 @@ class TestCovarEstimator(unittest.TestCase):
 
         cls.wobj = weight_object()
         # Constant mean to be removed:
-        cls.mean_const = mean_const
+        cls.mean_const = cls.mean_const
         # column subsets
         cls.cols_2 = np.array([0])
 

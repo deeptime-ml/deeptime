@@ -24,7 +24,7 @@ from scipy.linalg import eig
 
 from ..base import Estimator, Model, Transformer
 from ..data.util import timeshifted_split
-from ..numeric.eigen import spd_inv_split, sort_by_norm
+from ..numeric.eigen import spd_inv_split, sort_by_norm, spd_inv_sqrt
 from .util.running_moments import running_covar as running_covar
 
 __all__ = ['Covariance', 'CovarianceModel', 'KoopmanWeightingEstimator', 'KoopmanWeightingModel']
@@ -135,6 +135,25 @@ class CovarianceModel(Model):
         """
         return self._symmetrized
 
+    def whiten(self, data: np.ndarray) -> np.ndarray:
+        r"""Whiten a (T, N)-shaped chunk of data by transforming it into the PCA basis. In case of rank deficiency
+        this might reduce the dimension.
+
+        Parameters
+        ----------
+        data : (T,N) ndarray
+            The data to be whitened.
+
+        Returns
+        -------
+        whitened_data : (T, n) ndarray
+            Whitened data.
+        """
+        assert self.cov_00 is not None and self.mean_0 is not None
+        projection = spd_inv_sqrt(self.cov_00)
+        whitened_data = (data - self.mean_0[None, ...]) @ projection.T
+        return whitened_data
+
 
 class Covariance(Estimator):
     r"""Compute (potentially lagged) covariances between data in an online fashion.
@@ -154,7 +173,7 @@ class Covariance(Estimator):
         :filter: docname in docnames
         :keyprefix: covariance-
     """
-    def __init__(self, lagtime: Optional[int] = None, compute_c00: bool = True, compute_c0t: bool = False,
+    def __init__(self, lagtime: int = 0, compute_c00: bool = True, compute_c0t: bool = False,
                  compute_ctt: bool = False, remove_data_mean: bool = False, reversible: bool = False,
                  bessels_correction: bool = True, sparse_mode: str = 'auto', ncov: int = 5, diag_only: bool = False,
                  model=None):
@@ -162,7 +181,7 @@ class Covariance(Estimator):
 
         Parameters
         ----------
-        lagtime : int, optional, default=None
+        lagtime : int, default=0
             The lagtime, must be :math:`\geq 0` .
         compute_c00 : bool, optional, default=True
             Compute instantaneous correlations over the first part of the data. If :attr:`lagtime` ==0,
