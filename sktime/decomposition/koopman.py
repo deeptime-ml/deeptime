@@ -626,7 +626,7 @@ class CovarianceKoopmanModel(KoopmanModel):
             # compute future expectation
             return Q.dot(P)[:, 0]
 
-    def timescales(self, lagtime: Optional[int] = None):
+    def timescales(self, lagtime: Optional[int] = None) -> np.ndarray:
         r"""Implied timescales of the TICA transformation
 
         For each :math:`i`-th eigenvalue, this returns
@@ -646,7 +646,7 @@ class CovarianceKoopmanModel(KoopmanModel):
 
         Returns
         -------
-        timescales: 1D np.array
+        timescales: (n,) np.array
             numpy array with the implied timescales. In principle, one should expect as many timescales as
             input coordinates were available. However, less eigenvalues will be returned if the TICA matrices
             were not full rank or :attr:`dim` contained a floating point percentage, i.e., was interpreted as
