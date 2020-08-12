@@ -131,7 +131,7 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
         vamp_score = torch.norm(koopman, p='nuc')
     elif method == 'VAMP2':
         koopman = koopman_matrix(data, data_lagged)
-        vamp_score = torch.square(torch.norm(koopman, p='fro'))
+        vamp_score = torch.pow(torch.norm(koopman, p='fro'), 2)
     else:
         raise RuntimeError("This should have been caught earlier.")
     return 1 + vamp_score

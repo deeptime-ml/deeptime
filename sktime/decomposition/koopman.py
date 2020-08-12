@@ -120,8 +120,8 @@ class KoopmanModel(Model, Transformer):
     def __init__(self, operator: np.ndarray,
                  basis_transform_forward: Optional[KoopmanBasisTransform],
                  basis_transform_backward: Optional[KoopmanBasisTransform],
-                 feature_transform_forward: lambda x: x,
-                 feature_transform_backward: lambda x: x,
+                 feature_transform_forward=lambda x: x,
+                 feature_transform_backward=lambda x: x,
                  output_dimension=None):
         r""" Creates a new Koopman model.
 
