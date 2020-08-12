@@ -46,31 +46,37 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False):
     return torch.chain_matmul(eigvec_t, diag, eigvec)
 
 
-def covariances(x, y, remove_mean: bool = True):
-    """Utility function that returns the matrices used to compute the VAMP
-    scores and their gradients for non-reversible problems.
+def koopman_matrix(x, y):
+    c00, c0t, ctt = covariances(x, y, remove_mean=True)
+    c00_sqrt_inv = sym_inverse(c00, ret_sqrt=True)
+    ctt_sqrt_inv = sym_inverse(ctt, ret_sqrt=True)
+    return torch.chain_matmul(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
+
+
+def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
+    """Computes instantaneous and time-lagged covariances matrices.
+
     Parameters
     ----------
-    x: tensorflow tensor with shape [batch_size, output_dim]
-        output of the left lobe of the network
-
-    y: tensorflow tensor with shape [batch_size, output_dim]
-        output of the right lobe of the network
-
+    x : (T, n) torch.Tensor
+        Instantaneous data.
+    y : (T, n) torch.Tensor
+        Time-lagged data.
     remove_mean: bool, default=True
-        Whether to first remove the mean of x and y
+        Whether to remove the mean of x and y.
 
     Returns
     -------
-    cov_00_inv_root: numpy array with shape [output_size, output_size]
-        square root of the inverse of the auto-covariance matrix of x
+    cov_00 : (n, n) torch.Tensor
+        Auto-covariance matrix of x.
+    cov_0t : (n, n) torch.Tensor
+        Cross-covariance matrix of x and y.
+    cov_tt : (n, n) torch.Tensor
+        Auto-covariance matrix of y.
 
-    cov_11_inv_root: numpy array with shape [output_size, output_size]
-        square root of the inverse of the auto-covariance matrix of y
-
-    cov_01: numpy array with shape [output_size, output_size]
-        cross-covariance matrix of x and y
-
+    See Also
+    --------
+    sktime.covariance.Covariance : Estimator yielding these kind of covariance matrices based on raw data.
     """
 
     assert x.shape == y.shape, "x and y must be of same shape"
@@ -84,26 +90,25 @@ def covariances(x, y, remove_mean: bool = True):
     y_t = y.transpose(0, 1)
     x_t = x.transpose(0, 1)
     cov_01 = 1 / (batch_size - 1) * torch.matmul(x_t, y)
-    # Calculate the auto-correations
+    # Calculate the auto-correlations
     cov_00 = 1 / (batch_size - 1) * torch.matmul(x_t, x)
     cov_11 = 1 / (batch_size - 1) * torch.matmul(y_t, y)
 
     return cov_00, cov_01, cov_11
 
 
-def score_vamp2(data_instantaneous: torch.Tensor, data_shifted: torch.Tensor):
+def score(data_instantaneous: torch.Tensor, data_shifted: torch.Tensor, method='VAMP2'):
+    if method not in score.valid_methods:
+        raise ValueError(f"Invalid method '{method}', supported are {score.valid_methods}")
     assert data_instantaneous.shape == data_shifted.shape
 
-    cov_00, cov_0t, cov_tt = covariances(data_instantaneous, data_shifted, remove_mean=True)
-
-    c00_inv_sqrt = sym_inverse(cov_00, ret_sqrt=True)
-    ctt_inv_sqrt = sym_inverse(cov_tt, ret_sqrt=True)
-
-    # Calculate the inverse of the self-covariance matrices
-    vamp_matrix = torch.chain_matmul(c00_inv_sqrt, cov_0t, ctt_inv_sqrt)
-    vamp_score = torch.norm(vamp_matrix, p='fro')
+    koopman = koopman_matrix(data_instantaneous, data_shifted)
+    vamp_score = torch.norm(koopman, p='fro')
     return 1 + torch.square(vamp_score)
 
 
+score.valid_methods = ('VAMP2',)
+
+
 def loss_vamp2(data_instantaneous: torch.Tensor, data_shifted: torch.Tensor):
-    return -1. * score_vamp2(data_instantaneous, data_shifted)
+    return -1. * score(data_instantaneous, data_shifted)

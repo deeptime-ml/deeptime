@@ -301,14 +301,20 @@ class _ImmutableInputData(object):
             if isinstance(d, np.ndarray):
                 self.old_writable_flags.append(d.flags.writeable)
                 # set ndarray writabe flags to false
-                d.flags.writeable = False
+                try:
+                    d.setflags(write=False)
+                except:
+                    ...  # although this should not happen, occasionally it does due to arrays stemming from torch etc
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # restore ndarray writable flags to old state
         import numpy as np
         for d, writable in zip(self.data, self.old_writable_flags):
             if isinstance(d, np.ndarray):
-                d.flags.writeable = writable
+                try:
+                    d.setflags(write=writable)
+                except:
+                    ...  # although this should not happen, occasionally it does due to arrays stemming from torch etc
 
     def __call__(self, *args, **kwargs):
         # extract input data from args, **kwargs (namely x and y)
