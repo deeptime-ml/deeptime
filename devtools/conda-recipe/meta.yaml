@@ -48,3 +48,4 @@ test:
     - pytest-faulthandler
     - pytest-sugar
     - mdshare
+    - pytorch >=1.1
