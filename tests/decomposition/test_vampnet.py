@@ -2,8 +2,10 @@ import numpy as np
 import pytest
 
 import sktime
+from sktime.clustering import KmeansClustering
 from sktime.decomposition import VAMP
 from sktime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss
+from sktime.markov.msm import MaximumLikelihoodMSM
 
 try:
     import torch
@@ -75,4 +77,10 @@ def test_estimator():
     lobe.eval()
     vampnet = VAMPNet(1, lobe=lobe)
     vampnet_model = vampnet.fit(obs).fetch_model()
-    np.testing.assert_array_less(vamp_model.timescales(), vampnet_model.timescales())
+    np.testing.assert_array_less(vamp_model.timescales()[0], vampnet_model.timescales()[0])
+
+    projection = vampnet_model.transform(obs)
+    dtraj = KmeansClustering(2).fit(projection).transform(projection)
+    msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
+
+    np.testing.assert_array_almost_equal(msm_vampnet.transition_matrix, data.msm.transition_matrix, decimal=2)
