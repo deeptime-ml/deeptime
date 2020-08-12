@@ -149,7 +149,7 @@ class NumPyAccessor(object):
         self._module = module
         self._device = next(self._module.parameters()).device
 
-    def __call__(self, data):
+    def __call__(self, data: np.ndarray):
         with torch.no_grad():
             if data.dtype not in (np.float32, np.float64):
                 raise ValueError("only supports float and double precision arrays")
@@ -158,7 +158,10 @@ class NumPyAccessor(object):
             else:
                 self._module.double()
             with torch.no_grad():
+                flag = data.flags.WRITEABLE
+                data.setflags(write=True)
                 data_tensor = torch.tensor(data, device=self._device, requires_grad=False)
+                data.setflags(flag)
                 return self._module(data_tensor).cpu().numpy()
 
 
