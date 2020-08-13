@@ -167,7 +167,7 @@ class MLPLobe(nn.Module):
 class VAMPNetModel(Model, Transformer):
 
     def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
-                 dtype=np.float32, device=None):
+                 dtype=np.float32, device=None, train_scores=None, validation_scores=None):
         super().__init__()
         self._lobe = lobe
         self._lobe_timelagged = lobe_timelagged if lobe_timelagged is not None else lobe
@@ -183,6 +183,9 @@ class VAMPNetModel(Model, Transformer):
             self._lobe_timelagged = self._lobe_timelagged.double()
         else:
             raise ValueError(f"Unsupported type {dtype}! Only float32 and float64 are allowed.")
+
+        self.train_scores = train_scores
+        self.validation_scores = validation_scores
 
     def transform(self, data, **kwargs):
         self._lobe.eval()
@@ -211,18 +214,20 @@ class VAMPNet(Estimator, Transformer):
         super().__init__()
         self.lagtime = lagtime
         self.dtype = dtype
-        self.lobe = lobe.float() if self.dtype == np.float32 else lobe.double()
-        self.lobe_timelagged = self.lobe if lobe_timelagged is None else lobe_timelagged
-        self.lobe_timelagged = self.lobe_timelagged.float() if self.dtype == np.float32 \
-            else self.lobe_timelagged.double()
-        self.score_method = score_method
         self.device = device
+        self.lobe = lobe
+        self.lobe_timelagged = lobe_timelagged
+        self.score_method = score_method
         self.learning_rate = learning_rate
         self.optimizer = optimizer
         self._step = 0
         self._train_scores = []
         self._validation_scores = []
         self._log = logging.getLogger(__name__)
+
+    @property
+    def log(self):
+        return self._log
 
     @property
     def dtype(self):
@@ -272,6 +277,7 @@ class VAMPNet(Estimator, Transformer):
             self._lobe = self._lobe.float()
         else:
             self._lobe = self._lobe.double()
+        self._lobe = self._lobe.to(device=self.device)
 
     @property
     def lobe_timelagged(self) -> nn.Module:
@@ -287,6 +293,7 @@ class VAMPNet(Estimator, Transformer):
             else:
                 value = value.double()
         self._lobe_timelagged = value
+        self._lobe_timelagged = self._lobe_timelagged.to(device=self.device)
 
     def partial_fit(self, data, batch_size=512):
         self.lobe.train()
@@ -303,7 +310,7 @@ class VAMPNet(Estimator, Transformer):
             loss_value.backward()
             self.optimizer.step()
 
-            self._train_scores.append((self._step, loss_value.detach().cpu().numpy()))
+            self._train_scores.append((self._step, -loss_value.detach().cpu().numpy()))
             self._step += 1
         return self
 
@@ -346,4 +353,5 @@ class VAMPNet(Estimator, Transformer):
         return self.fetch_model().transform(data)
 
     def fetch_model(self) -> VAMPNetModel:
-        return VAMPNetModel(self.lobe, self.lobe_timelagged, dtype=self.dtype, device=self.device)
+        return VAMPNetModel(self.lobe, self.lobe_timelagged, dtype=self.dtype, device=self.device,
+                            train_scores=self._train_scores, validation_scores=self._validation_scores)

@@ -58,9 +58,6 @@ def test_estimator():
     data = sktime.data.ellipsoids()
     obs = data.observations(10000, n_dim=10).astype(np.float32)
 
-    # reference model w/o learnt featurization
-    vamp_model = VAMP(lagtime=1).fit(obs).fetch_model()
-
     # set up the lobe
     lobe = nn.Sequential(nn.Linear(10, 10), nn.ELU(), nn.Linear(10, 10), nn.ELU(), nn.Linear(10, 3), nn.Softmax(1))
     # train the lobe
@@ -79,6 +76,9 @@ def test_estimator():
     # np.testing.assert_array_less(vamp_model.timescales()[0], vampnet_model.timescales()[0])
 
     projection = vampnet_model.transform(obs)
+    # reference model w/o learnt featurization
+    projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
+
     dtraj = KmeansClustering(2).fit(projection).transform(projection)
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
 
