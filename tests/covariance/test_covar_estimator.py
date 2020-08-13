@@ -33,7 +33,7 @@ def test_whitening():
     data = np.random.normal(size=(5000, 50))
     data = Covariance().fit(data).fetch_model().whiten(data)
     cov = Covariance().fit(data).fetch_model()
-    np.testing.assert_array_almost_equal(cov.cov_00, np.eye(50), decimal=3)
+    np.testing.assert_array_almost_equal(cov.cov_00, np.eye(50), decimal=2)
     np.testing.assert_array_almost_equal(cov.mean_0, np.zeros_like(cov.mean_0))
 
 

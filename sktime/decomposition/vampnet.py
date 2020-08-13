@@ -1,10 +1,12 @@
+import logging
 import warnings
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Callable
 
 import numpy as np
 
-from . import VAMP, CovarianceKoopmanModel, KoopmanBasisTransform
-from ..covariance import Covariance, CovarianceModel
+from . import VAMP
+from ..base import Transformer, Model, Estimator
+from ..data import timeshifted_split
 
 try:
     import torch
@@ -121,9 +123,12 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
     return cov_00, cov_01, cov_11
 
 
+valid_score_methods = ('VAMP1', 'VAMP2',)
+
+
 def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
-    if method not in score.valid_methods:
-        raise ValueError(f"Invalid method '{method}', supported are {score.valid_methods}")
+    if method not in valid_score_methods:
+        raise ValueError(f"Invalid method '{method}', supported are {valid_score_methods}")
     assert data.shape == data_lagged.shape
 
     if method == 'VAMP1':
@@ -137,64 +142,208 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
     return 1 + vamp_score
 
 
-score.valid_methods = ('VAMP1', 'VAMP2',)
-
-
 def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
     return -1. * score(data, data_lagged, method=method)
 
 
-class NumPyAccessor(object):
-    def __init__(self, module: nn.Module):
-        self._module = module
-        self._device = next(self._module.parameters()).device
+class MLPLobe(nn.Module):
 
-    def __call__(self, data: np.ndarray):
+    def __init__(self, units: List, nonlinearity=nn.ELU, initial_batchnorm: bool = True):
+        super().__init__()
+        layers = []
+        if initial_batchnorm:
+            layers.append(nn.BatchNorm1d(units[0]))
+        for fan_in, fan_out in zip(units[:-2], units[1:-1]):
+            layers.append(nn.Linear(fan_in, fan_out))
+            layers.append(nonlinearity())
+        layers.append(nn.Linear(units[-2], units[-1]))
+        layers.append(nn.Softmax(dim=1))
+        self._sequential = nn.Sequential(*layers)
+
+    def forward(self, inputs):
+        return self._sequential(inputs)
+
+
+class VAMPNetModel(Model, Transformer):
+
+    def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
+                 dtype=np.float32, device=None):
+        super().__init__()
+        self._lobe = lobe
+        self._lobe_timelagged = lobe_timelagged if lobe_timelagged is not None else lobe
+
+        self._device = device
+        self._dtype = dtype
+
+        if self._dtype == np.float32:
+            self._lobe = self._lobe.float()
+            self._lobe_timelagged = self._lobe_timelagged.float()
+        elif self._dtype == np.float64:
+            self._lobe = self._lobe.double()
+            self._lobe_timelagged = self._lobe_timelagged.double()
+        else:
+            raise ValueError(f"Unsupported type {dtype}! Only float32 and float64 are allowed.")
+
+    def transform(self, data, **kwargs):
+        self._lobe.eval()
+        self._lobe_timelagged.eval()
+
         with torch.no_grad():
-            if data.dtype not in (np.float32, np.float64):
-                raise ValueError("only supports float and double precision arrays")
-            if data.dtype == np.float32:
-                self._module.float()
-            else:
-                self._module.double()
-            with torch.no_grad():
-                flag = data.flags.writeable
-                data.setflags(write=True)
-                data_tensor = torch.tensor(data, device=self._device, requires_grad=False)
-                data.setflags(flag)
-                return self._module(data_tensor).cpu().numpy()
+            if not isinstance(data, (list, tuple)):
+                data = [data]
+            out = []
+            for x in data:
+                if isinstance(x, torch.Tensor):
+                    x = x.to(device=self._device)
+                else:
+                    x = torch.from_numpy(np.asarray(x, dtype=self._dtype)).to(device=self._device)
+                out.append(self._lobe(x).cpu().numpy())
+        if isinstance(out, (list, tuple)) and len(out) == 1:
+            out = out[0]
+        return out
 
 
-class VAMPNet(VAMP):
+class VAMPNet(Estimator, Transformer):
 
-    def __init__(self, lagtime: int,
-                 lobe: nn.Module,
-                 lobe_timelagged: Optional[nn.Module] = None,
-                 dim: Optional[int] = None,
-                 var_cutoff: Optional[float] = None,
-                 scaling: Optional[str] = None,
-                 epsilon: float = 1e-6):
-        super().__init__(lagtime=lagtime, dim=dim, var_cutoff=var_cutoff, scaling=scaling, epsilon=epsilon)
+    def __init__(self, lagtime: int, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
+                 device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
+                 score_method: str = 'VAMP2', dtype=np.float32):
+        super().__init__()
         self.lagtime = lagtime
-        self.lobe = NumPyAccessor(lobe)
-        self.lobe_timelagged = self.lobe if lobe_timelagged is None else NumPyAccessor(lobe_timelagged)
+        self.dtype = dtype
+        self.lobe = lobe.float() if self.dtype == np.float32 else lobe.double()
+        self.lobe_timelagged = self.lobe if lobe_timelagged is None else lobe_timelagged
+        self.lobe_timelagged = self.lobe_timelagged.float() if self.dtype == np.float32 \
+            else self.lobe_timelagged.double()
+        self.score_method = score_method
+        self.device = device
+        self.learning_rate = learning_rate
+        self.optimizer = optimizer
+        self._step = 0
+        self._train_scores = []
+        self._validation_scores = []
+        self._log = logging.getLogger(__name__)
 
-    def fit_from_timeseries(self, data: Union[np.ndarray, List[np.ndarray]], weights=None):
-        data_feat = self.lobe(data)
-        return super().fit_from_timeseries(data_feat, weights=weights)
+    @property
+    def dtype(self):
+        return self._dtype
 
-    def partial_fit(self, data: Tuple[np.ndarray, np.ndarray]):
-        data_feat = (self.lobe(data[0]), self.lobe_timelagged(data[1]))
-        return super().partial_fit(data_feat)
+    @dtype.setter
+    def dtype(self, value):
+        assert value in (np.float32, np.float64), "only float32 and float64 are supported."
+        self._dtype = value
 
-    def _decompose(self, covariances: CovarianceModel):
-        decomposition = self._decomposition(covariances, self.epsilon, self.scaling, self.dim, self.var_cutoff)
-        return CovarianceKoopmanModel(
-            operator=np.diag(decomposition.singular_values),
-            basis_transform_forward=KoopmanBasisTransform(covariances.mean_0, decomposition.left_singular_vecs),
-            basis_transform_backward=KoopmanBasisTransform(covariances.mean_t, decomposition.right_singular_vecs),
-            feature_transform_forward=self.lobe,
-            feature_transform_backward=self.lobe_timelagged,
-            rank_0=decomposition.rank0, rank_t=decomposition.rankt,
-            dim=self.dim, var_cutoff=self.var_cutoff, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
-        )
+    @property
+    def optimizer(self) -> torch.optim.Optimizer:
+        return self._optimizer
+
+    @optimizer.setter
+    def optimizer(self, value: Union[str, Callable]):
+        all_params = list(self.lobe.parameters()) + list(self.lobe_timelagged.parameters())
+        unique_params = list(set(all_params))
+        if isinstance(value, str):
+            known_optimizers = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD, 'RMSprop': torch.optim.RMSprop}
+            if value not in known_optimizers.keys():
+                raise ValueError(f"Unknown optimizer type, supported types are {known_optimizers.keys()}. "
+                                 f"If desired, you can also pass the class of the "
+                                 f"desired optimizer rather than its name.")
+            value = known_optimizers[value]
+        self._optimizer = value(params=unique_params, lr=self.learning_rate)
+
+    @property
+    def score_method(self) -> str:
+        return self._score_method
+
+    @score_method.setter
+    def score_method(self, value: str):
+        if value not in valid_score_methods:
+            raise ValueError(f"Tried setting an unsupported scoring method '{value}', "
+                             f"available are {valid_score_methods}.")
+        self._score_method = value
+
+    @property
+    def lobe(self) -> nn.Module:
+        return self._lobe
+
+    @lobe.setter
+    def lobe(self, value: nn.Module):
+        self._lobe = value
+        if self.dtype == np.float32:
+            self._lobe = self._lobe.float()
+        else:
+            self._lobe = self._lobe.double()
+
+    @property
+    def lobe_timelagged(self) -> nn.Module:
+        return self._lobe_timelagged
+
+    @lobe_timelagged.setter
+    def lobe_timelagged(self, value: Optional[nn.Module]):
+        if value is None:
+            value = self.lobe
+        else:
+            if self.dtype == np.float32:
+                value = value.float()
+            else:
+                value = value.double()
+        self._lobe_timelagged = value
+
+    def partial_fit(self, data, batch_size=512):
+        self.lobe.train()
+        self.lobe_timelagged.train()
+        for batch_0, batch_t in timeshifted_split(data, chunksize=batch_size, lagtime=self.lagtime,
+                                                  shuffle=True):
+            batch_0 = torch.from_numpy(batch_0.astype(self.dtype)).to(device=self.device)
+            batch_t = torch.from_numpy(batch_t.astype(self.dtype)).to(device=self.device)
+
+            self.optimizer.zero_grad()
+            x_0 = self.lobe(batch_0)
+            x_t = self.lobe_timelagged(batch_t)
+            loss_value = loss(x_0, x_t, method=self.score_method)
+            loss_value.backward()
+            self.optimizer.step()
+
+            self._train_scores.append((self._step, loss_value.detach().cpu().numpy()))
+            self._step += 1
+        return self
+
+    def validate(self, validation_data: torch.Tensor) -> float:
+        self.lobe.eval()
+        self.lobe_timelagged.eval()
+
+        with torch.no_grad():
+            val = self.lobe(validation_data)
+            val_score = VAMP(lagtime=self.lagtime, epsilon=1e-12) \
+                .fit(val.cpu().numpy()).fetch_model().score(score_method=self.score_method)
+
+        return val_score
+
+    def fit(self, data, n_epochs=1, batch_size=512, validation_data=None, **kwargs):
+        self._step = 0
+        self._train_scores = []
+        self._validation_scores = []
+
+        if validation_data is not None and isinstance(validation_data, np.ndarray):
+            validation_data = torch.from_numpy(validation_data.astype(self.dtype)).to(device=self.device)
+        elif validation_data is not None:
+            assert isinstance(validation_data, torch.Tensor), "validation data must be given in terms " \
+                                                              "of torch tensor or numpy array."
+            validation_data = validation_data.to(device=self.device)
+
+        for epoch in range(n_epochs):
+            self.partial_fit(data, batch_size=batch_size)
+            if validation_data is not None:
+                val_score = self.validate(validation_data)
+                self._validation_scores.append((self._step, val_score))
+            latest_train_score = self._train_scores[-1][1]
+            latest_val_score = self._validation_scores[-1][1] if validation_data is not None else -1
+            self._log.debug(f"Epoch [{epoch + 1}/{n_epochs}]: "
+                            f"Latest training score {latest_train_score:.5f}, "
+                            f"latest validation score {latest_val_score:.5f}")
+        return self
+
+    def transform(self, data, **kwargs):
+        return self.fetch_model().transform(data)
+
+    def fetch_model(self) -> VAMPNetModel:
+        return VAMPNetModel(self.lobe, self.lobe_timelagged, dtype=self.dtype, device=self.device)
