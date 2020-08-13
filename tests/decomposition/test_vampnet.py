@@ -59,7 +59,7 @@ def test_estimator():
     obs = data.observations(60000, n_dim=10).astype(np.float32)
 
     # set up the lobe
-    lobe = nn.Sequential(nn.Linear(10, 10), nn.ELU(), nn.Linear(10, 10), nn.ELU(), nn.Linear(10, 3), nn.Softmax(1))
+    lobe = nn.Sequential(nn.Linear(10, 1), nn.Tanh())
     # train the lobe
     opt = torch.optim.Adam(lobe.parameters(), lr=5e-4)
     for _ in range(50):

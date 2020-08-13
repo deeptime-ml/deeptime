@@ -160,7 +160,8 @@ class MLPLobe(nn.Module):
             layers.append(nn.Linear(fan_in, fan_out))
             layers.append(nonlinearity())
         layers.append(nn.Linear(units[-2], units[-1]))
-        layers.append(output_nonlinearity())
+        if output_nonlinearity is not None:
+            layers.append(output_nonlinearity())
         self._sequential = nn.Sequential(*layers)
 
     def forward(self, inputs):
@@ -357,4 +358,5 @@ class VAMPNet(Estimator, Transformer):
 
     def fetch_model(self) -> VAMPNetModel:
         return VAMPNetModel(self.lobe, self.lobe_timelagged, dtype=self.dtype, device=self.device,
-                            train_scores=self._train_scores, validation_scores=self._validation_scores)
+                            train_scores=np.array(self._train_scores),
+                            validation_scores=np.array(self._validation_scores))
