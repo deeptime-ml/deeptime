@@ -14,6 +14,8 @@ try:
 except (ModuleNotFoundError, ImportError):
     warnings.warn("Tried importing VampNets; this only works with a PyTorch installation!")
 
+logger = logging.getLogger(__name__)
+
 
 def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False):
     """ Utility function that returns the inverse of a matrix, with the
@@ -148,7 +150,8 @@ def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
 
 class MLPLobe(nn.Module):
 
-    def __init__(self, units: List, nonlinearity=nn.ELU, initial_batchnorm: bool = True):
+    def __init__(self, units: List, nonlinearity=nn.ELU, initial_batchnorm: bool = True,
+                 output_nonlinearity=lambda: nn.Softmax(dim=1)):
         super().__init__()
         layers = []
         if initial_batchnorm:
@@ -157,7 +160,7 @@ class MLPLobe(nn.Module):
             layers.append(nn.Linear(fan_in, fan_out))
             layers.append(nonlinearity())
         layers.append(nn.Linear(units[-2], units[-1]))
-        layers.append(nn.Softmax(dim=1))
+        layers.append(output_nonlinearity())
         self._sequential = nn.Sequential(*layers)
 
     def forward(self, inputs):
@@ -223,11 +226,10 @@ class VAMPNet(Estimator, Transformer):
         self._step = 0
         self._train_scores = []
         self._validation_scores = []
-        self._log = logging.getLogger(__name__)
 
     @property
     def log(self):
-        return self._log
+        return logger
 
     @property
     def dtype(self):
@@ -343,10 +345,11 @@ class VAMPNet(Estimator, Transformer):
                 val_score = self.validate(validation_data)
                 self._validation_scores.append((self._step, val_score))
             latest_train_score = self._train_scores[-1][1]
-            latest_val_score = self._validation_scores[-1][1] if validation_data is not None else -1
-            self._log.debug(f"Epoch [{epoch + 1}/{n_epochs}]: "
-                            f"Latest training score {latest_train_score:.5f}, "
-                            f"latest validation score {latest_val_score:.5f}")
+            msg = f"Epoch [{epoch + 1}/{n_epochs}]: Latest training score {latest_train_score:.5f}"
+            if validation_data is not None:
+                latest_val_score = self._validation_scores[-1][1]
+                msg += f", latest validation score {latest_val_score:.5f}"
+            self.log.debug(msg)
         return self
 
     def transform(self, data, **kwargs):

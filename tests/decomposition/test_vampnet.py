@@ -56,7 +56,7 @@ def test_score(method):
 
 def test_estimator():
     data = sktime.data.ellipsoids()
-    obs = data.observations(10000, n_dim=10).astype(np.float32)
+    obs = data.observations(60000, n_dim=10).astype(np.float32)
 
     # set up the lobe
     lobe = nn.Sequential(nn.Linear(10, 10), nn.ELU(), nn.Linear(10, 10), nn.ELU(), nn.Linear(10, 3), nn.Softmax(1))
