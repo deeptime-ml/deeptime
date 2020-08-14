@@ -229,10 +229,6 @@ class VAMPNet(Estimator, Transformer):
         self._validation_scores = []
 
     @property
-    def log(self):
-        return logger
-
-    @property
     def dtype(self):
         return self._dtype
 
@@ -350,7 +346,7 @@ class VAMPNet(Estimator, Transformer):
             if validation_data is not None:
                 latest_val_score = self._validation_scores[-1][1]
                 msg += f", latest validation score {latest_val_score:.5f}"
-            self.log.debug(msg)
+            logger.debug(msg)
         return self
 
     def transform(self, data, **kwargs):

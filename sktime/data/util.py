@@ -121,3 +121,36 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
                 else:
                     yield x
                 t += chunksize
+
+
+class TimeSeriesDataSet(object):
+    r"""
+    High-level container for time-series data. This is intended to be used together with pytorch data tools, i.e.,
+    data loaders and other utilities.
+    """
+
+    def __init__(self, data, lagtime: int = 0):
+        r"""Creates a new time series data set.
+
+        Parameters
+        ----------
+        data : iterable of data
+            The data which is wrapped into a dataset
+        lagtime : int, default=0
+            Optional lagtime, must be non-negative. If positive, the effective size of the dataset reduces by the
+            lagtime itself.
+        """
+        self.data = data
+        self.lagtime = lagtime
+        assert self.lagtime >= 0
+
+    def __getitem__(self, item):
+        if self.lagtime > 0:
+            return self.data[item], self.data[item + self.lagtime]
+        else:
+            return self.data[item]
+
+    def __len__(self):
+        return len(self.data) - self.lagtime
+
+

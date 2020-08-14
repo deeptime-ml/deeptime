@@ -1,18 +1,15 @@
 import pytest
+pytest.importorskip("torch")
 
-try:
-    import torch
-    import torch.nn as nn
-except (ImportError, ModuleNotFoundError):
-    pytest.skip("Skipping tests which depend on PyTorch because it is not installed in the environment.",
-                allow_module_level=True)
-
+import torch
+import torch.nn as nn
 import numpy as np
 import sktime
 from sktime.clustering import KmeansClustering
 from sktime.decomposition import VAMP
 from sktime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss
 from sktime.markov.msm import MaximumLikelihoodMSM
+
 
 def test_inverse_spd():
     X = np.random.normal(size=(15, 5))
