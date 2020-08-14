@@ -215,7 +215,7 @@ class VAMPNet(Estimator, Transformer):
 
     def __init__(self, lagtime: int, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
-                 score_method: str = 'VAMP2', dtype=np.float32):
+                 score_method: str = 'VAMP2', dtype=np.float32, shuffle: bool = True):
         super().__init__()
         self.lagtime = lagtime
         self.dtype = dtype
@@ -228,6 +228,7 @@ class VAMPNet(Estimator, Transformer):
         self._step = 0
         self._train_scores = []
         self._validation_scores = []
+        self.shuffle = shuffle
 
     @property
     def dtype(self):
@@ -344,7 +345,7 @@ class VAMPNet(Estimator, Transformer):
             data = TimeSeriesDataSet(data, lagtime=self.lagtime)
         else:
             assert data.lagtime == self.lagtime, "If fitting with a data set, lagtimes must be compatible."
-        data_loader = torch.utils.data.DataLoader(data, batch_size=batch_size)
+        data_loader = torch.utils.data.DataLoader(data, batch_size=batch_size, shuffle=self.shuffle)
 
         validation_loader = None
         if validation_data is not None:
