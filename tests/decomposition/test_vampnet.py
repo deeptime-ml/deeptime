@@ -80,3 +80,24 @@ def test_estimator():
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
 
     np.testing.assert_array_almost_equal(msm_vampnet.transition_matrix, data.msm.transition_matrix, decimal=2)
+
+def test_estimator_fit():
+    data = sktime.data.ellipsoids()
+    obs = data.observations(60000, n_dim=10).astype(np.float32)
+    train, val = torch.utils.data.random_split(sktime.data.TimeSeriesDataset(obs, lagtime=1), [50000, 9999])
+
+    # set up the lobe
+    lobe = nn.Sequential(nn.Linear(10, 1), nn.Tanh())
+
+    net = VAMPNet(lagtime=1, lobe=lobe)
+    net.fit(train, n_epochs=2, batch_size=128, validation_data=val)
+    net_model = net.fetch_model()
+
+    projection = net_model.transform(obs)
+    # reference model w/o learnt featurization
+    projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
+
+    dtraj = KmeansClustering(2).fit(projection).transform(projection)
+    msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
+
+    np.testing.assert_array_almost_equal(msm_vampnet.transition_matrix, data.msm.transition_matrix, decimal=2)

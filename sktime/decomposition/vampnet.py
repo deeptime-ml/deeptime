@@ -1,6 +1,6 @@
 import logging
 import warnings
-from typing import Optional, Union, List, Callable
+from typing import Optional, Union, List, Callable, Tuple
 
 import numpy as np
 
@@ -323,16 +323,14 @@ class VAMPNet(Estimator, Transformer):
 
         return self
 
-    def validate(self, validation_data: torch.Tensor) -> float:
+    def validate(self, validation_data: Tuple[torch.Tensor]) -> float:
         self.lobe.eval()
         self.lobe_timelagged.eval()
 
         with torch.no_grad():
-            val = self.lobe(validation_data)
-            val_score = VAMP(lagtime=self.lagtime, epsilon=1e-12) \
-                .fit(val.cpu().numpy()).fetch_model().score(score_method=self.score_method)
-
-        return val_score
+            val = self.lobe(validation_data[0])
+            val_t = self.lobe_timelagged(validation_data[1])
+            return score(val, val_t, method=self.score_method).cpu().numpy()
 
     def fit(self, data, n_epochs=1, batch_size=512, validation_data=None, **kwargs):
         self._step = 0
@@ -351,7 +349,7 @@ class VAMPNet(Estimator, Transformer):
         if validation_data is not None:
             val_ds = validation_data
             if not isinstance(validation_data, (TimeSeriesDataset, torch.utils.data.Dataset)):
-                val_ds = torch.utils.data.Dataset(validation_data)
+                val_ds = TimeSeriesDataset(validation_data, lagtime=self.lagtime)
             validation_loader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size)
 
         for epoch in range(n_epochs):
@@ -360,7 +358,9 @@ class VAMPNet(Estimator, Transformer):
             if validation_loader is not None:
                 scores = []
                 for val_batch in validation_loader:
-                    scores.append(self.validate(val_batch.to(device=self.device)))
+                    scores.append(self.validate(
+                        (val_batch[0].to(device=self.device), val_batch[1].to(device=self.device))
+                    ))
                 self._validation_scores.append((self._step, np.mean(scores)))
             latest_train_score = self._train_scores[-1][1]
             msg = f"Epoch [{epoch + 1}/{n_epochs}]: Latest training score {latest_train_score:.5f}"
