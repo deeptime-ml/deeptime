@@ -6,7 +6,7 @@ import numpy as np
 
 from . import VAMP
 from ..base import Transformer, Model, Estimator
-from ..data.util import TimeSeriesDataSet
+from ..data.util import TimeSeriesDataset
 
 try:
     import torch
@@ -339,10 +339,10 @@ class VAMPNet(Estimator, Transformer):
         self._train_scores = []
         self._validation_scores = []
 
-        if not isinstance(data, TimeSeriesDataSet):
+        if not isinstance(data, TimeSeriesDataset):
             if isinstance(data, np.ndarray):
                 data = data.astype(self.dtype)
-            data = TimeSeriesDataSet(data, lagtime=self.lagtime)
+            data = TimeSeriesDataset(data, lagtime=self.lagtime)
         else:
             assert data.lagtime == self.lagtime, "If fitting with a data set, lagtimes must be compatible."
         data_loader = torch.utils.data.DataLoader(data, batch_size=batch_size, shuffle=self.shuffle)
@@ -350,8 +350,8 @@ class VAMPNet(Estimator, Transformer):
         validation_loader = None
         if validation_data is not None:
             val_ds = validation_data
-            if not isinstance(validation_data, (TimeSeriesDataSet, torch.utils.data.DataSet)):
-                val_ds = torch.utils.data.DataSet(validation_data)
+            if not isinstance(validation_data, (TimeSeriesDataset, torch.utils.data.Dataset)):
+                val_ds = torch.utils.data.Dataset(validation_data)
             validation_loader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size)
 
         for epoch in range(n_epochs):
