@@ -339,11 +339,11 @@ class VAMPNet(Estimator, Transformer):
         self._train_scores = []
         self._validation_scores = []
 
-        if not isinstance(data, TimeSeriesDataset):
+        if not isinstance(data, (TimeSeriesDataset, torch.utils.data.Dataset)):
             if isinstance(data, np.ndarray):
                 data = data.astype(self.dtype)
             data = TimeSeriesDataset(data, lagtime=self.lagtime)
-        else:
+        if isinstance(data, TimeSeriesDataset):
             assert data.lagtime == self.lagtime, "If fitting with a data set, lagtimes must be compatible."
         data_loader = torch.utils.data.DataLoader(data, batch_size=batch_size, shuffle=self.shuffle)
 
