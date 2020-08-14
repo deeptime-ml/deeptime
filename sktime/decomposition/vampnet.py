@@ -129,6 +129,22 @@ valid_score_methods = ('VAMP1', 'VAMP2',)
 
 
 def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
+    r"""Computes the VAMP score based on data and corresponding time-shifted data.
+
+    Parameters
+    ----------
+    data : torch.Tensor
+        (N, d)-dimensional torch tensor
+    data_lagged : torch.Tensor
+        (N, k)-dimensional torch tensor
+    method : str, default='VAMP2'
+        The scoring method. See :meth:`score <sktime.decomposition.CovarianceKoopmanModel.score>` for details.
+
+    Returns
+    -------
+    score : torch.Tensor
+        The score.
+    """
     if method not in valid_score_methods:
         raise ValueError(f"Invalid method '{method}', supported are {valid_score_methods}")
     assert data.shape == data_lagged.shape
@@ -145,13 +161,30 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
 
 
 def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
+    r"""Loss function that can be used to train VAMPNets. It evaluates as :math:`1-\mathrm{score}`. The score
+    is implemented in :meth:`score`."""
     return -1. * score(data, data_lagged, method=method)
 
 
 class MLPLobe(nn.Module):
+    r""" A multilayer perceptron which can be used as a neural network lobe for VAMPNets. """
 
-    def __init__(self, units: List, nonlinearity=nn.ELU, initial_batchnorm: bool = True,
+    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = True,
                  output_nonlinearity=lambda: nn.Softmax(dim=1)):
+        r"""Instantiates a new lobe.
+
+        Parameters
+        ----------
+        units : list of integers
+            The units of the fully connected layers.
+        nonlinearity : callable, default=torch.nn.ELU
+            A callable (like a constructor) which yields an instance of a particular activation function.
+        initial_batchnorm : bool, default=True
+            Whether to use batch normalization before the data enters the rest of the network.
+        output_nonlinearity : callable, default=softmax
+            The output activation/nonlinearity. If the data decomposes into states, it can make sense to use
+            an output activation like softmax which produces a probability distribution over said states.
+        """
         super().__init__()
         layers = []
         if initial_batchnorm:
@@ -169,9 +202,35 @@ class MLPLobe(nn.Module):
 
 
 class VAMPNetModel(Model, Transformer):
+    r"""
+    A VAMPNet model which can be fit to data optimizing for one of the implemented VAMP scores.
+
+    See Also
+    --------
+    VAMPNet : The corresponding estimator.
+    """
 
     def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  dtype=np.float32, device=None, train_scores=None, validation_scores=None):
+        r"""Creates a new VAMPNet estimator instance.
+
+        Parameters
+        ----------
+        lobe : torch.nn.Module
+            One of the lobes of the VAMPNet. See also :class:`MLPLobe`.
+        lobe_timelagged : torch.nn.Module, optional, default=None
+            The timelagged lobe. Can be left None, in which case the lobes are shared.
+        dtype : data type, default=np.float32
+            The data type for which operations should be performed. Leads to an appropriate cast within fit and
+            transform methods.
+        device : device, default=None
+            The device for the lobe(s). Can be None which defaults to CPU.
+        train_scores : (T, 2) ndarray, optional, default=None
+            Recorded scores during training, :code:`train_scores[:, 0]` refers to the steps
+            and :code:`train_scores[:, 1]` to the score value.
+        validation_scores : (T, 2) ndarray, optional, default=None
+            Recorded validation scores during training.
+        """
         super().__init__()
         self._lobe = lobe
         self._lobe_timelagged = lobe_timelagged if lobe_timelagged is not None else lobe
@@ -192,6 +251,20 @@ class VAMPNetModel(Model, Transformer):
         self.validation_scores = validation_scores
 
     def transform(self, data, **kwargs):
+        r""" Transforms a tensor or array or list thereof using the learnt transformation.
+
+        Parameters
+        ----------
+        data : array_like
+            The input data.
+        **kwargs
+            Scikit-learn compatibility.
+
+        Returns
+        -------
+        transform : array_like
+            The featurized data.
+        """
         self._lobe.eval()
         self._lobe_timelagged.eval()
 
