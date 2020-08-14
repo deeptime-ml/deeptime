@@ -6,7 +6,7 @@ import numpy as np
 
 from . import VAMP
 from ..base import Transformer, Model, Estimator
-from ..data import timeshifted_split
+from ..data.util import TimeSeriesDataSet
 
 try:
     import torch
@@ -211,6 +211,7 @@ class VAMPNetModel(Model, Transformer):
 
 
 class VAMPNet(Estimator, Transformer):
+    _MUTABLE_INPUT_DATA = True
 
     def __init__(self, lagtime: int, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
@@ -294,23 +295,31 @@ class VAMPNet(Estimator, Transformer):
         self._lobe_timelagged = value
         self._lobe_timelagged = self._lobe_timelagged.to(device=self.device)
 
-    def partial_fit(self, data, batch_size=512):
+    def partial_fit(self, data):
         self.lobe.train()
         self.lobe_timelagged.train()
-        for batch_0, batch_t in timeshifted_split(data, chunksize=batch_size, lagtime=self.lagtime,
-                                                  shuffle=True):
-            batch_0 = torch.from_numpy(batch_0.astype(self.dtype)).to(device=self.device)
-            batch_t = torch.from_numpy(batch_t.astype(self.dtype)).to(device=self.device)
 
-            self.optimizer.zero_grad()
-            x_0 = self.lobe(batch_0)
-            x_t = self.lobe_timelagged(batch_t)
-            loss_value = loss(x_0, x_t, method=self.score_method)
-            loss_value.backward()
-            self.optimizer.step()
+        assert isinstance(data, (list, tuple)) and len(data) == 2, \
+            "Data must be a list or tuple of batches belonging to instantaneous " \
+            "and respective time-lagged data."
 
-            self._train_scores.append((self._step, -loss_value.detach().cpu().numpy()))
-            self._step += 1
+        batch_0, batch_t = data[0], data[1]
+
+        if isinstance(data[0], np.ndarray):
+            batch_0 = torch.from_numpy(data[0].astype(self.dtype)).to(device=self.device)
+        if isinstance(data[1], np.ndarray):
+            batch_t = torch.from_numpy(data[1].astype(self.dtype)).to(device=self.device)
+
+        self.optimizer.zero_grad()
+        x_0 = self.lobe(batch_0)
+        x_t = self.lobe_timelagged(batch_t)
+        loss_value = loss(x_0, x_t, method=self.score_method)
+        loss_value.backward()
+        self.optimizer.step()
+
+        self._train_scores.append((self._step, -loss_value.detach().cpu().numpy()))
+        self._step += 1
+
         return self
 
     def validate(self, validation_data: torch.Tensor) -> float:
@@ -329,18 +338,29 @@ class VAMPNet(Estimator, Transformer):
         self._train_scores = []
         self._validation_scores = []
 
-        if validation_data is not None and isinstance(validation_data, np.ndarray):
-            validation_data = torch.from_numpy(validation_data.astype(self.dtype)).to(device=self.device)
-        elif validation_data is not None:
-            assert isinstance(validation_data, torch.Tensor), "validation data must be given in terms " \
-                                                              "of torch tensor or numpy array."
-            validation_data = validation_data.to(device=self.device)
+        if not isinstance(data, TimeSeriesDataSet):
+            if isinstance(data, np.ndarray):
+                data = data.astype(self.dtype)
+            data = TimeSeriesDataSet(data, lagtime=self.lagtime)
+        else:
+            assert data.lagtime == self.lagtime, "If fitting with a data set, lagtimes must be compatible."
+        data_loader = torch.utils.data.DataLoader(data, batch_size=batch_size)
+
+        validation_loader = None
+        if validation_data is not None:
+            val_ds = validation_data
+            if not isinstance(validation_data, (TimeSeriesDataSet, torch.utils.data.DataSet)):
+                val_ds = torch.utils.data.DataSet(validation_data)
+            validation_loader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size)
 
         for epoch in range(n_epochs):
-            self.partial_fit(data, batch_size=batch_size)
-            if validation_data is not None:
-                val_score = self.validate(validation_data)
-                self._validation_scores.append((self._step, val_score))
+            for batch_0, batch_t in data_loader:
+                self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)))
+            if validation_loader is not None:
+                scores = []
+                for val_batch in validation_loader:
+                    scores.append(self.validate(val_batch.to(device=self.device)))
+                self._validation_scores.append((self._step, np.mean(scores)))
             latest_train_score = self._train_scores[-1][1]
             msg = f"Epoch [{epoch + 1}/{n_epochs}]: Latest training score {latest_train_score:.5f}"
             if validation_data is not None:

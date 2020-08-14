@@ -152,5 +152,3 @@ class TimeSeriesDataSet(object):
 
     def __len__(self):
         return len(self.data) - self.lagtime
-
-

@@ -41,6 +41,7 @@ Utilities
     :template: class_nomodule.rst
 
     timeshifted_split
+    TimeSeriesDataSet
 
 ===============================================================================
 Implementations
@@ -56,5 +57,5 @@ Implementations
     drunkards_walk_simulator.DrunkardsWalk
 """
 
-from .util import timeshifted_split
+from .util import timeshifted_split, TimeSeriesDataSet
 from .datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk
