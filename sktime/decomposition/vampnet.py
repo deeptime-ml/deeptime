@@ -447,7 +447,8 @@ class VAMPNet(Estimator, Transformer):
         # and train
         for epoch in range(n_epochs):
             for batch_0, batch_t in data_loader:
-                self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)))
+                self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)),
+                                 train_score_callback=train_score_callback)
             if validation_loader is not None and validation_score_callback is not None:
                 with torch.no_grad():
                     scores = []
