@@ -13,6 +13,9 @@ build:
     - AGENT_BUILDDIRECTORY
   script:
     - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
+  skip_compile_pyc:
+    - "sktime/util_torch.py"
+    - "sktime/decomposition/vampnet.py"
 
 requirements:
   build:

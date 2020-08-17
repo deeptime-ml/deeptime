@@ -1,23 +1,23 @@
-import logging
-import warnings
+from ..util import module_available
+from ..util_torch import Stats, OutputHandler
+
+if not module_available("torch"):
+    raise RuntimeError("Tried importing VampNets; this only works with a PyTorch installation!")
+del module_available
+
 from typing import Optional, Union, List, Callable, Tuple
 
 import numpy as np
 
-from . import VAMP
 from ..base import Transformer, Model, Estimator
 from ..data.util import TimeSeriesDataset
 
-try:
-    import torch
-    import torch.nn as nn
-except (ModuleNotFoundError, ImportError):
-    warnings.warn("Tried importing VampNets; this only works with a PyTorch installation!")
-
-logger = logging.getLogger(__name__)
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
 
 
-def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False):
+def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='trunc'):
     """ Utility function that returns the inverse of a matrix, with the
     option to return the square root of the inverse matrix.
 
@@ -29,6 +29,10 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False):
         Cutoff for eigenvalues.
     ret_sqrt: bool, optional, default = False
         if True, the square root of the inverse matrix is returned instead
+    mode: str, default='trunc'
+        Whether to truncate eigenvalues if they are too small or to regularize them by taking the absolute value
+        and adding a small positive constant. :code:`trunc` leads to truncation, anything else leads to
+        regularization.
 
     Returns
     -------
@@ -38,16 +42,20 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False):
     # Calculate eigvalues and eigvectors
     eigval_all, eigvec_all_t = torch.symeig(mat, eigenvectors=True)
 
-    # Filter out eigvalues below threshold and corresponding eigvectors
-    mask = eigval_all > epsilon
+    if mode == 'trunc':
+        # Filter out eigvalues below threshold and corresponding eigvectors
+        mask = eigval_all > epsilon
 
-    eigval = eigval_all[mask]
-    eigvec = eigvec_all_t.transpose(0, 1)[mask]
-    eigvec_t = eigvec.transpose(0, 1)
+        eigval = eigval_all[mask]
+        eigvec = eigvec_all_t.transpose(0, 1)[mask]
+        eigvec_t = eigvec.transpose(0, 1)
+    else:
+        eigval = torch.abs(eigval_all) + epsilon
+        eigvec_t = eigvec_all_t
+        eigvec = eigvec_t.transpose(0, 1)
 
     # Build the diagonal matrix with the filtered eigenvalues or square
     # root of the filtered eigenvalues according to the parameter
-
     if ret_sqrt:
         diag = torch.diag(torch.sqrt(1. / eigval))
     else:
@@ -56,7 +64,7 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False):
     return torch.chain_matmul(eigvec_t, diag, eigvec)
 
 
-def koopman_matrix(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode: str = 'trunc') -> torch.Tensor:
     r""" Computes the Koopman matrix
 
     .. math:: K = C_{00}^{-1/2}C_{0t}C_{tt}^{-1/2}
@@ -69,6 +77,10 @@ def koopman_matrix(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         Instantaneous data.
     y : torch.Tensor
         Time-lagged data.
+    epsilon : float, default=1e-6
+        Cutoff parameter for small eigenvalues.
+    mode : str, default='trunc'
+        Whether to truncate small eigenvalues or to take absolute values and add a small positive constant.
 
     Returns
     -------
@@ -76,8 +88,8 @@ def koopman_matrix(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         The Koopman matrix.
     """
     c00, c0t, ctt = covariances(x, y, remove_mean=True)
-    c00_sqrt_inv = sym_inverse(c00, ret_sqrt=True)
-    ctt_sqrt_inv = sym_inverse(ctt, ret_sqrt=True)
+    c00_sqrt_inv = sym_inverse(c00, ret_sqrt=True, epsilon=epsilon, mode=mode)
+    ctt_sqrt_inv = sym_inverse(ctt, ret_sqrt=True, epsilon=epsilon, mode=mode)
     return torch.chain_matmul(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
 
 
@@ -128,7 +140,7 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
 valid_score_methods = ('VAMP1', 'VAMP2',)
 
 
-def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
+def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode='trunc'):
     r"""Computes the VAMP score based on data and corresponding time-shifted data.
 
     Parameters
@@ -139,6 +151,10 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
         (N, k)-dimensional torch tensor
     method : str, default='VAMP2'
         The scoring method. See :meth:`score <sktime.decomposition.CovarianceKoopmanModel.score>` for details.
+    epsilon : float, default=1e-6
+        Cutoff parameter for small eigenvalues, alternatively regularization parameter.
+    mode : str, default='trunc'
+        Whether to truncate the eigenvalues or to add a small positive value after taking the absolute value.
 
     Returns
     -------
@@ -149,21 +165,20 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
         raise ValueError(f"Invalid method '{method}', supported are {valid_score_methods}")
     assert data.shape == data_lagged.shape
 
+    koopman = koopman_matrix(data, data_lagged, epsilon=epsilon, mode=mode)
     if method == 'VAMP1':
-        koopman = koopman_matrix(data, data_lagged)
         vamp_score = torch.norm(koopman, p='nuc')
     elif method == 'VAMP2':
-        koopman = koopman_matrix(data, data_lagged)
         vamp_score = torch.pow(torch.norm(koopman, p='fro'), 2)
     else:
         raise RuntimeError("This should have been caught earlier.")
     return 1 + vamp_score
 
 
-def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2'):
+def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode: str = 'trunc'):
     r"""Loss function that can be used to train VAMPNets. It evaluates as :math:`1-\mathrm{score}`. The score
     is implemented in :meth:`score`."""
-    return -1. * score(data, data_lagged, method=method)
+    return -1. * score(data, data_lagged, method=method, epsilon=epsilon, mode=mode)
 
 
 class MLPLobe(nn.Module):
@@ -211,7 +226,8 @@ class VAMPNetModel(Model, Transformer):
     """
 
     def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
-                 dtype=np.float32, device=None, train_scores=None, validation_scores=None):
+                 dtype=np.float32, device=None, train_scores: Optional[np.ndarray] = None,
+                 validation_scores: Optional[np.ndarray] = None):
         r"""Creates a new VAMPNet estimator instance.
 
         Parameters
@@ -288,7 +304,8 @@ class VAMPNet(Estimator, Transformer):
 
     def __init__(self, lagtime: int, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
-                 score_method: str = 'VAMP2', dtype=np.float32, shuffle: bool = True):
+                 score_method: str = 'VAMP2', score_mode: str = 'trunc', epsilon: float = 1e-6,
+                 dtype=np.float32, shuffle: bool = True, output_handler: Optional[OutputHandler] = None):
         super().__init__()
         self.lagtime = lagtime
         self.dtype = dtype
@@ -296,12 +313,13 @@ class VAMPNet(Estimator, Transformer):
         self.lobe = lobe
         self.lobe_timelagged = lobe_timelagged
         self.score_method = score_method
+        self.score_mode = score_mode
         self.learning_rate = learning_rate
         self.optimizer = optimizer
         self._step = 0
-        self._train_scores = []
-        self._validation_scores = []
+        self._output_handler = output_handler
         self.shuffle = shuffle
+        self._epsilon = epsilon
 
     @property
     def dtype(self):
@@ -315,6 +333,14 @@ class VAMPNet(Estimator, Transformer):
     @property
     def optimizer(self) -> torch.optim.Optimizer:
         return self._optimizer
+
+    @property
+    def epsilon(self):
+        return self._epsilon
+
+    @epsilon.setter
+    def epsilon(self, value):
+        self._epsilon = value
 
     @optimizer.setter
     def optimizer(self, value: Union[str, Callable]):
@@ -369,7 +395,7 @@ class VAMPNet(Estimator, Transformer):
         self._lobe_timelagged = value
         self._lobe_timelagged = self._lobe_timelagged.to(device=self.device)
 
-    def partial_fit(self, data):
+    def partial_fit(self, data, train_score_callback: Callable[[int, torch.Tensor], None] = None):
         self.lobe.train()
         self.lobe_timelagged.train()
 
@@ -387,60 +413,60 @@ class VAMPNet(Estimator, Transformer):
         self.optimizer.zero_grad()
         x_0 = self.lobe(batch_0)
         x_t = self.lobe_timelagged(batch_t)
-        loss_value = loss(x_0, x_t, method=self.score_method)
+        loss_value = loss(x_0, x_t, method=self.score_method, epsilon=self.epsilon, mode=self.score_mode)
         loss_value.backward()
         self.optimizer.step()
 
-        self._train_scores.append((self._step, -loss_value.detach().cpu().numpy()))
+        if train_score_callback is not None:
+            lval_detached = loss_value.detach()
+            train_score_callback(self._step, -lval_detached)
         self._step += 1
 
         return self
 
-    def validate(self, validation_data: Tuple[torch.Tensor]) -> float:
+    def validate(self, validation_data: Tuple[torch.Tensor]) -> torch.Tensor:
         self.lobe.eval()
         self.lobe_timelagged.eval()
 
         with torch.no_grad():
             val = self.lobe(validation_data[0])
             val_t = self.lobe_timelagged(validation_data[1])
-            return score(val, val_t, method=self.score_method).cpu().numpy()
+            return score(val, val_t, method=self.score_method, mode=self.score_mode)
 
-    def fit(self, data, n_epochs=1, batch_size=512, validation_data=None, **kwargs):
-        self._step = 0
-        self._train_scores = []
-        self._validation_scores = []
-
-        if not isinstance(data, (TimeSeriesDataset, torch.utils.data.Dataset)):
+    def _set_up_data_loader(self, data, batch_size, shuffle):
+        if not isinstance(data, (TimeSeriesDataset, Dataset)):
             if isinstance(data, np.ndarray):
                 data = data.astype(self.dtype)
             data = TimeSeriesDataset(data, lagtime=self.lagtime)
         if isinstance(data, TimeSeriesDataset):
             assert data.lagtime == self.lagtime, "If fitting with a data set, lagtimes must be compatible."
-        data_loader = torch.utils.data.DataLoader(data, batch_size=batch_size, shuffle=self.shuffle)
+        return DataLoader(data, batch_size=batch_size, shuffle=shuffle)
 
+    def fit(self, data, n_epochs=1, batch_size=512, validation_data=None,
+            train_score_callback: Callable[[int, torch.Tensor], None] = None,
+            validation_score_callback: Callable[[int, torch.Tensor], None] = None, **kwargs):
+        self._step = 0
+        self._train_scores.clear()
+
+        # set up loaders
+        data_loader = self._set_up_data_loader(data, batch_size=batch_size, shuffle=self.shuffle)
         validation_loader = None
         if validation_data is not None:
-            val_ds = validation_data
-            if not isinstance(validation_data, (TimeSeriesDataset, torch.utils.data.Dataset)):
-                val_ds = TimeSeriesDataset(validation_data, lagtime=self.lagtime)
-            validation_loader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size)
+            validation_loader = self._set_up_data_loader(validation_data, batch_size=batch_size, shuffle=False)
 
+        # and train
         for epoch in range(n_epochs):
             for batch_0, batch_t in data_loader:
                 self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)))
-            if validation_loader is not None:
-                scores = []
-                for val_batch in validation_loader:
-                    scores.append(self.validate(
-                        (val_batch[0].to(device=self.device), val_batch[1].to(device=self.device))
-                    ))
-                self._validation_scores.append((self._step, np.mean(scores)))
-            latest_train_score = self._train_scores[-1][1]
-            msg = f"Epoch [{epoch + 1}/{n_epochs}]: Latest training score {latest_train_score:.5f}"
-            if validation_data is not None:
-                latest_val_score = self._validation_scores[-1][1]
-                msg += f", latest validation score {latest_val_score:.5f}"
-            logger.debug(msg)
+            if validation_loader is not None and validation_score_callback is not None:
+                with torch.no_grad():
+                    scores = []
+                    for val_batch in validation_loader:
+                        scores.append(
+                            self.validate((val_batch[0].to(device=self.device), val_batch[1].to(device=self.device)))
+                        )
+                    mean_score = torch.mean(torch.stack(scores))
+                    validation_score_callback(self._step, mean_score)
         return self
 
     def transform(self, data, **kwargs):

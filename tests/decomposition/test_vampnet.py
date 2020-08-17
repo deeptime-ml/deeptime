@@ -39,7 +39,8 @@ def test_covariances(remove_mean):
 
 
 @pytest.mark.parametrize('method', ["VAMP1", "VAMP2"])
-def test_score(method):
+@pytest.mark.parametrize('mode', ["trunc", "regularize"])
+def test_score(method, mode):
     data = sktime.data.ellipsoids().observations(1000, n_dim=5)
     tau = 10
 
@@ -47,7 +48,7 @@ def test_score(method):
     with torch.no_grad():
         data_instantaneous = torch.from_numpy(data[:-tau].astype(np.float64))
         data_shifted = torch.from_numpy(data[tau:].astype(np.float64))
-        score_value = score(data_instantaneous, data_shifted, method=method)
+        score_value = score(data_instantaneous, data_shifted, method=method, mode=mode)
         np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method))
 
 
