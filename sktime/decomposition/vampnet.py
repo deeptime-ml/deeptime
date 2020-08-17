@@ -1,5 +1,4 @@
 from ..util import module_available
-from ..util_torch import Stats, OutputHandler
 
 if not module_available("torch"):
     raise RuntimeError("Tried importing VampNets; this only works with a PyTorch installation!")
@@ -17,7 +16,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 
-def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='trunc'):
+def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='regularize'):
     """ Utility function that returns the inverse of a matrix, with the
     option to return the square root of the inverse matrix.
 
@@ -39,20 +38,29 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='trunc'):
     x_inv: numpy array with shape [m,m]
         inverse of the original matrix
     """
-    # Calculate eigvalues and eigvectors
-    eigval_all, eigvec_all_t = torch.symeig(mat, eigenvectors=True)
+    assert mode in sym_inverse.valid_modes, f"Invalid mode {mode}, supported are {sym_inverse.valid_modes}"
 
     if mode == 'trunc':
-        # Filter out eigvalues below threshold and corresponding eigvectors
+        # Calculate eigvalues and eigvectors
+        eigval_all, eigvec_all_t = torch.symeig(mat, eigenvectors=True)
+        # Filter out Eigenvalues below threshold and corresponding Eigenvectors
         mask = eigval_all > epsilon
 
         eigval = eigval_all[mask]
         eigvec = eigvec_all_t.transpose(0, 1)[mask]
         eigvec_t = eigvec.transpose(0, 1)
-    else:
-        eigval = torch.abs(eigval_all) + epsilon
-        eigvec_t = eigvec_all_t
+    elif mode == 'regularize':
+        # Calculate eigvalues and eigvectors
+        identity = torch.eye(mat.shape[0], dtype=mat.dtype, device=mat.device)
+        eigval, eigvec_t = torch.symeig(mat + epsilon*identity, eigenvectors=True)
+        eigval = torch.abs(eigval)
         eigvec = eigvec_t.transpose(0, 1)
+    elif mode == 'clamp':
+        eigval, eigvec_t = torch.symeig(mat, eigenvectors=True)
+        eigval = torch.clamp_min(eigval, min=epsilon)
+        eigvec = eigvec_t.transpose(0, 1)
+    else:
+        raise RuntimeError("invalid mode!")
 
     # Build the diagonal matrix with the filtered eigenvalues or square
     # root of the filtered eigenvalues according to the parameter
@@ -62,6 +70,9 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='trunc'):
         diag = torch.diag(1. / eigval)
 
     return torch.chain_matmul(eigvec_t, diag, eigvec)
+
+
+sym_inverse.valid_modes = ('trunc', 'regularize', 'clamp')
 
 
 def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode: str = 'trunc') -> torch.Tensor:
@@ -80,7 +91,7 @@ def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode
     epsilon : float, default=1e-6
         Cutoff parameter for small eigenvalues.
     mode : str, default='trunc'
-        Whether to truncate small eigenvalues or to take absolute values and add a small positive constant.
+        Regularization mode for Hermetian inverse. See :meth:`sym_inverse`.
 
     Returns
     -------
@@ -154,7 +165,7 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon
     epsilon : float, default=1e-6
         Cutoff parameter for small eigenvalues, alternatively regularization parameter.
     mode : str, default='trunc'
-        Whether to truncate the eigenvalues or to add a small positive value after taking the absolute value.
+        Regularization mode for Hermetian inverse. See :meth:`sym_inverse`.
 
     Returns
     -------
@@ -291,12 +302,61 @@ class VAMPNetModel(Model, Transformer):
 
 
 class VAMPNet(Estimator, Transformer):
+    r""" Implementation of VAMPNets :cite:`vnet-mardt2018vampnets` which try to find an optimal featurization of
+    data based on a VAMP score :cite:`vnet-wu2020variational` by using neural networks as featurizing transforms
+    which are equipped with a loss that is the negative VAMP score. This estimator is also a transformer
+    and can be used to transform data into the optimized space. From there it can either be used to estimate
+    Markov state models via making assignment probabilities crisp (in case of softmax output distributions) or
+    to estimate the Koopman operator using the :class:`VAMP <sktime.decomposition.VAMP>` estimator.
+
+    See Also
+    --------
+    sktime.decomposition.VAMP : Koopman operator estimator which can be applied to transformed data.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: vnet-
+    """
     _MUTABLE_INPUT_DATA = True
 
     def __init__(self, lagtime: int, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
-                 score_method: str = 'VAMP2', score_mode: str = 'trunc', epsilon: float = 1e-6,
-                 dtype=np.float32, shuffle: bool = True, output_handler: Optional[OutputHandler] = None):
+                 score_method: str = 'VAMP2', score_mode: str = 'regularize', epsilon: float = 1e-6,
+                 dtype=np.float32, shuffle: bool = True):
+        r""" Creates a new VAMPNet instance.
+
+        Parameters
+        ----------
+        lagtime : int
+            The lagtime under which covariance matrices are estimated.
+        lobe : torch.nn.Module
+            A neural network module which maps input data to some (potentially) lower-dimensional space.
+        lobe_timelagged : torch.nn.Module, optional, default=None
+            Neural network module for timelagged data, in case of None the lobes are shared.
+        device : torch device, default=None
+            The device on which the torch modules are executed.
+        optimizer : str or Callable, default='Adam'
+            An optimizer which can either be provided in terms of a class reference (like `torch.optim.Adam`) or
+            a string (like `'Adam'`). Defaults to Adam.
+        learning_rate : float, default=5e-4
+            The learning rate of the optimizer.
+        score_method : str, default='VAMP2'
+            The scoring method which is used for optimization.
+        score_mode : str, default='regularize'
+            The mode under which inverses of positive semi-definite matrices are estimated. Per default, the matrices
+            are perturbed by a small constant added to the diagonal. This makes sure that eigenvalues are not too
+            small. For a complete list of modes, see :meth:`sym_inverse`.
+        epsilon : float, default=1e-6
+            The strength of the regularization under which matrices are inverted. Meaning depends on the score_mode,
+            see :meth:`sym_inverse`.
+        dtype : dtype, default=np.float32
+            The data type of the modules and incoming data.
+        shuffle : bool, default=True
+            Whether to shuffle data during training after each epoch.
+        """
         super().__init__()
         self.lagtime = lagtime
         self.dtype = dtype
@@ -308,12 +368,17 @@ class VAMPNet(Estimator, Transformer):
         self.learning_rate = learning_rate
         self.optimizer = optimizer
         self._step = 0
-        self._output_handler = output_handler
         self.shuffle = shuffle
         self._epsilon = epsilon
 
     @property
     def dtype(self):
+        r""" The data type under which the estimator operates.
+
+        :getter: Gets the currently set data type.
+        :setter: Sets a new data type, must be one of np.float32, np.float64
+        :type: numpy data type type
+        """
         return self._dtype
 
     @dtype.setter
@@ -323,15 +388,13 @@ class VAMPNet(Estimator, Transformer):
 
     @property
     def optimizer(self) -> torch.optim.Optimizer:
+        r""" The optimizer that is used.
+
+        :getter: Gets the currently configured optimizer.
+        :setter: Sets a new optimizer based on optimizer name (string) or optimizer class (class reference).
+        :type: torch.optim.Optimizer
+        """
         return self._optimizer
-
-    @property
-    def epsilon(self):
-        return self._epsilon
-
-    @epsilon.setter
-    def epsilon(self, value):
-        self._epsilon = value
 
     @optimizer.setter
     def optimizer(self, value: Union[str, Callable]):
@@ -347,7 +410,28 @@ class VAMPNet(Estimator, Transformer):
         self._optimizer = value(params=unique_params, lr=self.learning_rate)
 
     @property
+    def epsilon(self) -> float:
+        r""" Regularization parameter for matrix inverses.
+
+        :getter: Gets the currently set parameter.
+        :setter: Sets a new parameter. Must be non-negative.
+        :type: float
+        """
+        return self._epsilon
+
+    @epsilon.setter
+    def epsilon(self, value: float):
+        assert value >= 0
+        self._epsilon = value
+
+    @property
     def score_method(self) -> str:
+        r""" Property which steers the scoring behavior of this estimator.
+
+        :getter: Gets the current score.
+        :setter: Sets the score to use.
+        :type: str
+        """
         return self._score_method
 
     @score_method.setter
@@ -359,6 +443,12 @@ class VAMPNet(Estimator, Transformer):
 
     @property
     def lobe(self) -> nn.Module:
+        r""" The instantaneous lobe of the VAMPNet.
+
+        :getter: Gets the instantaneous lobe.
+        :setter: Sets a new lobe.
+        :type: torch.nn.Module
+        """
         return self._lobe
 
     @lobe.setter
@@ -372,6 +462,12 @@ class VAMPNet(Estimator, Transformer):
 
     @property
     def lobe_timelagged(self) -> nn.Module:
+        r""" The timelagged lobe of the VAMPNet.
+
+        :getter: Gets the timelagged lobe. Can be the same a the instantaneous lobe.
+        :setter: Sets a new lobe. Can be None, in which case the instantaneous lobe is shared.
+        :type: torch.nn.Module
+        """
         return self._lobe_timelagged
 
     @lobe_timelagged.setter
@@ -387,6 +483,21 @@ class VAMPNet(Estimator, Transformer):
         self._lobe_timelagged = self._lobe_timelagged.to(device=self.device)
 
     def partial_fit(self, data, train_score_callback: Callable[[int, torch.Tensor], None] = None):
+        r""" Performs a partial fit on data. This does not perform any batching.
+
+        Parameters
+        ----------
+        data : tuple or list of length 2, containing instantaneous and timelagged data
+            The data to train the lobe(s) on.
+        train_score_callback : callable, optional, default=None
+            An optional callback function which is evaluated after partial fit, containing the current step
+            of the training (only meaningful during a :meth:`fit`) and the current score as torch Tensor.
+
+        Returns
+        -------
+        self : VAMPNet
+            Reference to self.
+        """
         self.lobe.train()
         self.lobe_timelagged.train()
 
@@ -416,6 +527,18 @@ class VAMPNet(Estimator, Transformer):
         return self
 
     def validate(self, validation_data: Tuple[torch.Tensor]) -> torch.Tensor:
+        r""" Evaluates the currently set lobe(s) on validation data and returns the value of the configured score.
+
+        Parameters
+        ----------
+        validation_data : Tuple of torch Tensor containing instantaneous and timelagged data
+            The validation data.
+
+        Returns
+        -------
+        score : torch.Tensor
+            The value of the score.
+        """
         self.lobe.eval()
         self.lobe_timelagged.eval()
 
@@ -425,6 +548,7 @@ class VAMPNet(Estimator, Transformer):
             return score(val, val_t, method=self.score_method, mode=self.score_mode, epsilon=self.epsilon)
 
     def _set_up_data_loader(self, data, batch_size, shuffle):
+        r""" Helper method which yields a data loader from a torch dataset or numpy arrays. """
         if not isinstance(data, (TimeSeriesDataset, Dataset)):
             if isinstance(data, np.ndarray):
                 data = data.astype(self.dtype)
@@ -436,6 +560,34 @@ class VAMPNet(Estimator, Transformer):
     def fit(self, data, n_epochs=1, batch_size=512, validation_data=None,
             train_score_callback: Callable[[int, torch.Tensor], None] = None,
             validation_score_callback: Callable[[int, torch.Tensor], None] = None, **kwargs):
+        r""" Fits a VampNet on data.
+
+        Parameters
+        ----------
+        data : torch.Tensor or Dataset or TimelaggedDataset or numpy array
+            The data to use for training.
+        n_epochs : int, default=1
+            The number of epochs (i.e., passes through the training data) to use for training.
+        batch_size : int, default=512
+            The batch size to use during training. Should be reasonably large so that covariance matrices have
+            enough statistics to be estimated.
+        validation_data : torch.Tensor or Dataset or TimeLaggedDataset or numpy array, optional, default=None
+            Validation data.
+        train_score_callback : callable, optional, default=None
+            Callback function which is invoked after each batch and gets as arguments the current training step
+            as well as the score (as torch Tensor).
+        validation_score_callback : callable, optional, default=None
+            Callback function for validation data. Is invoked after each epoch if validation data is given
+            and the callback function is not None. Same as the train callback, this gets the 'step' as well as
+            the score.
+        **kwargs
+            Optional keyword arguments for scikit-learn compatibility
+
+        Returns
+        -------
+        self : VAMPNet
+            Reference to self.
+        """
         self._step = 0
 
         # set up loaders
@@ -461,7 +613,22 @@ class VAMPNet(Estimator, Transformer):
         return self
 
     def transform(self, data, **kwargs):
+        r""" Transforms data through the instantaneous network lobe.
+
+        Parameters
+        ----------
+        data : numpy array or torch tensor
+            The data to transform.
+        **kwargs
+            Ignored kwargs for api compatibility.
+
+        Returns
+        -------
+        transform : array_like
+            List of numpy array or numpy array containing transformed data.
+        """
         return self.fetch_model().transform(data)
 
     def fetch_model(self) -> VAMPNetModel:
+        r""" Yields the current model. """
         return VAMPNetModel(self.lobe, self.lobe_timelagged, dtype=self.dtype, device=self.device)

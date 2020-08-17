@@ -1,4 +1,5 @@
 import pytest
+
 pytest.importorskip("torch")
 
 import torch
@@ -7,17 +8,18 @@ import numpy as np
 import sktime
 from sktime.clustering import KmeansClustering
 from sktime.decomposition import VAMP
-from sktime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss
+from sktime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss, MLPLobe
 from sktime.markov.msm import MaximumLikelihoodMSM
 
 
-def test_inverse_spd():
+@pytest.mark.parametrize('mode', ["trunc"])
+def test_inverse_spd(mode):
     X = np.random.normal(size=(15, 5))
     spd = X @ X.T  # rank at most 5
     spd_inv_qr = sktime.numeric.spd_inv(spd)
     with torch.no_grad():
         spd_tensor = torch.from_numpy(spd)
-        spd_inv = sym_inverse(spd_tensor, epsilon=1e-6, ret_sqrt=False)
+        spd_inv = sym_inverse(spd_tensor, epsilon=1e-6, ret_sqrt=False, mode=mode)
         np.testing.assert_array_almost_equal(spd_inv.numpy(), spd_inv_qr)
 
 
@@ -39,7 +41,7 @@ def test_covariances(remove_mean):
 
 
 @pytest.mark.parametrize('method', ["VAMP1", "VAMP2"])
-@pytest.mark.parametrize('mode', ["trunc", "regularize"])
+@pytest.mark.parametrize('mode', ["trunc", "regularize", "clamp"])
 def test_score(method, mode):
     data = sktime.data.ellipsoids().observations(1000, n_dim=5)
     tau = 10
@@ -82,15 +84,17 @@ def test_estimator():
 
     np.testing.assert_array_almost_equal(msm_vampnet.transition_matrix, data.msm.transition_matrix, decimal=2)
 
-def test_estimator_fit():
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_estimator_fit(dtype):
     data = sktime.data.ellipsoids()
-    obs = data.observations(60000, n_dim=10).astype(np.float32)
+    obs = data.observations(60000, n_dim=10).astype(dtype)
     train, val = torch.utils.data.random_split(sktime.data.TimeSeriesDataset(obs, lagtime=1), [50000, 9999])
 
     # set up the lobe
     lobe = nn.Sequential(nn.Linear(10, 1), nn.Tanh())
 
-    net = VAMPNet(lagtime=1, lobe=lobe)
+    net = VAMPNet(lagtime=1, lobe=lobe, dtype=dtype)
     net.fit(train, n_epochs=2, batch_size=128, validation_data=val)
     net_model = net.fetch_model()
 
@@ -102,3 +106,10 @@ def test_estimator_fit():
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
 
     np.testing.assert_array_almost_equal(msm_vampnet.transition_matrix, data.msm.transition_matrix, decimal=2)
+
+
+def test_mlp_sanity():
+    mlp = MLPLobe([100, 10, 2])
+    with torch.no_grad():
+        x = torch.empty((5, 100)).normal_()
+        mlp(x)
