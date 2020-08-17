@@ -226,8 +226,7 @@ class VAMPNetModel(Model, Transformer):
     """
 
     def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
-                 dtype=np.float32, device=None, train_scores: Optional[np.ndarray] = None,
-                 validation_scores: Optional[np.ndarray] = None):
+                 dtype=np.float32, device=None):
         r"""Creates a new VAMPNet estimator instance.
 
         Parameters
@@ -241,11 +240,6 @@ class VAMPNetModel(Model, Transformer):
             transform methods.
         device : device, default=None
             The device for the lobe(s). Can be None which defaults to CPU.
-        train_scores : (T, 2) ndarray, optional, default=None
-            Recorded scores during training, :code:`train_scores[:, 0]` refers to the steps
-            and :code:`train_scores[:, 1]` to the score value.
-        validation_scores : (T, 2) ndarray, optional, default=None
-            Recorded validation scores during training.
         """
         super().__init__()
         self._lobe = lobe
@@ -262,9 +256,6 @@ class VAMPNetModel(Model, Transformer):
             self._lobe_timelagged = self._lobe_timelagged.double()
         else:
             raise ValueError(f"Unsupported type {dtype}! Only float32 and float64 are allowed.")
-
-        self.train_scores = train_scores
-        self.validation_scores = validation_scores
 
     def transform(self, data, **kwargs):
         r""" Transforms a tensor or array or list thereof using the learnt transformation.
@@ -446,7 +437,6 @@ class VAMPNet(Estimator, Transformer):
             train_score_callback: Callable[[int, torch.Tensor], None] = None,
             validation_score_callback: Callable[[int, torch.Tensor], None] = None, **kwargs):
         self._step = 0
-        self._train_scores.clear()
 
         # set up loaders
         data_loader = self._set_up_data_loader(data, batch_size=batch_size, shuffle=self.shuffle)
@@ -473,6 +463,4 @@ class VAMPNet(Estimator, Transformer):
         return self.fetch_model().transform(data)
 
     def fetch_model(self) -> VAMPNetModel:
-        return VAMPNetModel(self.lobe, self.lobe_timelagged, dtype=self.dtype, device=self.device,
-                            train_scores=np.array(self._train_scores),
-                            validation_scores=np.array(self._validation_scores))
+        return VAMPNetModel(self.lobe, self.lobe_timelagged, dtype=self.dtype, device=self.device)
