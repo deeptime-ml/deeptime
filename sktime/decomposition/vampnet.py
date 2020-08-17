@@ -31,8 +31,8 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='trunc'):
         if True, the square root of the inverse matrix is returned instead
     mode: str, default='trunc'
         Whether to truncate eigenvalues if they are too small or to regularize them by taking the absolute value
-        and adding a small positive constant. :code:`trunc` leads to truncation, anything else leads to
-        regularization.
+        and adding a small positive constant. :code:`trunc` leads to truncation, :code:`regularize` leads to epsilon
+        being added to the eigenvalues after taking the absolute value
 
     Returns
     -------
@@ -422,7 +422,7 @@ class VAMPNet(Estimator, Transformer):
         with torch.no_grad():
             val = self.lobe(validation_data[0])
             val_t = self.lobe_timelagged(validation_data[1])
-            return score(val, val_t, method=self.score_method, mode=self.score_mode)
+            return score(val, val_t, method=self.score_method, mode=self.score_mode, epsilon=self.epsilon)
 
     def _set_up_data_loader(self, data, batch_size, shuffle):
         if not isinstance(data, (TimeSeriesDataset, Dataset)):
