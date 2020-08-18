@@ -122,7 +122,24 @@ class CheckpointManager(object):
 
 
 class Stats(object):
-    r""" Object that collects training statistics in a certain group. """
+    r""" Object that collects training statistics in a certain group. This can be used to track, e.g., loss values
+    and validation values.
+
+    >>> stats = Stats(group='train', items=['loss1', 'loss2'])
+
+    Adding some artificial data (first list element belongs to loss1, second to loss2).
+    This could be recording the loss during an epoch of training.
+    >>> stats.add([torch.tensor(1.), torch.tensor(1.)])
+    >>> stats.add([torch.tensor(2.), torch.tensor(2.)])
+    >>> stats.add([torch.tensor(3.), torch.tensor(3.)])
+
+    After the epoch, the mean value of the collected stats can be written using a tensorboard summary writer:
+
+    .. code-block:: python
+        from torch.utils.tensorboard import SummaryWriter
+        writer = SummaryWriter(log_dir="path/to/train/logdir")
+        stats.write(writer, global_step=step)  # this also clears the stats for the next round of collecting data.
+    """
 
     def __init__(self, group: str, items: List[str]):
         r""" Instantiates a new stats object.

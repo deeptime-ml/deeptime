@@ -16,7 +16,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 
-def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='regularize'):
+def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'):
     """ Utility function that returns the inverse of a matrix, with the
     option to return the square root of the inverse matrix.
 
@@ -26,7 +26,7 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='regularize'):
         Matrix to be inverted.
     epsilon : float
         Cutoff for eigenvalues.
-    ret_sqrt: bool, optional, default = False
+    return_sqrt: bool, optional, default = False
         if True, the square root of the inverse matrix is returned instead
     mode: str, default='trunc'
         Whether to truncate eigenvalues if they are too small or to regularize them by taking the absolute value
@@ -60,11 +60,11 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='regularize'):
         eigval = torch.clamp_min(eigval, min=epsilon)
         eigvec = eigvec_t.transpose(0, 1)
     else:
-        raise RuntimeError("invalid mode!")
+        raise RuntimeError("Invalid mode! Should have been caught by the assertion.")
 
     # Build the diagonal matrix with the filtered eigenvalues or square
     # root of the filtered eigenvalues according to the parameter
-    if ret_sqrt:
+    if return_sqrt:
         diag = torch.diag(torch.sqrt(1. / eigval))
     else:
         diag = torch.diag(1. / eigval)
@@ -105,8 +105,8 @@ def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode
         c00, c0t, ctt = c_xx
     else:
         c00, c0t, ctt = covariances(x, y, remove_mean=True)
-    c00_sqrt_inv = sym_inverse(c00, ret_sqrt=True, epsilon=epsilon, mode=mode)
-    ctt_sqrt_inv = sym_inverse(ctt, ret_sqrt=True, epsilon=epsilon, mode=mode)
+    c00_sqrt_inv = sym_inverse(c00, return_sqrt=True, epsilon=epsilon, mode=mode)
+    ctt_sqrt_inv = sym_inverse(ctt, return_sqrt=True, epsilon=epsilon, mode=mode)
     return torch.chain_matmul(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
 
 
@@ -176,7 +176,8 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon
     Returns
     -------
     score : torch.Tensor
-        The score.
+        The score. It contains a contribution of :math:`+1` for the constant singular function since the
+        internally estimated Koopman operator is defined on a decorrelated basis set.
     """
     if method not in valid_score_methods:
         raise ValueError(f"Invalid method '{method}', supported are {valid_score_methods}")
@@ -190,8 +191,8 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon
         vamp_score = torch.pow(torch.norm(koopman, p='fro'), 2)
     elif method == 'VAMPE':
         c00, c0t, ctt = covariances(data, data_lagged, remove_mean=True)
-        c00_sqrt_inv = sym_inverse(c00, epsilon=epsilon, ret_sqrt=True, mode=mode)
-        ctt_sqrt_inv = sym_inverse(ctt, epsilon=epsilon, ret_sqrt=True, mode=mode)
+        c00_sqrt_inv = sym_inverse(c00, epsilon=epsilon, return_sqrt=True, mode=mode)
+        ctt_sqrt_inv = sym_inverse(ctt, epsilon=epsilon, return_sqrt=True, mode=mode)
         koopman = torch.chain_matmul(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
 
         u, s, v = torch.svd(koopman)
@@ -215,7 +216,7 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon
 
 
 def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode: str = 'trunc'):
-    r"""Loss function that can be used to train VAMPNets. It evaluates as :math:`1-\mathrm{score}`. The score
+    r"""Loss function that can be used to train VAMPNets. It evaluates as :math:`-\mathrm{score}`. The score
     is implemented in :meth:`score`."""
     return -1. * score(data, data_lagged, method=method, epsilon=epsilon, mode=mode)
 
@@ -296,13 +297,15 @@ class VAMPNetModel(Model, Transformer):
         else:
             raise ValueError(f"Unsupported type {dtype}! Only float32 and float64 are allowed.")
 
-    def transform(self, data, **kwargs):
+    def transform(self, data, instantaneous: bool = True, **kwargs):
         r""" Transforms a tensor or array or list thereof using the learnt transformation.
 
         Parameters
         ----------
         data : array_like
             The input data.
+        instantaneous : bool, default=True
+            Whether to use the instantaneous lobe or the time-shifted one.
         **kwargs
             Scikit-learn compatibility.
 
@@ -323,7 +326,10 @@ class VAMPNetModel(Model, Transformer):
                     x = x.to(device=self._device)
                 else:
                     x = torch.from_numpy(np.asarray(x, dtype=self._dtype)).to(device=self._device)
-                out.append(self._lobe(x).cpu().numpy())
+                if instantaneous:
+                    out.append(self._lobe(x).cpu().numpy())
+                else:
+                    out.append(self._lobe_timelagged(x).cpu().numpy())
         if isinstance(out, (list, tuple)) and len(out) == 1:
             out = out[0]
         return out
@@ -363,7 +369,7 @@ class VAMPNet(Estimator, Transformer):
         lobe : torch.nn.Module
             A neural network module which maps input data to some (potentially) lower-dimensional space.
         lobe_timelagged : torch.nn.Module, optional, default=None
-            Neural network module for timelagged data, in case of None the lobes are shared.
+            Neural network module for timelagged data, in case of None the lobes are shared (structure and weights).
         device : torch device, default=None
             The device on which the torch modules are executed.
         optimizer : str or Callable, default='Adam'
@@ -640,13 +646,15 @@ class VAMPNet(Estimator, Transformer):
                     validation_score_callback(self._step, mean_score)
         return self
 
-    def transform(self, data, **kwargs):
-        r""" Transforms data through the instantaneous network lobe.
+    def transform(self, data, instantaneous: bool = True, **kwargs):
+        r""" Transforms data through the instantaneous or time-shifted network lobe.
 
         Parameters
         ----------
         data : numpy array or torch tensor
             The data to transform.
+        instantaneous : bool, default=True
+            Whether to use the instantaneous lobe or the time-shifted lobe for transformation.
         **kwargs
             Ignored kwargs for api compatibility.
 
@@ -655,7 +663,7 @@ class VAMPNet(Estimator, Transformer):
         transform : array_like
             List of numpy array or numpy array containing transformed data.
         """
-        return self.fetch_model().transform(data)
+        return self.fetch_model().transform(data, instantaneous=instantaneous, **kwargs)
 
     def fetch_model(self) -> VAMPNetModel:
         r""" Yields the current model. """

@@ -304,7 +304,9 @@ class _ImmutableInputData(object):
                 try:
                     d.setflags(write=False)
                 except:
-                    ...  # although this should not happen, occasionally it does due to arrays stemming from torch etc
+                    # although this should not raise, occasionally it does raise
+                    # due to arrays stemming from torch which then cannot be set immutable
+                    ...
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # restore ndarray writable flags to old state
@@ -314,7 +316,9 @@ class _ImmutableInputData(object):
                 try:
                     d.setflags(write=writable)
                 except:
-                    ...  # although this should not happen, occasionally it does due to arrays stemming from torch etc
+                    # although this should not raise, occasionally it does raise
+                    # due to arrays stemming from torch which then cannot be set immutable
+                    ...
 
     def __call__(self, *args, **kwargs):
         # extract input data from args, **kwargs (namely x and y)

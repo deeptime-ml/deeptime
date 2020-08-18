@@ -137,7 +137,7 @@ class CovarianceModel(Model):
 
     def whiten(self, data: np.ndarray) -> np.ndarray:
         r"""Whiten a (T, N)-shaped chunk of data by transforming it into the PCA basis. In case of rank deficiency
-        this might reduce the dimension.
+        this reduces the dimension.
 
         Parameters
         ----------

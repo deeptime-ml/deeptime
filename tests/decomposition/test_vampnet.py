@@ -19,7 +19,7 @@ def test_inverse_spd(mode):
     spd_inv_qr = sktime.numeric.spd_inv(spd)
     with torch.no_grad():
         spd_tensor = torch.from_numpy(spd)
-        spd_inv = sym_inverse(spd_tensor, epsilon=1e-6, ret_sqrt=False, mode=mode)
+        spd_inv = sym_inverse(spd_tensor, epsilon=1e-6, return_sqrt=False, mode=mode)
         np.testing.assert_array_almost_equal(spd_inv.numpy(), spd_inv_qr)
 
 
