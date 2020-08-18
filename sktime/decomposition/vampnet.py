@@ -133,7 +133,8 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
 
     See Also
     --------
-    sktime.covariance.Covariance : Estimator yielding these kind of covariance matrices based on raw data.
+    sktime.covariance.Covariance : Estimator yielding these kind of covariance matrices based on raw numpy arrays
+                                   using an online estimation procedure.
     """
 
     assert x.shape == y.shape, "x and y must be of same shape"
