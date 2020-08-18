@@ -42,8 +42,27 @@ r"""
     :template: class_nomodule.rst
 
     VAMP
+
+.. rubric:: VAMPNets
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    VAMPNet
+    vampnet.MLPLobe
+    vampnet.koopman_matrix
+    vampnet.sym_inverse
+    vampnet.covariances
+    vampnet.score
+    vampnet.loss
 """
 
 from .tica import TICA
 from .vamp import VAMP
 from .koopman import KoopmanBasisTransform, IdentityKoopmanBasisTransform, KoopmanModel, CovarianceKoopmanModel
+from ..util import module_available
+
+if module_available("torch"):
+    from .vampnet import VAMPNet
+    from . import vampnet
+del module_available

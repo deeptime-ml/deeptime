@@ -75,7 +75,8 @@ def sym_inverse(mat, epsilon: float = 1e-6, ret_sqrt=False, mode='regularize'):
 sym_inverse.valid_modes = ('trunc', 'regularize', 'clamp')
 
 
-def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode: str = 'trunc') -> torch.Tensor:
+def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode: str = 'trunc',
+                   c_xx: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = None) -> torch.Tensor:
     r""" Computes the Koopman matrix
 
     .. math:: K = C_{00}^{-1/2}C_{0t}C_{tt}^{-1/2}
@@ -92,13 +93,18 @@ def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode
         Cutoff parameter for small eigenvalues.
     mode : str, default='trunc'
         Regularization mode for Hermetian inverse. See :meth:`sym_inverse`.
+    c_xx : tuple of torch.Tensor, optional, default=None
+        Tuple containing c00, c0t, ctt if already computed.
 
     Returns
     -------
     K : torch.Tensor
         The Koopman matrix.
     """
-    c00, c0t, ctt = covariances(x, y, remove_mean=True)
+    if c_xx is not None:
+        c00, c0t, ctt = c_xx
+    else:
+        c00, c0t, ctt = covariances(x, y, remove_mean=True)
     c00_sqrt_inv = sym_inverse(c00, ret_sqrt=True, epsilon=epsilon, mode=mode)
     ctt_sqrt_inv = sym_inverse(ctt, ret_sqrt=True, epsilon=epsilon, mode=mode)
     return torch.chain_matmul(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
@@ -148,7 +154,7 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
     return cov_00, cov_01, cov_11
 
 
-valid_score_methods = ('VAMP1', 'VAMP2',)
+valid_score_methods = ('VAMP1', 'VAMP2', 'VAMPE')
 
 
 def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode='trunc'):
@@ -176,11 +182,33 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon
         raise ValueError(f"Invalid method '{method}', supported are {valid_score_methods}")
     assert data.shape == data_lagged.shape
 
-    koopman = koopman_matrix(data, data_lagged, epsilon=epsilon, mode=mode)
     if method == 'VAMP1':
+        koopman = koopman_matrix(data, data_lagged, epsilon=epsilon, mode=mode)
         vamp_score = torch.norm(koopman, p='nuc')
     elif method == 'VAMP2':
+        koopman = koopman_matrix(data, data_lagged, epsilon=epsilon, mode=mode)
         vamp_score = torch.pow(torch.norm(koopman, p='fro'), 2)
+    elif method == 'VAMPE':
+        c00, c0t, ctt = covariances(data, data_lagged, remove_mean=True)
+        c00_sqrt_inv = sym_inverse(c00, epsilon=epsilon, ret_sqrt=True, mode=mode)
+        ctt_sqrt_inv = sym_inverse(ctt, epsilon=epsilon, ret_sqrt=True, mode=mode)
+        koopman = torch.chain_matmul(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
+
+        u, s, v = torch.svd(koopman)
+        mask = s > epsilon
+
+        u = torch.mm(c00_sqrt_inv, u[:, mask])
+        v = torch.mm(ctt_sqrt_inv, v[:, mask])
+        s = s[mask]
+
+        u_t = u.t()
+        v_t = v.t()
+        s = torch.diag(s)
+
+        vamp_score = torch.trace(
+            2. * torch.chain_matmul(s, u_t, c0t, v)
+            - torch.chain_matmul(s, u_t, c00, u, s, v_t, ctt, v)
+        )
     else:
         raise RuntimeError("This should have been caught earlier.")
     return 1 + vamp_score

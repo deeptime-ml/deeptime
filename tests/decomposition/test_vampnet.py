@@ -40,10 +40,10 @@ def test_covariances(remove_mean):
         np.testing.assert_array_almost_equal(reference_covs.cov_tt, ctt.numpy())
 
 
-@pytest.mark.parametrize('method', ["VAMP1", "VAMP2"])
+@pytest.mark.parametrize('method', ["VAMP1", "VAMP2", "VAMPE"])
 @pytest.mark.parametrize('mode', ["trunc", "regularize", "clamp"])
 def test_score(method, mode):
-    data = sktime.data.ellipsoids().observations(1000, n_dim=5)
+    data = sktime.data.ellipsoids(seed=13).observations(1000, n_dim=5)
     tau = 10
 
     vamp_model = sktime.decomposition.VAMP(lagtime=tau, dim=None).fit(data).fetch_model()
@@ -51,7 +51,11 @@ def test_score(method, mode):
         data_instantaneous = torch.from_numpy(data[:-tau].astype(np.float64))
         data_shifted = torch.from_numpy(data[tau:].astype(np.float64))
         score_value = score(data_instantaneous, data_shifted, method=method, mode=mode)
-        np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method))
+        if method == 'VAMPE':
+            # less precise due to svd implementation of torch
+            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method), decimal=2)
+        else:
+            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method))
 
 
 def test_estimator():
