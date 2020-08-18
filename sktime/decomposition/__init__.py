@@ -19,7 +19,22 @@
 r"""
 .. currentmodule: sktime.decomposition
 
-.. rubric:: Koopman model
+===============================================================================
+Estimators
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    VAMP
+    TICA
+    VAMPNets
+
+===============================================================================
+Models
+===============================================================================
+
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
@@ -43,18 +58,21 @@ r"""
 
     VAMP
 
-.. rubric:: VAMPNets
+===============================================================================
+Utils
+===============================================================================
+
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
 
-    VAMPNet
     vampnet.MLPLobe
     vampnet.koopman_matrix
     vampnet.sym_inverse
     vampnet.covariances
     vampnet.score
     vampnet.loss
+
 """
 
 from .tica import TICA

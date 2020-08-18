@@ -20,7 +20,7 @@ r"""
 .. currentmodule: sktime.clustering
 
 ===============================================================================
-K-Means
+Estimators
 ===============================================================================
 
 .. autosummary::
@@ -29,18 +29,20 @@ K-Means
 
     KmeansClustering
     MiniBatchKmeansClustering
-    KMeansClusteringModel
+    RegularSpaceClustering
+
 
 ===============================================================================
-Regular space clustering
+Models
 ===============================================================================
 
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
 
-    RegularSpaceClustering
     ClusterModel
+    KMeansClusteringModel
+
 
 ===============================================================================
 Adding a new metric
