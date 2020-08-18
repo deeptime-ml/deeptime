@@ -27,7 +27,7 @@ from os.path import abspath, join
 from os import pardir
 
 from sktime.markov.tools.estimation.dense.mle import mle_trev_given_pi as impl_dense
-from sktime.markov.tools.estimation.sparse.mle.mle_trev_given_pi import mle_trev_given_pi as impl_sparse
+from sktime.markov.tools.estimation.sparse.mle import mle_trev_given_pi as impl_sparse
 
 from sktime.markov.tools.estimation import tmatrix as apicall
 from sktime.markov.tools.analysis import statdist, is_transition_matrix

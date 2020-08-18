@@ -952,7 +952,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
                     from .sparse.mle.newton.mle_rev import solve_mle_rev
                     result = solve_mle_rev(C, **kwargs)
                 else:
-                    result = sparse.mle.mle_trev.mle_trev(C, **kwargs)
+                    result = sparse.mle.mle_trev(C, **kwargs)
             else:
                 if rev_pisym:
                     result = dense.transition_matrix.transition_matrix_reversible_pisym(C, **kwargs)
@@ -962,7 +962,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
             kwargs.pop('return_statdist') # pi given, keyword unknown by estimators.
             if sparse_computation:
                 # Sparse, reversible, fixed pi (currently using dense with sparse conversion)
-                result = sparse.mle.mle_trev_given_pi.mle_trev_given_pi(C, mu, **kwargs)
+                result = sparse.mle.mle_trev_given_pi(C, mu, **kwargs)
             else:
                 result = dense.mle.mle_trev_given_pi(C, mu, **kwargs)
     else:  # nonreversible estimation

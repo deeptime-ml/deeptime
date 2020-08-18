@@ -29,6 +29,7 @@ Estimators
 
     VAMP
     TICA
+    VAMPNets
 
 ===============================================================================
 Models
@@ -43,8 +44,43 @@ Models
     KoopmanBasisTransform
     IdentityKoopmanBasisTransform
 
+.. rubric:: TICA
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    TICA
+
+.. rubric:: VAMP
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    VAMP
+
+===============================================================================
+Utils
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    vampnet.MLPLobe
+    vampnet.koopman_matrix
+    vampnet.sym_inverse
+    vampnet.covariances
+    vampnet.score
+    vampnet.loss
+
 """
 
 from .tica import TICA
 from .vamp import VAMP
 from .koopman import KoopmanBasisTransform, IdentityKoopmanBasisTransform, KoopmanModel, CovarianceKoopmanModel
+from ..util import module_available
+
+if module_available("torch"):
+    from .vampnet import VAMPNet
+    from . import vampnet
+del module_available

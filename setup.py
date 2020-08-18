@@ -100,10 +100,11 @@ metadata = \
         long_description='',
         cmdclass=cmdclass,
         zip_safe=False,
-        install_requires=['numpy',
-                          'scipy',
-                          'scikit-learn>=0.21',
-                          ],
+        install_requires=['numpy', 'scipy', 'scikit-learn'],
+        extras_require={
+            'deep-learning': ['pytorch'],
+            'plotting': ['matplotlib', 'networkx']
+        },
         package_data={
             'sktime.data': ['data/*.npz']
         },

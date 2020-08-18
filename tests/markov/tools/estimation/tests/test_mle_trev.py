@@ -26,7 +26,7 @@ import sktime.markov.tools.util.exceptions
 from os.path import abspath, join
 from os import pardir
 
-from sktime.markov.tools.estimation.sparse.mle.mle_trev import mle_trev as impl_sparse
+from sktime.markov.tools.estimation.sparse.mle import mle_trev as impl_sparse
 from sktime.markov.tools.estimation.dense.mle import mle_trev as impl_dense
 from sktime.markov.tools.estimation import tmatrix as apicall
 
