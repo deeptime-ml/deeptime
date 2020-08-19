@@ -55,6 +55,7 @@ Implementations
     ellipsoids_dataset.Ellipsoids
     pbf_simulator.PBFSimulator
     drunkards_walk_simulator.DrunkardsWalk
+    bickley_simulator.BickleyJet
 """
 
 from .util import timeshifted_split, TimeSeriesDataset

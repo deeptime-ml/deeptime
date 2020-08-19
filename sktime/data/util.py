@@ -129,7 +129,7 @@ class TimeSeriesDataset(object):
     data loaders and other utilities.
     """
 
-    def __init__(self, data, lagtime: int = 0):
+    def __init__(self, data, data_lagged):
         r"""Creates a new time series data set.
 
         Parameters
@@ -140,15 +140,17 @@ class TimeSeriesDataset(object):
             Optional lagtime, must be non-negative. If positive, the effective size of the dataset reduces by the
             lagtime itself.
         """
+        assert len(data) == len(data_lagged), 'data and data lagged must be of same size'
         self.data = data
-        self.lagtime = lagtime
-        assert self.lagtime >= 0
+        self.data_lagged = data_lagged
+
+    @staticmethod
+    def from_trajectory(lagtime: int, data):
+        assert lagtime > 0, "Lagtime must be positive"
+        return TimeSeriesDataset(data[:-lagtime], data[lagtime:])
 
     def __getitem__(self, item):
-        if self.lagtime > 0:
-            return self.data[item], self.data[item + self.lagtime]
-        else:
-            return self.data[item]
+        return self.data[item], self.data_lagged[item]
 
     def __len__(self):
-        return len(self.data) - self.lagtime
+        return len(self.data)

@@ -587,9 +587,7 @@ class VAMPNet(Estimator, Transformer):
         if not isinstance(data, (TimeSeriesDataset, Dataset)):
             if isinstance(data, np.ndarray):
                 data = data.astype(self.dtype)
-            data = TimeSeriesDataset(data, lagtime=self.lagtime)
-        if isinstance(data, TimeSeriesDataset):
-            assert data.lagtime == self.lagtime, "If fitting with a data set, lagtimes must be compatible."
+            data = TimeSeriesDataset.from_trajectory(lagtime=self.lagtime, data=data)
         return DataLoader(data, batch_size=batch_size, shuffle=shuffle)
 
     def fit(self, data, n_epochs=1, batch_size=512, validation_data=None,
