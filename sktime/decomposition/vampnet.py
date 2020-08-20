@@ -16,6 +16,51 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 
+def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize') -> Tuple[torch.Tensor, torch.Tensor]:
+    r""" Solves a eigenvector/eigenvalue decomposition for a hermetian matrix also if it is rank deficient.
+
+    Parameters
+    ----------
+    mat : torch.Tensor
+        the hermetian matrix
+    epsilon : float, default=1e-6
+        Cutoff for eigenvalues.
+    mode : str, default='regularize'
+        Whether to truncate eigenvalues if they are too small or to regularize them by taking the absolute value
+        and adding a small positive constant. :code:`trunc` leads to truncation, :code:`regularize` leads to epsilon
+        being added to the eigenvalues after taking the absolute value
+
+    Returns
+    -------
+    (eigval, eigvec) : Tuple[torch.Tensor, torch.Tensor]
+        Eigenvalues and -vectors.
+    """
+    assert mode in sym_inverse.valid_modes, f"Invalid mode {mode}, supported are {sym_inverse.valid_modes}"
+
+    if mode == 'trunc':
+        # Calculate eigvalues and eigvectors
+        eigval_all, eigvec_all_t = torch.symeig(mat, eigenvectors=True)
+        # Filter out Eigenvalues below threshold and corresponding Eigenvectors
+        mask = eigval_all > epsilon
+
+        eigval = eigval_all[mask]
+        eigvec = eigvec_all_t.transpose(0, 1)[mask]
+    elif mode == 'regularize':
+        # Calculate eigvalues and eigvectors
+        identity = torch.eye(mat.shape[0], dtype=mat.dtype, device=mat.device)
+        eigval, eigvec_t = torch.symeig(mat + epsilon * identity, eigenvectors=True)
+        eigval = torch.abs(eigval)
+        eigvec = eigvec_t.transpose(0, 1)
+    elif mode == 'clamp':
+        eigval, eigvec_t = torch.symeig(mat, eigenvectors=True)
+        eigval = torch.clamp_min(eigval, min=epsilon)
+        eigvec = eigvec_t.transpose(0, 1)
+    else:
+        raise RuntimeError("Invalid mode! Should have been caught by the assertion.")
+
+    return eigval, eigvec
+
+
 def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'):
     """ Utility function that returns the inverse of a matrix, with the
     option to return the square root of the inverse matrix.
@@ -38,29 +83,7 @@ def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'
     x_inv: numpy array with shape [m,m]
         inverse of the original matrix
     """
-    assert mode in sym_inverse.valid_modes, f"Invalid mode {mode}, supported are {sym_inverse.valid_modes}"
-
-    if mode == 'trunc':
-        # Calculate eigvalues and eigvectors
-        eigval_all, eigvec_all_t = torch.symeig(mat, eigenvectors=True)
-        # Filter out Eigenvalues below threshold and corresponding Eigenvectors
-        mask = eigval_all > epsilon
-
-        eigval = eigval_all[mask]
-        eigvec = eigvec_all_t.transpose(0, 1)[mask]
-        eigvec_t = eigvec.transpose(0, 1)
-    elif mode == 'regularize':
-        # Calculate eigvalues and eigvectors
-        identity = torch.eye(mat.shape[0], dtype=mat.dtype, device=mat.device)
-        eigval, eigvec_t = torch.symeig(mat + epsilon*identity, eigenvectors=True)
-        eigval = torch.abs(eigval)
-        eigvec = eigvec_t.transpose(0, 1)
-    elif mode == 'clamp':
-        eigval, eigvec_t = torch.symeig(mat, eigenvectors=True)
-        eigval = torch.clamp_min(eigval, min=epsilon)
-        eigvec = eigvec_t.transpose(0, 1)
-    else:
-        raise RuntimeError("Invalid mode! Should have been caught by the assertion.")
+    eigval, eigvec = symeig_reg(mat, epsilon, mode)
 
     # Build the diagonal matrix with the filtered eigenvalues or square
     # root of the filtered eigenvalues according to the parameter
@@ -69,7 +92,7 @@ def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'
     else:
         diag = torch.diag(1. / eigval)
 
-    return torch.chain_matmul(eigvec_t, diag, eigvec)
+    return torch.chain_matmul(eigvec.t(), diag, eigvec)
 
 
 sym_inverse.valid_modes = ('trunc', 'regularize', 'clamp')
@@ -155,7 +178,7 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
     return cov_00, cov_01, cov_11
 
 
-valid_score_methods = ('VAMP1', 'VAMP2', 'VAMPE')
+valid_score_methods = ('VAMP1', 'VAMP2', 'VAMPE', 'KVAD')
 
 
 def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode='trunc'):
