@@ -43,7 +43,13 @@ def _generate_impl_worker(args):
     T = np.linspace(T0, T1, nT)  # time points
 
     sol = solve_ivp(_rhs, [0, 40], Xi, t_eval=T, args=(L0, U0, c, eps, k))
-    sol.y[0, :] = np.mod(sol.y[0, :], 20)  # periodic in x-direction
+    # periodic in x-direction
+    for i in range(sol.y.shape[1]):
+        while sol.y[0, i] > 20:
+            sol.y[0, i] -= 20
+        while sol.y[0, i] < 0:
+            sol.y[0, i] += 20
+    # sol.y[0, :] = np.mod(sol.y[0, :], 20)  # periodic in x-direction
 
     return i, sol.y
 
