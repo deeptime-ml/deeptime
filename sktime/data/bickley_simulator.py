@@ -110,6 +110,7 @@ class BickleyJetDataset(TimeSeriesDataset):
         title = kw.get("title", None)
         s = kw.get("s", None)
         c = kw.get("c", None)
+        stride = kw.get("stride", 1)
         cmap = kw.get('cmap', 'jet')
         edgecolor = kw.get('edgecolor', 'k')
 
@@ -130,11 +131,11 @@ class BickleyJetDataset(TimeSeriesDataset):
 
         def update(i):
             handle = plot_handles[0]
-            handle.set_offsets(self.data[i])
+            handle.set_offsets(self.data[::stride][i])
             return plot_handles
 
         ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=False,
-                                      frames=self.data.shape[0])
+                                      frames=self.data[::stride].shape[0])
 
         mpl.use(backend_)  # Reset backend
 
