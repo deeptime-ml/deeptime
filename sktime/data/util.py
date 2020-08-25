@@ -199,7 +199,7 @@ class TimeLaggedDataset(TimeSeriesDataset):
             The resulting time series dataset.
         """
         assert lagtime > 0, "Lagtime must be positive"
-        return TimeSeriesDataset(data[:-lagtime], data[lagtime:])
+        return TimeLaggedDataset(data[:-lagtime], data[lagtime:])
 
     def __getitem__(self, item):
         return self.data[item].squeeze().astype(self.dtype), self.data_lagged[item].squeeze().astype(self.dtype)
