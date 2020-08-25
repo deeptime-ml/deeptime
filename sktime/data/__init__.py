@@ -41,7 +41,8 @@ Utilities
     :template: class_nomodule.rst
 
     timeshifted_split
-    TimeSeriesDataSet
+    TimeSeriesDataset
+    TimeLaggedDataset
 
 ===============================================================================
 Implementations
@@ -58,5 +59,5 @@ Implementations
     bickley_simulator.BickleyJet
 """
 
-from .util import timeshifted_split, TimeSeriesDataset
+from .util import timeshifted_split, TimeSeriesDataset, TimeLaggedDataset
 from .datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk

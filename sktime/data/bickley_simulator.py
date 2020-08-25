@@ -1,13 +1,37 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 
+from ..util import plotting_function
+from . import TimeSeriesDataset, TimeLaggedDataset
+
+
 class BickleyJet(object):
-    """
-    Implementation of the Bickley jet based on "A Spectral Clustering Approach to Lagrangian Vortex Detection"
-    by A. Hadjighasem, D. Karrasch, H. Teramoto, and G. Haller.
+    r"""Implementation of the Bickley jet.
+    Based on :cite:`bickley-simulator-hadjighasem2016spectral`.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: bickley-simulator-
     """
 
     def __init__(self):
+        r""" Creates a new instance of the simulator and sets a few parameters. In particular,
+
+        ..math ::
+
+            \begin{aligned}
+                U_0 &= 5.4138 \times \frac{10^6\mathrm{m}}{\mathrm{day}},\\
+                L_0 &= 1.77 \times 10^6\,\mathrm{m},\\
+                r_0 &= 6.371 \times 10^6\,\mathrm{m},\\
+                c &= (0.1446, 0.205, 0.461)^\top U_0,\\
+                \mathrm{eps} &= (0.075, 0.15, 0.3)^\top,\\
+                k &= (2,4,6)^\top \frac{1}{r_0}.
+            \end{aligned}
+
+        """
         # set parameters
         self.U0 = 5.4138  # units changed to 10^6 m per day
         self.L0 = 1.77  # in 10^6 m
@@ -17,7 +41,7 @@ class BickleyJet(object):
         self.k = np.array([2, 4, 6]) / self.r0
 
     def generate(self, n_particles, n_jobs=None) -> np.ndarray:
-        """
+        """Generates a trajectory with a fixed number of particles / test points.
 
         Parameters
         ----------
@@ -33,6 +57,138 @@ class BickleyJet(object):
         """
         return _generate_impl(n_particles, self.L0, self.U0, self.c, self.eps, self.k, n_jobs=n_jobs)
 
+    @staticmethod
+    def to_3d(data: np.ndarray, radius: float = 1.) -> np.ndarray:
+        r"""Maps a generated trajectory into 3d space by transforming it through
+
+        .. math::
+            \begin{pmatrix} x \\ y \end{pmatrix} \mapsto \begin{pmatrix}
+                r\cdot \cos\left( 2\pi \frac{x}{20} \right) \\
+                r\cdot \sin\left( 2\pi \frac{x}{20} \right) \\
+                \frac{y}{3}
+            \end{pmatrix}
+
+        which means that the particles are now on the surface of a cylinder with a fixed radius, i.e.,
+        periodic boundary conditions are directly encoded in the space.
+
+        Parameters
+        ----------
+        data : (T, 2) ndarray
+            The generated trajectory.
+        radius : float, default=1
+            The radius of the cylinder.
+        Returns
+        -------
+        xyz : (T, 3) np.ndarray
+            Trajectory on the cylinder.
+        """
+        t = data[..., 0] * 2. * np.pi / 20.
+        z = data[..., 1]
+        x_3d = radius * np.cos(t)
+        y_3d = radius * np.sin(t)
+        xyz = np.stack((x_3d, y_3d, z / 3))
+        return xyz.T
+
+
+class BickleyJetDataset(TimeSeriesDataset):
+
+    def __init__(self, trajectory):
+        super(BickleyJetDataset, self).__init__(trajectory)
+
+    @plotting_function
+    def make_animation(self, **kw):
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        import matplotlib.animation as animation
+
+        n_particles = self.data.shape[1]
+
+        backend_ = mpl.get_backend()
+        mpl.use("Agg")  # Prevent showing stuff
+
+        figsize = kw.get("figsize", (8, 6))
+        title = kw.get("title", None)
+        s = kw.get("s", None)
+        c = kw.get("c", None)
+        cmap = kw.get('cmap', 'jet')
+        edgecolor = kw.get('edgecolor', 'k')
+
+        if s is None:
+            s = np.empty((n_particles,))
+            s.fill(300)
+        if c is None:
+            c = np.empty((n_particles,))
+            c.fill(0.5)
+
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        ax.set_title(title)
+
+        plot_handles = []
+        s_handle = ax.scatter(self.data[0, :, 0], self.data[0, :, 1], s=s, c=c, vmin=0, vmax=1,
+                              cmap=cmap, edgecolor=edgecolor)
+        plot_handles.append(s_handle)
+
+        def update(i):
+            handle = plot_handles[0]
+            handle.set_offsets(self.data[i])
+            return plot_handles
+
+        ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=False,
+                                      frames=self.data.shape[0])
+
+        mpl.use(backend_)  # Reset backend
+
+        return ani
+
+    def endpoints_dataset(self):
+        return BickleyJetEndpointsDataset(self.data[0], self.data[-1])
+
+
+class BickleyJetEndpointsDataset(TimeLaggedDataset):
+
+    def __init__(self, data_0, data_t):
+        super().__init__(data_0, data_t)
+
+    def to_3d(self, radius: float = 1.):
+        r""" See :meth:`BickleyJet.to_3d`. """
+        return BickleyJetEndpointsDataset3D(
+            BickleyJet.to_3d(self.data, radius), BickleyJet.to_3d(self.data_lagged, radius)
+        )
+
+
+class BickleyJetEndpointsDataset3D(TimeLaggedDataset):
+
+    def __init__(self, data: np.ndarray, data_lagged: np.ndarray):
+        super().__init__(data, data_lagged)
+        assert data.shape[1] == 3
+        assert data_lagged.shape[1] == 3
+
+    def cluster(self, n_bins):
+        from sktime.clustering import ClusterModel
+
+        minval = min(np.min(self.data), np.min(self.data_lagged))
+        maxval = max(np.max(self.data), np.max(self.data_lagged))
+
+        grid = np.linspace(minval, maxval, num=n_bins, endpoint=True)
+        mesh = np.vstack(np.meshgrid(grid, grid, grid)).reshape(3, -1).T
+        cm = ClusterModel(len(mesh), mesh)
+
+        dtraj1 = cm.transform(self.data.astype(np.float64))
+        traj1 = np.zeros((len(self.data), mesh.shape[0]))
+        traj1[np.arange(len(self.data)), dtraj1] = 1.
+
+        dtraj2 = cm.transform(self.data_lagged.astype(np.float64))
+        traj2 = np.zeros((len(self.data_lagged), mesh.shape[0]))
+        traj2[np.arange(len(self.data_lagged)), dtraj2] = 1.
+
+        return BickleyJetEndpointsDataset3DClustered(traj1, traj2)
+
+
+class BickleyJetEndpointsDataset3DClustered(TimeLaggedDataset):
+
+    def __init__(self, data, data_lagged):
+        super().__init__(data, data_lagged)
+
 
 def _generate_impl_worker(args):
     i, Xi, L0, U0, c, eps, k = args
@@ -44,12 +200,7 @@ def _generate_impl_worker(args):
 
     sol = solve_ivp(_rhs, [0, 40], Xi, t_eval=T, args=(L0, U0, c, eps, k))
     # periodic in x-direction
-    for i in range(sol.y.shape[1]):
-        while sol.y[0, i] > 20:
-            sol.y[0, i] -= 20
-        while sol.y[0, i] < 0:
-            sol.y[0, i] += 20
-    # sol.y[0, :] = np.mod(sol.y[0, :], 20)  # periodic in x-direction
+    sol.y[0, :] = np.mod(sol.y[0, :], 20)
 
     return i, sol.y
 
@@ -91,21 +242,23 @@ def _rhs(t, x, L0, U0, c, eps, k):
 
 
 if __name__ == "__main__":
-    m = 5000
+    m = 500
     sys = BickleyJet()
 
     traj = sys.generate(m, 4)
-    print(traj.shape)
+    ds = BickleyJetDataset(traj)
+    ani = ds.make_animation()
+    ani.save('basic_animation.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
 
-    import matplotlib.pyplot as plt
-    for i in range(0, 401, 5):
-        plt.figure(1);
-        plt.clf()
-        plt.scatter(traj[0, i, :], traj[1, i, :])
-        plt.xlim(0, 20);
-        plt.ylim(-3, 3)
-        plt.pause(0.01)
-
+    # import matplotlib.pyplot as plt
+    #
+    # for i in range(0, 401, 5):
+    #     plt.figure(1);
+    #     plt.clf()
+    #     plt.scatter(traj[0, i, :], traj[1, i, :])
+    #     plt.xlim(0, 20);
+    #     plt.ylim(-3, 3)
+    #     plt.pause(0.01)
 
     # from scipy.cluster.vq import kmeans2
     # import matplotlib.pyplot as plt

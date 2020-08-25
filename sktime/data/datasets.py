@@ -195,3 +195,25 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     """
     from sktime.data.drunkards_walk_simulator import DrunkardsWalk
     return DrunkardsWalk(grid_size, bar_location=bar_location, home_location=home_location)
+
+
+def bickley_jet(n_particles: int, n_jobs=None):
+    r"""
+
+    Parameters
+    ----------
+    n_particles : int
+        Number of particles which are propagated.
+    n_jobs : n_jobs : int or None, default=None
+        Number of threads to use for simulation.
+
+    Returns
+    -------
+    dataset : BickleyJetDataset
+        Dataset over all the generated frames.
+    """
+    from sktime.data.bickley_simulator import BickleyJet, BickleyJetDataset
+    simulator = BickleyJet()
+    traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
+    traj_reshaped = traj.transpose(1, 2, 0)
+    return BickleyJetDataset(traj_reshaped)
