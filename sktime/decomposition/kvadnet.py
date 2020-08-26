@@ -21,12 +21,16 @@ def whiten(X, epsilon=1e-6, mode='clamp'):
     return X_meanfree @ cov_sqrt_inv
 
 
-def kvad_score(chi_X, Y, kernel=lambda data: gramian_gauss(data, 1.)):
-    N = Y.shape[0]
+def kvad_score(chi_X, Y, kernel=lambda data: gramian_gauss(data, 1.),
+               epsilon=1e-6, mode='regularize'):
+
     Gyy = kernel(Y)
-    chi_X_w = whiten(chi_X)
+
+    chi_X_w = whiten(chi_X, epsilon=epsilon, mode=mode)
     xGx = torch.chain_matmul(chi_X_w.t(), Gyy, chi_X_w)
+
     evals_sum = torch.trace(xGx)
 
+    N = Y.shape[0]
     score = 1 / (N * N) * (evals_sum + torch.sum(Gyy))
     return score
