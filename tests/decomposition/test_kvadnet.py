@@ -33,10 +33,9 @@ def test_score():
     ds_2d = dataset.endpoints_dataset()
     ds_3d = ds_2d.to_3d().cluster(4)
     kvad_3d_cluster_model = kvad.kvad(ds_3d.data, ds_3d.data_lagged,
-                                      Y=ds_2d.data_lagged, bandwidth=1.0)
+                                      Y=ds_2d.data_lagged)
     with torch.no_grad():
         chi_X = torch.from_numpy(ds_3d.data)
-        chi_Y = torch.from_numpy(ds_3d.data_lagged)
         Y = torch.from_numpy(ds_2d.data_lagged)
-        score_net = kvadnet.kvad_score(chi_X, chi_Y, Y, 1.0, mode='clamp', epsilon=1e-10).numpy()
+        score_net = kvadnet.kvad_score(chi_X, Y, mode='clamp', epsilon=1e-10).numpy()
     np.testing.assert_almost_equal(score_net, kvad_3d_cluster_model.score, decimal=1)

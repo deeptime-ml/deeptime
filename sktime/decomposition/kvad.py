@@ -33,7 +33,7 @@ def gramian_gauss(Y, sigma=1.):
     return np.exp(-D / (2. * sigma ** 2))
 
 
-def kvad(chi_X, chi_Y, Y, bandwidth=1.):
+def kvad(chi_X, chi_Y, Y, kernel=lambda x: gramian_gauss(x, 1.)):
     N = Y.shape[0]
     M = chi_X.shape[1]
 
@@ -42,7 +42,7 @@ def kvad(chi_X, chi_Y, Y, bandwidth=1.):
     assert chi_X.shape == (N, M)
     assert chi_Y.shape == (N, M)
 
-    Gyy = gramian_gauss(Y, bandwidth)
+    Gyy = kernel(Y)
     assert Gyy.shape == (N, N)
 
     chi_X_w = whiten(chi_X)
