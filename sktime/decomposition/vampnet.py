@@ -45,7 +45,7 @@ def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True)
         mat = mat + epsilon * identity
 
     # Calculate eigvalues and potentially eigvectors
-    eigval, eigvec = torch.symeig(mat, eigenvectors=eigenvectors)
+    eigval, eigvec = torch.symeig(mat, eigenvectors=True)
 
     if eigenvectors:
         eigvec = eigvec.transpose(0, 1)
@@ -68,7 +68,7 @@ def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True)
     if eigenvectors:
         return eigval, eigvec
     else:
-        return eigval, None
+        return eigval, eigvec
 
 
 def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'):
