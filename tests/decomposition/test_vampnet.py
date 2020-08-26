@@ -93,7 +93,7 @@ def test_estimator():
 def test_estimator_fit(dtype):
     data = sktime.data.ellipsoids()
     obs = data.observations(60000, n_dim=10).astype(dtype)
-    train, val = torch.utils.data.random_split(sktime.data.TimeSeriesDataset(obs, lagtime=1), [50000, 9999])
+    train, val = torch.utils.data.random_split(sktime.data.TimeLaggedDataset.from_trajectory(1, obs), [50000, 9999])
 
     # set up the lobe
     lobe = nn.Sequential(nn.Linear(10, 1), nn.Tanh())

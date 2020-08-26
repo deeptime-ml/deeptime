@@ -21,24 +21,13 @@ def whiten(X, epsilon=1e-6, mode='clamp'):
     return X_meanfree @ cov_sqrt_inv
 
 
-def kvad_score(chi_X, chi_Y, Y, bandwidth=1., epsilon=1e-6, mode='regularize'):
+def kvad_score(chi_X, Y, bandwidth=1., epsilon=1e-6, mode='regularize'):
     N = Y.shape[0]
 
     Gyy = gramian_gauss(Y, bandwidth)
     chi_X_w = whiten(chi_X)
-    chi_Y_w = whiten(chi_Y)
+    xGx = torch.chain_matmul(chi_X_w.t(), Gyy, chi_X_w)
 
-    x_G_x = torch.chain_matmul(chi_X_w.t(), Gyy, chi_X_w)
-
-    evals, U = vnet.symeig_reg(x_G_x, epsilon=epsilon, mode=mode)
-
-    U = U[:, :-1]
-    fX = torch.ones(chi_X.shape[0], 1 + U.shape[1])
-    fX[:, 1:] = chi_X_w @ U
-
-    fY = torch.ones(chi_X.shape[0], 1 + U.shape[1])
-    fY[:, 1:] = chi_Y_w @ U
-
-    Gyy_sum = torch.sum(Gyy)
-    score = 1 / (N * N) * (torch.trace(torch.chain_matmul(U.t(), chi_X_w.t(), Gyy, chi_X_w, U)) + Gyy_sum)
+    evals, _ = vnet.symeig_reg(xGx, epsilon=epsilon, mode=mode, eigenvectors=False)
+    score = 1 / (N * N) * (torch.sum(evals) + torch.sum(Gyy))
     return score

@@ -52,7 +52,7 @@ def kvad(chi_X, chi_Y, Y, bandwidth=1.):
 
     s, U = spd_eig(xGx)
 
-    m = U.shape[1]
+    # m = U.shape[1]
 
     U = U[:, :-1]
     fX = np.ones((chi_X_w.shape[0], 1 + U.shape[1]))
@@ -63,7 +63,10 @@ def kvad(chi_X, chi_Y, Y, bandwidth=1.):
 
     K = 1 / N * fX.T @ fY
 
-    score = 1 / (N * N) * (np.trace(U.T @ chi_X_w.T @ Gyy @ chi_X_w @ U) + np.sum(Gyy))
-    print(f"K shape {K.shape}, M={M}, m={m}, N={N}, score={score:.5f}")
+    score = 1/(N*N) * (np.sum(s) + np.sum(Gyy))
+    # score = 1 / (N * N) * (np.trace(U.T @ chi_X_w.T @ Gyy @ chi_X_w @ U) + np.sum(Gyy))
+    # print(f"K shape {K.shape}, M={M}, m={m}, N={N}, score={score:.5f}")
+    # score2 = 1/(N*N) * (np.sum(s) + np.sum(Gyy))
+    # print("score2", score2)
 
     return KVADModel(K, U, score, fX, fY)
