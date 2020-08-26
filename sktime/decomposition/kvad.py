@@ -15,11 +15,11 @@ class KVADModel(Model):
         self.fY = fY
 
 
-def whiten(X):
+def whiten(X, epsilon=1e-10):
     X_meanfree = X - X.mean(axis=0, keepdims=True)
 
     cov = 1 / (X.shape[0] - 1) * X_meanfree.T @ X_meanfree
-    cov_sqrt_inv = spd_inv_sqrt(cov)
+    cov_sqrt_inv = spd_inv_sqrt(cov, epsilon=epsilon)
 
     return X_meanfree @ cov_sqrt_inv
 
