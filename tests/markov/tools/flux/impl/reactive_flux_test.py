@@ -89,12 +89,12 @@ class TestReactiveFluxFunctions(unittest.TestCase):
                               [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.3, 0.5, 0.1, 0.0],
                               [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.0, 0.1, 0.5, 0.2],
                               [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.0, 0.0, 0.2, 0.5]])
-        pstat2_nonrev = msmana.statdist(P2_nonrev)
+        pstat2_nonrev = msmana.stationary_distribution(P2_nonrev)
         # make reversible
         C = np.dot(np.diag(pstat2_nonrev), P2_nonrev)
         Csym = C + C.T
         self.P2 = Csym / np.sum(Csym, axis=1)[:, np.newaxis]
-        pstat2 = msmana.statdist(self.P2)
+        pstat2 = msmana.stationary_distribution(self.P2)
         self.A2 = [0, 4]
         self.B2 = [11, 15]
         self.coarsesets2 = [[2, 3, 6, 7], [10, 11, 14, 15], [0, 1, 4, 5], [8, 9, 12, 13], ]

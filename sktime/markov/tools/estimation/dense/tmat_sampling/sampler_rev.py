@@ -3,7 +3,7 @@ import numpy as np
 
 class SamplerRev(object):
     def __init__(self, C, P0=None, seed: int = -1):
-        from sktime.markov.tools.estimation import tmatrix
+        from sktime.markov.tools.estimation import transition_matrix as tmatrix
         from sktime.markov.tools.analysis import stationary_distribution
         from .._mle_bindings import RevSampler32, RevSampler64, RevSampler128
 

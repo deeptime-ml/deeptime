@@ -29,6 +29,7 @@ from sktime.markov.reactive_flux import ReactiveFlux
 from sktime.markov.sample import ensure_dtraj_list, compute_index_states
 from sktime.markov.tools import analysis as msmana
 from sktime.markov.transition_counting import TransitionCountModel
+from sktime.markov.util import count_states
 from sktime.numeric import mdot, is_square_matrix
 from sktime.util import ensure_ndarray, submatrix, cached_property
 
@@ -1021,7 +1022,6 @@ class MarkovStateModel(Model):
         statdist_full = np.zeros(self.count_model.n_states_full)
         statdist_full[self.count_model.state_symbols] = self.stationary_distribution
         # histogram observed states
-        from sktime.markov.tools.dtraj import count_states
         hist = 1.0 * count_states(dtrajs)
         # simply read off stationary distribution and accumulate total weight
         W = []

@@ -124,31 +124,85 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
 
 
 class TimeSeriesDataset(object):
-    r"""
-    High-level container for time-series data. This is intended to be used together with pytorch data tools, i.e.,
-    data loaders and other utilities.
+    r""" High-level container for time-series data.
+    This can be used together with pytorch data tools, i.e., data loaders and other utilities.
     """
 
-    def __init__(self, data, lagtime: int = 0):
+    def __init__(self, data):
+        r""" Creates a new dataset.
+
+        Parameters
+        ----------
+        data : (T, ...) ndarray
+            The dataset with T frames.
+        """
+        self.data = data
+
+    def lag(self, lagtime: int):
+        r""" Creates a time lagged dataset out of this one.
+
+        Parameters
+        ----------
+        lagtime : int
+            The lagtime, must be positive.
+
+        Returns
+        -------
+        dataset : TimeLaggedDataset
+            Time lagged dataset.
+        """
+        return TimeLaggedDataset.from_trajectory(lagtime, self.data)
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __len__(self):
+        return len(self.data)
+
+
+class TimeLaggedDataset(TimeSeriesDataset):
+    r""" High-level container for time-lagged time-series data.
+    This can be used together with pytorch data tools, i.e., data loaders and other utilities.
+    """
+
+    def __init__(self, data, data_lagged, dtype=np.float32):
         r"""Creates a new time series data set.
 
         Parameters
         ----------
         data : iterable of data
             The data which is wrapped into a dataset
-        lagtime : int, default=0
-            Optional lagtime, must be non-negative. If positive, the effective size of the dataset reduces by the
-            lagtime itself.
+        data_lagged : iterable of data
+            Corresponding timelagged data. Must be of same length.
+        dtype : numpy data type
+            The data type to map to when retrieving outputs
         """
-        self.data = data
-        self.lagtime = lagtime
-        assert self.lagtime >= 0
+        super().__init__(data)
+        assert len(data) == len(data_lagged), 'data and data lagged must be of same size'
+        self.data_lagged = data_lagged
+        self.dtype = dtype
+
+    @staticmethod
+    def from_trajectory(lagtime: int, data: np.ndarray):
+        r""" Creates a time series dataset from a single trajectory by applying a lagtime.
+
+        Parameters
+        ----------
+        lagtime : int
+            Lagtime, must be positive. The effective size of the dataset reduces by the selected lagtime.
+        data : (T, d) ndarray
+            Trajectory with T frames in d dimensions.
+
+        Returns
+        -------
+        dataset : TimeSeriesDataset
+            The resulting time series dataset.
+        """
+        assert lagtime > 0, "Lagtime must be positive"
+        return TimeLaggedDataset(data[:-lagtime], data[lagtime:], dtype=data.dtype)
 
     def __getitem__(self, item):
-        if self.lagtime > 0:
-            return self.data[item], self.data[item + self.lagtime]
-        else:
-            return self.data[item]
+        return self.data[item].squeeze().astype(self.dtype), self.data_lagged[item].squeeze().astype(self.dtype)
 
     def __len__(self):
-        return len(self.data) - self.lagtime
+        return len(self.data)

@@ -171,7 +171,6 @@ def indices_by_distribution(indices: typing.List[np.ndarray], distributions, nsa
         # sample states by distribution
         sequence = np.random.choice(n, size=nsample, p=dist)
         res[i] = indices_by_sequence(indices, sequence)
-    #
     return res
 
 

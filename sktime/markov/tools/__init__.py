@@ -27,5 +27,4 @@ Low-level functions for estimation and analysis of transition matrices and io.
 from . import analysis
 from . import estimation
 from . import generation
-from . import dtraj
 from . import flux

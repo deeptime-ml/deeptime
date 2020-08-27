@@ -213,7 +213,28 @@ def compute_connected_sets(count_matrix, connectivity_threshold: float = 0, dire
     return S
 
 
-def closed_sets(count_matrix, connectivity_threshold: float=0):
+def number_of_states(dtrajs, only_used=False):
+    r"""returns the number of states in the given trajectories.
+
+    Parameters
+    ----------
+    dtrajs : array_like or list of array_like
+        Discretized trajectory or list of discretized trajectories
+    only_used : bool, default=False
+        If False, will return max+1, where max is the largest index used.
+        If True, will return the number of states that occur at least once.
+    """
+    dtrajs = ensure_dtraj_list(dtrajs)
+    if only_used:
+        # only states with counts > 0 wanted. Make a bincount and count nonzeros
+        bc = count_states(dtrajs)
+        return np.count_nonzero(bc)
+    else:
+        # all states wanted, included nonpopulated ones. return max + 1
+        return max(np.max(dtraj) for dtraj in dtrajs) + 1
+
+
+def closed_sets(count_matrix, connectivity_threshold: float = 0):
     r"""
     todo
     Computes the strongly connected closed sets of C
@@ -238,7 +259,7 @@ def closed_sets(count_matrix, connectivity_threshold: float=0):
     return closed
 
 
-def is_connected(count_matrix, connectivity_threshold: float=0, directed=True):
+def is_connected(count_matrix, connectivity_threshold: float = 0, directed=True):
     r"""
     todo
     Parameters

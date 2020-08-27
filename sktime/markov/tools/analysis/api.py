@@ -30,8 +30,6 @@ import numpy as _np
 from scipy.sparse import issparse as _issparse
 from scipy.sparse import csr_matrix as _csr_matrix
 
-from ..util.annotators import shortcut
-
 # type-checking
 from ..util import types as _types
 
@@ -86,7 +84,6 @@ _type_not_supported = \
 ################################################################################
 
 
-@shortcut('is_tmatrix')
 def is_transition_matrix(T, tol=1e-12):
     r"""Check if the given matrix is a transition matrix.
 
@@ -303,7 +300,6 @@ def is_reversible(T, mu=None, tol=1e-12):
 # Eigenvalues and eigenvectors
 ################################################################################
 
-@shortcut('statdist')
 def stationary_distribution(T):
     r"""Compute stationary distribution of stochastic matrix T.
 
@@ -1708,7 +1704,6 @@ def eigenvector_sensitivity(T, k, j, right=True):
         return dense.sensitivity.eigenvector_sensitivity(T, k, j, right=right)
 
 
-@shortcut('statdist_sensitivity')
 def stationary_distribution_sensitivity(T, j):
     r"""Sensitivity matrix of a stationary distribution element.
 

@@ -26,24 +26,6 @@ import scipy
 import random
 
 
-# By FN
-def number_of_states(dtrajs):
-    r"""
-    Determine the number of states from a set of discrete trajectories
-
-    Parameters
-    ----------
-    dtrajs : list of int-arrays
-        discrete trajectories
-    """
-    # determine number of states n
-    nmax = 0
-    for dtraj in dtrajs:
-        nmax = max(nmax, np.max(dtraj))
-    # return number of states
-    return nmax + 1
-
-
 def determine_lengths(dtrajs):
     r"""
     Determines the lengths of all trajectories
@@ -137,7 +119,7 @@ def bootstrap_counts(dtrajs, lagtime, corrlength=None):
     lengths = determine_lengths(dtrajs)
     Lmax = np.max(lengths)
     Ltot = np.sum(lengths)
-    if (lagtime >= Lmax):
+    if lagtime >= Lmax:
         raise ValueError('Cannot estimate count matrix: lag time '
                          + str(lagtime) + ' is longer than the longest trajectory length ' + str(Lmax))
 
@@ -147,6 +129,7 @@ def bootstrap_counts(dtrajs, lagtime, corrlength=None):
     nsample = int(Ltot / corrlength)
 
     # determine number of states n
+    from sktime.markov.util import number_of_states
     n = number_of_states(dtrajs)
 
     # assigning trajectory sampling weights
@@ -157,9 +140,9 @@ def bootstrap_counts(dtrajs, lagtime, corrlength=None):
     n_from_traj = np.bincount(distrib_trajs.rvs(size=nsample), minlength=ntraj)
 
     # for each trajectory, sample counts and stack them
-    rows = np.zeros((nsample))
-    cols = np.zeros((nsample))
-    ones = np.ones((nsample))
+    rows = np.zeros((nsample,))
+    cols = np.zeros((nsample,))
+    ones = np.ones((nsample,))
     ncur = 0
     for i in range(len(n_from_traj)):
         if n_from_traj[i] > 0:

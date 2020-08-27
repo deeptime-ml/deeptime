@@ -23,7 +23,7 @@ r"""Unit tests for the covariance module
 
 import numpy as np
 import pytest
-from sktime.markov.tools.estimation import tmatrix
+from sktime.markov.tools.estimation import transition_matrix as tmatrix
 from sktime.markov.tools.estimation.dense.tmat_sampling.tmatrix_sampler import TransitionMatrixSampler
 
 

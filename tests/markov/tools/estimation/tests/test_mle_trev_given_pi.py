@@ -29,8 +29,8 @@ from os import pardir
 from sktime.markov.tools.estimation.dense.mle import mle_trev_given_pi as impl_dense
 from sktime.markov.tools.estimation.sparse.mle import mle_trev_given_pi as impl_sparse
 
-from sktime.markov.tools.estimation import tmatrix as apicall
-from sktime.markov.tools.analysis import statdist, is_transition_matrix
+from sktime.markov.tools.estimation import transition_matrix as apicall
+from sktime.markov.tools.analysis import stationary_distribution, is_transition_matrix
 
 testpath = abspath(join(abspath(__file__), pardir)) + '/testfiles/'
 
@@ -152,15 +152,15 @@ class Test_mle_trev_given_pi(unittest.TestCase):
         assert is_transition_matrix(T_api_algo_auto_type_dense)
         assert is_transition_matrix(T_api_algo_auto_type_sparse)
 
-        assert_allclose(statdist(T_Frank), pi)
-        assert_allclose(statdist(T_impl_algo_dense_type_dense), pi)
-        assert_allclose(statdist(T_impl_algo_sparse_type_sparse), pi)
-        assert_allclose(statdist(T_api_algo_dense_type_dense), pi)
-        assert_allclose(statdist(T_api_algo_sparse_type_dense), pi)
-        assert_allclose(statdist(T_api_algo_dense_type_sparse), pi)
-        assert_allclose(statdist(T_api_algo_sparse_type_sparse), pi)
-        assert_allclose(statdist(T_api_algo_auto_type_dense), pi)
-        assert_allclose(statdist(T_api_algo_auto_type_sparse), pi)
+        assert_allclose(stationary_distribution(T_Frank), pi)
+        assert_allclose(stationary_distribution(T_impl_algo_dense_type_dense), pi)
+        assert_allclose(stationary_distribution(T_impl_algo_sparse_type_sparse), pi)
+        assert_allclose(stationary_distribution(T_api_algo_dense_type_dense), pi)
+        assert_allclose(stationary_distribution(T_api_algo_sparse_type_dense), pi)
+        assert_allclose(stationary_distribution(T_api_algo_dense_type_sparse), pi)
+        assert_allclose(stationary_distribution(T_api_algo_sparse_type_sparse), pi)
+        assert_allclose(stationary_distribution(T_api_algo_auto_type_dense), pi)
+        assert_allclose(stationary_distribution(T_api_algo_auto_type_sparse), pi)
 
     def test_warnings(self):
         C = np.loadtxt(testpath + 'C_1_lag.dat')

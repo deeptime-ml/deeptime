@@ -28,7 +28,7 @@ from os import pardir
 
 from sktime.markov.tools.estimation.sparse.mle import mle_trev as impl_sparse
 from sktime.markov.tools.estimation.dense.mle import mle_trev as impl_dense
-from sktime.markov.tools.estimation import tmatrix as apicall
+from sktime.markov.tools.estimation import transition_matrix as apicall
 
 testpath = abspath(join(abspath(__file__), pardir)) + '/testfiles/'
 

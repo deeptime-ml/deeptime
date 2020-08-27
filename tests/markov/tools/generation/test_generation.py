@@ -23,6 +23,7 @@ import numpy as np
 import sktime.markov.tools.generation as msmgen
 import sktime.markov.tools.estimation as msmest
 import sktime.markov.tools.analysis as msmana
+from sktime.markov.util import count_states
 
 
 class TestTrajGeneration(unittest.TestCase):
@@ -62,7 +63,7 @@ class TestTrajGeneration(unittest.TestCase):
         trajs = msmgen.generate_trajs(self.P, N, 1, random_state=self.random_state)
         ss = np.concatenate(trajs).astype(int)
         pi = msmana.stationary_distribution(self.P)
-        piest = msmest.count_states(ss) / float(N)
+        piest = count_states(ss) / float(N)
         np.testing.assert_allclose(piest, pi, atol=0.025)
 
     def test_transitionmatrix(self):

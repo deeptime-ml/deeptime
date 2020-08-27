@@ -195,3 +195,98 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     """
     from sktime.data.drunkards_walk_simulator import DrunkardsWalk
     return DrunkardsWalk(grid_size, bar_location=bar_location, home_location=home_location)
+
+
+def bickley_jet(n_particles: int, n_jobs=None):
+    r"""Simulates the Bickley jet for a number of particles.
+    The implementation is based on :cite:`bickley-api-hadjighasem2016spectral` with parameters
+
+    .. math::
+
+            \begin{aligned}
+                U_0 &= 5.4138 \times \frac{10^6\mathrm{m}}{\mathrm{day}},\\
+                L_0 &= 1.77 \times 10^6\,\mathrm{m},\\
+                r_0 &= 6.371 \times 10^6\,\mathrm{m},\\
+                c &= (0.1446, 0.205, 0.461)^\top U_0,\\
+                \mathrm{eps} &= (0.075, 0.15, 0.3)^\top,\\
+                k &= (2,4,6)^\top \frac{1}{r_0},
+            \end{aligned}
+
+    in a domain :math:`\Omega = [0, 20] \times [-3, 3]`. The resulting dataset describes the temporal evolution
+    of :code:`n_particles` over 401 timesteps in :math:`\Omega`. The domain is periodic in x-direction. Some methods
+    have difficulties dealing with this, so the dataset offers methods to wrap the domain into three-dimensional
+    space onto the surface of a cylinder
+
+    .. math::
+
+        \begin{pmatrix} x \\ y \end{pmatrix} \mapsto \begin{pmatrix}
+            r\cdot \cos\left( 2\pi \frac{x}{20} \right) \\
+            r\cdot \sin\left( 2\pi \frac{x}{20} \right) \\
+            \frac{y}{3}
+        \end{pmatrix},
+
+    with the option to further discretize the three-dimensional dataspace via binning.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import sktime
+
+        n_particles = 1000
+        dataset = sktime.data.bickley_jet(n_particles, n_jobs=8)
+
+        fig, axes = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(16, 10))
+
+        for t, ax in zip([0, 1, 2, 200, 300, 400], axes.flatten()):
+            ax.scatter(*dataset[t].T, c=dataset[0, :, 0], s=50)
+            ax.set_title(f"Particles at t={t}")
+
+    Parameters
+    ----------
+    n_particles : int
+        Number of particles which are propagated.
+    n_jobs : n_jobs : int or None, default=None
+        Number of threads to use for simulation.
+
+    Returns
+    -------
+    dataset : sktime.data.bickley_simulator.BickleyJetDataset
+        Dataset over all the generated frames.
+
+    Examples
+    --------
+
+    >>> import sktime
+    >>> dataset = sktime.data.bickley_jet(n_particles=5, n_jobs=1)
+    >>> # shape is 401 frames for 5 particles in two dimensions
+    >>> print(dataset.data.shape)
+    (401, 5, 2)
+
+    >>> # returns a timelagged dataset for first and last frame
+    >>> endpoints = dataset.endpoints_dataset()
+    >>> endpoints.data.shape
+    (5, 2)
+
+    >>> # maps the endpoints dataset onto a cylinder of radius 5
+    >>> endpoints_3d = endpoints.to_3d(radius=5.)
+    >>> endpoints_3d.data.shape
+    (5, 3)
+
+    >>> # bins the data uniformly with 10 bins per axis
+    >>> endpoints_3d_clustered = endpoints_3d.cluster(n_bins=10)
+    >>> # 5 particles and 10*10*10 bins
+    >>> endpoints_3d_clustered.data.shape
+    (5, 1000)
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: bickley-api-
+    """
+    from sktime.data.bickley_simulator import BickleyJet, BickleyJetDataset
+    simulator = BickleyJet()
+    traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
+    traj_reshaped = traj.transpose(1, 2, 0)
+    return BickleyJetDataset(traj_reshaped)

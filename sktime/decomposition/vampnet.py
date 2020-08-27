@@ -1,19 +1,67 @@
-from ..util import module_available
-
-if not module_available("torch"):
-    raise RuntimeError("Tried importing VampNets; this only works with a PyTorch installation!")
-del module_available
-
 from typing import Optional, Union, List, Callable, Tuple
 
 import numpy as np
-
-from ..base import Transformer, Model, Estimator
-from ..data.util import TimeSeriesDataset
-
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+
+from ..base import Transformer, Model, Estimator
+from ..data.util import TimeSeriesDataset, TimeLaggedDataset
+
+
+def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True) \
+        -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    r""" Solves a eigenvector/eigenvalue decomposition for a hermetian matrix also if it is rank deficient.
+
+    Parameters
+    ----------
+    mat : torch.Tensor
+        the hermetian matrix
+    epsilon : float, default=1e-6
+        Cutoff for eigenvalues.
+    mode : str, default='regularize'
+        Whether to truncate eigenvalues if they are too small or to regularize them by taking the absolute value
+        and adding a small positive constant. :code:`trunc` leads to truncation, :code:`regularize` leads to epsilon
+        being added to the eigenvalues after taking the absolute value
+    eigenvectors : bool, default=True
+        Whether to compute eigenvectors.
+
+    Returns
+    -------
+    (eigval, eigvec) : Tuple[torch.Tensor, Optional[torch.Tensor]]
+        Eigenvalues and -vectors.
+    """
+    assert mode in sym_inverse.valid_modes, f"Invalid mode {mode}, supported are {sym_inverse.valid_modes}"
+
+    if mode == 'regularize':
+        identity = torch.eye(mat.shape[0], dtype=mat.dtype, device=mat.device)
+        mat = mat + epsilon * identity
+
+    # Calculate eigvalues and potentially eigvectors
+    eigval, eigvec = torch.symeig(mat, eigenvectors=True)
+
+    if eigenvectors:
+        eigvec = eigvec.transpose(0, 1)
+
+    if mode == 'trunc':
+        # Filter out Eigenvalues below threshold and corresponding Eigenvectors
+        mask = eigval > epsilon
+        eigval = eigval[mask]
+        if eigenvectors:
+            eigvec = eigvec[mask]
+    elif mode == 'regularize':
+        # Calculate eigvalues and eigvectors
+        eigval = torch.abs(eigval)
+    elif mode == 'clamp':
+        eigval = torch.clamp_min(eigval, min=epsilon)
+
+    else:
+        raise RuntimeError("Invalid mode! Should have been caught by the assertion.")
+
+    if eigenvectors:
+        return eigval, eigvec
+    else:
+        return eigval, eigvec
 
 
 def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'):
@@ -38,29 +86,7 @@ def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'
     x_inv: numpy array with shape [m,m]
         inverse of the original matrix
     """
-    assert mode in sym_inverse.valid_modes, f"Invalid mode {mode}, supported are {sym_inverse.valid_modes}"
-
-    if mode == 'trunc':
-        # Calculate eigvalues and eigvectors
-        eigval_all, eigvec_all_t = torch.symeig(mat, eigenvectors=True)
-        # Filter out Eigenvalues below threshold and corresponding Eigenvectors
-        mask = eigval_all > epsilon
-
-        eigval = eigval_all[mask]
-        eigvec = eigvec_all_t.transpose(0, 1)[mask]
-        eigvec_t = eigvec.transpose(0, 1)
-    elif mode == 'regularize':
-        # Calculate eigvalues and eigvectors
-        identity = torch.eye(mat.shape[0], dtype=mat.dtype, device=mat.device)
-        eigval, eigvec_t = torch.symeig(mat + epsilon*identity, eigenvectors=True)
-        eigval = torch.abs(eigval)
-        eigvec = eigvec_t.transpose(0, 1)
-    elif mode == 'clamp':
-        eigval, eigvec_t = torch.symeig(mat, eigenvectors=True)
-        eigval = torch.clamp_min(eigval, min=epsilon)
-        eigvec = eigvec_t.transpose(0, 1)
-    else:
-        raise RuntimeError("Invalid mode! Should have been caught by the assertion.")
+    eigval, eigvec = symeig_reg(mat, epsilon, mode)
 
     # Build the diagonal matrix with the filtered eigenvalues or square
     # root of the filtered eigenvalues according to the parameter
@@ -69,7 +95,7 @@ def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'
     else:
         diag = torch.diag(1. / eigval)
 
-    return torch.chain_matmul(eigvec_t, diag, eigvec)
+    return torch.chain_matmul(eigvec.t(), diag, eigvec)
 
 
 sym_inverse.valid_modes = ('trunc', 'regularize', 'clamp')
@@ -587,9 +613,7 @@ class VAMPNet(Estimator, Transformer):
         if not isinstance(data, (TimeSeriesDataset, Dataset)):
             if isinstance(data, np.ndarray):
                 data = data.astype(self.dtype)
-            data = TimeSeriesDataset(data, lagtime=self.lagtime)
-        if isinstance(data, TimeSeriesDataset):
-            assert data.lagtime == self.lagtime, "If fitting with a data set, lagtimes must be compatible."
+            data = TimeLaggedDataset.from_trajectory(lagtime=self.lagtime, data=data)
         return DataLoader(data, batch_size=batch_size, shuffle=shuffle)
 
     def fit(self, data, n_epochs=1, batch_size=512, validation_data=None,
