@@ -1,19 +1,12 @@
-from ..util import module_available
-
-if not module_available("torch"):
-    raise RuntimeError("Tried importing VampNets; this only works with a PyTorch installation!")
-del module_available
-
 from typing import Optional, Union, List, Callable, Tuple
 
 import numpy as np
-
-from ..base import Transformer, Model, Estimator
-from ..data.util import TimeSeriesDataset, TimeLaggedDataset
-
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+
+from ..base import Transformer, Model, Estimator
+from ..data.util import TimeSeriesDataset, TimeLaggedDataset
 
 
 def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True) \
@@ -188,7 +181,7 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
     return cov_00, cov_01, cov_11
 
 
-valid_score_methods = ('VAMP1', 'VAMP2', 'VAMPE', 'KVAD')
+valid_score_methods = ('VAMP1', 'VAMP2', 'VAMPE')
 
 
 def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode='trunc'):

@@ -27,7 +27,7 @@ from scipy.sparse import csr_matrix
 
 from sktime.markov.tools.flux.sparse.pathways import pathways
 from sktime.markov.tools.flux.sparse.tpt import flux_matrix
-from sktime.markov.tools.analysis import committor, statdist
+from sktime.markov.tools.analysis import committor, stationary_distribution
 from tests.markov.tools.numeric import assert_allclose
 
 class TestPathways(unittest.TestCase):
@@ -41,7 +41,7 @@ class TestPathways(unittest.TestCase):
         P = csr_matrix(P)
         A = [0]
         B = [4]
-        mu = statdist(P)
+        mu = stationary_distribution(P)
         qminus = committor(P, A, B, forward=False, mu=mu)
         qplus = committor(P, A, B, forward=True, mu=mu)
         self.A = A

@@ -92,17 +92,22 @@ def test_estimator():
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_estimator_fit(dtype):
     data = sktime.data.ellipsoids()
-    obs = data.observations(60000, n_dim=10).astype(dtype)
+    obs = data.observations(60000, n_dim=2).astype(dtype)
     train, val = torch.utils.data.random_split(sktime.data.TimeLaggedDataset.from_trajectory(1, obs), [50000, 9999])
 
     # set up the lobe
-    lobe = nn.Sequential(nn.Linear(10, 1), nn.Tanh())
+    linear_layer = nn.Linear(2, 1)
+    lobe = nn.Sequential(linear_layer, nn.Tanh())
 
-    net = VAMPNet(lagtime=1, lobe=lobe, dtype=dtype)
-    net.fit(train, n_epochs=2, batch_size=128, validation_data=val)
-    net_model = net.fetch_model()
+    with torch.no_grad():
+        linear_layer.weight[0, 0] = -0.3030
+        linear_layer.weight[0, 1] = 0.3060
+        linear_layer.bias[0] = -0.7392
 
-    projection = net_model.transform(obs)
+    net = VAMPNet(lagtime=1, lobe=lobe, dtype=dtype, learning_rate=1e-8)
+    net.fit(train, n_epochs=1, batch_size=512, validation_data=val, validation_score_callback=lambda *x: x)
+    projection = net.transform(obs)
+
     # reference model w/o learnt featurization
     projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
 

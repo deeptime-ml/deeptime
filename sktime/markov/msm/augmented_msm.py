@@ -546,8 +546,8 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             i = i + 1
 
         # A number of initializations
-        transition_matrix, stationary_distribution = msmest.tmatrix(count_matrix, reversible=True,
-                                                                    return_statdist=True)
+        transition_matrix, stationary_distribution = msmest.transition_matrix(count_matrix, reversible=True,
+                                                                              return_statdist=True)
         if issparse(transition_matrix):
             transition_matrix = transition_matrix.toarray()
         # Determine number of slices of R-tensors computable at once with the given cache size
@@ -632,7 +632,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
                                f" Consider increasing max_iter(now={self.max_iter})")
             i += 1
 
-        transition_matrix = msmest.tmatrix(count_matrix, reversible=True, mu=state.pi_hat)
+        transition_matrix = msmest.transition_matrix(count_matrix, reversible=True, mu=state.pi_hat)
         self._model = AugmentedMSM(transition_matrix=transition_matrix, stationary_distribution=state.pi_hat,
                                    reversible=True, count_model=count_model, amm_optimizer_state=state)
         return self

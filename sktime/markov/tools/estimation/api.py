@@ -36,9 +36,6 @@ from scipy.sparse.sputils import isdense
 
 from . import dense
 from . import sparse
-from ..dtraj.api import count_states as _count_states
-from ..dtraj.api import number_of_states as _number_of_states
-from ..util.annotators import shortcut
 from ..util.types import ensure_dtraj_list as _ensure_dtraj_list
 
 __author__ = "Benjamin Trendelkamp-Schroer, Martin Scherer, Frank Noe"
@@ -52,7 +49,6 @@ __email__ = "m.scherer AT fu-berlin DOT de"
 __all__ = ['bootstrap_trajectories',
            'bootstrap_counts',
            'count_matrix',
-           'count_states',
            'connected_sets',
            'effective_count_matrix',
            'error_perturbation',
@@ -60,7 +56,6 @@ __all__ = ['bootstrap_trajectories',
            'largest_connected_set',
            'largest_connected_submatrix',
            'log_likelihood',
-           'number_of_states',
            'prior_const',
            'prior_neighbor',
            'prior_rev',
@@ -71,56 +66,11 @@ __all__ = ['bootstrap_trajectories',
            'transition_matrix'
            ]
 
-# append shortcuts separately in order to avoid complaints by syntax checker
-__all__.append('histogram')
-__all__.append('nstates')
-__all__.append('cmatrix')
-__all__.append('effective_cmatrix')
-__all__.append('connected_cmatrix')
-__all__.append('tmatrix')
-
-################################################################################
-# Basic counting
-################################################################################
-
-
-@shortcut('histogram')
-def count_states(dtrajs):
-    r"""returns a histogram count
-
-    Parameters
-    ----------
-    dtraj : array_like or list of array_like
-        Discretized trajectory or list of discretized trajectories
-
-    Returns
-    -------
-    count : ndarray((n), dtype=int)
-        the number of occurrances of each state. n=max+1 where max is the largest state index found.
-    """
-    return _count_states(dtrajs)
-
-
-@shortcut('nstates')
-def number_of_states(dtrajs, only_used=False):
-    r"""returns the number of states in the given trajectories.
-
-    Parameters
-    ----------
-    dtraj : array_like or list of array_like
-        Discretized trajectory or list of discretized trajectories
-    only_used = False : boolean
-        If False, will return max+1, where max is the largest index used.
-        If True, will return the number of states that occur at least once.
-    """
-    return _number_of_states(dtrajs, only_used=only_used)
-
 
 ################################################################################
 # Count matrix
 ################################################################################
 
-@shortcut('cmatrix')
 def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
     r"""Generate a count matrix from given microstate trajectory [1]_.
 
@@ -215,7 +165,6 @@ def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
                                                       sparse=sparse_return, nstates=nstates)
 
 
-@shortcut('effective_cmatrix')
 def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=1, callback=None):
     r""" Computes the statistically effective transition count matrix
 
@@ -278,7 +227,8 @@ def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=1, callb
     # enforce one job on windows.
     if os.name == 'nt':
         n_jobs = 1
-    return sparse.effective_counts.effective_count_matrix(dtrajs, lag, average=average, mact=mact, n_jobs=n_jobs, callback=callback)
+    return sparse.effective_counts.effective_count_matrix(dtrajs, lag, average=average, mact=mact, n_jobs=n_jobs,
+                                                          callback=callback)
 
 
 ################################################################################
@@ -506,7 +456,6 @@ def largest_connected_set(C, directed=True):
         return sparse.connectivity.largest_connected_set(C, directed=directed)
 
 
-@shortcut('connected_cmatrix')
 def largest_connected_submatrix(C, directed=True, lcc=None):
     r"""Compute the count matrix on the largest connected set.
 
@@ -774,7 +723,6 @@ def prior_rev(C, alpha=-1.0):
 # Transition matrix
 ################################################################################
 
-@shortcut('tmatrix')
 def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
     r"""Estimate the transition matrix from the given countmatrix.
 
@@ -920,7 +868,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
         else:
             dof = np.count_nonzero(C)
         dimension = C.shape[0]
-        if dimension*dimension < 3*dof:
+        if dimension * dimension < 3 * dof:
             sparse_computation = False
         else:
             sparse_computation = True
@@ -959,7 +907,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
                 else:
                     result = dense.mle.mle_trev(C, **kwargs)
         else:
-            kwargs.pop('return_statdist') # pi given, keyword unknown by estimators.
+            kwargs.pop('return_statdist')  # pi given, keyword unknown by estimators.
             if sparse_computation:
                 # Sparse, reversible, fixed pi (currently using dense with sparse conversion)
                 result = sparse.mle.mle_trev_given_pi(C, mu, **kwargs)
@@ -1397,6 +1345,5 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
 
     from .dense.ratematrix import estimate_rate_matrix
     return estimate_rate_matrix(C, dt=dt, method=method, sparsity=sparsity,
-                         t_agg=t_agg, pi=pi, tol=tol, K0=K0,
-                         maxiter=maxiter, on_error=on_error)
-
+                                t_agg=t_agg, pi=pi, tol=tol, K0=K0,
+                                maxiter=maxiter, on_error=on_error)

@@ -1,9 +1,3 @@
-from ..util import module_available
-
-if not module_available("torch"):
-    raise RuntimeError("Tried importing VampNets; this only works with a PyTorch installation!")
-del module_available
-
 import torch
 from . import vampnet as vnet
 

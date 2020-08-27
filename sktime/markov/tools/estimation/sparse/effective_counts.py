@@ -26,7 +26,7 @@ import scipy.sparse
 
 from ...util.statistics import statistical_inefficiency
 from .count_matrix import count_matrix_coo2_mult
-from ...dtraj import number_of_states
+from ....util import number_of_states
 
 from scipy.sparse.csr import csr_matrix
 

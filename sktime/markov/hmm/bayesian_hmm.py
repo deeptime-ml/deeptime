@@ -21,8 +21,8 @@ from copy import deepcopy
 from typing import Optional, Union, List
 
 import numpy as np
+
 from sktime.markov.tools.analysis import is_connected
-from sktime.markov.tools.dtraj import number_of_states
 from sktime.markov.tools.estimation import sample_tmatrix, transition_matrix
 
 from sktime.base import Estimator
@@ -33,7 +33,7 @@ from sktime.markov.hmm.output_model import DiscreteOutputModel
 from sktime.markov.hmm.util import observations_in_state, sample_hidden_state_trajectory
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountModel
-from sktime.markov.util import compute_dtrajs_effective
+from sktime.markov.util import compute_dtrajs_effective, number_of_states
 from sktime.util import ensure_dtraj_list
 from sktime.markov.hmm._hmm_bindings import util as _bd_util
 
