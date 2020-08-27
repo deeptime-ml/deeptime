@@ -8,7 +8,6 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('analysis.dense')
     config.add_subpackage('analysis.sparse')
 
-    config.add_subpackage('dtraj')
     config.add_subpackage('estimation')
 
     config.add_subpackage('flux')
