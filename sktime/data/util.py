@@ -124,7 +124,7 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
 
 
 class TimeSeriesDataset(object):
-    r""" High-level container for time-lagged time-series data.
+    r""" High-level container for time-series data.
     This can be used together with pytorch data tools, i.e., data loaders and other utilities.
     """
 

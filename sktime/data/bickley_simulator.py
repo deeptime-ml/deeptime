@@ -20,7 +20,7 @@ class BickleyJet(object):
     def __init__(self):
         r""" Creates a new instance of the simulator and sets a few parameters. In particular,
 
-        ..math ::
+        .. math::
 
             \begin{aligned}
                 U_0 &= 5.4138 \times \frac{10^6\mathrm{m}}{\mathrm{day}},\\
@@ -62,6 +62,7 @@ class BickleyJet(object):
         r"""Maps a generated trajectory into 3d space by transforming it through
 
         .. math::
+
             \begin{pmatrix} x \\ y \end{pmatrix} \mapsto \begin{pmatrix}
                 r\cdot \cos\left( 2\pi \frac{x}{20} \right) \\
                 r\cdot \sin\left( 2\pi \frac{x}{20} \right) \\

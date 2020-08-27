@@ -29,7 +29,7 @@ Estimators
 
     VAMP
     TICA
-    VAMPNets
+    VAMPNet
 
 ===============================================================================
 Models
@@ -73,6 +73,8 @@ Utils
     vampnet.score
     vampnet.loss
 
+    kvadnet.kvad_score
+
 """
 
 from .tica import TICA
@@ -83,4 +85,5 @@ from ..util import module_available
 if module_available("torch"):
     from .vampnet import VAMPNet
     from . import vampnet
+    from . import kvadnet
 del module_available

@@ -52,8 +52,6 @@ def kvad(chi_X, chi_Y, Y, kernel=lambda x: gramian_gauss(x, 1.)):
 
     s, U = spd_eig(xGx)
 
-    # m = U.shape[1]
-
     U = U[:, :-1]
     fX = np.ones((chi_X_w.shape[0], 1 + U.shape[1]))
     fX[:, 1:] = chi_X_w @ U
