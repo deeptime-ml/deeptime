@@ -1,5 +1,7 @@
-import numpy as np
 import pytest
+pytest.importorskip("torch")
+
+import numpy as np
 import torch
 
 import sktime

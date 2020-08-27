@@ -1,4 +1,6 @@
 import pytest
+pytest.importorskip("torch")
+
 import numpy as np
 import sktime.data.util as util
 
@@ -71,7 +73,7 @@ def test_timeseries_dataset(lagtime):
     pytest.importorskip("torch.utils.data")
     import torch.utils.data as data_utils
     data = np.arange(5000)
-    ds = util.TimeSeriesDataset(data, lagtime=lagtime)
+    ds = util.TimeLaggedDataset.from_trajectory(lagtime, data)
     np.testing.assert_equal(len(ds), 5000-lagtime)
     sub_datasets = data_utils.random_split(ds, [1000, 2500, 1500-lagtime])
 
