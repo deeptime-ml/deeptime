@@ -68,7 +68,7 @@ def test_timeshifted_split_shuffle(lagtime, n_splits):
     np.testing.assert_equal(len(np.setdiff1d(x, all_data)), 0)
 
 
-@pytest.mark.parametrize("lagtime", [0, 5])
+@pytest.mark.parametrize("lagtime", [1, 5])
 def test_timeseries_dataset(lagtime):
     pytest.importorskip("torch.utils.data")
     import torch.utils.data as data_utils

@@ -5,7 +5,7 @@ if not module_available("torch"):
 del module_available
 
 import torch
-import sktime.decomposition.vampnet as vnet
+from . import vampnet as vnet
 
 
 def gramian_gauss(Y, sigma=1.):
