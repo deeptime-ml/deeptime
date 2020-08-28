@@ -44,7 +44,3 @@ class TestReversibleEstimatorNewton(unittest.TestCase):
     def test_estimator(self):
         P, pi = solve_mle_rev(csr_matrix(self.C))
         assert_allclose(P.toarray(), self.P_ref)
-
-
-if __name__ == "__main__":
-    unittest.main()

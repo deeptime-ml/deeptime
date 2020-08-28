@@ -23,11 +23,11 @@ r"""Unit tests for the committor API-function
 
 import unittest
 import numpy as np
+
+from sktime.data.birth_death_chain import BirthDeathChain
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.analysis import committor
-
-from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
 
 
 class TestCommittorDense(unittest.TestCase):
@@ -82,6 +82,7 @@ class TestCommittorSparse(unittest.TestCase):
         un = committor(P, list(range(10)), list(range(90, 100)), forward=False)
         u = self.bdc.committor_backward(9, 90)
         assert_allclose(un, u)
+
 
 if __name__ == "__main__":
     unittest.main()

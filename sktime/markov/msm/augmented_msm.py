@@ -312,7 +312,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             An estimator parameterized expectations by state based on feature trajectories.
         """
         discrete_trajectories = ensure_dtraj_list(discrete_trajectories)
-        feature_trajectories = ensure_traj_list(feature_trajectories, np.float32)
+        feature_trajectories = ensure_traj_list(feature_trajectories, dtype=np.float32)
         # check input
         if np.all(sigmas > 0):
             _w = 1. / (2 * sigmas ** 2.)

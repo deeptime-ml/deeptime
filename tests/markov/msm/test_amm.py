@@ -23,9 +23,9 @@ r"""Unit test for the AMM module
 """
 
 import numpy as np
-from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import *
 
+from sktime.data.birth_death_chain import BirthDeathChain
 from sktime.markov import TransitionCountEstimator
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.msm.augmented_msm import AugmentedMSMEstimator

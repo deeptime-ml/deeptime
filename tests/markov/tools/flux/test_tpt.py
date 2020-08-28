@@ -23,8 +23,9 @@ r"""Unit test for the TPT-functions of the analysis API
 
 import unittest
 import numpy as np
+
+from sktime.data.birth_death_chain import BirthDeathChain
 from sktime.markov import compute_reactive_flux
-from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
 from tests.markov.tools.numeric import assert_allclose
 
 from scipy.sparse import csr_matrix

@@ -24,12 +24,13 @@ import unittest
 import warnings
 
 import numpy as np
+
+from sktime.data.birth_death_chain import BirthDeathChain
 from tests.markov.tools.numeric import assert_allclose
 
 from scipy.linalg import eig, eigvals
 
 from sktime.markov.tools.util.exceptions import SpectralWarning, ImaginaryEigenValueWarning
-from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
 
 from sktime.markov.tools.analysis import stationary_distribution, eigenvalues, eigenvectors, is_reversible
 from sktime.markov.tools.analysis import rdl_decomposition, timescales

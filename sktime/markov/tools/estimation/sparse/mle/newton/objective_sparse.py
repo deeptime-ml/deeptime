@@ -1,6 +1,5 @@
 import numpy as np
-from scipy.sparse import bmat, csr_matrix, diags
-
+from scipy.sparse import csr_matrix, diags
 from scipy.sparse.linalg import LinearOperator
 
 from . import objective_sparse_ops as ops
@@ -124,29 +123,6 @@ def _DF(z: np.ndarray, Cs, c: np.ndarray):
     return DFxx, DFyx, DFyy
 
 
-def DF(z: np.ndarray, Cs, c: np.ndarray):
-    r"""Jacobian of the monotone mapping.
-
-    Parameters
-    ----------
-    z : (2*M,) ndarray
-        Point at which to evaluate mapping, z=(x, y)
-    C : (M, M) scipy.sparse matrix
-        Count matrix of reversible chain
-
-    Returns
-    -------
-    DFval : (2*M, 2*M) scipy.sparse matrix
-        Value of the Jacobian at z
-
-    """
-    DFxx, DFyx, DFyy = _DF(z, Cs, c)
-    """The call to bmat is really expensive, but I don't know how to avoid it
-    if a sparse matrix is desired"""
-    DFval = bmat([[DFxx, DFyx.T], [-1.0 * DFyx, -1.0 * DFyy]]).tocsr()
-    return DFval
-
-
 def DFsym(z: np.ndarray, Cs, c: np.ndarray):
     r"""Jacobian of the monotone mapping. Symmetric version.
 
@@ -165,37 +141,6 @@ def DFsym(z: np.ndarray, Cs, c: np.ndarray):
     """
     DFxx, DFyx, DFyy = _DF(z, Cs, c)
     return JacobianOperatorSymmetric(DFxx, DFyx, DFyy)
-
-
-class JacobianOperator(LinearOperator):
-    r"""Realise the following block sparse matrix.
-           A   B.T
-    M = (          )
-          -B   -C
-    """
-
-    def __init__(self, A, B, C):
-        self.N1 = A.shape[0]
-        self.N2 = C.shape[0]
-        N = self.N1 + self.N2
-        super().__init__(A.dtype, (N, N))
-
-        self.A = A
-        self.B = B
-        self.BT = B.T.tocsr()
-        self.C = C
-        self.diag = np.hstack((A.diagonal(), -1.0 * C.diagonal()))
-
-    def _matvec(self, x):
-        N1 = self.N1
-        N2 = self.N2
-        y = np.zeros(N1 + N2, dtype=self.dtype)
-        y[0:N1] = self.A.dot(x[0:N1]) + self.BT.dot(x[N1:])
-        y[N1:] = -self.B.dot(x[0:N1]) - self.C.dot(x[N1:])
-        return y
-
-    def diagonal(self):
-        return self.diag
 
 
 class JacobianOperatorSymmetric(LinearOperator):

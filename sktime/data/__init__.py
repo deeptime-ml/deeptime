@@ -58,6 +58,7 @@ Implementations
     pbf_simulator.PBFSimulator
     drunkards_walk_simulator.DrunkardsWalk
     bickley_simulator.BickleyJet
+    birth_death_chain.BirthDeathChain
 """
 
 from .util import timeshifted_split, TimeSeriesDataset, TimeLaggedDataset
