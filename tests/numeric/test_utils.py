@@ -3,7 +3,7 @@ import pytest
 from numpy.testing import *
 
 from sktime.numeric import is_diagonal_matrix, mdot, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
-    eig_corr
+    eig_corr, is_square_matrix
 
 
 def test_is_diagonal_matrix():
@@ -17,12 +17,35 @@ def test_mdot():
     C = np.random.normal(size=(20, 30))
     assert_almost_equal(mdot(A, B, C), A @ B @ C)
 
+    with assert_raises(ValueError):
+        mdot(np.ones((5, 3)), np.ones((5, 3)))
+    with assert_raises(ValueError):
+        mdot()
+
+
+def test_is_square_matrix():
+    assert_(is_square_matrix(np.ones((5, 5))))
+    assert_(not is_square_matrix(np.ones((3, 5))))
+
 
 @pytest.fixture
 def spd_matrix():
     X = np.random.normal(size=(50, 3))
     mat = X @ X.T  # positive semi-definite with rank 3
     return mat
+
+
+def test_spd_eig_invalid_inputs(spd_matrix):
+    with assert_raises(ValueError):
+        spd_eig(spd_matrix, method='...')
+
+    # not symmetric
+    with assert_raises(ValueError):
+        spd_eig(np.arange(9).reshape(3, 3), check_sym=True)
+
+    # zero rank
+    with assert_raises(ZeroRankError):
+        spd_eig(np.zeros((3, 3)))
 
 
 @pytest.mark.parametrize('epsilon', [1e-5, 1e-12], ids=lambda x: f"epsilon={x}")
@@ -55,10 +78,18 @@ def test_spd_inv_1d():
     assert_almost_equal(spd_inv(np.array([[5]])), 1 / 5)
 
 
+def test_spd_inv_sqrt_1d():
+    W = np.array([[.5]])
+    assert_almost_equal(spd_inv_sqrt(W).squeeze(), 1. / np.sqrt(.5))
+
+    with assert_raises(ZeroRankError):
+        spd_inv_sqrt(np.array([[.001]]), epsilon=.01)
+
+
 @pytest.mark.parametrize('epsilon', [1e-5, 1e-12], ids=lambda x: f"epsilon={x}")
 @pytest.mark.parametrize('method', ['QR', 'schur'], ids=lambda x: f"method={x}")
 @pytest.mark.parametrize('return_rank', [True, False], ids=lambda x: f"return_rank={x}")
-def test_spd_inv_split(spd_matrix, epsilon, method, return_rank):
+def test_spd_inv_sqrt(spd_matrix, epsilon, method, return_rank):
     M = spd_inv_sqrt(spd_matrix, epsilon=epsilon, method=method, return_rank=return_rank)
     if return_rank:
         rank = M[1]
@@ -67,6 +98,14 @@ def test_spd_inv_split(spd_matrix, epsilon, method, return_rank):
         assert_equal(rank, 3)
 
     assert_array_almost_equal(M @ M.T, spd_inv(spd_matrix))
+
+
+def test_spd_inv_splid_1d():
+    W = np.array([[.5]])
+    assert_almost_equal(spd_inv_split(W).squeeze(), 1. / np.sqrt(.5))
+
+    with assert_raises(ZeroRankError):
+        spd_inv_split(np.array([[.001]]), epsilon=.01)
 
 
 @pytest.mark.parametrize('epsilon', [1e-5, 1e-12], ids=lambda x: f"epsilon={x}")
@@ -98,10 +137,14 @@ def test_spd_inv_split_nocutoff():
 @pytest.mark.parametrize('method', ['QR', 'schur'], ids=lambda x: f"method={x}")
 @pytest.mark.parametrize('canonical_signs', [False, True], ids=lambda x: f"canonical_signs={x}")
 @pytest.mark.parametrize('return_rank', [True, False], ids=lambda x: f"return_rank={x}")
-def test_eig_corr(epsilon, method, canonical_signs, return_rank):
+@pytest.mark.parametrize('hermitian_ctt', [True, False], ids=lambda x: f"hermitian_ctt={x}")
+def test_eig_corr(epsilon, method, canonical_signs, return_rank, hermitian_ctt):
     data = np.random.normal(size=(5000, 3))
     from sktime.covariance import Covariance
     covariances = Covariance(lagtime=10, compute_c00=True, compute_ctt=True).fit(data).fetch_model()
+    if not hermitian_ctt:
+        covariances.cov_tt[0, 1] += 1e-6
+        assert_(not np.allclose(covariances.cov_tt, covariances.cov_tt.T))
     out = eig_corr(covariances.cov_00, covariances.cov_tt, epsilon=epsilon, method=method,
                    canonical_signs=canonical_signs, return_rank=return_rank)
     eigenvalues = out[0]
@@ -111,5 +154,5 @@ def test_eig_corr(epsilon, method, canonical_signs, return_rank):
         assert_equal(rank, len(eigenvalues))
 
     for r in range(len(out[0])):
-        np.testing.assert_array_almost_equal(covariances.cov_00 @ eigenvectors[r] * eigenvalues[r],
-                                             covariances.cov_tt @ eigenvectors[r], decimal=2)
+        assert_array_almost_equal(covariances.cov_00 @ eigenvectors[r] * eigenvalues[r],
+                                  covariances.cov_tt @ eigenvectors[r], decimal=2)

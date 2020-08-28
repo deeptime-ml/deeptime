@@ -54,7 +54,7 @@ def sort_by_norm(evals, evecs):
     return evals2, evecs2
 
 
-def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
+def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False, check_sym: bool = False):
     """ Rank-reduced eigenvalue decomposition of symmetric positive definite matrix.
 
     Removes all negligible eigenvalues
@@ -73,6 +73,8 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
         * 'schur': Schur decomposition of W
     canonical_signs : bool, default = False
         Fix signs in V, such that the largest element in every column of V is positive.
+    check_sym : bool, default = False
+        Check whether the input matrix is (almost) symmetric.
 
     Returns
     -------
@@ -83,18 +85,19 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
         k leading eigenvectors
     """
     # check input
-    assert _np.allclose(W.T, W), 'W is not a symmetric matrix'
+    if check_sym and not _np.allclose(W.T, W):
+        raise ValueError('W is not a symmetric matrix')
 
-    if method.lower() == 'qr':
+    if method == 'QR':
         from .eig_qr import eig_qr
         s, V = eig_qr(W)
     # compute the Eigenvalues of C0 using Schur factorization
-    elif method.lower() == 'schur':
+    elif method == 'schur':
         from scipy.linalg import schur
         S, V = schur(W)
         s = _np.diag(S)
     else:
-        raise ValueError('method not implemented: ' + method)
+        raise ValueError(f'method {method} not implemented, available are {spd_eig.methods}')
 
     s, V = sort_by_norm(s, V)  # sort them
 
@@ -121,6 +124,9 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False):
             Vm[:, j] *= _np.sign(Vm[jj, j])
 
     return sm, Vm
+
+
+spd_eig.methods = ('QR', 'schur')
 
 
 def spd_inv(W, epsilon=1e-10, method='QR'):
