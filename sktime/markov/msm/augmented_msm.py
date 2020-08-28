@@ -27,8 +27,9 @@ from scipy.sparse import issparse
 
 from sktime.markov import TransitionCountModel
 from sktime.markov.msm import MarkovStateModel
-from sktime.util import confidence_interval, ensure_dtraj_list, ensure_traj_list
 from .._base import _MSMBaseEstimator
+from ...util.stats import confidence_interval
+from ...util.types import ensure_dtraj_list, ensure_traj_list
 
 
 class AMMOptimizerState(object):
@@ -312,7 +313,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             An estimator parameterized expectations by state based on feature trajectories.
         """
         discrete_trajectories = ensure_dtraj_list(discrete_trajectories)
-        feature_trajectories = ensure_traj_list(feature_trajectories, dtype=np.float32)
+        feature_trajectories = ensure_traj_list(feature_trajectories)
         # check input
         if np.all(sigmas > 0):
             _w = 1. / (2 * sigmas ** 2.)

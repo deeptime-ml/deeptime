@@ -94,3 +94,4 @@ class GenerateTestMatrix(type):
 def assert_array_not_equal(arr1, arr2, err_msg='', verbose=True):
     with np.testing.assert_raises(AssertionError, msg=err_msg):
         np.testing.assert_array_equal(arr1, arr2, verbose=verbose)
+

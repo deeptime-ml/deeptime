@@ -29,7 +29,7 @@ from scipy.sparse import csr_matrix
 
 from sktime.markov.tools.estimation.sparse import prior
 
-from sktime.markov.tools.util.numeric import allclose_sparse
+from sktime.numeric.utils import allclose_sparse
 
 
 class TestPrior(unittest.TestCase):

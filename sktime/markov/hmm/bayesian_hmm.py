@@ -34,7 +34,6 @@ from sktime.markov.hmm.util import observations_in_state, sample_hidden_state_tr
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import compute_dtrajs_effective, number_of_states
-from sktime.util import ensure_dtraj_list
 from sktime.markov.hmm._hmm_bindings import util as _bd_util
 
 __author__ = 'noe, clonker'
@@ -43,6 +42,8 @@ __all__ = [
     'BayesianHMMPosterior',
     'BayesianHMM',
 ]
+
+from sktime.util.types import ensure_dtraj_list
 
 
 class BayesianHMMPosterior(BayesianPosterior):

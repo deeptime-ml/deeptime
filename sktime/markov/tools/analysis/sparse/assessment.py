@@ -23,9 +23,9 @@ from scipy.sparse.csgraph import connected_components
 from scipy.sparse.sputils import isdense
 from scipy.sparse.construct import diags
 
-from ...util.numeric import allclose_sparse
-
 import numpy as np
+
+from sktime.numeric.utils import allclose_sparse
 
 
 def is_transition_matrix(T, tol):

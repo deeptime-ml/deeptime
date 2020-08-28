@@ -1,6 +1,8 @@
 import warnings
 import numpy as np
 import scipy
+
+from sktime.util.exceptions import NotConvergedWarning
 from .. import _mle_sparse_bindings as _bindings
 
 
@@ -34,7 +36,6 @@ def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),
     code = _bindings.mle_trev_sparse(T_data, CCt_data, i_indices, j_indices, n_data, C_sum, CCt.shape[0],
                                      maxerr, maxiter, mu, eps_mu)
     if code == -5 and warn_not_converged:
-        from sktime.markov.tools.util.exceptions import NotConvergedWarning
         warnings.warn("Reversible transition matrix estimation with fixed stationary distribution didn't converge.",
                       NotConvergedWarning)
 
@@ -70,7 +71,6 @@ def mle_trev_given_pi(C, mu, maxerr=1.0E-12, maxiter=1000000, warn_not_converged
                                               CCt_coo.shape[0], maxerr, maxiter)
 
     if code == -5 and warn_not_converged:
-        from sktime.markov.tools.util.exceptions import NotConvergedWarning
         warnings.warn("Reversible transition matrix estimation with fixed stationary distribution didn't converge.",
                       NotConvergedWarning)
 

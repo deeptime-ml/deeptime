@@ -215,19 +215,13 @@ class TestArguments(unittest.TestCase):
     def testInputArrays(self):
         """ this is not supported, has to be list of ndarrays """
         dtrajs = np.array([[0, 1, 2, 0, 0, 1, 2, 1, 0],
-                           [0, 1, 2, 0, 0, 1, 2, 1, 1]])
+                           [0, 1, 2, 0, 0, 1., 2, 1, 1]])
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             count_matrix(dtrajs, 1)
 
     def testInputFloat(self):
-        dtraj_with_floats = [0.0, 1, 0, 2, 3, 1, 0.0]
+        dtraj_with_floats = [0.0, 1, 0, 2, 3, 1, 0.1]
         # dtraj_int = [0, 1, 0, 2, 3, 1, 0]
-        with self.assertRaises(TypeError):
-            C_f = count_matrix(dtraj_with_floats, 1)
-            # C_i = count_matrix(dtraj_int, 1)
-            # np.testing.assert_array_equal(C_f.toarray(), C_i.toarray())
-
-
-if __name__ == "__main__":
-    unittest.main()
+        with self.assertRaises(ValueError):
+            count_matrix(dtraj_with_floats, 1)

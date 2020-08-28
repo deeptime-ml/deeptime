@@ -3,6 +3,9 @@
 import pytest
 import numpy as np
 
+#import warnings
+#warnings.filterwarnings('error')
+
 
 @pytest.fixture
 def fixed_seed():

@@ -2,7 +2,7 @@ import sktime.markov.tools.estimation
 import sktime.markov.tools.estimation.dense.ratematrix
 import numpy as np
 import scipy as sp
-from sktime.markov.tools.util import kahandot
+from sktime.markov.tools import kahandot
 import unittest
 import sktime.markov.tools
 import warnings

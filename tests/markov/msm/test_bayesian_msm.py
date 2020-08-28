@@ -21,7 +21,7 @@ import numpy as np
 
 from sktime.markov import TransitionCountEstimator
 from sktime.markov.msm import MarkovStateModel, BayesianPosterior, BayesianMSM
-from sktime.util import confidence_interval
+from sktime.util.stats import confidence_interval
 from tests.markov.factory import bmsm_double_well
 
 

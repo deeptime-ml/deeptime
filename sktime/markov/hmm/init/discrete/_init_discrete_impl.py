@@ -21,6 +21,8 @@ from typing import Optional, Union
 import numpy as np
 from scipy.sparse import issparse
 
+from sktime.util.types import ensure_dtraj_list
+
 
 def _regularize_hidden(initial_distribution, transition_matrix, reversible=True, stationary=False, count_matrix=None,
                        eps=None):
@@ -391,7 +393,6 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
             + [m + "-regularized" for m in metastable_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(metastable_from_data.VALID_MODES)))
 
-    from sktime.util import ensure_dtraj_list
     from sktime.markov.util import compute_dtrajs_effective
     from sktime.markov import TransitionCountEstimator
 

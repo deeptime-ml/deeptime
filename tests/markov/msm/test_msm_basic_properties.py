@@ -322,7 +322,7 @@ class TestMSMBasicProperties(object):
         k = msm.n_states if not msm.sparse else 4
         # raise assertion error because size is wrong:
         a = [1, 2, 3]
-        with assert_raises(AssertionError):
+        with assert_raises(ValueError):
             msm.correlation(a, 1)
         maxtime = 100000
         # should decrease
@@ -375,7 +375,7 @@ class TestMSMBasicProperties(object):
         if msm.reversible:
             # raise assertion error because size is wrong:
             a = [1, 2, 3]
-            with assert_raises(AssertionError):
+            with assert_raises(ValueError):
                 msm.fingerprint_correlation(a, 1, k=k)
             # should decrease
             a = list(range(msm.n_states))
@@ -416,7 +416,7 @@ class TestMSMBasicProperties(object):
         if msm.reversible:
             # raise assertion error because size is wrong:
             a = [1, 2, 3]
-            with assert_raises(AssertionError):
+            with assert_raises(ValueError):
                 msm.fingerprint_relaxation(msm.stationary_distribution, a, k=k)
             # equilibrium relaxation should be constant
             a = list(range(msm.n_states))

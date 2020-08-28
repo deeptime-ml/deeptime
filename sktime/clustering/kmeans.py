@@ -27,7 +27,7 @@ from . import _clustering_bindings as _bd, metrics
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering', 'KMeansClusteringModel']
 
-from ..util import handle_n_jobs
+from ..util.parallel import handle_n_jobs
 
 
 class KMeansClusteringModel(ClusterModel):

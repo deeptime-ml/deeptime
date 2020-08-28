@@ -31,7 +31,7 @@ from tests.markov.tools.numeric import assert_allclose
 
 from scipy.linalg import eigvals
 
-from sktime.markov.tools.util.exceptions import SpectralWarning, ImaginaryEigenValueWarning
+from sktime.util.exceptions import SpectralWarning, ImaginaryEigenValueWarning
 
 from sktime.markov.tools.analysis.dense.decomposition import eigenvalues, eigenvectors, rdl_decomposition
 from sktime.markov.tools.analysis.dense.decomposition import timescales

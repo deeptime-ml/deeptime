@@ -193,7 +193,7 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
 }
 
 template<typename dtype, typename State>
-void updatePOut(const np_array<State> &obs, const np_array<dtype> &weights, np_array<dtype> &pout) {
+void updatePOut(const np_array_nfc<State> &obs, const np_array_nfc<dtype> &weights, np_array_nfc<dtype> &pout) {
     auto T = static_cast<std::size_t>(obs.size());
     auto N = static_cast<std::size_t>(pout.shape(0));
     auto M = static_cast<std::size_t>(pout.shape(1));

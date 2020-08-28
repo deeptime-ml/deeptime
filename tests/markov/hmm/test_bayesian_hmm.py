@@ -24,7 +24,8 @@ from sktime.data import datasets
 from sktime.markov.hmm import MaximumLikelihoodHMM
 from sktime.markov.hmm.bayesian_hmm import BayesianHMM, BayesianHMMPosterior
 from sktime.markov.hmm._hmm_bindings.util import count_matrix
-from sktime.util import confidence_interval, ensure_dtraj_list
+from sktime.util.stats import confidence_interval
+from sktime.util.types import ensure_dtraj_list
 
 
 class TestBHMM(unittest.TestCase):
@@ -103,6 +104,8 @@ class TestBHMM(unittest.TestCase):
         # shape
         self.assertEqual(np.shape(samples), (self.n_samples, self.n_states))
         # consistency
+        for ev in samples:
+            np.testing.assert_allclose(ev[0], 1.)
         for ev in samples:
             assert np.isclose(ev[0], 1)
             assert np.all(ev[1:] < 1.0)

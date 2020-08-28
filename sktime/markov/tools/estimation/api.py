@@ -34,9 +34,9 @@ from scipy.sparse import csr_matrix
 from scipy.sparse import issparse
 from scipy.sparse.sputils import isdense
 
+from sktime.util.types import ensure_dtraj_list
 from . import dense
 from . import sparse
-from ..util.types import ensure_dtraj_list as _ensure_dtraj_list
 
 __author__ = "Benjamin Trendelkamp-Schroer, Martin Scherer, Frank Noe"
 __copyright__ = "Copyright 2014, Computational Molecular Biology Group, FU-Berlin"
@@ -160,7 +160,7 @@ def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
     """
     # convert dtraj input, if it contains out of nested python lists to
     # a list of int ndarrays.
-    dtraj = _ensure_dtraj_list(dtraj)
+    dtraj = ensure_dtraj_list(dtraj)
     return sparse.count_matrix.count_matrix_coo2_mult(dtraj, lag, sliding=sliding,
                                                       sparse=sparse_return, nstates=nstates)
 
@@ -222,7 +222,7 @@ def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=1, callb
 
     """
 
-    dtrajs = _ensure_dtraj_list(dtrajs)
+    dtrajs = ensure_dtraj_list(dtrajs)
     import os
     # enforce one job on windows.
     if os.name == 'nt':
@@ -337,7 +337,7 @@ def bootstrap_counts(dtrajs, lagtime, corrlength=None):
     bootstrap_trajectories
 
     """
-    dtrajs = _ensure_dtraj_list(dtrajs)
+    dtrajs = ensure_dtraj_list(dtrajs)
     return dense.bootstrapping.bootstrap_counts(dtrajs, lagtime, corrlength=corrlength)
 
 
@@ -715,7 +715,7 @@ def prior_rev(C, alpha=-1.0):
     if isdense(C):
         return sparse.prior.prior_rev(C, alpha=alpha)
     else:
-        warnings.warn("Prior will be a dense matrix for sparse input")
+        # warnings.warn("Prior will be a dense matrix for sparse input")
         return sparse.prior.prior_rev(C, alpha=alpha)
 
 

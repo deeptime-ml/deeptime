@@ -1,5 +1,5 @@
 import unittest
-from sktime.util import cached_property
+from sktime.util.decorators import cached_property
 import numpy as np
 
 class MyClass(object):

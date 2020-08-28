@@ -23,7 +23,7 @@ r"""This module provides functions for computation of prior count matrices
 
 import numpy as np
 
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, issparse, csc_matrix
 
 
 def prior_neighbor(C, alpha=0.001):
@@ -110,6 +110,11 @@ def prior_rev(C, alpha=-1.0):
 
     """
     ind = np.triu_indices(C.shape[0])
-    B = np.zeros(C.shape)
-    B[ind] = alpha
+    if issparse(C):
+        alphas = np.empty(len(ind[0]), dtype=np.float64)
+        alphas.fill(alpha)
+        B = csc_matrix((alphas, ind), shape=C.shape)
+    else:
+        B = np.zeros(C.shape, dtype=np.float64)
+        B[ind] = alpha
     return B

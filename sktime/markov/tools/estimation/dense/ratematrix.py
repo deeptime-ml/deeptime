@@ -27,8 +27,9 @@ import scipy.sparse
 
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.special import exprel
-from ...util.kahandot import kdot, ksum
 
+from sktime.util.exceptions import NotConvergedWarning, NotConvergedError
+from ...kahandot import kdot, ksum
 from ...estimation import transition_matrix
 from ...analysis import stationary_distribution
 
@@ -38,19 +39,9 @@ __all__ = [
     'TruncatedLogarithmEstimator',
     'CrommelinVandenEijndenEstimator',
     'KalbfleischLawlessEstimator',
-    'NotConvergedError',
-    'NotConvergedWarning',
     'NotConnectedWarning',
     'estimate_rate_matrix'
 ]
-
-
-class NotConvergedError(RuntimeError):
-    pass
-
-
-class NotConvergedWarning(UserWarning):
-    pass
 
 
 class NotConnectedWarning(UserWarning):

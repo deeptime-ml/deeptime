@@ -2,12 +2,13 @@ import warnings
 
 import numpy as np
 
+from sktime.util.exceptions import NotConvergedWarning
+
 
 def mle_trev(C, maxerr=1.0e-12, maxiter=int(1.0E6), warn_not_converged=True, return_statdist=False,
              eps_mu=1.0e-15):
     from ._mle_bindings import mle_trev_dense
     from ...analysis import is_connected
-    from ...util.exceptions import NotConvergedWarning
 
     assert maxerr > 0, 'maxerr must be positive'
     assert maxiter > 0, 'maxiter must be positive'
@@ -56,7 +57,6 @@ def mle_trev_given_pi(C, mu, maxerr=1.0E-12, maxiter=1000000):
     code = mle_trev_given_pi_dense(T, c_C, c_mu, C.shape[0], maxerr, maxiter)
 
     if code == -5:
-        from sktime.markov.tools.util.exceptions import NotConvergedWarning
         warnings.warn('Reversible transition matrix estimation with fixed stationary distribution didn\'t converge.',
                       NotConvergedWarning)
     return T

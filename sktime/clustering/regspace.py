@@ -26,7 +26,7 @@ from ..base import Estimator
 
 __all__ = ['RegularSpaceClustering']
 
-from ..util import handle_n_jobs
+from ..util.parallel import handle_n_jobs
 
 
 class RegularSpaceClustering(Estimator):

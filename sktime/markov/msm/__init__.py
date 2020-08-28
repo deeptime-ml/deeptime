@@ -59,7 +59,7 @@ from .maximum_likelihood_msm import MaximumLikelihoodMSM
 from .bayesian_msm import BayesianMSM, BayesianPosterior
 from .koopman_reweighted_msm import KoopmanReweightedMSM, OOMReweightedMSM
 from .augmented_msm import AugmentedMSMEstimator, AugmentedMSM, AMMOptimizerState
-from ...util import QuantityStatistics
+from ...util.stats import QuantityStatistics
 
 # set up null handler
 logging.getLogger(__name__).addHandler(logging.NullHandler())

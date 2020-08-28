@@ -22,6 +22,7 @@ from typing import Optional, Callable
 import numpy as np
 
 from ..base import Estimator, Model
+from ..util.types import ensure_dtraj_list
 
 
 def blocksplit_dtrajs(dtrajs, lag=1, sliding=True, shift=None, random_state=None):
@@ -290,7 +291,6 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
         :filter: docname in docnames
         :keyprefix: msmscore-
     """
-    from sktime.util import ensure_dtraj_list
     dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
     if count_mode not in ('sliding', 'sample'):
         raise ValueError('score_cv currently only supports count modes "sliding" and "sample"')

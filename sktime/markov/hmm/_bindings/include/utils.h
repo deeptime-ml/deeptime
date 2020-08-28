@@ -437,7 +437,8 @@ np_array<dtype> countMatrix(const py::list& dtrajs, std::uint32_t lag, std::uint
 
 template<typename dtype>
 dtype forwardBackward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &pObs,
-    const np_array<dtype> &pi, np_array<dtype> &alpha, np_array<dtype> &beta, np_array<dtype> &gamma, np_array<dtype> &counts, const py::object &pyT) {
+    const np_array<dtype> &pi, np_array<dtype> &alpha, np_array_nfc<dtype> &beta, np_array_nfc<dtype> &gamma,
+    np_array_nfc<dtype> &counts, const py::object &pyT) {
     std::size_t T = [&pyT, &pObs]() {
         if (pyT.is_none()) {
             return static_cast<std::size_t>(pObs.shape(0));

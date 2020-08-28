@@ -1,8 +1,12 @@
 import unittest
+import warnings
 
-import mdshare
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import mdshare
 import numpy as np
 from sklearn.pipeline import Pipeline
+
 import sktime.clustering.kmeans as kmeans
 import sktime.decomposition.tica as tica
 import sktime.markov.msm as msm
