@@ -1,4 +1,6 @@
 import sys
+from pathlib import Path
+
 import setuptools
 
 from numpy.distutils.command.build_ext import build_ext
@@ -57,13 +59,16 @@ class Build(build_ext):
 
         from numpy import get_include as _np_inc
         np_inc = _np_inc()
-        pybind_inc = 'lib/pybind11/include'
-        # TODO: this is platform dependent, e.g. win should be treated differently.
+        pybind_inc = Path('lib') / 'pybind11' / 'include'
+        common_inc = Path('sktime') / 'src' / 'include'
+
         if self.compiler.compiler_type == 'msvc':
             cxx_flags = ['/EHsc', '/std:c++latest', '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()]
             extra_link_args.append('/machine:X64')
         else:
             cxx_flags = ['-std=c++14']
+            extra_compile_args += ['-pthread']
+            extra_link_args = ['-lpthread']
         has_openmp = supports_omp(self.compiler)
         if has_openmp:
             extra_compile_args += ['-fopenmp' if sys.platform != 'darwin' else '-fopenmp=libiomp5']
@@ -72,12 +77,13 @@ class Build(build_ext):
             elif sys.platform == 'darwin':
                 extra_link_args += ['-liomp5']
             else:
-                raise ValueError("Hmm.")
+                raise ValueError("Should not happen.")
             define_macros += [('USE_OPENMP', None)]
 
         for ext in self.extensions:
             ext.include_dirs.append(np_inc)
-            ext.include_dirs.append(pybind_inc)
+            ext.include_dirs.append(pybind_inc.resolve())
+            ext.include_dirs.append(common_inc.resolve())
             if ext.language == 'c++':
                 ext.extra_compile_args += cxx_flags
                 ext.extra_compile_args += extra_compile_args

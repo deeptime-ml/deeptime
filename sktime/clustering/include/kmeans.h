@@ -40,25 +40,24 @@ namespace clustering {
 namespace kmeans {
 
 template<typename T>
-std::tuple<np_array<T>, np_array<std::size_t>> cluster(const np_array<T> & /*np_chunk*/,
-                                                       const np_array<T> & /*np_centers*/, int /*n_threads*/,
-                                                       const Metric *metric);
+std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T>& np_chunk, const np_array_nfc<T>& np_centers,
+                                               int n_threads, const Metric *metric);
 
 template<typename T>
-std::tuple<np_array<T>, int, int, np_array<T>> cluster_loop(const np_array<T> &np_chunk, const np_array<T> &np_centers,
-                                                            const Metric *metric, int n_threads, int max_iter,
-                                                            T tolerance, py::object &callback);
-
-
-template<typename T>
-T costFunction(const np_array<T> &np_data, const np_array<T> &np_centers, const Metric *metric,
-               const np_array<std::size_t> &assignments, int n_threads);
+std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
+        const np_array_nfc<T> &np_chunk, const np_array_nfc<T> &np_centers,
+        int n_threads, int max_iter, T tolerance, py::object &callback, const Metric *metric);
 
 
 template<typename T>
-T costFunction(const np_array<T> &np_data, const np_array<T> &np_centers, const Metric *metric, int n_threads) {
+T costFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_centers,
+               const np_array<int> &assignments, int n_threads, const Metric *metric);
+
+template<typename T>
+T costAssignFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_centers,
+               int n_threads, const Metric *metric) {
     auto assignments = assign_chunk_to_centers(np_data, np_centers, n_threads, metric);
-    return costFunction(np_data, np_centers, metric, assignments, n_threads);
+    return costFunction(np_data, np_centers, assignments, n_threads, metric);
 };
 
 namespace util {
@@ -69,13 +68,17 @@ void assignCenter(itype frameIndex, std::size_t dim, const dtype *const data, dt
 }
 
 template<typename dtype>
-np_array<dtype> initKmeansPlusPlus(const np_array<dtype> &data, std::size_t k, const Metric *metric,
-                                   int seed, int n_threads, py::object &callback) {
+np_array<dtype> initKmeansPlusPlus(const np_array_nfc<dtype> &data, std::size_t k,
+                                   std::int64_t seed, int n_threads, py::object &callback, const Metric *metric) {
     if (static_cast<std::size_t>(data.shape(0)) < k) {
         std::stringstream ss;
         ss << "not enough data to initialize desired number of centers.";
         ss << "Provided frames (" << data.shape(0) << ") < n_centers (" << k << ").";
         throw std::invalid_argument(ss.str());
+    }
+
+    if(metric == nullptr) {
+        metric = default_metric();
     }
 
     #ifdef USE_OPENMP
@@ -95,7 +98,7 @@ np_array<dtype> initKmeansPlusPlus(const np_array<dtype> &data, std::size_t k, c
     std::uniform_real_distribution<double> uniformReal(0, 1);
 
     // number of trials before choosing the data point with the best potential
-    std::size_t nTrials = static_cast<std::size_t>(2 + std::log(k));
+    auto nTrials = static_cast<std::size_t>(2 + std::log(k));
 
     np_array<dtype> centers({k, dim});
 
@@ -168,11 +171,13 @@ np_array<dtype> initKmeansPlusPlus(const np_array<dtype> &data, std::size_t k, c
         auto distsToCandidates = computeDistances<true>(candidatesCoords.data(), nTrials, dataPtr, nFrames, dim,
                                                         nullptr, dataNormsSquared.get(), metric);
         // update with current best distances
-        #pragma omp parallel for collapse(2)
+        auto distsToCandidatesPtr = distsToCandidates.data();
+        auto distancesPtr = distances.data();
+        #pragma omp parallel for collapse(2) default(none) firstprivate(nTrials, nFrames, distsToCandidatesPtr, distancesPtr)
         for(std::size_t trial = 0; trial < nTrials; ++trial) {
             for(std::size_t frame = 0; frame < nFrames; ++frame) {
-                dtype dist = distsToCandidates.data()[trial*nFrames + frame];
-                distsToCandidates.data()[trial*nFrames + frame] = std::min(dist, distances.data()[frame]);
+                dtype dist = distsToCandidatesPtr[trial*nFrames + frame];
+                distsToCandidatesPtr[trial*nFrames + frame] = std::min(dist, distancesPtr[frame]);
             }
         }
 
@@ -182,7 +187,7 @@ np_array<dtype> initKmeansPlusPlus(const np_array<dtype> &data, std::size_t k, c
                 auto* dptr = distsToCandidates.data() + trial * nFrames;
 
                 dtype trialPotential{0};
-                #pragma omp parallel for reduction(+:trialPotential)
+                #pragma omp parallel for reduction(+:trialPotential) default(none) firstprivate(nFrames, dptr)
                 for (std::size_t t = 0; t < nFrames; ++t) {
                     trialPotential += dptr[t];
                 }

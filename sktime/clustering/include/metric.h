@@ -78,10 +78,15 @@ private:
     }
 };
 
+inline static const EuclideanMetric* default_metric(){
+    static thread_local EuclideanMetric instance = EuclideanMetric{};
+    return &instance;
+}
+
 template<typename T>
-py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
-                                         const np_array<T>& centers,
-                                         unsigned int n_threads,
+py::array_t<int> assign_chunk_to_centers(const np_array_nfc<T>& chunk,
+                                         const np_array_nfc<T>& centers,
+                                         int n_threads,
                                          const Metric * metric);
 
 template<typename dtype>
