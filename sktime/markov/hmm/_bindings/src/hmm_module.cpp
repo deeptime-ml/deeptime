@@ -35,6 +35,8 @@ PYBIND11_MODULE(_hmm_bindings, m) {
     {
         auto discreteModule = outputModels.def_submodule("discrete");
         discreteModule.def("generate_observation_trajectory",
+                          &hmm::output_models::discrete::generateObservationTrajectory<float, std::int16_t>);
+        discreteModule.def("generate_observation_trajectory",
                            &hmm::output_models::discrete::generateObservationTrajectory<float, std::int32_t>);
         discreteModule.def("generate_observation_trajectory",
                            &hmm::output_models::discrete::generateObservationTrajectory<float, std::int64_t>);

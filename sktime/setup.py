@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-
 def configuration(parent_package='', top_path=None):
     from numpy.distutils.misc_util import Configuration
 
@@ -28,6 +27,7 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('decomposition')
     config.add_subpackage('markov')
     config.add_subpackage('numeric')
+    config.add_subpackage('util')
 
     from Cython.Build import cythonize
     config.ext_modules = cythonize(
