@@ -1,8 +1,9 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from ..util import plotting_function
 from . import TimeSeriesDataset, TimeLaggedDataset
+from ..util.decorators import plotting_function
+from ..util.parallel import handle_n_jobs
 
 
 class BickleyJet(object):
@@ -208,8 +209,6 @@ def _generate_impl_worker(args):
 
 
 def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs=None) -> np.ndarray:
-    from sktime.util import handle_n_jobs
-
     X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3))
     nT = 401
     Z = np.zeros((2, nT, n_particles))

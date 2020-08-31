@@ -1,6 +1,7 @@
 import numpy as np
 
-from sktime.util import QuantityStatistics, module_available
+from sktime.util.platform import module_available
+from sktime.util.stats import QuantityStatistics
 
 
 def test_module_available():

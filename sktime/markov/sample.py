@@ -20,7 +20,7 @@ import typing
 
 import numpy as np
 
-from sktime.util import ensure_dtraj_list
+from sktime.util.types import ensure_dtraj_list
 
 
 def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:

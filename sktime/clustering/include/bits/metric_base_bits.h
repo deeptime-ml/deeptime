@@ -40,10 +40,13 @@ inline double Metric::compute_squared<double>(const double* xs, const double* ys
 }
 
 template<typename T>
-inline py::array_t<int> assign_chunk_to_centers(const np_array<T>& chunk,
-                                                const np_array<T>& centers,
+inline py::array_t<int> assign_chunk_to_centers(const np_array_nfc<T>& chunk,
+                                                const np_array_nfc<T>& centers,
                                                 int n_threads,
                                                 const Metric* metric) {
+    if (metric == nullptr) {
+        metric = default_metric();
+    }
     if (chunk.ndim() != 2) {
         throw std::invalid_argument("provided chunk does not have two dimensions.");
     }

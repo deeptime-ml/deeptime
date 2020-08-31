@@ -29,8 +29,8 @@ from sktime.markov.hmm.hidden_markov_model import viterbi
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import compute_dtrajs_effective
-from sktime.util import ensure_dtraj_list
 from ._hmm_bindings import util as _util
+from ...util.types import ensure_dtraj_list
 
 
 class MaximumLikelihoodHMM(Estimator):
@@ -381,6 +381,7 @@ class MaximumLikelihoodHMM(Estimator):
         T = len(obs)
         # compute output probability matrix
         pobs = model.output_model.to_state_probability_trajectory(obs)
+        pobs = pobs.astype(A.dtype)
         # run forward - backward pass
         logprob = _util.forward_backward(A, pobs, pi, alpha, beta, gamma, counts, T)
         return logprob, pobs

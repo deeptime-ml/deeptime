@@ -17,11 +17,13 @@
 
 import unittest
 import numpy as np
+
+from sktime.markov.tools.analysis import stationary_distribution
+from sktime.util.exceptions import NotConvergedWarning
 from tests.markov.tools.numeric import assert_allclose
 import scipy
 import scipy.sparse
 import warnings
-import sktime.markov.tools.util.exceptions
 
 from os.path import abspath, join
 from os import pardir
@@ -59,13 +61,13 @@ class Test_mle_trev(unittest.TestCase):
         C = np.loadtxt(testpath + 'C_1_lag.dat')
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('ignore')
-            warnings.simplefilter('always', category=sktime.markov.tools.util.exceptions.NotConvergedWarning)
+            warnings.simplefilter('always', category=NotConvergedWarning)
             impl_sparse(scipy.sparse.csr_matrix(C), maxiter=1)
-            assert issubclass(w[-1].category, sktime.markov.tools.util.exceptions.NotConvergedWarning)
+            assert issubclass(w[-1].category, NotConvergedWarning)
 
             impl_dense(C, maxiter=1)
             assert len(w) == 2
-            assert issubclass(w[-1].category, sktime.markov.tools.util.exceptions.NotConvergedWarning)
+            assert issubclass(w[-1].category, NotConvergedWarning)
 
     def test_noninteger_counts_sparse(self):
         C = np.loadtxt(testpath + 'C_1_lag.dat')
@@ -87,13 +89,9 @@ class Test_mle_trev(unittest.TestCase):
         C = np.loadtxt(testpath + 'C_1_lag.dat')
         # dense
         T, mu = apicall(C, reversible=True, method='dense', return_statdist=True)
-        mu_manual = sktime.markov.tools.analysis.stationary_distribution(T)
+        mu_manual = stationary_distribution(T)
         np.testing.assert_allclose(mu, mu_manual)
         # sparse
         T, mu = apicall(C, reversible=True, method='sparse', return_statdist=True)
-        mu_manual = sktime.markov.tools.analysis.stationary_distribution(T)
+        mu_manual = stationary_distribution(T)
         np.testing.assert_allclose(mu, mu_manual)
-
-
-if __name__ == '__main__':
-    unittest.main()

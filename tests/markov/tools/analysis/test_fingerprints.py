@@ -24,13 +24,13 @@ r"""Unit test for the fingerprint API-functions
 import unittest
 
 import numpy as np
+
+from sktime.data.birth_death_chain import BirthDeathChain
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.analysis import rdl_decomposition, timescales
 from sktime.markov.tools.analysis import fingerprint_correlation, fingerprint_relaxation
 from sktime.markov.tools.analysis import expectation, correlation, relaxation
-
-from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
 
 ################################################################################
 # Dense

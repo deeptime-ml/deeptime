@@ -30,8 +30,9 @@ import sktime.markov.tools.estimation as msmest
 import numpy as np
 import pytest
 import scipy.sparse
+
+from sktime.data.birth_death_chain import BirthDeathChain
 from sktime.markov.tools.generation import generate_traj
-from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
 from numpy.testing import *
 
 from sktime.markov._base import score_cv

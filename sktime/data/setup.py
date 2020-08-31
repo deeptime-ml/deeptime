@@ -16,9 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import pathlib
-
-
 def configuration(parent_package='', top_path=None):
     from numpy.distutils.misc_util import Configuration
 
@@ -28,7 +25,7 @@ def configuration(parent_package='', top_path=None):
     )
     config.add_extension('_data_bindings',
                          sources=['src/data_module.cpp'],
-                         include_dirs=['include', pathlib.Path(top_path, 'sktime', 'src', 'include')],
+                         include_dirs=['include'],
                          language='c++',
                          )
     return config

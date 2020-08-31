@@ -20,7 +20,8 @@ from typing import Union
 
 import numpy as np
 
-from sktime.util import ensure_dtraj_list
+from sktime.util.exceptions import ImaginaryEigenValueWarning
+from sktime.util.types import ensure_dtraj_list
 
 
 def visited_set(dtrajs):
@@ -112,10 +113,8 @@ def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
     if msm_non_rev.n_states > n_states:
         # because we use non-reversible msm, we want to silence the ImaginaryEigenvalueWarning
         import warnings
-        from sktime.markov.tools.util.exceptions import ImaginaryEigenValueWarning
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=ImaginaryEigenValueWarning,
-                                    module='sktime.markov.tools.analysis.dense.decomposition')
+            warnings.filterwarnings('ignore', category=ImaginaryEigenValueWarning)
             correlation_time = max(1, msm_non_rev.timescales()[n_states - 1])
         # use the smaller of these two pessimistic estimates
         stride = int(min(lagtime, 2 * correlation_time))

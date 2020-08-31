@@ -443,7 +443,7 @@ def test_expectation_correlation_relaxation(oom_msm_scenario):
         else:
             np.testing.assert_allclose(expectation, oom_msm_scenario.exp)
 
-        with np.testing.assert_raises(AssertionError):
+        with np.testing.assert_raises(ValueError):
             msm.correlation(a, 1)
         # test equality:
         _, cor = msm.correlation(a, b, maxtime=50)
@@ -498,7 +498,7 @@ def test_fingerprint_relaxation(oom_msm_scenario):
     for msm in oom_msm_scenario.msms:
         if msm.reversible:
             # raise assertion error because size is wrong:
-            with np.testing.assert_raises(AssertionError):
+            with np.testing.assert_raises(ValueError):
                 msm.fingerprint_relaxation(msm.stationary_distribution, [0, 1], k=k)
             # equilibrium relaxation should be constant
             fp1 = msm.fingerprint_relaxation(msm.stationary_distribution, a, k=k)

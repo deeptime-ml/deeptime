@@ -31,7 +31,7 @@ __all__ = ['Covariance', 'CovarianceModel', 'KoopmanWeightingEstimator', 'Koopma
 
 __author__ = 'paul, nueske, marscher, clonker'
 
-from ..util import ensure_timeseries_data
+from ..util.types import ensure_timeseries_data
 
 
 class CovarianceModel(Model):

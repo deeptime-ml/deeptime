@@ -21,7 +21,7 @@ from typing import Tuple, List, Optional
 
 import numpy as np
 
-from ..util import plotting_function
+from sktime.util.decorators import plotting_function
 
 Coordinate = Tuple[int, int]
 

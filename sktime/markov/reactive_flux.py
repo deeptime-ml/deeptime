@@ -25,7 +25,6 @@ __moduleauthor__ = "Benjamin Trendelkamp-Schroer, Frank Noe, Martin Scherer"
 from typing import Optional, Iterable
 
 import numpy as np
-from sktime.util import ensure_ndarray
 
 from .tools import flux as tptapi
 
@@ -33,6 +32,8 @@ from sktime.base import Model
 from sktime.markov.tools.flux import (to_netflux, pathways, coarsegrain)
 
 __all__ = ['compute_reactive_flux', 'ReactiveFlux']
+
+from ..util.types import ensure_array
 
 
 class ReactiveFlux(Model):
@@ -394,8 +395,8 @@ def compute_reactive_flux(transition_matrix: np.ndarray, source_states: Iterable
     """
     import sktime.markov.tools.analysis as msmana
 
-    source_states = ensure_ndarray(source_states, dtype=int)
-    target_states = ensure_ndarray(target_states, dtype=int)
+    source_states = ensure_array(source_states, dtype=int)
+    target_states = ensure_array(target_states, dtype=int)
 
     if len(source_states) == 0 or len(target_states) == 0:
         raise ValueError('set A or B is empty')

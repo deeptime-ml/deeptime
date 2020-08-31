@@ -31,7 +31,7 @@ import warnings
 
 from scipy.sparse import diags
 
-from ...util.exceptions import ImaginaryEigenValueWarning, SpectralWarning
+from sktime.util.exceptions import ImaginaryEigenValueWarning, SpectralWarning
 from .stationary_vector import stationary_distribution
 from .assessment import is_reversible
 

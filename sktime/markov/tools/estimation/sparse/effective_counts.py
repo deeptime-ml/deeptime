@@ -24,7 +24,7 @@ r"""This module implements effective transition counts
 import numpy as np
 import scipy.sparse
 
-from ...util.statistics import statistical_inefficiency
+from sktime.util.stats import statistical_inefficiency
 from .count_matrix import count_matrix_coo2_mult
 from ....util import number_of_states
 

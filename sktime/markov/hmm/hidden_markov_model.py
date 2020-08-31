@@ -25,8 +25,8 @@ from sktime.base import Model
 from sktime.markov.hmm.output_model import OutputModel, DiscreteOutputModel
 from sktime.markov.sample import indices_by_distribution
 from sktime.numeric import mdot
-from sktime.util import ensure_dtraj_list, ensure_ndarray
 from ._hmm_bindings.util import viterbi as viterbi_impl
+from ...util.types import ensure_dtraj_list, ensure_array
 
 
 class HiddenMarkovModel(Model):
@@ -642,9 +642,9 @@ class HiddenMarkovModel(Model):
         -------
         hidden state vector corresponding to observable state vector
         """
-        a = ensure_ndarray(a, ndim=ndim, allow_none=allow_none)
         if allow_none and a is None:
             return None
+        a = ensure_array(a, ndim=ndim)
         if len(a) != self.n_observation_states:
             raise ValueError("Input array has incompatible shape, needs to have "
                              "length {} but had length {}.".format(len(a), self.n_observation_states))

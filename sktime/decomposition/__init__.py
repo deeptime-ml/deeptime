@@ -80,7 +80,7 @@ Utils
 from .tica import TICA
 from .vamp import VAMP
 from .koopman import KoopmanBasisTransform, IdentityKoopmanBasisTransform, KoopmanModel, CovarianceKoopmanModel
-from ..util import module_available
+from ..util.platform import module_available
 
 if module_available("torch"):
     from .vampnet import VAMPNet

@@ -31,9 +31,12 @@ namespace clustering {
 namespace kmeans {
 
 template<typename T>
-inline std::tuple<np_array<T>, np_array<std::size_t>> cluster(const np_array<T> &np_chunk,
-                                                              const np_array<T> &np_centers, int n_threads,
-                                                              const Metric *metric) {
+inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_chunk,
+                                                      const np_array_nfc<T> &np_centers, int n_threads,
+                                                      const Metric *metric) {
+    if (metric == nullptr) {
+        metric = default_metric();
+    }
 
     if (np_chunk.ndim() != 2) {
         throw std::runtime_error(R"(Number of dimensions of "chunk" ain't 2.)");
@@ -52,7 +55,7 @@ inline std::tuple<np_array<T>, np_array<std::size_t>> cluster(const np_array<T> 
     auto chunk = np_chunk.template unchecked<2>();
     auto n_centers = static_cast<std::size_t>(np_centers.shape(0));
     auto centers = np_centers.template unchecked<2>();
-    np_array<std::size_t> assignments({n_frames});
+    np_array<int> assignments({n_frames});
     auto assignmentsPtr = assignments.mutable_data();
 
     /* initialize centers_counter and new_centers with zeros */
@@ -65,7 +68,7 @@ inline std::tuple<np_array<T>, np_array<std::size_t>> cluster(const np_array<T> 
     /* do the clustering */
     if (n_threads == 0) {
         for (std::size_t i = 0; i < n_frames; ++i) {
-            std::size_t argMinDist = 0;
+            int argMinDist = 0;
             {
                 T minDist = metric->compute(&chunk(i, 0), &centers(0, 0), dim);
                 for (std::size_t j = 1; j < n_centers; ++j) {
@@ -168,9 +171,12 @@ inline std::tuple<np_array<T>, np_array<std::size_t>> cluster(const np_array<T> 
 }
 
 template<typename T>
-inline std::tuple<np_array<T>, int, int, np_array<T>> cluster_loop(
-        const np_array<T> &np_chunk, const np_array<T> &np_centers, const Metric *metric,
-        int n_threads, int max_iter, T tolerance, py::object &callback) {
+inline std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
+        const np_array_nfc<T> &np_chunk, const np_array_nfc<T> &np_centers,
+        int n_threads, int max_iter, T tolerance, py::object &callback, const Metric *metric) {
+    if (metric == nullptr) {
+        metric = default_metric();
+    }
     int it = 0;
     bool converged = false;
     T rel_change;
@@ -184,7 +190,7 @@ inline std::tuple<np_array<T>, int, int, np_array<T>> cluster_loop(
         auto clusterResult = cluster<T>(np_chunk, currentCenters, n_threads, metric);
         currentCenters = std::get<0>(clusterResult);
         const auto &assignments = std::get<1>(clusterResult);
-        auto cost = costFunction(np_chunk, currentCenters, metric, assignments, n_threads);
+        auto cost = costFunction(np_chunk, currentCenters, assignments, n_threads, metric);
         inertias.push_back(cost);
         rel_change = (cost != 0.0) ? std::abs(cost - prev_cost) / cost : 0;
         prev_cost = cost;
@@ -207,8 +213,11 @@ inline std::tuple<np_array<T>, int, int, np_array<T>> cluster_loop(
 }
 
 template<typename T>
-inline T costFunction(const np_array<T> &np_data, const np_array<T> &np_centers, const Metric *metric,
-                      const np_array<std::size_t> &assignments, int n_threads) {
+inline T costFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_centers,
+                      const np_array<int> &assignments, int n_threads, const Metric *metric) {
+    if(metric == nullptr) {
+        metric = default_metric();
+    }
     auto data = np_data.template unchecked<2>();
     auto centers = np_centers.template unchecked<2>();
 
@@ -216,11 +225,11 @@ inline T costFunction(const np_array<T> &np_data, const np_array<T> &np_centers,
     auto n_frames = static_cast<std::size_t>(np_data.shape(0));
     auto dim = static_cast<std::size_t>(np_data.shape(1));
     auto assignmentsPtr = assignments.data();
-#ifdef USE_OPENMP
+    #ifdef USE_OPENMP
     omp_set_num_threads(n_threads);
-#endif
+    #endif
 
-#pragma omp parallel for reduction(+:value)
+    #pragma omp parallel for reduction(+:value) default(none) firstprivate(n_frames, metric, data, centers, assignmentsPtr, dim)
     for (std::size_t i = 0; i < n_frames; i++) {
         auto l = metric->compute(&data(i, 0), &centers(assignmentsPtr[i], 0), dim);
         {

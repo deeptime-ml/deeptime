@@ -17,11 +17,12 @@
 
 import unittest
 import numpy as np
+
+from sktime.util.exceptions import NotConvergedWarning
 from tests.markov.tools.numeric import assert_allclose
 import scipy
 import scipy.sparse
 import warnings
-import sktime.markov.tools.util.exceptions
 
 from os.path import abspath, join
 from os import pardir
@@ -105,7 +106,7 @@ def transition_matrix_reversible_fixpi(Z, mu, maxerr=1e-10, maxiter=10000, retur
         warnings.warn('NOT CONVERGED: 2-norm of Langrange multiplier vector is still ' +
                          str(err) + ' > ' + str(maxerr) + ' after ' + str(it) +
                          ' iterations. Increase maxiter or decrease maxerr',
-                      sktime.markov.tools.util.exceptions.NotConvergedWarning)
+                      NotConvergedWarning)
     # compute T from Langrangian multipliers
     T = np.divide(A, l[:, np.newaxis])
     # return
@@ -165,7 +166,7 @@ class Test_mle_trev_given_pi(unittest.TestCase):
     def test_warnings(self):
         C = np.loadtxt(testpath + 'C_1_lag.dat')
         pi = np.loadtxt(testpath + 'pi.dat')
-        ncw = sktime.markov.tools.util.exceptions.NotConvergedWarning
+        ncw = NotConvergedWarning
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('ignore')
             warnings.simplefilter('always', category=ncw)

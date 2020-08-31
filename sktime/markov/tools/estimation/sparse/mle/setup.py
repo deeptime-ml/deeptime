@@ -1,11 +1,16 @@
-import numpy as np
+from pathlib import Path
+
+from numpy.distutils.misc_util import Configuration
 
 
 def configuration(parent_package='', top_path=None):
-    config = np.distutils.misc_util.Configuration('mle', parent_package, top_path)
-    config.add_extension('newton.objective_sparse',
-                         sources=['newton/objective_sparse.pyx'],
-                         include_dirs=[np.get_include()])
-    config.add_subpackage('newton')
+    config = Configuration('mle', parent_package, top_path)
 
+    config.add_extension('newton.objective_sparse_ops',
+                         sources=['newton/objective_sparse_ops.cpp'],
+                         include_dirs=[Path(top_path) / 'sktime' / 'src' / 'include'],
+                         language='c++',
+                         extra_compile_args=['-fvisibility=hidden'])
+
+    config.add_subpackage('newton')
     return config

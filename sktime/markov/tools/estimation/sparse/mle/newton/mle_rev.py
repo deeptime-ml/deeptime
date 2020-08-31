@@ -23,7 +23,6 @@ r"""
 import numpy as np
 import scipy.sparse
 
-from . import objective_dense
 from . import objective_sparse
 
 from .linsolve import mydot
@@ -59,7 +58,7 @@ def wrap_function(function, args):
 
 
 def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
-                      maxiter=100, show_progress=True, full_output=False):
+                      maxiter=100, full_output=False):
     """Wrap calls to function and Jacobian"""
     fcalls, func = wrap_function(func, args)
     Dfcalls, Dfunc = wrap_function(Dfunc, args)
@@ -216,9 +215,6 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
     """Dummy variable for step type"""
     step_type = " "
 
-    if show_progress:
-        print("%s %s %s %s %s %s %s" %("iter", "gap", "dual", "primal",
-                                       "min", "max", "step"))
     """MAIN LOOP"""
     z = z0
     x = z0[0:N]
@@ -234,12 +230,6 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
         info['z'].append(z)
 
     for n in range(maxiter):
-        if show_progress:
-            l=z[N+P:N+P+M]
-            s=z[N+P+M:]
-            print("%i %.6e %.6e %.6e %.6e %.6e %s" %(n+1, mu, dual, prim,
-                                                     np.min(l*s), np.max(l*s),
-                                                     step_type))
         """Attempt fast step"""
         beta_new = (1.0 + GAMMA_BAR**(t+1)) * beta
         gamma_new = GAMMA_MIN + GAMMA_BAR**(t+1)*(GAMMA_MAX - GAMMA_MIN)
@@ -283,19 +273,13 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
     if n == maxiter - 1:
         raise RuntimeError("Maximum number of iterations reached")
 
-    if show_progress:
-        l=z[N+P:N+P+M]
-        s=z[N+P+M:]
-        print("%i %.6e %.6e %.6e %.6e %.6e %s" %(n+1, mu, dual, prim,
-                                                 np.min(l*s), np.max(l*s),
-                                                 step_type))
     if full_output:
         return z[0:N], info
     else:
         return z[0:N]
 
 
-def solve_mle_rev(C, tol=1e-10, maxiter=100, show_progress=False, full_output=False,
+def solve_mle_rev(C, tol=1e-10, maxiter=100, full_output=False,
                   return_statdist=True, **kwargs):
     """Number of states"""
     M = C.shape[0]
@@ -333,15 +317,12 @@ def solve_mle_rev(C, tol=1e-10, maxiter=100, show_progress=False, full_output=Fa
         DF = objective_sparse.DFsym
         convert_solution = objective_sparse.convert_solution
     else:
-        F = objective_dense.F
-        DF = objective_dense.DF
-        convert_solution = objective_dense.convert_solution
+        raise ValueError("dense not supported")
 
     """PDIP iteration"""
     res = primal_dual_solve(F, z0, DF, A, b, G, h,
                             args=(Cs, c),
                             maxiter=maxiter, tol=tol,
-                            show_progress=show_progress,
                             full_output=full_output)
     if full_output:
         z, info = res

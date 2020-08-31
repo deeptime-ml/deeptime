@@ -46,3 +46,9 @@ class NotConvergedWarning(RuntimeWarning):
     as a safe guard to prevent arbitrary many iterations in loops with
     a conditional termination criterion.
     """
+
+
+class NotConvergedError(RuntimeError):
+    pass
+
+

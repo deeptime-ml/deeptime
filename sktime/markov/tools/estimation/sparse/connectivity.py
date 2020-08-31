@@ -22,8 +22,9 @@ r"""This module implements the connectivity functionality
 """
 
 import numpy as np
-import scipy.sparse
 import scipy.sparse.csgraph as csgraph
+
+from sktime.util.matrix import submatrix
 
 
 def connected_sets(C, directed=True):
@@ -130,23 +131,7 @@ def largest_connected_submatrix(C, directed=True, lcc=None):
     """
     if lcc is None:
         lcc = largest_connected_set(C, directed=directed)
-
-    """Row slicing"""
-    if scipy.sparse.issparse(C):
-        C_cc = C.tocsr()
-    else:
-        C_cc = C
-    C_cc = C_cc[lcc, :]
-
-    """Column slicing"""
-    if scipy.sparse.issparse(C):
-        C_cc = C_cc.tocsc()
-    C_cc = C_cc[:, lcc]
-
-    if scipy.sparse.issparse(C):
-        return C_cc.tocoo()
-    else:
-        return C_cc
+    return submatrix(C, lcc)
 
 
 def is_connected(C, directed=True):
@@ -167,6 +152,5 @@ def is_connected(C, directed=True):
 
 
     """
-    nc = csgraph.connected_components(C, directed=directed, connection='strong', \
-                                      return_labels=False)
+    nc = csgraph.connected_components(C, directed=directed, connection='strong', return_labels=False)
     return nc == 1

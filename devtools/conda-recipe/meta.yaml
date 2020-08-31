@@ -30,7 +30,7 @@ requirements:
     - numpy >=1.14
     - python
     - scipy
-    - setuptools
+    - setuptools !=50.0.0
     - pip
 
   run:

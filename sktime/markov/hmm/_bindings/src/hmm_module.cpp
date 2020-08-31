@@ -35,6 +35,8 @@ PYBIND11_MODULE(_hmm_bindings, m) {
     {
         auto discreteModule = outputModels.def_submodule("discrete");
         discreteModule.def("generate_observation_trajectory",
+                          &hmm::output_models::discrete::generateObservationTrajectory<float, std::int16_t>);
+        discreteModule.def("generate_observation_trajectory",
                            &hmm::output_models::discrete::generateObservationTrajectory<float, std::int32_t>);
         discreteModule.def("generate_observation_trajectory",
                            &hmm::output_models::discrete::generateObservationTrajectory<float, std::int64_t>);
@@ -50,12 +52,16 @@ PYBIND11_MODULE(_hmm_bindings, m) {
                            &hmm::output_models::discrete::toOutputProbabilityTrajectory<double, std::int32_t>);
         discreteModule.def("to_output_probability_trajectory",
                            &hmm::output_models::discrete::toOutputProbabilityTrajectory<double, std::int64_t>);
+        discreteModule.def("sample", &hmm::output_models::discrete::sample<float, std::int16_t>);
         discreteModule.def("sample", &hmm::output_models::discrete::sample<float, std::int32_t>);
         discreteModule.def("sample", &hmm::output_models::discrete::sample<float, std::int64_t>);
+        discreteModule.def("sample", &hmm::output_models::discrete::sample<double, std::int16_t>);
         discreteModule.def("sample", &hmm::output_models::discrete::sample<double, std::int32_t>);
         discreteModule.def("sample", &hmm::output_models::discrete::sample<double, std::int64_t>);
+        discreteModule.def("update_p_out", &hmm::output_models::discrete::updatePOut<float, std::int16_t>);
         discreteModule.def("update_p_out", &hmm::output_models::discrete::updatePOut<float, std::int32_t>);
         discreteModule.def("update_p_out", &hmm::output_models::discrete::updatePOut<float, std::int64_t>);
+        discreteModule.def("update_p_out", &hmm::output_models::discrete::updatePOut<double, std::int16_t>);
         discreteModule.def("update_p_out", &hmm::output_models::discrete::updatePOut<double, std::int32_t>);
         discreteModule.def("update_p_out", &hmm::output_models::discrete::updatePOut<double, std::int64_t>);
     }

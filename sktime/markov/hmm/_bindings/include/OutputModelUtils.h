@@ -34,7 +34,7 @@ namespace hmm {
 namespace output_models {
 
 template<typename dtype>
-void handleOutliers(np_array<dtype> &outputProbabilityTrajectory) {
+void handleOutliers(np_array_nfc<dtype> &outputProbabilityTrajectory) {
     auto nTimesteps = outputProbabilityTrajectory.shape(0);
     auto nStates = outputProbabilityTrajectory.shape(1);
     auto ptr = outputProbabilityTrajectory.mutable_data();
@@ -56,8 +56,8 @@ void handleOutliers(np_array<dtype> &outputProbabilityTrajectory) {
 namespace discrete {
 
 template<typename dtype, typename State>
-np_array<dtype> generateObservationTrajectory(const np_array<State> &hiddenStateTrajectory,
-                                              const np_array<dtype> &outputProbabilities) {
+np_array<dtype> generateObservationTrajectory(const np_array_nfc<State> &hiddenStateTrajectory,
+                                              const np_array_nfc<dtype> &outputProbabilities) {
     if (hiddenStateTrajectory.ndim() != 1) {
         throw std::invalid_argument("generate observation trajectory needs 1-dimensional hidden state trajectory");
     }
@@ -98,8 +98,8 @@ np_array<dtype> generateObservationTrajectory(const np_array<State> &hiddenState
 }
 
 template<typename dtype, typename State>
-np_array<dtype> toOutputProbabilityTrajectory(const np_array<State> &observations,
-                                              const np_array<dtype> &outputProbabilities) {
+np_array<dtype> toOutputProbabilityTrajectory(const np_array_nfc<State> &observations,
+                                              const np_array_nfc<dtype> &outputProbabilities) {
     if (observations.ndim() != 1) {
         throw std::invalid_argument("observations trajectory needs to be one-dimensional.");
     }
@@ -123,8 +123,8 @@ np_array<dtype> toOutputProbabilityTrajectory(const np_array<State> &observation
 }
 
 template<typename dtype, typename State>
-void sample(const std::vector<np_array<State>> &observationsPerState, np_array<dtype> &outputProbabilities,
-            const np_array<dtype> &prior) {
+void sample(const std::vector<np_array_nfc<State>> &observationsPerState, np_array_nfc<dtype> &outputProbabilities,
+            const np_array_nfc<dtype> &prior) {
     auto nObs = outputProbabilities.shape(1);
     ssize_t currentState{0};
 
@@ -193,7 +193,7 @@ void sample(const std::vector<np_array<State>> &observationsPerState, np_array<d
 }
 
 template<typename dtype, typename State>
-void updatePOut(const np_array<State> &obs, const np_array<dtype> &weights, np_array<dtype> &pout) {
+void updatePOut(const np_array_nfc<State> &obs, const np_array_nfc<dtype> &weights, np_array_nfc<dtype> &pout) {
     auto T = static_cast<std::size_t>(obs.size());
     auto N = static_cast<std::size_t>(pout.shape(0));
     auto M = static_cast<std::size_t>(pout.shape(1));
@@ -237,7 +237,7 @@ constexpr dtype sample(dtype o, dtype mu, dtype sigma) {
 }
 
 template<typename dtype>
-np_array<dtype> pO(dtype o, const np_array<dtype> &mus, const np_array<dtype> &sigmas, py::object out) {
+np_array<dtype> pO(dtype o, const np_array_nfc<dtype> &mus, const np_array_nfc<dtype> &sigmas, py::object out) {
     auto N = static_cast<std::size_t>(mus.shape(0));
 
     np_array<dtype> p;
@@ -259,8 +259,8 @@ np_array<dtype> pO(dtype o, const np_array<dtype> &mus, const np_array<dtype> &s
 }
 
 template<typename dtype>
-np_array<dtype> toOutputProbabilityTrajectory(const np_array<dtype> &obs, const np_array<dtype> &mus,
-                                              const np_array<dtype> &sigmas) {
+np_array<dtype> toOutputProbabilityTrajectory(const np_array_nfc<dtype> &obs, const np_array_nfc<dtype> &mus,
+                                              const np_array_nfc<dtype> &sigmas) {
     auto N = static_cast<std::size_t>(mus.shape(0));
     auto T = static_cast<std::size_t>(obs.shape(0));
 
@@ -282,8 +282,8 @@ np_array<dtype> toOutputProbabilityTrajectory(const np_array<dtype> &obs, const 
 
 template<typename dtype>
 np_array<dtype>
-generateObservationTrajectory(const np_array<dtype> &hiddenStateTrajectory, const np_array<dtype> &means,
-                              const np_array<dtype> &sigmas) {
+generateObservationTrajectory(const np_array_nfc<dtype> &hiddenStateTrajectory, const np_array_nfc<dtype> &means,
+                              const np_array_nfc<dtype> &sigmas) {
     if (hiddenStateTrajectory.ndim() != 1) {
         throw std::invalid_argument("Hidden state trajectory must be one-dimensional!");
     }

@@ -31,7 +31,9 @@ from sktime.markov.tools import analysis as msmana
 from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import count_states
 from sktime.numeric import mdot, is_square_matrix
-from sktime.util import ensure_ndarray, submatrix, cached_property
+from sktime.util.decorators import cached_property
+from sktime.util.matrix import submatrix
+from sktime.util.types import ensure_array
 
 
 class MarkovStateModel(Model):
@@ -452,7 +454,7 @@ class MarkovStateModel(Model):
             Distribution after k steps. Vector of size of the active set.
 
         """
-        p0 = ensure_ndarray(p0, ndim=1, size=self.n_states)
+        p0 = ensure_array(p0, ndim=1, size=self.n_states)
         assert k >= 0, 'k must be a non-negative integer'
 
         if k == 0:  # simply return p0 normalized
@@ -557,7 +559,7 @@ class MarkovStateModel(Model):
         :math:`\pi=(\pi_i)` is the stationary vector of the transition matrix :math:`P`.
 
         """
-        a = ensure_ndarray(a, ndim=1, size=self.n_states)
+        a = ensure_array(a, ndim=1, size=self.n_states)
         return np.dot(a, self.stationary_distribution)
 
     def correlation(self, a, b=None, maxtime=None, k=None, ncv=None):
@@ -805,7 +807,7 @@ class MarkovStateModel(Model):
         from sktime.markov.tools.analysis import relaxation
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
-        res = relaxation(self.transition_matrix, p0, a, times=steps, k=k, ncv=ncv)
+        res = relaxation(self.transition_matrix, p0, a, times=steps, k=k)
         # return times scaled by tau
         times = steps * self.lagtime
         return times, res

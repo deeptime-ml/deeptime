@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from numbers import Real, Integral
 from typing import Optional, Union, List
 
 import numpy as np
@@ -24,7 +23,7 @@ import numpy as np
 from ..base import Model, Transformer
 from ..covariance import CovarianceModel
 from ..numeric import is_diagonal_matrix, spd_inv_sqrt, mdot
-from ..util import cached_property
+from ..util.decorators import cached_property
 
 
 class KoopmanBasisTransform(object):

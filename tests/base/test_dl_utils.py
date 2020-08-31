@@ -3,7 +3,7 @@ import pytest
 pytest.importorskip("torch")
 import torch
 
-from sktime.util_torch import CheckpointManager, Stats
+from sktime.util.pytorch import CheckpointManager, Stats
 from numpy.testing import *
 
 

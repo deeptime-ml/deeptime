@@ -18,8 +18,8 @@
 
 import numpy as np
 from . import _data_bindings as bd
-
-from ..util import handle_n_jobs, plotting_function
+from sktime.util.decorators import plotting_function
+from sktime.util.parallel import handle_n_jobs
 
 
 class PBFSimulator(object):

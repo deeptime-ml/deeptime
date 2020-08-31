@@ -51,8 +51,12 @@ private:
  * @param py_centers python list containing found centers.
  */
 template<typename T>
-void cluster(const np_array<T> &chunk, py::list& py_centers, T dmin, std::size_t maxClusters,
-             const Metric *metric, unsigned int n_threads) {
+void cluster(const np_array_nfc<T> &chunk, py::list& py_centers, T dmin, std::size_t maxClusters,
+             int n_threads, const Metric *metric) {
+
+    if (metric == nullptr) {
+        metric = default_metric();
+    }
 
     // this checks for ndim == 2
     if(chunk.ndim() != 2) {

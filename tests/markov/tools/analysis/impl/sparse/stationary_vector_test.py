@@ -23,7 +23,8 @@ r"""Test package for the decomposition module
 import unittest
 
 import numpy as np
-from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
+
+from sktime.data.birth_death_chain import BirthDeathChain
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.analysis.sparse.stationary_vector import stationary_distribution_from_eigenvector

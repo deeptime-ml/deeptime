@@ -25,12 +25,15 @@ from scipy.sparse import issparse
 from sktime.markov._base import _MSMBaseEstimator
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
-from sktime.util import submatrix, ensure_dtraj_list
 
 from . import _koopman_reweighted_msm_impl as _impl
 from ..util import count_states
 
 __author__ = 'Feliks Nüske, Fabian Paul, marscher, clonker'
+
+from ...util.matrix import submatrix
+
+from ...util.types import ensure_dtraj_list
 
 
 class KoopmanReweightedMSM(MarkovStateModel):

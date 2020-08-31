@@ -26,9 +26,12 @@ from scipy.sparse import coo_matrix, issparse
 
 from sktime.base import Estimator, Model, Transformer
 from sktime.markov.util import count_states, compute_connected_sets
-from sktime.util import submatrix, ensure_dtraj_list
 
 __author__ = 'noe, clonker'
+
+from sktime.util.matrix import submatrix
+
+from sktime.util.types import ensure_dtraj_list
 
 
 def requires_state_histogram(func: Callable) -> Callable:

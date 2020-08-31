@@ -25,11 +25,12 @@ import warnings
 import math
 import numpy as np
 import scipy.sparse
-from ..util import types
 
 __all__ = ['transition_matrix_metropolis_1d',
            'generate_traj',
            'generate_trajs']
+
+from sktime.util.types import ensure_integer_array
 
 
 class MarkovChainSampler(object):
@@ -96,7 +97,8 @@ class MarkovChainSampler(object):
 
         """
         # check input
-        stop = types.ensure_int_vector_or_None(stop, require_order=False)
+        if stop is not None:
+            stop = ensure_integer_array(stop, ndim=1)
 
         if start is None:
           start = self._get_start_state()

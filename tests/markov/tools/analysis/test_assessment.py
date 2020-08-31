@@ -28,8 +28,7 @@ import numpy as np
 import scipy.sparse
 from scipy.sparse.dia import dia_matrix
 
-from sktime.markov.tools.util.birth_death_chain import BirthDeathChain
-
+from sktime.data.birth_death_chain import BirthDeathChain
 from sktime.markov.tools.analysis import is_rate_matrix, is_reversible, is_transition_matrix, is_connected
 
 ################################################################################

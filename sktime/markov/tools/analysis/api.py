@@ -23,15 +23,13 @@ r"""
 
 """
 
-
 import warnings
 
 import numpy as _np
 from scipy.sparse import issparse as _issparse
 from scipy.sparse import csr_matrix as _csr_matrix
 
-# type-checking
-from ..util import types as _types
+from sktime.util.types import ensure_number_array, ensure_integer_array, ensure_floating_array
 
 from . import dense
 from . import sparse
@@ -79,6 +77,7 @@ __all__ = ['is_transition_matrix',
 _type_not_supported = \
     TypeError("T is not a numpy.ndarray or a scipy.sparse matrix.")
 
+
 ################################################################################
 # Assessment tools
 ################################################################################
@@ -120,7 +119,7 @@ def is_transition_matrix(T, tol=1e-12):
     True
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     if _issparse(T):
         return sparse.assessment.is_transition_matrix(T, tol)
     else:
@@ -163,7 +162,7 @@ def is_rate_matrix(K, tol=1e-12):
     True
 
     """
-    K = _types.ensure_ndarray_or_sparse(K, ndim=2, uniform=True, kind='numeric')
+    K = ensure_number_array(K, ndim=2)
     if _issparse(K):
         return sparse.assessment.is_rate_matrix(K, tol)
     else:
@@ -229,7 +228,7 @@ def is_connected(T, directed=True):
     True
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     if _issparse(T):
         return sparse.assessment.is_connected(T, directed=directed)
     else:
@@ -287,9 +286,9 @@ def is_reversible(T, mu=None, tol=1e-12):
 
     """
     # check input
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    mu = _types.ensure_float_vector_or_None(mu, require_order=True)
-    # go
+    T = ensure_number_array(T, ndim=2)
+    if mu is not None:
+        mu = ensure_number_array(mu, ndim=1)
     if _issparse(T):
         return sparse.assessment.is_reversible(T, mu, tol)
     else:
@@ -410,8 +409,8 @@ def eigenvalues(T, k=None, ncv=None, reversible=False, mu=None):
     array([ 1. +0.j,  0.9+0.j, -0.1+0.j])
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    k =_check_k(T, k)
+    T = ensure_number_array(T, ndim=2)
+    k = _check_k(T, k)
     if _issparse(T):
         return sparse.decomposition.eigenvalues(T, k, ncv=ncv, reversible=reversible, mu=mu)
     else:
@@ -469,8 +468,8 @@ def timescales(T, tau=1, k=None, ncv=None, reversible=False, mu=None):
     array([       inf, 9.49122158, 0.43429448])
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    k =_check_k(T, k)
+    T = ensure_number_array(T, ndim=2)
+    k = _check_k(T, k)
     if _issparse(T):
         return sparse.decomposition.timescales(T, tau=tau, k=k, ncv=ncv,
                                                reversible=reversible, mu=mu)
@@ -549,7 +548,8 @@ def eigenvectors(T, k=None, right=True, ncv=None, reversible=False, mu=None):
     >>> R  # doctest: +ELLIPSIS
     array([[ 5.77350269e-01,  7.07106781e-01,  9.90147543e-02]...
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+
+    T = ensure_number_array(T, ndim=2)
     k = _check_k(T, k)
     if _issparse(T):
         ev = sparse.decomposition.eigenvectors(T, k=k, right=right, ncv=ncv, reversible=reversible, mu=mu)
@@ -636,7 +636,7 @@ def rdl_decomposition(T, k=None, norm='auto', ncv=None, reversible=False, mu=Non
 
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     k = _check_k(T, k)
     if _issparse(T):
         return sparse.decomposition.rdl_decomposition(T, k=k, norm=norm, ncv=ncv,
@@ -715,10 +715,10 @@ def mfpt(T, target, origin=None, tau=1, mu=None):
 
     """
     # check inputs
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    target = _types.ensure_int_vector(target)
-    origin = _types.ensure_int_vector_or_None(origin)
-    # go
+    T = ensure_number_array(T, ndim=2)
+    target = ensure_integer_array(target, ndim=1)
+    if origin is not None:
+        origin = ensure_integer_array(origin, ndim=1)
     if _issparse(T):
         if origin is None:
             t_tau = sparse.mean_first_passage_time.mfpt(T, target)
@@ -757,8 +757,8 @@ def hitting_probability(T, target):
     h : ndarray(n)
         a vector with hitting probabilities
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    target = _types.ensure_int_vector(target)
+    T = ensure_number_array(T, ndim=2)
+    target = ensure_integer_array(target, ndim=1)
     if _issparse(T):
         _showSparseConversionWarning()  # currently no sparse implementation!
         return dense.hitting_probability.hitting_probability(T.toarray(), target)
@@ -872,9 +872,9 @@ def committor(T, A, B, forward=True, mu=None):
     >>> u_minus
     array([1.        , 0.45454545, 0.        ])
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    A = _types.ensure_int_vector(A)
-    B = _types.ensure_int_vector(B)
+    T = ensure_number_array(T, ndim=2)
+    A = ensure_integer_array(A, ndim=1)
+    B = ensure_integer_array(B, ndim=1)
     if _issparse(T):
         if forward:
             return sparse.committor.forward_committor(T, A, B)
@@ -944,8 +944,8 @@ def expected_counts(T, p0, N):
 
     """
     # check input
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    p0 = _types.ensure_float_vector(p0, require_order=True)
+    T = ensure_number_array(T, ndim=2)
+    p0 = ensure_floating_array(p0, ndim=1)
     # go
     if _issparse(T):
         return sparse.expectations.expected_counts(p0, T, N)
@@ -999,8 +999,9 @@ def expected_counts_stationary(T, N, mu=None):
 
     """
     # check input
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    mu = _types.ensure_float_vector_or_None(mu, require_order=True)
+    T = ensure_number_array(T, ndim=2)
+    if mu is not None:
+        mu = ensure_floating_array(mu, ndim=1)
     # go
     if _issparse(T):
         return sparse.expectations.expected_counts_stationary(T, N, mu=mu)
@@ -1110,13 +1111,14 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
 
     """
     # check if square matrix and remember size
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     n = T.shape[0]
     # will not do fingerprint analysis for nonreversible matrices
     if not is_reversible(T):
         raise ValueError('Fingerprint calculation is not supported for nonreversible transition matrices. ')
-    obs1 = _types.ensure_ndarray(obs1, ndim=1, size=n, kind='numeric')
-    obs1 = _types.ensure_ndarray_or_None(obs1, ndim=1, size=n, kind='numeric')
+    obs1 = ensure_number_array(obs1, ndim=1, size=n)
+    if obs2 is not None:
+        obs2 = ensure_number_array(obs2, ndim=1, size=n)
     # go
     if _issparse(T):
         return sparse.fingerprints.fingerprint_correlation(T, obs1, obs2=obs2, tau=tau, k=k, ncv=ncv)
@@ -1203,13 +1205,13 @@ def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
 
     """
     # check if square matrix and remember size
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     n = T.shape[0]
     # will not do fingerprint analysis for nonreversible matrices
     if not is_reversible(T):
         raise ValueError('Fingerprint calculation is not supported for nonreversible transition matrices. ')
-    p0 = _types.ensure_ndarray(p0, ndim=1, size=n, kind='numeric')
-    obs = _types.ensure_ndarray(obs, ndim=1, size=n, kind='numeric')
+    p0 = ensure_number_array(p0, ndim=1, size=n)
+    obs = ensure_number_array(obs, ndim=1, size=n)
     # go
     if _issparse(T):
         return sparse.fingerprints.fingerprint_relaxation(T, p0, obs, tau=tau, k=k, ncv=ncv)
@@ -1259,17 +1261,18 @@ def expectation(T, a, mu=None):
 
     """
     # check if square matrix and remember size
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     n = T.shape[0]
-    a = _types.ensure_ndarray(a, ndim=1, size=n, kind='numeric')
-    mu = _types.ensure_ndarray_or_None(mu, ndim=1, size=n, kind='numeric')
+    a = ensure_number_array(a, ndim=1, size=n)
+    if mu is not None:
+        mu = ensure_number_array(mu, ndim=1, size=n)
     # go
     if not mu:
         mu = stationary_distribution(T)
     return _np.dot(mu, a)
 
 
-def correlation(T, obs1, obs2=None, times=(1), maxtime=None, k=None, ncv=None, return_times=False):
+def correlation(T, obs1, obs2=None, times=(1,), k=None, ncv=None):
     r"""Time-correlation for equilibrium experiment :cite:`tools-correlation-noe2011dynamical`.
 
     Parameters
@@ -1282,8 +1285,6 @@ def correlation(T, obs1, obs2=None, times=(1), maxtime=None, k=None, ncv=None, r
         Second observable, for cross-correlations
     times : array-like of int (optional), default=(1)
         List of times (in tau) at which to compute correlation
-    maxtime : int, optional, default=None
-        Maximum time step to use. Equivalent to . Alternative to times.
     k : int (optional)
         Number of eigenvalues and eigenvectors to use for computation
     ncv : int (optional)
@@ -1349,11 +1350,12 @@ def correlation(T, obs1, obs2=None, times=(1), maxtime=None, k=None, ncv=None, r
 
     """
     # check if square matrix and remember size
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     n = T.shape[0]
-    obs1 = _types.ensure_ndarray(obs1, ndim=1, size=n, kind='numeric')
-    obs2 = _types.ensure_ndarray_or_None(obs2, ndim=1, size=n, kind='numeric')
-    times = _types.ensure_int_vector(times, require_order=True)
+    obs1 = ensure_number_array(obs1, ndim=1, size=n)
+    if obs2 is not None:
+        obs2 = ensure_number_array(obs2, ndim=1, size=n)
+    times = ensure_integer_array(times, ndim=1)
 
     # check input
     # go
@@ -1363,7 +1365,7 @@ def correlation(T, obs1, obs2=None, times=(1), maxtime=None, k=None, ncv=None, r
         return dense.fingerprints.correlation(T, obs1, obs2=obs2, times=times, k=k)
 
 
-def relaxation(T, p0, obs, times=(1,), k=None, ncv=None):
+def relaxation(T, p0, obs, times=(1,), k=None):
     r"""Relaxation experiment :cite:`tools-relaxation-noe2011dynamical`.
 
     The relaxation experiment describes the time-evolution
@@ -1382,9 +1384,6 @@ def relaxation(T, p0, obs, times=(1,), k=None, ncv=None):
         List of times at which to compute expectation
     k : int (optional)
         Number of eigenvalues and eigenvectors to use for computation
-    ncv : int (optional)
-        The number of Lanczos vectors generated, `ncv` must be greater than k;
-        it is recommended that ncv > 2*k
 
     Returns
     -------
@@ -1425,16 +1424,17 @@ def relaxation(T, p0, obs, times=(1,), k=None, ncv=None):
 
     """
     # check if square matrix and remember size
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     n = T.shape[0]
-    p0 = _types.ensure_ndarray(p0, ndim=1, size=n, kind='numeric')
-    obs = _types.ensure_ndarray(obs, ndim=1, size=n, kind='numeric')
-    times = _types.ensure_int_vector(times, require_order=True)
+    p0 = ensure_number_array(p0, ndim=1, size=n)
+    obs = ensure_number_array(obs, ndim=1, size=n)
+    times = ensure_integer_array(times, ndim=1)
     # go
     if _issparse(T):
         return sparse.fingerprints.relaxation(T, p0, obs, k=k, times=times)
     else:
         return dense.fingerprints.relaxation(T, p0, obs, k=k, times=times)
+
 
 # ========================
 # PCCA
@@ -1459,7 +1459,7 @@ def _pcca_object(T, m):
     if _issparse(T):
         _showSparseConversionWarning()
         T = T.toarray()
-    T = _types.ensure_ndarray(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2, accept_sparse=False)
     return dense.pcca.PCCA(T, m)
 
 
@@ -1644,7 +1644,7 @@ def eigenvalue_sensitivity(T, k):
         Sensitivity matrix for k-th eigenvalue.
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     if _issparse(T):
         _showSparseConversionWarning()
         eigenvalue_sensitivity(T.todense(), k)
@@ -1668,7 +1668,7 @@ def timescale_sensitivity(T, k):
         Sensitivity matrix for the k-th time-scale.
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     if _issparse(T):
         _showSparseConversionWarning()
         timescale_sensitivity(T.todense(), k)
@@ -1696,7 +1696,7 @@ def eigenvector_sensitivity(T, k, j, right=True):
         Sensitivity matrix for the j-th element of the k-th eigenvector.
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     if _issparse(T):
         _showSparseConversionWarning()
         eigenvector_sensitivity(T.todense(), k, j, right=right)
@@ -1723,7 +1723,7 @@ def stationary_distribution_sensitivity(T, j):
         of the stationary distribution.
 
     """
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
+    T = ensure_number_array(T, ndim=2)
     if _issparse(T):
         _showSparseConversionWarning()
         stationary_distribution_sensitivity(T.todense(), j)
@@ -1750,8 +1750,8 @@ def mfpt_sensitivity(T, target, i):
 
     """
     # check input
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    target = _types.ensure_int_vector(target)
+    T = ensure_number_array(T, ndim=2)
+    target = ensure_integer_array(target, ndim=1)
     # go
     if _issparse(T):
         _showSparseConversionWarning()
@@ -1785,9 +1785,9 @@ def committor_sensitivity(T, A, B, i, forward=True):
 
     """
     # check inputs
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    A = _types.ensure_int_vector(A)
-    B = _types.ensure_int_vector(B)
+    T = ensure_number_array(T, ndim=2)
+    A = ensure_integer_array(A, ndim=1)
+    B = ensure_integer_array(B, ndim=1)
     if _issparse(T):
         _showSparseConversionWarning()
         committor_sensitivity(T.todense(), A, B, i, forward)
@@ -1815,8 +1815,8 @@ def expectation_sensitivity(T, a):
 
     """
     # check input
-    T = _types.ensure_ndarray_or_sparse(T, ndim=2, uniform=True, kind='numeric')
-    a = _types.ensure_float_vector(a, require_order=True)
+    T = ensure_number_array(T, ndim=2)
+    a = ensure_floating_array(a, ndim=1)
     # go
     if _issparse(T):
         _showSparseConversionWarning()
