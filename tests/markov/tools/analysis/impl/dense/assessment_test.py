@@ -23,7 +23,7 @@ Created on 07.10.2013
 import unittest
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from sktime.markov.tools.analysis.dense import assessment
 
 
@@ -55,13 +55,12 @@ class ReversibleTest(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
-        self.T = self.bdc.transition_matrix()
-        self.mu = self.bdc.stationary_distribution()
+        self.bdc = birth_death_chain(q, p)
 
     def testIsReversible(self):
         # create a reversible matrix
-        self.assertTrue(assessment.is_reversible(self.T, self.mu), "T should be reversible")
+        self.assertTrue(assessment.is_reversible(self.bdc.transition_matrix, self.bdc.stationary_distribution),
+                        "T should be reversible")
 
 
 if __name__ == "__main__":

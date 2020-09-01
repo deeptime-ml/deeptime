@@ -34,7 +34,6 @@ Validation
    :template: class_nomodule.rst
 
    is_transition_matrix - Positive entries and rows sum to one
-   is_tmatrix
    is_rate_matrix - Nonpositive off-diagonal entries and rows sum to zero
    is_connected - Irreducible matrix
    is_reversible - Symmetric with respect to some probability vector pi
@@ -50,7 +49,6 @@ numpy-arrays and the ARPACK bindings for scipy sparse matrices.
    :template: class_nomodule.rst
 
    stationary_distribution - Invariant vector from eigendecomposition
-   statdist
    eigenvalues - Spectrum via eigenvalue decomposition
    eigenvectors - Right or left eigenvectors
    rdl_decomposition - Full decomposition into eigenvalues and eigenvectors

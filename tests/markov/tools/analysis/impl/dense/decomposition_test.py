@@ -26,7 +26,7 @@ import warnings
 
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
 from scipy.linalg import eigvals
@@ -52,10 +52,10 @@ class TestDecomposition(unittest.TestCase):
         p[self.dim // 2 - 1] = 0.001
         q[self.dim // 2 + 1] = 0.001
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
     def test_eigenvalues(self):
-        P = self.bdc.transition_matrix()
+        P = self.bdc.transition_matrix
         ev = eigvals(P)
         """Sort with decreasing magnitude"""
         ev = ev[np.argsort(np.abs(ev))[::-1]]
@@ -69,7 +69,7 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(ev[0:self.k], evn)
 
     def test_eigenvalues_reversible(self):
-        P = self.bdc.transition_matrix()
+        P = self.bdc.transition_matrix
         ev = eigvals(P)
         """Sort with decreasing magnitude"""
         ev = ev[np.argsort(np.abs(ev))[::-1]]
@@ -80,11 +80,11 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(ev, evn)
 
         """reversible with given mu"""
-        evn = eigenvalues(P, reversible=True, mu=self.bdc.stationary_distribution())
+        evn = eigenvalues(P, reversible=True, mu=self.bdc.stationary_distribution)
         assert_allclose(ev, evn)
 
     def test_eigenvectors(self):
-        P = self.bdc.transition_matrix()
+        P = self.bdc.transition_matrix
 
         # k==None
         ev = eigvals(P)
@@ -118,7 +118,7 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(Xn,0)
 
     def test_eigenvectors_reversible(self):
-        P = self.bdc.transition_matrix()
+        P = self.bdc.transition_matrix
 
         # k==None
         ev = eigvals(P)
@@ -153,8 +153,8 @@ class TestDecomposition(unittest.TestCase):
 
 
     def test_rdl_decomposition(self):
-        P = self.bdc.transition_matrix()
-        mu = self.bdc.stationary_distribution()
+        P = self.bdc.transition_matrix
+        mu = self.bdc.stationary_distribution
 
         """norm='standard'"""
 
@@ -249,8 +249,8 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(Ln.transpose(), mu[:, np.newaxis] * Rn)
 
     def test_rdl_decomposition_rev(self):
-        P = self.bdc.transition_matrix()
-        mu = self.bdc.stationary_distribution()
+        P = self.bdc.transition_matrix
+        mu = self.bdc.stationary_distribution
 
         """norm='standard'"""
 
@@ -316,7 +316,7 @@ class TestDecomposition(unittest.TestCase):
 
 
     def test_timescales(self):
-        P = self.bdc.transition_matrix()
+        P = self.bdc.transition_matrix
         ev = eigvals(P)
         """Sort with decreasing magnitude"""
         ev = ev[np.argsort(np.abs(ev))[::-1]]

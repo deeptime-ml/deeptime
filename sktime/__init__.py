@@ -27,6 +27,7 @@ from . import data
 from . import decomposition
 from . import markov
 from . import numeric
+from . import kernels
 
 
 def capi_includes():

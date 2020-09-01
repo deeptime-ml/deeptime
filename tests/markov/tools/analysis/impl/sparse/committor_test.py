@@ -23,7 +23,7 @@ r"""Unit tests for the committor module
 import unittest
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.analysis.sparse import committor
@@ -38,23 +38,19 @@ class TestCommittor(unittest.TestCase):
         p[49] = 0.01
         q[51] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
     def tearDown(self):
         pass
 
     def test_forward_comittor(self):
-        P = self.bdc.transition_matrix_sparse()
+        P = self.bdc.transition_matrix_sparse
         un = committor.forward_committor(P, list(range(10)), list(range(90, 100)))
         u = self.bdc.committor_forward(9, 90)
         assert_allclose(un, u)
 
     def test_backward_comittor(self):
-        P = self.bdc.transition_matrix_sparse()
+        P = self.bdc.transition_matrix_sparse
         un = committor.backward_committor(P, list(range(10)), list(range(90, 100)))
         u = self.bdc.committor_backward(9, 90)
         assert_allclose(un, u)
-
-
-if __name__ == "__main__":
-    unittest.main()

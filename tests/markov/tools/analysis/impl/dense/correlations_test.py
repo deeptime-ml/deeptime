@@ -23,7 +23,7 @@ Created on Jun 3, 2014
 import unittest
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.analysis.dense import correlations
@@ -38,10 +38,10 @@ class TestCorrelations(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
-        self.mu = self.bdc.stationary_distribution()
-        self.T = self.bdc.transition_matrix()
+        self.mu = self.bdc.stationary_distribution
+        self.T = self.bdc.transition_matrix
 
     def test_time_correlation(self):
         """

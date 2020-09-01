@@ -32,6 +32,7 @@ API
     position_based_fluids
     drunkards_walk
     bickley_jet
+    birth_death_chain
 
 ===============================================================================
 Utilities
@@ -58,8 +59,9 @@ Implementations
     pbf_simulator.PBFSimulator
     drunkards_walk_simulator.DrunkardsWalk
     bickley_simulator.BickleyJet
-    birth_death_chain.BirthDeathChain
+    birth_death_chain_dataset.BirthDeathChain
 """
 
 from .util import timeshifted_split, TimeSeriesDataset, TimeLaggedDataset
-from .datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk, bickley_jet
+from .datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk, bickley_jet, \
+    birth_death_chain

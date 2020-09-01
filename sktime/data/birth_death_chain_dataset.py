@@ -15,40 +15,35 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-r"""Birth death chain for testing
-
-.. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
-
-"""
-
 import numpy as np
 
 from scipy.sparse import diags
 
 
 class BirthDeathChain(object):
-    """Birth and death chain class
+    r"""Birth and death chain.
 
     A general birth and death chain on a d-dimensional state space
     has the following transition matrix
 
-                q_i,    j=i-1 for i>0
-        p_ij=   r_i     j=i
-                p_i     j=i+1 for i<d-1
+    .. math::
 
+        p_{ij} = \begin{cases}
+            q_i &\text{, if } j=i-1 \text{ and } i>0,\\
+            r_i &\text{, if } j=i,\\
+            p_i &\text{, if } j=i+1 \text{ and } i<d-1.
+        \end{cases}
     """
 
     def __init__(self, q, p):
-        """Generate a birth and death chain from creation and
-        anhilation probabilities.
+        r"""Generate a birth and death chain from creation and annihilation probabilities.
 
         Parameters
         ----------
         q : array_like
-            Anhilation probabilities for transition from i to i-1
+            Annihilation probabilities for transition from i to i-1.
         p : array-like
-            Creation probabilities for transition from i to i+1
-
+            Creation probabilities for transition from i to i+1.
         """
         if q[0] != 0.0:
             raise ValueError('Probability q[0] must be zero')
@@ -61,35 +56,27 @@ class BirthDeathChain(object):
         self.r = 1 - self.q - self.p
         self.dim = self.r.shape[0]
 
+    @property
     def transition_matrix(self):
-        """Tridiagonal transition matrix for birth and death chain
+        r""" Transition matrix for birth and death chain with given
+        creation and anhilation probabilities.
 
-        Returns
-        -------
-        P : (N,N) ndarray
-            Transition matrix for birth and death chain with given
-            creation and anhilation probabilities.
-
+        :getter: Yields the transition matrix.
+        :type: (N,N) ndarray
         """
         P0 = np.diag(self.r, k=0)
         P1 = np.diag(self.p[0:-1], k=1)
         P_1 = np.diag(self.q[1:], k=-1)
         return P0 + P1 + P_1
 
+    @property
     def transition_matrix_sparse(self):
-        """Tridiagonal transition matrix for birth and death chain
+        r""" Sparse transition matrix for this birth-death chain, see :meth:`transition_matrix`. """
+        return diags([self.q[1:], self.r, self.p[0:-1]], [-1, 0, 1])
 
-        Returns
-        -------
-        P : (N,N) scipy.sparse matrix
-            Transition matrix for birth and death chain with given
-            birth and death probabilities.
-
-        """
-        P = diags([self.q[1:], self.r, self.p[0:-1]], [-1, 0, 1])
-        return P
-
+    @property
     def stationary_distribution(self):
+        r""" The stationary distribution of the birth-death chain. """
         a = np.zeros(self.dim)
         a[0] = 1.0
         a[1:] = np.cumprod(self.p[0:-1] / self.q[1:])
@@ -102,11 +89,15 @@ class BirthDeathChain(object):
         The forward committor is the probability to hit
         state b before hitting state a starting in state x,
 
-            u_x=P_x(T_b<T_a)
+        .. math::
 
-        T_i is the first arrival time of the chain to state i,
+            u_x = P_x(T_b<T_a),
 
-            T_i = inf( t>0 | X_t=i )
+        :math:`T_i` is the first arrival time of the chain to state i,
+
+        .. math::
+
+            T_i = \inf ( t>0 \mid X_t=i ).
 
         Parameters
         ----------
@@ -148,15 +139,9 @@ class BirthDeathChain(object):
     def committor_backward(self, a, b):
         r"""Backward committor for birth-and-death-chain.
 
-        The backward committor is the probability for a chain in state
-        x chain to originate from state a instead of coming from
-        state b,
-
-            w_x=P_x(t_a<t_b)
-
-        t_i is the last exit time of the chain from state i,
-
-            t_i = inf( t>0 | X(-t)=i )
+        The backward committor is the probability for a chain in state x chain to originate from state a instead of
+        coming from state b :math:`w_x=P_x(t_a<t_b)`, :math:`t_i` is the last exit time of the chain from state i,
+        :math:`t_i = \inf ( t>0 \mid X_{-t} = i )`.
 
         Parameters
         ----------
@@ -170,18 +155,16 @@ class BirthDeathChain(object):
         w : (M,) ndarray
             Vector of committor probabilities.
 
-        Remark
-        ------
-        The birth-death chain is time-reversible,
+        Notes
+        -----
+        The birth-death chain is time-reversible
 
-            P(t_a<t_b)=P(T_a<T_b)=1-P(T_b<T_a),
+        .. math::
 
-        therefore we can express the backward
-        comittor probabilities in terms of the forward
-        committor probabilities,
+            P(t_a < t_b) = P(T_a < T_b) = 1-P(T_b<T_a),
 
-            w=1-u
-
+        therefore we can express the backward comittor probabilities in terms of the
+        forward committor probabilities :math:`w=1-u`.
         """
         return 1.0 - self.committor_forward(a, b)
 
@@ -206,8 +189,8 @@ class BirthDeathChain(object):
         # raise ValueError("State index b has to be strictly larger than state index a")
         qminus = self.committor_backward(a, b)
         qplus = self.committor_forward(a, b)
-        P = self.transition_matrix()
-        pi = self.stationary_distribution()
+        P = self.transition_matrix
+        pi = self.stationary_distribution
 
         flux = pi[:, np.newaxis] * qminus[:, np.newaxis] * P * qplus[np.newaxis, :]
         ind = np.diag_indices(P.shape[0])
@@ -238,8 +221,7 @@ class BirthDeathChain(object):
         return netflux
 
     def totalflux(self, a, b):
-        r"""The tiotal flux for the reaction
-        A=[0,...,a] => B=[b,...,M].
+        r"""The tiotal flux for the reaction A=[0,...,a] => B=[b,...,M].
 
         Parameters
         ----------
@@ -261,8 +243,22 @@ class BirthDeathChain(object):
         return F
 
     def rate(self, a, b):
+        r""" Yields the total transition rate between state sets `A=[0,...,a]` and `B=[0,...,b]`.
+
+        Parameters
+        ----------
+        a : int
+            State index.
+        b : int
+            State index.
+
+        Returns
+        -------
+        kAB : float
+            Total transition rate.
+        """
         F = self.totalflux(a, b)
-        pi = self.stationary_distribution()
+        pi = self.stationary_distribution
         qminus = self.committor_backward(a, b)
         kAB = F / (pi * qminus).sum()
         return kAB

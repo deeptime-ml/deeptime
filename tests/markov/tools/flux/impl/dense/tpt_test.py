@@ -24,7 +24,7 @@ r"""Unit test for the TPT-module
 import unittest
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.flux.dense import tpt
@@ -44,11 +44,11 @@ class TestTPT(unittest.TestCase):
         self.a = 1
         self.b = 8
 
-        self.bdc = BirthDeathChain(q, p)
-        self.T = self.bdc.transition_matrix()
+        self.bdc = birth_death_chain(q, p)
+        self.T = self.bdc.transition_matrix
 
         """Use precomputed mu, qminus, qplus"""
-        self.mu = self.bdc.stationary_distribution()
+        self.mu = self.bdc.stationary_distribution
         self.qplus = self.bdc.committor_forward(self.a, self.b)
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         # self.qminus = committor.backward_committor(self.T, self.A, self.B, mu=self.mu)
@@ -73,7 +73,3 @@ class TestTPT(unittest.TestCase):
     def test_rate(self):
         k = self.bdc.rate(self.a, self.b)
         assert_allclose(self.kn, k)
-
-
-if __name__ == "__main__":
-    unittest.main()

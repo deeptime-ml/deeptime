@@ -45,6 +45,7 @@ They are structured following a possible workflow of a timeseries analysis. That
    api/index_markov
    api/index_markov_hmm
    api/index_markov_tools
+   api/index_kernels
    api/index_data
    api/index_numeric
 

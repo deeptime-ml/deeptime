@@ -290,3 +290,36 @@ def bickley_jet(n_particles: int, n_jobs=None):
     traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
     traj_reshaped = traj.transpose(1, 2, 0)
     return BickleyJetDataset(traj_reshaped)
+
+
+def birth_death_chain(q, p):
+    r""" Generates a birth and death chain simulator from annihilation and creation probabilities `q` and `p`.
+
+    A general birth and death chain on a d-dimensional state space has the transition matrix
+
+    .. math::
+
+        p_{ij} = \begin{cases}
+            q_i &\text{, if } j=i-1 \text{ and } i>0,\\
+            r_i &\text{, if } j=i,\\
+            p_i &\text{, if } j=i+1 \text{ and } i<d-1.
+        \end{cases}
+
+    The annihilation probability of state :math:`i=1` must not be zero, same for the creation probability
+    of the last state :math:`i=n`. The sum of the probabilities must be bounded component-wise, i.e.,
+    :math:`q_i + p_i \leq 1\;\forall i=1,\ldots ,n`.
+
+    Parameters
+    ----------
+    q : array_like
+        Annihilation probabilities for transition from i to i-1.
+    p : array_like
+        Creation probabilities for transition from i to i+1.
+
+    Returns
+    -------
+    chain : sktime.data.birth_death_chain_dataset.BirthDeathChain
+        The chain.
+    """
+    from sktime.data.birth_death_chain_dataset import BirthDeathChain
+    return BirthDeathChain(q, p)

@@ -32,7 +32,6 @@ Countmatrix
    :toctree: generated/
 
    count_matrix - estimate count matrix from discrete trajectories
-   cmatrix - estimate count matrix from discrete trajectories
 
 Connectivity
 ============
@@ -43,7 +42,6 @@ Connectivity
    connected_sets - Find connected subsets
    largest_connected_set - Find largest connected set
    largest_connected_submatrix - Count matrix on largest connected set
-   connected_cmatrix
    is_connected - Test count matrix connectivity
 
 Estimation
@@ -53,7 +51,6 @@ Estimation
    :toctree: generated/
 
    transition_matrix - Estimate transition matrix
-   tmatrix
    rate_matrix
    log_likelihood
    tmatrix_cov

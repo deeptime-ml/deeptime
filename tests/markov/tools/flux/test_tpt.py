@@ -24,7 +24,7 @@ r"""Unit test for the TPT-functions of the analysis API
 import unittest
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from sktime.markov import compute_reactive_flux
 from tests.markov.tools.numeric import assert_allclose
 
@@ -51,14 +51,14 @@ class TestTPTDense(unittest.TestCase):
         self.a = 1
         self.b = 8
 
-        self.bdc = BirthDeathChain(q, p)
-        self.T = self.bdc.transition_matrix()
+        self.bdc = birth_death_chain(q, p)
+        self.T = self.bdc.transition_matrix
 
         """Compute mu, qminus, qplus in constructor"""
         self.tpt = compute_reactive_flux(self.T, self.A, self.B)
 
         """Use precomputed mu, qminus, qplus"""
-        self.mu = self.bdc.stationary_distribution()
+        self.mu = self.bdc.stationary_distribution
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         self.qplus = self.bdc.committor_forward(self.a, self.b)
         self.tpt_fast = compute_reactive_flux(self.T, self.A, self.B, stationary_distribution=self.mu,
@@ -142,10 +142,10 @@ class TestTptFunctionsDense(unittest.TestCase):
         self.a = 1
         self.b = 8
 
-        self.bdc = BirthDeathChain(q, p)
-        self.T = self.bdc.transition_matrix()
+        self.bdc = birth_death_chain(q, p)
+        self.T = self.bdc.transition_matrix
+        self.mu = self.bdc.stationary_distribution
 
-        self.mu = self.bdc.stationary_distribution()
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         self.qplus = self.bdc.committor_forward(self.a, self.b)
 
@@ -190,8 +190,8 @@ class TestTPTSparse(unittest.TestCase):
         self.a = 1
         self.b = 8
 
-        self.bdc = BirthDeathChain(q, p)
-        T_dense = self.bdc.transition_matrix()
+        self.bdc = birth_death_chain(q, p)
+        T_dense = self.bdc.transition_matrix
         T_sparse = csr_matrix(T_dense)
         self.T = T_sparse
 
@@ -199,7 +199,7 @@ class TestTPTSparse(unittest.TestCase):
         self.tpt = compute_reactive_flux(self.T, self.A, self.B)
 
         """Use precomputed mu, qminus, qplus"""
-        self.mu = self.bdc.stationary_distribution()
+        self.mu = self.bdc.stationary_distribution
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         self.qplus = self.bdc.committor_forward(self.a, self.b)
         self.tpt_fast = compute_reactive_flux(self.T, self.A, self.B, stationary_distribution=self.mu,
@@ -283,12 +283,12 @@ class TestTptFunctionsSparse(unittest.TestCase):
         self.a = 1
         self.b = 8
 
-        self.bdc = BirthDeathChain(q, p)
-        T_dense = self.bdc.transition_matrix()
+        self.bdc = birth_death_chain(q, p)
+        T_dense = self.bdc.transition_matrix
         T_sparse = csr_matrix(T_dense)
         self.T = T_sparse
 
-        self.mu = self.bdc.stationary_distribution()
+        self.mu = self.bdc.stationary_distribution
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         self.qplus = self.bdc.committor_forward(self.a, self.b)
 
