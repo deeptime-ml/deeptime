@@ -108,7 +108,8 @@ class PolynomialKernel(Kernel):
 
         \kappa (x,y) = (x^\top y + c)^d,
 
-    where :math:`p` is the degree and :math:`c` is the inhomogeneity of the Ker."""
+    where :math:`p` is the degree and :math:`c` is the inhomogeneity.
+    """
 
     def __init__(self, degree: int, inhomogeneity: float = 1.):
         r""" Creates a new polynomial kernel.
@@ -130,8 +131,7 @@ class PolynomialKernel(Kernel):
     def apply(self, data_1: np.ndarray, data_2: np.ndarray) -> np.ndarray:
         ri = np.expand_dims(data_1, axis=1)
         rj = np.expand_dims(data_2, axis=0)
-        prod = ri * rj
-        scalar_products = np.add.reduce(prod, axis=-1, keepdims=False)
+        scalar_products = np.add.reduce(ri * rj, axis=-1, keepdims=False)
         return (self.inhomogeneity + scalar_products) ** self.degree
 
     def __str__(self):
