@@ -5,12 +5,12 @@ r"""
     :toctree: generated/
     :template: class_nomodule.rst
 
-    BaseKernel
+    Kernel
     GaussianKernel
     GeneralizedGaussianKernel
     LaplacianKernel
     PolynomialKernel
 """
 
-from .base import BaseKernel
+from .base import Kernel
 from .kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel, PolynomialKernel

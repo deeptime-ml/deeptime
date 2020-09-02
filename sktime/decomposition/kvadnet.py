@@ -1,6 +1,6 @@
 import torch
 from . import vampnet as vnet
-from ..kernels import BaseKernel, GaussianKernel
+from ..kernels import Kernel, GaussianKernel
 
 
 def gramian_gauss(Y, sigma=1.):
@@ -16,7 +16,7 @@ def whiten(data, epsilon=1e-6, mode='clamp'):
     return data_meanfree @ cov_sqrt_inv
 
 
-def kvad_score(chi_x, y, kernel: BaseKernel = GaussianKernel(1.), epsilon=1e-6, mode='regularize'):
+def kvad_score(chi_x, y, kernel: Kernel = GaussianKernel(1.), epsilon=1e-6, mode='regularize'):
 
     with torch.no_grad():
         gramian_np = kernel.gram(y.cpu().numpy())

@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class BaseKernel(object):
+class Kernel(object):
     r""" The base class of all kernels. Provides interfaces to evaluating the kernel on points in state space
     as well as computing the kernel matrix / Gramian.
     """

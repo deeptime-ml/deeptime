@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.spatial import distance
 
-from . import BaseKernel
+from . import Kernel
 
 
-class GaussianKernel(BaseKernel):
+class GaussianKernel(Kernel):
     r""" Implementation of the Gaussian kernel
 
     .. math::
@@ -43,7 +43,7 @@ class GaussianKernel(BaseKernel):
         return f"GaussianKernel[sigma={self.sigma}]"
 
 
-class GeneralizedGaussianKernel(BaseKernel):
+class GeneralizedGaussianKernel(Kernel):
     r""" Implementation of the generalized Gaussian kernel with bandwidth per dimension. It is defined by
 
     .. math::
@@ -79,7 +79,7 @@ class GeneralizedGaussianKernel(BaseKernel):
         return f"GeneralizedGaussianKernel[sigmas={','.join(f'{s:.3f}' for s in self._sigmas)}]"
 
 
-class LaplacianKernel(BaseKernel):
+class LaplacianKernel(Kernel):
     r""" Implementation of the Laplacian kernel
 
     .. math::
@@ -101,7 +101,7 @@ class LaplacianKernel(BaseKernel):
         return f"LaplacianKernel[sigma={self._sigma:.3f}]"
 
 
-class PolynomialKernel(BaseKernel):
+class PolynomialKernel(Kernel):
     r""" Implementation of the polynomial kernel
 
     .. math::
