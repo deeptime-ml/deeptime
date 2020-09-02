@@ -17,9 +17,9 @@
 
 r"""
 
-========================
-MSM estimation from data
-========================
+==============
+MSM estimation
+==============
 
 .. currentmodule:: sktime.markov.tools.estimation
 

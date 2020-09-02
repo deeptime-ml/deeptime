@@ -17,9 +17,9 @@
 
 r"""
 
-=====================================
-Reactive flux and transition pathways
-=====================================
+============================
+Transition path theory tools
+============================
 
 .. currentmodule:: sktime.markov.tools.flux
 

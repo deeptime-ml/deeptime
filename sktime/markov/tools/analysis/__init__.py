@@ -17,9 +17,9 @@
 
 r"""
 
-======================
-MSM analysis functions
-======================
+============
+MSM analysis
+============
 
 .. currentmodule:: sktime.markov.tools.analysis
 

@@ -148,7 +148,7 @@ def flux_producers(F, rtol=1e-05, atol=1e-12):
 
 
 def flux_consumers(F, rtol=1e-05, atol=1e-12):
-    r"""Return indexes of states that are net flux producers.
+    r"""Return indices of states that are net flux producers.
 
     Parameters
     ----------
