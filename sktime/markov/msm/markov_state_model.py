@@ -19,7 +19,7 @@
 # .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
 from math import ceil
-from typing import Optional, List
+from typing import Optional, List, Union
 
 import numpy as np
 from scipy.sparse import issparse
@@ -925,8 +925,8 @@ class MarkovStateModel(Model):
             transition_matrix_tolerance=None  # set to None explicitly so no check is performed
         )
 
-    def simulate(self, n_steps: int, start: Optional[int] = None, stop: Optional[int] = None, dt: int = 1,
-                 seed: int = -1):
+    def simulate(self, n_steps: int, start: Optional[int] = None, stop: Optional[Union[int, List[int]]] = None,
+                 dt: int = 1, seed: int = -1):
         r"""Generates a realization of the Markov Model.
 
         Parameters
@@ -966,6 +966,8 @@ class MarkovStateModel(Model):
             transition_matrix = self.transition_matrix
         if dt > 1:
             transition_matrix = np.linalg.matrix_power(transition_matrix, dt)
+        if stop is not None and not isinstance(stop, (list, tuple, np.ndarray)):
+            stop = [stop]
         return sim.trajectory(N=n_steps, start=start, P=transition_matrix, stop=stop, seed=seed)
 
     ################################################################################

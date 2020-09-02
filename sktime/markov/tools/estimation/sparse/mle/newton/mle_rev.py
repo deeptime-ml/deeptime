@@ -280,7 +280,7 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
 
 
 def solve_mle_rev(C, tol=1e-10, maxiter=100, full_output=False,
-                  return_statdist=True, **kwargs):
+                  return_statdist=True):
     """Number of states"""
     M = C.shape[0]
 

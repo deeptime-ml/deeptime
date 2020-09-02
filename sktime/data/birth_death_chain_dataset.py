@@ -70,6 +70,16 @@ class BirthDeathChain(object):
         return P0 + P1 + P_1
 
     @property
+    def msm(self):
+        r""" MarkovStateModel for this birth death chain
+
+        :getter: Yields the MSM.
+        :type: sktime.markov.msm.MarkovStateModel
+        """
+        from sktime.markov.msm import MarkovStateModel
+        return MarkovStateModel(self.transition_matrix, self.stationary_distribution)
+
+    @property
     def transition_matrix_sparse(self):
         r""" Sparse transition matrix for this birth-death chain, see :meth:`transition_matrix`. """
         return diags([self.q[1:], self.r, self.p[0:-1]], [-1, 0, 1])

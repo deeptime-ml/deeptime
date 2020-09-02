@@ -1,6 +1,7 @@
 import numpy as np
 
 from ..base import Model
+from ..kernels import GaussianKernel
 from ..numeric import spd_inv_sqrt, spd_eig
 
 
@@ -33,7 +34,7 @@ def gramian_gauss(Y, sigma=1.):
     return np.exp(-D / (2. * sigma ** 2))
 
 
-def kvad(chi_X, chi_Y, Y, kernel=lambda x: gramian_gauss(x, 1.)):
+def kvad(chi_X, chi_Y, Y, kernel=GaussianKernel(1.)):
     N = Y.shape[0]
     M = chi_X.shape[1]
 
@@ -42,7 +43,7 @@ def kvad(chi_X, chi_Y, Y, kernel=lambda x: gramian_gauss(x, 1.)):
     assert chi_X.shape == (N, M)
     assert chi_Y.shape == (N, M)
 
-    Gyy = kernel(Y)
+    Gyy = kernel.gram(Y)
     assert Gyy.shape == (N, N)
 
     chi_X_w = whiten(chi_X)

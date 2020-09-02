@@ -1,10 +1,6 @@
 r"""
 .. currentmodule: sktime.data
 
-===============================================================================
-Kernels
-===============================================================================
-
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
@@ -12,7 +8,8 @@ Kernels
     BaseKernel
     GaussianKernel
     GeneralizedGaussianKernel
+    LaplacianKernel
 """
 
 from .base import BaseKernel
-from .kernels import GaussianKernel, GeneralizedGaussianKernel
+from .kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel
