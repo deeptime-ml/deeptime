@@ -9,7 +9,8 @@ r"""
     GaussianKernel
     GeneralizedGaussianKernel
     LaplacianKernel
+    PolynomialKernel
 """
 
 from .base import BaseKernel
-from .kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel
+from .kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel, PolynomialKernel

@@ -96,3 +96,43 @@ class LaplacianKernel(BaseKernel):
 
     def apply(self, data_1: np.ndarray, data_2: np.ndarray) -> np.ndarray:
         return np.exp(-distance.cdist(data_1, data_2, metric='euclidean') / self._sigma)
+
+    def __str__(self):
+        return f"LaplacianKernel[sigma={self._sigma:.3f}]"
+
+
+class PolynomialKernel(BaseKernel):
+    r""" Implementation of the polynomial kernel
+
+    .. math::
+
+        \kappa (x,y) = (x^\top y + c)^d,
+
+    where :math:`p` is the degree and :math:`c` is the inhomogeneity of the Ker."""
+
+    def __init__(self, degree: int, inhomogeneity: float = 1.):
+        r""" Creates a new polynomial kernel.
+
+        Parameters
+        ----------
+        degree : int
+            The degree, must be non-negative.
+        inhomogeneity : float, optional, default=1.
+            The inhomogeneity.
+        """
+        assert degree >= 0
+        self.degree = degree
+        self.inhomogeneity = inhomogeneity
+
+    def _evaluate(self, x, y) -> float:
+        return (self.inhomogeneity + np.dot(x, y)) ** self.degree
+
+    def apply(self, data_1: np.ndarray, data_2: np.ndarray) -> np.ndarray:
+        ri = np.expand_dims(data_1, axis=1)
+        rj = np.expand_dims(data_2, axis=0)
+        prod = ri * rj
+        scalar_products = np.add.reduce(prod, axis=-1, keepdims=False)
+        return (self.inhomogeneity + scalar_products) ** self.degree
+
+    def __str__(self):
+        return f"PolynomialKernel[degree={self.degree}, inhomogeneity={self.inhomogeneity}]"
