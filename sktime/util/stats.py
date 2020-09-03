@@ -1,5 +1,4 @@
 import math
-import warnings
 from typing import Union, Callable, List
 
 import numpy as np
@@ -53,11 +52,10 @@ def confidence_interval(data, conf=0.95):
         if np.any(np.isnan(x)):
             return np.nan, np.nan, np.nan
 
-        dmin, dmax = np.min(x), np.max(x)
+        d_min, d_max = np.min(x), np.max(x)
 
-        if np.isclose(dmin, dmax):
-            warnings.warn('confidence interval for constant data is not meaningful', stacklevel=3)
-            return dmin, dmin, dmax
+        if np.isclose(d_min, d_max):
+            return d_min, d_min, d_max
 
         m = np.mean(x)
         x = np.sort(x)
@@ -70,23 +68,19 @@ def confidence_interval(data, conf=0.95):
             pm = (im - 1) + (m - x[im - 1]) / (x[im] - x[im - 1])
         # left interval boundary
         pl = pm - conf * pm
-        il1 = max(0, int(math.floor(pl)))
-        il2 = min(len(x) - 1, int(math.ceil(pl)))
-        if np.isclose(x[il1], x[il2]):  # catch infs
-            l = x[il1]
-        else:
-            l = x[il1] + (pl - il1) * (x[il2] - x[il1])
+        left_boundary = _compute_interval_boundary(pl, x)
         # right interval boundary
         pr = pm + conf * (len(x) - im)
-        ir1 = max(0, int(math.floor(pr)))
-        ir2 = min(len(x) - 1, int(math.ceil(pr)))
-        if np.isclose(x[ir1], x[ir2]):  # catch infs
-            r = x[ir1]
-        else:
-            r = x[ir1] + (pr - ir1) * (x[ir2] - x[ir1])
+        right_boundary = _compute_interval_boundary(pr, x)
+        return m, left_boundary, right_boundary
 
-        # return
-        return m, l, r
+    def _compute_interval_boundary(p, x):
+        i1 = max(0, int(math.floor(p)))
+        i2 = min(len(x) - 1, int(math.ceil(p)))
+        if np.isclose(x[i1], x[i2]):  # catch infs
+            return x[i1]
+        else:
+            return x[i1] + (p - i1) * (x[i2] - x[i1])
 
     if conf == 1.:
         return np.min(data, axis=0), np.max(data, axis=0)

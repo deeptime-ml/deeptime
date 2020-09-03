@@ -818,28 +818,27 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
     Non-reversible estimate
 
     >>> T_nrev = transition_matrix(C)
-    >>> T_nrev
-    array([[0.83333333, 0.08333333, 0.08333333],
-           [0.4       , 0.        , 0.6       ],
-           [0.        , 0.2       , 0.8       ]])
+    >>> print(np.array_str(T_nrev, precision=3))
+    [[0.833 0.083 0.083]
+     [0.4   0.    0.6  ]
+     [0.    0.2   0.8  ]]
 
     Reversible estimate
 
     >>> T_rev = transition_matrix(C, reversible=True)
-    >>> T_rev
-    array([[0.83333333, 0.10385551, 0.06281115],
-           [0.35074677, 0.        , 0.64925323],
-           [0.04925323, 0.15074677, 0.8       ]])
+    >>> print(np.array_str(T_rev, precision=3))
+    [[0.833 0.104 0.063]
+     [0.351 0.    0.649]
+     [0.049 0.151 0.8  ]]
 
     Reversible estimate with given stationary vector
 
     >>> mu = np.array([0.7, 0.01, 0.29])
     >>> T_mu = transition_matrix(C, reversible=True, mu=mu)
-    >>> T_mu
-    array([[0.94771371, 0.00612645, 0.04615984],
-           [0.42885157, 0.        , 0.57114843],
-           [0.11142031, 0.01969477, 0.86888491]])
-
+    >>> print(np.array_str(T_mu, precision=3))
+    [[0.948 0.006 0.046]
+     [0.429 0.    0.571]
+     [0.111 0.02  0.869]]
     """
     if issparse(C):
         sparse_input_type = True
@@ -1317,8 +1316,8 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
     >>> from sktime.markov.tools.estimation import rate_matrix
     >>> C = np.array([[100,1],[50,50]])
     >>> rate_matrix(C)
-    array([[-0.01384753,  0.01384753],
-           [ 0.69930032, -0.69930032]])
+    array([[-0.0138...,  0.0138...],
+           [ 0.6993..., -0.6993...]])
 
     References
     ----------
