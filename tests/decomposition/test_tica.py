@@ -240,7 +240,3 @@ class TestTICAExtensive(unittest.TestCase):
         for invalid_dim in invalid_dims:
             with self.assertRaises(ValueError):
                 TICA(dim=invalid_dim)
-
-
-if __name__ == "__main__":
-    unittest.main()

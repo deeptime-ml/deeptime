@@ -167,7 +167,3 @@ class TestIsConnected(unittest.TestCase):
         """Undirected"""
         is_connected = connectivity.is_connected(self.C_not_connected, directed=False)
         self.assertTrue(is_connected)
-
-
-if __name__ == "__main__":
-    unittest.main()

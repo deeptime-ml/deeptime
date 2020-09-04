@@ -100,7 +100,3 @@ class TestEstimators(unittest.TestCase):
             sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, method='CVE', maxiter=1, on_error='warn')
             assert len(w) == 1
             assert issubclass(w[-1].category, sktime.markov.tools.estimation.dense.ratematrix.NotConvergedWarning)
-
-
-if __name__ == '__main__':
-    unittest.main()

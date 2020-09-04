@@ -201,7 +201,3 @@ class TestTransitionCountModel(unittest.TestCase, metaclass=GenerateTestMatrix):
             # (symbol 0 is not contained in submodel)
             np.testing.assert_(submodel.state_symbols[state] in (6, 2))
         np.testing.assert_(0 not in submodel.state_symbols)
-
-
-if __name__ == '__main__':
-    unittest.main()

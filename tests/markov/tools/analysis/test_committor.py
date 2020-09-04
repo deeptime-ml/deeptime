@@ -82,7 +82,3 @@ class TestCommittorSparse(unittest.TestCase):
         un = committor(P, list(range(10)), list(range(90, 100)), forward=False)
         u = self.bdc.committor_backward(9, 90)
         assert_allclose(un, u)
-
-
-if __name__ == "__main__":
-    unittest.main()

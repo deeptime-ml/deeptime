@@ -210,7 +210,3 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         assert_allclose(cg_flux.backward_committor, self.ref2_cgbackwardcommittor)
         assert_allclose(cg_flux.net_flux, self.ref2_cgnetflux, rtol=1.e-5, atol=1.e-8)
         assert_allclose(cg_flux.gross_flux, self.ref2_cggrossflux, rtol=1.e-5, atol=1.e-8)
-
-
-if __name__ == "__main__":
-    unittest.main()

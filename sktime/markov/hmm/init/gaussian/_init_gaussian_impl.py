@@ -52,11 +52,11 @@ def from_data(dtrajs, n_hidden_states, reversible):
     """
     from sktime.markov.hmm import HiddenMarkovModel, GaussianOutputModel
     from sklearn.mixture import GaussianMixture
-    from sktime.util import ensure_dtraj_list
     import sktime.markov.tools.estimation as msmest
     import sktime.markov.tools.analysis as msmana
+    from sktime.util.types import ensure_timeseries_data
 
-    dtrajs = ensure_dtraj_list(dtrajs)
+    dtrajs = ensure_timeseries_data(dtrajs)
     collected_observations = np.concatenate(dtrajs)
     gmm = GaussianMixture(n_components=n_hidden_states)
     gmm.fit(collected_observations[:, None])

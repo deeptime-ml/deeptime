@@ -356,7 +356,3 @@ class TestBHMMSpecialCases(unittest.TestCase):
     #
     #     assert np.isclose(bay_hmm.fetch_model().prior.stationary_distribution.sum(), 1)
     #     assert all(np.isclose(m.stationary_distribution.sum(), 1) for m in bay_hmm.fetch_model())
-
-
-if __name__ == "__main__":
-    unittest.main()

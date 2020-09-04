@@ -219,7 +219,3 @@ class TestGeometricSeries(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             expectations.geometric_series(self.q_array, -2)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -177,7 +177,3 @@ class Test_mle_trev_given_pi(unittest.TestCase):
             impl_dense(C, pi, maxiter=1)
             assert len(w) == 2
             assert issubclass(w[-1].category, ncw)
-
-
-if __name__ == '__main__':
-    unittest.main()

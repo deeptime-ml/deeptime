@@ -275,7 +275,3 @@ class TestRelaxation(unittest.TestCase):
         relax = np.dot(self.ev_t, relax_amp)
         relaxn = relaxation(self.T, self.p0, self.obs, k=self.k, times=self.times)
         assert_allclose(relaxn, relax)
-
-
-if __name__ == "__main__":
-    unittest.main()

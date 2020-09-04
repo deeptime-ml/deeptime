@@ -602,7 +602,3 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
                or np.allclose(hmm.transition_model.transition_matrix, A_ref[np.ix_(perm, perm)], atol=1e-5)
         assert np.allclose(hmm.output_probabilities, B_ref, atol=1e-5) \
                or np.allclose(hmm.output_probabilities, B_ref[[perm]], atol=1e-5)
-
-
-if __name__ == '__main__':
-    unittest.main()

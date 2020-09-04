@@ -131,7 +131,3 @@ class TestAnalyticalDistribution(unittest.TestCase):
         P_sampled = 1.0 * H / self.N
         P_analytical = self.probabilities_revpi(self.xedges)
         self.assertTrue(np.all(np.abs(P_sampled - P_analytical) < 0.02))
-
-
-if __name__ == "__main__":
-    unittest.main()

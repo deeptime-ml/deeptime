@@ -43,7 +43,3 @@ class TestTransitionMatrix(unittest.TestCase):
         """Small test cases"""
         log = likelihood.log_likelihood(self.C1, self.T1)
         assert_allclose(log, np.log(0.8 * 0.2 ** 3 * 0.9 ** 3 * 0.1))
-
-
-if __name__ == "__main__":
-    unittest.main()

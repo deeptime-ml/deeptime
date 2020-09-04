@@ -92,7 +92,3 @@ class TestTPT(unittest.TestCase):
         # def test_rate(self):
         #    k=self.bdc.rate(self.a, self.b)
         #    assert_allclose(self.kn, k)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -170,7 +170,3 @@ class TestSensitivitiesDense(unittest.TestCase):
         S = 3.0 * self.pS1
         Sn = expectation_sensitivity(self.T4, a)
         assert_allclose(Sn, S)
-
-
-if __name__ == "__main__":
-    unittest.main()

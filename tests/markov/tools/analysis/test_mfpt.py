@@ -165,7 +165,3 @@ class TestMfptSparse(unittest.TestCase):
 
         x = mfpt(self.P, 0, origin=[1, 2])
         assert_allclose(x, self.o12t0)
-
-
-if __name__ == "__main__":
-    unittest.main()

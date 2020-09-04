@@ -71,7 +71,3 @@ class TestPrior(unittest.TestCase):
 
         Bn = prior.prior_rev(self.C, alpha=self.alpha)
         assert_allclose(Bn, self.alpha * self.B_rev)
-
-
-if __name__ == "__main__":
-    unittest.main()

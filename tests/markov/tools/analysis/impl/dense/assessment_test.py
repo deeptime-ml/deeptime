@@ -61,7 +61,3 @@ class ReversibleTest(unittest.TestCase):
         # create a reversible matrix
         self.assertTrue(assessment.is_reversible(self.bdc.transition_matrix, self.bdc.stationary_distribution),
                         "T should be reversible")
-
-
-if __name__ == "__main__":
-    unittest.main()
