@@ -371,7 +371,3 @@ class TestVAMPWithEdgeCaseData(unittest.TestCase):
             print(VAMP(lagtime=1).fit(np.ones((10, 2))).fetch_model().singular_values)
         with self.assertRaises(ZeroRankError):
             print(VAMP(lagtime=1).fit(np.ones((10, 1))).fetch_model().singular_values)
-
-
-if __name__ == "__main__":
-    unittest.main()

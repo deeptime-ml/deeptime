@@ -47,6 +47,18 @@ def test_weights_incompatible():
         est.fit(data, weights=np.ones((len(data), 2)))  # incompatible shape
 
 
+def test_multiple_fetch():
+    # checks that the model instance does not change when the estimator was not updated
+    data = np.random.normal(size=(5000, 3))
+    est = Covariance(5, compute_c00=True, compute_c0t=False, compute_ctt=False)
+    m1 = est.fit(data).model
+    m2 = est.model
+    m3 = est.partial_fit(np.random.normal(size=(50, 3))).model
+    np.testing.assert_(m1 is m2)
+    np.testing.assert_(m1 is not m3)
+    np.testing.assert_(m2 is not m3)
+
+
 class TestCovarEstimator(unittest.TestCase):
 
     @classmethod
