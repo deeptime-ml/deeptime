@@ -30,7 +30,7 @@ from sktime.markov.sample import ensure_dtraj_list, compute_index_states
 from sktime.markov.tools import analysis as msmana
 from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import count_states
-from sktime.numeric import mdot, is_square_matrix
+from sktime.numeric import is_square_matrix
 from sktime.util.decorators import cached_property
 from sktime.util.matrix import submatrix
 from sktime.util.types import ensure_array
@@ -474,11 +474,10 @@ class MarkovStateModel(Model):
                 pk = self.transition_matrix.T.dot(pk)
         else:  # dense: employ eigenvalue decomposition
             self._ensure_eigendecomposition(self.n_states)
-            pk = mdot(p0.T,
-                      self.eigenvectors_right(),
-                      np.diag(np.power(self.eigenvalues(), k)),
-                      self.eigenvectors_left()).real
-        # normalize to 1.0 and return
+            pk = np.linalg.multi_dot([
+                p0.T, self.eigenvectors_right(), np.diag(np.power(self.eigenvalues(), k)),
+                self.eigenvectors_left()
+            ]).real
         return pk / pk.sum()
 
     ################################################################################

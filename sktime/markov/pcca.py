@@ -22,7 +22,6 @@ from typing import List
 import numpy as np
 
 from sktime.base import Model
-from sktime.numeric import mdot
 
 
 def pcca(P, m, stationary_distribution=None):
@@ -74,7 +73,7 @@ def pcca(P, m, stationary_distribution=None):
     pi_coarse = np.dot(M.T, pi)
 
     # HMM output matrix
-    B = mdot(np.diag(1.0 / pi_coarse), M.T, np.diag(pi))
+    B = np.linalg.multi_dot([np.diag(1.0 / pi_coarse), M.T, np.diag(pi)])
     # renormalize B to make it row-stochastic
     B /= B.sum(axis=1)[:, None]
 

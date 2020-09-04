@@ -2,25 +2,13 @@ import numpy as np
 import pytest
 from numpy.testing import *
 
-from sktime.numeric import is_diagonal_matrix, mdot, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
+from sktime.numeric import is_diagonal_matrix, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
     eig_corr, is_square_matrix
 
 
 def test_is_diagonal_matrix():
     assert_(is_diagonal_matrix(np.diag([1, 2, 3, 4, 5])))
     assert_(not is_diagonal_matrix(np.array([[1, 2], [3, 4]])))
-
-
-def test_mdot():
-    A = np.random.normal(size=(5, 10))
-    B = np.random.normal(size=(10, 20))
-    C = np.random.normal(size=(20, 30))
-    assert_almost_equal(mdot(A, B, C), A @ B @ C)
-
-    with assert_raises(ValueError):
-        mdot(np.ones((5, 3)), np.ones((5, 3)))
-    with assert_raises(ValueError):
-        mdot()
 
 
 def test_is_square_matrix():
