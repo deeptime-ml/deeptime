@@ -258,14 +258,14 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             Optional parameter with specifies the maximum number of updates for Lagrange multiplier estimation.
         max_cache : int, optional, default=3000
             Maximum size (in megabytes) of cache when computing R tensor (Supporting information
-            in :cite:`amm-olsson2017combining`).
+            in :cite:`amm-est-olsson2017combining`).
 
         References
         ----------
         .. bibliography:: /references.bib
             :style: unsrt
             :filter: docname in docnames
-            :keyprefix: amm-
+            :keyprefix: amm-est-
         """
         super().__init__(sparse=False, reversible=True)
         self.expectations_by_state = expectations_by_state

@@ -1464,7 +1464,8 @@ def _pcca_object(T, m):
 
 
 def pcca_memberships(T, m):
-    r"""Compute meta-stable sets using PCCA++ [1]_ and return the membership of all states to these sets.
+    r"""Compute meta-stable sets using PCCA++ :cite:`pcca-memberships-impl-roblitz2013fuzzy` and return the
+    membership of all states to these sets.
 
     Parameters
     ----------
@@ -1488,11 +1489,10 @@ def pcca_memberships(T, m):
 
     References
     ----------
-    .. [1] Roeblitz, S and M Weber. 2013. Fuzzy spectral clustering by
-        PCCA+: application to Markov state models and data
-        classification. Advances in Data Analysis and Classification 7
-        (2): 147-179
-
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: pcca-memberships-impl-
     """
     return _pcca_object(T, m).memberships
 

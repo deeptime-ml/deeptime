@@ -83,8 +83,8 @@ def flux_matrix(T, pi, qminus, qplus, netflux=True):
     Notes
     -----
     Computation of the flux network relies on transition path theory
-    (TPT) [1]. Here we use discrete transition path theory [2] in
-    the transition matrix formulation [3].
+    (TPT) [1]_. Here we use discrete transition path theory [2]_ in
+    the transition matrix formulation [3]_.
 
     See also
     --------
@@ -120,7 +120,6 @@ def flux_matrix(T, pi, qminus, qplus, netflux=True):
         T. Weikl: Constructing the Full Ensemble of Folding Pathways
         from Short Off-Equilibrium Simulations.
         Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
-
     """
     if issparse(T):
         return sparse.tpt.flux_matrix(T, pi, qminus, qplus, netflux=netflux)
@@ -147,7 +146,11 @@ def to_netflux(flux):
     -----
     The netflux or effective current is defined as
 
-    .. math:: f_{ij}^{+}=\max \{ f_{ij}-f_{ji}, 0 \}
+    .. math::
+
+        f_{ij}^{+}=\max \{ f_{ij}-f_{ji}, 0 \},
+
+    see [1]_.
 
     :math:`f_{ij}` is the flux for the transition from :math:`A` to
     :math:`B`.
@@ -234,7 +237,7 @@ def flux_consumers(F, rtol=1e-05, atol=1e-12):
 
 
 def coarsegrain(F, sets):
-    r"""Coarse-grains the flux to the given sets.
+    r"""Coarse-grains the flux to the given sets. See [1]_ .
 
     Parameters
     ----------
@@ -276,7 +279,7 @@ def coarsegrain(F, sets):
 
 def total_flux(F, A=None):
     r"""Compute the total flux, or turnover flux, that is produced by
-        the flux sources and consumed by the flux sinks.
+        the flux sources and consumed by the flux sinks. [1]_
 
     Parameters
     ----------
@@ -332,7 +335,7 @@ def rate(totflux, pi, qminus):
     -----
     Computation of the rate relies on discrete transition path theory
     (TPT). The transition rate, i.e. the total number of reaction events per
-    time step, is given in [1] as:
+    time step, is given in [1]_ as:
 
     .. math:: k_{AB}=\frac{1}{F} \sum_i \pi_i q_i^{(-)}
 
@@ -373,7 +376,7 @@ def mfpt(totflux, pi, qminus):
 
     Notes
     -----
-    Equal to the inverse rate, see [1].
+    Equal to the inverse rate, see [1]_.
 
     References
     ----------
@@ -391,7 +394,7 @@ def mfpt(totflux, pi, qminus):
 ###############################################################################
 
 def pathways(F, A, B, fraction=1.0, maxiter=1000):
-    r"""Decompose flux network into dominant reaction paths.
+    r"""Decompose flux network into dominant reaction paths. [1]_
 
     Parameters
     ----------
