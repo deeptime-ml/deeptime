@@ -43,15 +43,9 @@ def sort_by_norm(evals, evecs):
         the sorted eigenvalues and eigenvectors
 
     """
-    # norms
     evnorms = _np.abs(evals)
-    # sort
     indices = _np.argsort(evnorms)[::-1]
-    # permute
-    evals2 = evals[indices]
-    evecs2 = evecs[:, indices]
-    # done
-    return evals2, evecs2
+    return evals[indices], evecs[:, indices]
 
 
 def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False, check_sym: bool = False):

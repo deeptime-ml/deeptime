@@ -19,7 +19,7 @@
 import unittest
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.analysis.dense.stationary_vector import stationary_distribution_from_eigenvector
@@ -41,17 +41,17 @@ class TestStationaryVector(unittest.TestCase):
         p[self.dim // 2 - 1] = 0.001
         q[self.dim // 2 + 1] = 0.001
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
     def test_statdist_decomposition(self):
-        P = self.bdc.transition_matrix()
-        mu = self.bdc.stationary_distribution()
+        P = self.bdc.transition_matrix
+        mu = self.bdc.stationary_distribution
         mun = stationary_distribution_from_eigenvector(P)
         assert_allclose(mu, mun)
 
     def test_statdist_iteration(self):
-        P = self.bdc.transition_matrix()
-        mu = self.bdc.stationary_distribution()
+        P = self.bdc.transition_matrix
+        mu = self.bdc.stationary_distribution
         mun = stationary_distribution_from_backward_iteration(P)
         assert_allclose(mu, mun)
 

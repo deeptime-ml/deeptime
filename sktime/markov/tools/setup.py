@@ -13,8 +13,6 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('flux.dense')
     config.add_subpackage('flux.sparse')
 
-    config.add_subpackage('generation')
-
     config.add_extension('kahandot',
                          sources=['kahandot/kahandot_module.cpp'],
                          language='c++')

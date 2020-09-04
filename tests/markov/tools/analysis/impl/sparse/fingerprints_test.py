@@ -25,9 +25,9 @@ import unittest
 
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
 from tests.markov.tools.numeric import assert_allclose
 
+import sktime
 from sktime.markov.tools.analysis.sparse.decomposition import rdl_decomposition, timescales
 
 from sktime.markov.tools.analysis.sparse.fingerprints import fingerprint_correlation, fingerprint_relaxation, fingerprint
@@ -46,10 +46,9 @@ class TestFingerprint(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
-
-        self.mu = self.bdc.stationary_distribution()
-        self.T = self.bdc.transition_matrix_sparse()
+        self.bdc = sktime.data.birth_death_chain(q, p)
+        self.mu = self.bdc.stationary_distribution
+        self.T = self.bdc.transition_matrix_sparse
         R, D, L = rdl_decomposition(self.T, k=self.k)
         self.L = L
         self.R = R
@@ -140,10 +139,10 @@ class TestCorrelation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = sktime.data.birth_death_chain(q, p)
 
-        self.mu = self.bdc.stationary_distribution()
-        self.T = self.bdc.transition_matrix_sparse()
+        self.mu = self.bdc.stationary_distribution
+        self.T = self.bdc.transition_matrix_sparse
         R, D, L = rdl_decomposition(self.T, k=self.k)
         self.L = L
         self.R = R
@@ -228,10 +227,10 @@ class TestRelaxation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = sktime.data.birth_death_chain(q, p)
 
-        self.mu = self.bdc.stationary_distribution()
-        self.T = self.bdc.transition_matrix_sparse()
+        self.mu = self.bdc.stationary_distribution
+        self.T = self.bdc.transition_matrix_sparse
 
         """Test matrix-vector product against spectral decomposition"""
         R, D, L = rdl_decomposition(self.T, k=self.k)

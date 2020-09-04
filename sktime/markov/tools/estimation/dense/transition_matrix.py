@@ -48,7 +48,7 @@ def transition_matrix_non_reversible(C):
     return np.divide(C, rowsums[:, np.newaxis])
 
 
-def transition_matrix_reversible_pisym(C, return_statdist=False, **kwargs):
+def transition_matrix_reversible_pisym(C, return_statdist=False):
     r"""
     Estimates reversible transition matrix as follows:
 
@@ -83,7 +83,5 @@ def transition_matrix_reversible_pisym(C, return_statdist=False, **kwargs):
     # result
     T_rev = X / X.sum(axis=1)[:, None]
     if return_statdist:
-        #np.testing.assert_allclose(pi, stationary_distribution(T_rev))
-        #np.testing.assert_allclose(T_rev.T.dot(pi), pi)
         return T_rev, pi
     return T_rev

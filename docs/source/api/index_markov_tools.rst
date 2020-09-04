@@ -20,13 +20,3 @@ This package is a fork of `MSMTools <https://github.com/markovmodel/msmtools>`__
 
 .. toctree::
    :maxdepth: 1
-
-.. automodule:: sktime.markov.tools.dtraj
-
-.. toctree::
-   :maxdepth: 1
-
-.. automodule:: sktime.markov.tools.generation
-
-.. toctree::
-   :maxdepth: 1

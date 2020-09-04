@@ -24,7 +24,7 @@ import unittest
 
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 from scipy.linalg import eig, eigvals
 
@@ -48,11 +48,11 @@ class TestDecomposition(unittest.TestCase):
         p[self.dim // 2 - 1] = 0.001
         q[self.dim // 2 + 1] = 0.001
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
     def test_eigenvalues(self):
-        P = self.bdc.transition_matrix_sparse()
-        P_dense = self.bdc.transition_matrix()
+        P = self.bdc.transition_matrix_sparse
+        P_dense = self.bdc.transition_matrix
         ev = eigvals(P_dense)
         """Sort with decreasing magnitude"""
         ev = ev[np.argsort(np.abs(ev))[::-1]]
@@ -70,8 +70,8 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(ev[0:self.k], evn)
 
     def test_eigenvalues_rev(self):
-        P = self.bdc.transition_matrix_sparse()
-        P_dense = self.bdc.transition_matrix()
+        P = self.bdc.transition_matrix_sparse
+        P_dense = self.bdc.transition_matrix
         ev = eigvals(P_dense)
         """Sort with decreasing magnitude"""
         ev = ev[np.argsort(np.abs(ev))[::-1]]
@@ -89,7 +89,7 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(ev[0:self.k], evn)
 
         """mu is not None"""
-        mu = self.bdc.stationary_distribution()
+        mu = self.bdc.stationary_distribution
 
         """k=None"""
         with self.assertRaises(ValueError):
@@ -104,8 +104,8 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(ev[0:self.k], evn)
 
     def test_eigenvectors(self):
-        P_dense = self.bdc.transition_matrix()
-        P = self.bdc.transition_matrix_sparse()
+        P_dense = self.bdc.transition_matrix
+        P = self.bdc.transition_matrix_sparse
         ev, L, R = eig(P_dense, left=True, right=True)
         ind = np.argsort(np.abs(ev))[::-1]
         ev = ev[ind]
@@ -135,8 +135,8 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(P.transpose().dot(Ln), vals[np.newaxis, :] * Ln)
 
     def test_eigenvectors_rev(self):
-        P_dense = self.bdc.transition_matrix()
-        P = self.bdc.transition_matrix_sparse()
+        P_dense = self.bdc.transition_matrix
+        P = self.bdc.transition_matrix_sparse
         ev, L, R = eig(P_dense, left=True, right=True)
         ind = np.argsort(np.abs(ev))[::-1]
         ev = ev[ind]
@@ -166,7 +166,7 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(P.transpose().dot(Ln), vals[np.newaxis, :] * Ln)
 
         """mu is not None"""
-        mu = self.bdc.stationary_distribution()
+        mu = self.bdc.stationary_distribution
 
         """k=None"""
         with self.assertRaises(ValueError):
@@ -190,8 +190,8 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(P.transpose().dot(Ln), vals[np.newaxis, :] * Ln)
 
     def test_rdl_decomposition(self):
-        P = self.bdc.transition_matrix_sparse()
-        mu = self.bdc.stationary_distribution()
+        P = self.bdc.transition_matrix_sparse
+        mu = self.bdc.stationary_distribution
 
         """Non-reversible"""
 
@@ -258,8 +258,8 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(Ln.transpose(), mu[:, np.newaxis] * Rn)
 
     def test_rdl_decomposition_rev(self):
-        P = self.bdc.transition_matrix_sparse()
-        mu = self.bdc.stationary_distribution()
+        P = self.bdc.transition_matrix_sparse
+        mu = self.bdc.stationary_distribution
 
         """Non-reversible"""
 
@@ -388,8 +388,8 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(Ln.transpose(), mu[:, np.newaxis] * Rn)
 
     def test_timescales(self):
-        P_dense = self.bdc.transition_matrix()
-        P = self.bdc.transition_matrix_sparse()
+        P_dense = self.bdc.transition_matrix
+        P = self.bdc.transition_matrix_sparse
         ev = eigvals(P_dense)
         """Sort with decreasing magnitude"""
         ev = ev[np.argsort(np.abs(ev))[::-1]]
@@ -414,9 +414,9 @@ class TestDecomposition(unittest.TestCase):
         assert_allclose(7 * ts[1:self.k], tsn[1:])
 
     def test_timescales_rev(self):
-        P_dense = self.bdc.transition_matrix()
-        P = self.bdc.transition_matrix_sparse()
-        mu = self.bdc.stationary_distribution()
+        P_dense = self.bdc.transition_matrix
+        P = self.bdc.transition_matrix_sparse
+        mu = self.bdc.stationary_distribution
         ev = eigvals(P_dense)
         """Sort with decreasing magnitude"""
         ev = ev[np.argsort(np.abs(ev))[::-1]]

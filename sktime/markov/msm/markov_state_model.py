@@ -19,7 +19,7 @@
 # .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
 from math import ceil
-from typing import Optional, List
+from typing import Optional, List, Union
 
 import numpy as np
 from scipy.sparse import issparse
@@ -30,7 +30,7 @@ from sktime.markov.sample import ensure_dtraj_list, compute_index_states
 from sktime.markov.tools import analysis as msmana
 from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import count_states
-from sktime.numeric import mdot, is_square_matrix
+from sktime.numeric import is_square_matrix
 from sktime.util.decorators import cached_property
 from sktime.util.matrix import submatrix
 from sktime.util.types import ensure_array
@@ -44,6 +44,13 @@ class MarkovStateModel(Model):
     MaximumLikelihoodMSM : maximum-likelihood estimator for MSMs
     OOMReweightedMSM : estimator for MSMs which uses Koopman reweighting
     BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: msm-
     """
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None,
@@ -467,11 +474,10 @@ class MarkovStateModel(Model):
                 pk = self.transition_matrix.T.dot(pk)
         else:  # dense: employ eigenvalue decomposition
             self._ensure_eigendecomposition(self.n_states)
-            pk = mdot(p0.T,
-                      self.eigenvectors_right(),
-                      np.diag(np.power(self.eigenvalues(), k)),
-                      self.eigenvectors_left()).real
-        # normalize to 1.0 and return
+            pk = np.linalg.multi_dot([
+                p0.T, self.eigenvectors_right(), np.diag(np.power(self.eigenvalues(), k)),
+                self.eigenvectors_left()
+            ]).real
         return pk / pk.sum()
 
     ################################################################################
@@ -566,8 +572,8 @@ class MarkovStateModel(Model):
         r"""Time-correlation for equilibrium experiment.
 
         In order to simulate a time-correlation experiment (e.g. fluorescence
-        correlation spectroscopy :cite:`msm-corr-noe2011dynamical`, dynamical neutron
-        scattering :cite:`msm-corr-lindner2013dynamic`, ...), first compute the mean values of your experimental
+        correlation spectroscopy :cite:`msm-noe2011dynamical`, dynamical neutron
+        scattering :cite:`msm-lindner2013dynamic`, ...), first compute the mean values of your experimental
         observable :math:`a` by MarkovStateModel state:
 
         .. math::
@@ -659,14 +665,6 @@ class MarkovStateModel(Model):
         >>>
         >>> import matplotlib.pylab as plt # doctest: +SKIP
         >>> plt.plot(times, acf)  # doctest: +SKIP
-
-        References
-        ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: msm-corr-
-            :labelprefix: corr-
         """
         # input checking is done in low-level API
         # compute number of tau steps
@@ -712,7 +710,7 @@ class MarkovStateModel(Model):
 
         Spectral densities are commonly used in spectroscopy. Dynamical
         fingerprints are a useful representation for computational
-        spectroscopy results and have been introduced in :cite:`msm-fp-corr-noe2011dynamical`.
+        spectroscopy results and have been introduced in :cite:`msm-noe2011dynamical`.
 
         References
         ----------
@@ -836,15 +834,7 @@ class MarkovStateModel(Model):
             Amplitudes for the relaxation experiment
 
         Spectral densities are commonly used in spectroscopy. Dynamical fingerprints are a useful representation
-        for computational spectroscopy results and have been introduced in :cite:`msm-fp-relax-noe2011dynamical`.
-
-        References
-        ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: msm-fp-relax-
-            :labelprefix: fp-relax-
+        for computational spectroscopy results and have been introduced in :cite:`msm-noe2011dynamical`.
         """
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
@@ -853,7 +843,7 @@ class MarkovStateModel(Model):
         return fr(self.transition_matrix, p0, a, tau=self.lagtime, k=k, ncv=ncv)
 
     def pcca(self, n_metastable_sets: int) -> PCCAModel:
-        r""" Runs PCCA+ :cite:`msm-pcca-roblitz2013fuzzy` to compute a metastable decomposition of
+        r""" Runs PCCA+ :cite:`msm-roblitz2013fuzzy` to compute a metastable decomposition of
         MarkovStateModel states.
 
         After calling this method you can access :func:`metastable_memberships`,
@@ -874,14 +864,6 @@ class MarkovStateModel(Model):
         -----
         If you coarse grain with PCCA+, the order of the obtained memberships
         might not be preserved.
-
-        References
-        ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: msm-pcca-
-            :labelprefix: pcca-
         """
         if not self.reversible:
             raise ValueError('Cannot compute PCCA+ for non-reversible matrices. '
@@ -925,8 +907,8 @@ class MarkovStateModel(Model):
             transition_matrix_tolerance=None  # set to None explicitly so no check is performed
         )
 
-    def simulate(self, n_steps: int, start: Optional[int] = None, stop: Optional[int] = None, dt: int = 1,
-                 seed: int = -1):
+    def simulate(self, n_steps: int, start: Optional[int] = None, stop: Optional[Union[int, List[int]]] = None,
+                 dt: int = 1, seed: int = -1):
         r"""Generates a realization of the Markov Model.
 
         Parameters
@@ -966,6 +948,8 @@ class MarkovStateModel(Model):
             transition_matrix = self.transition_matrix
         if dt > 1:
             transition_matrix = np.linalg.matrix_power(transition_matrix, dt)
+        if stop is not None and not isinstance(stop, (list, tuple, np.ndarray)):
+            stop = [stop]
         return sim.trajectory(N=n_steps, start=start, P=transition_matrix, stop=stop, seed=seed)
 
     ################################################################################
@@ -1065,7 +1049,7 @@ class MarkovStateModel(Model):
     ################################################################################
 
     def hmm(self, dtrajs, nhidden: int, return_estimator=False):
-        """Estimates a hidden Markov state model as described in :cite:`msm-hmm-noe2013projected`.
+        """Estimates a hidden Markov state model as described in :cite:`msm-noe2013projected`.
 
         Parameters
         ----------
@@ -1083,14 +1067,6 @@ class MarkovStateModel(Model):
         -------
         hmm : sktime.markov.hmm.HiddenMarkovModel
             A hidden markov model.
-
-        References
-        ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: msm-hmm-
-            :labelprefix: hmm-
         """
         if not self.reversible:
             raise ValueError("Can only use HMM coarse-graining if the estimate was reversible. This is due to the use "
@@ -1122,7 +1098,7 @@ class MarkovStateModel(Model):
     def score(self, dtrajs, score_method='VAMP2', score_k=10):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes.
 
-        Implemented according to :cite:`msm-score-noe2013variational` and :cite:`msm-score-wu2020variational`.
+        Implemented according to :cite:`msm-noe2013variational` and :cite:`msm-wu2020variational`.
 
         Currently only implemented using dense matrices - will be slow for large state spaces.
 
@@ -1140,29 +1116,21 @@ class MarkovStateModel(Model):
             Overwrite scoring method to be used if desired. If `None`, the estimators scoring
             method will be used.
             Available scores are based on the variational approach for Markov processes
-            :cite:`msm-score-noe2013variational` :cite:`msm-score-wu2020variational`:
+            :cite:`msm-noe2013variational` :cite:`msm-wu2020variational`:
 
-            * 'VAMP1': Sum of singular values of the symmetrized transition matrix :cite:`msm-score-wu2020variational`.
+            * 'VAMP1': Sum of singular values of the symmetrized transition matrix :cite:`msm-wu2020variational`.
               If the MSM is reversible, this is equal to the sum of transition
-              matrix eigenvalues, also called Rayleigh quotient :cite:`msm-score-noe2013variational`
-              :cite:`msm-score-mcgibbon2015variational`.
+              matrix eigenvalues, also called Rayleigh quotient :cite:`msm-noe2013variational`
+              :cite:`msm-mcgibbon2015variational`.
             * 'VAMP2': Sum of squared singular values of the symmetrized  transition matrix
-              :cite:`msm-score-wu2020variational`. If the MSM is reversible, this is equal to the
-              kinetic variance :cite:`msm-score-noe2015kinetic`.
+              :cite:`msm-wu2020variational`. If the MSM is reversible, this is equal to the
+              kinetic variance :cite:`msm-noe2015kinetic`.
             * 'VAMPE': Approximation error of the estimated Koopman operator with respect to the true Koopman operator
-              up to an additive constant :cite:`msm-score-wu2020variational`.
+              up to an additive constant :cite:`msm-wu2020variational`.
 
         score_k : int or None
             The maximum number of eigenvalues or singular values used in the
             score. If set to None, all available eigenvalues will be used.
-
-        References
-        ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: msm-score-
-            :labelprefix: score-
         """
         from sktime.markov.sample import ensure_dtraj_list
         dtrajs = ensure_dtraj_list(dtrajs)  # ensure format

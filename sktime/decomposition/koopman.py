@@ -22,7 +22,7 @@ import numpy as np
 
 from ..base import Model, Transformer
 from ..covariance import CovarianceModel
-from ..numeric import is_diagonal_matrix, spd_inv_sqrt, mdot
+from ..numeric import is_diagonal_matrix, spd_inv_sqrt
 from ..util.decorators import cached_property
 
 
@@ -488,7 +488,7 @@ class CovarianceKoopmanModel(KoopmanModel):
             A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk), epsilon=self.epsilon)
             B = Uk.T.dot(test_model.cov_0t).dot(Vk)
             C = spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk), epsilon=self.epsilon)
-            ABC = mdot(A, B, C)
+            ABC = np.linalg.multi_dot([A, B, C])
             if score_method == 'VAMP1':
                 res = np.linalg.norm(ABC, ord='nuc')
             elif score_method == 'VAMP2':
@@ -496,8 +496,8 @@ class CovarianceKoopmanModel(KoopmanModel):
         elif score_method == 'VAMPE':
             K = np.diag(self.singular_values[0:self.output_dimension])
             # see https://arxiv.org/pdf/1707.04659.pdf eqn. (30)
-            res = np.trace(2.0 * mdot(K, Uk.T, test_model.cov_0t, Vk)
-                           - mdot(K, Uk.T, test_model.cov_00, Uk, K, Vk.T, test_model.cov_tt, Vk))
+            res = np.trace(2.0 * np.linalg.multi_dot([K, Uk.T, test_model.cov_0t, Vk])
+                           - np.linalg.multi_dot([K, Uk.T, test_model.cov_00, Uk, K, Vk.T, test_model.cov_tt, Vk]))
         else:
             raise ValueError('"score" should be one of VAMP1, VAMP2 or VAMPE')
         assert res is not None

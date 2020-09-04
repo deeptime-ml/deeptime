@@ -56,15 +56,15 @@ void handleOutliers(np_array_nfc<dtype> &outputProbabilityTrajectory) {
 namespace discrete {
 
 template<typename dtype, typename State>
-np_array<dtype> generateObservationTrajectory(const np_array_nfc<State> &hiddenStateTrajectory,
-                                              const np_array_nfc<dtype> &outputProbabilities) {
+np_array<std::int64_t> generateObservationTrajectory(const np_array_nfc<State> &hiddenStateTrajectory,
+                                                     const np_array_nfc<dtype> &outputProbabilities) {
     if (hiddenStateTrajectory.ndim() != 1) {
         throw std::invalid_argument("generate observation trajectory needs 1-dimensional hidden state trajectory");
     }
     auto nTimesteps = static_cast<std::size_t>(hiddenStateTrajectory.shape(0));
     auto nObs = outputProbabilities.shape(1);
 
-    np_array<dtype> output({nTimesteps});
+    np_array<std::int64_t> output({nTimesteps});
     auto outputPtr = output.mutable_data();
 
     {

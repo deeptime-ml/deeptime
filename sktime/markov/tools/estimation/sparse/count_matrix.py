@@ -24,6 +24,7 @@ r"""This module implements the countmatrix estimation functionality
 import numpy as np
 import scipy.sparse
 
+
 ################################################################################
 # count_matrix
 ################################################################################

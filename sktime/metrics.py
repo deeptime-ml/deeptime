@@ -22,7 +22,6 @@ Contains various metrics for ranking kinetic models
 
 import numpy as np
 
-from sktime.numeric import mdot
 from sktime.numeric.eigen import spd_inv_sqrt
 
 __author__ = 'noe'
@@ -32,13 +31,13 @@ def _svd_sym_koopman(K, C00_train, Ctt_train):
     """ Computes the SVD of the symmetrized Koopman operator in the empirical distribution.
     """
     # reweight operator to empirical distribution
-    C0t_re = mdot(C00_train, K)
+    C0t_re = np.linalg.multi_dot([C00_train, K])
     # symmetrized operator and SVD
-    K_sym = mdot(spd_inv_sqrt(C00_train), C0t_re, spd_inv_sqrt(Ctt_train))
+    K_sym = np.linalg.multi_dot([spd_inv_sqrt(C00_train), C0t_re, spd_inv_sqrt(Ctt_train)])
     U, S, Vt = np.linalg.svd(K_sym, compute_uv=True, full_matrices=False)
     # projects back to singular functions of K
-    U = mdot(spd_inv_sqrt(C00_train), U)
-    Vt = mdot(Vt, spd_inv_sqrt(Ctt_train))
+    U = spd_inv_sqrt(C00_train) @ U
+    Vt = Vt @ spd_inv_sqrt(Ctt_train)
     return U, S, Vt.T
 
 
@@ -99,12 +98,12 @@ def vamp_1_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_tes
         U = U[:, :k]
         # S = S[:k][:, :k]
         V = V[:, :k]
-    A = spd_inv_sqrt(mdot(U.T, C00_test, U))
-    B = mdot(U.T, C0t_test, V)
-    C = spd_inv_sqrt(mdot(V.T, Ctt_test, V))
+    A = spd_inv_sqrt(np.linalg.multi_dot([U.T, C00_test, U]))
+    B = np.linalg.multi_dot([U.T, C0t_test, V])
+    C = spd_inv_sqrt(np.linalg.multi_dot([V.T, Ctt_test, V]))
 
     # compute trace norm (nuclear norm), equal to the sum of singular values
-    score = np.linalg.norm(mdot(A, B, C), ord='nuc')
+    score = np.linalg.norm(np.linalg.multi_dot([A, B, C]), ord='nuc')
     return score
 
 
@@ -164,12 +163,12 @@ def vamp_2_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_tes
     if k is not None:
         U = U[:, :k]
         V = V[:, :k]
-    A = spd_inv_sqrt(mdot(U.T, C00_test, U))
-    B = mdot(U.T, C0t_test, V)
-    C = spd_inv_sqrt(mdot(V.T, Ctt_test, V))
+    A = spd_inv_sqrt(np.linalg.multi_dot([U.T, C00_test, U]))
+    B = np.linalg.multi_dot([U.T, C0t_test, V])
+    C = spd_inv_sqrt(np.linalg.multi_dot([V.T, Ctt_test, V]))
 
     # compute square frobenius, equal to the sum of squares of singular values
-    score = np.linalg.norm(mdot(A, B, C), ord='fro') ** 2
+    score = np.linalg.norm(np.linalg.multi_dot([A, B, C]), ord='fro') ** 2
     return score
 
 
@@ -232,7 +231,8 @@ def vamp_e_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_tes
         V = V[:, :k]
     else:
         S = np.diag(s)
-    score = np.trace(2.0 * mdot(V, S, U.T, C0t_test) - mdot(V, S, U.T, C00_test, U, S, V.T, Ctt_test))
+    score = np.trace(2.0 * np.linalg.multi_dot([V, S, U.T, C0t_test])
+                     - np.linalg.multi_dot([V, S, U.T, C00_test, U, S, V.T, Ctt_test]))
     return score
 
 

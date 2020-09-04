@@ -25,7 +25,7 @@ import unittest
 
 import numpy as np
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
 from sktime.markov.tools.analysis.dense.decomposition import rdl_decomposition, timescales
@@ -50,10 +50,10 @@ class TestFingerprint(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
-        self.mu = self.bdc.stationary_distribution()
-        self.T = self.bdc.transition_matrix()
+        self.mu = self.bdc.stationary_distribution
+        self.T = self.bdc.transition_matrix
         R, D, L = rdl_decomposition(self.T)
         self.L = L
         self.R = R
@@ -180,10 +180,10 @@ class TestExpectation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
-        self.mu = self.bdc.stationary_distribution()
-        self.T = self.bdc.transition_matrix()
+        self.mu = self.bdc.stationary_distribution
+        self.T = self.bdc.transition_matrix
 
         obs1 = np.zeros(10)
         obs1[0] = 1
@@ -210,10 +210,10 @@ class TestCorrelation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
-        self.mu = self.bdc.stationary_distribution()
-        self.T = self.bdc.transition_matrix()
+        self.mu = self.bdc.stationary_distribution
+        self.T = self.bdc.transition_matrix
         R, D, L = rdl_decomposition(self.T, norm='reversible')
         self.L = L
         self.R = R
@@ -311,9 +311,8 @@ class TestCorrelation(unittest.TestCase):
         corrn = correlation(self.T, self.obs1, obs2=self.obs2, times=self.times, k=k)
         assert_allclose(corrn, corr)
 
-    ################################################################################
 
-
+################################################################################
 # Relaxation
 ################################################################################
 
@@ -326,10 +325,10 @@ class TestRelaxation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
+        self.bdc = birth_death_chain(q, p)
 
-        self.mu = self.bdc.stationary_distribution()
-        self.T = self.bdc.transition_matrix()
+        self.mu = self.bdc.stationary_distribution
+        self.T = self.bdc.transition_matrix
 
         """Test matrix-vector product against spectral decomposition"""
         R, D, L = rdl_decomposition(self.T)
@@ -414,7 +413,3 @@ class TestPropagate(unittest.TestCase):
         yn = propagate(A, x, 100)
         y = np.dot(np.linalg.matrix_power(A, 100), x)
         assert_allclose(yn, y)
-
-
-if __name__ == "__main__":
-    unittest.main()

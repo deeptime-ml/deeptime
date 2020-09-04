@@ -25,7 +25,7 @@ r"""Unit test for the AMM module
 import numpy as np
 from numpy.testing import *
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from sktime.markov import TransitionCountEstimator
 from sktime.markov.msm import MarkovStateModel
 from sktime.markov.msm.augmented_msm import AugmentedMSMEstimator
@@ -43,8 +43,8 @@ def test_amm_sanity(fixed_seed):
     p[2] = 10 ** (-b)
     p[4] = 1.0 - 10 ** (-b)
 
-    bdc = BirthDeathChain(q, p)
-    P = bdc.transition_matrix()
+    bdc = birth_death_chain(q, p)
+    P = bdc.transition_matrix
     dtraj = MarkovStateModel(P).simulate(n_steps=10000, start=0)
     tau = 1
 

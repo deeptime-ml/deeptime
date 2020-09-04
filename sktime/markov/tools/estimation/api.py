@@ -72,7 +72,7 @@ __all__ = ['bootstrap_trajectories',
 ################################################################################
 
 def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
-    r"""Generate a count matrix from given microstate trajectory [1]_.
+    r"""Generate a count matrix from given microstate trajectory :cite:`tools-est-cm-prinz2011markov`.
 
     Parameters
     ----------
@@ -124,10 +124,10 @@ def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
 
     References
     ----------
-    .. [1] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
-        Chodera, C Schuette and F Noe. 2011. Markov models of
-        molecular kinetics: Generation and validation. J Chem Phys
-        134: 174105
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-est-cm-
 
     Examples
     --------
@@ -372,12 +372,14 @@ def connected_sets(C, directed=True):
     Viewing the count matrix as the adjacency matrix of a (directed) graph
     the connected components are given by the connected components of that
     graph. Connected components of a graph can be efficiently computed
-    using Tarjan's algorithm [1]_.
+    using Tarjan's algorithm :cite:`tools-est-connected-sets-tarjan1972depth`.
 
     References
     ----------
-    .. [1] Tarjan, R E. 1972. Depth-first search and linear graph
-       algorithms. SIAM Journal on Computing 1 (2): 146-160.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-est-connected-sets-
 
     Examples
     --------
@@ -427,12 +429,14 @@ def largest_connected_set(C, directed=True):
     Viewing the count matrix as the adjacency matrix of a (directed)
     graph the largest connected set is the largest connected set of
     nodes of the corresponding graph. The largest connected set of a graph
-    can be efficiently computed using Tarjan's algorithm.
+    can be efficiently computed using Tarjan's algorithm :cite:`tools-est-lcc-tarjan1972depth`.
 
     References
     ----------
-    .. [1] Tarjan, R E. 1972. Depth-first search and linear graph
-       algorithms. SIAM Journal on Computing 1 (2): 146-160.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-est-lcc-
 
     Examples
     --------
@@ -484,12 +488,14 @@ def largest_connected_submatrix(C, directed=True, lcc=None):
     Viewing the count matrix as the adjacency matrix of a (directed)
     graph the larest connected submatrix is the adjacency matrix of
     the largest connected set of the corresponding graph. The largest
-    connected submatrix can be efficiently computed using Tarjan's algorithm [1]_.
+    connected submatrix can be efficiently computed using Tarjan's algorithm :cite:`tools-est-lcsm-tarjan1972depth`.
 
     References
     ----------
-    .. [1] Tarjan, R E. 1972. Depth-first search and linear graph
-        algorithms. SIAM Journal on Computing 1 (2): 146-160.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-est-lcsm-
 
     Examples
     --------
@@ -541,12 +547,14 @@ def is_connected(C, directed=True):
     -----
     A count matrix is connected if the graph having the count matrix
     as adjacency matrix has a single connected component. Connectivity
-    of a graph can be efficiently checked using Tarjan's algorithm.
+    of a graph can be efficiently checked using Tarjan's algorithm :cite:`tools-est-is-conn-tarjan1972depth`.
 
     References
     ----------
-    .. [1] Tarjan, R E. 1972. Depth-first search and linear graph
-        algorithms. SIAM Journal on Computing 1 (2): 146-160.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: tools-est-is-conn-
 
     Examples
     --------
@@ -723,8 +731,12 @@ def prior_rev(C, alpha=-1.0):
 # Transition matrix
 ################################################################################
 
-def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
-    r"""Estimate the transition matrix from the given countmatrix.
+def transition_matrix(C, reversible=False, mu=None, method='auto',
+                      maxiter: int = 1000000, maxerr: float = 1e-8,
+                      rev_pisym : bool = False, return_statdist: bool = False, warn_not_converged: bool = True,
+                      sparse_newton: bool = False):
+    r"""Estimate the transition matrix from the given countmatrix :cite:`msmtools-tmat-est-prinz2011markov`
+    :cite:`msmtools-tmat-est-bowman2009progress` :cite:`msmtools-tmat-est-trendelkamp2015estimation`.
 
     Parameters
     ----------
@@ -747,55 +759,40 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
         matrix is less then one third, select sparse. Else select dense.
         The type of the T matrix returned always matches the type of the
         C matrix, irrespective of the method that was used to compute it.
-    **kwargs: Optional algorithm-specific parameters. See below for special cases
-    Xinit : (M, M) ndarray
-        Optional parameter with reversible = True.
-        initial value for the matrix of absolute transition probabilities. Unless set otherwise,
-        will use X = diag(pi) t, where T is a nonreversible transition matrix estimated from C,
-        i.e. T_ij = c_ij / sum_k c_ik, and pi is its stationary distribution.
-    maxiter : 1000000 : int
+
+    Other Parameters
+    ----------------
+    maxiter : int, optional, default=1000000
         Optional parameter with reversible = True.
         maximum number of iterations before the method exits
-    maxerr : 1e-8 : float
+    maxerr : float, optional, default=1e-8
         Optional parameter with reversible = True.
         convergence tolerance for transition matrix estimation.
         This specifies the maximum change of the Euclidean norm of relative
         stationary probabilities (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
         :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
         probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
-    rev_pisym : bool, default=False
+    rev_pisym : bool, optional, default=False
         Fast computation of reversible transition matrix by normalizing
         :math:`x_{ij} = \pi_i p_{ij} + \pi_j p_{ji}`. :math:`p_{ij}` is the direct
         (nonreversible) estimate and :math:`pi_i` is its stationary distribution.
         This estimator is asympotically unbiased but not maximum likelihood.
-    return_statdist : bool, default=False
+    return_statdist : bool, optional, default=False
         Optional parameter with reversible = True.
         If set to true, the stationary distribution is also returned
-    return_conv : bool, default=False
+    return_conv : bool, optional, default=False
         Optional parameter with reversible = True.
         If set to true, the likelihood history and the pi_change history is returned.
-    warn_not_converged : bool, default=True
+    warn_not_converged : bool, optional, default=True
         Prints a warning if not converged.
-    sparse_newton : bool, default=False
+    sparse_newton : bool, optional, default=False
         If True, use the experimental primal-dual interior-point solver for sparse input/computation method.
 
     Returns
     -------
-    P : (M, M) ndarray or scipy.sparse matrix
-       The MLE transition matrix. P has the same data type (dense or sparse)
-       as the input matrix C.
-    The reversible estimator returns by default only P, but may also return
-    (P,pi) or (P,lhist,pi_changes) or (P,pi,lhist,pi_changes) depending on the return settings
-    P : ndarray (n,n)
-        transition matrix. This is the only return for return_statdist = False, return_conv = False
-    (pi) : ndarray (n)
-        stationary distribution. Only returned if return_statdist = True
-    (lhist) : ndarray (k)
-        likelihood history. Has the length of the number of iterations needed.
-        Only returned if return_conv = True
-    (pi_changes) : ndarray (k)
-        history of likelihood history. Has the length of the number of iterations needed.
-        Only returned if return_conv = True
+    result : Union[array_like, Tuple[array_like, np.ndarray]]
+       The MLE transition matrix and optionally the stationary distribution if `return_statist=True`.
+       The transition matrix has the same data type (dense or sparse) as the input matrix C.
 
     Notes
     -----
@@ -805,16 +802,10 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
 
     References
     ----------
-    .. [1] Prinz, J H, H Wu, M Sarich, B Keller, M Senne, M Held, J D
-        Chodera, C Schuette and F Noe. 2011. Markov models of
-        molecular kinetics: Generation and validation. J Chem Phys
-        134: 174105
-    .. [2] Bowman, G R, K A Beauchamp, G Boxer and V S Pande. 2009.
-        Progress and challenges in the automated construction of Markov state models for full protein systems.
-        J. Chem. Phys. 131: 124101
-    .. [3] Trendelkamp-Schroer, B, H Wu, F Paul and F. Noe. 2015
-        Estimation and uncertainty of reversible Markov models.
-        J. Chem. Phys. 143: 174101
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: msmtools-tmat-est-
 
     Examples
     --------
@@ -827,28 +818,27 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
     Non-reversible estimate
 
     >>> T_nrev = transition_matrix(C)
-    >>> T_nrev
-    array([[0.83333333, 0.08333333, 0.08333333],
-           [0.4       , 0.        , 0.6       ],
-           [0.        , 0.2       , 0.8       ]])
+    >>> print(np.array_str(T_nrev, precision=3))
+    [[0.833 0.083 0.083]
+     [0.4   0.    0.6  ]
+     [0.    0.2   0.8  ]]
 
     Reversible estimate
 
     >>> T_rev = transition_matrix(C, reversible=True)
-    >>> T_rev
-    array([[0.83333333, 0.10385551, 0.06281115],
-           [0.35074677, 0.        , 0.64925323],
-           [0.04925323, 0.15074677, 0.8       ]])
+    >>> print(np.array_str(T_rev, precision=3))
+    [[0.833 0.104 0.063]
+     [0.351 0.    0.649]
+     [0.049 0.151 0.8  ]]
 
     Reversible estimate with given stationary vector
 
     >>> mu = np.array([0.7, 0.01, 0.29])
     >>> T_mu = transition_matrix(C, reversible=True, mu=mu)
-    >>> T_mu
-    array([[0.94771371, 0.00612645, 0.04615984],
-           [0.42885157, 0.        , 0.57114843],
-           [0.11142031, 0.01969477, 0.86888491]])
-
+    >>> print(np.array_str(T_mu, precision=3))
+    [[0.948 0.006 0.046]
+     [0.429 0.    0.571]
+     [0.111 0.02  0.869]]
     """
     if issparse(C):
         sparse_input_type = True
@@ -882,37 +872,35 @@ def transition_matrix(C, reversible=False, mu=None, method='auto', **kwargs):
     if not sparse_computation and sparse_input_type:
         C = C.toarray()
 
-    return_statdist = 'return_statdist' in kwargs
-
-    if not return_statdist:
-        kwargs['return_statdist'] = False
-
-    sparse_newton = kwargs.pop('sparse_newton', False)
-
     if reversible:
-        rev_pisym = kwargs.pop('rev_pisym', False)
-
         if mu is None:
             if sparse_computation:
                 if rev_pisym:
-                    result = sparse.transition_matrix.transition_matrix_reversible_pisym(C, **kwargs)
+                    result = sparse.transition_matrix.transition_matrix_reversible_pisym(
+                        C, return_statdist=return_statdist
+                    )
                 elif sparse_newton:
                     from .sparse.mle.newton.mle_rev import solve_mle_rev
-                    result = solve_mle_rev(C, **kwargs)
+                    result = solve_mle_rev(C, tol=maxerr, maxiter=maxiter, return_statdist=return_statdist)
                 else:
-                    result = sparse.mle.mle_trev(C, **kwargs)
+                    result = sparse.mle.mle_trev(C, maxerr=maxerr, maxiter=maxiter,
+                                                 warn_not_converged=warn_not_converged,
+                                                 return_statdist=return_statdist)
             else:
                 if rev_pisym:
-                    result = dense.transition_matrix.transition_matrix_reversible_pisym(C, **kwargs)
+                    result = dense.transition_matrix.transition_matrix_reversible_pisym(
+                        C, return_statdist=return_statdist
+                    )
                 else:
-                    result = dense.mle.mle_trev(C, **kwargs)
+                    result = dense.mle.mle_trev(C, maxerr=maxerr, maxiter=maxiter,
+                                                warn_not_converged=warn_not_converged, return_statdist=return_statdist)
         else:
-            kwargs.pop('return_statdist')  # pi given, keyword unknown by estimators.
             if sparse_computation:
                 # Sparse, reversible, fixed pi (currently using dense with sparse conversion)
-                result = sparse.mle.mle_trev_given_pi(C, mu, **kwargs)
+                result = sparse.mle.mle_trev_given_pi(C, mu, maxerr=maxerr, maxiter=maxiter,
+                                                      warn_not_converged=warn_not_converged)
             else:
-                result = dense.mle.mle_trev_given_pi(C, mu, **kwargs)
+                result = dense.mle.mle_trev_given_pi(C, mu, maxerr=maxerr, maxiter=maxiter)
     else:  # nonreversible estimation
         if mu is None:
             if sparse_computation:
@@ -1257,12 +1245,12 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
         * 'pseudo' selects the pseudo-generator. A reversible transition
           matrix T is estimated and :math:`(T-Id)/d` is returned as the rate matrix.
 
-        * 'truncated_log' selects the truncated logarithm [3]_. A
+        * 'truncated_log' selects the truncated logarithm :cite:`msmtools-est-rmat-davies2010embeddable`. A
           reversible transition matrix T is estimated and :math:`max(logm(T*T)/(2dt),0)`
           is returned as the rate matrix. logm is the matrix logarithm and
           the maximum is taken element-wise.
 
-        * 'CVE' selects the algorithm of Crommelin and Vanden-Eijnden [1]_.
+        * 'CVE' selects the algorithm of Crommelin and Vanden-Eijnden :cite:`msmtools-est-rmat-crommelin2009data`.
           It consists of minimizing the following objective function:
 
           .. math:: f(K)=\sum_{ij}\left(\sum_{kl} U_{ik}^{-1}K_{kl}U_{lj}-L_{ij}\right)^2 \left|\Lambda_{i}\Lambda_{j}\right|
@@ -1272,7 +1260,7 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
           :math:`T` is computed from C using the reversible maximum likelihood
           estimator.
 
-        * 'KL' selects the algorihtm of Kalbfleisch and Lawless [2]_.
+        * 'KL' selects the algorihtm of Kalbfleisch and Lawless :cite:`msmtools-est-rmat-kalbfleisch1985analysis`.
           It consists of maximizing the following log-likelihood:
 
           .. math:: f(K)=\log L=\sum_{ij}C_{ij}\log(e^{K\Delta t})_{ij}
@@ -1328,19 +1316,15 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
     >>> from sktime.markov.tools.estimation import rate_matrix
     >>> C = np.array([[100,1],[50,50]])
     >>> rate_matrix(C)
-    array([[-0.01384753,  0.01384753],
-           [ 0.69930032, -0.69930032]])
+    array([[-0.0138...,  0.0138...],
+           [ 0.6993..., -0.6993...]])
 
     References
     ----------
-    .. [1] D. Crommelin and E. Vanden-Eijnden. Data-based inference of
-        generators for markov jump processes using convex optimization.
-        Multiscale. Model. Sim., 7(4):1751-1778, 2009.
-    .. [2] J. D. Kalbfleisch and J. F. Lawless. The analysis of panel
-        data under a markov assumption. J. Am. Stat. Assoc.,
-        80(392):863-871, 1985.
-    .. [3] E. B. Davies. Embeddable Markov Matrices. Electron. J. Probab.
-        15:1474, 2010.
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: msmtools-est-rmat-
     """
 
     from .dense.ratematrix import estimate_rate_matrix

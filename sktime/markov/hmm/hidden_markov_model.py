@@ -24,7 +24,6 @@ import numpy as np
 from sktime.base import Model
 from sktime.markov.hmm.output_model import OutputModel, DiscreteOutputModel
 from sktime.markov.sample import indices_by_distribution
-from sktime.numeric import mdot
 from ._hmm_bindings.util import viterbi as viterbi_impl
 from ...util.types import ensure_dtraj_list, ensure_array
 
@@ -739,7 +738,7 @@ class HiddenMarkovModel(Model):
 
         ev_right = self.transition_model.eigenvectors_right(self.n_hidden_states)
         ev_left = self.transition_model.eigenvectors_left(self.n_hidden_states)
-        pk = mdot(p0.T, ev_right, np.diag(np.power(self.transition_model.eigenvalues(), k)), ev_left)
+        pk = np.linalg.multi_dot([p0.T, ev_right, np.diag(np.power(self.transition_model.eigenvalues(), k)), ev_left])
 
         pk = np.dot(pk, self.output_probabilities)  # convert back to microstate space
 

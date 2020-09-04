@@ -31,10 +31,9 @@ import numpy as np
 import pytest
 import scipy.sparse
 
-from sktime.data.birth_death_chain import BirthDeathChain
-from sktime.markov.tools.generation import generate_traj
 from numpy.testing import *
 
+import sktime
 from sktime.markov._base import score_cv
 from sktime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel, MarkovStateModelCollection
 from sktime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
@@ -160,9 +159,8 @@ def test_birth_death_chain(fixed_seed, sparse):
     p[2] = 10 ** (-b)
     p[4] = 1.0 - 10 ** (-b)
 
-    bdc = BirthDeathChain(q, p)
-    P = bdc.transition_matrix()
-    dtraj = generate_traj(P, 10000, start=0)
+    bdc = sktime.data.birth_death_chain(q, p)
+    dtraj = bdc.msm.simulate(10000, start=0)
     tau = 1
 
     reference_count_matrix = msmest.count_matrix(dtraj, tau, sliding=True)

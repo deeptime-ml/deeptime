@@ -62,13 +62,13 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
         }
     } else {
         for (std::size_t t = 1; t < N; ++t) {
+            if(std::find(stopState.begin(), stopState.end(), data[t-1]) != stopState.end()) {
+                result.resize({std::distance(data, data + t)});
+                break;
+            }
             auto prevState = data[t - 1];
             ddist.param({pPtr + prevState * nStates, pPtr + (prevState + 1) * nStates});
             data[t] = ddist(generator);
-            if(std::find(stopState.begin(), stopState.end(), data[t]) != stopState.end()) {
-                result.resize({std::distance(data, data + t + 1)});
-                break;
-            }
         }
     }
     return result;

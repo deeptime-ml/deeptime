@@ -30,6 +30,7 @@ Estimators
     VAMP
     TICA
     VAMPNet
+    DMD
 
 ===============================================================================
 Models
@@ -43,20 +44,7 @@ Models
     CovarianceKoopmanModel
     KoopmanBasisTransform
     IdentityKoopmanBasisTransform
-
-.. rubric:: TICA
-.. autosummary::
-    :toctree: generated/
-    :template: class_nomodule.rst
-
-    TICA
-
-.. rubric:: VAMP
-.. autosummary::
-    :toctree: generated/
-    :template: class_nomodule.rst
-
-    VAMP
+    DMDModel
 
 ===============================================================================
 Utils
@@ -80,6 +68,7 @@ Utils
 from .tica import TICA
 from .vamp import VAMP
 from .koopman import KoopmanBasisTransform, IdentityKoopmanBasisTransform, KoopmanModel, CovarianceKoopmanModel
+from .dmd import DMD, DMDModel
 from ..util.platform import module_available
 
 if module_available("torch"):

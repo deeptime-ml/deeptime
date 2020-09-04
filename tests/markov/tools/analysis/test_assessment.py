@@ -28,7 +28,7 @@ import numpy as np
 import scipy.sparse
 from scipy.sparse.dia import dia_matrix
 
-from sktime.data.birth_death_chain import BirthDeathChain
+from sktime.data import birth_death_chain
 from sktime.markov.tools.analysis import is_rate_matrix, is_reversible, is_transition_matrix, is_connected
 
 ################################################################################
@@ -54,9 +54,9 @@ class TestAssessmentDense(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = BirthDeathChain(q, p)
-        self.T = self.bdc.transition_matrix()
-        self.mu = self.bdc.stationary_distribution()
+        self.bdc = birth_death_chain(q, p)
+        self.T = self.bdc.transition_matrix
+        self.mu = self.bdc.stationary_distribution
 
         self.A = create_rate_matrix()
 

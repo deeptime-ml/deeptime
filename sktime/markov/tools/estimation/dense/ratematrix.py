@@ -595,9 +595,10 @@ def estimate_rate_matrix(C, dt=1.0, method='KL', sparsity=None,
     >>> import numpy as np
     >>> from sktime.markov.tools.estimation import rate_matrix
     >>> C = np.array([[100,1],[50,50]])
-    >>> rate_matrix(C)
-    array([[-0.01384753,  0.01384753],
-           [ 0.69930032, -0.69930032]])
+    >>> R = rate_matrix(C)
+    >>> print(np.array_str(R, precision=5))
+    [[-0.01385  0.01385]
+     [ 0.6993  -0.6993 ]]
 
     References
     ----------

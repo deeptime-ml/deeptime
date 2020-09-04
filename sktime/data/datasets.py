@@ -213,8 +213,8 @@ def bickley_jet(n_particles: int, n_jobs=None):
             \end{aligned}
 
     in a domain :math:`\Omega = [0, 20] \times [-3, 3]`. The resulting dataset describes the temporal evolution
-    of :code:`n_particles` over 401 timesteps in :math:`\Omega`. The domain is periodic in x-direction. Some methods
-    have difficulties dealing with this, so the dataset offers methods to wrap the domain into three-dimensional
+    of :code:`n_particles` over 401 timesteps in :math:`\Omega`. The domain is periodic in x-direction.
+    The dataset offers methods to wrap the domain into three-dimensional
     space onto the surface of a cylinder
 
     .. math::
@@ -225,7 +225,8 @@ def bickley_jet(n_particles: int, n_jobs=None):
             \frac{y}{3}
         \end{pmatrix},
 
-    with the option to further discretize the three-dimensional dataspace via binning.
+    with the option to further discretize the three-dimensional dataspace via binning. This way the
+    discontinuity introduced by 2D periodicity is treated.
 
     .. plot::
 
@@ -290,3 +291,84 @@ def bickley_jet(n_particles: int, n_jobs=None):
     traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
     traj_reshaped = traj.transpose(1, 2, 0)
     return BickleyJetDataset(traj_reshaped)
+
+
+def birth_death_chain(q, p):
+    r""" Generates a birth and death chain simulator from annihilation and creation probabilities `q` and `p`.
+
+    A general birth and death chain on a d-dimensional state space has the transition matrix
+
+    .. math::
+
+        p_{ij} = \begin{cases}
+            q_i &\text{, if } j=i-1 \text{ and } i>0,\\
+            r_i &\text{, if } j=i,\\
+            p_i &\text{, if } j=i+1 \text{ and } i<d-1.
+        \end{cases}
+
+    The annihilation probability of state :math:`i=1` must not be zero, same for the creation probability
+    of the last state :math:`i=n`. The sum of the probabilities must be bounded component-wise, i.e.,
+    :math:`q_i + p_i \leq 1\;\forall i=1,\ldots ,n`.
+
+    Parameters
+    ----------
+    q : array_like
+        Annihilation probabilities for transition from i to i-1.
+    p : array_like
+        Creation probabilities for transition from i to i+1.
+
+    Returns
+    -------
+    chain : sktime.data.birth_death_chain_dataset.BirthDeathChain
+        The chain.
+    """
+    from sktime.data.birth_death_chain_dataset import BirthDeathChain
+    return BirthDeathChain(q, p)
+
+
+def tmatrix_metropolis1d(energies, d=1.0):
+    r"""Transition matrix describing the Metropolis chain jumping
+    between neighbors in a discrete 1D energy landscape.
+
+    Parameters
+    ----------
+    energies : (M,) ndarray
+        Energies in units of kT
+    d : float (optional)
+        Diffusivity of the chain, d in (0, 1]
+
+    Returns
+    -------
+    P : (M, M) ndarray
+        Transition matrix of the Markov chain
+
+    Notes
+    -----
+    Transition probabilities are computed as
+
+    .. math::
+
+        \begin{aligned}
+        p_{i,i-1} &= 0.5 d \min \left\{ 1.0, \mathrm{e}^{-(E_{i-1} - E_i)} \right\}, \\
+        p_{i,i+1} &= 0.5 d \min \left\{ 1.0, \mathrm{e}^{-(E_{i+1} - E_i)} \right\}, \\
+        p_{i,i}   &= 1.0 - p_{i,i-1} - p_{i,i+1}.
+        \end{aligned}
+
+    """
+    import math
+    # check input
+    if d <= 0 or d > 1:
+        raise ValueError('Diffusivity must be in (0,1]. Trying to set the invalid value', str(d))
+    # init
+    n = len(energies)
+    transition_matrix = np.zeros((n, n))
+    # set off diagonals
+    transition_matrix[0, 1] = 0.5 * d * min(1.0, math.exp(-(energies[1] - energies[0])))
+    for i in range(1, n - 1):
+        transition_matrix[i, i - 1] = 0.5 * d * min(1.0, math.exp(-(energies[i - 1] - energies[i])))
+        transition_matrix[i, i + 1] = 0.5 * d * min(1.0, math.exp(-(energies[i + 1] - energies[i])))
+    transition_matrix[n - 1, n - 2] = 0.5 * d * min(1.0, math.exp(-(energies[n - 2] - energies[n - 1])))
+    # normalize
+    transition_matrix += np.diag(1.0 - np.sum(transition_matrix, axis=1))
+    # done
+    return transition_matrix
