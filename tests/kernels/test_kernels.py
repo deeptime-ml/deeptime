@@ -14,10 +14,12 @@ def data():
 
 
 @pytest.mark.parametrize("kernel", [
-    GaussianKernel(1.), GaussianKernel(2.), GaussianKernel(3.),
-    GeneralizedGaussianKernel(np.linspace(3, 5, num=7)),
-    LaplacianKernel(3.3),
-    PolynomialKernel(3, 1.), PolynomialKernel(7, 3.3)
+    GaussianKernel(1.), GaussianKernel(2.), GaussianKernel(3.),  # some Gaussian kernels
+    GeneralizedGaussianKernel(np.linspace(3, 5, num=7)),  # a generalized Gaussian kernel
+    LaplacianKernel(3.3),  # a Laplacian kernel
+    PolynomialKernel(3, 1.), PolynomialKernel(7, 3.3),  # some polynomial kernels
+    PolynomialKernel(3, 1.) * GaussianKernel(3.) * LaplacianKernel(5.),  # product kernel
+    PolynomialKernel(3, 1.) * GeneralizedGaussianKernel(np.linspace(3, 5, num=7)) * LaplacianKernel(5.)  # product k.
 ], ids=lambda k: str(k))
 def test_consistency(data, kernel):
     xy_gram = kernel.apply(*data)
