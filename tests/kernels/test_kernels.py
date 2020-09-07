@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
-
-from numpy.testing import *
+from numpy.testing import assert_equal, assert_almost_equal
 
 from sktime.kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel
 from sktime.kernels.kernels import PolynomialKernel

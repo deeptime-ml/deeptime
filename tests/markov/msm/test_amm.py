@@ -23,7 +23,7 @@ r"""Unit test for the AMM module
 """
 
 import numpy as np
-from numpy.testing import *
+from numpy.testing import assert_array_almost_equal, assert_equal
 
 from sktime.data import birth_death_chain
 from sktime.markov import TransitionCountEstimator

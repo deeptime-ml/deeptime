@@ -1,7 +1,8 @@
 import pytest
 import numpy as np
 import scipy
-from numpy.testing import *
+from numpy.testing import assert_equal, assert_, assert_array_almost_equal, assert_raises, assert_almost_equal, \
+    assert_allclose
 from scipy.sparse import issparse
 
 from tests.markov.msm.util import MLMSM_PARAMS, AMM_PARAMS, MLMSM_IDS, AMM_IDS, make_double_well
