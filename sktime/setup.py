@@ -28,6 +28,7 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('markov')
     config.add_subpackage('numeric')
     config.add_subpackage('kernels')
+    config.add_subpackage('basis')
     config.add_subpackage('util')
 
     from Cython.Build import cythonize
