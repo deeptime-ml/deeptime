@@ -270,7 +270,3 @@ class TestExpectedCountsStationarySparse(unittest.TestCase):
         EC_true = scipy.sparse.coo_matrix(T.shape)
         EC_n = expected_counts_stationary(T, n)
         self.assertTrue(sparse_allclose(EC_true, EC_n))
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -428,7 +428,3 @@ class TestMoments(unittest.TestCase):
                                  sparse_mode='sparse', sparse_tol=self.sparse_tol)
         self._test_moments_block(self.X_100_sparseconst, self.Y_100_sparseconst, self.cols_100, remove_mean=True,
                                  sparse_mode='sparse', sparse_tol=self.sparse_tol)
-
-
-if __name__ == "__main__":
-    unittest.main()

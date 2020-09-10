@@ -74,6 +74,18 @@ def test_constant_features():
         pytest.fail('ZeroRankError was raised unexpectedly.')
 
 
+@pytest.mark.parametrize('estimator', [TICA, VAMP], ids=lambda clazz: clazz.__name__)
+def test_multiple_fetch(estimator):
+    data = np.random.normal(size=(10000, 5))
+    est = estimator(lagtime=1)
+    m1 = est.fit(data).model
+    m2 = est.model
+    m3 = est.partial_fit((data, data)).model
+    np.testing.assert_(m1 is m2)
+    np.testing.assert_(m1 is not m3)
+    np.testing.assert_(m2 is not m3)
+
+
 def test_vamp_consistency():
     trajectory = ellipsoids(seed=13).observations(10000, n_dim=50)
     cov_estimator = VAMP.covariance_estimator(lagtime=1)
@@ -228,7 +240,3 @@ class TestTICAExtensive(unittest.TestCase):
         for invalid_dim in invalid_dims:
             with self.assertRaises(ValueError):
                 TICA(dim=invalid_dim)
-
-
-if __name__ == "__main__":
-    unittest.main()

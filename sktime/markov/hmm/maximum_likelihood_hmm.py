@@ -30,7 +30,7 @@ from sktime.markov.msm import MarkovStateModel
 from sktime.markov.transition_counting import TransitionCountModel
 from sktime.markov.util import compute_dtrajs_effective
 from ._hmm_bindings import util as _util
-from ...util.types import ensure_dtraj_list
+from ...util.types import ensure_dtraj_list, ensure_timeseries_data
 
 
 class MaximumLikelihoodHMM(Estimator):
@@ -279,7 +279,7 @@ class MaximumLikelihoodHMM(Estimator):
                                                          output_model=initial_model.output_model.copy(),
                                                          initial_distribution=initial_model.initial_distribution.copy())
 
-        dtrajs = ensure_dtraj_list(dtrajs)
+        dtrajs = ensure_timeseries_data(dtrajs)
         dtrajs = compute_dtrajs_effective(dtrajs, lagtime=self.lagtime, n_states=initial_model.n_hidden_states,
                                           stride=self.stride)
 

@@ -196,7 +196,3 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         assert_allclose(cgRF.net_flux, self.ref2_cgnetflux)
         assert_allclose(cgRF.net_flux, self.ref2_cgnetflux)
         assert_allclose(cgRF.gross_flux, self.ref2_cggrossflux)
-
-
-if __name__ == "__main__":
-    unittest.main()

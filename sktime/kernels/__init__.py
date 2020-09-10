@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.data
+.. currentmodule: sktime.kernels
 
 .. autosummary::
     :toctree: generated/

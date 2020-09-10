@@ -367,6 +367,3 @@ class TestTimescales(unittest.TestCase):
             tsn = timescales(0.5 * self.T + 0.5 * self.P)
             assert_allclose(tsn, ts)
             assert issubclass(w[-1].category, ImaginaryEigenValueWarning)
-
-if __name__ == "__main__":
-    unittest.main()

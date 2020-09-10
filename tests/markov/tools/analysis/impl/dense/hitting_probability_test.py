@@ -60,7 +60,3 @@ class TestHitting(unittest.TestCase):
         sol = np.array([0.0, 0.0, 8.33333333e-01, 1.0, 1.0])
         assert_allclose(hitting_probability(P, 3), sol)
         assert_allclose(hitting_probability(P, [3, 4]), sol)
-
-
-if __name__ == "__main__":
-    unittest.main()

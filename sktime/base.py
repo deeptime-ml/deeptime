@@ -214,6 +214,11 @@ class Estimator(_base_methods_mixin):
         return self._model
 
     @property
+    def model(self):
+        """ Shortcut to :meth:`fetch_model`. """
+        return self.fetch_model()
+
+    @property
     def has_model(self) -> bool:
         r""" Property reporting whether this estimator contains an estimated model. This assumes that the model
         is initialized with `None` otherwise.

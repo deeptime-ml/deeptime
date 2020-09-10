@@ -1,8 +1,7 @@
 import pytest
-from numpy.testing import *
+from numpy.testing import assert_raises, assert_equal
 
 import sktime
-from sktime.data.ellipsoids_dataset import Ellipsoids
 
 
 def test_laziness():

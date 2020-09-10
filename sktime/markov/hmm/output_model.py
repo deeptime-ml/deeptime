@@ -335,6 +335,7 @@ class GaussianOutputModel(OutputModel):
             sigmas = np.zeros((n_states,))
         else:
             sigmas = np.asarray(sigmas)
+        means, sigmas = means.squeeze(), sigmas.squeeze()
         if means.ndim != 1 or sigmas.ndim != 1:
             raise ValueError("Means and sigmas must be one-dimensional.")
         if means.shape[0] != n_states or sigmas.shape[0] != n_states:

@@ -54,6 +54,3 @@ class TestStationaryVector(unittest.TestCase):
         mu = self.bdc.stationary_distribution
         mun = stationary_distribution_from_backward_iteration(P)
         assert_allclose(mu, mun)
-
-if __name__ == "__main__":
-    unittest.main()

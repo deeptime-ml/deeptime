@@ -47,7 +47,3 @@ class TestTransitionMatrixNonReversible(unittest.TestCase):
 
         T = transition_matrix.transition_matrix_non_reversible(self.C1).toarray()
         assert_allclose(T, self.T1.toarray())
-
-
-if __name__ == "__main__":
-    unittest.main()

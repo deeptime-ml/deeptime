@@ -91,7 +91,3 @@ class TestMfpt(unittest.TestCase):
 
         x = mfpt_between_sets(self.P, 0, [1, 2])
         assert_allclose(x, self.o12t0)
-
-
-if __name__ == "__main__":
-    unittest.main()

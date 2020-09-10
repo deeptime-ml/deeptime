@@ -91,7 +91,3 @@ class TestSampleIndices(unittest.TestCase):
             assert (sidx[i].shape[0] == 5)
             for t in range(sidx[i].shape[0]):
                 assert (dtraj[sidx[i][t, 1]] == subset[i])
-
-
-if __name__ == '__main__':
-    unittest.main()

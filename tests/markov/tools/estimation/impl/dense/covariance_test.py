@@ -118,7 +118,3 @@ class TestErrorPerturbation(unittest.TestCase):
 
         Xn = error_perturbation(self.C, self.S2)
         assert_allclose(Xn, self.X)
-
-
-if __name__ == "__main__":
-    unittest.main()

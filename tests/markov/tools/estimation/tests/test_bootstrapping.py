@@ -42,7 +42,3 @@ class TestBootstrapping(unittest.TestCase):
         self.validate_counts(10, 100, 2, 10)
         self.validate_counts(10, 1000, 100, 100)
         self.validate_counts(1000, 10, 1000, 1)
-
-
-if __name__ == "__main__":
-    unittest.main()

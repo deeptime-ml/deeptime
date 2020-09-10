@@ -25,13 +25,13 @@ r"""Unit test for the MSM module
 import collections
 import unittest
 
+from numpy.testing import assert_equal, assert_raises, assert_, assert_array_almost_equal, assert_array_equal
+
 import sktime.markov.tools.analysis as msmana
 import sktime.markov.tools.estimation as msmest
 import numpy as np
 import pytest
 import scipy.sparse
-
-from numpy.testing import *
 
 import sktime
 from sktime.markov._base import score_cv

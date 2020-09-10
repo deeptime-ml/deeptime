@@ -125,11 +125,11 @@ def ensure_dtraj_list(dtrajs):
 
 def ensure_timeseries_data(input_data):
     r""" Ensures that the input data is a time series. This means it must be an iterable of ndarrays or an ndarray
-    with dtype :attr:`np.float32` or :attr:`np.float64`.
+    with a consistent dtype.
 
     Parameters
     ----------
-    input_data : ndarray or list of ndarray, dtype float32 or float64
+    input_data : ndarray or list of ndarray
         the input data
 
     Returns
@@ -139,8 +139,6 @@ def ensure_timeseries_data(input_data):
     """
     if not isinstance(input_data, (list, tuple)):
         input_data = [input_data]
-    for i, x in enumerate(input_data):
-        input_data[i] = ensure_floating_array(x)
     grouped = itertools.groupby(input_data, type)
     unique_types = [t for t, _ in grouped]
     if len(unique_types) > 1:

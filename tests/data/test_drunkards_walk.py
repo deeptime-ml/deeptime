@@ -1,5 +1,6 @@
 import numpy as np
-from numpy.testing import *
+from numpy.testing import assert_, assert_almost_equal, assert_equal, assert_allclose
+
 import sktime
 
 

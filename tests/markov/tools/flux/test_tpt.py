@@ -313,7 +313,3 @@ class TestTptFunctionsSparse(unittest.TestCase):
     def test_tpt_rate(self):
         rate = self.bdc.rate(self.a, self.b)
         assert_allclose(self.raten, rate)
-
-
-if __name__ == "__main__":
-    unittest.main()

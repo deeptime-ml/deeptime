@@ -78,3 +78,35 @@ class Kernel(object):
             for j in range(n):
                 result[i, j] = self(data_1[i], data_2[j])
         return result
+
+    def __mul__(self, other):
+        r""" Multiplication with another kernel.
+
+        Parameters
+        ----------
+        other : Kernel
+            The other kernel.
+
+        Returns
+        -------
+        result : ProductKernel
+            Product of this and the other kernel.
+        """
+        if not isinstance(other, Kernel):
+            raise ValueError("Kernel can only be multiplied with other kernels.")
+        return ProductKernel(self, other)
+
+    __rmul__ = __mul__  # no difference here
+
+
+class ProductKernel(Kernel):
+
+    def __init__(self, k1: Kernel, k2: Kernel):
+        self._k1 = k1
+        self._k2 = k2
+
+    def _evaluate(self, x, y) -> float:
+        return self._k1(x, y) * self._k2(x, y)
+
+    def __str__(self):
+        return f"{self._k1} * {self._k2}"

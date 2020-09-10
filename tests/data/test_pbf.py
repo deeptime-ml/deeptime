@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.testing import *
+from numpy.testing import assert_equal
 
 import sktime
 from sktime.data.pbf_simulator import PBFSimulator

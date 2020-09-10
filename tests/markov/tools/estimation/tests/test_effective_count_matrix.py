@@ -135,7 +135,3 @@ class TestEffectiveCountMatrix_old_impl(unittest.TestCase):
 
         np.testing.assert_allclose(Ceff, Ceff_ref, atol=1e-15, rtol=1e-8)
         np.testing.assert_allclose(Ceff2, Ceff_ref, atol=1e-15, rtol=1e-8)
-
-
-if __name__ == "__main__":
-    unittest.main()

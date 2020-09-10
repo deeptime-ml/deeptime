@@ -15,7 +15,7 @@ def mle_trev(C, maxerr=1.0e-12, maxiter=int(1.0E6), warn_not_converged=True, ret
     assert C.shape[0] == C.shape[1], 'C must be a square matrix.'
     assert is_connected(C, directed=True), 'C must be strongly connected'
 
-    if not C.dtype in (np.float32, np.float64, np.longdouble):
+    if C.dtype not in (np.float32, np.float64, np.longdouble):
         C = C.astype(np.float64)
     dtype = C.dtype
 

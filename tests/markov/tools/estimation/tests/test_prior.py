@@ -116,7 +116,3 @@ class TestPriorSparse(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             Bn = prior_rev(self.C, alpha=self.alpha)
             assert_allclose(Bn, self.alpha * self.B_rev)
-
-
-if __name__ == "__main__":
-    unittest.main()

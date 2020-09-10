@@ -187,10 +187,3 @@ class TestIsConnected(unittest.TestCase):
         """Undirected"""
         is_connected = assessment.is_connected(self.T_not_connected, directed=False)
         self.assertTrue(is_connected)
-
-
-if __name__ == "__main__":
-    import cProfile as profiler
-
-    unittest.main()
-    profiler.run('unittest.main()', sort=1)

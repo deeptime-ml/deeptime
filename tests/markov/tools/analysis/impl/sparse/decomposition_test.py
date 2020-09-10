@@ -447,7 +447,3 @@ class TestDecomposition(unittest.TestCase):
         """k is not None"""
         tsn = timescales(P, k=self.k, tau=7, reversible=True)
         assert_allclose(7 * ts[1:self.k], tsn[1:])
-
-
-if __name__ == "__main__":
-    unittest.main()

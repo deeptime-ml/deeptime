@@ -350,7 +350,3 @@ class TestKmeansResume(unittest.TestCase):
                     found[i] = True
 
         assert np.all(found)
-
-
-if __name__ == "__main__":
-    unittest.main()

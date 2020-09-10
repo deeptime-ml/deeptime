@@ -320,7 +320,3 @@ class TestRunningMoments(unittest.TestCase):
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy0))
         np.testing.assert_allclose(cc.moments_YY(), np.diag(self.Myy0))
-
-
-if __name__ == "__main__":
-    unittest.main()

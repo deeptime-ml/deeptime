@@ -248,7 +248,3 @@ class TestIsConnectedSparse(unittest.TestCase):
         """Undirected"""
         is_c = is_connected(self.T_not_connected, directed=False)
         self.assertTrue(is_c)
-
-
-if __name__ == "__main__":
-    unittest.main()

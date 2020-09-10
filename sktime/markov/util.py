@@ -21,7 +21,7 @@ from typing import Union
 import numpy as np
 
 from sktime.util.exceptions import ImaginaryEigenValueWarning
-from sktime.util.types import ensure_dtraj_list
+from sktime.util.types import ensure_dtraj_list, ensure_timeseries_data
 
 
 def visited_set(dtrajs):
@@ -141,7 +141,7 @@ def lag_observations(observations, lag, stride=1):
 
     """
     # todo cppify
-    observations = ensure_dtraj_list(observations)
+    observations = ensure_timeseries_data(observations)
     obsnew = []
     for obs in observations:
         for shift in range(0, lag, stride):

@@ -62,7 +62,3 @@ class TestCachedProperty(unittest.TestCase):
         np.testing.assert_equal(x.computed_property, False)
         np.testing.assert_equal(x.expensive_property, 5)
         np.testing.assert_equal(x.computed_property, True)
-
-
-if __name__ == '__main__':
-    unittest.main()

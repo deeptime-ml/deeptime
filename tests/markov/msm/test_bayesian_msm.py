@@ -346,7 +346,3 @@ class TestBMSM(unittest.TestCase):
         # test consistency
         assert np.all(L <= mean)
         assert np.all(R >= mean)
-
-
-if __name__ == "__main__":
-    unittest.main()

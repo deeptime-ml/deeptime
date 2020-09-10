@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from numpy.testing import *
+from numpy.testing import assert_, assert_raises, assert_array_almost_equal, assert_almost_equal, assert_equal
 
 from sktime.numeric import is_diagonal_matrix, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
     eig_corr, is_square_matrix

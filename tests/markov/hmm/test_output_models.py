@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import sktime
 from sktime.markov.hmm.output_model import DiscreteOutputModel, GaussianOutputModel
 
 
@@ -145,28 +146,26 @@ class TestGaussian(unittest.TestCase):
         np.testing.assert_array_almost_equal(m.means, means, decimal=2)
         np.testing.assert_array_almost_equal(m.sigmas, sigmas, decimal=2)
 
-    @unittest.skip("investigate")
     def test_fit(self):
-        expected_means = np.array([-5., 0., 7.])
-        expected_stds = np.array([.3, .5, 1.])
-        m = GaussianOutputModel(3, means=np.zeros(3))
-        obs = []
-        n_trajs = 100
-        for _ in range(n_trajs):
-            states = np.random.choice([0, 1, 2], size=1000 + np.random.randint(-3, 3))
-            obs.append(np.array([
-                np.random.normal(expected_means[state], expected_stds[state]) for state in states
-            ]))
-        weights = [np.random.dirichlet([2, 3, 4], size=len(obs[i])).astype(np.float32) for i in range(n_trajs)]
+        expected_means = np.array([-55., 0., 7.])
+        expected_stds = np.array([3., .5, 1.])
 
-        from bhmm.output_models import GaussianOutputModel as GOM
-        mm = GOM(nstates=3)
-        mm.estimate(obs, weights=weights)
-        m.fit(obs, weights=weights)
-        print(m.means, m.sigmas)
-        print(mm.means, mm.sigmas)
-        # todo this does not seem right?
+        from sklearn.mixture import GaussianMixture
+        gmm = GaussianMixture(n_components=3, means_init=expected_means)
+        gmm.means_ = expected_means[..., None]
+        gmm.covariances_ = np.array(expected_stds[..., None, None])
+        gmm.weights_ = np.array([1/3, 1/3, 1/3])
 
+        obs = gmm.sample(100000 + np.random.randint(-3, 3))[0].squeeze()
 
-if __name__ == '__main__':
-    unittest.main()
+        init = sktime.markov.hmm.init.gaussian.from_data(obs, n_hidden_states=3, reversible=True)
+        hmm_est = sktime.markov.hmm.MaximumLikelihoodHMM(init)
+        hmm = hmm_est.fit(obs).fetch_model()
+
+        np.testing.assert_array_almost_equal(hmm.transition_model.transition_matrix, np.eye(3), decimal=3)
+        m = hmm.output_model
+        for mean, sigma in zip(m.means, m.sigmas):
+            # find the mean closest to this one (order might have changed)
+            mean_ix = np.argmin(np.abs(expected_means-mean))
+            np.testing.assert_almost_equal(mean, expected_means[mean_ix], decimal=1)
+            np.testing.assert_almost_equal(sigma*sigma, expected_stds[mean_ix], decimal=1)

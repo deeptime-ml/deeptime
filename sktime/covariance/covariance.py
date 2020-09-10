@@ -227,6 +227,7 @@ class Covariance(Estimator):
         self.diag_only = diag_only
         self.ncov = ncov
         self.sparse_mode = sparse_mode
+        self._dirty = False  # Flag which gets set to true once fit/partial_fit was called and the model was not fetched
 
         self._rc = running_covar(xx=self.compute_c00, xy=self.compute_c0t, yy=self.compute_ctt,
                                  remove_mean=self.remove_data_mean, symmetrize=self.reversible,
@@ -461,6 +462,7 @@ class Covariance(Estimator):
     def partial_fit(self, data, weights=None, column_selection=None):
         """ Incrementally update the estimates. For a detailed description of the parameters, see :meth:`fit` with
         the exception of the :code:`data` argument, it must be a ndarray and cannot be a list of ndarray."""
+        self._dirty = True
         if self.is_lagged:
             x, y = data
         else:
@@ -481,23 +483,25 @@ class Covariance(Estimator):
         model : CovarianceModel
             The covariance model.
         """
-        cov_00 = cov_tt = cov_0t = mean_0 = mean_t = None
-        if self.compute_c0t:
-            cov_0t = self._rc.cov_XY(self.bessels_correction)
-        if self.compute_ctt:
-            cov_tt = self._rc.cov_YY(self.bessels_correction)
-        if self.compute_c00:
-            cov_00 = self._rc.cov_XX(self.bessels_correction)
+        if self._dirty:
+            cov_00 = cov_tt = cov_0t = mean_0 = mean_t = None
+            if self.compute_c0t:
+                cov_0t = self._rc.cov_XY(self.bessels_correction)
+            if self.compute_ctt:
+                cov_tt = self._rc.cov_YY(self.bessels_correction)
+            if self.compute_c00:
+                cov_00 = self._rc.cov_XX(self.bessels_correction)
 
-        if self.compute_c00 or self.compute_c0t:
-            mean_0 = self._rc.mean_X()
-        if self.compute_ctt or self.compute_c0t:
-            mean_t = self._rc.mean_Y()
-        if self.reversible:
-            cov_tt = cov_00
-        self._model = CovarianceModel(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
-                                      bessels_correction=self.bessels_correction, lagtime=self.lagtime,
-                                      symmetrized=self.reversible)
+            if self.compute_c00 or self.compute_c0t:
+                mean_0 = self._rc.mean_X()
+            if self.compute_ctt or self.compute_c0t:
+                mean_t = self._rc.mean_Y()
+            if self.reversible:
+                cov_tt = cov_00
+            self._model = CovarianceModel(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
+                                          bessels_correction=self.bessels_correction, lagtime=self.lagtime,
+                                          symmetrized=self.reversible)
+            self._dirty = False  # catches multiple calls to fetch_model even though it hasn't changed
         return self._model
 
 

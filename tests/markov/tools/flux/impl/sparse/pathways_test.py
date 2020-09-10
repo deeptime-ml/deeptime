@@ -50,13 +50,10 @@ class TestPathways(unittest.TestCase):
 
         self.paths = [np.array([0, 1, 4]), np.array([0, 2, 4]), np.array([0, 1, 2, 4])]
         self.capacities = [0.0072033898305084252, 0.0030871670702178975, 0.00051452784503631509]
+
     def test_pathways(self):
         paths, capacities = pathways(self.F, self.A, self.B)
         assert_allclose(capacities, self.capacities)
         N = len(paths)
         for i in range(N):
             self.assertTrue(np.all(paths[i] == self.paths[i]))
-
-
-if __name__=="__main__":
-    unittest.main()

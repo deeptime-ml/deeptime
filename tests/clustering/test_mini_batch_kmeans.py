@@ -92,7 +92,3 @@ class TestMiniBatchKmeansResume(unittest.TestCase):
         diff_next = np.linalg.norm(d1)
 
         self.assertLess(diff_next, diff, 'resume_centers=%s, new_centers=%s' % (resume_centers, new_centers))
-
-
-if __name__ == '__main__':
-    unittest.main()
