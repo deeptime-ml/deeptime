@@ -90,7 +90,8 @@ autosummary_generate = True
 autodoc_default_options = {
     'members': True,
     'member-order': 'groupwise',
-    'inherited-members': True
+    'inherited-members': True,
+    'special-members': '__init__,__call__'
 }
 
 # -- Gallery settings ---------------------------------------------------------
@@ -105,7 +106,7 @@ sphinx_gallery_conf = {
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
 napoleon_include_private_with_doc = False
-napoleon_include_special_with_doc = False
+napoleon_include_special_with_doc = True
 napoleon_use_admonition_for_examples = False
 napoleon_use_admonition_for_notes = False
 napoleon_use_admonition_for_references = False
