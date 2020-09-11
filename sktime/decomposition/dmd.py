@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import numpy as np
+import scipy
 
 from ..base import Estimator, Model, Transformer
 from ..kernels import Kernel
@@ -200,8 +201,8 @@ class KernelCCAEstimator(Estimator):
         G_0 = N @ gram_0 @ N
         G_1 = N @ gram_t @ N
 
-        A = np.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
-            @ np.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
+        A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
+            @ scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
 
         eigenvalues, eigenvectors = np.linalg.eig(A)
         eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
