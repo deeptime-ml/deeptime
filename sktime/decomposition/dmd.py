@@ -172,3 +172,44 @@ class KernelEDMDEstimator(Estimator):
         self._model = KernelEDMDModel(perron_frobenius_operator, koopman_operator)
 
         return self
+
+
+class KernelCCA(Model):
+
+    def __init__(self, eigenvalues: np.ndarray, eigenvectors: np.ndarray):
+        super().__init__()
+        self.eigenvalues = eigenvalues
+        self.eigenvectors = eigenvectors
+
+
+class KernelCCAEstimator(Estimator):
+
+    def __init__(self, kernel: Kernel, n_evs: int, epsilon: float = 1e-6):
+        super().__init__()
+        self.kernel = kernel
+        self.n_evs = n_evs
+        self.epsilon = epsilon
+
+    def fit(self, data, **kwargs):
+        gram_0 = self.kernel.gram(data[0])
+        gram_t = self.kernel.gram(data[1])
+        # center Gram matrices
+        n = data[0].shape[0]
+        I = np.eye(n)
+        N = I - 1 / n * np.ones((n, n))
+        G_0 = N @ gram_0 @ N
+        G_1 = N @ gram_t @ N
+
+        A = np.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
+            @ np.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
+
+        eigenvalues, eigenvectors = np.linalg.eig(A)
+        eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
+
+        # determine effective rank m and perform low-rank approximations.
+        if eigenvalues.shape[0] > self.n_evs:
+            eigenvectors = eigenvectors[:, :self.n_evs]
+            eigenvalues = eigenvalues[:self.n_evs]
+
+        self._model = KernelCCA(eigenvalues, eigenvectors)
+        return self
