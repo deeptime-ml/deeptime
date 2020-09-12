@@ -97,3 +97,20 @@ def allclose_sparse(A, B, rtol=1e-5, atol=1e-8):
     else:
         return False
 
+
+def drop_nan_rows(x, x_dot):
+    r"""
+    Remove rows in both inputs for which `x_dot` has `_np.nan` entries.
+
+    Parameters
+    ----------
+    x : ndarray
+        One of the arrays from which to remove rows.
+
+    x_dot : ndarray
+        Array whose rows are checked for nan entries.
+        Any rows containing nans are removed from both `x_dot` and `x`.
+    """
+    x = x[~np.isnan(x_dot).any(axis=1)]
+    x_dot = x_dot[~np.isnan(x_dot).any(axis=1)]
+    return x, x_dot
