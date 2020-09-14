@@ -102,7 +102,9 @@ class DMD(Estimator, Transformer):
         A = np.linalg.multi_dot([U.conj().T, Y, V, S_inv])
 
         eigenvalues, eigenvectors = np.linalg.eig(A)
-        eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
+        order = np.argsort(eigenvalues)
+        eigenvalues, eigenvectors = eigenvalues[order], eigenvectors[:, order]
+        # eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
 
         if self.mode == 'exact':
             dmd_modes = np.linalg.multi_dot([Y, V, S_inv, eigenvectors, np.diag(1 / eigenvalues)])
@@ -112,7 +114,6 @@ class DMD(Estimator, Transformer):
             raise ValueError('Only exact and standard DMD available.')
 
         self._model = DMDModel(eigenvalues, dmd_modes)
-
         return self
 
     def fetch_model(self):

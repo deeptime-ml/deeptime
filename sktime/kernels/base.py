@@ -110,3 +110,7 @@ class ProductKernel(Kernel):
 
     def __str__(self):
         return f"{self._k1} * {self._k2}"
+
+
+def is_torch_kernel(kernel: Kernel) -> bool:
+    return hasattr(kernel, 'apply_torch')

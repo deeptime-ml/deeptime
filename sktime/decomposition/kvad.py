@@ -25,15 +25,6 @@ def whiten(X, epsilon=1e-10):
     return X_meanfree @ cov_sqrt_inv
 
 
-def gramian_gauss(Y, sigma=1.):
-    Y = Y.T
-    ri = np.expand_dims(Y, axis=-2)
-    rj = np.expand_dims(Y, axis=-1)
-    rij = ri - rj
-    D = np.add.reduce(np.square(rij), axis=0, keepdims=False)
-    return np.exp(-D / (2. * sigma ** 2))
-
-
 def kvad(chi_X, chi_Y, Y, kernel=GaussianKernel(1.)):
     N = Y.shape[0]
     M = chi_X.shape[1]
@@ -63,9 +54,4 @@ def kvad(chi_X, chi_Y, Y, kernel=GaussianKernel(1.)):
     K = 1 / N * fX.T @ fY
 
     score = 1/(N*N) * (np.sum(s) + np.sum(Gyy))
-    # score = 1 / (N * N) * (np.trace(U.T @ chi_X_w.T @ Gyy @ chi_X_w @ U) + np.sum(Gyy))
-    # print(f"K shape {K.shape}, M={M}, m={m}, N={N}, score={score:.5f}")
-    # score2 = 1/(N*N) * (np.sum(s) + np.sum(Gyy))
-    # print("score2", score2)
-
     return KVADModel(K, U, score, fX, fY)
