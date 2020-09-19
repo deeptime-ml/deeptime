@@ -155,4 +155,81 @@ class STLSQ(LinearRegression):
         self._set_intercept(X_offset, y_offset, X_scale)
         return self
 
-    # def _reduce(self, x, y)
+    def _reduce(self, x, y):
+        """Iterates the thresholding. Assumes an initial guess is saved in
+        self.coef_ and self.ind_
+        """
+        ind = self.ind_
+        n_samples, n_features = x.shape
+        n_targets = y.shape[1]
+        n_features_selected = np.sum(ind)
+
+        for _ in range(self.max_iter):
+            if np.count_nonzero(ind) == 0:
+                warnings.warn(
+                    "Sparsity parameter is too big ({}) and eliminated all "
+                    "coefficients".format(self.threshold)
+                )
+                coef = np.zeros((n_targets, n_features))
+                break
+
+            coef = np.zeros((n_targets, n_features))
+            for i in range(n_targets):
+                if np.count_nonzero(ind[i]) == 0:
+                    warnings.warn(
+                        "Sparsity parameter is too big ({}) and eliminated all "
+                        "coefficients".format(self.threshold)
+                    )
+                    continue
+                coef_i = self._regress(x[:, ind[i]], y[:, i])
+                coef_i, ind_i = self._sparse_coefficients(
+                    n_features, ind[i], coef_i, self.threshold
+                )
+                coef[i] = coef_i
+                ind[i] = ind_i
+
+            self.history_.append(coef)
+            if np.sum(ind) == n_features_selected or self._no_change():
+                # could not (further) select important features
+                break
+        else:
+            warnings.warn(
+                "STLSQ._reduce did not converge after {} iterations.".format(
+                    self.max_iter
+                ),
+                ConvergenceWarning,
+            )
+            try:
+                coef
+            except NameError:
+                coef = self.coef_
+                warnings.warn(
+                    "STLSQ._reduce has no iterations left to determine coef",
+                    ConvergenceWarning,
+                )
+        self.coef_ = coef
+        self.ind_ = ind
+
+    def _sparse_coefficients(self, dim, ind, coef, threshold):
+        """Perform thresholding of the weight vector(s)"""
+        c = np.zeros(dim)
+        c[ind] = coef
+        big_ind = np.abs(c) >= threshold
+        c[~big_ind] = 0
+        return c, big_ind
+
+    def _regress(self, x, y):
+        """Perform the ridge regression"""
+        kw = self.ridge_kw or {}
+        coef = ridge_regression(x, y, self.alpha, **kw)
+        self.iters += 1
+        return coef
+
+    def _no_change(self):
+        """Check if the coefficient mask has changed after thresholding"""
+        this_coef = self.history_[-1].flatten()
+        if len(self.history_) > 1:
+            last_coef = self.history_[-2].flatten()
+        else:
+            last_coef = np.zeros_like(this_coef)
+        return all(bool(i) == bool(j) for i, j in zip(this_coef, last_coef))
