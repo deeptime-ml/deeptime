@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, ridge_regression
 from sklearn.metrics import r2_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
@@ -12,11 +12,57 @@ from ..numeric import drop_nan_rows
 
 
 class SINDy(Estimator):
-    r"""
-    TODO
+    r"""Learn a dynamical systems model for measurement data using the
+    Sparse Identification of Nonlinear Dynamical Systems (SINDy) method.
+
+    For given measurement data :math:`X`, and a set of library functions evaluated
+    on :math:`X`
+
+    .. math::
+        \Theta(X) = [\theta_1(X), \theta_2(X), \dots, \theta_k(X)],
+
+    SINDy seeks a sparse set of coefficients :math:`\Xi` which satisfies
+
+    .. math::
+        \dot{X} \approx \Theta(X)\Xi.
+
+    The i-th column of this matrix equation gives a differential equation for the
+    i-th measurement variable (i-th column in :math:`X`). For more details see
+    :cite:`sindy-brunton-2016`.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: sindy-
     """
 
     def __init__(self, library=None, optimizer=None, input_features=None):
+        r"""Initialize a new SINDy estimator.
+
+        Parameters
+        ----------
+        library : library object, optional, default=None
+            The candidate feature library, :math:`Theta`.
+            The object should implement a :code:`fit`, :code:`transform`,
+            and :code:`get_feature_names` methods. It should also have
+            :code:`n_input_features_` and :code:`n_output_features_` attributes.
+            By default a polynomial library of degree 2 is used.
+
+        optimizer : optimizer object, optional, default=None
+            The optimization routine used to solve the objective
+            :math:`\dot{X} \approx \Theta(X)\Xi`.
+            The object should have :code:`fit` and :code:`predict` methods
+            and :code:`coef_` and :code:`intercept_` attributes. For example,
+            any linear regressor from `sklearn.linear_model \
+            <https://scikit-learn.org/stable/modules/linear_model.html>`_ should work.
+            By default, :code:`STLSQ` is used.
+
+        input_features : list of strings, optional, default=None
+            List of input feature names. By default, the names
+            "x0", "x1", ..., "x{n_input_features}" is used. 
+        """
         if library is None:
             library = PolynomialFeatures(degree=2)
         if optimizer is None:
@@ -25,10 +71,37 @@ class SINDy(Estimator):
         self.optimizer = optimizer
         self.input_features = input_features
 
-    def fit(self, data, **kwargs):
-        x, x_dot = data[0], data[1]
+    def fit(self, x, y=None, t=None):
+        r"""Fit the estimator to measurement data.
 
-        if x_dot is None:
+        Parameters
+        ----------
+        x : np.ndarray, shape (n_samples, n_input_features)
+            Training/measurement data.
+            Each row should correspond to one example and each column
+            to a feature.
+
+        y : np.ndarray, shape (n_samples, n_input_features), optional, default=None
+            Array of derivatives of :code:`x`.
+            By default, :code:`np.gradient` is used to compute the derivatives.
+
+        t : np.ndarray, shape (n_samples,) or a scalar, optional, default=None
+            The times when the measurements in :code:`x` were taken or the
+            (uniform) time spacing between measurements in :code:`x`.
+            By default a timestep of 1 is assumed.
+            This argument is ignored if :code:`y` is passed.
+
+        Returns
+        -------
+        self: SINDy
+            Reference to self
+
+        """
+        if y is not None:
+            x_dot = y
+        elif t is not None:
+            x_dot = np.gradient(x, t, axis=0)
+        else:
             x_dot = np.gradient(x, axis=0)
 
         # Some differentiation methods produce nans near boundaries
@@ -45,36 +118,154 @@ class SINDy(Estimator):
         if self.input_features is None:
             self.input_features = [f"x{i}" for i in range(self.n_input_features_)]
 
+        if hasattr(self.optimizer, "intercept_"):
+            intercept = self.optimizer.intercept_
+        else:
+            intercept = 0
+
         self._model = SINDyModel(
             library=self.library,
             coefficients=self.optimizer.coef_,
             input_features=self.input_features,
+            intercept=intercept,
         )
 
         return self
 
 
 class SINDyModel(Model):
-    r"""TODO"""
+    r"""The SINDy model. Stores the parameters learned by a :class:`SINDy` estimator
+    to encode a first order differential equation model for the measurement data.
+    It can be used to make derivative predictions, simulate forward in time from
+    initial conditions, and for self-scoring.
+    """
 
-    def __init__(self, library, coefficients, input_features):
+    def __init__(self, library, coefficients, input_features, intercept=0):
+        r"""Initialize a new SINDyModel object.
+
+        Encodes a dynamical system
+
+        .. math::
+            \dot{X} = \Theta(X)\Xi
+
+        via the following correpondences
+        :code:`library` = :math:`Theta` and
+        :code:`(intercept, coefficients)` = :math:`\Xi^\top`
+
+        Parameters
+        ----------
+        library : library object
+            The feature library, :math:`Theta`.
+            It is assumed that this object has already been fit to the input data.
+            The object should implement  :code:`transform`
+            and :code:`get_feature_names` methods.
+
+        coefficients : np.ndarray, shape (n_input_features, n_output_features)
+            Coefficients giving the linear combination of basis functions to
+            approximate derivative data, i.e. :math:`\Xi^\top`. Note that
+            :code:`coefficients` may or may not contain information about the intercepts
+            depending on the library used (e.g. a polynomial library can contain the
+            constant function).
+
+        input_features : list of strings
+            List of input feature names.
+
+        intercept : float, optional, default=0
+            The intercept/bias for the learned model.
+            If the library already contains a constant function, there is no
+            need for an intercept term.
+        """
         self.library = library
         self.coef_ = coefficients
         self.input_features = input_features
+        self.intercept_ = intercept
 
     def transform(self, x):
+        r"""Apply the functions of the feature library.
+
+        This method computes
+
+        .. math::
+            \Theta(X)
+
+        Parameters
+        ----------
+        x : np.ndarray, shape (n_samples, n_input_features)
+            Measurement data.
+
+        Returns
+        -------
+        y : np.ndarray, shape (n_samples, n_output_features)
+            The feature library evaluated on :code:`x`,
+            i.e. :math:`\Theta(X)`.
+        """
         return self.library.transform(x)
 
     def predict(self, x):
-        return np.dot(self.library.transform(x), self.coef_)
+        r"""Predict the derivative of :code:`x` using the learned model,
+        i.e. predict :math:`\dot{X}` via :math:`\dot{X} \approx \Theta(X)\Xi`.
 
-    def score(self, x, y=None, scoring=r2_score, **scoring_kws):
+        Parameters
+        ----------
+        x : np.ndarray, shape (n_samples, n_input_features)
+            Measurement data.
+
+        Returns
+        -------
+        y : np.ndarray, shape (n_samples, n_input_features)
+            Model prediction of the derivative :math:`\dot{X}`.
+        """
+        return np.matmul(self.library.transform(x), self.coef_.T) + self.intercept_
+
+    def score(self, x, y=None, t=None, scoring=r2_score, **scoring_kws):
+        r"""Compute a score for the time derivative prediction produced by the model.
+
+        Parameters
+        ----------
+        x : np.ndarray, shape (n_samples, n_input_features)
+            Measurement data.
+
+        y : np.ndarray, shape (n_samples, n_input_features), optional, default=None
+            Array of derivatives of :code:`x`.
+            By default, :code:`np.gradient` is used to compute the derivatives.
+
+        t : np.ndarray, shape (n_samples,) or a scalar, optional, default=None
+            The times when the measurements in :code:`x` were taken or the
+            (uniform) time spacing between measurements in :code:`x`.
+            By default a timestep of 1 is assumed.
+            This argument is ignored if :code:`y` is passed.
+
+        scoring : callable, optional, default=r2_score
+            Function by which to score the prediction.
+            By default, the R^22 coefficient of determination is computed.
+            See `Scikit-learn <https://scikit-learn.org/stable/modules/model_evaluation.html>`_
+            for more options.
+
+        Returns
+        -------
+        s : float
+            Score for the time derivative prediction.
+        """
         if y is None:
-            y = np.gradient(x, axis=0)
+            if t is None:
+                y = np.gradient(x, axis=0)
+            else:
+                y = np.gradient(x, t, axis=0)
 
-        return scoring(y, x, **scoring_kws)
+        return scoring(y, self.predict(x), **scoring_kws)
 
     def print(self, lhs=None, precision=3):
+        r"""Print the learned equations in a human-readable way.
+
+        Parameters
+        ----------
+        lhs : list of strings, optional, default=None
+            List of variables to print on the left-hand side of the equations.
+            By default :code:`self.input_features` are used.
+
+        precision: int, optional, default=3
+            Precision to be used when printing out model coefficients.
+        """
         equations = self.equations(precision=precision)
         for i, eqn in enumerate(equations):
             if lhs:
@@ -84,7 +275,17 @@ class SINDyModel(Model):
 
     def equations(self, precision=3):
         """
-        Get the right-hand side of the learned equations.
+        Get the right-hand sides of the learned equations.
+
+        Parameters
+        ----------
+        precision : int, optional, default=3
+            Precision to which coefficients are rounded.
+
+        Returns
+        -------
+        equations : list of strings, length (n_input_features)
+            List of model equations, with one for each input variable.
         """
         feature_names = self.library.get_feature_names(
             input_features=self.input_features
@@ -93,14 +294,41 @@ class SINDyModel(Model):
 
         for k, row_coef in enumerate(self.coef_):
             terms = [
-                f"{self._round_terms(coef, precision)} {feature_names[k]}"
-                for coef in row_coef
+                f"{self._round_terms(coef, precision)} {feature_names[i]}"
+                for i, coef in enumerate(row_coef)
+                if self._round_terms(coef, precision)
             ]
-            equation_list[i] = "+".join(terms)
+            equation_list[k] = " + ".join(terms)
 
         return equation_list
 
-    def _round_terms(coef, precision):
+    @property
+    def coefficients(self):
+        r"""Returns the learned model coefficients, i.e. :math:`\Xi^\top`
+
+        Returns
+        -------
+        coefficients : np.ndarray, shape (n_input_features, n_output_features)
+            Learned model coefficients :math:`\Xi^\top`.
+        """
+        return self.coef_
+
+    @property
+    def intercept(self):
+        r"""Returns the intercept (bias) for the learned model.
+
+        Returns
+        -------
+        intercept : np.ndarray, shape (n_input_features,) or float
+            The intercept or intercepts for each input feature.
+        """
+        return self.intercept_
+
+    def _round_terms(self, coef, precision):
+        r"""
+        Rounds given coefficients to a given precision, returning an empty string
+        if the coefficient is zero.
+        """
         if coef == 0:
             return ""
         else:
@@ -108,7 +336,22 @@ class SINDyModel(Model):
 
 
 class STLSQ(LinearRegression):
-    r"""TODO"""
+    r"""Sequentially thresholded least squares algorithm.
+
+    Attempts to minimize the objective function
+    :math:`\\|y - Xw\\|^2_2 + \\alpha \\|w\\|^2_2`
+    by iteratively performing least squares and masking out
+    elements of the weight that are below a given threshold.
+
+    See this paper for more details :cite:`sindy-brunton-2016`.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: sindy-
+    """
 
     def __init__(
         self,
@@ -120,6 +363,36 @@ class STLSQ(LinearRegression):
         fit_intercept=False,
         copy_X=True,
     ):
+        r"""Initialize a new STLSQ object.
+
+        Parameters
+        ----------
+        threshold : float, optional, default=0.1
+            Minimum magnitude for a coefficient in the weight vector.
+            Coefficients with magnitude below the threshold are set
+            to zero.
+
+        alpha : float, optional, default=0.05
+            Optional L2 (ridge) regularization on the weight vector.
+
+        max_iter : int, optional, default=20
+            Maximum iterations of the optimization algorithm.
+
+        ridge_kw : dict, optional, default=None
+            Optional keyword arguments to pass to the ridge regression.
+
+        fit_intercept : boolean, optional, default=False
+            Whether to calculate the intercept for this model. If set to false, no
+            intercept will be used in calculations.
+
+        normalize : boolean, optional, default=False
+            This parameter is ignored when :code:`fit_intercept` is set to False. If True,
+            the regressors X will be normalized before regression by subtracting
+            the mean and dividing by the l2-norm.
+
+        copy_X : boolean, optional, default=True
+            If True, X will be copied; else, it may be overwritten.
+        """
         self.threshold = threshold
         self.alpha = alpha
         self.max_iter = max_iter
@@ -128,7 +401,25 @@ class STLSQ(LinearRegression):
         self.fit_intercept = fit_intercept
         self.copy_X = copy_X
 
-    def fit(x_, y, sample_weight=None, **reduce_kws):
+    def fit(self, x_, y, sample_weight=None):
+        r"""Fit to the data.
+
+        Parameters
+        ----------
+        x_ : array-like, shape (n_samples, n_features)
+            Training data (:math:`X` in the above equation).
+
+        y : array-like, shape (n_samples,) or (n_samples, n_targets)
+            Target values (:math:`y` in the above equation).
+
+        sample_weight : float or numpy array of shape (n_samples,), optional
+            Individual weights for each sample
+
+        Returns
+        -------
+        self : STLSQ
+            Reference to self
+        """
         # Do some preprocessing before fitting
         x_, y = check_X_y(x_, y, accept_sparse=[], y_numeric=True, multi_output=True)
 
@@ -149,14 +440,14 @@ class STLSQ(LinearRegression):
         self.coef_ = np.linalg.lstsq(x, y, rcond=None)[0].T  # initial guess
         self.history_ = [self.coef_]
 
-        self._reduce(x, y, **reduce_kws)
+        self._reduce(x, y)
         self.ind_ = np.abs(self.coef_) > 1e-14
 
         self._set_intercept(X_offset, y_offset, X_scale)
         return self
 
     def _reduce(self, x, y):
-        """Iterates the thresholding. Assumes an initial guess is saved in
+        r"""Iterates the thresholding. Assumes an initial guess is saved in
         self.coef_ and self.ind_
         """
         ind = self.ind_
@@ -211,7 +502,7 @@ class STLSQ(LinearRegression):
         self.ind_ = ind
 
     def _sparse_coefficients(self, dim, ind, coef, threshold):
-        """Perform thresholding of the weight vector(s)"""
+        r"""Perform thresholding of the weight vector(s)"""
         c = np.zeros(dim)
         c[ind] = coef
         big_ind = np.abs(c) >= threshold
@@ -219,14 +510,14 @@ class STLSQ(LinearRegression):
         return c, big_ind
 
     def _regress(self, x, y):
-        """Perform the ridge regression"""
+        r"""Perform the ridge regression"""
         kw = self.ridge_kw or {}
         coef = ridge_regression(x, y, self.alpha, **kw)
         self.iters += 1
         return coef
 
     def _no_change(self):
-        """Check if the coefficient mask has changed after thresholding"""
+        r"""Check if the coefficient mask has changed after thresholding"""
         this_coef = self.history_[-1].flatten()
         if len(self.history_) > 1:
             last_coef = self.history_[-2].flatten()

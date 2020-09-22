@@ -21,4 +21,4 @@ r"""
 TODO
 """
 
-from .sindy import SINDy, SINDyModel
+from .sindy import SINDy, SINDyModel, STLSQ

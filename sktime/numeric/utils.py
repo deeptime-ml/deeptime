@@ -111,6 +111,6 @@ def drop_nan_rows(x, x_dot):
         Array whose rows are checked for nan entries.
         Any rows containing nans are removed from both `x_dot` and `x`.
     """
-    x = x[~np.isnan(x_dot).any(axis=1)]
-    x_dot = x_dot[~np.isnan(x_dot).any(axis=1)]
+    x = x[~_np.isnan(x_dot).any(axis=1)]
+    x_dot = x_dot[~_np.isnan(x_dot).any(axis=1)]
     return x, x_dot
