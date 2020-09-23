@@ -29,8 +29,6 @@ def kvad(chi_X, chi_Y, Y, kernel=GaussianKernel(1.)):
     N = Y.shape[0]
     M = chi_X.shape[1]
 
-    print(f"n_frames={N}, chi n_dims={M}")
-
     assert chi_X.shape == (N, M)
     assert chi_Y.shape == (N, M)
 
