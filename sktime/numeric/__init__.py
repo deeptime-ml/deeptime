@@ -26,7 +26,8 @@ General numerical tools
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
-
+    
+    drop_nan_rows
     is_diagonal_matrix
     is_square_matrix
 
