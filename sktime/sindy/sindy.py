@@ -28,7 +28,7 @@ class SINDy(Estimator):
 
     The i-th column of this matrix equation gives a differential equation for the
     i-th measurement variable (i-th column in :math:`X`). For more details see
-    :cite:`sindy-brunton-2016`.
+    :cite:`sindy-brunton2016sindy`.
 
     References
     ----------
