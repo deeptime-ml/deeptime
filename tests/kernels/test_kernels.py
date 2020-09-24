@@ -15,6 +15,7 @@ def data():
 
 @pytest.mark.parametrize("kernel", [
     GaussianKernel(1.), GaussianKernel(2.), GaussianKernel(3.),  # some Gaussian kernels
+    GaussianKernel(1., impl='binomial'), GaussianKernel(3., impl='binomial'),  # some Gaussian kernels, binomial impl
     GeneralizedGaussianKernel(np.linspace(3, 5, num=7)),  # a generalized Gaussian kernel
     LaplacianKernel(3.3),  # a Laplacian kernel
     PolynomialKernel(3, 1.), PolynomialKernel(7, 3.3),  # some polynomial kernels

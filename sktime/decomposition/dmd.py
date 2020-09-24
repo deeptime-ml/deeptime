@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import numpy as np
+import scipy
 
 from ..base import Estimator, Model, Transformer
 from ..kernels import Kernel
@@ -101,7 +102,9 @@ class DMD(Estimator, Transformer):
         A = np.linalg.multi_dot([U.conj().T, Y, V, S_inv])
 
         eigenvalues, eigenvectors = np.linalg.eig(A)
-        eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
+        order = np.argsort(eigenvalues)
+        eigenvalues, eigenvectors = eigenvalues[order], eigenvectors[:, order]
+        # eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
 
         if self.mode == 'exact':
             dmd_modes = np.linalg.multi_dot([Y, V, S_inv, eigenvectors, np.diag(1 / eigenvalues)])
@@ -111,7 +114,6 @@ class DMD(Estimator, Transformer):
             raise ValueError('Only exact and standard DMD available.')
 
         self._model = DMDModel(eigenvalues, dmd_modes)
-
         return self
 
     def fetch_model(self):
@@ -171,4 +173,45 @@ class KernelEDMDEstimator(Estimator):
 
         self._model = KernelEDMDModel(perron_frobenius_operator, koopman_operator)
 
+        return self
+
+
+class KernelCCA(Model):
+
+    def __init__(self, eigenvalues: np.ndarray, eigenvectors: np.ndarray):
+        super().__init__()
+        self.eigenvalues = eigenvalues
+        self.eigenvectors = eigenvectors
+
+
+class KernelCCAEstimator(Estimator):
+
+    def __init__(self, kernel: Kernel, n_evs: int, epsilon: float = 1e-6):
+        super().__init__()
+        self.kernel = kernel
+        self.n_evs = n_evs
+        self.epsilon = epsilon
+
+    def fit(self, data, **kwargs):
+        gram_0 = self.kernel.gram(data[0])
+        gram_t = self.kernel.gram(data[1])
+        # center Gram matrices
+        n = data[0].shape[0]
+        I = np.eye(n)
+        N = I - 1 / n * np.ones((n, n))
+        G_0 = N @ gram_0 @ N
+        G_1 = N @ gram_t @ N
+
+        A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
+            @ scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
+
+        eigenvalues, eigenvectors = np.linalg.eig(A)
+        eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
+
+        # determine effective rank m and perform low-rank approximations.
+        if eigenvalues.shape[0] > self.n_evs:
+            eigenvectors = eigenvectors[:, :self.n_evs]
+            eigenvalues = eigenvalues[:self.n_evs]
+
+        self._model = KernelCCA(eigenvalues, eigenvectors)
         return self

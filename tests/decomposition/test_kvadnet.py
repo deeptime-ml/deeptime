@@ -10,19 +10,6 @@ from sktime.decomposition.kvad import kvad
 import sktime.decomposition.kvadnet as kvadnet
 
 
-@pytest.mark.parametrize('sigma', [1., 5., 10.])
-def test_gramian(sigma):
-    with torch.no_grad():
-        sigma = 1.
-        from sktime.decomposition.kvadnet import gramian_gauss as gg_kvadnet
-        from sktime.decomposition.kvad import gramian_gauss as gg_kvad
-
-        Y = np.random.normal(size=(100, 5))
-        Gyy_kvadnet = gg_kvadnet(torch.from_numpy(Y), sigma=sigma).cpu().numpy()
-        Gyy_kvad = gg_kvad(Y, sigma=sigma)
-        np.testing.assert_array_almost_equal(Gyy_kvad, Gyy_kvadnet)
-
-
 def test_whiten():
     chi_X = np.random.uniform(-1, 1, size=(1000, 50))
     with torch.no_grad():

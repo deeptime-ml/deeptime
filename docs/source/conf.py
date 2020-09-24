@@ -22,15 +22,18 @@ from logging import LogRecord
 import sphinx.util
 import sphinxcontrib.bibtex
 from docutils.parsers.rst import directives
+from sphinx.application import Sphinx
 from sphinx.ext.autosummary import Autosummary, get_documenter
 from sphinx.util.inspect import safe_getattr
+
+import sktime
 
 project = 'scikit-time'
 copyright = '2020, AI4Science Group'
 author = 'AI4Science Group'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = f"{sktime.__version__}"
 
 # -- Disable certain warnings ------------------------------------------------
 
@@ -54,8 +57,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
-    'nbsphinx',
     'sphinxcontrib.bibtex',
+    'nbsphinx',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.katex',
     'sphinx_gallery.gen_gallery'
@@ -68,7 +71,7 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 # Exclude build directory and Jupyter backup files:
-exclude_patterns = ['_build', '**.ipynb_checkpoints']
+exclude_patterns = ['_build', '**.ipynb_checkpoints', '**/notebooks', '*.ipynb']
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -83,7 +86,7 @@ html_theme = 'alabaster'
 html_static_path = ['_static']
 
 # prerender tex
-katex_prerender = True
+katex_prerender = False
 
 # -- Autosummary settings -----------------------------------------------------
 autosummary_generate = True
@@ -152,11 +155,18 @@ def env_get_outdated(app, env, added, changed, removed):
     return ['index']
 
 
-def setup(app):
+def setup(app: Sphinx):
     app.connect('env-get-outdated', env_get_outdated)
     app.add_css_file('custom.css')
     app.add_css_file('perfect-scrollbar/css/perfect-scrollbar.css')
     app.add_js_file('perfect-scrollbar/js/perfect-scrollbar.min.js')
+
+    if app.tags.has('notebooks'):
+        global katex_prerender
+        global exclude_patterns
+        katex_prerender = True
+        exclude_patterns.remove('**/notebooks')
+        exclude_patterns.remove('*.ipynb')
 
     class AutoAutoSummary(Autosummary):
 

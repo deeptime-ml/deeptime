@@ -13,7 +13,9 @@ class GaussianKernel(Kernel):
 
     where :math:`\sigma` is the bandwidth of the kernel."""
 
-    def __init__(self, sigma):
+    valid_impls = ('cdist', 'binomial')  #: Valid implementation modes.
+
+    def __init__(self, sigma, impl='cdist'):
         r""" Creates a new Gaussian kernel.
 
         Parameters
@@ -21,7 +23,9 @@ class GaussianKernel(Kernel):
         sigma : float
             The bandwidth.
         """
+        assert impl in GaussianKernel.valid_impls, f"impl needs to be one of {GaussianKernel.valid_impls}"
         self._sigma = np.array(sigma, dtype=np.float64)
+        self.impl = impl
 
     @property
     def sigma(self) -> np.ndarray:
@@ -37,10 +41,19 @@ class GaussianKernel(Kernel):
 
     def apply(self, data_1: np.ndarray, data_2: np.ndarray) -> np.ndarray:
         s = self.sigma.astype(data_1.dtype)
-        return np.exp(-distance.cdist(data_1, data_2, metric='sqeuclidean') / (2 * s * s))
+        if self.impl == 'cdist':
+            D = distance.cdist(data_1, data_2, metric='sqeuclidean')
+        elif self.impl == 'binomial':
+            x1_norm = np.square(data_1).sum(axis=-1, keepdims=True)
+            x2_norm = np.square(data_2).sum(axis=-1, keepdims=True)
+            D = x2_norm.T - 2. * data_1 @ data_2.T + x1_norm
+            D = np.clip(D, a_min=1e-16, a_max=None)
+        else:
+            raise ValueError("Unknown impl type: {impl}")
+        return np.exp(-D / (2 * s * s))
 
     def __str__(self):
-        return f"GaussianKernel[sigma={self.sigma}]"
+        return f"GaussianKernel[sigma={self.sigma}, impl={self.impl}]"
 
 
 class GeneralizedGaussianKernel(Kernel):
