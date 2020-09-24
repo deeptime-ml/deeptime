@@ -22,16 +22,19 @@ They are structured following a possible workflow of a timeseries analysis. That
        can be analyzed,
     3. and estimating an msm or hmm based on said discrete time series for further analysis.
 
-.. toctree::
-    :maxdepth: 3
-    :caption: Documentation
-    :hidden:
+.. only:: notebooks
 
-    index_dimreduction
-    notebooks/clustering
-    index_msm
-    notebooks/hmm
-    examples/index
+    .. toctree::
+        :maxdepth: 3
+        :caption: Documentation
+        :hidden:
+
+        index_dimreduction
+        notebooks/clustering
+        index_msm
+        notebooks/hmm
+        examples/index
+
 
 .. toctree::
    :caption: API docs

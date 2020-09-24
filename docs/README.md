@@ -47,3 +47,16 @@ one can use the `:cite:` directive:
 [...] For details, see :cite:`kmeans-arthur2006k`.
 ```
 This pulls the `arthur2006k` reference from the global `references.bib` file.
+
+Building the documentation with notebooks
+-----------------------------------------
+
+Building the documentation can take a while, especially when KaTeX prerendering and jupyter notebook to html
+conversion is enabled. For this reason, the default behavior is **no** prerendering and also **no** notebooks.
+To enable both of them, please invoke
+
+```shell script
+make html SPHINXOPTS="-t notebooks"
+``` 
+
+If you want to execute or clear all notebooks then you can use the respective `run.sh` and `clear.sh` bash scripts. 
