@@ -45,19 +45,19 @@ class SINDy(Estimator):
         ----------
         library : library object, optional, default=None
             The candidate feature library, :math:`Theta`.
-            The object should implement a :code:`fit`, :code:`transform`,
-            and :code:`get_feature_names` methods. It should also have
-            :code:`n_input_features_` and :code:`n_output_features_` attributes.
+            The object should implement a :meth:`fit`, :meth:`transform`,
+            and :meth:`get_feature_names` methods. It should also have
+            :attr:`n_input_features_` and :attr:`n_output_features_` attributes.
             By default a polynomial library of degree 2 is used.
 
         optimizer : optimizer object, optional, default=None
             The optimization routine used to solve the objective
             :math:`\dot{X} \approx \Theta(X)\Xi`.
-            The object should have :code:`fit` and :code:`predict` methods
-            and :code:`coef_` and :code:`intercept_` attributes. For example,
+            The object should have :meth:`fit` and :meth:`predict` methods
+            and :attr:`coef_` and :attr:`intercept_` attributes. For example,
             any linear regressor from `sklearn.linear_model \
             <https://scikit-learn.org/stable/modules/linear_model.html>`_ should work.
-            By default, :code:`STLSQ` is used.
+            By default, :meth:`STLSQ` is used.
 
         input_features : list of strings, optional, default=None
             List of input feature names. By default, the names
@@ -157,8 +157,8 @@ class SINDyModel(Model):
         library : library object
             The feature library, :math:`Theta`.
             It is assumed that this object has already been fit to the input data.
-            The object should implement  :code:`transform`
-            and :code:`get_feature_names` methods.
+            The object should implement  :meth:`transform`
+            and :meth:`get_feature_names` methods.
 
         coefficients : np.ndarray, shape (n_input_features, n_output_features)
             Coefficients giving the linear combination of basis functions to
