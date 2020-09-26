@@ -339,7 +339,7 @@ class STLSQ(LinearRegression):
     r"""Sequentially thresholded least squares algorithm.
 
     Attempts to minimize the objective function
-    :math:`\\|y - Xw\\|^2_2 + \\alpha \\|w\\|^2_2`
+    :math:`\|y - Xw\|^2_2 + \alpha \|w\|^2_2`
     by iteratively performing least squares and masking out
     elements of the weight that are below a given threshold.
 
