@@ -30,6 +30,7 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('kernels')
     config.add_subpackage('basis')
     config.add_subpackage('util')
+    config.add_subpackage('sindy')
 
     from Cython.Build import cythonize
     config.ext_modules = cythonize(
