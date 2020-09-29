@@ -1,7 +1,8 @@
-from typing import Tuple
+from warnings import warn
 
 import numpy as np
 from scipy.integrate import odeint
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LinearRegression, ridge_regression
 from sklearn.metrics import r2_score
 from sklearn.pipeline import Pipeline
@@ -62,7 +63,7 @@ class SINDy(Estimator):
 
         input_features : list of strings, optional, default=None
             List of input feature names. By default, the names
-            "x0", "x1", ..., "x{n_input_features}" is used. 
+            "x0", "x1", ..., "x{n_input_features}" is used.
         """
         if library is None:
             library = PolynomialFeatures(degree=2)
@@ -483,7 +484,7 @@ class STLSQ(LinearRegression):
 
         for _ in range(self.max_iter):
             if np.count_nonzero(ind) == 0:
-                warnings.warn(
+                warn(
                     "Sparsity parameter is too big ({}) and eliminated all "
                     "coefficients".format(self.threshold)
                 )
@@ -493,7 +494,7 @@ class STLSQ(LinearRegression):
             coef = np.zeros((n_targets, n_features))
             for i in range(n_targets):
                 if np.count_nonzero(ind[i]) == 0:
-                    warnings.warn(
+                    warn(
                         "Sparsity parameter is too big ({}) and eliminated all "
                         "coefficients".format(self.threshold)
                     )
@@ -510,7 +511,7 @@ class STLSQ(LinearRegression):
                 # could not (further) select important features
                 break
         else:
-            warnings.warn(
+            warn(
                 "STLSQ._reduce did not converge after {} iterations.".format(
                     self.max_iter
                 ),
@@ -520,7 +521,7 @@ class STLSQ(LinearRegression):
                 coef
             except NameError:
                 coef = self.coef_
-                warnings.warn(
+                warn(
                     "STLSQ._reduce has no iterations left to determine coef",
                     ConvergenceWarning,
                 )
