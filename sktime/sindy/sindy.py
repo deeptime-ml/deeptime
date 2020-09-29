@@ -401,7 +401,7 @@ class STLSQ(LinearRegression):
         self.fit_intercept = fit_intercept
         self.copy_X = copy_X
 
-    def fit(self, x_, y, sample_weight=None):
+    def fit(self, x_, y):
         r"""Fit to the data.
 
         Parameters
@@ -411,9 +411,6 @@ class STLSQ(LinearRegression):
 
         y : array-like, shape (n_samples,) or (n_samples, n_targets)
             Target values (:math:`y` in the above equation).
-
-        sample_weight : float or numpy array of shape (n_samples,), optional
-            Individual weights for each sample
 
         Returns
         -------
@@ -429,11 +426,7 @@ class STLSQ(LinearRegression):
             fit_intercept=self.fit_intercept,
             normalize=self.normalize,
             copy=self.copy_X,
-            sample_weight=sample_weight,
         )
-
-        if sample_weight is not None:
-            x, y = _rescale_data(x, y, sample_weight)
 
         self.iters = 0
         self.ind_ = np.ones((y.shape[1], x.shape[1]), dtype=bool)
