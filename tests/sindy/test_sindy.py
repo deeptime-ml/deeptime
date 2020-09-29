@@ -87,6 +87,15 @@ def test_predict(data_lorenz):
     np.testing.assert_almost_equal(x, model.predict(x), decimal=4)
 
 
+def test_simulate(data_lorenz):
+    x, x_dot, t = data_lorenz
+    model = SINDy().fit(x, y=x_dot).fetch_model()
+
+    x_sim = model.simulate(x[0], t)
+
+    assert x_sim.shape == x.shape
+
+
 # Ensure the model can learn an inhomogeneous ODE
 def test_inhomogeneous_ode(data_inhomogeneous_ode):
     x, x_dot, _ = data_inhomogeneous_ode

@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import numpy as np
+from scipy.integrate import odeint
 from sklearn.linear_model import LinearRegression, ridge_regression
 from sklearn.metrics import r2_score
 from sklearn.pipeline import Pipeline
@@ -253,6 +254,38 @@ class SINDyModel(Model):
                 y = np.gradient(x, t, axis=0)
 
         return scoring(y, self.predict(x), **scoring_kws)
+
+    def simulate(self, x0, t, integrator=odeint, integrator_kws={}):
+        """
+        Simulate the SINDy model forward in time.
+
+        Parameters
+        ----------
+        x0: numpy array, size [n_features]
+            Initial condition from which to simulate.
+
+        t: int or numpy array of size [n_samples]
+            If the model is in continuous time, t must be an array of time
+            points at which to simulate. If the model is in discrete time,
+            t must be an integer indicating how many steps to predict.
+
+        integrator: callable, optional (default :code:`odeint`)
+            Function to use to integrate the system.
+            Default is :code:`scipy.integrate.odeint`.
+
+        integrator_kws: dict, optional (default {})
+            Optional keyword arguments to pass to the integrator
+
+        Returns
+        -------
+        x: numpy array, shape (n_samples, n_features)
+            Simulation results.
+        """
+
+        def rhs(x, t):
+            return self.predict(x[np.newaxis, :])[0]
+
+        return integrator(rhs, x0, t, **integrator_kws)
 
     def print(self, lhs=None, precision=3):
         r"""Print the learned equations in a human-readable way.
