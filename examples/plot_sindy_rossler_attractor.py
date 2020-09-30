@@ -38,19 +38,19 @@ x_dot_train = np.array([rossler(xi, 1) for xi in x_train])
 # Plot training data
 fig = plt.figure(figsize=(8, 6))
 ax = fig.add_subplot(111, projection="3d")
-ax.plot(x_train[:, 0], x_train[:, 1], x_train[:, 2], alpha=0.6)
+ax.plot(x_train[:, 0], x_train[:, 1], x_train[:, 2], color="firebrick", alpha=0.7)
 ax.set(xlabel="x", ylabel="y", zlabel="z", title="Training data (Rossler system)")
 
 # Instantiate and fit an estimator to the data
 estimator = SINDy(
-    library=PolynomialFeatures(degree=3, include_bias=False),
+    library=PolynomialFeatures(degree=3),
     optimizer=STLSQ(threshold=0.05),
 )
 estimator.fit(x_train, y=x_dot_train)
 
 # Get the underlying ODE model
 model = estimator.fetch_model()
-model.print()
+model.print(input_features=["x", "y", "z"])
 
 # Simulate from novel initial conditions
 t_test = t_train
@@ -59,8 +59,15 @@ x_test = odeint(rossler, x0_test, t_test)
 
 # Plot test data
 fig = plt.figure(figsize=(8, 6))
-ax = fig.add_subplot(111, projection="3d", alpha=0.6)
-ax.plot(x_test[:, 0], x_test[:, 1], x_test[:, 2], label="True solution")
+ax = fig.add_subplot(111, projection="3d")
+ax.plot(
+    x_test[:, 0],
+    x_test[:, 1],
+    x_test[:, 2],
+    label="True solution",
+    color="firebrick",
+    alpha=0.7,
+)
 ax.set(xlabel="x", ylabel="y", zlabel="z", title="Testing data (Rossler system)")
 
 # Simulate data with SINDy model and plot
@@ -70,7 +77,7 @@ ax.plot(
     x_sim[:, 1],
     x_sim[:, 2],
     label="Model simulation",
-    color="gray",
+    color="royalblue",
     linestyle="dashed",
 )
 ax.legend()
