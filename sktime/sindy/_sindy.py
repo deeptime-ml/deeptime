@@ -46,7 +46,7 @@ class SINDy(Estimator):
         Parameters
         ----------
         library : library object, optional, default=None
-            The candidate feature library, :math:`Theta`.
+            The candidate feature library, :math:`\Theta`.
             The object should implement a :meth:`fit`, :meth:`transform`,
             and :meth:`get_feature_names` methods. It should also have
             :attr:`n_input_features_` and :attr:`n_output_features_` attributes.
@@ -157,7 +157,7 @@ class SINDyModel(Model):
         Parameters
         ----------
         library : library object
-            The feature library, :math:`Theta`.
+            The feature library, :math:`\Theta`.
             It is assumed that this object has already been fit to the input data.
             The object should implement  :meth:`transform`
             and :meth:`get_feature_names` methods.
@@ -377,14 +377,14 @@ class STLSQ(LinearRegression):
     by iteratively performing least squares and masking out
     elements of the weight that are below a given threshold.
 
-    See this paper for more details :cite:`sindy-brunton-2016`.
+    See this paper for more details :cite:`sindy-stlsq-brunton-2016`.
 
     References
     ----------
     .. bibliography:: /references.bib
         :style: unsrt
         :filter: docname in docnames
-        :keyprefix: sindy-
+        :keyprefix: sindy-stlsq-
     """
 
     def __init__(

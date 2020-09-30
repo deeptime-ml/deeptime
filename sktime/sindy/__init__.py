@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 r"""
-.. currentmodule: sktime.pysindy
+.. currentmodule: sktime.sindy
 
 ===============================================================================
 Estimators
@@ -50,4 +50,4 @@ Solvers
 
 """
 
-from .sindy import SINDy, SINDyModel, STLSQ
+from ._sindy import SINDy, SINDyModel, STLSQ

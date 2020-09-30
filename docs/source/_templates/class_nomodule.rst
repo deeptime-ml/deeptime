@@ -9,6 +9,7 @@
    {% block methods %}
    {% if objtype == "class" %}
    .. automethod:: __init__
+      :noindex:
    {% endif %}
 
    {% if methods %}
