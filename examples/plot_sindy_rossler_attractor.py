@@ -50,7 +50,7 @@ estimator.fit(x_train, y=x_dot_train)
 
 # Get the underlying ODE model
 model = estimator.fetch_model()
-model.print(input_features=["x", "y", "z"])
+model.print(lhs=["x", "y", "z"])
 
 # Simulate from novel initial conditions
 t_test = t_train

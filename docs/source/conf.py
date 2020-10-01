@@ -19,6 +19,7 @@
 import logging
 from logging import LogRecord
 
+import sphinx
 import sphinx.util
 import sphinxcontrib.bibtex
 from docutils.parsers.rst import directives
@@ -58,7 +59,6 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinxcontrib.bibtex',
-    'nbsphinx',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.katex',
     'sphinx_gallery.gen_gallery'
@@ -167,6 +167,7 @@ def setup(app: Sphinx):
         katex_prerender = True
         exclude_patterns.remove('**/notebooks')
         exclude_patterns.remove('*.ipynb')
+        app.setup_extension('nbsphinx')
 
     class AutoAutoSummary(Autosummary):
 

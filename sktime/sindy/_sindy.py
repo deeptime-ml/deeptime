@@ -1,3 +1,4 @@
+from typing import Optional
 from warnings import warn
 
 import numpy as np
@@ -11,128 +12,6 @@ from sklearn.utils.validation import check_X_y
 
 from ..base import Estimator, Model
 from ..numeric import drop_nan_rows
-
-
-class SINDy(Estimator):
-    r"""Learn a dynamical systems model for measurement data using the
-    Sparse Identification of Nonlinear Dynamical Systems (SINDy) method.
-
-    For given measurement data :math:`X`, and a set of library functions evaluated
-    on :math:`X`
-
-    .. math::
-        \Theta(X) = [\theta_1(X), \theta_2(X), \dots, \theta_k(X)],
-
-    SINDy seeks a sparse set of coefficients :math:`\Xi` which satisfies
-
-    .. math::
-        \dot{X} \approx \Theta(X)\Xi.
-
-    The i-th column of this matrix equation gives a differential equation for the
-    i-th measurement variable (i-th column in :math:`X`). For more details see
-    :cite:`sindy-brunton2016sindy`.
-
-    References
-    ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: sindy-
-    """
-
-    def __init__(self, library=None, optimizer=None, input_features=None):
-        r"""Initialize a new SINDy estimator.
-
-        Parameters
-        ----------
-        library : library object, optional, default=None
-            The candidate feature library, :math:`\Theta`.
-            The object should implement a :meth:`fit`, :meth:`transform`,
-            and :meth:`get_feature_names` methods. It should also have
-            :attr:`n_input_features_` and :attr:`n_output_features_` attributes.
-            By default a polynomial library of degree 2 is used.
-
-        optimizer : optimizer object, optional, default=None
-            The optimization routine used to solve the objective
-            :math:`\dot{X} \approx \Theta(X)\Xi`.
-            The object should have :meth:`fit` and :meth:`predict` methods
-            and :attr:`coef_` and :attr:`intercept_` attributes. For example,
-            any linear regressor from `sklearn.linear_model \
-            <https://scikit-learn.org/stable/modules/linear_model.html>`_ should work.
-            By default, :meth:`STLSQ` is used.
-
-        input_features : list of strings, optional, default=None
-            List of input feature names. By default, the names
-            "x0", "x1", ..., "x{n_input_features}" is used.
-        """
-        if library is None:
-            library = PolynomialFeatures(degree=2)
-        if optimizer is None:
-            optimizer = STLSQ(threshold=0.1)
-        self.library = library
-        self.optimizer = optimizer
-        self.input_features = input_features
-
-    def fit(self, x, y=None, t=None):
-        r"""Fit the estimator to measurement data.
-
-        Parameters
-        ----------
-        x : np.ndarray, shape (n_samples, n_input_features)
-            Training/measurement data.
-            Each row should correspond to one example and each column
-            to a feature.
-
-        y : np.ndarray, shape (n_samples, n_input_features), optional, default=None
-            Array of derivatives of :code:`x`.
-            By default, :code:`np.gradient` is used to compute the derivatives.
-
-        t : np.ndarray, shape (n_samples,) or a scalar, optional, default=None
-            The times when the measurements in :code:`x` were taken or the
-            (uniform) time spacing between measurements in :code:`x`.
-            By default a timestep of 1 is assumed.
-            This argument is ignored if :code:`y` is passed.
-
-        Returns
-        -------
-        self: SINDy
-            Reference to self
-
-        """
-        if y is not None:
-            x_dot = y
-        elif t is not None:
-            x_dot = np.gradient(x, t, axis=0)
-        else:
-            x_dot = np.gradient(x, axis=0)
-
-        # Some differentiation methods produce nans near boundaries
-        x, x_dot = drop_nan_rows(x, x_dot)
-
-        steps = [("features", self.library), ("model", self.optimizer)]
-        self.pipeline = Pipeline(steps)
-
-        self.pipeline.fit(x, x_dot)
-
-        self.n_input_features_ = self.pipeline.steps[0][1].n_input_features_
-        self.n_output_features_ = self.pipeline.steps[0][1].n_output_features_
-
-        if self.input_features is None:
-            self.input_features = [f"x{i}" for i in range(self.n_input_features_)]
-
-        if hasattr(self.optimizer, "intercept_"):
-            intercept = self.optimizer.intercept_
-        else:
-            intercept = 0
-
-        self._model = SINDyModel(
-            library=self.library,
-            coefficients=self.optimizer.coef_,
-            input_features=self.input_features,
-            intercept=intercept,
-        )
-
-        return self
 
 
 class SINDyModel(Model):
@@ -369,6 +248,132 @@ class SINDyModel(Model):
             return round(coef, precision)
 
 
+class SINDy(Estimator):
+    r"""Learn a dynamical systems model for measurement data using the
+    Sparse Identification of Nonlinear Dynamical Systems (SINDy) method.
+
+    For given measurement data :math:`X`, and a set of library functions evaluated
+    on :math:`X`
+
+    .. math::
+        \Theta(X) = [\theta_1(X), \theta_2(X), \dots, \theta_k(X)],
+
+    SINDy seeks a sparse set of coefficients :math:`\Xi` which satisfies
+
+    .. math::
+        \dot{X} \approx \Theta(X)\Xi.
+
+    The i-th column of this matrix equation gives a differential equation for the
+    i-th measurement variable (i-th column in :math:`X`). For more details see
+    :cite:`sindy-brunton2016sindy`.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: sindy-
+    """
+
+    def __init__(self, library=None, optimizer=None, input_features=None):
+        r"""Initialize a new SINDy estimator.
+
+        Parameters
+        ----------
+        library : library object, optional, default=None
+            The candidate feature library, :math:`\Theta`.
+            The object should implement a :meth:`fit`, :meth:`transform`,
+            and :meth:`get_feature_names` methods. It should also have
+            :attr:`n_input_features_` and :attr:`n_output_features_` attributes.
+            By default a polynomial library of degree 2 is used.
+
+        optimizer : optimizer object, optional, default=None
+            The optimization routine used to solve the objective
+            :math:`\dot{X} \approx \Theta(X)\Xi`.
+            The object should have :meth:`fit` and :meth:`predict` methods
+            and :attr:`coef_` and :attr:`intercept_` attributes. For example,
+            any linear regressor from `sklearn.linear_model \
+            <https://scikit-learn.org/stable/modules/linear_model.html>`_ should work.
+            By default, :meth:`STLSQ` is used.
+
+        input_features : list of strings, optional, default=None
+            List of input feature names. By default, the names
+            "x0", "x1", ..., "x{n_input_features}" is used.
+        """
+        super().__init__()
+        if library is None:
+            library = PolynomialFeatures(degree=2)
+        if optimizer is None:
+            optimizer = STLSQ(threshold=0.1)
+        self.library = library
+        self.optimizer = optimizer
+        self.input_features = input_features
+
+    def fit(self, x, y=None, t=None):
+        r"""Fit the estimator to measurement data.
+
+        Parameters
+        ----------
+        x : np.ndarray, shape (n_samples, n_input_features)
+            Training/measurement data.
+            Each row should correspond to one example and each column
+            to a feature.
+
+        y : np.ndarray, shape (n_samples, n_input_features), optional, default=None
+            Array of derivatives of :code:`x`.
+            By default, :code:`np.gradient` is used to compute the derivatives.
+
+        t : np.ndarray, shape (n_samples,) or a scalar, optional, default=None
+            The times when the measurements in :code:`x` were taken or the
+            (uniform) time spacing between measurements in :code:`x`.
+            By default a timestep of 1 is assumed.
+            This argument is ignored if :code:`y` is passed.
+
+        Returns
+        -------
+        self: SINDy
+            Reference to self
+
+        """
+        if y is not None:
+            x_dot = y
+        elif t is not None:
+            x_dot = np.gradient(x, t, axis=0)
+        else:
+            x_dot = np.gradient(x, axis=0)
+
+        # Some differentiation methods produce nans near boundaries
+        x, x_dot = drop_nan_rows(x, x_dot)
+
+        steps = [("features", self.library), ("model", self.optimizer)]
+        self.pipeline = Pipeline(steps)
+
+        self.pipeline.fit(x, x_dot)
+
+        self.n_input_features_ = self.pipeline.steps[0][1].n_input_features_
+        self.n_output_features_ = self.pipeline.steps[0][1].n_output_features_
+
+        if self.input_features is None:
+            self.input_features = [f"x{i}" for i in range(self.n_input_features_)]
+
+        if hasattr(self.optimizer, "intercept_"):
+            intercept = self.optimizer.intercept_
+        else:
+            intercept = 0
+
+        self._model = SINDyModel(
+            library=self.library,
+            coefficients=self.optimizer.coef_,
+            input_features=self.input_features,
+            intercept=intercept,
+        )
+
+        return self
+
+    def fetch_model(self) -> Optional[SINDyModel]:
+        return super().fetch_model()
+
+
 class STLSQ(LinearRegression):
     r"""Sequentially thresholded least squares algorithm.
 
@@ -377,7 +382,7 @@ class STLSQ(LinearRegression):
     by iteratively performing least squares and masking out
     elements of the weight that are below a given threshold.
 
-    See this paper for more details :cite:`sindy-stlsq-brunton-2016`.
+    See this paper for more details :cite:`sindy-stlsq-brunton2016sindy`.
 
     References
     ----------
@@ -387,16 +392,8 @@ class STLSQ(LinearRegression):
         :keyprefix: sindy-stlsq-
     """
 
-    def __init__(
-        self,
-        threshold=0.1,
-        alpha=0.05,
-        max_iter=20,
-        ridge_kw=None,
-        normalize=False,
-        fit_intercept=False,
-        copy_X=True,
-    ):
+    def __init__(self, threshold=0.1, alpha=0.05, max_iter=20, ridge_kw=None, normalize=False, fit_intercept=False,
+                 copy_X=True):
         r"""Initialize a new STLSQ object.
 
         Parameters
@@ -427,6 +424,7 @@ class STLSQ(LinearRegression):
         copy_X : boolean, optional, default=True
             If True, X will be copied; else, it may be overwritten.
         """
+        super().__init__(fit_intercept=fit_intercept, normalize=normalize, copy_X=copy_X)
         self.threshold = threshold
         self.alpha = alpha
         self.max_iter = max_iter
