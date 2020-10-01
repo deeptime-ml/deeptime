@@ -7,10 +7,6 @@
 .. auto{{objtype}}:: {{ objname }}
 
    {% block methods %}
-   {% if objtype == "class" %}
-   .. automethod:: __init__
-      :noindex:
-   {% endif %}
 
    {% if methods %}
    .. rubric:: {{ _('Methods') }}

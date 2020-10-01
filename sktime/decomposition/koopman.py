@@ -485,9 +485,9 @@ class CovarianceKoopmanModel(KoopmanModel):
         res = None
         if score_method == 'VAMP1' or score_method == 'VAMP2':
             # see https://arxiv.org/pdf/1707.04659.pdf eqn. (33)
-            A = spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk), epsilon=self.epsilon)
-            B = Uk.T.dot(test_model.cov_0t).dot(Vk)
-            C = spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk), epsilon=self.epsilon)
+            A = np.atleast_2d(spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk), epsilon=self.epsilon))
+            B = np.atleast_2d(Uk.T.dot(test_model.cov_0t).dot(Vk))
+            C = np.atleast_2d(spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk), epsilon=self.epsilon))
             ABC = np.linalg.multi_dot([A, B, C])
             if score_method == 'VAMP1':
                 res = np.linalg.norm(ABC, ord='nuc')
