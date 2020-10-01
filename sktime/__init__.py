@@ -28,6 +28,7 @@ from . import decomposition
 from . import markov
 from . import numeric
 from . import kernels
+from . import sindy
 
 
 def capi_includes():

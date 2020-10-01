@@ -43,6 +43,7 @@ They are structured following a possible workflow of a timeseries analysis. That
 
    api/index_base
    api/index_clustering
+   api/index_sindy
    api/index_covariance
    api/index_decomposition
    api/index_markov

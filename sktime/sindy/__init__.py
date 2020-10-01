@@ -15,37 +15,39 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 r"""
-.. currentmodule: sktime.numeric
+.. currentmodule: sktime.sindy
 
 ===============================================================================
-General numerical tools
-===============================================================================
-
-.. autosummary::
-    :toctree: generated/
-    :template: class_nomodule.rst
-    
-    drop_nan_rows
-    is_diagonal_matrix
-    is_square_matrix
-
-===============================================================================
-Numerical tools for eigenvalue problems
+Estimators
 ===============================================================================
 
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
 
-    eig_corr
-    sort_by_norm
-    spd_eig
-    spd_inv
-    spd_inv_split
-    spd_inv_sqrt
-    ZeroRankError
+    SINDy
+
+===============================================================================
+Models
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    SINDyModel
+
+===============================================================================
+Solvers
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    STLSQ
+
 """
-from .utils import drop_nan_rows, is_diagonal_matrix, is_square_matrix
-from .eigen import eig_corr, sort_by_norm, spd_eig, spd_inv, spd_inv_split, spd_inv_sqrt, ZeroRankError
+
+from ._sindy import SINDy, SINDyModel, STLSQ
