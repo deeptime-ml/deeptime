@@ -23,10 +23,15 @@ class TorchGaussianKernel(GaussianKernel):
         return res
 
     def apply_torch(self, data_1: torch.Tensor, data_2: torch.Tensor):
-        #differences = torch.unsqueeze(data_1, -2) - torch.unsqueeze(data_2, -3)
-        #distance_matrix = torch.sum(torch.pow(differences, 2), dim=-1)
         distance_matrix = TorchGaussianKernel.cdist(data_1, data_2)
         return torch.exp(-distance_matrix / (2. * self.sigma ** 2))
+
+    def _evaluate(self, x, y) -> Union[float, torch.Tensor]:
+        if isinstance(x, torch.Tensor) and isinstance(y, torch.Tensor):
+            dxy_squared = torch.pow(x - y, 2).sum(-1).clamp_min_(0.)
+            return torch.exp(-dxy_squared / (2 * self.sigma * self.sigma))
+        else:
+            return super()._evaluate(x, y)
 
     def apply(self, data_1: TensorOrArray, data_2: TensorOrArray) -> TensorOrArray:
         if isinstance(data_1, np.ndarray) and isinstance(data_2, np.ndarray):
