@@ -80,7 +80,7 @@ class DMD(Estimator, Transformer):
 
     available_modes = 'exact', 'standard'  #: The available estimation modes.
 
-    def __init__(self, mode='exact', rank=None):
+    def __init__(self, mode='exact', rank=None, driver='numpy'):
         r"""Creates a new DMD estimator.
 
         Parameters
@@ -93,6 +93,13 @@ class DMD(Estimator, Transformer):
             raise ValueError(f"Invalid mode {mode}, must be one of {DMD.available_modes}.")
         self.mode = mode
         self.rank = rank
+        self.driver = driver
+
+    def _svd(self, X):
+        if self.driver == 'numpy':
+            return np.linalg.svd(X, full_matrices=False)
+        elif self.driver == 'scipy':
+            return scipy.linalg.svd(X, full_matrices=False)
 
     def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
         X, Y = data[0].T, data[1].T  # per convention arrays are [T, d] so here we transpose them
