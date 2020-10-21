@@ -80,7 +80,7 @@ class DMD(Estimator, Transformer):
 
     available_modes = 'exact', 'standard'  #: The available estimation modes.
 
-    def __init__(self, mode='exact'):
+    def __init__(self, mode='exact', rank=None):
         r"""Creates a new DMD estimator.
 
         Parameters
@@ -92,11 +92,17 @@ class DMD(Estimator, Transformer):
         if mode not in DMD.available_modes:
             raise ValueError(f"Invalid mode {mode}, must be one of {DMD.available_modes}.")
         self.mode = mode
+        self.rank = rank
 
     def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
         X, Y = data[0].T, data[1].T  # per convention arrays are [T, d] so here we transpose them
 
         U, s, Vt = np.linalg.svd(X, full_matrices=False)
+        if self.rank is not None:
+            rank = min(self.rank, U.shape[1])
+            U = U[:, :rank]
+            s = s[:rank]
+            Vt = Vt[:rank]
         V = Vt.conj().T
         S_inv = np.diag(1 / s)
         A = np.linalg.multi_dot([U.conj().T, Y, V, S_inv])
@@ -113,7 +119,7 @@ class DMD(Estimator, Transformer):
         else:
             raise ValueError('Only exact and standard DMD available.')
 
-        self._model = DMDModel(eigenvalues, dmd_modes)
+        self._model = DMDModel(eigenvalues, dmd_modes.T)
         return self
 
     def fetch_model(self):

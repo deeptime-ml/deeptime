@@ -29,7 +29,7 @@ class TorchGaussianKernel(GaussianKernel):
     def _evaluate(self, x, y) -> Union[float, torch.Tensor]:
         if isinstance(x, torch.Tensor) and isinstance(y, torch.Tensor):
             dxy_squared = torch.pow(x - y, 2).sum(-1).clamp_min_(0.)
-            return torch.exp(-dxy_squared / (2 * self.sigma * self.sigma))
+            return torch.exp(-dxy_squared / (2. * self.sigma ** 2))
         else:
             return super()._evaluate(x, y)
 
