@@ -8,7 +8,7 @@ from sklearn.base import _pprint as pprint_sklearn
 
 class _base_methods_mixin(object, metaclass=abc.ABCMeta):
     """ Defines common methods used by both Estimator and Model classes. These are mostly static and low-level
-    checking of conformity with respect to scikit-time conventions.
+    checking of conformity with respect to deeptime conventions.
     """
 
     def __repr__(self):
