@@ -95,7 +95,7 @@ class DMD(Estimator, Transformer):
     available_modes = 'exact', 'standard'  #: The available estimation modes.
     available_drivers = 'numpy', 'scipy'  #: The available drivers.
 
-    def __init__(self, mode='exact', rank=None, driver='numpy'):
+    def __init__(self, mode='exact', rank=None, driver='scipy'):
         r"""Creates a new DMD estimator.
 
         Parameters
