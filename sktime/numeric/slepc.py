@@ -86,10 +86,13 @@ def svd(X, method='lanczos'):
     return U, s, Vh
 
 
-svd._mapping = dict(
-    lanczos=SLEPc.SVD.Type.LANCZOS,
-    cyclic=SLEPc.SVD.Type.CYCLIC,
-    lapack=SLEPc.SVD.Type.LAPACK,
-    trlanczos=SLEPc.SVD.Type.TRLANCZOS,
-    cross=SLEPc.SVD.Type.CROSS
-)
+if _successful_import:
+    svd._mapping = dict(
+        lanczos=SLEPc.SVD.Type.LANCZOS,
+        cyclic=SLEPc.SVD.Type.CYCLIC,
+        lapack=SLEPc.SVD.Type.LAPACK,
+        trlanczos=SLEPc.SVD.Type.TRLANCZOS,
+        cross=SLEPc.SVD.Type.CROSS
+    )
+else:
+    svd._mapping = dict()
