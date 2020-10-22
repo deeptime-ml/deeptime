@@ -13,7 +13,7 @@ __all__ = ['MaximumLikelihoodMSM']
 
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
-    r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <sktime.markov.msm.MarkovStateModel>`)
+    r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <deeptime.markov.msm.MarkovStateModel>`)
     given discrete trajectories or statistics thereof. This estimator produces instances of MSMs in form of
     MSM collections (:class:`MarkovStateModelCollection`) which contain as many MSMs as there are connected
     sets in the counting. A collection of MSMs per default behaves exactly like an ordinary MSM model on the largest
@@ -246,7 +246,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         count_mode : str, default="sliding"
             The count mode to use for estimating transition counts. For maximum-likelihood estimation, the recommended
             choice is "sliding". If the MSM should be used for sampling in a
-            :class:`BayesianMSM <sktime.markov.msm.BayesianMSM>`, the recommended choice is "effective", which yields
+            :class:`BayesianMSM <deeptime.markov.msm.BayesianMSM>`, the recommended choice is "effective", which yields
             transition counts that are statistically uncorrelated. A description can be found
             in :cite:`mlmsm-noe2015statistical`.
 
@@ -265,7 +265,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         Parameters
         ----------
         data : TransitionCountModel or (n, n) ndarray or discrete timeseries
-            Input data, can either be :class:`TransitionCountModel <sktime.markov.TransitionCountModel>` or
+            Input data, can either be :class:`TransitionCountModel <deeptime.markov.TransitionCountModel>` or
             a 2-dimensional ndarray which is interpreted as count matrix or a discrete timeseries (or a list thereof)
             directly.
 
@@ -292,7 +292,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         This example is demonstrating how to fit a Markov state model collection from data which decomposes into a
         collection of two sets of states with corresponding transition matrices.
 
-        >>> from sktime.markov.msm import MarkovStateModel  # import MSM
+        >>> from deeptime.markov.msm import MarkovStateModel  # import MSM
         >>> msm1 = MarkovStateModel([[.7, .3], [.3, .7]])  # create first MSM
         >>> msm2 = MarkovStateModel([[.9, .05, .05], [.3, .6, .1], [.1, .1, .8]])  # create second MSM
 

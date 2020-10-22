@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.markov.hmm
+.. currentmodule: deeptime.markov.hmm
 
 The implementations that can be found in this subpackage are based on the `BHMM <https://github.com/bhmm/bhmm>`_
 software package.
@@ -20,14 +20,14 @@ Maximum-likelihood estimation of HMMs
 -------------------------------------
 
 Since the maximum-likelihood estimation (via Baum-Welch :cite:`hmminit-baum1967inequality`) of
-:class:`HMMs <sktime.markov.hmm.HiddenMarkovModel>` is likely to
+:class:`HMMs <deeptime.markov.hmm.HiddenMarkovModel>` is likely to
 get stuck in local maxima, a good initial guess is important for a high-quality model. The following methods aim to
 provide heuristics which can yield such an initial guess and can be found in :cite:`hmminit-noe2013projected`.
 
-For a HMM with a :class:`discrete output model <sktime.markov.hmm.DiscreteOutputModel>`, the following main
+For a HMM with a :class:`discrete output model <deeptime.markov.hmm.DiscreteOutputModel>`, the following main
 steps are involved:
 
-1. A :class:`markov state model <sktime.markov.msm.MarkovStateModel>` is estimated from given discrete
+1. A :class:`markov state model <deeptime.markov.msm.MarkovStateModel>` is estimated from given discrete
    trajectories. This step is optional if the markov model already exists.
 2. The estimated MSM transition matrix :math:`P\in\mathbb{R}^{n\times n}` is coarse-grained with PCCA+ into the
    desired number of hidden states :math:`m` and memberships :math:`M\in\mathbb{R}^{n \times m}`. The transition
@@ -52,7 +52,7 @@ uniform, and drawing a random row-stochastic emission probability matrix:
 
     init.discrete.random_guess
 
-For a HMM with a :class:`gaussian output model <sktime.markov.hmm.GaussianOutputModel>`, a Gaussian mixture
+For a HMM with a :class:`gaussian output model <deeptime.markov.hmm.GaussianOutputModel>`, a Gaussian mixture
 model is estimated. This particular heuristic requires an installation of `scikit-learn <https://scikit-learn.org/>`_.
 
 .. autosummary::

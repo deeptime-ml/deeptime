@@ -22,21 +22,21 @@ def from_data(dtrajs, n_hidden_states, reversible):
 
     See Also
     --------
-    :class:`GaussianOutputModel <sktime.markov.hmm.GaussianOutputModel>`
+    :class:`GaussianOutputModel <deeptime.markov.hmm.GaussianOutputModel>`
         The type of output model this heuristic uses.
 
-    :func:`init.discrete.metastable_from_data <sktime.markov.hmm.init.discrete.metastable_from_data>`
-        Initial guess with :class:`Discrete output model <sktime.markov.hmm.DiscreteOutputModel>`.
+    :func:`init.discrete.metastable_from_data <deeptime.markov.hmm.init.discrete.metastable_from_data>`
+        Initial guess with :class:`Discrete output model <deeptime.markov.hmm.DiscreteOutputModel>`.
 
-    :func:`init.discrete.metastable_from_msm <sktime.markov.hmm.init.discrete.metastable_from_msm>`
-        Initial guess from an already existing :class:`MSM <sktime.markov.msm.MarkovStateModel>` with discrete
+    :func:`init.discrete.metastable_from_msm <deeptime.markov.hmm.init.discrete.metastable_from_msm>`
+        Initial guess from an already existing :class:`MSM <deeptime.markov.msm.MarkovStateModel>` with discrete
         output model.
     """
-    from sktime.markov.hmm import HiddenMarkovModel, GaussianOutputModel
+    from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel
     from sklearn.mixture import GaussianMixture
-    import sktime.markov.tools.estimation as msmest
-    import sktime.markov.tools.analysis as msmana
-    from sktime.util.types import ensure_timeseries_data
+    import deeptime.markov.tools.estimation as msmest
+    import deeptime.markov.tools.analysis as msmana
+    from deeptime.util.types import ensure_timeseries_data
 
     dtrajs = ensure_timeseries_data(dtrajs)
     collected_observations = np.concatenate(dtrajs)

@@ -1,5 +1,5 @@
 import numpy as np
-from sktime.base import Model, Transformer
+from deeptime.base import Model, Transformer
 
 from . import _clustering_bindings as _bd, metrics
 
@@ -80,7 +80,7 @@ class ClusterModel(Model, Transformer):
         -------
         metric : str
             Name of the metric that was used. The name is related to the implementation via
-            the :data:`metric registry <sktime.clustering.metrics>`.
+            the :data:`metric registry <deeptime.clustering.metrics>`.
         """
         return self._metric
 

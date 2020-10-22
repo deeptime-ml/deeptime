@@ -6,11 +6,11 @@ from . import _clustering_bindings as _bd
 class MetricRegistry(object):
     r""" Registry of available metrics. Per default this contains only the Euclidean metric.
     If a custom metric is implemented, it can be registered through a call to
-    :meth:`register <sktime.clustering.MetricRegistry.register>`. """
+    :meth:`register <deeptime.clustering.MetricRegistry.register>`. """
 
     def __init__(self):
         r""" Creates a new metrics instance. The registry should not be instantiated directly
-        but rather be accessed through :data:`metrics <sktime.clustering.metrics>`."""
+        but rather be accessed through :data:`metrics <deeptime.clustering.metrics>`."""
         self._registered = None
         self.register("euclidean", _bd.EuclideanMetric)
 

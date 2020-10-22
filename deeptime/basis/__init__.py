@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.basis
+.. currentmodule: deeptime.basis
 
 .. autosummary::
     :toctree: generated/

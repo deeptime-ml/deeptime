@@ -10,10 +10,10 @@ def double_well_discrete():
 
     Returns
     -------
-    dataset : sktime.data.double_well_dataset.DoubleWellDiscrete
+    dataset : deeptime.data.double_well_dataset.DoubleWellDiscrete
         an object that contains a markov state model corresponding to the process and the discrete trajectory
     """
-    from sktime.data.double_well_dataset import DoubleWellDiscrete
+    from deeptime.data.double_well_dataset import DoubleWellDiscrete
     return DoubleWellDiscrete()
 
 
@@ -21,14 +21,14 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     r""" Example data of a two-state markov chain which can be featurized into two parallel ellipsoids and optionally
     rotated into higher-dimensional space.
 
-    See :class:`Ellipsoids <sktime.data.ellipsoids_dataset.Ellipsoids>` for more details.
+    See :class:`Ellipsoids <deeptime.data.ellipsoids_dataset.Ellipsoids>` for more details.
 
     .. plot::
 
        import matplotlib.pyplot as plt
-       import sktime
+       import deeptime
 
-       ftraj = sktime.data.ellipsoids(seed=17).observations(1000)
+       ftraj = deeptime.data.ellipsoids(seed=17).observations(1000)
        plt.scatter(*(ftraj.T))
        plt.grid()
        plt.title(r'Ellipsoids dataset observations with laziness of $0.97$.')
@@ -43,10 +43,10 @@ def ellipsoids(laziness: float = 0.97, seed=None):
 
     Returns
     -------
-    dataset : sktime.data.ellipsoids_dataset.Ellipsoids
+    dataset : deeptime.data.ellipsoids_dataset.Ellipsoids
         an object that contains methods to create discrete and continuous observations
     """
-    from sktime.data.ellipsoids_dataset import Ellipsoids
+    from deeptime.data.ellipsoids_dataset import Ellipsoids
     return Ellipsoids(laziness=laziness, seed=seed)
 
 
@@ -61,14 +61,14 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
     The interaction distance is set to :math:`d = 1.5` and `n_burn_in` steps are
     performed to equilibrate the system before returning the simulator.
 
-    For more details see :class:`PBFSimulator <sktime.data.pbf_simulator.PBFSimulator>`.
+    For more details see :class:`PBFSimulator <deeptime.data.pbf_simulator.PBFSimulator>`.
 
     .. plot::
 
         import matplotlib.pyplot as plt
-        import sktime
+        import deeptime
 
-        ftraj = sktime.data.position_based_fluids(n_burn_in=150).run(300)
+        ftraj = deeptime.data.position_based_fluids(n_burn_in=150).run(300)
         f, axes = plt.subplots(3, 2, figsize=(15, 10))
         for i, ax in enumerate(axes.flat):
             ax.scatter(*(ftraj[i*50].reshape(-1, 2).T))
@@ -86,7 +86,7 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
 
     Returns
     -------
-    simulator : sktime.data.pbf_simulator.PBFSimulator
+    simulator : deeptime.data.pbf_simulator.PBFSimulator
         The PBF simulator.
 
     References
@@ -96,7 +96,7 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
         :filter: docname in docnames
         :keyprefix: data-api-
     """
-    from sktime.data.pbf_simulator import PBFSimulator
+    from deeptime.data.pbf_simulator import PBFSimulator
     interaction_distance = 1.5
     init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
     init_pos_y = np.arange(-12, 24, interaction_distance * .9).astype(np.float32)
@@ -125,14 +125,14 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     .. plot::
 
         import numpy as np
-        import sktime
+        import deeptime
 
         import matplotlib.pyplot as plt
         from matplotlib.collections import LineCollection
         import scipy
         from scipy.interpolate import CubicSpline
 
-        sim = sktime.data.drunkards_walk(bar_location=(0, 0), home_location=(9, 9))
+        sim = deeptime.data.drunkards_walk(bar_location=(0, 0), home_location=(9, 9))
         walk = sim.walk(start=(7, 2), n_steps=250, seed=17)
 
         fig, ax = plt.subplots(figsize=(10, 10))
@@ -172,10 +172,10 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
 
     Returns
     -------
-    simulator : sktime.data.drunkards_walk_simulator.DrunkardsWalk
+    simulator : deeptime.data.drunkards_walk_simulator.DrunkardsWalk
         Simulator instance.
     """
-    from sktime.data.drunkards_walk_simulator import DrunkardsWalk
+    from deeptime.data.drunkards_walk_simulator import DrunkardsWalk
     return DrunkardsWalk(grid_size, bar_location=bar_location, home_location=home_location)
 
 
@@ -213,10 +213,10 @@ def bickley_jet(n_particles: int, n_jobs=None):
     .. plot::
 
         import matplotlib.pyplot as plt
-        import sktime
+        import deeptime
 
         n_particles = 1000
-        dataset = sktime.data.bickley_jet(n_particles, n_jobs=8)
+        dataset = deeptime.data.bickley_jet(n_particles, n_jobs=8)
 
         fig, axes = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(16, 10))
 
@@ -233,14 +233,14 @@ def bickley_jet(n_particles: int, n_jobs=None):
 
     Returns
     -------
-    dataset : sktime.data.bickley_simulator.BickleyJetDataset
+    dataset : deeptime.data.bickley_simulator.BickleyJetDataset
         Dataset over all the generated frames.
 
     Examples
     --------
 
-    >>> import sktime
-    >>> dataset = sktime.data.bickley_jet(n_particles=5, n_jobs=1)
+    >>> import deeptime
+    >>> dataset = deeptime.data.bickley_jet(n_particles=5, n_jobs=1)
     >>> # shape is 401 frames for 5 particles in two dimensions
     >>> print(dataset.data.shape)
     (401, 5, 2)
@@ -268,7 +268,7 @@ def bickley_jet(n_particles: int, n_jobs=None):
         :filter: docname in docnames
         :keyprefix: bickley-api-
     """
-    from sktime.data.bickley_simulator import BickleyJet, BickleyJetDataset
+    from deeptime.data.bickley_simulator import BickleyJet, BickleyJetDataset
     simulator = BickleyJet()
     traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
     traj_reshaped = traj.transpose(1, 2, 0)
@@ -301,10 +301,10 @@ def birth_death_chain(q, p):
 
     Returns
     -------
-    chain : sktime.data.birth_death_chain_dataset.BirthDeathChain
+    chain : deeptime.data.birth_death_chain_dataset.BirthDeathChain
         The chain.
     """
-    from sktime.data.birth_death_chain_dataset import BirthDeathChain
+    from deeptime.data.birth_death_chain_dataset import BirthDeathChain
     return BirthDeathChain(q, p)
 
 

@@ -17,7 +17,7 @@ def _load_double_well_discrete():
     dtraj.flags.writeable = False
     transition_matrix.flags.writeable = False
 
-    from sktime.markov.msm import MarkovStateModel
+    from deeptime.markov.msm import MarkovStateModel
     msm = MarkovStateModel(transition_matrix)
     return dtraj, msm
 

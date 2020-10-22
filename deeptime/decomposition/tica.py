@@ -70,7 +70,7 @@ class TICA(VAMP):
     Invoke TICA transformation with a given lag time and output dimension:
 
     >>> import numpy as np
-    >>> from sktime.decomposition import TICA
+    >>> from deeptime.decomposition import TICA
     >>> data = np.random.random((100,3))
     >>> # fixed output dimension
     >>> estimator = TICA(dim=1, lagtime=2).fit(data)
@@ -89,7 +89,7 @@ class TICA(VAMP):
 
     See also
     --------
-    :class:`CovarianceKoopmanModel <sktime.decomposition.CovarianceKoopmanModel>` : TICA estimation output model
+    :class:`CovarianceKoopmanModel <deeptime.decomposition.CovarianceKoopmanModel>` : TICA estimation output model
 
     References
     ----------
@@ -138,7 +138,7 @@ class TICA(VAMP):
 
     @staticmethod
     def _decomposition(covariances, epsilon, scaling, dim, var_cutoff) -> VAMP._DiagonalizationResults:
-        from sktime.numeric.eigen import ZeroRankError
+        from deeptime.numeric.eigen import ZeroRankError
 
         # diagonalize with low rank approximation
         try:

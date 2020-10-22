@@ -50,7 +50,7 @@ np_array<std::int64_t> generateObservationTrajectory(const np_array_nfc<State> &
 
     {
         auto nThreads = std::thread::hardware_concurrency();
-        std::vector<sktime::thread::scoped_thread> threads;
+        std::vector<deeptime::thread::scoped_thread> threads;
         threads.reserve(nThreads);
         std::size_t grainSize = std::max(static_cast<std::size_t>(1), nTimesteps / nThreads);
 
@@ -62,7 +62,7 @@ np_array<std::int64_t> generateObservationTrajectory(const np_array_nfc<State> &
             std::size_t endIndex = std::min(nextIndex+grainSize, nTimesteps);
             threads.emplace_back([hiddenStateTrajectoryBuf, outputProbabilitiesBuf,
                                   beginIndex, endIndex, outputPtr, nObs]{
-                auto generator = sktime::rnd::randomlySeededGenerator();
+                auto generator = deeptime::rnd::randomlySeededGenerator();
                 std::discrete_distribution<> ddist;
                 for(std::size_t t = beginIndex; t < endIndex; ++t) {
                     auto state = hiddenStateTrajectoryBuf[t];
@@ -109,8 +109,8 @@ void sample(const std::vector<np_array_nfc<State>> &observationsPerState, np_arr
     auto nObs = outputProbabilities.shape(1);
     ssize_t currentState{0};
 
-    auto& generator = sktime::rnd::staticThreadLocalGenerator();
-    sktime::rnd::dirichlet_distribution<dtype> dirichlet;
+    auto& generator = deeptime::rnd::staticThreadLocalGenerator();
+    deeptime::rnd::dirichlet_distribution<dtype> dirichlet;
 
     for (const np_array<State> &observations : observationsPerState) {
 
@@ -275,7 +275,7 @@ generateObservationTrajectory(const np_array_nfc<dtype> &hiddenStateTrajectory, 
     std::normal_distribution<dtype> dist{0, 1};
     for (decltype(nTimesteps) t = 0; t < nTimesteps; ++t) {
         auto state = hiddenStateTrajectory.at(t);
-        *(ptr + t) = sigmas.at(state) * dist(sktime::rnd::staticThreadLocalGenerator()) + means.at(state);
+        *(ptr + t) = sigmas.at(state) * dist(deeptime::rnd::staticThreadLocalGenerator()) + means.at(state);
     }
     return output;
 }

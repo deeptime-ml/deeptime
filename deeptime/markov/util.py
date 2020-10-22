@@ -85,10 +85,10 @@ def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
     # how many uncorrelated counts we can make
     stride = lagtime
     # get a quick fit from the spectral radius of the non-reversible
-    from sktime.markov import TransitionCountEstimator
+    from deeptime.markov import TransitionCountEstimator
     count_model = TransitionCountEstimator(lagtime=lagtime, count_mode="sliding").fit(dtrajs).fetch_model()
     count_model = count_model.submodel_largest()
-    from sktime.markov.msm import MaximumLikelihoodMSM
+    from deeptime.markov.msm import MaximumLikelihoodMSM
     msm_non_rev = MaximumLikelihoodMSM(reversible=False, sparse=False).fit(count_model).fetch_model()
     # if we have more than n_states timescales in our MSM, we use the next (neglected) timescale as an
     # fit of the de-correlation time
@@ -177,7 +177,7 @@ def compute_connected_sets(count_matrix, connectivity_threshold: float = 0, dire
     A list of arrays, each array representing a connected set by enumerating the respective states. The list is in
     descending order by size of connected set.
     """
-    import sktime.markov.tools.estimation as msmest
+    import deeptime.markov.tools.estimation as msmest
     import scipy.sparse as scs
     if connectivity_threshold > 0:
         if scs.issparse(count_matrix):

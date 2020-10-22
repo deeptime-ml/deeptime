@@ -57,9 +57,9 @@ class BirthDeathChain(object):
         r""" MarkovStateModel for this birth death chain
 
         :getter: Yields the MSM.
-        :type: sktime.markov.msm.MarkovStateModel
+        :type: deeptime.markov.msm.MarkovStateModel
         """
-        from sktime.markov.msm import MarkovStateModel
+        from deeptime.markov.msm import MarkovStateModel
         return MarkovStateModel(self.transition_matrix, self.stationary_distribution)
 
     @property

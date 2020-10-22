@@ -4,9 +4,9 @@ r"""
 Transition path theory tools
 ============================
 
-.. currentmodule:: sktime.markov.tools.flux
+.. currentmodule:: deeptime.markov.tools.flux
 
-This module (:mod:`sktime.markov.tools.flux`) contains functions to compute reactive flux networks and
+This module (:mod:`deeptime.markov.tools.flux`) contains functions to compute reactive flux networks and
 find dominant reaction pathways in such networks.
 
 Reactive flux

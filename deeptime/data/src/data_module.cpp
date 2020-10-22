@@ -7,7 +7,7 @@
 
 using dtype = float;
 static constexpr int DIM = 2;
-using PBF = sktime::pbf::PBF<DIM, dtype>;
+using PBF = deeptime::pbf::PBF<DIM, dtype>;
 
 PBF makePbf(np_array<dtype> pos, np_array<dtype> gridSize, dtype interactionRadius, int nJobs) {
     if(pos.ndim() != 2) {

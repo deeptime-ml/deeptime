@@ -4,8 +4,8 @@ from typing import Optional, List
 
 import numpy as np
 
-from sktime.base import Estimator, Transformer
-from sktime.clustering.cluster_model import ClusterModel
+from deeptime.base import Estimator, Transformer
+from deeptime.clustering.cluster_model import ClusterModel
 from . import _clustering_bindings as _bd, metrics
 
 __all__ = ['KmeansClustering', 'MiniBatchKmeansClustering', 'KMeansClusteringModel']
@@ -88,7 +88,7 @@ class KMeansClusteringModel(ClusterModel):
 
     def score(self, data: np.ndarray, n_jobs: Optional[int] = None) -> float:
         r""" Computes how well the model fits to given data by computing the
-        :meth:`inertia <sktime.clustering.kmeans.KMeansClusteringModel.inertia>`.
+        :meth:`inertia <deeptime.clustering.kmeans.KMeansClusteringModel.inertia>`.
 
         Parameters
         ----------
@@ -147,7 +147,7 @@ class KmeansClustering(Estimator, Transformer):
             maximum number of iterations before stopping.
         metric : str, default='euclidean'
             Metric to use during clustering, default evaluates to euclidean metric. For a list of available metrics,
-            see the :data:`metric registry <sktime.clustering.metrics>`.
+            see the :data:`metric registry <deeptime.clustering.metrics>`.
         tolerance : float, default=1e-5
             Stop iteration when the relative change in the cost function (inertia)
 

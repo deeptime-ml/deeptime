@@ -3,6 +3,6 @@ def configuration(parent_package='', top_path=None):
     config = Configuration('numeric', parent_package, top_path)
 
     config.add_extension('eig_qr',
-                         sources=['sktime/numeric/eig_qr.pyx'],
+                         sources=['deeptime/numeric/eig_qr.pyx'],
                          )
     return config

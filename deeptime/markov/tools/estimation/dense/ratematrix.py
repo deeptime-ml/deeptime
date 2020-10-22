@@ -295,7 +295,7 @@ class CrommelinVandenEijndenEstimator(_ReversibleRateMatrixEstimator):
     """
 
     def __init__(self, T, K0, pi, dt=1.0, sparsity=None, t_agg=None, tol=1.0E7, maxiter=100000, on_error='raise'):
-        from sktime.markov.tools.analysis import is_transition_matrix
+        from deeptime.markov.tools.analysis import is_transition_matrix
 
         super(CrommelinVandenEijndenEstimator, self).__init__(T, pi, dt=dt, sparsity=sparsity, t_agg=t_agg, tol=tol, maxiter=maxiter, on_error=on_error)
 
@@ -576,7 +576,7 @@ def estimate_rate_matrix(C, dt=1.0, method='KL', sparsity=None,
     Example
     -------
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import rate_matrix
+    >>> from deeptime.markov.tools.estimation import rate_matrix
     >>> C = np.array([[100,1],[50,50]])
     >>> R = rate_matrix(C)
     >>> print(np.array_str(R, precision=5))

@@ -385,9 +385,9 @@ samplePath(const np_array<dtype> &alpha, const np_array<dtype> &transitionMatrix
     auto path = pathArray.mutable_data();
 
     if (seed < 0) {
-        samplePathImpl(alpha.data(), transitionMatrix.data(), N, T, sktime::rnd::staticThreadLocalGenerator(), path);
+        samplePathImpl(alpha.data(), transitionMatrix.data(), N, T, deeptime::rnd::staticThreadLocalGenerator(), path);
     } else {
-        auto generator = sktime::rnd::seededGenerator(static_cast<std::uint32_t>(seed));
+        auto generator = deeptime::rnd::seededGenerator(static_cast<std::uint32_t>(seed));
         samplePathImpl(alpha.data(), transitionMatrix.data(), N, T, generator, path);
     }
     return pathArray;

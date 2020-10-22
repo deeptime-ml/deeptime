@@ -369,7 +369,7 @@ class SINDy(Estimator):
 
         return self
 
-    def fetch_model(self) -> "sktime.sindy.SINDyModel":
+    def fetch_model(self) -> "deeptime.sindy.SINDyModel":
         return super().fetch_model()
 
 

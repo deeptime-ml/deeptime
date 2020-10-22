@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.numeric
+.. currentmodule: deeptime.numeric
 
 ===============================================================================
 General numerical tools

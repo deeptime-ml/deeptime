@@ -4,9 +4,9 @@ r"""
 MSM analysis
 ============
 
-.. currentmodule:: sktime.markov.tools.analysis
+.. currentmodule:: deeptime.markov.tools.analysis
 
-This module (:mod:`sktime.markov.tools.analysis`) contains functions to analyze a created Markov model, which is
+This module (:mod:`deeptime.markov.tools.analysis`) contains functions to analyze a created Markov model, which is
 specified with a transition matrix T.
 
 Validation

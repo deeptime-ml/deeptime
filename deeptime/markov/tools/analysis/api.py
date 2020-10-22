@@ -91,7 +91,7 @@ def is_transition_matrix(T, tol=1e-12):
     Examples
     --------
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import is_transition_matrix
+    >>> from deeptime.markov.tools.analysis import is_transition_matrix
 
     >>> A = np.array([[0.4, 0.5, 0.3], [0.2, 0.4, 0.4], [-1, 1, 1]])
     >>> is_transition_matrix(A)
@@ -134,7 +134,7 @@ def is_rate_matrix(K, tol=1e-12):
     Examples
     --------
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import is_rate_matrix
+    >>> from deeptime.markov.tools.analysis import is_rate_matrix
 
     >>> A = np.array([[0.5, -0.5, -0.2], [-0.3, 0.6, -0.3], [-0.2, 0.2, 0.0]])
     >>> is_rate_matrix(A)
@@ -200,7 +200,7 @@ def is_connected(T, directed=True):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import is_connected
+    >>> from deeptime.markov.tools.analysis import is_connected
 
     >>> A = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.0, 1.0]])
     >>> is_connected(A)
@@ -257,7 +257,7 @@ def is_reversible(T, mu=None, tol=1e-12):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import is_reversible
+    >>> from deeptime.markov.tools.analysis import is_reversible
 
     >>> P = np.array([[0.8, 0.1, 0.1], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> is_reversible(P)
@@ -306,7 +306,7 @@ def stationary_distribution(T):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import stationary_distribution
+    >>> from deeptime.markov.tools.analysis import stationary_distribution
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.4, 0.2, 0.4], [0.0, 0.1, 0.9]])
     >>> mu = stationary_distribution(T)
@@ -384,7 +384,7 @@ def eigenvalues(T, k=None, ncv=None, reversible=False, mu=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import eigenvalues
+    >>> from deeptime.markov.tools.analysis import eigenvalues
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> w = eigenvalues(T)
@@ -443,7 +443,7 @@ def timescales(T, tau=1, k=None, ncv=None, reversible=False, mu=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import timescales
+    >>> from deeptime.markov.tools.analysis import timescales
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> ts = timescales(T)
@@ -521,7 +521,7 @@ def eigenvectors(T, k=None, right=True, ncv=None, reversible=False, mu=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import eigenvectors
+    >>> from deeptime.markov.tools.analysis import eigenvectors
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> R = eigenvectors(T)
@@ -594,7 +594,7 @@ def rdl_decomposition(T, k=None, norm='auto', ncv=None, reversible=False, mu=Non
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import rdl_decomposition
+    >>> from deeptime.markov.tools.analysis import rdl_decomposition
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> R, D, L = rdl_decomposition(T)
@@ -689,7 +689,7 @@ def mfpt(T, target, origin=None, tau=1, mu=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import mfpt
+    >>> from deeptime.markov.tools.analysis import mfpt
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> m_t = mfpt(T, 0)
@@ -842,7 +842,7 @@ def committor(T, A, B, forward=True, mu=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import committor
+    >>> from deeptime.markov.tools.analysis import committor
     >>> T = np.array([[0.89, 0.1, 0.01], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> A = [0]
     >>> B = [2]
@@ -913,7 +913,7 @@ def expected_counts(T, p0, N):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import expected_counts
+    >>> from deeptime.markov.tools.analysis import expected_counts
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> p0 = np.array([1.0, 0.0, 0.0])
@@ -969,7 +969,7 @@ def expected_counts_stationary(T, N, mu=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import expected_counts_stationary
+    >>> from deeptime.markov.tools.analysis import expected_counts_stationary
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> N = 100
@@ -1080,7 +1080,7 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import fingerprint_correlation
+    >>> from deeptime.markov.tools.analysis import fingerprint_correlation
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> a = np.array([1.0, 0.0, 0.0])
@@ -1173,7 +1173,7 @@ def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import fingerprint_relaxation
+    >>> from deeptime.markov.tools.analysis import fingerprint_relaxation
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> p0 = np.array([1.0, 0.0, 0.0])
@@ -1234,7 +1234,7 @@ def expectation(T, a, mu=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import expectation
+    >>> from deeptime.markov.tools.analysis import expectation
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> a = np.array([1.0, 0.0, 1.0])
@@ -1321,7 +1321,7 @@ def correlation(T, obs1, obs2=None, times=(1,), k=None, ncv=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import correlation
+    >>> from deeptime.markov.tools.analysis import correlation
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> a = np.array([1.0, 0.0, 0.0])
@@ -1394,7 +1394,7 @@ def relaxation(T, p0, obs, times=(1,), k=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.analysis import relaxation
+    >>> from deeptime.markov.tools.analysis import relaxation
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
     >>> p0 = np.array([1.0, 0.0, 0.0])

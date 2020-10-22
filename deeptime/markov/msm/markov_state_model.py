@@ -229,7 +229,7 @@ class MarkovStateModel(Model):
     def stationary_distribution(self):
         """The stationary distribution on the MarkovStateModel states"""
         if self._stationary_distribution is None:
-            from sktime.markov.tools.analysis import stationary_distribution as compute_sd
+            from deeptime.markov.tools.analysis import stationary_distribution as compute_sd
             stationary_distribution = compute_sd(self.transition_matrix)
             if not np.allclose(np.sum(stationary_distribution), 1., atol=1e-14):
                 raise ValueError("Stationary distribution did not sum up to 1 "
@@ -249,7 +249,7 @@ class MarkovStateModel(Model):
 
     def _compute_eigenvalues(self, neig):
         """ Conducts the eigenvalue decomposition and stores k eigenvalues """
-        from sktime.markov.tools.analysis import eigenvalues as anaeig
+        from deeptime.markov.tools.analysis import eigenvalues as anaeig
 
         if self.reversible:
             self._eigenvalues = anaeig(self.transition_matrix, k=neig, ncv=self._ncv,
@@ -289,7 +289,7 @@ class MarkovStateModel(Model):
         the normalized left eigenvectors.
 
         """
-        from sktime.markov.tools.analysis import rdl_decomposition
+        from deeptime.markov.tools.analysis import rdl_decomposition
 
         R, D, L = rdl_decomposition(self.transition_matrix, k=n_eigenvalues,
                                     norm='standard' if not self.reversible else 'reversible',
@@ -410,7 +410,7 @@ class MarkovStateModel(Model):
             self._ensure_eigenvalues()
         else:
             self._ensure_eigenvalues(neig=k + 1)
-        from sktime.markov.tools.analysis.dense.decomposition import timescales_from_eigenvalues as timescales
+        from deeptime.markov.tools.analysis.dense.decomposition import timescales_from_eigenvalues as timescales
 
         ts = timescales(self._eigenvalues, tau=self.lagtime)
         if k is None:
@@ -489,7 +489,7 @@ class MarkovStateModel(Model):
         B : int or int array
             set of target states
         """
-        from sktime.markov.tools.analysis import mfpt
+        from deeptime.markov.tools.analysis import mfpt
         self._assert_in_active(A)
         self._assert_in_active(B)
         return self.lagtime * mfpt(self.transition_matrix, B, origin=A, mu=self.stationary_distribution)
@@ -504,7 +504,7 @@ class MarkovStateModel(Model):
         B : int or int array
             set of target states
         """
-        from sktime.markov.tools.analysis import committor
+        from deeptime.markov.tools.analysis import committor
         self._assert_in_active(A)
         self._assert_in_active(B)
         return committor(self.transition_matrix, A, B, forward=True)
@@ -521,7 +521,7 @@ class MarkovStateModel(Model):
         """
         self._assert_in_active(A)
         self._assert_in_active(B)
-        from sktime.markov.tools.analysis import committor
+        from deeptime.markov.tools.analysis import committor
         return committor(self.transition_matrix, A, B, forward=False, mu=self.stationary_distribution)
 
     def expectation(self, a: np.ndarray):
@@ -639,7 +639,7 @@ class MarkovStateModel(Model):
         on a three-state Markov model and plots the result using matplotlib:
 
         >>> import numpy as np
-        >>> import sktime.markov.msm as msm
+        >>> import deeptime.markov.msm as msm
         >>>
         >>> P = np.array([[0.99, 0.01, 0], [0.01, 0.9, 0.09], [0, 0.1, 0.9]])
         >>> a = np.array([0.0, 0.5, 1.0])
@@ -656,7 +656,7 @@ class MarkovStateModel(Model):
             maxtime = 5 * self.timescales()[0]
         steps = np.arange(int(ceil(float(maxtime) / self.lagtime)))
         # compute correlation
-        from sktime.markov.tools.analysis import correlation
+        from deeptime.markov.tools.analysis import correlation
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
         res = correlation(self.transition_matrix, a, obs2=b, times=steps, k=k, ncv=ncv)
@@ -706,7 +706,7 @@ class MarkovStateModel(Model):
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
-        from sktime.markov.tools.analysis import fingerprint_correlation as fc
+        from deeptime.markov.tools.analysis import fingerprint_correlation as fc
         return fc(self.transition_matrix, a, obs2=b, tau=self.lagtime, k=k, ncv=ncv)
 
     def relaxation(self, p0, a, maxtime=None, k=None, ncv=None):
@@ -785,7 +785,7 @@ class MarkovStateModel(Model):
         kmax = int(ceil(float(maxtime) / self.lagtime))
         steps = np.array(list(range(kmax)), dtype=int)
         # compute relaxation function
-        from sktime.markov.tools.analysis import relaxation
+        from deeptime.markov.tools.analysis import relaxation
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
         res = relaxation(self.transition_matrix, p0, a, times=steps, k=k)
@@ -822,7 +822,7 @@ class MarkovStateModel(Model):
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
         # TODO: for this, the correlation function must accept already-available eigenvalue decompositions.
-        from sktime.markov.tools.analysis import fingerprint_relaxation as fr
+        from deeptime.markov.tools.analysis import fingerprint_relaxation as fr
         return fr(self.transition_matrix, p0, a, tau=self.lagtime, k=k, ncv=ncv)
 
     def pcca(self, n_metastable_sets: int) -> PCCAModel:
@@ -840,7 +840,7 @@ class MarkovStateModel(Model):
 
         Returns
         -------
-        pcca_obj : :class:`PCCAModel <sktime.markov.PCCAModel>`
+        pcca_obj : :class:`PCCAModel <deeptime.markov.PCCAModel>`
             An object containing all PCCA+ quantities.
 
         Notes
@@ -870,14 +870,14 @@ class MarkovStateModel(Model):
 
         Returns
         -------
-        tptobj : :class:`ReactiveFlux <sktime.markov.ReactiveFlux>` object
+        tptobj : :class:`ReactiveFlux <deeptime.markov.ReactiveFlux>` object
             An object containing the reactive A->B flux network
             and several additional quantities, such as the stationary probability,
             committors and set definitions.
 
         See also
         --------
-        :class:`ReactiveFlux <sktime.markov.ReactiveFlux>`
+        :class:`ReactiveFlux <deeptime.markov.ReactiveFlux>`
             Reactive Flux model
         """
         from ..reactive_flux import compute_reactive_flux
@@ -1048,7 +1048,7 @@ class MarkovStateModel(Model):
 
         Returns
         -------
-        hmm : sktime.markov.hmm.HiddenMarkovModel
+        hmm : deeptime.markov.hmm.HiddenMarkovModel
             A hidden markov model.
         """
         if not self.reversible:
@@ -1070,7 +1070,7 @@ class MarkovStateModel(Model):
                               f' It is possible that the resulting HMM is inaccurate. Handle with caution.',
                               stacklevel=2)
         # run HMM estimate
-        from sktime.markov.hmm import MaximumLikelihoodHMM, init
+        from deeptime.markov.hmm import MaximumLikelihoodHMM, init
         init_hmm = init.discrete.metastable_from_msm(self, nhidden, reversible=self.reversible)
         est = MaximumLikelihoodHMM(init_hmm, lagtime=self.lagtime, reversible=self.reversible)
         hmm = est.fit(dtrajs).fetch_model()
@@ -1115,7 +1115,7 @@ class MarkovStateModel(Model):
             The maximum number of eigenvalues or singular values used in the
             score. If set to None, all available eigenvalues will be used.
         """
-        from sktime.markov.sample import ensure_dtraj_list
+        from deeptime.markov.sample import ensure_dtraj_list
         dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
         if self.count_model is None:
             raise RuntimeError('This MarkovStateModel has not been estimated from data '
@@ -1142,7 +1142,7 @@ class MarkovStateModel(Model):
         Ctt_train = np.diag(C0t_train.sum(axis=0))  # empirical cov
 
         # test data
-        from sktime.markov.tools.estimation import count_matrix
+        from deeptime.markov.tools.estimation import count_matrix
         C0t_test_raw = count_matrix(dtrajs, self.count_model.lagtime, sparse_return=False)
         # map to present active set
         active_set = self.count_model.state_symbols
@@ -1157,7 +1157,7 @@ class MarkovStateModel(Model):
         assert Ctt_train.shape == Ctt_test.shape
 
         # score
-        from sktime.metrics import vamp_score
+        from deeptime.metrics import vamp_score
         return vamp_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_test,
                           k=score_k, score=score_method)
 

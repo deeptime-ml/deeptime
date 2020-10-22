@@ -8,7 +8,7 @@ def configuration(parent_package='', top_path=None):
 
     config.add_extension('newton.objective_sparse_ops',
                          sources=['newton/objective_sparse_ops.cpp'],
-                         include_dirs=[Path(top_path) / 'sktime' / 'src' / 'include'],
+                         include_dirs=[Path(top_path) / 'deeptime' / 'src' / 'include'],
                          language='c++',
                          extra_compile_args=['-fvisibility=hidden'])
 

@@ -23,7 +23,7 @@ def sample_hidden_state_trajectory(transition_matrix, output_model, initial_dist
     ----------
     transition_matrix : (n, n) ndarray
         The transition matrix :math:`T` over the hidden states.
-    output_model : sktime.markov.hmm.OutputModel
+    output_model : deeptime.markov.hmm.OutputModel
         Output model with emission probabilities :math:`E`.
     initial_distribution : (n,) ndarray
         Initial distribution over hidden states.

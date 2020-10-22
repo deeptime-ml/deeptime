@@ -7,7 +7,7 @@
 
 #include "kmeans.h"
 
-namespace sktime {
+namespace deeptime {
 namespace clustering {
 namespace kmeans {
 
@@ -97,7 +97,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
         {
             std::mutex mutex;
 
-            std::vector<sktime::thread::scoped_thread> threads;
+            std::vector<deeptime::thread::scoped_thread> threads;
             threads.reserve(static_cast<std::size_t>(n_threads));
 
             std::size_t grainSize = n_frames / n_threads;

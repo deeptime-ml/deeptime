@@ -165,7 +165,7 @@ def statistical_inefficiencies(dtrajs, lag, C=None, truncate_acf=True, mact=2.0,
 
     See also
     --------
-    sktime.markov.tools.util.statistics.statistical_inefficiency
+    deeptime.markov.tools.util.statistics.statistical_inefficiency
         used to compute the statistical inefficiency for conditional trajectories
 
     """

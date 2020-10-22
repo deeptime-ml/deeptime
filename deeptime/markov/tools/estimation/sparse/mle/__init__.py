@@ -41,7 +41,7 @@ def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),
 
     # T matrix has the same shape and positions of nonzero elements as CCt
     T = scipy.sparse.csr_matrix((T_data, (i_indices, j_indices)), shape=CCt.shape)
-    from sktime.markov.tools.estimation.sparse.transition_matrix import correct_transition_matrix
+    from deeptime.markov.tools.estimation.sparse.transition_matrix import correct_transition_matrix
     T = correct_transition_matrix(T)
     if return_statdist:
         return T, mu
@@ -52,7 +52,7 @@ def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),
 def mle_trev_given_pi(C, mu, maxerr=1.0E-12, maxiter=1000000, warn_not_converged=True):
     assert maxerr > 0, 'maxerr must be positive'
     assert maxiter > 0, 'maxiter must be positive'
-    from sktime.markov.tools.estimation import is_connected
+    from deeptime.markov.tools.estimation import is_connected
     assert is_connected(C, directed=False), 'C must be (weakly) connected'
     dtype = C.dtype
     if dtype not in (np.float32, np.float64, np.longdouble):

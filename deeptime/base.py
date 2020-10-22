@@ -100,16 +100,16 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
         except AttributeError:
             state = self.__dict__
 
-        if type(self).__module__.startswith('sktime.'):
-            from sktime import __version__
-            return dict(state.items(), _sktime_version=__version__)
+        if type(self).__module__.startswith('deeptime.'):
+            from deeptime import __version__
+            return dict(state.items(), _deeptime_version=__version__)
         else:
             return state
 
     def __setstate__(self, state):
-        from sktime import __version__
-        if type(self).__module__.startswith('sktime.'):
-            pickle_version = state.pop("_sktime_version", None)
+        from deeptime import __version__
+        if type(self).__module__.startswith('deeptime.'):
+            pickle_version = state.pop("_deeptime_version", None)
             if pickle_version != __version__:
                 import warnings
                 warnings.warn(

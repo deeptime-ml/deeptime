@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.sindy
+.. currentmodule: deeptime.sindy
 
 ===============================================================================
 Estimators

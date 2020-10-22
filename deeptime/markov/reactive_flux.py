@@ -31,7 +31,7 @@ class ReactiveFlux(Model):
     of the node set.
 
     Fluxes can be computed using transition path theory - see :cite:`reactiveflux-metzner2009transition`
-    and :func:`sktime.markov.tools.tpt`.
+    and :func:`deeptime.markov.tools.tpt`.
 
     Notes
     -----
@@ -40,7 +40,7 @@ class ReactiveFlux(Model):
     See also
     --------
     compute_reactive_flux : Method that produces ReactiveFlux instances
-    sktime.markov.msm.MarkovStateModel.reactive_flux : TPT analysis based on a Markov state model
+    deeptime.markov.msm.MarkovStateModel.reactive_flux : TPT analysis based on a Markov state model
 
     References
     ----------
@@ -351,7 +351,7 @@ def compute_reactive_flux(transition_matrix: np.ndarray, source_states: Iterable
 
     Returns
     -------
-    tpt: sktime.markov.tools.flux.ReactiveFlux object
+    tpt: deeptime.markov.tools.flux.ReactiveFlux object
         A python object containing the reactive A->B flux network
         and several additional quantities, such as stationary probability,
         committors and set definitions.
@@ -375,7 +375,7 @@ def compute_reactive_flux(transition_matrix: np.ndarray, source_states: Iterable
         :filter: docname in docnames
         :keyprefix: computereactiveflux-
     """
-    import sktime.markov.tools.analysis as msmana
+    import deeptime.markov.tools.analysis as msmana
 
     source_states = ensure_array(source_states, dtype=int)
     target_states = ensure_array(target_states, dtype=int)

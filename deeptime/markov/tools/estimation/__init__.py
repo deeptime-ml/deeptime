@@ -4,9 +4,9 @@ r"""
 MSM estimation
 ==============
 
-.. currentmodule:: sktime.markov.tools.estimation
+.. currentmodule:: deeptime.markov.tools.estimation
 
-This module (:mod:`sktime.markov.tools.estimation`) contains utility functions dealing with MSM estimation from data.
+This module (:mod:`deeptime.markov.tools.estimation`) contains utility functions dealing with MSM estimation from data.
 
 Countmatrix
 ===========

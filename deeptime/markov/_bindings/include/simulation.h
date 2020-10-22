@@ -23,7 +23,7 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
         seed = std::chrono::system_clock::now().time_since_epoch().count();
     }
 
-    auto generator = seed < 0 ? sktime::rnd::randomlySeededGenerator() : sktime::rnd::seededGenerator(seed);
+    auto generator = seed < 0 ? deeptime::rnd::randomlySeededGenerator() : deeptime::rnd::seededGenerator(seed);
     std::discrete_distribution<> ddist;
 
     const dtype* pPtr = P.data();

@@ -75,7 +75,7 @@ class SamplerRevPi(object):
             raise ValueError(f"Unknown dtype {self.C.dtype}")
 
     def check_input(self):
-        from sktime.markov.tools.analysis import is_connected
+        from deeptime.markov.tools.analysis import is_connected
 
         if not np.all(self.C >= 0):
             raise ValueError("Count matrix contains negative elements")

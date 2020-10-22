@@ -6,7 +6,7 @@
 
 #include "common.h"
 
-namespace sktime {
+namespace deeptime {
 namespace rnd {
 
 template<typename Generator = std::mt19937>

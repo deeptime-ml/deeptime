@@ -223,7 +223,7 @@ def _pcca_connected(P, n, pi=None):
     """
 
     # test connectivity
-    from sktime.markov.tools.estimation import connected_sets
+    from deeptime.markov.tools.estimation import connected_sets
 
     labels = connected_sets(P)
     n_components = len(labels)  # (n_components, labels) = connected_components(P, connection='strong')
@@ -231,7 +231,7 @@ def _pcca_connected(P, n, pi=None):
         raise ValueError("Transition matrix is disconnected. Cannot use pcca_connected.")
 
     if pi is None:
-        from sktime.markov.tools.analysis import stationary_distribution
+        from deeptime.markov.tools.analysis import stationary_distribution
         pi = stationary_distribution(P)
     else:
         if pi.shape[0] != P.shape[0]:
@@ -239,7 +239,7 @@ def _pcca_connected(P, n, pi=None):
                              f"instead of {P.shape[0]}.")
         pi /= pi.sum()  # make sure it is normalized
 
-    from sktime.markov.tools.analysis import is_reversible
+    from deeptime.markov.tools.analysis import is_reversible
 
     if not is_reversible(P, mu=pi):
         raise ValueError("Transition matrix does not fulfill detailed balance. "
@@ -250,7 +250,7 @@ def _pcca_connected(P, n, pi=None):
     #      foundation for this, so I'll skip it for now.
 
     # right eigenvectors, ordered
-    from sktime.markov.tools.analysis import eigenvectors
+    from deeptime.markov.tools.analysis import eigenvectors
 
     evecs = eigenvectors(P, n)
 
@@ -318,8 +318,8 @@ def pcca(P: np.ndarray, m: int, pi: np.ndarray = None, transition_matrix_tol: fl
     [2] F. Noe, multiset PCCA and HMMs, in preparation.
     """
     # imports
-    from sktime.markov.tools.estimation import connected_sets
-    from sktime.markov.tools.analysis import eigenvalues, is_transition_matrix, hitting_probability
+    from deeptime.markov.tools.estimation import connected_sets
+    from deeptime.markov.tools.analysis import eigenvalues, is_transition_matrix, hitting_probability
 
     # validate input
     n = np.shape(P)[0]
@@ -451,7 +451,7 @@ def coarsegrain(P, n):
     P_coarse = np.dot(W, A)
 
     # symmetrize and renormalize to eliminate numerical errors
-    from sktime.markov.tools.analysis import stationary_distribution
+    from deeptime.markov.tools.analysis import stationary_distribution
     pi_coarse = np.dot(M.T, stationary_distribution(P))
     X = np.dot(np.diag(pi_coarse), P_coarse)
     P_coarse = X / X.sum(axis=1)[:, None]
@@ -503,7 +503,7 @@ class PCCA(object):
         self._M = pcca(P, m)
 
         # stationary distribution
-        from sktime.markov.tools.analysis import stationary_distribution as _sd
+        from deeptime.markov.tools.analysis import stationary_distribution as _sd
 
         self._pi = _sd(P)
 

@@ -42,7 +42,7 @@ class RegularSpaceClustering(Estimator):
             If this threshold is met during finding the centers, the algorithm will terminate. Must be positive.
         metric : str, default='euclidean'
             The metric to use during clustering. For a list of available metrics,
-            see the :data:`metric registry <sktime.clustering.metrics>`.
+            see the :data:`metric registry <deeptime.clustering.metrics>`.
         n_jobs : int, optional, default=None
             Number of threads to use during estimation.
         """

@@ -383,7 +383,7 @@ class Covariance(Estimator):
               that accepts a trajectory X (np.ndarray(T, n)) and returns a vector of
               re-weighting factors (np.ndarray(T,)). See, e.g.,
 
-              * :class:`KoopmanEstimator <sktime.covariance.KoopmanEstimator>`
+              * :class:`KoopmanEstimator <deeptime.covariance.KoopmanEstimator>`
 
         n_splits : int, optional, default=None
             The number of times the data is split uniformly when performing the covariance estimation. If no value

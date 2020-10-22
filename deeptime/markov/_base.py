@@ -121,16 +121,16 @@ class BayesianPosterior(Model):
 
     See Also
     --------
-    sktime.markov.msm.BayesianMSM : bayesian posterior estimator
+    deeptime.markov.msm.BayesianMSM : bayesian posterior estimator
     """
     def __init__(self, prior=None, samples=None):
         r""" Creates a new instance of this type of model.
 
         Parameters
         ----------
-        prior : sktime.markov.msm.MarkovStateModel, optional, default=None
+        prior : deeptime.markov.msm.MarkovStateModel, optional, default=None
             The prior.
-        samples : list of sktime.markov.msm.MarkovStateModel, optional, default=None
+        samples : list of deeptime.markov.msm.MarkovStateModel, optional, default=None
             Sampled models.
         """
         super().__init__()
@@ -144,7 +144,7 @@ class BayesianPosterior(Model):
 
         Returns
         -------
-        models : list of sktime.markov.msm.MarkovStateModel or None
+        models : list of deeptime.markov.msm.MarkovStateModel or None
             samples
         """
         return self._samples
@@ -156,7 +156,7 @@ class BayesianPosterior(Model):
 
         Returns
         -------
-        prior : sktime.markov.msm.MarkovStateModel or None
+        prior : deeptime.markov.msm.MarkovStateModel or None
             the prior
         """
         return self._prior
@@ -206,7 +206,7 @@ class BayesianPosterior(Model):
         statistics : QuantityStatistics
             The statistics
         """
-        from sktime.util import QuantityStatistics
+        from deeptime.util import QuantityStatistics
         return QuantityStatistics.gather(self.samples, quantity=quantity, store_samples=store_samples,
                                          delimiter=delimiter, confidence=confidence, *args, **kwargs)
 

@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.kernels
+.. currentmodule: deeptime.kernels
 
 .. autosummary::
     :toctree: generated/

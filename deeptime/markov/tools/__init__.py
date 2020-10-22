@@ -1,5 +1,5 @@
 r"""
-.. currentmodule:: sktime.markov.tools
+.. currentmodule:: deeptime.markov.tools
 
 MSM functions
 =============

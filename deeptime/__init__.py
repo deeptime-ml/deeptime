@@ -16,7 +16,7 @@ from . import sindy
 def capi_includes():
     import os
     import sys
-    module_path = sys.modules['sktime'].__path__[0]
+    module_path = sys.modules['deeptime'].__path__[0]
     includes = [os.path.join(module_path, *rest) for rest in [
         ('src', 'include'),  # common headers
         ('clustering', 'include'),  # clustering headers

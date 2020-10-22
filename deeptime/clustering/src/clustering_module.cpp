@@ -15,23 +15,23 @@ std::tuple<py::object, int, int, py::object> castLoopResult(const std::tuple<np_
 }
 
 void registerKmeans(py::module &mod) {
-    mod.def("cluster", sktime::clustering::kmeans::cluster<float>, "chunk"_a, "centers"_a,
+    mod.def("cluster", deeptime::clustering::kmeans::cluster<float>, "chunk"_a, "centers"_a,
             "n_threads"_a, "metric"_a = nullptr);
-    mod.def("cluster", sktime::clustering::kmeans::cluster<double>, "chunk"_a, "centers"_a,
+    mod.def("cluster", deeptime::clustering::kmeans::cluster<double>, "chunk"_a, "centers"_a,
             "n_threads"_a, "metric"_a = nullptr);
-    mod.def("cluster_loop", &sktime::clustering::kmeans::cluster_loop<float>,
+    mod.def("cluster_loop", &deeptime::clustering::kmeans::cluster_loop<float>,
             "chunk"_a, "centers"_a, "n_threads"_a, "max_iter"_a, "tolerance"_a,
             "callback"_a, "metric"_a = nullptr);
-    mod.def("cluster_loop", &sktime::clustering::kmeans::cluster_loop<double>,
+    mod.def("cluster_loop", &deeptime::clustering::kmeans::cluster_loop<double>,
             "chunk"_a, "centers"_a, "n_threads"_a, "max_iter"_a, "tolerance"_a,
             "callback"_a, "metric"_a = nullptr);
-    mod.def("cost_function", &sktime::clustering::kmeans::costAssignFunction<float>,
+    mod.def("cost_function", &deeptime::clustering::kmeans::costAssignFunction<float>,
             "chunk"_a, "centers"_a, "n_threads"_a, "metric"_a = nullptr);
-    mod.def("cost_function", &sktime::clustering::kmeans::costAssignFunction<double>,
+    mod.def("cost_function", &deeptime::clustering::kmeans::costAssignFunction<double>,
             "chunk"_a, "centers"_a, "n_threads"_a, "metric"_a = nullptr);
-    mod.def("init_centers_kmpp", &sktime::clustering::kmeans::initKmeansPlusPlus<float>,
+    mod.def("init_centers_kmpp", &deeptime::clustering::kmeans::initKmeansPlusPlus<float>,
             "chunk"_a, "k"_a, "random_seed"_a, "n_threads"_a, "callback"_a, "metric"_a = nullptr);
-    mod.def("init_centers_kmpp", &sktime::clustering::kmeans::initKmeansPlusPlus<double>,
+    mod.def("init_centers_kmpp", &deeptime::clustering::kmeans::initKmeansPlusPlus<double>,
             "chunk"_a, "k"_a, "random_seed"_a, "n_threads"_a, "callback"_a, "metric"_a = nullptr);
 }
 
@@ -89,7 +89,7 @@ The metric class. It should not be directly instantiated from python, but is rat
 clustering is computationally expensive and the metric is called often, it makes sense to export this functionality
 from Python into an extension. To this end the abstract Metric class as defined in `clustering/include/metric.h` can
 be implemented and exposed to python. Afterwards it can be used in the clustering module through the
-:data:`metric registry <sktime.clustering.metrics>`.
+:data:`metric registry <deeptime.clustering.metrics>`.
 )delim");
     py::class_<EuclideanMetric, Metric>(m, "EuclideanMetric").def(py::init<>());
 }

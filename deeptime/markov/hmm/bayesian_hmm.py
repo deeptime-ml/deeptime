@@ -177,7 +177,7 @@ class BayesianHMM(Estimator):
 
         Parameters
         ----------
-        initial_hmm : :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>`
+        initial_hmm : :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>`
            Single-point estimate of HMM object around which errors will be evaluated.
            There is a static method available that can be used to generate a default prior, see :meth:`default`.
         n_samples : int, optional, default=100
@@ -289,7 +289,7 @@ class BayesianHMM(Estimator):
                 prior_submodel: bool = True):
         """ Computes a default prior for a BHMM and uses that for error estimation.
         For a more detailed description of the arguments please
-        refer to :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>` or
+        refer to :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>` or
         :meth:`__init__`.
 
         Returns
@@ -297,7 +297,7 @@ class BayesianHMM(Estimator):
         estimator : BayesianHMM
             Estimator that is initialized with a default prior model.
         """
-        from sktime.markov.hmm import init, MaximumLikelihoodHMM
+        from deeptime.markov.hmm import init, MaximumLikelihoodHMM
         dtrajs = ensure_dtraj_list(dtrajs)
         init_hmm = init.discrete.metastable_from_data(dtrajs, n_hidden_states=n_hidden_states, lagtime=lagtime,
                                                       stride=stride, reversible=reversible, stationary=stationary,

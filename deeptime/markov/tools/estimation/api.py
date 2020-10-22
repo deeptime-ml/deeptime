@@ -114,7 +114,7 @@ def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import count_matrix
+    >>> from deeptime.markov.tools.estimation import count_matrix
 
     >>> dtraj = np.array([0, 0, 1, 0, 1, 1, 0])
     >>> tau = 2
@@ -366,7 +366,7 @@ def connected_sets(C, directed=True):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import connected_sets
+    >>> from deeptime.markov.tools.estimation import connected_sets
 
     >>> C = np.array([[10, 1, 0], [2, 0, 3], [0, 0, 4]])
     >>> cc_directed = connected_sets(C)
@@ -423,7 +423,7 @@ def largest_connected_set(C, directed=True):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import largest_connected_set
+    >>> from deeptime.markov.tools.estimation import largest_connected_set
 
     >>> C =  np.array([[10, 1, 0], [2, 0, 3], [0, 0, 4]])
     >>> lcc_directed = largest_connected_set(C)
@@ -482,7 +482,7 @@ def largest_connected_submatrix(C, directed=True, lcc=None):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import largest_connected_submatrix
+    >>> from deeptime.markov.tools.estimation import largest_connected_submatrix
 
     >>> C = np.array([[10, 1, 0], [2, 0, 3], [0, 0, 4]])
 
@@ -541,7 +541,7 @@ def is_connected(C, directed=True):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import is_connected
+    >>> from deeptime.markov.tools.estimation import is_connected
 
     >>> C = np.array([[10, 1, 0], [2, 0, 3], [0, 0, 4]])
     >>> is_connected(C)
@@ -589,7 +589,7 @@ def prior_neighbor(C, alpha=0.001):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import prior_neighbor
+    >>> from deeptime.markov.tools.estimation import prior_neighbor
 
     >>> C = np.array([[10, 1, 0], [2, 0, 3], [0, 1, 4]])
     >>> B = prior_neighbor(C)
@@ -632,7 +632,7 @@ def prior_const(C, alpha=0.001):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import prior_const
+    >>> from deeptime.markov.tools.estimation import prior_const
 
     >>> C = np.array([[10, 1, 0], [2, 0, 3], [0, 1, 4]])
     >>> B = prior_const(C)
@@ -691,7 +691,7 @@ def prior_rev(C, alpha=-1.0):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import prior_rev
+    >>> from deeptime.markov.tools.estimation import prior_rev
 
     >>> C = np.array([[10, 1, 0], [2, 0, 3], [0, 1, 4]])
     >>> B = prior_rev(C)
@@ -792,7 +792,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import transition_matrix
+    >>> from deeptime.markov.tools.estimation import transition_matrix
 
     >>> C = np.array([[10, 1, 1], [2, 0, 3], [0, 1, 4]])
 
@@ -948,7 +948,7 @@ def log_likelihood(C, T):
     --------
 
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import log_likelihood
+    >>> from deeptime.markov.tools.estimation import log_likelihood
 
     >>> T = np.array([[0.9, 0.1, 0.0], [0.5, 0.0, 0.5], [0.0, 0.1, 0.9]])
 
@@ -1294,7 +1294,7 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
     Example
     -------
     >>> import numpy as np
-    >>> from sktime.markov.tools.estimation import rate_matrix
+    >>> from deeptime.markov.tools.estimation import rate_matrix
     >>> C = np.array([[100,1],[50,50]])
     >>> rate_matrix(C)
     array([[-0.0138...,  0.0138...],

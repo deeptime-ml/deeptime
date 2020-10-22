@@ -31,12 +31,12 @@ class BayesianMSM(_MSMBaseEstimator):
     time :math:`\tau=2`:
 
     >>> import numpy as np
-    >>> import sktime
+    >>> import deeptime
     >>> dtrajs = [np.array([0,1,2,2,2,2,1,2,2,2,1,0,0,0,0,0,0,0]), np.array([0,0,0,0,1,1,2,2,2,2,2,2,2,1,0,0])]
-    >>> counts = sktime.markov.TransitionCountEstimator(lagtime=2, count_mode="effective").fit(dtrajs).fetch_model()
-    >>> mm = sktime.markov.msm.BayesianMSM().fit(counts).fetch_model()
+    >>> counts = deeptime.markov.TransitionCountEstimator(lagtime=2, count_mode="effective").fit(dtrajs).fetch_model()
+    >>> mm = deeptime.markov.msm.BayesianMSM().fit(counts).fetch_model()
 
-    The resulting Model contains a prior :class:`MSM <sktime.markov.msm.MarkovStateModel>` as well as a list of sample
+    The resulting Model contains a prior :class:`MSM <deeptime.markov.msm.MarkovStateModel>` as well as a list of sample
     MSMs. Its transition matrix comes from a maximum likelihood estimation. We can access, e.g., the transition matrix
     as follows:
 
@@ -195,7 +195,7 @@ class BayesianMSM(_MSMBaseEstimator):
         self : BayesianMSM
             Reference to self.
         """
-        from sktime.markov import TransitionCountModel
+        from deeptime.markov import TransitionCountModel
         if isinstance(data, TransitionCountModel) and data.counting_mode is not None \
                 and "effective" not in data.counting_mode:
             raise ValueError("The transition count model was not estimated using an effective counting method, "
@@ -242,7 +242,7 @@ class BayesianMSM(_MSMBaseEstimator):
             raise ValueError("Can only sample confidences with a count model. The counting mode should be 'effective'"
                              " to avoid correlations between counts and therefore wrong confidences.")
         # transition matrix sampler
-        from sktime.markov.tools.estimation import tmatrix_sampler
+        from deeptime.markov.tools.estimation import tmatrix_sampler
         from math import sqrt
         if self.n_steps is None:
             # heuristic for number of steps to decorrelate

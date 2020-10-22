@@ -21,9 +21,9 @@ class RevPiSampler {
 public:
     explicit RevPiSampler(int seed) : uniform(0, 1) {
         if (seed < 0) {
-            generator = sktime::rnd::randomlySeededGenerator<Generator>();
+            generator = deeptime::rnd::randomlySeededGenerator<Generator>();
         } else {
-            generator = sktime::rnd::seededGenerator<Generator>(static_cast<std::uint32_t>(seed));
+            generator = deeptime::rnd::seededGenerator<Generator>(static_cast<std::uint32_t>(seed));
         }
     }
 
@@ -231,9 +231,9 @@ class RevSampler {
 public:
     explicit RevSampler(int seed) : uniform(0, 1) {
         if (seed < 0) {
-            generator = sktime::rnd::randomlySeededGenerator<Generator>();
+            generator = deeptime::rnd::randomlySeededGenerator<Generator>();
         } else {
-            generator = sktime::rnd::seededGenerator<Generator>(static_cast<std::uint32_t>(seed));
+            generator = deeptime::rnd::seededGenerator<Generator>(static_cast<std::uint32_t>(seed));
         }
     }
 
@@ -360,7 +360,7 @@ private:
     Generator generator;
     std::normal_distribution<dtype> normal;  // standard normal by default ctor
     std::gamma_distribution<dtype> gamma;
-    sktime::rnd::beta_distribution<dtype> beta;
+    deeptime::rnd::beta_distribution<dtype> beta;
     std::uniform_real_distribution<dtype> uniform;
 
     bool acceptStep(dtype log_prob_old, dtype log_prob_new) {

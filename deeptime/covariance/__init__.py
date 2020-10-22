@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.covariance
+.. currentmodule: deeptime.covariance
 
 ===============================================================================
 Estimators

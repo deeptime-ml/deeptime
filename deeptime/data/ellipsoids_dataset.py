@@ -10,7 +10,7 @@ class Ellipsoids(object):
     rotated into higher-dimensional space.
 
     In particular, a synthetic trajectory of observations of states :math:`S = \{0, 1\}` can be generated from
-    a :class:`MSM <sktime.markov.msm.MarkovStateModel>`. The transition probabilities have to be chosen so that
+    a :class:`MSM <deeptime.markov.msm.MarkovStateModel>`. The transition probabilities have to be chosen so that
     the chain is lazy, i.e., it is more likely to stay in one state than to transition to another.
 
     Optionally, a continuous observation chain can be generated with two parallel ellipsoidal multivariate normal
@@ -21,9 +21,9 @@ class Ellipsoids(object):
     .. plot::
 
        import matplotlib.pyplot as plt
-       import sktime
+       import deeptime
 
-       ftraj = sktime.data.ellipsoids(seed=17).observations(1000)
+       ftraj = deeptime.data.ellipsoids(seed=17).observations(1000)
        plt.scatter(*(ftraj.T))
        plt.grid()
        plt.title(r'Ellipsoids dataset observations with laziness of $0.97$.')
@@ -50,7 +50,7 @@ class Ellipsoids(object):
         if laziness <= 0.5 or laziness > 1:
             raise ValueError("Laziness must be at least 0.5 and at most 1.0 but was {}".format(laziness))
         transition_matrix = np.array([[laziness, 1-laziness], [1-laziness, laziness]])
-        from sktime.markov.msm import MarkovStateModel
+        from deeptime.markov.msm import MarkovStateModel
         self._msm = MarkovStateModel(transition_matrix)
         self._rnd = np.random.RandomState(seed=seed)
         self._seed = seed

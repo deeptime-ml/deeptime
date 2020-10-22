@@ -16,7 +16,7 @@
 #include "thread_utils.h"
 #include "distribution_utils.h"
 
-namespace sktime {
+namespace deeptime {
 namespace clustering {
 namespace kmeans {
 

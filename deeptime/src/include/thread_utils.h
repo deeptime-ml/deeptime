@@ -3,7 +3,7 @@
 #include <thread>
 #include <atomic>
 
-namespace sktime {
+namespace deeptime {
 namespace thread {
 
 class scoped_thread {

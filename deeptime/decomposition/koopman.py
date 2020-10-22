@@ -164,7 +164,7 @@ class KoopmanModel(Model, Transformer):
         .. math::
             \hat{X}_{t+\tau} = (V^\top)^{-1} \Sigma U^\top (X_t - \mu_0) + \mu_t.
 
-        If the model stems from a :class:`VAMP <sktime.decomposition.VAMP>` estimator, :math:`V` are the left
+        If the model stems from a :class:`VAMP <deeptime.decomposition.VAMP>` estimator, :math:`V` are the left
         singular vectors, :math:`\Sigma` the singular values, and :math:`U` the right singular vectors.
 
         Parameters
@@ -173,7 +173,7 @@ class KoopmanModel(Model, Transformer):
             The input trajectory
         components : int or list of int or None, default=None
             Optional arguments for the Koopman operator if appropriate. If the model stems from
-            a :class:`VAMP <sktime.decomposition.VAMP>` estimator, these are the component(s) to project onto.
+            a :class:`VAMP <deeptime.decomposition.VAMP>` estimator, these are the component(s) to project onto.
             If None, all processes are taken into account, if list of integer, this sets all singular values
             to zero but the "components"th ones.
 
@@ -235,8 +235,8 @@ class CovarianceKoopmanModel(KoopmanModel):
     r"""A type of Koopman model which was obtained through diagonalization of covariance matrices. This leads to
     a Koopman operator which is a diagonal matrix and can be used to project onto specific processes of the system.
 
-    The estimators which produce this kind of model are :class:`VAMP <sktime.decomposition.VAMP>` and
-    :class:`TICA <sktime.decomposition.TICA>`."""
+    The estimators which produce this kind of model are :class:`VAMP <deeptime.decomposition.VAMP>` and
+    :class:`TICA <deeptime.decomposition.TICA>`."""
 
     def __init__(self, operator: np.ndarray, basis_transform_forward: Optional[KoopmanBasisTransform],
                  basis_transform_backward: Optional[KoopmanBasisTransform], cov: CovarianceModel,
@@ -302,27 +302,27 @@ class CovarianceKoopmanModel(KoopmanModel):
 
     @property
     def mean_0(self) -> np.ndarray:
-        r""" Shortcut to :attr:`mean_0 <sktime.covariance.CovarianceModel.mean_0>`. """
+        r""" Shortcut to :attr:`mean_0 <deeptime.covariance.CovarianceModel.mean_0>`. """
         return self.cov.mean_0
 
     @property
     def mean_t(self) -> np.ndarray:
-        r""" Shortcut to :attr:`mean_t <sktime.covariance.CovarianceModel.mean_t>`. """
+        r""" Shortcut to :attr:`mean_t <deeptime.covariance.CovarianceModel.mean_t>`. """
         return self.cov.mean_t
 
     @property
     def cov_00(self) -> np.ndarray:
-        r""" Shortcut to :attr:`cov_00 <sktime.covariance.CovarianceModel.cov_00>`. """
+        r""" Shortcut to :attr:`cov_00 <deeptime.covariance.CovarianceModel.cov_00>`. """
         return self.cov.cov_00
 
     @property
     def cov_0t(self) -> np.ndarray:
-        r""" Shortcut to :attr:`cov_0t <sktime.covariance.CovarianceModel.cov_0t>`. """
+        r""" Shortcut to :attr:`cov_0t <deeptime.covariance.CovarianceModel.cov_0t>`. """
         return self.cov.cov_0t
 
     @property
     def cov_tt(self) -> np.ndarray:
-        r""" Shortcut to :attr:`cov_tt <sktime.covariance.CovarianceModel.cov_tt>`. """
+        r""" Shortcut to :attr:`cov_tt <deeptime.covariance.CovarianceModel.cov_tt>`. """
         return self.cov.cov_tt
 
     @property

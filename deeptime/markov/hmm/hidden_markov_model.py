@@ -12,7 +12,7 @@ from ...util.types import ensure_dtraj_list, ensure_array
 
 class HiddenMarkovModel(Model):
     """ Hidden Markov state model consisting of a transition model
-    (:class:`MSM <sktime.markov.msm.MarkovStateModel>`) on the hidden states, an
+    (:class:`MSM <deeptime.markov.msm.MarkovStateModel>`) on the hidden states, an
     :class:`output model <OutputModel>` which maps from the hidden states to a distribution of observable states,
     and optionally an initial distribution on the hidden states. Some properties require a crisp assignment to
     states in the observable space, in which case only a discrete output model can be used.
@@ -39,7 +39,7 @@ class HiddenMarkovModel(Model):
 
         Parameters
         ----------
-        transition_model : (m,m) ndarray or from sktime.markov import MarkovStateModel
+        transition_model : (m,m) ndarray or from deeptime.markov import MarkovStateModel
             Transition matrix for hidden (macro) states
         output_model : (m,n) ndarray or OutputModel
             observation probability matrix from hidden to observable (micro) states or OutputModel instance which yields
@@ -67,7 +67,7 @@ class HiddenMarkovModel(Model):
         """
         super().__init__()
         if isinstance(transition_model, np.ndarray):
-            from sktime.markov.msm import MarkovStateModel
+            from deeptime.markov.msm import MarkovStateModel
             transition_model = MarkovStateModel(transition_model)
         if isinstance(output_model, np.ndarray):
             output_model = DiscreteOutputModel(output_model)
@@ -162,7 +162,7 @@ class HiddenMarkovModel(Model):
 
         Returns
         -------
-        count_model : sktime.markov.TransitionCountModel
+        count_model : deeptime.markov.TransitionCountModel
             The count model for the micro states.
         """
         return self.transition_model.count_model
@@ -173,7 +173,7 @@ class HiddenMarkovModel(Model):
 
         Returns
         -------
-        model : sktime.markov.msm.MarkovStateModel
+        model : deeptime.markov.msm.MarkovStateModel
             The transition model.
         """
         return self._transition_model
@@ -428,7 +428,7 @@ class HiddenMarkovModel(Model):
             raise RuntimeError('HMM model does not have a hidden state trajectory.')
         observations = ensure_dtraj_list(observations)
 
-        from sktime.markov.hmm.util import observations_in_state
+        from deeptime.markov.hmm.util import observations_in_state
         return observations_in_state(self.hidden_state_trajectories, observations, state_index)
 
     ################################################################################
@@ -504,7 +504,7 @@ class HiddenMarkovModel(Model):
             tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
         """
-        from sktime.markov.sample import compute_index_states
+        from deeptime.markov.sample import compute_index_states
         mapped = self.transform_discrete_trajectories_to_observed_symbols(dtrajs)
         observable_state_indices = compute_index_states(mapped)
         return indices_by_distribution(observable_state_indices, self.output_probabilities, nsample)
@@ -636,7 +636,7 @@ class HiddenMarkovModel(Model):
 
         See Also
         --------
-        sktime.markov.msm.MarkovStateModel.expectation
+        deeptime.markov.msm.MarkovStateModel.expectation
         """
         return self.transition_model.expectation(self._project_to_hidden(a))
 
@@ -645,7 +645,7 @@ class HiddenMarkovModel(Model):
 
         See Also
         --------
-        sktime.markov.msm.MarkovStateModel.correlation
+        deeptime.markov.msm.MarkovStateModel.correlation
         """
         # basic checks for a and b
         a = self._project_to_hidden(a)
@@ -658,7 +658,7 @@ class HiddenMarkovModel(Model):
 
         See Also
         --------
-        sktime.markov.msm.MarkovStateModel.fingerprint_correlation
+        deeptime.markov.msm.MarkovStateModel.fingerprint_correlation
         """
         a = self._project_to_hidden(a, ndim=1)
         b = self._project_to_hidden(b, ndim=1, allow_none=True)
@@ -669,7 +669,7 @@ class HiddenMarkovModel(Model):
 
         See Also
         --------
-        sktime.markov.msm.MarkovStateModel.relaxation
+        deeptime.markov.msm.MarkovStateModel.relaxation
         """
         p0 = self._project_to_hidden(p0, ndim=1)
         a = self._project_to_hidden(a, ndim=1)
@@ -681,7 +681,7 @@ class HiddenMarkovModel(Model):
 
         See Also
         --------
-        sktime.markov.msm.MarkovStateModel.fingerprint_relaxation
+        deeptime.markov.msm.MarkovStateModel.fingerprint_relaxation
         """
         p0 = self._project_to_hidden(p0, ndim=1)
         a = self._project_to_hidden(a, ndim=1)
@@ -828,7 +828,7 @@ class HiddenMarkovModel(Model):
         symbols : np.ndarray
             The observation symbols which are visited.
         """
-        from sktime.markov.util import compute_dtrajs_effective, count_states
+        from deeptime.markov.util import compute_dtrajs_effective, count_states
         if dtrajs is None:
             raise ValueError("Needs nonempty dtrajs to evaluate nonempty obs.")
         dtrajs = ensure_dtraj_list(dtrajs)

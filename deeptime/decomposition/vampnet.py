@@ -159,8 +159,8 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
 
     See Also
     --------
-    sktime.covariance.Covariance : Estimator yielding these kind of covariance matrices based on raw numpy arrays
-                                   using an online estimation procedure.
+    deeptime.covariance.Covariance : Estimator yielding these kind of covariance matrices based on raw numpy arrays
+                                     using an online estimation procedure.
     """
 
     assert x.shape == y.shape, "x and y must be of same shape"
@@ -194,7 +194,7 @@ def score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon
     data_lagged : torch.Tensor
         (N, k)-dimensional torch tensor
     method : str, default='VAMP2'
-        The scoring method. See :meth:`score <sktime.decomposition.CovarianceKoopmanModel.score>` for details.
+        The scoring method. See :meth:`score <deeptime.decomposition.CovarianceKoopmanModel.score>` for details.
     epsilon : float, default=1e-6
         Cutoff parameter for small eigenvalues, alternatively regularization parameter.
     mode : str, default='trunc'
@@ -368,11 +368,11 @@ class VAMPNet(Estimator, Transformer):
     which are equipped with a loss that is the negative VAMP score. This estimator is also a transformer
     and can be used to transform data into the optimized space. From there it can either be used to estimate
     Markov state models via making assignment probabilities crisp (in case of softmax output distributions) or
-    to estimate the Koopman operator using the :class:`VAMP <sktime.decomposition.VAMP>` estimator.
+    to estimate the Koopman operator using the :class:`VAMP <deeptime.decomposition.VAMP>` estimator.
 
     See Also
     --------
-    sktime.decomposition.VAMP : Koopman operator estimator which can be applied to transformed data.
+    deeptime.decomposition.VAMP : Koopman operator estimator which can be applied to transformed data.
 
     References
     ----------

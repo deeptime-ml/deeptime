@@ -44,7 +44,7 @@ class SamplerRev(object):
             raise ValueError(f"Unknown dtype {self.C.dtype}")
 
     def check_input(self):
-        from sktime.markov.tools.analysis import is_connected
+        from deeptime.markov.tools.analysis import is_connected
         if self.C.dtype not in (np.float32, np.float64, np.longdouble):
             raise ValueError("Only supports float32, float64, and longdouble dtype.")
         if not np.all(self.C >= 0):

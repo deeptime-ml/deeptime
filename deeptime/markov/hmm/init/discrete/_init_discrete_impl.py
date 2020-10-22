@@ -54,12 +54,12 @@ def _regularize_hidden(initial_distribution, transition_matrix, reversible=True,
     transition_matrix /= transition_matrix.sum(axis=1)[:, None]
     # ensure reversibility
     if reversible:
-        from sktime.markov._transition_matrix import enforce_reversible_on_closed
+        from deeptime.markov._transition_matrix import enforce_reversible_on_closed
         transition_matrix = enforce_reversible_on_closed(transition_matrix)
 
     # REGULARIZE p0
     if stationary:
-        from sktime.markov._transition_matrix import stationary_distribution
+        from deeptime.markov._transition_matrix import stationary_distribution
         stationary_distribution(transition_matrix, C=count_matrix)
     else:
         initial_distribution = np.maximum(initial_distribution, eps)
@@ -152,7 +152,7 @@ def _coarse_grain_transition_matrix(P, M):
 def metastable_from_msm(msm, n_hidden_states: int,
                         reversible: bool = True, stationary: bool = False,
                         separate_symbols=None, regularize: bool = True):
-    r""" Makes an initial guess for an :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>` with
+    r""" Makes an initial guess for an :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>` with
     discrete output model from an already existing MSM over observable states. The procedure is described in
     :cite:`hmm-init-msm-noe2013projected` and uses PCCA+ :cite:`hmm-init-msm-roblitz2013fuzzy` for
     coarse-graining the transition matrix and obtaining membership assignments.
@@ -185,14 +185,14 @@ def metastable_from_msm(msm, n_hidden_states: int,
 
     See Also
     --------
-    :class:`DiscreteOutputModel <sktime.markov.hmm.DiscreteOutputModel>`
+    :class:`DiscreteOutputModel <deeptime.markov.hmm.DiscreteOutputModel>`
         The type of output model this heuristic uses.
 
     :func:`metastable_from_data`
         Initial guess from data if no MSM is available yet.
 
-    :func:`init.gaussian.from_data <sktime.markov.hmm.init.gaussian.from_data>`
-        Initial guess with :class:`Gaussian output model <sktime.markov.hmm.GaussianOutputModel>`.
+    :func:`init.gaussian.from_data <deeptime.markov.hmm.init.gaussian.from_data>`
+        Initial guess with :class:`Gaussian output model <deeptime.markov.hmm.GaussianOutputModel>`.
 
     References
     ----------
@@ -201,10 +201,10 @@ def metastable_from_msm(msm, n_hidden_states: int,
         :filter: docname in docnames
         :keyprefix: hmm-init-msm-
     """
-    from sktime.markov._transition_matrix import stationary_distribution
-    from sktime.markov._transition_matrix import estimate_P
-    from sktime.markov.msm import MarkovStateModel
-    from sktime.markov import PCCAModel
+    from deeptime.markov._transition_matrix import stationary_distribution
+    from deeptime.markov._transition_matrix import estimate_P
+    from deeptime.markov.msm import MarkovStateModel
+    from deeptime.markov import PCCAModel
 
     count_matrix = msm.count_model.count_matrix
     nonseparate_symbols = np.arange(msm.count_model.n_states_full)
@@ -246,7 +246,7 @@ def metastable_from_msm(msm, n_hidden_states: int,
 
     hidden_transition_matrix = _coarse_grain_transition_matrix(msm.transition_matrix, memberships)
     if reversible:
-        from sktime.markov._transition_matrix import enforce_reversible_on_closed
+        from deeptime.markov._transition_matrix import enforce_reversible_on_closed
         hidden_transition_matrix = enforce_reversible_on_closed(hidden_transition_matrix)
 
     hidden_counts = memberships.T.dot(count_matrix).dot(memberships)
@@ -268,7 +268,7 @@ def metastable_from_msm(msm, n_hidden_states: int,
                                                              stationary=stationary, count_matrix=hidden_counts, eps=eps_a)
     eps_b = 0.01 / msm.n_states if regularize else 0.
     output_probabilities = _regularize_pobs(output_probabilities, nonempty=None, separate=separate_symbols, eps=eps_b)
-    from sktime.markov.hmm import HiddenMarkovModel
+    from deeptime.markov.hmm import HiddenMarkovModel
     return HiddenMarkovModel(transition_model=hidden_transition_matrix, output_model=output_probabilities,
                              initial_distribution=hidden_pi)
 
@@ -277,11 +277,11 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
                          reversible: bool = True, stationary: bool = False,
                          separate_symbols=None, states: Optional[np.ndarray] = None,
                          regularize: bool = True, connectivity_threshold: Union[str, float] = 0.):
-    r"""Estimates an initial guess :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>` from given
+    r"""Estimates an initial guess :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>` from given
     discrete trajectories.
 
     Following the procedure described in :cite:`hmm-init-data-noe2013projected`: First
-    a :class:`MSM <sktime.markov.msm.MarkovStateModel>` is estimated, which is then subsequently
+    a :class:`MSM <deeptime.markov.msm.MarkovStateModel>` is estimated, which is then subsequently
     coarse-grained with PCCA+ :cite:`hmm-init-data-roblitz2013fuzzy`. After estimation of the MSM, this
     method calls :meth:`metastable_from_msm`.
 
@@ -312,9 +312,9 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
 
         * 'all': all available states are taken into account
         * 'largest': the largest connected state set is selected, see
-          :meth:`TransitionCountModel.submodel_largest <sktime.markov.TransitionCountModel.submodel_largest>`.
+          :meth:`TransitionCountModel.submodel_largest <deeptime.markov.TransitionCountModel.submodel_largest>`.
         * populus: the connected set with the largest population in the data, see
-          :meth:`TransitionCountModel.submodel_largest <sktime.markov.TransitionCountModel.submodel_largest>`.
+          :meth:`TransitionCountModel.submodel_largest <deeptime.markov.TransitionCountModel.submodel_largest>`.
 
         For regularization, each of the options can be suffixed by a '-regularized', e.g., 'largest-regularized'.
         This means that the count matrix has no zero entries and everything is reversibly connected. In particular,
@@ -354,14 +354,14 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
 
     See Also
     --------
-    :class:`DiscreteOutputModel <sktime.markov.hmm.DiscreteOutputModel>`
+    :class:`DiscreteOutputModel <deeptime.markov.hmm.DiscreteOutputModel>`
         The type of output model this heuristic uses.
 
     :func:`metastable_from_msm`
-        Initial guess from an already existing :class:`MSM <sktime.markov.msm.MarkovStateModel>`.
+        Initial guess from an already existing :class:`MSM <deeptime.markov.msm.MarkovStateModel>`.
 
-    :func:`init.gaussian.from_data <sktime.markov.hmm.init.gaussian.from_data>`
-        Initial guess with :class:`Gaussian output model <sktime.markov.hmm.GaussianOutputModel>`.
+    :func:`init.gaussian.from_data <deeptime.markov.hmm.init.gaussian.from_data>`
+        Initial guess with :class:`Gaussian output model <deeptime.markov.hmm.GaussianOutputModel>`.
 
 
     References
@@ -375,8 +375,8 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
             + [m + "-regularized" for m in metastable_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(metastable_from_data.VALID_MODES)))
 
-    from sktime.markov.util import compute_dtrajs_effective
-    from sktime.markov import TransitionCountEstimator
+    from deeptime.markov.util import compute_dtrajs_effective
+    from deeptime.markov import TransitionCountEstimator
 
     dtrajs = ensure_dtraj_list(dtrajs)
     dtrajs = compute_dtrajs_effective(dtrajs, lagtime=lagtime, n_states=n_hidden_states, stride=stride)
@@ -384,7 +384,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
     if states is not None:
         counts = counts.submodel(states)
     if '-regularized' in mode:
-        import sktime.markov.tools.estimation as memest
+        import deeptime.markov.tools.estimation as memest
         counts.count_matrix[...] += memest.prior_neighbor(counts.count_matrix, 0.001)
         nonempty = np.where(counts.count_matrix.sum(axis=0) + counts.count_matrix.sum(axis=1) > 0)[0]
         counts.count_matrix[nonempty, nonempty] = np.maximum(counts.count_matrix[nonempty, nonempty], 0.001)
@@ -396,7 +396,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
     if 'populous' in mode:
         counts = counts.submodel_largest(directed=True, connectivity_threshold=connectivity_threshold,
                                          sort_by_population=True)
-    from sktime.markov.msm import MaximumLikelihoodMSM
+    from deeptime.markov.msm import MaximumLikelihoodMSM
     msm = MaximumLikelihoodMSM(reversible=True, allow_disconnected=True, maxerr=1e-3,
                                maxiter=10000).fit(counts).fetch_model()
     return metastable_from_msm(msm, n_hidden_states, reversible, stationary, separate_symbols, regularize)
@@ -406,7 +406,7 @@ metastable_from_data.VALID_MODES = ['all', 'largest', 'populous']
 
 
 def random_guess(n_observation_states: int, n_hidden_states: int, seed: Optional[int] = None):
-    r"""Initializes a :class:`HMM <sktime.markov.hmm.HiddenMarkovModel>` with a set number of hidden and
+    r"""Initializes a :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>` with a set number of hidden and
     observable states by setting the transition matrix uniform and drawing a random row-stochastic matrix as
     output probabilities.
 
@@ -429,5 +429,5 @@ def random_guess(n_observation_states: int, n_hidden_states: int, seed: Optional
     P.fill(1. / n_hidden_states)
     B = state.uniform(size=(n_hidden_states, n_observation_states))
     B /= B.sum(axis=-1, keepdims=True)
-    from sktime.markov.hmm import HiddenMarkovModel
+    from deeptime.markov.hmm import HiddenMarkovModel
     return HiddenMarkovModel(transition_model=P, output_model=B)

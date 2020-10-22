@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.markov
+.. currentmodule: deeptime.markov
 
 ===============================================================================
 Transition counting and analysis tools

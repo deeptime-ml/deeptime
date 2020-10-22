@@ -246,7 +246,7 @@ class MaximumLikelihoodHMM(Estimator):
             initial_model = self.initial_transition_model
         if initial_model is None or not isinstance(initial_model, HiddenMarkovModel):
             raise ValueError("For estimation, an initial model of type "
-                             "`sktime.markov.hmm.HiddenMarkovModel` is required.")
+                             "`deeptime.markov.hmm.HiddenMarkovModel` is required.")
 
         # copy initial model
         transition_matrix = initial_model.transition_model.transition_matrix

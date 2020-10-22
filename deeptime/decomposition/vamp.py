@@ -276,7 +276,7 @@ class VAMP(Estimator, Transformer):
         data : (T, n) ndarray or list thereof
             Input time-series.
         weights
-            See the :class:`Covariance <sktime.covariance.Covariance>` estimator.
+            See the :class:`Covariance <deeptime.covariance.Covariance>` estimator.
 
         Returns
         -------

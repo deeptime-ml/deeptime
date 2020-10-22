@@ -42,7 +42,7 @@ def pcca(P, m, stationary_distribution=None):
 
     # stationary distribution
     if stationary_distribution is None:
-        from sktime.markov.tools.analysis import stationary_distribution
+        from deeptime.markov.tools.analysis import stationary_distribution
         pi = stationary_distribution(P)
     else:
         pi = stationary_distribution

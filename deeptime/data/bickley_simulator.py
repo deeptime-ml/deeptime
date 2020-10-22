@@ -167,7 +167,7 @@ class BickleyJetEndpointsDataset3D(TimeLaggedDataset):
         assert data_lagged.shape[1] == 3
 
     def cluster(self, n_bins):
-        from sktime.clustering import ClusterModel
+        from deeptime.clustering import ClusterModel
 
         minval = min(np.min(self.data), np.min(self.data_lagged))
         maxval = max(np.max(self.data), np.max(self.data_lagged))

@@ -48,7 +48,7 @@ class DrunkardsWalk(object):
         self.barrier_states = [self.coordinate_to_state(barrier) for barrier in self.barriers]
         self.barrier_weights = [None]*len(barriers)
 
-        from sktime.markov.msm import MarkovStateModel
+        from deeptime.markov.msm import MarkovStateModel
         self._msm = MarkovStateModel(transition_matrix=np.eye(self.n_states, dtype=np.float64))
         self._update_transition_matrix()
 
@@ -207,12 +207,12 @@ class DrunkardsWalk(object):
 
     @property
     def msm(self):
-        r""" Yields a :class:`MSM <sktime.markov.msm.MarkovStateModel>` which is parameterized with a transition matrix
+        r""" Yields a :class:`MSM <deeptime.markov.msm.MarkovStateModel>` which is parameterized with a transition matrix
         corresponding to this setup.
 
         Returns
         -------
-        msm : sktime.markov.msm.MarkovStateModel
+        msm : deeptime.markov.msm.MarkovStateModel
             The corresponding Markov state model.
         """
         return self._msm

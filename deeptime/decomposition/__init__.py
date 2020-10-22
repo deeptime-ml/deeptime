@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.decomposition
+.. currentmodule: deeptime.decomposition
 
 ===============================================================================
 Estimators

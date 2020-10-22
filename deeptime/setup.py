@@ -1,7 +1,7 @@
 def configuration(parent_package='', top_path=None):
     from numpy.distutils.misc_util import Configuration
 
-    config = Configuration('sktime', parent_package, top_path)
+    config = Configuration('deeptime', parent_package, top_path)
 
     config.add_subpackage('clustering')
     config.add_subpackage('covariance')

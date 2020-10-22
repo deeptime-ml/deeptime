@@ -4,7 +4,7 @@ Contains various metrics for ranking kinetic models
 
 import numpy as np
 
-from sktime.numeric.eigen import spd_inv_sqrt
+from deeptime.numeric.eigen import spd_inv_sqrt
 
 __author__ = 'noe'
 

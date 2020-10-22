@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.clustering
+.. currentmodule: deeptime.clustering
 
 ===============================================================================
 Estimators

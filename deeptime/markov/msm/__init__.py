@@ -1,5 +1,5 @@
 r"""
-.. currentmodule: sktime.markov.msm
+.. currentmodule: deeptime.markov.msm
 
 Maximum-likelihood MSMs (ML-MSM) and Bayesian sampling
 ------------------------------------------------------
