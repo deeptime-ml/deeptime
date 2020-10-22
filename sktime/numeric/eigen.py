@@ -18,7 +18,7 @@
 
 import numpy as _np
 
-__author__ = 'noe'
+__author__ = 'noe, clonker'
 
 
 class ZeroRankError(_np.linalg.LinAlgError):

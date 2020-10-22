@@ -29,15 +29,29 @@ class DMDModel(Model, Transformer):
         self.modes = modes
         self.mode = mode
 
-    def transform(self, data, **kwargs):
+    def transform(self, data: np.ndarray, **kwargs):
+        r""" Transforms an input trajectory by applying the model's captured dynamics.
+
+        Parameters
+        ----------
+        data : (T, n) ndarray
+            Input trajectory
+        **kwargs
+            Compatibility.
+
+        Returns
+        -------
+        output_trajectory : (T, n) ndarray
+
+        """
         if self.mode == 'exact':
-            modes_adj = np.linalg.pinv(self.modes)
+            modes_adj = np.linalg.pinv(self.modes.T)
             return np.linalg.multi_dot([
-                self.modes, np.diag(self.eigenvalues), modes_adj, data.T
+                self.modes.T, np.diag(self.eigenvalues), modes_adj, data.T
             ]).T
         else:
             return np.linalg.multi_dot([
-                self.modes, np.diag(self.eigenvalues), self.modes.conj().T, data.T
+                self.modes.T, np.diag(self.eigenvalues), self.modes.conj(), data.T
             ]).T
 
 
@@ -79,6 +93,7 @@ class DMD(Estimator, Transformer):
     """
 
     available_modes = 'exact', 'standard'  #: The available estimation modes.
+    available_drivers = 'numpy', 'scipy'  #: The available drivers.
 
     def __init__(self, mode='exact', rank=None, driver='numpy'):
         r"""Creates a new DMD estimator.
@@ -87,24 +102,36 @@ class DMD(Estimator, Transformer):
         ----------
         mode : str
             The estimation mode, see :attr:`available_modes` for available modes.
+        rank : int or None, optional, default=None
+            Truncation of the rank after performing SVD.
+        driver : str, default='numpy'
+            Which package to use for the SVD. Defaults to numpy, can also be 'scipy'.
         """
         super().__init__()
         if mode not in DMD.available_modes:
             raise ValueError(f"Invalid mode {mode}, must be one of {DMD.available_modes}.")
+        if driver not in DMD.available_drivers:
+            raise ValueError(f"Invalid driver {driver}, must be one of {DMD.available_drivers}.")
         self.mode = mode
         self.rank = rank
         self.driver = driver
 
-    def _svd(self, X):
+    def _svd(self, mat, **kw):
         if self.driver == 'numpy':
-            return np.linalg.svd(X, full_matrices=False)
+            return np.linalg.svd(mat, **kw)
         elif self.driver == 'scipy':
-            return scipy.linalg.svd(X, full_matrices=False)
+            return scipy.linalg.svd(mat, **kw)
+
+    def _eig(self, mat, **kw):
+        if self.driver == 'numpy':
+            return np.linalg.eig(mat, **kw)
+        elif self.driver == 'scipy':
+            return scipy.linalg.eig(mat, **kw)
 
     def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
         X, Y = data[0].T, data[1].T  # per convention arrays are [T, d] so here we transpose them
 
-        U, s, Vt = np.linalg.svd(X, full_matrices=False)
+        U, s, Vt = self._svd(X, full_matrices=False)
         if self.rank is not None:
             rank = min(self.rank, U.shape[1])
             U = U[:, :rank]
@@ -114,10 +141,9 @@ class DMD(Estimator, Transformer):
         S_inv = np.diag(1 / s)
         A = np.linalg.multi_dot([U.conj().T, Y, V, S_inv])
 
-        eigenvalues, eigenvectors = np.linalg.eig(A)
+        eigenvalues, eigenvectors = self._eig(A)
         order = np.argsort(eigenvalues)
         eigenvalues, eigenvectors = eigenvalues[order], eigenvectors[:, order]
-        # eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
 
         if self.mode == 'exact':
             dmd_modes = np.linalg.multi_dot([Y, V, S_inv, eigenvectors, np.diag(1 / eigenvalues)])

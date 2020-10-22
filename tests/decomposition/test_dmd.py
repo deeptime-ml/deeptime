@@ -33,7 +33,7 @@ def test_decomposition(toy_data, mode):
     A, x, y = toy_data
     model = DMD(mode).fit((x, y)).fetch_model()
 
-    Atilde = model.modes @ np.diag(model.eigenvalues) @ model.modes.conj().T
+    Atilde = model.modes.T @ np.diag(model.eigenvalues) @ model.modes.conj()
     np.testing.assert_array_almost_equal(A, Atilde)
 
 
