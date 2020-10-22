@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-import sktime.markov.sample as sample
+import deeptime.markov.sample as sample
 
 from tests.util import timing
 

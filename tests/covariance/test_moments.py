@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from sktime.covariance.util import moments
+from deeptime.covariance.util import moments
 
 __author__ = 'noe'
 

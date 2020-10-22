@@ -16,7 +16,7 @@ import scipy.sparse
 from scipy.sparse import diags
 import scipy.sparse.linalg
 
-from sktime.markov.tools.analysis import expected_counts, expected_counts_stationary
+from deeptime.markov.tools.analysis import expected_counts, expected_counts_stationary
 
 ################################################################################
 # Dense

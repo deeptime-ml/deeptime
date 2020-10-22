@@ -7,8 +7,8 @@ from os import pardir
 
 import pytest
 
-import sktime
-from sktime.markov.tools.estimation import count_matrix, effective_count_matrix
+import deeptime
+from deeptime.markov.tools.estimation import count_matrix, effective_count_matrix
 
 """Unit tests for the transition_matrix module"""
 
@@ -112,7 +112,7 @@ class TestEffectiveCountMatrix_old_impl(unittest.TestCase):
                               1.13816439e+02, 2.51960055e+02, 1.33451946e+03],
                              [1.57044024e+01, 3.26168358e+01, 1.12346879e+02,
                               4.34287128e+02, 1.88573632e+03, 2.35837843e+04]])
-        ref_dtraj = sktime.data.double_well_discrete().dtraj_n6good
+        ref_dtraj = deeptime.data.double_well_discrete().dtraj_n6good
         Ceff = effective_count_matrix(ref_dtraj, lag=10, average='row', mact=1.0).toarray()
         Ceff2 = effective_count_matrix(ref_dtraj, lag=10, average='row', mact=1.0, n_jobs=2).toarray()
 

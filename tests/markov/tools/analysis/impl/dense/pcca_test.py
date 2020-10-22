@@ -10,9 +10,9 @@ import unittest
 
 import numpy as np
 
-from sktime.markov.tools.analysis import stationary_distribution
-from sktime.markov.tools.analysis.dense.pcca import pcca, coarsegrain, PCCA
-from sktime.markov.tools.estimation import connected_sets
+from deeptime.markov.tools.analysis import stationary_distribution
+from deeptime.markov.tools.analysis.dense.pcca import pcca, coarsegrain, PCCA
+from deeptime.markov.tools.estimation import connected_sets
 from tests.markov.tools.numeric import assert_allclose
 
 
@@ -135,7 +135,7 @@ class TestPCCA(unittest.TestCase):
                       [0.0,  0.1,  0.8,  0.1,  0.0],
                       [0.0,  0.0,  0.01, 0.79, 0.2],
                       [0.0,  0.0,  0.0,  0.2,  0.8]])
-        from sktime.markov.tools.analysis import stationary_distribution
+        from deeptime.markov.tools.analysis import stationary_distribution
         pi = stationary_distribution(P)
         Pi = np.diag(pi)
         m = 3

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_equal, assert_almost_equal
 
-from sktime.basis.monomials import Monomials
+from deeptime.basis.monomials import Monomials
 
 import operator as op
 from functools import reduce

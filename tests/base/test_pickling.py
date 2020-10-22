@@ -46,5 +46,5 @@ class TestPickling(unittest.TestCase):
         msm = factory.msm_double_well()
         pickled = pickle.dumps(msm)
         # now simulate a newer version
-        with mock.patch('sktime.__version__', '99+brand-new'), np.testing.assert_warns(UserWarning, ):
+        with mock.patch('deeptime.__version__', '99+brand-new'), np.testing.assert_warns(UserWarning, ):
             pickle.loads(pickled)

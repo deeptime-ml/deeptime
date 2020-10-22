@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 
-from sktime.markov.tools.analysis import stationary_distribution
-from sktime.util.exceptions import NotConvergedWarning
+from deeptime.markov.tools.analysis import stationary_distribution
+from deeptime.util.exceptions import NotConvergedWarning
 from tests.markov.tools.numeric import assert_allclose
 import scipy
 import scipy.sparse
@@ -11,9 +11,9 @@ import warnings
 from os.path import abspath, join
 from os import pardir
 
-from sktime.markov.tools.estimation.sparse.mle import mle_trev as impl_sparse
-from sktime.markov.tools.estimation.dense.mle import mle_trev as impl_dense
-from sktime.markov.tools.estimation import transition_matrix as apicall
+from deeptime.markov.tools.estimation.sparse.mle import mle_trev as impl_sparse
+from deeptime.markov.tools.estimation.dense.mle import mle_trev as impl_dense
+from deeptime.markov.tools.estimation import transition_matrix as apicall
 
 testpath = abspath(join(abspath(__file__), pardir)) + '/testfiles/'
 

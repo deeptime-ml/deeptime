@@ -8,14 +8,14 @@ import warnings
 
 import numpy as np
 
-from sktime.data import birth_death_chain
-from sktime.util.exceptions import SpectralWarning, ImaginaryEigenValueWarning
+from deeptime.data import birth_death_chain
+from deeptime.util.exceptions import SpectralWarning, ImaginaryEigenValueWarning
 from tests.markov.tools.numeric import assert_allclose
 
 from scipy.linalg import eig, eigvals
 
-from sktime.markov.tools.analysis import stationary_distribution, eigenvalues, eigenvectors, is_reversible
-from sktime.markov.tools.analysis import rdl_decomposition, timescales
+from deeptime.markov.tools.analysis import stationary_distribution, eigenvalues, eigenvectors, is_reversible
+from deeptime.markov.tools.analysis import rdl_decomposition, timescales
 
 ################################################################################
 # Dense

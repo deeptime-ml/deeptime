@@ -1,11 +1,11 @@
 import numpy as np
 from numpy.testing import assert_, assert_almost_equal, assert_equal, assert_allclose
 
-import sktime
+import deeptime
 
 
 def test_barrier():
-    sim = sktime.data.drunkards_walk(bar_location=(0, 0), home_location=(9, 9))
+    sim = deeptime.data.drunkards_walk(bar_location=(0, 0), home_location=(9, 9))
 
     sim.add_barrier((0, 9), (5, 8))
     sim.add_barrier((5, 0), (5, 4))
@@ -22,7 +22,7 @@ def test_barrier():
 
 
 def test_state_coordinates_conversion():
-    walk = sktime.data.drunkards_walk((7, 13), bar_location=(1, 1), home_location=(7, 8))
+    walk = deeptime.data.drunkards_walk((7, 13), bar_location=(1, 1), home_location=(7, 8))
     assert_equal(walk.coordinate_to_state((1, 1)), 1 + 7)
     assert_equal(walk.state_to_coordinate(8), (1, 1))
 
@@ -32,7 +32,7 @@ def test_state_coordinates_conversion():
 
 
 def test_transition_matrix():
-    walk = sktime.data.drunkards_walk((7, 8), bar_location=(0, 0), home_location=(6, 7))
+    walk = deeptime.data.drunkards_walk((7, 8), bar_location=(0, 0), home_location=(6, 7))
     assert_equal(walk.msm.transition_matrix.shape, (7 * 8, 7 * 8))
     assert_allclose(walk.msm.transition_matrix.sum(-1), 1.)  # row-stochastic matrix
     assert_equal(walk.bar_location.squeeze(), (0, 0))

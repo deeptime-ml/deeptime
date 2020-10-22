@@ -8,7 +8,7 @@ import unittest
 import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.analysis.dense.hitting_probability import hitting_probability
+from deeptime.markov.tools.analysis.dense.hitting_probability import hitting_probability
 
 
 class TestHitting(unittest.TestCase):

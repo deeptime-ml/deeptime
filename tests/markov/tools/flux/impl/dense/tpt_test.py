@@ -7,10 +7,10 @@ r"""Unit test for the TPT-module
 import unittest
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.flux.dense import tpt
+from deeptime.markov.tools.flux.dense import tpt
 
 
 class TestTPT(unittest.TestCase):

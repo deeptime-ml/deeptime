@@ -4,7 +4,7 @@ from scipy.integrate import odeint
 from sklearn.preprocessing import PolynomialFeatures
 
 
-from sktime.sindy import SINDy, SINDyModel, STLSQ
+from deeptime.sindy import SINDy, SINDyModel, STLSQ
 
 
 @pytest.fixture

@@ -4,7 +4,7 @@ import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 import scipy.sparse
 
-from sktime.markov.tools.estimation import log_likelihood
+from deeptime.markov.tools.estimation import log_likelihood
 
 """Unit tests for the transition_matrix module"""
 

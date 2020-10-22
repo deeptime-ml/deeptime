@@ -5,9 +5,9 @@ pytest.importorskip("torch")
 import numpy as np
 import torch
 
-import sktime
-from sktime.decomposition.kvad import kvad
-import sktime.decomposition.kvadnet as kvadnet
+import deeptime
+from deeptime.decomposition.kvad import kvad
+import deeptime.decomposition.kvadnet as kvadnet
 
 
 def test_whiten():
@@ -20,7 +20,7 @@ def test_whiten():
 
 
 def test_score():
-    dataset = sktime.data.bickley_jet(n_particles=100, n_jobs=1)
+    dataset = deeptime.data.bickley_jet(n_particles=100, n_jobs=1)
     ds_2d = dataset.endpoints_dataset()
     ds_3d = ds_2d.to_3d().cluster(4)
     kvad_3d_cluster_model = kvad(ds_3d.data, ds_3d.data_lagged, Y=ds_2d.data_lagged)

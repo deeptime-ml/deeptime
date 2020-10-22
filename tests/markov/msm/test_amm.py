@@ -7,10 +7,10 @@ r"""Unit test for the AMM module
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_equal
 
-from sktime.data import birth_death_chain
-from sktime.markov import TransitionCountEstimator
-from sktime.markov.msm import MarkovStateModel
-from sktime.markov.msm.augmented_msm import AugmentedMSMEstimator
+from deeptime.data import birth_death_chain
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.msm.augmented_msm import AugmentedMSMEstimator
 
 
 def test_amm_sanity(fixed_seed):

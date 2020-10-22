@@ -13,7 +13,7 @@ import scipy.sparse
 import scipy.sparse.linalg
 from scipy.sparse import diags
 
-from sktime.markov.tools.analysis.sparse import expectations
+from deeptime.markov.tools.analysis.sparse import expectations
 
 
 def random_orthonormal_sparse_vectors(d, k):

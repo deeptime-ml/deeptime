@@ -7,12 +7,12 @@ import unittest
 
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 from scipy.linalg import eig, eigvals
 
-from sktime.markov.tools.analysis.sparse.decomposition import eigenvalues, eigenvectors, rdl_decomposition
-from sktime.markov.tools.analysis.sparse.decomposition import timescales
+from deeptime.markov.tools.analysis.sparse.decomposition import eigenvalues, eigenvectors, rdl_decomposition
+from deeptime.markov.tools.analysis.sparse.decomposition import timescales
 
 
 class TestDecomposition(unittest.TestCase):

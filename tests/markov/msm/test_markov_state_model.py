@@ -1,14 +1,14 @@
-""" Unittests for the sktime.markov.msm.MarkovStateModel """
+""" Unittests for the deeptime.markov.msm.MarkovStateModel """
 
 import numpy as np
 import pytest
-import sktime
-from sktime.markov.util import count_states
+import deeptime
+from deeptime.markov.util import count_states
 
 
 @pytest.fixture
 def msm():
-    return sktime.markov.msm.MarkovStateModel([[0.9, 0.1], [0.1, 0.9]])
+    return deeptime.markov.msm.MarkovStateModel([[0.9, 0.1], [0.1, 0.9]])
 
 
 def test_simulate(msm):
@@ -21,8 +21,8 @@ def test_simulate(msm):
     assert traj.max() <= 1
 
     # test statistics of transition matrix
-    C = sktime.markov.tools.estimation.count_matrix(traj, 1)
-    Pest = sktime.markov.tools.estimation.transition_matrix(C)
+    C = deeptime.markov.tools.estimation.count_matrix(traj, 1)
+    Pest = deeptime.markov.tools.estimation.transition_matrix(C)
     assert np.max(np.abs(Pest - msm.transition_matrix)) < 0.025
 
 
@@ -31,7 +31,7 @@ def test_simulate_stats(msm):
     N = 5000
     trajs = [msm.simulate(1) for _ in range(N)]
     ss = np.concatenate(trajs).astype(int)
-    pi = sktime.markov.tools.analysis.stationary_distribution(msm.transition_matrix)
+    pi = deeptime.markov.tools.analysis.stationary_distribution(msm.transition_matrix)
     piest = count_states(ss) / float(N)
     np.testing.assert_allclose(piest, pi, atol=0.025)
 
@@ -41,8 +41,8 @@ def test_simulate_recover_transition_matrix(msm):
     N = 5000
     trajs = msm.simulate(N, seed=42)
     # trajs = msmgen.generate_traj(self.P, N, random_state=self.random_state)
-    C = sktime.markov.tools.estimation.count_matrix(trajs, 1, sparse_return=False)
-    T = sktime.markov.tools.estimation.transition_matrix(C)
+    C = deeptime.markov.tools.estimation.count_matrix(trajs, 1, sparse_return=False)
+    T = deeptime.markov.tools.estimation.transition_matrix(C)
     np.testing.assert_allclose(T, msm.transition_matrix, atol=.01)
 
 

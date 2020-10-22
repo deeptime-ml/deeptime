@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from numpy.testing import assert_raises, assert_array_almost_equal, assert_equal
 
-from sktime.decomposition import DMD
+from deeptime.decomposition import DMD
 
 
 @pytest.fixture

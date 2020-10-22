@@ -10,7 +10,7 @@ import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 import scipy.sparse
 
-from sktime.markov.tools.estimation.sparse import connectivity
+from deeptime.markov.tools.estimation.sparse import connectivity
 
 
 class TestConnectedSets(unittest.TestCase):

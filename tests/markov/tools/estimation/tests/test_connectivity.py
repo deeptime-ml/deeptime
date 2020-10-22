@@ -10,7 +10,7 @@ import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 import scipy.sparse
 
-from sktime.markov.tools.estimation import connected_sets, largest_connected_set, largest_connected_submatrix, is_connected
+from deeptime.markov.tools.estimation import connected_sets, largest_connected_set, largest_connected_submatrix, is_connected
 
 ################################################################################
 # Dense

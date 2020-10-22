@@ -7,10 +7,10 @@ with warnings.catch_warnings():
 import numpy as np
 from sklearn.pipeline import Pipeline
 
-import sktime.clustering.kmeans as kmeans
-import sktime.decomposition.tica as tica
-import sktime.markov.msm as msm
-from sktime.markov import TransitionCountEstimator
+import deeptime.clustering.kmeans as kmeans
+import deeptime.decomposition.tica as tica
+import deeptime.markov.msm as msm
+from deeptime.markov import TransitionCountEstimator
 
 
 class TestSkLearnCompat(unittest.TestCase):

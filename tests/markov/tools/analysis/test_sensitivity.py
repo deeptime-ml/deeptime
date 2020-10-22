@@ -13,7 +13,7 @@ import unittest
 import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.analysis import timescale_sensitivity, eigenvalue_sensitivity, mfpt_sensitivity, \
+from deeptime.markov.tools.analysis import timescale_sensitivity, eigenvalue_sensitivity, mfpt_sensitivity, \
     committor_sensitivity, eigenvector_sensitivity, \
     stationary_distribution_sensitivity, expectation_sensitivity
 

@@ -1,17 +1,17 @@
 import unittest
 
-import sktime.markov.tools
+import deeptime.markov.tools
 import numpy as np
 import pytest
-import sktime.markov.hmm._hmm_bindings as _bindings
+import deeptime.markov.hmm._hmm_bindings as _bindings
 
-from sktime.markov.hmm import init, BayesianHMM
-from sktime.data.double_well_dataset import DoubleWellDiscrete
-from sktime.markov.hmm import MaximumLikelihoodHMM
-from sktime.markov.hmm.hidden_markov_model import viterbi
-from sktime.markov.hmm.output_model import DiscreteOutputModel
-from sktime.markov.msm import MarkovStateModel
-from sktime.markov.util import count_states
+from deeptime.markov.hmm import init, BayesianHMM
+from deeptime.data.double_well_dataset import DoubleWellDiscrete
+from deeptime.markov.hmm import MaximumLikelihoodHMM
+from deeptime.markov.hmm.hidden_markov_model import viterbi
+from deeptime.markov.hmm.output_model import DiscreteOutputModel
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.util import count_states
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 from tests.util import assert_array_not_equal
 
@@ -157,7 +157,7 @@ class TestMLHMM(unittest.TestCase):
         np.testing.assert_equal(self.hmm_lag10.transition_model.n_states, 2)
 
     def test_transition_matrix(self):
-        import sktime.markov.tools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
         for P in [self.hmm_lag1.transition_model.transition_matrix, self.hmm_lag10.transition_model.transition_matrix]:
             np.testing.assert_(msmana.is_transition_matrix(P))
             np.testing.assert_(msmana.is_reversible(P))
@@ -267,8 +267,8 @@ class TestMLHMM(unittest.TestCase):
                   self.hmm_lag1_largest.transition_matrix_obs(k=2),
                   self.hmm_lag10_largest.transition_matrix_obs(),
                   self.hmm_lag10_largest.transition_matrix_obs(k=4)]:
-            np.testing.assert_(sktime.markov.tools.analysis.is_transition_matrix(T))
-            np.testing.assert_(sktime.markov.tools.analysis.is_reversible(T))
+            np.testing.assert_(deeptime.markov.tools.analysis.is_transition_matrix(T))
+            np.testing.assert_(deeptime.markov.tools.analysis.is_reversible(T))
 
     def test_stationary_distribution_obs(self):
         for hmsm in [self.hmm_lag1_largest, self.hmm_lag10_largest]:
@@ -472,7 +472,7 @@ class TestMLHMM(unittest.TestCase):
     # STATISTICS, SAMPLING
     # ---------------------------------
     def test_observable_state_indices(self):
-        from sktime.markov.sample import compute_index_states
+        from deeptime.markov.sample import compute_index_states
 
         hmsm = self.hmm_lag10_largest
         I = compute_index_states(self.dtrajs, subset=hmsm.observation_symbols)

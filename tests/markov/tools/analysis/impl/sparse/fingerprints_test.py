@@ -10,12 +10,12 @@ import numpy as np
 
 from tests.markov.tools.numeric import assert_allclose
 
-import sktime
-from sktime.markov.tools.analysis.sparse.decomposition import rdl_decomposition, timescales
+import deeptime
+from deeptime.markov.tools.analysis.sparse.decomposition import rdl_decomposition, timescales
 
-from sktime.markov.tools.analysis.sparse.fingerprints import fingerprint_correlation, fingerprint_relaxation, fingerprint
-from sktime.markov.tools.analysis.sparse.fingerprints import correlation_decomp, correlation_matvec, correlation
-from sktime.markov.tools.analysis.sparse.fingerprints import relaxation_decomp, relaxation_matvec, relaxation
+from deeptime.markov.tools.analysis.sparse.fingerprints import fingerprint_correlation, fingerprint_relaxation, fingerprint
+from deeptime.markov.tools.analysis.sparse.fingerprints import correlation_decomp, correlation_matvec, correlation
+from deeptime.markov.tools.analysis.sparse.fingerprints import relaxation_decomp, relaxation_matvec, relaxation
 
 
 class TestFingerprint(unittest.TestCase):
@@ -29,7 +29,7 @@ class TestFingerprint(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = sktime.data.birth_death_chain(q, p)
+        self.bdc = deeptime.data.birth_death_chain(q, p)
         self.mu = self.bdc.stationary_distribution
         self.T = self.bdc.transition_matrix_sparse
         R, D, L = rdl_decomposition(self.T, k=self.k)
@@ -122,7 +122,7 @@ class TestCorrelation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = sktime.data.birth_death_chain(q, p)
+        self.bdc = deeptime.data.birth_death_chain(q, p)
 
         self.mu = self.bdc.stationary_distribution
         self.T = self.bdc.transition_matrix_sparse
@@ -210,7 +210,7 @@ class TestRelaxation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = sktime.data.birth_death_chain(q, p)
+        self.bdc = deeptime.data.birth_death_chain(q, p)
 
         self.mu = self.bdc.stationary_distribution
         self.T = self.bdc.transition_matrix_sparse

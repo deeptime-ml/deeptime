@@ -6,10 +6,10 @@ Created on Jun 3, 2014
 import unittest
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.analysis.dense import correlations
+from deeptime.markov.tools.analysis.dense import correlations
 
 
 class TestCorrelations(unittest.TestCase):

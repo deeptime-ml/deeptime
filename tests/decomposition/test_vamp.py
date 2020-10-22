@@ -7,10 +7,10 @@ import unittest
 import numpy as np
 import pytest
 
-from sktime.data.util import timeshifted_split
-from sktime.decomposition import KoopmanModel
-from sktime.decomposition.vamp import VAMP
-from sktime.markov._base import cvsplit_dtrajs
+from deeptime.data.util import timeshifted_split
+from deeptime.decomposition import KoopmanModel
+from deeptime.decomposition.vamp import VAMP
+from deeptime.markov._base import cvsplit_dtrajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 
 
@@ -348,7 +348,7 @@ class TestVAMPWithEdgeCaseData(unittest.TestCase):
         assert_allclose_ignore_phase(vamp.transform(x, forward=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
-        from sktime.numeric.eigen import ZeroRankError
+        from deeptime.numeric.eigen import ZeroRankError
         with self.assertRaises(ZeroRankError):
             print(VAMP(lagtime=1).fit(np.ones((10, 2))).fetch_model().singular_values)
         with self.assertRaises(ZeroRankError):

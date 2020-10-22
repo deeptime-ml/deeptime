@@ -7,10 +7,10 @@ r"""Unit tests for the committor API-function
 import unittest
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.analysis import committor
+from deeptime.markov.tools.analysis import committor
 
 
 class TestCommittorDense(unittest.TestCase):

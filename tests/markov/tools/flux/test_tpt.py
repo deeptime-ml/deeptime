@@ -7,13 +7,13 @@ r"""Unit test for the TPT-functions of the analysis API
 import unittest
 import numpy as np
 
-from sktime.data import birth_death_chain
-from sktime.markov import compute_reactive_flux
+from deeptime.data import birth_death_chain
+from deeptime.markov import compute_reactive_flux
 from tests.markov.tools.numeric import assert_allclose
 
 from scipy.sparse import csr_matrix
 
-import sktime.markov.tools.flux as flux
+import deeptime.markov.tools.flux as flux
 
 ################################################################################
 # Dense

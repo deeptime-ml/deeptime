@@ -1,8 +1,8 @@
 import numpy as np
 
-from sktime.data import double_well_discrete
-from sktime.markov import TransitionCountEstimator
-from sktime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
+from deeptime.data import double_well_discrete
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
 
 
 def test_cache():

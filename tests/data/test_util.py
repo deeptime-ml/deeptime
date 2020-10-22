@@ -2,7 +2,7 @@ import pytest
 pytest.importorskip("torch")
 
 import numpy as np
-import sktime.data.util as util
+import deeptime.data.util as util
 
 
 @pytest.mark.parametrize("data", [np.arange(N) for N in [5, 6, 7, 8, 9, 10]],

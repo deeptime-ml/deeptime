@@ -6,10 +6,10 @@ r"""Unit tests for the committor module
 import unittest
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.analysis.sparse import committor
+from deeptime.markov.tools.analysis.sparse import committor
 
 
 class TestCommittor(unittest.TestCase):

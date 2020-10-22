@@ -9,12 +9,12 @@ import unittest
 import numpy as np
 import pytest
 
-from sktime.covariance import Covariance
-from sktime.data import ellipsoids
-from sktime.decomposition import VAMP
-from sktime.decomposition.tica import TICA
-from sktime.markov.msm import MarkovStateModel
-from sktime.numeric.eigen import ZeroRankError
+from deeptime.covariance import Covariance
+from deeptime.data import ellipsoids
+from deeptime.decomposition import VAMP
+from deeptime.decomposition.tica import TICA
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.numeric.eigen import ZeroRankError
 
 
 def test_fit_reset():

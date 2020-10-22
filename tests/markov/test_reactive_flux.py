@@ -5,12 +5,12 @@ r"""Unit test for the ReactiveFlux object
 """
 import unittest
 
-import sktime.markov.tools.analysis as msmana
+import deeptime.markov.tools.analysis as msmana
 import numpy as np
 from numpy.testing import assert_allclose
 
-from sktime.markov import TransitionCountModel, compute_reactive_flux
-from sktime.markov.msm import MarkovStateModel
+from deeptime.markov import TransitionCountModel, compute_reactive_flux
+from deeptime.markov.msm import MarkovStateModel
 
 
 class TestReactiveFluxFunctions(unittest.TestCase):

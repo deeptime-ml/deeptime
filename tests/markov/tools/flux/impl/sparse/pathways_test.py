@@ -8,9 +8,9 @@ import unittest
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from sktime.markov.tools.flux.sparse.pathways import pathways
-from sktime.markov.tools.flux.sparse.tpt import flux_matrix
-from sktime.markov.tools.analysis import committor, stationary_distribution
+from deeptime.markov.tools.flux.sparse.pathways import pathways
+from deeptime.markov.tools.flux.sparse.tpt import flux_matrix
+from deeptime.markov.tools.analysis import committor, stationary_distribution
 from tests.markov.tools.numeric import assert_allclose
 
 class TestPathways(unittest.TestCase):

@@ -7,12 +7,12 @@ r"""Unit test for the TPT-module
 import unittest
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
 from scipy.sparse import csr_matrix
 
-from sktime.markov.tools.flux.sparse import tpt
+from deeptime.markov.tools.flux.sparse import tpt
 
 
 class TestRemoveNegativeEntries(unittest.TestCase):

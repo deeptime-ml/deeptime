@@ -3,7 +3,7 @@ import unittest
 from tests.markov.tools.numeric import assert_allclose
 import scipy.sparse
 
-from sktime.markov.tools.estimation.sparse import transition_matrix
+from deeptime.markov.tools.estimation.sparse import transition_matrix
 
 """Unit tests for the transition_matrix module"""
 

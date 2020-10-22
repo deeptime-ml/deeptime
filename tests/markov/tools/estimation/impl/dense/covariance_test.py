@@ -8,7 +8,7 @@ import unittest
 import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.estimation.dense.covariance import tmatrix_cov, dirichlet_covariance, error_perturbation
+from deeptime.markov.tools.estimation.dense.covariance import tmatrix_cov, dirichlet_covariance, error_perturbation
 
 
 class TestCovariance(unittest.TestCase):

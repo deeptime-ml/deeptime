@@ -10,7 +10,7 @@ import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 import scipy.sparse
 
-from sktime.markov.tools.analysis import mfpt
+from deeptime.markov.tools.analysis import mfpt
 
 ################################################################################
 # Dense

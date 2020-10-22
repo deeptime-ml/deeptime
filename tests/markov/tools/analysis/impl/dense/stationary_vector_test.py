@@ -1,11 +1,11 @@
 import unittest
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.analysis.dense.stationary_vector import stationary_distribution_from_eigenvector
-from sktime.markov.tools.analysis.dense.stationary_vector import stationary_distribution_from_backward_iteration
+from deeptime.markov.tools.analysis.dense.stationary_vector import stationary_distribution_from_eigenvector
+from deeptime.markov.tools.analysis.dense.stationary_vector import stationary_distribution_from_backward_iteration
 
 
 class TestStationaryVector(unittest.TestCase):

@@ -9,7 +9,7 @@ import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 from scipy.linalg import eig
 
-from sktime.markov.tools.analysis.dense import expectations
+from deeptime.markov.tools.analysis.dense import expectations
 
 
 class TestExpectedCounts(unittest.TestCase):

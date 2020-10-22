@@ -8,12 +8,12 @@ import unittest
 
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.analysis import rdl_decomposition, timescales
-from sktime.markov.tools.analysis import fingerprint_correlation, fingerprint_relaxation
-from sktime.markov.tools.analysis import expectation, correlation, relaxation
+from deeptime.markov.tools.analysis import rdl_decomposition, timescales
+from deeptime.markov.tools.analysis import fingerprint_correlation, fingerprint_relaxation
+from deeptime.markov.tools.analysis import expectation, correlation, relaxation
 
 ################################################################################
 # Dense

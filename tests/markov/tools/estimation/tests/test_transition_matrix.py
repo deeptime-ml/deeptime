@@ -5,7 +5,7 @@ import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 import scipy.sparse
 
-from sktime.markov.tools.estimation import transition_matrix, tmatrix_cov, error_perturbation
+from deeptime.markov.tools.estimation import transition_matrix, tmatrix_cov, error_perturbation
 
 """Various unit tests for the transition_matrix module"""
 

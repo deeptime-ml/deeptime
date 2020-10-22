@@ -13,7 +13,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from tests.markov.tools.numeric import assert_allclose
-from sktime.markov.tools.estimation.sparse.mle.newton.mle_rev import solve_mle_rev
+from deeptime.markov.tools.estimation.sparse.mle.newton.mle_rev import solve_mle_rev
 
 testpath = abspath(join(abspath(__file__), pardir)) + '/testfiles/'
 

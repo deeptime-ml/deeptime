@@ -6,8 +6,8 @@ from numpy.testing import assert_equal, assert_, assert_array_almost_equal, asse
 from scipy.sparse import issparse
 
 from tests.markov.msm.util import MLMSM_PARAMS, AMM_PARAMS, MLMSM_IDS, AMM_IDS, make_double_well
-from sktime.markov.msm import MaximumLikelihoodMSM
-from sktime.markov.msm.augmented_msm import AugmentedMSM
+from deeptime.markov.msm import MaximumLikelihoodMSM
+from deeptime.markov.msm.augmented_msm import AugmentedMSM
 
 
 @pytest.mark.parametrize("setting", MLMSM_PARAMS + AMM_PARAMS, ids=MLMSM_IDS + AMM_IDS)
@@ -104,7 +104,7 @@ class TestMSMBasicProperties(object):
         # shape
         assert_equal(P.shape, (msm.n_states, msm.n_states))
         # test transition matrix properties
-        import sktime.markov.tools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
 
         assert_(msmana.is_transition_matrix(P))
         assert_(msmana.is_connected(P))
@@ -450,11 +450,11 @@ class TestMSMBasicProperties(object):
 
     def test_active_state_indices(self, setting):
         scenario = make_double_well(setting)
-        from sktime.markov.sample import compute_index_states
+        from deeptime.markov.sample import compute_index_states
         I = compute_index_states(scenario.data.dtraj, subset=scenario.msm.count_model.state_symbols)
         assert (len(I) == scenario.msm.n_states)
         # compare to histogram
-        from sktime.markov.util import count_states
+        from deeptime.markov.util import count_states
         hist = count_states(scenario.data.dtraj)
         # number of frames should match on active subset
         A = scenario.msm.count_model.state_symbols

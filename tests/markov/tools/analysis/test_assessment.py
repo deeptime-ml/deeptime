@@ -10,8 +10,8 @@ import numpy as np
 import scipy.sparse
 from scipy.sparse.dia import dia_matrix
 
-from sktime.data import birth_death_chain
-from sktime.markov.tools.analysis import is_rate_matrix, is_reversible, is_transition_matrix, is_connected
+from deeptime.data import birth_death_chain
+from deeptime.markov.tools.analysis import is_rate_matrix, is_reversible, is_transition_matrix, is_connected
 
 ################################################################################
 # Dense

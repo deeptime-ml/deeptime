@@ -8,7 +8,7 @@ from tests.markov.tools.numeric import assert_allclose
 from os.path import abspath, join
 from os import pardir
 
-from sktime.markov.tools.estimation import count_matrix
+from deeptime.markov.tools.estimation import count_matrix
 
 testpath = abspath(join(abspath(__file__), pardir)) + '/testfiles/'
 

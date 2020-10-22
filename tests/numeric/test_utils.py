@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_, assert_raises, assert_array_almost_equal, assert_almost_equal, assert_equal
 
-from sktime.numeric import is_diagonal_matrix, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
+from deeptime.numeric import is_diagonal_matrix, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
     eig_corr, is_square_matrix
 
 
@@ -128,7 +128,7 @@ def test_spd_inv_split_nocutoff():
 @pytest.mark.parametrize('hermitian_ctt', [True, False], ids=lambda x: f"hermitian_ctt={x}")
 def test_eig_corr(epsilon, method, canonical_signs, return_rank, hermitian_ctt):
     data = np.random.normal(size=(5000, 3))
-    from sktime.covariance import Covariance
+    from deeptime.covariance import Covariance
     covariances = Covariance(lagtime=10, compute_c00=True, compute_ctt=True).fit(data).fetch_model()
     if not hermitian_ctt:
         covariances.cov_tt[0, 1] += 1e-6

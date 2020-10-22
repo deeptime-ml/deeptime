@@ -1,14 +1,14 @@
 import unittest
 
 import numpy as np
-import sktime
+import deeptime
 
-from sktime.data import datasets
-from sktime.markov.hmm import MaximumLikelihoodHMM
-from sktime.markov.hmm.bayesian_hmm import BayesianHMM, BayesianHMMPosterior
-from sktime.markov.hmm._hmm_bindings.util import count_matrix
-from sktime.util.stats import confidence_interval
-from sktime.util.types import ensure_dtraj_list
+from deeptime.data import datasets
+from deeptime.markov.hmm import MaximumLikelihoodHMM
+from deeptime.markov.hmm.bayesian_hmm import BayesianHMM, BayesianHMMPosterior
+from deeptime.markov.hmm._hmm_bindings.util import count_matrix
+from deeptime.util.stats import confidence_interval
+from deeptime.util.types import ensure_dtraj_list
 
 
 class TestBHMM(unittest.TestCase):
@@ -56,14 +56,14 @@ class TestBHMM(unittest.TestCase):
         # shape
         assert np.array_equal(np.shape(Psamples), (self.n_samples, self.n_states, self.n_states))
         # consistency
-        import sktime.markov.tools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
         for P in Psamples:
             assert msmana.is_transition_matrix(P)
             assert msmana.is_reversible(P)
 
     def test_transition_matrix_stats(self):
         stats = self.bhmm.gather_stats('transition_model/transition_matrix')
-        import sktime.markov.tools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
         # mean
         Pmean = stats.mean
         # test shape and consistency
@@ -287,7 +287,7 @@ class TestBHMMPathological(unittest.TestCase):
     def test_2state_rev_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
         dtrajs = ensure_dtraj_list(obs)
-        init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(dtrajs, 2, 1, regularize=False)
+        init_hmm = deeptime.markov.hmm.init.discrete.metastable_from_data(dtrajs, 2, 1, regularize=False)
         hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(dtrajs).fetch_model()
         # this will generate disconnected count matrices and should fail:
         with self.assertRaises(NotImplementedError):
@@ -295,7 +295,7 @@ class TestBHMMPathological(unittest.TestCase):
 
     def test_2state_nonrev_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
-        init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
+        init_hmm = deeptime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
                                                                         regularize=False)
         mle = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
         bhmm = BayesianHMM(mle, reversible=False, n_samples=2000).fit(obs).fetch_model()
@@ -306,7 +306,7 @@ class TestBHMMPathological(unittest.TestCase):
 
     def test_2state_rev_2step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0], dtype=int)
-        init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
+        init_hmm = deeptime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
                                                                         regularize=False)
         mle = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
         bhmm = BayesianHMM(mle, reversible=False, n_samples=100).fit(obs).fetch_model()

@@ -7,7 +7,7 @@ omit =
     */**/setup.py
     # omit test directory
     tests/*
-    sktime/_version.py
+    deeptime/_version.py
 
 [run]
 omit =

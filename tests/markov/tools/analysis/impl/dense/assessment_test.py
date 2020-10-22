@@ -6,8 +6,8 @@ Created on 07.10.2013
 import unittest
 import numpy as np
 
-from sktime.data import birth_death_chain
-from sktime.markov.tools.analysis.dense import assessment
+from deeptime.data import birth_death_chain
+from deeptime.markov.tools.analysis.dense import assessment
 
 
 class RateMatrixTest(unittest.TestCase):

@@ -1,11 +1,11 @@
 import unittest
 
-import sktime.markov.tools.analysis as msmana
+import deeptime.markov.tools.analysis as msmana
 import numpy as np
 
-import sktime.markov.hmm.init as init
-from sktime.markov import TransitionCountEstimator
-from sktime.markov.msm import MarkovStateModel
+import deeptime.markov.hmm.init as init
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import MarkovStateModel
 
 
 class TestInitHMMDiscrete(unittest.TestCase):
@@ -139,7 +139,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
 
     def test_3state_prev(self):
         dtraj = np.array([0, 1, 2, 0, 3, 4])
-        import sktime.markov.tools.estimation as msmest
+        import deeptime.markov.tools.estimation as msmest
         for rev in [True, False]:
             hmm = init.discrete.metastable_from_data(dtraj, n_hidden_states=3, lagtime=1, reversible=rev)
             assert msmana.is_transition_matrix(hmm.transition_model.transition_matrix)

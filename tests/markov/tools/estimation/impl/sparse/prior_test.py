@@ -10,9 +10,9 @@ from tests.markov.tools.numeric import assert_allclose
 
 from scipy.sparse import csr_matrix
 
-from sktime.markov.tools.estimation.sparse import prior
+from deeptime.markov.tools.estimation.sparse import prior
 
-from sktime.numeric.utils import allclose_sparse
+from deeptime.numeric.utils import allclose_sparse
 
 
 class TestPrior(unittest.TestCase):

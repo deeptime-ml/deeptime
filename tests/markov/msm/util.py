@@ -1,10 +1,10 @@
 import functools
 
-import sktime
-from sktime.markov import TransitionCountEstimator
+import deeptime
+from deeptime.markov import TransitionCountEstimator
 
-from sktime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
-from sktime.markov.msm.augmented_msm import AugmentedMSM, AugmentedMSMEstimator
+from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
+from deeptime.markov.msm.augmented_msm import AugmentedMSM, AugmentedMSMEstimator
 import numpy as np
 
 MLMSM_PARAMS = [("MLMSM", True, False, False), ("MLMSM", True, True, False), ("MLMSM", False, False, False),
@@ -18,7 +18,7 @@ AMM_IDS = ["amm(count=sliding)"]
 class DoubleWellScenario(object):
 
     def __init__(self, sparse: bool, statdist_constraint: bool, count_mode: str):
-        self._data = sktime.data.double_well_discrete()
+        self._data = deeptime.data.double_well_discrete()
         self._statdist = 1. * np.bincount(self.data.dtraj)
         self._statdist /= self._statdist.sum()
         count_model = TransitionCountEstimator(lagtime=self.lagtime, count_mode=count_mode, sparse=sparse) \

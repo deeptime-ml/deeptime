@@ -12,8 +12,8 @@ import numpy as np
 from scipy.special import betainc
 from scipy.integrate import quad
 
-from sktime.markov.tools.estimation import sample_tmatrix, tmatrix_sampler
-from sktime.markov.tools.analysis import is_transition_matrix
+from deeptime.markov.tools.estimation import sample_tmatrix, tmatrix_sampler
+from deeptime.markov.tools.analysis import is_transition_matrix
 
 
 class TestTransitionMatrixSampling(unittest.TestCase):

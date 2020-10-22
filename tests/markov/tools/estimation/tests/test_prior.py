@@ -11,8 +11,8 @@ from tests.markov.tools.numeric import assert_allclose
 
 from scipy.sparse import csr_matrix
 
-from sktime.numeric.utils import allclose_sparse
-from sktime.markov.tools.estimation import prior_neighbor, prior_const, prior_rev
+from deeptime.numeric.utils import allclose_sparse
+from deeptime.markov.tools.estimation import prior_neighbor, prior_const, prior_rev
 
 
 class TestPriorDense(unittest.TestCase):

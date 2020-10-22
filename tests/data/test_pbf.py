@@ -1,12 +1,12 @@
 import numpy as np
 from numpy.testing import assert_equal
 
-import sktime
-from sktime.data.pbf_simulator import PBFSimulator
+import deeptime
+from deeptime.data.pbf_simulator import PBFSimulator
 
 
 def test_pbf_sanity():
-    sim = sktime.data.position_based_fluids(n_burn_in=5)
+    sim = deeptime.data.position_based_fluids(n_burn_in=5)
     sim.run(1, 0.1)
     sim.run(1, -0.1)
     traj = sim.simulate_oscillatory_force(5, 10, .05)

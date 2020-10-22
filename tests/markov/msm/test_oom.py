@@ -3,19 +3,19 @@ r"""Unit test for the OOM-based MSM estimation.
 """
 import os
 
-import sktime.markov.tools.analysis as ma
-import sktime.markov.tools.estimation as msmest
+import deeptime.markov.tools.analysis as ma
+import deeptime.markov.tools.estimation as msmest
 import numpy as np
 import pytest
 import scipy.linalg as scl
 import scipy.sparse
 
-from sktime.markov import score_cv, sample
-from sktime.markov.msm import MarkovStateModel
-from sktime.markov.msm.koopman_reweighted_msm import OOMReweightedMSM
-from sktime.markov.sample import compute_index_states, indices_by_sequence
-from sktime.markov.util import count_states
-from sktime.numeric import sort_by_norm
+from deeptime.markov import score_cv, sample
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.msm.koopman_reweighted_msm import OOMReweightedMSM
+from deeptime.markov.sample import compute_index_states, indices_by_sequence
+from deeptime.markov.util import count_states
+from deeptime.numeric import sort_by_norm
 
 
 def oom_transformations(Ct, C2t, rank):
@@ -263,7 +263,7 @@ def test_transition_matrix(oom_msm_scenario):
         # shape
         np.testing.assert_equal(P.shape, (msm.n_states, msm.n_states))
         # test transition matrix properties
-        import sktime.markov.tools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
         np.testing.assert_(msmana.is_transition_matrix(P))
         np.testing.assert_(msmana.is_connected(P))
         # REVERSIBLE

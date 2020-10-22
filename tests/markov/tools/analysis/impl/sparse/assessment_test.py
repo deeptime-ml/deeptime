@@ -7,7 +7,7 @@ import numpy as np
 import scipy.sparse
 from scipy.sparse.dia import dia_matrix
 
-from sktime.markov.tools.analysis.sparse import assessment
+from deeptime.markov.tools.analysis.sparse import assessment
 
 
 def normalize_rows(A):

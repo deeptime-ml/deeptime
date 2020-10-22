@@ -10,7 +10,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from tests.markov.tools.numeric import assert_allclose
-from sktime.markov.tools.flux import pathways
+from deeptime.markov.tools.flux import pathways
 
 
 class TestPathways(unittest.TestCase):
@@ -114,9 +114,9 @@ class TestPathways(unittest.TestCase):
 
     def test_with_almost_converged_stat_dist(self):
         """ test for #106 """
-        from sktime.markov.tools.analysis import committor, is_reversible
-        from sktime.markov.tools.flux import flux_matrix, to_netflux
-        from sktime.markov import compute_reactive_flux, ReactiveFlux
+        from deeptime.markov.tools.analysis import committor, is_reversible
+        from deeptime.markov.tools.flux import flux_matrix, to_netflux
+        from deeptime.markov import compute_reactive_flux, ReactiveFlux
 
         T = np.array([[0.2576419223095193, 0.2254214623509954, 0.248270708174756,
                        0.2686659071647294],

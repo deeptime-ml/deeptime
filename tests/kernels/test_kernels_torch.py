@@ -5,7 +5,7 @@ pytest.importorskip("torch")
 
 import torch
 import numpy as np
-import sktime.kernels as k
+import deeptime.kernels as k
 
 
 @pytest.fixture

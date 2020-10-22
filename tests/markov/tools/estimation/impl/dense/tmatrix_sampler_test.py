@@ -6,8 +6,8 @@ r"""Unit tests for the covariance module
 
 import numpy as np
 import pytest
-from sktime.markov.tools.estimation import transition_matrix as tmatrix
-from sktime.markov.tools.estimation.dense.tmat_sampling.tmatrix_sampler import TransitionMatrixSampler
+from deeptime.markov.tools.estimation import transition_matrix as tmatrix
+from deeptime.markov.tools.estimation.dense.tmat_sampling.tmatrix_sampler import TransitionMatrixSampler
 
 
 @pytest.mark.parametrize("dtype", (np.float32, np.float64))

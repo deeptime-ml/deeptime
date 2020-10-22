@@ -2,7 +2,7 @@ import unittest
 from unittest import TestCase
 import numpy as np
 
-from sktime.clustering import MiniBatchKmeansClustering
+from deeptime.clustering import MiniBatchKmeansClustering
 
 
 def cluster_mini_batch_kmeans(X, k=100, max_iter=10000):

@@ -5,7 +5,7 @@ Created on Jul 25, 2014
 """
 import unittest
 import numpy as np
-import sktime.markov.tools.estimation as msmest
+import deeptime.markov.tools.estimation as msmest
 
 
 class TestBootstrapping(unittest.TestCase):

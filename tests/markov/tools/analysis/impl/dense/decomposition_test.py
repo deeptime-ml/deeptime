@@ -9,15 +9,15 @@ import warnings
 
 import numpy as np
 
-from sktime.data import birth_death_chain
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
 from scipy.linalg import eigvals
 
-from sktime.util.exceptions import SpectralWarning, ImaginaryEigenValueWarning
+from deeptime.util.exceptions import SpectralWarning, ImaginaryEigenValueWarning
 
-from sktime.markov.tools.analysis.dense.decomposition import eigenvalues, eigenvectors, rdl_decomposition
-from sktime.markov.tools.analysis.dense.decomposition import timescales
+from deeptime.markov.tools.analysis.dense.decomposition import eigenvalues, eigenvectors, rdl_decomposition
+from deeptime.markov.tools.analysis.dense.decomposition import timescales
 
 
 class TestDecomposition(unittest.TestCase):
