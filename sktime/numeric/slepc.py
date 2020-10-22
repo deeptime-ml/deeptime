@@ -1,7 +1,18 @@
 import numpy as np
-from slepc4py import SLEPc
-from petsc4py import PETSc
 from scipy.sparse import issparse, isspmatrix_csr, csr_matrix
+
+try:
+    from slepc4py import SLEPc
+    from petsc4py import PETSc
+
+    _successful_import = True
+except ModuleNotFoundError:
+    _successful_import = False
+
+
+def _handle_import_error():
+    if not _successful_import:
+        raise RuntimeError("In order to use this module a working installation of slepc4py and petsc4py is required.")
 
 
 def _to_petsc_matrix(mat: np.ndarray):
@@ -48,6 +59,7 @@ def svd(X, method='lanczos'):
     -------
     u, s, vh
     """
+    _handle_import_error()
     assert method in svd._mapping.keys(), f'Illegal method, must be one of {list(svd._mapping.keys())}.'
 
     mat = _to_petsc_matrix(X)
