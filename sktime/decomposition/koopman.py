@@ -282,8 +282,7 @@ class CovarianceKoopmanModel(KoopmanModel):
             raise ValueError("Koopman operator must be diagonal matrix!")
         output_dim = CovarianceKoopmanModel.effective_output_dimension(rank_0, rank_t, dim, var_cutoff,
                                                                        np.diag(operator))
-        super().__init__(operator, basis_transform_forward, basis_transform_backward,
-                         output_dimension=output_dim)
+        super().__init__(operator, basis_transform_forward, basis_transform_backward, output_dimension=output_dim)
         self._cov = cov
         self._scaling = scaling
         self._epsilon = epsilon
