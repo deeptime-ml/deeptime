@@ -1,4 +1,3 @@
-from typing import Optional
 from warnings import warn
 
 import numpy as np

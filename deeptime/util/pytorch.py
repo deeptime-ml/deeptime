@@ -1,4 +1,4 @@
-from sktime.util.platform import module_available
+from deeptime.util.platform import module_available
 
 if not module_available("torch"):
     raise ValueError("Importing this module is only possible with a working installation of PyTorch.")

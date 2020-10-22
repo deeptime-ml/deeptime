@@ -2,7 +2,7 @@ import warnings
 import numpy as np
 import scipy
 
-from sktime.util.exceptions import NotConvergedWarning
+from deeptime.util.exceptions import NotConvergedWarning
 from .. import _mle_sparse_bindings as _bindings
 
 
@@ -12,7 +12,7 @@ def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),
     assert maxerr > 0, 'maxerr must be positive'
     assert maxiter > 0, 'maxiter must be positive'
     assert C.shape[0] == C.shape[1], 'C must be a square matrix.'
-    from sktime.markov.tools.estimation import is_connected
+    from deeptime.markov.tools.estimation import is_connected
     assert is_connected(C, directed=True), 'C must be strongly connected'
 
     dtype = C.dtype

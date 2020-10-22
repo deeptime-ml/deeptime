@@ -1,7 +1,7 @@
 import functools
 from weakref import WeakKeyDictionary
 
-from sktime.util.platform import module_available
+from deeptime.util.platform import module_available
 
 
 class cached_property(property):

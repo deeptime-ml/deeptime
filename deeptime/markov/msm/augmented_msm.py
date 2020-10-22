@@ -1,32 +1,14 @@
-# This file is part of scikit-time and PyEMMA
-#
-# Copyright (c) 2020, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 __author__ = 'Simon Olsson, clonker'
 
 import logging
 from typing import Optional
 
 import numpy as np
-from sktime.markov.tools import estimation as msmest
+from deeptime.markov.tools import estimation as msmest
 from scipy.sparse import issparse
 
-from sktime.markov import TransitionCountModel
-from sktime.markov.msm import MarkovStateModel
+from deeptime.markov import TransitionCountModel
+from deeptime.markov.msm import MarkovStateModel
 from .._base import _MSMBaseEstimator
 from ...util.stats import confidence_interval
 from ...util.types import ensure_dtraj_list, ensure_traj_list

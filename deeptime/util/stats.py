@@ -3,7 +3,7 @@ from typing import Union, Callable, List
 
 import numpy as np
 
-from sktime.util.types import ensure_array
+from deeptime.util.types import ensure_array
 
 
 def confidence_interval(data, conf=0.95):

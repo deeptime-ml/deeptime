@@ -1,32 +1,13 @@
-# This file is part of scikit-time
-#
-# Copyright (c) 2020 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 from typing import Optional, Callable
 
 import numpy as np
 
-from sktime.base import Estimator
-from sktime.markov._base import _MSMBaseEstimator, BayesianPosterior
-from sktime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
+from deeptime.base import Estimator
+from deeptime.markov._base import _MSMBaseEstimator, BayesianPosterior
+from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
+from deeptime.numeric import is_square_matrix
 
 __author__ = 'noe, marscher, clonker'
-
-from sktime.numeric import is_square_matrix
 
 
 class BayesianMSM(_MSMBaseEstimator):

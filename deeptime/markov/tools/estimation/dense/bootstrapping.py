@@ -1,20 +1,3 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 """
 Created on Jul 23, 2014
 
@@ -35,8 +18,8 @@ def determine_lengths(dtrajs):
     dtrajs : list of int-arrays
         discrete trajectories
     """
-    if (isinstance(dtrajs[0], (int))):
-        return len(dtrajs) * np.ones((1))
+    if isinstance(dtrajs[0], int):
+        return len(dtrajs) * np.ones((1,))
     lengths = np.zeros((len(dtrajs)))
     for i in range(len(dtrajs)):
         lengths[i] = len(dtrajs[i])
@@ -51,7 +34,7 @@ def bootstrap_trajectories(trajs, correlation_length):
     """
     from scipy.stats import rv_discrete
     # if we have just one trajectory, put it into a one-element list:
-    if (isinstance(trajs[0], (int, int, float))):
+    if isinstance(trajs[0], (int, int, float)):
         trajs = [trajs]
     ntraj = len(trajs)
 
@@ -59,7 +42,7 @@ def bootstrap_trajectories(trajs, correlation_length):
     lengths = determine_lengths(trajs)
     Ltot = np.sum(lengths)
     Lmax = np.max(lengths)
-    if (correlation_length < 1):
+    if correlation_length < 1:
         correlation_length = Lmax
 
         # assign probabilites to select trajectories
@@ -129,7 +112,7 @@ def bootstrap_counts(dtrajs, lagtime, corrlength=None):
     nsample = int(Ltot / corrlength)
 
     # determine number of states n
-    from sktime.markov.util import number_of_states
+    from deeptime.markov.util import number_of_states
     n = number_of_states(dtrajs)
 
     # assigning trajectory sampling weights

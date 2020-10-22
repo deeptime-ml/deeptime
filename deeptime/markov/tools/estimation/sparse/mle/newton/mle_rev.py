@@ -1,23 +1,5 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2016, 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 r"""
 .. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
-
 """
 
 import numpy as np
@@ -29,8 +11,7 @@ from .linsolve import mydot
 from .linsolve_sparse import factor_aug as factor
 from .linsolve_sparse import solve_factorized_aug as solve_factorized
 
-
-__all__ = ['solve_mle_rev',]
+__all__ = ['solve_mle_rev', ]
 
 """Algorithm parameters"""
 GAMMA_MIN = 0.0001
@@ -38,12 +19,14 @@ GAMMA_MAX = 0.01
 GAMMA_BAR = 0.49
 KAPPA = 0.01
 TAU = 0.5
-RHO = min(0.2, min((0.5*GAMMA_BAR)**(1.0/TAU), 1.0-KAPPA))
+RHO = min(0.2, min((0.5 * GAMMA_BAR) ** (1.0 / TAU), 1.0 - KAPPA))
 SIGMA = 0.1
 BETA = 100000
 
+
 def mynorm(x):
     return np.linalg.norm(x)
+
 
 def wrap_function(function, args):
     ncalls = [0]
@@ -71,15 +54,15 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
 
     def gap(z):
         r"""Gap-function"""
-        l = z[N+P:N+P+M]
-        s = z[N+P+M:]
-        return mydot(l, s)/m
+        l = z[N + P:N + P + M]
+        s = z[N + P + M:]
+        return mydot(l, s) / m
 
     def centrality(z):
         r"""Centrality function"""
-        l = z[N+P:N+P+M]
-        s = z[N+P+M:]
-        return np.min(l*s)
+        l = z[N + P:N + P + M]
+        s = z[N + P + M:]
+        return np.min(l * s)
 
     def KKT(z, sigma=0.0):
         r"""KKT system (possible perturbed)."""
@@ -88,27 +71,27 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
         x = z[0:N]
 
         """Multiplier for equality constraints"""
-        nu = z[N:N+P]
+        nu = z[N:N + P]
 
         """Multiplier for inequality constraints"""
-        l = z[N+P:N+P+M]
+        l = z[N + P:N + P + M]
 
         """Slacks"""
-        s = z[N+P+M:]
+        s = z[N + P + M:]
 
         """Evaluate objective function"""
         F = func(x)
 
         """Dual infeasibility"""
-        rdual = F+mydot(A.transpose(), nu)+mydot(G.transpose(), l)
+        rdual = F + mydot(A.transpose(), nu) + mydot(G.transpose(), l)
 
         """Primal infeasibilities"""
-        rprim1 = mydot(A, x)-b
-        rprim2 = mydot(G, x)-h+s
+        rprim1 = mydot(A, x) - b
+        rprim2 = mydot(G, x) - h + s
 
         """Complementary slackness (perturbed)"""
         mu = gap(z)
-        rslack = l*s-sigma*mu
+        rslack = l * s - sigma * mu
 
         return np.hstack((rdual, rprim1, rprim2, rslack))
 
@@ -117,11 +100,11 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
         dz = solve_factorized(z, KKTval, LU, G, A)
 
         """Reduce step length until slacks s and multipliers l are positive"""
-        alpha = 1.0*alpha_0
+        alpha = 1.0 * alpha_0
         k = 0
         for k in range(10):
-            z_new = z + alpha*dz
-            if np.all( z_new[N+P:] > 0.0 ):
+            z_new = z + alpha * dz
+            if np.all(z_new[N + P:] > 0.0):
                 break
             alpha *= 0.5
             k += 1
@@ -130,15 +113,15 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
 
         """Reduce step length until iterates lie in correct neighborhood"""
         for k in range(10):
-            z_new = z + alpha*dz
+            z_new = z + alpha * dz
             KKTval_new = KKT(z_new)
             dual = mynorm(KKTval_new[0:N])
-            prim = mynorm(KKTval_new[N:N+P+M])
+            prim = mynorm(KKTval_new[N:N + P + M])
             mu_new = gap(z_new)
             cent_new = centrality(z_new)
 
-            if (dual <= beta*mu_new and prim <= beta*mu_new and
-                cent_new >= gamma*mu_new):
+            if (dual <= beta * mu_new and prim <= beta * mu_new and
+                    cent_new >= gamma * mu_new):
                 break
             alpha *= 0.5
             # alpha *= 0.95
@@ -154,8 +137,8 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
         alpha = 1.0
         k = 0
         for k in range(10):
-            z_new = z + alpha*dz
-            if np.all( z_new[N+P:] > 0.0 ):
+            z_new = z + alpha * dz
+            if np.all(z_new[N + P:] > 0.0):
                 break
             alpha *= 0.5
             k += 1
@@ -166,16 +149,16 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
         and mu fulfills Armijo condition"""
         k = 0
         for k in range(10):
-            z_new = z+alpha*dz
+            z_new = z + alpha * dz
             KKTval_new = KKT(z_new, sigma=SIGMA)
             dual = mynorm(KKTval_new[0:N])
-            prim = mynorm(KKTval_new[N:N+P+M])
+            prim = mynorm(KKTval_new[N:N + P + M])
             mu_new = gap(z_new)
             cent_new = centrality(z_new)
 
-            if (dual <= beta*mu_new and prim <= beta*mu_new and
-                cent_new >= gamma*mu_new and
-                mu_new<=(1.0-KAPPA*alpha*(1.0-SIGMA))*mu):
+            if (dual <= beta * mu_new and prim <= beta * mu_new and
+                    cent_new >= gamma * mu_new and
+                    mu_new <= (1.0 - KAPPA * alpha * (1.0 - SIGMA)) * mu):
                 break
             alpha *= 0.5
         if k == 10 - 1:
@@ -185,10 +168,10 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
     """INITIALIZATION"""
 
     """Initial Slacks for inequality constraints"""
-    s0 = -1.0*(mydot(G, x0)-h)
+    s0 = -1.0 * (mydot(G, x0) - h)
 
     """Initial multipliers for inequality constraints"""
-    l0 = 1.0*np.ones(M)
+    l0 = 1.0 * np.ones(M)
 
     """Initial multipliers for equality constraints"""
     nu0 = np.zeros(P)
@@ -200,10 +183,10 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
     KKTval0 = KKT(z0, sigma=0.0)
     mu0 = gap(z0)
     dual0 = mynorm(KKTval0[0:N])
-    prim0 = mynorm(KKTval0[N:N+P+M])
+    prim0 = mynorm(KKTval0[N:N + P + M])
 
     """Initial neighborhood"""
-    beta = BETA * np.sqrt(dual0**2 + prim0**2)/mu0
+    beta = BETA * np.sqrt(dual0 ** 2 + prim0 ** 2) / mu0
     gamma = 1.0 * GAMMA_MAX
 
     """Number of fast steps"""
@@ -231,9 +214,9 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
 
     for n in range(maxiter):
         """Attempt fast step"""
-        beta_new = (1.0 + GAMMA_BAR**(t+1)) * beta
-        gamma_new = GAMMA_MIN + GAMMA_BAR**(t+1)*(GAMMA_MAX - GAMMA_MIN)
-        alpha_0 = 1.0 - np.sqrt(mu)/GAMMA_BAR**t
+        beta_new = (1.0 + GAMMA_BAR ** (t + 1)) * beta
+        gamma_new = GAMMA_MIN + GAMMA_BAR ** (t + 1) * (GAMMA_MAX - GAMMA_MIN)
+        alpha_0 = 1.0 - np.sqrt(mu) / GAMMA_BAR ** t
 
         if alpha_0 > 0.0:
             z_new, mu_new = step_fast(z, KKTval, LU, G, A, mu,
@@ -248,21 +231,21 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
                 step_type = "f"
             else:
                 """Perturbed right-had side"""
-                KKTval_pert = 1.0*KKTval
-                KKTval_pert[N+P+M:] -= SIGMA * mu
+                KKTval_pert = 1.0 * KKTval
+                KKTval_pert[N + P + M:] -= SIGMA * mu
                 z, mu = step_safe(z, KKTval_pert, LU, G, A, mu, beta, gamma)
                 step_type = "s"
         else:
             """Perturbed right-hand side"""
-            KKTval_pert = 1.0*KKTval
-            KKTval_pert[N+P+M:] -= SIGMA * mu
+            KKTval_pert = 1.0 * KKTval
+            KKTval_pert[N + P + M:] -= SIGMA * mu
             z, mu = step_safe(z, KKTval_pert, LU, G, A, mu, beta, gamma)
             step_type = "s"
 
         """Compute new iterates"""
         KKTval = KKT(z, sigma=0.0)
         dual = mynorm(KKTval[0:N])
-        prim = mynorm(KKTval[N:N+P+M])
+        prim = mynorm(KKTval[N:N + P + M])
         x = z[0:N]
         Dfunc_val = Dfunc(x)
         LU = factor(z, Dfunc_val, G, A)
@@ -285,23 +268,23 @@ def solve_mle_rev(C, tol=1e-10, maxiter=100, full_output=False,
     M = C.shape[0]
 
     """Initial guess for primal-point"""
-    z0 = np.zeros(2*M)
+    z0 = np.zeros(2 * M)
     z0[0:M] = 1.0
 
     """Inequality constraints"""
     # G = np.zeros((M, 2*M))
     # G[np.arange(M), np.arange(M)] = -1.0
-    G = -1.0*scipy.sparse.eye(M, n=2*M, k=0)
+    G = -1.0 * scipy.sparse.eye(M, n=2 * M, k=0)
     h = np.zeros(M)
 
     """Equality constraints"""
-    A = np.zeros((1, 2*M))
+    A = np.zeros((1, 2 * M))
     A[0, M] = 1.0
     b = np.array([0.0])
 
     """Scaling"""
     c0 = C.max()
-    C = C/c0
+    C = C / c0
 
     """Symmetric part"""
     Cs = C + C.T

@@ -1,39 +1,19 @@
-# This file is part of scikit-time
-#
-# Copyright (c) 2020 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 import warnings
 from typing import Optional
 
 import numpy as np
-from sktime.markov.tools.estimation import effective_count_matrix
+from deeptime.markov.tools.estimation import effective_count_matrix
 from scipy.sparse import issparse
-from sktime.markov._base import _MSMBaseEstimator
-from sktime.markov.msm import MarkovStateModel
-from sktime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
+from deeptime.markov._base import _MSMBaseEstimator
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
 
 from . import _koopman_reweighted_msm_impl as _impl
 from ..util import count_states
+from ...util.matrix import submatrix
+from ...util.types import ensure_dtraj_list
 
 __author__ = 'Feliks Nüske, Fabian Paul, marscher, clonker'
-
-from ...util.matrix import submatrix
-
-from ...util.types import ensure_dtraj_list
 
 
 class KoopmanReweightedMSM(MarkovStateModel):

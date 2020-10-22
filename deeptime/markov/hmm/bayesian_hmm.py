@@ -1,40 +1,23 @@
-# This file is part of scikit-time and in parts of PyEMMA
-#
-# Copyright (c) 2020, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 import collections
 from copy import deepcopy
 from typing import Optional, Union, List
 
 import numpy as np
 
-from sktime.markov.tools.analysis import is_connected
-from sktime.markov.tools.estimation import sample_tmatrix, transition_matrix
+from deeptime.markov.tools.analysis import is_connected
+from deeptime.markov.tools.estimation import sample_tmatrix, transition_matrix
 
-from sktime.base import Estimator
-from sktime.markov._base import BayesianPosterior
-from sktime.markov._transition_matrix import stationary_distribution
-from sktime.markov.hmm import HiddenMarkovModel
-from sktime.markov.hmm.output_model import DiscreteOutputModel
-from sktime.markov.hmm.util import observations_in_state, sample_hidden_state_trajectory
-from sktime.markov.msm import MarkovStateModel
-from sktime.markov.transition_counting import TransitionCountModel
-from sktime.markov.util import compute_dtrajs_effective, number_of_states
-from sktime.markov.hmm._hmm_bindings import util as _bd_util
+from deeptime.base import Estimator
+from deeptime.markov._base import BayesianPosterior
+from deeptime.markov._transition_matrix import stationary_distribution
+from deeptime.markov.hmm import HiddenMarkovModel
+from deeptime.markov.hmm.output_model import DiscreteOutputModel
+from deeptime.markov.hmm.util import observations_in_state, sample_hidden_state_trajectory
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.transition_counting import TransitionCountModel
+from deeptime.markov.util import compute_dtrajs_effective, number_of_states
+from deeptime.markov.hmm._hmm_bindings import util as _bd_util
+from deeptime.util.types import ensure_dtraj_list
 
 __author__ = 'noe, clonker'
 
@@ -42,8 +25,6 @@ __all__ = [
     'BayesianHMMPosterior',
     'BayesianHMM',
 ]
-
-from sktime.util.types import ensure_dtraj_list
 
 
 class BayesianHMMPosterior(BayesianPosterior):

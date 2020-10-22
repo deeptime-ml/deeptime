@@ -1,20 +1,3 @@
-# This file is part of MSMTools and scikit-time.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# MSMTools as well as scikit-time is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 r"""
 
 =======================
@@ -29,7 +12,7 @@ import numpy as _np
 from scipy.sparse import issparse as _issparse
 from scipy.sparse import csr_matrix as _csr_matrix
 
-from sktime.util.types import ensure_number_array, ensure_integer_array, ensure_floating_array
+from deeptime.util.types import ensure_number_array, ensure_integer_array, ensure_floating_array
 
 from . import dense
 from . import sparse

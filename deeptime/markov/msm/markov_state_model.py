@@ -1,20 +1,3 @@
-# This file is part of scikit-time and in parts of PyEMMA
-#
-# Copyright (c) 2020, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 # .. moduleauthor:: F. Noe <frank DOT noe AT fu-berlin DOT de>
 # .. moduleauthor:: B. Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
@@ -23,17 +6,17 @@ from typing import Optional, List, Union
 
 import numpy as np
 from scipy.sparse import issparse
-from sktime.base import Model
-from sktime.markov.pcca import pcca, PCCAModel
-from sktime.markov.reactive_flux import ReactiveFlux
-from sktime.markov.sample import ensure_dtraj_list, compute_index_states
-from sktime.markov.tools import analysis as msmana
-from sktime.markov.transition_counting import TransitionCountModel
-from sktime.markov.util import count_states
-from sktime.numeric import is_square_matrix
-from sktime.util.decorators import cached_property
-from sktime.util.matrix import submatrix
-from sktime.util.types import ensure_array
+from deeptime.base import Model
+from deeptime.markov.pcca import pcca, PCCAModel
+from deeptime.markov.reactive_flux import ReactiveFlux
+from deeptime.markov.sample import ensure_dtraj_list, compute_index_states
+from deeptime.markov.tools import analysis as msmana
+from deeptime.markov.transition_counting import TransitionCountModel
+from deeptime.markov.util import count_states
+from deeptime.numeric import is_square_matrix
+from deeptime.util.decorators import cached_property
+from deeptime.util.matrix import submatrix
+from deeptime.util.types import ensure_array
 
 
 class MarkovStateModel(Model):

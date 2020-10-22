@@ -1,34 +1,15 @@
-# This file is part of scikit-time and PyEMMA
-#
-# Copyright (c) 2020, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 from typing import Optional, Union, List
 
 import numpy as np
-from sktime.markov.tools import estimation as msmest
 from scipy.sparse import issparse
 
+from deeptime.markov.tools import estimation as msmest
 from .markov_state_model import MarkovStateModelCollection
 from .._base import _MSMBaseEstimator
 from ..transition_counting import TransitionCountModel, TransitionCountEstimator
+from ...numeric import is_square_matrix
 
 __all__ = ['MaximumLikelihoodMSM']
-
-from ...numeric import is_square_matrix
 
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
@@ -274,7 +255,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self : MaximumLikelihoodMSM
             Reference to self.
         """
-        count_model = TransitionCountEstimator(lagtime=lagtime, count_mode=count_mode)\
+        count_model = TransitionCountEstimator(lagtime=lagtime, count_mode=count_mode) \
             .fit(discrete_timeseries).fetch_model()
         return self.fit_from_counts(count_model)
 

@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 
-from sktime.util.exceptions import NotConvergedWarning
+from deeptime.util.exceptions import NotConvergedWarning
 
 
 def mle_trev(C, maxerr=1.0e-12, maxiter=int(1.0E6), warn_not_converged=True, return_statdist=False,
