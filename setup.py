@@ -60,7 +60,7 @@ class Build(build_ext):
         from numpy import get_include as _np_inc
         np_inc = _np_inc()
         pybind_inc = Path('lib') / 'pybind11' / 'include'
-        common_inc = Path('sktime') / 'src' / 'include'
+        common_inc = Path('deeptime') / 'src' / 'include'
 
         if self.compiler.compiler_type == 'msvc':
             cxx_flags = ['/EHsc', '/std:c++latest', '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()]
@@ -98,11 +98,11 @@ cmdclass['build_ext'] = Build
 
 metadata = \
     dict(
-        name='scikit-time',
+        name='deeptime',
         version=versioneer.get_version(),
         author='Moritz Hoffmann',
         author_email='moritz.hoffmann@fu-berlin',
-        description='scikit-time project',
+        description='deeptime project',
         long_description='',
         cmdclass=cmdclass,
         zip_safe=False,
@@ -112,7 +112,7 @@ metadata = \
             'plotting': ['matplotlib', 'networkx']
         },
         package_data={
-            'sktime.data': ['data/*.npz']
+            'deeptime.data': ['data/*.npz']
         },
     )
 
@@ -125,7 +125,7 @@ def configuration(parent_package='', top_path=None):
                        delegate_options_to_subpackages=True,
                        # quiet=True,
                        )
-    config.add_subpackage('sktime')
+    config.add_subpackage('deeptime')
     return config
 
 
