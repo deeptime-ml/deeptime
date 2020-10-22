@@ -8,9 +8,9 @@ see the `VAMP tutorial <../notebooks/vamp.ipynb#Example-with-position-based-flui
 
 import matplotlib.pyplot as plt
 import numpy as np
-import sktime
+import deeptime
 
-pbf_simulator = sktime.data.position_based_fluids(n_burn_in=500, n_jobs=8)
+pbf_simulator = deeptime.data.position_based_fluids(n_burn_in=500, n_jobs=8)
 trajectory = pbf_simulator.simulate_oscillatory_force(n_oscillations=3, n_steps=400)
 n_grid_x = 20
 n_grid_y = 10
@@ -18,7 +18,7 @@ kde_trajectory = pbf_simulator.transform_to_density(
     trajectory, n_grid_x=n_grid_x, n_grid_y=n_grid_y, n_jobs=8
 )
 tau = 100
-model = sktime.decomposition.VAMP(lagtime=100).fit(kde_trajectory).fetch_model()
+model = deeptime.decomposition.VAMP(lagtime=100).fit(kde_trajectory).fetch_model()
 projection_left = model.transform(kde_trajectory, forward=True)
 projection_right = model.transform(kde_trajectory, forward=False)
 

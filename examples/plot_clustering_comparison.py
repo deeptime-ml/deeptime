@@ -7,7 +7,7 @@ This example demonstrates the implemented clustering methods on one example data
 
 import matplotlib.pyplot as plt  # matplotlib for plotting
 import numpy as np
-import sktime  # import the library
+import deeptime  # import the library
 
 from sklearn.mixture import GaussianMixture  # for example data generation
 
@@ -24,19 +24,19 @@ gmm.covariances_ = rnd.uniform(low=15., high=18., size=(n_components, 2))  # sam
 samples, labels = gmm.sample(50000)  # generate data
 
 estimators = [
-    ('k-Means with uniform initialization', sktime.clustering.KmeansClustering(
+    ('k-Means with uniform initialization', deeptime.clustering.KmeansClustering(
         n_clusters=100,  # place 100 cluster centers
         init_strategy='uniform',  # uniform initialization strategy
         fixed_seed=13,
         n_jobs=8)
      ),
-    ('k-Means with k-means++ initialization', sktime.clustering.KmeansClustering(
+    ('k-Means with k-means++ initialization', deeptime.clustering.KmeansClustering(
         n_clusters=100,  # place 100 cluster centers
         init_strategy='kmeans++',  # uniform initialization strategy
         fixed_seed=13,
         n_jobs=8)
      ),
-    ('Regular space clustering', sktime.clustering.RegularSpaceClustering(
+    ('Regular space clustering', deeptime.clustering.RegularSpaceClustering(
         dmin=3,  # minimum distance between cluster centers
         max_centers=300,  # maximum number of cluster centers
         n_jobs=8)
