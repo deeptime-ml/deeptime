@@ -26,8 +26,8 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
         throw std::runtime_error(R"(Number of dimensions of "centers" ain't 2.)");
     }
 
-    auto n_frames = static_cast<std::size_t>(np_chunk.shape(0));
-    auto dim = static_cast<std::size_t>(np_chunk.shape(1));
+    auto n_frames = np_chunk.shape(0);
+    auto dim = np_chunk.shape(1);
 
     if (dim == 0) {
         throw std::invalid_argument("chunk dimension must be larger than zero.");
@@ -40,7 +40,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
     auto assignmentsPtr = assignments.mutable_data();
 
     /* initialize centers_counter and new_centers with zeros */
-    std::vector<std::size_t> shape = {n_centers, dim};
+    std::vector<std::size_t> shape = {n_centers, static_cast<std::size_t>(dim)};
     py::array_t<T> newCenters(shape);
     auto newCentersRef = newCenters.mutable_unchecked();
     std::fill(newCenters.mutable_data(), newCenters.mutable_data() + newCenters.size(), 0.0);
@@ -48,7 +48,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
 
     /* do the clustering */
     if (n_threads == 0) {
-        for (std::size_t i = 0; i < n_frames; ++i) {
+        for (pybind11::ssize_t i = 0; i < n_frames; ++i) {
             int argMinDist = 0;
             {
                 T minDist = metric->compute(&chunk(i, 0), &centers(0, 0), dim);
@@ -74,7 +74,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
         omp_set_num_threads(n_threads);
 
 #pragma omp parallel for schedule(static, 1)
-        for (std::size_t i = 0; i < n_frames; ++i) {
+        for (pybind11::ssize_t i = 0; i < n_frames; ++i) {
             std::vector<T> dists(n_centers);
             for (std::size_t j = 0; j < n_centers; ++j) {
                 dists[j] = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
@@ -188,7 +188,7 @@ inline std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
         it += 1;
     } while (it < max_iter && !converged);
     int res = converged ? 0 : 1;
-    np_array<T> npInertias({inertias.size()});
+    np_array<T> npInertias({static_cast<pybind11::ssize_t>(inertias.size())});
     std::copy(inertias.begin(), inertias.end(), npInertias.mutable_data());
     return std::make_tuple(currentCenters, res, it, npInertias);
 }

@@ -32,6 +32,7 @@ requirements:
     - scipy
     - setuptools !=50.0.0
     - pip
+    - pybind11
 
   run:
     - intel-openmp # [osx]

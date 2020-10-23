@@ -28,7 +28,7 @@ if(DEEPTIME_BUILD_TESTING)
     endif ()
 endif()
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib/pybind11)
+add_subdirectory(${CMAKE_SOURCE_DIR}/ext/pybind11)
 
 set(common_includes "${CMAKE_CURRENT_LIST_DIR}/deeptime/src/include")
 

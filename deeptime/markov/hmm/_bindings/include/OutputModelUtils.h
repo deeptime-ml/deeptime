@@ -42,7 +42,7 @@ np_array<std::int64_t> generateObservationTrajectory(const np_array_nfc<State> &
     if (hiddenStateTrajectory.ndim() != 1) {
         throw std::invalid_argument("generate observation trajectory needs 1-dimensional hidden state trajectory");
     }
-    auto nTimesteps = static_cast<std::size_t>(hiddenStateTrajectory.shape(0));
+    auto nTimesteps = hiddenStateTrajectory.shape(0);
     auto nObs = outputProbabilities.shape(1);
 
     np_array<std::int64_t> output({nTimesteps});
@@ -52,19 +52,19 @@ np_array<std::int64_t> generateObservationTrajectory(const np_array_nfc<State> &
         auto nThreads = std::thread::hardware_concurrency();
         std::vector<deeptime::thread::scoped_thread> threads;
         threads.reserve(nThreads);
-        std::size_t grainSize = std::max(static_cast<std::size_t>(1), nTimesteps / nThreads);
+        auto grainSize = std::max(static_cast<pybind11::ssize_t>(1), nTimesteps / nThreads);
 
         const auto* hiddenStateTrajectoryBuf = hiddenStateTrajectory.data();
         const auto* outputProbabilitiesBuf = outputProbabilities.data();
 
-        for(std::size_t nextIndex = 0; nextIndex < nTimesteps; nextIndex += grainSize) {
-            std::size_t beginIndex = nextIndex;
-            std::size_t endIndex = std::min(nextIndex+grainSize, nTimesteps);
+        for(pybind11::ssize_t nextIndex = 0; nextIndex < nTimesteps; nextIndex += grainSize) {
+            auto beginIndex = nextIndex;
+            auto endIndex = std::min(nextIndex+grainSize, nTimesteps);
             threads.emplace_back([hiddenStateTrajectoryBuf, outputProbabilitiesBuf,
                                   beginIndex, endIndex, outputPtr, nObs]{
                 auto generator = deeptime::rnd::randomlySeededGenerator();
                 std::discrete_distribution<> ddist;
-                for(std::size_t t = beginIndex; t < endIndex; ++t) {
+                for(pybind11::ssize_t t = beginIndex; t < endIndex; ++t) {
                     auto state = hiddenStateTrajectoryBuf[t];
                     auto begin = outputProbabilitiesBuf + state * nObs;  // outputProbabilities.at(state, 0)
                     auto end = outputProbabilitiesBuf + (state+1) * nObs;  // outputProbabilities.at(state+1, 0)
@@ -219,7 +219,7 @@ constexpr dtype sample(dtype o, dtype mu, dtype sigma) {
 
 template<typename dtype>
 np_array<dtype> pO(dtype o, const np_array_nfc<dtype> &mus, const np_array_nfc<dtype> &sigmas, py::object out) {
-    auto N = static_cast<std::size_t>(mus.shape(0));
+    auto N = mus.shape(0);
 
     np_array<dtype> p;
     if (!out.is_none()) {
@@ -232,7 +232,7 @@ np_array<dtype> pO(dtype o, const np_array_nfc<dtype> &mus, const np_array_nfc<d
     auto sigmasBuf = sigmas.data();
 
     #pragma omp parallel for
-    for (std::size_t i = 0; i < N; ++i) {
+    for (pybind11::ssize_t i = 0; i < N; ++i) {
         pBuf[i] = sample(o, musBuf[i], sigmasBuf[i]);
     }
 
@@ -269,7 +269,7 @@ generateObservationTrajectory(const np_array_nfc<dtype> &hiddenStateTrajectory, 
         throw std::invalid_argument("Hidden state trajectory must be one-dimensional!");
     }
     auto nTimesteps = hiddenStateTrajectory.shape(0);
-    np_array<dtype> output({static_cast<std::size_t>(nTimesteps)});
+    np_array<dtype> output({nTimesteps});
     auto ptr = output.mutable_data();
 
     std::normal_distribution<dtype> dist{0, 1};
