@@ -124,8 +124,8 @@ html_theme_options = {
     'body_max_width': 'auto',
     'fixed_sidebar': 'true',
     'github_button': 'true',
-    'github_user': 'deeptime',
-    'github_repo': 'deeptime-ml',
+    'github_user': 'deeptime-ml',
+    'github_repo': 'deeptime',
     'github_type': 'star',
     'sidebar_collapse': 'true',
 
