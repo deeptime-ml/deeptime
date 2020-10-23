@@ -1,4 +1,4 @@
-.. _ref-kernels:
+.. _ref-basis:
 
 deeptime.basis
 ==============
