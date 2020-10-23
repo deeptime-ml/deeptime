@@ -6,6 +6,7 @@ import setuptools
 from numpy.distutils.command.build_ext import build_ext
 
 import versioneer
+import pybind11
 
 CCODE_TEMPLATE = """{includes}
 int main(void) {{
@@ -59,7 +60,7 @@ class Build(build_ext):
 
         from numpy import get_include as _np_inc
         np_inc = _np_inc()
-        pybind_inc = Path('lib') / 'pybind11' / 'include'
+        pybind_inc = Path(pybind11.get_include())
         common_inc = Path('deeptime') / 'src' / 'include'
 
         if self.compiler.compiler_type == 'msvc':
@@ -131,7 +132,7 @@ def configuration(parent_package='', top_path=None):
 
 if __name__ == '__main__':
     import os
-    assert os.listdir(os.path.join('lib', 'pybind11')), 'ensure pybind11 submodule is initialized'
+
     from numpy.distutils.core import setup
     metadata['configuration'] = configuration
     setup(**metadata)
