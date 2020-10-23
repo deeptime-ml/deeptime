@@ -11,7 +11,7 @@ steps:
   inputs:
     codeCoverageTool: 'cobertura' # Options: cobertura, jaCoCo
     summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
-    pathToSources: '$(Build.SourcesDirectory)/sktime' # Optional
+    pathToSources: '$(Build.SourcesDirectory)/deeptime' # Optional
     #reportDirectory: # Optional
     #additionalCodeCoverageFiles: # Optional
     #failIfCoverageEmpty: false # Optional

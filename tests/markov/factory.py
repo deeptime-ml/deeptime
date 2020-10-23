@@ -2,9 +2,9 @@ import typing
 
 import numpy as np
 
-import sktime.data.datasets as datasets
-from sktime.markov import TransitionCountEstimator
-from sktime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior
+import deeptime.data.datasets as datasets
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior
 
 __all__ = ['msm_double_well', 'bmsm_double_well']
 

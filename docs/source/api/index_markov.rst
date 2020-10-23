@@ -1,8 +1,8 @@
 .. _ref-markov-hmm:
-.. currentmodule:: sktime.markov
+.. currentmodule:: deeptime.markov
 
 ===============================================================================
-sktime.markov
+deeptime.markov
 ===============================================================================
 
 The *markov* package contains algorithms which can be used to estimate markov state models and apply

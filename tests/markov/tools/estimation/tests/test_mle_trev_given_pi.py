@@ -1,24 +1,7 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import unittest
 import numpy as np
 
-from sktime.util.exceptions import NotConvergedWarning
+from deeptime.util.exceptions import NotConvergedWarning
 from tests.markov.tools.numeric import assert_allclose
 import scipy
 import scipy.sparse
@@ -27,11 +10,11 @@ import warnings
 from os.path import abspath, join
 from os import pardir
 
-from sktime.markov.tools.estimation.dense.mle import mle_trev_given_pi as impl_dense
-from sktime.markov.tools.estimation.sparse.mle import mle_trev_given_pi as impl_sparse
+from deeptime.markov.tools.estimation.dense.mle import mle_trev_given_pi as impl_dense
+from deeptime.markov.tools.estimation.sparse.mle import mle_trev_given_pi as impl_sparse
 
-from sktime.markov.tools.estimation import transition_matrix as apicall
-from sktime.markov.tools.analysis import stationary_distribution, is_transition_matrix
+from deeptime.markov.tools.estimation import transition_matrix as apicall
+from deeptime.markov.tools.analysis import stationary_distribution, is_transition_matrix
 
 testpath = abspath(join(abspath(__file__), pardir)) + '/testfiles/'
 

@@ -1,7 +1,7 @@
 numpy
 scipy
 scikit-learn
-scikit-time
+deeptime
 sphinx
 nbsphinx
 sphinxcontrib-bibtex

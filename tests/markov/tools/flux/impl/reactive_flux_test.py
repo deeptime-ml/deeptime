@@ -1,20 +1,3 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 r"""Unit test for the ReactiveFlux object
 
 .. moduleauthor:: F.Noe <frank  DOT noe AT fu-berlin DOT de>
@@ -22,11 +5,11 @@ r"""Unit test for the ReactiveFlux object
 """
 import unittest
 import numpy as np
-from sktime.markov import compute_reactive_flux
+from deeptime.markov import compute_reactive_flux
 from tests.markov.tools.numeric import assert_allclose
 
-from sktime.markov.tools.flux import api as msmapi
-import sktime.markov.tools.analysis as msmana
+from deeptime.markov.tools.flux import api as msmapi
+import deeptime.markov.tools.analysis as msmana
 
 
 class TestReactiveFluxFunctions(unittest.TestCase):

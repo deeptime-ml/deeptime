@@ -1,25 +1,7 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 """This module provides unit tests for the assessment functions of the analysis API
 
 .. moduleauthor:: Martin Scherer <m DOT scherer AT fu-berlin DOT de>
 .. moduleauthor:: Benjamin Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
-
 """
 
 import unittest
@@ -28,8 +10,8 @@ import numpy as np
 import scipy.sparse
 from scipy.sparse.dia import dia_matrix
 
-from sktime.data import birth_death_chain
-from sktime.markov.tools.analysis import is_rate_matrix, is_reversible, is_transition_matrix, is_connected
+from deeptime.data import birth_death_chain
+from deeptime.markov.tools.analysis import is_rate_matrix, is_reversible, is_transition_matrix, is_connected
 
 ################################################################################
 # Dense

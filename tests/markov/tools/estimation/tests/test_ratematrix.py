@@ -1,10 +1,10 @@
-import sktime.markov.tools.estimation
-import sktime.markov.tools.estimation.dense.ratematrix
+import deeptime.markov.tools.estimation
+import deeptime.markov.tools.estimation.dense.ratematrix
 import numpy as np
 import scipy as sp
-from sktime.markov.tools import kahandot
+from deeptime.markov.tools import kahandot
 import unittest
-import sktime.markov.tools
+import deeptime.markov.tools
 import warnings
 
 
@@ -28,14 +28,14 @@ class TestEstimators(unittest.TestCase):
                           [100, -1100, 1000],
                           [0, 5, -5]])
         cls.T = sp.linalg.expm(cls.tau * cls.K)
-        cls.pi = sktime.markov.tools.analysis.stationary_distribution(cls.T)
+        cls.pi = deeptime.markov.tools.analysis.stationary_distribution(cls.T)
         cls.t_agg = 1000000  # 1M
         cls.C = np.ascontiguousarray(np.ceil(cls.pi[:, np.newaxis] * cls.T * cls.t_agg).astype(int))
         cls.C0 = np.zeros((3, 3), dtype=int)
         cls.C0[0, 1] = cls.C0[1, 0] = cls.C0[1, 2] = cls.C0[2, 1] = 1
 
     def test_Kalbfleisch_Lawless_with_connectivity(self):
-        est = sktime.markov.tools.estimation.dense.ratematrix.KalbfleischLawlessEstimator(self.C, self.K, self.pi,
+        est = deeptime.markov.tools.estimation.dense.ratematrix.KalbfleischLawlessEstimator(self.C, self.K, self.pi,
                                                                                           dt=self.tau, sparsity=self.C0,
                                                                                           t_agg=self.t_agg * self.tau,
                                                                                           tol=100.0)
@@ -43,7 +43,7 @@ class TestEstimators(unittest.TestCase):
         assert np.allclose(self.K, K_est, rtol=5.0E-3)
 
     def test_Crommelin_Vanden_Eijnden_with_connectivity(self):
-        est = sktime.markov.tools.estimation.dense.ratematrix.CrommelinVandenEijndenEstimator(self.T, self.K, self.pi,
+        est = deeptime.markov.tools.estimation.dense.ratematrix.CrommelinVandenEijndenEstimator(self.T, self.K, self.pi,
                                                                                               dt=self.tau,
                                                                                               sparsity=self.C0,
                                                                                               t_agg=self.t_agg * self.tau,
@@ -52,51 +52,51 @@ class TestEstimators(unittest.TestCase):
         assert np.allclose(self.K, K_est, rtol=5.0E-3)
 
     def test_api_with_connectivity_with_pi(self):
-        K_est = sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, sparsity=self.C0,
+        K_est = deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, sparsity=self.C0,
                                                            t_agg=self.t_agg * self.tau, pi=self.pi, tol=100.0)
         assert np.allclose(self.K, K_est, rtol=5.0E-3)
 
     def test_api_without_connectivity_with_pi(self):
-        K_est = sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, pi=self.pi, tol=100.0)
+        K_est = deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, pi=self.pi, tol=100.0)
         assert np.allclose(self.K, K_est, rtol=5.0E-3, atol=1.0E-3)
 
     def test_api_with_connectivity_without_pi(self):
-        K_est = sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, sparsity=self.C0,
+        K_est = deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, sparsity=self.C0,
                                                            t_agg=self.t_agg * self.tau, tol=100.0)
         assert np.allclose(self.K, K_est, rtol=5.0E-3)
 
     def test_api_without_connectivity_without_pi(self):
-        K_est = sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, tol=100.0)
+        K_est = deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, tol=100.0)
         assert np.allclose(self.K, K_est, rtol=5.0E-3, atol=1.0E-3)
 
     def test_api_with_connectivity_with_pi_with_guess(self):
-        K_est = sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, sparsity=self.C0,
+        K_est = deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, sparsity=self.C0,
                                                            t_agg=self.t_agg * self.tau, pi=self.pi, tol=100.0,
                                                            K0=self.K)
         assert np.allclose(self.K, K_est, rtol=5.0E-3)
 
     def test_api_without_connectivity_with_pi_with_guess(self):
-        K_est = sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, pi=self.pi, tol=100.0, K0=self.K)
+        K_est = deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, pi=self.pi, tol=100.0, K0=self.K)
         assert np.allclose(self.K, K_est, rtol=5.0E-3, atol=1.0E-3)
 
     def test_api_with_connectivity_without_pi_with_guess(self):
-        K_est = sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, sparsity=self.C0,
+        K_est = deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, sparsity=self.C0,
                                                            t_agg=self.t_agg * self.tau, tol=100.0, K0=self.K)
         assert np.allclose(self.K, K_est, rtol=5.0E-3)
 
     def test_api_without_connectivity_without_pi_with_guess(self):
-        K_est = sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, tol=100.0, K0=self.K)
+        K_est = deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, tol=100.0, K0=self.K)
         assert np.allclose(self.K, K_est, rtol=5.0E-3, atol=1.0E-3)
 
     def test_raise(self):
-        with self.assertRaises(sktime.markov.tools.estimation.dense.ratematrix.NotConvergedError):
-            sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, method='CVE', maxiter=1, on_error='raise')
+        with self.assertRaises(deeptime.markov.tools.estimation.dense.ratematrix.NotConvergedError):
+            deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, method='CVE', maxiter=1, on_error='raise')
 
     def test_warn(self):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('ignore')
             warnings.simplefilter('always',
-                                  category=sktime.markov.tools.estimation.dense.ratematrix.NotConvergedWarning)
-            sktime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, method='CVE', maxiter=1, on_error='warn')
+                                  category=deeptime.markov.tools.estimation.dense.ratematrix.NotConvergedWarning)
+            deeptime.markov.tools.estimation.rate_matrix(self.C, dt=self.tau, method='CVE', maxiter=1, on_error='warn')
             assert len(w) == 1
-            assert issubclass(w[-1].category, sktime.markov.tools.estimation.dense.ratematrix.NotConvergedWarning)
+            assert issubclass(w[-1].category, deeptime.markov.tools.estimation.dense.ratematrix.NotConvergedWarning)

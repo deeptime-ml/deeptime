@@ -3,11 +3,11 @@ import itertools
 import numpy as np
 import pytest
 
-from sktime.markov import tools
+from deeptime.markov import tools
 
-import sktime
-from sktime.markov.hmm import MaximumLikelihoodHMM
-from sktime.markov.msm import MarkovStateModel
+import deeptime
+from deeptime.markov.hmm import MaximumLikelihoodHMM
+from deeptime.markov.msm import MarkovStateModel
 
 
 def permutation_matrices(n):
@@ -59,11 +59,11 @@ class HMMScenario(object):
         assert -1 not in np.unique(self.observable_state_traj)
 
         if init_strategy == 'random':
-            self.init_hmm = sktime.markov.hmm.init.discrete.random_guess(
+            self.init_hmm = deeptime.markov.hmm.init.discrete.random_guess(
                 n_observation_states=self.n_observable, n_hidden_states=self.n_hidden, seed=17
             )
         elif init_strategy == 'pcca':
-            self.init_hmm = sktime.markov.hmm.init.discrete.metastable_from_data(
+            self.init_hmm = deeptime.markov.hmm.init.discrete.metastable_from_data(
                 self.observable_state_traj, n_hidden_states=self.n_hidden, lagtime=self.lagtime
             )
         else:

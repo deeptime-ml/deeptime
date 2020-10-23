@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from sktime.markov import TransitionCountEstimator, TransitionCountModel
+from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from tests.util import GenerateTestMatrix
 
 

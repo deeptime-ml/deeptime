@@ -1,21 +1,3 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2017 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 """
 @author: paul
 """
@@ -25,10 +7,10 @@ import unittest
 import numpy as np
 import pytest
 
-from sktime.data.util import timeshifted_split
-from sktime.decomposition import KoopmanModel
-from sktime.decomposition.vamp import VAMP
-from sktime.markov._base import cvsplit_dtrajs
+from deeptime.data.util import timeshifted_split
+from deeptime.decomposition import KoopmanModel
+from deeptime.decomposition.vamp import VAMP
+from deeptime.markov._base import cvsplit_dtrajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 
 
@@ -366,7 +348,7 @@ class TestVAMPWithEdgeCaseData(unittest.TestCase):
         assert_allclose_ignore_phase(vamp.transform(x, forward=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
-        from sktime.numeric.eigen import ZeroRankError
+        from deeptime.numeric.eigen import ZeroRankError
         with self.assertRaises(ZeroRankError):
             print(VAMP(lagtime=1).fit(np.ones((10, 2))).fetch_model().singular_values)
         with self.assertRaises(ZeroRankError):

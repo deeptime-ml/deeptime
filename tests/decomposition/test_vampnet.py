@@ -5,18 +5,18 @@ pytest.importorskip("torch")
 import torch
 import torch.nn as nn
 import numpy as np
-import sktime
-from sktime.clustering import KmeansClustering
-from sktime.decomposition import VAMP
-from sktime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss, MLPLobe
-from sktime.markov.msm import MaximumLikelihoodMSM
+import deeptime
+from deeptime.clustering import KmeansClustering
+from deeptime.decomposition import VAMP
+from deeptime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss, MLPLobe
+from deeptime.markov.msm import MaximumLikelihoodMSM
 
 
 @pytest.mark.parametrize('mode', ["trunc"])
 def test_inverse_spd(mode):
     X = np.random.normal(size=(15, 5))
     spd = X @ X.T  # rank at most 5
-    spd_inv_qr = sktime.numeric.spd_inv(spd)
+    spd_inv_qr = deeptime.numeric.spd_inv(spd)
     with torch.no_grad():
         spd_tensor = torch.from_numpy(spd)
         spd_inv = sym_inverse(spd_tensor, epsilon=1e-6, return_sqrt=False, mode=mode)
@@ -25,11 +25,11 @@ def test_inverse_spd(mode):
 
 @pytest.mark.parametrize("remove_mean", [True, False], ids=lambda x: f"remove_mean={x}")
 def test_covariances(remove_mean):
-    data = sktime.data.ellipsoids().observations(1000, n_dim=5)
+    data = deeptime.data.ellipsoids().observations(1000, n_dim=5)
     tau = 10
     data_instantaneous = data[:-tau].astype(np.float64)
     data_shifted = data[tau:].astype(np.float64)
-    cov_est = sktime.covariance.Covariance(lagtime=tau, compute_c0t=True, compute_ctt=True,
+    cov_est = deeptime.covariance.Covariance(lagtime=tau, compute_c0t=True, compute_ctt=True,
                                            remove_data_mean=remove_mean)
     reference_covs = cov_est.fit(data).fetch_model()
     with torch.no_grad():
@@ -43,10 +43,10 @@ def test_covariances(remove_mean):
 @pytest.mark.parametrize('method', ["VAMP1", "VAMP2", "VAMPE"])
 @pytest.mark.parametrize('mode', ["trunc", "regularize", "clamp"])
 def test_score(method, mode):
-    data = sktime.data.ellipsoids(seed=13).observations(1000, n_dim=5)
+    data = deeptime.data.ellipsoids(seed=13).observations(1000, n_dim=5)
     tau = 10
 
-    vamp_model = sktime.decomposition.VAMP(lagtime=tau, dim=None).fit(data).fetch_model()
+    vamp_model = deeptime.decomposition.VAMP(lagtime=tau, dim=None).fit(data).fetch_model()
     with torch.no_grad():
         data_instantaneous = torch.from_numpy(data[:-tau].astype(np.float64))
         data_shifted = torch.from_numpy(data[tau:].astype(np.float64))
@@ -59,7 +59,7 @@ def test_score(method, mode):
 
 
 def test_estimator():
-    data = sktime.data.ellipsoids()
+    data = deeptime.data.ellipsoids()
     obs = data.observations(60000, n_dim=10).astype(np.float32)
 
     # set up the lobe
@@ -67,7 +67,7 @@ def test_estimator():
     # train the lobe
     opt = torch.optim.Adam(lobe.parameters(), lr=5e-4)
     for _ in range(50):
-        for X, Y in sktime.data.timeshifted_split(obs, lagtime=1, chunksize=512):
+        for X, Y in deeptime.data.timeshifted_split(obs, lagtime=1, chunksize=512):
             opt.zero_grad()
             lval = loss(lobe(torch.from_numpy(X)), lobe(torch.from_numpy(Y)))
             lval.backward()
@@ -91,9 +91,9 @@ def test_estimator():
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_estimator_fit(dtype):
-    data = sktime.data.ellipsoids()
+    data = deeptime.data.ellipsoids()
     obs = data.observations(60000, n_dim=2).astype(dtype)
-    train, val = torch.utils.data.random_split(sktime.data.TimeLaggedDataset.from_trajectory(1, obs), [50000, 9999])
+    train, val = torch.utils.data.random_split(deeptime.data.TimeLaggedDataset.from_trajectory(1, obs), [50000, 9999])
 
     # set up the lobe
     linear_layer = nn.Linear(2, 1)

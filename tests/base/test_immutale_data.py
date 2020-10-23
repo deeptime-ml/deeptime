@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from sktime.base import Estimator, Model, InputFormatError
+from deeptime.base import Estimator, Model, InputFormatError
 
 
 class EvilEstimator(Estimator):

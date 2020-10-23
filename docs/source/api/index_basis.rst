@@ -1,11 +1,11 @@
-.. _ref-kernels:
+.. _ref-basis:
 
-sktime.basis
-============
+deeptime.basis
+==============
 
 The *basis* package contains transformations of data into different bases for easier featurization.
 
-.. automodule:: sktime.basis
+.. automodule:: deeptime.basis
 
 .. toctree::
    :maxdepth: 1

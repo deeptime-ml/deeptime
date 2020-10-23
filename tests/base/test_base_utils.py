@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from sktime.util.platform import module_available
-from sktime.util.stats import QuantityStatistics, confidence_interval
+from deeptime.util.platform import module_available
+from deeptime.util.stats import QuantityStatistics, confidence_interval
 
 
 def test_module_available():

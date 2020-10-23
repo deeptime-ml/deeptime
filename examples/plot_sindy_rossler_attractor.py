@@ -3,8 +3,8 @@ Identification of the Rossler system with SINDy
 ===============================================
 
 This example shows how to use SINDy to discover the chaotic Rossler system from
-measurement data via the :class:`sktime.sindy.SINDy` estimator and
-:class:`sktime.sindy.SINDyModel` model. Once we've learned the system, we can
+measurement data via the :class:`deeptime.sindy.SINDy` estimator and
+:class:`deeptime.sindy.SINDyModel` model. Once we've learned the system, we can
 also simulate forward in time from novel initial conditions.
 
 Note that for this example we pass in the exact derivatives. In practice one can
@@ -16,7 +16,7 @@ import numpy as np
 from scipy.integrate import odeint
 from sklearn.preprocessing import PolynomialFeatures
 
-from sktime.sindy import SINDy, STLSQ
+from deeptime.sindy import SINDy, STLSQ
 
 
 # Generate measurements of the Rossler system

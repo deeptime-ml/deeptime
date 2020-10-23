@@ -37,11 +37,11 @@ If a markov state model is available, interesting dynamical quantities can be co
 and fluxes between (sets of) states :cite:`ix-msm-metzner2009transition`, timescales, metastable decompositions
 of markov states :cite:`ix-msm-roblitz2013fuzzy`.
 
-The goal of the :py:mod:`sktime.markov` package is to provide tools to estimate and analyze markov state
+The goal of the :py:mod:`deeptime.markov` package is to provide tools to estimate and analyze markov state
 models from discrete-state timeseries data. If the data's domain is not discrete,
 `clustering <notebooks/clustering.ipynb>`__ can be employed to assign each frame to a state.
 
-In the following, we introduce the core object, the :class:`MarkovStateModel <sktime.markov.msm.MarkovStateModel>`,
+In the following, we introduce the core object, the :class:`MarkovStateModel <deeptime.markov.msm.MarkovStateModel>`,
 as well as a variety of estimators.
 
 When estimating a MSM from time series data, it is important to collect statistics
@@ -55,9 +55,9 @@ over the encountered state transitions. This is covered in `transition counting 
     notebooks/pcca
     notebooks/tpt
 
-Furthermore, scikit-time implements :class:`Augmented Markov models <sktime.markov.msm.AugmentedMSMEstimator>`
+Furthermore, deeptime implements :class:`Augmented Markov models <deeptime.markov.msm.AugmentedMSMEstimator>`
 :cite:`ix-msm-olsson2017combining` which can be used when experimental data is available, as well as
-:class:`Observable Operator Model MSMs <sktime.markov.msm.OOMReweightedMSM>` :cite:`ix-msm-nuske2017markov` which is
+:class:`Observable Operator Model MSMs <deeptime.markov.msm.OOMReweightedMSM>` :cite:`ix-msm-nuske2017markov` which is
 an unbiased estimator for the MSM transition matrix that corrects for the effect of starting out of equilibrium,
 even when short lag times are used.
 

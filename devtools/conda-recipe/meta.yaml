@@ -1,5 +1,5 @@
 package:
-  name: scikit-time
+  name: deeptime
   #version: dev+{{ GIT_DESCRIBE_TAG[1:] + '+' + GIT_DESCRIBE_NUMBER + '.' + GIT_DESCRIBE_HASH}}
   version: 0
 
@@ -14,8 +14,8 @@ build:
   script:
     - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
   skip_compile_pyc:
-    - "sktime/util_torch.py"
-    - "sktime/decomposition/vampnet.py"
+    - "deeptime/util_torch.py"
+    - "deeptime/decomposition/vampnet.py"
 
 requirements:
   build:

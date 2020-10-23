@@ -1,21 +1,3 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2017 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 r"""Unit test for the AMM module
 
 .. moduleauthor:: S. Olsson <solsson AT zedat DOT fu DASH berlin DOT de>
@@ -25,10 +7,10 @@ r"""Unit test for the AMM module
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_equal
 
-from sktime.data import birth_death_chain
-from sktime.markov import TransitionCountEstimator
-from sktime.markov.msm import MarkovStateModel
-from sktime.markov.msm.augmented_msm import AugmentedMSMEstimator
+from deeptime.data import birth_death_chain
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.msm.augmented_msm import AugmentedMSMEstimator
 
 
 def test_amm_sanity(fixed_seed):

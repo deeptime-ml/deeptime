@@ -1,21 +1,3 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 """
 Created on 02.02.2015
 
@@ -27,12 +9,12 @@ import unittest
 import numpy as np
 import pytest
 
-from sktime.covariance import Covariance
-from sktime.data import ellipsoids
-from sktime.decomposition import VAMP
-from sktime.decomposition.tica import TICA
-from sktime.markov.msm import MarkovStateModel
-from sktime.numeric.eigen import ZeroRankError
+from deeptime.covariance import Covariance
+from deeptime.data import ellipsoids
+from deeptime.decomposition import VAMP
+from deeptime.decomposition.tica import TICA
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.numeric.eigen import ZeroRankError
 
 
 def test_fit_reset():

@@ -1,39 +1,21 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 r"""Unit test for the OOM-based MSM estimation.
 
 """
 import os
 
-import sktime.markov.tools.analysis as ma
-import sktime.markov.tools.estimation as msmest
+import deeptime.markov.tools.analysis as ma
+import deeptime.markov.tools.estimation as msmest
 import numpy as np
 import pytest
 import scipy.linalg as scl
 import scipy.sparse
 
-from sktime.markov import score_cv, sample
-from sktime.markov.msm import MarkovStateModel
-from sktime.markov.msm.koopman_reweighted_msm import OOMReweightedMSM
-from sktime.markov.sample import compute_index_states, indices_by_sequence
-from sktime.markov.util import count_states
-from sktime.numeric import sort_by_norm
+from deeptime.markov import score_cv, sample
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.msm.koopman_reweighted_msm import OOMReweightedMSM
+from deeptime.markov.sample import compute_index_states, indices_by_sequence
+from deeptime.markov.util import count_states
+from deeptime.numeric import sort_by_norm
 
 
 def oom_transformations(Ct, C2t, rank):
@@ -281,7 +263,7 @@ def test_transition_matrix(oom_msm_scenario):
         # shape
         np.testing.assert_equal(P.shape, (msm.n_states, msm.n_states))
         # test transition matrix properties
-        import sktime.markov.tools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
         np.testing.assert_(msmana.is_transition_matrix(P))
         np.testing.assert_(msmana.is_connected(P))
         # REVERSIBLE

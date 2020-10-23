@@ -1,20 +1,3 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 """
 Created on 06.12.2013
 
@@ -27,9 +10,9 @@ import unittest
 
 import numpy as np
 
-from sktime.markov.tools.analysis import stationary_distribution
-from sktime.markov.tools.analysis.dense.pcca import pcca, coarsegrain, PCCA
-from sktime.markov.tools.estimation import connected_sets
+from deeptime.markov.tools.analysis import stationary_distribution
+from deeptime.markov.tools.analysis.dense.pcca import pcca, coarsegrain, PCCA
+from deeptime.markov.tools.estimation import connected_sets
 from tests.markov.tools.numeric import assert_allclose
 
 
@@ -152,7 +135,7 @@ class TestPCCA(unittest.TestCase):
                       [0.0,  0.1,  0.8,  0.1,  0.0],
                       [0.0,  0.0,  0.01, 0.79, 0.2],
                       [0.0,  0.0,  0.0,  0.2,  0.8]])
-        from sktime.markov.tools.analysis import stationary_distribution
+        from deeptime.markov.tools.analysis import stationary_distribution
         pi = stationary_distribution(P)
         Pi = np.diag(pi)
         m = 3

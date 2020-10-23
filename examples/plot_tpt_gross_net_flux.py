@@ -2,8 +2,8 @@
 Gross and net flux on the Drunkard's walk example
 =================================================
 
-This example shows how to compute and visualize gross and net reactive flux (see :class:`sktime.markov.ReactiveFlux`)
-using the :meth:`sktime.data.drunkards_walk`.
+This example shows how to compute and visualize gross and net reactive flux (see :class:`deeptime.markov.ReactiveFlux`)
+using the :meth:`deeptime.data.drunkards_walk`.
 """
 
 import matplotlib as mpl
@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import numpy as np
-import sktime
+import deeptime
 
-sim = sktime.data.drunkards_walk(grid_size=(10, 10),
-                                 bar_location=[(0, 0), (0, 1), (1, 0), (1, 1)],
-                                 home_location=[(8, 8), (8, 9), (9, 8), (9, 9)])
+sim = deeptime.data.drunkards_walk(grid_size=(10, 10),
+                                   bar_location=[(0, 0), (0, 1), (1, 0), (1, 1)],
+                                   home_location=[(8, 8), (8, 9), (9, 8), (9, 9)])
 sim.add_barrier((5, 1), (5, 5))
 sim.add_barrier((0, 9), (5, 8))
 sim.add_barrier((9, 2), (7, 6))

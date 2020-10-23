@@ -1,8 +1,8 @@
 import unittest
 
 import numpy as np
-import sktime
-from sktime.markov.hmm.output_model import DiscreteOutputModel, GaussianOutputModel
+import deeptime
+from deeptime.markov.hmm.output_model import DiscreteOutputModel, GaussianOutputModel
 
 
 class TestDiscrete(unittest.TestCase):
@@ -158,8 +158,8 @@ class TestGaussian(unittest.TestCase):
 
         obs = gmm.sample(100000 + np.random.randint(-3, 3))[0].squeeze()
 
-        init = sktime.markov.hmm.init.gaussian.from_data(obs, n_hidden_states=3, reversible=True)
-        hmm_est = sktime.markov.hmm.MaximumLikelihoodHMM(init)
+        init = deeptime.markov.hmm.init.gaussian.from_data(obs, n_hidden_states=3, reversible=True)
+        hmm_est = deeptime.markov.hmm.MaximumLikelihoodHMM(init)
         hmm = hmm_est.fit(obs).fetch_model()
 
         np.testing.assert_array_almost_equal(hmm.transition_model.transition_matrix, np.eye(3), decimal=3)

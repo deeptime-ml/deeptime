@@ -2,9 +2,9 @@ import unittest
 import numpy as np
 import pkg_resources
 
-from sktime.covariance import KoopmanWeightingModel
-from sktime.data.util import timeshifted_split
-from sktime.numeric.eigen import sort_by_norm
+from deeptime.covariance import KoopmanWeightingModel
+from deeptime.data.util import timeshifted_split
+from deeptime.numeric.eigen import sort_by_norm
 import numpy.linalg as scl
 
 
@@ -161,7 +161,7 @@ class TestKoopmanTICA(unittest.TestCase):
         cls.tsr = -cls.tau / np.log(np.abs(cls.lr))
 
         def tica(data, lag, weights=None, **params):
-            from sktime.decomposition.tica import TICA
+            from deeptime.decomposition.tica import TICA
             return TICA(var_cutoff=0.95, lagtime=lag, **params).fit_from_timeseries(data, weights=weights).fetch_model()
 
         # Set up the model:
@@ -201,7 +201,7 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(out_traj_eq, ev_traj_eq)
 
     def test_koopman_estimator_partial_fit(self):
-        from sktime.covariance import KoopmanWeightingEstimator
+        from deeptime.covariance import KoopmanWeightingEstimator
         est = KoopmanWeightingEstimator(lagtime=self.tau)
         est.lagtime = 1
         np.testing.assert_equal(est.lagtime, 1)
@@ -222,7 +222,7 @@ class TestKoopmanTICA(unittest.TestCase):
         np.testing.assert_allclose(m.weights(self.data[0]), est.transform(self.data[0]))
 
     def test_koopman_estimator_fit(self):
-        from sktime.covariance import KoopmanWeightingEstimator
+        from deeptime.covariance import KoopmanWeightingEstimator
         est = KoopmanWeightingEstimator(lagtime=self.tau)
         est.fit(self.data)
         m = est.fetch_model()

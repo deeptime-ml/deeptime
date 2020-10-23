@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from sktime.clustering import RegularSpaceClustering
+from deeptime.clustering import RegularSpaceClustering
 
 
 class TestRegSpaceClustering(unittest.TestCase):

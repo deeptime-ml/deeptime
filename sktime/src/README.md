@@ -1,1 +1,0 @@
-This directory contains common utility functionality for the c++ extensions contained in scikit-time.

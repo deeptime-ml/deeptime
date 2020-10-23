@@ -1,20 +1,3 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import unittest
 
 import numpy as np
@@ -24,8 +7,8 @@ from os import pardir
 
 import pytest
 
-import sktime
-from sktime.markov.tools.estimation import count_matrix, effective_count_matrix
+import deeptime
+from deeptime.markov.tools.estimation import count_matrix, effective_count_matrix
 
 """Unit tests for the transition_matrix module"""
 
@@ -129,7 +112,7 @@ class TestEffectiveCountMatrix_old_impl(unittest.TestCase):
                               1.13816439e+02, 2.51960055e+02, 1.33451946e+03],
                              [1.57044024e+01, 3.26168358e+01, 1.12346879e+02,
                               4.34287128e+02, 1.88573632e+03, 2.35837843e+04]])
-        ref_dtraj = sktime.data.double_well_discrete().dtraj_n6good
+        ref_dtraj = deeptime.data.double_well_discrete().dtraj_n6good
         Ceff = effective_count_matrix(ref_dtraj, lag=10, average='row', mact=1.0).toarray()
         Ceff2 = effective_count_matrix(ref_dtraj, lag=10, average='row', mact=1.0, n_jobs=2).toarray()
 

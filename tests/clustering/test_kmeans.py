@@ -7,10 +7,10 @@ import pytest
 from sklearn.datasets import make_blobs
 from sklearn.utils.extmath import row_norms
 
-from sktime.clustering import KmeansClustering
-from sktime.clustering.cluster_model import ClusterModel
+from deeptime.clustering import KmeansClustering
+from deeptime.clustering.cluster_model import ClusterModel
 
-import sktime.clustering._clustering_bindings as bindings
+import deeptime.clustering._clustering_bindings as bindings
 
 
 def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=0, cluster_centers=None,

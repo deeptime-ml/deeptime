@@ -1,20 +1,3 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 """Unit test for the reaction pathway decomposition
 
 .. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
@@ -27,7 +10,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from tests.markov.tools.numeric import assert_allclose
-from sktime.markov.tools.flux import pathways
+from deeptime.markov.tools.flux import pathways
 
 
 class TestPathways(unittest.TestCase):
@@ -131,9 +114,9 @@ class TestPathways(unittest.TestCase):
 
     def test_with_almost_converged_stat_dist(self):
         """ test for #106 """
-        from sktime.markov.tools.analysis import committor, is_reversible
-        from sktime.markov.tools.flux import flux_matrix, to_netflux
-        from sktime.markov import compute_reactive_flux, ReactiveFlux
+        from deeptime.markov.tools.analysis import committor, is_reversible
+        from deeptime.markov.tools.flux import flux_matrix, to_netflux
+        from deeptime.markov import compute_reactive_flux, ReactiveFlux
 
         T = np.array([[0.2576419223095193, 0.2254214623509954, 0.248270708174756,
                        0.2686659071647294],

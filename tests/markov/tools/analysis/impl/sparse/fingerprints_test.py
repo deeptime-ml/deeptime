@@ -1,20 +1,3 @@
-# This file is part of scikit-time and MSMTools.
-#
-# Copyright (c) 2020, 2015, 2014 AI4Science Group, Freie Universitaet Berlin (GER)
-#
-# scikit-time and MSMTools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 r"""Unit test for the fingerprint module
 
 .. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
@@ -27,12 +10,12 @@ import numpy as np
 
 from tests.markov.tools.numeric import assert_allclose
 
-import sktime
-from sktime.markov.tools.analysis.sparse.decomposition import rdl_decomposition, timescales
+import deeptime
+from deeptime.markov.tools.analysis.sparse.decomposition import rdl_decomposition, timescales
 
-from sktime.markov.tools.analysis.sparse.fingerprints import fingerprint_correlation, fingerprint_relaxation, fingerprint
-from sktime.markov.tools.analysis.sparse.fingerprints import correlation_decomp, correlation_matvec, correlation
-from sktime.markov.tools.analysis.sparse.fingerprints import relaxation_decomp, relaxation_matvec, relaxation
+from deeptime.markov.tools.analysis.sparse.fingerprints import fingerprint_correlation, fingerprint_relaxation, fingerprint
+from deeptime.markov.tools.analysis.sparse.fingerprints import correlation_decomp, correlation_matvec, correlation
+from deeptime.markov.tools.analysis.sparse.fingerprints import relaxation_decomp, relaxation_matvec, relaxation
 
 
 class TestFingerprint(unittest.TestCase):
@@ -46,7 +29,7 @@ class TestFingerprint(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = sktime.data.birth_death_chain(q, p)
+        self.bdc = deeptime.data.birth_death_chain(q, p)
         self.mu = self.bdc.stationary_distribution
         self.T = self.bdc.transition_matrix_sparse
         R, D, L = rdl_decomposition(self.T, k=self.k)
@@ -139,7 +122,7 @@ class TestCorrelation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = sktime.data.birth_death_chain(q, p)
+        self.bdc = deeptime.data.birth_death_chain(q, p)
 
         self.mu = self.bdc.stationary_distribution
         self.T = self.bdc.transition_matrix_sparse
@@ -227,7 +210,7 @@ class TestRelaxation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = sktime.data.birth_death_chain(q, p)
+        self.bdc = deeptime.data.birth_death_chain(q, p)
 
         self.mu = self.bdc.stationary_distribution
         self.T = self.bdc.transition_matrix_sparse

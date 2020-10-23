@@ -1,21 +1,3 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 r"""Unit test for the MSM module
 
 .. moduleauthor:: F. Noe <frank DOT noe AT fu-berlin DOT de>
@@ -27,16 +9,16 @@ import unittest
 
 from numpy.testing import assert_equal, assert_raises, assert_, assert_array_almost_equal, assert_array_equal
 
-import sktime.markov.tools.analysis as msmana
-import sktime.markov.tools.estimation as msmest
+import deeptime.markov.tools.analysis as msmana
+import deeptime.markov.tools.estimation as msmest
 import numpy as np
 import pytest
 import scipy.sparse
 
-import sktime
-from sktime.markov._base import score_cv
-from sktime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel, MarkovStateModelCollection
-from sktime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
+import deeptime
+from deeptime.markov._base import score_cv
+from deeptime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel, MarkovStateModelCollection
+from deeptime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
 
 
 def estimate_markov_model(dtrajs, lag, **kw) -> MarkovStateModel:
@@ -159,7 +141,7 @@ def test_birth_death_chain(fixed_seed, sparse):
     p[2] = 10 ** (-b)
     p[4] = 1.0 - 10 ** (-b)
 
-    bdc = sktime.data.birth_death_chain(q, p)
+    bdc = deeptime.data.birth_death_chain(q, p)
     dtraj = bdc.msm.simulate(10000, start=0)
     tau = 1
 

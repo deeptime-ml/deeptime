@@ -1,8 +1,8 @@
-===========
-Scikit-time
-===========
+========
+Eeeptime
+========
 
-Scikit-time is a Python library for analysis for time series data. In particular, methods for dimensionality reduction,
+Deeptime is a Python library for analysis for time series data. In particular, methods for dimensionality reduction,
 clustering, and Markov model estimation are implemented.
 
 The API is similar to that of `scikit-learn <https://scikit-learn.org/>`__ and offers basic compatibility to the tools
