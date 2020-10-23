@@ -1,10 +1,10 @@
 .. _ref-covariance:
 
-sktime.covariance
-=================
+deeptime.covariance
+===================
 The *covariance* package contains algorithms that can measure covariances for time series data.
 
-.. automodule:: sktime.covariance
+.. automodule:: deeptime.covariance
 
 .. toctree::
    :maxdepth: 1

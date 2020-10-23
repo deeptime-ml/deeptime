@@ -1,10 +1,10 @@
 .. _ref-coordinates:
 
-sktime.clustering
-=================
+deeptime.clustering
+===================
 The *clustering* package contains clustering algorithms that can be used for discretization of time series.
 
-.. automodule:: sktime.clustering
+.. automodule:: deeptime.clustering
 
 .. toctree::
    :maxdepth: 1

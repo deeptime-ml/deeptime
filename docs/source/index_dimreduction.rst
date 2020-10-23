@@ -14,8 +14,8 @@ Here we introduce the dimensionality reduction / decomposition techniques implem
 
 .. rubric:: Koopman operator methods
 
-`VAMP <notebooks/vamp.ipynb>`__ (:class:`API docs<sktime.decomposition.VAMP>`) and its
-special case `TICA <notebooks/tica.ipynb>`__ (:class:`API docs<sktime.decomposition.TICA>`)
+`VAMP <notebooks/vamp.ipynb>`__ (:class:`API docs<deeptime.decomposition.VAMP>`) and its
+special case `TICA <notebooks/tica.ipynb>`__ (:class:`API docs<deeptime.decomposition.TICA>`)
 yield approximations to the Koopman operator
 
 .. math::
@@ -97,17 +97,17 @@ While the implementations of `TICA <notebooks/tica.ipynb>`_ and its generalizati
 can be fit directly by a time series that is kept in the computer's memory, this might not always be possible.
 
 The implementations are based on estimating covariance matrices, by default using the
-`covariance estimator <api/generated/sktime.covariance.Covariance.rst#sktime.covariance.Covariance>`_.
+`covariance estimator <api/generated/deeptime.covariance.Covariance.rst#deeptime.covariance.Covariance>`_.
 
 This estimator makes use of an online algorithm, so that it can be fit in a streaming fashion:
 
 .. code-block:: python
 
-    estimator = sktime.decomposition.TICA(lagtime=tau)  # creating an estimator
-    estimator = sktime.decomposition.VAMP(lagtime=tau)  # either TICA or VAMP
+    estimator = deeptime.decomposition.TICA(lagtime=tau)  # creating an estimator
+    estimator = deeptime.decomposition.VAMP(lagtime=tau)  # either TICA or VAMP
 
 Since toy data usually easily fits into memory, loading data from, e.g., a database or network is simulated with the
-`timeshifted_split() <api/generated/sktime.data.timeshifted_split.rst#sktime.data.timeshifted_split>`_ utility function.
+`timeshifted_split() <api/generated/deeptime.data.timeshifted_split.rst#deeptime.data.timeshifted_split>`_ utility function.
 It splits the data into timeshifted blocks :math:`X_t` and :math:`X_{t+\tau}`.
 
 These blocks are not trajectory-overlapping, i.e., if two or more trajectories are provided then the blocks are
@@ -119,7 +119,7 @@ suffices to provide the whole dataset as argument.
 
 .. code-block:: python
 
-    for X, Y in sktime.data.timeshifted_split(feature_trajectory, lagtime=tau, chunksize=100):
+    for X, Y in deeptime.data.timeshifted_split(feature_trajectory, lagtime=tau, chunksize=100):
         estimator.partial_fit((X, Y))
 
 Furthermore, the online algorithm uses a tree-like moment storage with copies of
@@ -128,8 +128,8 @@ that the tree never exceeds a certain depth. This depth can be set by the `ncov`
 
 .. code-block:: python
 
-    estimator = sktime.decomposition.TICA(lagtime=1, ncov=50)
-    for X, Y in sktime.data.timeshifted_split(feature_trajectory, lagtime=1, chunksize=10):
+    estimator = deeptime.decomposition.TICA(lagtime=1, ncov=50)
+    for X, Y in deeptime.data.timeshifted_split(feature_trajectory, lagtime=1, chunksize=10):
         tica.partial_fit((X, Y))
 
 Another factor to consider is numerical stability. While memory consumption can increase with

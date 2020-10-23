@@ -1,10 +1,10 @@
 .. _ref-data:
 
-sktime.data
-===========
+deeptime.data
+=============
 The *data* package contains example systems.
 
-.. automodule:: sktime.data
+.. automodule:: deeptime.data
 
 .. toctree::
    :maxdepth: 1

@@ -1,11 +1,11 @@
 .. _ref-sindy:
 
-sktime.sindy
-============
+deeptime.sindy
+==============
 
 The *sindy* package contains the SINDy estimator for discovering governing equations from data.
 
-.. automodule:: sktime.sindy
+.. automodule:: deeptime.sindy
 
 .. toctree::
    :maxdepth: 1

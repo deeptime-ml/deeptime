@@ -1,16 +1,16 @@
-.. currentmodule:: sktime.markov.hmm
+.. currentmodule:: deeptime.markov.hmm
 
 ===============================================================================
-sktime.markov.hmm
+deeptime.markov.hmm
 ===============================================================================
 
 Package containing tools for estimation and analysis of hidden Markov state models.
 
-They consist out of a hidden state :class:`MSM <sktime.markov.msm.MarkovStateModel>` which holds information
+They consist out of a hidden state :class:`MSM <deeptime.markov.msm.MarkovStateModel>` which holds information
 on how hidden states can transition between one another and an
-:class:`OutputModel <sktime.markov.hmm.OutputModel>`, which maps hidden states to discrete observable states in
-case of an  :class:`DiscreteOutputModel <sktime.markov.hmm.DiscreteOutputModel>` or to continuous observables
-in case of an :class:`GaussianOutputModel <sktime.markov.hmm.GaussianOutputModel>`.
+:class:`OutputModel <deeptime.markov.hmm.OutputModel>`, which maps hidden states to discrete observable states in
+case of an  :class:`DiscreteOutputModel <deeptime.markov.hmm.DiscreteOutputModel>` or to continuous observables
+in case of an :class:`GaussianOutputModel <deeptime.markov.hmm.GaussianOutputModel>`.
 
 Estimators
 ==========

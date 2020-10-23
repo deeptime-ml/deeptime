@@ -20,7 +20,7 @@ To build the documentation, we require [sphinx](https://www.sphinx-doc.org/) wit
       in `source/conf.py`
 - [sphinx-gallery](https://sphinx-gallery.github.io/) for example galleries
 
-Further requirements are a working installation of [jupyter notebook](https://jupyter.org/) and scikit-time.
+Further requirements are a working installation of [jupyter notebook](https://jupyter.org/) and deeptime.
 
 Once all requirements are satisfied, a call to
 ```shell script

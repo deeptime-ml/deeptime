@@ -1,10 +1,10 @@
 .. _ref-numeric:
 
-sktime.numeric
-==============
+deeptime.numeric
+================
 The *numeric* package contains numerical utilities.
 
-.. automodule:: sktime.numeric
+.. automodule:: deeptime.numeric
 
 .. toctree::
    :maxdepth: 1

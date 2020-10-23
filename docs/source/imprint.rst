@@ -22,7 +22,7 @@ Disclaimer
 
 Online contents:
 
-The Webteam of “scikit-time” reserves the right not to be responsible for the topicality, correctness, completeness
+The Webteam of “deeptime” reserves the right not to be responsible for the topicality, correctness, completeness
 or quality of the information provided. Liability claims regarding damage caused by the use of any information provided,
 including any kind of information which is incomplete or incorrect, will therefore be rejected.
 All offers are not-binding and without obligation. Parts of the pages or the complete publication including

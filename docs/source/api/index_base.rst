@@ -1,10 +1,10 @@
 .. _ref-base:
-.. currentmodule:: sktime.base
+.. currentmodule:: deeptime.base
 
-===========
-sktime.base
-===========
-This module contains all base classes of scikit-time. They are the important when developing new estimators.
+=============
+deeptime.base
+=============
+This module contains all base classes of deeptime. They are the important when developing new estimators.
 
 Writing a custom estimator
 --------------------------
@@ -13,7 +13,7 @@ When writing a custom estimator, first one should decide on what is supposed to 
 
 .. code-block:: python
 
-    class MeanModel(sktime.base.Model):
+    class MeanModel(deeptime.base.Model):
 
         def __init__(self, mean):
             self._mean = mean
@@ -28,7 +28,7 @@ Subsequently, an Estimator for :code:`MeanModel` s can be implemented:
 
 .. code-block:: python
 
-    class MeanEstimator(sktime.base.Estimator):
+    class MeanEstimator(deeptime.base.Estimator):
 
         def __init__(axis=-1):
             super(MeanEstimator, self).__init__()
@@ -51,7 +51,7 @@ Now estimator and model can be used:
     mean_model = MeanEstimator(axis=-1).fit(data).fetch_model()
     print(mean_model.mean)
 
-.. currentmodule:: sktime.base
+.. currentmodule:: deeptime.base
 .. autosummary::
    :toctree: generated/
    :template: class_nomodule.rst
@@ -62,7 +62,7 @@ Now estimator and model can be used:
 Adding transformer capabilities
 -------------------------------
 Some models have the capability to transform / project data. For example,
-:class:`k-means <sktime.clustering.KmeansClustering>` can be used to transform time series to discrete series of
+:class:`k-means <deeptime.clustering.KmeansClustering>` can be used to transform time series to discrete series of
 states by assigning each frame to its respective cluster center.
 
 To add this kind of functionality, one can use the :class:`Transformer` interface and implement the abstract
@@ -70,7 +70,7 @@ To add this kind of functionality, one can use the :class:`Transformer` interfac
 
 .. code-block:: python
 
-    class Projector(sktime.base.Model, sktime.base.Transformer):
+    class Projector(deeptime.base.Model, deeptime.base.Transformer):
 
         def __init__(self, dim):
             self.dim = dim
@@ -82,7 +82,7 @@ To add this kind of functionality, one can use the :class:`Transformer` interfac
 It usually also makes sense to implement the transformer interface for estimators whose models are transformers
 by simply calling :code:`self.fetch_model().transform(data)`, i.e., dispatching the transform call to the current model.
 
-.. currentmodule:: sktime.base
+.. currentmodule:: deeptime.base
 .. autosummary::
    :toctree: generated/
    :template: class_nomodule.rst

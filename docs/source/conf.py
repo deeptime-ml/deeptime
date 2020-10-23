@@ -27,14 +27,14 @@ from sphinx.application import Sphinx
 from sphinx.ext.autosummary import Autosummary, get_documenter
 from sphinx.util.inspect import safe_getattr
 
-import sktime
+import deeptime
 
-project = 'scikit-time'
+project = 'deeptime'
 copyright = '2020, AI4Science Group'
 author = 'AI4Science Group'
 
 # The full version, including alpha/beta/rc tags
-release = f"{sktime.__version__}"
+release = f"{deeptime.__version__}"
 
 # -- Disable certain warnings ------------------------------------------------
 
@@ -124,8 +124,8 @@ html_theme_options = {
     'body_max_width': 'auto',
     'fixed_sidebar': 'true',
     'github_button': 'true',
-    'github_user': 'scikit-time',
-    'github_repo': 'scikit-time',
+    'github_user': 'deeptime',
+    'github_repo': 'deeptime-ml',
     'github_type': 'star',
     'sidebar_collapse': 'true',
 
