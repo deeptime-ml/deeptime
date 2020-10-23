@@ -1,7 +1,7 @@
 deeptime
 ========
 
-[![Build Status](https://dev.azure.com/marscher/sktime/_apis/build/status/scikit-time.scikit-time?branchName=master)](https://dev.azure.com/marscher/sktime/_build/latest?definitionId=1&branchName=master)
+[![Build Status](https://dev.azure.com/clonker/deeptime/_apis/build/status/deeptime-ml.deeptime?branchName=master)](https://dev.azure.com/clonker/deeptime/_build/latest?definitionId=1&branchName=master)
 
 For usage, please refer to [deeptime-ml.github.io](https://deeptime-ml.github.io/).
 
