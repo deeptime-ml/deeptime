@@ -1,5 +1,5 @@
 ========
-Eeeptime
+Deeptime
 ========
 
 Deeptime is a Python library for analysis for time series data. In particular, methods for dimensionality reduction,
