@@ -103,10 +103,15 @@ metadata = \
         version=versioneer.get_version(),
         author='Moritz Hoffmann',
         author_email='moritz.hoffmann@fu-berlin.de',
-        description='deeptime project',
-        long_description='',
+        url='http://github.com/deeptime-ml/deeptime',
+        description='Python library for analysis of time series data including dimensionality reduction, '
+                    'clustering, and Markov model estimation.',
+        long_description='Deeptime is a Python library for analysis for time series data. '
+                         'In particular, methods for dimensionality reduction, clustering, and Markov '
+                         'model estimation are implemented. It is available for Python 3.6+.',
         cmdclass=cmdclass,
         zip_safe=False,
+        setup_requires=['cython'],
         install_requires=['numpy', 'scipy', 'scikit-learn'],
         extras_require={
             'deep-learning': ['pytorch'],

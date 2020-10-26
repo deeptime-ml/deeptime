@@ -1,3 +1,7 @@
 include versioneer.py
 include deeptime/_version.py
 include LICENSE.txt
+include pyproject.toml
+
+# sources of extensions (incl. cython)
+recursive-include deeptime *.pyx *.h *.c *.cpp
