@@ -115,11 +115,11 @@ void sample(const std::vector<np_array_nfc<State>> &observationsPerState, np_arr
     for (const np_array<State> &observations : observationsPerState) {
 
         std::vector<dtype> hist(nObs, 0);
-        auto* histPtr = hist.data();
-        auto T = observations.size();
-        auto* observationsBuf = observations.data();
 
         #ifdef USE_OPENMP
+        auto T = observations.size();
+        auto* histPtr = hist.data();
+        auto* observationsBuf = observations.data();
 
         #pragma omp parallel default(none) firstprivate(nObs, histPtr, T, observationsBuf)
         {

@@ -10,25 +10,7 @@ project(deeptime LANGUAGES C CXX VERSION 0.0.0)
 find_package(OpenMP REQUIRED)
 add_definitions(-DUSE_OPENMP)
 
-if (NOT DEEPTIME_IS_SUBPROJECT)
-    option(DEEPTIME_BUILD_TESTING "Build deeptime tests" ON)
-endif()
-
-if(DEEPTIME_BUILD_TESTING)
-    if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/lib/Catch2/CMakeLists.txt)
-        #add_subdirectory(lib/Catch2)
-        #include(${CMAKE_CURRENT_LIST_DIR}/lib/Catch2/contrib/Catch.cmake)
-    elseif (NOT TARGET Catch2::Catch2)
-        find_package(Catch2 QUIET)
-        if (CATCH2_FOUND)
-            include(Catch)
-        else()
-            # message(SEND_ERROR "Catch2 not found.")
-        endif()
-    endif ()
-endif()
-
-add_subdirectory(${CMAKE_SOURCE_DIR}/ext/pybind11)
+include("${PYBIND_CMAKE_DIR}/pybind11Config.cmake")
 
 set(common_includes "${CMAKE_CURRENT_LIST_DIR}/deeptime/src/include")
 

@@ -64,7 +64,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
             {
                 assignmentsPtr[i] = argMinDist;
                 centers_counter.at(argMinDist)++;
-                for (std::size_t j = 0; j < dim; j++) {
+                for (pybind11::ssize_t j = 0; j < dim; j++) {
                     newCentersRef(argMinDist, j) += chunk(i, j);
                 }
             }
@@ -87,7 +87,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
                 {
                     assignmentsPtr[i] = argMinDist;
                     centers_counter.at(static_cast<std::size_t>(argMinDist))++;
-                    for (std::size_t j = 0; j < dim; j++) {
+                    for (pybind11::ssize_t j = 0; j < dim; j++) {
                         newCentersRef(argMinDist, j) += chunk(i, j);
                     }
                 }
@@ -120,7 +120,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
                         std::unique_lock<std::mutex> lock(m);
                         assignmentsPtr[i] = argMinDist;
                         centers_counter.at(argMinDist)++;
-                        for (std::size_t j = 0; j < dim; j++) {
+                        for (pybind11::ssize_t j = 0; j < dim; j++) {
                             newCentersRef(argMinDist, j) += chunk(i, j);
                         }
                     }
@@ -138,11 +138,11 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
     auto centers_counter_it = centers_counter.begin();
     for (std::size_t i = 0; i < n_centers; ++i, ++centers_counter_it) {
         if (*centers_counter_it == 0) {
-            for (std::size_t j = 0; j < dim; ++j) {
+            for (pybind11::ssize_t j = 0; j < dim; ++j) {
                 newCentersRef(i, j) = centers(i, j);
             }
         } else {
-            for (std::size_t j = 0; j < dim; ++j) {
+            for (pybind11::ssize_t j = 0; j < dim; ++j) {
                 newCentersRef(i, j) /= static_cast<T>(*centers_counter_it);
             }
         }
