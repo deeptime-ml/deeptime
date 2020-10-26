@@ -28,7 +28,7 @@ class TestSkLearnCompat(unittest.TestCase):
 
         pipeline = Pipeline(steps=[
             ('tica', tica.TICA(dim=1, lagtime=1)),
-            ('cluster', kmeans.KmeansClustering(n_clusters=2, max_iter=500)),
+            ('cluster', kmeans.Kmeans(n_clusters=2, max_iter=500)),
             ('counts', TransitionCountEstimator(lagtime=1, count_mode="sliding"))
         ])
         pipeline.fit(data)
