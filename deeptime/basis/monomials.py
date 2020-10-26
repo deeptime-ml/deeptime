@@ -4,6 +4,13 @@ from ._basis_bindings import evaluate_monomials as _eval
 from .base import Observable
 
 
+class Identity(Observable):
+    r""" The identity. """
+
+    def _evaluate(self, x):
+        return x
+
+
 class Monomials(Observable):
     r""" Monomial basis observable which transforms a number of n-dimensional
     datapoints :math:`\mathbf{x}\in\mathbb{R}^n` into (unique) monomials of at most degree :math:`p`.

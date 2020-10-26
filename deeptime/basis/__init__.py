@@ -6,8 +6,9 @@ r"""
     :template: class_nomodule.rst
 
     Observable
+    Identity
     Monomials
 """
 
 from .base import Observable
-from .monomials import Monomials
+from .monomials import Identity, Monomials

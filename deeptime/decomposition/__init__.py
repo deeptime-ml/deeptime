@@ -13,6 +13,7 @@ Estimators
     TICA
     VAMPNet
     DMD
+    EDMD
 
 ===============================================================================
 Models
@@ -24,6 +25,7 @@ Models
 
     KoopmanModel
     CovarianceKoopmanModel
+    EDMDKoopmanModel
     KoopmanBasisTransform
     IdentityKoopmanBasisTransform
     DMDModel
@@ -50,7 +52,7 @@ Utils
 from .tica import TICA
 from .vamp import VAMP
 from .koopman import KoopmanBasisTransform, IdentityKoopmanBasisTransform, KoopmanModel, CovarianceKoopmanModel
-from .dmd import DMD, DMDModel
+from .dmd import DMD, DMDModel, EDMD, EDMDKoopmanModel
 from ..util.platform import module_available
 
 if module_available("torch"):

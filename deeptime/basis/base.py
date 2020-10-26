@@ -3,7 +3,19 @@ import numpy as np
 
 class Observable(object):
 
-    def _evaluate(self, x):
+    def _evaluate(self, x: np.ndarray):
+        r""" Evalues the observable on input data `x`.
+
+        Parameters
+        ----------
+        x : (T, n) ndarray
+            Input data.
+
+        Returns
+        -------
+        y : (T, m) ndarray
+            Basis applied to input data.
+        """
         raise NotImplementedError()
 
     def __call__(self, x: np.ndarray):

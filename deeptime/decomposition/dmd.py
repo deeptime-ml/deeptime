@@ -1,11 +1,13 @@
-from typing import Tuple, Optional, Callable
+from typing import Tuple, Optional, Callable, Union, List
 
 import numpy as np
 import scipy
 
 from ..base import Estimator, Model, Transformer
 from ..kernels import Kernel
-from ..numeric import sort_eigs
+from ..numeric import sort_eigs, eigs
+
+from .koopman import KoopmanModel
 
 
 class DMDModel(Model, Transformer):
@@ -142,8 +144,7 @@ class DMD(Estimator, Transformer):
         A = np.linalg.multi_dot([U.conj().T, Y, V, S_inv])
 
         eigenvalues, eigenvectors = self._eig(A)
-        order = np.argsort(eigenvalues)
-        eigenvalues, eigenvectors = eigenvalues[order], eigenvectors[:, order]
+        eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors, order='lexicographic')
 
         if self.mode == 'exact':
             dmd_modes = np.linalg.multi_dot([Y, V, S_inv, eigenvectors, np.diag(1 / eigenvalues)])
@@ -181,29 +182,95 @@ class DMD(Estimator, Transformer):
         return self.fetch_model().transform(data, **kwargs)
 
 
-class EDMD(Estimator):
+class EDMDKoopmanModel(KoopmanModel):
 
-    def __init__(self, basis: Callable[[np.ndarray], np.ndarray], operator: str = 'koopman'):
+    def __init__(self, operator: np.ndarray, basis: Callable[[np.ndarray], np.ndarray], eigenvalues, modes):
+        super().__init__(operator, basis_transform_forward=None, basis_transform_backward=None)
+        self.basis = basis
+        self.eigenvalues = eigenvalues
+        self.modes = modes
+
+    def forward(self, trajectory: np.ndarray, components: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        trajectory = self.basis(trajectory)
+        return super().forward(trajectory, components)
+
+    def transform(self, data, forward=True, propagate=False, **kwargs):
+        data = self.basis(data)
+        data = data @ self.modes
+        if propagate:
+            if forward:
+                return data @ np.diag(self.eigenvalues) @ self.modes.T
+            else:
+                return data @ np.diag(1. / self.eigenvalues) @ self.modes.T
+        return data
+
+
+class EDMD(Estimator):
+    r""" Extended dynamic mode decomposition for estimation of the Koopman (or optionally Perron-Frobenius)
+    operator :cite:`edmd-williams_data-driven_2015`.
+
+    The estimator needs a basis :math:`\Psi : \mathbb{R}^n\to\mathbb{R}^k, \mathbf{x}\mapsto\Psi(\mathbf{x}))`
+    and data matrices :math:`X = [x_1,\ldots,x_M]`, :math:`Y=[y_1,\ldots,y_M]` of time-lagged pairs of data.
+    It then estimates a Koopman operator approximation :math:`K` so that :math:`y_i\approx K^\top x_i`.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: edmd-
+    """
+
+    available_operators = 'koopman', 'perron-frobenius'  #: The supported operators.
+
+    def __init__(self, basis: Callable[[np.ndarray], np.ndarray], n_eigs: Optional[int] = None,
+                 operator: str = 'koopman'):
+        r""" Creates a new estimator.
+
+        Parameters
+        ----------
+        basis : callable
+            The basis callable, maps from (T, k) ndarray to (T, m) ndarray. See :meth:`deeptime.basis` for a selection
+            of pre-defined bases..
+        n_eigs : int, optional, default=None
+            The number of eigenvalues, determining the number of dominant singular functions / modes being estimated.
+            If None, estimates all eigenvalues / eigenvectors.
+        operator : str, default='koopman'
+            Which operator to estimate, see :attr:`available_operators`.
+        """
         super().__init__()
         self.basis = basis
         self.operator = operator
+        self.n_eigs = n_eigs
 
-    def fetch_model(self) -> Optional[DMDModel]:
-        pass
+    def fetch_model(self) -> Optional[EDMDKoopmanModel]:
+        r""" Yields the estimated model or None.
+
+        Returns
+        -------
+        model : EDMDKoopmanModel or None
+            The model.
+        """
+        return self._model
 
     def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
         x, y = data  # unpack
+        n_data = x.shape[0]
+        assert n_data == y.shape[0], "Trajectories for data and timelagged data must be of same length!"
         psi_x = self.basis(x).T
         psi_y = self.basis(y).T
 
-        cov_0 = psi_x @ psi_x.T
-        cov_t = psi_y @ psi_y.T
+        cov_00 = (1/n_data) * psi_x @ psi_x.T
+        cov_0t = (1/n_data) * psi_x @ psi_y.T
 
         if self.operator != 'koopman':
-            cov_t = cov_t.T
+            cov_0t = cov_0t.T
 
-        operator = scipy.linalg.pinv(cov_0) @ cov_t
-
+        operator = scipy.linalg.pinv(cov_00) @ cov_0t
+        eig_val, eig_vec = eigs(operator, self.n_eigs)
+        eig_val, eig_vec = sort_eigs(eig_val, eig_vec, order='lexicographic')
+        self._model = EDMDKoopmanModel(operator, basis=self.basis, eigenvalues=eig_val, modes=eig_vec.T)
+        return self
 
 
 class KernelEDMDModel(Model):

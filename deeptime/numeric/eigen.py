@@ -1,4 +1,7 @@
 import numpy as _np
+import scipy as _sp
+import scipy.sparse.linalg
+
 
 __author__ = 'noe, clonker'
 
@@ -239,6 +242,33 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
 
     # return split
     return L
+
+
+def eigs(matrix: _np.ndarray, n_eigs=None, which='LM'):
+    r"""Computes the eigenvalues and eigenvectors of `matrix`. Optionally the number of eigenvalue-eigenvector pairs
+    can be provided, in which case they are computed using the Lanczos algorithm.
+
+    Parameters
+    ----------
+    matrix : (n, n) ndarray
+        The matrix to compute the eigenvalues and eigenvectors of.
+    n_eigs : int, optional, default=None
+        The number of eigenpairs. Can be None, in which case all eigenvalues are computed.
+    which : str, default='LM'
+        If `n_eigs` is provided, determines which eigenvalues are returned. Default is 'Largest Magnitude.
+        See the `scipy <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.eigs.html>`__
+        documentation for all options and effects.
+
+    Returns
+    -------
+    (eigenvalues, eigenvectors) : ((n, ) ndarray, (k, n) ndarray)
+        The computed eigenvalues and eigenvectors.
+    """
+    n = matrix.shape[0]
+    if n_eigs is not None and n_eigs < n:
+        return _sp.sparse.linalg.eigs(matrix, n_eigs, which=which)
+    else:
+        return _sp.linalg.eig(matrix)
 
 
 def eig_corr(C0, Ct, epsilon=1e-10, method='QR', canonical_signs=False, return_rank=False):
