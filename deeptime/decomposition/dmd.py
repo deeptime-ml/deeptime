@@ -1,11 +1,11 @@
-from typing import Tuple
+from typing import Tuple, Optional, Callable
 
 import numpy as np
 import scipy
 
 from ..base import Estimator, Model, Transformer
 from ..kernels import Kernel
-from ..numeric import sort_by_norm
+from ..numeric import sort_eigs
 
 
 class DMDModel(Model, Transformer):
@@ -155,7 +155,7 @@ class DMD(Estimator, Transformer):
         self._model = DMDModel(eigenvalues, dmd_modes.T)
         return self
 
-    def fetch_model(self):
+    def fetch_model(self) -> Optional[DMDModel]:
         r""" Yields the estimated model if :meth:`fit` was called.
 
         Returns
@@ -179,6 +179,31 @@ class DMD(Estimator, Transformer):
             Propagated input data
         """
         return self.fetch_model().transform(data, **kwargs)
+
+
+class EDMD(Estimator):
+
+    def __init__(self, basis: Callable[[np.ndarray], np.ndarray], operator: str = 'koopman'):
+        super().__init__()
+        self.basis = basis
+        self.operator = operator
+
+    def fetch_model(self) -> Optional[DMDModel]:
+        pass
+
+    def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
+        x, y = data  # unpack
+        psi_x = self.basis(x).T
+        psi_y = self.basis(y).T
+
+        cov_0 = psi_x @ psi_x.T
+        cov_t = psi_y @ psi_y.T
+
+        if self.operator != 'koopman':
+            cov_t = cov_t.T
+
+        operator = scipy.linalg.pinv(cov_0) @ cov_t
+
 
 
 class KernelEDMDModel(Model):
@@ -206,7 +231,7 @@ class KernelEDMDEstimator(Estimator):
             reg = 0
         A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1
         eigenvalues, eigenvectors = np.linalg.eig(A)
-        eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
+        eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
         perron_frobenius_operator = eigenvectors
         koopman_operator = gram_0 @ eigenvectors
 
@@ -245,7 +270,7 @@ class KernelCCAEstimator(Estimator):
             @ scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
 
         eigenvalues, eigenvectors = np.linalg.eig(A)
-        eigenvalues, eigenvectors = sort_by_norm(eigenvalues, eigenvectors)
+        eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
 
         # determine effective rank m and perform low-rank approximations.
         if eigenvalues.shape[0] > self.n_evs:

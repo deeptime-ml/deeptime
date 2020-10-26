@@ -6,7 +6,7 @@ from scipy.linalg import eig
 
 from ..base import Estimator, Model, Transformer
 from ..data.util import timeshifted_split
-from ..numeric.eigen import spd_inv_split, sort_by_norm, spd_inv_sqrt
+from ..numeric.eigen import spd_inv_split, sort_eigs, spd_inv_sqrt
 from .util.running_moments import running_covar as running_covar
 
 __all__ = ['Covariance', 'CovarianceModel', 'KoopmanWeightingEstimator', 'KoopmanWeightingModel']
@@ -687,7 +687,7 @@ class KoopmanWeightingEstimator(Estimator, Transformer):
         M = K.shape[0] - 1
         # Compute right and left eigenvectors:
         l, U = eig(K.T)
-        l, U = sort_by_norm(l, U)
+        l, U = sort_eigs(l, U)
         # Extract the eigenvector for eigenvalue one and normalize:
         u = np.real(U[:, 0])
         v = np.zeros(M + 1)

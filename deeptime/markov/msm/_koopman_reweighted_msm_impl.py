@@ -2,7 +2,7 @@ import numpy as np
 import scipy.linalg as scl
 import scipy.sparse
 
-from deeptime.numeric.eigen import sort_by_norm
+from deeptime.numeric.eigen import sort_eigs
 
 __all__ = ['bootstrapping_count_matrix', 'bootstrapping_dtrajs', 'twostep_count_matrix', 'rank_decision',
            'oom_components', 'equilibrium_transition_matrix']
@@ -261,7 +261,7 @@ def oom_components(Ct, C2t, rank_ind=None, lcc=None, tol_one=1e-2):
     eigenvalues = eigenvalues[ind]
     right_eigenvectors = right_eigenvectors[:, ind]
     # Sort and extract omega
-    eigenvalues, right_eigenvectors = sort_by_norm(eigenvalues, right_eigenvectors)
+    eigenvalues, right_eigenvectors = sort_eigs(eigenvalues, right_eigenvectors)
     omega = np.real(right_eigenvectors[:, 0])
     omega = omega / np.dot(omega, sigma)
 

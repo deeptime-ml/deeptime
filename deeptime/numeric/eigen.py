@@ -8,26 +8,30 @@ class ZeroRankError(_np.linalg.LinAlgError):
     pass
 
 
-def sort_by_norm(evals, evecs):
-    """
-    Sorts the eigenvalues and eigenvectors by descending norm of the eigenvalues
+def sort_eigs(evals, evecs, order='magnitude'):
+    r""" Sorts the eigenvalues and eigenvectors by descending norm of the eigenvalues or lexicographically.
 
     Parameters
     ----------
-    evals: ndarray(n)
+    evals: (n, ) ndarray
         eigenvalues
-    evecs: ndarray(n,n)
+    evecs: (k, n) ndarray
         eigenvectors in a column matrix
+    order : str, default='magnitude'
+        The order. Sorts by magnitude by default, can also be 'lexicographic' in which case it sorts lexicographically.
 
     Returns
     -------
-    (evals, evecs) : ndarray(m), ndarray(n,m)
+    (evals, evecs) : (n, ) ndarray, (k, n) ndarray
         the sorted eigenvalues and eigenvectors
-
     """
-    evnorms = _np.abs(evals)
-    indices = _np.argsort(evnorms)[::-1]
-    return evals[indices], evecs[:, indices]
+    assert order in sort_eigs.supported_orders, f"Invalid order {order}, must be one of {sort_eigs.supported_orders}"
+    sort_key = evals if order != 'magnitude' else _np.abs(evals)  # magnitude or plain depending on order
+    order = _np.argsort(sort_key)[::-1]  # inverted argsort so that order is descending
+    return evals[order], evecs[:, order]
+
+
+sort_eigs.supported_orders = 'magnitude', 'lexicographic'  #: The order in which eigenvalues can be sorted.
 
 
 def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False, check_sym: bool = False):
@@ -75,7 +79,7 @@ def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False, check_sym: boo
     else:
         raise ValueError(f'method {method} not implemented, available are {spd_eig.methods}')
 
-    s, V = sort_by_norm(s, V)  # sort them
+    s, V = sort_eigs(s, V)  # sort them
 
     # determine the cutoff. We know that C0 is an spd matrix,
     # so we select the truncation threshold such that everything that is negative vanishes
@@ -225,7 +229,7 @@ def spd_inv_split(W, epsilon=1e-10, method='QR', canonical_signs=False):
     else:
         if epsilon == 0.:
             sm, Vm = _np.linalg.eigh(.5 * (W + W.T))
-            sm, Vm = sort_by_norm(sm, Vm)
+            sm, Vm = sort_eigs(sm, Vm)
             # threshold eigenvalues to be >= 0 and sqrt of the eigenvalues to be >= 1e-16 so that no
             # division by zero can occur
             L = _np.dot(Vm, _np.diag(1.0 / _np.maximum(_np.sqrt(_np.maximum(sm, 1e-12)), 1e-12)))
@@ -297,7 +301,7 @@ def eig_corr(C0, Ct, epsilon=1e-10, method='QR', canonical_signs=False, return_r
         l, R_trans = eig(Ct_trans)
 
     # sort eigenpairs
-    l, R_trans = sort_by_norm(l, R_trans)
+    l, R_trans = sort_eigs(l, R_trans)
 
     # transform the eigenvectors back to the old basis
     R = _np.dot(L, R_trans)

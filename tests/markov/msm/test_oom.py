@@ -15,7 +15,7 @@ from deeptime.markov.msm import MarkovStateModel
 from deeptime.markov.msm.koopman_reweighted_msm import OOMReweightedMSM
 from deeptime.markov.sample import compute_index_states, indices_by_sequence
 from deeptime.markov.util import count_states
-from deeptime.numeric import sort_by_norm
+from deeptime.numeric import sort_eigs
 
 
 def oom_transformations(Ct, C2t, rank):
@@ -44,7 +44,7 @@ def oom_transformations(Ct, C2t, rank):
     ind = np.where(np.logical_and(np.abs(l) <= (1 + 1e-2), np.real(l) >= 0.0))[0]
     l = l[ind]
     R = R[:, ind]
-    l, R = sort_by_norm(l, R)
+    l, R = sort_eigs(l, R)
     omega = np.real(R[:, 0])
     omega = omega / np.dot(omega, sigma)
 
