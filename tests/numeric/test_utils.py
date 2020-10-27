@@ -1,9 +1,11 @@
 import numpy as np
 import pytest
+import scipy.sparse as sp
 from numpy.testing import assert_, assert_raises, assert_array_almost_equal, assert_almost_equal, assert_equal
 
 from deeptime.numeric import is_diagonal_matrix, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
     eig_corr, is_square_matrix
+from deeptime.numeric.utils import allclose_sparse
 
 
 def test_is_diagonal_matrix():
@@ -144,3 +146,10 @@ def test_eig_corr(epsilon, method, canonical_signs, return_rank, hermitian_ctt):
     for r in range(len(out[0])):
         assert_array_almost_equal(covariances.cov_00 @ eigenvectors[r] * eigenvalues[r],
                                   covariances.cov_tt @ eigenvectors[r], decimal=2)
+
+
+def test_allclose_sparse():
+    A = sp.random(50, 50)
+    B = sp.random(50, 51)
+    assert allclose_sparse(A, A)
+    assert not allclose_sparse(A, B)

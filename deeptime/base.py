@@ -18,7 +18,7 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
         )
 
     def get_params(self, deep=False):
-        r"""Get parameters of this kernel.
+        r"""Get the parameters.
 
         Returns
         -------
