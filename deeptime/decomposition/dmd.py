@@ -275,13 +275,13 @@ class EDMD(Estimator):
     available_operators = 'koopman', 'perron-frobenius'  #: The supported operators.
 
     def __init__(self, basis: Callable[[np.ndarray], np.ndarray], n_eigs: Optional[int] = None,
-                 operator: str = 'koopman'):
+                 operator: str = 'koopman', svd_rank: Optional[int] = None):
         r""" Creates a new estimator.
 
         Parameters
         ----------
         basis : callable
-            The basis callable, maps from (T, k) ndarray to (T, m) ndarray. See :meth:`deeptime.basis` for a selection
+            The basis callable, maps from (T, k) ndarray to (T, m) ndarray. See :mod:`deeptime.basis` for a selection
             of pre-defined bases..
         n_eigs : int, optional, default=None
             The number of eigenvalues, determining the number of dominant singular functions / modes being estimated.
@@ -325,21 +325,78 @@ class EDMD(Estimator):
 
 
 class KernelEDMDModel(Model):
-    def __init__(self, P, K):
+    def __init__(self, eigenvalues: np.ndarray, eigenfunction: np.ndarray, kernel: Kernel):
+        r""" Creates a new kEDMD model containing eigenvalues and eigenfunctions evaluated in the instantaneous data.
+
+        Parameters
+        ----------
+        eigenvalues : (d,) ndarray
+            The eigenvalues.
+        eigenfunction : (T, d) ndarray
+            The eigenfunction evaluation.
+        kernel : Kernel
+            The kernel that was used for estimation.
+        """
         super().__init__()
-        self.P = P
-        self.K = K
+        self.eigenvalues = eigenvalues
+        self.eigenfunction = eigenfunction
+        self.kernel = kernel
 
 
-class KernelEDMDEstimator(Estimator):
+class KernelEDMD(Estimator):
+    r""" Estimator implementing kernel extended mode decomposition :cite:`kedmd-kevrekidis2016kernel`
+    :cite:`kedmd-klus2018kernel`.
 
-    def __init__(self, kernel: Kernel, epsilon: float = 0., n_eig: int = 5):
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: kedmd-
+    """
+
+    def __init__(self, kernel: Kernel, epsilon: float = 0., n_eigs: Optional[int] = None):
+        r""" Creates a new kEDMD estimator instance.
+
+        Parameters
+        ----------
+        kernel : Kernel
+            The kernel to use. See :mod:`deeptime.kernels` for a list of available kernels.
+        epsilon : float, optional, default=0
+            Regularization parameter.
+        n_eigs : int, optional, default=None
+            Number of eigenvalue/eigenvector pairs to compute.
+        """
         super().__init__()
         self.kernel = kernel
         self.epsilon = epsilon
-        self.n_eig = n_eig
+        self.n_eigs = n_eigs
+
+    def fetch_model(self) -> Optional[KernelEDMDModel]:
+        r""" Yields the estimated model or `None`.
+
+        Returns
+        -------
+        model : KernelEDMDModel or None
+            The model.
+        """
+        return super().fetch_model()
 
     def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
+        r""" Fits this instance of the kEDMD estimator on data.
+
+        Parameters
+        ----------
+        data : tuple of (T, n) np.ndarray
+            Input data of corresponding observations `data[0][i]` and `data[1][i]`.
+        **kwargs
+            Ignored kwargs for interface compatibility.
+
+        Returns
+        -------
+        self : KernelEDMD
+            Reference to self.
+        """
         gram_0 = self.kernel.gram(data[0])
         gram_1 = self.kernel.apply(*data)
 
@@ -348,12 +405,12 @@ class KernelEDMDEstimator(Estimator):
         else:
             reg = 0
         A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1
-        eigenvalues, eigenvectors = np.linalg.eig(A)
+        eigenvalues, eigenvectors = eigs(A, n_eigs=self.n_eigs)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
-        perron_frobenius_operator = eigenvectors
-        koopman_operator = gram_0 @ eigenvectors
+        # perron_frobenius_operator = eigenvectors
+        koopman_eval = gram_0 @ eigenvectors
 
-        self._model = KernelEDMDModel(perron_frobenius_operator, koopman_operator)
+        self._model = KernelEDMDModel(eigenvalues, koopman_eval, self.kernel)
 
         return self
 
