@@ -1,30 +1,30 @@
 import numpy as np
-import pytest
 from numpy.testing import assert_almost_equal
 
 import deeptime as dt
 
 
-@pytest.mark.parametrize("factor", [.1, .5, 10.])
-def test_constant_data(factor):
-    data = np.ones((1000, 5))
-    data_t = np.copy(data) * factor
+def test_linearly_evolved_data():
+    data = np.random.uniform(-1, 1, size=(1000, 4))
+    eigs = np.arange(4).astype(np.float64)
+    eig_l = np.linalg.qr(np.random.normal(size=(4, 4)))[0]
+    Kt = eig_l @ np.diag(eigs) @ eig_l.T
+    data_t = np.copy(data) @ Kt
     est = dt.decomposition.EDMD(dt.basis.Identity())
     model = est.fit((data, data_t)).fetch_model()
-    assert_almost_equal(model.eigenvalues[0], factor)
-    assert_almost_equal(model.eigenvalues[1:], 0.)
-
-    Y = model.transform(data)[:, 0]  # should be constant in 1st component, rest is noise
-    assert_almost_equal(Y, Y[0])
-
-    Y = model.transform(data, forward=False)[:, 0]  # should be constant in 1st component, rest is noise
-    assert_almost_equal(Y, Y[0])
-
-    Y = model.transform(data, propagate=True)[:, 0]  # should be constant in 1st component, rest is noise
-    assert_almost_equal(Y, Y[0])
-
-    Y = model.transform(data, propagate=True, forward=False)[:, 0]  # should be constant in 1st component, rest is noise
-    assert_almost_equal(Y, Y[0])
 
     assert_almost_equal(model.forward(data), data_t)
-    assert_almost_equal(model.forward(data_t), data_t * factor)
+    assert_almost_equal(model.forward(data_t), data_t @ Kt)
+
+    np.testing.assert_array_almost_equal(Kt, model.operator)
+
+
+def test_polynomially_evolved_data():
+    data = np.random.uniform(0, 1, size=(50, 5)).astype(np.float64)
+    data_t = 5. * data + 3 + data**2
+    basis = dt.basis.Monomials(5)
+    psi_y = basis(data_t)
+
+    est = dt.decomposition.EDMD(basis)
+    model = est.fit((data, data_t)).fetch_model()
+    assert_almost_equal(model.forward(data), psi_y, decimal=4)

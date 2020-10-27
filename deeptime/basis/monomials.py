@@ -21,7 +21,7 @@ class Monomials(Observable):
 
         \mathbf{x} \mapsto \left\{ \prod_{d=1}^n \mathbf{x}_d^{k_d} : \sum k_d \leq p \right\}.
 
-    The set is returned as a numpy ndarray of shape `(n_monomials, n_test_points)`, where `n_monomials` is the
+    The set is returned as a numpy ndarray of shape `(n_test_points, n_monomials)`, where `n_monomials` is the
     size of the set.
 
     Examples
@@ -29,7 +29,7 @@ class Monomials(Observable):
     Given three test points in one dimension
 
     >>> import numpy as np
-    >>> X = np.random.normal(size=(1, 3))
+    >>> X = np.random.normal(size=(3, 1))
 
     Evaluating the monomial basis up to degree two yields :math:`x^0, x^1, x^2`, i.e., the expected shape is (3, 3)
 
@@ -39,7 +39,7 @@ class Monomials(Observable):
 
     and, e.g., the second monomial of the third test point is the third test point itself:
 
-    >>> np.testing.assert_almost_equal(Y[1, 2], X[0, 2])
+    >>> np.testing.assert_almost_equal(Y[2, 1], X[2, 0])
     """
 
     def __init__(self, p: int):
@@ -54,4 +54,4 @@ class Monomials(Observable):
         self.p = p
 
     def _evaluate(self, x: np.ndarray):
-        return _eval(self.p, x)
+        return _eval(self.p, x.T).T

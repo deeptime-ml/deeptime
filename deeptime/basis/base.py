@@ -2,6 +2,10 @@ import numpy as np
 
 
 class Observable(object):
+    r""" An object that transforms a series of state vectors :math:`X\in\mathbb{R}^{T\times n}` into a
+    series of observables :math:`\Psi(X)\in\mathbb{R}^{T\times k}`, where `n` is the dimension of each state vector
+    and `k` the dimension of the observable space.
+    """
 
     def _evaluate(self, x: np.ndarray):
         r""" Evalues the observable on input data `x`.
@@ -23,12 +27,12 @@ class Observable(object):
 
         Parameters
         ----------
-        x : (d, N) np.ndarray
+        x : (N, d) np.ndarray
             Evaluates the observable for N d-dimensional data points.
 
         Returns
         -------
-        out : (p, N) np.ndarray
+        out : (N, p) np.ndarray
             Result of the evaluation for each data point.
         """
         return self._evaluate(x)

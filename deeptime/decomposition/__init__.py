@@ -25,10 +25,10 @@ Models
 
     KoopmanModel
     CovarianceKoopmanModel
-    EDMDKoopmanModel
     KoopmanBasisTransform
     IdentityKoopmanBasisTransform
     DMDModel
+    EDMDModel
 
 ===============================================================================
 Utils
@@ -52,7 +52,7 @@ Utils
 from .tica import TICA
 from .vamp import VAMP
 from .koopman import KoopmanBasisTransform, IdentityKoopmanBasisTransform, KoopmanModel, CovarianceKoopmanModel
-from .dmd import DMD, DMDModel, EDMD, EDMDKoopmanModel
+from .dmd import DMD, DMDModel, EDMD, EDMDModel
 from ..util.platform import module_available
 
 if module_available("torch"):

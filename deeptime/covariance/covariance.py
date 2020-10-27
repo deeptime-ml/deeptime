@@ -171,7 +171,7 @@ class Covariance(Estimator):
         compute_c0t : bool, optional, default=False
             Compute lagged correlations. Does not work with :attr:`lagtime` ==0.
         compute_ctt : bool, optional, default=False
-            Compute instantaneous correlations over the time-shifted chunks of the data.
+            Compute instantaneous covariance over the time-shifted chunks of the data.
             Does not work with :attr:`lagtime` ==0.
         remove_data_mean : bool, optional, default=False
             Subtract the sample mean from the time series (mean-free correlations).

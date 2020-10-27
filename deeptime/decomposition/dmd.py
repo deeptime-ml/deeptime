@@ -182,27 +182,72 @@ class DMD(Estimator, Transformer):
         return self.fetch_model().transform(data, **kwargs)
 
 
-class EDMDKoopmanModel(KoopmanModel):
+class EDMDModel(KoopmanModel):
+    r""" The EDMD model which can be estimated from a :class:`EDMD` estimator. It possesses the estimated operator
+    as well as capabilities to project onto modes.
+
+    See Also
+    --------
+    EDMD : The estimator that produces this kind of model.
+    """
 
     def __init__(self, operator: np.ndarray, basis: Callable[[np.ndarray], np.ndarray], eigenvalues, modes):
+        r""" Creates a new EDMD model instance.
+
+        Parameters
+        ----------
+        operator : (n, n) ndarray
+
+        basis
+        eigenvalues
+        modes
+        """
         super().__init__(operator, basis_transform_forward=None, basis_transform_backward=None)
         self.basis = basis
         self.eigenvalues = eigenvalues
         self.modes = modes
 
-    def forward(self, trajectory: np.ndarray, components: Optional[Union[int, List[int]]] = None) -> np.ndarray:
-        trajectory = self.basis(trajectory)
-        return super().forward(trajectory, components)
+    def forward(self, trajectory: np.ndarray, **kw) -> np.ndarray:
+        r""" Applies the estimated forward transform to data by first applying the basis and then the operator, i.e.,
 
-    def transform(self, data, forward=True, propagate=False, **kwargs):
-        data = self.basis(data)
-        data = data @ self.modes
-        if propagate:
-            if forward:
-                return data @ np.diag(self.eigenvalues) @ self.modes.T
-            else:
-                return data @ np.diag(1. / self.eigenvalues) @ self.modes.T
-        return data
+        .. math::
+
+            X \mapsto \Psi(X) K,
+
+        where :math:`X` is the input data, :math:`\Psi` the basis transform, and :math:`K` the operator.
+
+        Parameters
+        ----------
+        trajectory : (T, n) ndarray
+            Input data
+        **kw
+            Ignored keyword arguments for interface compatibility.
+
+        Returns
+        -------
+        transformed : (T, n) ndarray
+            The forward transform of the input data.
+        """
+        trajectory = self.basis(trajectory)
+        return super().forward(trajectory)
+
+    def transform(self, data, **kw):
+        r""" Takes input data :math:`X\in\mathbb{R}^{T\times n}`, applies the basis :math:`\Psi` and then projects
+        everything onto the modes by evaluating the eigenfunction.
+
+        Parameters
+        ----------
+        data : (T, n) ndarray
+            Input data
+        **kw
+            Ignored keyword arguments for interface compatibility.
+
+        Returns
+        -------
+        transformed : (T, k) ndarray
+            Data projected onto the modes.
+        """
+        return self.basis(data) @ self.modes
 
 
 class EDMD(Estimator):
@@ -211,7 +256,13 @@ class EDMD(Estimator):
 
     The estimator needs a basis :math:`\Psi : \mathbb{R}^n\to\mathbb{R}^k, \mathbf{x}\mapsto\Psi(\mathbf{x}))`
     and data matrices :math:`X = [x_1,\ldots,x_M]`, :math:`Y=[y_1,\ldots,y_M]` of time-lagged pairs of data.
-    It then estimates a Koopman operator approximation :math:`K` so that :math:`y_i\approx K^\top x_i`.
+    It then estimates a Koopman operator approximation :math:`K` so that :math:`\Psi(y_i)\approx K^\top \Psi(x_i)`.
+
+    In other words, for data matrices :math:`\Psi_X` and :math:`\Psi_Y` it solves the minimization problem
+
+    .. math::
+
+        \min\| \Psi_Y - K\Psi_X\|_F.
 
     References
     ----------
@@ -243,7 +294,7 @@ class EDMD(Estimator):
         self.operator = operator
         self.n_eigs = n_eigs
 
-    def fetch_model(self) -> Optional[EDMDKoopmanModel]:
+    def fetch_model(self) -> Optional[EDMDModel]:
         r""" Yields the estimated model or None.
 
         Returns
@@ -260,16 +311,16 @@ class EDMD(Estimator):
         psi_x = self.basis(x).T
         psi_y = self.basis(y).T
 
-        cov_00 = (1/n_data) * psi_x @ psi_x.T
-        cov_0t = (1/n_data) * psi_x @ psi_y.T
+        cov_00 = (1/x.shape[0]) * psi_x @ psi_x.T
+        cov_0t = (1/x.shape[0]) * psi_x @ psi_y.T
 
         if self.operator != 'koopman':
             cov_0t = cov_0t.T
 
-        operator = scipy.linalg.pinv(cov_00) @ cov_0t
-        eig_val, eig_vec = eigs(operator, self.n_eigs)
+        m_edmd = scipy.linalg.pinv(cov_00) @ cov_0t
+        eig_val, eig_vec = eigs(m_edmd, self.n_eigs)
         eig_val, eig_vec = sort_eigs(eig_val, eig_vec, order='lexicographic')
-        self._model = EDMDKoopmanModel(operator, basis=self.basis, eigenvalues=eig_val, modes=eig_vec.T)
+        self._model = EDMDModel(m_edmd, basis=self.basis, eigenvalues=eig_val, modes=eig_vec.T)
         return self
 
 
