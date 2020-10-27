@@ -4,7 +4,7 @@ import pkg_resources
 
 from deeptime.covariance import KoopmanWeightingModel
 from deeptime.data.util import timeshifted_split
-from deeptime.numeric.eigen import sort_by_norm
+from deeptime.numeric.eigen import sort_eigs
 import numpy.linalg as scl
 
 
@@ -12,7 +12,7 @@ def transform_C0(C, epsilon):
     d, V = scl.eigh(C)
     evmin = np.minimum(0, np.min(d))
     ep = np.maximum(-evmin, epsilon)
-    d, V = sort_by_norm(d, V)
+    d, V = sort_eigs(d, V)
     ind = np.where(np.abs(d) > ep)[0]
     d = d[ind]
     V = V[:, ind]
@@ -84,13 +84,13 @@ class TestKoopmanTICA(unittest.TestCase):
 
         # Perform non-reversible diagonalization
         cls.ln, cls.Rn = scl.eig(np.dot(cls.R.T, np.dot(cls.Ct, cls.R)))
-        cls.ln, cls.Rn = sort_by_norm(cls.ln, cls.Rn)
+        cls.ln, cls.Rn = sort_eigs(cls.ln, cls.Rn)
         cls.Rn = np.dot(cls.R, cls.Rn)
         cls.Rn = scale_eigenvectors(cls.Rn)
         cls.tsn = -cls.tau / np.log(np.abs(cls.ln))
 
         cls.ls, cls.Rs = scl.eig(np.dot(cls.Rrev.T, np.dot(cls.Ct_rev, cls.Rrev)))
-        cls.ls, cls.Rs = sort_by_norm(cls.ls, cls.Rs)
+        cls.ls, cls.Rs = sort_eigs(cls.ls, cls.Rs)
         cls.Rs = np.dot(cls.Rrev, cls.Rs)
         cls.Rs = scale_eigenvectors(cls.Rs)
         cls.tss = -cls.tau / np.log(np.abs(cls.ls))
@@ -103,7 +103,7 @@ class TestKoopmanTICA(unittest.TestCase):
 
         # Compute u-vector:
         ln, Un = scl.eig(cls.K.T)
-        ln, Un = sort_by_norm(ln, Un)
+        ln, Un = sort_eigs(ln, Un)
         cls.u = np.real(Un[:, 0])
         v = np.eye(cls.N1, 1, k=-cls.N1 + 1)[:, 0]
         cls.u *= (1.0 / np.dot(cls.u, v))
@@ -155,7 +155,7 @@ class TestKoopmanTICA(unittest.TestCase):
 
         # Compute its eigenvalues:
         cls.lr, cls.Rr = scl.eigh(Ct_S)
-        cls.lr, cls.Rr = sort_by_norm(cls.lr, cls.Rr)
+        cls.lr, cls.Rr = sort_eigs(cls.lr, cls.Rr)
         cls.Rr = np.dot(S, cls.Rr)
         cls.Rr = scale_eigenvectors(cls.Rr)
         cls.tsr = -cls.tau / np.log(np.abs(cls.lr))

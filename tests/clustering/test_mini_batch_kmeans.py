@@ -2,11 +2,11 @@ import unittest
 from unittest import TestCase
 import numpy as np
 
-from deeptime.clustering import MiniBatchKmeansClustering
+from deeptime.clustering import MiniBatchKmeans
 
 
 def cluster_mini_batch_kmeans(X, k=100, max_iter=10000):
-    est = MiniBatchKmeansClustering(n_clusters=k, max_iter=max_iter)
+    est = MiniBatchKmeans(n_clusters=k, max_iter=max_iter)
     if isinstance(X, (list, tuple)):
         for x in X:
             est.partial_fit(x)
@@ -60,7 +60,7 @@ class TestMiniBatchKmeansResume(unittest.TestCase):
         # centers are far off
         initial_centers = np.array([[1, 2, 3]]).T
 
-        est = MiniBatchKmeansClustering(n_clusters=3, max_iter=2, initial_centers=initial_centers)
+        est = MiniBatchKmeans(n_clusters=3, max_iter=2, initial_centers=initial_centers)
         est.partial_fit(self.X)
 
         resume_centers = np.copy(est.fetch_model().cluster_centers)

@@ -10,6 +10,7 @@ from . import decomposition
 from . import markov
 from . import numeric
 from . import kernels
+from . import basis
 from . import sindy
 
 

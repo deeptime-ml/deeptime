@@ -80,7 +80,7 @@ def allclose_sparse(A, B, rtol=1e-5, atol=1e-8):
         return False
 
 
-def drop_nan_rows(arr, *args):
+def drop_nan_rows(arr: _np.ndarray, *args):
     r"""
     Remove rows in all inputs for which `arr` has `_np.nan` entries.
 
@@ -96,4 +96,4 @@ def drop_nan_rows(arr, *args):
         Each argument should have the same number of rows as `arr`.
     """
     nan_inds = _np.isnan(arr).any(axis=1)
-    return (arr[~nan_inds], *[arg[~nan_inds] for arg in args])
+    return (arr[~nan_inds], *[arg[~nan_inds] for arg in args])  # parenthesis not redundant in py < 3.8

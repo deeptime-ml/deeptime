@@ -124,7 +124,7 @@ class KoopmanModel(Model, Transformer):
         self._basis_transform_forward = basis_transform_forward
         self._basis_transform_backward = basis_transform_backward
         if output_dimension is not None and not is_diagonal_matrix(self.operator):
-            raise ValueError("Output dimension can only be set if the Koopman operator is a diagonal matrix. This"
+            raise ValueError("Output dimension can only be set if the Koopman operator is a diagonal matrix. This "
                              "can be achieved through the VAMP estimator.")
         self._output_dimension = output_dimension
 
@@ -225,10 +225,10 @@ class KoopmanModel(Model, Transformer):
         """
         if forward:
             transform = self.basis_transform_forward(data, dim=self.output_dimension)
-            return self.operator.T @ transform if propagate else transform
+            return transform @ self.operator if propagate else transform
         else:
             transform = self.basis_transform_backward(data, dim=self.output_dimension)
-            return self.operator_inverse.T @ transform if propagate else transform
+            return transform @ self.operator_inverse if propagate else transform
 
 
 class CovarianceKoopmanModel(KoopmanModel):

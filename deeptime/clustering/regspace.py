@@ -7,12 +7,12 @@ from ._clustering_bindings import regspace as _regspace_ext
 from .cluster_model import ClusterModel
 from ..base import Estimator
 
-__all__ = ['RegularSpaceClustering']
+__all__ = ['RegularSpace']
 
 from ..util.parallel import handle_n_jobs
 
 
-class RegularSpaceClustering(Estimator):
+class RegularSpace(Estimator):
     """Clusters data objects in such a way, that cluster centers are at least in distance of dmin to each other
     according to the given metric. The assignment of data objects to cluster centers is performed by Voronoi partioning.
 
@@ -46,7 +46,7 @@ class RegularSpaceClustering(Estimator):
         n_jobs : int, optional, default=None
             Number of threads to use during estimation.
         """
-        super(RegularSpaceClustering, self).__init__()
+        super(RegularSpace, self).__init__()
         self.dmin = dmin
         self.metric = metric
         self.max_centers = max_centers
@@ -156,7 +156,7 @@ class RegularSpaceClustering(Estimator):
 
         Returns
         -------
-        self : RegularSpaceClustering
+        self : RegularSpace
             reference to self
         """
 

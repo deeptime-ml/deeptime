@@ -181,9 +181,9 @@ class SINDyModel(Model):
         equations = self.equations(precision=precision)
         for i, eqn in enumerate(equations):
             if lhs:
-                print(lhs[i] + "'", "=", eqn)
+                print(f"{lhs[i]}' = {eqn}")
             else:
-                print(self.input_features[i] + "'", "=", eqn)
+                print(f"{self.input_features[i]}' = {eqn}")
 
     def equations(self, precision=3):
         """

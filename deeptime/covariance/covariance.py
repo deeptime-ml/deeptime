@@ -6,7 +6,7 @@ from scipy.linalg import eig
 
 from ..base import Estimator, Model, Transformer
 from ..data.util import timeshifted_split
-from ..numeric.eigen import spd_inv_split, sort_by_norm, spd_inv_sqrt
+from ..numeric.eigen import spd_inv_split, sort_eigs, spd_inv_sqrt
 from .util.running_moments import running_covar as running_covar
 
 __all__ = ['Covariance', 'CovarianceModel', 'KoopmanWeightingEstimator', 'KoopmanWeightingModel']
@@ -171,7 +171,7 @@ class Covariance(Estimator):
         compute_c0t : bool, optional, default=False
             Compute lagged correlations. Does not work with :attr:`lagtime` ==0.
         compute_ctt : bool, optional, default=False
-            Compute instantaneous correlations over the time-shifted chunks of the data.
+            Compute instantaneous covariance over the time-shifted chunks of the data.
             Does not work with :attr:`lagtime` ==0.
         remove_data_mean : bool, optional, default=False
             Subtract the sample mean from the time series (mean-free correlations).
@@ -687,7 +687,7 @@ class KoopmanWeightingEstimator(Estimator, Transformer):
         M = K.shape[0] - 1
         # Compute right and left eigenvectors:
         l, U = eig(K.T)
-        l, U = sort_by_norm(l, U)
+        l, U = sort_eigs(l, U)
         # Extract the eigenvector for eigenvalue one and normalize:
         u = np.real(U[:, 0])
         v = np.zeros(M + 1)

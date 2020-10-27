@@ -3,14 +3,14 @@ import unittest
 
 import numpy as np
 
-from deeptime.clustering import RegularSpaceClustering
+from deeptime.clustering import RegularSpace
 
 
 class TestRegSpaceClustering(unittest.TestCase):
 
     def setUp(self):
         self.dmin = 0.3
-        self.clustering = RegularSpaceClustering(dmin=self.dmin)
+        self.clustering = RegularSpace(dmin=self.dmin)
         self.src = np.random.uniform(size=(1000, 3))
 
     def test_algorithm(self):
@@ -49,7 +49,7 @@ class TestRegSpaceClustering(unittest.TestCase):
 
     def test1d_data(self):
         data = np.random.random(100)
-        RegularSpaceClustering(dmin=0.3).fit(data)
+        RegularSpace(dmin=0.3).fit(data)
 
     def test_non_existent_metric(self):
         with self.assertRaises(ValueError):
@@ -72,13 +72,13 @@ class TestRegSpaceClustering(unittest.TestCase):
 
     def test_regspace_nthreads(self):
         self.clustering.fit(self.src, n_jobs=1)
-        cl2 = RegularSpaceClustering(dmin=self.dmin, n_jobs=2).fit(self.src).fetch_model()
+        cl2 = RegularSpace(dmin=self.dmin, n_jobs=2).fit(self.src).fetch_model()
         centers1 = self.clustering.fetch_model().cluster_centers
         centers2 = cl2.cluster_centers
         np.testing.assert_equal(centers1, centers2)
 
     def test_properties(self):
-        est = RegularSpaceClustering(dmin=1e-8, max_centers=500, metric='euclidean', n_jobs=5)
+        est = RegularSpace(dmin=1e-8, max_centers=500, metric='euclidean', n_jobs=5)
         np.testing.assert_equal(est.dmin, 1e-8)
         np.testing.assert_equal(est.max_centers, 500)
         np.testing.assert_equal(est.n_clusters, 500)

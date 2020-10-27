@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import deeptime
-from deeptime.clustering import KmeansClustering
+from deeptime.clustering import Kmeans
 from deeptime.decomposition import VAMP
 from deeptime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss, MLPLobe
 from deeptime.markov.msm import MaximumLikelihoodMSM
@@ -83,7 +83,7 @@ def test_estimator():
     # reference model w/o learnt featurization
     projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
 
-    dtraj = KmeansClustering(2).fit(projection).transform(projection)
+    dtraj = Kmeans(2).fit(projection).transform(projection)
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
 
     np.testing.assert_array_almost_equal(msm_vampnet.transition_matrix, data.msm.transition_matrix, decimal=2)
@@ -111,7 +111,7 @@ def test_estimator_fit(dtype):
     # reference model w/o learnt featurization
     projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
 
-    dtraj = KmeansClustering(2).fit(projection).transform(projection)
+    dtraj = Kmeans(2).fit(projection).transform(projection)
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
 
     np.testing.assert_array_almost_equal(msm_vampnet.transition_matrix, data.msm.transition_matrix, decimal=2)

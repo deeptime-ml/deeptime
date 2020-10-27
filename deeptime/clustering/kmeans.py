@@ -8,12 +8,12 @@ from deeptime.base import Estimator, Transformer
 from deeptime.clustering.cluster_model import ClusterModel
 from . import _clustering_bindings as _bd, metrics
 
-__all__ = ['KmeansClustering', 'MiniBatchKmeansClustering', 'KMeansClusteringModel']
+__all__ = ['Kmeans', 'MiniBatchKmeans', 'KMeansModel']
 
 from ..util.parallel import handle_n_jobs
 
 
-class KMeansClusteringModel(ClusterModel):
+class KMeansModel(ClusterModel):
     r"""The K-means clustering model. Stores all important information which are result of the estimation procedure.
     It can also be used to transform data by assigning each frame to its closest cluster center. For an example
     please see the documentation of the superclass :class:`ClusterModel`.
@@ -21,13 +21,13 @@ class KMeansClusteringModel(ClusterModel):
     See Also
     --------
     ClusterModel : The superclass.
-    KmeansClustering : The k-means estimator, which can produce this kind of model.
-    MiniBatchKmeansClustering : The mini batch k-means estimator, which can produce this kind of model.
+    Kmeans : The k-means estimator, which can produce this kind of model.
+    MiniBatchKmeans : The mini batch k-means estimator, which can produce this kind of model.
     """
 
     def __init__(self, n_clusters, cluster_centers, metric: str, tolerance: Optional[float] = None,
                  inertias: Optional[List[float]] = None, converged: bool = False):
-        r"""Initializes a new KmeansClustering model.
+        r"""Initializes a new Kmeans model.
 
         Parameters
         ----------
@@ -88,7 +88,7 @@ class KMeansClusteringModel(ClusterModel):
 
     def score(self, data: np.ndarray, n_jobs: Optional[int] = None) -> float:
         r""" Computes how well the model fits to given data by computing the
-        :meth:`inertia <deeptime.clustering.kmeans.KMeansClusteringModel.inertia>`.
+        :meth:`inertia <deeptime.clustering.kmeans.KMeansModel.inertia>`.
 
         Parameters
         ----------
@@ -107,7 +107,7 @@ class KMeansClusteringModel(ClusterModel):
         return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, metrics[self.metric]())
 
 
-class KmeansClustering(Estimator, Transformer):
+class Kmeans(Estimator, Transformer):
     r"""Clusters the data in a way that minimizes the cost function
 
     .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf{x}_j \in S_i} \left\| \mathbf{x}_j - \boldsymbol\mu_i \right\|^2
@@ -129,8 +129,8 @@ class KmeansClustering(Estimator, Transformer):
 
     See Also
     --------
-    KMeansClusteringModel : the corresponding model class
-    MiniBatchKmeansClustering : An online version of this estimator which uses mini-batching.
+    KMeansModel : the corresponding model class
+    MiniBatchKmeans : An online version of this estimator which uses mini-batching.
     """
 
     def __init__(self, n_clusters: int, max_iter: int = 500, metric='euclidean',
@@ -165,7 +165,7 @@ class KmeansClustering(Estimator, Transformer):
             This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
             the centers are directly passed to the kmeans iteration algorithm.
         """
-        super(KmeansClustering, self).__init__()
+        super(Kmeans, self).__init__()
 
         self.n_clusters = n_clusters
         self.max_iter = max_iter
@@ -274,13 +274,13 @@ class KmeansClustering(Estimator, Transformer):
             raise ValueError(f"Unknown metric {value}, available metrics: {metrics.available}")
         self._metric = value
 
-    def fetch_model(self) -> Optional[KMeansClusteringModel]:
+    def fetch_model(self) -> Optional[KMeansModel]:
         """
         Fetches the current model. Can be `None` in case :meth:`fit` was not called yet.
 
         Returns
         -------
-        model : KMeansClusteringModel or None
+        model : KMeansModel or None
             the latest estimated model
         """
         return self._model
@@ -393,7 +393,7 @@ class KmeansClustering(Estimator, Transformer):
 
         Returns
         -------
-        self : KmeansClustering
+        self : Kmeans
             reference to self
         """
         if data.ndim == 1:
@@ -414,34 +414,34 @@ class KmeansClustering(Estimator, Transformer):
         else:
             warnings.warn(f"Algorithm did not reach convergence criterion"
                           f" of {self.tolerance} in {self.max_iter} iterations. Consider increasing max_iter.")
-        self._model = KMeansClusteringModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance,
-                                            cluster_centers=cluster_centers, inertias=cost, converged=converged)
+        self._model = KMeansModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance,
+                                  cluster_centers=cluster_centers, inertias=cost, converged=converged)
 
         return self
 
 
-class MiniBatchKmeansClustering(KmeansClustering):
+class MiniBatchKmeans(Kmeans):
     r""" K-means clustering in a mini-batched fashion.
 
     See Also
     --------
-    KmeansClustering : k-means clustering without mini-batching
-    KMeansClusteringModel : the corresponding model class
+    Kmeans : k-means clustering without mini-batching
+    KMeansModel : the corresponding model class
     """
 
     def __init__(self, n_clusters, batch_size=100, max_iter=5, metric='euclidean', tolerance=1e-5,
                  init_strategy='kmeans++', n_jobs=None, initial_centers=None):
         """
         Constructs a Minibatch k-means estimator. For a more detailed argument description,
-        see :class:`KmeansClustering`.
+        see :class:`Kmeans`.
 
         The only additional parameter is batch_size, which determines the maximum sample size if calling
         :meth:`fit()`.
         """
-        super(MiniBatchKmeansClustering, self).__init__(n_clusters, max_iter, metric,
-                                                        tolerance, init_strategy, False,
-                                                        n_jobs=n_jobs,
-                                                        initial_centers=initial_centers)
+        super(MiniBatchKmeans, self).__init__(n_clusters, max_iter, metric,
+                                              tolerance, init_strategy, False,
+                                              n_jobs=n_jobs,
+                                              initial_centers=initial_centers)
         self.batch_size = batch_size
 
     def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
@@ -454,8 +454,8 @@ class MiniBatchKmeansClustering(KmeansClustering):
         if self.initial_centers is None:
             self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
         indices = np.arange(len(data))
-        self._model = KMeansClusteringModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
-                                            tolerance=self.tolerance, inertias=np.array([float('inf')]))
+        self._model = KMeansModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
+                                  tolerance=self.tolerance, inertias=np.array([float('inf')]))
         for epoch in range(self.max_iter):
             np.random.shuffle(indices)
             if len(data) > self.batch_size:
@@ -484,12 +484,12 @@ class MiniBatchKmeansClustering(KmeansClustering):
 
         Returns
         -------
-        self : MiniBatchKmeansClustering
+        self : MiniBatchKmeans
             reference to self
         """
         if self._model is None:
-            self._model = KMeansClusteringModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
-                                                tolerance=self.tolerance, inertias=np.array([float('inf')]))
+            self._model = KMeansModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
+                                      tolerance=self.tolerance, inertias=np.array([float('inf')]))
         if data.ndim == 1:
             data = data[:, np.newaxis]
         n_jobs = self.n_jobs if n_jobs is None else n_jobs
