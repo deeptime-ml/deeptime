@@ -252,7 +252,7 @@ class EDMDModel(KoopmanModel):
 
 class EDMD(Estimator):
     r""" Extended dynamic mode decomposition for estimation of the Koopman (or optionally Perron-Frobenius)
-    operator :cite:`edmd-williams_data-driven_2015`.
+    operator :cite:`edmd-williams2015data`.
 
     The estimator needs a basis :math:`\Psi : \mathbb{R}^n\to\mathbb{R}^k, \mathbf{x}\mapsto\Psi(\mathbf{x}))`
     and data matrices :math:`X = [x_1,\ldots,x_M]`, :math:`Y=[y_1,\ldots,y_M]` of time-lagged pairs of data.
