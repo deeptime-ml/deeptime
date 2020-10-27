@@ -4,4 +4,4 @@ include LICENSE.txt
 include pyproject.toml
 
 # sources of extensions (incl. cython)
-recursive-include deeptime *.pyx *.h *.c *.cpp
+recursive-include deeptime *.pyx *.h *.hpp *.c *.cpp
