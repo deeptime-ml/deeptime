@@ -99,7 +99,7 @@ class KernelCCA(Estimator):
         A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
             @ scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
 
-        eigenvalues, eigenvectors = np.linalg.eig(A)
+        eigenvalues, eigenvectors = scipy.linalg.eig(A)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
 
         # determine effective rank m and perform low-rank approximations.
