@@ -23,7 +23,7 @@ Numerical tools for eigenvalue problems
 
     eigs
     eig_corr
-    sort_by_norm
+    sort_eigs
     spd_eig
     spd_inv
     spd_inv_split
