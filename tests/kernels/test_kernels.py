@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
-from numpy.testing import assert_equal, assert_almost_equal
+from numpy.testing import assert_equal, assert_almost_equal, assert_raises
 
+import deeptime as dt
 from deeptime.kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel
 from deeptime.kernels.kernels import PolynomialKernel
 
@@ -11,6 +12,14 @@ def data():
     X = np.random.normal(size=(50, 7))
     Y = np.random.normal(size=(30, 7))
     return X, Y
+
+
+def test_base():
+    with assert_raises(NotImplementedError):
+        dt.kernels.Kernel()(1, 2)  # base class does not implement call operator
+    k = GaussianKernel(1.)
+    with assert_raises(ValueError):
+        k * "weird object"  # product kernel only supported with other kernels
 
 
 @pytest.mark.parametrize("kernel", [

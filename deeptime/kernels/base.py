@@ -113,4 +113,18 @@ class ProductKernel(Kernel):
 
 
 def is_torch_kernel(kernel: Kernel) -> bool:
+    r""" Tests whether given kernel supports PyTorch. Note that even if the kernel does not support PyTorch it
+    (depending on the case) might still be usable in conjunction with PyTorch code at a performance penalty, e.g.,
+    when no gradients are required for the kernel evaluation.
+
+    Parameters
+    ----------
+    kernel : Kernel
+        A kernel instance.
+
+    Returns
+    -------
+    is_torch_kernel : bool
+        True if it supports PyTorch, False otherwise.
+    """
     return hasattr(kernel, 'apply_torch')
