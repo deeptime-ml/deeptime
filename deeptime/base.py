@@ -127,10 +127,6 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
 class Model(_base_methods_mixin):
     r""" The model superclass. """
 
-    def __init__(self):
-        r""" Initializes a new model. No-op per default. This is where the stored attributes should be initialized. """
-        pass
-
     def copy(self):
         r""" Makes a deep copy of this model.
 

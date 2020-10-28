@@ -1,3 +1,4 @@
+from typing import Optional
 from warnings import warn
 
 import numpy as np
@@ -18,43 +19,42 @@ class SINDyModel(Model):
     to encode a first order differential equation model for the measurement data.
     It can be used to make derivative predictions, simulate forward in time from
     initial conditions, and for self-scoring.
+
+    The model encodes a dynamical system
+
+    .. math::
+            \dot{X} = \Theta(X)\Xi
+
+    via the following correpondences
+    :code:`library` = :math:`\Theta` and
+    :code:`(intercept, coefficients)` = :math:`\Xi^\top`.
+
+    Parameters
+    ----------
+    library : library object
+        The feature library, :math:`\Theta`.
+        It is assumed that this object has already been fit to the input data.
+        The object should implement  :meth:`transform`
+        and :meth:`get_feature_names` methods.
+
+    coefficients : np.ndarray, shape (n_input_features, n_output_features)
+        Coefficients giving the linear combination of basis functions to
+        approximate derivative data, i.e. :math:`\Xi^\top`. Note that
+        :code:`coefficients` may or may not contain information about the intercepts
+        depending on the library used (e.g. a polynomial library can contain the
+        constant function).
+
+    input_features : iterable of str
+        List of input feature names.
+
+    intercept : float, optional, default=0
+        The intercept/bias for the learned model.
+        If the library already contains a constant function, there is no
+        need for an intercept term.
     """
 
     def __init__(self, library, coefficients, input_features, intercept=0):
-        r"""Initialize a new SINDyModel object.
-
-        Encodes a dynamical system
-
-        .. math::
-            \dot{X} = \Theta(X)\Xi
-
-        via the following correpondences
-        :code:`library` = :math:`Theta` and
-        :code:`(intercept, coefficients)` = :math:`\Xi^\top`
-
-        Parameters
-        ----------
-        library : library object
-            The feature library, :math:`\Theta`.
-            It is assumed that this object has already been fit to the input data.
-            The object should implement  :meth:`transform`
-            and :meth:`get_feature_names` methods.
-
-        coefficients : np.ndarray, shape (n_input_features, n_output_features)
-            Coefficients giving the linear combination of basis functions to
-            approximate derivative data, i.e. :math:`\Xi^\top`. Note that
-            :code:`coefficients` may or may not contain information about the intercepts
-            depending on the library used (e.g. a polynomial library can contain the
-            constant function).
-
-        input_features : list of strings
-            List of input feature names.
-
-        intercept : float, optional, default=0
-            The intercept/bias for the learned model.
-            If the library already contains a constant function, there is no
-            need for an intercept term.
-        """
+        super().__init__()
         self.library = library
         self.coef_ = coefficients
         self.input_features = input_features
@@ -63,10 +63,7 @@ class SINDyModel(Model):
     def transform(self, x):
         r"""Apply the functions of the feature library.
 
-        This method computes
-
-        .. math::
-            \Theta(X)
+        This method computes :math:`\Theta(X)`.
 
         Parameters
         ----------
@@ -369,7 +366,14 @@ class SINDy(Estimator):
 
         return self
 
-    def fetch_model(self) -> "deeptime.sindy.SINDyModel":
+    def fetch_model(self) -> Optional[SINDyModel]:
+        r""" Yields the latest model.
+
+        Returns
+        -------
+        model : SINDyModel or None
+            The model.
+        """
         return super().fetch_model()
 
 

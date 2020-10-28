@@ -89,7 +89,7 @@ class TICA(VAMP):
 
     See also
     --------
-    :class:`CovarianceKoopmanModel <deeptime.decomposition.CovarianceKoopmanModel>` : TICA estimation output model
+    CovarianceKoopmanModel : TICA estimation output model
 
     References
     ----------

@@ -856,8 +856,7 @@ class MarkovStateModel(Model):
     def reactive_flux(self, source_states, target_states) -> ReactiveFlux:
         r""" A->B reactive flux from transition path theory (TPT)
 
-        The returned :class:`ReactiveFlux <pyemma.msm.models.ReactiveFlux>` object
-        can be used to extract various quantities of the flux, as well as to
+        The returned object can be used to extract various quantities of the flux, as well as to
         compute A -> B transition pathways, their weights, and to coarse-grain
         the flux onto sets of states.
 
@@ -870,14 +869,14 @@ class MarkovStateModel(Model):
 
         Returns
         -------
-        tptobj : :class:`ReactiveFlux <deeptime.markov.ReactiveFlux>` object
+        tptobj : ReactiveFlux
             An object containing the reactive A->B flux network
             and several additional quantities, such as the stationary probability,
             committors and set definitions.
 
         See also
         --------
-        :class:`ReactiveFlux <deeptime.markov.ReactiveFlux>`
+        :class:`ReactiveFlux`
             Reactive Flux model
         """
         from ..reactive_flux import compute_reactive_flux

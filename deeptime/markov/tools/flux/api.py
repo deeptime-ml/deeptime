@@ -62,12 +62,6 @@ def flux_matrix(T, pi, qminus, qplus, netflux=True):
     flux : (M, M) ndarray
         Matrix of flux values between pairs of states.
 
-    Notes
-    -----
-    Computation of the flux network relies on transition path theory
-    (TPT) [1]_. Here we use discrete transition path theory [2]_ in
-    the transition matrix formulation [3]_.
-
     See also
     --------
     committor.forward_committor, committor.backward_committor
@@ -75,7 +69,9 @@ def flux_matrix(T, pi, qminus, qplus, netflux=True):
     Notes
     -----
     Computation of the flux network relies on transition path theory
-    (TPT). The central object used in transition path theory is the
+    (TPT) [1]_. Here we use discrete transition path theory [2]_ in
+    the transition matrix formulation [3]_.
+    The central object used in transition path theory is the
     forward and backward comittor function.
 
     The TPT (gross) flux is defined as

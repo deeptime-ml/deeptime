@@ -118,14 +118,13 @@ class Kmeans(Estimator, Transformer):
     The outcome is very dependent on the initialization, in particular we offer "kmeans++" and "uniform". The latter
     picks initial centers random-uniformly over the provided data set. The former tries to find an initialization
     which is covering the spatial configuration of the dataset more or less uniformly. For details
-    see :cite:`kmeans-arthur2006k`.
+    see :cite:`arthur2006k`.
 
     References
     ----------
     .. bibliography:: /references.bib
-        :style: unsrt
+        :style: plain
         :filter: docname in docnames
-        :keyprefix: kmeans-
 
     See Also
     --------

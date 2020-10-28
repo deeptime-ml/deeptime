@@ -248,6 +248,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             :style: unsrt
             :filter: docname in docnames
             :keyprefix: amm-est-
+            :list: enumerated
         """
         super().__init__(sparse=False, reversible=True)
         self.expectations_by_state = expectations_by_state

@@ -105,3 +105,19 @@ div.sphinxsidebarwrapper a.current ul {
 li.toctree-l1 {
     margin-left: 1rem;
 }
+
+dl.method {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.method > dt{
+    background-color: #ebebeb;
+}
+
+dl.field-list > dt {
+    font-weight: bold;
+    word-break: break-word;
+    padding-left: 0;
+    padding-right: 5px;
+}
