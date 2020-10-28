@@ -30,26 +30,24 @@ __all__ = [
 class BayesianHMMPosterior(BayesianPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior.
 
+    Parameters
+    ----------
+    prior : HiddenMarkovModel, optional, default=None
+        The prior.
+    samples : list of HiddenMarkovModel, optional, default=()
+        Sampled models.
+    hidden_state_trajs : list of ndarray, optional, default=()
+        Hidden state trajectories for sampled models.
+
     See Also
     --------
-    BayesianHMM : Estimator that can be used to estimate this type of posterior.
+    BayesianHMM
     """
 
     def __init__(self,
                  prior: Optional[HiddenMarkovModel] = None,
                  samples: Optional[List[HiddenMarkovModel]] = (),
                  hidden_state_trajs: Optional[List[np.ndarray]] = ()):
-        r""" Creates a new Bayesian HMM posterior.
-
-        Parameters
-        ----------
-        prior : HiddenMarkovModel, optional, default=None
-            The prior.
-        samples : list of HiddenMarkovModel, optional, default=()
-            Sampled models.
-        hidden_state_trajs : list of ndarray, optional, default=()
-            Hidden state trajectories for sampled models.
-        """
         super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
         self._hidden_state_trajectories_samples = hidden_state_trajs
 
@@ -156,7 +154,102 @@ class BayesianHMMPosterior(BayesianPosterior):
 
 
 class BayesianHMM(Estimator):
-    r""" Estimator for a Bayesian Hidden Markov state model. """
+    r""" Estimator for a Bayesian Hidden Markov state model.
+
+    The theory and estimation procedure are described
+    in :cite:`bhmmest-noe2013projected`, :cite:`bhmmest-chodera2011bayesian`.
+
+    Parameters
+    ----------
+    initial_hmm : :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>`
+       Single-point estimate of HMM object around which errors will be evaluated.
+       There is a static method available that can be used to generate a default prior, see :meth:`default`.
+    n_samples : int, optional, default=100
+       Number of sampled models.
+    stride : str or int, default='effective'
+       stride between two lagged trajectories extracted from the input
+       trajectories. Given trajectory s[t], stride and lag will result
+       in trajectories
+
+           :code:`s[0], s[tau], s[2 tau], ...`
+
+           :code:`s[stride], s[stride + tau], s[stride + 2 tau], ...`
+
+       Setting stride = 1 will result in using all data (useful for
+       maximum likelihood estimator), while a Bayesian estimator requires
+       a longer stride in order to have statistically uncorrelated
+       trajectories. Setting stride = 'effective' uses the largest
+       neglected timescale as an estimate for the correlation time and
+       sets the stride accordingly.
+    initial_distribution_prior : None, str, float or ndarray(n)
+       Prior for the initial distribution of the HMM. Will only be active
+       if stationary=False (stationary=True means that p0 is identical to
+       the stationary distribution of the transition matrix).
+       Currently implements different versions of the Dirichlet prior that
+       is conjugate to the Dirichlet distribution of p0. p0 is sampled from:
+
+       .. math::
+           p0 \sim \prod_i (p0)_i^{a_i + n_i - 1}
+
+       where :math:`n_i` are the number of times a hidden trajectory was in
+       state :math:`i` at time step 0 and :math:`a_i` is the prior count.
+       Following options are available:
+
+       * 'mixed' (default),  :math:`a_i = p_{0,init}`, where :math:`p_{0,init}`
+         is the initial distribution of initial_model.
+       *  ndarray(n) or float,
+          the given array will be used as A.
+       *  'uniform',  :math:`a_i = 1`
+       *   None,  :math:`a_i = 0`. This option ensures coincidence between
+           sample mean an MLE. Will sooner or later lead to sampling problems,
+           because as soon as zero trajectories are drawn from a given state,
+           the sampler cannot recover and that state will never serve as a starting
+           state subsequently. Only recommended in the large data regime and
+           when the probability to sample zero trajectories from any state
+           is negligible.
+    transition_matrix_prior : str or ndarray(n, n)
+       Prior for the HMM transition matrix.
+       Currently implements Dirichlet priors if reversible=False and reversible
+       transition matrix priors as described in :cite:`bhmmest-trendelkamp2015estimation` if reversible=True. For the
+       nonreversible case the posterior of transition matrix :math:`P` is:
+
+       .. math::
+           P \sim \prod_{i,j} p_{ij}^{b_{ij} + c_{ij} - 1}
+
+       where :math:`c_{ij}` are the number of transitions found for hidden
+       trajectories and :math:`b_{ij}` are prior counts.
+
+       * 'mixed' (default),  :math:`b_{ij} = p_{ij,\mathrm{init}}`, where :math:`p_{ij,\mathrm{init}}`
+         is the transition matrix of initial_model. That means one prior
+         count will be used per row.
+       * ndarray(n, n) or broadcastable,
+         the given array will be used as B.
+       * 'uniform',  :math:`b_{ij} = 1`
+       * None,  :math:`b_ij = 0`. This option ensures coincidence between
+         sample mean an MLE. Will sooner or later lead to sampling problems,
+         because as soon as a transition :math:`ij` will not occur in a
+         sample, the sampler cannot recover and that transition will never
+         be sampled again. This option is not recommended unless you have
+         a small HMM and a lot of data.
+    store_hidden : bool, optional, default=False
+       Store hidden trajectories in sampled HMMs, see
+       :attr:`BayesianHMMPosterior.hidden_state_trajectories_samples`.
+    reversible : bool, optional, default=True
+       If True, a prior that enforces reversible transition matrices (detailed balance) is used;
+       otherwise, a standard  non-reversible prior is used.
+    stationary : bool, optional, default=False
+       If True, the stationary distribution of the transition matrix will be used as initial distribution.
+       Only use True if you are confident that the observation trajectories are started from a global
+       equilibrium. If False, the initial distribution will be estimated as usual from the first step
+       of the hidden trajectories.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: bhmmest-
+    """
 
     _SampleStorage = collections.namedtuple(
         '_SampleStorage', ['transition_matrix', 'output_model', 'stationary_distribution', 'initial_distribution',
@@ -172,100 +265,6 @@ class BayesianHMM(Estimator):
                  store_hidden: bool = False,
                  reversible: bool = True,
                  stationary: bool = False):
-        r""" Creates a new estimator instance. The theory and estimation procedure are described
-        in :cite:`bhmmest-noe2013projected`, :cite:`bhmmest-chodera2011bayesian`.
-
-        Parameters
-        ----------
-        initial_hmm : :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>`
-           Single-point estimate of HMM object around which errors will be evaluated.
-           There is a static method available that can be used to generate a default prior, see :meth:`default`.
-        n_samples : int, optional, default=100
-           Number of sampled models.
-        stride : str or int, default='effective'
-           stride between two lagged trajectories extracted from the input
-           trajectories. Given trajectory s[t], stride and lag will result
-           in trajectories
-
-               :code:`s[0], s[tau], s[2 tau], ...`
-
-               :code:`s[stride], s[stride + tau], s[stride + 2 tau], ...`
-
-           Setting stride = 1 will result in using all data (useful for
-           maximum likelihood estimator), while a Bayesian estimator requires
-           a longer stride in order to have statistically uncorrelated
-           trajectories. Setting stride = 'effective' uses the largest
-           neglected timescale as an estimate for the correlation time and
-           sets the stride accordingly.
-        initial_distribution_prior : None, str, float or ndarray(n)
-           Prior for the initial distribution of the HMM. Will only be active
-           if stationary=False (stationary=True means that p0 is identical to
-           the stationary distribution of the transition matrix).
-           Currently implements different versions of the Dirichlet prior that
-           is conjugate to the Dirichlet distribution of p0. p0 is sampled from:
-
-           .. math::
-               p0 \sim \prod_i (p0)_i^{a_i + n_i - 1}
-
-           where :math:`n_i` are the number of times a hidden trajectory was in
-           state :math:`i` at time step 0 and :math:`a_i` is the prior count.
-           Following options are available:
-
-           * 'mixed' (default),  :math:`a_i = p_{0,init}`, where :math:`p_{0,init}`
-             is the initial distribution of initial_model.
-           *  ndarray(n) or float,
-              the given array will be used as A.
-           *  'uniform',  :math:`a_i = 1`
-           *   None,  :math:`a_i = 0`. This option ensures coincidence between
-               sample mean an MLE. Will sooner or later lead to sampling problems,
-               because as soon as zero trajectories are drawn from a given state,
-               the sampler cannot recover and that state will never serve as a starting
-               state subsequently. Only recommended in the large data regime and
-               when the probability to sample zero trajectories from any state
-               is negligible.
-        transition_matrix_prior : str or ndarray(n, n)
-           Prior for the HMM transition matrix.
-           Currently implements Dirichlet priors if reversible=False and reversible
-           transition matrix priors as described in :cite:`bhmmest-trendelkamp2015estimation` if reversible=True. For the
-           nonreversible case the posterior of transition matrix :math:`P` is:
-
-           .. math::
-               P \sim \prod_{i,j} p_{ij}^{b_{ij} + c_{ij} - 1}
-
-           where :math:`c_{ij}` are the number of transitions found for hidden
-           trajectories and :math:`b_{ij}` are prior counts.
-
-           * 'mixed' (default),  :math:`b_{ij} = p_{ij,\mathrm{init}}`, where :math:`p_{ij,\mathrm{init}}`
-             is the transition matrix of initial_model. That means one prior
-             count will be used per row.
-           * ndarray(n, n) or broadcastable,
-             the given array will be used as B.
-           * 'uniform',  :math:`b_{ij} = 1`
-           * None,  :math:`b_ij = 0`. This option ensures coincidence between
-             sample mean an MLE. Will sooner or later lead to sampling problems,
-             because as soon as a transition :math:`ij` will not occur in a
-             sample, the sampler cannot recover and that transition will never
-             be sampled again. This option is not recommended unless you have
-             a small HMM and a lot of data.
-        store_hidden : bool, optional, default=False
-           Store hidden trajectories in sampled HMMs, see
-           :attr:`BayesianHMMPosterior.hidden_state_trajectories_samples`.
-        reversible : bool, optional, default=True
-           If True, a prior that enforces reversible transition matrices (detailed balance) is used;
-           otherwise, a standard  non-reversible prior is used.
-        stationary : bool, optional, default=False
-           If True, the stationary distribution of the transition matrix will be used as initial distribution.
-           Only use True if you are confident that the observation trajectories are started from a global
-           equilibrium. If False, the initial distribution will be estimated as usual from the first step
-           of the hidden trajectories.
-
-        References
-        ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: bhmmest-
-        """
         super().__init__()
         self.initial_hmm = initial_hmm
         self.n_samples = n_samples

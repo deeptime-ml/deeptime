@@ -207,49 +207,46 @@ class AugmentedMSM(MarkovStateModel):
 
 
 class AugmentedMSMEstimator(_MSMBaseEstimator):
-    r""" Estimator for augmented Markov state models. This type of MSMs can be used if experimental data is available.
+    r""" Estimator for augmented Markov state models. :cite:`ammest-olsson2017combining`
+    This estimator is based on expectation values from experiments.
+    In case the experimental data is a time series matching a discrete time series, a convenience function
+    :meth:`estimator_from_feature_trajectories` is offered.
+
+    Parameters
+    ----------
+    expectations_by_state : (n, k) ndarray
+        Expectations by state. n Markov states, k experimental observables; each index is
+        average over members of the Markov state.
+    experimental_measurements : (k,) ndarray
+        The experimental measurements.
+    experimental_measurement_weights : (k,) ndarray
+        Experimental measurements weights.
+    eps : float, optional, default=0.05
+        Additional convergence criterion used when some experimental data
+        are outside the support of the simulation. The value of the eps
+        parameter is the threshold of the relative change in the predicted
+        observables as a function of fixed-point iteration:
+
+        .. math::
+            \mathrm{eps} > \frac{\mid o_{\mathrm{pred}}^{(i+1)}-o_{\mathrm{pred}}^{(i)}\mid }{\sigma}.
+
+    support_ci : float, optional, default=1.0
+        Confidence interval for determination whether experimental data are inside or outside Markov model support.
+    maxiter : int, optional, default=500
+        Optional parameter with specifies the maximum number of updates for Lagrange multiplier estimation.
+    max_cache : int, optional, default=3000
+        Maximum size (in megabytes) of cache when computing R tensor.
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: ammest-
     """
 
     def __init__(self, expectations_by_state, experimental_measurements, experimental_measurement_weights,
                  eps=0.05, support_ci=1.00, maxiter=500, max_cache=3000):
-        r""" Creates a new AMM estimator instance. This estimator is based on expectation values from experiments.
-        In case the experimental data is a time series matching a discrete time series, a convenience function
-        :meth:`estimator_from_feature_trajectories` is offered.
-
-        Parameters
-        ----------
-        expectations_by_state : (n, k) ndarray
-            Expectations by state. n Markov states, k experimental observables; each index is
-            average over members of the Markov state.
-        experimental_measurements : (k,) ndarray
-            The experimental measurements.
-        experimental_measurement_weights : (k,) ndarray
-            Experimental measurements weights.
-        eps : float, optional, default=0.05
-            Additional convergence criterion used when some experimental data
-            are outside the support of the simulation. The value of the eps
-            parameter is the threshold of the relative change in the predicted
-            observables as a function of fixed-point iteration:
-
-            .. math::
-                \mathrm{eps} > \frac{\mid o_{\mathrm{pred}}^{(i+1)}-o_{\mathrm{pred}}^{(i)}\mid }{\sigma}.
-
-        support_ci : float, optional, default=1.0
-            Confidence interval for determination whether experimental data are inside or outside Markov model support.
-        maxiter : int, optional, default=500
-            Optional parameter with specifies the maximum number of updates for Lagrange multiplier estimation.
-        max_cache : int, optional, default=3000
-            Maximum size (in megabytes) of cache when computing R tensor (Supporting information
-            in :cite:`amm-est-olsson2017combining`).
-
-        References
-        ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: amm-est-
-            :list: enumerated
-        """
         super().__init__(sparse=False, reversible=True)
         self.expectations_by_state = expectations_by_state
         self.experimental_measurements = experimental_measurements

@@ -17,23 +17,21 @@ class DrunkardsWalk(object):
     :math:`P\in\mathbb{R}^{nm\times nm}`  possesses one absorbing state for home and bar, respectively,
     and uniform two-dimensional jump probabilities in between. The grid is of size :math:`n\times m` and a point
     :math:`(i,j)` is identified with state :math:`i+nj` in the transition matrix.
+
+    Parameters
+    ----------
+    grid_size : tuple
+        The grid size, must be tuple of length two.
+    bar_location : tuple
+        The bar location, must be valid coordinate and tuple of length two.
+    home_location : tuple
+        The home location, must be valid coordinate and tuple of length two.
+    barriers : List of tuple of two integers or None, default=None
+        Initial barrier locations. Can also be added post-hoc by calling :meth:`add_barrier`.
     """
 
     def __init__(self, grid_size: Tuple[int, int], bar_location: List[Coordinate], home_location: List[Coordinate],
                  barriers=None):
-        r""" Creates a new drunkard's walk instance on a two-dimensional grid with predefined bar and home locations.
-
-        Parameters
-        ----------
-        grid_size : tuple
-            The grid size, must be tuple of length two.
-        bar_location : tuple
-            The bar location, must be valid coordinate and tuple of length two.
-        home_location : tuple
-            The home location, must be valid coordinate and tuple of length two.
-        barriers : List of tuple of two integers or None, default=None
-            Initial barrier locations. Can also be added post-hoc by calling :meth:`add_barrier`.
-        """
         if barriers is None:
             barriers = []
         self.n_states = grid_size[0] * grid_size[1]

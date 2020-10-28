@@ -145,20 +145,19 @@ class Model(_base_methods_mixin):
 
 
 class Estimator(_base_methods_mixin):
-    r""" Base class of all estimators """
+    r""" Base class of all estimators
+
+    Parameters
+    ----------
+    model : Model, optional, default=None
+        A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
+        capable of updating models, this can be used to resume the estimation process.
+    """
 
     """ class wide flag to control whether input of fit or partial_fit should be checked for modifications """
     _MUTABLE_INPUT_DATA = False
 
     def __init__(self, model=None):
-        r""" Initializes a new estimator.
-
-        Parameters
-        ----------
-        model : Model, optional, default=None
-            A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
-            capable of updating models, this can be used to resume the estimation process.
-        """
         self._model = model
 
     @abc.abstractmethod

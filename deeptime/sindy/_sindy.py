@@ -263,6 +263,28 @@ class SINDy(Estimator):
     i-th measurement variable (i-th column in :math:`X`). For more details see
     :cite:`sindy-brunton2016sindy`.
 
+    Parameters
+    ----------
+    library : library object, optional, default=None
+        The candidate feature library, :math:`\Theta`.
+        The object should implement a :meth:`fit`, :meth:`transform`,
+        and :meth:`get_feature_names` methods. It should also have
+        :attr:`n_input_features_` and :attr:`n_output_features_` attributes.
+        By default a polynomial library of degree 2 is used.
+
+    optimizer : optimizer object, optional, default=None
+        The optimization routine used to solve the objective
+        :math:`\dot{X} \approx \Theta(X)\Xi`.
+        The object should have :meth:`fit` and :meth:`predict` methods
+        and :attr:`coef_` and :attr:`intercept_` attributes. For example,
+        any linear regressor from `sklearn.linear_model \
+        <https://scikit-learn.org/stable/modules/linear_model.html>`_ should work.
+        By default, :meth:`STLSQ` is used.
+
+    input_features : list of strings, optional, default=None
+        List of input feature names. By default, the names
+        "x0", "x1", ..., "x{n_input_features}" is used.
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -272,30 +294,6 @@ class SINDy(Estimator):
     """
 
     def __init__(self, library=None, optimizer=None, input_features=None):
-        r"""Initialize a new SINDy estimator.
-
-        Parameters
-        ----------
-        library : library object, optional, default=None
-            The candidate feature library, :math:`\Theta`.
-            The object should implement a :meth:`fit`, :meth:`transform`,
-            and :meth:`get_feature_names` methods. It should also have
-            :attr:`n_input_features_` and :attr:`n_output_features_` attributes.
-            By default a polynomial library of degree 2 is used.
-
-        optimizer : optimizer object, optional, default=None
-            The optimization routine used to solve the objective
-            :math:`\dot{X} \approx \Theta(X)\Xi`.
-            The object should have :meth:`fit` and :meth:`predict` methods
-            and :attr:`coef_` and :attr:`intercept_` attributes. For example,
-            any linear regressor from `sklearn.linear_model \
-            <https://scikit-learn.org/stable/modules/linear_model.html>`_ should work.
-            By default, :meth:`STLSQ` is used.
-
-        input_features : list of strings, optional, default=None
-            List of input feature names. By default, the names
-            "x0", "x1", ..., "x{n_input_features}" is used.
-        """
         super().__init__()
         if library is None:
             library = PolynomialFeatures(degree=2)
@@ -387,6 +385,34 @@ class STLSQ(LinearRegression):
 
     See this paper for more details :cite:`sindy-stlsq-brunton2016sindy`.
 
+    Parameters
+    ----------
+    threshold : float, optional, default=0.1
+        Minimum magnitude for a coefficient in the weight vector.
+        Coefficients with magnitude below the threshold are set
+        to zero.
+
+    alpha : float, optional, default=0.05
+        Optional L2 (ridge) regularization on the weight vector.
+
+    max_iter : int, optional, default=20
+        Maximum iterations of the optimization algorithm.
+
+    ridge_kw : dict, optional, default=None
+        Optional keyword arguments to pass to the ridge regression.
+
+    fit_intercept : boolean, optional, default=False
+        Whether to calculate the intercept for this model. If set to false, no
+        intercept will be used in calculations.
+
+    normalize : boolean, optional, default=False
+        This parameter is ignored when :code:`fit_intercept` is set to False. If True,
+        the regressors X will be normalized before regression by subtracting
+        the mean and dividing by the l2-norm.
+
+    copy_X : boolean, optional, default=True
+        If True, X will be copied; else, it may be overwritten.
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -397,36 +423,6 @@ class STLSQ(LinearRegression):
 
     def __init__(self, threshold=0.1, alpha=0.05, max_iter=20, ridge_kw=None, normalize=False, fit_intercept=False,
                  copy_X=True):
-        r"""Initialize a new STLSQ object.
-
-        Parameters
-        ----------
-        threshold : float, optional, default=0.1
-            Minimum magnitude for a coefficient in the weight vector.
-            Coefficients with magnitude below the threshold are set
-            to zero.
-
-        alpha : float, optional, default=0.05
-            Optional L2 (ridge) regularization on the weight vector.
-
-        max_iter : int, optional, default=20
-            Maximum iterations of the optimization algorithm.
-
-        ridge_kw : dict, optional, default=None
-            Optional keyword arguments to pass to the ridge regression.
-
-        fit_intercept : boolean, optional, default=False
-            Whether to calculate the intercept for this model. If set to false, no
-            intercept will be used in calculations.
-
-        normalize : boolean, optional, default=False
-            This parameter is ignored when :code:`fit_intercept` is set to False. If True,
-            the regressors X will be normalized before regression by subtracting
-            the mean and dividing by the l2-norm.
-
-        copy_X : boolean, optional, default=True
-            If True, X will be copied; else, it may be overwritten.
-        """
         super().__init__(fit_intercept=fit_intercept, normalize=normalize, copy_X=copy_X)
         self.threshold = threshold
         self.alpha = alpha

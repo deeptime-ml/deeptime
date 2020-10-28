@@ -11,21 +11,19 @@ from ..kernels import Kernel
 class KernelCCAModel(Model):
     r""" The model produced by the :class:`KernelCCA` estimator.
 
+    Parameters
+    ----------
+    eigenvalues : (n, ) ndarray
+        The eigenvalues.
+    eigenvectors : (m, n) ndarray
+        The eigenvectors of the nonlinear transform of the input data.
+
     See Also
     --------
-    :class:`KernelCCA` : The corresponding estimator.
+    KernelCCA
     """
 
     def __init__(self, eigenvalues: np.ndarray, eigenvectors: np.ndarray):
-        r""" Creates a new model instance.
-
-        Parameters
-        ----------
-        eigenvalues : (n, ) ndarray
-            The eigenvalues.
-        eigenvectors : (m, n) ndarray
-            The eigenvectors of the nonlinear transform of the input data.
-        """
         super().__init__()
         self._eigenvalues = eigenvalues
         self._eigenvectors = eigenvectors
@@ -43,9 +41,18 @@ class KernelCCA(Estimator):
     r""" Estimator implementing the kernelized version :cite:`kcca-bach2002kernel` of canonical correlation
     analysis (CCA :cite:`kcca-hotelling1992relations`).
 
+    Parameters
+    ----------
+    kernel : Kernel
+        The kernel to be used, see :mod:`deeptime.kernels` for a selection of predefined kernels.
+    n_eigs : int
+        Number of eigenvalue/eigenvector pairs to use for low-rank approximation.
+    epsilon : float, optional, default=1e-6
+        Regularization parameter.
+
     See Also
     --------
-    :class:`KernelCCAModel` : The model produced by this estimator.
+    KernelCCAModel
 
     References
     ----------
@@ -56,17 +63,6 @@ class KernelCCA(Estimator):
     """
 
     def __init__(self, kernel: Kernel, n_eigs: int, epsilon: float = 1e-6):
-        r""" Creates a new kCCA estimator instance.
-
-        Parameters
-        ----------
-        kernel : Kernel
-            The kernel to be used, see :mod:`deeptime.kernels` for a selection of predefined kernels.
-        n_eigs : int
-            Number of eigenvalue/eigenvector pairs to use for low-rank approximation.
-        epsilon : float, optional, default=1e-6
-            Regularization parameter.
-        """
         super().__init__()
         self.kernel = kernel
         self.n_eigs = n_eigs

@@ -21,6 +21,36 @@ class VAMP(Estimator, Transformer):
 
     The implementation is based on :cite:`vamp-wu2020variational`, :cite:`vamp-noe2015kinetic`.
 
+    Parameters
+    ----------
+    lagtime : int or None, optional, default=None
+        The lagtime under which covariances are estimated. This is only relevant when estimating from data, in case
+        covariances are provided this should either be None or exactly the value that was used to estimate
+        said covariances.
+    dim : int, optional, default=None
+        Number of dimensions to keep:
+
+        * if dim is not set (None) all available ranks are kept:
+          :code:`n_components == min(n_samples, n_uncorrelated_features)`
+        * if dim is an integer >= 1, this number specifies the number
+          of dimensions to keep.
+    var_cutoff : float, optional, default=None
+        Determines the number of output dimensions by including dimensions until their cumulative kinetic variance
+        exceeds the fraction subspace variance. var_cutoff=1.0 means all numerically available dimensions
+        (see epsilon) will be used, unless set by dim. Setting var_cutoff smaller than 1.0 is exclusive with dim.
+    scaling : str, optional, default=None
+        Scaling to be applied to the VAMP order parameters upon transformation
+
+        * None: no scaling will be applied, variance of the order parameters is 1
+        * 'kinetic_map' or 'km': order parameters are scaled by singular value.
+          Only the left singular functions induce a kinetic map wrt the
+          conventional forward propagator. The right singular functions induce
+          a kinetic map wrt the backward propagator.
+    epsilon : float, optional, default=1e-6
+        Eigenvalue cutoff. Eigenvalues of :math:`C_{00}` and :math:`C_{11}`
+        with norms <= epsilon will be cut off. The remaining number of
+        eigenvalues together with the value of `dim` define the size of the output.
+
     See Also
     --------
     CovarianceKoopmanModel : type of model produced by this estimator
@@ -70,11 +100,11 @@ class VAMP(Estimator, Transformer):
 
     .. math::
 
-      \mathbf{C}_{00}	:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]
-
-      \mathbf{C}_{11}	:=\frac{1}{T-\tau}\sum_{t=\tau}^{T}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]
-
-      \mathbf{C}_{01}	:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\left[\boldsymbol{\chi}(t+\tau)-\boldsymbol{\mu}_{1}\right]
+        \begin{aligned}
+      \mathbf{C}_{00}&:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\\
+      \mathbf{C}_{11}&:=\frac{1}{T-\tau}\sum_{t=\tau}^{T}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]\\
+      \mathbf{C}_{01}&:=\frac{1}{T-\tau}\sum_{t=0}^{T-\tau}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\left[\boldsymbol{\chi}(t+\tau)-\boldsymbol{\mu}_{1}\right]
+        \end{aligned}
 
     The Koopman matrix is then computed as follows:
 
@@ -104,9 +134,10 @@ class VAMP(Estimator, Transformer):
 
     .. math::
 
-      \boldsymbol{\psi}(t):=\mathbf{U}^{\prime\top}\mathbf{C}_{00}^{-\frac{1}{2}}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]
-
-      \boldsymbol{\phi}(t):=\mathbf{V}^{\prime\top}\mathbf{C}_{11}^{-\frac{1}{2}}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]
+        \begin{aligned}
+        \boldsymbol{\psi}(t)&:=\mathbf{U}^{\prime\top}\mathbf{C}_{00}^{-\frac{1}{2}}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{0}\right]\\
+        \boldsymbol{\phi}(t)&:=\mathbf{V}^{\prime\top}\mathbf{C}_{11}^{-\frac{1}{2}}\left[\boldsymbol{\chi}(t)-\boldsymbol{\mu}_{1}\right]
+        \end{aligned}
 
 
     References
@@ -122,38 +153,6 @@ class VAMP(Estimator, Transformer):
                  var_cutoff: Optional[float] = None,
                  scaling: Optional[str] = None,
                  epsilon: float = 1e-6):
-        r""" Creates a new VAMP estimator.
-
-        Parameters
-        ----------
-        lagtime : int or None, optional, default=None
-            The lagtime under which covariances are estimated. This is only relevant when estimating from data, in case
-            covariances are provided this should either be None or exactly the value that was used to estimate
-            said covariances.
-        dim : int, optional, default=None
-            Number of dimensions to keep:
-
-            * if dim is not set (None) all available ranks are kept:
-              :code:`n_components == min(n_samples, n_uncorrelated_features)`
-            * if dim is an integer >= 1, this number specifies the number
-              of dimensions to keep.
-        var_cutoff : float, optional, default=None
-            Determines the number of output dimensions by including dimensions until their cumulative kinetic variance
-            exceeds the fraction subspace variance. var_cutoff=1.0 means all numerically available dimensions
-            (see epsilon) will be used, unless set by dim. Setting var_cutoff smaller than 1.0 is exclusive with dim.
-        scaling : str, optional, default=None
-            Scaling to be applied to the VAMP order parameters upon transformation
-
-            * None: no scaling will be applied, variance of the order parameters is 1
-            * 'kinetic_map' or 'km': order parameters are scaled by singular value.
-              Only the left singular functions induce a kinetic map wrt the
-              conventional forward propagator. The right singular functions induce
-              a kinetic map wrt the backward propagator.
-        epsilon : float, optional, default=1e-6
-            Eigenvalue cutoff. Eigenvalues of :math:`C_{00}` and :math:`C_{11}`
-            with norms <= epsilon will be cut off. The remaining number of
-            eigenvalues together with the value of `dim` define the size of the output.
-        """
         super(VAMP, self).__init__()
         self.dim = dim
         self.var_cutoff = var_cutoff

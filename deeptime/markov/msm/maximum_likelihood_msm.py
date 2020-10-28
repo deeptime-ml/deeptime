@@ -22,6 +22,37 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     Implementation according to :cite:`mlmsm-wu2020variational`.
 
+    Parameters
+    ----------
+    reversible : bool, optional, default=True
+        If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel
+    stationary_distribution_constraint : (N,) ndarray, optional, default=None
+        Stationary vector on the full set of states. Estimation will be made such the the resulting transition
+        matrix has this distribution as an equilibrium distribution. Set probabilities to zero if the states which
+        should be excluded from the analysis.
+    sparse : bool, optional, default=False
+        If true compute count matrix, transition matrix and all derived quantities using sparse matrix algebra.
+        In this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
+        This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
+        more efficient.
+    allow_disconnected : bool, optional, default=False
+        If set to true, the resulting transition matrix may have disconnected and transient states, and the
+        estimated stationary distribution is only meaningful on the respective connected sets.
+    maxiter : int, optional, default=1000000
+        Optional parameter with reversible = True, sets the maximum number of iterations before the transition
+        matrix estimation method exits.
+    maxerr : float, optional, default = 1e-8
+        Optional parameter with reversible = True. Convergence tolerance for transition matrix estimation. This
+        specifies the maximum change of the Euclidean norm of relative stationary probabilities
+        (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
+        :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
+        probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
+    transition_matrix_tolerance : float, default=1e-8
+        The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
+        row sums of 1).
+    connectivity_threshold : float, optional, default=0.
+        Number of counts required to consider two states connected.
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -33,41 +64,6 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
                  sparse: bool = False, allow_disconnected: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8,
                  connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-6):
-        r"""
-        Constructs a new maximum-likelihood msm estimator.
-
-        Parameters
-        ----------
-        reversible : bool, optional, default=True
-            If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel
-        stationary_distribution_constraint : (N,) ndarray, optional, default=None
-            Stationary vector on the full set of states. Estimation will be made such the the resulting transition
-            matrix has this distribution as an equilibrium distribution. Set probabilities to zero if the states which
-            should be excluded from the analysis.
-        sparse : bool, optional, default=False
-            If true compute count matrix, transition matrix and all derived quantities using sparse matrix algebra.
-            In this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
-            This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
-            more efficient.
-        allow_disconnected : bool, optional, default=False
-            If set to true, the resulting transition matrix may have disconnected and transient states, and the
-            estimated stationary distribution is only meaningful on the respective connected sets.
-        maxiter : int, optional, default=1000000
-            Optional parameter with reversible = True, sets the maximum number of iterations before the transition
-            matrix estimation method exits.
-        maxerr : float, optional, default = 1e-8
-            Optional parameter with reversible = True. Convergence tolerance for transition matrix estimation. This
-            specifies the maximum change of the Euclidean norm of relative stationary probabilities
-            (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
-            :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
-            probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
-        transition_matrix_tolerance : float, default=1e-8
-            The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
-            row sums of 1).
-        connectivity_threshold : float, optional, default=0.
-            Number of counts required to consider two states connected.
-        """
-
         super(MaximumLikelihoodMSM, self).__init__(reversible=reversible, sparse=sparse)
 
         self.stationary_distribution_constraint = stationary_distribution_constraint

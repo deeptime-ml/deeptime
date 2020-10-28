@@ -17,6 +17,34 @@ class HiddenMarkovModel(Model):
     and optionally an initial distribution on the hidden states. Some properties require a crisp assignment to
     states in the observable space, in which case only a discrete output model can be used.
 
+    Parameters
+    ----------
+    transition_model : (m,m) ndarray or MarkovStateModel
+        Transition matrix for hidden (macro) states
+    output_model : (m,n) ndarray or OutputModel
+        observation probability matrix from hidden to observable (micro) states or OutputModel instance which yields
+        the mapping from hidden to observable state.
+    initial_distribution : (m,) ndarray, optional, default=None
+        Initial distribution of the hidden (macro) states. Default is uniform.
+    likelihoods : (k,) ndarray, optional, default=None
+        Likelihood progression of the HMM as it was trained for k iterations with Baum-Welch.
+    state_probabilities : list of ndarray, optional, default=None
+        List of state probabilities for each trajectory that the model was trained on (gammas).
+    initial_count : ndarray, optional, default=None
+        Initial counts of the hidden (macro) states, computed from the gamma output of the Baum-Welch algorithm
+    hidden_state_trajectories : list of ndarray, optional, default=None
+        When estimating the HMM the data's most likely hidden state trajectory is determined and can be saved
+        with the model by providing this argument.
+    stride : int or str('effective'), optional, default=1
+        Stride which was used to subsample discrete trajectories while estimating a HMM. Can either be an integer
+        value which determines the offset or 'effective', which makes an estimate of a stride at which subsequent
+        discrete trajectory elements are uncorrelated.
+    observation_symbols : array_like, optional, default=None
+        Sorted unique symbols in observations. If None, it is assumed that all possible observations are made
+        and the state symbols are set to an iota range over the number of observation states.
+    observation_symbols_full : array_like, optional, default=None
+        Full set of symbols in observations. If None, it is assumed to coincide with observation_symbols.
+
     See Also
     --------
     init.discrete.metastable_from_data : initial guess from data with discrete output model
@@ -32,39 +60,6 @@ class HiddenMarkovModel(Model):
                  hidden_state_trajectories: Optional[Iterable[np.ndarray]] = None, stride: Union[int, str] = 1,
                  observation_symbols: Optional[np.ndarray] = None,
                  observation_symbols_full: Optional[np.ndarray] = None):
-        r"""
-        Constructs a new hidden markov state model from a (m, m) hidden transition matrix (macro states), an
-        observation probability matrix that maps from hidden to observable states (micro states), i.e., a (m, n)-matrix,
-        and an initial distribution over the hidden states.
-
-        Parameters
-        ----------
-        transition_model : (m,m) ndarray or from deeptime.markov import MarkovStateModel
-            Transition matrix for hidden (macro) states
-        output_model : (m,n) ndarray or OutputModel
-            observation probability matrix from hidden to observable (micro) states or OutputModel instance which yields
-            the mapping from hidden to observable state.
-        initial_distribution : (m,) ndarray, optional, default=None
-            Initial distribution of the hidden (macro) states. Default is uniform.
-        likelihoods : (k,) ndarray, optional, default=None
-            Likelihood progression of the HMM as it was trained for k iterations with Baum-Welch.
-        state_probabilities : list of ndarray, optional, default=None
-            List of state probabilities for each trajectory that the model was trained on (gammas).
-        initial_count : ndarray, optional, default=None
-            Initial counts of the hidden (macro) states, computed from the gamma output of the Baum-Welch algorithm
-        hidden_state_trajectories : list of ndarray, optional, default=None
-            When estimating the HMM the data's most likely hidden state trajectory is determined and can be saved
-            with the model by providing this argument.
-        stride : int or str('effective'), optional, default=1
-            Stride which was used to subsample discrete trajectories while estimating a HMM. Can either be an integer
-            value which determines the offset or 'effective', which makes an estimate of a stride at which subsequent
-            discrete trajectory elements are uncorrelated.
-        observation_symbols : array_like, optional, default=None
-            Sorted unique symbols in observations. If None, it is assumed that all possible observations are made
-            and the state symbols are set to an iota range over the number of observation states.
-        observation_symbols_full : array_like, optional, default=None
-            Full set of symbols in observations. If None, it is assumed to coincide with observation_symbols.
-        """
         super().__init__()
         if isinstance(transition_model, np.ndarray):
             from deeptime.markov.msm import MarkovStateModel

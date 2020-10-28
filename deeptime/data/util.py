@@ -108,16 +108,14 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
 class TimeSeriesDataset(object):
     r""" High-level container for time-series data.
     This can be used together with pytorch data tools, i.e., data loaders and other utilities.
+
+    Parameters
+    ----------
+    data : (T, ...) ndarray
+        The dataset with T frames.
     """
 
     def __init__(self, data):
-        r""" Creates a new dataset.
-
-        Parameters
-        ----------
-        data : (T, ...) ndarray
-            The dataset with T frames.
-        """
         self.data = data
 
     def lag(self, lagtime: int):
@@ -145,20 +143,18 @@ class TimeSeriesDataset(object):
 class TimeLaggedDataset(TimeSeriesDataset):
     r""" High-level container for time-lagged time-series data.
     This can be used together with pytorch data tools, i.e., data loaders and other utilities.
+
+    Parameters
+    ----------
+    data : iterable of data
+        The data which is wrapped into a dataset
+    data_lagged : iterable of data
+        Corresponding timelagged data. Must be of same length.
+    dtype : numpy data type
+        The data type to map to when retrieving outputs
     """
 
     def __init__(self, data, data_lagged, dtype=np.float32):
-        r"""Creates a new time series data set.
-
-        Parameters
-        ----------
-        data : iterable of data
-            The data which is wrapped into a dataset
-        data_lagged : iterable of data
-            Corresponding timelagged data. Must be of same length.
-        dtype : numpy data type
-            The data type to map to when retrieving outputs
-        """
         super().__init__(data)
         assert len(data) == len(data_lagged), 'data and data lagged must be of same size'
         self.data_lagged = data_lagged

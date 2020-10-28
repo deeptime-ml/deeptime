@@ -81,10 +81,21 @@ class PCCAModel(Model):
     This function does not assume that the transition matrix is fully connected. Disconnected sets
     will automatically define the first metastable states, with perfect membership assignments.
 
+    Parameters
+    ----------
+    transition_matrix_coarse : ndarray (n,n)
+        Coarse transition matrix.
+    pi_coarse : ndarray (n,)
+        Coarse stationary distribution
+    memberships : ndarray (n,m)
+        The pcca memberships to clusters
+    metastable_distributions : ndarray (m, n)
+        metastable distributions
+
     See Also
     --------
-    pcca : method to obtain a model of this type from a transition matrix and a number of clusters
-    msm.MarkovStateModel.pcca : yields a PCCAModel from an existing Markov state model instance
+    pcca : Method that produces this type of model.
+    msm.MarkovStateModel.pcca : Coarse-grain with PCCA+ from already existing MSM instance.
 
     References
     ----------
@@ -96,19 +107,6 @@ class PCCAModel(Model):
 
     def __init__(self, transition_matrix_coarse: np.ndarray, pi_coarse: np.ndarray, memberships: np.ndarray,
                  metastable_distributions: np.ndarray):
-        r""" Creates a new model instance.
-
-        Parameters
-        ----------
-        transition_matrix_coarse : ndarray (n,n)
-            Coarse transition matrix.
-        pi_coarse : ndarray (n,)
-            Coarse stationary distribution
-        memberships : ndarray (n,m)
-            The pcca memberships to clusters
-        metastable_distributions : ndarray (m, n)
-            metastable distributions
-        """
         super().__init__()
         self._transition_matrix_coarse = transition_matrix_coarse
         self._pi_coarse = pi_coarse

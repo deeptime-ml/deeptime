@@ -22,6 +22,18 @@ class RegularSpace(Estimator):
     subsequent data point, if it has a greater distance than dmin from every center, it also becomes a center.
     In the second pass, a Voronoi discretization with the computed centers is used to partition the data.
 
+    Parameters
+    ----------
+    dmin : float
+        Minimum distance between all clusters, must be non-negative.
+    max_centers : int
+        If this threshold is met during finding the centers, the algorithm will terminate. Must be positive.
+    metric : str, default='euclidean'
+        The metric to use during clustering. For a list of available metrics,
+        see the :data:`metric registry <deeptime.clustering.metrics>`.
+    n_jobs : int, optional, default=None
+        Number of threads to use during estimation.
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -31,21 +43,6 @@ class RegularSpace(Estimator):
     """
 
     def __init__(self, dmin: float, max_centers: int = 1000, metric: str = 'euclidean', n_jobs=None):
-        r"""
-        Initializes a new regular space clustering estimator.
-
-        Parameters
-        ----------
-        dmin : float
-            Minimum distance between all clusters, must be non-negative.
-        max_centers : int
-            If this threshold is met during finding the centers, the algorithm will terminate. Must be positive.
-        metric : str, default='euclidean'
-            The metric to use during clustering. For a list of available metrics,
-            see the :data:`metric registry <deeptime.clustering.metrics>`.
-        n_jobs : int, optional, default=None
-            Number of threads to use during estimation.
-        """
         super(RegularSpace, self).__init__()
         self.dmin = dmin
         self.metric = metric

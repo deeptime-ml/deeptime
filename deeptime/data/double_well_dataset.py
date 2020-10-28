@@ -23,14 +23,13 @@ def _load_double_well_discrete():
 
 
 class DoubleWellDiscrete(object):
-    r""" MCMC process in a symmetric double well potential, spatially discretized to 100 bins. """
+    r""" MCMC process in a symmetric double well potential, spatially discretized to 100 bins.
+
+    Encapsulates discrete trajectories and
+    markov state model (see :class:`MarkovStateModel`) with exact transition matrix.
+    """
 
     def __init__(self):
-        r""" New instance of the object.
-
-        Initializes a new instance of :class:`DoubleWellDiscrete` encapsulating discrete trajectories and
-        markov state model (see :class:`MarkovStateModel`) with exact transition matrix.
-        """
         dtraj, msm = _load_double_well_discrete()
         self._dtraj = dtraj
         self._analytic_msm = msm

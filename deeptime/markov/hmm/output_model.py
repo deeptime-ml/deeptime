@@ -11,29 +11,27 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
     r""" Output model superclass. Contains basic functionality and interfaces which output models are supposed
     to implement.
 
+    Parameters
+    ----------
+    n_hidden_states : int
+        Number of hidden states.
+    n_observable_states : int
+        Number of observable states if discrete state space, otherwise -1
+    ignore_outliers : bool, optional, default=True
+        By outliers observations that have zero probability given the
+        current model are meant. :code:`ignore_outliers=True` means that outliers will be treated
+        as if no observation was made, which is equivalent to making this
+        observation with equal probability from any hidden state.
+        :code:`ignore_outliers=False` means that an Exception or in the worst case an
+        unhandled crash will occur if an outlier is observed.
+
     See Also
     --------
-    DiscreteOutputModel : Output model with discrete observable states.
-    GaussianOutputModel : Output model with continuous observable states described by Gaussians.
+    DiscreteOutputModel
+    GaussianOutputModel
     """
 
     def __init__(self, n_hidden_states: int, n_observable_states: int, ignore_outliers: bool = True):
-        r""" Creates a new output model instance.
-
-        Parameters
-        ----------
-        n_hidden_states : int
-            Number of hidden states.
-        n_observable_states : int
-            Number of observable states if discrete state space, otherwise -1
-        ignore_outliers : bool, optional, default=True
-            By outliers observations that have zero probability given the
-            current model are meant. :code:`ignore_outliers=True` means that outliers will be treated
-            as if no observation was made, which is equivalent to making this
-            observation with equal probability from any hidden state.
-            :code:`ignore_outliers=False` means that an Exception or in the worst case an
-            unhandled crash will occur if an outlier is observed.
-        """
         super().__init__()
         self._n_hidden_states = n_hidden_states
         self._n_observable_states = n_observable_states
@@ -166,28 +164,26 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
 class DiscreteOutputModel(OutputModel):
     r"""HMM output probability model using discrete symbols. This corresponds to the "standard" HMM that is
     classically used in the literature.
+
+    Parameters
+    ----------
+    output_probabilities : ((N, M) dtype=float32 or float64) ndarray
+        Row-stochastic output probability matrix for :code:`N` hidden states and :code:`M` observable symbols.
+    prior : None or type and shape of output_probabilities, optional, default=None
+        Prior for the initial distribution of the HMM. Currently implements the Dirichlet prior that is
+        conjugate to the Dirichlet distribution of :math:`b_i`, which is sampled from
+
+        .. math:
+            b_i \sim \prod_j b_{ij}_i^{a_{ij} + n_{ij} - 1},
+
+        where :math:`n_{ij}` are the number of times symbol :math:`j` has been observed when the hidden trajectory
+        was in state :math:`i` and :math:`a_{ij}` is the prior count. The default prior=None corresponds
+        to :math:`a_{ij} = 0`. This option ensures coincidence between sample mean an MLE.
+    ignore_outliers : bool, optional, default=False
+        Whether to ignore outliers, see :attr:`ignore_outliers`.
     """
     def __init__(self, output_probabilities: np.ndarray, prior: Optional[np.ndarray] = None,
                  ignore_outliers: bool = False):
-        r"""Creates a new discrete output model instance.
-
-        Parameters
-        ----------
-        output_probabilities : ((N, M) dtype=float32 or float64) ndarray
-            Row-stochastic output probability matrix for :code:`N` hidden states and :code:`M` observable symbols.
-        prior : None or type and shape of output_probabilities, optional, default=None
-            Prior for the initial distribution of the HMM. Currently implements the Dirichlet prior that is
-            conjugate to the Dirichlet distribution of :math:`b_i`, which is sampled from
-
-            .. math:
-                b_i \sim \prod_j b_{ij}_i^{a_{ij} + n_{ij} - 1},
-
-            where :math:`n_{ij}` are the number of times symbol :math:`j` has been observed when the hidden trajectory
-            was in state :math:`i` and :math:`a_{ij}` is the prior count. The default prior=None corresponds
-            to :math:`a_{ij} = 0`. This option ensures coincidence between sample mean an MLE.
-        ignore_outliers : bool, optional, default=False
-            Whether to ignore outliers, see :attr:`ignore_outliers`.
-        """
         if output_probabilities.ndim != 2:
             raise ValueError("Discrete output model requires two-dimensional output probability matrix!")
         if np.any(output_probabilities < 0) or not np.allclose(output_probabilities.sum(axis=-1), 1.):
@@ -292,23 +288,22 @@ class DiscreteOutputModel(OutputModel):
 
 
 class GaussianOutputModel(OutputModel):
-    r""" HMM output probability model using one-dimensional Gaussians. """
+    r""" HMM output probability model using one-dimensional Gaussians.
+
+    Parameters
+    ----------
+    n_states : int
+        number of hidden states
+    means : array_like, optional, default=None
+        means of the output Gaussians, length must match number of hidden states
+    sigmas : array_like, optional, default=None
+        sigmas of the output Gaussians, length must match number of hidden states
+    ignore_outliers : bool, optional, default=True
+        whether to ignore outliers which could cause numerical instabilities
+    """
 
     def __init__(self, n_states: int, means=None, sigmas=None,
                  ignore_outliers: bool = True):
-        r""" Creates a new GaussianOutputModel instance.
-
-        Parameters
-        ----------
-        n_states : int
-            number of hidden states
-        means : array_like, optional, default=None
-            means of the output Gaussians, length must match number of hidden states
-        sigmas : array_like, optional, default=None
-            sigmas of the output Gaussians, length must match number of hidden states
-        ignore_outliers : bool, optional, default=True
-            whether to ignore outliers which could cause numerical instabilities
-        """
         if means is None:
             means = np.zeros((n_states,))
         else:

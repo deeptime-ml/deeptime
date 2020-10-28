@@ -22,6 +22,29 @@ from deeptime.util.types import ensure_array
 class MarkovStateModel(Model):
     r"""Markov model with a given transition matrix.
 
+    Parameters
+    ----------
+    transition_matrix : (n,n) array_like
+        The transition matrix.
+    stationary_distribution : ndarray(n), optional, default=None
+        Stationary distribution. Can be optionally given in case if it was already computed.
+    reversible : bool, optional, default=None
+        Whether the transition matrix is reversible with respect to its stationary distribution. If None (default),
+        will be determined from the transition matrix.
+    n_eigenvalues : int, optional, default=None
+        The number of eigenvalues / eigenvectors to be kept. If set to None, it depends on the transition matrix.
+        If it is densely stored (in terms of a numpy array), all eigenvectors and eigenvalues are computed. If it is
+        sparse, only the 10 largest eigenvalues with corresponding eigenvectors are computed.
+    ncv : int optional, default=None
+        Relevant for eigenvalue decomposition of reversible transition matrices. It is the number of Lanczos
+        vectors generated, `ncv` must be greater than n_eigenvalues; it is recommended that ncv > 2*neig.
+    count_model : TransitionCountModel, optional, default=None
+        In case the MSM was estimated from data, the transition count model can be provided for statistical
+        information about the data. Some properties of the model require a count model so that they can be computed.
+    transition_matrix_tolerance : float, default=1e-8
+        The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
+        row sums of 1).
+
     See Also
     --------
     MaximumLikelihoodMSM : maximum-likelihood estimator for MSMs
@@ -38,32 +61,6 @@ class MarkovStateModel(Model):
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None,
                  n_eigenvalues=None, ncv=None, count_model=None, transition_matrix_tolerance=1e-8):
-        r"""
-        Constructs a new markov state model based on a transition matrix.
-
-        Parameters
-        ----------
-        transition_matrix : (n,n) array_like
-            The transition matrix.
-        stationary_distribution : ndarray(n), optional, default=None
-            Stationary distribution. Can be optionally given in case if it was already computed.
-        reversible : bool, optional, default=None
-            Whether the transition matrix is reversible with respect to its stationary distribution. If None (default),
-            will be determined from the transition matrix.
-        n_eigenvalues : int, optional, default=None
-            The number of eigenvalues / eigenvectors to be kept. If set to None, it depends on the transition matrix.
-            If it is densely stored (in terms of a numpy array), all eigenvectors and eigenvalues are computed. If it is
-            sparse, only the 10 largest eigenvalues with corresponding eigenvectors are computed.
-        ncv : int optional, default=None
-            Relevant for eigenvalue decomposition of reversible transition matrices. It is the number of Lanczos
-            vectors generated, `ncv` must be greater than n_eigenvalues; it is recommended that ncv > 2*neig.
-        count_model : TransitionCountModel, optional, default=None
-            In case the MSM was estimated from data, the transition count model can be provided for statistical
-            information about the data. Some properties of the model require a count model so that they can be computed.
-        transition_matrix_tolerance : float, default=1e-8
-            The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
-            row sums of 1).
-        """
         super().__init__()
         self._is_reversible = reversible
         self._ncv = ncv
@@ -1166,10 +1163,25 @@ class MarkovStateModelCollection(MarkovStateModel):
     :class:`MSM <MarkovStateModel>`, defaulting to the first (transition matrix, stationary distribution,
     count model) triplet provided. The model can be switched by a call to :meth:`select`.
 
+    Parameters
+    ----------
+    transition_matrices : list of (n, n) ndarray
+        List of transition matrices. Each of them must be row-stochastic.
+    stationary_distributions : list of `None` or list of (n, ) ndarray
+        List of stationary distributions belonging to transition matrices.
+        If list of None, it will be evaluated upon construction of the instance.
+    reversible : bool or None
+        Whether the transition matrices are reversible with respect to its stationary distribution.
+        If None, this is determined from the transition matrix.
+    count_models : List of count models or list of None
+        List of count models belonging to transition matrices.
+    transition_matrix_tolerance : float
+        Tolerance under which a matrix is considered to be a transition matrix.
+
     See Also
     --------
-    MarkovStateModel : Markov state model.
-    MaximumLikelihoodMSM : Type of estimator that produces this model.
+    MarkovStateModel
+    MaximumLikelihoodMSM
     """
 
     def __init__(self, transition_matrices: List[np.ndarray],
@@ -1177,23 +1189,6 @@ class MarkovStateModelCollection(MarkovStateModel):
                  reversible: Optional[bool],
                  count_models: List[TransitionCountModel],
                  transition_matrix_tolerance: float):
-        r"""Creates a new collection of Markov state models.
-
-        Parameters
-        ----------
-        transition_matrices : list of (n, n) ndarray
-            List of transition matrices. Each of them must be row-stochastic.
-        stationary_distributions : list of `None` or list of (n, ) ndarray
-            List of stationary distributions belonging to transition matrices.
-            If list of None, it will be evaluated upon construction of the instance.
-        reversible : bool or None
-            Whether the transition matrices are reversible with respect to its stationary distribution.
-            If None, this is determined from the transition matrix.
-        count_models : List of count models or list of None
-            List of count models belonging to transition matrices.
-        transition_matrix_tolerance : float
-            Tolerance under which a matrix is considered to be a transition matrix.
-        """
         n = len(transition_matrices)
         if n == 0:
             raise ValueError("Needs at least one transition matrix!")

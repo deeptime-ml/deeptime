@@ -33,6 +33,23 @@ class ReactiveFlux(Model):
     Fluxes can be computed using transition path theory - see :cite:`reactiveflux-metzner2009transition`
     and :func:`deeptime.markov.tools.tpt`.
 
+    Parameters
+    ----------
+    source_states : array_like
+        List of integer state labels for set A
+    target_states : array_like
+        List of integer state labels for set B
+    net_flux : (n,n) ndarray or scipy sparse matrix
+        effective or net flux of A->B pathways
+    stationary_distribution : (n,) ndarray (optional)
+        Stationary vector
+    qminus : (n,) ndarray (optional)
+        Backward committor for A->B reaction
+    qplus : (n,) ndarray (optional)
+        Forward committor for A-> B reaction
+    gross_flux : (n,n) ndarray or scipy sparse matrix
+        gross flux of A->B pathways, if available
+
     Notes
     -----
     Reactive flux contains a flux network from educt states (A) to product states (B).
@@ -52,25 +69,6 @@ class ReactiveFlux(Model):
 
     def __init__(self, source_states, target_states, net_flux, stationary_distribution=None,
                  qminus=None, qplus=None, gross_flux=None):
-        r""" Constructs a new reactive flux model instance.
-
-        Parameters
-        ----------
-        source_states : array_like
-            List of integer state labels for set A
-        target_states : array_like
-            List of integer state labels for set B
-        net_flux : (n,n) ndarray or scipy sparse matrix
-            effective or net flux of A->B pathways
-        stationary_distribution : (n,) ndarray (optional)
-            Stationary vector
-        qminus : (n,) ndarray (optional)
-            Backward committor for A->B reaction
-        qplus : (n,) ndarray (optional)
-            Forward committor for A-> B reaction
-        gross_flux : (n,n) ndarray or scipy sparse matrix
-            gross flux of A->B pathways, if available
-        """
         # set data
         super().__init__()
         self._source_states = source_states
