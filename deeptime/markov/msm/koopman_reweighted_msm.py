@@ -19,10 +19,39 @@ __author__ = 'Feliks Nüske, Fabian Paul, marscher, clonker'
 class KoopmanReweightedMSM(MarkovStateModel):
     r""" This class belongs to a markov state model which was estimated by Koopman reweighting.
 
+    Parameters
+    ----------
+    transition_matrix : (n, n) ndarray
+        The transition matrix, see :meth:`MarkovStateModel.__init__` .
+    stationary_distribution : ndarray(n), optional, default=None
+        Stationary distribution if already computed, see :meth:`MarkovStateModel.__init__` .
+    reversible : bool, optional, default=None
+        Whether MSM is reversible, see :meth:`MarkovStateModel.__init__` .
+    n_eigenvalues : int, optional, default=None
+        The number of eigenvalues / eigenvectors to be kept, see :meth:`MarkovStateModel.__init__` .
+    ncv : int optional, default=None
+        Performance parameter for reversible MSMs, see :meth:`MarkovStateModel.__init__` .
+    count_model : TransitionCountModel, optional, default=None
+        In case the model was estimated with a :class:`OOMReweightedMSM` estimator, this contains a count matrix
+        based on lagged data, i.e., data with the last :code:`lag` frames removed and histogram information
+        based on the full dtrajs.
+    twostep_count_matrices : (n, n, n) ndarray, optional, default=None
+        Two-step count matrices for all states, each :code:`twostep_count_matrices[:, i, :]` is a count matrix
+        for each :math:`i=1,\ldots,n`.
+    oom_components : (m, n, m) ndarray, optional, default=None
+        Matrix of set-observable operators, where :code:`m` is the rank based on the rank decision made during
+        estimation.
+    oom_eigenvalues : (m,) ndarray, optional, default=None
+        The eigenvalues from OOM.
+    oom_evaluator : (m,) ndarray, optional, default=None
+        Evaluator of OOM.
+    oom_information_state_vector : (m,) ndarray, optional, default=None
+        Information state vector of OOM.
+
     See Also
     --------
-    MaximumLikelihoodMSM : maximum-likelihood estimator for MSMs
-    BayesianMSM : bayesian sampling of MSMs to obtain uncertainties
+    MaximumLikelihoodMSM
+    BayesianMSM
     """
 
     def __init__(self, transition_matrix: np.ndarray, stationary_distribution: Optional[np.ndarray] = None,
@@ -30,38 +59,6 @@ class KoopmanReweightedMSM(MarkovStateModel):
                  twostep_count_matrices: Optional[np.ndarray] = None, oom_components: Optional[np.ndarray] = None,
                  count_model: Optional[TransitionCountModel] = None, oom_eigenvalues: Optional[np.ndarray] = None,
                  oom_evaluator: Optional[np.ndarray] = None, oom_information_state_vector: Optional[np.ndarray] = None):
-        r""" Constructs a new Markov state model by providing a transition matrix. Additionally byproducts of
-        Koopman reweighted msm estimation can be stored.
-
-        Parameters
-        ----------
-        transition_matrix : (n, n) ndarray
-            The transition matrix, see :meth:`MarkovStateModel.__init__` .
-        stationary_distribution : ndarray(n), optional, default=None
-            Stationary distribution if already computed, see :meth:`MarkovStateModel.__init__` .
-        reversible : bool, optional, default=None
-            Whether MSM is reversible, see :meth:`MarkovStateModel.__init__` .
-        n_eigenvalues : int, optional, default=None
-            The number of eigenvalues / eigenvectors to be kept, see :meth:`MarkovStateModel.__init__` .
-        ncv : int optional, default=None
-            Performance parameter for reversible MSMs, see :meth:`MarkovStateModel.__init__` .
-        count_model : TransitionCountModel, optional, default=None
-            In case the model was estimated with a :class:`OOMReweightedMSM` estimator, this contains a count matrix
-            based on lagged data, i.e., data with the last :code:`lag` frames removed and histogram information
-            based on the full dtrajs.
-        twostep_count_matrices : (n, n, n) ndarray, optional, default=None
-            Two-step count matrices for all states, each :code:`twostep_count_matrices[:, i, :]` is a count matrix
-            for each :math:`i=1,\ldots,n`.
-        oom_components : (m, n, m) ndarray, optional, default=None
-            Matrix of set-observable operators, where :code:`m` is the rank based on the rank decision made during
-            estimation.
-        oom_eigenvalues : (m,) ndarray, optional, default=None
-            The eigenvalues from OOM.
-        oom_evaluator : (m,) ndarray, optional, default=None
-            Evaluator of OOM.
-        oom_information_state_vector : (m,) ndarray, optional, default=None
-            Information state vector of OOM.
-        """
         super(KoopmanReweightedMSM, self).__init__(
             transition_matrix, stationary_distribution=stationary_distribution, reversible=reversible,
             n_eigenvalues=n_eigenvalues, ncv=ncv, count_model=count_model
@@ -114,6 +111,67 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     r"""OOM (observable operator model) MSM estimator for MSMs given discrete trajectory statistics.
     Here, each transition is re-weighted using OOM theory. Details can be found in :cite:`oom-msm-est-nuske2017markov`.
 
+    Parameters
+    ----------
+    lagtime : int
+        lag time at which transitions are counted and the transition matrix is
+        estimated.
+    reversible : bool, optional, default = True
+        If true compute reversible MSM, else non-reversible MSM
+    count_mode : str, optional, default='sliding'
+        mode to obtain count matrices from discrete trajectories. Should be
+        one of:
+
+        * 'sliding' : A trajectory of length T will have :math:`T-\tau` counts
+          at time indexes
+
+          .. math::
+
+             (0 \rightarrow \tau), (1 \rightarrow \tau+1), ..., (T-\tau-1 \rightarrow T-1)
+        * 'sample' : A trajectory of length T will have :math:`T/\tau` counts
+          at time indexes
+
+          .. math::
+
+                (0 \rightarrow \tau), (\tau \rightarrow 2 \tau), ..., (((T/\tau)-1) \tau \rightarrow T)
+
+    sparse : bool, optional, default = False
+        If true compute count matrix, transition matrix and all derived
+        quantities using sparse matrix algebra. In this case python sparse
+        matrices will be returned by the corresponding functions instead of
+        numpy arrays. This behavior is suggested for very large numbers of
+        states (e.g. > 4000) because it is likely to be much more efficient.
+    time_unit : str, optional, default='1 step'
+        Description of the physical time of the input trajectories. May be used
+        by analysis algorithms such as plotting tools to pretty-print the axes.
+        By default '1 step', i.e. there is no physical time unit. Specify by a
+        number, whitespace and unit. Permitted units are (* is an arbitrary
+        string):
+
+        |  'fs',  'femtosecond*'
+        |  'ps',  'picosecond*'
+        |  'ns',  'nanosecond*'
+        |  'us',  'microsecond*'
+        |  'ms',  'millisecond*'
+        |  's',   'second*'
+
+    nbs : int, optional, default=10000
+        number of re-samplings for rank decision in OOM estimation.
+    rank_mode : str, optional
+        Re-sampling method for model rank selection. Can be
+
+        * 'bootstrap_counts': Directly re-sample transitions based on effective count matrix.
+
+        * 'bootstrap_trajs': Re-draw complete trajectories with replacement.
+
+    tol_rank: float, optional, default = 10.0
+        signal-to-noise threshold for rank decision.
+    connectivity_threshold : float or '1/n'
+        minimum number of counts to consider a connection between two states.
+        Counts lower than that will count zero in the connectivity check and
+        may thus separate the resulting transition matrix. The default
+        evaluates to 1/n_states.
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -125,69 +183,6 @@ class OOMReweightedMSM(_MSMBaseEstimator):
     def __init__(self, lagtime, reversible=True, count_mode='sliding', sparse=False,
                  time_unit='1 step', nbs=10000, rank_mode='bootstrap_counts', tol_rank=10.0,
                  connectivity_threshold='1/n'):
-        r""" Creates a new OOM MSM estimator instance.
-
-        Parameters
-        ----------
-        lagtime : int
-            lag time at which transitions are counted and the transition matrix is
-            estimated.
-        reversible : bool, optional, default = True
-            If true compute reversible MSM, else non-reversible MSM
-        count_mode : str, optional, default='sliding'
-            mode to obtain count matrices from discrete trajectories. Should be
-            one of:
-
-            * 'sliding' : A trajectory of length T will have :math:`T-\tau` counts
-              at time indexes
-
-              .. math::
-
-                 (0 \rightarrow \tau), (1 \rightarrow \tau+1), ..., (T-\tau-1 \rightarrow T-1)
-            * 'sample' : A trajectory of length T will have :math:`T/\tau` counts
-              at time indexes
-
-              .. math::
-
-                    (0 \rightarrow \tau), (\tau \rightarrow 2 \tau), ..., (((T/\tau)-1) \tau \rightarrow T)
-
-        sparse : bool, optional, default = False
-            If true compute count matrix, transition matrix and all derived
-            quantities using sparse matrix algebra. In this case python sparse
-            matrices will be returned by the corresponding functions instead of
-            numpy arrays. This behavior is suggested for very large numbers of
-            states (e.g. > 4000) because it is likely to be much more efficient.
-        time_unit : str, optional, default='1 step'
-            Description of the physical time of the input trajectories. May be used
-            by analysis algorithms such as plotting tools to pretty-print the axes.
-            By default '1 step', i.e. there is no physical time unit. Specify by a
-            number, whitespace and unit. Permitted units are (* is an arbitrary
-            string):
-
-            |  'fs',  'femtosecond*'
-            |  'ps',  'picosecond*'
-            |  'ns',  'nanosecond*'
-            |  'us',  'microsecond*'
-            |  'ms',  'millisecond*'
-            |  's',   'second*'
-
-        nbs : int, optional, default=10000
-            number of re-samplings for rank decision in OOM estimation.
-        rank_mode : str, optional
-            Re-sampling method for model rank selection. Can be
-
-            * 'bootstrap_counts': Directly re-sample transitions based on effective count matrix.
-
-            * 'bootstrap_trajs': Re-draw complete trajectories with replacement.
-
-        tol_rank: float, optional, default = 10.0
-            signal-to-noise threshold for rank decision.
-        connectivity_threshold : float or '1/n'
-            minimum number of counts to consider a connection between two states.
-            Counts lower than that will count zero in the connectivity check and
-            may thus separate the resulting transition matrix. The default
-            evaluates to 1/n_states.
-        """
         super(OOMReweightedMSM, self).__init__(reversible=reversible, sparse=sparse)
         # Check count mode:
         self.count_mode = str(count_mode).lower()

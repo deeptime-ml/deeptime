@@ -249,24 +249,23 @@ def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon:
 
 
 class MLPLobe(nn.Module):
-    r""" A multilayer perceptron which can be used as a neural network lobe for VAMPNets. """
+    r""" A multilayer perceptron which can be used as a neural network lobe for VAMPNets.
+
+    Parameters
+    ----------
+    units : list of int
+        The units of the fully connected layers.
+    nonlinearity : callable, default=torch.nn.ELU
+        A callable (like a constructor) which yields an instance of a particular activation function.
+    initial_batchnorm : bool, default=True
+        Whether to use batch normalization before the data enters the rest of the network.
+    output_nonlinearity : callable, default=softmax
+        The output activation/nonlinearity. If the data decomposes into states, it can make sense to use
+        an output activation like softmax which produces a probability distribution over said states.
+    """
 
     def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = True,
                  output_nonlinearity=lambda: nn.Softmax(dim=1)):
-        r"""Instantiates a new lobe.
-
-        Parameters
-        ----------
-        units : list of integers
-            The units of the fully connected layers.
-        nonlinearity : callable, default=torch.nn.ELU
-            A callable (like a constructor) which yields an instance of a particular activation function.
-        initial_batchnorm : bool, default=True
-            Whether to use batch normalization before the data enters the rest of the network.
-        output_nonlinearity : callable, default=softmax
-            The output activation/nonlinearity. If the data decomposes into states, it can make sense to use
-            an output activation like softmax which produces a probability distribution over said states.
-        """
         super().__init__()
         layers = []
         if initial_batchnorm:
@@ -370,9 +369,38 @@ class VAMPNet(Estimator, Transformer):
     Markov state models via making assignment probabilities crisp (in case of softmax output distributions) or
     to estimate the Koopman operator using the :class:`VAMP <deeptime.decomposition.VAMP>` estimator.
 
+    Parameters
+    ----------
+    lagtime : int
+        The lagtime under which covariance matrices are estimated.
+    lobe : torch.nn.Module
+        A neural network module which maps input data to some (potentially) lower-dimensional space.
+    lobe_timelagged : torch.nn.Module, optional, default=None
+        Neural network module for timelagged data, in case of None the lobes are shared (structure and weights).
+    device : torch device, default=None
+        The device on which the torch modules are executed.
+    optimizer : str or Callable, default='Adam'
+        An optimizer which can either be provided in terms of a class reference (like `torch.optim.Adam`) or
+        a string (like `'Adam'`). Defaults to Adam.
+    learning_rate : float, default=5e-4
+        The learning rate of the optimizer.
+    score_method : str, default='VAMP2'
+        The scoring method which is used for optimization.
+    score_mode : str, default='regularize'
+        The mode under which inverses of positive semi-definite matrices are estimated. Per default, the matrices
+        are perturbed by a small constant added to the diagonal. This makes sure that eigenvalues are not too
+        small. For a complete list of modes, see :meth:`sym_inverse`.
+    epsilon : float, default=1e-6
+        The strength of the regularization under which matrices are inverted. Meaning depends on the score_mode,
+        see :meth:`sym_inverse`.
+    dtype : dtype, default=np.float32
+        The data type of the modules and incoming data.
+    shuffle : bool, default=True
+        Whether to shuffle data during training after each epoch.
+
     See Also
     --------
-    deeptime.decomposition.VAMP : Koopman operator estimator which can be applied to transformed data.
+    deeptime.decomposition.VAMP
 
     References
     ----------
@@ -387,37 +415,6 @@ class VAMPNet(Estimator, Transformer):
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
                  score_method: str = 'VAMP2', score_mode: str = 'regularize', epsilon: float = 1e-6,
                  dtype=np.float32, shuffle: bool = True):
-        r""" Creates a new VAMPNet instance.
-
-        Parameters
-        ----------
-        lagtime : int
-            The lagtime under which covariance matrices are estimated.
-        lobe : torch.nn.Module
-            A neural network module which maps input data to some (potentially) lower-dimensional space.
-        lobe_timelagged : torch.nn.Module, optional, default=None
-            Neural network module for timelagged data, in case of None the lobes are shared (structure and weights).
-        device : torch device, default=None
-            The device on which the torch modules are executed.
-        optimizer : str or Callable, default='Adam'
-            An optimizer which can either be provided in terms of a class reference (like `torch.optim.Adam`) or
-            a string (like `'Adam'`). Defaults to Adam.
-        learning_rate : float, default=5e-4
-            The learning rate of the optimizer.
-        score_method : str, default='VAMP2'
-            The scoring method which is used for optimization.
-        score_mode : str, default='regularize'
-            The mode under which inverses of positive semi-definite matrices are estimated. Per default, the matrices
-            are perturbed by a small constant added to the diagonal. This makes sure that eigenvalues are not too
-            small. For a complete list of modes, see :meth:`sym_inverse`.
-        epsilon : float, default=1e-6
-            The strength of the regularization under which matrices are inverted. Meaning depends on the score_mode,
-            see :meth:`sym_inverse`.
-        dtype : dtype, default=np.float32
-            The data type of the modules and incoming data.
-        shuffle : bool, default=True
-            Whether to shuffle data during training after each epoch.
-        """
         super().__init__()
         self.lagtime = lagtime
         self.dtype = dtype

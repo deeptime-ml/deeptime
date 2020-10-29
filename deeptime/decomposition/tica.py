@@ -26,6 +26,31 @@ class TICA(VAMP):
     to obtain eigenvalues, eigenvectors,
     or project input data onto the slowest TICA components.
 
+    Parameters
+    ----------
+    lagtime : int or None, optional, default=None
+        The lagtime under which covariances are estimated. This is only relevant when estimating from data, in case
+        covariances are provided this should either be None or exactly the value that was used to estimate
+        said covariances.
+    epsilon : float, optional, default=1e-6
+        Eigenvalue norm cutoff. Eigenvalues of C0 with norms <= epsilon will be
+        cut off. The remaining number of eigenvalues define the size
+        of the output.
+    dim : int, optional, default=None
+        Number of dimensions to keep:
+
+        * if dim is not set (None) all available ranks are kept:
+          :code:`n_components == min(n_samples, n_uncorrelated_features)`
+        * if dim is an integer >= 1, this number specifies the number
+          of dimensions to keep.
+    var_cutoff : float, optional, default=None
+        Determines the number of output dimensions by including dimensions until their cumulative kinetic variance
+        exceeds the fraction subspace variance. var_cutoff=1.0 means all numerically available dimensions
+        (see epsilon) will be used, unless set by dim. Setting var_cutoff smaller than 1.0 is exclusive with dim.
+    scaling: str or None, default='kinetic_map'
+        Can be set to :code:`None`, 'kinetic_map' (:cite:`tica-noe2015kinetic`),
+        or 'commute_map' (:cite:`tica-noe2016commute`). For more details see :attr:`scaling`.
+
     Notes
     -----
     Given a sequence of multivariate data :math:`X_t`, it computes the
@@ -89,7 +114,7 @@ class TICA(VAMP):
 
     See also
     --------
-    :class:`CovarianceKoopmanModel <deeptime.decomposition.CovarianceKoopmanModel>` : TICA estimation output model
+    CovarianceKoopmanModel : TICA estimation output model
 
     References
     ----------
@@ -101,33 +126,6 @@ class TICA(VAMP):
 
     def __init__(self, lagtime: Optional[int] = None, epsilon: float = 1e-6, dim: Optional[int] = None,
                  var_cutoff: Optional[float] = None, scaling: Optional[str] = 'kinetic_map'):
-        r"""Constructs a new TICA estimator.
-
-        Parameters
-        ----------
-        lagtime : int or None, optional, default=None
-            The lagtime under which covariances are estimated. This is only relevant when estimating from data, in case
-            covariances are provided this should either be None or exactly the value that was used to estimate
-            said covariances.
-        epsilon : float, optional, default=1e-6
-            Eigenvalue norm cutoff. Eigenvalues of C0 with norms <= epsilon will be
-            cut off. The remaining number of eigenvalues define the size
-            of the output.
-        dim : int, optional, default=None
-            Number of dimensions to keep:
-
-            * if dim is not set (None) all available ranks are kept:
-              :code:`n_components == min(n_samples, n_uncorrelated_features)`
-            * if dim is an integer >= 1, this number specifies the number
-              of dimensions to keep.
-        var_cutoff : float, optional, default=None
-            Determines the number of output dimensions by including dimensions until their cumulative kinetic variance
-            exceeds the fraction subspace variance. var_cutoff=1.0 means all numerically available dimensions
-            (see epsilon) will be used, unless set by dim. Setting var_cutoff smaller than 1.0 is exclusive with dim.
-        scaling: str or None, default='kinetic_map'
-            Can be set to :code:`None`, 'kinetic_map' (:cite:`tica-noe2015kinetic`), 
-            or 'commute_map' (:cite:`tica-noe2016commute`). For more details see :attr:`scaling`.
-        """
         super(TICA, self).__init__(lagtime=lagtime, dim=dim, var_cutoff=var_cutoff, scaling=scaling, epsilon=epsilon)
 
     @classmethod

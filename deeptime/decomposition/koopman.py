@@ -18,18 +18,16 @@ class KoopmanBasisTransform(object):
     .. math:: \tilde f(x_t) = T (f(x_t) - \mu ),
 
     where :math:`T` is the transformation matrix and :math:`\mu` a constant mean value that is subtracted.
+
+    Parameters
+    ----------
+    mean : (n,) ndarray or float
+        Mean value which gets subtracted from each frame prior to transformation.
+    transformation_matrix : (n, m) ndarray
+        Transformation matrix :math:`T`.
     """
 
     def __init__(self, mean: Union[float, np.ndarray], transformation_matrix):
-        r""" Creates a new Koopman basis transform instance.
-
-        Parameters
-        ----------
-        mean : (n,) ndarray or float
-            Mean value which gets subtracted from each frame prior to transformation.
-        transformation_matrix : (n, m) ndarray
-            Transformation matrix :math:`T`.
-        """
         self._mean = mean
         self._transformation_matrix = transformation_matrix
 
@@ -96,25 +94,23 @@ class KoopmanModel(Model, Transformer):
 
     where :math:`K\in\mathbb{R}^{n\times m}` is the Koopman operator, :math:`x_t` the system's state at time :math:`t`,
     and :math:`f` and :math:`g` observables of the system's state.
+
+    Parameters
+    ----------
+    operator : (n, n) ndarray
+        Applies the transform :math:`K^\top` in the modified basis.
+    basis_transform_forward : KoopmanBasisTransform or None
+        Transforms the current state :math:`f(x_t)` to the basis in which the Koopman operator is defined.
+        If `None`, this defaults to the identity operation.
+    basis_transform_backward : KoopmanBasisTransform or None
+        Transforms the future state :math:`g(x_t)` to the basis in which the Koopman operator is defined.
+        If `None`, this defaults to the identity operation
     """
 
     def __init__(self, operator: np.ndarray,
                  basis_transform_forward: Optional[KoopmanBasisTransform],
                  basis_transform_backward: Optional[KoopmanBasisTransform],
                  output_dimension=None):
-        r""" Creates a new Koopman model.
-
-        Parameters
-        ----------
-        operator : (n, n) ndarray
-            Applies the transform :math:`K^\top` in the modified basis.
-        basis_transform_forward : KoopmanBasisTransform or None
-            Transforms the current state :math:`f(x_t)` to the basis in which the Koopman operator is defined.
-            If `None`, this defaults to the identity operation.
-        basis_transform_backward : KoopmanBasisTransform or None
-            Transforms the future state :math:`g(x_t)` to the basis in which the Koopman operator is defined.
-            If `None`, this defaults to the identity operation
-        """
         super().__init__()
         if basis_transform_forward is None:
             basis_transform_forward = IdentityKoopmanBasisTransform()
@@ -236,30 +232,31 @@ class CovarianceKoopmanModel(KoopmanModel):
     a Koopman operator which is a diagonal matrix and can be used to project onto specific processes of the system.
 
     The estimators which produce this kind of model are :class:`VAMP <deeptime.decomposition.VAMP>` and
-    :class:`TICA <deeptime.decomposition.TICA>`."""
+    :class:`TICA <deeptime.decomposition.TICA>`.
+
+    For a description of parameters `operator`, `basis_transform_forward`, `basis_transform_backward`,
+    and `output_dimension`: please see :class:`KoopmanModel`.
+
+    Parameters
+    ----------
+    cov : CovarianceModel
+        Covariances :math:`C_{00}`, :math:`C_{0t}`, and :math:`C_{tt}`.
+    rank_0 : int
+        Rank of the instantaneous whitening transformation :math:`C_{00}^{-1/2}`.
+    rank_t : int
+        Rank of the time-lagged whitening transformation :math:`C_{tt}^{-1/2}`.
+    scaling : str or None, default=None
+        Scaling parameter which was applied to singular values for additional structure in the projected space.
+        See the respective estimator for details.
+    epsilon : float, default=1e-6
+        Eigenvalue / singular value cutoff. Eigenvalues (or singular values) of :math:`C_{00}` and :math:`C_{11}`
+        with norms <= epsilon were cut off. The remaining number of eigenvalues together with the value of `dim`
+        define the effective output dimension.
+    """
 
     def __init__(self, operator: np.ndarray, basis_transform_forward: Optional[KoopmanBasisTransform],
                  basis_transform_backward: Optional[KoopmanBasisTransform], cov: CovarianceModel,
                  rank_0: int, rank_t: int, dim=None, var_cutoff=None, scaling=None, epsilon=1e-6):
-        r""" For a description of parameters `operator`, `basis_transform_forward`, `basis_transform_backward`,
-        and `output_dimension`: please see :meth:`KoopmanModel.__init__`.
-
-        Parameters
-        ----------
-        cov : CovarianceModel
-            Covariances :math:`C_{00}`, :math:`C_{0t}`, and :math:`C_{tt}`.
-        rank_0 : int
-            Rank of the instantaneous whitening transformation :math:`C_{00}^{-1/2}`.
-        rank_t : int
-            Rank of the time-lagged whitening transformation :math:`C_{tt}^{-1/2}`.
-        scaling : str or None, default=None
-            Scaling parameter which was applied to singular values for additional structure in the projected space.
-            See the respective estimator for details.
-        epsilon : float, default=1e-6
-            Eigenvalue / singular value cutoff. Eigenvalues (or singular values) of :math:`C_{00}` and :math:`C_{11}`
-            with norms <= epsilon were cut off. The remaining number of eigenvalues together with the value of `dim`
-            define the effective output dimension.
-        """
         if not is_diagonal_matrix(operator):
             raise ValueError("Koopman operator must be diagonal matrix!")
         output_dim = CovarianceKoopmanModel.effective_output_dimension(rank_0, rank_t, dim, var_cutoff,

@@ -10,6 +10,19 @@ class BickleyJet(object):
     r"""Implementation of the Bickley jet.
     Based on :cite:`bickley-simulator-hadjighasem2016spectral`.
 
+    The parameters are set to
+
+    .. math::
+
+        \begin{aligned}
+            U_0 &= 5.4138 \times \frac{10^6\mathrm{m}}{\mathrm{day}},\\
+            L_0 &= 1.77 \times 10^6\,\mathrm{m},\\
+            r_0 &= 6.371 \times 10^6\,\mathrm{m},\\
+            c &= (0.1446, 0.205, 0.461)^\top U_0,\\
+            \mathrm{eps} &= (0.075, 0.15, 0.3)^\top,\\
+            k &= (2,4,6)^\top \frac{1}{r_0}.
+        \end{aligned}
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -19,20 +32,6 @@ class BickleyJet(object):
     """
 
     def __init__(self):
-        r""" Creates a new instance of the simulator and sets a few parameters. In particular,
-
-        .. math::
-
-            \begin{aligned}
-                U_0 &= 5.4138 \times \frac{10^6\mathrm{m}}{\mathrm{day}},\\
-                L_0 &= 1.77 \times 10^6\,\mathrm{m},\\
-                r_0 &= 6.371 \times 10^6\,\mathrm{m},\\
-                c &= (0.1446, 0.205, 0.461)^\top U_0,\\
-                \mathrm{eps} &= (0.075, 0.15, 0.3)^\top,\\
-                k &= (2,4,6)^\top \frac{1}{r_0}.
-            \end{aligned}
-
-        """
         # set parameters
         self.U0 = 5.4138  # units changed to 10^6 m per day
         self.L0 = 1.77  # in 10^6 m

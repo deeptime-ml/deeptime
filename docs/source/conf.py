@@ -26,6 +26,7 @@ from docutils.parsers.rst import directives
 from sphinx.application import Sphinx
 from sphinx.ext.autosummary import Autosummary, get_documenter
 from sphinx.util.inspect import safe_getattr
+from sphinxcontrib.bibtex import BibliographyTransform
 
 import deeptime
 
@@ -55,10 +56,10 @@ sphinxlog_adapter.logger.addFilter(DuplicateLabelForKeysFilter())
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinxcontrib.bibtex',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
-    'sphinxcontrib.bibtex',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.katex',
     'sphinx_gallery.gen_gallery'
@@ -90,11 +91,13 @@ katex_prerender = False
 
 # -- Autosummary settings -----------------------------------------------------
 autosummary_generate = True
+
 autodoc_default_options = {
+    'inherited-members': True,
     'members': True,
     'member-order': 'groupwise',
-    'inherited-members': True,
-    'special-members': '__init__,__call__'
+    'special-members': '__call__',
+    'exclude-members': '__init__'
 }
 
 # -- Gallery settings ---------------------------------------------------------
@@ -109,13 +112,15 @@ sphinx_gallery_conf = {
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
 napoleon_include_private_with_doc = False
-napoleon_include_special_with_doc = True
+napoleon_include_special_with_doc = False
 napoleon_use_admonition_for_examples = False
 napoleon_use_admonition_for_notes = False
 napoleon_use_admonition_for_references = False
-napoleon_use_ivar = True
+napoleon_use_ivar = False
 napoleon_use_param = True
 napoleon_use_rtype = True
+napoleon_use_keyword = True
+napoleon_custom_sections = None
 
 # -- Alabaster theme settings -------------------------------------------------
 html_theme_options = {
@@ -155,11 +160,56 @@ def env_get_outdated(app, env, added, changed, removed):
     return ['index']
 
 
+def skip(app, what, name, obj, skip, options):
+    if name == '__init__':
+        return True
+    return None
+
+
+# # Patch parse, see https://michaelgoerz.net/notes/extending-sphinx-napoleon-docstring-sections.html
+# from sphinx.ext.napoleon.docstring import NumpyDocstring
+#
+#
+# # first, we define new methods for any new sections and add them to the class
+# def parse_keys_section(self, section):
+#     return self._format_fields('Keys', self._consume_fields())
+#
+#
+# NumpyDocstring._parse_keys_section = parse_keys_section
+#
+#
+# def parse_attributes_section(self, section):
+#     return self._format_fields('Attributes', self._consume_fields())
+#
+#
+# NumpyDocstring._parse_attributes_section = parse_attributes_section
+#
+#
+# def parse_class_attributes_section(self, section):
+#     return self._format_fields('Class Attributes', self._consume_fields())
+#
+#
+# NumpyDocstring._parse_class_attributes_section = parse_class_attributes_section
+#
+#
+# # we now patch the parse method to guarantee that the the above methods are
+# # assigned to the _section dict
+# def patched_parse(self):
+#     self._sections['keys'] = self._parse_keys_section
+#     self._sections['class attributes'] = self._parse_class_attributes_section
+#     self._unpatched_parse()
+#
+#
+# NumpyDocstring._unpatched_parse = NumpyDocstring._parse
+# NumpyDocstring._parse = patched_parse
+
+
 def setup(app: Sphinx):
     app.connect('env-get-outdated', env_get_outdated)
     app.add_css_file('custom.css')
     app.add_css_file('perfect-scrollbar/css/perfect-scrollbar.css')
     app.add_js_file('perfect-scrollbar/js/perfect-scrollbar.min.js')
+    app.connect("autodoc-skip-member", skip)
 
     if app.tags.has('notebooks'):
         global katex_prerender
@@ -168,47 +218,3 @@ def setup(app: Sphinx):
         exclude_patterns.remove('**/notebooks')
         exclude_patterns.remove('*.ipynb')
         app.setup_extension('nbsphinx')
-
-    class AutoAutoSummary(Autosummary):
-
-        option_spec = {
-            'methods': directives.unchanged,
-            'attributes': directives.unchanged,
-            'toctree': directives.unchanged
-        }
-
-        required_arguments = 1
-
-        @staticmethod
-        def get_members(obj, typ, include_public=None):
-            if not include_public:
-                include_public = []
-            items = []
-            for name in dir(obj):
-                try:
-                    documenter = get_documenter(app, safe_getattr(obj, name), obj)
-                except AttributeError:
-                    continue
-                if documenter.objtype == typ:
-                    items.append(name)
-            public = [x for x in items if x in include_public or not x.startswith('_')]
-            return public, items
-
-        def run(self):
-            try:
-                clazz = str(self.arguments[0])
-                (module_name, class_name) = clazz.rsplit('.', 1)
-                m = __import__(module_name, globals(), locals(), [class_name])
-                c = getattr(m, class_name)
-                default = 'members' not in self.options and 'attributes' not in self.options
-                if 'methods' in self.options or default:
-                    _, methods = self.get_members(c, 'method', ['__init__'])
-
-                    self.content = ["~%s.%s" % (clazz, method) for method in methods if not method.startswith('_')]
-                if 'attributes' in self.options or default:
-                    _, attribs = self.get_members(c, 'attribute')
-                    self.content = ["~%s.%s" % (clazz, attrib) for attrib in attribs if not attrib.startswith('_')]
-            finally:
-                return super(AutoAutoSummary, self).run()
-
-    app.add_directive('autoautosummary', AutoAutoSummary)

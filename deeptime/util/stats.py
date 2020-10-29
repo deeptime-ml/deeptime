@@ -151,17 +151,45 @@ def call_member(obj, f: Union[str, Callable], *args, **kwargs):
 class QuantityStatistics(object):
     """ Container for statistical quantities computed on samples.
 
-    Attributes
+    Parameters
     ----------
-    mean: array(n)
-        mean along axis=0
-    std: array(n)
-        std deviation along axis=0
-    L : ndarray(shape)
-        element-wise lower bounds
-    R : ndarray(shape)
-        element-wise upper bounds
+    samples: list of ndarrays
+        the samples
+    store_samples: bool, default=False
+        whether to store the samples (array).
     """
+
+    @property
+    def R(self):
+        r"""Element-wise upper bounds.
+
+        :type: ndarray
+        """
+        return self._R
+
+    @property
+    def L(self):
+        r""" Element-wise lower bounds.
+
+        :type: ndarray
+        """
+        return self._L
+
+    @property
+    def std(self):
+        r""" Standard deviation along axis=0.
+
+        :type: (n,) ndarray
+        """
+        return self._std
+
+    @property
+    def mean(self):
+        r""" Mean along axis=0
+
+        :type: (n,) ndarray
+        """
+        return self._mean
 
     @staticmethod
     def gather(samples, quantity=None, store_samples=False, delimiter='/', confidence: float = 0.95, *args, **kwargs):
@@ -200,15 +228,6 @@ class QuantityStatistics(object):
         return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples, confidence=confidence)
 
     def __init__(self, samples: List[np.ndarray], quantity, confidence=0.95, store_samples=False):
-        r""" Creates a new container instance.
-
-        Parameters
-        ----------
-        samples: list of ndarrays
-            the samples
-        store_samples: bool, default=False
-            whether to store the samples (array).
-        """
         super().__init__()
         self.quantity = quantity
         samples = np.array(samples)
@@ -216,9 +235,9 @@ class QuantityStatistics(object):
             self.samples = samples
         else:
             self.samples = np.empty(0)
-        self.mean = samples.mean(axis=0)
-        self.std = samples.std(axis=0)
-        self.L, self.R = confidence_interval(samples, conf=confidence)
+        self._mean = samples.mean(axis=0)
+        self._std = samples.std(axis=0)
+        self._L, self._R = confidence_interval(samples, conf=confidence)
 
     def __str__(self):
         return "QuantityStatistics(mean={}, std={})".format(self.mean, self.std)

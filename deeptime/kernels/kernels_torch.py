@@ -9,6 +9,13 @@ TensorOrArray = Union[np.ndarray, torch.Tensor]
 
 
 class TorchGaussianKernel(GaussianKernel):
+    r""" Gaussian kernel which has a dependency to PyTorch and can handle evaluation of Gram matrices as well as
+    (over the batch-size) vectorized evaluations of the kernel.
+
+    See Also
+    --------
+    GaussianKernel
+    """
 
     @staticmethod
     def cdist(x1, x2):

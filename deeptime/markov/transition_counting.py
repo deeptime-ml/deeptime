@@ -48,46 +48,42 @@ class TransitionCountModel(Model):
     * pruning states by thresholding with a mincount_connectivity parameter,
     * or simply providing a subset of states manually.
 
+    Parameters
+    ----------
+    count_matrix : (N, N) ndarray or sparse matrix
+        The count matrix. In case it was estimated with 'sliding', it contains a factor of `lagtime` more counts
+        than are statistically uncorrelated.
+    counting_mode : str, optional, default=None
+        If not None, one of 'sliding', 'sample', or 'effective'.
+        Indicates the counting method that was used to estimate the count matrix. In case of 'sliding', a sliding
+        window of the size of the lagtime was used to count transitions. It therefore contains a factor
+        of `lagtime` more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
+        likelihood estimation, but it will give far too small errors if you use it for uncertainty calculations.
+        In order to do uncertainty calculations, use the effective count matrix, see
+        :attr:`effective_count_matrix`, divide this count matrix by tau, or use 'effective' as estimation parameter.
+    lagtime : int, optional, default=1
+        The time offset which was used to count transitions in state.
+    state_histogram : array_like, optional, default=None
+        Histogram over the visited states in discretized trajectories.
+    state_symbols : array_like, optional, default=None
+        Symbols of the original discrete trajectory that are represented in the counting model. If None, the
+        symbols are assumed to represent the data, i.e., a iota range over the number of states. Subselection
+        of the model also subselects the symbols.
+    count_matrix_full : array_like, optional, default=None
+        Count matrix for all state symbols. If None, the count matrix provided as first argument is assumed to
+        take that role.
+    state_histogram_full : array_like, optional, default=None
+        Histogram over all state symbols. If None, the provided state_histogram  is assumed to take that role.
+
     See Also
     --------
-    TransitionCountEstimator : estimator which can produce this kind of model
+    TransitionCountEstimator
     """
 
     def __init__(self, count_matrix, counting_mode: Optional[str] = None, lagtime: int = 1,
                  state_histogram: Optional[np.ndarray] = None,
                  state_symbols: Optional[np.ndarray] = None, count_matrix_full=None,
                  state_histogram_full: Optional[np.ndarray] = None):
-        r"""Creates a new TransitionCountModel. This can be used to, e.g., construct Markov state models. The minimal
-        requirement for instantiation is a count matrix, but statistics of the data can also be provided.
-
-        Parameters
-        ----------
-        count_matrix : (N, N) ndarray or sparse matrix
-            The count matrix. In case it was estimated with 'sliding', it contains a factor of `lagtime` more counts
-            than are statistically uncorrelated.
-        counting_mode : str, optional, default=None
-            If not None, one of 'sliding', 'sample', or 'effective'.
-            Indicates the counting method that was used to estimate the count matrix. In case of 'sliding', a sliding
-            window of the size of the lagtime was used to count transitions. It therefore contains a factor
-            of `lagtime` more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
-            likelihood estimation, but it will give far too small errors if you use it for uncertainty calculations.
-            In order to do uncertainty calculations, use the effective count matrix, see
-            :attr:`effective_count_matrix`, divide this count matrix by tau, or use 'effective' as estimation parameter.
-        lagtime : int, optional, default=1
-            The time offset which was used to count transitions in state.
-        state_histogram : array_like, optional, default=None
-            Histogram over the visited states in discretized trajectories.
-        state_symbols : array_like, optional, default=None
-            Symbols of the original discrete trajectory that are represented in the counting model. If None, the
-            symbols are assumed to represent the data, i.e., a iota range over the number of states. Subselection
-            of the model also subselects the symbols.
-        count_matrix_full : array_like, optional, default=None
-            Count matrix for all state symbols. If None, the count matrix provided as first argument is assumed to
-            take that role.
-        state_histogram_full : array_like, optional, default=None
-            Histogram over all state symbols. If None, the provided state_histogram  is assumed to take that role.
-        """
-
         super().__init__()
         if count_matrix is None:
             raise ValueError("count matrix was None")
@@ -434,9 +430,35 @@ class TransitionCountEstimator(Estimator, Transformer):
           when used with a Bayesian MSM. A description of the estimation procedure
           can be found in :cite:`counting-noe2015statistical`.
 
+    Parameters
+    ----------
+    lagtime : int
+        Distance between two frames in the discretized trajectories under which their potential change of state
+        is considered a transition.
+    count_mode : str
+        One of "sample", "sliding", "sliding-effective", and "effective".
+
+        * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
+        * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
+          large by a factor of :math:`\tau`; in uncertainty estimation this yields wrong uncertainties.
+        * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
+          likelihood that is the geometrical average over shifted subsamples of the trajectory,
+          :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to
+          the correct likelihood in the statistical limit :cite:`counting-trendelkamp2015estimation`.
+        * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
+          Recommended when estimating Bayesian MSMs.
+    n_states : int, optional, default=None
+        Normally, the shape of the count matrix is a consequence of the number of encountered states in given
+        discrete trajectories. However sometimes (for instance when scoring), only a portion of the discrete
+        trajectories is passed but the count matrix should still have the correct shape. Then, this argument
+        can be used to artificially set the number of states to the correct value.
+    sparse : bool, optional, default=False
+        Whether sparse matrices should be used for counting. This can make sense when the number of states is very
+        large.
+
     See Also
     --------
-    TransitionCountModel : type of model this estimator produces
+    TransitionCountModel
 
     References
     ----------
@@ -447,34 +469,6 @@ class TransitionCountEstimator(Estimator, Transformer):
     """
 
     def __init__(self, lagtime: int, count_mode: str, n_states=None, sparse=False):
-        r"""Constructs a transition count estimator that can be used to estimate :class:`TransitionCountModel` s.
-
-        Parameters
-        ----------
-        lagtime : int
-            Distance between two frames in the discretized trajectories under which their potential change of state
-            is considered a transition.
-        count_mode : str
-            One of "sample", "sliding", "sliding-effective", and "effective".
-
-            * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
-            * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
-              large by a factor of :math:`\tau`; in uncertainty estimation this yields wrong uncertainties.
-            * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
-              likelihood that is the geometrical average over shifted subsamples of the trajectory,
-              :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to
-              the correct likelihood in the statistical limit :cite:`counting-trendelkamp2015estimation`.
-            * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
-              Recommended when estimating Bayesian MSMs.
-        n_states : int, optional, default=None
-            Normally, the shape of the count matrix is a consequence of the number of encountered states in given
-            discrete trajectories. However sometimes (for instance when scoring), only a portion of the discrete
-            trajectories is passed but the count matrix should still have the correct shape. Then, this argument
-            can be used to artificially set the number of states to the correct value.
-        sparse : bool, optional, default=False
-            Whether sparse matrices should be used for counting. This can make sense when the number of states is very
-            large.
-        """
         super().__init__()
         self.lagtime = lagtime
         self.count_mode = count_mode

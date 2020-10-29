@@ -24,6 +24,11 @@ class Monomials(Observable):
     The set is returned as a numpy ndarray of shape `(n_test_points, n_monomials)`, where `n_monomials` is the
     size of the set.
 
+    Parameters
+    ----------
+    p : int
+        Maximum degree of the monomial basis. Must be positive.
+
     Examples
     --------
     Given three test points in one dimension
@@ -43,13 +48,6 @@ class Monomials(Observable):
     """
 
     def __init__(self, p: int):
-        r""" Creates a new monomial basis of degree `p`.
-
-        Parameters
-        ----------
-        p : int
-            Maximum degree of the monomial basis. Must be positive.
-        """
         assert p > 0
         self.p = p
 

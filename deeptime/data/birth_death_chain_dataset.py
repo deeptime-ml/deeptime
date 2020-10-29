@@ -14,20 +14,18 @@ class BirthDeathChain(object):
         p_{ij} = \begin{cases}
             q_i &\text{, if } j=i-1 \text{ and } i>0,\\
             r_i &\text{, if } j=i,\\
-            p_i &\text{, if } j=i+1 \text{ and } i<d-1.
+            p_i &\text{, if } j=i+1 \text{ and } i < d-1
         \end{cases}
+
+    Parameters
+    ----------
+    q : array_like
+        Annihilation probabilities for transition from i to i-1.
+    p : array-like
+        Creation probabilities for transition from i to i+1.
     """
 
     def __init__(self, q, p):
-        r"""Generate a birth and death chain from creation and annihilation probabilities.
-
-        Parameters
-        ----------
-        q : array_like
-            Annihilation probabilities for transition from i to i-1.
-        p : array-like
-            Creation probabilities for transition from i to i+1.
-        """
         if q[0] != 0.0:
             raise ValueError('Probability q[0] must be zero')
         if p[-1] != 0.0:

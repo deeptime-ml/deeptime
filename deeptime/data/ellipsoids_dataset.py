@@ -18,6 +18,20 @@ class Ellipsoids(object):
     benchmark and demonstration purposes, this observation chain can be rotated into a higher dimensional space
     and equipped with additional noise.
 
+    Parameters
+    ----------
+    laziness : float in half-open interval (0.5, 1.], default=0.97
+        The probability to stay in either state rather than transitioning. This yields a transition matrix of
+
+        .. math:: P = \begin{pmatrix} \lambda & 1-\lambda \\ 1-\lambda & \lambda \end{pmatrix},
+
+        where :math:`\lambda` is the selected laziness parameter.
+    seed : int, optional, default=None
+        Optional random seed for reproducibility.
+
+
+    Examples
+    --------
     .. plot::
 
        import matplotlib.pyplot as plt
@@ -34,19 +48,6 @@ class Ellipsoids(object):
     state_1_mean = np.array([0., 5.])
 
     def __init__(self, laziness: float = 0.97, seed: Optional[int] = None):
-        r""" Creates a new ellipsoids example data instance.
-
-        Parameters
-        ----------
-        laziness : float in half-open interval (0.5, 1.], default=0.97
-            The probability to stay in either state rather than transitioning. This yields a transition matrix of
-
-            .. math:: P = \begin{pmatrix} \lambda & 1-\lambda \\ 1-\lambda & \lambda \end{pmatrix},
-
-            where :math:`\lambda` is the selected laziness parameter.
-        seed : int, optional, default=None
-            Optional random seed for reproducibility.
-        """
         if laziness <= 0.5 or laziness > 1:
             raise ValueError("Laziness must be at least 0.5 and at most 1.0 but was {}".format(laziness))
         transition_matrix = np.array([[laziness, 1-laziness], [1-laziness, laziness]])

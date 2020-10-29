@@ -127,10 +127,6 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
 class Model(_base_methods_mixin):
     r""" The model superclass. """
 
-    def __init__(self):
-        r""" Initializes a new model. No-op per default. This is where the stored attributes should be initialized. """
-        pass
-
     def copy(self):
         r""" Makes a deep copy of this model.
 
@@ -149,20 +145,19 @@ class Model(_base_methods_mixin):
 
 
 class Estimator(_base_methods_mixin):
-    r""" Base class of all estimators """
+    r""" Base class of all estimators
+
+    Parameters
+    ----------
+    model : Model, optional, default=None
+        A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
+        capable of updating models, this can be used to resume the estimation process.
+    """
 
     """ class wide flag to control whether input of fit or partial_fit should be checked for modifications """
     _MUTABLE_INPUT_DATA = False
 
     def __init__(self, model=None):
-        r""" Initializes a new estimator.
-
-        Parameters
-        ----------
-        model : Model, optional, default=None
-            A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
-            capable of updating models, this can be used to resume the estimation process.
-        """
         self._model = model
 
     @abc.abstractmethod

@@ -11,7 +11,35 @@ class PBFSimulator(object):
     try to reach by a smoothed particle hydrodynamics style simulation :cite:`pbf-gingold1977smoothed`
     :cite:`pbf-lucy1977numerical`. Up to numerics the simulation is deterministic given a set of parameters.
 
-    In some more detail:
+    Parameters
+    ----------
+    domain_size : (2,) ndarray
+        A 1-dimensional ndarray with two elements describing the extension of the simulation box.
+    initial_positions : (N, 2) ndarray
+        A 2-dimensional ndarray describing the :math:`N` particles' initial positions. This also fixes the number
+        of particles. It is preserved during runs of the simulation.
+    interaction_distance : float
+        Interaction distance for particles, influences the cell size for the neighbor list.
+    n_jobs : int or None, default=None
+        Number threads to use for simulation.
+    n_solver_iterations : int, default=5
+        The number of solver iterations for particle position updates. The more, the slower the simulation but also
+        the more accurate.
+    gravity : float, default=10
+        Gravity parameter which acts on particles' velocities in each time step as constant force.
+    epsilon : float, default=10
+        Damping parameter. The higher, the more damping.
+    timestep : float, default=0.016
+        The timestep used for propagation.
+    rest_density : float, defaul=1.
+        The rest density :math:`\rho_0`.
+    tensile_instability_distance : float, default=0.2
+        Parameter responsible for surface-tension-like effects.
+    tensile_instability_k : float, default=0.1
+        Also controls surface-tension effects.
+
+    Notes
+    -----
 
     Each particle has positions :math:`p_1,\ldots,p_n \in\mathbb{R}^d` and
     velocity :math:`v_1,\ldots,v_n\in\mathbb{R^d}`. For the local density a standard SPH estimator is used
@@ -56,35 +84,6 @@ class PBFSimulator(object):
                  interaction_distance: float, n_jobs=None, n_solver_iterations: int = 5,
                  gravity: float = 10., epsilon: float = 10., timestep: float = 0.016, rest_density: float = 1.,
                  tensile_instability_distance: float = .2, tensile_instability_k: float = 0.1):
-        r"""Creates a new simulator instance.
-
-        Parameters
-        ----------
-        domain_size : (2,) ndarray
-            A 1-dimensional ndarray with two elements describing the extension of the simulation box.
-        initial_positions : (N, 2) ndarray
-            A 2-dimensional ndarray describing the :math:`N` particles' initial positions. This also fixes the number
-            of particles. It is preserved during runs of the simulation.
-        interaction_distance : float
-            Interaction distance for particles, influences the cell size for the neighbor list.
-        n_jobs : int or None, default=None
-            Number threads to use for simulation.
-        n_solver_iterations : int, default=5
-            The number of solver iterations for particle position updates. The more, the slower the simulation but also
-            the more accurate.
-        gravity : float, default=10
-            Gravity parameter which acts on particles' velocities in each time step as constant force.
-        epsilon : float, default=10
-            Damping parameter. The higher, the more damping.
-        timestep : float, default=0.016
-            The timestep used for propagation.
-        rest_density : float, defaul=1.
-            The rest density :math:`\rho_0`.
-        tensile_instability_distance : float, default=0.2
-            Parameter responsible for surface-tension-like effects.
-        tensile_instability_k : float, default=0.1
-            Also controls surface-tension effects.
-        """
         if np.atleast_1d(domain_size).ndim != 1 or domain_size.shape[0] != 2 or np.any(domain_size <= 0):
             raise ValueError("Invalid domain size: must be positive and 1-dimensional of length two.")
         if initial_positions.ndim != 2 or initial_positions.shape[1] != 2:

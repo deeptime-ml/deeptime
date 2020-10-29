@@ -18,34 +18,32 @@ class KMeansModel(ClusterModel):
     It can also be used to transform data by assigning each frame to its closest cluster center. For an example
     please see the documentation of the superclass :class:`ClusterModel`.
 
+    Parameters
+    ----------
+    n_clusters : int
+        The number of cluster centers.
+    cluster_centers : (k, d) ndarray
+        The d-dimensional cluster centers, length of the array should coincide with :attr:`n_clusters`.
+    metric : str
+        The metric that was used
+    tolerance : float, optional, default=None
+        Tolerance which was used as convergence criterium. Defaults to `None` so that clustering models
+        can be constructed purely from cluster centers and metric.
+    inertias : (t,) ndarray or None, optional, default=None
+        Value of the cost function over :code:`t` iterations. Defaults to `None` so that clustering models
+        can be constructed purely from cluster centers and metric.
+    converged : bool, optional, default=False
+        Whether the convergence criterium was met.
+
     See Also
     --------
-    ClusterModel : The superclass.
-    Kmeans : The k-means estimator, which can produce this kind of model.
-    MiniBatchKmeans : The mini batch k-means estimator, which can produce this kind of model.
+    ClusterModel
+    Kmeans
+    MiniBatchKmeans
     """
 
     def __init__(self, n_clusters, cluster_centers, metric: str, tolerance: Optional[float] = None,
                  inertias: Optional[List[float]] = None, converged: bool = False):
-        r"""Initializes a new Kmeans model.
-
-        Parameters
-        ----------
-        n_clusters : int
-            The number of cluster centers.
-        cluster_centers : (k, d) ndarray
-            The d-dimensional cluster centers, length of the array should coincide with :attr:`n_clusters`.
-        metric : str
-            The metric that was used
-        tolerance : float, optional, default=None
-            Tolerance which was used as convergence criterium. Defaults to `None` so that clustering models
-            can be constructed purely from cluster centers and metric.
-        inertias : (t,) ndarray or None, optional, default=None
-            Value of the cost function over :code:`t` iterations. Defaults to `None` so that clustering models
-            can be constructed purely from cluster centers and metric.
-        converged : bool, optional, default=False
-            Whether the convergence criterium was met.
-        """
         super().__init__(n_clusters, cluster_centers, metric, converged=converged)
         self._inertias = inertias
         self._tolerance = tolerance
@@ -120,51 +118,48 @@ class Kmeans(Estimator, Transformer):
     which is covering the spatial configuration of the dataset more or less uniformly. For details
     see :cite:`kmeans-arthur2006k`.
 
+    Parameters
+    ----------
+    n_clusters : int
+        amount of cluster centers.
+    max_iter : int, default=500
+        maximum number of iterations before stopping.
+    metric : str, default='euclidean'
+        Metric to use during clustering, default evaluates to euclidean metric. For a list of available metrics,
+        see the :data:`metric registry <deeptime.clustering.metrics>`.
+    tolerance : float, default=1e-5
+        Stop iteration when the relative change in the cost function (inertia)
+
+        .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf x \in S_i} \left\| \mathbf x - \boldsymbol\mu_i \right\|^2
+
+        is smaller than tolerance.
+    init_strategy : str, default='kmeans++'
+        one of 'kmeans++', 'uniform'; determining how the initial cluster centers are being chosen
+    fixed_seed : bool or int, default=False
+        if True, the seed gets set to 42. Use time based seeding otherwise. If an integer is given, use this to
+        initialize the random generator.
+    n_jobs : int or None, default=None
+        Number of threads to use during clustering and assignment of data. If None, one core will be used.
+    initial_centers: None or np.ndarray[k, dim], default=None
+        This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
+        the centers are directly passed to the kmeans iteration algorithm.
+
     References
     ----------
     .. bibliography:: /references.bib
-        :style: unsrt
+        :style: plain
         :filter: docname in docnames
         :keyprefix: kmeans-
 
     See Also
     --------
-    KMeansModel : the corresponding model class
-    MiniBatchKmeans : An online version of this estimator which uses mini-batching.
+    KMeansModel
+    MiniBatchKmeans
     """
 
     def __init__(self, n_clusters: int, max_iter: int = 500, metric='euclidean',
                  tolerance=1e-5, init_strategy: str = 'kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None):
-        r"""
-        Initializes a new k-means cluster estimator.
-
-        Parameters
-        ----------
-        n_clusters : int
-            amount of cluster centers.
-        max_iter : int, default=500
-            maximum number of iterations before stopping.
-        metric : str, default='euclidean'
-            Metric to use during clustering, default evaluates to euclidean metric. For a list of available metrics,
-            see the :data:`metric registry <deeptime.clustering.metrics>`.
-        tolerance : float, default=1e-5
-            Stop iteration when the relative change in the cost function (inertia)
-
-            .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf x \in S_i} \left\| \mathbf x - \boldsymbol\mu_i \right\|^2
-
-            is smaller than tolerance.
-        init_strategy : str, default='kmeans++'
-            one of 'kmeans++', 'uniform'; determining how the initial cluster centers are being chosen
-        fixed_seed : bool or int, default=False
-            if True, the seed gets set to 42. Use time based seeding otherwise. If an integer is given, use this to
-            initialize the random generator.
-        n_jobs : int or None, default=None
-            Number of threads to use during clustering and assignment of data. If None, one core will be used.
-        initial_centers: None or np.ndarray[k, dim], default=None
-            This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
-            the centers are directly passed to the kmeans iteration algorithm.
-        """
         super(Kmeans, self).__init__()
 
         self.n_clusters = n_clusters
@@ -423,21 +418,19 @@ class Kmeans(Estimator, Transformer):
 class MiniBatchKmeans(Kmeans):
     r""" K-means clustering in a mini-batched fashion.
 
+    Parameters
+    ----------
+    batch_size : int, optional, default=100
+        The maximum sample size if calling :meth:`fit()`.
+
     See Also
     --------
-    Kmeans : k-means clustering without mini-batching
-    KMeansModel : the corresponding model class
+    Kmeans : Superclass, see for description of remaining parameters.
+    KMeansModel
     """
 
     def __init__(self, n_clusters, batch_size=100, max_iter=5, metric='euclidean', tolerance=1e-5,
                  init_strategy='kmeans++', n_jobs=None, initial_centers=None):
-        """
-        Constructs a Minibatch k-means estimator. For a more detailed argument description,
-        see :class:`Kmeans`.
-
-        The only additional parameter is batch_size, which determines the maximum sample size if calling
-        :meth:`fit()`.
-        """
         super(MiniBatchKmeans, self).__init__(n_clusters, max_iter, metric,
                                               tolerance, init_strategy, False,
                                               n_jobs=n_jobs,

@@ -185,13 +185,13 @@ def metastable_from_msm(msm, n_hidden_states: int,
 
     See Also
     --------
-    :class:`DiscreteOutputModel <deeptime.markov.hmm.DiscreteOutputModel>`
+    deeptime.markov.hmm.DiscreteOutputModel
         The type of output model this heuristic uses.
 
     :func:`metastable_from_data`
         Initial guess from data if no MSM is available yet.
 
-    :func:`init.gaussian.from_data <deeptime.markov.hmm.init.gaussian.from_data>`
+    :func:`deeptime.markov.hmm.init.gaussian.from_data`
         Initial guess with :class:`Gaussian output model <deeptime.markov.hmm.GaussianOutputModel>`.
 
     References
@@ -354,13 +354,13 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
 
     See Also
     --------
-    :class:`DiscreteOutputModel <deeptime.markov.hmm.DiscreteOutputModel>`
+    DiscreteOutputModel
         The type of output model this heuristic uses.
 
     :func:`metastable_from_msm`
         Initial guess from an already existing :class:`MSM <deeptime.markov.msm.MarkovStateModel>`.
 
-    :func:`init.gaussian.from_data <deeptime.markov.hmm.init.gaussian.from_data>`
+    :func:`deeptime.markov.hmm.init.gaussian.from_data`
         Initial guess with :class:`Gaussian output model <deeptime.markov.hmm.GaussianOutputModel>`.
 
 

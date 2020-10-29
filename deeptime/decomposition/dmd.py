@@ -12,20 +12,18 @@ from .koopman import KoopmanModel
 
 class DMDModel(Model, Transformer):
     r""" Model produced by the :class:`DMD` estimator.
+
+    Parameters
+    ----------
+    eigenvalues : (n,) ndarray
+        The DMD eigenvalues.
+    modes : (n, n) ndarray
+        The DMD modes.
+    mode : str, optional, default='exact'
+        The mode of estimation that was used. See :attr:`DMD.available_modes`.
     """
 
     def __init__(self, eigenvalues: np.ndarray, modes: np.ndarray, mode='exact'):
-        r""" Creates a new model instance.
-
-        Parameters
-        ----------
-        eigenvalues : (n,) ndarray
-            The DMD eigenvalues.
-        modes : (n, n) ndarray
-            The DMD modes.
-        mode : str, optional, default='exact'
-            The mode of estimation that was used. See :attr:`DMD.available_modes`.
-        """
         super().__init__()
         self.eigenvalues = eigenvalues
         self.modes = modes
@@ -66,6 +64,15 @@ class DMD(Estimator, Transformer):
     * `exact`, which produces DMD modes that do not required ordered data but just
       matched pairs of data :cite:`dmd-tu2013dynamic`.
 
+    Parameters
+    ----------
+    mode : str
+        The estimation mode, see :attr:`available_modes` for available modes.
+    rank : int or None, optional, default=None
+        Truncation of the rank after performing SVD.
+    driver : str, default='numpy'
+        Which package to use for the SVD. Defaults to numpy, can also be 'scipy'.
+
     Notes
     -----
     In standard DMD, one considers a temporally ordered list of
@@ -98,17 +105,6 @@ class DMD(Estimator, Transformer):
     available_drivers = 'numpy', 'scipy'  #: The available drivers.
 
     def __init__(self, mode='exact', rank=None, driver='scipy'):
-        r"""Creates a new DMD estimator.
-
-        Parameters
-        ----------
-        mode : str
-            The estimation mode, see :attr:`available_modes` for available modes.
-        rank : int or None, optional, default=None
-            Truncation of the rank after performing SVD.
-        driver : str, default='numpy'
-            Which package to use for the SVD. Defaults to numpy, can also be 'scipy'.
-        """
         super().__init__()
         if mode not in DMD.available_modes:
             raise ValueError(f"Invalid mode {mode}, must be one of {DMD.available_modes}.")
@@ -186,22 +182,23 @@ class EDMDModel(KoopmanModel):
     r""" The EDMD model which can be estimated from a :class:`EDMD` estimator. It possesses the estimated operator
     as well as capabilities to project onto modes.
 
+    Parameters
+    ----------
+    operator : (n, n) ndarray
+        The estimated operator.
+    basis : callable
+        The basis transform that was used.
+    eigenvalues : (n, ) ndarray
+        Eigenvalues for the modes.
+    modes : (k, n) ndarray
+        The EDMD modes.
+
     See Also
     --------
-    EDMD : The estimator that produces this kind of model.
+    EDMD
     """
 
     def __init__(self, operator: np.ndarray, basis: Callable[[np.ndarray], np.ndarray], eigenvalues, modes):
-        r""" Creates a new EDMD model instance.
-
-        Parameters
-        ----------
-        operator : (n, n) ndarray
-
-        basis
-        eigenvalues
-        modes
-        """
         super().__init__(operator, basis_transform_forward=None, basis_transform_backward=None)
         self.basis = basis
         self.eigenvalues = eigenvalues
@@ -264,6 +261,17 @@ class EDMD(Estimator):
 
         \min\| \Psi_Y - K\Psi_X\|_F.
 
+    Parameters
+    ----------
+    basis : callable
+        The basis callable, maps from (T, k) ndarray to (T, m) ndarray. See :mod:`deeptime.basis` for a selection
+        of pre-defined bases.
+    n_eigs : int, optional, default=None
+        The number of eigenvalues, determining the number of dominant singular functions / modes being estimated.
+        If None, estimates all eigenvalues / eigenvectors.
+    operator : str, default='koopman'
+        Which operator to estimate, see :attr:`available_operators`.
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -275,20 +283,7 @@ class EDMD(Estimator):
     available_operators = 'koopman', 'perron-frobenius'  #: The supported operators.
 
     def __init__(self, basis: Callable[[np.ndarray], np.ndarray], n_eigs: Optional[int] = None,
-                 operator: str = 'koopman', svd_rank: Optional[int] = None):
-        r""" Creates a new estimator.
-
-        Parameters
-        ----------
-        basis : callable
-            The basis callable, maps from (T, k) ndarray to (T, m) ndarray. See :mod:`deeptime.basis` for a selection
-            of pre-defined bases..
-        n_eigs : int, optional, default=None
-            The number of eigenvalues, determining the number of dominant singular functions / modes being estimated.
-            If None, estimates all eigenvalues / eigenvectors.
-        operator : str, default='koopman'
-            Which operator to estimate, see :attr:`available_operators`.
-        """
+                 operator: str = 'koopman'):
         super().__init__()
         self.basis = basis
         self.operator = operator
@@ -325,18 +320,23 @@ class EDMD(Estimator):
 
 
 class KernelEDMDModel(Model):
-    def __init__(self, eigenvalues: np.ndarray, eigenfunction: np.ndarray, kernel: Kernel):
-        r""" Creates a new kEDMD model containing eigenvalues and eigenfunctions evaluated in the instantaneous data.
+    r""" The kEDMD model containing eigenvalues and eigenfunctions evaluated in the instantaneous data.
 
-        Parameters
-        ----------
-        eigenvalues : (d,) ndarray
-            The eigenvalues.
-        eigenfunction : (T, d) ndarray
-            The eigenfunction evaluation.
-        kernel : Kernel
-            The kernel that was used for estimation.
-        """
+    Parameters
+    ----------
+    eigenvalues : (d,) ndarray
+        The eigenvalues.
+    eigenfunction : (T, d) ndarray
+        The eigenfunction evaluation.
+    kernel : Kernel
+        The kernel that was used for estimation.
+
+    See Also
+    --------
+    KernelEDMD
+    """
+
+    def __init__(self, eigenvalues: np.ndarray, eigenfunction: np.ndarray, kernel: Kernel):
         super().__init__()
         self.eigenvalues = eigenvalues
         self.eigenfunction = eigenfunction
@@ -347,6 +347,15 @@ class KernelEDMD(Estimator):
     r""" Estimator implementing kernel extended mode decomposition :cite:`kedmd-kevrekidis2016kernel`
     :cite:`kedmd-klus2018kernel`.
 
+    Parameters
+    ----------
+    kernel : Kernel
+        The kernel to use. See :mod:`deeptime.kernels` for a list of available kernels.
+    epsilon : float, optional, default=0
+        Regularization parameter.
+    n_eigs : int, optional, default=None
+        Number of eigenvalue/eigenvector pairs to compute.
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -356,17 +365,6 @@ class KernelEDMD(Estimator):
     """
 
     def __init__(self, kernel: Kernel, epsilon: float = 0., n_eigs: Optional[int] = None):
-        r""" Creates a new kEDMD estimator instance.
-
-        Parameters
-        ----------
-        kernel : Kernel
-            The kernel to use. See :mod:`deeptime.kernels` for a list of available kernels.
-        epsilon : float, optional, default=0
-            Regularization parameter.
-        n_eigs : int, optional, default=None
-            Number of eigenvalue/eigenvector pairs to compute.
-        """
         super().__init__()
         self.kernel = kernel
         self.epsilon = epsilon

@@ -10,8 +10,19 @@ class ClusterModel(Model, Transformer):
     that was used to compute the cluster centers and whether the estimation converged. It can be used to transform
     data by assigning each frame to its closest cluster center.
 
-    Example
-    -------
+    Parameters
+    ----------
+    n_clusters : int
+        Number of cluster centers.
+    cluster_centers : (k, d) ndarray
+        The cluster centers, length of the array should match :attr:`n_clusters`.
+    metric : str, default='euclidean'
+        The metric that was used for estimation, defaults to Euclidean metric.
+    converged : bool, optional, default=False
+        Whether the estimation converged.
+
+    Examples
+    --------
     Let us create an artificial cluster model with three cluster centers in a three-dimensional space. The cluster
     centers are just the canonical basis vectors :math:`c_1 = (1,0,0)^\top`, :math:`c_2 = (0,1,0)^\top`, and
     :math:`c_3 = (0,0,1)^\top`.
@@ -27,20 +38,6 @@ class ClusterModel(Model, Transformer):
 
     def __init__(self, n_clusters: int, cluster_centers: np.ndarray, metric: str = 'euclidean',
                  converged: bool = False):
-        r"""
-        Initializes a new cluster model.
-
-        Parameters
-        ----------
-        n_clusters : int
-            Number of cluster centers.
-        cluster_centers : (k, d) ndarray
-            The cluster centers, length of the array should match :attr:`n_clusters`.
-        metric : str, default='euclidean'
-            The metric that was used for estimation, defaults to Euclidean metric.
-        converged : bool, optional, default=False
-            Whether the estimation converged.
-        """
         super().__init__()
         self._n_clusters = n_clusters
         self._cluster_centers = cluster_centers

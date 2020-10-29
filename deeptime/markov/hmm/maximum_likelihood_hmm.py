@@ -20,7 +20,52 @@ class MaximumLikelihoodHMM(Estimator):
 
     This class is used to fit a maximum-likelihood HMM to data. It uses an initial guess HMM with can be obtained with
     one of the provided heuristics and then uses the Baum-Welch algorithm :cite:`hmm-est-baum1967inequality` to fit
-    the inital guess to provided data.
+    the initial guess to provided data.
+
+    The type of output model (gaussian or discrete)
+    and the number of hidden states are extracted from the initial model. In case no initial distribution was given,
+    the initial model assumes a uniform initial distribution.
+
+    Parameters
+    ----------
+    initial_model : HiddenMarkovModel
+        This model will be used to initialize the hidden markov model estimation routine. Since it is prone to
+        get stuck in local optima, several initializations should be tried and scored and/or one of the available
+        initialization heuristics should be applied, if appropriate.
+    stride : int or str, optional, default=1
+        stride between two lagged trajectories extracted from the input trajectories. Given trajectory s[t], stride
+        and lag will result in trajectories
+
+            :code:`s[0], s[lag], s[2 lag], ...`
+
+            :code:`s[stride], s[stride + lag], s[stride + 2 lag], ...`
+
+        Setting stride = 1 will result in using all data (useful for maximum likelihood estimator), while a
+        Bayesian estimator requires a longer stride in order to have statistically uncorrelated trajectories.
+        Setting stride = 'effective' uses the largest neglected timescale as an fit for the correlation time and
+        sets the stride accordingly.
+    lagtime : int, optional, default=1
+        Lag parameter used for fitting the HMM
+    reversible : bool, optional, default=True
+        If True, a prior that enforces reversible transition matrices (detailed balance) is used;
+        otherwise, a standard  non-reversible prior is used.
+    stationary : bool, optional, default=False
+        If True, the initial distribution of hidden states is self-consistently computed as the stationary
+        distribution of the transition matrix. If False, it will be estimated from the starting states.
+        Only set this to true if you're sure that the observation trajectories are initiated from a global
+        equilibrium distribution.
+    p : (n,) ndarray, optional, default=None
+        Initial or fixed stationary distribution. If given and stationary=True, transition matrices will be
+        estimated with the constraint that they have the set parameter as their stationary distribution.
+        If given and stationary=False, the parameter is the fixed initial distribution of hidden states.
+    accuracy : float, optional, default=1e-3
+        Convergence threshold for EM iteration. When two the likelihood does not increase by more than
+        accuracy, the iteration is stopped successfully.
+    maxit : int, optional, default=1000
+        Stopping criterion for EM iteration. When this many iterations are performed without reaching the requested
+        accuracy, the iteration is stopped without convergence and a warning is given.
+    maxit_reversible : int, optional, default=1000000
+        Maximum number of iterations for reversible transition matrix estimation. Only used with reversible=True.
 
     References
     ----------
@@ -37,52 +82,6 @@ class MaximumLikelihoodHMM(Estimator):
                  lagtime: int = 1, reversible: bool = True, stationary: bool = False,
                  p: Optional[np.ndarray] = None, accuracy: float = 1e-3,
                  maxit: int = 1000, maxit_reversible: int = 100000):
-        r"""
-        Initialize a maximum likelihood hidden Markov model estimator. The type of output model (gaussian or discrete)
-        and the number of hidden states are extracted from the initial model. In case no initial distribution was given,
-        the initial model assumes a uniform initial distribution.
-
-        Parameters
-        ----------
-        initial_model : HiddenMarkovModel
-            This model will be used to initialize the hidden markov model estimation routine. Since it is prone to
-            get stuck in local optima, several initializations should be tried and scored and/or one of the available
-            initialization heuristics should be applied, if appropriate.
-        stride : int or str, optional, default=1
-            stride between two lagged trajectories extracted from the input trajectories. Given trajectory s[t], stride
-            and lag will result in trajectories
-
-                :code:`s[0], s[lag], s[2 lag], ...`
-
-                :code:`s[stride], s[stride + lag], s[stride + 2 lag], ...`
-
-            Setting stride = 1 will result in using all data (useful for maximum likelihood estimator), while a
-            Bayesian estimator requires a longer stride in order to have statistically uncorrelated trajectories.
-            Setting stride = 'effective' uses the largest neglected timescale as an fit for the correlation time and
-            sets the stride accordingly.
-        lagtime : int, optional, default=1
-            Lag parameter used for fitting the HMM
-        reversible : bool, optional, default=True
-            If True, a prior that enforces reversible transition matrices (detailed balance) is used;
-            otherwise, a standard  non-reversible prior is used.
-        stationary : bool, optional, default=False
-            If True, the initial distribution of hidden states is self-consistently computed as the stationary
-            distribution of the transition matrix. If False, it will be estimated from the starting states.
-            Only set this to true if you're sure that the observation trajectories are initiated from a global
-            equilibrium distribution.
-        p : (n,) ndarray, optional, default=None
-            Initial or fixed stationary distribution. If given and stationary=True, transition matrices will be
-            estimated with the constraint that they have the set parameter as their stationary distribution.
-            If given and stationary=False, the parameter is the fixed initial distribution of hidden states.
-        accuracy : float, optional, default=1e-3
-            Convergence threshold for EM iteration. When two the likelihood does not increase by more than
-            accuracy, the iteration is stopped successfully.
-        maxit : int, optional, default=1000
-            Stopping criterion for EM iteration. When this many iterations are performed without reaching the requested
-            accuracy, the iteration is stopped without convergence and a warning is given.
-        maxit_reversible : int, optional, default=1000000
-            Maximum number of iterations for reversible transition matrix estimation. Only used with reversible=True.
-        """
         super().__init__()
         self.initial_transition_model = initial_model
         self.stride = stride

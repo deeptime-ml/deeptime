@@ -22,15 +22,9 @@ def from_data(dtrajs, n_hidden_states, reversible):
 
     See Also
     --------
-    :class:`GaussianOutputModel <deeptime.markov.hmm.GaussianOutputModel>`
-        The type of output model this heuristic uses.
-
-    :func:`init.discrete.metastable_from_data <deeptime.markov.hmm.init.discrete.metastable_from_data>`
-        Initial guess with :class:`Discrete output model <deeptime.markov.hmm.DiscreteOutputModel>`.
-
-    :func:`init.discrete.metastable_from_msm <deeptime.markov.hmm.init.discrete.metastable_from_msm>`
-        Initial guess from an already existing :class:`MSM <deeptime.markov.msm.MarkovStateModel>` with discrete
-        output model.
+    deeptime.markov.hmm.GaussianOutputModel : The type of output model this heuristic uses.
+    deeptime.markov.hmm.init.discrete.metastable_from_data
+    deeptime.markov.hmm.init.discrete.metastable_from_msm
     """
     from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel
     from sklearn.mixture import GaussianMixture

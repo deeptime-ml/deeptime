@@ -35,9 +35,9 @@ div.documentwrapper {
     position: relative;
 }
 div.sphinxsidebar {
-    background-color: rgb(55, 53, 61);
+    background-color: rgb(32, 41, 90);
     box-sizing: border-box;
-    color: rgb(73, 73, 73);
+    color: rgb(32, 41, 90);
     display: block;
     float: left;
     overflow: hidden;
@@ -50,12 +50,12 @@ div.sphinxsidebar {
 }
 
 div.sphinxsidebarwrapper {
-    background-color: #48454E
+    background-color: rgb(32, 41, 90)
 }
 
 .sphinxsidebarwrapper {
     padding: 2rem 0;
-    color: #EFF0F4;
+    color: #d6daef;
 }
 
 div.sphinxsidebar ul ul,
@@ -90,11 +90,11 @@ div.sphinxsidebar a:hover {
 }
 
 .sphinxsidebarwrapper span, .sphinxsidebarwrapper h3, .sphinxsidebarwrapper .h4 {
-    color: #96929C
+    color: #f1f2f9
 }
 
 a.current {
-    background-color: #605C69;
+    background-color: #2d397e;
     box-sizing: border-box;
     display: block;
 }
@@ -104,4 +104,27 @@ div.sphinxsidebarwrapper a.current ul {
 }
 li.toctree-l1 {
     margin-left: 1rem;
+}
+
+dl.method {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.method > dt{
+    background-color: #ebebeb;
+}
+
+dl.field-list > dt {
+    font-weight: bold;
+    word-break: break-word;
+    padding-left: 0;
+    padding-right: 5px;
+}
+dt:target, .highlight {
+    background: #d6daef;
+}
+
+dl.class > dt {
+    background: #d6daef;
 }

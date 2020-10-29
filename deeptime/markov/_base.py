@@ -119,20 +119,18 @@ class _MSMBaseEstimator(Estimator, metaclass=abc.ABCMeta):
 class BayesianPosterior(Model):
     r""" Bayesian posterior from bayesian MSM sampling.
 
+    Parameters
+    ----------
+    prior : deeptime.markov.msm.MarkovStateModel, optional, default=None
+        The prior.
+    samples : list of deeptime.markov.msm.MarkovStateModel, optional, default=None
+        Sampled models.
+
     See Also
     --------
-    deeptime.markov.msm.BayesianMSM : bayesian posterior estimator
+    deeptime.markov.msm.BayesianMSM
     """
     def __init__(self, prior=None, samples=None):
-        r""" Creates a new instance of this type of model.
-
-        Parameters
-        ----------
-        prior : deeptime.markov.msm.MarkovStateModel, optional, default=None
-            The prior.
-        samples : list of deeptime.markov.msm.MarkovStateModel, optional, default=None
-            Sampled models.
-        """
         super().__init__()
         self._prior = prior
         self._samples = samples

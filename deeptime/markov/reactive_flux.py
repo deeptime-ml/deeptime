@@ -19,7 +19,7 @@ from ..util.types import ensure_array
 
 
 class ReactiveFlux(Model):
-    r"""A->B reactive flux from transition path theory (TPT).
+    r""" The A->B reactive flux from transition path theory (TPT).
 
     This object describes a reactive flux, i.e. a network of fluxes from a set of source states A, to a set of
     sink states B, via a set of intermediate nodes. Every node has three properties: the stationary probability mu,
@@ -32,6 +32,23 @@ class ReactiveFlux(Model):
 
     Fluxes can be computed using transition path theory - see :cite:`reactiveflux-metzner2009transition`
     and :func:`deeptime.markov.tools.tpt`.
+
+    Parameters
+    ----------
+    source_states : array_like
+        List of integer state labels for set A
+    target_states : array_like
+        List of integer state labels for set B
+    net_flux : (n,n) ndarray or scipy sparse matrix
+        effective or net flux of A->B pathways
+    stationary_distribution : (n,) ndarray (optional)
+        Stationary vector
+    qminus : (n,) ndarray (optional)
+        Backward committor for A->B reaction
+    qplus : (n,) ndarray (optional)
+        Forward committor for A-> B reaction
+    gross_flux : (n,n) ndarray or scipy sparse matrix
+        gross flux of A->B pathways, if available
 
     Notes
     -----
@@ -52,25 +69,6 @@ class ReactiveFlux(Model):
 
     def __init__(self, source_states, target_states, net_flux, stationary_distribution=None,
                  qminus=None, qplus=None, gross_flux=None):
-        r""" Constructs a new reactive flux model instance.
-
-        Parameters
-        ----------
-        source_states : array_like
-            List of integer state labels for set A
-        target_states : array_like
-            List of integer state labels for set B
-        net_flux : (n,n) ndarray or scipy sparse matrix
-            effective or net flux of A->B pathways
-        stationary_distribution : (n,) ndarray (optional)
-            Stationary vector
-        qminus : (n,) ndarray (optional)
-            Backward committor for A->B reaction
-        qplus : (n,) ndarray (optional)
-            Forward committor for A-> B reaction
-        gross_flux : (n,n) ndarray or scipy sparse matrix
-            gross flux of A->B pathways, if available
-        """
         # set data
         super().__init__()
         self._source_states = source_states

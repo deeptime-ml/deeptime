@@ -15,6 +15,38 @@ class BayesianMSM(_MSMBaseEstimator):
 
     Implementation following :cite:`bmm-est-trendelkamp2015estimation`.
 
+    Parameters
+    ----------
+    n_samples : int, optional, default=100
+        Number of sampled transition matrices used in estimation of confidences.
+    n_steps : int, optional, default=None
+        Number of Gibbs sampling steps for each transition matrix. If None, nsteps will be determined
+        automatically as the square root of the number of states in the full state space of the count matrix.
+        This is a heuristic for the number of steps it takes to decorrelate between samples.
+    reversible : bool, optional, default=True
+        If true compute reversible MSM, else non-reversible MSM.
+    stationary_distribution_constraint : ndarray, optional, default=None
+        Stationary vector on the full set of states. Assign zero stationary probabilities to states for which the
+        stationary vector is unknown. Estimation will be made such that the resulting ensemble of transition
+        matrices is defined on the intersection of the states with positive stationary vector and the largest
+        connected set (undirected in the default case).
+    sparse : bool, optional, default=False
+        If true compute count matrix, transition matrix and all derived quantities using sparse matrix algebra. In
+        this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
+        This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
+        more efficient.
+    confidence : float, optional, default=0.954
+        Confidence interval. By default two sigma (95.4%) is used. Use 68.3% for one sigma, 99.7% for three sigma.
+    maxiter : int, optional, default=1000000
+        Optional parameter with reversible = True, sets the maximum number of iterations before the transition
+        matrix estimation method exits.
+    maxerr : float, optional, default = 1e-8
+        Optional parameter with reversible = True. Convergence tolerance for transition matrix estimation. This
+        specifies the maximum change of the Euclidean norm of relative stationary probabilities
+        (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
+        :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
+        probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
+
     References
     ----------
     .. bibliography:: /references.bib
@@ -22,8 +54,8 @@ class BayesianMSM(_MSMBaseEstimator):
         :filter: docname in docnames
         :keyprefix: bmm-est-
 
-    Example
-    -------
+    Examples
+    --------
     Note that the following example is only qualitatively and not
     quantitatively reproducible because it involves random numbers.
 
@@ -100,42 +132,6 @@ class BayesianMSM(_MSMBaseEstimator):
     def __init__(self, n_samples: int = 100, n_steps: int = None, reversible: bool = True,
                  stationary_distribution_constraint: Optional[np.ndarray] = None,
                  sparse: bool = False, confidence: float = 0.954, maxiter: int = int(1e6), maxerr: float = 1e-8):
-        r"""
-        Constructs a new Bayesian estimator for MSMs.
-
-        Parameters
-        ----------
-        n_samples : int, optional, default=100
-            Number of sampled transition matrices used in estimation of confidences.
-        n_steps : int, optional, default=None
-            Number of Gibbs sampling steps for each transition matrix. If None, nsteps will be determined
-            automatically as the square root of the number of states in the full state space of the count matrix.
-            This is a heuristic for the number of steps it takes to decorrelate between samples.
-        reversible : bool, optional, default=True
-            If true compute reversible MSM, else non-reversible MSM.
-        stationary_distribution_constraint : ndarray, optional, default=None
-            Stationary vector on the full set of states. Assign zero stationary probabilities to states for which the
-            stationary vector is unknown. Estimation will be made such that the resulting ensemble of transition
-            matrices is defined on the intersection of the states with positive stationary vector and the largest
-            connected set (undirected in the default case).
-        sparse : bool, optional, default=False
-            If true compute count matrix, transition matrix and all derived quantities using sparse matrix algebra. In
-            this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
-            This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
-            more efficient.
-        confidence : float, optional, default=0.954
-            Confidence interval. By default two sigma (95.4%) is used. Use 68.3% for one sigma, 99.7% for three sigma.
-        maxiter : int, optional, default=1000000
-            Optional parameter with reversible = True, sets the maximum number of iterations before the transition
-            matrix estimation method exits.
-        maxerr : float, optional, default = 1e-8
-            Optional parameter with reversible = True. Convergence tolerance for transition matrix estimation. This
-            specifies the maximum change of the Euclidean norm of relative stationary probabilities
-            (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
-            :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
-            probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
-        """
-
         super(BayesianMSM, self).__init__(reversible=reversible, sparse=sparse)
         self.stationary_distribution_constraint = stationary_distribution_constraint
         self.maxiter = maxiter
