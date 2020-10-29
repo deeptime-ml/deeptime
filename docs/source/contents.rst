@@ -9,9 +9,11 @@ Table Of Contents
         :caption: Documentation
 
         index_dimreduction
+        index_deepdimreduction
         notebooks/clustering
         index_msm
         notebooks/hmm
+        notebooks/sindy
         examples/index
         index_dev
 

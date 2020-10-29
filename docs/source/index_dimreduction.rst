@@ -1,6 +1,6 @@
-========================
-Dimensionality reduction
-========================
+===================
+Dimension reduction
+===================
 
 .. toctree::
     :hidden:
@@ -8,9 +8,9 @@ Dimensionality reduction
 
     notebooks/tica
     notebooks/vamp
-    notebooks/vampnets
+    notebooks/dmd
 
-Here we introduce the dimensionality reduction / decomposition techniques implemented in the package.
+Here we introduce the dimension reduction / decomposition techniques implemented in the package.
 
 .. rubric:: Koopman operator methods
 
