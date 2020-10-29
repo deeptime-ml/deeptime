@@ -34,6 +34,7 @@ They are structured following a possible workflow of a timeseries analysis. That
         index_msm
         notebooks/hmm
         examples/index
+        index_dev
 
 
 .. toctree::
