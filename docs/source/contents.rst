@@ -10,10 +10,10 @@ Table Of Contents
 
         index_dimreduction
         index_deepdimreduction
-        notebooks/clustering
+        notebooks/sindy
         index_msm
         notebooks/hmm
-        notebooks/sindy
+        notebooks/clustering
         examples/index
         index_dev
 
