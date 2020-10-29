@@ -37,6 +37,8 @@ author = 'AI4Science Group'
 # The full version, including alpha/beta/rc tags
 release = f"{deeptime.__version__}"
 
+master_doc = 'contents'
+
 # -- Disable certain warnings ------------------------------------------------
 
 sphinxlog_adapter = sphinx.util.logging.getLogger(sphinxcontrib.bibtex.__name__)
@@ -85,6 +87,10 @@ html_theme = 'alabaster'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_additional_pages = {
+    'index': 'index.html'
+}
 
 # prerender tex
 katex_prerender = False
@@ -214,7 +220,7 @@ def setup(app: Sphinx):
     if app.tags.has('notebooks'):
         global katex_prerender
         global exclude_patterns
-        katex_prerender = True
+        # katex_prerender = True
         exclude_patterns.remove('**/notebooks')
         exclude_patterns.remove('*.ipynb')
         app.setup_extension('nbsphinx')
