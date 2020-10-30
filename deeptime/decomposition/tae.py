@@ -86,3 +86,23 @@ class TAE(DLEstimator, Transformer):
     def transform(self, data, **kwargs):
         return self.fetch_model().transform(data)
 
+
+class TVAEModel(TAEModel):
+
+    def __init__(self, encoder, decoder):
+        super().__init__(encoder, decoder)
+
+
+class TVAE(TAE):
+    def __init__(self, encoder: nn.Module, decoder: nn.Module, optimizer='Adam', learning_rate: float = 5e-4,
+                 beta: float = 1.):
+        super().__init__(encoder, decoder, optimizer=optimizer, learning_rate=learning_rate)
+        self._beta = beta
+
+    def _reparameterize(self):
+        pass
+
+    def evaluate_loss(self, x: torch.Tensor, y: torch.Tensor):
+        return super().evaluate_loss(x, y)
+
+
