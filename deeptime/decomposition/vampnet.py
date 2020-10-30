@@ -1,12 +1,13 @@
-from typing import Optional, Union, List, Callable, Tuple
+from typing import Optional, Union, Callable, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
-from ..base import Transformer, Model, Estimator
-from ..data.util import TimeSeriesDataset, TimeLaggedDataset
+from ..base import Model, Transformer
+from ..base_torch import DLEstimator
+from ..util.pytorch import map_data
 
 
 def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True) \
@@ -248,43 +249,21 @@ def loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon:
     return -1. * score(data, data_lagged, method=method, epsilon=epsilon, mode=mode)
 
 
-class MLPLobe(nn.Module):
-    r""" A multilayer perceptron which can be used as a neural network lobe for VAMPNets.
+class VAMPNetModel(Transformer, Model):
+    r"""
+    A VAMPNet model which can be fit to data optimizing for one of the implemented VAMP scores.
 
     Parameters
     ----------
-    units : list of int
-        The units of the fully connected layers.
-    nonlinearity : callable, default=torch.nn.ELU
-        A callable (like a constructor) which yields an instance of a particular activation function.
-    initial_batchnorm : bool, default=True
-        Whether to use batch normalization before the data enters the rest of the network.
-    output_nonlinearity : callable, default=softmax
-        The output activation/nonlinearity. If the data decomposes into states, it can make sense to use
-        an output activation like softmax which produces a probability distribution over said states.
-    """
-
-    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = True,
-                 output_nonlinearity=lambda: nn.Softmax(dim=1)):
-        super().__init__()
-        layers = []
-        if initial_batchnorm:
-            layers.append(nn.BatchNorm1d(units[0]))
-        for fan_in, fan_out in zip(units[:-2], units[1:-1]):
-            layers.append(nn.Linear(fan_in, fan_out))
-            layers.append(nonlinearity())
-        layers.append(nn.Linear(units[-2], units[-1]))
-        if output_nonlinearity is not None:
-            layers.append(output_nonlinearity())
-        self._sequential = nn.Sequential(*layers)
-
-    def forward(self, inputs):
-        return self._sequential(inputs)
-
-
-class VAMPNetModel(Model, Transformer):
-    r"""
-    A VAMPNet model which can be fit to data optimizing for one of the implemented VAMP scores.
+    lobe : torch.nn.Module
+        One of the lobes of the VAMPNet. See also :class:`MLPLobe`.
+    lobe_timelagged : torch.nn.Module, optional, default=None
+        The timelagged lobe. Can be left None, in which case the lobes are shared.
+    dtype : data type, default=np.float32
+        The data type for which operations should be performed. Leads to an appropriate cast within fit and
+        transform methods.
+    device : device, default=None
+        The device for the lobe(s). Can be None which defaults to CPU.
 
     See Also
     --------
@@ -293,75 +272,46 @@ class VAMPNetModel(Model, Transformer):
 
     def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  dtype=np.float32, device=None):
-        r"""Creates a new VAMPNet estimator instance.
-
-        Parameters
-        ----------
-        lobe : torch.nn.Module
-            One of the lobes of the VAMPNet. See also :class:`MLPLobe`.
-        lobe_timelagged : torch.nn.Module, optional, default=None
-            The timelagged lobe. Can be left None, in which case the lobes are shared.
-        dtype : data type, default=np.float32
-            The data type for which operations should be performed. Leads to an appropriate cast within fit and
-            transform methods.
-        device : device, default=None
-            The device for the lobe(s). Can be None which defaults to CPU.
-        """
         super().__init__()
         self._lobe = lobe
         self._lobe_timelagged = lobe_timelagged if lobe_timelagged is not None else lobe
 
-        self._device = device
-        self._dtype = dtype
-
-        if self._dtype == np.float32:
+        if dtype == np.float32:
             self._lobe = self._lobe.float()
             self._lobe_timelagged = self._lobe_timelagged.float()
-        elif self._dtype == np.float64:
+        elif dtype == np.float64:
             self._lobe = self._lobe.double()
             self._lobe_timelagged = self._lobe_timelagged.double()
-        else:
-            raise ValueError(f"Unsupported type {dtype}! Only float32 and float64 are allowed.")
+        self._instantaneous = True
+        self._dtype = dtype
+        self._device = device
 
-    def transform(self, data, instantaneous: bool = True, **kwargs):
-        r""" Transforms a tensor or array or list thereof using the learnt transformation.
+    @property
+    def instantaneous(self) -> bool:
+        r""" Whether to use the instantaneous lobe or the time-shifted one.
 
-        Parameters
-        ----------
-        data : array_like
-            The input data.
-        instantaneous : bool, default=True
-            Whether to use the instantaneous lobe or the time-shifted one.
-        **kwargs
-            Scikit-learn compatibility.
-
-        Returns
-        -------
-        transform : array_like
-            The featurized data.
+        :type: bool
         """
-        self._lobe.eval()
-        self._lobe_timelagged.eval()
+        return self._instantaneous
 
-        with torch.no_grad():
-            if not isinstance(data, (list, tuple)):
-                data = [data]
-            out = []
-            for x in data:
-                if isinstance(x, torch.Tensor):
-                    x = x.to(device=self._device)
-                else:
-                    x = torch.from_numpy(np.asarray(x, dtype=self._dtype)).to(device=self._device)
-                if instantaneous:
-                    out.append(self._lobe(x).cpu().numpy())
-                else:
-                    out.append(self._lobe_timelagged(x).cpu().numpy())
-        if isinstance(out, (list, tuple)) and len(out) == 1:
-            out = out[0]
-        return out
+    @instantaneous.setter
+    def instantaneous(self, value: bool):
+        self._instantaneous = value
+
+    def transform(self, data, **kwargs):
+        if self.instantaneous:
+            self._lobe.eval()
+            net = self._lobe
+        else:
+            self._lobe_timelagged.eval()
+            net = self._lobe_timelagged
+        out = []
+        for data_tensor in map_data(data, device=self._device, dtype=self._dtype):
+            out.append(net(data_tensor).cpu().numpy())
+        return out if len(out) > 1 else out[0]
 
 
-class VAMPNet(Estimator, Transformer):
+class VAMPNet(DLEstimator, Transformer):
     r""" Implementation of VAMPNets :cite:`vnet-mardt2018vampnets` which try to find an optimal featurization of
     data based on a VAMP score :cite:`vnet-wu2020variational` by using neural networks as featurizing transforms
     which are equipped with a loss that is the negative VAMP score. This estimator is also a transformer
@@ -371,8 +321,6 @@ class VAMPNet(Estimator, Transformer):
 
     Parameters
     ----------
-    lagtime : int
-        The lagtime under which covariance matrices are estimated.
     lobe : torch.nn.Module
         A neural network module which maps input data to some (potentially) lower-dimensional space.
     lobe_timelagged : torch.nn.Module, optional, default=None
@@ -411,61 +359,22 @@ class VAMPNet(Estimator, Transformer):
     """
     _MUTABLE_INPUT_DATA = True
 
-    def __init__(self, lagtime: int, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
+    def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
                  score_method: str = 'VAMP2', score_mode: str = 'regularize', epsilon: float = 1e-6,
                  dtype=np.float32, shuffle: bool = True):
         super().__init__()
-        self.lagtime = lagtime
-        self.dtype = dtype
-        self.device = device
         self.lobe = lobe
         self.lobe_timelagged = lobe_timelagged
         self.score_method = score_method
         self.score_mode = score_mode
-        self.learning_rate = learning_rate
-        self.optimizer = optimizer
         self._step = 0
         self.shuffle = shuffle
         self._epsilon = epsilon
-
-    @property
-    def dtype(self):
-        r""" The data type under which the estimator operates.
-
-        :getter: Gets the currently set data type.
-        :setter: Sets a new data type, must be one of np.float32, np.float64
-        :type: numpy data type type
-        """
-        return self._dtype
-
-    @dtype.setter
-    def dtype(self, value):
-        assert value in (np.float32, np.float64), "only float32 and float64 are supported."
-        self._dtype = value
-
-    @property
-    def optimizer(self) -> torch.optim.Optimizer:
-        r""" The optimizer that is used.
-
-        :getter: Gets the currently configured optimizer.
-        :setter: Sets a new optimizer based on optimizer name (string) or optimizer class (class reference).
-        :type: torch.optim.Optimizer
-        """
-        return self._optimizer
-
-    @optimizer.setter
-    def optimizer(self, value: Union[str, Callable]):
-        all_params = list(self.lobe.parameters()) + list(self.lobe_timelagged.parameters())
-        unique_params = list(set(all_params))
-        if isinstance(value, str):
-            known_optimizers = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD, 'RMSprop': torch.optim.RMSprop}
-            if value not in known_optimizers.keys():
-                raise ValueError(f"Unknown optimizer type, supported types are {known_optimizers.keys()}. "
-                                 f"If desired, you can also pass the class of the "
-                                 f"desired optimizer rather than its name.")
-            value = known_optimizers[value]
-        self._optimizer = value(params=unique_params, lr=self.learning_rate)
+        self.device = device
+        self.learning_rate = learning_rate
+        self.dtype = dtype
+        self.setup_optimizer(optimizer, list(self.lobe.parameters()) + list(self.lobe_timelagged.parameters()))
 
     @property
     def epsilon(self) -> float:
@@ -556,6 +465,14 @@ class VAMPNet(Estimator, Transformer):
         self : VAMPNet
             Reference to self.
         """
+
+        if self.dtype == np.float32:
+            self._lobe = self._lobe.float()
+            self._lobe_timelagged = self._lobe_timelagged.float()
+        elif self.dtype == np.float64:
+            self._lobe = self._lobe.double()
+            self._lobe_timelagged = self._lobe_timelagged.double()
+
         self.lobe.train()
         self.lobe_timelagged.train()
 
@@ -605,30 +522,20 @@ class VAMPNet(Estimator, Transformer):
             val_t = self.lobe_timelagged(validation_data[1])
             return score(val, val_t, method=self.score_method, mode=self.score_mode, epsilon=self.epsilon)
 
-    def _set_up_data_loader(self, data, batch_size, shuffle):
-        r""" Helper method which yields a data loader from a torch dataset or numpy arrays. """
-        if not isinstance(data, (TimeSeriesDataset, Dataset)):
-            if isinstance(data, np.ndarray):
-                data = data.astype(self.dtype)
-            data = TimeLaggedDataset.from_trajectory(lagtime=self.lagtime, data=data)
-        return DataLoader(data, batch_size=batch_size, shuffle=shuffle)
-
-    def fit(self, data, n_epochs=1, batch_size=512, validation_data=None,
+    def fit(self, data_loader: torch.utils.data.DataLoader, n_epochs=1, validation_loader=None,
             train_score_callback: Callable[[int, torch.Tensor], None] = None,
             validation_score_callback: Callable[[int, torch.Tensor], None] = None, **kwargs):
         r""" Fits a VampNet on data.
 
         Parameters
         ----------
-        data : torch.Tensor or Dataset or TimelaggedDataset or numpy array
-            The data to use for training.
+        data_loader : torch.utils.data.DataLoader
+            The data to use for training. Should yield a tuple of batches representing
+            instantaneous and time-lagged samples.
         n_epochs : int, default=1
             The number of epochs (i.e., passes through the training data) to use for training.
-        batch_size : int, default=512
-            The batch size to use during training. Should be reasonably large so that covariance matrices have
-            enough statistics to be estimated.
-        validation_data : torch.Tensor or Dataset or TimeLaggedDataset or numpy array, optional, default=None
-            Validation data.
+        validation_loader : torch.utils.data.DataLoader, optional, default=None
+            Validation data, should also be yielded as a two-element tuple.
         train_score_callback : callable, optional, default=None
             Callback function which is invoked after each batch and gets as arguments the current training step
             as well as the score (as torch Tensor).
@@ -645,12 +552,6 @@ class VAMPNet(Estimator, Transformer):
             Reference to self.
         """
         self._step = 0
-
-        # set up loaders
-        data_loader = self._set_up_data_loader(data, batch_size=batch_size, shuffle=self.shuffle)
-        validation_loader = None
-        if validation_data is not None:
-            validation_loader = self._set_up_data_loader(validation_data, batch_size=batch_size, shuffle=False)
 
         # and train
         for epoch in range(n_epochs):
@@ -685,7 +586,9 @@ class VAMPNet(Estimator, Transformer):
         transform : array_like
             List of numpy array or numpy array containing transformed data.
         """
-        return self.fetch_model().transform(data, instantaneous=instantaneous, **kwargs)
+        model = self.fetch_model()
+        model.instantaneous = instantaneous
+        return model.transform(data, **kwargs)
 
     def fetch_model(self) -> VAMPNetModel:
         r""" Yields the current model. """

@@ -12,6 +12,7 @@ Estimators
     VAMP
     TICA
     VAMPNet
+    TAE
     DMD
     EDMD
     KernelEDMD
@@ -29,6 +30,7 @@ Models
     CovarianceKoopmanModel
     KoopmanBasisTransform
     IdentityKoopmanBasisTransform
+    VAMPNetModel
     DMDModel
     EDMDModel
     KernelEDMDModel
@@ -61,7 +63,8 @@ from .cca import KernelCCA, KernelCCAModel
 
 from ..util.platform import module_available
 if module_available("torch"):
-    from .vampnet import VAMPNet
+    from .vampnet import VAMPNet, VAMPNetModel
+    from .tae import TAE, TAEModel
     from . import vampnet
     from . import kvadnet
 del module_available

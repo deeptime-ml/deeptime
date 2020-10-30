@@ -280,7 +280,7 @@ class Kmeans(Estimator, Transformer):
         """
         return self._model
 
-    def transform(self, data, **kw):
+    def transform(self, data, **kw) -> np.ndarray:
         """
         Transforms a trajectory to a discrete trajectory by assigning each frame to its respective cluster center.
 
@@ -293,7 +293,7 @@ class Kmeans(Estimator, Transformer):
 
         Returns
         -------
-        discrete_trajectory : (T, 1) ndarray, dtype=int
+        discrete_trajectory : (T, 1) ndarray
             discrete trajectory
 
         See Also

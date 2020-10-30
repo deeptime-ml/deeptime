@@ -129,7 +129,7 @@ class CovarianceModel(Model):
             Whitened data.
         """
         assert self.cov_00 is not None and self.mean_0 is not None
-        projection = spd_inv_sqrt(self.cov_00)
+        projection = np.atleast_2d(spd_inv_sqrt(self.cov_00))
         whitened_data = (data - self.mean_0[None, ...]) @ projection.T
         return whitened_data
 

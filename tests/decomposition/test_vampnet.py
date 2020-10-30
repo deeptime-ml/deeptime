@@ -8,8 +8,9 @@ import numpy as np
 import deeptime
 from deeptime.clustering import Kmeans
 from deeptime.decomposition import VAMP
-from deeptime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss, MLPLobe
+from deeptime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss
 from deeptime.markov.msm import MaximumLikelihoodMSM
+from deeptime.util.pytorch import create_timelagged_data_loader, MLP
 
 
 @pytest.mark.parametrize('mode', ["trunc"])
@@ -75,8 +76,9 @@ def test_estimator():
 
     # now let's compare
     lobe.eval()
-    vampnet = VAMPNet(1, lobe=lobe)
-    vampnet_model = vampnet.fit(obs).fetch_model()
+    loader = create_timelagged_data_loader(obs, lagtime=1, batch_size=512)
+    vampnet = VAMPNet(lobe=lobe)
+    vampnet_model = vampnet.fit(loader).fetch_model()
     # np.testing.assert_array_less(vamp_model.timescales()[0], vampnet_model.timescales()[0])
 
     projection = vampnet_model.transform(obs)
@@ -104,8 +106,10 @@ def test_estimator_fit(dtype):
         linear_layer.weight[0, 1] = 0.3060
         linear_layer.bias[0] = -0.7392
 
-    net = VAMPNet(lagtime=1, lobe=lobe, dtype=dtype, learning_rate=1e-8)
-    net.fit(train, n_epochs=1, batch_size=512, validation_data=val, validation_score_callback=lambda *x: x)
+    net = VAMPNet(lobe=lobe, dtype=dtype, learning_rate=1e-8)
+    train_loader = create_timelagged_data_loader(train, lagtime=1, batch_size=512)
+    val_loader = create_timelagged_data_loader(val, lagtime=1, batch_size=512)
+    net.fit(train_loader, n_epochs=1, validation_data=val_loader, validation_score_callback=lambda *x: x)
     projection = net.transform(obs)
 
     # reference model w/o learnt featurization
@@ -118,7 +122,7 @@ def test_estimator_fit(dtype):
 
 
 def test_mlp_sanity():
-    mlp = MLPLobe([100, 10, 2])
+    mlp = MLP([100, 10, 2])
     with torch.no_grad():
         x = torch.empty((5, 100)).normal_()
         mlp(x)
