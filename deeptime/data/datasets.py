@@ -354,3 +354,63 @@ def tmatrix_metropolis1d(energies, d=1.0):
     transition_matrix += np.diag(1.0 - np.sum(transition_matrix, axis=1))
     # done
     return transition_matrix
+
+
+def sqrt_model(n_samples):
+    r""" Sample a hidden state and an sqrt-transformed emission trajectory.
+    We sample a hidden state trajectory and sqrt-masked emissions in two
+    dimensions such that the two metastable states are not linearly separable.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+
+        import deeptime as dt
+
+        n_samples = 30000
+        dtraj, traj = dt.data.sqrt_model(n_samples)
+
+        fig, ax = plt.subplots(1, 1, figsize=(16, 10))
+        ax.hexbin(*traj.T, bins=10, cmap='coolwarm')
+
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of samples to produce.
+
+    Returns
+    -------
+    sequence : (n_samples, ) ndarray
+        The discrete states.
+    trajectory : (n_samples, ) ndarray
+        The observable.
+
+    Notes
+    -----
+    First, the hidden discrete-state trajectory is simulated. Its transition matrix is given by
+
+    .. math::
+        P = \begin{pmatrix}0.95 & 0.05 \\ 0.05 & 0.95 \end{pmatrix}.
+
+    The observations are generated via the means are :math:`\mu_0 = (0, 1)^\top` and :math:`\mu_1= (0, -1)`,
+    respectively, as well as the covariance matrix
+
+    .. math::
+        C = \begin{pmatrix} 30 & 0 \\ 0 & 0.015 \end{pmatrix}.
+
+    Afterwards, the trajectory is transformed via
+
+    .. math::
+        (x, y) \mapsto (x, y + \sqrt{| x |}).
+    """
+    from deeptime.markov.msm import MarkovStateModel
+
+    cov = np.array([[30.0, 0.0], [0.0, 0.015]])
+    states = np.array([[0.0, 1.0], [0.0, -1.0]])
+    msm = MarkovStateModel(np.array([[0.95, 0.05], [0.05, 0.95]]))
+    dtraj = msm.simulate(n_samples)
+    traj = states[dtraj, :] + np.random.multivariate_normal(np.zeros(len(cov)), cov, size=len(dtraj),
+                                                            check_valid='ignore')
+    traj[:, 1] += np.sqrt(np.abs(traj[:, 0]))
+    return dtraj, traj

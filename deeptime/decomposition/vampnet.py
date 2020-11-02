@@ -256,7 +256,7 @@ class VAMPNetModel(Transformer, Model):
     Parameters
     ----------
     lobe : torch.nn.Module
-        One of the lobes of the VAMPNet. See also :class:`MLPLobe`.
+        One of the lobes of the VAMPNet. See also :class:`deeptime.util.torch.MLP`.
     lobe_timelagged : torch.nn.Module, optional, default=None
         The timelagged lobe. Can be left None, in which case the lobes are shared.
     dtype : data type, default=np.float32
