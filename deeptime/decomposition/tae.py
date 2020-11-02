@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from ..base import Transformer, Model
 from ..base_torch import DLEstimator
-from ..util.pytorch import map_data
+from ..util.torch import map_data, MLP
 
 
 class TAEModel(Model, Transformer):
@@ -27,10 +27,13 @@ class TAEModel(Model, Transformer):
     def decoder(self):
         return self._decoder
 
+    def _encode(self, x: torch.Tensor):
+        return self._encoder(x)
+
     def transform(self, data, **kwargs):
         out = []
         for data_tensor in map_data(data, device=self._device, dtype=self._dtype):
-            out.append(self._encoder(data_tensor).cpu().numpy())
+            out.append(self._encode(data_tensor).cpu().numpy())
         return out if len(out) > 1 else out[0]
 
 
@@ -43,12 +46,12 @@ class TAE(DLEstimator, Transformer):
         self._decoder = decoder
         self.learning_rate = learning_rate
         self.setup_optimizer(optimizer, list(encoder.parameters()) + list(decoder.parameters()))
-        self._loss = nn.MSELoss(size_average=False)
+        self._mse_loss = nn.MSELoss(reduction='sum')
         self._train_losses = []
         self._val_losses = []
 
     def evaluate_loss(self, x: torch.Tensor, y: torch.Tensor):
-        return self._loss(y, self._decoder(self._encoder(x)))
+        return self._mse_loss(y, self._decoder(self._encoder(x)))
 
     def fit(self, data_loader: DataLoader, n_epochs: int = 5, validation_loader: Optional[DataLoader] = None, **kwargs):
         for epoch in range(n_epochs):
@@ -87,10 +90,31 @@ class TAE(DLEstimator, Transformer):
         return self.fetch_model().transform(data)
 
 
+def _reparameterize(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+    std = torch.exp(0.5 * logvar)
+    eps = torch.randn_like(std)
+    return eps * std + mu
+
+
 class TVAEModel(TAEModel):
 
-    def __init__(self, encoder, decoder):
-        super().__init__(encoder, decoder)
+    def _encode(self, x: torch.Tensor):
+        return _reparameterize(*self.encoder(x))
+
+
+class TVAEEncoder(MLP):
+
+    def __init__(self, units: List[int], nonlinearity=nn.ELU):
+        super().__init__(units[:-1], nonlinearity=nonlinearity, initial_batchnorm=False,
+                         output_nonlinearity=nonlinearity)
+        lat_in = units[-2]
+        lat_out = units[-1]
+        self._to_mu = nn.Linear(lat_in, lat_out)
+        self._to_logvar = nn.Linear(lat_in, lat_out)
+
+    def forward(self, inputs):
+        out = self._sequential(inputs)
+        return self._to_mu(out), self._to_logvar(out)
 
 
 class TVAE(TAE):
@@ -99,10 +123,13 @@ class TVAE(TAE):
         super().__init__(encoder, decoder, optimizer=optimizer, learning_rate=learning_rate)
         self._beta = beta
 
-    def _reparameterize(self):
-        pass
-
     def evaluate_loss(self, x: torch.Tensor, y: torch.Tensor):
-        return super().evaluate_loss(x, y)
+        mu, logvar = self._encoder(x)
+        z = _reparameterize(mu, logvar)
+        y_hat = self._decoder(z)
+        mse_val = self._mse_loss(y_hat, y)
+        kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1), dim=0)
+        return mse_val + self._beta * kld / float(y.shape[1])
 
-
+    def fetch_model(self) -> TAEModel:
+        return TVAEModel(self._encoder, self._decoder, self.device, self.dtype)

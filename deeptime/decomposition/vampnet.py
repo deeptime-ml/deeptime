@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 
 from ..base import Model, Transformer
 from ..base_torch import DLEstimator
-from ..util.pytorch import map_data
+from ..util.torch import map_data
 
 
 def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True) \

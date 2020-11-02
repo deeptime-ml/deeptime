@@ -1,22 +1,21 @@
 import pytest
 from numpy.testing import assert_array_almost_equal
-from torch.utils.data import DataLoader
-
-from deeptime.covariance import Covariance
 
 pytest.importorskip("torch")
 
-import torch
+from deeptime.covariance import Covariance
+from deeptime.decomposition.tae import TVAEEncoder
+
 import torch.nn as nn
 import numpy as np
 import deeptime as dt
 
-from deeptime.util.pytorch import MLP, create_timelagged_data_loader
+from deeptime.util.torch import MLP, create_timelagged_data_loader
 
 
 @pytest.fixture
 def two_state_hmm():
-    length = 5000
+    length = 10000
     batch_size = 100
     transition_matrix = np.asarray([[0.9, 0.1], [0.1, 0.9]])
     msm = dt.markov.msm.MarkovStateModel(transition_matrix)
@@ -33,11 +32,22 @@ def two_state_hmm():
     return traj, traj_rot, create_timelagged_data_loader(traj_rot, lagtime=1, batch_size=batch_size)
 
 
-def test_tae_sanity(two_state_hmm):
+def setup_tae():
+    enc = MLP([2, 1], initial_batchnorm=False, nonlinearity=nn.Tanh)
+    dec = MLP([1, 2], initial_batchnorm=False, nonlinearity=nn.Tanh)
+    return dt.decomposition.TAE(enc, dec, learning_rate=1e-3)
+
+
+def setup_tvae():
+    enc = TVAEEncoder([2, 1], nonlinearity=nn.ReLU)
+    dec = MLP([1, 2], initial_batchnorm=False, nonlinearity=nn.Tanh)
+    return dt.decomposition.TVAE(enc, dec, learning_rate=1e-3)
+
+
+@pytest.mark.parametrize('model', ['tae', 'tvae'])
+def test_sanity(two_state_hmm, model):
     traj, traj_rot, loader = two_state_hmm
-    enc = MLP([2, 2, 1], initial_batchnorm=False, nonlinearity=nn.Tanh)
-    dec = MLP([1, 2, 2], initial_batchnorm=False, nonlinearity=nn.Tanh)
-    tae = dt.decomposition.TAE(enc, dec, learning_rate=1e-3)
+    tae = setup_tae() if model == 'tae' else setup_tvae()
     tae.fit(loader, n_epochs=20)
     out = tae.transform(traj_rot).reshape((-1, 1))
     out = Covariance().fit(out).fetch_model().whiten(out)

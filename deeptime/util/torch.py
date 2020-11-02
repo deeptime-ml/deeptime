@@ -73,16 +73,19 @@ class MLP(nn.Module):
     def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = True,
                  output_nonlinearity=None):
         super().__init__()
-        layers = []
-        if initial_batchnorm:
-            layers.append(nn.BatchNorm1d(units[0]))
-        for fan_in, fan_out in zip(units[:-2], units[1:-1]):
-            layers.append(nn.Linear(fan_in, fan_out))
-            layers.append(nonlinearity())
-        layers.append(nn.Linear(units[-2], units[-1]))
-        if output_nonlinearity is not None:
-            layers.append(output_nonlinearity())
-        self._sequential = nn.Sequential(*layers)
+        if len(units) > 1:
+            layers = []
+            if initial_batchnorm:
+                layers.append(nn.BatchNorm1d(units[0]))
+            for fan_in, fan_out in zip(units[:-2], units[1:-1]):
+                layers.append(nn.Linear(fan_in, fan_out))
+                layers.append(nonlinearity())
+            layers.append(nn.Linear(units[-2], units[-1]))
+            if output_nonlinearity is not None:
+                layers.append(output_nonlinearity())
+            self._sequential = nn.Sequential(*layers)
+        else:
+            self._sequential = nn.Identity()
 
     def forward(self, inputs):
         return self._sequential(inputs)
