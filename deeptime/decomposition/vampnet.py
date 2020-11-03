@@ -1,4 +1,4 @@
-from typing import Optional, Union, Callable, Tuple
+from typing import Optional, Union, Callable, Tuple, List
 
 import numpy as np
 import torch
@@ -375,6 +375,25 @@ class VAMPNet(DLEstimator, Transformer):
         self.learning_rate = learning_rate
         self.dtype = dtype
         self.setup_optimizer(optimizer, list(self.lobe.parameters()) + list(self.lobe_timelagged.parameters()))
+        self._train_scores = []
+        self._validation_scores = []
+
+    @property
+    def train_scores(self) -> np.ndarray:
+        r""" The collected train scores. First dimension contains the step, second dimension the score. Initially empty.
+
+        :type: (T, 2) ndarray
+        """
+        return np.array(self._train_scores)
+
+    @property
+    def validation_scores(self) -> np.ndarray:
+        r""" The collected validation scores. First dimension contains the step, second dimension the score.
+        Initially empty.
+
+        :type: (T, 2) ndarray
+        """
+        return np.array(self._validation_scores)
 
     @property
     def epsilon(self) -> float:
@@ -497,6 +516,7 @@ class VAMPNet(DLEstimator, Transformer):
         if train_score_callback is not None:
             lval_detached = loss_value.detach()
             train_score_callback(self._step, -lval_detached)
+        self._train_scores.append((self._step, (-loss_value).item()))
         self._step += 1
 
         return self
@@ -520,7 +540,8 @@ class VAMPNet(DLEstimator, Transformer):
         with torch.no_grad():
             val = self.lobe(validation_data[0])
             val_t = self.lobe_timelagged(validation_data[1])
-            return score(val, val_t, method=self.score_method, mode=self.score_mode, epsilon=self.epsilon)
+            score_value = score(val, val_t, method=self.score_method, mode=self.score_mode, epsilon=self.epsilon)
+            return score_value
 
     def fit(self, data_loader: torch.utils.data.DataLoader, n_epochs=1, validation_loader=None,
             train_score_callback: Callable[[int, torch.Tensor], None] = None,
@@ -558,7 +579,7 @@ class VAMPNet(DLEstimator, Transformer):
             for batch_0, batch_t in data_loader:
                 self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)),
                                  train_score_callback=train_score_callback)
-            if validation_loader is not None and validation_score_callback is not None:
+            if validation_loader is not None:
                 with torch.no_grad():
                     scores = []
                     for val_batch in validation_loader:
@@ -566,7 +587,9 @@ class VAMPNet(DLEstimator, Transformer):
                             self.validate((val_batch[0].to(device=self.device), val_batch[1].to(device=self.device)))
                         )
                     mean_score = torch.mean(torch.stack(scores))
-                    validation_score_callback(self._step, mean_score)
+                    self._validation_scores.append((self._step, mean_score.item()))
+                    if validation_score_callback is not None:
+                        validation_score_callback(self._step, mean_score)
         return self
 
     def transform(self, data, instantaneous: bool = True, **kwargs):

@@ -10,7 +10,7 @@ from deeptime.clustering import Kmeans
 from deeptime.decomposition import VAMP
 from deeptime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss
 from deeptime.markov.msm import MaximumLikelihoodMSM
-from deeptime.util.pytorch import create_timelagged_data_loader, MLP
+from deeptime.util.torch import create_timelagged_data_loader, MLP
 
 
 @pytest.mark.parametrize('mode', ["trunc"])
