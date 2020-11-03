@@ -53,7 +53,25 @@ class TAE(DLEstimator, Transformer):
     def evaluate_loss(self, x: torch.Tensor, y: torch.Tensor):
         return self._mse_loss(y, self._decoder(self._encoder(x)))
 
+    @property
+    def train_losses(self) -> np.ndarray:
+        r""" The collected train scores. First dimension contains the step, second dimension the score. Initially empty.
+
+        :type: (T, 2) ndarray
+        """
+        return np.array(self._train_losses)
+
+    @property
+    def validation_losses(self) -> np.ndarray:
+        r""" The collected validation scores. First dimension contains the step, second dimension the score.
+        Initially empty.
+
+        :type: (T, 2) ndarray
+        """
+        return np.array(self._val_losses)
+
     def fit(self, data_loader: DataLoader, n_epochs: int = 5, validation_loader: Optional[DataLoader] = None, **kwargs):
+        step = 0
         for epoch in range(n_epochs):
 
             self._encoder.train()
@@ -67,19 +85,23 @@ class TAE(DLEstimator, Transformer):
                 loss_value.backward()
                 self.optimizer.step()
 
-                self._train_losses.append((epoch, loss_value.item()))
+                self._train_losses.append((step, loss_value.item()))
+
+                step += 1
 
             if validation_loader is not None:
                 self._encoder.eval()
                 self._decoder.eval()
 
                 with torch.no_grad():
+                    lval = []
                     for batch_0, batch_t in data_loader:
                         batch_0 = batch_0.to(device=self.device)
                         batch_t = batch_t.to(device=self.device)
 
-                        loss_value = self.evaluate_loss(batch_0, batch_t)
-                        self._val_losses.append((epoch, loss_value.item()))
+                        loss_value = self.evaluate_loss(batch_0, batch_t).item()
+                        lval.append(loss_value)
+                    self._val_losses.append((step, np.mean(lval)))
 
         return self
 
