@@ -4,7 +4,7 @@ deeptime.kernels
 ================
 
 The *kernels* package contains kernel implementations which can be used together with kernel methods, such as
-kCCA or KVAD.
+:class:`KernelCCA <deeptime.decomposition.KernelCCA>` or KVAD.
 
 .. automodule:: deeptime.kernels
 

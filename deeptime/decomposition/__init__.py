@@ -11,11 +11,24 @@ Estimators
 
     VAMP
     TICA
-    VAMPNet
     DMD
     EDMD
     KernelEDMD
     KernelCCA
+
+===============================================================================
+Deep estimators
+===============================================================================
+
+Note that usage of these estimators requires a working installation of `PyTorch <https://pytorch.org/>`__.
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    VAMPNet
+    TAE
+    TVAE
 
 ===============================================================================
 Models
@@ -33,6 +46,9 @@ Models
     EDMDModel
     KernelEDMDModel
     KernelCCAModel
+    VAMPNetModel
+    TAEModel
+    TVAEModel
 
 ===============================================================================
 Utils
@@ -42,7 +58,7 @@ Utils
     :toctree: generated/
     :template: class_nomodule.rst
 
-    vampnet.MLPLobe
+    TVAEEncoder
     vampnet.koopman_matrix
     vampnet.sym_inverse
     vampnet.covariances
@@ -61,7 +77,8 @@ from .cca import KernelCCA, KernelCCAModel
 
 from ..util.platform import module_available
 if module_available("torch"):
-    from .vampnet import VAMPNet
+    from .vampnet import VAMPNet, VAMPNetModel
+    from .tae import TAE, TAEModel, TVAE, TVAEModel, TVAEEncoder
     from . import vampnet
     from . import kvadnet
 del module_available

@@ -14,7 +14,7 @@ def test_kcca_sanity():
     #
     # for i in range(5):
     #     plt.figure()
-    #     plt.scatter(*ds.data.T, c=kcca_model.eigenvectors[:, i])
+    #     plt.scatter(*ds.data.T, c=model.eigenvectors[:, i])
     # plt.show()
-    # print(kcca_model.eigenvalues)
-    # print(kcca_model.eigenvectors.shape)
+    # print(model.eigenvalues)
+    # print(model.eigenvectors.shape)

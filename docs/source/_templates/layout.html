@@ -1,5 +1,10 @@
 {% extends '!layout.html' %}
 
+{% set global_toc = toctree(maxdepth=3,
+                            collapse=theme_collapse_navigation|tobool,
+                            includehidden=theme_includehidden|tobool,
+                            titles_only=theme_titles_only|tobool) %}
+
 {% block sidebarlogo %}
 {% if theme_logo %}
 <p class="logo">
@@ -11,7 +16,7 @@
   </a>
 </p>
 {% else %}
-<h1 class="logo_override"><a href="{{ pathto('index') }}">{{ project }}</a></h1>
+<h1 class="logo"><a href="{{ pathto('index') }}">{{ project }}</a></h1>
 {% endif %}
 {% endblock %}
 
