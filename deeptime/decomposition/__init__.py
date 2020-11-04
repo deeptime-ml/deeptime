@@ -11,13 +11,24 @@ Estimators
 
     VAMP
     TICA
-    VAMPNet
-    TAE
-    TVAE
     DMD
     EDMD
     KernelEDMD
     KernelCCA
+
+===============================================================================
+Deep estimators
+===============================================================================
+
+Note that usage of these estimators requires a working installation of `PyTorch <https://pytorch.org/>`__.
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    VAMPNet
+    TAE
+    TVAE
 
 ===============================================================================
 Models
@@ -31,11 +42,13 @@ Models
     CovarianceKoopmanModel
     KoopmanBasisTransform
     IdentityKoopmanBasisTransform
-    VAMPNetModel
     DMDModel
     EDMDModel
     KernelEDMDModel
     KernelCCAModel
+    VAMPNetModel
+    TAEModel
+    TVAEModel
 
 ===============================================================================
 Utils
