@@ -486,7 +486,7 @@ class KoopmanWeightingModel(Model, Transformer):
     r""" A model which contains the Koopman operator in a modified basis `(PC|1)` and can transform data into Koopman
     weights.
 
-    Weights are computed according to :cite:`koopmanmodel-wu2016variational`.
+    Weights are computed according to :cite:`koopmanmodel-wu2017variational`.
 
     Parameters
     ----------
@@ -579,7 +579,7 @@ class KoopmanWeightingModel(Model, Transformer):
 
 class KoopmanWeightingEstimator(Estimator, Transformer):
     r"""Computes Koopman operator and weights that can be plugged into the :class:`Covariance` estimator.
-    The weights are determined by the procedure described in :cite:`koopmanestimator-wu2016variational`.
+    The weights are determined by the procedure described in :cite:`koopmanestimator-wu2017variational`.
 
     Parameters
     ----------
