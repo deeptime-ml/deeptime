@@ -36,6 +36,7 @@ class DLEstimator(Estimator):
 
     @property
     def device(self):
+        r""" The device on which the estimator's PyTorch module(s) are operating. """
         return self._device
 
     @device.setter
