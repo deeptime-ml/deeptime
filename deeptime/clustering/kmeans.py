@@ -1,6 +1,6 @@
 import random
 import warnings
-from typing import Optional, List
+from typing import Optional
 
 import numpy as np
 
@@ -43,7 +43,7 @@ class KMeansModel(ClusterModel):
     """
 
     def __init__(self, n_clusters, cluster_centers, metric: str, tolerance: Optional[float] = None,
-                 inertias: Optional[List[float]] = None, converged: bool = False):
+                 inertias: Optional[np.ndarray] = None, converged: bool = False):
         super().__init__(n_clusters, cluster_centers, metric, converged=converged)
         self._inertias = inertias
         self._tolerance = tolerance
@@ -62,7 +62,7 @@ class KMeansModel(ClusterModel):
         return self._tolerance
 
     @property
-    def inertia(self):
+    def inertia(self) -> Optional[int]:
         r"""Sum of squared distances to assigned centers of training data
 
         .. math:: \sum_{i=1}^k \sum_{x\in S_i} d(x, \mu_i)^2,
@@ -77,7 +77,7 @@ class KMeansModel(ClusterModel):
             return None
 
     @property
-    def inertias(self):
+    def inertias(self) -> Optional[np.ndarray]:
         r""" Series of inertias over the the iterations of k-means.
 
         :type: (t, dtype=float) ndarray or None
