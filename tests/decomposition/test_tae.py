@@ -15,11 +15,11 @@ from deeptime.util.torch import MLP, create_timelagged_data_loader
 
 @pytest.fixture
 def two_state_hmm():
-    length = 10000
-    batch_size = 100
+    length = 1000
+    batch_size = 64
     transition_matrix = np.asarray([[0.9, 0.1], [0.1, 0.9]])
     msm = dt.markov.msm.MarkovStateModel(transition_matrix)
-    dtraj = msm.simulate(length)
+    dtraj = msm.simulate(length, seed=42)
     traj = np.random.randn(len(dtraj))
     traj[np.where(dtraj == 1)[0]] += 20.0
     traj_stacked = np.vstack((traj, np.zeros(len(traj))))
@@ -40,15 +40,15 @@ def setup_tae():
 
 def setup_tvae():
     enc = TVAEEncoder([2, 1], nonlinearity=nn.ReLU)
-    dec = MLP([1, 2], initial_batchnorm=False, nonlinearity=nn.Tanh)
+    dec = MLP([1, 2], initial_batchnorm=False, nonlinearity=nn.ReLU)
     return dt.decomposition.TVAE(enc, dec, learning_rate=1e-3)
 
 
 @pytest.mark.parametrize('model', ['tae', 'tvae'])
-def test_sanity(two_state_hmm, model):
+def test_sanity(fixed_seed, two_state_hmm, model):
     traj, traj_rot, loader = two_state_hmm
     tae = setup_tae() if model == 'tae' else setup_tvae()
-    tae.fit(loader, n_epochs=20)
+    tae.fit(loader, n_epochs=40)
     out = tae.transform(traj_rot).reshape((-1, 1))
     out = Covariance().fit(out).fetch_model().whiten(out)
     dtraj = dt.clustering.Kmeans(2).fit(out).transform(out)

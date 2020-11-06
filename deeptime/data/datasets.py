@@ -375,7 +375,7 @@ def tmatrix_metropolis1d(energies, d=1.0):
     return transition_matrix
 
 
-def sqrt_model(n_samples):
+def sqrt_model(n_samples, seed=None):
     r""" Sample a hidden state and an sqrt-transformed emission trajectory.
     We sample a hidden state trajectory and sqrt-masked emissions in two
     dimensions such that the two metastable states are not linearly separable.
@@ -397,6 +397,8 @@ def sqrt_model(n_samples):
     ----------
     n_samples : int
         Number of samples to produce.
+    seed : int, optional, default=None
+        Random seed to use. Defaults to None, which means that the random device will be default-initialized.
 
     Returns
     -------
@@ -425,11 +427,17 @@ def sqrt_model(n_samples):
     """
     from deeptime.markov.msm import MarkovStateModel
 
-    cov = np.array([[30.0, 0.0], [0.0, 0.015]])
-    states = np.array([[0.0, 1.0], [0.0, -1.0]])
-    msm = MarkovStateModel(np.array([[0.95, 0.05], [0.05, 0.95]]))
-    dtraj = msm.simulate(n_samples)
-    traj = states[dtraj, :] + np.random.multivariate_normal(np.zeros(len(cov)), cov, size=len(dtraj),
-                                                            check_valid='ignore')
+    state = np.random.RandomState(seed)
+    cov = sqrt_model.cov
+    states = sqrt_model.states
+    msm = MarkovStateModel(sqrt_model.transition_matrix)
+    dtraj = msm.simulate(n_samples, seed=seed)
+    traj = states[dtraj, :] + state.multivariate_normal(np.zeros(len(cov)), cov, size=len(dtraj),
+                                                        check_valid='ignore')
     traj[:, 1] += np.sqrt(np.abs(traj[:, 0]))
     return dtraj, traj
+
+
+sqrt_model.cov = np.array([[30.0, 0.0], [0.0, 0.015]])
+sqrt_model.states = np.array([[0.0, 1.0], [0.0, -1.0]])
+sqrt_model.transition_matrix = np.array([[0.95, 0.05], [0.05, 0.95]])
