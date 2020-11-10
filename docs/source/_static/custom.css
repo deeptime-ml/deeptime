@@ -1,5 +1,42 @@
-h1.logo:nth-child(2) {
+div.sphinxsidebarwrapper p.logo {
+    text-align: center;
+}
+
+.searchlabel {
     display: none;
+}
+
+#searchbox {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.github-wrapper {
+    width: 90%;
+    margin-top: 1rem;
+    margin-left: auto;
+    margin-right: auto;
+    height: 3.2rem;
+    overflow: hidden;
+    background-color: #2c367d;
+    position: relative;
+    text-align: center;
+}
+
+.logo-github {
+    width: 32px;
+    height: 32px;
+    margin: 0.5rem 0.5rem 0.5rem 1rem;
+    background-position: center;
+    background-repeat: no-repeat;
+    float: left;
+}
+
+.github-text {
+    display: block;
+    float: left;
+    height: 100%;
+    font-size: 130%;
 }
 
 div.documentwrapper {
