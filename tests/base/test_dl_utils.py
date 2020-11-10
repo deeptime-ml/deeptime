@@ -4,7 +4,7 @@ from numpy.testing import assert_equal, assert_
 pytest.importorskip("torch")
 import torch
 
-from deeptime.util.pytorch import CheckpointManager, Stats
+from deeptime.util.torch import CheckpointManager, Stats
 
 
 @pytest.mark.parametrize("n_ckpts", [1, 2, 5])

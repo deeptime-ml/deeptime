@@ -52,7 +52,7 @@ over several lag-time selections.
         with symmetric covariances (equivalently: reversible with detailed balance)
       - * Under these assumptions (also supported by the collected data), TICA can yield better and more
           interpretable results than VAMP as it uses them as a prior.
-        * Algorithmically identical to EDMD, which is in practice also used for dynamics
+        * Algorithmically identical to DMD, which is in practice also used for dynamics
           that do not fulfill detailed balance.
         * Singular values of the decomposition are also eigenvalues and relate to relaxation timescales.
         * Coherence becomes metastability.

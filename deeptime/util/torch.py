@@ -1,13 +1,94 @@
 from deeptime.util.platform import module_available
-
 if not module_available("torch"):
     raise ValueError("Importing this module is only possible with a working installation of PyTorch.")
 del module_available
+
+import numpy as np
+
+from torch.utils.data import DataLoader, Dataset
+
+from ..data import TimeLaggedDataset, TimeSeriesDataset
 
 from pathlib import Path
 from typing import List, Dict, Optional
 
 import torch
+import torch.nn as nn
+
+
+def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:
+    r""" Maps data (or list/tuple of data) to torch tensors of a specific dtype and device.
+
+    Parameters
+    ----------
+    data : ndarray or tensor or list thereof
+        The input data.
+    device : Device or None
+        The device.
+    dtype : dtype, default=None
+        The dtype.
+
+    Yields
+    ------
+    mapped_data : list of torch Tensor
+        The mapped data.
+    """
+    with torch.no_grad():
+        if not isinstance(data, (list, tuple)):
+            data = [data]
+        for x in data:
+            if isinstance(x, torch.Tensor):
+                x = x.to(device=device)
+            else:
+                x = torch.from_numpy(np.asarray(x, dtype=dtype)).to(device=device)
+            yield x
+
+
+def create_timelagged_data_loader(data, lagtime, batch_size, shuffle=True, dtype=np.float32):
+    r""" Helper method which yields a data loader from a torch dataset or numpy arrays. """
+    if not isinstance(data, (TimeSeriesDataset, Dataset)):
+        if isinstance(data, np.ndarray):
+            data = data.astype(dtype)
+        data = TimeLaggedDataset.from_trajectory(lagtime=lagtime, data=data)
+    return DataLoader(data, batch_size=batch_size, shuffle=shuffle)
+
+
+class MLP(nn.Module):
+    r""" A multilayer perceptron which can, e.g., be used as a neural network lobe for VAMPNets.
+
+    Parameters
+    ----------
+    units : list of int
+        The units of the fully connected layers.
+    nonlinearity : callable, default=torch.nn.ELU
+        A callable (like a constructor) which yields an instance of a particular activation function.
+    initial_batchnorm : bool, default=True
+        Whether to use batch normalization before the data enters the rest of the network.
+    output_nonlinearity : callable, default=None
+        The output activation/nonlinearity. If the data decomposes into states, it can make sense to use
+        an output activation like softmax which produces a probability distribution over said states.
+        The callable should take no arguments and produce an object of type :code:`torch.nn.Module`.
+    """
+
+    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = True,
+                 output_nonlinearity=None):
+        super().__init__()
+        if len(units) > 1:
+            layers = []
+            if initial_batchnorm:
+                layers.append(nn.BatchNorm1d(units[0]))
+            for fan_in, fan_out in zip(units[:-2], units[1:-1]):
+                layers.append(nn.Linear(fan_in, fan_out))
+                layers.append(nonlinearity())
+            layers.append(nn.Linear(units[-2], units[-1]))
+            if output_nonlinearity is not None:
+                layers.append(output_nonlinearity())
+            self._sequential = nn.Sequential(*layers)
+        else:
+            self._sequential = nn.Identity()
+
+    def forward(self, inputs):
+        return self._sequential(inputs)
 
 
 class CheckpointManager(object):

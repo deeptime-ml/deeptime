@@ -94,7 +94,7 @@ class ClusterModel(Model, Transformer):
         """
         return self._converged
 
-    def transform(self, data, n_jobs=None):
+    def transform(self, data, n_jobs=None) -> np.ndarray:
         r"""
         For each frame in `data`, yields the index of the closest point in :attr:`cluster_centers`.
 
@@ -107,7 +107,7 @@ class ClusterModel(Model, Transformer):
 
         Returns
         -------
-        discrete_trajectory : (T, 1) ndarray, dtype=int
+        discrete_trajectory : (T, 1) ndarray
             A discrete trajectory where each frame denotes the closest cluster center.
         """
         assert data.dtype == self.cluster_centers.dtype

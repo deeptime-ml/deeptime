@@ -2,7 +2,7 @@
 Kernel CCA on the Bickley jet to find coherent sets
 ===================================================
 
-This example shows an application of :class:`kCCA <deeptime.decomposition.KernelCCA>` on the
+This example shows an application of :class:`KernelCCA <deeptime.decomposition.KernelCCA>` on the
 :meth:`bickley jet <deeptime.data.bickley_jet>` dataset. One can cluster in the singular function space
 to find coherent structures.
 """
@@ -13,10 +13,10 @@ import deeptime as dt
 dataset = dt.data.bickley_jet(n_particles=1000, n_jobs=8).endpoints_dataset()
 kernel = dt.kernels.GaussianKernel(.7)
 
-kcca_estimator = dt.decomposition.KernelCCA(kernel, n_eigs=5, epsilon=1e-3)
-kcca_model = kcca_estimator.fit((dataset.data, dataset.data_lagged)).fetch_model()
+estimator = dt.decomposition.KernelCCA(kernel, n_eigs=5, epsilon=1e-3)
+model = estimator.fit((dataset.data, dataset.data_lagged)).fetch_model()
 
-ev_real = np.real(kcca_model.eigenvectors)
+ev_real = np.real(model.eigenvectors)
 kmeans = dt.clustering.Kmeans(n_clusters=7, n_jobs=8).fit(ev_real)
 kmeans = kmeans.fetch_model()
 

@@ -11,6 +11,7 @@ API
 
     double_well_discrete
     ellipsoids
+    sqrt_model
     position_based_fluids
     drunkards_walk
     bickley_jet
@@ -47,4 +48,4 @@ Implementations
 
 from .util import timeshifted_split, TimeSeriesDataset, TimeLaggedDataset
 from .datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk, bickley_jet, \
-    birth_death_chain, tmatrix_metropolis1d
+    birth_death_chain, tmatrix_metropolis1d, sqrt_model

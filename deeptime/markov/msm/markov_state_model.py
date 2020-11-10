@@ -918,6 +918,8 @@ class MarkovStateModel(Model):
         >>> print(trajectory)  # doctest:+ELLIPSIS
         [...]
         """
+        if seed is None:  # the extension code internally treats -1 as default initialization
+            seed = -1
         from .._markov_bindings import simulation as sim
         if start is None:
             start = np.random.choice(self.n_states, p=self.stationary_distribution)
