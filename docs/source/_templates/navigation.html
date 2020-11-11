@@ -1,0 +1,19 @@
+<!-- h3>{{ _('Navigation') }}</h3 -->
+{{ toctree(includehidden=theme_sidebar_includehidden, collapse=theme_sidebar_collapse) }}
+{% if theme_extra_nav_links %}
+    <hr/>
+    <ul>
+        {% for text, uri in theme_extra_nav_links.items() %}
+            <li class="toctree-l1"><a href="{{ uri }}">{{ text }}</a></li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+
+
+<!--
+<p>
+    <iframe src="https://ghbtns.com/github-btn.html?user={{ theme_github_user }}&repo={{ theme_github_repo }}&type={{ theme_github_type }}&count={{ theme_github_count }}&size=large&v=2"
+            allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+-->

@@ -19,14 +19,9 @@
 import logging
 from logging import LogRecord
 
-import sphinx
 import sphinx.util
 import sphinxcontrib.bibtex
-from docutils.parsers.rst import directives
 from sphinx.application import Sphinx
-from sphinx.ext.autosummary import Autosummary, get_documenter
-from sphinx.util.inspect import safe_getattr
-from sphinxcontrib.bibtex import BibliographyTransform
 
 import deeptime
 
@@ -92,6 +87,8 @@ html_additional_pages = {
     'index': 'index.html'
 }
 
+# html_logo = 'logo/deeptime_partial_white.svg'
+
 # prerender tex
 katex_prerender = False
 
@@ -134,13 +131,14 @@ html_theme_options = {
     'sidebar_width': '250px',
     'body_max_width': 'auto',
     'fixed_sidebar': 'true',
-    'github_button': 'true',
+    'github_button': 'false',  # explicitly added in templates
     'github_user': 'deeptime-ml',
     'github_repo': 'deeptime',
     'github_type': 'star',
     'sidebar_collapse': 'true',
-
-    'sidebar_header': '#96929c'
+    'sidebar_header': '#96929c',
+    'logo': 'logo/deeptime_romand_white.svg',
+    'logo_name': 'false',
 }
 html_sidebars = {
     '**': [
@@ -148,7 +146,7 @@ html_sidebars = {
         'navigation.html',
         'relations.html',
         'searchbox.html',
-        'donate.html',
+        'github_button.html'
     ]
 }
 
@@ -163,7 +161,7 @@ nbsphinx_execute_arguments = [
 
 # hack to always update index rst so that static files are copied over during incremental build
 def env_get_outdated(app, env, added, changed, removed):
-    return ['index']
+    return ['index', 'content']
 
 
 def skip(app, what, name, obj, skip, options):
