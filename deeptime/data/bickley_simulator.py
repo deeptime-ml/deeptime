@@ -195,20 +195,20 @@ class BickleyJetEndpointsDataset3DClustered(TimeLaggedDataset):
 def _generate_impl_worker(args):
     i, Xi, L0, U0, c, eps, k = args
 
-    T0 = 0
-    T1 = 40
-    nT = 401  # number of time points, TODO: add as parameter?
+    T0 = 0    # start time
+    T1 = 40   # end time
+    nT = 401  # number of time points
     T = np.linspace(T0, T1, nT)  # time points
 
-    sol = solve_ivp(_rhs, [0, 40], Xi, t_eval=T, args=(L0, U0, c, eps, k))
-    # periodic in x-direction
-    sol.y[0, :] = np.mod(sol.y[0, :], 20)
+    sol = solve_ivp(_rhs, [T0, T1], Xi, t_eval=T, args=(L0, U0, c, eps, k))
+    
+    sol.y[0, :] = np.mod(sol.y[0, :], 20) # the domain is periodic in x-direction
 
     return i, sol.y
 
 
 def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs=None) -> np.ndarray:
-    X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3))
+    X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3)) # uniformly sampled test points in X = [0, 20] x [-3, 3]
     nT = 401
     Z = np.zeros((2, nT, n_particles))
 
@@ -229,11 +229,11 @@ def _sech(x):
 
 def _rhs(t, x, L0, U0, c, eps, k):
     f = np.real(eps[0] * np.exp(-1j * k[0] * c[0] * t) * np.exp(1j * k[0] * x[0])
-                + eps[1] * np.exp(-1j * k[1] * c[1] * t) * np.exp(1j * k[1] * x[0])
-                + eps[2] * np.exp(-1j * k[2] * c[2] * t) * np.exp(1j * k[2] * x[0]))
+              + eps[1] * np.exp(-1j * k[1] * c[1] * t) * np.exp(1j * k[1] * x[0])
+              + eps[2] * np.exp(-1j * k[2] * c[2] * t) * np.exp(1j * k[2] * x[0]))
     df_dx = np.real(eps[0] * np.exp(-1j * k[0] * c[0] * t) * 1j * k[0] * np.exp(1j * k[0] * x[0])
-                    + eps[1] * np.exp(-1j * k[1] * c[1] * t) * 1j * k[1] * np.exp(1j * k[1] * x[0])
-                    + eps[2] * np.exp(-1j * k[2] * c[2] * t) * 1j * k[2] * np.exp(1j * k[2] * x[0]))
+                  + eps[1] * np.exp(-1j * k[1] * c[1] * t) * 1j * k[1] * np.exp(1j * k[1] * x[0])
+                  + eps[2] * np.exp(-1j * k[2] * c[2] * t) * 1j * k[2] * np.exp(1j * k[2] * x[0]))
 
     sech_sq = _sech(x[1] / L0) ** 2
 

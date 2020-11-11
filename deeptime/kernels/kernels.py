@@ -125,12 +125,13 @@ class PolynomialKernel(Kernel):
     ----------
     degree : int
         The degree, must be non-negative.
-    inhomogeneity : float, optional, default=1.
+    inhomogeneity : float, must be non-negative, optional, default=1.
         The inhomogeneity.
     """
 
     def __init__(self, degree: int, inhomogeneity: float = 1.):
         assert degree >= 0
+        assert inhomogeneity >= 0
         self.degree = degree
         self.inhomogeneity = inhomogeneity
 

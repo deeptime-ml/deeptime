@@ -344,7 +344,7 @@ class KernelEDMDModel(Model):
 
 
 class KernelEDMD(Estimator):
-    r""" Estimator implementing kernel extended mode decomposition :cite:`kedmd-kevrekidis2016kernel`
+    r""" Estimator implementing kernel extended mode decomposition :cite:`kedmd-williams2016kernel`
     :cite:`kedmd-klus2018kernel`.
 
     Parameters

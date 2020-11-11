@@ -40,7 +40,7 @@ ax.scatter(*dataset.data.T, c=ev_real[:, 3])
 ax.set_title('4th Eigenfunction')
 
 ax = fig.add_subplot(gs[2, 0])
-ax.scatter(*dataset.data.T, c=ev_real[:, 3])
+ax.scatter(*dataset.data.T, c=ev_real[:, 4])
 ax.set_title('5th Eigenfunction')
 
 ax = fig.add_subplot(gs[2, 1])
