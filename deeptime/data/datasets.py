@@ -21,7 +21,14 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     r""" Example data of a two-state markov chain which can be featurized into two parallel ellipsoids and optionally
     rotated into higher-dimensional space.
 
-    See :class:`Ellipsoids <deeptime.data.ellipsoids_dataset.Ellipsoids>` for more details.
+    In particular, a synthetic trajectory of observations of states :math:`S = \{0, 1\}` can be generated from
+    a :class:`MSM <deeptime.markov.msm.MarkovStateModel>`. The transition probabilities have to be chosen so that
+    the chain is lazy, i.e., it is more likely to stay in one state than to transition to another.
+
+    Optionally, a continuous observation chain can be generated with two parallel ellipsoidal multivariate normal
+    distributions. In this case, the MSM acts as hidden markov state model with a Gaussian output model. For
+    benchmark and demonstration purposes, this observation chain can be rotated into a higher dimensional space
+    and equipped with additional noise.
 
     .. plot::
 
@@ -56,7 +63,11 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     Parameters
     ----------
     laziness : float in half-open interval (0.5, 1.], default=0.97
-        The probability to stay in either state rather than transitioning.
+        The probability to stay in either state rather than transitioning. This yields a transition matrix of
+
+        .. math:: P = \begin{pmatrix} \lambda & 1-\lambda \\ 1-\lambda & \lambda \end{pmatrix},
+
+        where :math:`\lambda` is the selected laziness parameter.
     seed : int, optional, default=None
         Optional random seed for reproducibility.
 
@@ -64,6 +75,12 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     -------
     dataset : deeptime.data.ellipsoids_dataset.Ellipsoids
         an object that contains methods to create discrete and continuous observations
+
+    Examples
+    --------
+    >>> import deeptime as dt
+    >>> feature_trajectory = dt.data.ellipsoids(seed=17).observations(n_steps=500)
+    >>> assert feature_trajectory.shape == (500, 2)
     """
     from deeptime.data.ellipsoids_dataset import Ellipsoids
     return Ellipsoids(laziness=laziness, seed=seed)

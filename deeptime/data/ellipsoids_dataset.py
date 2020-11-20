@@ -9,15 +9,6 @@ class Ellipsoids(object):
     r""" Example data of a two-state markov chain which can be featurized into two parallel ellipsoids and optionally
     rotated into higher-dimensional space.
 
-    In particular, a synthetic trajectory of observations of states :math:`S = \{0, 1\}` can be generated from
-    a :class:`MSM <deeptime.markov.msm.MarkovStateModel>`. The transition probabilities have to be chosen so that
-    the chain is lazy, i.e., it is more likely to stay in one state than to transition to another.
-
-    Optionally, a continuous observation chain can be generated with two parallel ellipsoidal multivariate normal
-    distributions. In this case, the MSM acts as hidden markov state model with a Gaussian output model. For
-    benchmark and demonstration purposes, this observation chain can be rotated into a higher dimensional space
-    and equipped with additional noise.
-
     Parameters
     ----------
     laziness : float in half-open interval (0.5, 1.], default=0.97
@@ -28,20 +19,6 @@ class Ellipsoids(object):
         where :math:`\lambda` is the selected laziness parameter.
     seed : int, optional, default=None
         Optional random seed for reproducibility.
-
-
-    Examples
-    --------
-    .. plot::
-
-       import matplotlib.pyplot as plt
-       import deeptime
-
-       ftraj = deeptime.data.ellipsoids(seed=17).observations(1000)
-       plt.scatter(*(ftraj.T))
-       plt.grid()
-       plt.title(r'Ellipsoids dataset observations with laziness of $0.97$.')
-       plt.show()
     """
 
     state_0_mean = np.array([0., 0.])
