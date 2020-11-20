@@ -249,7 +249,7 @@ class EDMDModel(KoopmanModel):
 
 class EDMD(Estimator):
     r""" Extended dynamic mode decomposition for estimation of the Koopman (or optionally Perron-Frobenius)
-    operator :cite:`edmd-williams2015data`.
+    operator :cite:`edmd-williams2015data` :cite:`klus2016edmd`.
 
     The estimator needs a basis :math:`\Psi : \mathbb{R}^n\to\mathbb{R}^k, \mathbf{x}\mapsto\Psi(\mathbf{x}))`
     and data matrices :math:`X = [x_1,\ldots,x_M]`, :math:`Y=[y_1,\ldots,y_M]` of time-lagged pairs of data.
@@ -336,16 +336,20 @@ class KernelEDMDModel(Model):
     KernelEDMD
     """
 
-    def __init__(self, eigenvalues: np.ndarray, eigenfunction: np.ndarray, kernel: Kernel):
+    def __init__(self, data: np.ndarray, eigenvalues: np.ndarray, eigenvectors: np.ndarray, kernel: Kernel):
         super().__init__()
+        self.data = data
         self.eigenvalues = eigenvalues
-        self.eigenfunction = eigenfunction
+        self.eigenvectors = eigenvectors
         self.kernel = kernel
-
+    
+    def transform(self, x):
+        gram_1 = self.kernel.apply(x, self.data)
+        return gram_1 @ self.eigenvectors
 
 class KernelEDMD(Estimator):
     r""" Estimator implementing kernel extended mode decomposition :cite:`kedmd-williams2016kernel`
-    :cite:`kedmd-klus2018kernel`.
+    :cite:`kedmd-klus2019eigendecomposition` :cite:`kedmd-klus2018kernel`.
 
     Parameters
     ----------
@@ -395,19 +399,17 @@ class KernelEDMD(Estimator):
         self : KernelEDMD
             Reference to self.
         """
-        gram_0 = self.kernel.gram(data[0])
-        gram_1 = self.kernel.apply(*data)
+        gram_0 = self.kernel.gram(data[0]) # G_XX
+        gram_1 = self.kernel.apply(*data) # G_XY
 
         if self.epsilon > 0:
             reg = self.epsilon * np.eye(gram_0.shape[0])
         else:
             reg = 0
-        A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1
+        A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1.T # Koopman
         eigenvalues, eigenvectors = eigs(A, n_eigs=self.n_eigs)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
-        # perron_frobenius_operator = eigenvectors
-        koopman_eval = gram_0 @ eigenvectors
-
-        self._model = KernelEDMDModel(eigenvalues, koopman_eval, self.kernel)
+        
+        self._model = KernelEDMDModel(data[0], eigenvalues, eigenvectors, self.kernel)
 
         return self

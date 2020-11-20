@@ -22,6 +22,7 @@ def capi_includes():
         ('src', 'include'),  # common headers
         ('clustering', 'include'),  # clustering headers
         ('markov', '_bindings', 'include'),  # markov module headers
-        ('markov', 'hmm', '_bindings', 'include')  # hmm headers
+        ('markov', 'hmm', '_bindings', 'include'),  # hmm headers
+        ('data', 'include')  # data headers
     ]]
     return includes
