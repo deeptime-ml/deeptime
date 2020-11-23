@@ -460,14 +460,14 @@ sqrt_model.states = np.array([[0.0, 1.0], [0.0, -1.0]])
 sqrt_model.transition_matrix = np.array([[0.95, 0.05], [0.05, 0.95]])
 
 
-def quadruple_well(x0: np.ndarray, n_evaluations: int, h: float = 1e-3, n_steps: int = 10000,
+def quadruple_well(h: float = 1e-3, n_steps: int = 10000,
                    seed: Optional[int] = None):
     r""" This dataset generates trajectories of a two-dimensional particle living in a quadruple-well potential
     landscape. It is subject to the stochastic differential equation
 
     .. math::
 
-        \mathrm{d}X_t = =\nabla V(X_t) \mathrm{d}t + \sqrt{2\beta^{-1}}\mathrm{d}W_t
+        \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sqrt{2\beta^{-1}}\mathrm{d}W_t
 
     with :math:`W_t` being a Wiener process and the potential :math:`V` being given by
 
@@ -510,10 +510,6 @@ def quadruple_well(x0: np.ndarray, n_evaluations: int, h: float = 1e-3, n_steps:
 
     Parameters
     ----------
-    x0 : (2,) ndarray
-        The initial condition.
-    n_evaluations : int
-        Number of evaluation points. Each evaluation is performed after :code:`n_steps` integration steps.
     h : float, default = 1e-3
         Integration step size. The implementation uses an Euler-Maruyama integrator.
     n_steps : int, default = 10000
@@ -523,10 +519,33 @@ def quadruple_well(x0: np.ndarray, n_evaluations: int, h: float = 1e-3, n_steps:
 
     Returns
     -------
-    trajectory : (n_evaluations, 2) ndarray
-        The trajectory.
+    model : QuadrupleWell2D
+        The model.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.quadruple_well(h=1e-3, n_steps=100, seed=42)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[0., 0.]]), 1000)  # simulate trajectory
+    >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(-2, 2, (100, 2))  # 100 test point in [-2, 2] x [-2, 2]
+    >>> evaluations = model(test_points)
+    >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import QuadrupleWell2D as impl
     if seed is None:
         seed = -1  # internally this means that seed should be randomly generated
-    return impl(seed, h, n_steps).trajectory(x0.reshape(2, 1), n_evaluations).T
+    return impl(seed, h, n_steps)
+    # return model.trajectory(x0.reshape(2, 1), n_evaluations).T

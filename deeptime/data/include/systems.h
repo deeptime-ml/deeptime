@@ -47,7 +47,6 @@ public:
         }
         const auto nTestPoints = x.shape(0); // number of snapshots
 
-        // auto *const yPtr = y.template mutable_data();
         auto yBuf = y.template mutable_unchecked<2>();
 
         // for all test points
