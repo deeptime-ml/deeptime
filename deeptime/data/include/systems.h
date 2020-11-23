@@ -181,11 +181,11 @@ public:
     explicit ABCFlow(T h = 1e-3, size_t nSteps = 1000) : _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) const {
-        auto y = x;
-        y[0] = a_ * std::sin(x[2]) + c_ * std::cos(x[1]);
-        y[1] = b_ * std::sin(x[0]) + a_ * std::cos(x[2]);
-        y[2] = c_ * std::sin(x[1]) + b_ * std::cos(x[0]);
-        return y;
+        return {{
+            a_ * std::sin(x[2]) + c_ * std::cos(x[1]),
+            b_ * std::sin(x[0]) + a_ * std::cos(x[2]),
+            c_ * std::sin(x[1]) + b_ * std::cos(x[0])
+        }};
     }
 
     T h() const { return _h; }
@@ -204,7 +204,7 @@ private:
 //------------------------------------------------------------------------------
 // Ornstein-Uhlenbeck process
 //------------------------------------------------------------------------------
-template<typename T, typename State = Vector<T, 2>>
+template<typename T, typename State = Vector<T, 1>>
 class OrnsteinUhlenbeck : public SDE<OrnsteinUhlenbeck, T, State> {
     using super = SDE<OrnsteinUhlenbeck, T, State>;
 public:
@@ -215,12 +215,10 @@ public:
             : super(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) {
-        auto y = x;
-        y[0] = -alpha * x[0];
-        return y;
+        return {{ -alpha * x[0] }};
     }
 
-    static constexpr Matrix<T, 2> sigma{{{{2 / beta, 0}}, {{0, 0}}}};
+    static constexpr Matrix<T, 1> sigma{{ {{2 / beta}} }};
 
     T h() const { return _h; }
 
@@ -242,10 +240,10 @@ public:
             : super(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) {
-        State out;
-        out[0] = -1 * (-24.82002100 + 82.85029600 * x[0] - 82.6031550 * x[0] * x[0]
-                       + 34.125104 * std::pow(x[0], 3) - 6.20030 * std::pow(x[0], 4) + 0.4104 * std::pow(x[0], 5));
-        return out;
+        return {{
+            -1 * (-24.82002100 + 82.85029600 * x[0] - 82.6031550 * x[0] * x[0]
+                       + 34.125104 * std::pow(x[0], 3) - 6.20030 * std::pow(x[0], 4) + 0.4104 * std::pow(x[0], 5))
+        }};
     }
 
     static constexpr Matrix<T, 1> sigma{{{{0.75}}}};

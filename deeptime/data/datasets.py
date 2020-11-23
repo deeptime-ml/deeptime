@@ -1,4 +1,4 @@
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 
 import numpy as np
 
@@ -458,3 +458,75 @@ def sqrt_model(n_samples, seed=None):
 sqrt_model.cov = np.array([[30.0, 0.0], [0.0, 0.015]])
 sqrt_model.states = np.array([[0.0, 1.0], [0.0, -1.0]])
 sqrt_model.transition_matrix = np.array([[0.95, 0.05], [0.05, 0.95]])
+
+
+def quadruple_well(x0: np.ndarray, n_evaluations: int, h: float = 1e-3, n_steps: int = 10000,
+                   seed: Optional[int] = None):
+    r""" This dataset generates trajectories of a two-dimensional particle living in a quadruple-well potential
+    landscape. It is subject to the stochastic differential equation
+
+    .. math::
+
+        \mathrm{d}X_t = =\nabla V(X_t) \mathrm{d}t + \sqrt{2\beta^{-1}}\mathrm{d}W_t
+
+    with :math:`W_t` being a Wiener process and the potential :math:`V` being given by
+
+    .. math::
+
+        V(x) = (x_1 - 1)^2 + (x_2 - 1)^2.
+
+    The inverse temperature is set to be :math:`\beta = 4`.
+
+    .. plot::
+
+        import deeptime as dt
+        import scipy
+        from matplotlib.collections import LineCollection
+
+        traj = dt.data.quadruple_well(np.array([1, -1]), 100, n_steps=1000, seed=46)
+
+        xy = np.arange(-2, 2, 0.1)
+        XX, YY = np.meshgrid(xy, xy)
+        V = (XX**2 - 1)**2 + (YY**2 - 1)**2
+
+        fig, ax = plt.subplots(1, 1)
+        ax.set_title("Example of a trajectory in the potential landscape")
+
+        cb = ax.contourf(xy, xy, V, levels=np.linspace(0.0, 3.0, 20), cmap='coolwarm')
+
+        x = np.r_[traj[:, 0]]
+        y = np.r_[traj[:, 1]]
+        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
+        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
+
+        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        coll = LineCollection(segments, cmap='bwr')
+        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
+        coll.set_linewidth(1)
+        ax.add_collection(coll)
+
+        fig.colorbar(cb)
+
+    Parameters
+    ----------
+    x0 : (2,) ndarray
+        The initial condition.
+    n_evaluations : int
+        Number of evaluation points. Each evaluation is performed after :code:`n_steps` integration steps.
+    h : float, default = 1e-3
+        Integration step size. The implementation uses an Euler-Maruyama integrator.
+    n_steps : int, default = 10000
+        Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=10`.
+    seed : int, default = None
+        The seed to use for the Wiener process. If negative, the random generator is initialized arbitrarily.
+
+    Returns
+    -------
+    trajectory : (n_evaluations, 2) ndarray
+        The trajectory.
+    """
+    from ._data_bindings import QuadrupleWell2D as impl
+    if seed is None:
+        seed = -1  # internally this means that seed should be randomly generated
+    return impl(seed, h, n_steps).trajectory(x0.reshape(2, 1), n_evaluations).T
