@@ -479,11 +479,13 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000,
 
     .. plot::
 
+        import numpy as np
         import deeptime as dt
         import scipy
+        import matplotlib.pyplot as plt
         from matplotlib.collections import LineCollection
 
-        traj = dt.data.quadruple_well(np.array([1, -1]), 100, n_steps=1000, seed=46)
+        traj = dt.data.quadruple_well(n_steps=1000, seed=46).trajectory(np.array([[1, -1]]), 100)
 
         xy = np.arange(-2, 2, 0.1)
         XX, YY = np.meshgrid(xy, xy)
