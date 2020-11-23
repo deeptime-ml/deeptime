@@ -317,10 +317,10 @@ private:
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 2>>
 class QuadrupleWellUnsymmetric2D : public SDE<QuadrupleWellUnsymmetric2D, T, State> {
-    using super = SDE<QuadrupleWellUnsymmetric2D, T, State>;
 public:
+    using inherited = SDE<QuadrupleWellUnsymmetric2D, T, State>;
     explicit QuadrupleWellUnsymmetric2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
-            : super(seed), _h(h), _nSteps(nSteps) {}
+            : inherited(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) {
         return {{
