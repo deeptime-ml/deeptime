@@ -59,11 +59,11 @@ PYBIND11_MODULE(_data_bindings, m) {
         .def_property_readonly("domain_size", &PBF::gridSize);
 
     // more examples can be found at: https://github.com/sklus/d3s/tree/master/cpp
-    exportSystem<ABCFlow<double>>(m, "ABC");
-    exportSystem<OrnsteinUhlenbeck<double>, std::int64_t>(m, "ABC");
-    exportSystem<TripleWell1D<double>, std::int64_t>(m, "TripleWell1D");
-    exportSystem<DoubleWell2D<double>, std::int64_t>(m, "DoubleWell2D");
-    exportSystem<QuadrupleWell2D<double>, std::int64_t>(m, "QuadrupleWell2D");
-    exportSystem<TripleWell2D<double>, std::int64_t>(m, "TripleWell2D");
-    exportSystem<QuadrupleWellUnsymmetric2D<double>, std::int64_t>(m, "QuadrupleWellUnsymmetric2D");
+    exportSystem<ABCFlow<double>, double, std::size_t>(m, "ABCFlow");
+    exportSystem<OrnsteinUhlenbeck<double>, std::int64_t, double, std::size_t>(m, "OrnsteinUhlenbeck");
+    exportSystem<TripleWell1D<double>, std::int64_t, double, std::size_t>(m, "TripleWell1D");
+    exportSystem<DoubleWell2D<double>, std::int64_t, double, std::size_t>(m, "DoubleWell2D");
+    exportSystem<QuadrupleWell2D<double>, std::int64_t, double, std::size_t>(m, "QuadrupleWell2D");
+    exportSystem<TripleWell2D<double>, std::int64_t, double, std::size_t>(m, "TripleWell2D");
+    exportSystem<QuadrupleWellUnsymmetric2D<double>, std::int64_t, double, std::size_t>(m, "QuadrupleWellUnsymmetric2D");
 }

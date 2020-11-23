@@ -10,9 +10,4 @@ def configuration(parent_package='', top_path=None):
                          include_dirs=['include'],
                          language='c++',
                          )
-    config.add_extension('_systems_bindings',
-                         sources=['src/systems.cpp'],
-                         include_dirs=['include'],
-                         language='c++',
-                         )
     return config

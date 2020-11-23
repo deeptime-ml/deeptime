@@ -51,16 +51,16 @@ public:
 
         // for all test points
         State testPoint;
-        for (size_t i = 0; i < nTestPoints; ++i) {
+        for (py::ssize_t i = 0; i < nTestPoints; ++i) {
 
             // copy new test point into x vector
-            for (size_t k = 0; k < DIM; ++k) {
+            for (std::size_t k = 0; k < DIM; ++k) {
                 testPoint[k] = xPtr[k * nTestPoints + i];
             }
 
             auto yi = eval(testPoint); // evaluate dynamical system
 
-            for (size_t k = 0; k < DIM; ++k) // copy result into y vector
+            for (std::size_t k = 0; k < DIM; ++k) // copy result into y vector
                 yPtr[k * nTestPoints + i] = yi[k];
         }
 
