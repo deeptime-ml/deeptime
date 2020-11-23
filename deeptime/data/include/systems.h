@@ -32,12 +32,12 @@ public:
 
     virtual ~DynamicalSystemInterface() = default;
 
-    np_array_nfc<dtype> operator()(const np_array_nfc<dtype> &x) {
-        np_array_nfc<dtype> y({x.shape(0), x.shape(1)});
+    np_array<dtype> operator()(const np_array<dtype> &x) {
+        np_array<dtype> y({x.shape(0), x.shape(1)});
 
-        const auto *const xPtr = x.template data();
+        auto xBuf = x.template unchecked<2>();
         {
-            const auto d = x.shape(0); // dimension of the state space
+            const auto d = x.shape(1); // dimension of the state space
             if (d != DIM) {
                 std::stringstream errmsg;
                 errmsg << "The dynamical system is " << DIM << "-dimensional, but the provided test points had "
@@ -45,9 +45,10 @@ public:
                 throw std::invalid_argument(errmsg.str());
             }
         }
-        const auto nTestPoints = x.shape(1); // number of snapshots
+        const auto nTestPoints = x.shape(0); // number of snapshots
 
-        auto *const yPtr = y.template mutable_data();
+        // auto *const yPtr = y.template mutable_data();
+        auto yBuf = y.template mutable_unchecked<2>();
 
         // for all test points
         State testPoint;
@@ -55,49 +56,49 @@ public:
 
             // copy new test point into x vector
             for (std::size_t k = 0; k < DIM; ++k) {
-                testPoint[k] = xPtr[k * nTestPoints + i];
+                testPoint[k] = xBuf(i, k);
             }
 
             auto yi = eval(testPoint); // evaluate dynamical system
 
-            for (std::size_t k = 0; k < DIM; ++k) // copy result into y vector
-                yPtr[k * nTestPoints + i] = yi[k];
+            for (std::size_t k = 0; k < DIM; ++k) {
+                // copy result into y vector
+                yBuf(i, k) = yi[k];
+            }
         }
 
         return y;
     }
 
-    np_array_nfc<dtype> trajectory(const np_array_nfc<dtype> &x, std::size_t length) {
-
-        np_array_nfc<dtype> y({DIM, length});
-
+    np_array<dtype> trajectory(const np_array<dtype> &x, std::size_t length) {
+        np_array<dtype> y({length, DIM});
         {
-            const auto d = x.shape(0);
+            const auto d = x.shape(1);
             if (d != DIM) {
                 std::stringstream errmsg;
                 errmsg << "The dynamical system is " << DIM << "-dimensional, but the provided test points had "
                        << d << " dimensions.";
                 throw std::invalid_argument(errmsg.str());
             }
-            const auto m = x.shape(1);
+            const auto m = x.shape(0);
             if (m != 1) {
                 throw std::invalid_argument("Currently only supports one test point."); // todo
             }
         }
 
-        const auto *const xPtr = x.template data();
-        auto *const yPtr = y.template mutable_data();
+        auto xBuf = x.template unchecked<2>();
+        auto yBuf = y.template mutable_unchecked<2>();
 
         for (size_t k = 0; k < DIM; ++k) {
             // copy initial condition
-            yPtr[k * length] = xPtr[k];
+            yBuf(0, k) = xBuf(0, k);
         }
 
         State testPoint;
         for (size_t i = 1; i < length; ++i) {
             for (size_t k = 0; k < DIM; ++k) {
                 // copy new test point into x vector
-                testPoint[k] = yPtr[k * length + (i - 1)];
+                testPoint[k] = yBuf(i-1, k);  // yPtr[k * length + (i - 1)]
             }
 
             // evaluate dynamical system
@@ -105,7 +106,7 @@ public:
 
             // copy result into y vector
             for (size_t k = 0; k < DIM; ++k) {
-                yPtr[k * length + i] = yi[k];
+                yBuf(i, k) = yi[k];
             }
         }
         return y;
@@ -300,7 +301,7 @@ public:
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -4 * x[1] * x[1] * x[1] + 4 * x[1]}};
     }
 
-    static constexpr T s = std::sqrt(.5);
+    static constexpr T s = 0.70710678118; // sqrt(.5);
     static constexpr Matrix<T, 2> sigma{{{{s, 0.0}}, {{0.0, s}}}};
 
     T h() const { return _h; }
