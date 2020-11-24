@@ -81,7 +81,7 @@ public:
             }
             const auto m = x.shape(0);
             if (m != 1) {
-                throw std::invalid_argument("Currently only supports one test point."); // todo
+                throw std::invalid_argument("Currently only supports one test point.");
             }
         }
 
@@ -154,8 +154,6 @@ class SDE : public DynamicalSystemInterface<Derived, dtype, State> {
 public:
     static constexpr std::size_t DIM = std::tuple_size<State>::value;
 
-    explicit SDE(std::int64_t seed) : integrator(seed) {}
-
     State _eval(const State &x) {
         auto h = static_cast<Subclass *>(this)->h();
         auto nSteps = static_cast<Subclass *>(this)->nSteps();
@@ -163,13 +161,16 @@ public:
     }
 
     State _eval(const State &x, double h, std::size_t nSteps) {
-        return integrator.eval([this](const State &_x) {
+        return _integrator().eval([this](const State &_x) {
             return static_cast<Subclass *>(this)->f(_x);
         }, Subclass::sigma, h, nSteps, x);
     }
 
 private:
-    deeptime::EulerMaruyama<State, DIM> integrator;
+
+    auto &_integrator() {
+        return static_cast<Subclass *>(this)->integrator;
+    }
 };
 
 //------------------------------------------------------------------------------
@@ -212,9 +213,9 @@ public:
     static constexpr T beta = 4.;
 
     explicit OrnsteinUhlenbeck(std::int64_t seed, double h = 1e-3, size_t nSteps = 500)
-            : super(seed), _h(h), _nSteps(nSteps) {}
+            : integrator(seed), _h(h), _nSteps(nSteps) {}
 
-    State f(const State &x) {
+    State f(const State &x) const {
         return {{ -alpha * x[0] }};
     }
 
@@ -224,6 +225,7 @@ public:
 
     std::size_t nSteps() const { return _nSteps; }
 
+    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 private:
     double _h;
     std::size_t _nSteps;
@@ -237,9 +239,9 @@ class TripleWell1D : public SDE<TripleWell1D, T, State> {
     using super = SDE<TripleWell1D, T, State>;
 public:
     explicit TripleWell1D(std::int64_t seed, double h = 1e-3, size_t nSteps = 500)
-            : super(seed), _h(h), _nSteps(nSteps) {}
+            : integrator(seed), _h(h), _nSteps(nSteps) {}
 
-    State f(const State &x) {
+    State f(const State &x) const {
         return {{
             -1 * (-24.82002100 + 82.85029600 * x[0] - 82.6031550 * x[0] * x[0]
                        + 34.125104 * std::pow(x[0], 3) - 6.20030 * std::pow(x[0], 4) + 0.4104 * std::pow(x[0], 5))
@@ -252,6 +254,7 @@ public:
 
     std::size_t nSteps() const { return _nSteps; }
 
+    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 private:
     double _h;
     std::size_t _nSteps;
@@ -267,9 +270,9 @@ class DoubleWell2D : public SDE<DoubleWell2D, T, State> {
 public:
 
     explicit DoubleWell2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
-            : super(seed), _h(h), _nSteps(nSteps) {}
+            : integrator(seed), _h(h), _nSteps(nSteps) {}
 
-    State f(const State &x) {
+    State f(const State &x) const {
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -2 * x[1]}};
     }
 
@@ -278,6 +281,8 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
+
+    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 
 private:
     double _h;
@@ -293,9 +298,9 @@ class QuadrupleWell2D : public SDE<QuadrupleWell2D, T, State> {
 public:
 
     explicit QuadrupleWell2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
-            : super(seed), _h(h), _nSteps(nSteps) {}
+            : integrator(seed), _h(h), _nSteps(nSteps) {}
 
-    State f(const State &x) {
+    State f(const State &x) const {
         // Quadruple well potential: V = (x(1, :).^2 - 1).^2 + (x(2, :).^2 - 1).^2
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -4 * x[1] * x[1] * x[1] + 4 * x[1]}};
     }
@@ -306,6 +311,8 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
+
+    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 
 private:
     double _h;
@@ -318,11 +325,11 @@ private:
 template<typename T, typename State = Vector<T, 2>>
 class QuadrupleWellUnsymmetric2D : public SDE<QuadrupleWellUnsymmetric2D, T, State> {
 public:
-    using inherited = SDE<QuadrupleWellUnsymmetric2D, T, State>;
+    using super = SDE<QuadrupleWellUnsymmetric2D, T, State>;
     explicit QuadrupleWellUnsymmetric2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
-            : inherited(seed), _h(h), _nSteps(nSteps) {}
+            : integrator(seed), _h(h), _nSteps(nSteps) {}
 
-    State f(const State &x) {
+    State f(const State &x) const {
         return {{
                         -4 * x[0] * x[0] * x[0] + (3.0 / 16.0) * x[0] * x[0] + 4 * x[0] - 3.0 / 16.0,
                         -4 * x[1] * x[1] * x[1] + (3.0 / 8.0) * x[1] * x[1] + 4 * x[1] - 3.0 / 8.0
@@ -334,6 +341,8 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
+
+    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 
 private:
     double _h;
@@ -348,19 +357,19 @@ class TripleWell2D : public SDE<TripleWell2D, T, State> {
     using super = SDE<TripleWell2D, T, State>;
 public:
     explicit TripleWell2D(std::int64_t seed, double h = 1e-5, size_t nSteps = 10000)
-            : super(seed), _h(h), _nSteps(nSteps) {}
+            : integrator(seed), _h(h), _nSteps(nSteps) {}
 
-    State f(const State &x) {
+    State f(const State &x) const {
         return {{
-                        -(3 * exp(-x[0] * x[0] - (x[1] - 1.0 / 3) * (x[1] - 1.0 / 3)) * (-2 * x[0])
-                          - 3 * exp(-x[0] * x[0] - (x[1] - 5.0 / 3) * (x[1] - 5.0 / 3)) * (-2 * x[0])
-                          - 5 * exp(-(x[0] - 1.0) * (x[0] - 1.0) - x[1] * x[1]) * (-2 * (x[0] - 1.0))
-                          - 5 * exp(-(x[0] + 1.0) * (x[0] + 1.0) - x[1] * x[1]) * (-2 * (x[0] + 1.0))
+                        -(3 * std::exp(-x[0] * x[0] - (x[1] - 1.0 / 3) * (x[1] - 1.0 / 3)) * (-2 * x[0])
+                          - 3 * std::exp(-x[0] * x[0] - (x[1] - 5.0 / 3) * (x[1] - 5.0 / 3)) * (-2 * x[0])
+                          - 5 * std::exp(-(x[0] - 1.0) * (x[0] - 1.0) - x[1] * x[1]) * (-2 * (x[0] - 1.0))
+                          - 5 * std::exp(-(x[0] + 1.0) * (x[0] + 1.0) - x[1] * x[1]) * (-2 * (x[0] + 1.0))
                           + 8.0 / 10 * std::pow(x[0], 3)),
-                        -(3 * exp(-x[0] * x[0] - (x[1] - 1.0 / 3) * (x[1] - 1.0 / 3)) * (-2 * (x[1] - 1.0 / 3))
-                          - 3 * exp(-x[0] * x[0] - (x[1] - 5.0 / 3) * (x[1] - 5.0 / 3)) * (-2 * (x[1] - 5.0 / 3))
-                          - 5 * exp(-(x[0] - 1.0) * (x[0] - 1.0) - x[1] * x[1]) * (-2 * x[1])
-                          - 5 * exp(-(x[0] + 1.0) * (x[0] + 1.0) - x[1] * x[1]) * (-2 * x[1])
+                        -(3 * std::exp(-x[0] * x[0] - (x[1] - 1.0 / 3) * (x[1] - 1.0 / 3)) * (-2 * (x[1] - 1.0 / 3))
+                          - 3 * std::exp(-x[0] * x[0] - (x[1] - 5.0 / 3) * (x[1] - 5.0 / 3)) * (-2 * (x[1] - 5.0 / 3))
+                          - 5 * std::exp(-(x[0] - 1.0) * (x[0] - 1.0) - x[1] * x[1]) * (-2 * x[1])
+                          - 5 * std::exp(-(x[0] + 1.0) * (x[0] + 1.0) - x[1] * x[1]) * (-2 * x[1])
                           + 8.0 / 10 * std::pow(x[1] - 1.0 / 3, 3))
                 }};
     }
@@ -370,6 +379,8 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
+
+    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 
 private:
     double _h;
