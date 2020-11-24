@@ -1,6 +1,7 @@
 // author: clonker, sklus
 
-#include <pybind11/pybind11.h>
+#include <functional>
+#include <utility>
 
 #include "common.h"
 #include "pbf.h"
@@ -9,6 +10,28 @@
 using dtype = float;
 static constexpr int DIM = 2;
 using PBF = deeptime::pbf::PBF<DIM, dtype>;
+
+template<typename T, typename State>
+class PyODE : public ODE<::PyODE, T, State> {
+public:
+    explicit PyODE(std::function<State(State)> rhs, T h = 1e-3, std::size_t nSteps = 1000)
+            : rhs(std::move(rhs)), _h(h), _nSteps(nSteps) {}
+
+    State f(const State &x) {
+        return rhs(x);
+    }
+
+    T h() const { return _h; }
+
+    std::size_t nSteps() const { return _nSteps; }
+
+private:
+    std::function<State(State)> rhs;
+
+    T _h;
+    std::size_t _nSteps;
+};
+
 
 PBF makePbf(np_array<dtype> pos, np_array<dtype> gridSize, dtype interactionRadius, int nJobs) {
     if(pos.ndim() != 2) {
@@ -34,6 +57,14 @@ void exportSystem(py::module& m, const std::string &name) {
             .def_property_readonly("dimension", &System::dim)
             .def("__call__", &System::operator())
             .def("trajectory", &System::trajectory);
+}
+
+template<std::size_t DIM>
+void exportPyODE(py::module& m, const std::string& name) {
+    using State = Vector<double, DIM>;
+    using PyODE1D = PyODE<double, State>;
+    using Rhs1D = std::function<State(State)>;
+    exportSystem<PyODE1D, Rhs1D, double, std::size_t>(m, name);
 }
 
 PYBIND11_MODULE(_data_bindings, m) {
@@ -66,4 +97,10 @@ PYBIND11_MODULE(_data_bindings, m) {
     exportSystem<QuadrupleWell2D<double>, std::int64_t, double, std::size_t>(m, "QuadrupleWell2D");
     exportSystem<TripleWell2D<double>, std::int64_t, double, std::size_t>(m, "TripleWell2D");
     exportSystem<QuadrupleWellUnsymmetric2D<double>, std::int64_t, double, std::size_t>(m, "QuadrupleWellUnsymmetric2D");
+
+    exportPyODE<1>(m, "PyODE1D");
+    exportPyODE<2>(m, "PyODE2D");
+    exportPyODE<3>(m, "PyODE3D");
+    exportPyODE<4>(m, "PyODE4D");
+    exportPyODE<5>(m, "PyODE5D");
 }

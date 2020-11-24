@@ -21,6 +21,13 @@ class ODE;
 template<template<typename, typename> class Derived, typename State, typename dtype>
 class SDE;
 
+template<typename State, std::size_t DIM, typename T>
+struct EulerMaruyamaIntegrator {
+    explicit EulerMaruyamaIntegrator(std::int64_t seed) : integrator(seed) {}
+
+    deeptime::EulerMaruyama<State, DIM, T> integrator;
+};
+
 
 //------------------------------------------------------------------------------
 // Virtual base class for all dynamical systems
@@ -204,14 +211,13 @@ private:
 // Ornstein-Uhlenbeck process
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 1>>
-class OrnsteinUhlenbeck : public SDE<OrnsteinUhlenbeck, T, State> {
-    using super = SDE<::OrnsteinUhlenbeck, T, State>;
+class OrnsteinUhlenbeck : public SDE<OrnsteinUhlenbeck, T, State>, public EulerMaruyamaIntegrator<State, 1, T> {
 public:
     static constexpr T alpha = 1.;
     static constexpr T beta = 4.;
 
     explicit OrnsteinUhlenbeck(std::int64_t seed, double h = 1e-3, size_t nSteps = 500)
-            : integrator(seed), _h(h), _nSteps(nSteps) {}
+            : EulerMaruyamaIntegrator<State, 1, T>(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) const {
         return {{ -alpha * x[0] }};
@@ -222,8 +228,6 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
-
-    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 private:
     double _h;
     std::size_t _nSteps;
@@ -233,11 +237,10 @@ private:
 // Simple triple-well in one dimension, use interval [0, 6]
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 1>>
-class TripleWell1D : public SDE<TripleWell1D, T, State> {
-    using super = SDE<::TripleWell1D, T, State>;
+class TripleWell1D : public SDE<TripleWell1D, T, State>, public EulerMaruyamaIntegrator<State, 1, T> {
 public:
     explicit TripleWell1D(std::int64_t seed, double h = 1e-3, size_t nSteps = 500)
-            : integrator(seed), _h(h), _nSteps(nSteps) {}
+            : EulerMaruyamaIntegrator<State, 1, T>(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) const {
         return {{
@@ -251,8 +254,6 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
-
-    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 private:
     double _h;
     std::size_t _nSteps;
@@ -263,12 +264,10 @@ private:
 // Double well problem
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 2>>
-class DoubleWell2D : public SDE<DoubleWell2D, T, State> {
-    using super = SDE<::DoubleWell2D, T, State>;
+class DoubleWell2D : public SDE<DoubleWell2D, T, State>, public EulerMaruyamaIntegrator<State, 2, T> {
 public:
-
     explicit DoubleWell2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
-            : integrator(seed), _h(h), _nSteps(nSteps) {}
+            : EulerMaruyamaIntegrator<State, 2, T>(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) const {
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -2 * x[1]}};
@@ -279,9 +278,6 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
-
-    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
-
 private:
     double _h;
     std::size_t _nSteps;
@@ -291,12 +287,10 @@ private:
 // Quadruple well problem
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 2>>
-class QuadrupleWell2D : public SDE<QuadrupleWell2D, T, State> {
-    using super = SDE<::QuadrupleWell2D, T, State>;
+class QuadrupleWell2D : public SDE<QuadrupleWell2D, T, State>, public EulerMaruyamaIntegrator<State, 2, T> {
 public:
-
     explicit QuadrupleWell2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
-            : integrator(seed), _h(h), _nSteps(nSteps) {}
+            : EulerMaruyamaIntegrator<State, 2, T>(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) const {
         // Quadruple well potential: V = (x(1, :).^2 - 1).^2 + (x(2, :).^2 - 1).^2
@@ -309,9 +303,6 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
-
-    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
-
 private:
     double _h;
     std::size_t _nSteps;
@@ -321,11 +312,10 @@ private:
 // Unsymmetric quadruple well problem
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 2>>
-class QuadrupleWellUnsymmetric2D : public SDE<QuadrupleWellUnsymmetric2D, T, State> {
-    using super = SDE<::QuadrupleWellUnsymmetric2D, T, State>;
+class QuadrupleWellUnsymmetric2D : public SDE<QuadrupleWellUnsymmetric2D, T, State>, public EulerMaruyamaIntegrator<State, 2, T> {
 public:
     explicit QuadrupleWellUnsymmetric2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
-            : integrator(seed), _h(h), _nSteps(nSteps) {}
+            : EulerMaruyamaIntegrator<State, 2, T>(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) const {
         return {{
@@ -340,8 +330,6 @@ public:
 
     std::size_t nSteps() const { return _nSteps; }
 
-    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
-
 private:
     double _h;
     std::size_t _nSteps;
@@ -351,11 +339,10 @@ private:
 // Triple well problem
 //------------------------------------------------------------------------------
 template<typename T, typename State=Vector<T, 2>>
-class TripleWell2D : public SDE<TripleWell2D, T, State> {
-    using super = SDE<::TripleWell2D, T, State>;
+class TripleWell2D : public SDE<TripleWell2D, T, State>, public EulerMaruyamaIntegrator<State, 2, T> {
 public:
     explicit TripleWell2D(std::int64_t seed, double h = 1e-5, size_t nSteps = 10000)
-            : integrator(seed), _h(h), _nSteps(nSteps) {}
+            : EulerMaruyamaIntegrator<State, 2, T>(seed), _h(h), _nSteps(nSteps) {}
 
     State f(const State &x) const {
         return {{
@@ -377,8 +364,6 @@ public:
     T h() const { return _h; }
 
     std::size_t nSteps() const { return _nSteps; }
-
-    deeptime::EulerMaruyama<State, super::DIM, T> integrator;
 
 private:
     double _h;
