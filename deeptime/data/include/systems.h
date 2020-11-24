@@ -28,6 +28,19 @@ struct EulerMaruyamaIntegrator {
     deeptime::EulerMaruyama<State, DIM, T> integrator;
 };
 
+namespace detail {
+template <typename T>
+std::is_member_pointer<decltype(&T::sigma)> is_member_sigma(int);
+
+template <typename T>
+decltype(T::sigma, std::true_type{}) is_member_sigma(long);
+
+template <typename T>
+std::false_type is_member_sigma(...);
+
+template <typename T>
+using IsMemberSigma = decltype(is_member_sigma<T>(0));
+}
 
 //------------------------------------------------------------------------------
 // Virtual base class for all dynamical systems
@@ -166,9 +179,16 @@ public:
     }
 
     State _eval(const State &x, double h, std::size_t nSteps) {
-        return _integrator().eval([this](const State &_x) {
-            return static_cast<Subclass *>(this)->f(_x);
-        }, Subclass::sigma, h, nSteps, x);
+        if constexpr(detail::IsMemberSigma<Subclass>{}) {
+            return _integrator().eval([this](const State &_x) {
+                return static_cast<Subclass *>(this)->f(_x);
+            }, static_cast<Subclass *>(this)->sigma, h, nSteps, x);
+        } else {
+            return _integrator().eval([this](const State &_x) {
+                return static_cast<Subclass *>(this)->f(_x);
+            }, Subclass::sigma, h, nSteps, x);
+        }
+
     }
 
 private:

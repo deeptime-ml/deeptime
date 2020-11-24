@@ -32,6 +32,35 @@ private:
     std::size_t _nSteps;
 };
 
+template<typename State>
+struct DimFromState {
+    constexpr static std::size_t value = std::tuple_size<State>::value;
+};
+
+template<typename T, typename State>
+class PySDE : public SDE<::PySDE, T, State>, public EulerMaruyamaIntegrator<State, DimFromState<State>::value, T> {
+public:
+    explicit PySDE(std::function<State(State)> rhs, Matrix<T, DimFromState<State>::value> sigma,
+                   double h, std::size_t nSteps, std::int64_t seed)
+                   : EulerMaruyamaIntegrator<State, DimFromState<State>::value, T>(seed), _h(h), _nSteps(nSteps),
+                     sigma(sigma), rhs(rhs) {
+    }
+
+    State f(const State &x) {
+        return rhs(x);
+    }
+
+    T h() const { return _h; }
+
+    std::size_t nSteps() const { return _nSteps; }
+
+    Matrix<T, DimFromState<State>::value> sigma;
+private:
+    std::function<State(State)> rhs;
+    double _h;
+    std::size_t _nSteps;
+};
+
 
 PBF makePbf(np_array<dtype> pos, np_array<dtype> gridSize, dtype interactionRadius, int nJobs) {
     if(pos.ndim() != 2) {
@@ -62,9 +91,18 @@ void exportSystem(py::module& m, const std::string &name) {
 template<std::size_t DIM>
 void exportPyODE(py::module& m, const std::string& name) {
     using State = Vector<double, DIM>;
-    using PyODE1D = PyODE<double, State>;
-    using Rhs1D = std::function<State(State)>;
-    exportSystem<PyODE1D, Rhs1D, double, std::size_t>(m, name);
+    using PyODE = PyODE<double, State>;
+    using Rhs = std::function<State(State)>;
+    exportSystem<PyODE, Rhs, double, std::size_t>(m, name);
+}
+
+template<std::size_t DIM>
+void exportPySDE(py::module& m, const std::string& name) {
+    using State = Vector<double, DIM>;
+    using Sigma = Matrix<double, DIM>;
+    using PySDE = PySDE<double, State>;
+    using Rhs = std::function<State(State)>;
+    exportSystem<PySDE, Rhs, Sigma, double, std::size_t, std::int64_t>(m, name);
 }
 
 PYBIND11_MODULE(_data_bindings, m) {
@@ -103,4 +141,10 @@ PYBIND11_MODULE(_data_bindings, m) {
     exportPyODE<3>(m, "PyODE3D");
     exportPyODE<4>(m, "PyODE4D");
     exportPyODE<5>(m, "PyODE5D");
+
+    exportPySDE<1>(m, "PySDE1D");
+    exportPySDE<2>(m, "PySDE2D");
+    exportPySDE<3>(m, "PySDE3D");
+    exportPySDE<4>(m, "PySDE4D");
+    exportPySDE<5>(m, "PySDE5D");
 }
