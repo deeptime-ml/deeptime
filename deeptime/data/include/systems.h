@@ -30,8 +30,6 @@ class DynamicalSystemInterface {
     constexpr static std::size_t DIM = std::tuple_size<State>::value;
 public:
 
-    virtual ~DynamicalSystemInterface() = default;
-
     np_array<dtype> operator()(const np_array<dtype> &x) {
         np_array<dtype> y({x.shape(0), x.shape(1)});
 
@@ -97,7 +95,7 @@ public:
         for (size_t i = 1; i < length; ++i) {
             for (size_t k = 0; k < DIM; ++k) {
                 // copy new test point into x vector
-                testPoint[k] = yBuf(i-1, k);  // yPtr[k * length + (i - 1)]
+                testPoint[k] = yBuf(i-1, k);
             }
 
             // evaluate dynamical system
@@ -177,7 +175,7 @@ private:
 // ABC flow
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 3>>
-class ABCFlow : public ODE<ABCFlow, T, State> {
+class ABCFlow : public ODE<::ABCFlow, T, State> {
 public:
     explicit ABCFlow(T h = 1e-3, size_t nSteps = 1000) : _h(h), _nSteps(nSteps) {}
 
@@ -207,7 +205,7 @@ private:
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 1>>
 class OrnsteinUhlenbeck : public SDE<OrnsteinUhlenbeck, T, State> {
-    using super = SDE<OrnsteinUhlenbeck, T, State>;
+    using super = SDE<::OrnsteinUhlenbeck, T, State>;
 public:
     static constexpr T alpha = 1.;
     static constexpr T beta = 4.;
@@ -236,7 +234,7 @@ private:
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 1>>
 class TripleWell1D : public SDE<TripleWell1D, T, State> {
-    using super = SDE<TripleWell1D, T, State>;
+    using super = SDE<::TripleWell1D, T, State>;
 public:
     explicit TripleWell1D(std::int64_t seed, double h = 1e-3, size_t nSteps = 500)
             : integrator(seed), _h(h), _nSteps(nSteps) {}
@@ -266,7 +264,7 @@ private:
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 2>>
 class DoubleWell2D : public SDE<DoubleWell2D, T, State> {
-    using super = SDE<DoubleWell2D, T, State>;
+    using super = SDE<::DoubleWell2D, T, State>;
 public:
 
     explicit DoubleWell2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
@@ -294,7 +292,7 @@ private:
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 2>>
 class QuadrupleWell2D : public SDE<QuadrupleWell2D, T, State> {
-    using super = SDE<QuadrupleWell2D, T, State>;
+    using super = SDE<::QuadrupleWell2D, T, State>;
 public:
 
     explicit QuadrupleWell2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
@@ -324,8 +322,8 @@ private:
 //------------------------------------------------------------------------------
 template<typename T, typename State = Vector<T, 2>>
 class QuadrupleWellUnsymmetric2D : public SDE<QuadrupleWellUnsymmetric2D, T, State> {
+    using super = SDE<::QuadrupleWellUnsymmetric2D, T, State>;
 public:
-    using super = SDE<QuadrupleWellUnsymmetric2D, T, State>;
     explicit QuadrupleWellUnsymmetric2D(std::int64_t seed, double h = 1e-3, size_t nSteps = 10000)
             : integrator(seed), _h(h), _nSteps(nSteps) {}
 
@@ -354,7 +352,7 @@ private:
 //------------------------------------------------------------------------------
 template<typename T, typename State=Vector<T, 2>>
 class TripleWell2D : public SDE<TripleWell2D, T, State> {
-    using super = SDE<TripleWell2D, T, State>;
+    using super = SDE<::TripleWell2D, T, State>;
 public:
     explicit TripleWell2D(std::int64_t seed, double h = 1e-5, size_t nSteps = 10000)
             : integrator(seed), _h(h), _nSteps(nSteps) {}
