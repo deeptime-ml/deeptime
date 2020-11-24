@@ -1,5 +1,6 @@
 # pytest specific configuration file containing eg fixtures.
 import random
+import os
 
 import pytest
 import numpy as np
@@ -31,3 +32,8 @@ def fixed_seed():
     random.seed(42)
     np.random.mtrand.seed(42)
     fix_torch_seed(42)
+    yield
+    new_seed = int.from_bytes(os.urandom(16), 'big') % (2**32 - 1)
+    random.seed(new_seed)
+    np.random.mtrand.seed(new_seed)
+    fix_torch_seed(new_seed)
