@@ -36,4 +36,4 @@ def test_consistency(data, kernel):
     assert_equal(xy_gram.shape, (50, 30))
     for i in range(50):
         for j in range(30):
-            assert_almost_equal(xy_gram[i, j], kernel(data[0][i], data[1][j]))
+            assert_almost_equal(xy_gram[i, j], kernel(data[0][i], data[1][j]), decimal=5)

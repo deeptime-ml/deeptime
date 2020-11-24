@@ -1,4 +1,4 @@
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 
 import numpy as np
 
@@ -21,7 +21,14 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     r""" Example data of a two-state markov chain which can be featurized into two parallel ellipsoids and optionally
     rotated into higher-dimensional space.
 
-    See :class:`Ellipsoids <deeptime.data.ellipsoids_dataset.Ellipsoids>` for more details.
+    In particular, a synthetic trajectory of observations of states :math:`S = \{0, 1\}` can be generated from
+    a :class:`MSM <deeptime.markov.msm.MarkovStateModel>`. The transition probabilities have to be chosen so that
+    the chain is lazy, i.e., it is more likely to stay in one state than to transition to another.
+
+    Optionally, a continuous observation chain can be generated with two parallel ellipsoidal multivariate normal
+    distributions. In this case, the MSM acts as hidden markov state model with a Gaussian output model. For
+    benchmark and demonstration purposes, this observation chain can be rotated into a higher dimensional space
+    and equipped with additional noise.
 
     .. plot::
 
@@ -56,7 +63,11 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     Parameters
     ----------
     laziness : float in half-open interval (0.5, 1.], default=0.97
-        The probability to stay in either state rather than transitioning.
+        The probability to stay in either state rather than transitioning. This yields a transition matrix of
+
+        .. math:: P = \begin{pmatrix} \lambda & 1-\lambda \\ 1-\lambda & \lambda \end{pmatrix},
+
+        where :math:`\lambda` is the selected laziness parameter.
     seed : int, optional, default=None
         Optional random seed for reproducibility.
 
@@ -64,6 +75,12 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     -------
     dataset : deeptime.data.ellipsoids_dataset.Ellipsoids
         an object that contains methods to create discrete and continuous observations
+
+    Examples
+    --------
+    >>> import deeptime as dt
+    >>> feature_trajectory = dt.data.ellipsoids(seed=17).observations(n_steps=500)
+    >>> assert feature_trajectory.shape == (500, 2)
     """
     from deeptime.data.ellipsoids_dataset import Ellipsoids
     return Ellipsoids(laziness=laziness, seed=seed)
@@ -441,3 +458,96 @@ def sqrt_model(n_samples, seed=None):
 sqrt_model.cov = np.array([[30.0, 0.0], [0.0, 0.015]])
 sqrt_model.states = np.array([[0.0, 1.0], [0.0, -1.0]])
 sqrt_model.transition_matrix = np.array([[0.95, 0.05], [0.05, 0.95]])
+
+
+def quadruple_well(h: float = 1e-3, n_steps: int = 10000,
+                   seed: Optional[int] = None):
+    r""" This dataset generates trajectories of a two-dimensional particle living in a quadruple-well potential
+    landscape. It is subject to the stochastic differential equation
+
+    .. math::
+
+        \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sqrt{2\beta^{-1}}\mathrm{d}W_t
+
+    with :math:`W_t` being a Wiener process and the potential :math:`V` being given by
+
+    .. math::
+
+        V(x) = (x_1 - 1)^2 + (x_2 - 1)^2.
+
+    The inverse temperature is set to be :math:`\beta = 4`.
+
+    .. plot::
+
+        import numpy as np
+        import deeptime as dt
+        import scipy
+        import matplotlib.pyplot as plt
+        from matplotlib.collections import LineCollection
+
+        traj = dt.data.quadruple_well(n_steps=1000, seed=46).trajectory(np.array([[1, -1]]), 100)
+
+        xy = np.arange(-2, 2, 0.1)
+        XX, YY = np.meshgrid(xy, xy)
+        V = (XX**2 - 1)**2 + (YY**2 - 1)**2
+
+        fig, ax = plt.subplots(1, 1)
+        ax.set_title("Example of a trajectory in the potential landscape")
+
+        cb = ax.contourf(xy, xy, V, levels=np.linspace(0.0, 3.0, 20), cmap='coolwarm')
+
+        x = np.r_[traj[:, 0]]
+        y = np.r_[traj[:, 1]]
+        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
+        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
+
+        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        coll = LineCollection(segments, cmap='bwr')
+        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
+        coll.set_linewidth(1)
+        ax.add_collection(coll)
+
+        fig.colorbar(cb)
+
+    Parameters
+    ----------
+    h : float, default = 1e-3
+        Integration step size. The implementation uses an Euler-Maruyama integrator.
+    n_steps : int, default = 10000
+        Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=10`.
+    seed : int, default = None
+        The seed to use for the Wiener process. If negative, the random generator is initialized arbitrarily.
+
+    Returns
+    -------
+    model : QuadrupleWell2D
+        The model.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.quadruple_well(h=1e-3, n_steps=100, seed=42)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[0., 0.]]), 1000)  # simulate trajectory
+    >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(-2, 2, (100, 2))  # 100 test point in [-2, 2] x [-2, 2]
+    >>> evaluations = model(test_points)
+    >>> assert evaluations.shape == (100, 2)
+    """
+    from ._data_bindings import QuadrupleWell2D as impl
+    if seed is None:
+        seed = -1  # internally this means that seed should be randomly generated
+    return impl(seed, h, n_steps)
+    # return model.trajectory(x0.reshape(2, 1), n_evaluations).T

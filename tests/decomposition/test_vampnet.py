@@ -14,7 +14,7 @@ from deeptime.util.torch import create_timelagged_data_loader, MLP
 
 
 @pytest.mark.parametrize('mode', ["trunc"])
-def test_inverse_spd(mode):
+def test_inverse_spd(fixed_seed, mode):
     X = np.random.normal(size=(15, 5))
     spd = X @ X.T  # rank at most 5
     spd_inv_qr = deeptime.numeric.spd_inv(spd)
@@ -25,7 +25,7 @@ def test_inverse_spd(mode):
 
 
 @pytest.mark.parametrize("remove_mean", [True, False], ids=lambda x: f"remove_mean={x}")
-def test_covariances(remove_mean):
+def test_covariances(fixed_seed, remove_mean):
     data = deeptime.data.ellipsoids().observations(1000, n_dim=5)
     tau = 10
     data_instantaneous = data[:-tau].astype(np.float64)
@@ -43,7 +43,7 @@ def test_covariances(remove_mean):
 
 @pytest.mark.parametrize('method', ["VAMP1", "VAMP2", "VAMPE"])
 @pytest.mark.parametrize('mode', ["trunc", "regularize", "clamp"])
-def test_score(method, mode):
+def test_score(fixed_seed, method, mode):
     data = deeptime.data.ellipsoids(seed=13).observations(1000, n_dim=5)
     tau = 10
 
@@ -59,7 +59,7 @@ def test_score(method, mode):
             np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method))
 
 
-def test_estimator():
+def test_estimator(fixed_seed):
     data = deeptime.data.ellipsoids()
     obs = data.observations(60000, n_dim=10).astype(np.float32)
 
@@ -92,7 +92,7 @@ def test_estimator():
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
-def test_estimator_fit(dtype):
+def test_estimator_fit(fixed_seed, dtype):
     data = deeptime.data.ellipsoids()
     obs = data.observations(60000, n_dim=2).astype(dtype)
     train, val = torch.utils.data.random_split(deeptime.data.TimeLaggedDataset.from_trajectory(1, obs), [50000, 9999])

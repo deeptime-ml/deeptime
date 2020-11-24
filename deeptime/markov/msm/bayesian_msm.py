@@ -1,3 +1,4 @@
+from math import sqrt
 from typing import Optional, Callable
 
 import numpy as np
@@ -212,10 +213,69 @@ class BayesianMSM(_MSMBaseEstimator):
             msm = data
         else:
             raise ValueError("Unsupported input data, can only be count matrix (or TransitionCountModel, "
-                             "TransitionCountEstimator) or a MarkovStateModel instance or an estimator producing " 
+                             "TransitionCountEstimator) or a MarkovStateModel instance or an estimator producing "
                              "Markov state models.")
 
         return self.fit_from_msm(msm, callback=callback)
+
+    def sample(self, prior: MarkovStateModel, n_samples: int, n_steps: Optional[int] = None, callback=None):
+        r""" Performs sampling based on a prior.
+
+        Parameters
+        ----------
+        prior : MarkovStateModel
+            The MSM that is used as initial sampling point.
+        n_samples : int
+            The number of samples to draw.
+        n_steps : int, optional, default=None
+            The number of sampling steps for each transition matrix. If None, determined
+            by :math:`\sqrt{\mathrm{n\_states}}`.
+        callback : callable, optional, default=None
+            Callback function that indicates progress of sampling.
+
+        Returns
+        -------
+        samples : list of :obj:`MarkovStateModel`
+            The generated samples
+
+        Examples
+        --------
+        This method can in particular be used to append samples to an already estimated posterior:
+
+        >>> import numpy as np
+        >>> import deeptime as dt
+        >>> dtrajs = [np.array([0,1,2,2,2,2,1,2,2,2,1,0,0,0,0,0,0,0]),
+        ...           np.array([0,0,0,0,1,1,2,2,2,2,2,2,2,1,0,0])]
+        >>> prior = dt.markov.msm.MaximumLikelihoodMSM().fit(dtrajs, lagtime=1)
+        >>> estimator = dt.markov.msm.BayesianMSM()
+        >>> posterior = estimator.fit(prior).fetch_model()
+        >>> n_samples = len(posterior.samples)
+        >>> posterior.samples.extend(estimator.sample(posterior.prior, n_samples=23))
+        >>> assert len(posterior.samples) == n_samples + 23
+        """
+        if n_steps is None:
+            # heuristic for number of steps to decorrelate
+            n_steps = int(sqrt(prior.count_model.n_states_full))
+        # transition matrix sampler
+        from deeptime.markov.tools.estimation import tmatrix_sampler
+        if self.stationary_distribution_constraint is None:
+            tsampler = tmatrix_sampler(prior.count_model.count_matrix, reversible=self.reversible,
+                                       T0=prior.transition_matrix, nsteps=n_steps)
+        else:
+            # Use the stationary distribution on the active set of states
+            statdist_active = prior.stationary_distribution
+            # We can not use the MLE as T0. Use the initialization in the reversible pi sampler
+            tsampler = tmatrix_sampler(prior.count_model.count_matrix, reversible=self.reversible,
+                                       mu=statdist_active, nsteps=n_steps)
+        sample_Ps, sample_mus = tsampler.sample(nsamples=n_samples, return_statdist=True, callback=callback)
+        # construct sampled MSMs
+        samples = [
+            MarkovStateModel(P, stationary_distribution=pi, reversible=self.reversible,
+                             count_model=prior.count_model,
+                             transition_matrix_tolerance=prior.transition_matrix_tolerance)
+            for P, pi in zip(sample_Ps, sample_mus)
+        ]
+        return samples
 
     def fit_from_msm(self, msm: MarkovStateModel, callback=None):
         r""" Fits a bayesian posterior from a given Markov state model. The MSM must contain a count model to be able
@@ -237,29 +297,7 @@ class BayesianMSM(_MSMBaseEstimator):
         if not msm.has_count_model:
             raise ValueError("Can only sample confidences with a count model. The counting mode should be 'effective'"
                              " to avoid correlations between counts and therefore wrong confidences.")
-        # transition matrix sampler
-        from deeptime.markov.tools.estimation import tmatrix_sampler
-        from math import sqrt
-        if self.n_steps is None:
-            # heuristic for number of steps to decorrelate
-            self.n_steps = int(sqrt(msm.count_model.n_states_full))
         # use the same count matrix as the MLE. This is why we have effective as a default
-        if self.stationary_distribution_constraint is None:
-            tsampler = tmatrix_sampler(msm.count_model.count_matrix, reversible=self.reversible,
-                                       T0=msm.transition_matrix, nsteps=self.n_steps)
-        else:
-            # Use the stationary distribution on the active set of states
-            statdist_active = msm.stationary_distribution
-            # We can not use the MLE as T0. Use the initialization in the reversible pi sampler
-            tsampler = tmatrix_sampler(msm.count_model.count_matrix, reversible=self.reversible,
-                                       mu=statdist_active, nsteps=self.n_steps)
-        sample_Ps, sample_mus = tsampler.sample(nsamples=self.n_samples, return_statdist=True, call_back=callback)
-        # construct sampled MSMs
-        samples = [
-            MarkovStateModel(P, stationary_distribution=pi, reversible=self.reversible,
-                             count_model=msm.count_model,
-                             transition_matrix_tolerance=msm.transition_matrix_tolerance)
-            for P, pi in zip(sample_Ps, sample_mus)
-        ]
+        samples = self.sample(msm, self.n_samples, self.n_steps, callback)
         self._model = BayesianPosterior(prior=msm, samples=samples)
         return self

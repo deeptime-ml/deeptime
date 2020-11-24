@@ -67,7 +67,7 @@ class Build(build_ext):
             cxx_flags = ['/EHsc', '/std:c++latest', '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()]
             extra_link_args.append('/machine:X64')
         else:
-            cxx_flags = ['-std=c++14']
+            cxx_flags = ['-std=c++17']
             extra_compile_args += ['-pthread']
             extra_link_args = ['-lpthread']
         has_openmp = supports_omp(self.compiler)
