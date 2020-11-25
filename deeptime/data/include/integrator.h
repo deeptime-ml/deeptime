@@ -64,7 +64,7 @@ template<typename State, std::size_t DIM, typename Value = double, typename Gene
 class EulerMaruyama {
 public:
 
-    explicit EulerMaruyama(std::int64_t seed) {
+    explicit EulerMaruyama(std::int64_t seed = -1) {
         generator = seed < 0 ? rnd::randomlySeededGenerator<Generator>() : rnd::seededGenerator<Generator>(seed);
     }
 
@@ -99,7 +99,9 @@ private:
 
     State noise() {
         State out;
-        std::generate(out.begin(), out.end(), [this](){ return distribution(generator); });
+        std::generate(out.begin(), out.end(), [this](){
+            return distribution(generator);
+        });
         return out;
     }
 

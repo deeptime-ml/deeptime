@@ -546,8 +546,8 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000,
     >>> evaluations = model(test_points)
     >>> assert evaluations.shape == (100, 2)
     """
-    from ._data_bindings import QuadrupleWell2D as impl
-    if seed is None:
-        seed = -1  # internally this means that seed should be randomly generated
-    return impl(seed, h, n_steps)
-    # return model.trajectory(x0.reshape(2, 1), n_evaluations).T
+    from ._data_bindings import QuadrupleWell2D
+    system = QuadrupleWell2D()
+    system.h = h
+    system.n_steps = n_steps
+    return system

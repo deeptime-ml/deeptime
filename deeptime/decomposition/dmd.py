@@ -203,6 +203,7 @@ class EDMDModel(KoopmanModel):
         self.basis = basis
         self.eigenvalues = eigenvalues
         self.modes = modes
+        self.n_eigenvalues = len(self.eigenvalues)
 
     def forward(self, trajectory: np.ndarray, **kw) -> np.ndarray:
         r""" Applies the estimated forward transform to data by first applying the basis and then the operator, i.e.,
@@ -244,7 +245,7 @@ class EDMDModel(KoopmanModel):
         transformed : (T, k) ndarray
             Data projected onto the modes.
         """
-        return self.basis(data) @ self.modes
+        return self.basis(data) @ self.modes[:self.n_eigenvalues].T
 
 
 class EDMD(Estimator):
@@ -326,7 +327,7 @@ class KernelEDMDModel(Model):
     ----------
     eigenvalues : (d,) ndarray
         The eigenvalues.
-    eigenfunction : (T, d) ndarray
+    eigenvectors : (T, d) ndarray
         The eigenfunction evaluation.
     kernel : Kernel
         The kernel that was used for estimation.
@@ -346,6 +347,7 @@ class KernelEDMDModel(Model):
     def transform(self, x):
         gram_1 = self.kernel.apply(x, self.data)
         return gram_1 @ self.eigenvectors
+
 
 class KernelEDMD(Estimator):
     r""" Estimator implementing kernel extended mode decomposition :cite:`kedmd-williams2016kernel`
