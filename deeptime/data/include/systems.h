@@ -292,40 +292,20 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
 
     typename System::State testPoint = {};
 
-    if (nThreads == 0) {
-        // for all test points
-        for (py::ssize_t i = 0; i < nTestPoints; ++i) {
+    // for all test points
+    #pragma omp parallel for default(none) firstprivate(system, integrator, nTestPoints, xBuf, yBuf, testPoint)
+    for (py::ssize_t i = 0; i < nTestPoints; ++i) {
 
-            // copy new test point into x vector
-            for (std::size_t k = 0; k < System::DIM; ++k) {
-                testPoint[k] = xBuf(i, k);
-            }
-
-            auto yi = evaluate(system, integrator, testPoint); // evaluate dynamical system
-
-            for (std::size_t k = 0; k < System::DIM; ++k) {
-                // copy result into y vector
-                yBuf(i, k) = yi[k];
-            }
+        // copy new test point into x vector
+        for (std::size_t k = 0; k < System::DIM; ++k) {
+            testPoint[k] = xBuf(i, k);
         }
-    } else {
-        #pragma omp parallel default(none) firstprivate(system, integrator, nTestPoints, xBuf, yBuf, testPoint)
-        {
-            # pragma omp for
-            for (py::ssize_t i = 0; i < nTestPoints; ++i) {
 
-                // copy new test point into x vector
-                for (std::size_t k = 0; k < System::DIM; ++k) {
-                    testPoint[k] = xBuf(i, k);
-                }
+        auto yi = evaluate(system, integrator, testPoint); // evaluate dynamical system
 
-                auto yi = evaluate(system, integrator, testPoint); // evaluate dynamical system
-
-                for (std::size_t k = 0; k < System::DIM; ++k) {
-                    // copy result into y vector
-                    yBuf(i, k) = yi[k];
-                }
-            }
+        for (std::size_t k = 0; k < System::DIM; ++k) {
+            // copy result into y vector
+            yBuf(i, k) = yi[k];
         }
     }
 
