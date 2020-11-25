@@ -13,8 +13,7 @@
 
 #include "thread_utils.h"
 
-namespace deeptime {
-namespace pbf {
+namespace deeptime::pbf {
 
 template<int DIM, typename dtype>
 class ParticleCollection;
@@ -114,7 +113,7 @@ std::array<dtype, dim> gradWspiky(const dtype *pos, const dtype *posNeighbor, dt
 
 template<int DIM, typename dtype>
 class NeighborList {
-    static_assert(DIM > 0 && DIM == 2, "Only 2-dimensional NL currently supported.");
+    static_assert(DIM == 2, "Only 2-dimensional NL currently supported.");
 public:
     NeighborList() : _gridSize() {}
 
@@ -133,7 +132,7 @@ public:
     void update(ParticleCollection<DIM, dtype> &collection, int nJobs) {
         std::fill(std::begin(list), std::end(list), 0);
         std::fill(std::begin(head), std::end(head), thread::copyable_atomic<std::size_t>());
-        auto updateOp = [this](std::size_t particleId, dtype *pos, dtype *vel) {
+        auto updateOp = [this](std::size_t particleId, dtype *pos, dtype * /*velocity*/ ) {
             auto boxId = positionToBoxIx(pos);
 
             // CAS
@@ -149,7 +148,7 @@ public:
             }
         } else {
             if (nJobs == 0) {
-                nJobs = std::thread::hardware_concurrency();
+                nJobs = static_cast<decltype(nJobs)>(std::thread::hardware_concurrency());
             }
             if (nJobs <= 1) {
                 throw std::logic_error("At this point nJobs should be >= 2");
@@ -263,27 +262,27 @@ public:
 
     const std::vector<dtype> &velocities() const { return _velocities; }
 
-    dtype *const positions() {
+    dtype * positions() {
         return _particles.data();
     }
 
-    const dtype *const positions() const {
+    const dtype * positions() const {
         return _particles.data();
     }
 
-    dtype *const position(std::size_t id) {
+    dtype * position(std::size_t id) {
         return _particles.data() + id * DIM;
     }
 
-    const dtype *const position(std::size_t id) const {
+    const dtype * position(std::size_t id) const {
         return _particles.data() + id * DIM;
     }
 
-    dtype *const velocity(std::size_t id) {
+    dtype * velocity(std::size_t id) {
         return _velocities.data() + id * DIM;
     }
 
-    const dtype *const velocity(std::size_t id) const {
+    const dtype * velocity(std::size_t id) const {
         return _velocities.data() + id * DIM;
     }
 
@@ -335,7 +334,7 @@ public:
     }
 
     void calculateLambdas() {
-        auto solverOp = [this](std::size_t id, dtype *pos, dtype *vel) {
+        auto solverOp = [this](std::size_t id, dtype *pos, dtype */*vel*/) {
             dtype sum_k_grad_Ci = 0;
             dtype rho = 0;
             dtype rho0 = this->_rho0;
@@ -343,9 +342,9 @@ public:
 
             std::array<dtype, DIM> grad_pi_Ci{};
             std::fill(grad_pi_Ci.begin(), grad_pi_Ci.end(), 0);
-            auto neighborOp = [pos, rho0, h, &rho, &grad_pi_Ci, &sum_k_grad_Ci](std::size_t neighborId,
+            auto neighborOp = [pos, rho0, h, &rho, &grad_pi_Ci, &sum_k_grad_Ci](std::size_t /*neighborId*/,
                                                                                      dtype *neighborPos,
-                                                                                     dtype *neighborVel) {
+                                                                                     dtype */*neighborVel*/) {
                 // compute rho_i (equation 2)
                 float len = util::distance<DIM>(pos, neighborPos);
                 float tmp = util::Wpoly6(len, h);
@@ -384,18 +383,18 @@ public:
             posmin[i] = -1 * 0.5 * posmax[i];
             posmax[i] *= 0.5;
         }
-        auto updateOp = [this, posmin, posmax](std::size_t id, dtype *pos, dtype *vel) {
+        auto updateOp = [this, posmin, posmax](std::size_t id, dtype *pos, dtype */*vel*/) {
             std::array<dtype, DIM> posDelta;
             std::fill(posDelta.begin(), posDelta.end(), 0);
 
-            const auto &lambdas = this->lambdas;
-            auto lambda = lambdas.at(id);
+            const auto &llambdas = this->lambdas;
+            auto lambda = llambdas.at(id);
             auto tis = _tensileInstabilityScale;
             auto k = _tensileInstabilityK;
             auto h = _interactionRadius;
 
-            auto neighborOp = [lambda, tis, k, h, pos, &lambdas, &posDelta](std::size_t nId, dtype *nPos, dtype *nVel) {
-                auto nLambda = lambdas.at(nId);
+            auto neighborOp = [lambda, tis, k, h, pos, &llambdas, &posDelta](std::size_t nId, dtype *nPos, dtype */*nVel*/) {
+                auto nLambda = llambdas.at(nId);
 
                 dtype corr = tis * util::Wpoly6(util::distance<DIM>(pos, nPos), h);
                 corr = -k * corr * corr * corr * corr;
@@ -503,5 +502,4 @@ private:
     dtype _tensileInstabilityK = static_cast<dtype>(0.1);
 };
 
-}
 }

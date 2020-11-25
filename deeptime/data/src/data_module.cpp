@@ -21,9 +21,9 @@ public:
         return rhs(x);
     }
 
-    T h() const { return _h; }
+    [[nodiscard]] T h() const { return _h; }
 
-    std::size_t nSteps() const { return _nSteps; }
+    [[nodiscard]] std::size_t nSteps() const { return _nSteps; }
 
 private:
     std::function<State(State)> rhs;
@@ -43,26 +43,25 @@ public:
     explicit PySDE(std::function<State(State)> rhs, Matrix<T, DimFromState<State>::value> sigma,
                    double h, std::size_t nSteps, std::int64_t seed)
                    : EulerMaruyamaIntegrator<State, DimFromState<State>::value, T>(seed), _h(h), _nSteps(nSteps),
-                     sigma(sigma), rhs(rhs) {
+                     sigma(sigma), rhs(std::move(rhs)) {
     }
 
     State f(const State &x) {
         return rhs(x);
     }
 
-    T h() const { return _h; }
+    [[nodiscard]] T h() const { return _h; }
 
-    std::size_t nSteps() const { return _nSteps; }
+    [[nodiscard]] std::size_t nSteps() const { return _nSteps; }
 
-    Matrix<T, DimFromState<State>::value> sigma;
-private:
-    std::function<State(State)> rhs;
     double _h;
     std::size_t _nSteps;
+    Matrix<T, DimFromState<State>::value> sigma;
+    std::function<State(State)> rhs;
 };
 
 
-PBF makePbf(np_array<dtype> pos, np_array<dtype> gridSize, dtype interactionRadius, int nJobs) {
+PBF makePbf(np_array<dtype> pos, const np_array<dtype>& gridSize, dtype interactionRadius, int nJobs) {
     if(pos.ndim() != 2) {
         throw std::invalid_argument("position array must be 2-dimensional");
     }

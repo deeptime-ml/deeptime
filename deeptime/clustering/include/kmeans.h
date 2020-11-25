@@ -39,7 +39,7 @@ T costAssignFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_c
                int n_threads, const Metric *metric) {
     auto assignments = assign_chunk_to_centers(np_data, np_centers, n_threads, metric);
     return costFunction(np_data, np_centers, assignments, n_threads, metric);
-};
+}
 
 namespace util {
 template<typename dtype, typename itype>

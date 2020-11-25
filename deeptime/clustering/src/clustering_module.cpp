@@ -4,16 +4,6 @@
 
 using namespace pybind11::literals;
 
-template<typename T>
-std::tuple<py::object, int, int, py::object> castLoopResult(const std::tuple<np_array<T>, int, int, np_array<T>> &input) {
-    const auto& arr = std::get<0>(input);
-    const auto& res = std::get<1>(input);
-    const auto& it =  std::get<2>(input);
-    const auto& cost = std::get<3>(input);
-
-    return std::make_tuple(py::cast<py::object>(arr), res, it, py::cast<py::object>(cost));
-}
-
 void registerKmeans(py::module &mod) {
     mod.def("cluster", deeptime::clustering::kmeans::cluster<float>, "chunk"_a, "centers"_a,
             "n_threads"_a, "metric"_a = nullptr);
@@ -47,7 +37,7 @@ template<typename dtype, bool squared>
 void defDistances(py::module &m) {
     std::string name = "distances";
     if (squared) name += "_squared";
-    m.def(name.c_str(), [](np_array<dtype> X, np_array<dtype> Y, py::object XX, py::object YY, int nThreads, const Metric* metric) {
+    m.def(name.c_str(), [](np_array<dtype> X, np_array<dtype> Y, py::object XX, py::object YY, int /*nThreads*/, const Metric* metric) {
         metric = metric ? metric : default_metric();
         auto dim = static_cast<std::size_t>(X.shape(1));
         if(static_cast<std::size_t>(Y.shape(1)) != dim) {
