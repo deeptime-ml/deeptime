@@ -85,7 +85,7 @@ auto exportSystem(py::module& m, const std::string &name) {
             .def_readonly_static("dimension", &System::DIM)
             .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
                 return evaluateSystem(self, x, seed, nThreads);
-            }, "test_points"_a, "seed"_a = -1, "n_threads"_a = 1)
+            }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
             .def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
                 return trajectory(self, x, length, seed);
             }, "x0"_a, "n_evaluations"_a, "seed"_a = -1);
