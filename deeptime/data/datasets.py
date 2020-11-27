@@ -460,8 +460,7 @@ sqrt_model.states = np.array([[0.0, 1.0], [0.0, -1.0]])
 sqrt_model.transition_matrix = np.array([[0.95, 0.05], [0.05, 0.95]])
 
 
-def quadruple_well(h: float = 1e-3, n_steps: int = 10000,
-                   seed: Optional[int] = None):
+def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
     r""" This dataset generates trajectories of a two-dimensional particle living in a quadruple-well potential
     landscape. It is subject to the stochastic differential equation
 
@@ -516,8 +515,6 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000,
         Integration step size. The implementation uses an Euler-Maruyama integrator.
     n_steps : int, default = 10000
         Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=10`.
-    seed : int, default = None
-        The seed to use for the Wiener process. If negative, the random generator is initialized arbitrarily.
 
     Returns
     -------
@@ -533,21 +530,125 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000,
 
     First, set up the model (which internally already creates the integrator).
 
-    >>> model = dt.data.quadruple_well(h=1e-3, n_steps=100, seed=42)  # create model instance
+    >>> model = dt.data.quadruple_well(h=1e-3, n_steps=100)  # create model instance
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[0., 0.]]), 1000)  # simulate trajectory
+    >>> traj = model.trajectory(np.array([[0., 0.]]), 1000, seed=42)  # simulate trajectory
     >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
 
     >>> test_points = np.random.uniform(-2, 2, (100, 2))  # 100 test point in [-2, 2] x [-2, 2]
-    >>> evaluations = model(test_points)
+    >>> evaluations = model(test_points, seed=53, n_jobs=1)
     >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import QuadrupleWell2D
     system = QuadrupleWell2D()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def triple_well_2d(h=1e-5, n_steps=10000):
+    r""" This dataset generates trajectories of a two-dimensional particle living in a triple-well potential
+    landscape. The example can be found in :cite:`data-api-schutte2013metastability`.
+
+    The particle is subject to the stochastic differential equation
+
+    .. math::
+
+        \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sigma(t, X_t)\mathrm{d}W_t
+
+    with :math:`W_t` being a Wiener process, :math:`\sigma = 1.09`, and the potential :math:`V` being given by
+
+    .. math::
+
+        \begin{aligned}
+        V(x) &= 3e^{-x^2 - (y-\frac{1}{3})^2} - 3e^{-x^2 - (y - \frac{5}{3})^2} \\
+        &\quad - 5e^{-(x-1)^2 - y^2} - 5e^{-(x+1)^2 - y^2} \\
+        &\quad + \frac{2}{10} x^4 + \frac{2}{10}\left(y-\frac{1}{3}\right)^4.
+        \end{aligned}
+
+    .. plot::
+
+        import numpy as np
+        import deeptime as dt
+        import scipy
+        import matplotlib.pyplot as plt
+        from matplotlib.collections import LineCollection
+
+        traj = dt.data.triple_well_2d(n_steps=10000).trajectory(np.array([[-1, 0]]), 20, seed=42)
+
+        x = np.arange(-2, 2, 0.1)
+        y = np.arange(-1, 2, 0.1)
+        XX, YY = np.meshgrid(x, y)
+        V = 3*np.exp(-(XX**2) - (YY - 1/3)**2) - 3*np.exp(-XX**2 - (YY - 5/3)**2) \
+            - 5*np.exp(-(XX-1)**2 - YY**2) - 5*np.exp(-(XX+1)**2 - YY**2) \
+            + (2/10)*XX**4 + (2/10)*(YY-1/3)**4
+
+        fig, ax = plt.subplots(1, 1)
+        ax.set_title("Example of a trajectory in the potential landscape")
+
+        cb = ax.contourf(x, y, V, levels=np.linspace(-4.5, 4.5, 20), cmap='coolwarm')
+
+        x = np.r_[traj[:, 0]]
+        y = np.r_[traj[:, 1]]
+        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
+        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
+
+        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        coll = LineCollection(segments, cmap='jet')
+        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
+        coll.set_linewidth(1)
+        ax.add_collection(coll)
+
+        fig.colorbar(cb)
+
+    Parameters
+    ----------
+    h : float, default = 1e-5
+        Integration step size. The implementation uses an Euler-Maruyama integrator.
+    n_steps : int, default = 10000
+        Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=0.1`.
+
+    Returns
+    -------
+    model : TripleWell2D
+        The model.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.triple_well_2d(h=1e-3, n_steps=100)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[-1., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(-2, 2, (100, 2))  # 100 test point in [-2, 2] x [-2, 2]
+    >>> evaluations = model(test_points, seed=53, n_jobs=1)
+    >>> assert evaluations.shape == (100, 2)
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: data-api-
+    """
+    from ._data_bindings import TripleWell2D
+    system = TripleWell2D()
     system.h = h
     system.n_steps = n_steps
     return system

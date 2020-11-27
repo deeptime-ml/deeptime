@@ -288,24 +288,27 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
     nThreads = 0;
     #endif
 
-    auto integrator = createIntegrator<System>(seed, typename System::system_type());
-
     typename System::State testPoint = {};
 
     // for all test points
-    #pragma omp parallel for default(none) firstprivate(system, integrator, nTestPoints, xBuf, yBuf, testPoint)
-    for (py::ssize_t i = 0; i < nTestPoints; ++i) {
+    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, testPoint, seed)
+    {
+        auto integrator = createIntegrator<System>(seed, typename System::system_type());
 
-        // copy new test point into x vector
-        for (std::size_t k = 0; k < System::DIM; ++k) {
-            testPoint[k] = xBuf(i, k);
-        }
+        #pragma omp for
+        for (py::ssize_t i = 0; i < nTestPoints; ++i) {
 
-        auto yi = evaluate(system, integrator, testPoint); // evaluate dynamical system
+            // copy new test point into x vector
+            for (std::size_t k = 0; k < System::DIM; ++k) {
+                testPoint[k] = xBuf(i, k);
+            }
 
-        for (std::size_t k = 0; k < System::DIM; ++k) {
-            // copy result into y vector
-            yBuf(i, k) = yi[k];
+            auto yi = evaluate(system, integrator, testPoint); // evaluate dynamical system
+
+            for (std::size_t k = 0; k < System::DIM; ++k) {
+                // copy result into y vector
+                yBuf(i, k) = yi[k];
+            }
         }
     }
 
