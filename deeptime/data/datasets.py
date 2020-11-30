@@ -741,3 +741,53 @@ def abc_flow(h=1e-3, n_steps=10000):
     system.h = h
     system.n_steps = n_steps
     return system
+
+
+def ornstein_uhlenbeck(h=1e-3, n_steps=500):
+    r""" The one-dimensional Ornstein-Uhlenbeck process. It is given by the stochastic differential equation
+
+    .. math::
+
+        dX_t = -\alpha X_t dt + \sqrt{2\beta^{-1}}dW_t
+
+    with parameters :math:`\alpha=1` and :math:`\beta=4`.
+
+    Parameters
+    ----------
+    h : float, default = 1e-3
+        Integration step size. The implementation uses an Euler-Maruyama integrator.
+    n_steps : int, default = 500
+        Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=10`.
+
+    Returns
+    -------
+    system : OrnsteinUhlenbeck
+        The system.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.ornstein_uhlenbeck(h=1e-3, n_steps=100)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[-1.]]), 1000, seed=42)  # simulate trajectory
+    >>> assert traj.shape == (1000, 1)  # 1000 evaluations from initial condition [0, 0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(.5, 1.5, (100, 1))  # 100 test points
+    >>> evaluations = model(test_points, seed=53, n_jobs=1)
+    >>> assert evaluations.shape == (100, 1)
+    """
+    from ._data_bindings import OrnsteinUhlenbeck
+    system = OrnsteinUhlenbeck()
+    system.h = h
+    system.n_steps = n_steps
+    return system
