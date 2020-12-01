@@ -12,6 +12,7 @@ API
     double_well_discrete
     quadruple_well
     triple_well_2d
+    triple_well_1d
     abc_flow
     ornstein_uhlenbeck
     ellipsoids
@@ -52,4 +53,5 @@ Implementations
 
 from .util import timeshifted_split, TimeSeriesDataset, TimeLaggedDataset
 from .datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk, bickley_jet, \
-    birth_death_chain, tmatrix_metropolis1d, sqrt_model, quadruple_well, triple_well_2d, abc_flow, ornstein_uhlenbeck
+    birth_death_chain, tmatrix_metropolis1d, sqrt_model, quadruple_well, triple_well_2d, abc_flow, ornstein_uhlenbeck, \
+    triple_well_1d

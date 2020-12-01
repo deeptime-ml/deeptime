@@ -104,10 +104,15 @@ autodoc_default_options = {
 }
 
 # -- Gallery settings ---------------------------------------------------------
+from sphinx_gallery.sorting import ExplicitOrder
 
 sphinx_gallery_conf = {
     'examples_dirs': '../../examples',  # path to your example scripts
     'gallery_dirs': 'examples',  # path to where to save gallery generated output
+    'subsection_order': ExplicitOrder([
+        '../../examples/methods',
+        '../../examples/datasets'
+    ]),
     'capture_repr': ()
 }
 

@@ -14,3 +14,15 @@ def test_triple_well_2d_sanity():
     traj = dt.data.triple_well_2d().trajectory([[-1., 0.]], 5)
     assert_equal(traj.shape, (5, 2))
     assert_equal(traj[0], np.array([-1, 0]))
+
+
+def test_abc_flow_sanity():
+    traj = dt.data.abc_flow().trajectory([[0., 0., 0.]], 5)
+    assert_equal(traj.shape, (5, 3))
+    assert_equal(traj[0], np.array([0., 0., 0.]))
+
+
+def test_ornstein_uhlenbeck_sanity():
+    traj = dt.data.ornstein_uhlenbeck().trajectory([[-1.]], 5)
+    assert_equal(traj.shape, (5, 1))
+    assert_equal(traj[0], np.array([-1]))

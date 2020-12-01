@@ -752,6 +752,17 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
 
     with parameters :math:`\alpha=1` and :math:`\beta=4`.
 
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import deeptime as dt
+
+        traj = dt.data.ornstein_uhlenbeck().trajectory([[-0.]], 250)
+        plt.plot(traj.squeeze())
+        plt.xlabel('t')
+        plt.xlabel('x(t)')
+        plt.show()
+
     Parameters
     ----------
     h : float, default = 1e-3
@@ -788,6 +799,14 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
     """
     from ._data_bindings import OrnsteinUhlenbeck
     system = OrnsteinUhlenbeck()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def triple_well_1d(h=1e-3, n_steps=500):
+    from ._data_bindings import TripleWell1D
+    system = TripleWell1D()
     system.h = h
     system.n_steps = n_steps
     return system
