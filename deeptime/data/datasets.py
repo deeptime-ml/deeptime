@@ -8,6 +8,8 @@ def double_well_discrete():
     The discrete trajectory contains 100000 steps, discrete time step dt=10. The result object allows access to
     discretizations of varying quality as well as gives opportunity to synthetically generate more data.
 
+    .. plot:: examples/datasets/plot_double_well_discrete.py
+
     Returns
     -------
     dataset : deeptime.data.double_well_dataset.DoubleWellDiscrete
@@ -30,35 +32,7 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     benchmark and demonstration purposes, this observation chain can be rotated into a higher dimensional space
     and equipped with additional noise.
 
-    .. plot::
-
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from scipy.stats import multivariate_normal
-
-        import deeptime as dt
-
-        data_source = dt.data.ellipsoids(seed=17)
-        x = np.linspace(-10, 10, 1000)
-        y = np.linspace(-10, 10, 1000)
-        X, Y = np.meshgrid(x, y)
-        pos = np.empty(X.shape + (2,))
-        pos[:, :, 0] = X
-        pos[:, :, 1] = Y
-        rv1 = multivariate_normal(data_source.state_0_mean, data_source.covariance_matrix)
-        rv2 = multivariate_normal(data_source.state_1_mean, data_source.covariance_matrix)
-
-        fig = plt.figure()
-        ax = fig.gca()
-
-        ax.contourf(X, Y, (rv1.pdf(pos) + rv2.pdf(pos)).reshape(len(x), len(y)))
-        ax.autoscale(False)
-        ax.set_aspect('equal')
-        ax.scatter(*data_source.observations(100).T, color='cyan', marker='x', label='samples')
-        plt.grid()
-        plt.title(r'Ellipsoids dataset observations with laziness of $0.97$.')
-        plt.legend()
-        plt.show()
+    .. plot:: examples/datasets/plot_ellipsoids.py
 
     Parameters
     ----------
@@ -86,7 +60,7 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     return Ellipsoids(laziness=laziness, seed=seed)
 
 
-def position_based_fluids(n_burn_in=5000, n_jobs=None):
+def position_based_fluids(n_burn_in=5000, initial_positions=None, n_jobs=None):
     r""" Creates a position based fluids (PBF) simulator. It was introduced in :cite:`data-api-macklin2013position`.
     Up to numerics the simulation is deterministic.
 
@@ -134,11 +108,13 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
     """
     from deeptime.data.pbf_simulator import PBFSimulator
     interaction_distance = 1.5
-    init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
-    init_pos_y = np.arange(-12, 24, interaction_distance * .9).astype(np.float32)
-    init_pos = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
+    if initial_positions is None:
+        init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
+        init_pos_y = np.arange(-12, 24, interaction_distance * .9).astype(np.float32)
+        initial_positions = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
     domain = np.array([80, 50])
-    pbf = PBFSimulator(domain_size=domain, initial_positions=init_pos, interaction_distance=interaction_distance,
+    pbf = PBFSimulator(domain_size=domain, initial_positions=initial_positions,
+                       interaction_distance=interaction_distance,
                        n_jobs=n_jobs)
     # equilibrate
     pbf.run(n_burn_in, 0)
@@ -158,44 +134,7 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     and uniform two-dimensional jump probabilities in between. The grid is of size :math:`n\times m` and a point
     :math:`(i,j)` is identified with state :math:`i+nj` in the transition matrix.
 
-    .. plot::
-
-        import numpy as np
-        import deeptime
-
-        import matplotlib.pyplot as plt
-        from matplotlib.collections import LineCollection
-        import scipy
-        from scipy.interpolate import CubicSpline
-
-        sim = deeptime.data.drunkards_walk(bar_location=(0, 0), home_location=(9, 9))
-        walk = sim.walk(start=(7, 2), n_steps=250, seed=17)
-
-        fig, ax = plt.subplots(figsize=(10, 10))
-
-        ax.scatter(*sim.home_location.T, marker='*', label='Home', c='red', s=150, zorder=5)
-        ax.scatter(*sim.bar_location.T, marker='*', label='Bar', c='orange', s=150, zorder=5)
-        ax.scatter(7, 2, marker='*', label='Start', c='black', s=150, zorder=5)
-
-        x = np.r_[walk[:, 0]]
-        y = np.r_[walk[:, 1]]
-        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
-        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
-        ax.scatter(x, y, label='Visited intermediates')
-
-        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        coll = LineCollection(segments, cmap='cool', linestyle='dotted')
-        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
-        coll.set_linewidth(2)
-        ax.add_collection(coll)
-
-        ax.set_xticks(np.arange(10))
-        ax.set_yticks(np.arange(10))
-        ax.set_xlabel('coordinate x')
-        ax.set_ylabel('coordinate y')
-        ax.grid()
-        ax.legend()
+    .. plot:: examples/datasets/plot_drunkards_walk.py
 
     Parameters
     ----------
@@ -321,12 +260,15 @@ def birth_death_chain(q, p):
         p_{ij} = \begin{cases}
             q_i &\text{, if } j=i-1 \text{ and } i>0,\\
             r_i &\text{, if } j=i,\\
-            p_i &\text{, if } j=i+1 \text{ and } i<d-1.
+            p_i &\text{, if } j=i+1 \text{ and } i < d-1
         \end{cases}
+
 
     The annihilation probability of state :math:`i=1` must not be zero, same for the creation probability
     of the last state :math:`i=n`. The sum of the probabilities must be bounded component-wise, i.e.,
     :math:`q_i + p_i \leq 1\;\forall i=1,\ldots ,n`.
+
+    .. plot:: examples/datasets/plot_birth_death_chain.py
 
     Parameters
     ----------
@@ -347,6 +289,8 @@ def birth_death_chain(q, p):
 def tmatrix_metropolis1d(energies, d=1.0):
     r"""Transition matrix describing the Metropolis chain jumping
     between neighbors in a discrete 1D energy landscape.
+
+    .. plot:: examples/datasets/plot_tmatrix_1d.py
 
     Parameters
     ----------
@@ -397,18 +341,7 @@ def sqrt_model(n_samples, seed=None):
     We sample a hidden state trajectory and sqrt-masked emissions in two
     dimensions such that the two metastable states are not linearly separable.
 
-    .. plot::
-
-        import matplotlib.pyplot as plt
-
-        import deeptime as dt
-
-        n_samples = 30000
-        dtraj, traj = dt.data.sqrt_model(n_samples)
-
-        fig, ax = plt.subplots(1, 1, figsize=(16, 10))
-        ax.hexbin(*traj.T, bins=10, cmap='coolwarm')
-
+    .. plot:: examples/datasets/plot_sqrt_model.py
 
     Parameters
     ----------

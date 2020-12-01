@@ -102,11 +102,7 @@ class BickleyJetDataset(TimeSeriesDataset):
         import matplotlib.pyplot as plt
         import matplotlib.animation as animation
 
-        n_particles = self.data.shape[1]
-
-        backend_ = mpl.get_backend()
-        mpl.use("Agg")  # Prevent showing stuff
-
+        agg_backend = kw.get('agg_backend', True)
         figsize = kw.get("figsize", (8, 6))
         title = kw.get("title", None)
         s = kw.get("s", None)
@@ -114,6 +110,18 @@ class BickleyJetDataset(TimeSeriesDataset):
         stride = kw.get("stride", 1)
         cmap = kw.get('cmap', 'jet')
         edgecolor = kw.get('edgecolor', 'k')
+        repeat = kw.get('repeat', False)
+        interval = kw.get('interval', 50)
+        fig = kw.get('fig', None)
+        ax = kw.get('ax', None)
+        max_frame = kw.get('max_frame', None)
+
+        data = self.data[:max_frame:stride]
+        n_particles = data.shape[1]
+
+        if agg_backend:
+            backend_ = mpl.get_backend()
+            mpl.use("Agg")  # Prevent showing stuff
 
         if s is None:
             s = np.empty((n_particles,))
@@ -122,23 +130,27 @@ class BickleyJetDataset(TimeSeriesDataset):
             c = np.empty((n_particles,))
             c.fill(0.5)
 
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        if fig is None or ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
         ax.set_title(title)
+        ax.set_xlim([0, 20])
+        ax.set_ylim([-3, 3])
 
         plot_handles = []
-        s_handle = ax.scatter(self.data[0, :, 0], self.data[0, :, 1], s=s, c=c, vmin=0, vmax=1,
+        s_handle = ax.scatter(data[0, :, 0], data[0, :, 1], s=s, c=c, vmin=0, vmax=1,
                               cmap=cmap, edgecolor=edgecolor)
         plot_handles.append(s_handle)
 
         def update(i):
             handle = plot_handles[0]
-            handle.set_offsets(self.data[::stride][i])
+            handle.set_offsets(data[::stride][i])
             return plot_handles
 
-        ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=False,
-                                      frames=self.data[::stride].shape[0])
+        ani = animation.FuncAnimation(fig, update, interval=interval, blit=True, repeat=repeat,
+                                      frames=data[::stride].shape[0])
 
-        mpl.use(backend_)  # Reset backend
+        if agg_backend:
+            mpl.use(backend_)  # Reset backend
 
         return ani
 
@@ -208,7 +220,8 @@ def _generate_impl_worker(args):
 
 
 def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs=None) -> np.ndarray:
-    X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3)) # uniformly sampled test points in X = [0, 20] x [-3, 3]
+    # uniformly sampled test points in X = [0, 20] x [-3, 3]
+    X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3))
     nT = 401
     Z = np.zeros((2, nT, n_particles))
 

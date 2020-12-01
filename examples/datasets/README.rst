@@ -3,4 +3,4 @@
 Datasets
 --------
 
-Examples concerning the :mod:`deeptime.data` module.
+Examples contained in the :mod:`deeptime.data` module.
