@@ -1,6 +1,6 @@
 r"""
-Transition matrix for 1D energy landscape
-=========================================
+Metropolis chain in 1D energy landscape
+=======================================
 
 Example for :meth:`deeptime.data.tmatrix_metropolis1d`.
 """
