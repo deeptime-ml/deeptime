@@ -105,24 +105,20 @@ auto exportSystem(py::module& m, const std::string &name) {
             }, "x0"_a, "n_evaluations"_a, "seed"_a = -1);
     if constexpr(system_has_potential_v<System>) {
         clazz.def("potential", [](System &self, const np_array_nfc<npDtype> &x) {
-            auto xBuf = x.template unchecked<2>();
             auto nPoints = static_cast<std::size_t>(x.shape(0));
+            np_array_nfc<npDtype> y (nPoints);
 
-            np_array_nfc<npDtype> y ({nPoints, System::DIM});
-            auto yBuf = y.template mutable_unchecked<2>();
+            auto yBuf = y.template mutable_unchecked<1>();
+            std::fill(y.mutable_data(), y.mutable_data() + nPoints, 0.);
+
+            auto xBuf = x.template unchecked<2>();
 
             typename System::State testPoint;
             for (std::size_t i = 0; i < nPoints; ++i) {
                 for (std::size_t k = 0; k < System::DIM; ++k) {
-                    // copy new test point into x vector
-                    testPoint[k] = xBuf(i - 1, k);
+                    testPoint[k] = xBuf(i, k);
                 }
-
-                auto yi = self.energy(testPoint);
-
-                for (size_t k = 0; k < System::DIM; ++k) {
-                    yBuf(i, k) = yi[k];
-                }
+                yBuf(i) = self.energy(testPoint);
             }
 
             return y;

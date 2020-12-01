@@ -476,38 +476,7 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
 
     The inverse temperature is set to be :math:`\beta = 4`.
 
-    .. plot::
-
-        import numpy as np
-        import deeptime as dt
-        import scipy
-        import matplotlib.pyplot as plt
-        from matplotlib.collections import LineCollection
-
-        traj = dt.data.quadruple_well(n_steps=1000, seed=46).trajectory(np.array([[1, -1]]), 100)
-
-        xy = np.arange(-2, 2, 0.1)
-        XX, YY = np.meshgrid(xy, xy)
-        V = (XX**2 - 1)**2 + (YY**2 - 1)**2
-
-        fig, ax = plt.subplots(1, 1)
-        ax.set_title("Example of a trajectory in the potential landscape")
-
-        cb = ax.contourf(xy, xy, V, levels=np.linspace(0.0, 3.0, 20), cmap='coolwarm')
-
-        x = np.r_[traj[:, 0]]
-        y = np.r_[traj[:, 1]]
-        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
-        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
-
-        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        coll = LineCollection(segments, cmap='bwr')
-        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
-        coll.set_linewidth(1)
-        ax.add_collection(coll)
-
-        fig.colorbar(cb)
+    .. plot:: examples/datasets/plot_quadruple_well.py
 
     Parameters
     ----------
@@ -570,41 +539,7 @@ def triple_well_2d(h=1e-5, n_steps=10000):
         &\quad + \frac{2}{10} x^4 + \frac{2}{10}\left(y-\frac{1}{3}\right)^4.
         \end{aligned}
 
-    .. plot::
-
-        import numpy as np
-        import deeptime as dt
-        import scipy
-        import matplotlib.pyplot as plt
-        from matplotlib.collections import LineCollection
-
-        traj = dt.data.triple_well_2d(n_steps=10000).trajectory(np.array([[-1, 0]]), 20, seed=42)
-
-        x = np.arange(-2, 2, 0.1)
-        y = np.arange(-1, 2, 0.1)
-        XX, YY = np.meshgrid(x, y)
-        V = 3*np.exp(-(XX**2) - (YY - 1/3)**2) - 3*np.exp(-XX**2 - (YY - 5/3)**2) \
-            - 5*np.exp(-(XX-1)**2 - YY**2) - 5*np.exp(-(XX+1)**2 - YY**2) \
-            + (2/10)*XX**4 + (2/10)*(YY-1/3)**4
-
-        fig, ax = plt.subplots(1, 1)
-        ax.set_title("Example of a trajectory in the potential landscape")
-
-        cb = ax.contourf(x, y, V, levels=np.linspace(-4.5, 4.5, 20), cmap='coolwarm')
-
-        x = np.r_[traj[:, 0]]
-        y = np.r_[traj[:, 1]]
-        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
-        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
-
-        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        coll = LineCollection(segments, cmap='jet')
-        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
-        coll.set_linewidth(1)
-        ax.add_collection(coll)
-
-        fig.colorbar(cb)
+    .. plot:: examples/datasets/plot_triple_well_2d.py
 
     Parameters
     ----------
@@ -752,16 +687,7 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
 
     with parameters :math:`\alpha=1` and :math:`\beta=4`.
 
-    .. plot::
-
-        import matplotlib.pyplot as plt
-        import deeptime as dt
-
-        traj = dt.data.ornstein_uhlenbeck().trajectory([[-0.]], 250)
-        plt.plot(traj.squeeze())
-        plt.xlabel('t')
-        plt.xlabel('x(t)')
-        plt.show()
+    .. plot:: examples/datasets/plot_ornstein_uhlenbeck.py
 
     Parameters
     ----------
@@ -805,6 +731,32 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
 
 
 def triple_well_1d(h=1e-3, n_steps=500):
+    r""" A simple one-dimensional triple-well potential landscape. It is given by the stochastic differential equation
+
+    .. math::
+
+        \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sigma(t, X_t)\mathrm{d}W_t
+
+    with :math:`W_t` being a Wiener process, :math:`\sigma = 1.09`, and the potential :math:`V` being given by
+
+    .. math::
+
+        V(x) = 5 - 24.82 x + 41.4251 x^2 - 27.5344 x^3 + 8.53128 x^4 - 1.24006 x^5 + 0.0684 x^6.
+
+    .. plot:: examples/datasets/plot_triple_well_1d.py
+
+    Parameters
+    ----------
+    h : float, default=1e-3
+        Integration step size.
+    n_steps : int, default=500
+        Default number of integration steps per evaluation.
+
+    Returns
+    -------
+    system : TripleWell1D
+        The system.
+    """
     from ._data_bindings import TripleWell1D
     system = TripleWell1D()
     system.h = h

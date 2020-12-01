@@ -21,6 +21,7 @@ from logging import LogRecord
 
 import sphinx.util
 import sphinxcontrib.bibtex
+from matplotlib import animation
 from sphinx.application import Sphinx
 
 import deeptime
@@ -113,7 +114,13 @@ sphinx_gallery_conf = {
         '../../examples/methods',
         '../../examples/datasets'
     ]),
-    'capture_repr': ()
+    'capture_repr': (),
+    'matplotlib_animations': True,
+}
+
+plot_rcparams = {
+    'animation.html': 'html5',
+    'animation.writer': 'imagemagick' if animation.ImageMagickWriter.isAvailable() else 'ffmpeg'
 }
 
 # -- Napoleon settings --------------------------------------------------------
