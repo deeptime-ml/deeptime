@@ -8,7 +8,7 @@ def double_well_discrete():
     The discrete trajectory contains 100000 steps, discrete time step dt=10. The result object allows access to
     discretizations of varying quality as well as gives opportunity to synthetically generate more data.
 
-    .. plot:: examples/datasets/plot_double_well_discrete.py
+    .. plot:: datasets/plot_double_well_discrete.py
 
     Returns
     -------
@@ -32,7 +32,7 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     benchmark and demonstration purposes, this observation chain can be rotated into a higher dimensional space
     and equipped with additional noise.
 
-    .. plot:: examples/datasets/plot_ellipsoids.py
+    .. plot:: datasets/plot_ellipsoids.py
 
     Parameters
     ----------
@@ -134,7 +134,7 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     and uniform two-dimensional jump probabilities in between. The grid is of size :math:`n\times m` and a point
     :math:`(i,j)` is identified with state :math:`i+nj` in the transition matrix.
 
-    .. plot:: examples/datasets/plot_drunkards_walk.py
+    .. plot:: datasets/plot_drunkards_walk.py
 
     Parameters
     ----------
@@ -268,7 +268,7 @@ def birth_death_chain(q, p):
     of the last state :math:`i=n`. The sum of the probabilities must be bounded component-wise, i.e.,
     :math:`q_i + p_i \leq 1\;\forall i=1,\ldots ,n`.
 
-    .. plot:: examples/datasets/plot_birth_death_chain.py
+    .. plot:: datasets/plot_birth_death_chain.py
 
     Parameters
     ----------
@@ -290,7 +290,7 @@ def tmatrix_metropolis1d(energies, d=1.0):
     r"""Transition matrix describing the Metropolis chain jumping
     between neighbors in a discrete 1D energy landscape.
 
-    .. plot:: examples/datasets/plot_tmatrix_1d.py
+    .. plot:: datasets/plot_tmatrix_1d.py
 
     Parameters
     ----------
@@ -341,7 +341,7 @@ def sqrt_model(n_samples, seed=None):
     We sample a hidden state trajectory and sqrt-masked emissions in two
     dimensions such that the two metastable states are not linearly separable.
 
-    .. plot:: examples/datasets/plot_sqrt_model.py
+    .. plot:: datasets/plot_sqrt_model.py
 
     Parameters
     ----------
@@ -409,7 +409,7 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
 
     The inverse temperature is set to be :math:`\beta = 4`.
 
-    .. plot:: examples/datasets/plot_quadruple_well.py
+    .. plot:: datasets/plot_quadruple_well.py
 
     Parameters
     ----------
@@ -468,7 +468,7 @@ def quadruple_well_asymmetric(h=1e-3, n_steps=10000):
 
     The stochastic force parameter is set to :math:`\sigma = 0.6`.
 
-    .. plot:: examples/datasets/plot_quadruple_well_asymmetric.py
+    .. plot:: datasets/plot_quadruple_well_asymmetric.py
 
     Parameters
     ----------
@@ -531,7 +531,7 @@ def triple_well_2d(h=1e-5, n_steps=10000):
         &\quad + \frac{2}{10} x^4 + \frac{2}{10}\left(y-\frac{1}{3}\right)^4.
         \end{aligned}
 
-    .. plot:: examples/datasets/plot_triple_well_2d.py
+    .. plot:: datasets/plot_triple_well_2d.py
 
     Parameters
     ----------
@@ -679,7 +679,7 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
 
     with parameters :math:`\alpha=1` and :math:`\beta=4`.
 
-    .. plot:: examples/datasets/plot_ornstein_uhlenbeck.py
+    .. plot:: datasets/plot_ornstein_uhlenbeck.py
 
     Parameters
     ----------
@@ -735,7 +735,7 @@ def triple_well_1d(h=1e-3, n_steps=500):
 
         V(x) = 5 - 24.82 x + 41.4251 x^2 - 27.5344 x^3 + 8.53128 x^4 - 1.24006 x^5 + 0.0684 x^6.
 
-    .. plot:: examples/datasets/plot_triple_well_1d.py
+    .. plot:: datasets/plot_triple_well_1d.py
 
     Parameters
     ----------
@@ -771,7 +771,7 @@ def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: in
 
         \sigma(t, X_t) = \sigma \in\mathbb{R}^{\mathrm{dim}\times\mathrm{dim}}.
 
-    .. plot:: examples/datasets/plot_custom_sde.py
+    .. plot:: datasets/plot_custom_sde.py
 
     Parameters
     ----------
@@ -852,7 +852,7 @@ def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
     where the right-hand side :math:`F` should map an :code:`dim`-dimensional array-like object to an
     :code:`dim`-dimensional array-like object.
 
-    .. plot:: examples/datasets/plot_custom_ode.py
+    .. plot:: datasets/plot_custom_ode.py
 
     Parameters
     ----------

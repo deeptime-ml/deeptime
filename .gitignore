@@ -127,4 +127,6 @@ tests/**/*.npz
 # sphinx generated rst
 docs/**/generated
 docs/source/examples
+docs/source/datasets
 docs/node_modules
+node_modules/

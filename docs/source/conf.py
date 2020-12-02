@@ -108,12 +108,10 @@ autodoc_default_options = {
 from sphinx_gallery.sorting import ExplicitOrder
 
 sphinx_gallery_conf = {
-    'examples_dirs': '../../examples',  # path to your example scripts
-    'gallery_dirs': 'examples',  # path to where to save gallery generated output
-    'subsection_order': ExplicitOrder([
-        '../../examples/methods',
-        '../../examples/datasets'
-    ]),
+    'examples_dirs': ['../../examples/methods', '../../examples/datasets'],  # path to your example scripts
+    'gallery_dirs': ['examples', 'datasets'],  # path to where to save gallery generated output
+    'line_numbers': True,
+    'show_memory': True,
     'capture_repr': (),
     'matplotlib_animations': True,
 }

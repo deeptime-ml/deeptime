@@ -1,6 +1,6 @@
 .. _method_examples:
 
-Methods
--------
+Examples
+--------
 
 Examples for some of the methods.
