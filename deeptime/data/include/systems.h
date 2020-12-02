@@ -156,13 +156,18 @@ struct QuadrupleWell2D {
 // Unsymmetric quadruple well problem
 //------------------------------------------------------------------------------
 template<typename T>
-struct QuadrupleWellUnsymmetric2D {
+struct QuadrupleWellAsymmetric2D {
     using system_type = sde_tag;
 
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
+
+    constexpr dtype energy(const State &x) const {
+        return + x[0]*x[0]*x[0]*x[0] - (1. / 16.) * x[0]*x[0]*x[0] - 2.*x[0]*x[0] + (3./16.) * x[0]
+               + x[1]*x[1]*x[1]*x[1] - (1. / 8.) * x[1]*x[1]*x[1] - 2*x[1]*x[1] + (3./8.) * x[1];
+    }
 
     constexpr State f(const State &x) const {
         return {{

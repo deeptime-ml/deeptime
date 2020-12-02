@@ -169,7 +169,7 @@ PYBIND11_MODULE(_data_bindings, m) {
     exportSystem<DoubleWell2D<double>>(m, "DoubleWell2D");
     exportSystem<QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
     exportSystem<TripleWell2D<double>>(m, "TripleWell2D");
-    exportSystem<QuadrupleWellUnsymmetric2D<double>>(m, "QuadrupleWellUnsymmetric2D");
+    exportSystem<QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
     exportPyODE<1>(m, "PyODE1D");
     exportPyODE<2>(m, "PyODE2D");
