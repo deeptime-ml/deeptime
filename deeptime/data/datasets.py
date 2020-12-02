@@ -647,7 +647,7 @@ def abc_flow(h=1e-3, n_steps=10000):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[-1., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory(np.array([[-1., 0., 0.]]), 1000, seed=42)  # simulate trajectory
     >>> assert traj.shape == (1000, 3)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
