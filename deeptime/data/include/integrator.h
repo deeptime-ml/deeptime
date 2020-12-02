@@ -32,11 +32,11 @@ public:
 
         k1 = f(y);  // k1 = f(y)
         for (std::size_t j = 0; j < DIM; ++j) {
-            yt[j] = y[j] + h / 2 * k1[j];
+            yt[j] = y[j] + (h / 2.) * k1[j];
         }
         k2 = f(yt); // compute k2 = f(y+h/2*k1)
         for (std::size_t j = 0; j < DIM; ++j) {
-            yt[j] = y[j] + h / 2 * k2[j];
+            yt[j] = y[j] + (h / 2.) * k2[j];
         }
         k3 = f(yt); // compute k3 = f(y+h/2*k2)
         for (std::size_t j = 0; j < DIM; ++j) {
@@ -46,7 +46,7 @@ public:
 
         for (size_t j = 0; j < DIM; ++j) {
             // compute x_{k+1} = x_k + h/6*(k1 + 2*k2 + 2*k3 + k4)
-            yt[j] = yt[j] + (h / 6.0) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
+            yt[j] = y[j] + (h / 6.0) * (k1[j] + 2. * k2[j] + 2. * k3[j] + k4[j]);
         }
 
         return yt;

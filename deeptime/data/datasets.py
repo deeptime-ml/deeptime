@@ -1,4 +1,4 @@
-from typing import Tuple, List, Union, Optional
+from typing import Tuple, List, Union, Optional, Callable
 
 import numpy as np
 
@@ -7,6 +7,8 @@ def double_well_discrete():
     r"""MCMC process in a symmetric double well potential, spatially discretized to 100 bins.
     The discrete trajectory contains 100000 steps, discrete time step dt=10. The result object allows access to
     discretizations of varying quality as well as gives opportunity to synthetically generate more data.
+
+    .. plot:: examples/datasets/plot_double_well_discrete.py
 
     Returns
     -------
@@ -30,35 +32,7 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     benchmark and demonstration purposes, this observation chain can be rotated into a higher dimensional space
     and equipped with additional noise.
 
-    .. plot::
-
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from scipy.stats import multivariate_normal
-
-        import deeptime as dt
-
-        data_source = dt.data.ellipsoids(seed=17)
-        x = np.linspace(-10, 10, 1000)
-        y = np.linspace(-10, 10, 1000)
-        X, Y = np.meshgrid(x, y)
-        pos = np.empty(X.shape + (2,))
-        pos[:, :, 0] = X
-        pos[:, :, 1] = Y
-        rv1 = multivariate_normal(data_source.state_0_mean, data_source.covariance_matrix)
-        rv2 = multivariate_normal(data_source.state_1_mean, data_source.covariance_matrix)
-
-        fig = plt.figure()
-        ax = fig.gca()
-
-        ax.contourf(X, Y, (rv1.pdf(pos) + rv2.pdf(pos)).reshape(len(x), len(y)))
-        ax.autoscale(False)
-        ax.set_aspect('equal')
-        ax.scatter(*data_source.observations(100).T, color='cyan', marker='x', label='samples')
-        plt.grid()
-        plt.title(r'Ellipsoids dataset observations with laziness of $0.97$.')
-        plt.legend()
-        plt.show()
+    .. plot:: examples/datasets/plot_ellipsoids.py
 
     Parameters
     ----------
@@ -86,7 +60,7 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     return Ellipsoids(laziness=laziness, seed=seed)
 
 
-def position_based_fluids(n_burn_in=5000, n_jobs=None):
+def position_based_fluids(n_burn_in=5000, initial_positions=None, n_jobs=None):
     r""" Creates a position based fluids (PBF) simulator. It was introduced in :cite:`data-api-macklin2013position`.
     Up to numerics the simulation is deterministic.
 
@@ -134,11 +108,13 @@ def position_based_fluids(n_burn_in=5000, n_jobs=None):
     """
     from deeptime.data.pbf_simulator import PBFSimulator
     interaction_distance = 1.5
-    init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
-    init_pos_y = np.arange(-12, 24, interaction_distance * .9).astype(np.float32)
-    init_pos = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
+    if initial_positions is None:
+        init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
+        init_pos_y = np.arange(-12, 24, interaction_distance * .9).astype(np.float32)
+        initial_positions = np.dstack(np.meshgrid(init_pos_x, init_pos_y)).reshape(-1, 2)
     domain = np.array([80, 50])
-    pbf = PBFSimulator(domain_size=domain, initial_positions=init_pos, interaction_distance=interaction_distance,
+    pbf = PBFSimulator(domain_size=domain, initial_positions=initial_positions,
+                       interaction_distance=interaction_distance,
                        n_jobs=n_jobs)
     # equilibrate
     pbf.run(n_burn_in, 0)
@@ -158,44 +134,7 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     and uniform two-dimensional jump probabilities in between. The grid is of size :math:`n\times m` and a point
     :math:`(i,j)` is identified with state :math:`i+nj` in the transition matrix.
 
-    .. plot::
-
-        import numpy as np
-        import deeptime
-
-        import matplotlib.pyplot as plt
-        from matplotlib.collections import LineCollection
-        import scipy
-        from scipy.interpolate import CubicSpline
-
-        sim = deeptime.data.drunkards_walk(bar_location=(0, 0), home_location=(9, 9))
-        walk = sim.walk(start=(7, 2), n_steps=250, seed=17)
-
-        fig, ax = plt.subplots(figsize=(10, 10))
-
-        ax.scatter(*sim.home_location.T, marker='*', label='Home', c='red', s=150, zorder=5)
-        ax.scatter(*sim.bar_location.T, marker='*', label='Bar', c='orange', s=150, zorder=5)
-        ax.scatter(7, 2, marker='*', label='Start', c='black', s=150, zorder=5)
-
-        x = np.r_[walk[:, 0]]
-        y = np.r_[walk[:, 1]]
-        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
-        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
-        ax.scatter(x, y, label='Visited intermediates')
-
-        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        coll = LineCollection(segments, cmap='cool', linestyle='dotted')
-        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
-        coll.set_linewidth(2)
-        ax.add_collection(coll)
-
-        ax.set_xticks(np.arange(10))
-        ax.set_yticks(np.arange(10))
-        ax.set_xlabel('coordinate x')
-        ax.set_ylabel('coordinate y')
-        ax.grid()
-        ax.legend()
+    .. plot:: examples/datasets/plot_drunkards_walk.py
 
     Parameters
     ----------
@@ -321,12 +260,15 @@ def birth_death_chain(q, p):
         p_{ij} = \begin{cases}
             q_i &\text{, if } j=i-1 \text{ and } i>0,\\
             r_i &\text{, if } j=i,\\
-            p_i &\text{, if } j=i+1 \text{ and } i<d-1.
+            p_i &\text{, if } j=i+1 \text{ and } i < d-1
         \end{cases}
+
 
     The annihilation probability of state :math:`i=1` must not be zero, same for the creation probability
     of the last state :math:`i=n`. The sum of the probabilities must be bounded component-wise, i.e.,
     :math:`q_i + p_i \leq 1\;\forall i=1,\ldots ,n`.
+
+    .. plot:: examples/datasets/plot_birth_death_chain.py
 
     Parameters
     ----------
@@ -347,6 +289,8 @@ def birth_death_chain(q, p):
 def tmatrix_metropolis1d(energies, d=1.0):
     r"""Transition matrix describing the Metropolis chain jumping
     between neighbors in a discrete 1D energy landscape.
+
+    .. plot:: examples/datasets/plot_tmatrix_1d.py
 
     Parameters
     ----------
@@ -397,18 +341,7 @@ def sqrt_model(n_samples, seed=None):
     We sample a hidden state trajectory and sqrt-masked emissions in two
     dimensions such that the two metastable states are not linearly separable.
 
-    .. plot::
-
-        import matplotlib.pyplot as plt
-
-        import deeptime as dt
-
-        n_samples = 30000
-        dtraj, traj = dt.data.sqrt_model(n_samples)
-
-        fig, ax = plt.subplots(1, 1, figsize=(16, 10))
-        ax.hexbin(*traj.T, bins=10, cmap='coolwarm')
-
+    .. plot:: examples/datasets/plot_sqrt_model.py
 
     Parameters
     ----------
@@ -476,38 +409,7 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
 
     The inverse temperature is set to be :math:`\beta = 4`.
 
-    .. plot::
-
-        import numpy as np
-        import deeptime as dt
-        import scipy
-        import matplotlib.pyplot as plt
-        from matplotlib.collections import LineCollection
-
-        traj = dt.data.quadruple_well(n_steps=1000, seed=46).trajectory(np.array([[1, -1]]), 100)
-
-        xy = np.arange(-2, 2, 0.1)
-        XX, YY = np.meshgrid(xy, xy)
-        V = (XX**2 - 1)**2 + (YY**2 - 1)**2
-
-        fig, ax = plt.subplots(1, 1)
-        ax.set_title("Example of a trajectory in the potential landscape")
-
-        cb = ax.contourf(xy, xy, V, levels=np.linspace(0.0, 3.0, 20), cmap='coolwarm')
-
-        x = np.r_[traj[:, 0]]
-        y = np.r_[traj[:, 1]]
-        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
-        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
-
-        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        coll = LineCollection(segments, cmap='bwr')
-        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
-        coll.set_linewidth(1)
-        ax.add_collection(coll)
-
-        fig.colorbar(cb)
+    .. plot:: examples/datasets/plot_quadruple_well.py
 
     Parameters
     ----------
@@ -550,6 +452,65 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
     return system
 
 
+def quadruple_well_asymmetric(h=1e-3, n_steps=10000):
+    r""" This dataset generates trajectories of a two-dimensional particle living in an asymmetric quadruple-well
+    potential landscape. It is subject to the stochastic differential equation
+
+    .. math::
+
+        \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sigma\mathrm{d}W_t
+
+    with :math:`W_t` being a Wiener process and the potential :math:`V` being given by
+
+    .. math::
+
+        V(x) = (x_1^4-\frac{x_1^3}{16}-2x_1^2+\frac{3x_1}{16}) + (x_2^4-\frac{x_1^3}{8}-2x_1^2+\frac{3x_1}{8}).
+
+    The stochastic force parameter is set to :math:`\sigma = 0.6`.
+
+    .. plot:: examples/datasets/plot_quadruple_well_asymmetric.py
+
+    Parameters
+    ----------
+    h : float, default = 1e-3
+        Integration step size. The implementation uses an Euler-Maruyama integrator.
+    n_steps : int, default = 10000
+        Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=10`.
+
+    Returns
+    -------
+    model : QuadrupleWell2D
+        The model.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.quadruple_well_asymmetric(h=1e-3, n_steps=100)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[0., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(-2, 2, (100, 2))  # 100 test point in [-2, 2] x [-2, 2]
+    >>> evaluations = model(test_points, seed=53, n_jobs=1)
+    >>> assert evaluations.shape == (100, 2)
+    """
+    from ._data_bindings import QuadrupleWellAsymmetric2D
+    system = QuadrupleWellAsymmetric2D()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
 def triple_well_2d(h=1e-5, n_steps=10000):
     r""" This dataset generates trajectories of a two-dimensional particle living in a triple-well potential
     landscape. The example can be found in :cite:`data-api-schutte2013metastability`.
@@ -570,41 +531,7 @@ def triple_well_2d(h=1e-5, n_steps=10000):
         &\quad + \frac{2}{10} x^4 + \frac{2}{10}\left(y-\frac{1}{3}\right)^4.
         \end{aligned}
 
-    .. plot::
-
-        import numpy as np
-        import deeptime as dt
-        import scipy
-        import matplotlib.pyplot as plt
-        from matplotlib.collections import LineCollection
-
-        traj = dt.data.triple_well_2d(n_steps=10000).trajectory(np.array([[-1, 0]]), 20, seed=42)
-
-        x = np.arange(-2, 2, 0.1)
-        y = np.arange(-1, 2, 0.1)
-        XX, YY = np.meshgrid(x, y)
-        V = 3*np.exp(-(XX**2) - (YY - 1/3)**2) - 3*np.exp(-XX**2 - (YY - 5/3)**2) \
-            - 5*np.exp(-(XX-1)**2 - YY**2) - 5*np.exp(-(XX+1)**2 - YY**2) \
-            + (2/10)*XX**4 + (2/10)*(YY-1/3)**4
-
-        fig, ax = plt.subplots(1, 1)
-        ax.set_title("Example of a trajectory in the potential landscape")
-
-        cb = ax.contourf(x, y, V, levels=np.linspace(-4.5, 4.5, 20), cmap='coolwarm')
-
-        x = np.r_[traj[:, 0]]
-        y = np.r_[traj[:, 1]]
-        f, u = scipy.interpolate.splprep([x, y], s=0, per=False)
-        xint, yint = scipy.interpolate.splev(np.linspace(0, 1, 50000), f)
-
-        points = np.stack([xint, yint]).T.reshape(-1, 1, 2)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        coll = LineCollection(segments, cmap='jet')
-        coll.set_array(np.linspace(0, 1, num=len(points), endpoint=True))
-        coll.set_linewidth(1)
-        ax.add_collection(coll)
-
-        fig.colorbar(cb)
+    .. plot:: examples/datasets/plot_triple_well_2d.py
 
     Parameters
     ----------
@@ -649,6 +576,334 @@ def triple_well_2d(h=1e-5, n_steps=10000):
     """
     from ._data_bindings import TripleWell2D
     system = TripleWell2D()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def abc_flow(h=1e-3, n_steps=10000):
+    r""" The Arnold-Beltrami-Childress flow :cite:`data-api-arnold1966topology`.
+    It is generated by the ODE
+
+    .. math::
+
+        \begin{aligned}
+        \dot{x} &= A\sin(z) + C\cos(y)\\
+        \dot{y} &= B\sin(x) + A\cos(z)\\
+        \dot{z} &= C\sin(y) + B\cos(x)
+        \end{aligned}
+
+    on the domain :math:`\Omega=[0, 2\pi]^3` with the parameters :math:`A=\sqrt{3}`, :math:`B=\sqrt{2}`,
+    and :math:`C=1`.
+
+    .. plot::
+
+        import numpy as np
+        import deeptime as dt
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+
+        system = dt.data.abc_flow(n_steps=100)
+        scatters = [np.random.uniform(np.pi-.5, np.pi+.5, size=(200, 3))]
+        for _ in range(12):
+            scatters.append(system(scatters[-1], n_jobs=8))
+
+        f = plt.figure(figsize=(18, 18))
+        f.suptitle('Evolution of test points in the ABC flowfield')
+        for i in range(4):
+            for j in range(3):
+                ix = j + i*3
+                ax = f.add_subplot(4, 3, ix+1, projection='3d')
+                ax.set_title(f"T={ix*system.n_steps*system.h:.2f}")
+                ax.scatter(*scatters[ix].T, c=np.linspace(0, 1, num=200))
+                ax.set_xlim([0, 2*np.pi])
+                ax.set_ylim([0, 2*np.pi])
+                ax.set_zlim([0, 2*np.pi])
+        plt.show()
+
+
+    Parameters
+    ----------
+    h : float, default = 1e-3
+        Integration step size. The implementation uses an Runge-Kutta integrator.
+    n_steps : int, default = 10000
+        Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=10`.
+
+    Returns
+    -------
+    system : ABCFlow
+        The system.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.abc_flow(h=1e-3, n_steps=100)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[-1., 0., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> assert traj.shape == (1000, 3)  # 1000 evaluations from initial condition [0, 0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(.5, 1.5, (100, 3))  # 100 test points
+    >>> evaluations = model(test_points, seed=53, n_jobs=1)
+    >>> assert evaluations.shape == (100, 3)
+
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: data-api-
+    """
+    from ._data_bindings import ABCFlow
+    system = ABCFlow()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def ornstein_uhlenbeck(h=1e-3, n_steps=500):
+    r""" The one-dimensional Ornstein-Uhlenbeck process. It is given by the stochastic differential equation
+
+    .. math::
+
+        dX_t = -\alpha X_t dt + \sqrt{2\beta^{-1}}dW_t
+
+    with parameters :math:`\alpha=1` and :math:`\beta=4`.
+
+    .. plot:: examples/datasets/plot_ornstein_uhlenbeck.py
+
+    Parameters
+    ----------
+    h : float, default = 1e-3
+        Integration step size. The implementation uses an Euler-Maruyama integrator.
+    n_steps : int, default = 500
+        Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=10`.
+
+    Returns
+    -------
+    system : OrnsteinUhlenbeck
+        The system.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.ornstein_uhlenbeck(h=1e-3, n_steps=100)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[-1.]]), 1000, seed=42)  # simulate trajectory
+    >>> assert traj.shape == (1000, 1)  # 1000 evaluations from initial condition [0, 0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(.5, 1.5, (100, 1))  # 100 test points
+    >>> evaluations = model(test_points, seed=53, n_jobs=1)
+    >>> assert evaluations.shape == (100, 1)
+    """
+    from ._data_bindings import OrnsteinUhlenbeck
+    system = OrnsteinUhlenbeck()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def triple_well_1d(h=1e-3, n_steps=500):
+    r""" A simple one-dimensional triple-well potential landscape. It is given by the stochastic differential equation
+
+    .. math::
+
+        \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sigma(t, X_t)\mathrm{d}W_t
+
+    with :math:`W_t` being a Wiener process, :math:`\sigma = 1.09`, and the potential :math:`V` being given by
+
+    .. math::
+
+        V(x) = 5 - 24.82 x + 41.4251 x^2 - 27.5344 x^3 + 8.53128 x^4 - 1.24006 x^5 + 0.0684 x^6.
+
+    .. plot:: examples/datasets/plot_triple_well_1d.py
+
+    Parameters
+    ----------
+    h : float, default=1e-3
+        Integration step size.
+    n_steps : int, default=500
+        Default number of integration steps per evaluation.
+
+    Returns
+    -------
+    system : TripleWell1D
+        The system.
+    """
+    from ._data_bindings import TripleWell1D
+    system = TripleWell1D()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: int):
+    r""" This function allows the definition of custom stochastic differential equations (SDEs) of the form
+
+    .. math::
+
+        \mathrm{d}X_t = F(X_t) \mathrm{d}t + \sigma(t, X_t)\mathrm{d}W_t,
+
+    where the right-hand side :math:`F` should map an :code:`dim`-dimensional array-like object to an
+    :code:`dim`-dimensional array-like object. The prefactor in front of the Wiener process :math:`W_t` is assumed
+    to be constant with respect to time and state, i.e.,
+
+    .. math::
+
+        \sigma(t, X_t) = \sigma \in\mathbb{R}^{\mathrm{dim}\times\mathrm{dim}}.
+
+    .. plot:: examples/datasets/plot_custom_sde.py
+
+    Parameters
+    ----------
+    dim : int, positive and less or equal to 5
+        The dimension of the SDE's state vector :math:`X_t`. Must be less or equal to 5.
+    rhs : Callable
+        The right-hand side function :math:`F(X_t)`. It must map a dim-dimensional array like object to a
+        dim-dimensional array or list.
+    sigma : (dim, dim) ndarray
+        The sigma parameter.
+    h : float
+        Step size for the Euler-Maruyama integrator.
+    n_steps : int
+        Number of integration steps per evaluation / recording of the state.
+
+    Returns
+    -------
+    system : SDE
+        The system.
+
+    Examples
+    --------
+    First, some imports.
+
+    >>> import deeptime as dt
+    >>> import numpy as np
+
+    Then, we can define the right-hand side. Here, we choose the force of an harmonic spherical inclusion potential.
+
+    >>> def harmonic_sphere_force(x, radius=.5, k=1.):
+    ...     dist_to_origin = np.linalg.norm(x)
+    ...     dist_to_sphere = dist_to_origin - radius
+    ...     if dist_to_sphere > 0:
+    ...         return -k * dist_to_sphere * np.array(x) / dist_to_origin
+    ...     else:
+    ...         return [0., 0.]
+
+    This, we can use as right-hand side to define our SDE with :math:`\sigma = \diag(1, 1)`.
+
+    >>> sde = dt.data.custom_sde(dim=2, rhs=lambda x: harmonic_sphere_force(x, radius=.5, k=1),
+    ...                          sigma=np.diag([1., 1.]), h=1e-3, n_steps=1)
+
+    Here, :code:`h` is the step-size of the (Euler-Maruyama) integrator and :code:`n_steps` refers to the number of
+    integration steps for each evaluation.
+    Given the SDE instance, we can generate trajectories via
+
+    >>> trajectory = sde.trajectory(x0=[[0., 0.]], n_evaluations=10, seed=55)
+    >>> assert trajectory.shape == (10, 2)
+
+    or propagate (in this case 300) sample points by :code:`n_steps`:
+
+    >>> propagated_samples = sde(np.random.normal(scale=.1, size=(300, 2)))
+    >>> assert propagated_samples.shape == (300, 2)
+    """
+    from . import _data_bindings as bindings
+    if not (isinstance(dim, int) and 0 < dim <= 5):
+        raise ValueError("Dimension must be positive and at most 5.")
+
+    sigma = np.atleast_2d(np.array(sigma).squeeze())
+    sigma_shape = sigma.shape
+    if not sigma_shape == (dim, dim):
+        raise ValueError("Sigma must be DIM x DIM matrix but had shape", sigma_shape)
+
+    SDE = getattr(bindings, f'PySDE{dim}D')
+    system = SDE(sigma, rhs)
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
+    r""" This function allows the definition of custom ordinary differential equations (ODEs) of the form
+
+    .. math::
+
+        \mathrm{d}X_t = F(X_t) \mathrm{d}t,
+
+    where the right-hand side :math:`F` should map an :code:`dim`-dimensional array-like object to an
+    :code:`dim`-dimensional array-like object.
+
+    .. plot:: examples/datasets/plot_custom_ode.py
+
+    Parameters
+    ----------
+    dim : int, positive and less or equal to 5
+        The dimension of the SDE's state vector :math:`X_t`. Must be less or equal to 5.
+    rhs : Callable
+        The right-hand side function :math:`F(X_t)`. It must map a dim-dimensional array like object to a
+        dim-dimensional array or list.
+    h : float
+        Step size for the Runge-Kutta integrator.
+    n_steps : int
+        Number of integration steps per evaluation / recording of the state.
+
+    Returns
+    -------
+    system : ODE
+        The system.
+
+    Examples
+    --------
+    First, some imports.
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    We can define the right-hand side to model an exponential decay
+
+    >>> def rhs(x):
+    ...     return [-.5 * x[0]]
+
+    and obtain the system
+
+    >>> system = dt.data.custom_ode(dim=1, rhs=rhs, h=1e-3, n_steps=20)
+
+    where :code:`n_steps` is the number of (Runge-Kutta 45) integration steps per evaluation and :code:`h` the
+    step-size. With the system, one can generate trajectories
+
+    >>> traj = system.trajectory(x0=[[1.]], n_evaluations=50, seed=45)
+    >>> assert traj.shape == (50, 1)
+
+    as well as propagate sample points by :code:`n_steps`:
+
+    >>> propagated_samples = system(np.random.uniform(size=(100, 1)))
+    >>> assert propagated_samples.shape == (100 ,1)
+    """
+    from . import _data_bindings as bindings
+    if not (isinstance(dim, int) and 0 < dim <= 5):
+        raise ValueError("Dimension must be positive and at most 5.")
+
+    ODE = getattr(bindings, f'PyODE{dim}D')
+    system = ODE(rhs)
     system.h = h
     system.n_steps = n_steps
     return system

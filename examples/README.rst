@@ -1,4 +1,4 @@
+.. _examples_main:
+
 Examples
 ========
-
-Some examples regarding the implemented methods.

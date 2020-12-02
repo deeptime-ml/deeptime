@@ -21,6 +21,7 @@ from logging import LogRecord
 
 import sphinx.util
 import sphinxcontrib.bibtex
+from matplotlib import animation
 from sphinx.application import Sphinx
 
 import deeptime
@@ -104,11 +105,22 @@ autodoc_default_options = {
 }
 
 # -- Gallery settings ---------------------------------------------------------
+from sphinx_gallery.sorting import ExplicitOrder
 
 sphinx_gallery_conf = {
     'examples_dirs': '../../examples',  # path to your example scripts
     'gallery_dirs': 'examples',  # path to where to save gallery generated output
-    'capture_repr': ()
+    'subsection_order': ExplicitOrder([
+        '../../examples/methods',
+        '../../examples/datasets'
+    ]),
+    'capture_repr': (),
+    'matplotlib_animations': True,
+}
+
+plot_rcparams = {
+    'animation.html': 'html5',
+    'animation.writer': 'imagemagick' if animation.ImageMagickWriter.isAvailable() else 'ffmpeg'
 }
 
 # -- Napoleon settings --------------------------------------------------------

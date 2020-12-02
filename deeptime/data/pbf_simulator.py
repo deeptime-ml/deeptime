@@ -208,8 +208,11 @@ class PBFSimulator(object):
 
         domain_size = self.domain_size
 
-        backend_ = mpl.get_backend()
-        mpl.use("Agg")  # Prevent showing stuff
+        agg_backend = kw.get('agg_backend', True)
+
+        if agg_backend:
+            backend_ = mpl.get_backend()
+            mpl.use("Agg")  # Prevent showing stuff
 
         figsize = kw.get("figsize", (len(trajectories)*8, 6))
         ncols = kw.get("ncols", len(trajectories))
@@ -274,7 +277,8 @@ class PBFSimulator(object):
         ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=False,
                                       frames=len(trajectories[0]))
 
-        mpl.use(backend_)  # Reset backend
+        if agg_backend:
+            mpl.use(backend_)  # Reset backend
         return ani
 
     @property

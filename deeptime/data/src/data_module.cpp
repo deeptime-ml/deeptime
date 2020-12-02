@@ -2,10 +2,24 @@
 
 #include <functional>
 #include <utility>
+#include <type_traits>
 
 #include "common.h"
 #include "pbf.h"
 #include "systems.h"
+
+namespace detail{
+template< class... >
+using void_t = void;
+
+template< class, class = void >
+struct system_has_potential : std::false_type { };
+template< class T >
+struct system_has_potential<T, void_t<decltype(std::declval<T>().energy(std::declval<typename T::State>()))>> : std::true_type { };
+}
+
+template<typename T>
+static constexpr bool system_has_potential_v = detail::system_has_potential<T>::value;
 
 using namespace pybind11::literals;
 
@@ -78,7 +92,7 @@ PBF makePbf(np_array<dtype> pos, const np_array<dtype>& gridSize, dtype interact
 template<typename System, typename... InitArgs>
 auto exportSystem(py::module& m, const std::string &name) {
     using npDtype = typename System::dtype;
-    return py::class_<System>(m, name.c_str())
+    auto clazz = py::class_<System>(m, name.c_str())
             .def(py::init<InitArgs...>())
             .def_readwrite("h", &System::h)
             .def_readwrite("n_steps", &System::nSteps)
@@ -89,6 +103,29 @@ auto exportSystem(py::module& m, const std::string &name) {
             .def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
                 return trajectory(self, x, length, seed);
             }, "x0"_a, "n_evaluations"_a, "seed"_a = -1);
+    if constexpr(system_has_potential_v<System>) {
+        clazz.def("potential", [](System &self, const np_array_nfc<npDtype> &x) {
+            auto nPoints = static_cast<std::size_t>(x.shape(0));
+            np_array_nfc<npDtype> y (nPoints);
+
+            auto yBuf = y.template mutable_unchecked<1>();
+            std::fill(y.mutable_data(), y.mutable_data() + nPoints, 0.);
+
+            auto xBuf = x.template unchecked<2>();
+
+            typename System::State testPoint;
+            for (std::size_t i = 0; i < nPoints; ++i) {
+                for (std::size_t k = 0; k < System::DIM; ++k) {
+                    testPoint[k] = xBuf(i, k);
+                }
+                yBuf(i) = self.energy(testPoint);
+            }
+
+            return y;
+        });
+    }
+
+    return clazz;
 }
 
 template<std::size_t DIM>
@@ -132,7 +169,7 @@ PYBIND11_MODULE(_data_bindings, m) {
     exportSystem<DoubleWell2D<double>>(m, "DoubleWell2D");
     exportSystem<QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
     exportSystem<TripleWell2D<double>>(m, "TripleWell2D");
-    exportSystem<QuadrupleWellUnsymmetric2D<double>>(m, "QuadrupleWellUnsymmetric2D");
+    exportSystem<QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
     exportPyODE<1>(m, "PyODE1D");
     exportPyODE<2>(m, "PyODE2D");

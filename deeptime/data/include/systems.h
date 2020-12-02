@@ -84,6 +84,11 @@ struct TripleWell1D {
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
+    constexpr dtype energy(const State &x) const {
+        return -(24.82*x[0] - 41.4251*x[0]*x[0] + 27.5344*std::pow(x[0], 3)
+               - 8.53128*std::pow(x[0], 4) + 1.24006 * std::pow(x[0], 5) - 0.0684 * std::pow(x[0], 6)) + 5;
+    }
+
     constexpr State f(const State &x) const {
         return {{
                         -1 * (-24.82002100 + 82.85029600 * x[0] - 82.6031550 * x[0] * x[0]
@@ -131,6 +136,10 @@ struct QuadrupleWell2D {
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
+    constexpr dtype energy(const State &x) const {
+        return (x[0]*x[0] - 1)*(x[0]*x[0] - 1) + (x[1]*x[1] - 1)*(x[1]*x[1] - 1);
+    }
+
     constexpr State f(const State &x) const {
         // Quadruple well potential: V = (x(1, :).^2 - 1).^2 + (x(2, :).^2 - 1).^2
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -4 * x[1] * x[1] * x[1] + 4 * x[1]}};
@@ -147,13 +156,18 @@ struct QuadrupleWell2D {
 // Unsymmetric quadruple well problem
 //------------------------------------------------------------------------------
 template<typename T>
-struct QuadrupleWellUnsymmetric2D {
+struct QuadrupleWellAsymmetric2D {
     using system_type = sde_tag;
 
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
+
+    constexpr dtype energy(const State &x) const {
+        return + x[0]*x[0]*x[0]*x[0] - (1. / 16.) * x[0]*x[0]*x[0] - 2.*x[0]*x[0] + (3./16.) * x[0]
+               + x[1]*x[1]*x[1]*x[1] - (1. / 8.) * x[1]*x[1]*x[1] - 2*x[1]*x[1] + (3./8.) * x[1];
+    }
 
     constexpr State f(const State &x) const {
         return {{
@@ -178,8 +192,19 @@ struct TripleWell2D {
     using dtype = T;
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
+    
+    constexpr dtype energy(const State &x) const {
+        const auto& xv = x[0];
+        const auto& yv = x[1];
+        return + 3.*std::exp(- (xv * xv) - (yv - 1./3.)*(yv - 1./3.))
+               - 3.*std::exp(- (xv * xv) - (yv - 5./3.)*(yv - 5./3.))
+               - 5.*std::exp(-(xv - 1.)*(xv - 1.) - yv * yv)
+               - 5.*std::exp(-(xv + 1.)*(xv + 1.) - yv * yv)
+               + (2./10.)*xv*xv*xv*xv
+               + (2./10.)*std::pow(yv - 1./3., 4.);
+    }
 
-    State f(const State &x) const {
+    constexpr State f(const State &x) const {
         return {{
                         -(3 * std::exp(-x[0] * x[0] - (x[1] - 1.0 / 3) * (x[1] - 1.0 / 3)) * (-2 * x[0])
                           - 3 * std::exp(-x[0] * x[0] - (x[1] - 5.0 / 3) * (x[1] - 5.0 / 3)) * (-2 * x[0])
