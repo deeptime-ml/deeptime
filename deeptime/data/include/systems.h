@@ -60,6 +60,10 @@ struct OrnsteinUhlenbeck {
     using State = Vector<dtype, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
+    constexpr dtype energy(const State &x) const {
+        return 0.5 * alpha * x[0] * x[0];
+    }
+
     constexpr State f(const State &x) const {
         return {{-alpha * x[0]}};
     }
@@ -114,6 +118,10 @@ struct DoubleWell2D {
     using dtype = T;
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
+
+    constexpr dtype energy(const State &x) const {
+        return (x[0]*x[0]-1.) * (x[0]*x[0]-1.) + x[1] * x[1];
+    }
 
     constexpr State f(const State &x) const {
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -2 * x[1]}};

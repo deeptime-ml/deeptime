@@ -756,6 +756,65 @@ def triple_well_1d(h=1e-3, n_steps=500):
     return system
 
 
+def double_well_2d(h=1e-3, n_steps=10000):
+    r""" This dataset generates trajectories of a two-dimensional particle living in a double-well potential
+    landscape.
+
+    The particle is subject to the stochastic differential equation
+
+    .. math::
+
+        \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sigma(t, X_t)\mathrm{d}W_t
+
+    with :math:`W_t` being a Wiener process, :math:`\sigma = 0.7`, and the potential :math:`V` being given by
+
+    .. math::
+
+        V(x) = (x_1^2 - 1)^2 + x_2^2.
+
+    .. plot:: datasets/plot_double_well_2d.py
+
+    Parameters
+    ----------
+    h : float, default = 1e-5
+        Integration step size. The implementation uses an Euler-Maruyama integrator.
+    n_steps : int, default = 10000
+        Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=0.1`.
+
+    Returns
+    -------
+    model : DoubleWell2D
+        The model.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.double_well_2d(h=1e-3, n_steps=100)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[-1., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(-2, 2, (100, 2))  # 100 test point in [-2, 2] x [-2, 2]
+    >>> evaluations = model(test_points, seed=53, n_jobs=1)
+    >>> assert evaluations.shape == (100, 2)
+    """
+    from ._data_bindings import DoubleWell2D
+    system = DoubleWell2D()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
 def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: int):
     r""" This function allows the definition of custom stochastic differential equations (SDEs) of the form
 
