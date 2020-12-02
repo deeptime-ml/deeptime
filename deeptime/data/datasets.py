@@ -1,4 +1,4 @@
-from typing import Tuple, List, Union, Optional
+from typing import Tuple, List, Union, Optional, Callable
 
 import numpy as np
 
@@ -751,6 +751,159 @@ def triple_well_1d(h=1e-3, n_steps=500):
     """
     from ._data_bindings import TripleWell1D
     system = TripleWell1D()
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: int):
+    r""" This function allows the definition of custom stochastic differential equations (SDEs) of the form
+
+    .. math::
+
+        \mathrm{d}X_t = F(X_t) \mathrm{d}t + \sigma(t, X_t)\mathrm{d}W_t,
+
+    where the right-hand side :math:`F` should map an :code:`dim`-dimensional array-like object to an
+    :code:`dim`-dimensional array-like object. The prefactor in front of the Wiener process :math:`W_t` is assumed
+    to be constant with respect to time and state, i.e.,
+
+    .. math::
+
+        \sigma(t, X_t) = \sigma \in\mathbb{R}^{\mathrm{dim}\times\mathrm{dim}}.
+
+    .. plot:: examples/datasets/plot_custom_sde.py
+
+    Parameters
+    ----------
+    dim : int, positive and less or equal to 5
+        The dimension of the SDE's state vector :math:`X_t`. Must be less or equal to 5.
+    rhs : Callable
+        The right-hand side function :math:`F(X_t)`. It must map a dim-dimensional array like object to a
+        dim-dimensional array or list.
+    sigma : (dim, dim) ndarray
+        The sigma parameter.
+    h : float
+        Step size for the Euler-Maruyama integrator.
+    n_steps : int
+        Number of integration steps per evaluation / recording of the state.
+
+    Returns
+    -------
+    system : SDE
+        The system.
+
+    Examples
+    --------
+    First, some imports.
+
+    >>> import deeptime as dt
+    >>> import numpy as np
+
+    Then, we can define the right-hand side. Here, we choose the force of an harmonic spherical inclusion potential.
+
+    >>> def harmonic_sphere_force(x, radius=.5, k=1.):
+    ...     dist_to_origin = np.linalg.norm(x)
+    ...     dist_to_sphere = dist_to_origin - radius
+    ...     if dist_to_sphere > 0:
+    ...         return -k * dist_to_sphere * np.array(x) / dist_to_origin
+    ...     else:
+    ...         return [0., 0.]
+
+    This, we can use as right-hand side to define our SDE with :math:`\sigma = \diag(1, 1)`.
+
+    >>> sde = dt.data.custom_sde(dim=2, rhs=lambda x: harmonic_sphere_force(x, radius=.5, k=1),
+    ...                          sigma=np.diag([1., 1.]), h=1e-3, n_steps=1)
+
+    Here, :code:`h` is the step-size of the (Euler-Maruyama) integrator and :code:`n_steps` refers to the number of
+    integration steps for each evaluation.
+    Given the SDE instance, we can generate trajectories via
+
+    >>> trajectory = sde.trajectory(x0=[[0., 0.]], n_evaluations=10, seed=55)
+    >>> assert trajectory.shape == (10, 2)
+
+    or propagate (in this case 300) sample points by :code:`n_steps`:
+
+    >>> propagated_samples = sde(np.random.normal(scale=.1, size=(300, 2)))
+    >>> assert propagated_samples.shape == (300, 2)
+    """
+    from . import _data_bindings as bindings
+    if not (isinstance(dim, int) and 0 < dim <= 5):
+        raise ValueError("Dimension must be positive and at most 5.")
+
+    sigma = np.atleast_2d(np.array(sigma).squeeze())
+    sigma_shape = sigma.shape
+    if not sigma_shape == (dim, dim):
+        raise ValueError("Sigma must be DIM x DIM matrix but had shape", sigma_shape)
+
+    SDE = getattr(bindings, f'PySDE{dim}D')
+    system = SDE(sigma, rhs)
+    system.h = h
+    system.n_steps = n_steps
+    return system
+
+
+def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
+    r""" This function allows the definition of custom ordinary differential equations (ODEs) of the form
+
+    .. math::
+
+        \mathrm{d}X_t = F(X_t) \mathrm{d}t,
+
+    where the right-hand side :math:`F` should map an :code:`dim`-dimensional array-like object to an
+    :code:`dim`-dimensional array-like object.
+
+    .. plot:: examples/datasets/plot_custom_ode.py
+
+    Parameters
+    ----------
+    dim : int, positive and less or equal to 5
+        The dimension of the SDE's state vector :math:`X_t`. Must be less or equal to 5.
+    rhs : Callable
+        The right-hand side function :math:`F(X_t)`. It must map a dim-dimensional array like object to a
+        dim-dimensional array or list.
+    h : float
+        Step size for the Runge-Kutta integrator.
+    n_steps : int
+        Number of integration steps per evaluation / recording of the state.
+
+    Returns
+    -------
+    system : ODE
+        The system.
+
+    Examples
+    --------
+    First, some imports.
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    We can define the right-hand side to model an exponential decay
+
+    >>> def rhs(x):
+    ...     return [-.5 * x[0]]
+
+    and obtain the system
+
+    >>> system = dt.data.custom_ode(dim=1, rhs=rhs, h=1e-3, n_steps=20)
+
+    where :code:`n_steps` is the number of (Runge-Kutta 45) integration steps per evaluation and :code:`h` the
+    step-size. With the system, one can generate trajectories
+
+    >>> traj = system.trajectory(x0=[[1.]], n_evaluations=50, seed=45)
+    >>> assert traj.shape == (50, 1)
+
+    as well as propagate sample points by :code:`n_steps`:
+
+    >>> propagated_samples = system(np.random.uniform(size=(100, 1)))
+    >>> assert propagated_samples.shape == (100 ,1)
+    """
+    from . import _data_bindings as bindings
+    if not (isinstance(dim, int) and 0 < dim <= 5):
+        raise ValueError("Dimension must be positive and at most 5.")
+
+    ODE = getattr(bindings, f'PyODE{dim}D')
+    system = ODE(rhs)
     system.h = h
     system.n_steps = n_steps
     return system

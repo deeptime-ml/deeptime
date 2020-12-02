@@ -25,6 +25,17 @@ API
     tmatrix_metropolis1d
 
 ===============================================================================
+Custom systems
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    custom_sde
+    custom_ode
+
+===============================================================================
 Utilities
 ===============================================================================
 
@@ -56,3 +67,4 @@ from .util import timeshifted_split, TimeSeriesDataset, TimeLaggedDataset
 from .datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk, bickley_jet, \
     birth_death_chain, tmatrix_metropolis1d, sqrt_model, quadruple_well, triple_well_2d, abc_flow, ornstein_uhlenbeck, \
     triple_well_1d, quadruple_well_asymmetric
+from .datasets import custom_sde, custom_ode
