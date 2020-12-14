@@ -1,0 +1,3 @@
+[submodule "docs/source/notebooks"]
+	path = docs/source/notebooks
+	url = https://github.com/deeptime-ml/deeptime-notebooks.git
