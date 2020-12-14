@@ -8,7 +8,7 @@ import deeptime.markov.hmm._hmm_bindings as _bindings
 from deeptime.markov.hmm import init, BayesianHMM
 from deeptime.data.double_well_dataset import DoubleWellDiscrete
 from deeptime.markov.hmm import MaximumLikelihoodHMM
-from deeptime.markov.hmm.hidden_markov_model import viterbi
+from deeptime.markov.hmm.hidden_markov_model import viterbi, HiddenMarkovModel
 from deeptime.markov.hmm.output_model import DiscreteOutputModel
 from deeptime.markov.msm import MarkovStateModel
 from deeptime.markov.util import count_states
@@ -51,6 +51,12 @@ class TestAlgorithmsAgainstReference(unittest.TestCase):
             [0.9, 0.2],
             [0.9, 0.2]
         ])
+
+    def test_model_likelihood(self):
+        hmm = HiddenMarkovModel(self.transition_probabilities, self.conditional_probabilities)
+        loglik = hmm.compute_observation_likelihood(self.dtraj)
+        ref_logprob = -3.3725
+        np.testing.assert_array_almost_equal(loglik, ref_logprob, decimal=4)
 
     def test_forward(self):
         alpha_out = np.zeros_like(self.state_probabilities)
@@ -130,6 +136,11 @@ class TestMLHMM(unittest.TestCase):
     # =============================================================================
     # Test basic HMM properties
     # =============================================================================
+
+    def test_likelihood(self):
+        ref_loglik = self.hmm_lag10.likelihood
+        new_loglik = self.hmm_lag10.compute_observation_likelihood(self.dtrajs)
+        np.testing.assert_allclose(new_loglik, ref_loglik, rtol=1e-1)
 
     def test_collect_observations_in_state_sanity(self):
         self.hmm_lag1.collect_observations_in_state(self.dtrajs, 1)

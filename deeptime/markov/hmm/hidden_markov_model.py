@@ -6,7 +6,7 @@ import numpy as np
 from deeptime.base import Model
 from deeptime.markov.hmm.output_model import OutputModel, DiscreteOutputModel
 from deeptime.markov.sample import indices_by_distribution
-from ._hmm_bindings.util import viterbi as viterbi_impl
+from ._hmm_bindings.util import viterbi as viterbi_impl, forward as forward_impl
 from ...util.types import ensure_dtraj_list, ensure_array
 
 
@@ -90,6 +90,39 @@ class HiddenMarkovModel(Model):
             raise ValueError("Stride argument must either be an integer value or 'effective', "
                              "but was: {}".format(stride))
         self._stride = stride
+
+    def compute_observation_likelihood(self, data: Union[np.ndarray, List[np.ndarray]]):
+        r""" Computes the likelihood of observed data under this model.
+
+        Internally, the forward pass of the Baum-Welch algorithm is used.
+
+        Parameters
+        ----------
+        data : array_like or list of array_like
+            The observations
+
+        Returns
+        -------
+        likelihood : float
+            The computed likelihood.
+        """
+        if not isinstance(data, (list, tuple)):
+            data = [data]
+        max_n_frames = max(len(obs) for obs in data)
+
+        # get parameters
+        A = self.transition_model.transition_matrix
+        pi = self.initial_distribution
+        alpha = np.zeros((max_n_frames, self.n_hidden_states), dtype=A.dtype)
+
+        # compute output probability matrix
+        loglik = 0.
+        for obs in data:
+            T = len(obs)
+            pobs = self.output_model.to_state_probability_trajectory(obs)
+            pobs = pobs.astype(A.dtype)
+            loglik += forward_impl(A, pobs, pi, alpha_out=alpha, T=T)
+        return loglik
 
     @property
     def lagtime(self) -> int:
