@@ -51,5 +51,6 @@ test:
     - pytest-cov
     - pytest-faulthandler
     - pytest-sugar
+    - importlib_metadata
     - mdshare
     - pytorch >=1.1

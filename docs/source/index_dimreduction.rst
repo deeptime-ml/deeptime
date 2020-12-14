@@ -17,22 +17,25 @@ Here we introduce the dimension reduction / decomposition techniques implemented
 
 .. rubric:: Koopman operator methods
 
-`VAMP <notebooks/vamp.ipynb>`__ (:class:`API docs<deeptime.decomposition.VAMP>`) and its
-special case `TICA <notebooks/tica.ipynb>`__ (:class:`API docs<deeptime.decomposition.TICA>`)
-yield approximations to the Koopman operator
+All methods contained in this sub-package relate to the Koopman operator :math:`\mathcal{K}_\tau` defined as
 
 .. math::
-    \mathbb{E}[g(x_{t+\tau})] = K^\top \mathbb{E}[f(x_t)],
+    [\mathcal{K}_\tau g](x) = \mathbb{E}[g(x_{t+\tau}) \mid x_t = x]
+
+for a process :math:`\{x_t\}_{t\geq 0}` with transition density :math:`p_\tau(x, y)`. When projecting
+:math:`\mathcal{K}_\tau` into a finite basis, one seeks
+
+.. math::
+    \mathbb{E}[g(x_{t+\tau})] = K^{\top}\mathbb{E}[f(x_t)],
 
 where :math:`K\in\mathbb{R}^{n\times m}` is a finite-dimensional Koopman matrix which propagates the observable
 :math:`f` of the system's state :math:`x_t` to the observable :math:`g` at state :math:`x_{t+\tau}`.
 
-For a given lagtime :math:`\tau`, there are `scoring functions <notebooks/vamp.ipynb#Scoring>`__
-to evaluate the quality of the estimated model. Intuitively these scores measure the amount of
-"slowness" that can be captured with a feature selection. It is **not** possible to compare scores
-over several lag-time selections.
-
 .. rubric:: When to use which method
+
+All methods assume (approximate) Markovianity of the time series under lag-time :math:`\tau`.
+
+.. image:: _static/dimredux-overview.svg
 
 .. list-table::
     :header-rows: 1
@@ -43,24 +46,57 @@ over several lag-time selections.
       - Assumptions
       - Notes
 
-    * - `VAMP <notebooks/vamp.ipynb>`__
-      - (approximate) Markovianity of the time series under lag-time :math:`\tau`
-      - * Is canonical correlation analysis (CCA) in time, i.e., temporal CCA (TCCA)
-        * Uses a singular value decomposition of covariances.
-        * Deals with off-equilibrium data consistently.
-        * The singular functions can be clustered to find coherent sets.
-
     * - `TICA <notebooks/tica.ipynb>`__
-      - Assumptions of VAMP and the time series should be stationary
-        with symmetric covariances (equivalently: reversible with detailed balance)
-      - * Under these assumptions (also supported by the collected data), TICA can yield better and more
-          interpretable results than VAMP as it uses them as a prior.
-        * Algorithmically identical to DMD, which is in practice also used for dynamics
-          that do not fulfill detailed balance.
-        * Singular values of the decomposition are also eigenvalues and relate to relaxation timescales.
-        * Coherence becomes metastability.
+      - Time series should be stationary with symmetric covariances (equivalently: reversible with detailed balance)
+        and compact Koopman operator (guaranteed to be compact in stochastic systems).
+      - * Based on variational principle
+        * TICA uses the assumptions as prior and thus can yield more interpretable results than
+          its generalization VAMP.
+        * Dual to DMD: The estimated matrix is the transpose of the one estimated by DMD; TICA estimates eigenfunctions
+          and DMD estimates 'modes', the coefficients which lead to the approximate Koopman operator
+          using the eigenfunctions.
+        * Eigenvalues of the decomposition relate to relaxation timescales.
+        * Can identify metastabile sets.
         * Might yield biased results if the observed process contains rare events which are not sufficiently
           reflected in the time-series.
+        * Is VAMP if system is reversible and ansatz library contains only the full state observable :math:`\Psi(x) = x`
+        * Can deal with a large amount of frames due to online estimation of covariances
+
+    * - `VAMP <notebooks/vamp.ipynb>`__
+      - Compact Koopman operator (guaranteed to be compact in stochastic systems)
+      - * Based on variational principle
+        * Is canonical correlation analysis (CCA) in time, i.e., time-lagged CCA (TCCA)
+        * Is VAC under reversible dynamics and VAMP-1 score
+        * Uses a singular value decomposition of covariances instead of eigenvalue decomposition.
+        * Deals with off-equilibrium data consistently.
+        * The singular functions can be clustered to find metastable and coherent sets.
+        * Equivalent to EDMD in case of the VAMP-1 score
+        * Uses ansatz library :math:`\Psi` of functions as basis
+        * Can deal with a large amount of frames due to online estimation of covariances
+
+    * - `kernel VAMP / kernel CCA <notebooks/kcca.ipynb>`__
+      - Compact Koopman operator (guaranteed to be compact in stochastic systems)
+      - * kernelized version of VAMP with :math:`k(x, x') = \langle\Psi(x), \Psi(x')\rangle`
+        * memory requirements grow quadratically with the number of frames
+
+    * - `DMD <notebooks/dmd.ipynb>`__
+      -
+      - * dual to TICA (DMD yields coefficients of eigenfunctions, TICA yields eigenfunctions)
+        * not an online algorithm but better suited for very high-dimensional data with a lower number of frames
+
+    * - `EDMD <notebooks/edmd.ipynb>`__
+      -
+      - * Equivalent to VAMP under the VAMP-1 score
+        * Uses an ansatz library :math:`\Psi`
+        * not an online algorithm but better suited for very high-dimensional data with a lower number of frames
+
+    * - `kernel EDMD <notebooks/kedmd.ipynb>`__
+      -
+      - * kernelized version of EDMD with :math:`k(x, x') = \langle\Psi(x), \Psi(x')\rangle`
+        * memory requirements grow quadratically with the number of frames
+
+It should be noted that, if available, scores evaluated under different lagtimes are **not** comparable because they
+relate to different operators.
 
 .. rubric:: What's next?
 
