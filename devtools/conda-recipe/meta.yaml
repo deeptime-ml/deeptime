@@ -51,6 +51,7 @@ test:
     - pytest-cov
     - pytest-faulthandler
     - pytest-sugar
-    - importlib_metadata
+    - importlib_metadata  # [py<38]
+    - typing_extensions  # [py<38]
     - mdshare
     - pytorch >=1.1
