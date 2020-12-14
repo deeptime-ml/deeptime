@@ -10,6 +10,7 @@ Dimension reduction
     notebooks/vamp
     notebooks/kcca
     notebooks/dmd
+    notebooks/edmd
     notebooks/kedmd
 
 Here we introduce the dimension reduction / decomposition techniques implemented in the package.
