@@ -11,29 +11,34 @@ const data = {
 
     nodes: [
         {id: 0, name: "TICA", full_name: "time-lagged independent component analysis", group: 0, url: "notebooks/tica.html"},
-        {id: 1, name: "VAC", full_name: "variational approach of conformational dynamics", group: 0, url: "notebooks/vamp.html"},
+        // {id: 1, name: "VAC", full_name: "variational approach of conformational dynamics", group: 0, url: "notebooks/vamp.html"},
         {id: 2, name: "VAMP / TCCA", full_name: "variational approach for Markov processes / time-lagged canonical correlation analysis", group: 0, url: "notebooks/vamp.html"},
         {id: 3, name: "kVAMP / kCCA", full_name: "kernel VAMP / kernel canonical correlation analysis", group: 0, url: "notebooks/kcca.html"},
+
         {id: 4, name: "MSM", full_name: "Markov state model", group: 1, url: "index_msm.html"},
+
         {id: 5, name: "DMD", full_name: "dynamic mode decomposition", group: 2, url: "notebooks/dmd.html"},
         {id: 6, name: "EDMD", full_name: "extended dynamic mode decomposition", group: 2, url: "notebooks/edmd.html"},
         {id: 7, name: "kEDMD", full_name: "kernel extended dynamic mode decomposition", group: 2, url: "notebooks/kedmd.html"},
         // {id: 8, name: "KVAD", full_name: "kernel embedding-based variational approach for dynamical systems", group: 0},
+        {id: 9, name: "SINDy", full_name: "Sparse Identification of Nonlinear Dynamics", group: 2, url: "notebooks/sindy.html"},
     ],
     edges: [
-        {source: 1, target: 0, value: 1, label: "for identity observable"},  // VAC -> TICA
-        {source: 1, target: 2, value: 1, label: "generalize to nonreversible"},  // VAC -> VAMP
+        {source: 2, target: 0, value: 1, label: "reversible + identity observable"},  // VAC -> TICA
+        // {source: 1, target: 2, value: 1, label: "generalize to nonreversible"},  // VAC -> VAMP
+        {source: 7, target: 3, value: 1, label: "generalize to nonreversible"},  // kEDMD -> kCCA
         {source: 2, target: 3, value: 1, label: "kernelize"},  // VAMP -> kCCA
-        {source: 1, target: 4, value: 1, label: "for indicator observable"},  // VAC -> MSM
+        // {source: 1, target: 4, value: 1, label: "for indicator observable"},  // VAC -> MSM
         {source: 2, target: 4, value: 1, label: "for indicator observable"},  // VAMP -> MSM
         {source: 6, target: 4, value: 1, label: "for indicator observable"},  // EDMD -> MSM
         // {source: 2, target: 8, value: 1},  // VAMP -> KVAD
         {source: 0, target: 5, value: 2, label: "dual"},  // TICA <-> DMD
         {source: 5, target: 0, value: 2, label: ""},  // TICA <-> DMD
-        {source: 1, target: 6, value: 2, label: "equivalent"},  // VAC <-> EDMD
-        {source: 6, target: 1, value: 2, label: ""},  // VAC <-> EDMD
+        {source: 2, target: 6, value: 2, label: "equivalent under VAMP-1 score"},  // VAC <-> EDMD
+        {source: 6, target: 2, value: 2, label: ""},  // VAC <-> EDMD
         {source: 6, target: 5, value: 1, label: "for identity observable"},  // EDMD -> DMD
         {source: 6, target: 7, value: 1, label: "kernelize"},  // EDMD -> kEDMD
+        {source: 7, target: 9, value: 1, label: "via generator kEDMD"},  // kEDMD -> SINDy
     ]
 };
 
@@ -73,8 +78,8 @@ svg.append("svg:defs").selectAll("marker")
   .append("svg:path")
     .attr("d", "M0,-5L10,0L0,5");
 
-const forceX = d3.forceX().x(d => d.group * width / 3 + width / 6).strength(.1)
-const forceY = d3.forceY(height / 2).strength(0.015)
+const forceX = d3.forceX().x(d => d.group === 0 ? 0 : (d.group === 1 ? width / 2 : width)).strength(.1)
+const forceY = d3.forceY().y(d => d.group === 1 ? height - 50 : height / 2).strength(.15)
 
 const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links).id(d => d.id).distance(d => linkLength).strength(1))
