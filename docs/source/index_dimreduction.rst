@@ -15,13 +15,6 @@ Dimension reduction
 
 Here we introduce the dimension reduction / decomposition techniques implemented in the package.
 
-.. raw:: html
-
-    <div id="koopman_algos_container" width="100%"></div>
-
-.. raw:: html
-     :file: _static/koopman_algorithms.html
-
 .. rubric:: Koopman operator methods
 
 All methods contained in this sub-package relate to the Koopman operator :math:`\mathcal{K}_\tau` defined as
@@ -42,7 +35,12 @@ where :math:`K\in\mathbb{R}^{n\times m}` is a finite-dimensional Koopman matrix 
 
 All methods assume (approximate) Markovianity of the time series under lag-time :math:`\tau`.
 
-.. image:: _static/dimredux-overview.svg
+.. raw:: html
+
+    <div id="koopman_algos_container" width="100%"></div>
+
+.. raw:: html
+     :file: _static/koopman_algorithms.html
 
 .. list-table::
     :header-rows: 1
