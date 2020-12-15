@@ -29,7 +29,7 @@ def test_simulate(msm):
 def test_simulate_stats(msm):
     # test statistics of starting state
     N = 5000
-    trajs = [msm.simulate(1) for _ in range(N)]
+    trajs = [msm.simulate(1, seed=i+1) for i in range(N)]
     ss = np.concatenate(trajs).astype(int)
     pi = deeptime.markov.tools.analysis.stationary_distribution(msm.transition_matrix)
     piest = count_states(ss) / float(N)

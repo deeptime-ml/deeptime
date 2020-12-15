@@ -223,6 +223,9 @@ def setup(app: Sphinx):
     app.add_css_file('custom.css')
     app.add_css_file('perfect-scrollbar/css/perfect-scrollbar.css')
     app.add_js_file('perfect-scrollbar/js/perfect-scrollbar.min.js')
+    app.add_js_file('perfect-scrollbar/js/perfect-scrollbar.min.js')
+    app.add_js_file('d3.v5.min.js')
+    app.add_js_file('d3-legend.min.js')
     app.connect("autodoc-skip-member", skip)
 
     if app.tags.has('notebooks'):

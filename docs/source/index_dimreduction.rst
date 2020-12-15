@@ -35,7 +35,12 @@ where :math:`K\in\mathbb{R}^{n\times m}` is a finite-dimensional Koopman matrix 
 
 All methods assume (approximate) Markovianity of the time series under lag-time :math:`\tau`.
 
-.. image:: _static/dimredux-overview.svg
+.. raw:: html
+
+    <div id="koopman_algos_container" width="100%"></div>
+
+.. raw:: html
+     :file: _static/koopman_algorithms.html
 
 .. list-table::
     :header-rows: 1
@@ -52,13 +57,13 @@ All methods assume (approximate) Markovianity of the time series under lag-time 
       - * Based on variational principle
         * TICA uses the assumptions as prior and thus can yield more interpretable results than
           its generalization VAMP.
+        * Might yield biased results if the observed process contains rare events which are not sufficiently
+          reflected in the time-series.
         * Dual to DMD: The estimated matrix is the transpose of the one estimated by DMD; TICA estimates eigenfunctions
           and DMD estimates 'modes', the coefficients which lead to the approximate Koopman operator
           using the eigenfunctions.
         * Eigenvalues of the decomposition relate to relaxation timescales.
         * Can identify metastabile sets.
-        * Might yield biased results if the observed process contains rare events which are not sufficiently
-          reflected in the time-series.
         * Is VAMP if system is reversible and ansatz library contains only the full state observable :math:`\Psi(x) = x`
         * Can deal with a large amount of frames due to online estimation of covariances
 
