@@ -180,7 +180,7 @@ class TimeLaggedDataset(TimeSeriesDataset):
         return TimeLaggedDataset(data[:-lagtime], data[lagtime:], dtype=data.dtype)
 
     def __getitem__(self, item):
-        return self.data[item].squeeze().astype(self.dtype), self.data_lagged[item].squeeze().astype(self.dtype)
+        return self.data[item].astype(self.dtype), self.data_lagged[item].astype(self.dtype)
 
     def __len__(self):
         return len(self.data)
