@@ -169,6 +169,11 @@ def statistical_inefficiencies(dtrajs, lag, C=None, truncate_acf=True, mact=2.0,
         used to compute the statistical inefficiency for conditional trajectories
 
     """
+    import os
+    # enforce one job on windows because of memmap file (not supported from multiple jobs)
+    if os.name == 'nt':
+        n_jobs = 1
+
     # count matrix
     if C is None:
         C = count_matrix_coo2_mult(dtrajs, lag, sliding=True, sparse=True)
