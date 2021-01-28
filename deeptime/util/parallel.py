@@ -21,11 +21,11 @@ def handle_n_jobs(value: Optional[int]) -> int:
         A non-negative integer value describing how many threads can be started simultaneously.
     """
     if value is None:
-        import psutil
-        count = psutil.cpu_count(logical=True)
+        from os import sched_getaffinity
+        count = len(sched_getaffinity(0))
         if count is None:
             raise ValueError("Could not determine number of cpus in system, please provide n_jobs manually.")
-        return os.cpu_count() * 2
+        value = count
     elif value <= 0:
         raise ValueError(f"n_jobs can only be None (in which case it will be determined from hardware) "
                          f"or a positive number, but was {value}.")

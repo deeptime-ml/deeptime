@@ -12,7 +12,7 @@ import deeptime as dt
 import deeptime.clustering._clustering_bindings as bindings
 
 
-def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=0, cluster_centers=None,
+def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=None, cluster_centers=None,
                    callback_init_centers=None, callback_loop=None) -> (dt.clustering.Kmeans, dt.clustering.ClusterModel):
     est = dt.clustering.Kmeans(n_clusters=k, max_iter=max_iter, init_strategy=init_strategy,
                                fixed_seed=fixed_seed, n_jobs=n_jobs,
@@ -56,15 +56,15 @@ def test_3gaussian_1d_singletraj(seed, init_strategy):
     X = X.astype(np.float32)
     k = 50
 
-    kmeans, model = cluster_kmeans(X, k=k, init_strategy=init_strategy, n_jobs=0, fixed_seed=seed, max_iter=500)
+    kmeans, model = cluster_kmeans(X, k=k, init_strategy=init_strategy, n_jobs=1, fixed_seed=seed, max_iter=500)
     cc = model.cluster_centers
     np.testing.assert_(np.all(np.isfinite(cc)), msg="cluster centers borked for strat %s" % init_strategy)
     assert (np.any(cc < 1.0)), "failed for init_strategy=%s" % init_strategy
     assert (np.any((cc > -1.0) * (cc < 1.0))), "failed for init_strategy=%s" % init_strategy
     assert (np.any(cc > -1.0)), "failed for init_strategy=%s" % init_strategy
 
-    km1, model1 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=seed, n_jobs=0, max_iter=500)
-    km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=seed, n_jobs=0, max_iter=500)
+    km1, model1 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=seed, n_jobs=1, max_iter=500)
+    km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=seed, n_jobs=1, max_iter=500)
     np.testing.assert_equal(len(model1.cluster_centers), k)
     np.testing.assert_equal(len(model2.cluster_centers), k)
     np.testing.assert_equal(model1.n_clusters, k)
@@ -89,7 +89,7 @@ def test_3gaussian_1d_singletraj(seed, init_strategy):
                                err_msg="should yield same centers with fixed seed=%s for strategy %s, "
                                        "Initial centers=%s"
                                        % (seed, init_strategy, km2.initial_centers))
-    np.testing.assert_almost_equal(model1.inertia, model1.score(X))
+    np.testing.assert_almost_equal(model1.inertia, model1.score(X), decimal=4)
 
 
 def test_kmeans_model_direct():
@@ -164,7 +164,7 @@ class TestKmeans(unittest.TestCase):
         while repeat and it < 3:
             for strat in ('uniform', 'kmeans++'):
                 seed = random.randint(0, 2 ** 32 - 1)
-                cl_serial, model_serial = cluster_kmeans(data, k=k, n_jobs=0, fixed_seed=seed, max_iter=max_iter,
+                cl_serial, model_serial = cluster_kmeans(data, k=k, n_jobs=1, fixed_seed=seed, max_iter=max_iter,
                                                          init_strategy=strat)
                 cl_parallel, model_parallel = cluster_kmeans(data, k=k, n_jobs=2, fixed_seed=seed, max_iter=max_iter,
                                                              init_strategy=strat)
@@ -222,7 +222,7 @@ class TestKmeans(unittest.TestCase):
             np.array([-1, 1, -1], dtype=np.float32), np.array([1, -1, 1], dtype=np.float32)
         ])
         X = np.atleast_2d(X)
-        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=0)
+        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=1)
         cl = model.cluster_centers
         import sklearn.cluster as skcl
         with warnings.catch_warnings():
