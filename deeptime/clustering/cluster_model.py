@@ -2,6 +2,7 @@ import numpy as np
 from deeptime.base import Model, Transformer
 
 from . import _clustering_bindings as _bd, metrics
+from ..util.parallel import handle_n_jobs
 
 
 class ClusterModel(Model, Transformer):
@@ -111,8 +112,6 @@ class ClusterModel(Model, Transformer):
             A discrete trajectory where each frame denotes the closest cluster center.
         """
         assert data.dtype == self.cluster_centers.dtype
-
-        if n_jobs is None:
-            n_jobs = 0
+        n_jobs = handle_n_jobs(n_jobs)
         dtraj = _bd.assign(data, self.cluster_centers, n_jobs, metrics[self.metric]())
         return dtraj

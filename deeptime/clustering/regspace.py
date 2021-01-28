@@ -157,9 +157,7 @@ class RegularSpace(Estimator):
             reference to self
         """
 
-        n_jobs = self.n_jobs if n_jobs is None else n_jobs
-        if n_jobs is None:
-            n_jobs = 1
+        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
 
         if data.ndim == 1:
             data = data[:, np.newaxis]
