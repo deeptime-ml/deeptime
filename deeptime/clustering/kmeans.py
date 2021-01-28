@@ -100,8 +100,7 @@ class KMeansModel(ClusterModel):
         score : float
             the inertia
         """
-        if n_jobs is None:
-            n_jobs = 0
+        n_jobs = handle_n_jobs(n_jobs)
         return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, metrics[self.metric]())
 
 
@@ -169,7 +168,7 @@ class Kmeans(Estimator, Transformer):
         self.init_strategy = init_strategy
         self.fixed_seed = fixed_seed
         self.random_state = np.random.RandomState(self.fixed_seed)
-        self.n_jobs = n_jobs
+        self.n_jobs = handle_n_jobs(n_jobs)
         self.initial_centers = initial_centers
 
     @property
@@ -393,7 +392,7 @@ class Kmeans(Estimator, Transformer):
         """
         if data.ndim == 1:
             data = data[:, np.newaxis]
-        n_jobs = self.n_jobs if n_jobs is None else n_jobs
+        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
         if initial_centers is not None:
             self.initial_centers = initial_centers
         if self.initial_centers is None:
@@ -439,7 +438,7 @@ class MiniBatchKmeans(Kmeans):
 
     def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
         r""" Perform clustering on whole data. """
-        n_jobs = self.n_jobs if n_jobs is None else n_jobs
+        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
         if data.ndim == 1:
             data = data[:, np.newaxis]
         if initial_centers is not None:
@@ -485,7 +484,7 @@ class MiniBatchKmeans(Kmeans):
                                       tolerance=self.tolerance, inertias=np.array([float('inf')]))
         if data.ndim == 1:
             data = data[:, np.newaxis]
-        n_jobs = self.n_jobs if n_jobs is None else n_jobs
+        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
         if self._model.cluster_centers is None:
             if self.initial_centers is None:
                 # we have no initial centers set, pick some based on the first partial fit

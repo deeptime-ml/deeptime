@@ -84,6 +84,7 @@ class PBFSimulator(object):
                  interaction_distance: float, n_jobs=None, n_solver_iterations: int = 5,
                  gravity: float = 10., epsilon: float = 10., timestep: float = 0.016, rest_density: float = 1.,
                  tensile_instability_distance: float = .2, tensile_instability_k: float = 0.1):
+        n_jobs = handle_n_jobs(n_jobs)
         if np.atleast_1d(domain_size).ndim != 1 or domain_size.shape[0] != 2 or np.any(domain_size <= 0):
             raise ValueError("Invalid domain size: must be positive and 1-dimensional of length two.")
         if initial_positions.ndim != 2 or initial_positions.shape[1] != 2:
@@ -94,7 +95,7 @@ class PBFSimulator(object):
         domain_size = domain_size.astype(np.float32, subok=False, copy=False)
         initial_positions = initial_positions.astype(np.float32, subok=False, copy=False)
 
-        self._engine = bd.PBF(initial_positions, domain_size, interaction_distance, handle_n_jobs(n_jobs))
+        self._engine = bd.PBF(initial_positions, domain_size, interaction_distance, n_jobs)
         self._engine.n_solver_iterations = n_solver_iterations
         self._engine.gravity = gravity
         self._engine.epsilon = epsilon
@@ -166,6 +167,7 @@ class PBFSimulator(object):
         trajectory : (T, n_grid_x * n_grid_y) ndarray
             Output trajectory
         """
+        n_jobs = handle_n_jobs(n_jobs)
         return _transform_to_density_impl(self.domain_size, trajectory, n_grid_x, n_grid_y, n_jobs)
 
     @plotting_function
@@ -300,7 +302,7 @@ def _transform_to_density_impl_worker(args):
     return t, out
 
 
-def _transform_to_density_impl(domain_size, trajectory, n_grid_x=20, n_grid_y=10, n_jobs=None):
+def _transform_to_density_impl(domain_size, trajectory, n_grid_x=20, n_grid_y=10, n_jobs: int = 1):
     trajectory = trajectory.reshape((len(trajectory), -1, 2))
 
     gridx = np.linspace(-domain_size[0] / 2, domain_size[0] / 2, num=n_grid_x).astype(np.float32)
@@ -310,7 +312,7 @@ def _transform_to_density_impl(domain_size, trajectory, n_grid_x=20, n_grid_y=10
     traj_kde = np.empty((len(trajectory), len(kde_input)))
 
     import multiprocessing as mp
-    with mp.Pool(processes=handle_n_jobs(n_jobs)) as pool:
+    with mp.Pool(processes=n_jobs) as pool:
         args = [(t, trajectory[t], kde_input) for t in range(len(trajectory))]
         for result in pool.imap_unordered(_transform_to_density_impl_worker, args):
             traj_kde[result[0]] = result[1]
