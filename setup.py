@@ -120,6 +120,7 @@ metadata = \
         package_data={
             'deeptime.data': ['data/*.npz']
         },
+        python_requires='>= 3.6',
     )
 
 
