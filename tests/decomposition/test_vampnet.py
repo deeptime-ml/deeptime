@@ -59,6 +59,7 @@ def test_score(fixed_seed, method, mode):
             np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method))
 
 
+@pytest.mark.xfail(reason="May spuriously fail because of nondeterministic optimization of the NN", strict=False)
 def test_estimator(fixed_seed):
     data = deeptime.data.ellipsoids()
     obs = data.observations(60000, n_dim=10).astype(np.float32)
