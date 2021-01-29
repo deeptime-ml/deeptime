@@ -107,6 +107,8 @@ def position_based_fluids(n_burn_in=5000, initial_positions=None, n_jobs=None):
         :keyprefix: data-api-
     """
     from deeptime.data.pbf_simulator import PBFSimulator
+    from deeptime.util.parallel import handle_n_jobs
+    n_jobs = handle_n_jobs(n_jobs)
     interaction_distance = 1.5
     if initial_positions is None:
         init_pos_x = np.arange(-24, 24, interaction_distance * .9).astype(np.float32)
@@ -244,6 +246,8 @@ def bickley_jet(n_particles: int, n_jobs=None):
         :keyprefix: bickley-api-
     """
     from deeptime.data.bickley_simulator import BickleyJet, BickleyJetDataset
+    from deeptime.util.parallel import handle_n_jobs
+    n_jobs = handle_n_jobs(n_jobs)
     simulator = BickleyJet()
     traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
     traj_reshaped = traj.transpose(1, 2, 0)

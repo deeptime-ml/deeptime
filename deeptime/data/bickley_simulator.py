@@ -55,6 +55,7 @@ class BickleyJet(object):
         Z : np.ndarray (2, 401, m)
             Trajectories for m uniformly distributed test points in Omega = [0, 20] x [-3, 3].
         """
+        n_jobs = handle_n_jobs(n_jobs)
         return _generate_impl(n_particles, self.L0, self.U0, self.c, self.eps, self.k, n_jobs=n_jobs)
 
     @staticmethod
@@ -219,14 +220,14 @@ def _generate_impl_worker(args):
     return i, sol.y
 
 
-def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs=None) -> np.ndarray:
+def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs: int) -> np.ndarray:
     # uniformly sampled test points in X = [0, 20] x [-3, 3]
     X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3))
     nT = 401
     Z = np.zeros((2, nT, n_particles))
 
     import multiprocessing as mp
-    with mp.Pool(processes=handle_n_jobs(n_jobs)) as pool:
+    with mp.Pool(processes=n_jobs) as pool:
         args = [(i, X[:, i], L0, U0, c, eps, k) for i in range(n_particles)]
         for result in pool.imap_unordered(_generate_impl_worker, args):
             Z[:, :, result[0]] = result[1]

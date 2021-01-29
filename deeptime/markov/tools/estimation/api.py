@@ -146,7 +146,7 @@ def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
                                                       sparse=sparse_return, nstates=nstates)
 
 
-def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=1, callback=None):
+def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=None, callback=None):
     r""" Computes the statistically effective transition count matrix
 
     Given a list of discrete trajectories, compute the effective number of statistically uncorrelated transition
@@ -186,8 +186,9 @@ def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=1, callb
         This is a purely heuristic factor trying to compensate this effect.
         This parameter might be removed in the future when a more robust
         estimation method of the autocorrelation time is used.
-    n_jobs : int, default=1
-        If greater one, the function will be evaluated with multiple processes.
+    n_jobs : int, default=None
+        If None, uses all available logical cores, otherwise the function will be evaluated with as
+        many processes as specified (must then be positive).
     callback : callable, default=None
         will be called for every statistical inefficiency computed (number of nonzero elements in count matrix).
         If n_jobs is greater one, the callback will be invoked per finished batch.
@@ -202,12 +203,9 @@ def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=1, callb
     .. [1] Noe, F. and H. Wu: in preparation (2015)
 
     """
-
+    from deeptime.util.parallel import handle_n_jobs
+    n_jobs = handle_n_jobs(n_jobs)
     dtrajs = ensure_dtraj_list(dtrajs)
-    import os
-    # enforce one job on windows.
-    if os.name == 'nt':
-        n_jobs = 1
     return sparse.effective_counts.effective_count_matrix(dtrajs, lag, average=average, mact=mact, n_jobs=n_jobs,
                                                           callback=callback)
 
