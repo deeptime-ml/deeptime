@@ -4,7 +4,7 @@
 
 Releases:
 
-|  [![PyPI](https://badge.fury.io/py/deeptime.svg)](https://badge.fury.io/py/deeptime) 	|  [![conda-forge](https://img.shields.io/conda/v/conda-forge/deeptime?color=brightgreen&label=conda-forge)](https://github.com/conda-forge/deeptime-feedstock) 	|
+|  [![PyPI](https://badge.fury.io/py/deeptime.svg)](https://pypi.org/project/deeptime) 	|  [![conda-forge](https://img.shields.io/conda/v/conda-forge/deeptime?color=brightgreen&label=conda-forge)](https://github.com/conda-forge/deeptime-feedstock) 	|
 |:-:	|:-:	|
 |  `pip install deeptime` 	|  `conda install -c conda-forge deeptime` 	|
 
