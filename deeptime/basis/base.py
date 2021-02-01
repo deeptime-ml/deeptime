@@ -1,7 +1,8 @@
 import numpy as np
+from ..base import Transformer
 
 
-class Observable(object):
+class Observable(Transformer):
     r""" An object that transforms a series of state vectors :math:`X\in\mathbb{R}^{T\times n}` into a
     series of observables :math:`\Psi(X)\in\mathbb{R}^{T\times k}`, where `n` is the dimension of each state vector
     and `k` the dimension of the observable space.
@@ -36,3 +37,6 @@ class Observable(object):
             Result of the evaluation for each data point.
         """
         return self._evaluate(x)
+
+    def transform(self, data, **kwargs):
+        return self._evaluate(data)
