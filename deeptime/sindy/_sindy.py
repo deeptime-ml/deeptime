@@ -6,7 +6,6 @@ from scipy.integrate import odeint
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LinearRegression, ridge_regression
 from sklearn.metrics import r2_score
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.utils.validation import check_X_y
 
@@ -232,16 +231,6 @@ class SINDyModel(Model):
             The intercept or intercepts for each input feature.
         """
         return self.intercept_
-
-    def _round_terms(self, coef, precision):
-        r"""
-        Rounds given coefficients to a given precision, returning an empty string
-        if the coefficient is zero.
-        """
-        if coef == 0:
-            return ""
-        else:
-            return round(coef, precision)
 
 
 class SINDy(Estimator):

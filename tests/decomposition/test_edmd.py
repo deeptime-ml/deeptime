@@ -22,7 +22,7 @@ def test_linearly_evolved_data():
 def test_polynomially_evolved_data():
     data = np.random.uniform(0, 1, size=(50, 5)).astype(np.float64)
     data_t = 5. * data + 3 + data**2
-    basis = dt.basis.Monomials(5)
+    basis = dt.basis.Monomials(5, 5)
     psi_y = basis(data_t)
 
     est = dt.decomposition.EDMD(basis)
