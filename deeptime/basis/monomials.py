@@ -1,6 +1,8 @@
+from typing import Optional, List
+
 import numpy as np
 
-from ._basis_bindings import evaluate_monomials as _eval
+from ._basis_bindings import evaluate_monomials as _eval, power_matrix as _power_matrix, feature_names as _fn
 from .base import Observable
 
 
@@ -10,10 +12,13 @@ class Identity(Observable):
     def _evaluate(self, x):
         return x
 
+    def get_feature_names(self, input_features=None):
+        return ['x']
+
 
 class Monomials(Observable):
-    r""" Monomial basis observable which transforms a number of n-dimensional
-    datapoints :math:`\mathbf{x}\in\mathbb{R}^n` into (unique) monomials of at most degree :math:`p`.
+    r""" Monomial basis observable which transforms a number of d-dimensional
+    datapoints :math:`\mathbf{x}\in\mathbb{R}^d` into (unique) monomials of at most degree :math:`p`.
 
     This means, that
 
@@ -28,6 +33,8 @@ class Monomials(Observable):
     ----------
     p : int
         Maximum degree of the monomial basis. Must be positive.
+    d : int
+        The dimension of the input.
 
     Examples
     --------
@@ -38,7 +45,7 @@ class Monomials(Observable):
 
     Evaluating the monomial basis up to degree two yields :math:`x^0, x^1, x^2`, i.e., the expected shape is (3, 3)
 
-    >>> Y = Monomials(p=2)(X)
+    >>> Y = Monomials(p=2, d=1)(X)
     >>> Y.shape
     (3, 3)
 
@@ -47,9 +54,23 @@ class Monomials(Observable):
     >>> np.testing.assert_almost_equal(Y[2, 1], X[2, 0])
     """
 
-    def __init__(self, p: int):
+    def __init__(self, p: int, d: int):
+        from scipy.special import binom
+
         assert p > 0
         self.p = p
+        self.d = d
+        self._n_monomials = int(binom(self.p + self.d, self.p))
+        self._power_matrix = _power_matrix(self.d, self._n_monomials)
 
     def _evaluate(self, x: np.ndarray):
-        return _eval(self.p, x.T).T
+        if self.d is not None and x.shape[1] != self.d:
+            raise ValueError(f"Input had the wrong dimension {x.shape[1]}, this basis requires {self.d}.")
+        return _eval(self.p, x.T, self._power_matrix).T
+
+    def get_feature_names(self, input_features=None) -> List[str]:
+        feature_names = []
+        if input_features is None:
+            input_features = [f'x{i}' for i in range(self.d)]
+        return _fn(input_features, self._power_matrix)
+

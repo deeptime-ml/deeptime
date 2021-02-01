@@ -20,7 +20,7 @@ def ncr(n, r):
 @pytest.mark.parametrize('n_test_points', [3, 4], ids=lambda x: f"n_test_points={x}")
 def test_eval(degree, state_space_dim, n_test_points):
     x = np.random.normal(size=(state_space_dim, n_test_points))
-    y1 = Monomials(degree)(x.T).T
+    y1 = Monomials(degree, state_space_dim)(x.T).T
     assert_equal(y1.shape, (ncr(degree + x.shape[0], x.shape[0]), n_test_points))
 
     # checks that for each test point x there are monomial evaluations

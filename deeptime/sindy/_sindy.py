@@ -6,7 +6,6 @@ from scipy.integrate import odeint
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LinearRegression, ridge_regression
 from sklearn.metrics import r2_score
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.utils.validation import check_X_y
 
@@ -92,7 +91,7 @@ class SINDyModel(Model):
         y : np.ndarray, shape (n_samples, n_input_features)
             Model prediction of the derivative :math:`\dot{X}`.
         """
-        return np.matmul(self.library.transform(x), self.coef_.T) + self.intercept_
+        return np.matmul(self.transform(x), self.coef_.T) + self.intercept_
 
     def score(self, x, y=None, t=None, scoring=r2_score, **scoring_kws):
         r"""Compute a score for the time derivative prediction produced by the model.
@@ -203,9 +202,9 @@ class SINDyModel(Model):
 
         for k, row_coef in enumerate(self.coef_):
             terms = [
-                f"{self._round_terms(coef, precision)} {feature_names[i]}"
+                "{coef:.{precision}f} {fn}".format(coef=coef, precision=precision, fn=feature_names[i])
                 for i, coef in enumerate(row_coef)
-                if self._round_terms(coef, precision)
+                if coef != 0
             ]
             equation_list[k] = " + ".join(terms)
 
@@ -232,16 +231,6 @@ class SINDyModel(Model):
             The intercept or intercepts for each input feature.
         """
         return self.intercept_
-
-    def _round_terms(self, coef, precision):
-        r"""
-        Rounds given coefficients to a given precision, returning an empty string
-        if the coefficient is zero.
-        """
-        if coef == 0:
-            return ""
-        else:
-            return round(coef, precision)
 
 
 class SINDy(Estimator):
@@ -340,13 +329,13 @@ class SINDy(Estimator):
         x, x_dot = drop_nan_rows(x, x_dot)
 
         steps = [("features", self.library), ("model", self.optimizer)]
-        self.pipeline = Pipeline(steps)
+        if hasattr(self.library, 'fit'):
+            self.library.fit(x)
 
-        self.pipeline.fit(x, x_dot)
-
-        self.n_input_features_ = self.pipeline.steps[0][1].n_input_features_
-        self.n_output_features_ = self.pipeline.steps[0][1].n_output_features_
-
+        self.n_input_features_ = x.shape[1]
+        x_transformed = self.library.transform(x)
+        self.n_output_features_ = x_transformed[1]
+        self.optimizer.fit(x_transformed, x_dot)
         if self.input_features is None:
             self.input_features = [f"x{i}" for i in range(self.n_input_features_)]
 
