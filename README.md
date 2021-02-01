@@ -1,6 +1,6 @@
 # deeptime
 
-[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0) [![Build Status](https://dev.azure.com/clonker/deeptime/_apis/build/status/deeptime-ml.deeptime?branchName=master)](https://dev.azure.com/clonker/deeptime/_build/latest?definitionId=1&branchName=master)  
+[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0) [![Build Status](https://dev.azure.com/clonker/deeptime/_apis/build/status/deeptime-ml.deeptime?branchName=main)](https://dev.azure.com/clonker/deeptime/_build/latest?definitionId=1&branchName=main)  
 
 Releases:
 
@@ -25,5 +25,5 @@ python setup.py install
 or 
 
 ```
-pip install git+https://github.com/deeptime-ml/deeptime.git@master
+pip install git+https://github.com/deeptime-ml/deeptime.git@main
 ```

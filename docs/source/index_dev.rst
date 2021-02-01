@@ -170,5 +170,5 @@ using the citation key as defined in the references file with a unique prefix - 
 
 The documentation website is hosted via GitHub pages, its sources can be found
 `here <https://github.com/deeptime-ml/deeptime-ml.github.io>`__. Please see the
-`README <https://github.com/deeptime-ml/deeptime/tree/master/docs>`__ on GitHub for instructions on how to build
+`README <https://github.com/deeptime-ml/deeptime/tree/main/docs>`__ on GitHub for instructions on how to build
 it.
