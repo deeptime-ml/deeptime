@@ -136,17 +136,17 @@ def test_print(capsys, data_lorenz, library, lhs, precision):
 
     np.testing.assert_almost_equal(true_coef, model_coef, decimal=3)
     capsys.readouterr()  # ignore, this resets the buffers
-    model.print(lhs=lhs, precision=3)
+    model.print(lhs=lhs, precision=precision)
     captured = capsys.readouterr()
     printed = captured.out
-    lines = [l for l in printed.split('\n') if len(l) > 0]
+    lines = [line for line in printed.split('\n') if len(line) > 0]
     assert_equal(len(lines), 3)
     for i in range(3):
         assert_(f"{lhs_ref[i]}'" in lines[i])
-    assert_(f"{model_coef[0, 1]:.3f} x0" in lines[0])
-    assert_(f"{model_coef[0, 2]:.3f} x1" in lines[0])
-    assert_(f"{model_coef[1, 1]:.3f} x0" in lines[1])
-    assert_(f"{model_coef[1, 2]:.3f} x1" in lines[1])
-    assert_(f"{model_coef[1, 6]:.3f} x0 x2" in lines[1])
-    assert_(f"{model_coef[2, 3]:.3f} x2" in lines[2])
-    assert_(f"{model_coef[2, 5]:.3f} x0 x1" in lines[2])
+    assert_(f"{model_coef[0, 1]:.{precision}f} x0" in lines[0])
+    assert_(f"{model_coef[0, 2]:.{precision}f} x1" in lines[0])
+    assert_(f"{model_coef[1, 1]:.{precision}f} x0" in lines[1])
+    assert_(f"{model_coef[1, 2]:.{precision}f} x1" in lines[1])
+    assert_(f"{model_coef[1, 6]:.{precision}f} x0 x2" in lines[1])
+    assert_(f"{model_coef[2, 3]:.{precision}f} x2" in lines[2])
+    assert_(f"{model_coef[2, 5]:.{precision}f} x0 x1" in lines[2])
