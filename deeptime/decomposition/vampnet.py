@@ -298,6 +298,26 @@ class VAMPNetModel(Transformer, Model):
     def instantaneous(self, value: bool):
         self._instantaneous = value
 
+    @property
+    def lobe(self) -> nn.Module:
+        r""" The instantaneous lobe.
+
+        Returns
+        -------
+        lobe : nn.Module
+        """
+        return self._lobe
+
+    @property
+    def lobe_timelagged(self) -> nn.Module:
+        r""" The timelagged lobe. Might be equal to :attr:`lobe`.
+
+        Returns
+        -------
+        lobe_timelagged : nn.Module
+        """
+        return self._lobe_timelagged
+
     def transform(self, data, **kwargs):
         if self.instantaneous:
             self._lobe.eval()
@@ -615,4 +635,10 @@ class VAMPNet(DLEstimator, Transformer):
 
     def fetch_model(self) -> VAMPNetModel:
         r""" Yields the current model. """
-        return VAMPNetModel(self.lobe, self.lobe_timelagged, dtype=self.dtype, device=self.device)
+        from copy import deepcopy
+        lobe = deepcopy(self.lobe)
+        if self.lobe == self.lobe_timelagged:
+            lobe_timelagged = lobe
+        else:
+            lobe_timelagged = deepcopy(self.lobe_timelagged)
+        return VAMPNetModel(lobe, lobe_timelagged, dtype=self.dtype, device=self.device)

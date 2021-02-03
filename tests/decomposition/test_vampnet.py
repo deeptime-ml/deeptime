@@ -1,4 +1,5 @@
 import pytest
+from numpy.testing import assert_raises, assert_equal, assert_
 
 pytest.importorskip("torch")
 
@@ -127,3 +128,18 @@ def test_mlp_sanity():
     with torch.no_grad():
         x = torch.empty((5, 100)).normal_()
         mlp(x)
+
+
+def test_no_side_effects():
+    mlp = nn.Linear(10, 2)
+    data = deeptime.data.ellipsoids()
+    obs = data.observations(100, n_dim=10).astype(np.float32)
+    net = VAMPNet(lobe=mlp, dtype=np.float32, learning_rate=1e-8)
+    train_loader = create_timelagged_data_loader(obs, lagtime=1, batch_size=512)
+    model1 = net.fit(train_loader, n_epochs=1).fetch_model()
+    model2 = net.fit(train_loader, n_epochs=1).fetch_model()
+    with torch.no_grad():
+        assert_(model1.lobe is not model2.lobe)  # check it is not the same instance
+        # no side effects: if assert_equal raises, this is not equal, which is expected
+        with assert_raises(AssertionError):
+            assert_equal(model1.lobe.weight.data.cpu().numpy(), model2.lobe.weight.data.cpu().numpy())
