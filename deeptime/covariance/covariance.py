@@ -35,11 +35,13 @@ class CovarianceModel(Model):
         Whether Bessel's correction was used during estimation.
     lagtime : int, default=None
         The lagtime that was used during estimation.
+    data_mean_removed : bool, default=False
+        Whether the data mean was removed. This can have an influence on the effective VAMP score.
     """
     def __init__(self, cov_00: Optional[np.ndarray] = None, cov_0t: Optional[np.ndarray] = None,
                  cov_tt: Optional[np.ndarray] = None, mean_0: Optional[np.ndarray] = None,
                  mean_t: Optional[np.ndarray] = None, bessels_correction: bool = True,
-                 symmetrized: bool = False, lagtime: Optional[int] = None):
+                 symmetrized: bool = False, lagtime: Optional[int] = None, data_mean_removed: bool = False):
         super(CovarianceModel, self).__init__()
         self._cov_00 = cov_00
         self._cov_0t = cov_0t
@@ -49,6 +51,7 @@ class CovarianceModel(Model):
         self._bessel = bessels_correction
         self._lagtime = lagtime
         self._symmetrized = symmetrized
+        self._data_mean_removed = data_mean_removed
 
     @property
     def cov_00(self) -> Optional[np.ndarray]:
@@ -132,6 +135,14 @@ class CovarianceModel(Model):
         projection = np.atleast_2d(spd_inv_sqrt(self.cov_00))
         whitened_data = (data - self.mean_0[None, ...]) @ projection.T
         return whitened_data
+
+    @property
+    def data_mean_removed(self) -> bool:
+        r"""Whether the data mean was removed.
+
+        :type: bool
+        """
+        return self._data_mean_removed
 
 
 class Covariance(Estimator):
@@ -477,7 +488,7 @@ class Covariance(Estimator):
                 cov_tt = cov_00
             self._model = CovarianceModel(cov_00=cov_00, cov_0t=cov_0t, cov_tt=cov_tt, mean_0=mean_0, mean_t=mean_t,
                                           bessels_correction=self.bessels_correction, lagtime=self.lagtime,
-                                          symmetrized=self.reversible)
+                                          symmetrized=self.reversible, data_mean_removed=self.remove_data_mean)
             self._dirty = False  # catches multiple calls to fetch_model even though it hasn't changed
         return self._model
 

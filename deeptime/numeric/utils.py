@@ -2,6 +2,34 @@ import numpy as _np
 from scipy.sparse import issparse
 
 
+def is_sorted(x: _np.ndarray, order: str = 'asc'):
+    r"""Check if x is sorted.
+
+    Parameters
+    ----------
+    x : ndarray
+        input array
+    order : str, default='asc'
+        One of asc (for ascending) and desc (for descending)
+
+    Returns
+    -------
+    sorted : bool
+        Whether array is sorted.
+    """
+    assert order in ('asc', 'desc')
+    try:
+        if _np.issubdtype(x.dtype, _np.unsignedinteger):
+            # x is unsigned int array, risk of int underflow in np.diff
+            x = _np.int64(x)
+    except AttributeError:
+        pass
+    if order == 'asc':
+        return (_np.diff(x) >= 0).all()
+    else:
+        return (_np.diff(x) <= 0).all()
+
+
 def is_diagonal_matrix(matrix: _np.ndarray) -> bool:
     r""" Checks whether a provided matrix is a diagonal matrix, i.e., :math:`A = \mathrm{diag}(a_1,\ldots, a_n)`.
 
