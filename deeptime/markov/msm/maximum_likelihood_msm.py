@@ -1,4 +1,6 @@
 import logging
+import sys
+from types import MethodType
 from typing import Optional, Union, List
 
 import numpy as np
@@ -74,6 +76,14 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self.connectivity_threshold = connectivity_threshold
         self.transition_matrix_tolerance = transition_matrix_tolerance
         self._log = logging.getLogger(__name__)
+
+        if sys.version_info[0] == 3 and sys.version_info[1] == 6:
+            def new_reduce(self):
+                if logging.getLogger(self.name) is not self:
+                    import pickle
+                    raise pickle.PicklingError('logger cannot be pickled')
+                return logging.getLogger, (self.name,)
+            self._log.__reduce__ = MethodType(new_reduce, self._log)
 
     @property
     def allow_disconnected(self) -> bool:

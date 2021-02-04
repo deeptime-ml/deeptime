@@ -1089,7 +1089,7 @@ class MarkovStateModel(Model):
             return est, hmm
         return hmm
 
-    def score(self, dtrajs, r=2, dim=None):
+    def score(self, dtrajs=None, r=2, dim=None):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes.
 
         Implemented according to :cite:`msm-noe2013variational` and :cite:`msm-wu2020variational`.
