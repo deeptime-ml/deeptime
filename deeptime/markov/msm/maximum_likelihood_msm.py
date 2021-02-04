@@ -1,6 +1,4 @@
 import logging
-import sys
-from types import MethodType
 from typing import Optional, Union, List
 
 import numpy as np
@@ -14,6 +12,7 @@ from ...numeric import is_square_matrix
 
 __all__ = ['MaximumLikelihoodMSM']
 
+log = logging.getLogger(__file__)
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <deeptime.markov.msm.MarkovStateModel>`)
@@ -75,15 +74,6 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self.maxerr = maxerr
         self.connectivity_threshold = connectivity_threshold
         self.transition_matrix_tolerance = transition_matrix_tolerance
-        self._log = logging.getLogger(__name__)
-
-        if sys.version_info[0] == 3 and sys.version_info[1] == 6:
-            def new_reduce(self):
-                if logging.getLogger(self.name) is not self:
-                    import pickle
-                    raise pickle.PicklingError('logger cannot be pickled')
-                return logging.getLogger, (self.name,)
-            self._log.__reduce__ = MethodType(new_reduce, self._log)
 
     @property
     def allow_disconnected(self) -> bool:
@@ -238,7 +228,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
                 statdists.append(fit_result[1])
                 count_models.append(fit_result[2])
             except ValueError as e:
-                self._log.warning(f"Skipping state set {subset} due to error in estimation: {str(e)}.")
+                log.warning(f"Skipping state set {subset} due to error in estimation: {str(e)}.")
         if len(transition_matrices) == 0:
             raise ValueError(f"None of the {'strongly' if needs_strong_connectivity else 'weakly'} "
                              f"connected subsets could be fit to data!")
