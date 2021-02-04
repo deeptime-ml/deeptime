@@ -1,7 +1,7 @@
-import numpy
+import numpy as np
 
 
-def variable_cols(X, tol=0.0, min_constant=0):
+def variable_cols(X: np.ndarray, tol=0.0, min_constant=0):
     """ Evaluates which columns are constant (0) or variable (1)
 
     Parameters
@@ -34,23 +34,23 @@ def variable_cols(X, tol=0.0, min_constant=0):
                               variable_cols_long,
                               variable_cols_char)
     # prepare column array
-    cols = numpy.zeros(X.shape[1], dtype=numpy.bool, order='C')
+    cols = np.zeros(X.shape[1], dtype=bool, order='C')
 
-    if X.dtype == numpy.float64:
+    if X.dtype == np.float64:
         completed = variable_cols_double(cols, X, tol, min_constant)
-    elif X.dtype == numpy.float32:
+    elif X.dtype == np.float32:
         completed = variable_cols_float(cols, X, tol, min_constant)
-    elif X.dtype == numpy.int32:
+    elif X.dtype == np.int32:
         completed = variable_cols_int(cols, X, 0, min_constant)
-    elif X.dtype == numpy.int64:
+    elif X.dtype == np.int64:
         completed = variable_cols_long(cols, X, 0, min_constant)
-    elif X.dtype == numpy.bool:
+    elif X.dtype == np.bool_:
         completed = variable_cols_char(cols, X, 0, min_constant)
     else:
         raise TypeError('unsupported type of X: %s' % X.dtype)
 
     # if interrupted, return all ones. Otherwise return the variable columns as bool array
     if completed == 0:
-        return numpy.ones_like(cols, dtype=numpy.bool)
+        return np.ones_like(cols, dtype=bool)
 
     return cols

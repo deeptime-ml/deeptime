@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Union, List
 
 import numpy as np
@@ -72,6 +73,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self.maxerr = maxerr
         self.connectivity_threshold = connectivity_threshold
         self.transition_matrix_tolerance = transition_matrix_tolerance
+        self._log = logging.getLogger(__name__)
 
     @property
     def allow_disconnected(self) -> bool:
@@ -218,11 +220,15 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         statdists = []
         count_models = []
         for subset in sets:
-            sub_counts = counts.submodel(subset)
-            fit_result = self._fit_connected(sub_counts)
-            transition_matrices.append(fit_result[0])
-            statdists.append(fit_result[1])
-            count_models.append(fit_result[2])
+            try:
+                sub_counts = counts.submodel(subset)
+                fit_result = self._fit_connected(sub_counts)
+                transition_matrices.append(fit_result[0])
+                statdists.append(fit_result[1])
+                count_models.append(fit_result[2])
+            except ValueError as e:
+                self._log.warning(f"Skipping state set {subset} due to error in estimation: {str(e)}.")
+
         self._model = MarkovStateModelCollection(transition_matrices, statdists, reversible=self.reversible,
                                                  count_models=count_models,
                                                  transition_matrix_tolerance=self.transition_matrix_tolerance)
