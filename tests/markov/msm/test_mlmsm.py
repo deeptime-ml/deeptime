@@ -202,12 +202,12 @@ def test_score_cv(double_well_msm_all):
             .fetch_model().submodel_largest()
         return est.fit(count_model).fetch_model()
 
-    s1 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method=1, score_k=2).mean()
+    s1 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method=1, dim=2).mean()
     assert 1.0 <= s1 <= 2.0
-    s2 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method=2, score_k=2).mean()
+    s2 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method=2, dim=2).mean()
     assert 1.0 <= s2 <= 2.0
-    se = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method="E", score_k=2).mean()
-    se_inf = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method="E", score_k=None).mean()
+    se = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method="E", dim=2).mean()
+    se_inf = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method="E", dim=None).mean()
 
 
 class TestMSMMinCountConnectivity(unittest.TestCase):
