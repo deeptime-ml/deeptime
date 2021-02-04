@@ -4,12 +4,13 @@
 
 from collections import namedtuple
 from numbers import Integral
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Callable
 
 import numpy as np
 
 from .koopman import CovarianceKoopmanModel
 from ..base import Estimator, Transformer
+from ..basis import Identity
 from ..covariance.covariance import Covariance, CovarianceModel
 from ..numeric.eigen import spd_inv_split
 
@@ -50,6 +51,8 @@ class VAMP(Estimator, Transformer):
         Eigenvalue cutoff. Eigenvalues of :math:`C_{00}` and :math:`C_{11}`
         with norms <= epsilon will be cut off. The remaining number of
         eigenvalues together with the value of `dim` define the size of the output.
+    observable_transform : callable, optional, default=Identity
+        A feature transformation on the raw data which is used to estimate the model.
 
     See Also
     --------
@@ -152,13 +155,15 @@ class VAMP(Estimator, Transformer):
                  dim: Optional[int] = None,
                  var_cutoff: Optional[float] = None,
                  scaling: Optional[str] = None,
-                 epsilon: float = 1e-6):
+                 epsilon: float = 1e-6,
+                 observable_transform: Callable[[np.ndarray], np.ndarray] = Identity()):
         super(VAMP, self).__init__()
         self.dim = dim
         self.var_cutoff = var_cutoff
         self.scaling = scaling
         self.epsilon = epsilon
         self.lagtime = lagtime
+        self.observable_transform = observable_transform
         self._covariance_estimator = None  # internal covariance estimator
 
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
@@ -243,7 +248,7 @@ class VAMP(Estimator, Transformer):
             raise ValueError("Calling partial fit requires that a lagtime is set.")
         if self._covariance_estimator is None:
             self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
-        self._covariance_estimator.partial_fit(data)
+        self._covariance_estimator.partial_fit((self.observable_transform(data[0]), self.observable_transform(data[1])))
         return self
 
     def fit_from_covariances(self, covariances: Union[Covariance, CovarianceModel]):
@@ -283,7 +288,7 @@ class VAMP(Estimator, Transformer):
             Reference to self.
         """
         self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
-        covariances = self._covariance_estimator.fit(data, weights=weights).fetch_model()
+        covariances = self._covariance_estimator.fit(self.observable_transform(data), weights=weights).fetch_model()
         return self.fit_from_covariances(covariances)
 
     @property
@@ -381,7 +386,9 @@ class VAMP(Estimator, Transformer):
         return CovarianceKoopmanModel(
             decomposition.left_singular_vecs, decomposition.singular_values, decomposition.right_singular_vecs,
             rank_0=decomposition.rank0, rank_t=decomposition.rankt, dim=self.dim,
-            var_cutoff=self.var_cutoff, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
+            var_cutoff=self.var_cutoff, cov=covariances, scaling=self.scaling, epsilon=self.epsilon,
+            instantaneous_obs=self.observable_transform,
+            timelagged_obs=self.observable_transform
         )
 
     def fit(self, data, *args, **kw):
