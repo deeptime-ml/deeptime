@@ -19,10 +19,10 @@ Output models
 Maximum-likelihood estimation of HMMs
 -------------------------------------
 
-Since the maximum-likelihood estimation (via Baum-Welch :cite:`hmminit-baum1967inequality`) of
+Since the maximum-likelihood estimation (via Baum-Welch :footcite:`baum1967inequality`) of
 :class:`HMMs <deeptime.markov.hmm.HiddenMarkovModel>` is likely to
 get stuck in local maxima, a good initial guess is important for a high-quality model. The following methods aim to
-provide heuristics which can yield such an initial guess and can be found in :cite:`hmminit-noe2013projected`.
+provide heuristics which can yield such an initial guess and can be found in :footcite:`noe2013projected`.
 
 For a HMM with a :class:`discrete output model <deeptime.markov.hmm.DiscreteOutputModel>`, the following main
 steps are involved:
@@ -75,7 +75,7 @@ Bayesian hidden markov state models
 Bayesian HMMs can provide confidence estimates. They are estimated by starting from a reference HMM and then use
 Gibbs sampling.
 
-See :cite:`hmminit-chodera2011bayesian` for a manuscript describing the theory behind using Gibbs 
+See :footcite:`chodera2011bayesian` for a manuscript describing the theory behind using Gibbs
 sampling to sample from Bayesian hidden Markov model posteriors.
 
 .. autosummary::
@@ -87,10 +87,7 @@ sampling to sample from Bayesian hidden Markov model posteriors.
 
 References
 ----------
-.. bibliography:: /references.bib
-    :style: unsrt
-    :filter: docname in docnames
-    :keyprefix: hmminit-
+.. footbibliography::
 """
 
 from .hidden_markov_model import HiddenMarkovModel

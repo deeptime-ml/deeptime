@@ -138,11 +138,11 @@ class CovarianceKoopmanModel(KoopmanModel):
     which was obtained through diagonalization of covariance matrices. This leads to
     a Koopman operator which is a diagonal matrix and can be used to project onto specific processes of the system.
 
-    In particular, this model expects matrices :math:`U` and :math`V` as well as singular values :math:`\sigma_i`,
+    In particular, this model expects matrices :math:`U` and :math:`V` as well as singular values :math:`\sigma_i`,
     such that
 
     .. math::
-        \mathbb{E}[V^\top\chi_1 (x_{t+\tau})]=\mathbb{E}[g(x_{t+\tau})] \approx K^\top \mathbb{E}[f(x_{t})] = \mathrm{diag}(\sigma_i) \mathbb{E}[U^top\chi_0(x_{t})],
+        \mathbb{E}[V^\top\chi_1 (x_{t+\tau})]=\mathbb{E}[g(x_{t+\tau})] \approx K^\top \mathbb{E}[f(x_{t})] = \mathrm{diag}(\sigma_i) \mathbb{E}[U^\top\chi_0(x_{t})],
 
     where :math:`\chi_0,\chi_1` are basis transformations of the full state :math:`x_t`.
 
@@ -431,17 +431,17 @@ class CovarianceKoopmanModel(KoopmanModel):
         ----------
         r : float or str
             The type of score to evaluate. Can by an floating point value greater or equal to 1 or 'E', yielding the
-            VAMP-r score or the VAMP-E score, respectively. :cite:`vampscore-wu2020variational`
+            VAMP-r score or the VAMP-E score, respectively. :footcite:`wu2020variational`
             Typical choices are:
 
             *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix.
                         If the model is reversible, this is equal to the sum of
-                        Koopman matrix eigenvalues, also called Rayleigh quotient :cite:`vampscore-wu2020variational`.
+                        Koopman matrix eigenvalues, also called Rayleigh quotient :footcite:`wu2020variational`.
             *  'VAMP2'  Sum of squared singular values of the half-weighted Koopman
-                        matrix :cite:`vampscore-wu2020variational`. If the model is reversible, this is
-                        equal to the kinetic variance :cite:`vampscore-noe2015kinetic`.
+                        matrix :footcite:`wu2020variational`. If the model is reversible, this is
+                        equal to the kinetic variance :footcite:`noe2015kinetic`.
             *  'VAMPE'  Approximation error of the estimated Koopman operator with respect to
-                        the true Koopman operator up to an additive constant :cite:`vampscore-wu2020variational` .
+                        the true Koopman operator up to an additive constant :footcite:`wu2020variational` .
 
         test_model : CovarianceKoopmanModel, optional, default=None
 
@@ -466,15 +466,12 @@ class CovarianceKoopmanModel(KoopmanModel):
 
         Notes
         -----
-        The VAMP-:math:`r` and VAMP-E scores are computed according to :cite:`vampscore-wu2020variational`,
+        The VAMP-:math:`r` and VAMP-E scores are computed according to :footcite:`wu2020variational`,
         Equation (33) and Equation (30), respectively.
 
         References
         ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: vampscore-
+        .. footbibliography::
         """
         test_cov = test_model.cov if test_model is not None else None
         return vamp_score(self, r, test_cov, self.output_dimension, epsilon)

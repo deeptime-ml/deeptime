@@ -38,7 +38,7 @@ master_doc = 'contents'
 # -- Disable certain warnings ------------------------------------------------
 
 sphinxlog_adapter = sphinx.util.logging.getLogger(sphinxcontrib.bibtex.__name__)
-
+bibtex_bibfiles = ['references.bib']
 
 class DuplicateLabelForKeysFilter(logging.Filter):
 

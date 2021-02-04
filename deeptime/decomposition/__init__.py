@@ -40,8 +40,6 @@ Models
 
     KoopmanModel
     CovarianceKoopmanModel
-    KoopmanBasisTransform
-    IdentityKoopmanBasisTransform
     DMDModel
     EDMDModel
     KernelEDMDModel

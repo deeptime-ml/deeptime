@@ -108,7 +108,7 @@ class DrunkardsWalk(object):
             P_{ij} = \mathbb{P}(X_{n+1} = j\in\mathrm{barriers} : X_n=i\text{ next to barrier}) = 0.
 
         The barrier is interpreted as a straight line between begin and end, discretized onto states using
-        Bresenham's line algorithm :cite:`drunkardswalk-bresenham1965algorithm`.
+        Bresenham's line algorithm :footcite:`bresenham1965algorithm`.
 
         Parameters
         ----------
@@ -121,10 +121,7 @@ class DrunkardsWalk(object):
 
         References
         ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: drunkardswalk-
+        .. footbibliography::
         """
         barrier = []
         x0, y0 = begin

@@ -22,7 +22,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     connected set. The connected set can be switched, changing the state of the collection to be have like an MSM on
     the selected state subset.
 
-    Implementation according to :cite:`mlmsm-wu2020variational`.
+    Implementation according to :footcite:`wu2020variational`.
 
     Parameters
     ----------
@@ -57,10 +57,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: mlmsm-
+    .. footbibliography::
     """
 
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
@@ -254,7 +251,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             choice is "sliding". If the MSM should be used for sampling in a
             :class:`BayesianMSM <deeptime.markov.msm.BayesianMSM>`, the recommended choice is "effective", which yields
             transition counts that are statistically uncorrelated. A description can be found
-            in :cite:`mlmsm-noe2015statistical`.
+            in :footcite:`noe2015statistical`.
 
         Returns
         -------

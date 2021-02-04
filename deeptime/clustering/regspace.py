@@ -16,8 +16,8 @@ class RegularSpace(Estimator):
     """Clusters data objects in such a way, that cluster centers are at least in distance of dmin to each other
     according to the given metric. The assignment of data objects to cluster centers is performed by Voronoi partioning.
 
-    Regular space clustering :cite:`regspace-prinz2011markov` is very similar to Hartigan's leader
-    algorithm :cite:`regspace-hartigan1975clustering`. It consists
+    Regular space clustering :footcite:`prinz2011markov` is very similar to Hartigan's leader
+    algorithm :footcite:`hartigan1975clustering`. It consists
     of two passes through the data. Initially, the first data point is added to the list of centers. For every
     subsequent data point, if it has a greater distance than dmin from every center, it also becomes a center.
     In the second pass, a Voronoi discretization with the computed centers is used to partition the data.
@@ -36,10 +36,7 @@ class RegularSpace(Estimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: regspace-
+    .. footbibliography::
     """
 
     def __init__(self, dmin: float, max_centers: int = 1000, metric: str = 'euclidean', n_jobs=None):

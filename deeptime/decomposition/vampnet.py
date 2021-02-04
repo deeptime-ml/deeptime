@@ -332,12 +332,13 @@ class VAMPNetModel(Transformer, Model):
 
 
 class VAMPNet(DLEstimator, Transformer):
-    r""" Implementation of VAMPNets :cite:`vnet-mardt2018vampnets` which try to find an optimal featurization of
-    data based on a VAMP score :cite:`vnet-wu2020variational` by using neural networks as featurizing transforms
-    which are equipped with a loss that is the negative VAMP score. This estimator is also a transformer
-    and can be used to transform data into the optimized space. From there it can either be used to estimate
-    Markov state models via making assignment probabilities crisp (in case of softmax output distributions) or
-    to estimate the Koopman operator using the :class:`VAMP <deeptime.decomposition.VAMP>` estimator.
+    r""" Implementation of VAMPNets. :footcite:`mardt2018vampnets`
+    These networks try to find an optimal featurization of data based on a VAMP score :footcite:`wu2020variational`
+    by using neural networks as featurizing transforms which are equipped with a loss that is the negative VAMP score.
+    This estimator is also a transformer and can be used to transform data into the optimized space.
+    From there it can either be used to estimate Markov state models via making assignment probabilities
+    crisp (in case of softmax output distributions) or to estimate the Koopman operator
+    using the :class:`VAMP <deeptime.decomposition.VAMP>` estimator.
 
     Parameters
     ----------
@@ -372,10 +373,7 @@ class VAMPNet(DLEstimator, Transformer):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: vnet-
+    .. footbibliography::
     """
     _MUTABLE_INPUT_DATA = True
 

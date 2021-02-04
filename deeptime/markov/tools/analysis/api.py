@@ -184,17 +184,14 @@ def is_connected(T, directed=True):
     Viewing the transition matrix as the adjency matrix of a
     (directed) graph the transition matrix is irreducible if and only
     if the corresponding graph has a single connected
-    component. :cite:`tools-is-connected-hoel1986introduction`.
+    component. :footcite:`hoel1986introduction`.
 
     Connectivity of a graph can be efficiently checked
-    using Tarjan's algorithm. :cite:`tools-is-connected-tarjan1972depth`.
+    using Tarjan's algorithm. :footcite:`tarjan1972depth`.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-is-connected-
+    .. footbibliography::
 
     Examples
     --------
@@ -657,7 +654,7 @@ def mfpt(T, target, origin=None, tau=1, mu=None):
     -----
     The mean first passage time :math:`\mathbf{E}_x[T_Y]` is the expected
     hitting time of one state :math:`y` in :math:`Y` when starting
-    in state :math:`x`. :cite:`tools-mfpt-hoel1986introduction`.
+    in state :math:`x`. :footcite:`hoel1986introduction`.
 
     For a fixed target state :math:`y` it is given by
 
@@ -680,10 +677,7 @@ def mfpt(T, target, origin=None, tau=1, mu=None):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-mfpt-
+    .. footbibliography::
 
     Examples
     --------
@@ -759,9 +753,9 @@ def committor(T, A, B, forward=True, mu=None):
     The committor assigns to each microstate a probability that being
     at this state, the set B will be hit next, rather than set A
     (forward committor), or that the set A has been hit previously
-    rather than set B (backward committor). See :cite:`tools-committor-metzner2009transition` for a
+    rather than set B (backward committor). See :footcite:`metzner2009transition` for a
     detailed mathematical description. The present implementation
-    uses the equations given in :cite:`tools-committor-noe2009constructing`.
+    uses the equations given in :footcite:`noe2009constructing`.
 
     Parameters
     ----------
@@ -833,10 +827,7 @@ def committor(T, A, B, forward=True, mu=None):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-committor-
+    .. footbibliography::
 
     Examples
     --------
@@ -998,7 +989,7 @@ def expected_counts_stationary(T, N, mu=None):
 
 def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
     r"""Dynamical fingerprint for equilibrium correlation
-    experiment :cite:`tools-fingerprint-correlation-noe2011dynamical`.
+    experiment. :footcite:`noe2011dynamical`.
 
     Parameters
     ----------
@@ -1029,10 +1020,7 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-fingerprint-correlation-
+    .. footbibliography::
 
     Notes
     -----
@@ -1110,7 +1098,7 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
 
 
 def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
-    r"""Dynamical fingerprint for relaxation experiment :cite:`tools-fingerprint-relaxation-noe2011dynamical`.
+    r"""Dynamical fingerprint for relaxation experiment :footcite:`noe2011dynamical`.
 
     The dynamical fingerprint is given by the implied time-scale
     spectrum together with the corresponding amplitudes.
@@ -1144,10 +1132,7 @@ def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-fingerprint-relaxation-
+    .. footbibliography::
 
     Notes
     -----
@@ -1256,7 +1241,7 @@ def expectation(T, a, mu=None):
 
 
 def correlation(T, obs1, obs2=None, times=(1,), k=None, ncv=None):
-    r"""Time-correlation for equilibrium experiment :cite:`tools-correlation-noe2011dynamical`.
+    r"""Time-correlation for equilibrium experiment :footcite:`noe2011dynamical`.
 
     Parameters
     ----------
@@ -1283,10 +1268,7 @@ def correlation(T, obs1, obs2=None, times=(1,), k=None, ncv=None):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-correlation-
+    .. footbibliography::
 
     Notes
     -----
@@ -1349,7 +1331,7 @@ def correlation(T, obs1, obs2=None, times=(1,), k=None, ncv=None):
 
 
 def relaxation(T, p0, obs, times=(1,), k=None):
-    r"""Relaxation experiment :cite:`tools-relaxation-noe2011dynamical`.
+    r"""Relaxation experiment :footcite:`noe2011dynamical`.
 
     The relaxation experiment describes the time-evolution
     of an expectation value starting in a non-equilibrium
@@ -1375,10 +1357,7 @@ def relaxation(T, p0, obs, times=(1,), k=None):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-relaxation-
+    .. footbibliography::
 
     Notes
     -----
@@ -1447,7 +1426,7 @@ def _pcca_object(T, m):
 
 
 def pcca_memberships(T, m):
-    r"""Compute meta-stable sets using PCCA++ :cite:`pcca-memberships-impl-roblitz2013fuzzy` and return the
+    r"""Compute meta-stable sets using PCCA++ :footcite:`roblitz2013fuzzy` and return the
     membership of all states to these sets.
 
     Parameters
@@ -1472,10 +1451,7 @@ def pcca_memberships(T, m):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: pcca-memberships-impl-
+    .. footbibliography::
     """
     return _pcca_object(T, m).memberships
 

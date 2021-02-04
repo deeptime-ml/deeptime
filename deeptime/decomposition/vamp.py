@@ -20,7 +20,7 @@ __all__ = ['VAMP']
 class VAMP(Estimator, Transformer):
     r"""Variational approach for Markov processes (VAMP).
 
-    The implementation is based on :cite:`vamp-wu2020variational`, :cite:`vamp-noe2015kinetic`.
+    The implementation is based on :footcite:`wu2020variational`, :footcite:`noe2015kinetic`.
 
     Parameters
     ----------
@@ -115,7 +115,7 @@ class VAMP(Estimator, Transformer):
 
       \mathbf{K}=\mathbf{C}_{00}^{-1}\mathbf{C}_{01}
 
-    It can be shown :cite:`vamp-wu2020variational` that the leading singular functions of the
+    It can be shown :footcite:`wu2020variational` that the leading singular functions of the
     half-weighted Koopman matrix
 
     .. math::
@@ -145,10 +145,7 @@ class VAMP(Estimator, Transformer):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: vamp-
+    .. footbibliography::
     """
 
     def __init__(self, lagtime: Optional[int] = None,
@@ -213,7 +210,7 @@ class VAMP(Estimator, Transformer):
         lagtime : int
             Positive integer denoting the time shift which is considered for autocorrelations.
         ncov : int or float('inf'), optional, default=float('inf')
-            Limit the memory usage of the algorithm from :cite:`vamp-chan1982updating` to an amount that corresponds
+            Limit the memory usage of the algorithm from :footcite:`chan1982updating` to an amount that corresponds
             to ncov additional copies of each correlation matrix.
 
         Returns

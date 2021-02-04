@@ -56,13 +56,13 @@ class DMDModel(Model, Transformer):
 
 
 class DMD(Estimator, Transformer):
-    r""" Dynamic mode decomposition :cite:`dmd-schmid2010dynamic` estimator.
+    r""" Dynamic mode decomposition estimator. :footcite:`schmid2010dynamic`
 
     There are two supported modes:
 
     * `standard`, which produces "projected" DMD modes (following the original formulation of DMD),
     * `exact`, which produces DMD modes that do not required ordered data but just
-      matched pairs of data :cite:`dmd-tu2013dynamic`.
+      matched pairs of data :footcite:`tu2013dynamic`.
 
     Parameters
     ----------
@@ -95,10 +95,7 @@ class DMD(Estimator, Transformer):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: dmd-
+    .. footbibliography::
     """
 
     available_modes = 'exact', 'standard'  #: The available estimation modes.
@@ -240,7 +237,7 @@ class EDMDModel(KoopmanModel):
 
 class EDMD(Estimator):
     r""" Extended dynamic mode decomposition for estimation of the Koopman (or optionally Perron-Frobenius)
-    operator :cite:`edmd-williams2015data` :cite:`klus2016edmd`.
+    operator. :footcite:`williams2015data` :footcite:`klus2016edmd`.
 
     The estimator needs a basis :math:`\Psi : \mathbb{R}^n\to\mathbb{R}^k, \mathbf{x}\mapsto\Psi(\mathbf{x}))`
     and data matrices :math:`X = [x_1,\ldots,x_M]`, :math:`Y=[y_1,\ldots,y_M]` of time-lagged pairs of data.
@@ -265,10 +262,7 @@ class EDMD(Estimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: edmd-
+    .. footbibliography::
     """
 
     available_operators = 'koopman', 'perron-frobenius'  #: The supported operators.
@@ -340,8 +334,8 @@ class KernelEDMDModel(Model):
 
 
 class KernelEDMD(Estimator):
-    r""" Estimator implementing kernel extended mode decomposition :cite:`kedmd-williams2016kernel`
-    :cite:`kedmd-klus2019eigendecomposition` :cite:`kedmd-klus2018kernel`.
+    r""" Estimator implementing kernel extended mode decomposition. :footcite:`williams2016kernel`
+    :footcite:`klus2019eigendecomposition` :footcite:`klus2018kernel`.
 
     Parameters
     ----------
@@ -354,10 +348,7 @@ class KernelEDMD(Estimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: kedmd-
+    .. footbibliography::
     """
 
     def __init__(self, kernel: Kernel, epsilon: float = 0., n_eigs: Optional[int] = None):

@@ -250,7 +250,7 @@ class SINDy(Estimator):
 
     The i-th column of this matrix equation gives a differential equation for the
     i-th measurement variable (i-th column in :math:`X`). For more details see
-    :cite:`sindy-brunton2016sindy`.
+    :footcite:`sindy-brunton2016sindy`.
 
     Parameters
     ----------
@@ -276,10 +276,7 @@ class SINDy(Estimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: sindy-
+    .. footbibliography::
     """
 
     def __init__(self, library=None, optimizer=None, input_features=None):
@@ -372,7 +369,7 @@ class STLSQ(LinearRegression):
     by iteratively performing least squares and masking out
     elements of the weight that are below a given threshold.
 
-    See this paper for more details :cite:`sindy-stlsq-brunton2016sindy`.
+    See this paper for more details :footcite:`sindy-stlsq-brunton2016sindy`.
 
     Parameters
     ----------
@@ -404,10 +401,7 @@ class STLSQ(LinearRegression):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: sindy-stlsq-
+    .. footbibliography::
     """
 
     def __init__(self, threshold=0.1, alpha=0.05, max_iter=20, ridge_kw=None, normalize=False, fit_intercept=False,

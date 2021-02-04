@@ -14,7 +14,7 @@ __author__ = 'noe, marscher, clonker'
 class BayesianMSM(_MSMBaseEstimator):
     r""" Bayesian estimator for MSMs given discrete trajectory statistics.
 
-    Implementation following :cite:`bmm-est-trendelkamp2015estimation`.
+    Implementation following :footcite:`trendelkamp2015estimation`.
 
     Parameters
     ----------
@@ -50,10 +50,7 @@ class BayesianMSM(_MSMBaseEstimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: bmm-est-
+    .. footbibliography::
 
     Examples
     --------
