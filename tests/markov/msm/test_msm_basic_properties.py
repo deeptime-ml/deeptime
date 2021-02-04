@@ -220,10 +220,10 @@ class TestMSMBasicProperties(object):
             pytest.skip("scoring not implemented for augmented MSMs.")
         dtrajs_test = scenario.data.dtraj[80000:]
         scenario.msm.score(dtrajs_test)
-        s1 = scenario.msm.score(dtrajs_test, score_method='VAMP1', score_k=2)
+        s1 = scenario.msm.score(dtrajs_test, r=1, dim=2)
         assert_(1.0 <= s1 <= 2.0)
 
-        s2 = scenario.msm.score(dtrajs_test, score_method='VAMP2', score_k=2)
+        s2 = scenario.msm.score(dtrajs_test, r=2, dim=2)
         assert_(1.0 <= s2 <= 2.0)
 
     # ---------------------------------

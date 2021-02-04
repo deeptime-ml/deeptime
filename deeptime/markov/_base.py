@@ -288,6 +288,6 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
         # counts = TransitionCountEstimator(args).fit(dtrajs_tain).fetch_model()
         # model = MLMSMEstimator(args).fit(counts).fetch_model()
         model = fit_fetch(dtrajs_train)
-        s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
+        s = model.score(dtrajs_test, r=score_method, dim=score_k)
         scores.append(s)
     return np.array(scores)

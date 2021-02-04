@@ -7,8 +7,9 @@ import unittest
 import numpy as np
 import pytest
 
+from deeptime.covariance import CovarianceModel
 from deeptime.data.util import timeshifted_split
-from deeptime.decomposition import KoopmanModel
+from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel
 from deeptime.decomposition.vamp import VAMP
 from deeptime.markov._base import cvsplit_dtrajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
@@ -45,7 +46,7 @@ def test_expectation_sanity(with_statistics, lag_multiple):
 @pytest.mark.parametrize('components', [None, 0, [0, 1]], ids=lambda x: f"components={x}")
 def test_forward(components):
     K = np.diag(np.array([3., 2., 1.]))
-    model = KoopmanModel(K, basis_transform_forward=None, basis_transform_backward=None)
+    model = CovarianceKoopmanModel(np.eye(3), K, np.eye(3), CovarianceModel(), 3, 3)
     data = np.random.normal(size=(100, 3))
     fwd = model.forward(data, components=components)
     if components is not None:
@@ -66,7 +67,7 @@ def full_rank_time_series():
     d = 8
     Q = np.linalg.qr(random_state.normal(size=(d, d)))[0]
     K = Q @ (np.diag(np.arange(1, d + 1)).astype(np.float64) / d) @ Q.T
-    model = KoopmanModel(K, basis_transform_forward=None, basis_transform_backward=None)
+    model = KoopmanModel(K)
     x = np.ones((1, d,)) * 100000
     traj = [x]
     for _ in range(1000):
@@ -163,7 +164,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         atol = np.finfo(np.float32).eps * 10.0
         rtol = np.finfo(np.float32).resolution
-        phi_trajs = [vamp.transform(X, forward=False)[tau:, :] for X in trajs]
+        phi_trajs = [vamp.transform(X, instantaneous=False)[tau:, :] for X in trajs]
         phi = np.concatenate(phi_trajs)
         mean_right = phi.sum(axis=0) / phi.shape[0]
         cov_right = phi.T.dot(phi) / phi.shape[0]
@@ -172,7 +173,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         vamp.right = False
         # vamp = estimate_vamp(trajs, lag=tau, scaling=None, right=False)
-        psi_trajs = [vamp.transform(X, forward=True)[0:-tau, :] for X in trajs]
+        psi_trajs = [vamp.transform(X, instantaneous=True)[0:-tau, :] for X in trajs]
         psi = np.concatenate(psi_trajs)
         mean_left = psi.sum(axis=0) / psi.shape[0]
         cov_left = psi.T.dot(psi) / psi.shape[0]
@@ -207,10 +208,10 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
             # vamp2.singular_values # trigger diagonalization
             for t, ref in zip(trajs, phi_trajs):
-                assert_allclose_ignore_phase(vamp2.transform(t[tau:], forward=False), ref, rtol=rtol, atol=atol)
+                assert_allclose_ignore_phase(vamp2.transform(t[tau:], instantaneous=False), ref, rtol=rtol, atol=atol)
 
             for t, ref in zip(trajs, psi_trajs):
-                assert_allclose_ignore_phase(vamp2.transform(t[0:-tau], forward=True), ref, rtol=rtol, atol=atol)
+                assert_allclose_ignore_phase(vamp2.transform(t[0:-tau], instantaneous=True), ref, rtol=rtol, atol=atol)
 
 
 def generate(T, N_steps, s0=0):
@@ -285,7 +286,7 @@ class TestVAMPModel(unittest.TestCase):
         assert_allclose_ignore_phase(V[:, 0], np.ones(3), atol=1E-5)
         U = U[:, 1:]
         V = V[:, 1:]
-        phi = self.vamp.transform(np.eye(3), forward=False)
+        phi = self.vamp.transform(np.eye(3), instantaneous=False)
         psi = self.vamp.transform(np.eye(3))
         assert_allclose_ignore_phase(U, psi, atol=1E-5)
         assert_allclose_ignore_phase(V, phi, atol=1E-5)
@@ -305,32 +306,31 @@ class TestVAMPModel(unittest.TestCase):
         T = self.msm.transition_matrix
         Tadj = np.diag(1. / self.p1).dot(T.T).dot(np.diag(self.p0))
         NFro = np.trace(T.dot(Tadj))
-        s2 = self.vamp.score(score_method='VAMP2')
+        s2 = self.vamp.score(2)
         np.testing.assert_allclose(s2, NFro)
 
         Tsym = np.diag(self.p0 ** 0.5).dot(T).dot(np.diag(self.p1 ** -0.5))
         Nnuc = np.linalg.norm(Tsym, ord='nuc')
-        s1 = self.vamp.score(score_method='VAMP1')
+        s1 = self.vamp.score(1)
         np.testing.assert_allclose(s1, Nnuc)
 
-        sE = self.vamp.score(score_method='VAMPE')
+        sE = self.vamp.score("E")
         np.testing.assert_allclose(sE, NFro)  # see paper appendix H.2
 
     def test_score_vs_MSM(self):
         trajs_test, trajs_train = cvsplit_dtrajs(self.trajs, random_state=32)
         dtrajs_test, dtrajs_train = cvsplit_dtrajs(self.dtrajs, random_state=32)
 
-        methods = ('VAMP1', 'VAMP2', 'VAMPE')
+        methods = (1, 2, 'E')
 
         for m in methods:
             msm_train = estimate_markov_model(dtrajs=dtrajs_train, lag=self.lag, reversible=False)
-            score_msm = msm_train.score(dtrajs_test, score_method=m, score_k=None)
-
+            score_msm = msm_train.score(dtrajs_test, m, dim=None)
             vamp_train = VAMP(lagtime=self.lag, var_cutoff=1.0).fit_from_timeseries(trajs_train).fetch_model()
             vamp_test = VAMP(lagtime=self.lag, var_cutoff=1.0).fit_from_timeseries(trajs_test).fetch_model()
-            score_vamp = vamp_train.score(test_model=vamp_test, score_method=m)
+            score_vamp = vamp_train.score(test_model=vamp_test, r=m)
 
-            self.assertAlmostEqual(score_msm, score_vamp, places=2 if m == 'VAMPE' else 3, msg=m)
+            self.assertAlmostEqual(score_msm, score_vamp, places=2 if m == 'E' else 3, msg=m)
 
     def test_kinetic_map(self):
         lag = 10
@@ -345,7 +345,7 @@ class TestVAMPWithEdgeCaseData(unittest.TestCase):
         x = np.random.randn(10, 1)
         vamp = VAMP(lagtime=1).fit([x]).fetch_model()
         # Doing VAMP with 1-D data is just centering and normalizing the data.
-        assert_allclose_ignore_phase(vamp.transform(x, forward=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
+        assert_allclose_ignore_phase(vamp.transform(x, instantaneous=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
         from deeptime.numeric.eigen import ZeroRankError

@@ -12,7 +12,8 @@ class Identity(Observable):
     def _evaluate(self, x):
         return x
 
-    def get_feature_names(self, input_features=None):
+    @staticmethod
+    def get_feature_names(input_features=None):
         return ['x']
 
 

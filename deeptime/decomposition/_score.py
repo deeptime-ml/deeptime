@@ -3,28 +3,68 @@ from typing import Optional, Union
 
 import numpy as np
 
-from deeptime.numeric import schatten_norm as _schatten_norm, is_sorted, spd_inv_sqrt
-from ..covariance import CovarianceModel
+from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
 
 
-class KoopmanModel:
+def vamp_score(koopman_model, r: Union[float, str],
+               covariances_test=None, dim: Optional[int] = None, epsilon: float = 1e-6):
+    """Compute the VAMP score between a covariance-based Koopman model and potentially a
+    test model for cross-validation.
 
-    def __init__(self, koopman_matrix):
-        self.koopman_matrix = koopman_matrix
+    Parameters
+    ----------
+    koopman_model : deeptime.decomposition.CovarianceKoopmanModel
+        The model to score.
+    r : float or str
+        The type of score to evaluate. Can by an floating point value greater or equal to 1 or 'E', yielding the
+        VAMP-r score or the VAMP-E score, respectively. :cite:`vampscore-wu2020variational`
+        Typical choices are:
+
+        *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix.
+                    If the model is reversible, this is equal to the sum of
+                    Koopman matrix eigenvalues, also called Rayleigh quotient :cite:`vampscore-wu2020variational`.
+        *  'VAMP2'  Sum of squared singular values of the half-weighted Koopman
+                    matrix :cite:`vampscore-wu2020variational`. If the model is reversible, this is
+                    equal to the kinetic variance :cite:`vampscore-noe2015kinetic`.
+        *  'VAMPE'  Approximation error of the estimated Koopman operator with respect to
+                    the true Koopman operator up to an additive constant :cite:`vampscore-wu2020variational` .
+
+    covariances_test : deeptime.covariance.CovarianceModel, optional, default=None
+
+        If `test_model` is not None, this method computes the cross-validation score
+        between self and `covariances_test`. It is assumed that self was estimated from
+        the "training" data and `test_model` was estimated from the "test" data. The
+        score is computed for one realization of self and `test_model`. Estimation
+        of the average cross-validation score and partitioning of data into test and
+        training part is not performed by this method.
+
+        If `covariances_test` is None, this method computes the VAMP score for the model
+        contained in self.
+
+    dim : int, optional, default=None
+        Artificially restrict the scoring to the top `dim` slowest processes.
+
+    epsilon : float, default=1e-6
 
 
-class CovarianceKoopmanModel(KoopmanModel):
-    def __init__(self, U, K, V, cov):
-        assert K.ndim == 1
-        super().__init__(np.diag(K))
-        self.instantaneous_coefficients = U
-        self.timelagged_coefficients = V
-        self.singular_values = K
-        self.cov = cov
+    Returns
+    -------
+    score : float
+        If `test_model` is not None, returns the cross-validation VAMP score between
+        self and `test_model`. Otherwise return the selected VAMP-score of self.
 
+    Notes
+    -----
+    The VAMP-:math:`r` and VAMP-E scores are computed according to :cite:`vampscore-wu2020variational`,
+    Equation (33) and Equation (30), respectively.
 
-def vamp_score(koopman_model: CovarianceKoopmanModel, r: Union[float, str],
-               covariances_test: Optional[CovarianceModel] = None, dim=None, epsilon=1e-6):
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: vampscore-
+    """
     if dim is not None:
         dim = min(koopman_model.koopman_matrix.shape[0], dim)
     if isinstance(r, str):
@@ -59,7 +99,7 @@ def vamp_score(koopman_model: CovarianceKoopmanModel, r: Union[float, str],
         B = np.atleast_2d(U.T.dot(cov_test.cov_0t).dot(V))
         C = np.atleast_2d(spd_inv_sqrt(V.T.dot(cov_test.cov_tt).dot(V), epsilon=epsilon))
         ABC = np.linalg.multi_dot([A, B, C])
-        score = _schatten_norm(ABC, r) ** r
+        score = schatten_norm(ABC, r) ** r
     if koopman_model.cov.data_mean_removed:
         score += 1
     return score

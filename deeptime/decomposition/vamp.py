@@ -3,12 +3,12 @@
 """
 
 from collections import namedtuple
-from numbers import Real, Integral
+from numbers import Integral
 from typing import Optional, Union, List, Tuple
 
 import numpy as np
 
-from .koopman import CovarianceKoopmanModel, KoopmanBasisTransform
+from .koopman import CovarianceKoopmanModel
 from ..base import Estimator, Transformer
 from ..covariance.covariance import Covariance, CovarianceModel
 from ..numeric.eigen import spd_inv_split
@@ -379,11 +379,9 @@ class VAMP(Estimator, Transformer):
     def _decompose(self, covariances: CovarianceModel):
         decomposition = self._decomposition(covariances, self.epsilon, self.scaling, self.dim, self.var_cutoff)
         return CovarianceKoopmanModel(
-            operator=np.diag(decomposition.singular_values),
-            basis_transform_forward=KoopmanBasisTransform(covariances.mean_0, decomposition.left_singular_vecs),
-            basis_transform_backward=KoopmanBasisTransform(covariances.mean_t, decomposition.right_singular_vecs),
-            rank_0=decomposition.rank0, rank_t=decomposition.rankt,
-            dim=self.dim, var_cutoff=self.var_cutoff, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
+            decomposition.left_singular_vecs, decomposition.singular_values, decomposition.right_singular_vecs,
+            rank_0=decomposition.rank0, rank_t=decomposition.rankt, dim=self.dim,
+            var_cutoff=self.var_cutoff, cov=covariances, scaling=self.scaling, epsilon=self.epsilon
         )
 
     def fit(self, data, *args, **kw):
@@ -412,7 +410,7 @@ class VAMP(Estimator, Transformer):
             self.fit_from_timeseries(data, weights=kw.pop('weights', None))
         return self
 
-    def transform(self, data, forward=True):
+    def transform(self, data, instantaneous=True):
         r""" Projects given timeseries onto dominant singular functions. This method dispatches to
         :meth:`CovarianceKoopmanModel.transform`.
 
@@ -420,7 +418,7 @@ class VAMP(Estimator, Transformer):
         ----------
         data : (T, n) ndarray
             Input timeseries data.
-        forward : bool, default=True
+        instantaneous : bool, default=True
             Whether to use left or right eigenvectors for projection. Left corresponds to `forward == True`, right
             corresponds to `forward == False`.
 
@@ -431,7 +429,7 @@ class VAMP(Estimator, Transformer):
             If `right` is True, projection will be on the right singular functions. Otherwise, projection will be on
             the left singular functions.
         """
-        return self.fetch_model().transform(data, forward=forward)
+        return self.fetch_model().transform(data, instantaneous=instantaneous)
 
     def fetch_model(self) -> CovarianceKoopmanModel:
         r""" Finalizes current model and yields new :class:`CovarianceKoopmanModel`.

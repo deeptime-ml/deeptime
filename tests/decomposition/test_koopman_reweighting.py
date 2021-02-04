@@ -193,10 +193,10 @@ class TestKoopmanTICA(unittest.TestCase):
     def test_transform(self):
         traj = self.data[0] - self.mean_rev[None, :]
         ev_traj_rev = np.dot(traj, self.Rs)[:, :2]
-        out_traj_rev = self.koop_rev.transform(self.data[0])
+        out_traj_rev = self.koop_rev.transform(self.data[0], propagate=False)
         traj = self.data[0] - self.mean_eq[None, :]
         ev_traj_eq = np.dot(traj, self.Rr)[:, :2]
-        out_traj_eq = self.koop_eq.transform(self.data[0])
+        out_traj_eq = self.koop_eq.transform(self.data[0], propagate=False)
         np.testing.assert_allclose(out_traj_rev, ev_traj_rev)
         np.testing.assert_allclose(out_traj_eq, ev_traj_eq)
 

@@ -42,7 +42,7 @@ def test_covariances(fixed_seed, remove_mean):
         np.testing.assert_array_almost_equal(reference_covs.cov_tt, ctt.numpy())
 
 
-@pytest.mark.parametrize('method', ["VAMP1", "VAMP2", "VAMPE"])
+@pytest.mark.parametrize('method', [1, 2, "E"])
 @pytest.mark.parametrize('mode', ["trunc", "regularize", "clamp"])
 def test_score(fixed_seed, method, mode):
     data = deeptime.data.ellipsoids(seed=13).observations(1000, n_dim=5)
@@ -52,12 +52,12 @@ def test_score(fixed_seed, method, mode):
     with torch.no_grad():
         data_instantaneous = torch.from_numpy(data[:-tau].astype(np.float64))
         data_shifted = torch.from_numpy(data[tau:].astype(np.float64))
-        score_value = score(data_instantaneous, data_shifted, method=method, mode=mode)
-        if method == 'VAMPE':
+        score_value = score(data_instantaneous, data_shifted, method=f"VAMP{method}", mode=mode)
+        if method == 'E':
             # less precise due to svd implementation of torch
-            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method), decimal=2)
+            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(method), decimal=2)
         else:
-            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method))
+            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(method))
 
 
 @pytest.mark.xfail(reason="May spuriously fail because of nondeterministic optimization of the NN", strict=False)

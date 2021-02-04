@@ -185,7 +185,7 @@ class TestTICAExtensive(unittest.TestCase):
 
         # perform unscaled TICA
         cls.model_unscaled = TICA(dim=1, lagtime=cls.lagtime, scaling=None).fit_from_timeseries(cls.data).fetch_model()
-        cls.transformed_data_unscaled = cls.model_unscaled.transform(cls.data)
+        cls.transformed_data_unscaled = cls.model_unscaled.transform(cls.data, propagate=False)
 
     def test_variances(self):
         vars_unscaled = np.var(self.transformed_data_unscaled, axis=0)
@@ -193,7 +193,7 @@ class TestTICAExtensive(unittest.TestCase):
 
     def test_kinetic_map(self):
         tica = TICA(scaling='km', dim=None, lagtime=self.lagtime).fit(self.data).fetch_model()
-        O = tica.transform(self.data)
+        O = tica.transform(self.data, propagate=False)
         vars = np.var(O, axis=0)
         refs = tica.singular_values ** 2
         assert np.max(np.abs(vars - refs)) < 0.01

@@ -1,3 +1,5 @@
+from typing import Callable
+
 import numpy as np
 from ..base import Transformer
 
@@ -40,3 +42,23 @@ class Observable(Transformer):
 
     def transform(self, data, **kwargs):
         return self._evaluate(data)
+
+
+class Concatenation(Observable):
+    r"""Concatenation operation to evaluate :math:`(f_1 \circ f_2)(x) = f_1(f_2(x))`, where
+    :math:`f_1` and :math:`f_2` are observables.
+
+    Parameters
+    ----------
+    obs1 : Callable
+        First observable :math:`f_1`.
+    obs2 : Callable
+        Second observable :math:`f_2`.
+    """
+
+    def __init__(self, obs1: Callable[[np.ndarray], np.ndarray], obs2: Callable[[np.ndarray], np.ndarray]):
+        self.obs1 = obs1
+        self.obs2 = obs2
+
+    def _evaluate(self, x: np.ndarray) -> np.ndarray:
+        return self.obs1(self.obs2(x))

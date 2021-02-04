@@ -199,7 +199,7 @@ class EDMDModel(KoopmanModel):
     """
 
     def __init__(self, operator: np.ndarray, basis: Callable[[np.ndarray], np.ndarray], eigenvalues, modes):
-        super().__init__(operator, basis_transform_forward=None, basis_transform_backward=None)
+        super().__init__(operator, instantaneous_obs=basis, timelagged_obs=basis)
         self.basis = basis
         self.eigenvalues = eigenvalues
         self.modes = modes
@@ -226,8 +226,7 @@ class EDMDModel(KoopmanModel):
         transformed : (T, n) ndarray
             The forward transform of the input data.
         """
-        trajectory = self.basis(trajectory)
-        return super().forward(trajectory)
+        return super().transform(trajectory, instantaneous=True, propagate=True)
 
     def transform(self, data, **kw):
         r""" Takes input data :math:`X\in\mathbb{R}^{T\times n}`, applies the basis :math:`\Psi` and then projects

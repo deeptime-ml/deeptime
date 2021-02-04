@@ -96,8 +96,6 @@ def test_strongly_connected_count_matrix():
     sets = counts.connected_sets(directed=True)
     assert_equal(len(sets), 3)
     assert_equal(len(sets[0]), 5)
-    with assert_raises(BaseException, msg="count matrix not strongly connected, expected failure in rev. case"):
-        MaximumLikelihoodMSM().fit(counts)
     counts = counts.submodel_largest(directed=True)  # now we are strongly connected
     # due to reversible we get 6<->1<->2<->3<->4<->6
     msm = MaximumLikelihoodMSM(reversible=True).fit(counts).fetch_model()
@@ -204,12 +202,12 @@ def test_score_cv(double_well_msm_all):
             .fetch_model().submodel_largest()
         return est.fit(count_model).fetch_model()
 
-    s1 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method='VAMP1', score_k=2).mean()
+    s1 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method=1, score_k=2).mean()
     assert 1.0 <= s1 <= 2.0
-    s2 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method='VAMP2', score_k=2).mean()
+    s2 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method=2, score_k=2).mean()
     assert 1.0 <= s2 <= 2.0
-    se = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=2).mean()
-    se_inf = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method='VAMPE', score_k=None).mean()
+    se = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method="E", score_k=2).mean()
+    se_inf = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method="E", score_k=None).mean()
 
 
 class TestMSMMinCountConnectivity(unittest.TestCase):

@@ -5,15 +5,48 @@ import numpy as np
 from scipy.linalg import eig
 
 from ..base import Estimator, Model, Transformer
+from ..basis import Observable
 from ..data.util import timeshifted_split
 from ..numeric.eigen import spd_inv_split, sort_eigs, spd_inv_sqrt
 from .util.running_moments import running_covar as running_covar
+from ..util.types import ensure_timeseries_data
 
 __all__ = ['Covariance', 'CovarianceModel', 'KoopmanWeightingEstimator', 'KoopmanWeightingModel']
 
 __author__ = 'paul, nueske, marscher, clonker'
 
-from ..util.types import ensure_timeseries_data
+
+class WhiteningTransform(Observable):
+    r""" Transformation of data into a whitened space. It is assumed that for a covariance matrix :math:`C` the
+    square-root inverse :math:`C^{-1/2}` was already computed. Optionally a mean :math:`\mu` can be provided.
+    This yields the transformation
+
+    .. math::
+        y = C^{-1/2}(x-\mu).
+
+    Parameters
+    ----------
+    sqrt_inv_cov : (n, k) ndarray
+        Square-root inverse of covariance matrix.
+    mean : (n, ) ndarray, optional, default=None
+        The mean if it should be subtracted.
+    dim : int, optional, default=None
+        Additional restriction in the dimension, removes all but the first `dim` components of the output.
+
+    See Also
+    --------
+    deeptime.numeric.spd_inv_sqrt : Method to obtain (regularized) inverses of covariance matrices.
+    """
+
+    def __init__(self, sqrt_inv_cov: np.ndarray, mean: Optional[np.ndarray] = None, dim: Optional[int] = None):
+        self.sqrt_inv_cov = sqrt_inv_cov
+        self.mean = mean
+        self.dim = dim
+
+    def _evaluate(self, x: np.ndarray):
+        if self.mean is not None:
+            x = x - self.mean
+        return x @ self.sqrt_inv_cov[..., :self.dim]
 
 
 class CovarianceModel(Model):
@@ -38,6 +71,7 @@ class CovarianceModel(Model):
     data_mean_removed : bool, default=False
         Whether the data mean was removed. This can have an influence on the effective VAMP score.
     """
+
     def __init__(self, cov_00: Optional[np.ndarray] = None, cov_0t: Optional[np.ndarray] = None,
                  cov_tt: Optional[np.ndarray] = None, mean_0: Optional[np.ndarray] = None,
                  mean_t: Optional[np.ndarray] = None, bessels_correction: bool = True,
@@ -196,6 +230,7 @@ class Covariance(Estimator):
         :filter: docname in docnames
         :keyprefix: covariance-
     """
+
     def __init__(self, lagtime: int = 0, compute_c00: bool = True, compute_c0t: bool = False,
                  compute_ctt: bool = False, remove_data_mean: bool = False, reversible: bool = False,
                  bessels_correction: bool = True, sparse_mode: str = 'auto', ncov: int = 5, diag_only: bool = False,
@@ -554,7 +589,7 @@ class KoopmanWeightingModel(Model, Transformer):
         :type: (T, d) ndarray
         """
         return self._u
-    
+
     @property
     def const_weight_input(self) -> float:
         r""" Yields the constant offset for reweighting in input basis.
@@ -614,7 +649,7 @@ class KoopmanWeightingEstimator(Estimator, Transformer):
         super(KoopmanWeightingEstimator, self).__init__()
         self.epsilon = epsilon
         if ncov == 'inf':
-            ncov = int(2**10000)
+            ncov = int(2 ** 10000)
         self._cov = Covariance(lagtime=lagtime, compute_c00=True, compute_c0t=True, remove_data_mean=True,
                                reversible=False, bessels_correction=False, ncov=ncov)
 
@@ -718,7 +753,7 @@ class KoopmanWeightingEstimator(Estimator, Transformer):
 
         u = self._compute_u(K)
         N = R.shape[0]
-        u_input = np.zeros(N+1)
+        u_input = np.zeros(N + 1)
         u_input[0:N] = R.dot(u[0:-1])  # in input basis
         u_input[N] = u[-1] - cov.mean_0.dot(R.dot(u[0:-1]))
 
