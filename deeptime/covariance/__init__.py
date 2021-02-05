@@ -33,6 +33,8 @@ Utilities
     :toctree: generated/impl/
     :template: class_nomodule.rst
 
+    WhiteningTransform
+
     covar
     covars
 
@@ -42,5 +44,5 @@ Utilities
 """
 
 from .util.moments import moments_XX, moments_XXXY, moments_block, covar, covars
-from .covariance import Covariance, CovarianceModel
+from .covariance import Covariance, CovarianceModel, WhiteningTransform
 from .covariance import KoopmanWeightingEstimator, KoopmanWeightingModel

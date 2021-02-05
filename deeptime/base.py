@@ -231,6 +231,9 @@ class Transformer(object):
         """
         pass
 
+    def __call__(self, *args, **kwargs):
+        return self.transform(*args, **kwargs)
+
 
 class _ImmutableInputData(object):
     """A function decorator for Estimator.fit() to make input data immutable """

@@ -58,6 +58,8 @@ Utils
     :toctree: generated/
     :template: class_nomodule.rst
 
+    vamp_score
+
     TVAEEncoder
     vampnet.koopman_matrix
     vampnet.sym_inverse
@@ -69,9 +71,10 @@ Utils
 
 """
 
+from ._score import vamp_score
 from .tica import TICA
 from .vamp import VAMP
-from .koopman import KoopmanBasisTransform, IdentityKoopmanBasisTransform, KoopmanModel, CovarianceKoopmanModel
+from .koopman import KoopmanModel, CovarianceKoopmanModel
 from .dmd import DMD, DMDModel, EDMD, EDMDModel, KernelEDMD, KernelEDMDModel
 from .cca import KernelCCA, KernelCCAModel
 

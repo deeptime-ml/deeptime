@@ -202,23 +202,23 @@ def oom_msm_scenario(request):
 def test_score(five_state_msm):
     for msm in five_state_msm.estimators:
         dtrajs_test = five_state_msm.dtrajs[0:500]
-        s1 = msm.fetch_model().score(dtrajs_test, score_method='VAMP1', score_k=2)
+        s1 = msm.fetch_model().score(dtrajs_test, r=1, dim=2)
         assert 1.0 <= s1 <= 2.0
-        s2 = msm.fetch_model().score(dtrajs_test, score_method='VAMP2', score_k=2)
+        s2 = msm.fetch_model().score(dtrajs_test, r=2, dim=2)
         assert 1.0 <= s2 <= 2.0
 
 
 @pytest.mark.parametrize("reversible,sparse", [(True, True), (True, False), (False, True), (False, False)])
 def test_score_cv(five_state_msm, reversible, sparse):
     msm = OOMReweightedMSM(lagtime=5, reversible=reversible, sparse=sparse)
-    s1 = score_cv(dtrajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, score_method='VAMP1', score_k=2, blocksplit=False,
+    s1 = score_cv(dtrajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, score_method=1, dim=2, blocksplit=False,
                   fit_fetch=lambda dtrajs: msm.fit(dtrajs).fetch_model()).mean()
     np.testing.assert_(1.0 <= s1 <= 2.0)
-    s2 = score_cv(dtrajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, score_method='VAMP2', score_k=2, blocksplit=False,
+    s2 = score_cv(dtrajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, score_method=2, dim=2, blocksplit=False,
                   fit_fetch=lambda dtrajs: msm.fit(dtrajs).fetch_model()).mean()
     np.testing.assert_(1.0 <= s2 <= 2.0)
-    # se = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', score_k=2).mean()
-    # se_inf = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', score_k=None).mean()
+    # se = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', dim=2).mean()
+    # se_inf = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', dim=None).mean()
 
 
 # ---------------------------------

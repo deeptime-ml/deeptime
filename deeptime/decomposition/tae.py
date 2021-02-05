@@ -214,7 +214,8 @@ class TAE(DLEstimator, Transformer):
         model : TAEModel
             The model.
         """
-        return TAEModel(self._encoder, self._decoder, device=self.device, dtype=self.dtype)
+        from copy import deepcopy
+        return TAEModel(deepcopy(self._encoder), deepcopy(self._decoder), device=self.device, dtype=self.dtype)
 
     def transform(self, data, **kwargs):
         r""" Encodes input data.
@@ -325,4 +326,5 @@ class TVAE(TAE):
         model : TVAEModel
             The model.
         """
-        return TVAEModel(self._encoder, self._decoder, self.device, self.dtype)
+        from copy import deepcopy
+        return TVAEModel(deepcopy(self._encoder), deepcopy(self._decoder), self.device, self.dtype)

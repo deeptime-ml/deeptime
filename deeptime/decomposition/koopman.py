@@ -1,89 +1,14 @@
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Callable
 
 import numpy as np
 
+from . import vamp_score
 from ..base import Model, Transformer
-from ..covariance import CovarianceModel
-from ..numeric import is_diagonal_matrix, spd_inv_sqrt
+from ..basis import Identity
+from ..basis.base import Concatenation
+from ..covariance import CovarianceModel, WhiteningTransform
+from ..numeric import is_diagonal_matrix
 from ..util.decorators import cached_property
-
-
-class KoopmanBasisTransform(object):
-    r""" Transforms a system's observable
-
-    .. math:: f(x_t) = (\chi^{(1)}(x_t),\ldots,\chi^{(n)})^\top
-
-    to another basis
-
-    .. math:: \tilde f(x_t) = T (f(x_t) - \mu ),
-
-    where :math:`T` is the transformation matrix and :math:`\mu` a constant mean value that is subtracted.
-
-    Parameters
-    ----------
-    mean : (n,) ndarray or float
-        Mean value which gets subtracted from each frame prior to transformation.
-    transformation_matrix : (n, m) ndarray
-        Transformation matrix :math:`T`.
-    """
-
-    def __init__(self, mean: Union[float, np.ndarray], transformation_matrix):
-        self._mean = mean
-        self._transformation_matrix = transformation_matrix
-
-    @property
-    def transformation_matrix(self) -> np.ndarray:
-        r""" The transformation matrix :math:`T`. """
-        return self._transformation_matrix
-
-    @property
-    def mean(self) -> np.ndarray:
-        r""" The mean :math:`\mu`. """
-        return self._mean
-
-    @cached_property
-    def backward_transformation_matrix(self):
-        r""" Yields the (pseudo) inverse :math:`T^{-1}`. """
-        return np.linalg.pinv(self._transformation_matrix)
-
-    def __call__(self, data, inverse=False, dim=None):
-        r""" Applies the basis transform to data.
-
-        Parameters
-        ----------
-        data : (T, n) ndarray
-            Data consisting of `T` frames in `n` dimensions.
-        inverse : bool, default=False
-            Whether to apply the forward or backward operation, i.e., :math:`T (f(x_t) - \mu )` or
-            :math:`T^{-1} f(x_t) + \mu`, respectively.
-        dim : int or None
-            Number of dimensions to restrict to, removes the all but the first :math:`n` basis transformation vectors.
-            Can only be not `None` if `inverse` is False.
-
-        Returns
-        -------
-        transformed_data : (T, k) ndarray
-            Transformed data. If :math:`T\in\mathbb{R}^{n\times m}`, we get :math:`k=\min\{m, \mathrm{dim}\}`.
-        """
-        if not inverse:
-            return (data - self._mean) @ self._transformation_matrix[:, :dim]
-        else:
-            if dim is not None:
-                raise ValueError("This currently only works for the forward transform.")
-            return data @ self.backward_transformation_matrix + self._mean
-
-
-class IdentityKoopmanBasisTransform(KoopmanBasisTransform):
-    r""" Explicit specialization of :class:`KoopmanBasisTransform` which behaves like the identity. """
-
-    def __init__(self):
-        super().__init__(0., 1.)
-
-    def backward_transformation_matrix(self):
-        return 1.
-
-    def __call__(self, data, inverse=False, dim=None):
-        return data
 
 
 class KoopmanModel(Model, Transformer):
@@ -97,139 +22,129 @@ class KoopmanModel(Model, Transformer):
 
     Parameters
     ----------
-    operator : (n, n) ndarray
+    koopman_matrix : (n, n) ndarray
         Applies the transform :math:`K^\top` in the modified basis.
-    basis_transform_forward : KoopmanBasisTransform or None
-        Transforms the current state :math:`f(x_t)` to the basis in which the Koopman operator is defined.
-        If `None`, this defaults to the identity operation.
-    basis_transform_backward : KoopmanBasisTransform or None
-        Transforms the future state :math:`g(x_t)` to the basis in which the Koopman operator is defined.
-        If `None`, this defaults to the identity operation
+    instantaneous_obs : Callable, optional, default=identity
+        Transforms the current state :math:`x_t` to :math:`f(x_t)`. Defaults to `f(x) = x`.
+    timelagged_obs : Callable, optional, default=identity
+        Transforms the future state :math:`x_{t+\tau}` to :math:`g(x_{t+\tau})`. Defaults to `f(x) = x`.
     """
 
-    def __init__(self, operator: np.ndarray,
-                 basis_transform_forward: Optional[KoopmanBasisTransform],
-                 basis_transform_backward: Optional[KoopmanBasisTransform],
-                 output_dimension=None):
+    def __init__(self, koopman_matrix: np.ndarray,
+                 instantaneous_obs: Callable[[np.ndarray], np.ndarray] = Identity(),
+                 timelagged_obs: Callable[[np.ndarray], np.ndarray] = Identity()):
         super().__init__()
-        if basis_transform_forward is None:
-            basis_transform_forward = IdentityKoopmanBasisTransform()
-        if basis_transform_backward is None:
-            basis_transform_backward = IdentityKoopmanBasisTransform()
-        self._operator = np.asarray_chkfinite(operator)
-        self._basis_transform_forward = basis_transform_forward
-        self._basis_transform_backward = basis_transform_backward
-        if output_dimension is not None and not is_diagonal_matrix(self.operator):
-            raise ValueError("Output dimension can only be set if the Koopman operator is a diagonal matrix. This "
-                             "can be achieved through the VAMP estimator.")
-        self._output_dimension = output_dimension
+        self._koopman_matrix = koopman_matrix
+        self._instantaneous_obs = instantaneous_obs
+        self._timelagged_obs = timelagged_obs
 
     @property
     def operator(self) -> np.ndarray:
         r""" The operator :math:`K` so that :math:`\mathbb{E}[g(x_{t+\tau}] = K^\top \mathbb{E}[f(x_t)]` in transformed
         bases.
         """
-        return self._operator
+        return self._koopman_matrix
+
+    @property
+    def koopman_matrix(self) -> np.ndarray:
+        r""" Same as :attr:`operator`. """
+        return self.operator
 
     @cached_property
     def operator_inverse(self) -> np.ndarray:
-        r""" Inverse of the operator :math:`K`, i.e., :math:`K^{-1}`. Potentially also pseudo-inverse. """
+        r""" Inverse of the operator :math:`K`, i.e., :math:`K^{-1}`.
+        Potentially pseudo-inverse instead of true inverse.
+        """
         return np.linalg.pinv(self.operator)
 
     @property
-    def basis_transform_forward(self) -> KoopmanBasisTransform:
-        r"""Transforms the basis of :math:`\mathbb{E}[f(x_t)]` to the one in which the Koopman operator is defined. """
-        return self._basis_transform_forward
+    def instantaneous_obs(self) -> Callable[[np.ndarray], np.ndarray]:
+        r""" Transforms the current state :math:`x_t` to :math:`f(x_t)`. Defaults to `f(x) = x`. """
+        return self._instantaneous_obs
 
     @property
-    def basis_transform_backward(self) -> KoopmanBasisTransform:
-        r"""Transforms the basis of :math:`\mathbb{E}[g(x_{t+\tau})]` to the one in which
-        the Koopman operator is defined. """
-        return self._basis_transform_backward
+    def timelagged_obs(self) -> Callable[[np.ndarray], np.ndarray]:
+        r""" Transforms the future state :math:`x_{t+\tau}` to :math:`g(x_{t+\tau})`. Defaults to `f(x) = x`. """
+        return self._timelagged_obs
 
     @property
     def output_dimension(self):
-        r"""The output dimension of the :meth:`transform` pass."""
-        return self._output_dimension
+        r""" The dimension of data after propagation by :math:`K`. """
+        return self.operator.shape[1]
 
-    def forward(self, trajectory: np.ndarray, components: Optional[Union[int, List[int]]] = None) -> np.ndarray:
-        r""" Applies the forward transform to the trajectory in non-transformed space. Given the Koopman operator
-        :math:`\Sigma`, transformations  :math:`V^\top - \mu_t` and :math:`U^\top -\mu_0` for
-        bases :math:`f` and :math:`g`, respectively, this is achieved by transforming each frame :math:`X_t` with
-
-        .. math::
-            \hat{X}_{t+\tau} = (V^\top)^{-1} \Sigma U^\top (X_t - \mu_0) + \mu_t.
-
-        If the model stems from a :class:`VAMP <deeptime.decomposition.VAMP>` estimator, :math:`V` are the left
-        singular vectors, :math:`\Sigma` the singular values, and :math:`U` the right singular vectors.
+    def forward(self, data: np.ndarray, propagate=True):
+        r""" Maps data forward in time.
 
         Parameters
         ----------
-        trajectory : (T, n) ndarray
-            The input trajectory
-        components : int or list of int or None, default=None
-            Optional arguments for the Koopman operator if appropriate. If the model stems from
-            a :class:`VAMP <deeptime.decomposition.VAMP>` estimator, these are the component(s) to project onto.
-            If None, all processes are taken into account, if list of integer, this sets all singular values
-            to zero but the "components"th ones.
+        data : (T, n) ndarray
+            Input data
+        propagate : bool, default=True
+            Whether to apply the Koopman operator to the featurized data.
 
         Returns
         -------
-        predictions : (T, n) ndarray
-            The predicted trajectory.
+        mapped_data : (T, m) ndarray
+            Mapped data.
         """
-        if components is not None:
-            if not is_diagonal_matrix(self.operator):
-                raise ValueError("A subselection of components is only possible if the koopman operator is a diagonal"
-                                 "matrix! This can be achieved by using the VAMP estimator, yielding appropriate"
-                                 "basis transforms from covariance matrices.")
-            operator = np.zeros_like(self.operator)
-            if not isinstance(components, (list, tuple)):
-                components = [components]
-            for ii in components:
-                operator[ii, ii] = self.operator[ii, ii]
-        else:
-            operator = self.operator
-        out = self.basis_transform_forward(trajectory)  # (T, N) -> (T, n) project into whitened space
-        out = out @ operator  # (T, n) -> (T, n) propagation in whitened space
-        out = self.basis_transform_backward(out, inverse=True)  # (T, n) -> (T, N) back into original space
+        out = self.instantaneous_obs(data)
+        if propagate:
+            out = out @ self.operator
         return out
 
-    def transform(self, data, forward=True, propagate=False, **kwargs):
-        r"""Projects the data into the Koopman operator basis, possibly discarding non-relevant dimensions.
-
-        Beware that only `frames[tau:]` of each trajectory returned by this method contain valid values
-        of the "future" functions :math:`g(x_{t+\tau})`. Conversely, only `frames[:-tau]` of each
-        trajectory returned by this method contain valid values of the "instantaneous" functions :math:`f(x_t)`.
-        The remaining frames could possibly be interpreted as some extrapolation.
+    def backward(self, data: np.ndarray, propagate=True):
+        r""" Maps data backward in time.
 
         Parameters
         ----------
-        data : ndarray(T, n)
-            the input data
-        forward : bool, default=True
-            Whether to use forward or backward transform for projection.
-        propagate : bool, default=False
-            Whether to propagate the projection with :math:`K^\top` (or :math:`(K^\top)^{-1}` in the backward case).
+        data : (T, n) ndarray
+            Input data
+        propagate : bool, default=True
+            Whether to apply the Koopman operator to the featurized data.
 
         Returns
         -------
-        projection : ndarray(T, m)
-            The projected data.
-            In case of VAMP, if `forward` is True, projection will be on the right singular
-            functions. Otherwise, projection will be on the left singular functions.
+        mapped_data : (T, m) ndarray
+            Mapped data.
         """
-        if forward:
-            transform = self.basis_transform_forward(data, dim=self.output_dimension)
-            return transform @ self.operator if propagate else transform
-        else:
-            transform = self.basis_transform_backward(data, dim=self.output_dimension)
-            return transform @ self.operator_inverse if propagate else transform
+        out = self.timelagged_obs(data)
+        if propagate:
+            out = out @ self.operator_inverse
+        return out
+
+    def transform(self, data: np.ndarray, propagate=True):
+        r""" Transforms data by applying the observables to it and then optionally propagating it.
+        Data is assumed to represent :math:`x_t` and we evaluate :math:`K^\top f(x_t)`.
+
+        In case propagation is set to false, this method just evaluates the defined observables :math:`f`.
+
+        Parameters
+        ----------
+        data : (T,n) ndarray
+            Input data.
+        propagate : bool, optional, default=True
+            Whether to propagate.
+
+        Returns
+        -------
+        transformed_data : (T,m) ndarray
+            The transformed data.
+        """
+        return self.forward(data, propagate=propagate)
 
 
 class CovarianceKoopmanModel(KoopmanModel):
-    r"""A type of Koopman model which was obtained through diagonalization of covariance matrices. This leads to
+    r"""A type of Koopman model :math:`\mathbb{E}[g(x_{t+\tau})] = K^\top \mathbb{E}[f(x_{t})]`
+    which was obtained through diagonalization of covariance matrices. This leads to
     a Koopman operator which is a diagonal matrix and can be used to project onto specific processes of the system.
+
+    In particular, this model expects matrices :math:`U` and :math`V` as well as singular values :math:`\sigma_i`,
+    such that
+
+    .. math::
+        \mathbb{E}[V^\top\chi_1 (x_{t+\tau})]=\mathbb{E}[g(x_{t+\tau})] \approx K^\top \mathbb{E}[f(x_{t})] = \mathrm{diag}(\sigma_i) \mathbb{E}[U^top\chi_0(x_{t})],
+
+    where :math:`\chi_0,\chi_1` are basis transformations of the full state :math:`x_t`.
 
     The estimators which produce this kind of model are :class:`VAMP <deeptime.decomposition.VAMP>` and
     :class:`TICA <deeptime.decomposition.TICA>`.
@@ -239,6 +154,12 @@ class CovarianceKoopmanModel(KoopmanModel):
 
     Parameters
     ----------
+    instantaneous_coefficients : (n, k) ndarray
+        The coefficient matrix :math:`U`.
+    singular_values : (k,) ndarray
+        Singular values :math:`\sigma_i`.
+    instantaneous_coefficients : (n, k) ndarray
+        The coefficient matrix :math:`V`.
     cov : CovarianceModel
         Covariances :math:`C_{00}`, :math:`C_{0t}`, and :math:`C_{tt}`.
     rank_0 : int
@@ -252,23 +173,52 @@ class CovarianceKoopmanModel(KoopmanModel):
         Eigenvalue / singular value cutoff. Eigenvalues (or singular values) of :math:`C_{00}` and :math:`C_{11}`
         with norms <= epsilon were cut off. The remaining number of eigenvalues together with the value of `dim`
         define the effective output dimension.
+    instantaneous_obs : Callable, optional, default=identity
+        Transforms the current state :math:`x_t` to :math:`\chi_0(x_t)`. Defaults to `\chi_0(x) = x`.
+    timelagged_obs : Callable, optional, default=identity
+        Transforms the future state :math:`x_{t+\tau}` to :math:`\chi_1(x_{t+\tau})`. Defaults to `\chi_1(x) = x`.
     """
 
-    def __init__(self, operator: np.ndarray, basis_transform_forward: Optional[KoopmanBasisTransform],
-                 basis_transform_backward: Optional[KoopmanBasisTransform], cov: CovarianceModel,
-                 rank_0: int, rank_t: int, dim=None, var_cutoff=None, scaling=None, epsilon=1e-6):
-        if not is_diagonal_matrix(operator):
-            raise ValueError("Koopman operator must be diagonal matrix!")
-        output_dim = CovarianceKoopmanModel.effective_output_dimension(rank_0, rank_t, dim, var_cutoff,
-                                                                       np.diag(operator))
-        super().__init__(operator, basis_transform_forward, basis_transform_backward, output_dimension=output_dim)
+    def __init__(self, instantaneous_coefficients, singular_values, timelagged_coefficients, cov,
+                 rank_0: int, rank_t: int, dim=None, var_cutoff=None, scaling=None, epsilon=1e-10,
+                 instantaneous_obs: Callable[[np.ndarray], np.ndarray] = Identity(),
+                 timelagged_obs: Callable[[np.ndarray], np.ndarray] = Identity()):
+        if not singular_values.ndim == 1:
+            assert is_diagonal_matrix(singular_values)
+            singular_values = np.diag(singular_values)
+        self._whitening_instantaneous = WhiteningTransform(instantaneous_coefficients,
+                                                           cov.mean_0 if cov.data_mean_removed else None)
+        self._whitening_timelagged = WhiteningTransform(timelagged_coefficients,
+                                                        cov.mean_t if cov.data_mean_removed else None)
+        super().__init__(np.diag(singular_values),
+                         Concatenation(self._whitening_instantaneous, instantaneous_obs),
+                         Concatenation(self._whitening_timelagged, timelagged_obs))
+        self._instantaneous_coefficients = instantaneous_coefficients
+        self._timelagged_coefficients = timelagged_coefficients
+        self._singular_values = singular_values
         self._cov = cov
+
         self._scaling = scaling
         self._epsilon = epsilon
-        self._dim = dim
-        self._var_cutoff = var_cutoff
         self._rank_0 = rank_0
         self._rank_t = rank_t
+        self._dim = dim
+        self._var_cutoff = var_cutoff
+        self._update_output_dimension()
+
+    @property
+    def output_dimension(self):
+        return self._output_dimension
+
+    @property
+    def instantaneous_coefficients(self) -> np.ndarray:
+        r""" Coefficient matrix :math:`U`. """
+        return self._instantaneous_coefficients
+
+    @property
+    def timelagged_coefficients(self) -> np.ndarray:
+        r""" Coefficient matrix :math:`V`. """
+        return self._timelagged_coefficients
 
     @property
     def scaling(self) -> Optional[str]:
@@ -279,13 +229,13 @@ class CovarianceKoopmanModel(KoopmanModel):
     def singular_vectors_left(self) -> np.ndarray:
         """Transformation matrix that represents the linear map from mean-free feature space
         to the space of left singular functions."""
-        return self.basis_transform_forward.transformation_matrix
+        return self.instantaneous_coefficients
 
     @property
     def singular_vectors_right(self) -> np.ndarray:
         """Transformation matrix that represents the linear map from mean-free feature space
         to the space of right singular functions."""
-        return self.basis_transform_backward.transformation_matrix
+        return self.timelagged_coefficients
 
     @property
     def singular_values(self) -> np.ndarray:
@@ -360,6 +310,25 @@ class CovarianceKoopmanModel(KoopmanModel):
         self._output_dimension = CovarianceKoopmanModel.effective_output_dimension(
             self.whitening_rank_0, self.whitening_rank_t, self.dim, self.var_cutoff, self.singular_values
         )
+        self._whitening_instantaneous.dim = self.output_dimension
+        self._whitening_timelagged.dim = self.output_dimension
+
+    def backward(self, data: np.ndarray, propagate=True):
+        out = self.timelagged_obs(data)
+        if propagate:
+            op = self.operator_inverse[:self.output_dimension, :self.output_dimension]
+            out = out @ op
+        return out
+
+    def forward(self, data: np.ndarray, propagate=True):
+        out = self.instantaneous_obs(data)
+        if propagate:
+            op = self.operator[:self.output_dimension, :self.output_dimension]
+            out = out @ op
+        return out
+
+    def transform(self, data: np.ndarray, propagate=False):
+        return super().transform(data, propagate)
 
     @property
     def var_cutoff(self) -> Optional[float]:
@@ -408,28 +377,64 @@ class CovarianceKoopmanModel(KoopmanModel):
         r""" Yields the cumulative kinetic variance. """
         return CovarianceKoopmanModel._cumvar(self.singular_values)
 
-    def score(self, test_model=None, score_method='VAMP2'):
-        """Compute the VAMP score for this model or the cross-validation score between self and a second model.
+    @cached_property
+    def _instantaneous_whitening_backwards(self):
+        inv = np.linalg.pinv(self._whitening_instantaneous.sqrt_inv_cov)
+        mean = self._whitening_instantaneous.mean
+        if mean is None:
+            mean = 0
+        return lambda x: x @ inv + mean
+
+    def propagate(self, trajectory: np.ndarray, components: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        r""" Applies the forward transform to the trajectory in non-transformed space. Given the Koopman operator
+        :math:`\Sigma`, transformations  :math:`V^\top - \mu_t` and :math:`U^\top -\mu_0` for
+        bases :math:`f` and :math:`g`, respectively, this is achieved by transforming each frame :math:`X_t` with
+
+        .. math::
+            \hat{X}_{t+\tau} = (V^\top)^{-1} \Sigma U^\top (X_t - \mu_0) + \mu_t.
+
+        If the model stems from a :class:`VAMP <deeptime.decomposition.VAMP>` estimator, :math:`V` are the left
+        singular vectors, :math:`\Sigma` the singular values, and :math:`U` the right singular vectors.
 
         Parameters
         ----------
-        test_model : CovarianceKoopmanModel, optional, default=None
+        trajectory : (T, n) ndarray
+            The input trajectory
+        components : int or list of int or None, default=None
+            Optional arguments for the Koopman operator if appropriate. If the model stems from
+            a :class:`VAMP <deeptime.decomposition.VAMP>` estimator, these are the component(s) to project onto.
+            If None, all processes are taken into account, if list of integer, this sets all singular values
+            to zero but the "components"th ones.
 
-            If `test_model` is not None, this method computes the cross-validation score
-            between self and `test_model`. It is assumed that self was estimated from
-            the "training" data and `test_model` was estimated from the "test" data. The
-            score is computed for one realization of self and `test_model`. Estimation
-            of the average cross-validation score and partitioning of data into test and
-            training part is not performed by this method.
+        Returns
+        -------
+        predictions : (T, n) ndarray
+            The predicted trajectory.
+        """
+        if components is not None:
+            operator = np.zeros_like(self.operator)
+            if not isinstance(components, (list, tuple)):
+                components = [components]
+            for ii in components:
+                operator[ii, ii] = self.operator[ii, ii]
+        else:
+            operator = self.operator
+        out = self.instantaneous_obs(trajectory)  # (T, N) -> (T, n) project into whitened space
+        out = out @ operator  # (T, n) -> (T, n) propagation in whitened space
+        out = self._instantaneous_whitening_backwards(out)  # (T, n) -> (T, N) back into original space
+        return out
 
-            If `test_model` is None, this method computes the VAMP score for the model
-            contained in self.
+    def score(self, r: Union[float, str], test_model=None, epsilon=1e-6):
+        """Compute the VAMP score between a this model and potentially a test model for cross-validation.
 
-        score_method : str, optional, default='VAMP2'
-            Available scores are based on the variational approach
-            for Markov processes :cite:`vampscore-wu2020variational`:
+        Parameters
+        ----------
+        r : float or str
+            The type of score to evaluate. Can by an floating point value greater or equal to 1 or 'E', yielding the
+            VAMP-r score or the VAMP-E score, respectively. :cite:`vampscore-wu2020variational`
+            Typical choices are:
 
-            *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix :cite:`vampscore-wu2020variational`.
+            *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix.
                         If the model is reversible, this is equal to the sum of
                         Koopman matrix eigenvalues, also called Rayleigh quotient :cite:`vampscore-wu2020variational`.
             *  'VAMP2'  Sum of squared singular values of the half-weighted Koopman
@@ -437,6 +442,21 @@ class CovarianceKoopmanModel(KoopmanModel):
                         equal to the kinetic variance :cite:`vampscore-noe2015kinetic`.
             *  'VAMPE'  Approximation error of the estimated Koopman operator with respect to
                         the true Koopman operator up to an additive constant :cite:`vampscore-wu2020variational` .
+
+        test_model : CovarianceKoopmanModel, optional, default=None
+
+            If `test_model` is not None, this method computes the cross-validation score
+            between self and `covariances_test`. It is assumed that self was estimated from
+            the "training" data and `test_model` was estimated from the "test" data. The
+            score is computed for one realization of self and `test_model`. Estimation
+            of the average cross-validation score and partitioning of data into test and
+            training part is not performed by this method.
+
+            If `covariances_test` is None, this method computes the VAMP score for the model
+            contained in self.
+
+        epsilon : float, default=1e-6
+            Regularization parameter for computing sqrt-inverses of spd matrices.
 
         Returns
         -------
@@ -456,31 +476,8 @@ class CovarianceKoopmanModel(KoopmanModel):
             :filter: docname in docnames
             :keyprefix: vampscore-
         """
-        if test_model is None:
-            test_model = self
-        Uk = self.singular_vectors_left[:, 0:self.output_dimension]
-        Vk = self.singular_vectors_right[:, 0:self.output_dimension]
-        res = None
-        if score_method == 'VAMP1' or score_method == 'VAMP2':
-            # see https://arxiv.org/pdf/1707.04659.pdf eqn. (33)
-            A = np.atleast_2d(spd_inv_sqrt(Uk.T.dot(test_model.cov_00).dot(Uk), epsilon=self.epsilon))
-            B = np.atleast_2d(Uk.T.dot(test_model.cov_0t).dot(Vk))
-            C = np.atleast_2d(spd_inv_sqrt(Vk.T.dot(test_model.cov_tt).dot(Vk), epsilon=self.epsilon))
-            ABC = np.linalg.multi_dot([A, B, C])
-            if score_method == 'VAMP1':
-                res = np.linalg.norm(ABC, ord='nuc')
-            elif score_method == 'VAMP2':
-                res = np.linalg.norm(ABC, ord='fro')**2
-        elif score_method == 'VAMPE':
-            K = np.diag(self.singular_values[0:self.output_dimension])
-            # see https://arxiv.org/pdf/1707.04659.pdf eqn. (30)
-            res = np.trace(2.0 * np.linalg.multi_dot([K, Uk.T, test_model.cov_0t, Vk])
-                           - np.linalg.multi_dot([K, Uk.T, test_model.cov_00, Uk, K, Vk.T, test_model.cov_tt, Vk]))
-        else:
-            raise ValueError('"score" should be one of VAMP1, VAMP2 or VAMPE')
-        assert res is not None
-        # add the contribution (+1) of the constant singular functions to the result
-        return res + 1
+        test_cov = test_model.cov if test_model is not None else None
+        return vamp_score(self, r, test_cov, self.output_dimension, epsilon)
 
     def expectation(self, observables, statistics, lag_multiple=1, observables_mean_free=False,
                     statistics_mean_free=False):

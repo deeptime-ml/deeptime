@@ -5,18 +5,22 @@ from math import ceil
 from typing import Optional, List, Union
 
 import numpy as np
+import scipy
 from scipy.sparse import issparse
-from deeptime.base import Model
-from deeptime.markov.pcca import pcca, PCCAModel
-from deeptime.markov.reactive_flux import ReactiveFlux
-from deeptime.markov.sample import ensure_dtraj_list, compute_index_states
-from deeptime.markov.tools import analysis as msmana
-from deeptime.markov.transition_counting import TransitionCountModel
-from deeptime.markov.util import count_states
-from deeptime.numeric import is_square_matrix
-from deeptime.util.decorators import cached_property
-from deeptime.util.matrix import submatrix
-from deeptime.util.types import ensure_array
+
+from ...base import Model
+from ...covariance import CovarianceModel
+from ...decomposition import CovarianceKoopmanModel, vamp_score
+from ..pcca import pcca, PCCAModel
+from ..reactive_flux import ReactiveFlux
+from ..sample import ensure_dtraj_list, compute_index_states
+from ..tools import analysis as msmana
+from ..transition_counting import TransitionCountModel
+from ..util import count_states
+from ...numeric import is_square_matrix, spd_inv_sqrt
+from ...util.decorators import cached_property
+from ...util.matrix import submatrix
+from ...util.types import ensure_array
 
 
 class MarkovStateModel(Model):
@@ -114,6 +118,36 @@ class MarkovStateModel(Model):
         :type: bool
         """
         return self._count_model is not None
+
+    @cached_property
+    def koopman_model(self) -> CovarianceKoopmanModel:
+        return self.to_koopman_model(False)
+
+    @cached_property
+    def empirical_koopman_model(self) -> CovarianceKoopmanModel:
+        return self.to_koopman_model(True)
+
+    def to_koopman_model(self, empirical: bool = True, epsilon: float = 1e-10):
+        r""" Computes the SVD of the symmetrized Koopman operator in the analytical or empirical distribution,
+        returns as Koopman model.
+
+        Parameters
+        ----------
+        empirical : bool, optional, default=True
+            Determines whether the model should refer to the analytical distributions based on the transition matrix
+            or the empirical distributions based on the count matrix.
+        epsilon : float, optional, default=1e-10
+            Regularization parameter for computing inverses of covariance matrices.
+
+        Returns
+        -------
+        model : CovarianceKoopmanModel
+            The model.
+        """
+        if empirical:
+            assert self.has_count_model, "This requires statistics over the estimation data, " \
+                                         "in particular a count model."
+        return _svd_sym_koopman(self, empirical, epsilon=epsilon)
 
     @property
     def lagtime(self) -> int:
@@ -1076,7 +1110,7 @@ class MarkovStateModel(Model):
             return est, hmm
         return hmm
 
-    def score(self, dtrajs, score_method='VAMP2', score_k=10):
+    def score(self, dtrajs=None, r=2, dim=None):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes.
 
         Implemented according to :cite:`msm-noe2013variational` and :cite:`msm-wu2020variational`.
@@ -1085,79 +1119,50 @@ class MarkovStateModel(Model):
 
         Parameters
         ----------
-        dtrajs : list of arrays
-            test data (discrete trajectories).
-        score_method : str
-            Overwrite scoring method if desired. If `None`, the estimators scoring
-            method will be used. See __init__ for documentation.
-        score_k : int or None
-            Overwrite scoring rank if desired. If `None`, the estimators scoring
-            rank will be used. See __init__ for documentation.
-        score_method : str, optional, default='VAMP2'
-            Overwrite scoring method to be used if desired. If `None`, the estimators scoring
-            method will be used.
-            Available scores are based on the variational approach for Markov processes
-            :cite:`msm-noe2013variational` :cite:`msm-wu2020variational`:
+        dtrajs : list of arrays, optional, default=None
+            Test data (discrete trajectories). Note that if the test data contains states which are not
+            represented in this model, they are ignored.
+        r : float or str, optional, default=2
+            Overwrite scoring method to be used if desired. Can be any float greater or equal 1 or 'E' for VAMP-r score
+            or VAMP-E score, respectively.
 
-            * 'VAMP1': Sum of singular values of the symmetrized transition matrix :cite:`msm-wu2020variational`.
+            Special cases :cite:`msm-noe2013variational` :cite:`msm-wu2020variational`:
+
+            * 'VAMP1': Sum of singular values of the symmetrized transition matrix.
               If the MSM is reversible, this is equal to the sum of transition
-              matrix eigenvalues, also called Rayleigh quotient :cite:`msm-noe2013variational`
-              :cite:`msm-mcgibbon2015variational`.
+              matrix eigenvalues, also called Rayleigh quotient :cite:`msm-mcgibbon2015variational`.
             * 'VAMP2': Sum of squared singular values of the symmetrized  transition matrix
               :cite:`msm-wu2020variational`. If the MSM is reversible, this is equal to the
               kinetic variance :cite:`msm-noe2015kinetic`.
             * 'VAMPE': Approximation error of the estimated Koopman operator with respect to the true Koopman operator
               up to an additive constant :cite:`msm-wu2020variational`.
-
-        score_k : int or None
+        dim : int or None, optional, default=None
             The maximum number of eigenvalues or singular values used in the
             score. If set to None, all available eigenvalues will be used.
         """
-        from deeptime.markov.sample import ensure_dtraj_list
-        dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
-        if self.count_model is None:
-            raise RuntimeError('This MarkovStateModel has not been estimated from data '
-                               '(e.g. count_model unassigned). Cannot proceed.')
+        koopman_model = self.empirical_koopman_model
+        test_model = None
+        if dtrajs is not None:
+            assert self.has_count_model, "Needs count model if dtrajs are provided."
+            # test data
+            from deeptime.markov import TransitionCountEstimator
+            cm = TransitionCountEstimator(self.count_model.lagtime, "sliding", sparse=False)\
+                .fit(dtrajs).fetch_model()
 
-        # determine actual scoring rank
-        if score_k is None:
-            score_k = self.n_states
-        if score_k > self.n_states:
-            import warnings
-            warnings.warn('Requested scoring rank {rank} exceeds number of MSM states. '
-                          'Reduced to score_k = {n_states}'.format(rank=score_k, n_states=self.n_states))
-            score_k = self.n_states  # limit to n_states
-
-        # training data
-        K = self.transition_matrix  # model
-        C0t_train = self.count_model.count_matrix
-        from scipy.sparse import issparse
-        if issparse(K):  # can't deal with sparse right now.
-            K = K.toarray()
-        if issparse(C0t_train):  # can't deal with sparse right now.
-            C0t_train = C0t_train.toarray()
-        C00_train = np.diag(C0t_train.sum(axis=1))  # empirical cov
-        Ctt_train = np.diag(C0t_train.sum(axis=0))  # empirical cov
-
-        # test data
-        from deeptime.markov.tools.estimation import count_matrix
-        C0t_test_raw = count_matrix(dtrajs, self.count_model.lagtime, sparse_return=False)
-        # map to present active set
-        active_set = self.count_model.state_symbols
-        map_from = active_set[np.where(active_set < C0t_test_raw.shape[0])[0]]
-        map_to = np.arange(len(map_from))
-        C0t_test = np.zeros((self.n_states, self.n_states))
-        C0t_test[np.ix_(map_to, map_to)] = C0t_test_raw[np.ix_(map_from, map_from)]
-        C00_test = np.diag(C0t_test.sum(axis=1))
-        Ctt_test = np.diag(C0t_test.sum(axis=0))
-        assert C00_train.shape == C00_test.shape
-        assert C0t_train.shape == C0t_test.shape
-        assert Ctt_train.shape == Ctt_test.shape
-
-        # score
-        from deeptime.metrics import vamp_score
-        return vamp_score(K, C00_train, C0t_train, Ctt_train, C00_test, C0t_test, Ctt_test,
-                          k=score_k, score=score_method)
+            # map to present active set
+            common_symbols = set(self.count_model.state_symbols).intersection(cm.state_symbols)
+            common_states = self.count_model.symbols_to_states(common_symbols)
+            c0t_test = np.zeros((self.n_states, self.n_states), dtype=self.transition_matrix.dtype)
+            common_states_cm = cm.symbols_to_states(common_symbols)
+            # only set counts for common states
+            c0t_test[np.ix_(common_states, common_states)] = cm.count_matrix[np.ix_(common_states_cm, common_states_cm)]
+            c00_test = np.diag(c0t_test.sum(axis=1))
+            ctt_test = np.diag(c0t_test.sum(axis=0))
+            assert koopman_model.cov.cov_00.shape == c00_test.shape
+            assert koopman_model.cov.cov_0t.shape == c0t_test.shape
+            assert koopman_model.cov.cov_tt.shape == ctt_test.shape
+            test_model = CovarianceModel(c00_test, c0t_test, ctt_test)
+        return vamp_score(koopman_model, r, test_model, dim=dim)
 
 
 class MarkovStateModelCollection(MarkovStateModel):
@@ -1320,3 +1325,33 @@ class MarkovStateModelCollection(MarkovStateModel):
                          reversible=self.reversible, count_model=self._count_models[model_index],
                          transition_matrix_tolerance=self.transition_matrix_tolerance)
         self._current_model = model_index
+
+
+def _svd_sym_koopman(msm: MarkovStateModel, empirical: bool, epsilon=1e-10) -> CovarianceKoopmanModel:
+    """ Computes the SVD of the symmetrized Koopman operator in the empirical distribution, returns as Koopman model.
+    """
+    K = msm.transition_matrix
+    if empirical:
+        C = msm.count_model.count_matrix
+        if issparse(C):
+            C = C.toarray()
+        cov0t = C
+        cov00 = np.diag(cov0t.sum(axis=1))
+        covtt = np.diag(cov0t.sum(axis=0))
+        cov = CovarianceModel(cov_00=cov00, cov_0t=cov0t, cov_tt=covtt)
+        # reweight operator to empirical distribution
+        C0t_re = cov00 @ K
+        # symmetrized operator and SVD
+        K_sym = np.linalg.multi_dot([spd_inv_sqrt(cov.cov_00, epsilon=epsilon), C0t_re,
+                                     spd_inv_sqrt(cov.cov_tt, epsilon=epsilon)])
+    else:
+        cov00 = np.diag(msm.stationary_distribution)
+        covtt = np.diag(msm.stationary_distribution)
+        cov0t = cov00 @ K
+        cov = CovarianceModel(cov_00=cov00, cov_0t=cov0t, cov_tt=covtt)
+        K_sym = np.linalg.multi_dot([spd_inv_sqrt(cov.cov_00, epsilon=epsilon), cov0t,
+                                     spd_inv_sqrt(cov.cov_tt, epsilon=epsilon)])
+    U, S, Vt = scipy.linalg.svd(K_sym, compute_uv=True)
+    U = spd_inv_sqrt(cov.cov_00, epsilon=epsilon) @ U
+    Vt = Vt @ spd_inv_sqrt(cov.cov_tt, epsilon=epsilon)
+    return CovarianceKoopmanModel(U, S, Vt.T, cov, K.shape[0], K.shape[0])

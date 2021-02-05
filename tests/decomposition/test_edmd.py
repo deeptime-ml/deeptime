@@ -9,12 +9,11 @@ def test_linearly_evolved_data():
     eigs = np.arange(4).astype(np.float64)
     eig_l = np.linalg.qr(np.random.normal(size=(4, 4)))[0]
     Kt = eig_l @ np.diag(eigs) @ eig_l.T
-    data_t = np.copy(data) @ Kt
     est = dt.decomposition.EDMD(dt.basis.Identity())
-    model = est.fit((data, data_t)).fetch_model()
+    model = est.fit((data, data @ Kt)).fetch_model()
 
-    assert_almost_equal(model.forward(data), data_t)
-    assert_almost_equal(model.forward(data_t), data_t @ Kt)
+    assert_almost_equal(model.transform(data), data @ Kt)
+    assert_almost_equal(model.transform(data @ Kt), data @ Kt @ Kt)
 
     np.testing.assert_array_almost_equal(Kt, model.operator)
 
@@ -27,4 +26,4 @@ def test_polynomially_evolved_data():
 
     est = dt.decomposition.EDMD(basis)
     model = est.fit((data, data_t)).fetch_model()
-    assert_almost_equal(model.forward(data), psi_y, decimal=4)
+    assert_almost_equal(model.forward(data, propagate=True), psi_y, decimal=4)

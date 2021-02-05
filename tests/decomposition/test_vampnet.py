@@ -1,4 +1,5 @@
 import pytest
+from numpy.testing import assert_raises, assert_equal, assert_
 
 pytest.importorskip("torch")
 
@@ -41,7 +42,7 @@ def test_covariances(fixed_seed, remove_mean):
         np.testing.assert_array_almost_equal(reference_covs.cov_tt, ctt.numpy())
 
 
-@pytest.mark.parametrize('method', ["VAMP1", "VAMP2", "VAMPE"])
+@pytest.mark.parametrize('method', [1, 2, "E"])
 @pytest.mark.parametrize('mode', ["trunc", "regularize", "clamp"])
 def test_score(fixed_seed, method, mode):
     data = deeptime.data.ellipsoids(seed=13).observations(1000, n_dim=5)
@@ -51,12 +52,12 @@ def test_score(fixed_seed, method, mode):
     with torch.no_grad():
         data_instantaneous = torch.from_numpy(data[:-tau].astype(np.float64))
         data_shifted = torch.from_numpy(data[tau:].astype(np.float64))
-        score_value = score(data_instantaneous, data_shifted, method=method, mode=mode)
-        if method == 'VAMPE':
+        score_value = score(data_instantaneous, data_shifted, method=f"VAMP{method}", mode=mode)
+        if method == 'E':
             # less precise due to svd implementation of torch
-            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method), decimal=2)
+            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(method), decimal=2)
         else:
-            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(score_method=method))
+            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(method))
 
 
 @pytest.mark.xfail(reason="May spuriously fail because of nondeterministic optimization of the NN", strict=False)
@@ -80,11 +81,8 @@ def test_estimator(fixed_seed):
     loader = create_timelagged_data_loader(obs, lagtime=1, batch_size=512)
     vampnet = VAMPNet(lobe=lobe)
     vampnet_model = vampnet.fit(loader).fetch_model()
-    # np.testing.assert_array_less(vamp_model.timescales()[0], vampnet_model.timescales()[0])
-
-    projection = vampnet_model.transform(obs)
     # reference model w/o learnt featurization
-    projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
+    projection = VAMP(lagtime=1, observable_transform=vampnet_model).fit(obs).transform(obs, propagate=True)
 
     dtraj = Kmeans(2).fit(projection).transform(projection)
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
@@ -111,10 +109,9 @@ def test_estimator_fit(fixed_seed, dtype):
     train_loader = create_timelagged_data_loader(train, lagtime=1, batch_size=512)
     val_loader = create_timelagged_data_loader(val, lagtime=1, batch_size=512)
     net.fit(train_loader, n_epochs=1, validation_data=val_loader, validation_score_callback=lambda *x: x)
-    projection = net.transform(obs)
 
     # reference model w/o learnt featurization
-    projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
+    projection = VAMP(lagtime=1, observable_transform=net).fit(obs).fetch_model().transform(obs)
 
     dtraj = Kmeans(2).fit(projection).transform(projection)
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
@@ -127,3 +124,18 @@ def test_mlp_sanity():
     with torch.no_grad():
         x = torch.empty((5, 100)).normal_()
         mlp(x)
+
+
+def test_no_side_effects():
+    mlp = nn.Linear(10, 2)
+    data = deeptime.data.ellipsoids()
+    obs = data.observations(100, n_dim=10).astype(np.float32)
+    net = VAMPNet(lobe=mlp, dtype=np.float32, learning_rate=1e-8)
+    train_loader = create_timelagged_data_loader(obs, lagtime=1, batch_size=512)
+    model1 = net.fit(train_loader, n_epochs=1).fetch_model()
+    model2 = net.fit(train_loader, n_epochs=1).fetch_model()
+    with torch.no_grad():
+        assert_(model1.lobe is not model2.lobe)  # check it is not the same instance
+        # no side effects: if assert_equal raises, this is not equal, which is expected
+        with assert_raises(AssertionError):
+            assert_equal(model1.lobe.weight.data.cpu().numpy(), model2.lobe.weight.data.cpu().numpy())

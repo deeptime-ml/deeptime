@@ -199,53 +199,43 @@ class EDMDModel(KoopmanModel):
     """
 
     def __init__(self, operator: np.ndarray, basis: Callable[[np.ndarray], np.ndarray], eigenvalues, modes):
-        super().__init__(operator, basis_transform_forward=None, basis_transform_backward=None)
+        super().__init__(operator, instantaneous_obs=basis, timelagged_obs=basis)
         self.basis = basis
         self.eigenvalues = eigenvalues
         self.modes = modes
         self.n_eigenvalues = len(self.eigenvalues)
 
-    def forward(self, trajectory: np.ndarray, **kw) -> np.ndarray:
+    def forward(self, trajectory: np.ndarray, propagate: bool = True) -> np.ndarray:
         r""" Applies the estimated forward transform to data by first applying the basis and then the operator, i.e.,
 
         .. math::
 
             X \mapsto \Psi(X) K,
 
-        where :math:`X` is the input data, :math:`\Psi` the basis transform, and :math:`K` the operator.
+        where :math:`X` is the input data, :math:`\Psi` the basis transform, and :math:`K` the operator. Optionally
+        does not apply :math:`K`.
 
         Parameters
         ----------
         trajectory : (T, n) ndarray
             Input data
-        **kw
-            Ignored keyword arguments for interface compatibility.
+        propagate : bool, optional, default=True
+            Whether to propagate or just
 
         Returns
         -------
         transformed : (T, n) ndarray
             The forward transform of the input data.
         """
-        trajectory = self.basis(trajectory)
-        return super().forward(trajectory)
+        if propagate and self.n_eigenvalues == self.modes.shape[1]:
+            return super(EDMDModel, self).forward(trajectory, propagate=True)
 
-    def transform(self, data, **kw):
-        r""" Takes input data :math:`X\in\mathbb{R}^{T\times n}`, applies the basis :math:`\Psi` and then projects
-        everything onto the modes by evaluating the eigenfunction.
-
-        Parameters
-        ----------
-        data : (T, n) ndarray
-            Input data
-        **kw
-            Ignored keyword arguments for interface compatibility.
-
-        Returns
-        -------
-        transformed : (T, k) ndarray
-            Data projected onto the modes.
-        """
-        return self.basis(data) @ self.modes[:self.n_eigenvalues].T
+        modes = self.modes[:self.n_eigenvalues]
+        out = self.instantaneous_obs(trajectory)
+        out = out @ modes.T
+        if propagate:
+            out = out @ np.diag(self.eigenvalues[:self.n_eigenvalues]) @ modes
+        return out
 
 
 class EDMD(Estimator):

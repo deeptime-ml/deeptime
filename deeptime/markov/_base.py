@@ -209,8 +209,8 @@ class BayesianPosterior(Model):
                                          delimiter=delimiter, confidence=confidence, *args, **kwargs)
 
 
-def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
-             score_k: Optional[int] = 10, blocksplit: bool = True, random_state=None):
+def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", score_method=2,
+             dim: Optional[int] = None, blocksplit: bool = True, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
     Implementation and ideas following :cite:`msmscore-noe2013variational` :cite:`msmscore-wu2020variational` and 
@@ -240,27 +240,16 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
     count_mode : str, optional, default='sliding'
         counting mode of count matrix estimator, if sliding the trajectory is split in a sliding window fashion.
         Supports 'sliding' and 'sample'.
-    score_method : str, optional, default='VAMP2'
-        Overwrite scoring method to be used if desired. If `None`, the estimators scoring
-        method will be used.
+    score_method : float or str, default=2
         Available scores are based on the variational approach for Markov processes :cite:`msmscore-noe2013variational`
-        :cite:`msmscore-wu2020variational`:
-
-        *  'VAMP1'  Sum of singular values of the symmetrized transition matrix :cite:`msmscore-wu2020variational` .
-                    If the MSM is reversible, this is equal to the sum of transition
-                    matrix eigenvalues, also called Rayleigh quotient :cite:`msmscore-noe2013variational`
-                    :cite:`msmscore-mcgibbon2015variational` .
-        *  'VAMP2'  Sum of squared singular values of the symmetrized transition
-                    matrix :cite:`msmscore-wu2020variational`. If the MSM is reversible, this is equal to
-                    the kinetic variance :cite:`msmscore-noe2015kinetic`.
-
+        :cite:`msmscore-wu2020variational`, see :meth:`deeptime.decomposition.vamp_score` for available options.
     blocksplit : bool, optional, default=True
         Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
         In case no blocksplitting is performed, individual dtrajs are used for training and validation. This means that
         at least two dtrajs must be provided (`len(dtrajs) >= 2`), otherwise this method raises an exception.
-    score_k : int or None
-        The maximum number of eigenvalues or singular values used in the
-        score. If set to None, all available eigenvalues will be used.
+    dim : int or None, optional, default=None
+        The maximum number of eigenvalues or singular values used in the score. If set to None,
+        all available eigenvalues will be used.
     random_state : None or int or np.random.RandomState
         Random seed to use.
 
@@ -271,6 +260,7 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
         :filter: docname in docnames
         :keyprefix: msmscore-
     """
+    r = score_method
     dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
     if count_mode not in ('sliding', 'sample'):
         raise ValueError('score_cv currently only supports count modes "sliding" and "sample"')
@@ -285,9 +275,7 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
                 raise ValueError("Need at least two trajectories if blocksplit is not used to decompose the data.")
         dtrajs_train, dtrajs_test = cvsplit_dtrajs(dtrajs_split, random_state=random_state)
         # this is supposed to construct a markov state model from data directly, for example what fit_fetch could do is
-        # counts = TransitionCountEstimator(args).fit(dtrajs_tain).fetch_model()
-        # model = MLMSMEstimator(args).fit(counts).fetch_model()
         model = fit_fetch(dtrajs_train)
-        s = model.score(dtrajs_test, score_method=score_method, score_k=score_k)
+        s = model.score(dtrajs_test, r=r, dim=dim)
         scores.append(s)
     return np.array(scores)

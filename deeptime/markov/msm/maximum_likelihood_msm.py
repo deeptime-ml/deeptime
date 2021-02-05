@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Union, List
 
 import numpy as np
@@ -11,6 +12,7 @@ from ...numeric import is_square_matrix
 
 __all__ = ['MaximumLikelihoodMSM']
 
+log = logging.getLogger(__file__)
 
 class MaximumLikelihoodMSM(_MSMBaseEstimator):
     r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <deeptime.markov.msm.MarkovStateModel>`)
@@ -209,20 +211,28 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         else:
             raise ValueError("Unknown type of counts argument, can only be one of TransitionCountModel, "
                              "TransitionCountEstimator, (N, N) ndarray. But was: {}".format(type(counts)))
+        needs_strong_connectivity = self._needs_strongly_connected_sets()
         if not self.allow_disconnected:
             sets = counts.connected_sets(connectivity_threshold=self.connectivity_threshold,
-                                         directed=self._needs_strongly_connected_sets())
+                                         directed=needs_strong_connectivity)
         else:
             sets = [counts.states]
         transition_matrices = []
         statdists = []
         count_models = []
         for subset in sets:
-            sub_counts = counts.submodel(subset)
-            fit_result = self._fit_connected(sub_counts)
-            transition_matrices.append(fit_result[0])
-            statdists.append(fit_result[1])
-            count_models.append(fit_result[2])
+            try:
+                sub_counts = counts.submodel(subset)
+                fit_result = self._fit_connected(sub_counts)
+                transition_matrices.append(fit_result[0])
+                statdists.append(fit_result[1])
+                count_models.append(fit_result[2])
+            except ValueError as e:
+                log.warning(f"Skipping state set {subset} due to error in estimation: {str(e)}.")
+        if len(transition_matrices) == 0:
+            raise ValueError(f"None of the {'strongly' if needs_strong_connectivity else 'weakly'} "
+                             f"connected subsets could be fit to data!")
+
         self._model = MarkovStateModelCollection(transition_matrices, statdists, reversible=self.reversible,
                                                  count_models=count_models,
                                                  transition_matrix_tolerance=self.transition_matrix_tolerance)

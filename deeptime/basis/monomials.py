@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List
 
 import numpy as np
 
@@ -12,7 +12,8 @@ class Identity(Observable):
     def _evaluate(self, x):
         return x
 
-    def get_feature_names(self, input_features=None):
+    @staticmethod
+    def get_feature_names(input_features=None):
         return ['x']
 
 
@@ -69,8 +70,18 @@ class Monomials(Observable):
         return _eval(self.p, x.T, self._power_matrix).T
 
     def get_feature_names(self, input_features=None) -> List[str]:
-        feature_names = []
+        r""" Yields a list of feature names, optionally given input feature names.
+
+        Parameters
+        ----------
+        input_features : list of str, optional, default=None
+            If not `None`, replaces the input feature names.
+
+        Returns
+        -------
+        feature_names : list of str
+            Feature names corresponding to each monomial.
+        """
         if input_features is None:
             input_features = [f'x{i}' for i in range(self.d)]
         return _fn(input_features, self._power_matrix)
-
