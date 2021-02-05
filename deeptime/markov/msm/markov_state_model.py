@@ -121,12 +121,33 @@ class MarkovStateModel(Model):
 
     @cached_property
     def koopman_model(self) -> CovarianceKoopmanModel:
-        return _svd_sym_koopman(self, False)
+        return self.to_koopman_model(False)
 
     @cached_property
     def empirical_koopman_model(self) -> CovarianceKoopmanModel:
-        assert self.has_count_model, "This requires statistics over the estimation data, in particular a count model."
-        return _svd_sym_koopman(self, True)
+        return self.to_koopman_model(True)
+
+    def to_koopman_model(self, empirical: bool = True, epsilon: float = 1e-10):
+        r""" Computes the SVD of the symmetrized Koopman operator in the analytical or empirical distribution,
+        returns as Koopman model.
+
+        Parameters
+        ----------
+        empirical : bool, optional, default=True
+            Determines whether the model should refer to the analytical distributions based on the transition matrix
+            or the empirical distributions based on the count matrix.
+        epsilon : float, optional, default=1e-10
+            Regularization parameter for computing inverses of covariance matrices.
+
+        Returns
+        -------
+        model : CovarianceKoopmanModel
+            The model.
+        """
+        if empirical:
+            assert self.has_count_model, "This requires statistics over the estimation data, " \
+                                         "in particular a count model."
+        return _svd_sym_koopman(self, empirical, epsilon=epsilon)
 
     @property
     def lagtime(self) -> int:
@@ -1098,11 +1119,9 @@ class MarkovStateModel(Model):
 
         Parameters
         ----------
-        dtrajs : list of arrays
-            test data (discrete trajectories).
-        dim : int or None
-            Overwrite scoring rank if desired. If `None`, the estimators scoring
-            rank will be used. See __init__ for documentation.
+        dtrajs : list of arrays, optional, default=None
+            Test data (discrete trajectories). Note that if the test data contains states which are not
+            represented in this model, they are ignored.
         r : float or str, optional, default=2
             Overwrite scoring method to be used if desired. Can be any float greater or equal 1 or 'E' for VAMP-r score
             or VAMP-E score, respectively.
@@ -1117,7 +1136,6 @@ class MarkovStateModel(Model):
               kinetic variance :cite:`msm-noe2015kinetic`.
             * 'VAMPE': Approximation error of the estimated Koopman operator with respect to the true Koopman operator
               up to an additive constant :cite:`msm-wu2020variational`.
-
         dim : int or None, optional, default=None
             The maximum number of eigenvalues or singular values used in the
             score. If set to None, all available eigenvalues will be used.
@@ -1125,23 +1143,25 @@ class MarkovStateModel(Model):
         koopman_model = self.empirical_koopman_model
         test_model = None
         if dtrajs is not None:
-            from deeptime.markov.sample import ensure_dtraj_list
-            dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
+            assert self.has_count_model, "Needs count model if dtrajs are provided."
             # test data
-            from deeptime.markov.tools.estimation import count_matrix
-            C0t_test_raw = count_matrix(dtrajs, self.count_model.lagtime, sparse_return=False)
+            from deeptime.markov import TransitionCountEstimator
+            cm = TransitionCountEstimator(self.count_model.lagtime, "sliding", sparse=False)\
+                .fit(dtrajs).fetch_model()
+
             # map to present active set
-            active_set = self.count_model.state_symbols
-            map_from = active_set[np.where(active_set < C0t_test_raw.shape[0])[0]]
-            map_to = np.arange(len(map_from))
-            C0t_test = np.zeros((self.n_states, self.n_states))
-            C0t_test[np.ix_(map_to, map_to)] = C0t_test_raw[np.ix_(map_from, map_from)]
-            C00_test = np.diag(C0t_test.sum(axis=1))
-            Ctt_test = np.diag(C0t_test.sum(axis=0))
-            assert koopman_model.cov.cov_00.shape == C00_test.shape
-            assert koopman_model.cov.cov_0t.shape == C0t_test.shape
-            assert koopman_model.cov.cov_tt.shape == Ctt_test.shape
-            test_model = CovarianceModel(C00_test, C0t_test, Ctt_test)
+            common_symbols = set(self.count_model.state_symbols).intersection(cm.state_symbols)
+            common_states = self.count_model.symbols_to_states(common_symbols)
+            c0t_test = np.zeros((self.n_states, self.n_states), dtype=self.transition_matrix.dtype)
+            common_states_cm = cm.symbols_to_states(common_symbols)
+            # only set counts for common states
+            c0t_test[np.ix_(common_states, common_states)] = cm.count_matrix[np.ix_(common_states_cm, common_states_cm)]
+            c00_test = np.diag(c0t_test.sum(axis=1))
+            ctt_test = np.diag(c0t_test.sum(axis=0))
+            assert koopman_model.cov.cov_00.shape == c00_test.shape
+            assert koopman_model.cov.cov_0t.shape == c0t_test.shape
+            assert koopman_model.cov.cov_tt.shape == ctt_test.shape
+            test_model = CovarianceModel(c00_test, c0t_test, ctt_test)
         return vamp_score(koopman_model, r, test_model, dim=dim)
 
 
@@ -1307,7 +1327,7 @@ class MarkovStateModelCollection(MarkovStateModel):
         self._current_model = model_index
 
 
-def _svd_sym_koopman(msm: MarkovStateModel, empirical: bool) -> CovarianceKoopmanModel:
+def _svd_sym_koopman(msm: MarkovStateModel, empirical: bool, epsilon=1e-10) -> CovarianceKoopmanModel:
     """ Computes the SVD of the symmetrized Koopman operator in the empirical distribution, returns as Koopman model.
     """
     K = msm.transition_matrix
@@ -1322,14 +1342,16 @@ def _svd_sym_koopman(msm: MarkovStateModel, empirical: bool) -> CovarianceKoopma
         # reweight operator to empirical distribution
         C0t_re = cov00 @ K
         # symmetrized operator and SVD
-        K_sym = np.linalg.multi_dot([spd_inv_sqrt(cov.cov_00), C0t_re, spd_inv_sqrt(cov.cov_tt)])
+        K_sym = np.linalg.multi_dot([spd_inv_sqrt(cov.cov_00, epsilon=epsilon), C0t_re,
+                                     spd_inv_sqrt(cov.cov_tt, epsilon=epsilon)])
     else:
         cov00 = np.diag(msm.stationary_distribution)
         covtt = np.diag(msm.stationary_distribution)
         cov0t = cov00 @ K
         cov = CovarianceModel(cov_00=cov00, cov_0t=cov0t, cov_tt=covtt)
-        K_sym = np.linalg.multi_dot([spd_inv_sqrt(cov.cov_00), cov0t, spd_inv_sqrt(cov.cov_tt)])
+        K_sym = np.linalg.multi_dot([spd_inv_sqrt(cov.cov_00, epsilon=epsilon), cov0t,
+                                     spd_inv_sqrt(cov.cov_tt, epsilon=epsilon)])
     U, S, Vt = scipy.linalg.svd(K_sym, compute_uv=True)
-    U = spd_inv_sqrt(cov.cov_00) @ U
-    Vt = Vt @ spd_inv_sqrt(cov.cov_tt)
+    U = spd_inv_sqrt(cov.cov_00, epsilon=epsilon) @ U
+    Vt = Vt @ spd_inv_sqrt(cov.cov_tt, epsilon=epsilon)
     return CovarianceKoopmanModel(U, S, Vt.T, cov, K.shape[0], K.shape[0])

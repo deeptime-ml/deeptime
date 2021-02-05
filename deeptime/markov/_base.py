@@ -210,7 +210,7 @@ class BayesianPosterior(Model):
 
 
 def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
-             dim: Optional[int] = 10, blocksplit: bool = True, random_state=None):
+             dim: Optional[int] = None, blocksplit: bool = True, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
     Implementation and ideas following :cite:`msmscore-noe2013variational` :cite:`msmscore-wu2020variational` and 
@@ -258,9 +258,9 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
         Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
         In case no blocksplitting is performed, individual dtrajs are used for training and validation. This means that
         at least two dtrajs must be provided (`len(dtrajs) >= 2`), otherwise this method raises an exception.
-    dim : int or None
-        The maximum number of eigenvalues or singular values used in the
-        score. If set to None, all available eigenvalues will be used.
+    dim : int or None, optional, default=None
+        The maximum number of eigenvalues or singular values used in the score. If set to None,
+        all available eigenvalues will be used.
     random_state : None or int or np.random.RandomState
         Random seed to use.
 

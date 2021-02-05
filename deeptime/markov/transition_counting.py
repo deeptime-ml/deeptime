@@ -322,6 +322,8 @@ class TransitionCountModel(Model):
             An array of states.
         """
         # only take symbols which are still present in this model
+        if isinstance(symbols, set):
+            symbols = list(symbols)
         symbols = np.intersect1d(np.asarray(symbols), self.state_symbols)
         return np.argwhere(np.isin(self.state_symbols, symbols)).flatten()
 

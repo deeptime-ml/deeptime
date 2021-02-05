@@ -7,7 +7,7 @@ from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
 
 
 def vamp_score(koopman_model, r: Union[float, str],
-               covariances_test=None, dim: Optional[int] = None, epsilon: float = 1e-6):
+               covariances_test=None, dim: Optional[int] = None, epsilon: float = 1e-10):
     """Compute the VAMP score between a covariance-based Koopman model and potentially a
     test model for cross-validation.
 
@@ -44,7 +44,7 @@ def vamp_score(koopman_model, r: Union[float, str],
     dim : int, optional, default=None
         Artificially restrict the scoring to the top `dim` slowest processes.
 
-    epsilon : float, default=1e-6
+    epsilon : float, default=1e-10
 
 
     Returns
@@ -55,6 +55,11 @@ def vamp_score(koopman_model, r: Union[float, str],
 
     Notes
     -----
+    If the Koopman model was estimated using correlations that are based on data with its sample mean removed,
+    this effectively removes the constant function from the singular function space and artificially lowers the score
+    by 1. This is accounted for in this method, i.e., if :code:`koopman_model.cov.data_mean_removed` evaluates to
+    `True`, the score is internally incremented by 1.
+
     The VAMP-:math:`r` and VAMP-E scores are computed according to :cite:`vampscore-wu2020variational`,
     Equation (33) and Equation (30), respectively.
 

@@ -30,7 +30,7 @@ class KoopmanModel(Model, Transformer):
         Transforms the future state :math:`x_{t+\tau}` to :math:`g(x_{t+\tau})`. Defaults to `f(x) = x`.
     """
 
-    def __init__(self, koopman_matrix,
+    def __init__(self, koopman_matrix: np.ndarray,
                  instantaneous_obs: Callable[[np.ndarray], np.ndarray] = Identity(),
                  timelagged_obs: Callable[[np.ndarray], np.ndarray] = Identity()):
         super().__init__()
@@ -110,7 +110,7 @@ class KoopmanModel(Model, Transformer):
         transformed_data : (T,m) ndarray
             The transformed data.
         """
-        out = self.instantaneous_obs(data) if instantaneous else self.timelagged_obs
+        out = self.instantaneous_obs(data) if instantaneous else self.timelagged_obs(data)
         if propagate:
             op = self.operator if instantaneous else self.operator_inverse
             out = out @ op
