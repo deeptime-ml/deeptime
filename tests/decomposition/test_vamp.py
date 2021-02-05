@@ -44,11 +44,11 @@ def test_expectation_sanity(with_statistics, lag_multiple):
 
 
 @pytest.mark.parametrize('components', [None, 0, [0, 1]], ids=lambda x: f"components={x}")
-def test_forward(components):
+def test_propagate(components):
     K = np.diag(np.array([3., 2., 1.]))
     model = CovarianceKoopmanModel(np.eye(3), K, np.eye(3), CovarianceModel(), 3, 3)
     data = np.random.normal(size=(100, 3))
-    fwd = model.forward(data, components=components)
+    fwd = model.propagate(data, components=components)
     if components is not None:
         components = np.atleast_1d(components)
         # update K
@@ -164,7 +164,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         atol = np.finfo(np.float32).eps * 10.0
         rtol = np.finfo(np.float32).resolution
-        phi_trajs = [vamp.transform(X, instantaneous=False)[tau:, :] for X in trajs]
+        phi_trajs = [vamp.backward(X, propagate=False)[tau:, :] for X in trajs]
         phi = np.concatenate(phi_trajs)
         mean_right = phi.sum(axis=0) / phi.shape[0]
         cov_right = phi.T.dot(phi) / phi.shape[0]
@@ -173,7 +173,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         vamp.right = False
         # vamp = estimate_vamp(trajs, lag=tau, scaling=None, right=False)
-        psi_trajs = [vamp.transform(X, instantaneous=True)[0:-tau, :] for X in trajs]
+        psi_trajs = [vamp.forward(X, propagate=False)[0:-tau, :] for X in trajs]
         psi = np.concatenate(psi_trajs)
         mean_left = psi.sum(axis=0) / psi.shape[0]
         cov_left = psi.T.dot(psi) / psi.shape[0]
@@ -208,10 +208,10 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
             # vamp2.singular_values # trigger diagonalization
             for t, ref in zip(trajs, phi_trajs):
-                assert_allclose_ignore_phase(vamp2.transform(t[tau:], instantaneous=False), ref, rtol=rtol, atol=atol)
+                assert_allclose_ignore_phase(vamp2.backward(t[tau:], propagate=False), ref, rtol=rtol, atol=atol)
 
             for t, ref in zip(trajs, psi_trajs):
-                assert_allclose_ignore_phase(vamp2.transform(t[0:-tau], instantaneous=True), ref, rtol=rtol, atol=atol)
+                assert_allclose_ignore_phase(vamp2.transform(t[0:-tau], propagate=False), ref, rtol=rtol, atol=atol)
 
 
 def generate(T, N_steps, s0=0):
@@ -286,8 +286,8 @@ class TestVAMPModel(unittest.TestCase):
         assert_allclose_ignore_phase(V[:, 0], np.ones(3), atol=1E-5)
         U = U[:, 1:]
         V = V[:, 1:]
-        phi = self.vamp.transform(np.eye(3), instantaneous=False)
-        psi = self.vamp.transform(np.eye(3))
+        phi = self.vamp.backward(np.eye(3), propagate=False)
+        psi = self.vamp.forward(np.eye(3), propagate=False)
         assert_allclose_ignore_phase(U, psi, atol=1E-5)
         assert_allclose_ignore_phase(V, phi, atol=1E-5)
 
@@ -345,7 +345,7 @@ class TestVAMPWithEdgeCaseData(unittest.TestCase):
         x = np.random.randn(10, 1)
         vamp = VAMP(lagtime=1).fit([x]).fetch_model()
         # Doing VAMP with 1-D data is just centering and normalizing the data.
-        assert_allclose_ignore_phase(vamp.transform(x, instantaneous=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
+        assert_allclose_ignore_phase(vamp.backward(x, propagate=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
         from deeptime.numeric.eigen import ZeroRankError

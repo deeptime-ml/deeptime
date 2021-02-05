@@ -81,11 +81,8 @@ def test_estimator(fixed_seed):
     loader = create_timelagged_data_loader(obs, lagtime=1, batch_size=512)
     vampnet = VAMPNet(lobe=lobe)
     vampnet_model = vampnet.fit(loader).fetch_model()
-    # np.testing.assert_array_less(vamp_model.timescales()[0], vampnet_model.timescales()[0])
-
-    projection = vampnet_model.transform(obs)
     # reference model w/o learnt featurization
-    projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
+    projection = VAMP(lagtime=1, observable_transform=vampnet_model).fit(obs).transform(obs, propagate=True)
 
     dtraj = Kmeans(2).fit(projection).transform(projection)
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
@@ -112,10 +109,9 @@ def test_estimator_fit(fixed_seed, dtype):
     train_loader = create_timelagged_data_loader(train, lagtime=1, batch_size=512)
     val_loader = create_timelagged_data_loader(val, lagtime=1, batch_size=512)
     net.fit(train_loader, n_epochs=1, validation_data=val_loader, validation_score_callback=lambda *x: x)
-    projection = net.transform(obs)
 
     # reference model w/o learnt featurization
-    projection = VAMP(lagtime=1).fit(projection).fetch_model().transform(projection)
+    projection = VAMP(lagtime=1, observable_transform=net).fit(obs).fetch_model().transform(obs)
 
     dtraj = Kmeans(2).fit(projection).transform(projection)
     msm_vampnet = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()

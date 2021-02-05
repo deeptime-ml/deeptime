@@ -72,36 +72,56 @@ class KoopmanModel(Model, Transformer):
         r""" The dimension of data after propagation by :math:`K`. """
         return self.operator.shape[1]
 
-    def forward(self, data: np.ndarray):
+    def forward(self, data: np.ndarray, propagate=True):
         r""" Maps data forward in time.
 
         Parameters
         ----------
         data : (T, n) ndarray
             Input data
+        propagate : bool, default=True
+            Whether to apply the Koopman operator to the featurized data.
 
         Returns
         -------
         mapped_data : (T, m) ndarray
             Mapped data.
         """
-        return self.transform(data, instantaneous=True, propagate=True)
+        out = self.instantaneous_obs(data)
+        if propagate:
+            out = out @ self.operator
+        return out
 
-    def transform(self, data: np.ndarray, instantaneous=True, propagate=True):
+    def backward(self, data: np.ndarray, propagate=True):
+        r""" Maps data backward in time.
+
+        Parameters
+        ----------
+        data : (T, n) ndarray
+            Input data
+        propagate : bool, default=True
+            Whether to apply the Koopman operator to the featurized data.
+
+        Returns
+        -------
+        mapped_data : (T, m) ndarray
+            Mapped data.
+        """
+        out = self.timelagged_obs(data)
+        if propagate:
+            out = out @ self.operator_inverse
+        return out
+
+    def transform(self, data: np.ndarray, propagate=True):
         r""" Transforms data by applying the observables to it and then optionally propagating it.
+        Data is assumed to represent :math:`x_t` and we evaluate :math:`K^\top f(x_t)`.
 
-          * If instantaneous is true, data is assumed to represent :math:`x_t`, not :math:`x_{t+\tau}`.
-            In that case, we evaluate :math:`K^\top f(x_t)`.
-          * Otherwise, data is assumed to represent :math:`x_{t+\tau}` and we evaluate :math:`(K^{-1})^\top x_{t+\tau}`.
-
-        In case propagation is set to false, this method just evaluates the defined observables :math:`f` and :math:`g`.
+        In case propagation is set to false, this method just evaluates the defined observables :math:`f`.
 
         Parameters
         ----------
         data : (T,n) ndarray
             Input data.
-        instantaneous : bool, optional, default=True
-            Whether data is instantaneous data.
         propagate : bool, optional, default=True
             Whether to propagate.
 
@@ -110,11 +130,7 @@ class KoopmanModel(Model, Transformer):
         transformed_data : (T,m) ndarray
             The transformed data.
         """
-        out = self.instantaneous_obs(data) if instantaneous else self.timelagged_obs(data)
-        if propagate:
-            op = self.operator if instantaneous else self.operator_inverse
-            out = out @ op
-        return out
+        return self.forward(data, propagate=propagate)
 
 
 class CovarianceKoopmanModel(KoopmanModel):
@@ -297,14 +313,22 @@ class CovarianceKoopmanModel(KoopmanModel):
         self._whitening_instantaneous.dim = self.output_dimension
         self._whitening_timelagged.dim = self.output_dimension
 
-    def transform(self, data: np.ndarray, instantaneous=True, propagate=False):
-        r""" Overrides the default to not propagate but only to project into the whitened basis space. """
-        out = self.instantaneous_obs(data) if instantaneous else self.timelagged_obs(data)
+    def backward(self, data: np.ndarray, propagate=True):
+        out = self.timelagged_obs(data)
         if propagate:
-            op = self.operator if instantaneous else self.operator_inverse
-            op = op[:self.output_dimension, :self.output_dimension]
+            op = self.operator_inverse[:self.output_dimension, :self.output_dimension]
             out = out @ op
         return out
+
+    def forward(self, data: np.ndarray, propagate=True):
+        out = self.instantaneous_obs(data)
+        if propagate:
+            op = self.operator[:self.output_dimension, :self.output_dimension]
+            out = out @ op
+        return out
+
+    def transform(self, data: np.ndarray, propagate=False):
+        return super().transform(data, propagate)
 
     @property
     def var_cutoff(self) -> Optional[float]:
@@ -361,7 +385,7 @@ class CovarianceKoopmanModel(KoopmanModel):
             mean = 0
         return lambda x: x @ inv + mean
 
-    def forward(self, trajectory: np.ndarray, components: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+    def propagate(self, trajectory: np.ndarray, components: Optional[Union[int, List[int]]] = None) -> np.ndarray:
         r""" Applies the forward transform to the trajectory in non-transformed space. Given the Koopman operator
         :math:`\Sigma`, transformations  :math:`V^\top - \mu_t` and :math:`U^\top -\mu_0` for
         bases :math:`f` and :math:`g`, respectively, this is achieved by transforming each frame :math:`X_t` with

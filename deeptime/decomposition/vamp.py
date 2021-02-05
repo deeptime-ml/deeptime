@@ -417,7 +417,7 @@ class VAMP(Estimator, Transformer):
             self.fit_from_timeseries(data, weights=kw.pop('weights', None))
         return self
 
-    def transform(self, data, instantaneous=True):
+    def transform(self, data, propagate=False):
         r""" Projects given timeseries onto dominant singular functions. This method dispatches to
         :meth:`CovarianceKoopmanModel.transform`.
 
@@ -425,9 +425,8 @@ class VAMP(Estimator, Transformer):
         ----------
         data : (T, n) ndarray
             Input timeseries data.
-        instantaneous : bool, default=True
-            Whether to use left or right eigenvectors for projection. Left corresponds to `forward == True`, right
-            corresponds to `forward == False`.
+        propagate : bool, default=False
+            Whether to apply the Koopman operator after data was transformed into the whitened feature space.
 
         Returns
         -------
@@ -436,7 +435,7 @@ class VAMP(Estimator, Transformer):
             If `right` is True, projection will be on the right singular functions. Otherwise, projection will be on
             the left singular functions.
         """
-        return self.fetch_model().transform(data, instantaneous=instantaneous)
+        return self.fetch_model().transform(data, propagate=propagate)
 
     def fetch_model(self) -> CovarianceKoopmanModel:
         r""" Finalizes current model and yields new :class:`CovarianceKoopmanModel`.

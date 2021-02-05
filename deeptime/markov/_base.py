@@ -209,7 +209,7 @@ class BayesianPosterior(Model):
                                          delimiter=delimiter, confidence=confidence, *args, **kwargs)
 
 
-def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", score_method='VAMP2',
+def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", score_method=2,
              dim: Optional[int] = None, blocksplit: bool = True, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
@@ -240,20 +240,9 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
     count_mode : str, optional, default='sliding'
         counting mode of count matrix estimator, if sliding the trajectory is split in a sliding window fashion.
         Supports 'sliding' and 'sample'.
-    score_method : float or str, optional, default='VAMP2'
-        Overwrite scoring method to be used if desired. If `None`, the estimators scoring
-        method will be used.
+    score_method : float or str, default=2
         Available scores are based on the variational approach for Markov processes :cite:`msmscore-noe2013variational`
-        :cite:`msmscore-wu2020variational`:
-
-        *  'VAMP1'  Sum of singular values of the symmetrized transition matrix :cite:`msmscore-wu2020variational` .
-                    If the MSM is reversible, this is equal to the sum of transition
-                    matrix eigenvalues, also called Rayleigh quotient :cite:`msmscore-noe2013variational`
-                    :cite:`msmscore-mcgibbon2015variational` .
-        *  'VAMP2'  Sum of squared singular values of the symmetrized transition
-                    matrix :cite:`msmscore-wu2020variational`. If the MSM is reversible, this is equal to
-                    the kinetic variance :cite:`msmscore-noe2015kinetic`.
-
+        :cite:`msmscore-wu2020variational`, see :meth:`deeptime.decomposition.vamp_score` for available options.
     blocksplit : bool, optional, default=True
         Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
         In case no blocksplitting is performed, individual dtrajs are used for training and validation. This means that
@@ -271,12 +260,6 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
         :filter: docname in docnames
         :keyprefix: msmscore-
     """
-    if score_method == 'VAMP1':
-        score_method = 1.
-    if score_method == 'VAMP2':
-        score_method = 2.
-    if score_method == 'VAMPE':
-        score_method = 'E'
     r = score_method
     dtrajs = ensure_dtraj_list(dtrajs)  # ensure format
     if count_mode not in ('sliding', 'sample'):

@@ -18,7 +18,7 @@ def vamp_score(koopman_model, r: Union[float, str],
     r : float or str
         The type of score to evaluate. Can by an floating point value greater or equal to 1 or 'E', yielding the
         VAMP-r score or the VAMP-E score, respectively. :cite:`vampscore-wu2020variational`
-        Typical choices are:
+        Typical choices (also accepted as inputs) are:
 
         *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix.
                     If the model is reversible, this is equal to the sum of
@@ -74,7 +74,11 @@ def vamp_score(koopman_model, r: Union[float, str],
         dim = min(koopman_model.koopman_matrix.shape[0], dim)
     if isinstance(r, str):
         r = r.lower()
-        assert r == 'e', "only VAMP-E supported, otherwise give as float >= 1"
+        r = r.replace("vamp", "")
+        if r.isnumeric():
+            r = float(r)
+        else:
+            assert r == 'e', "only VAMP-E supported, otherwise give as float >= 1"
     else:
         assert isinstance(r, numbers.Number) and r >= 1, "score only for r >= 1 or r = \"E\""
     if covariances_test is None:
@@ -84,7 +88,8 @@ def vamp_score(koopman_model, r: Union[float, str],
     assert koopman_model.cov.data_mean_removed == cov_test.data_mean_removed, \
         "Covariances must be consistent with respect to the data"
     if koopman_model.cov.cov_00.shape != cov_test.cov_00.shape:
-        raise ValueError("Shape mismatch, the covariances ")
+        raise ValueError(f"Shape mismatch, the covariances had "
+                         f"shapes {koopman_model.cov.cov_00.shape} and {cov_test.cov_00.shape}.")
     if not is_sorted(koopman_model.singular_values, 'desc'):
         sort_ix = np.argsort(koopman_model.singular_values)[::-1][:dim]  # indices to sort in descending order
     else:
