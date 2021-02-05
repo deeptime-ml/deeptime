@@ -164,7 +164,7 @@ class CovarianceKoopmanModel(KoopmanModel):
     """
 
     def __init__(self, instantaneous_coefficients, singular_values, timelagged_coefficients, cov,
-                 rank_0: int, rank_t: int, dim=None, var_cutoff=None, scaling=None, epsilon=1e-6,
+                 rank_0: int, rank_t: int, dim=None, var_cutoff=None, scaling=None, epsilon=1e-10,
                  instantaneous_obs: Callable[[np.ndarray], np.ndarray] = Identity(),
                  timelagged_obs: Callable[[np.ndarray], np.ndarray] = Identity()):
         if not singular_values.ndim == 1:
