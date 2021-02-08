@@ -112,25 +112,20 @@ class KoopmanModel(Model, Transformer):
             out = out @ self.operator_inverse
         return out
 
-    def transform(self, data: np.ndarray, propagate=True):
-        r""" Transforms data by applying the observables to it and then optionally propagating it.
-        Data is assumed to represent :math:`x_t` and we evaluate :math:`K^\top f(x_t)`.
-
-        In case propagation is set to false, this method just evaluates the defined observables :math:`f`.
+    def transform(self, data: np.ndarray, **kw):
+        r""" Transforms data by applying the observables to it and then mapping them onto the modes of :math:`K`.
 
         Parameters
         ----------
         data : (T,n) ndarray
             Input data.
-        propagate : bool, optional, default=True
-            Whether to propagate.
 
         Returns
         -------
         transformed_data : (T,m) ndarray
             The transformed data.
         """
-        return self.forward(data, propagate=propagate)
+        raise NotImplementedError()
 
 
 class CovarianceKoopmanModel(KoopmanModel):
@@ -327,8 +322,21 @@ class CovarianceKoopmanModel(KoopmanModel):
             out = out @ op
         return out
 
-    def transform(self, data: np.ndarray, propagate=False):
-        return super().transform(data, propagate)
+    def transform(self, data: np.ndarray, **kw):
+        r"""Projects data onto the Koopman modes :math:`f(x) = U^\top \chi_0 (x)`, where :math:`U` are the
+        coefficients of the basis :math:`\chi_0`.
+
+        Parameters
+        ----------
+        data : (T, n) ndarray
+            Input data.
+
+        Returns
+        -------
+        transformed_data : (T, k) ndarray
+            Data projected onto the Koopman modes.
+        """
+        return self.instantaneous_obs(data)
 
     @property
     def var_cutoff(self) -> Optional[float]:
