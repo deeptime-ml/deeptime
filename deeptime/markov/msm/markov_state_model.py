@@ -728,11 +728,7 @@ class MarkovStateModel(Model):
 
         References
         ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: msm-fp-corr-
-            :labelprefix: fp-corr
+        .. footbibliography::
         """
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.

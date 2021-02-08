@@ -53,7 +53,7 @@ __all__ = ['bootstrap_trajectories',
 ################################################################################
 
 def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
-    r"""Generate a count matrix from given microstate trajectory :cite:`tools-est-cm-prinz2011markov`.
+    r"""Generate a count matrix from given microstate trajectory. :footcite:`prinz2011markov`
 
     Parameters
     ----------
@@ -105,10 +105,7 @@ def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-est-cm-
+    .. footbibliography::
 
     Examples
     --------
@@ -351,14 +348,11 @@ def connected_sets(C, directed=True):
     Viewing the count matrix as the adjacency matrix of a (directed) graph
     the connected components are given by the connected components of that
     graph. Connected components of a graph can be efficiently computed
-    using Tarjan's algorithm :cite:`tools-est-connected-sets-tarjan1972depth`.
+    using Tarjan's algorithm :footcite:`tarjan1972depth`.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-est-connected-sets-
+    .. footbibliography::
 
     Examples
     --------
@@ -408,14 +402,11 @@ def largest_connected_set(C, directed=True):
     Viewing the count matrix as the adjacency matrix of a (directed)
     graph the largest connected set is the largest connected set of
     nodes of the corresponding graph. The largest connected set of a graph
-    can be efficiently computed using Tarjan's algorithm :cite:`tools-est-lcc-tarjan1972depth`.
+    can be efficiently computed using Tarjan's algorithm :footcite:`tarjan1972depth`.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-est-lcc-
+    .. footbibliography::
 
     Examples
     --------
@@ -467,14 +458,11 @@ def largest_connected_submatrix(C, directed=True, lcc=None):
     Viewing the count matrix as the adjacency matrix of a (directed)
     graph the larest connected submatrix is the adjacency matrix of
     the largest connected set of the corresponding graph. The largest
-    connected submatrix can be efficiently computed using Tarjan's algorithm :cite:`tools-est-lcsm-tarjan1972depth`.
+    connected submatrix can be efficiently computed using Tarjan's algorithm :footcite:`tarjan1972depth`.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-est-lcsm-
+    .. footbibliography::
 
     Examples
     --------
@@ -526,14 +514,11 @@ def is_connected(C, directed=True):
     -----
     A count matrix is connected if the graph having the count matrix
     as adjacency matrix has a single connected component. Connectivity
-    of a graph can be efficiently checked using Tarjan's algorithm :cite:`tools-est-is-conn-tarjan1972depth`.
+    of a graph can be efficiently checked using Tarjan's algorithm :footcite:`tarjan1972depth`.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tools-est-is-conn-
+    .. footbibliography::
 
     Examples
     --------
@@ -714,8 +699,8 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
                       maxiter: int = 1000000, maxerr: float = 1e-8,
                       rev_pisym : bool = False, return_statdist: bool = False, warn_not_converged: bool = True,
                       sparse_newton: bool = False):
-    r"""Estimate the transition matrix from the given countmatrix :cite:`msmtools-tmat-est-prinz2011markov`
-    :cite:`msmtools-tmat-est-bowman2009progress` :cite:`msmtools-tmat-est-trendelkamp2015estimation`.
+    r"""Estimate the transition matrix from the given countmatrix. :footcite:`prinz2011markov`
+    :footcite:`bowman2009progress` :footcite:`trendelkamp2015estimation`
 
     Parameters
     ----------
@@ -781,10 +766,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: msmtools-tmat-est-
+    .. footbibliography::
 
     Examples
     --------
@@ -1224,12 +1206,12 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
         * 'pseudo' selects the pseudo-generator. A reversible transition
           matrix T is estimated and :math:`(T-Id)/d` is returned as the rate matrix.
 
-        * 'truncated_log' selects the truncated logarithm :cite:`msmtools-est-rmat-davies2010embeddable`. A
+        * 'truncated_log' selects the truncated logarithm :footcite:`davies2010embeddable`. A
           reversible transition matrix T is estimated and :math:`max(logm(T*T)/(2dt),0)`
           is returned as the rate matrix. logm is the matrix logarithm and
           the maximum is taken element-wise.
 
-        * 'CVE' selects the algorithm of Crommelin and Vanden-Eijnden :cite:`msmtools-est-rmat-crommelin2009data`.
+        * 'CVE' selects the algorithm of Crommelin and Vanden-Eijnden :footcite:`crommelin2009data`.
           It consists of minimizing the following objective function:
 
           .. math:: f(K)=\sum_{ij}\left(\sum_{kl} U_{ik}^{-1}K_{kl}U_{lj}-L_{ij}\right)^2 \left|\Lambda_{i}\Lambda_{j}\right|
@@ -1239,7 +1221,7 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
           :math:`T` is computed from C using the reversible maximum likelihood
           estimator.
 
-        * 'KL' selects the algorihtm of Kalbfleisch and Lawless :cite:`msmtools-est-rmat-kalbfleisch1985analysis`.
+        * 'KL' selects the algorihtm of Kalbfleisch and Lawless :footcite:`kalbfleisch1985analysis`.
           It consists of maximizing the following log-likelihood:
 
           .. math:: f(K)=\log L=\sum_{ij}C_{ij}\log(e^{K\Delta t})_{ij}
@@ -1300,10 +1282,7 @@ def rate_matrix(C, dt=1.0, method='KL', sparsity=None,
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: msmtools-est-rmat-
+    .. footbibliography::
     """
 
     from .dense.ratematrix import estimate_rate_matrix

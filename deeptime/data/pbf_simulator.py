@@ -5,11 +5,11 @@ from deeptime.util.parallel import handle_n_jobs
 
 
 class PBFSimulator(object):
-    r""" A position based fluids :cite:`pbf-macklin2013position` simulator for two-dimensional systems.
+    r""" A position based fluids simulator for two-dimensional systems. :footcite:`macklin2013position`
 
     Its underlying principle is by definition of a rest density :math:`\rho_0`, which the particles in the system
-    try to reach by a smoothed particle hydrodynamics style simulation :cite:`pbf-gingold1977smoothed`
-    :cite:`pbf-lucy1977numerical`. Up to numerics the simulation is deterministic given a set of parameters.
+    try to reach by a smoothed particle hydrodynamics style simulation :footcite:`gingold1977smoothed`
+    :footcite:`lucy1977numerical`. Up to numerics the simulation is deterministic given a set of parameters.
 
     Parameters
     ----------
@@ -74,10 +74,7 @@ class PBFSimulator(object):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: pbf-
+    .. footbibliography::
     """
 
     def __init__(self, domain_size: np.ndarray, initial_positions: np.ndarray,

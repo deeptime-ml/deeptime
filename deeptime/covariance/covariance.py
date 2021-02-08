@@ -187,7 +187,7 @@ class Covariance(Estimator):
     .. math:: \mathrm{cov}[ X_t, Y_t ] = \mathbb{E}[(X_t - \mathbb{E}[X_t])(Y_t - \mathbb{E}[Y_t])],
 
     where :math:`X_t` and :math:`Y_t` are contiguous blocks of frames from the timeseries data. The estimator
-    implements the online algorithm proposed in :cite:`covariance-chan1982updating`, report available
+    implements the online algorithm proposed in :footcite:`chan1982updating`, report available
     `here <http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>`__.
 
     Parameters
@@ -217,7 +217,7 @@ class Covariance(Estimator):
     ncov : int, optional, default=5
         Depth of moment storage. Moments computed from each chunk will be combined with Moments of similar
         statistical weight using the pairwise combination algorithm
-        described in :cite:`covariance-chan1982updating`.
+        described in :footcite:`chan1982updating`.
     diag_only: bool
         If True, the computation is restricted to the diagonal entries (autocorrelations) only.
     model : CovarianceModel, optional, default=None
@@ -225,10 +225,7 @@ class Covariance(Estimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: covariance-
+    .. footbibliography::
     """
 
     def __init__(self, lagtime: int = 0, compute_c00: bool = True, compute_c0t: bool = False,
@@ -532,7 +529,7 @@ class KoopmanWeightingModel(Model, Transformer):
     r""" A model which contains the Koopman operator in a modified basis `(PC|1)` and can transform data into Koopman
     weights.
 
-    Weights are computed according to :cite:`koopmanmodel-wu2017variational`.
+    Weights are computed according to :footcite:`wu2017variational`.
 
     Parameters
     ----------
@@ -549,10 +546,7 @@ class KoopmanWeightingModel(Model, Transformer):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: koopmanmodel-
+    .. footbibliography::
     """
 
     def __init__(self, u, u_const, koopman_operator, whitening_transformation=None, covariances=None):
@@ -625,7 +619,7 @@ class KoopmanWeightingModel(Model, Transformer):
 
 class KoopmanWeightingEstimator(Estimator, Transformer):
     r"""Computes Koopman operator and weights that can be plugged into the :class:`Covariance` estimator.
-    The weights are determined by the procedure described in :cite:`koopmanestimator-wu2017variational`.
+    The weights are determined by the procedure described in :footcite:`wu2017variational`.
 
     Parameters
     ----------
@@ -639,10 +633,7 @@ class KoopmanWeightingEstimator(Estimator, Transformer):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: koopmanestimator-
+    .. footbibliography::
     """
 
     def __init__(self, lagtime, epsilon=1e-6, ncov='inf'):

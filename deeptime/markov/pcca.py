@@ -9,7 +9,7 @@ from ..base import Model
 def pcca(P, m, stationary_distribution=None):
     """PCCA+ spectral clustering method with optimized memberships.
 
-    Implementation according to :cite:`pcca-roblitz2013fuzzy`.
+    Implementation according to :footcite:`roblitz2013fuzzy`.
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
     This function does not assume that the transition matrix is fully connected. Disconnected sets
     will automatically define the first metastable states, with perfect membership assignments.
@@ -25,10 +25,7 @@ def pcca(P, m, stationary_distribution=None):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: pcca-
+    .. footbibliography::
     """
     if m <= 0 or m > P.shape[0]:
         raise ValueError("Number of metastable sets must be larger than 0 and can be at most as large as the number "
@@ -76,7 +73,7 @@ class PCCAModel(Model):
     """
     Model for PCCA+ spectral clustering method with optimized memberships.
 
-    PCCA+ spectral clustering is described in :cite:`pccamodel-roblitz2013fuzzy`.
+    PCCA+ spectral clustering is described in :footcite:`roblitz2013fuzzy`.
     Clusters the first m eigenvectors of a transition matrix in order to cluster the states.
     This function does not assume that the transition matrix is fully connected. Disconnected sets
     will automatically define the first metastable states, with perfect membership assignments.
@@ -99,10 +96,7 @@ class PCCAModel(Model):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: pccamodel-
+    .. footbibliography::
     """
 
     def __init__(self, transition_matrix_coarse: np.ndarray, pi_coarse: np.ndarray, memberships: np.ndarray,
@@ -140,7 +134,7 @@ class PCCAModel(Model):
 
         Returns the probability distributions of active set states within
         each metastable set by combining the PCCA+ method with
-        Bayesian inversion as described in :cite:`pccamodel-noe2013projected`.
+        Bayesian inversion as described in :footcite:`noe2013projected`.
 
         Returns
         -------
@@ -166,7 +160,7 @@ class PCCAModel(Model):
         """ Assignment of states to metastable sets using PCCA++
 
         Computes the assignment to metastable sets for active set states using
-        the PCCA++ method :cite:`pccamodel-roblitz2013fuzzy`.
+        the PCCA++ method :footcite:`roblitz2013fuzzy`.
 
         This is only recommended for visualization purposes. You *cannot* compute
         any actual quantity of the coarse-grained kinetics without employing the
@@ -185,7 +179,7 @@ class PCCAModel(Model):
         """ Metastable sets using PCCA+
 
         Computes the metastable sets of active set states within each
-        metastable set using the PCCA+ method :cite:`pccamodel-roblitz2013fuzzy`.
+        metastable set using the PCCA+ method :footcite:`roblitz2013fuzzy`.
 
         This is only recommended for visualization purposes. You *cannot*
         compute any actual quantity of the coarse-grained kinetics without

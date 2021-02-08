@@ -45,6 +45,13 @@ class HiddenMarkovModel(Model):
     observation_symbols_full : array_like, optional, default=None
         Full set of symbols in observations. If None, it is assumed to coincide with observation_symbols.
 
+    References
+    ----------
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: hmm-
+
     See Also
     --------
     init.discrete.metastable_from_data : initial guess from data with discrete output model
@@ -543,8 +550,8 @@ class HiddenMarkovModel(Model):
 
     @property
     def metastable_memberships(self):
-        r""" Computes the memberships of observable states to metastable sets by Bayesian inversion as
-        described in :cite:`hmm-memberships-noe2013projected`.
+        r""" Computes the memberships of observable states to metastable sets by Bayesian inversion.
+        :cite:`hmm-noe2013projected`
 
         Returns
         -------
@@ -552,13 +559,6 @@ class HiddenMarkovModel(Model):
             A matrix containing the probability or membership of each
             observable state to be assigned to each metastable or hidden state.
             The row sums of M are 1.
-
-        References
-        ----------
-        .. bibliography:: /references.bib
-            :style: unsrt
-            :filter: docname in docnames
-            :keyprefix: hmm-memberships-
         """
         nonzero = np.nonzero(self.stationary_distribution_obs)[0]
         M = np.zeros((self.n_observation_states, self.transition_model.n_states))

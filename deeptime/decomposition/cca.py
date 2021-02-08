@@ -38,8 +38,8 @@ class KernelCCAModel(Model):
 
 
 class KernelCCA(Estimator):
-    r""" Estimator implementing the kernelized version :cite:`kcca-bach2002kernel` of canonical correlation
-    analysis (CCA :cite:`kcca-hotelling1992relations`).
+    r""" Estimator implementing the kernelized version of canonical correlation analysis.
+    :footcite:`bach2002kernel` (CCA :footcite:`hotelling1992relations`)
 
     Parameters
     ----------
@@ -56,10 +56,7 @@ class KernelCCA(Estimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: kcca-
+    .. footbibliography::
     """
 
     def __init__(self, kernel: Kernel, n_eigs: int, epsilon: float = 1e-6):

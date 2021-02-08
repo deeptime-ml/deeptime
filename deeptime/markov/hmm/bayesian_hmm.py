@@ -157,7 +157,7 @@ class BayesianHMM(Estimator):
     r""" Estimator for a Bayesian Hidden Markov state model.
 
     The theory and estimation procedure are described
-    in :cite:`bhmmest-noe2013projected`, :cite:`bhmmest-chodera2011bayesian`.
+    in :footcite:`noe2013projected`, :footcite:`chodera2011bayesian`.
 
     Parameters
     ----------
@@ -210,7 +210,7 @@ class BayesianHMM(Estimator):
     transition_matrix_prior : str or ndarray(n, n)
        Prior for the HMM transition matrix.
        Currently implements Dirichlet priors if reversible=False and reversible
-       transition matrix priors as described in :cite:`bhmmest-trendelkamp2015estimation` if reversible=True. For the
+       transition matrix priors as described in :footcite:`trendelkamp2015estimation` if reversible=True. For the
        nonreversible case the posterior of transition matrix :math:`P` is:
 
        .. math::
@@ -245,10 +245,7 @@ class BayesianHMM(Estimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: bhmmest-
+    .. footbibliography::
     """
 
     _SampleStorage = collections.namedtuple(

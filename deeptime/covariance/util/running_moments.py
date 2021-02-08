@@ -176,14 +176,11 @@ class RunningCovar(object):
     nsave : int
         Depth of Moment storage. Moments computed from each chunk will be
         combined with Moments of similar statistical weight using the pairwise
-        combination algorithm described in :cite:`runningmoments-chan1982updating`.
+        combination algorithm described in :footcite:`chan1982updating`.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: runningmoments-
+    .. footbibliography::
     """
 
     # to get the Y mean, but this is currently not stored.
@@ -402,14 +399,11 @@ def running_covar(xx=True, xy=False, yy=False, remove_mean=False, symmetrize=Fal
     nsave : int
         Depth of Moment storage. Moments computed from each chunk will be
         combined with Moments of similar statistical weight using the pairwise
-        combination algorithm described in :cite:`running-covar-chan1982updating`.
+        combination algorithm described in :footcite:`chan1982updating`.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: running-covar-
+    .. footbibliography::
     """
     return RunningCovar(compute_XX=xx, compute_XY=xy, compute_YY=yy, sparse_mode=sparse_mode, modify_data=modify_data,
                         remove_mean=remove_mean, symmetrize=symmetrize,

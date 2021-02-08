@@ -213,8 +213,8 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
              dim: Optional[int] = None, blocksplit: bool = True, random_state=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
-    Implementation and ideas following :cite:`msmscore-noe2013variational` :cite:`msmscore-wu2020variational` and 
-    cross-validation :cite:`msmscore-mcgibbon2015variational`.
+    Implementation and ideas following :footcite:`noe2013variational` :footcite:`wu2020variational` and
+    cross-validation :footcite:`mcgibbon2015variational`.
 
     Divides the data into training and test data, fits a MSM using the training
     data using the parameters of this estimator, and scores is using the test
@@ -241,8 +241,8 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
         counting mode of count matrix estimator, if sliding the trajectory is split in a sliding window fashion.
         Supports 'sliding' and 'sample'.
     score_method : float or str, default=2
-        Available scores are based on the variational approach for Markov processes :cite:`msmscore-noe2013variational`
-        :cite:`msmscore-wu2020variational`, see :meth:`deeptime.decomposition.vamp_score` for available options.
+        Available scores are based on the variational approach for Markov processes :footcite:`noe2013variational`
+        :footcite:`wu2020variational`, see :meth:`deeptime.decomposition.vamp_score` for available options.
     blocksplit : bool, optional, default=True
         Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
         In case no blocksplitting is performed, individual dtrajs are used for training and validation. This means that
@@ -255,10 +255,7 @@ def score_cv(fit_fetch: Callable, dtrajs, lagtime, n=10, count_mode="sliding", s
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: msmscore-
+    .. footbibliography::
     """
     r = score_method
     dtrajs = ensure_dtraj_list(dtrajs)  # ensure format

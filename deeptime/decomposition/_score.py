@@ -17,17 +17,17 @@ def vamp_score(koopman_model, r: Union[float, str],
         The model to score.
     r : float or str
         The type of score to evaluate. Can by an floating point value greater or equal to 1 or 'E', yielding the
-        VAMP-r score or the VAMP-E score, respectively. :cite:`vampscore-wu2020variational`
+        VAMP-r score or the VAMP-E score, respectively. :footcite:`wu2020variational`
         Typical choices (also accepted as inputs) are:
 
         *  'VAMP1'  Sum of singular values of the half-weighted Koopman matrix.
                     If the model is reversible, this is equal to the sum of
-                    Koopman matrix eigenvalues, also called Rayleigh quotient :cite:`vampscore-wu2020variational`.
+                    Koopman matrix eigenvalues, also called Rayleigh quotient :footcite:`wu2020variational`.
         *  'VAMP2'  Sum of squared singular values of the half-weighted Koopman
-                    matrix :cite:`vampscore-wu2020variational`. If the model is reversible, this is
-                    equal to the kinetic variance :cite:`vampscore-noe2015kinetic`.
+                    matrix :footcite:`wu2020variational`. If the model is reversible, this is
+                    equal to the kinetic variance :footcite:`noe2015kinetic`.
         *  'VAMPE'  Approximation error of the estimated Koopman operator with respect to
-                    the true Koopman operator up to an additive constant :cite:`vampscore-wu2020variational` .
+                    the true Koopman operator up to an additive constant :footcite:`wu2020variational` .
 
     covariances_test : deeptime.covariance.CovarianceModel, optional, default=None
 
@@ -60,15 +60,12 @@ def vamp_score(koopman_model, r: Union[float, str],
     by 1. This is accounted for in this method, i.e., if :code:`koopman_model.cov.data_mean_removed` evaluates to
     `True`, the score is internally incremented by 1.
 
-    The VAMP-:math:`r` and VAMP-E scores are computed according to :cite:`vampscore-wu2020variational`,
+    The VAMP-:math:`r` and VAMP-E scores are computed according to :footcite:`wu2020variational`,
     Equation (33) and Equation (30), respectively.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: vampscore-
+    .. footbibliography::
     """
     if dim is not None:
         dim = min(koopman_model.koopman_matrix.shape[0], dim)

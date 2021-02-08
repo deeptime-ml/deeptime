@@ -154,7 +154,7 @@ def metastable_from_msm(msm, n_hidden_states: int,
                         separate_symbols=None, regularize: bool = True):
     r""" Makes an initial guess for an :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>` with
     discrete output model from an already existing MSM over observable states. The procedure is described in
-    :cite:`hmm-init-msm-noe2013projected` and uses PCCA+ :cite:`hmm-init-msm-roblitz2013fuzzy` for
+    :footcite:`noe2013projected` and uses PCCA+ :footcite:`roblitz2013fuzzy` for
     coarse-graining the transition matrix and obtaining membership assignments.
 
     Parameters
@@ -196,10 +196,7 @@ def metastable_from_msm(msm, n_hidden_states: int,
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: hmm-init-msm-
+    .. footbibliography::
     """
     from deeptime.markov._transition_matrix import stationary_distribution
     from deeptime.markov._transition_matrix import estimate_P
@@ -280,9 +277,9 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
     r"""Estimates an initial guess :class:`HMM <deeptime.markov.hmm.HiddenMarkovModel>` from given
     discrete trajectories.
 
-    Following the procedure described in :cite:`hmm-init-data-noe2013projected`: First
+    Following the procedure described in :footcite:`noe2013projected`: First
     a :class:`MSM <deeptime.markov.msm.MarkovStateModel>` is estimated, which is then subsequently
-    coarse-grained with PCCA+ :cite:`hmm-init-data-roblitz2013fuzzy`. After estimation of the MSM, this
+    coarse-grained with PCCA+ :footcite:`roblitz2013fuzzy`. After estimation of the MSM, this
     method calls :meth:`metastable_from_msm`.
 
     Parameters
@@ -366,10 +363,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: hmm-init-data-
+    .. footbibliography::
     """
     if mode not in metastable_from_data.VALID_MODES \
             + [m + "-regularized" for m in metastable_from_data.VALID_MODES]:

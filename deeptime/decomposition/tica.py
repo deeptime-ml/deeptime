@@ -20,7 +20,7 @@ class TICA(VAMP):
     construction of a Markov model. When the input data is the result of a
     Markov process (such as thermostatted molecular dynamics), TICA finds in
     fact an approximation to the eigenfunctions and eigenvalues of the
-    underlying Markov operator :cite:`tica-perez2013identification`.
+    underlying Markov operator :footcite:`perez2013identification`.
 
     It estimates a TICA transformation from *data*. The resulting model can be used
     to obtain eigenvalues, eigenvectors,
@@ -48,8 +48,8 @@ class TICA(VAMP):
         exceeds the fraction subspace variance. var_cutoff=1.0 means all numerically available dimensions
         (see epsilon) will be used, unless set by dim. Setting var_cutoff smaller than 1.0 is exclusive with dim.
     scaling: str or None, default='kinetic_map'
-        Can be set to :code:`None`, 'kinetic_map' (:cite:`tica-noe2015kinetic`),
-        or 'commute_map' (:cite:`tica-noe2016commute`). For more details see :attr:`scaling`.
+        Can be set to :code:`None`, 'kinetic_map' (:footcite:`noe2015kinetic`),
+        or 'commute_map' (:footcite:`noe2016commute`). For more details see :attr:`scaling`.
 
     Notes
     -----
@@ -65,7 +65,7 @@ class TICA(VAMP):
 
     where :math:`w` is a vector of weights for each time step. By default, these weights
     are all equal to one, but different weights are possible, like the re-weighting
-    to equilibrium described in :cite:`tica-wu2017variational`. Subsequently, the eigenvalue problem
+    to equilibrium described in :footcite:`wu2017variational`. Subsequently, the eigenvalue problem
 
     .. math:: C_{\tau} r_i = C_0 \lambda_i r_i,
 
@@ -83,10 +83,10 @@ class TICA(VAMP):
     Under the assumption of reversible dynamics and the limit of good statistics, the time-lagged autocovariance
     :math:`C_\tau` is symmetric. Due to finite data, this symmetry is explicitly enforced in the estimator.
 
-    TICA was originally introduced for signal processing in :cite:`tica-molgedey1994separation`. It was
+    TICA was originally introduced for signal processing in :footcite:`molgedey1994separation`. It was
     introduced to molecular dynamics and as a method for the construction
-    of Markov models in :cite:`tica-perez2013identification` and :cite:`tica-schwantes2013improvements`. It was shown 
-    in :cite:`tica-perez2013identification` that when applied
+    of Markov models in :footcite:`perez2013identification` and :footcite:`schwantes2013improvements`. It was shown
+    in :footcite:`perez2013identification` that when applied
     to molecular dynamics data, TICA is an approximation to the eigenvalues
     and eigenvectors of the true underlying dynamics.
 
@@ -118,10 +118,7 @@ class TICA(VAMP):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tica-
+    .. footbibliography::
     """
 
     def __init__(self, lagtime: Optional[int] = None, epsilon: float = 1e-6, dim: Optional[int] = None,
@@ -179,10 +176,10 @@ class TICA(VAMP):
 
         * None: unscaled.
         * 'kinetic_map': Eigenvectors will be scaled by eigenvalues. As a result, Euclidean
-          distances in the transformed data approximate kinetic distances :cite:`tica-noe2015kinetic`.
+          distances in the transformed data approximate kinetic distances :footcite:`noe2015kinetic`.
           This is a good choice when the data is further processed by clustering.
         * 'commute_map': Eigenvector i will be scaled by sqrt(timescale_i / 2). As a result,
-          Euclidean distances in the transformed data will approximate commute distances :cite:`tica-noe2016commute`.
+          Euclidean distances in the transformed data will approximate commute distances :footcite:`noe2016commute`.
 
         :getter: Yields the currently configured scaling.
         :setter: Sets a new scaling.

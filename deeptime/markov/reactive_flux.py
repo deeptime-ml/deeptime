@@ -30,7 +30,7 @@ class ReactiveFlux(Model):
     total transition rate or mean first passage time, and they can be coarse-grained onto a set discretization
     of the node set.
 
-    Fluxes can be computed using transition path theory - see :cite:`reactiveflux-metzner2009transition`
+    Fluxes can be computed using transition path theory - see :footcite:`metzner2009transition`
     and :func:`deeptime.markov.tools.tpt`.
 
     Parameters
@@ -61,10 +61,7 @@ class ReactiveFlux(Model):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: reactiveflux-
+    .. footbibliography::
     """
 
     def __init__(self, source_states, target_states, net_flux, stationary_distribution=None,
@@ -358,9 +355,9 @@ def compute_reactive_flux(transition_matrix: np.ndarray, source_states: Iterable
     -----
     The central object used in transition path theory is the forward and backward comittor function.
 
-    TPT (originally introduced in :cite:`computereactiveflux-weinan2006towards`) for continous systems has a
-    discrete version outlined in :cite:`computereactiveflux-metzner2009transition`. Here, we use the transition
-    matrix formulation described in :cite:`computereactiveflux-noe2009constructing`.
+    TPT (originally introduced in :footcite:`weinan2006towards`) for continous systems has a
+    discrete version outlined in :footcite:`metzner2009transition`. Here, we use the transition
+    matrix formulation described in :footcite:`noe2009constructing`.
 
     See also
     --------
@@ -368,10 +365,7 @@ def compute_reactive_flux(transition_matrix: np.ndarray, source_states: Iterable
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: computereactiveflux-
+    .. footbibliography::
     """
     import deeptime.markov.tools.analysis as msmana
 

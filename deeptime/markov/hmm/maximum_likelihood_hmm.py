@@ -19,7 +19,7 @@ class MaximumLikelihoodHMM(Estimator):
     """ Maximum likelihood Hidden Markov model (HMM) estimator.
 
     This class is used to fit a maximum-likelihood HMM to data. It uses an initial guess HMM with can be obtained with
-    one of the provided heuristics and then uses the Baum-Welch algorithm :cite:`hmm-est-baum1967inequality` to fit
+    one of the provided heuristics and then uses the Baum-Welch algorithm :footcite:`baum1967inequality` to fit
     the initial guess to provided data.
 
     The type of output model (gaussian or discrete)
@@ -69,10 +69,7 @@ class MaximumLikelihoodHMM(Estimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: hmm-est-
+    .. footbibliography::
     """
 
     _HMMModelStorage = collections.namedtuple('_HMMModelStorage', ['transition_matrix', 'output_model',

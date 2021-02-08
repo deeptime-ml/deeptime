@@ -179,14 +179,11 @@ class AMMOptimizerState(object):
 class AugmentedMSM(MarkovStateModel):
     r""" An augmented Markov state model.
 
-    Implementation following :cite:`amm-olsson2017combining`.
+    Implementation following :footcite:`olsson2017combining`.
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: amm-
+    .. footbibliography::
     """
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None, n_eigenvalues=None, ncv=None,
@@ -207,7 +204,7 @@ class AugmentedMSM(MarkovStateModel):
 
 
 class AugmentedMSMEstimator(_MSMBaseEstimator):
-    r""" Estimator for augmented Markov state models. :cite:`ammest-olsson2017combining`
+    r""" Estimator for augmented Markov state models. :footcite:`olsson2017combining`
     This estimator is based on expectation values from experiments.
     In case the experimental data is a time series matching a discrete time series, a convenience function
     :meth:`estimator_from_feature_trajectories` is offered.
@@ -239,10 +236,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: ammest-
+    .. footbibliography::
     """
 
     def __init__(self, expectations_by_state, experimental_measurements, experimental_measurement_weights,

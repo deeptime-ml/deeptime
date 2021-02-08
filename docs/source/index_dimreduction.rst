@@ -6,7 +6,7 @@ Dimension reduction
     :hidden:
     :maxdepth: 2
 
-    notebooks/tica
+    /notebooks/tica
     notebooks/vamp
     notebooks/kcca
     notebooks/dmd
@@ -51,7 +51,7 @@ All methods assume (approximate) Markovianity of the time series under lag-time 
       - Assumptions
       - Notes
 
-    * - `TICA <notebooks/tica.ipynb>`__ :cite:`ix-dimrx-molgedey1994separation` :cite:`ix-dimrx-naritomi2011slow`
+    * - `TICA <notebooks/tica.ipynb>`__ :footcite:`molgedey1994separation` :footcite:`naritomi2011slow`
       - Time series should be stationary with symmetric covariances (equivalently: reversible with detailed balance)
         and compact Koopman operator (guaranteed to be compact in stochastic systems).
       - * Based on variational principle
@@ -67,7 +67,7 @@ All methods assume (approximate) Markovianity of the time series under lag-time 
         * Is VAMP if system is reversible and ansatz library contains only the full state observable :math:`\Psi(x) = x`
         * Can deal with a large amount of frames due to online estimation of covariances
 
-    * - `VAMP <notebooks/vamp.ipynb>`__ :cite:`ix-dimrx-wu2020variational`
+    * - `VAMP <notebooks/vamp.ipynb>`__ :footcite:`wu2020variational`
       - Compact Koopman operator (guaranteed to be compact in stochastic systems)
       - * Based on variational principle
         * Is canonical correlation analysis (CCA) in time, i.e., time-lagged CCA (TCCA)
@@ -79,29 +79,29 @@ All methods assume (approximate) Markovianity of the time series under lag-time 
         * Uses ansatz library :math:`\Psi` of functions as basis
         * Can deal with a large amount of frames due to online estimation of covariances
 
-    * - `kernel VAMP / kernel CCA <notebooks/kcca.ipynb>`__ :cite:`ix-dimrx-bach2002kernel`
+    * - `kernel VAMP / kernel CCA <notebooks/kcca.ipynb>`__ :footcite:`bach2002kernel`
       - Compact Koopman operator (guaranteed to be compact in stochastic systems)
       - * kernelized version of VAMP with :math:`k(x, x') = \langle\Psi(x), \Psi(x')\rangle`
         * memory requirements grow quadratically with the number of frames
         * generalization of kernel EDMD to nonreversible dynamics
 
-    * - `DMD <notebooks/dmd.ipynb>`__ :cite:`ix-dimrx-schmid2010dynamic` :cite:`ix-dimrx-tu2013dynamic`
+    * - `DMD <notebooks/dmd.ipynb>`__ :footcite:`schmid2010dynamic` :footcite:`tu2013dynamic`
       -
       - * dual to TICA (DMD yields coefficients of eigenfunctions, TICA yields eigenfunctions)
         * not an online algorithm but better suited for very high-dimensional data with a lower number of frames
 
-    * - `EDMD <notebooks/edmd.ipynb>`__ :cite:`ix-dimrx-williams2015data`
+    * - `EDMD <notebooks/edmd.ipynb>`__ :footcite:`williams2015data`
       -
       - * Equivalent to VAMP under the VAMP-1 score
         * Uses an ansatz library :math:`\Psi`
         * not an online algorithm but better suited for very high-dimensional data with a lower number of frames
 
-    * - `kernel EDMD <notebooks/kedmd.ipynb>`__ :cite:`ix-dimrx-williams2016kernel`
+    * - `kernel EDMD <notebooks/kedmd.ipynb>`__ :footcite:`williams2016kernel`
       -
       - * kernelized version of EDMD with :math:`k(x, x') = \langle\Psi(x), \Psi(x')\rangle`
         * memory requirements grow quadratically with the number of frames
         * considering generator kernel EDMD, `SINDy <notebooks/sindy.ipynb>`__ arises as
-          special case :cite:`ix-dimrx-klus2020data`
+          special case :footcite:`klus2020data`
 
 It should be noted that, if available, scores evaluated under different lagtimes are **not** comparable because they
 relate to different operators.
@@ -184,8 +184,4 @@ larger `ncov`, the stability generally improves.
 
 .. rubric:: References
 
-.. bibliography:: /references.bib
-    :style: unsrt
-    :filter: docname in docnames
-    :keyprefix: ix-dimrx-
-
+.. footbibliography::

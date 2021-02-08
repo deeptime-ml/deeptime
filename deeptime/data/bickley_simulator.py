@@ -8,7 +8,7 @@ from ..util.parallel import handle_n_jobs
 
 class BickleyJet(object):
     r"""Implementation of the Bickley jet.
-    Based on :cite:`bickley-simulator-hadjighasem2016spectral`.
+    Based on :footcite:`hadjighasem2016spectral`.
 
     The parameters are set to
 
@@ -25,10 +25,7 @@ class BickleyJet(object):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: bickley-simulator-
+    .. footbibliography::
     """
 
     def __init__(self):

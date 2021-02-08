@@ -426,11 +426,11 @@ class TransitionCountEstimator(Estimator, Transformer):
           counting. This which can be shown to provide a likelihood that is the geometrical average
           over shifted subsamples of the trajectory, :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc.
           This geometrical average converges to the correct likelihood in the statistical limit
-          :cite:`counting-trendelkamp2015estimation`.
+          :footcite:`trendelkamp2015estimation`.
 
         * effective: Uses an estimate of the transition counts that are statistically uncorrelated. Recommended
           when used with a Bayesian MSM. A description of the estimation procedure
-          can be found in :cite:`counting-noe2015statistical`.
+          can be found in :footcite:`noe2015statistical`.
 
     Parameters
     ----------
@@ -446,7 +446,7 @@ class TransitionCountEstimator(Estimator, Transformer):
         * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
           likelihood that is the geometrical average over shifted subsamples of the trajectory,
           :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to
-          the correct likelihood in the statistical limit :cite:`counting-trendelkamp2015estimation`.
+          the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
         * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
           Recommended when estimating Bayesian MSMs.
     n_states : int, optional, default=None
@@ -464,10 +464,7 @@ class TransitionCountEstimator(Estimator, Transformer):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: counting-
+    .. footbibliography::
     """
 
     def __init__(self, lagtime: int, count_mode: str, n_states=None, sparse=False):

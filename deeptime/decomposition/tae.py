@@ -78,7 +78,7 @@ class TAEModel(Model, Transformer):
 
 
 class TAE(DLEstimator, Transformer):
-    r""" Time-lagged autoencoder :cite:`tae-wehmeyer2018timelagged`.
+    r""" Time-lagged autoencoder. :footcite:`wehmeyer2018timelagged`
 
     Parameters
     ----------
@@ -95,11 +95,7 @@ class TAE(DLEstimator, Transformer):
 
     References
     ----------
-    .. bibliography:: /references.bib
-        :style: unsrt
-        :filter: docname in docnames
-        :keyprefix: tae-
-
+    .. footbibliography::
     """
     _MUTABLE_INPUT_DATA = True
 
