@@ -57,7 +57,10 @@ class MarkovStateModel(Model):
 
     References
     ----------
-    .. footbibliography::
+    .. bibliography:: /references.bib
+        :style: unsrt
+        :filter: docname in docnames
+        :keyprefix: msm-
     """
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None,
@@ -583,8 +586,8 @@ class MarkovStateModel(Model):
         r"""Time-correlation for equilibrium experiment.
 
         In order to simulate a time-correlation experiment (e.g. fluorescence
-        correlation spectroscopy :footcite:`noe2011dynamical`, dynamical neutron
-        scattering :footcite:`lindner2013dynamic`, ...), first compute the mean values of your experimental
+        correlation spectroscopy :cite:`msm-noe2011dynamical`, dynamical neutron
+        scattering :cite:`msm-lindner2013dynamic`, ...), first compute the mean values of your experimental
         observable :math:`a` by MarkovStateModel state:
 
         .. math::
@@ -721,7 +724,7 @@ class MarkovStateModel(Model):
 
         Spectral densities are commonly used in spectroscopy. Dynamical
         fingerprints are a useful representation for computational
-        spectroscopy results and have been introduced in :footcite:`noe2011dynamical`.
+        spectroscopy results and have been introduced in :cite:`msm-noe2011dynamical`.
 
         References
         ----------
@@ -841,7 +844,7 @@ class MarkovStateModel(Model):
             Amplitudes for the relaxation experiment
 
         Spectral densities are commonly used in spectroscopy. Dynamical fingerprints are a useful representation
-        for computational spectroscopy results and have been introduced in :footcite:`noe2011dynamical`.
+        for computational spectroscopy results and have been introduced in :cite:`msm-noe2011dynamical`.
         """
         # input checking is done in low-level API
         # TODO: this could be improved. If we have already done an eigenvalue decomposition, we could provide it.
@@ -850,7 +853,7 @@ class MarkovStateModel(Model):
         return fr(self.transition_matrix, p0, a, tau=self.lagtime, k=k, ncv=ncv)
 
     def pcca(self, n_metastable_sets: int) -> PCCAModel:
-        r""" Runs PCCA+ :footcite:`roblitz2013fuzzy` to compute a metastable decomposition of
+        r""" Runs PCCA+ :cite:`msm-roblitz2013fuzzy` to compute a metastable decomposition of
         MarkovStateModel states.
 
         After calling this method you can access :func:`metastable_memberships`,
@@ -1057,7 +1060,7 @@ class MarkovStateModel(Model):
     ################################################################################
 
     def hmm(self, dtrajs, nhidden: int, return_estimator=False):
-        """Estimates a hidden Markov state model as described in :footcite:`noe2013projected`.
+        """Estimates a hidden Markov state model as described in :cite:`msm-noe2013projected`.
 
         Parameters
         ----------
@@ -1106,7 +1109,7 @@ class MarkovStateModel(Model):
     def score(self, dtrajs=None, r=2, dim=None):
         r""" Scores the MSM using the dtrajs using the variational approach for Markov processes.
 
-        Implemented according to :footcite:`noe2013variational` and :footcite:`wu2020variational`.
+        Implemented according to :cite:`msm-noe2013variational` and :cite:`msm-wu2020variational`.
 
         Currently only implemented using dense matrices - will be slow for large state spaces.
 
@@ -1119,16 +1122,16 @@ class MarkovStateModel(Model):
             Overwrite scoring method to be used if desired. Can be any float greater or equal 1 or 'E' for VAMP-r score
             or VAMP-E score, respectively.
 
-            Special cases :footcite:`noe2013variational` :footcite:`wu2020variational`:
+            Special cases :cite:`msm-noe2013variational` :cite:`msm-wu2020variational`:
 
             * 'VAMP1': Sum of singular values of the symmetrized transition matrix.
               If the MSM is reversible, this is equal to the sum of transition
-              matrix eigenvalues, also called Rayleigh quotient :footcite:`mcgibbon2015variational`.
+              matrix eigenvalues, also called Rayleigh quotient :cite:`msm-mcgibbon2015variational`.
             * 'VAMP2': Sum of squared singular values of the symmetrized  transition matrix
-              :footcite:`wu2020variational`. If the MSM is reversible, this is equal to the
-              kinetic variance :footcite:`noe2015kinetic`.
+              :cite:`msm-wu2020variational`. If the MSM is reversible, this is equal to the
+              kinetic variance :cite:`msm-noe2015kinetic`.
             * 'VAMPE': Approximation error of the estimated Koopman operator with respect to the true Koopman operator
-              up to an additive constant :footcite:`wu2020variational`.
+              up to an additive constant :cite:`msm-wu2020variational`.
         dim : int or None, optional, default=None
             The maximum number of eigenvalues or singular values used in the
             score. If set to None, all available eigenvalues will be used.

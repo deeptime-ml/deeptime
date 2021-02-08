@@ -250,7 +250,7 @@ class SINDy(Estimator):
 
     The i-th column of this matrix equation gives a differential equation for the
     i-th measurement variable (i-th column in :math:`X`). For more details see
-    :footcite:`sindy-brunton2016sindy`.
+    :footcite:`brunton2016sindy`.
 
     Parameters
     ----------
@@ -369,7 +369,7 @@ class STLSQ(LinearRegression):
     by iteratively performing least squares and masking out
     elements of the weight that are below a given threshold.
 
-    See this paper for more details :footcite:`sindy-stlsq-brunton2016sindy`.
+    See this paper for more details :footcite:`brunton2016sindy`.
 
     Parameters
     ----------

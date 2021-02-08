@@ -6,7 +6,7 @@ Dimension reduction
     :hidden:
     :maxdepth: 2
 
-    notebooks/tica
+    /notebooks/tica
     notebooks/vamp
     notebooks/kcca
     notebooks/dmd

@@ -14,12 +14,12 @@ In particular, the following methods are implemented:
     notebooks/vampnets
     notebooks/tae
 
-VAMPNets :cite:`ix-deepdimrx-mardt2018vampnets` belong to the family of Koopman methods and try to maximize
+VAMPNets :footcite:`mardt2018vampnets` belong to the family of Koopman methods and try to maximize
 a variational score which is described, e.g., `here <notebooks/vamp.ipynb#Scoring>`__. They can be used
 to find transformations of the observed data such that the estimated Koopman operator is particularly close
 to the real and underlying Koopman operator.
 
-Time-lagged autoencoders :cite:`ix-deepdimrx-wehmeyer2018timelagged` on the other hand can also to some degree
+Time-lagged autoencoders :footcite:`wehmeyer2018timelagged` on the other hand can also to some degree
 be related to Koopman theory (see the reference for details), but at their core try to learn a mapping of
 the input data to a latent code which can then be transformed back to the next point in time, i.e., they try to find
 mappings :math:`E: \mathbb{R}^N \to\mathbb{R}^n` and :math:`D: \mathbb{R}^n\to\mathbb{R}^N` with :math:`n < N`
@@ -27,8 +27,4 @@ such that :math:`x_{t+\tau}\approx (D\circ E)(x_t)`.
 
 .. rubric:: References
 
-.. bibliography:: /references.bib
-    :style: unsrt
-    :filter: docname in docnames
-    :keyprefix: ix-deepdimrx-
-
+.. footbibliography::

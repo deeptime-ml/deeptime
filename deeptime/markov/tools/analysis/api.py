@@ -1098,7 +1098,7 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
 
 
 def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
-    r"""Dynamical fingerprint for relaxation experiment :footcite:`noe2011dynamical`.
+    r"""Dynamical fingerprint for relaxation experiment. :footcite:`noe2011dynamical`
 
     The dynamical fingerprint is given by the implied time-scale
     spectrum together with the corresponding amplitudes.
@@ -1241,7 +1241,7 @@ def expectation(T, a, mu=None):
 
 
 def correlation(T, obs1, obs2=None, times=(1,), k=None, ncv=None):
-    r"""Time-correlation for equilibrium experiment :footcite:`noe2011dynamical`.
+    r"""Time-correlation for equilibrium experiment. :footcite:`noe2011dynamical`
 
     Parameters
     ----------
@@ -1331,7 +1331,7 @@ def correlation(T, obs1, obs2=None, times=(1,), k=None, ncv=None):
 
 
 def relaxation(T, p0, obs, times=(1,), k=None):
-    r"""Relaxation experiment :footcite:`noe2011dynamical`.
+    r"""Relaxation experiment. :footcite:`noe2011dynamical`
 
     The relaxation experiment describes the time-evolution
     of an expectation value starting in a non-equilibrium
@@ -1426,8 +1426,8 @@ def _pcca_object(T, m):
 
 
 def pcca_memberships(T, m):
-    r"""Compute meta-stable sets using PCCA++ :footcite:`roblitz2013fuzzy` and return the
-    membership of all states to these sets.
+    r"""Compute meta-stable sets using PCCA++. :footcite:`roblitz2013fuzzy`
+    Returns the membership of all states to these sets.
 
     Parameters
     ----------
