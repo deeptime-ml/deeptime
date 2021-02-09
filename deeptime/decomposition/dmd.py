@@ -373,8 +373,8 @@ class KernelEDMD(Estimator):
         self : KernelEDMD
             Reference to self.
         """
-        gram_0 = self.kernel.gram(data[0]) # G_XX
-        gram_1 = self.kernel.apply(*data) # G_XY
+        gram_0 = self.kernel.gram(data[0])  # G_XX
+        gram_1 = self.kernel.apply(*data)  # G_XY
 
         if self.epsilon > 0:
             reg = self.epsilon * np.eye(gram_0.shape[0])
