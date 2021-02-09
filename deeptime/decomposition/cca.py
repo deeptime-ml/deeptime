@@ -3,12 +3,13 @@ from typing import Optional, Tuple
 import numpy as np
 import scipy
 
-from ..base import Model, Estimator
-from ..numeric import sort_eigs
+from ..base import Estimator
+from ..decomposition import KoopmanModel
 from ..kernels import Kernel
+from ..numeric import sort_eigs
 
 
-class KernelCCAModel(Model):
+class KernelCCAModel(KoopmanModel):
     r""" The model produced by the :class:`KernelCCA` estimator.
 
     Parameters
@@ -23,10 +24,19 @@ class KernelCCAModel(Model):
     KernelCCA
     """
 
-    def __init__(self, eigenvalues: np.ndarray, eigenvectors: np.ndarray):
-        super().__init__()
+    def __init__(self, data, kernel: Kernel, eigenvalues: np.ndarray, eigenvectors: np.ndarray):
+        super().__init__(eigenvectors @ np.diag(eigenvalues),
+                         instantaneous_obs=lambda x: self.kernel.apply(x, self._data),
+                         timelagged_obs=lambda x: self.kernel.apply(x, self._data))
+        self._kernel = kernel
         self._eigenvalues = eigenvalues
         self._eigenvectors = eigenvectors
+        self._data = data
+
+    @property
+    def kernel(self) -> Kernel:
+        r""" The kernel that was used for estimation. """
+        return self._kernel
 
     @property
     def eigenvalues(self) -> np.ndarray:
@@ -35,6 +45,9 @@ class KernelCCAModel(Model):
     @property
     def eigenvectors(self) -> np.ndarray:
         return self._eigenvectors
+
+    def transform(self, data: np.ndarray, **kw):
+        return self.instantaneous_obs(data) @ self.eigenvectors
 
 
 class KernelCCA(Estimator):
@@ -100,7 +113,7 @@ class KernelCCA(Estimator):
             eigenvectors = eigenvectors[:, :self.n_eigs]
             eigenvalues = eigenvalues[:self.n_eigs]
 
-        self._model = KernelCCAModel(eigenvalues, eigenvectors)
+        self._model = KernelCCAModel(data[0], self.kernel, eigenvalues, eigenvectors)
         return self
 
     def fetch_model(self) -> Optional[KernelCCAModel]:

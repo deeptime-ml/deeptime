@@ -1,13 +1,12 @@
-from typing import Tuple, Optional, Callable, Union, List
+from typing import Tuple, Optional, Callable
 
 import numpy as np
 import scipy
 
+from .koopman import KoopmanModel
 from ..base import Estimator, Model, Transformer
 from ..kernels import Kernel
 from ..numeric import sort_eigs, eigs
-
-from .koopman import KoopmanModel
 
 
 class DMDModel(Model, Transformer):
@@ -160,7 +159,7 @@ class DMD(Estimator, Transformer):
         return self._model
 
     def transform(self, data, **kwargs):
-        r""" Predicts the propagated data given input.
+        r""" See :meth:`DMDModel.transform`.
 
         Parameters
         ----------
@@ -202,37 +201,28 @@ class EDMDModel(KoopmanModel):
         self.modes = modes
         self.n_eigenvalues = len(self.eigenvalues)
 
-    def forward(self, trajectory: np.ndarray, propagate: bool = True) -> np.ndarray:
-        r""" Applies the estimated forward transform to data by first applying the basis and then the operator, i.e.,
+    def transform(self, data: np.ndarray, **kw):
+        r"""Transforms the data by first applying the basis and then the estimated modes, i.e.,
 
         .. math::
 
-            X \mapsto \Psi(X) K,
+            X \mapsto \Psi(X)\varphi
 
-        where :math:`X` is the input data, :math:`\Psi` the basis transform, and :math:`K` the operator. Optionally
-        does not apply :math:`K`.
+        where :math:`X` is the input data, :math:`\Psi` the basis transform, and :math:`\varphi` the Koopman operator's
 
         Parameters
         ----------
-        trajectory : (T, n) ndarray
+        data : (T, n) ndarray
             Input data
-        propagate : bool, optional, default=True
-            Whether to propagate or just
 
         Returns
         -------
         transformed : (T, n) ndarray
             The forward transform of the input data.
         """
-        if propagate and self.n_eigenvalues == self.modes.shape[1]:
-            return super(EDMDModel, self).forward(trajectory, propagate=True)
-
         modes = self.modes[:self.n_eigenvalues]
-        out = self.instantaneous_obs(trajectory)
-        out = out @ modes.T
-        if propagate:
-            out = out @ np.diag(self.eigenvalues[:self.n_eigenvalues]) @ modes
-        return out
+        out = self.instantaneous_obs(data)
+        return out @ modes.T
 
 
 class EDMD(Estimator):
@@ -304,7 +294,7 @@ class EDMD(Estimator):
         return self
 
 
-class KernelEDMDModel(Model):
+class KernelEDMDModel(KoopmanModel):
     r""" The kEDMD model containing eigenvalues and eigenfunctions evaluated in the instantaneous data.
 
     Parameters
@@ -322,15 +312,16 @@ class KernelEDMDModel(Model):
     """
 
     def __init__(self, data: np.ndarray, eigenvalues: np.ndarray, eigenvectors: np.ndarray, kernel: Kernel):
-        super().__init__()
+        super().__init__(eigenvectors @ np.diag(eigenvalues),
+                         instantaneous_obs=lambda x: self.kernel.apply(x, self.data),
+                         timelagged_obs=lambda x: self.kernel.apply(x, self.data))
         self.data = data
         self.eigenvalues = eigenvalues
         self.eigenvectors = eigenvectors
         self.kernel = kernel
-    
-    def transform(self, x):
-        gram_1 = self.kernel.apply(x, self.data)
-        return gram_1 @ self.eigenvectors
+
+    def transform(self, data: np.ndarray, propagate=True):
+        return self.instantaneous_obs(data) @ self.eigenvectors
 
 
 class KernelEDMD(Estimator):
@@ -382,17 +373,15 @@ class KernelEDMD(Estimator):
         self : KernelEDMD
             Reference to self.
         """
-        gram_0 = self.kernel.gram(data[0]) # G_XX
-        gram_1 = self.kernel.apply(*data) # G_XY
+        gram_0 = self.kernel.gram(data[0])  # G_XX
+        gram_1 = self.kernel.apply(*data)  # G_XY
 
         if self.epsilon > 0:
             reg = self.epsilon * np.eye(gram_0.shape[0])
         else:
             reg = 0
-        A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1.T # Koopman
+        A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1.T  # Koopman operator
         eigenvalues, eigenvectors = eigs(A, n_eigs=self.n_eigs)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
-        
         self._model = KernelEDMDModel(data[0], eigenvalues, eigenvectors, self.kernel)
-
         return self
