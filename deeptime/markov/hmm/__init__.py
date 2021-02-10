@@ -85,14 +85,23 @@ sampling to sample from Bayesian hidden Markov model posteriors.
     BayesianHMM
     BayesianHMMPosterior
 
+Utilities
+---------
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    viterbi
+
 References
 ----------
 .. footbibliography::
 """
 
-from .hidden_markov_model import HiddenMarkovModel
-from .maximum_likelihood_hmm import MaximumLikelihoodHMM
-from .bayesian_hmm import BayesianHMM, BayesianHMMPosterior
-from .output_model import OutputModel, DiscreteOutputModel, GaussianOutputModel
+from ._hidden_markov_model import HiddenMarkovModel, viterbi
+from ._maximum_likelihood_hmm import MaximumLikelihoodHMM
+from ._bayesian_hmm import BayesianHMM, BayesianHMMPosterior
+from ._output_model import OutputModel, DiscreteOutputModel, GaussianOutputModel
 
 from . import init

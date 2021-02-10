@@ -36,11 +36,11 @@ Augmented markov models (AMMs)
 """
 import logging
 
-from .markov_state_model import MarkovStateModel, MarkovStateModelCollection
-from .maximum_likelihood_msm import MaximumLikelihoodMSM
-from .bayesian_msm import BayesianMSM, BayesianPosterior
-from .koopman_reweighted_msm import KoopmanReweightedMSM, OOMReweightedMSM
-from .augmented_msm import AugmentedMSMEstimator, AugmentedMSM, AMMOptimizerState
+from ._markov_state_model import MarkovStateModel, MarkovStateModelCollection
+from ._maximum_likelihood_msm import MaximumLikelihoodMSM
+from ._bayesian_msm import BayesianMSM, BayesianPosterior
+from ._koopman_reweighted_msm import KoopmanReweightedMSM, OOMReweightedMSM
+from ._augmented_msm import AugmentedMSMEstimator, AugmentedMSM, AMMOptimizerState
 from ...util.stats import QuantityStatistics
 
 # set up null handler

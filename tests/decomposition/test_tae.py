@@ -4,7 +4,7 @@ from numpy.testing import assert_array_almost_equal
 pytest.importorskip("torch")
 
 from deeptime.covariance import Covariance
-from deeptime.decomposition.tae import TVAEEncoder
+from deeptime.decomposition.deep import TVAEEncoder
 
 import torch.nn as nn
 import numpy as np
@@ -35,13 +35,13 @@ def two_state_hmm():
 def setup_tae():
     enc = MLP([2, 1], initial_batchnorm=False, nonlinearity=nn.Tanh)
     dec = MLP([1, 2], initial_batchnorm=False, nonlinearity=nn.Tanh)
-    return dt.decomposition.TAE(enc, dec, learning_rate=1e-3)
+    return dt.decomposition.deep.TAE(enc, dec, learning_rate=1e-3)
 
 
 def setup_tvae():
     enc = TVAEEncoder([2, 1], nonlinearity=nn.ReLU)
     dec = MLP([1, 2], initial_batchnorm=False, nonlinearity=nn.ReLU)
-    return dt.decomposition.TVAE(enc, dec, learning_rate=1e-3)
+    return dt.decomposition.deep.TVAE(enc, dec, learning_rate=1e-3)
 
 
 @pytest.mark.parametrize('model', ['tae', 'tvae'])

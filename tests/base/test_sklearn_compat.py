@@ -1,16 +1,16 @@
 import unittest
 import warnings
 
+from deeptime.clustering import Kmeans
+from deeptime.decomposition import TICA
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import MaximumLikelihoodMSM
+
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     import mdshare
 import numpy as np
 from sklearn.pipeline import Pipeline
-
-import deeptime.clustering.kmeans as kmeans
-import deeptime.decomposition.tica as tica
-import deeptime.markov.msm as msm
-from deeptime.markov import TransitionCountEstimator
 
 
 class TestSkLearnCompat(unittest.TestCase):
@@ -27,13 +27,13 @@ class TestSkLearnCompat(unittest.TestCase):
             transition_matrix = fh['transition_matrix']
 
         pipeline = Pipeline(steps=[
-            ('tica', tica.TICA(dim=1, lagtime=1)),
-            ('cluster', kmeans.Kmeans(n_clusters=2, max_iter=500)),
+            ('tica', TICA(dim=1, lagtime=1)),
+            ('cluster', Kmeans(n_clusters=2, max_iter=500)),
             ('counts', TransitionCountEstimator(lagtime=1, count_mode="sliding"))
         ])
         pipeline.fit(data)
         counts = pipeline[-1].fetch_model().submodel_largest()
-        mlmsm = msm.MaximumLikelihoodMSM().fit(counts).fetch_model()
+        mlmsm = MaximumLikelihoodMSM().fit(counts).fetch_model()
         P = mlmsm.pcca(2).coarse_grained_transition_matrix
         mindist = min(np.linalg.norm(P - transition_matrix), np.linalg.norm(P - transition_matrix.T))
         assert mindist < 0.05

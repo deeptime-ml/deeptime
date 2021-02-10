@@ -43,6 +43,6 @@ Utilities
     moments_block
 """
 
-from .util.moments import moments_XX, moments_XXXY, moments_block, covar, covars
-from .covariance import Covariance, CovarianceModel, WhiteningTransform
-from .covariance import KoopmanWeightingEstimator, KoopmanWeightingModel
+from .util import moments_XX, moments_XXXY, moments_block, covar, covars
+from ._covariance import Covariance, CovarianceModel, WhiteningTransform
+from ._covariance import KoopmanWeightingEstimator, KoopmanWeightingModel

@@ -5,8 +5,7 @@ import pytest
 
 import deeptime
 from deeptime.markov import TransitionCountEstimator
-from deeptime.markov.msm import MaximumLikelihoodMSM
-from deeptime.markov.msm.augmented_msm import AugmentedMSMEstimator
+from deeptime.markov.msm import MaximumLikelihoodMSM, AugmentedMSMEstimator
 from tests.markov.msm.util import _make_reference_data, MLMSM_PARAMS, MLMSM_IDS, AMM_IDS, AMM_PARAMS
 
 
@@ -71,7 +70,7 @@ def estimate_markov_model(dtrajs, lag, **kw):
 
 @pytest.fixture(scope="module")
 def double_well():
-    dtraj = deeptime.data.datasets.double_well_discrete().dtraj
+    dtraj = deeptime.data.double_well_discrete().dtraj
     nu = 1. * np.bincount(dtraj)
     return DoubleWellScenario(dtraj=dtraj, lagtime=10, stationary_distribution=nu / nu.sum(), n_states=66,
                               selected_count_fraction=1.)

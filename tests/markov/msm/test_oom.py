@@ -10,11 +10,8 @@ import pytest
 import scipy.linalg as scl
 import scipy.sparse
 
-from deeptime.markov import score_cv, sample
-from deeptime.markov.msm import MarkovStateModel
-from deeptime.markov.msm.koopman_reweighted_msm import OOMReweightedMSM
-from deeptime.markov.sample import compute_index_states, indices_by_sequence
-from deeptime.markov.util import count_states
+from deeptime.markov import score_cv, sample, count_states
+from deeptime.markov.msm import MarkovStateModel, OOMReweightedMSM
 from deeptime.numeric import sort_eigs
 
 
@@ -508,7 +505,7 @@ def test_fingerprint_relaxation(oom_msm_scenario):
 def test_active_state_indices(oom_msm_scenario):
     for msm in oom_msm_scenario.msms:
         dtrajs_proj = msm.count_model.transform_discrete_trajectories_to_submodel(oom_msm_scenario.dtrajs)
-        indices = compute_index_states(dtrajs_proj)
+        indices = sample.compute_index_states(dtrajs_proj)
         np.testing.assert_equal(len(indices), msm.n_states)
         hist = count_states(oom_msm_scenario.dtrajs)
         for state in range(msm.n_states):
@@ -519,10 +516,10 @@ def test_active_state_indices(oom_msm_scenario):
 def test_generate_trajectory(oom_msm_scenario):
     for msm in oom_msm_scenario.msms:
         dtrajs_proj = msm.count_model.transform_discrete_trajectories_to_submodel(oom_msm_scenario.dtrajs)
-        indices = compute_index_states(dtrajs_proj)
+        indices = sample.compute_index_states(dtrajs_proj)
 
         traj = msm.simulate(10)
-        ix = indices_by_sequence(indices, traj)
+        ix = sample.indices_by_sequence(indices, traj)
         np.testing.assert_equal(ix.shape, (10, 2))
 
 

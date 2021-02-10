@@ -39,8 +39,8 @@ Adding a new metric
     MetricRegistry
 """
 
-from .metric import metrics, MetricRegistry
+from ._metric import metrics, MetricRegistry
 from ._clustering_bindings import Metric
-from .kmeans import Kmeans, MiniBatchKmeans, KMeansModel
-from .regspace import RegularSpace
-from .cluster_model import ClusterModel
+from ._kmeans import Kmeans, MiniBatchKmeans, KMeansModel
+from ._regspace import RegularSpace
+from ._cluster_model import ClusterModel

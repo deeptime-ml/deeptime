@@ -7,7 +7,7 @@ r"""Transition matrix sampling for non-reversible stochastic matrices.
 import numpy as np
 
 
-class SamplerNonRev(object):
+class SamplerNonRev:
     def __init__(self, Z, seed: int = -1):
         """Posterior counts"""
         self.Z = Z

@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from deeptime.covariance.covariance import Covariance
+from deeptime.covariance import Covariance
 
 __author__ = 'noe, clonker'
 

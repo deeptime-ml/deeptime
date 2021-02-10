@@ -1,6 +1,6 @@
 import numpy as np
 
-from deeptime.markov.util import compute_connected_sets, closed_sets, is_connected
+from ._util import compute_connected_sets, closed_sets, is_connected
 
 
 def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=1e-8, mincount_connectivity=0):
@@ -62,7 +62,7 @@ def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=
 
 
 def transition_matrix_partial_rev(C, P, S, maxiter=1000000, maxerr=1e-8):
-    """Maximum likelihood estimation of transition matrix which is reversible on parts
+    r"""Maximum likelihood estimation of transition matrix which is reversible on parts
 
     Partially-reversible estimation of transition matrix. Maximizes the likelihood:
 

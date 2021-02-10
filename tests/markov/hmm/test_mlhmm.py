@@ -6,12 +6,12 @@ import pytest
 import deeptime.markov.hmm._hmm_bindings as _bindings
 
 from deeptime.markov.hmm import init, BayesianHMM
-from deeptime.data.double_well_dataset import DoubleWellDiscrete
+from deeptime.data import DoubleWellDiscrete
 from deeptime.markov.hmm import MaximumLikelihoodHMM
-from deeptime.markov.hmm.hidden_markov_model import viterbi, HiddenMarkovModel
-from deeptime.markov.hmm.output_model import DiscreteOutputModel
+from deeptime.markov.hmm import viterbi, HiddenMarkovModel
+from deeptime.markov.hmm import DiscreteOutputModel
 from deeptime.markov.msm import MarkovStateModel
-from deeptime.markov.util import count_states
+from deeptime.markov import count_states
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 from tests.util import assert_array_not_equal
 
@@ -483,10 +483,10 @@ class TestMLHMM(unittest.TestCase):
     # STATISTICS, SAMPLING
     # ---------------------------------
     def test_observable_state_indices(self):
-        from deeptime.markov.sample import compute_index_states
+        from deeptime.markov import sample
 
         hmsm = self.hmm_lag10_largest
-        I = compute_index_states(self.dtrajs, subset=hmsm.observation_symbols)
+        I = sample.compute_index_states(self.dtrajs, subset=hmsm.observation_symbols)
         # I = hmsm.observable_state_indexes
         np.testing.assert_equal(len(I), hmsm.n_observation_states)
         # compare to histogram

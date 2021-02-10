@@ -2,7 +2,7 @@ import numpy as np
 from numpy.testing import assert_equal
 
 import deeptime
-from deeptime.data.pbf_simulator import PBFSimulator
+from deeptime.data import PBFSimulator
 
 
 def test_pbf_sanity():

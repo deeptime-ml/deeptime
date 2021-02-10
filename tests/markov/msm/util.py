@@ -3,8 +3,7 @@ import functools
 import deeptime
 from deeptime.markov import TransitionCountEstimator
 
-from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
-from deeptime.markov.msm.augmented_msm import AugmentedMSM, AugmentedMSMEstimator
+from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, AugmentedMSM, AugmentedMSMEstimator
 import numpy as np
 
 MLMSM_PARAMS = [("MLMSM", True, False, False), ("MLMSM", True, True, False), ("MLMSM", False, False, False),

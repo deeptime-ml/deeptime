@@ -3,8 +3,7 @@ import pytest
 from numpy.testing import assert_equal, assert_almost_equal, assert_raises
 
 import deeptime as dt
-from deeptime.kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel
-from deeptime.kernels.kernels import PolynomialKernel
+from deeptime.kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel, PolynomialKernel
 
 
 @pytest.fixture

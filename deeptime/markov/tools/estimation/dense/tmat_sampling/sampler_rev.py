@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class SamplerRev(object):
+class SamplerRev:
     def __init__(self, C, P0=None, seed: int = -1):
         from deeptime.markov.tools.estimation import transition_matrix as tmatrix
         from deeptime.markov.tools.analysis import stationary_distribution

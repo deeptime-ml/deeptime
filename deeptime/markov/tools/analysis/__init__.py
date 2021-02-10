@@ -62,6 +62,7 @@ Committors and PCCA
 
    committor - Forward and backward committor
    pcca_memberships - Perron cluster center analysis
+   hitting_probability
 
 Fingerprints
 ============
@@ -91,4 +92,11 @@ Sensitivity analysis
 
 """
 
-from .api import *
+from ._api import is_transition_matrix, is_rate_matrix, is_connected, is_reversible
+from ._api import stationary_distribution, eigenvalues, eigenvectors, rdl_decomposition, timescales
+from ._api import expected_counts, expected_counts_stationary
+from ._api import mfpt
+from ._api import committor, pcca_memberships, hitting_probability
+from ._api import fingerprint_correlation, fingerprint_relaxation, expectation, correlation, relaxation
+from ._api import stationary_distribution_sensitivity, eigenvalue_sensitivity, eigenvector_sensitivity, \
+    timescale_sensitivity, mfpt_sensitivity, committor_sensitivity, expectation_sensitivity

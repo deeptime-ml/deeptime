@@ -9,8 +9,7 @@ from numpy.testing import assert_array_almost_equal, assert_equal
 
 from deeptime.data import birth_death_chain
 from deeptime.markov import TransitionCountEstimator
-from deeptime.markov.msm import MarkovStateModel
-from deeptime.markov.msm.augmented_msm import AugmentedMSMEstimator
+from deeptime.markov.msm import MarkovStateModel, AugmentedMSMEstimator
 
 
 def test_amm_sanity(fixed_seed):

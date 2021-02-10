@@ -2,7 +2,7 @@ import numpy as np
 import scipy.linalg as scl
 import scipy.sparse
 
-from deeptime.numeric.eigen import sort_eigs
+from deeptime.numeric import sort_eigs
 
 __all__ = ['bootstrapping_count_matrix', 'bootstrapping_dtrajs', 'twostep_count_matrix', 'rank_decision',
            'oom_components', 'equilibrium_transition_matrix']

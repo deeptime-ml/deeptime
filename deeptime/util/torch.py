@@ -91,7 +91,7 @@ class MLP(nn.Module):
         return self._sequential(inputs)
 
 
-class CheckpointManager(object):
+class CheckpointManager:
     r""" A checkpoint manager for pytorch models. It can keep track of a metric, save the best model according to
     that metric, and prune too old checkpoints. """
 
@@ -201,7 +201,7 @@ class CheckpointManager(object):
             steps.remove(oldest)
 
 
-class Stats(object):
+class Stats:
     r""" Object that collects training statistics in a certain group. This can be used to track, e.g., loss values
     and validation values.
 

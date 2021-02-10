@@ -112,7 +112,7 @@ def bootstrap_counts(dtrajs, lagtime, corrlength=None):
     nsample = int(Ltot / corrlength)
 
     # determine number of states n
-    from deeptime.markov.util import number_of_states
+    from deeptime.markov import number_of_states
     n = number_of_states(dtrajs)
 
     # assigning trajectory sampling weights

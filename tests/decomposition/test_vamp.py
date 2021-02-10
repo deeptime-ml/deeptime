@@ -8,9 +8,8 @@ import numpy as np
 import pytest
 
 from deeptime.covariance import CovarianceModel
-from deeptime.data.util import timeshifted_split
-from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel
-from deeptime.decomposition.vamp import VAMP
+from deeptime.data import timeshifted_split
+from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel, VAMP
 from deeptime.markov._base import cvsplit_dtrajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 
@@ -348,7 +347,7 @@ class TestVAMPWithEdgeCaseData(unittest.TestCase):
         assert_allclose_ignore_phase(vamp.backward(x, propagate=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
-        from deeptime.numeric.eigen import ZeroRankError
+        from deeptime.numeric import ZeroRankError
         with self.assertRaises(ZeroRankError):
             print(VAMP(lagtime=1).fit(np.ones((10, 2))).fetch_model().singular_values)
         with self.assertRaises(ZeroRankError):

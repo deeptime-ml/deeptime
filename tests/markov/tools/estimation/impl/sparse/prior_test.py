@@ -12,7 +12,7 @@ from scipy.sparse import csr_matrix
 
 from deeptime.markov.tools.estimation.sparse import prior
 
-from deeptime.numeric.utils import allclose_sparse
+from deeptime.numeric import allclose_sparse
 
 
 class TestPrior(unittest.TestCase):

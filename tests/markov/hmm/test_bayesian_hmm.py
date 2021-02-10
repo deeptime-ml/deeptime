@@ -1,12 +1,11 @@
 import unittest
 
 import numpy as np
-import deeptime
-
-from deeptime.data import datasets
-from deeptime.markov.hmm import MaximumLikelihoodHMM
-from deeptime.markov.hmm.bayesian_hmm import BayesianHMM, BayesianHMMPosterior
 from deeptime.markov.hmm._hmm_bindings.util import count_matrix
+
+import deeptime
+from deeptime.data import double_well_discrete
+from deeptime.markov.hmm import MaximumLikelihoodHMM, BayesianHMM, BayesianHMMPosterior
 from deeptime.util.stats import confidence_interval
 from deeptime.util.types import ensure_dtraj_list
 
@@ -16,7 +15,7 @@ class TestBHMM(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # load observations
-        obs = datasets.double_well_discrete().dtraj
+        obs = double_well_discrete().dtraj
 
         # hidden states
         cls.n_states = 2
@@ -265,9 +264,9 @@ class TestBHMM(unittest.TestCase):
     def test_submodel_simple(self):
         # sanity check for submodel;
         dtrj = np.array([1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0,
-                0, 2, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
-                1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
-                0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])
+                         0, 2, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
+                         1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
+                         0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])
 
         h = BayesianHMM.default(dtrj, n_hidden_states=3, lagtime=2).fit(dtrj).fetch_model()
         hs = h.submodel_largest(directed=True, connectivity_threshold=5, observe_nonempty=True, dtrajs=dtrj)
@@ -296,7 +295,7 @@ class TestBHMMPathological(unittest.TestCase):
     def test_2state_nonrev_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
         init_hmm = deeptime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
-                                                                        regularize=False)
+                                                                          regularize=False)
         mle = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
         bhmm = BayesianHMM(mle, reversible=False, n_samples=2000).fit(obs).fetch_model()
         tmatrix_samples = np.array([s.transition_model.transition_matrix for s in bhmm])
@@ -307,19 +306,20 @@ class TestBHMMPathological(unittest.TestCase):
     def test_2state_rev_2step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0], dtype=int)
         init_hmm = deeptime.markov.hmm.init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1,
-                                                                        regularize=False)
+                                                                          regularize=False)
         mle = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
         bhmm = BayesianHMM(mle, reversible=False, n_samples=100).fit(obs).fetch_model()
         tmatrix_samples = np.array([s.transition_model.transition_matrix for s in bhmm])
         std = tmatrix_samples.std(axis=0)
         assert np.all(std > 0)
 
+
 class TestBHMMSpecialCases(unittest.TestCase):
 
     def test_separate_states(self):
         dtrajs = [np.array([0, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1]),
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
-        hmm_bayes = BayesianHMM.default(dtrajs, n_hidden_states=3, lagtime=1, separate=[0], n_samples=100)\
+        hmm_bayes = BayesianHMM.default(dtrajs, n_hidden_states=3, lagtime=1, separate=[0], n_samples=100) \
             .fit(dtrajs).fetch_model()
         # we expect zeros in all samples at the following indexes:
         pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))

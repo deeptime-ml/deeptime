@@ -4,8 +4,7 @@ import scipy.sparse as sp
 from numpy.testing import assert_, assert_raises, assert_array_almost_equal, assert_almost_equal, assert_equal
 
 from deeptime.numeric import is_diagonal_matrix, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
-    eig_corr, is_square_matrix
-from deeptime.numeric.utils import allclose_sparse
+    eig_corr, is_square_matrix, allclose_sparse
 
 
 def test_is_diagonal_matrix():
