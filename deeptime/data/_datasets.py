@@ -248,7 +248,7 @@ def bickley_jet(n_particles: int, n_jobs=None):
     return BickleyJetDataset(traj_reshaped)
 
 
-def birth_death_chain(q, p):
+def birth_death_chain(q, p, sparse=False):
     r""" Generates a birth and death chain simulator from annihilation and creation probabilities `q` and `p`.
 
     A general birth and death chain on a d-dimensional state space has the transition matrix
@@ -274,6 +274,8 @@ def birth_death_chain(q, p):
         Annihilation probabilities for transition from i to i-1.
     p : array_like
         Creation probabilities for transition from i to i+1.
+    sparse : bool, optional, default=False
+        Whether to use sparse matrices.
 
     Returns
     -------
@@ -281,7 +283,7 @@ def birth_death_chain(q, p):
         The chain.
     """
     from ._birth_death_chain import BirthDeathChain
-    return BirthDeathChain(q, p)
+    return BirthDeathChain(q, p, sparse=sparse)
 
 
 def tmatrix_metropolis1d(energies, d=1.0):

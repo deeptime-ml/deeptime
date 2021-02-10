@@ -23,9 +23,11 @@ class BirthDeathChain:
         Annihilation probabilities for transition from i to i-1.
     p : array-like
         Creation probabilities for transition from i to i+1.
+    sparse : bool, optional, default=False
+        Whether sparse matrices are used.
     """
 
-    def __init__(self, q, p):
+    def __init__(self, q, p, sparse: bool = False):
         if q[0] != 0.0:
             raise ValueError('Probability q[0] must be zero')
         if p[-1] != 0.0:
@@ -36,6 +38,7 @@ class BirthDeathChain:
         self.p = p
         self.r = 1 - self.q - self.p
         self.dim = self.r.shape[0]
+        self.sparse = sparse
 
     @property
     def transition_matrix(self):
@@ -45,10 +48,13 @@ class BirthDeathChain:
         :getter: Yields the transition matrix.
         :type: (N,N) ndarray
         """
-        P0 = np.diag(self.r, k=0)
-        P1 = np.diag(self.p[0:-1], k=1)
-        P_1 = np.diag(self.q[1:], k=-1)
-        return P0 + P1 + P_1
+        if not self.sparse:
+            P0 = np.diag(self.r, k=0)
+            P1 = np.diag(self.p[0:-1], k=1)
+            P_1 = np.diag(self.q[1:], k=-1)
+            return P0 + P1 + P_1
+        else:
+            return diags([self.q[1:], self.r, self.p[0:-1]], [-1, 0, 1])
 
     @property
     def msm(self):
@@ -59,11 +65,6 @@ class BirthDeathChain:
         """
         from deeptime.markov.msm import MarkovStateModel
         return MarkovStateModel(self.transition_matrix, self.stationary_distribution)
-
-    @property
-    def transition_matrix_sparse(self):
-        r""" Sparse transition matrix for this birth-death chain, see :meth:`transition_matrix`. """
-        return diags([self.q[1:], self.r, self.p[0:-1]], [-1, 0, 1])
 
     @property
     def stationary_distribution(self):

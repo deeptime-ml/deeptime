@@ -183,7 +183,6 @@ class MarkovStateModel(Model):
                 try:
                     value = np.asarray_chkfinite(value)
                 except ValueError:
-                    print(value)
                     raise
             if not msmana.is_transition_matrix(value, tol=self.transition_matrix_tolerance):
                 raise ValueError(f'The input transition matrix is not a stochastic matrix '

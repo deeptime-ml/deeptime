@@ -5,11 +5,12 @@ Created on 07.10.2013
 """
 import pytest
 import numpy as np
-from numpy.testing import assert_, assert_allclose
+import scipy
+from numpy.testing import assert_, assert_allclose, assert_equal
 from scipy.sparse import dia_matrix, csr_matrix, issparse, coo_matrix
 
 from deeptime.data import birth_death_chain
-from deeptime.markov.tools.analysis import is_rate_matrix, is_transition_matrix, is_reversible
+from deeptime.markov.tools.analysis import is_rate_matrix, is_transition_matrix, is_reversible, is_connected
 from deeptime.markov.tools.analysis.dense import assessment
 
 
@@ -43,6 +44,11 @@ def random_nonempty_rows(M, N, density=0.01):
         cols = np.random.randint(0, N, size=(N_el,))
         values = np.random.rand(N_el)
         return coo_matrix((values, (rows, cols)))
+
+
+@pytest.fixture(params=[False, True], ids=lambda x: f"sparse={x}")
+def sparse(request):
+    yield request.param
 
 
 @pytest.fixture
@@ -121,7 +127,6 @@ def test_is_rate_matrix_mm1_queue(mm1_queue_rate_matrix):
         assert_allclose(mm1_queue_rate_matrix, K_copy)
 
 
-@pytest.mark.parametrize("sparse", [False, True], ids=lambda x: f"sparse={x}")
 def test_random_transition_matrix(sparse):
     if sparse:
         dim = 10000
@@ -137,13 +142,41 @@ def test_random_transition_matrix(sparse):
     assert_(is_transition_matrix(T, tol=tol))
 
 
-def test_is_reversible():
+def test_is_reversible(sparse):
     p = np.zeros(10)
     q = np.zeros(10)
     p[0:-1] = 0.5
     q[1:] = 0.5
     p[4] = 0.01
     q[6] = 0.1
-    bdc = birth_death_chain(q, p)
-
+    bdc = birth_death_chain(q, p, sparse=sparse)
+    assert_equal(sparse, bdc.sparse)
+    assert_equal(issparse(bdc.transition_matrix), sparse)
     assert_(is_reversible(bdc.transition_matrix, bdc.stationary_distribution))
+
+
+def test_is_connected(sparse):
+    C1 = 1.0 * np.array([[1, 4, 3], [3, 2, 4], [4, 5, 1]])
+    C2 = 1.0 * np.array([[0, 1], [1, 0]])
+    C3 = 1.0 * np.array([[7]])
+
+    C = scipy.sparse.block_diag((C1, C2, C3))
+
+    C = C.toarray()
+    """Forward transition block 1 -> block 2"""
+    C[2, 3] = 1
+    """Forward transition block 2 -> block 3"""
+    C[4, 5] = 1
+
+    T_connected = scipy.sparse.csr_matrix(C1 / C1.sum(axis=1)[:, np.newaxis])
+    T_not_connected = scipy.sparse.csr_matrix(C / C.sum(axis=1)[:, np.newaxis])
+
+    if not sparse:
+        T_connected = T_connected.toarray()
+        T_not_connected = T_not_connected.toarray()
+    """Directed"""
+    assert_(not is_connected(T_not_connected))
+    assert_(is_connected(T_connected))
+
+    """Undirected"""
+    assert_(is_connected(T_not_connected, directed=False))
