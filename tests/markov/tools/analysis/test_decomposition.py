@@ -5,18 +5,24 @@ r"""Unit test for decomposition functions in api.py
 """
 import unittest
 import warnings
-import pytest
 
 import numpy as np
+import pytest
+from numpy.testing import assert_raises
+from scipy.linalg import eig, eigvals as _eigvals
+from scipy.sparse import issparse
 
 from deeptime.data import birth_death_chain
+from deeptime.markov.tools.analysis import rdl_decomposition, timescales
+from deeptime.markov.tools.analysis import stationary_distribution, eigenvalues, eigenvectors, is_reversible
 from deeptime.util.exceptions import SpectralWarning, ImaginaryEigenValueWarning
 from tests.markov.tools.numeric import assert_allclose
 
-from scipy.linalg import eig, eigvals
 
-from deeptime.markov.tools.analysis import stationary_distribution, eigenvalues, eigenvectors, is_reversible
-from deeptime.markov.tools.analysis import rdl_decomposition, timescales
+def eigvals(mat):
+    if issparse(mat):
+        mat = mat.toarray()
+    return _eigvals(mat)
 
 
 ################################################################################
@@ -58,47 +64,55 @@ def test_eigenvalues(scenario):
     ev = ev[np.argsort(np.abs(ev))[::-1]]
 
     """k=None"""
-    evn = eigenvalues(P)
-    assert_allclose(ev, evn)
+    if bdc.sparse:
+        with assert_raises(ValueError):
+            eigenvalues(P)
+    else:
+        evn = eigenvalues(P)
+        assert_allclose(ev, evn)
 
     """k is not None"""
     evn = eigenvalues(P, k=k)
     assert_allclose(ev[0:k], evn)
+
 
 def test_eigenvectors(scenario):
     k, bdc = scenario
     P = bdc.transition_matrix
 
     # k==None
-    ev = eigvals(P)
-    ev = ev[np.argsort(np.abs(ev))[::-1]]
-    Dn = np.diag(ev)
+    if bdc.sparse:
+        with assert_raises(ValueError):
+            ev = eigvals(P)
+            ev = ev[np.argsort(np.abs(ev))[::-1]]
+            Dn = np.diag(ev)
 
-    # right eigenvectors
-    Rn = eigenvectors(P)
-    assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
-    # left eigenvectors
-    Ln = eigenvectors(P, right=False).T
-    assert_allclose(np.dot(Ln.T, P), np.dot(Dn, Ln.T))
-    # orthogonality
-    Xn = np.dot(Ln.T, Rn)
-    di = np.diag_indices(Xn.shape[0])
-    Xn[di] = 0.0
-    assert_allclose(Xn, 0)
+            # right eigenvectors
+            Rn = eigenvectors(P)
+            assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
+            # left eigenvectors
+            Ln = eigenvectors(P, right=False).T
+            assert_allclose(np.dot(Ln.T, P), np.dot(Dn, Ln.T))
+            # orthogonality
+            Xn = np.dot(Ln.T, Rn)
+            di = np.diag_indices(Xn.shape[0])
+            Xn[di] = 0.0
+            assert_allclose(Xn, 0)
 
     # k!=None
     Dnk = Dn[:, :k][:k, :]
     # right eigenvectors
     Rn = eigenvectors(P, k=k)
-    assert_allclose(np.dot(P, Rn), np.dot(Rn, Dnk))
+    assert_allclose(P @ Rn, Rn @ Dnk)
     # left eigenvectors
     Ln = eigenvectors(P, right=False, k=k).T
-    assert_allclose(np.dot(Ln.T, P), np.dot(Dnk, Ln.T))
+    assert_allclose(Ln.T @ P, Dnk @ Ln.T)
     # orthogonality
-    Xn = np.dot(Ln.T, Rn)
+    Xn = Ln.T @ Rn
     di = np.diag_indices(k)
     Xn[di] = 0.0
     assert_allclose(Xn, 0)
+
 
 def test_eigenvalues_reversible(scenario):
     k, bdc = scenario
@@ -108,12 +122,13 @@ def test_eigenvalues_reversible(scenario):
     ev = ev[np.argsort(np.abs(ev))[::-1]]
 
     """reversible without given mu"""
-    evn = eigenvalues(P, reversible=True)
-    assert_allclose(ev, evn)
+    evn = eigenvalues(P, reversible=True, k=k)
+    assert_allclose(ev[:k], evn)
 
     """reversible with given mu"""
-    evn = eigenvalues(P, reversible=True, mu=bdc.stationary_distribution)
-    assert_allclose(ev, evn)
+    evn = eigenvalues(P, reversible=True, mu=bdc.stationary_distribution, k=k)
+    assert_allclose(ev[:k], evn)
+
 
 def test_eigenvectors_reversible(scenario):
     k, bdc = scenario
@@ -149,6 +164,7 @@ def test_eigenvectors_reversible(scenario):
     di = np.diag_indices(k)
     Xn[di] = 0.0
     assert_allclose(Xn, 0)
+
 
 def test_rdl_decomposition(scenario):
     k, bdc = scenario
@@ -213,6 +229,7 @@ def test_rdl_decomposition(scenario):
     assert_allclose(np.sum(Ln[0, :]), 1.0)
     """Reversibility"""
     assert_allclose(Ln.transpose(), mu[:, np.newaxis] * Rn)
+
 
 def test_rdl_decomposition_rev(scenario):
     k, bdc = scenario
@@ -282,6 +299,7 @@ def test_rdl_decomposition_rev(scenario):
     """Reversibility"""
     assert_allclose(Ln.transpose(), mu[:, np.newaxis] * Rn)
 
+
 def test_timescales(scenario):
     k, bdc = scenario
     P = bdc.transition_matrix
@@ -307,6 +325,7 @@ def test_timescales(scenario):
     """k is not None"""
     tsn = timescales(P, k=k, tau=7)
     assert_allclose(7 * ts[1:k], tsn[1:])
+
 
 def test_timescales_rev(scenario):
     k, bdc = scenario
@@ -334,6 +353,8 @@ def test_timescales_rev(scenario):
     """k is not None"""
     tsn = timescales(P, k=k, tau=7, reversible=True)
     assert_allclose(7 * ts[1:k], tsn[1:])
+
+
 class TestTimescalesDense(unittest.TestCase):
     def setUp(self):
         self.T = np.array([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
@@ -402,7 +423,7 @@ class TestDecompositionSparse(unittest.TestCase):
 
         """k=None"""
         with self.assertRaises(ValueError):
-            evn = eigenvalues(P)
+            eigenvalues(P)
 
         """k is not None"""
         evn = eigenvalues(P, k=self.k)
