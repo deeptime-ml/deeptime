@@ -107,7 +107,7 @@ def is_reversible(T, mu=None, tol=1e-15):
     T = T.tocsr()
 
     if mu is None:
-        from .decomposition import stationary_distribution
+        from deeptime.markov.tools.analysis import stationary_distribution
         mu = stationary_distribution(T)
 
     Mu = diags(mu, 0)

@@ -6,3 +6,8 @@ import pytest
 def session_setup():
     warnings.filterwarnings('once', category=DeprecationWarning)
     warnings.filterwarnings('once', category=PendingDeprecationWarning)
+
+
+@pytest.fixture(params=[False, True], ids=lambda x: f"sparse={x}")
+def sparse_mode(request):
+    yield request.param

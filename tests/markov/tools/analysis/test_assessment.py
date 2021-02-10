@@ -1,75 +1,18 @@
-"""This module provides unit tests for the assessment functions of the analysis API
-
-.. moduleauthor:: Martin Scherer <m DOT scherer AT fu-berlin DOT de>
-.. moduleauthor:: Benjamin Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 """
+Created on 07.10.2013
 
-import unittest
+@author: marscher and clonker
+"""
+import pytest
 import numpy as np
-
-import scipy.sparse
-from scipy.sparse.dia import dia_matrix
+import scipy
+from numpy.testing import assert_, assert_allclose, assert_equal
+from scipy.sparse import dia_matrix, csr_matrix, issparse, coo_matrix
 
 from deeptime.data import birth_death_chain
-from deeptime.markov.tools.analysis import is_rate_matrix, is_reversible, is_transition_matrix, is_connected
+from deeptime.markov.tools.analysis import is_rate_matrix, is_transition_matrix, is_reversible, is_connected
+from deeptime.markov.tools.analysis.dense import assessment
 
-################################################################################
-# Dense
-################################################################################
-
-
-def create_rate_matrix():
-    a = [[-3, 3, 0, 0],
-         [3, -5, 2, 0],
-         [0, 3, -5, 2],
-         [0, 0, 3, -3]]
-
-    return np.array(a)
-
-
-class TestAssessmentDense(unittest.TestCase):
-    def setUp(self):
-        p = np.zeros(10)
-        q = np.zeros(10)
-        p[0:-1] = 0.5
-        q[1:] = 0.5
-        p[4] = 0.01
-        q[6] = 0.1
-
-        self.bdc = birth_death_chain(q, p)
-        self.T = self.bdc.transition_matrix
-        self.mu = self.bdc.stationary_distribution
-
-        self.A = create_rate_matrix()
-
-    def test_IsRateMatrix(self):
-        self.assertTrue(is_rate_matrix(self.A), 'A should be a rate matrix')
-
-        # manipulate matrix so it isn't a rate matrix any more
-        self.A[0][0] = 3
-        self.assertFalse(is_rate_matrix(self.A), 'matrix is not a rate matrix')
-
-    def test_IsReversible(self):
-        # create a reversible matrix
-        self.assertTrue(is_reversible(self.T, self.mu),
-                        "T should be reversible")
-
-    def test_is_transition_matrix(self):
-        self.assertTrue(is_transition_matrix(self.T))
-
-        """Larger test-case to prevent too restrictive tolerance settings"""
-        X = np.random.random((2000, 2000))
-        Tlarge = X / X.sum(axis=1)[:, np.newaxis]
-        self.assertTrue(is_transition_matrix(Tlarge))
-
-    def test_is_connected(self):
-        self.assertTrue(is_connected(self.T))
-        self.assertTrue(is_connected(self.T, directed=False))
-
-
-################################################################################
-# Sparse
-################################################################################
 
 def normalize_rows(A):
     """Normalize rows of sparse marix"""
@@ -86,7 +29,7 @@ def normalize_rows(A):
         rowsum = np.sum(thisrow)
         normed_values[indptr[i]:indptr[i + 1]] = thisrow / rowsum
 
-    return scipy.sparse.csr_matrix((normed_values, indices, indptr))
+    return csr_matrix((normed_values, indices, indptr))
 
 
 def random_nonempty_rows(M, N, density=0.01):
@@ -100,131 +43,135 @@ def random_nonempty_rows(M, N, density=0.01):
         rows[M:N_el] = np.random.randint(0, M, size=(N_el - M,))
         cols = np.random.randint(0, N, size=(N_el,))
         values = np.random.rand(N_el)
-        return scipy.sparse.coo_matrix((values, (rows, cols)))
+        return coo_matrix((values, (rows, cols)))
 
 
-class TestTransitionMatrixSparse(unittest.TestCase):
-    def setUp(self):
-        self.dim = 10000
-        self.density = 0.001
-        self.tol = 1e-15
-        A = random_nonempty_rows(self.dim, self.dim, density=self.density)
-        self.T = normalize_rows(A)
+@pytest.fixture
+def mm1_queue_rate_matrix(request):
+    r""" constructs the following rate matrix for a M/M/1 queue
+    :math: `
+    Q = \begin{pmatrix}
+    -\lambda & \lambda \\
+    \mu & -(\mu+\lambda) & \lambda \\
+    &\mu & -(\mu+\lambda) & \lambda \\
+    &&\mu & -(\mu+\lambda) & \lambda &\\
+    &&&&\ddots
+    \end{pmatrix}`
+    taken from: https://en.wikipedia.org/wiki/Transition_rate_matrix
+    """
+    lambda_ = 5
+    mu = 3
+    dim = request.param[0]
 
-    def tearDown(self):
-        pass
+    diag = np.empty((3, dim))
+    # main diagonal
+    diag[0, 0] = (-lambda_)
+    diag[0, 1:dim - 1] = -(mu + lambda_)
+    diag[0, dim - 1] = lambda_
 
-    def test_is_transition_matrix(self):
-        self.assertTrue(is_transition_matrix(self.T, tol=self.tol))
+    # lower diag
+    diag[1, :] = mu
+    diag[1, -2:] = -mu
+    diag[1, -2:] = lambda_
+    diag[0, dim - 1] = -lambda_
+    # upper diag
+    diag[2, :] = lambda_
 
+    offsets = [0, -1, 1]
 
-class TestRateMatrixSparse(unittest.TestCase):
-    def create_sparse_rate_matrix(self):
-        r""" constructs the following rate matrix for a M/M/1 queue
-        :math: `
-        Q = \begin{pmatrix}
-        -\lambda & \lambda \\
-        \mu & -(\mu+\lambda) & \lambda \\
-        &\mu & -(\mu+\lambda) & \lambda \\
-        &&\mu & -(\mu+\lambda) & \lambda &\\
-        &&&&\ddots
-        \end{pmatrix}`
-        taken from: https://en.wikipedia.org/wiki/Transition_rate_matrix
-        """
-        lambda_ = 5
-        mu = 3
-        dim = self.dim
-
-        diag = np.empty((3, dim))
-        # main diagonal
-        diag[0, 0] = (-lambda_)
-        diag[0, 1:dim - 1] = -(mu + lambda_)
-        diag[0, dim - 1] = lambda_
-
-        # lower diag
-        diag[1, :] = mu
-        diag[1, -2:] = -mu
-        diag[1, -2:] = lambda_
-        diag[0, dim - 1] = -lambda_
-        # upper diag
-        diag[2, :] = lambda_
-
-        offsets = [0, -1, 1]
-
-        return dia_matrix((diag, offsets), shape=(dim, dim))
-
-    def setUp(self):
-        self.dim = 10
-        self.K = self.create_sparse_rate_matrix()
-        self.tol = 1e-15
-
-    def test_is_rate_matrix(self):
-        K_copy = self.K.copy()
-        self.assertTrue(is_rate_matrix(self.K, self.tol), "K should be evaluated as rate matrix.")
-
-        self.assertTrue(np.allclose(self.K.data, K_copy.data) and np.allclose(self.K.offsets, K_copy.offsets),
-                        "object modified!")
+    spmat = dia_matrix((diag, offsets), shape=(dim, dim))
+    if not request.param[1]:
+        spmat = spmat.toarray()
+    return spmat
 
 
-class TestReversibleSparse(unittest.TestCase):
-    def create_rev_t(self):
-        dim = self.dim
-
-        diag = np.zeros((3, dim))
-
-        # forward_p = 4 / 5.
-        forward_p = 0.6
-        backward_p = 1 - forward_p
-        # main diagonal
-        diag[0, 0] = backward_p
-        diag[0, -1] = backward_p
-
-        # lower diag
-        diag[1, :] = backward_p
-        diag[1, 1] = forward_p
-
-        # upper diag
-        diag[2, :] = forward_p
-
-        return dia_matrix((diag, [0, 1, -1]), shape=(dim, dim))
-
-    def setUp(self):
-        self.dim = 100
-        self.tol = 1e-15
-        self.T = self.create_rev_t()
-
-    def test_is_reversible(self):
-        self.assertTrue(is_reversible(self.T, tol=self.tol), 'matrix should be reversible')
+@pytest.fixture
+def rate_matrix(request):
+    A = np.array(
+        [[-3, 3, 0, 0],
+         [3, -5, 2, 0],
+         [0, 3, -5, 2],
+         [0, 0, 3, -3]]
+    )
+    if request.param:
+        A = csr_matrix(A)
+    return A
 
 
-class TestIsConnectedSparse(unittest.TestCase):
-    def setUp(self):
-        C1 = 1.0 * np.array([[1, 4, 3], [3, 2, 4], [4, 5, 1]])
-        C2 = 1.0 * np.array([[0, 1], [1, 0]])
-        C3 = 1.0 * np.array([[7]])
+@pytest.mark.parametrize("rate_matrix", [False, True], indirect=True, ids=lambda x: f"sparse={x}")
+def test_is_rate_matrix(rate_matrix):
+    assert_(assessment.is_rate_matrix(rate_matrix))
+    if issparse(rate_matrix):
+        rate_matrix = rate_matrix.toarray()
+        rate_matrix[0][0] = 3
+        rate_matrix = csr_matrix(rate_matrix)
+    else:
+        rate_matrix[0][0] = 3
+    assert_(not assessment.is_rate_matrix(rate_matrix))
 
-        C = scipy.sparse.block_diag((C1, C2, C3))
 
-        C = C.toarray()
-        """Forward transition block 1 -> block 2"""
-        C[2, 3] = 1
-        """Forward transition block 2 -> block 3"""
-        C[4, 5] = 1
+@pytest.mark.parametrize("mm1_queue_rate_matrix", [(10, False), (10, True)], indirect=True,
+                         ids=lambda x: f"sparse={x[1]}")
+def test_is_rate_matrix_mm1_queue(mm1_queue_rate_matrix):
+    K_copy = mm1_queue_rate_matrix.copy()
+    assert_(is_rate_matrix(mm1_queue_rate_matrix, tol=1e-15))
+    if issparse(mm1_queue_rate_matrix):
+        assert_allclose(mm1_queue_rate_matrix.data, K_copy.data)
+        assert_allclose(mm1_queue_rate_matrix.offsets, K_copy.offsets)
+    else:
+        assert_allclose(mm1_queue_rate_matrix, K_copy)
 
-        self.T_connected = scipy.sparse.csr_matrix(C1 / C1.sum(axis=1)[:, np.newaxis])
-        self.T_not_connected = scipy.sparse.csr_matrix(C / C.sum(axis=1)[:, np.newaxis])
 
-    def tearDown(self):
-        pass
+def test_random_transition_matrix(sparse_mode):
+    if sparse_mode:
+        dim = 10000
+        density = 0.001
+    else:
+        dim = 25
+        density = .5
+    tol = 1e-15
+    A = random_nonempty_rows(dim, dim, density=density)
+    T = normalize_rows(A)
+    if not sparse_mode:
+        T = T.toarray()
+    assert_(is_transition_matrix(T, tol=tol))
 
-    def test_connected_count_matrix(self):
-        """Directed"""
-        is_c = is_connected(self.T_not_connected)
-        self.assertFalse(is_c)
 
-        is_c = is_connected(self.T_connected)
-        self.assertTrue(is_c)
+def test_is_reversible(sparse_mode):
+    p = np.zeros(10)
+    q = np.zeros(10)
+    p[0:-1] = 0.5
+    q[1:] = 0.5
+    p[4] = 0.01
+    q[6] = 0.1
+    bdc = birth_death_chain(q, p, sparse=sparse_mode)
+    assert_equal(sparse_mode, bdc.sparse)
+    assert_equal(issparse(bdc.transition_matrix), sparse_mode)
+    assert_(is_reversible(bdc.transition_matrix, bdc.stationary_distribution))
 
-        """Undirected"""
-        is_c = is_connected(self.T_not_connected, directed=False)
-        self.assertTrue(is_c)
+
+def test_is_connected(sparse_mode):
+    C1 = 1.0 * np.array([[1, 4, 3], [3, 2, 4], [4, 5, 1]])
+    C2 = 1.0 * np.array([[0, 1], [1, 0]])
+    C3 = 1.0 * np.array([[7]])
+
+    C = scipy.sparse.block_diag((C1, C2, C3))
+
+    C = C.toarray()
+    """Forward transition block 1 -> block 2"""
+    C[2, 3] = 1
+    """Forward transition block 2 -> block 3"""
+    C[4, 5] = 1
+
+    T_connected = scipy.sparse.csr_matrix(C1 / C1.sum(axis=1)[:, np.newaxis])
+    T_not_connected = scipy.sparse.csr_matrix(C / C.sum(axis=1)[:, np.newaxis])
+
+    if not sparse_mode:
+        T_connected = T_connected.toarray()
+        T_not_connected = T_not_connected.toarray()
+    """Directed"""
+    assert_(not is_connected(T_not_connected))
+    assert_(is_connected(T_connected))
+
+    """Undirected"""
+    assert_(is_connected(T_not_connected, directed=False))
