@@ -120,9 +120,7 @@ class TestTransitionMatrixSparse(unittest.TestCase):
 
 class TestRateMatrixSparse(unittest.TestCase):
     def create_sparse_rate_matrix(self):
-        """
-        constructs the following rate matrix for a M/M/1 queue
-        TODO: fix math string
+        r""" constructs the following rate matrix for a M/M/1 queue
         :math: `
         Q = \begin{pmatrix}
         -\lambda & \lambda \\

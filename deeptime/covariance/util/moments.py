@@ -531,10 +531,10 @@ def _M2(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0, yconst=0
     else:
         # Check if one of the masks is not None, modify it and also adjust the constant columns:
         if mask_X is None:
-            mask_X = np.ones(Xvar.shape[1], dtype=np.bool)
+            mask_X = np.ones(Xvar.shape[1], dtype=np.bool_)
             xconst = np.ones(0, dtype=float)
         if mask_Y is None:
-            mask_Y = np.ones(Yvar.shape[1], dtype=np.bool)
+            mask_Y = np.ones(Yvar.shape[1], dtype=np.bool_)
             yconst = np.ones(0, dtype=float)
     if _is_zero(xsum) and _is_zero(ysum) or _is_zero(xconst) and _is_zero(yconst):
         return _M2_sparse(Xvar, mask_X, Yvar, mask_Y, weights=weights)
@@ -560,10 +560,10 @@ def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0
     else:
         # Check if one of the masks is not None, modify it and also adjust the constant columns:
         if mask_X is None:
-            mask_X = np.ones(Xvar.shape[1], dtype=np.bool)
+            mask_X = np.ones(Xvar.shape[1], dtype=np.bool_)
             xconst = np.ones(0, dtype=float)
         if mask_Y is None:
-            mask_Y = np.ones(Yvar.shape[1], dtype=np.bool)
+            mask_Y = np.ones(Yvar.shape[1], dtype=np.bool_)
             yconst = np.ones(0, dtype=float)
         if _is_zero(xsum) and _is_zero(ysum) or _is_zero(xconst) and _is_zero(yconst):
             Cxxyy, Cxyyx = _M2_sparse_sym(Xvar, mask_X, Yvar, mask_Y, weights=weights, column_selection=column_selection)

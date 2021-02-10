@@ -19,8 +19,8 @@ kde_trajectory = pbf_simulator.transform_to_density(
 )
 tau = 100
 model = deeptime.decomposition.VAMP(lagtime=100).fit(kde_trajectory).fetch_model()
-projection_left = model.transform(kde_trajectory, instantaneous=True)
-projection_right = model.transform(kde_trajectory, instantaneous=False)
+projection_left = model.forward(kde_trajectory, propagate=False)
+projection_right = model.backward(kde_trajectory, propagate=False)
 
 f, ax = plt.subplots(1, 1, figsize=(5, 5))
 start = 400

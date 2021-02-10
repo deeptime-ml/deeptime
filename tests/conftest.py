@@ -23,10 +23,6 @@ else:
         pass
 
 
-# import warnings
-# warnings.filterwarnings('error')
-
-
 @pytest.fixture
 def fixed_seed():
     random.seed(42)
