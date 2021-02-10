@@ -5,6 +5,7 @@ r"""Unit test for decomposition functions in api.py
 """
 import unittest
 import warnings
+from contextlib import nullcontext
 
 import numpy as np
 import pytest
@@ -64,10 +65,7 @@ def test_eigenvalues(scenario):
     ev = ev[np.argsort(np.abs(ev))[::-1]]
 
     """k=None"""
-    if bdc.sparse:
-        with assert_raises(ValueError):
-            eigenvalues(P)
-    else:
+    with assert_raises(ValueError) if bdc.sparse else nullcontext():
         evn = eigenvalues(P)
         assert_allclose(ev, evn)
 
@@ -79,25 +77,22 @@ def test_eigenvalues(scenario):
 def test_eigenvectors(scenario):
     k, bdc = scenario
     P = bdc.transition_matrix
-
+    ev = eigvals(P)
+    ev = ev[np.argsort(np.abs(ev))[::-1]]
+    Dn = np.diag(ev)
     # k==None
-    if bdc.sparse:
-        with assert_raises(ValueError):
-            ev = eigvals(P)
-            ev = ev[np.argsort(np.abs(ev))[::-1]]
-            Dn = np.diag(ev)
-
-            # right eigenvectors
-            Rn = eigenvectors(P)
-            assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
-            # left eigenvectors
-            Ln = eigenvectors(P, right=False).T
-            assert_allclose(np.dot(Ln.T, P), np.dot(Dn, Ln.T))
-            # orthogonality
-            Xn = np.dot(Ln.T, Rn)
-            di = np.diag_indices(Xn.shape[0])
-            Xn[di] = 0.0
-            assert_allclose(Xn, 0)
+    with assert_raises(ValueError) if bdc.sparse else nullcontext():
+        # right eigenvectors
+        Rn = eigenvectors(P)
+        assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
+        # left eigenvectors
+        Ln = eigenvectors(P, right=False).T
+        assert_allclose(np.dot(Ln.T, P), np.dot(Dn, Ln.T))
+        # orthogonality
+        Xn = np.dot(Ln.T, Rn)
+        di = np.diag_indices(Xn.shape[0])
+        Xn[di] = 0.0
+        assert_allclose(Xn, 0)
 
     # k!=None
     Dnk = Dn[:, :k][:k, :]
@@ -139,28 +134,29 @@ def test_eigenvectors_reversible(scenario):
     ev = ev[np.argsort(np.abs(ev))[::-1]]
     Dn = np.diag(ev)
 
-    # right eigenvectors
-    Rn = eigenvectors(P, reversible=True)
-    assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
-    # left eigenvectors
-    Ln = eigenvectors(P, right=False, reversible=True).T
-    assert_allclose(np.dot(Ln.T, P), np.dot(Dn, Ln.T))
-    # orthogonality
-    Xn = np.dot(Ln.T, Rn)
-    di = np.diag_indices(Xn.shape[0])
-    Xn[di] = 0.0
-    assert_allclose(Xn, 0)
+    with assert_raises(ValueError) if bdc.sparse else nullcontext():
+        # right eigenvectors
+        Rn = eigenvectors(P, reversible=True)
+        assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
+        # left eigenvectors
+        Ln = eigenvectors(P, right=False, reversible=True).T
+        assert_allclose(np.dot(Ln.T, P), np.dot(Dn, Ln.T))
+        # orthogonality
+        Xn = np.dot(Ln.T, Rn)
+        di = np.diag_indices(Xn.shape[0])
+        Xn[di] = 0.0
+        assert_allclose(Xn, 0)
 
     # k!=None
     Dnk = Dn[:, :k][:k, :]
     # right eigenvectors
     Rn = eigenvectors(P, k=k, reversible=True)
-    assert_allclose(np.dot(P, Rn), np.dot(Rn, Dnk))
+    assert_allclose(P @ Rn, Rn @ Dnk)
     # left eigenvectors
     Ln = eigenvectors(P, right=False, k=k, reversible=True).T
-    assert_allclose(np.dot(Ln.T, P), np.dot(Dnk, Ln.T))
+    assert_allclose(Ln.T @ P, Dnk @ Ln.T)
     # orthogonality
-    Xn = np.dot(Ln.T, Rn)
+    Xn = Ln.T @ Rn
     di = np.diag_indices(k)
     Xn[di] = 0.0
     assert_allclose(Xn, 0)
@@ -173,27 +169,27 @@ def test_rdl_decomposition(scenario):
     mu = bdc.stationary_distribution
 
     """Non-reversible"""
-
-    """k=None"""
-    Rn, Dn, Ln = rdl_decomposition(P)
-    Xn = np.dot(Ln, Rn)
-    """Right-eigenvectors"""
-    assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
-    """Left-eigenvectors"""
-    assert_allclose(np.dot(Ln, P), np.dot(Dn, Ln))
-    """Orthonormality"""
-    dim = bdc.q.shape[0]
-    assert_allclose(Xn, np.eye(dim))
-    """Probability vector"""
-    assert_allclose(np.sum(Ln[0, :]), 1.0)
+    with assert_raises(ValueError) if bdc.sparse else nullcontext():
+        """k=None"""
+        Rn, Dn, Ln = rdl_decomposition(P)
+        Xn = np.dot(Ln, Rn)
+        """Right-eigenvectors"""
+        assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
+        """Left-eigenvectors"""
+        assert_allclose(np.dot(Ln, P), np.dot(Dn, Ln))
+        """Orthonormality"""
+        dim = bdc.q.shape[0]
+        assert_allclose(Xn, np.eye(dim))
+        """Probability vector"""
+        assert_allclose(np.sum(Ln[0, :]), 1.0)
 
     """k is not None"""
     Rn, Dn, Ln = rdl_decomposition(P, k=k)
     Xn = np.dot(Ln, Rn)
     """Right-eigenvectors"""
-    assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
+    assert_allclose(P @ Rn, Rn @ Dn)
     """Left-eigenvectors"""
-    assert_allclose(np.dot(Ln, P), np.dot(Dn, Ln))
+    assert_allclose(Ln @ P, Dn @ Ln)
     """Orthonormality"""
     assert_allclose(Xn, np.eye(k))
     """Probability vector"""
@@ -202,19 +198,20 @@ def test_rdl_decomposition(scenario):
     """Reversible"""
 
     """k=None"""
-    Rn, Dn, Ln = rdl_decomposition(P, norm='reversible')
-    assert Dn.dtype in (np.float32, np.float64)
-    Xn = np.dot(Ln, Rn)
-    """Right-eigenvectors"""
-    assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
-    """Left-eigenvectors"""
-    assert_allclose(np.dot(Ln, P), np.dot(Dn, Ln))
-    """Orthonormality"""
-    assert_allclose(Xn, np.eye(dim))
-    """Probability vector"""
-    assert_allclose(np.sum(Ln[0, :]), 1.0)
-    """Reversibility"""
-    assert_allclose(Ln.transpose(), mu[:, np.newaxis] * Rn)
+    with assert_raises(ValueError) if bdc.sparse else nullcontext():
+        Rn, Dn, Ln = rdl_decomposition(P, norm='reversible')
+        assert Dn.dtype in (np.float32, np.float64)
+        Xn = np.dot(Ln, Rn)
+        """Right-eigenvectors"""
+        assert_allclose(P @ Rn, Rn @ Dn)
+        """Left-eigenvectors"""
+        assert_allclose(np.dot(Ln, P), np.dot(Dn, Ln))
+        """Orthonormality"""
+        assert_allclose(Xn, np.eye(dim))
+        """Probability vector"""
+        assert_allclose(np.sum(Ln[0, :]), 1.0)
+        """Reversibility"""
+        assert_allclose(Ln.transpose(), mu[:, np.newaxis] * Rn)
 
     """k is not None"""
     Rn, Dn, Ln = rdl_decomposition(P, norm='reversible', k=k)
@@ -233,26 +230,27 @@ def test_rdl_decomposition(scenario):
 
 def test_rdl_decomposition_rev(scenario):
     k, bdc = scenario
+    dim = bdc.q.shape[0]
     P = bdc.transition_matrix
     mu = bdc.stationary_distribution
 
     """norm='standard'"""
 
     """k=None"""
-    Rn, Dn, Ln = rdl_decomposition(P, reversible=True, norm='standard')
-    Xn = np.dot(Ln, Rn)
-    """Right-eigenvectors"""
-    assert_allclose(np.dot(P, Rn), np.dot(Rn, Dn))
-    """Left-eigenvectors"""
-    assert_allclose(np.dot(Ln, P), np.dot(Dn, Ln))
-    """Orthonormality"""
-    dim = bdc.q.shape[0]
-    assert_allclose(Xn, np.eye(dim))
-    """Probability vector"""
-    assert_allclose(np.sum(Ln[0, :]), 1.0)
-    """Standard l2-normalization of right eigenvectors except dominant one"""
-    Yn = np.dot(Rn.T, Rn)
-    assert_allclose(np.diag(Yn)[1:], 1.0)
+    with assert_raises(ValueError) if bdc.sparse else nullcontext():
+        Rn, Dn, Ln = rdl_decomposition(P, reversible=True, norm='standard')
+        Xn = Ln @ Rn
+        """Right-eigenvectors"""
+        assert_allclose(P @ Rn, Rn @ Dn)
+        """Left-eigenvectors"""
+        assert_allclose(Ln @ P, Dn @ Ln)
+        """Orthonormality"""
+        assert_allclose(Xn, np.eye(dim))
+        """Probability vector"""
+        assert_allclose(np.sum(Ln[0, :]), 1.0)
+        """Standard l2-normalization of right eigenvectors except dominant one"""
+        Yn = np.dot(Rn.T, Rn)
+        assert_allclose(np.diag(Yn)[1:], 1.0)
 
     """k is not None"""
     Rn, Dn, Ln = rdl_decomposition(P, k=k, reversible=True, norm='standard')
