@@ -1,7 +1,7 @@
 r"""Unit test for decomposition functions in api.py
 
 .. moduleauthor:: Benjamin Trendelkamp-Schroer<benjamin DOT trendelkamp-schorer AT fu-berlin DOT de>
-
+.. moduleauthor:: clonker (the refactors)
 """
 import warnings
 from contextlib import nullcontext
