@@ -58,13 +58,12 @@ Utils
 
     vamp_score
 
-    TVAEEncoder
+    deep.TVAEEncoder
     deep.koopman_matrix
     deep.sym_inverse
     deep.covariances
     deep.vamp_score
     deep.vampnet_loss
-
     deep.kvad_score
 """
 

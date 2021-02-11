@@ -279,7 +279,7 @@ def birth_death_chain(q, p, sparse=False):
 
     Returns
     -------
-    chain : deeptime.data.birth_death_chain_dataset.BirthDeathChain
+    chain : deeptime.data._birth_death_chain.BirthDeathChain
         The chain.
     """
     from ._birth_death_chain import BirthDeathChain
