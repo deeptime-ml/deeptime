@@ -2,6 +2,13 @@ from typing import Tuple, List, Union, Callable
 
 import numpy as np
 
+from ._birth_death_chain import BirthDeathChain
+from ._double_well import DoubleWellDiscrete
+from ._ellipsoids import Ellipsoids
+from ._pbf_simulator import PBFSimulator
+from ._drunkards_walk_simulator import DrunkardsWalk
+from ._bickley_simulator import BickleyJet, BickleyJetDataset
+
 
 def double_well_discrete():
     r"""MCMC process in a symmetric double well potential, spatially discretized to 100 bins.
@@ -12,10 +19,9 @@ def double_well_discrete():
 
     Returns
     -------
-    dataset : deeptime.data.double_well_dataset.DoubleWellDiscrete
+    dataset : deeptime.data.DoubleWellDiscrete
         an object that contains a markov state model corresponding to the process and the discrete trajectory
     """
-    from ._double_well import DoubleWellDiscrete
     return DoubleWellDiscrete()
 
 
@@ -47,7 +53,7 @@ def ellipsoids(laziness: float = 0.97, seed=None):
 
     Returns
     -------
-    dataset : deeptime.data.ellipsoids_dataset.Ellipsoids
+    dataset : deeptime.data.Ellipsoids
         an object that contains methods to create discrete and continuous observations
 
     Examples
@@ -56,7 +62,6 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     >>> feature_trajectory = dt.data.ellipsoids(seed=17).observations(n_steps=500)
     >>> assert feature_trajectory.shape == (500, 2)
     """
-    from ._ellipsoids import Ellipsoids
     return Ellipsoids(laziness=laziness, seed=seed)
 
 
@@ -71,7 +76,7 @@ def position_based_fluids(n_burn_in=5000, initial_positions=None, n_jobs=None):
     The interaction distance is set to :math:`d = 1.5` and `n_burn_in` steps are
     performed to equilibrate the system before returning the simulator.
 
-    For more details see :class:`PBFSimulator <deeptime.data.pbf_simulator.PBFSimulator>`.
+    For more details see :class:`PBFSimulator <deeptime.data.PBFSimulator>`.
 
     .. plot::
 
@@ -91,19 +96,20 @@ def position_based_fluids(n_burn_in=5000, initial_positions=None, n_jobs=None):
     ----------
     n_burn_in : int, default=5000
         Number of steps without any drift force to equilibrate the system.
+    initial_positions : ndarray, optional, default=None
+        Explicit initial positions, optional.
     n_jobs : int or None, default=None
         Number of threads to use for simulation.
 
     Returns
     -------
-    simulator : deeptime.data.pbf_simulator.PBFSimulator
+    simulator : deeptime.data.PBFSimulator
         The PBF simulator.
 
     References
     ----------
     .. footbibliography::
     """
-    from ._pbf_simulator import PBFSimulator
     from deeptime.util.parallel import handle_n_jobs
     n_jobs = handle_n_jobs(n_jobs)
     interaction_distance = 1.5
@@ -146,10 +152,9 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
 
     Returns
     -------
-    simulator : deeptime.data.drunkards_walk_simulator.DrunkardsWalk
+    simulator : deeptime.data.DrunkardsWalk
         Simulator instance.
     """
-    from ._drunkards_walk_simulator import DrunkardsWalk
     return DrunkardsWalk(grid_size, bar_location=bar_location, home_location=home_location)
 
 
@@ -207,7 +212,7 @@ def bickley_jet(n_particles: int, n_jobs=None):
 
     Returns
     -------
-    dataset : deeptime.data.bickley_simulator.BickleyJetDataset
+    dataset : deeptime.data.BickleyJetDataset
         Dataset over all the generated frames.
 
     Examples
@@ -239,7 +244,6 @@ def bickley_jet(n_particles: int, n_jobs=None):
     ----------
     .. footbibliography::
     """
-    from ._bickley_simulator import BickleyJet, BickleyJetDataset
     from deeptime.util.parallel import handle_n_jobs
     n_jobs = handle_n_jobs(n_jobs)
     simulator = BickleyJet()
@@ -279,10 +283,9 @@ def birth_death_chain(q, p, sparse=False):
 
     Returns
     -------
-    chain : deeptime.data._birth_death_chain.BirthDeathChain
+    chain : deeptime.data.BirthDeathChain
         The chain.
     """
-    from ._birth_death_chain import BirthDeathChain
     return BirthDeathChain(q, p, sparse=sparse)
 
 

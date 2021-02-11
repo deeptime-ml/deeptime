@@ -62,6 +62,7 @@ Implementations
     DrunkardsWalk
     BickleyJet
     BirthDeathChain
+
 """
 
 from ._util import timeshifted_split, TimeSeriesDataset, TimeLaggedDataset

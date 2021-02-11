@@ -26,7 +26,8 @@ class DoubleWellDiscrete:
     r""" MCMC process in a symmetric double well potential, spatially discretized to 100 bins.
 
     Encapsulates discrete trajectories and
-    markov state model (see :class:`MarkovStateModel`) with exact transition matrix.
+    markov state model (see :class:`MarkovStateModel <deeptime.markov.msm.MarkovStateModel>`) with exact
+    transition matrix.
     """
 
     def __init__(self):
@@ -84,7 +85,8 @@ class DoubleWellDiscrete:
 
     @property
     def analytic_msm(self):
-        """ Returns a :class:`MarkovStateModel` instance with the exact transition matrix. """
+        """ Returns a :class:`MarkovStateModel <deeptime.markov.msm.MarkovStateModel>` instance with
+        the exact transition matrix. """
         return self._analytic_msm
 
     def simulate_trajectory(self, n_steps, start=None, stop=None, dt=1) -> _np.ndarray:
