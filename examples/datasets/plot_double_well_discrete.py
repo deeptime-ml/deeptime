@@ -6,9 +6,10 @@ Showcase use of the :meth:`deeptime.data.double_well_discrete` dataset.
 """
 import matplotlib.pyplot as plt
 import numpy as np
-import deeptime as dt
 
-dwd = dt.data.double_well_discrete()
+from deeptime.data import double_well_discrete
+
+dwd = double_well_discrete()
 n_states = dwd.analytic_msm.n_states
 
 divides = [40, 45, 50, 55, 60]

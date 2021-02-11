@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import multivariate_normal
 
-import deeptime as dt
+from deeptime.data import ellipsoids
 
-data_source = dt.data.ellipsoids(seed=17)
+data_source = ellipsoids(seed=17)
 x = np.linspace(-10, 10, 1000)
 y = np.linspace(-10, 10, 1000)
 X, Y = np.meshgrid(x, y)

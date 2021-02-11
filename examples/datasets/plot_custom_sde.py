@@ -15,7 +15,8 @@ for :math:`X_t\in\mathbb{R}^d`, :math:`d\in\{1,2,3,4,5\}`.
 
 import matplotlib.pyplot as plt
 import numpy as np
-import deeptime as dt
+
+from deeptime.data import custom_sde
 
 
 def harmonic_sphere_energy(x, radius=.5, k=1.):
@@ -23,7 +24,7 @@ def harmonic_sphere_energy(x, radius=.5, k=1.):
     dist_to_sphere = dist_to_origin - radius
     energy = np.zeros((len(x),))
     ixs = np.argwhere(dist_to_sphere > 0)[:, 0]
-    energy[ixs] = 0.5 * k * dist_to_sphere[ixs]**2
+    energy[ixs] = 0.5 * k * dist_to_sphere[ixs] ** 2
     return energy
 
 
@@ -36,10 +37,9 @@ def harmonic_sphere_force(x, radius=.5, k=1.):
         return [0., 0.]
 
 
-sde = dt.data.custom_sde(dim=2, rhs=lambda x: harmonic_sphere_force(x, radius=.5, k=1),
-                         sigma=np.diag([1., 1.]), h=1e-3, n_steps=100)
+sde = custom_sde(dim=2, rhs=lambda x: harmonic_sphere_force(x, radius=.5, k=1),
+                 sigma=np.diag([1., 1.]), h=1e-3, n_steps=100)
 traj = sde.trajectory([[0., 0.]], 500)
-
 
 xy = np.arange(-3.5, 3.5, 0.1)
 coords = np.dstack(np.meshgrid(xy, xy)).reshape(-1, 2)

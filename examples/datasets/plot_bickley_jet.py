@@ -9,10 +9,11 @@ The :meth:`deeptime.data.bickley_jet` dataset.
 
 import matplotlib.pyplot as plt
 import numpy as np
-import deeptime as dt
+
+from deeptime.data import bickley_jet
 
 n_particles = 250
-dataset = dt.data.bickley_jet(n_particles, n_jobs=8)
+dataset = bickley_jet(n_particles, n_jobs=8)
 c = np.copy(dataset[0, :, 0])
 c /= c.max()
 

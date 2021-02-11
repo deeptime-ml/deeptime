@@ -6,12 +6,13 @@ Example for the :meth:`deeptime.data.quadruple_well_asymmetric` dataset.
 """
 
 import numpy as np
-import deeptime as dt
 import scipy
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
-system = dt.data.quadruple_well_asymmetric(n_steps=10000)
+from deeptime.data import quadruple_well_asymmetric
+
+system = quadruple_well_asymmetric(n_steps=10000)
 traj = system.trajectory(np.array([[-1, 1]]), 70, seed=36)
 
 xy = np.arange(-1.8, 1.8, 0.1)
