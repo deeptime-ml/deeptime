@@ -249,13 +249,15 @@ def is_reversible(T, mu=None, tol=1e-12):
 # Eigenvalues and eigenvectors
 ################################################################################
 
-def stationary_distribution(T):
+def stationary_distribution(T, check_inputs: bool = True):
     r"""Compute stationary distribution of stochastic matrix T.
 
     Parameters
     ----------
     T : (M, M) ndarray or scipy.sparse matrix
         Transition matrix
+    check_inputs : bool, optional, default=True
+        Whether to check for connectivity and if it is a transition matrix.
 
     Returns
     -------
@@ -281,16 +283,17 @@ def stationary_distribution(T):
     array([0.44444444, 0.11111111, 0.44444444])
 
     """
-    # is this a transition matrix?
-    if not is_transition_matrix(T):
-        raise ValueError("Input matrix is not a transition matrix. "
-                         "Cannot compute stationary distribution")
-    # is the stationary distribution unique?
-    if not is_connected(T, directed=False):
-        raise ValueError("Input matrix is not weakly connected. "
-                         "Therefore it has no unique stationary "
-                         "distribution. Separate disconnected components "
-                         "and handle them separately")
+    if check_inputs:
+        # is this a transition matrix?
+        if not is_transition_matrix(T):
+            raise ValueError("Input matrix is not a transition matrix. "
+                             "Cannot compute stationary distribution")
+        # is the stationary distribution unique?
+        if not is_connected(T, directed=False):
+            raise ValueError("Input matrix is not weakly connected. "
+                             "Therefore it has no unique stationary "
+                             "distribution. Separate disconnected components "
+                             "and handle them separately")
     # we're good to go...
     if _issparse(T):
         mu = sparse.stationary_vector.stationary_distribution(T)

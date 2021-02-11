@@ -9,7 +9,7 @@ import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 import scipy.sparse
 
-from deeptime.markov.tools.analysis.sparse.mean_first_passage_time import mfpt, mfpt_between_sets
+from deeptime.markov.tools.analysis.sparse._mean_first_passage_time import mfpt, mfpt_between_sets
 
 
 class TestMfpt(unittest.TestCase):

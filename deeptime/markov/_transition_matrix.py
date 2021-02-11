@@ -167,10 +167,10 @@ def is_reversible(P):
 def stationary_distribution(P, C=None, mincount_connectivity=0):
     """ Simple estimator for stationary distribution for multiple strongly connected sets """
     # can be replaced by deeptime.markov.tools.analysis.stationary_distribution in next msmtools release
-    from deeptime.markov.tools.analysis.dense.stationary_vector import stationary_distribution as msmstatdist
+    from deeptime.markov.tools.analysis import stationary_distribution as msmstatdist
     if C is None:
         if is_connected(P, directed=True):
-            return msmstatdist(P)
+            return msmstatdist(P, check_inputs=False)
         else:
             raise ValueError('Computing stationary distribution for disconnected matrix. Need count matrix.')
 
@@ -183,7 +183,7 @@ def stationary_distribution(P, C=None, mincount_connectivity=0):
     for s in sets:
         # compute weight
         w = np.sum(C[s, :]) / ctot
-        pi[s] = w * msmstatdist(P[s, :][:, s])
+        pi[s] = w * msmstatdist(P[s, :][:, s], check_inputs=False)
     # reinforce normalization
     pi /= np.sum(pi)
     return pi

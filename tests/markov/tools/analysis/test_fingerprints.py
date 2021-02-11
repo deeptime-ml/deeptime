@@ -293,10 +293,10 @@ class TestFingerprintSparse(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = birth_death_chain(q, p)
+        self.bdc = birth_death_chain(q, p, sparse=True)
 
         self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix_sparse
+        self.T = self.bdc.transition_matrix
         R, D, L = rdl_decomposition(self.T, k=self.k)
         self.L = L
         self.R = R
@@ -375,10 +375,10 @@ class TestCorrelationSparse(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = birth_death_chain(q, p)
+        self.bdc = birth_death_chain(q, p, sparse=True)
 
         self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix_sparse
+        self.T = self.bdc.transition_matrix
         R, D, L = rdl_decomposition(self.T, k=self.k)
         self.L = L
         self.R = R
@@ -424,10 +424,10 @@ class TestRelaxationSparse(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = birth_death_chain(q, p)
+        self.bdc = birth_death_chain(q, p, sparse=True)
 
         self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix_sparse
+        self.T = self.bdc.transition_matrix
 
         """Test matrix-vector product against spectral decomposition"""
         R, D, L = rdl_decomposition(self.T, k=self.k)

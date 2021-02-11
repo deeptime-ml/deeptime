@@ -45,7 +45,7 @@ def pcca(P, m, stationary_distribution=None):
         pi = stationary_distribution
 
     # memberships
-    from .tools.analysis.dense.pcca import pcca as _algorithm_impl
+    from .tools.analysis.dense._pcca import pcca as _algorithm_impl
     M = _algorithm_impl(P, m, pi)
 
     # coarse-grained stationary distribution

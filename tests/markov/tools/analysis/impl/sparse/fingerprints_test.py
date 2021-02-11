@@ -8,14 +8,14 @@ import unittest
 
 import numpy as np
 
+from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
-import deeptime
-from deeptime.markov.tools.analysis.sparse.decomposition import rdl_decomposition, timescales
+from deeptime.markov.tools.analysis.sparse._decomposition import rdl_decomposition, timescales
 
-from deeptime.markov.tools.analysis.sparse.fingerprints import fingerprint_correlation, fingerprint_relaxation, fingerprint
-from deeptime.markov.tools.analysis.sparse.fingerprints import correlation_decomp, correlation_matvec, correlation
-from deeptime.markov.tools.analysis.sparse.fingerprints import relaxation_decomp, relaxation_matvec, relaxation
+from deeptime.markov.tools.analysis.sparse._fingerprints import fingerprint_correlation, fingerprint_relaxation, fingerprint
+from deeptime.markov.tools.analysis.sparse._fingerprints import correlation_decomp, correlation_matvec, correlation
+from deeptime.markov.tools.analysis.sparse._fingerprints import relaxation_decomp, relaxation_matvec, relaxation
 
 
 class TestFingerprint(unittest.TestCase):
@@ -29,9 +29,9 @@ class TestFingerprint(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = deeptime.data.birth_death_chain(q, p)
+        self.bdc = birth_death_chain(q, p, sparse=True)
         self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix_sparse
+        self.T = self.bdc.transition_matrix
         R, D, L = rdl_decomposition(self.T, k=self.k)
         self.L = L
         self.R = R
@@ -122,10 +122,10 @@ class TestCorrelation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = deeptime.data.birth_death_chain(q, p)
+        self.bdc = birth_death_chain(q, p, sparse=True)
 
         self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix_sparse
+        self.T = self.bdc.transition_matrix
         R, D, L = rdl_decomposition(self.T, k=self.k)
         self.L = L
         self.R = R
@@ -210,10 +210,10 @@ class TestRelaxation(unittest.TestCase):
         p[4] = 0.01
         q[6] = 0.1
 
-        self.bdc = deeptime.data.birth_death_chain(q, p)
+        self.bdc = birth_death_chain(q, p, sparse=True)
 
         self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix_sparse
+        self.T = self.bdc.transition_matrix
 
         """Test matrix-vector product against spectral decomposition"""
         R, D, L = rdl_decomposition(self.T, k=self.k)

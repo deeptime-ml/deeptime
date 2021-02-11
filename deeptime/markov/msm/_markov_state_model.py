@@ -440,7 +440,7 @@ class MarkovStateModel(Model):
             self._ensure_eigenvalues()
         else:
             self._ensure_eigenvalues(neig=k + 1)
-        from deeptime.markov.tools.analysis.dense.decomposition import timescales_from_eigenvalues as timescales
+        from deeptime.markov.tools.analysis.dense._decomposition import timescales_from_eigenvalues as timescales
 
         ts = timescales(self._eigenvalues, tau=self.lagtime)
         if k is None:
