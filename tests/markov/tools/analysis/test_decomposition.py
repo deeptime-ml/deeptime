@@ -4,13 +4,14 @@ r"""Unit test for decomposition functions in api.py
 .. moduleauthor:: clonker (the refactors)
 """
 import warnings
-from contextlib import nullcontext
 
 import numpy as np
 import pytest
 from numpy.testing import assert_raises
 from scipy.linalg import eigvals as _eigvals
 from scipy.sparse import issparse
+
+from tests.util import nullcontext
 
 from deeptime.data import birth_death_chain
 from deeptime.markov.tools.analysis import rdl_decomposition, timescales
