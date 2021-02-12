@@ -3,8 +3,8 @@ import numpy as np
 import pkg_resources
 
 from deeptime.covariance import KoopmanWeightingModel
-from deeptime.data.util import timeshifted_split
-from deeptime.numeric.eigen import sort_eigs
+from deeptime.data import timeshifted_split
+from deeptime.numeric import sort_eigs
 import numpy.linalg as scl
 
 
@@ -161,7 +161,7 @@ class TestKoopmanTICA(unittest.TestCase):
         cls.tsr = -cls.tau / np.log(np.abs(cls.lr))
 
         def tica(data, lag, weights=None, **params):
-            from deeptime.decomposition.tica import TICA
+            from deeptime.decomposition import TICA
             return TICA(var_cutoff=0.95, lagtime=lag, **params).fit_from_timeseries(data, weights=weights).fetch_model()
 
         # Set up the model:

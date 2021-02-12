@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 import deeptime
-from deeptime.markov.util import count_states
+from deeptime.markov import count_states
 
 
 @pytest.fixture

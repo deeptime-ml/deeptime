@@ -19,7 +19,7 @@ from .sampler_rev import SamplerRev
 from .sampler_revpi import SamplerRevPi
 
 
-class TransitionMatrixSampler(object):
+class TransitionMatrixSampler:
 
     def __init__(self, count_matrix, reversible=False, mu=None, P0=None, n_steps=1, prior='sparse', seed=-1):
 

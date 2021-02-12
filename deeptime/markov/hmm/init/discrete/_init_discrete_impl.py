@@ -369,8 +369,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
             + [m + "-regularized" for m in metastable_from_data.VALID_MODES]:
         raise ValueError("mode can only be one of [{}]".format(", ".join(metastable_from_data.VALID_MODES)))
 
-    from deeptime.markov.util import compute_dtrajs_effective
-    from deeptime.markov import TransitionCountEstimator
+    from deeptime.markov import compute_dtrajs_effective, TransitionCountEstimator
 
     dtrajs = ensure_dtraj_list(dtrajs)
     dtrajs = compute_dtrajs_effective(dtrajs, lagtime=lagtime, n_states=n_hidden_states, stride=stride)

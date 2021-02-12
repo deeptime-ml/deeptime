@@ -148,7 +148,7 @@ def call_member(obj, f: Union[str, Callable], *args, **kwargs):
     return method
 
 
-class QuantityStatistics(object):
+class QuantityStatistics:
     """ Container for statistical quantities computed on samples.
 
     Parameters

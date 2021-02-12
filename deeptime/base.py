@@ -212,7 +212,7 @@ class Estimator(_base_methods_mixin):
         return super(_base_methods_mixin, self).__getattribute__(item)
 
 
-class Transformer(object):
+class Transformer:
     r""" Base class of all transformers. """
 
     @abc.abstractmethod
@@ -235,7 +235,7 @@ class Transformer(object):
         return self.transform(*args, **kwargs)
 
 
-class _ImmutableInputData(object):
+class _ImmutableInputData:
     """A function decorator for Estimator.fit() to make input data immutable """
 
     def __init__(self, fit_method):

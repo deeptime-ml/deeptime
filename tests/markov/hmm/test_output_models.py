@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 import deeptime
-from deeptime.markov.hmm.output_model import DiscreteOutputModel, GaussianOutputModel
+from deeptime.markov.hmm import DiscreteOutputModel, GaussianOutputModel
 
 
 class TestDiscrete(unittest.TestCase):

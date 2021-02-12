@@ -7,9 +7,10 @@ Example for the :meth:`deeptime.data.triple_well_1d` dataset.
 
 import matplotlib.pyplot as plt
 import numpy as np
-import deeptime as dt
 
-system = dt.data.triple_well_1d(h=1e-3, n_steps=500)
+from deeptime.data import triple_well_1d
+
+system = triple_well_1d(h=1e-3, n_steps=500)
 xs = np.linspace(0, 6., num=500)
 ys = system.potential(xs.reshape(-1, 1))
 

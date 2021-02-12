@@ -1,9 +1,10 @@
 # pytest specific configuration file containing eg fixtures.
-import random
 import os
+import random
 
-import pytest
 import numpy as np
+import pytest
+
 from deeptime.util.platform import module_available
 
 if module_available("torch"):
@@ -23,17 +24,13 @@ else:
         pass
 
 
-# import warnings
-# warnings.filterwarnings('error')
-
-
 @pytest.fixture
 def fixed_seed():
     random.seed(42)
     np.random.mtrand.seed(42)
     fix_torch_seed(42)
     yield
-    new_seed = int.from_bytes(os.urandom(16), 'big') % (2**32 - 1)
+    new_seed = int.from_bytes(os.urandom(16), 'big') % (2 ** 32 - 1)
     random.seed(new_seed)
     np.random.mtrand.seed(new_seed)
     fix_torch_seed(new_seed)

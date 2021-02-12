@@ -8,9 +8,10 @@ Example for the :meth:`deeptime.data.abc_flow` dataset.
 import numpy as np
 from matplotlib import animation
 
-import deeptime as dt
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+
+from deeptime.data import abc_flow
 
 
 def update(num):
@@ -20,7 +21,7 @@ def update(num):
     return graph,
 
 
-system = dt.data.abc_flow(n_steps=25)
+system = abc_flow(n_steps=25)
 scatters = [np.random.uniform(np.pi-.5, np.pi+.5, size=(500, 3))]
 for _ in range(50):
     scatters.append(system(scatters[-1], n_jobs=8))

@@ -58,7 +58,7 @@ def find_bottleneck(F, A, B):
         l = 0
         N = 0
         while r - l > 1:
-            m = np.int(np.floor(0.5 * (r + l)))
+            m = np.int64(np.floor(0.5 * (r + l)))
             valtmp = val[m:]
             rowtmp = row[m:]
             coltmp = col[m:]
@@ -336,14 +336,14 @@ def add_endstates(F, A, B):
     col_old = F.col
 
     """Add currents from new A=[n,] to all states in A"""
-    row1 = np.zeros(outA.shape[0], dtype=np.int)
+    row1 = np.zeros(outA.shape[0], dtype=int)
     row1[:] = M
     col1 = np.array(A)
     data1 = outA
 
     """Add currents from old B to new B=[n+1,]"""
     row2 = np.array(B)
-    col2 = np.zeros(inB.shape[0], dtype=np.int)
+    col2 = np.zeros(inB.shape[0], dtype=int)
     col2[:] = M + 1
     data2 = inB
 

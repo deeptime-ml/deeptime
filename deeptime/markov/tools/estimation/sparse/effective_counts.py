@@ -9,7 +9,6 @@ import scipy.sparse
 
 from deeptime.util.stats import statistical_inefficiency
 from .count_matrix import count_matrix_coo2_mult
-from ....util import number_of_states
 
 from scipy.sparse.csr import csr_matrix
 
@@ -56,6 +55,7 @@ def _split_sequences_multitraj(dtrajs, lag):
         lag time
 
     """
+    from deeptime.markov import number_of_states
     n = number_of_states(dtrajs)
     res = []
     for i in range(n):
@@ -90,7 +90,7 @@ def _wrapper(*args):
     array[start:stop] = partial
 
 
-class _arguments_generator(object):
+class _arguments_generator:
     # splits I and J in blocks to serve n_jobs processes.
     def __init__(self, I, J, splitted_seqs, truncate_acf, mact, array, njobs):
         self.I = I

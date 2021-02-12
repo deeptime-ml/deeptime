@@ -9,10 +9,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-import deeptime as dt
+from deeptime.data import sqrt_model
 
 n_samples = 10000
-dtraj, traj = dt.data.sqrt_model(n_samples)
+dtraj, traj = sqrt_model(n_samples)
 
 X, Y = np.meshgrid(
     np.linspace(np.min(traj[:, 0]), np.max(traj[:, 0]), 100),

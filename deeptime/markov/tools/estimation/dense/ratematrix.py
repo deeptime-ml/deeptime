@@ -83,7 +83,7 @@ def raise_or_warn(msg, on_error, warning=UserWarning, exception=RuntimeError):
         raise ValueError('Unsupported value of on_error (%s). Should be "raise" or "warn".'%on_error)
 
 
-class _RateMatrixEstimator(object):
+class _RateMatrixEstimator:
     # base class: includes parametrization of K matrix and the basic class interface
     def __init__(self, C, dt=1.0, sparsity=None, t_agg=None, pi=None, tol=1.0E7, maxiter=100000, on_error='raise'):
         if not np.all(C >= 0):

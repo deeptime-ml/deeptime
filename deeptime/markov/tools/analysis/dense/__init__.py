@@ -1,10 +1,11 @@
-from . import assessment
-from . import committor
-from . import correlations
-from . import decomposition
-from . import expectations
-from . import fingerprints
-from . import hitting_probability
-from . import mean_first_passage_time
-from . import sensitivity
-from . import pcca
+from . import _assessment as assessment
+from . import _committor as committor
+from . import _correlations as correlations
+from . import _decomposition as decomposition
+from . import _expectations as expectations
+from . import _fingerprints as fingerprints
+from . import _hitting_probability as hitting_probability
+from . import _mean_first_passage_time as mean_first_passage_time
+from . import _sensitivity as sensitivity
+from . import _pcca as pcca
+from . import _stationary_vector as stationary_vector

@@ -1,3 +1,4 @@
+import sys
 import time
 
 import numpy as np
@@ -95,3 +96,14 @@ def assert_array_not_equal(arr1, arr2, err_msg='', verbose=True):
     with np.testing.assert_raises(AssertionError, msg=err_msg):
         np.testing.assert_array_equal(arr1, arr2, verbose=verbose)
 
+
+if sys.version_info[0] == 3 and sys.version_info[1] > 6:
+    from contextlib import nullcontext
+else:
+    class nullcontext:
+
+        def __enter__(self, *args, **kw):
+            pass
+
+        def __exit__(self, *args, **kw):
+            pass

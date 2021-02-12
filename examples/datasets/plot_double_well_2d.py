@@ -7,12 +7,13 @@ Example for the :meth:`deeptime.data.double_well_2d` dataset.
 """
 
 import numpy as np
-import deeptime as dt
 import scipy
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
-system = dt.data.double_well_2d(n_steps=10000)
+from deeptime.data import double_well_2d
+
+system = double_well_2d(n_steps=10000)
 traj = system.trajectory(np.array([[-1, 0]]), 20, seed=42)
 
 x = np.arange(-2, 2, 0.01)

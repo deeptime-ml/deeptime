@@ -18,7 +18,7 @@ import scipy.sparse
 import deeptime
 from deeptime.markov._base import score_cv
 from deeptime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel, MarkovStateModelCollection
-from deeptime.markov.transition_counting import TransitionCountEstimator, TransitionCountModel
+from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 
 
 def estimate_markov_model(dtrajs, lag, **kw) -> MarkovStateModel:

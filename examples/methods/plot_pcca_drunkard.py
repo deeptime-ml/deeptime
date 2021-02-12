@@ -8,11 +8,12 @@ The state assignments are shown via their probability distributions over the mic
 """
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import deeptime
 
-sim = deeptime.data.drunkards_walk(grid_size=(10, 10),
-                                   bar_location=[(0, 0), (0, 1), (1, 0), (1, 1)],
-                                   home_location=[(8, 8), (8, 9), (9, 8), (9, 9)])
+from deeptime.data import drunkards_walk
+
+sim = drunkards_walk(grid_size=(10, 10),
+                     bar_location=[(0, 0), (0, 1), (1, 0), (1, 1)],
+                     home_location=[(8, 8), (8, 9), (9, 8), (9, 9)])
 sim.add_barrier((5, 1), (5, 5))
 sim.add_barrier((0, 9), (5, 8))
 sim.add_barrier((9, 2), (7, 6))

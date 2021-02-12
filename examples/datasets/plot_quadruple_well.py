@@ -6,12 +6,13 @@ Example for the :meth:`deeptime.data.quadruple_well` dataset.
 """
 
 import numpy as np
-import deeptime as dt
 import scipy
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
-system = dt.data.quadruple_well(n_steps=1000)
+from deeptime.data import quadruple_well
+
+system = quadruple_well(n_steps=1000)
 traj = system.trajectory(np.array([[1, -1]]), 100, seed=46)
 
 xy = np.arange(-2, 2, 0.1)

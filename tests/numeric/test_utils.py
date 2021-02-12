@@ -4,8 +4,23 @@ import scipy.sparse as sp
 from numpy.testing import assert_, assert_raises, assert_array_almost_equal, assert_almost_equal, assert_equal
 
 from deeptime.numeric import is_diagonal_matrix, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
-    eig_corr, is_square_matrix
-from deeptime.numeric.utils import allclose_sparse
+    eig_corr, is_square_matrix, allclose_sparse, is_sorted
+
+
+@pytest.mark.parametrize("dtype", [None, int, float, np.int32, np.uint8])
+def test_is_sorted(dtype):
+    data = [0, 0, 1, 1, 2, 3, 3]
+
+    if dtype is not None:
+        arr = np.array(data, dtype=dtype)
+    else:
+        arr = data
+    assert_(is_sorted(arr, 'asc'))
+    assert_(not is_sorted(arr, 'desc'))
+
+    arr = arr[::-1]
+    assert_(not is_sorted(arr, 'asc'))
+    assert_(is_sorted(arr, 'desc'))
 
 
 def test_is_diagonal_matrix():

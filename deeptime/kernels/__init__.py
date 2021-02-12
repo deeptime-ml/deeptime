@@ -29,10 +29,10 @@ r"""
     is_torch_kernel
 """
 
-from .base import Kernel, is_torch_kernel
-from .kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel, PolynomialKernel
+from ._base import Kernel, is_torch_kernel
+from ._kernels import GaussianKernel, GeneralizedGaussianKernel, LaplacianKernel, PolynomialKernel
 
 from ..util.platform import module_available
 if module_available("torch"):
-    from .kernels_torch import TorchGaussianKernel
+    from ._kernels_torch import TorchGaussianKernel
 del module_available

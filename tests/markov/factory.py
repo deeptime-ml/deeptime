@@ -2,7 +2,7 @@ import typing
 
 import numpy as np
 
-import deeptime.data.datasets as datasets
+import deeptime.data as datasets
 from deeptime.markov import TransitionCountEstimator
 from deeptime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior
 

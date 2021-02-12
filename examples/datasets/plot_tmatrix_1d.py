@@ -6,13 +6,15 @@ Example for :meth:`deeptime.data.tmatrix_metropolis1d`.
 """
 import matplotlib.pyplot as plt
 import numpy as np
-import deeptime as dt
+
+from deeptime.data import tmatrix_metropolis1d
+from deeptime.markov.msm import MarkovStateModel
 
 xs = np.linspace(-1.5, 1.5, num=100)
 energies = 1/8 * (xs-1)**2 * (xs+1)**2
 energies /= np.max(energies)
-transition_matrix = dt.data.tmatrix_metropolis1d(energies)
-msm = dt.markov.msm.MarkovStateModel(transition_matrix)
+transition_matrix = tmatrix_metropolis1d(energies)
+msm = MarkovStateModel(transition_matrix)
 
 traj = msm.simulate(n_steps=1000000)
 

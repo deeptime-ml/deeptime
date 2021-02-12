@@ -9,7 +9,7 @@ import numpy as np
 import deeptime
 from deeptime.clustering import Kmeans
 from deeptime.decomposition import VAMP
-from deeptime.decomposition.vampnet import sym_inverse, covariances, score, VAMPNet, loss
+from deeptime.decomposition.deep import sym_inverse, covariances, vamp_score, VAMPNet, vampnet_loss
 from deeptime.markov.msm import MaximumLikelihoodMSM
 from deeptime.util.torch import create_timelagged_data_loader, MLP
 
@@ -52,7 +52,7 @@ def test_score(fixed_seed, method, mode):
     with torch.no_grad():
         data_instantaneous = torch.from_numpy(data[:-tau].astype(np.float64))
         data_shifted = torch.from_numpy(data[tau:].astype(np.float64))
-        score_value = score(data_instantaneous, data_shifted, method=f"VAMP{method}", mode=mode)
+        score_value = vamp_score(data_instantaneous, data_shifted, method=f"VAMP{method}", mode=mode)
         if method == 'E':
             # less precise due to svd implementation of torch
             np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(method), decimal=2)
@@ -72,7 +72,7 @@ def test_estimator(fixed_seed):
     for _ in range(50):
         for X, Y in deeptime.data.timeshifted_split(obs, lagtime=1, chunksize=512):
             opt.zero_grad()
-            lval = loss(lobe(torch.from_numpy(X)), lobe(torch.from_numpy(Y)))
+            lval = vampnet_loss(lobe(torch.from_numpy(X)), lobe(torch.from_numpy(Y)))
             lval.backward()
             opt.step()
 

@@ -5,9 +5,10 @@ Birth-death chain model
 Example for the :meth:`deeptime.data.birth_death_chain` model.
 """
 
-import deeptime as dt
 import numpy as np
 import matplotlib.pyplot as plt
+
+from deeptime.data import birth_death_chain
 
 n_states = 7
 b = 2
@@ -20,7 +21,7 @@ q[4] = 10 ** (-b)
 p[2] = 10 ** (-b)
 p[4] = 1.0 - 10 ** (-b)
 
-bd = dt.data.birth_death_chain(q, p)
+bd = birth_death_chain(q, p)
 dtraj = bd.msm.simulate(100000)
 
 bins = np.arange(0, dtraj.max() + 1.5) - 0.5

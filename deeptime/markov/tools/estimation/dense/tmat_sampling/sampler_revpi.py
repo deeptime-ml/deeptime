@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class SamplerRevPi(object):
+class SamplerRevPi:
 
     def __init__(self, C, pi, P0=None, P_mle=None, eps=0.1, seed=-1):
         from deeptime.markov.tools.estimation.dense.mle import mle_trev_given_pi

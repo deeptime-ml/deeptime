@@ -6,9 +6,11 @@ r"""
     :template: class_nomodule.rst
 
     Observable
+    Concatenation
+
     Identity
     Monomials
 """
 
-from .base import Observable
-from .monomials import Identity, Monomials
+from ._base import Observable, Concatenation
+from ._monomials import Identity, Monomials

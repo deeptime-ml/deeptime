@@ -1,6 +1,6 @@
 import numpy as np
 
-from deeptime.markov.util import compute_connected_sets, closed_sets, is_connected
+from ._util import compute_connected_sets, closed_sets, is_connected
 
 
 def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=1e-8, mincount_connectivity=0):
@@ -62,7 +62,7 @@ def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=
 
 
 def transition_matrix_partial_rev(C, P, S, maxiter=1000000, maxerr=1e-8):
-    """Maximum likelihood estimation of transition matrix which is reversible on parts
+    r"""Maximum likelihood estimation of transition matrix which is reversible on parts
 
     Partially-reversible estimation of transition matrix. Maximizes the likelihood:
 
@@ -167,10 +167,10 @@ def is_reversible(P):
 def stationary_distribution(P, C=None, mincount_connectivity=0):
     """ Simple estimator for stationary distribution for multiple strongly connected sets """
     # can be replaced by deeptime.markov.tools.analysis.stationary_distribution in next msmtools release
-    from deeptime.markov.tools.analysis.dense.stationary_vector import stationary_distribution as msmstatdist
+    from deeptime.markov.tools.analysis import stationary_distribution as msmstatdist
     if C is None:
         if is_connected(P, directed=True):
-            return msmstatdist(P)
+            return msmstatdist(P, check_inputs=False)
         else:
             raise ValueError('Computing stationary distribution for disconnected matrix. Need count matrix.')
 
@@ -183,7 +183,7 @@ def stationary_distribution(P, C=None, mincount_connectivity=0):
     for s in sets:
         # compute weight
         w = np.sum(C[s, :]) / ctot
-        pi[s] = w * msmstatdist(P[s, :][:, s])
+        pi[s] = w * msmstatdist(P[s, :][:, s], check_inputs=False)
     # reinforce normalization
     pi /= np.sum(pi)
     return pi

@@ -11,10 +11,9 @@ import pytest
 
 from deeptime.covariance import Covariance
 from deeptime.data import ellipsoids
-from deeptime.decomposition import VAMP
-from deeptime.decomposition.tica import TICA
+from deeptime.decomposition import TICA, VAMP
 from deeptime.markov.msm import MarkovStateModel
-from deeptime.numeric.eigen import ZeroRankError
+from deeptime.numeric import ZeroRankError
 
 
 def test_fit_reset():

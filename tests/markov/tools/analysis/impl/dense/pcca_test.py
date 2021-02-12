@@ -11,7 +11,7 @@ import unittest
 import numpy as np
 
 from deeptime.markov.tools.analysis import stationary_distribution
-from deeptime.markov.tools.analysis.dense.pcca import pcca, coarsegrain, PCCA
+from deeptime.markov.tools.analysis.dense._pcca import pcca, coarsegrain, PCCA
 from deeptime.markov.tools.estimation import connected_sets
 from tests.markov.tools.numeric import assert_allclose
 

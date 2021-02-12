@@ -26,9 +26,9 @@ Note that usage of these estimators requires a working installation of `PyTorch 
     :toctree: generated/
     :template: class_nomodule.rst
 
-    VAMPNet
-    TAE
-    TVAE
+    deep.VAMPNet
+    deep.TAE
+    deep.TVAE
 
 ===============================================================================
 Models
@@ -44,9 +44,9 @@ Models
     EDMDModel
     KernelEDMDModel
     KernelCCAModel
-    VAMPNetModel
-    TAEModel
-    TVAEModel
+    deep.VAMPNetModel
+    deep.TAEModel
+    deep.TVAEModel
 
 ===============================================================================
 Utils
@@ -58,28 +58,23 @@ Utils
 
     vamp_score
 
-    TVAEEncoder
-    vampnet.koopman_matrix
-    vampnet.sym_inverse
-    vampnet.covariances
-    vampnet.score
-    vampnet.loss
-
-    kvadnet.kvad_score
-
+    deep.TVAEEncoder
+    deep.koopman_matrix
+    deep.sym_inverse
+    deep.covariances
+    deep.vamp_score
+    deep.vampnet_loss
+    deep.kvad_score
 """
 
 from ._score import vamp_score
-from .tica import TICA
-from .vamp import VAMP
-from .koopman import KoopmanModel, CovarianceKoopmanModel
-from .dmd import DMD, DMDModel, EDMD, EDMDModel, KernelEDMD, KernelEDMDModel
-from .cca import KernelCCA, KernelCCAModel
+from ._tica import TICA
+from ._vamp import VAMP
+from ._koopman import KoopmanModel, CovarianceKoopmanModel
+from ._dmd import DMD, DMDModel, EDMD, EDMDModel, KernelEDMD, KernelEDMDModel
+from ._cca import KernelCCA, KernelCCAModel
 
 from ..util.platform import module_available
 if module_available("torch"):
-    from .vampnet import VAMPNet, VAMPNetModel
-    from .tae import TAE, TAEModel, TVAE, TVAEModel, TVAEEncoder
-    from . import vampnet
-    from . import kvadnet
+    from . import deep
 del module_available
