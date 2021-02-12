@@ -14,7 +14,11 @@ class Identity(Observable):
 
     @staticmethod
     def get_feature_names(input_features=None):
-        return ['x']
+        if input_features is None:
+            return ['x']
+        else:
+            assert len(input_features) == 1
+            return input_features
 
 
 class Monomials(Observable):
