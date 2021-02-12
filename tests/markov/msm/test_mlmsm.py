@@ -16,7 +16,7 @@ import pytest
 import scipy.sparse
 
 import deeptime
-from deeptime.markov._base import score_cv
+from deeptime.decomposition import vamp_score_cv
 from deeptime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, MarkovStateModel, MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 
@@ -196,18 +196,19 @@ class TestMSMRevPi(unittest.TestCase):
 
 def test_score_cv(double_well_msm_all):
     scenario, est, msm = double_well_msm_all
+    est.lagtime = 10
 
     def fit_fetch(dtrajs):
         count_model = TransitionCountEstimator(lagtime=10, count_mode="sliding", n_states=85).fit(dtrajs) \
             .fetch_model().submodel_largest()
         return est.fit(count_model).fetch_model()
 
-    s1 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method=1, dim=2).mean()
+    s1 = vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=1, dim=2, n_jobs=1).mean()
     assert 1.0 <= s1 <= 2.0
-    s2 = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method=2, dim=2).mean()
+    s2 = vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=2, dim=2, n_jobs=1).mean()
     assert 1.0 <= s2 <= 2.0
-    se = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method="E", dim=2).mean()
-    se_inf = score_cv(fit_fetch, dtrajs=scenario.dtraj, lagtime=10, n=5, score_method="E", dim=None).mean()
+    se = vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r="E", dim=2, n_jobs=1).mean()
+    se_inf = vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r="E", dim=None, n_jobs=1).mean()
 
 
 class TestMSMMinCountConnectivity(unittest.TestCase):

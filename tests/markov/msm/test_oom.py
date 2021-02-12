@@ -10,7 +10,8 @@ import pytest
 import scipy.linalg as scl
 import scipy.sparse
 
-from deeptime.markov import score_cv, sample, count_states
+from deeptime.decomposition import vamp_score_cv
+from deeptime.markov import sample, count_states
 from deeptime.markov.msm import MarkovStateModel, OOMReweightedMSM
 from deeptime.numeric import sort_eigs
 
@@ -208,14 +209,10 @@ def test_score(five_state_msm):
 @pytest.mark.parametrize("reversible,sparse", [(True, True), (True, False), (False, True), (False, False)])
 def test_score_cv(five_state_msm, reversible, sparse):
     msm = OOMReweightedMSM(lagtime=5, reversible=reversible, sparse=sparse)
-    s1 = score_cv(dtrajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, score_method=1, dim=2, blocksplit=False,
-                  fit_fetch=lambda dtrajs: msm.fit(dtrajs).fetch_model()).mean()
+    s1 = vamp_score_cv(msm, trajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, r=1, dim=2, blocksplit=False).mean()
     np.testing.assert_(1.0 <= s1 <= 2.0)
-    s2 = score_cv(dtrajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, score_method=2, dim=2, blocksplit=False,
-                  fit_fetch=lambda dtrajs: msm.fit(dtrajs).fetch_model()).mean()
+    s2 = vamp_score_cv(msm, trajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, r=2, dim=2, blocksplit=False).mean()
     np.testing.assert_(1.0 <= s2 <= 2.0)
-    # se = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', dim=2).mean()
-    # se_inf = estimator.score_cv(cls.dtrajs[:500], n=2, score_method='VAMPE', dim=None).mean()
 
 
 # ---------------------------------

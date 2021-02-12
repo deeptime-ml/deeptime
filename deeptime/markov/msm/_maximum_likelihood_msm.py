@@ -54,6 +54,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         row sums of 1).
     connectivity_threshold : float, optional, default=0.
         Number of counts required to consider two states connected.
+    lagtime : int, optional, default=None
+        Optional lagtime that can be provided at estimator level if fitting from timeseries directly.
 
     References
     ----------
@@ -62,7 +64,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
                  sparse: bool = False, allow_disconnected: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8,
-                 connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-6):
+                 connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-6, lagtime=None):
         super(MaximumLikelihoodMSM, self).__init__(reversible=reversible, sparse=sparse)
 
         self.stationary_distribution_constraint = stationary_distribution_constraint
@@ -71,6 +73,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self.maxerr = maxerr
         self.connectivity_threshold = connectivity_threshold
         self.transition_matrix_tolerance = transition_matrix_tolerance
+        self.lagtime = lagtime
 
     @property
     def allow_disconnected(self) -> bool:
@@ -341,6 +344,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         elif isinstance(data, np.ndarray) and data.ndim == 2 and data.shape[0] == data.shape[1]:
             return self.fit_from_counts(data)
         else:
-            if 'lagtime' not in kw.keys():
+            if 'lagtime' not in kw.keys() and self.lagtime is None:
                 raise ValueError("To fit directly from a discrete timeseries, a lagtime must be provided!")
-            return self.fit_from_discrete_timeseries(data, kw['lagtime'], kw.pop("count_mode", "sliding"))
+            return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime),
+                                                     kw.pop("count_mode", "sliding"))

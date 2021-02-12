@@ -52,6 +52,5 @@ from ._transition_counting import TransitionCountEstimator, TransitionCountModel
 
 from ._reactive_flux import ReactiveFlux, compute_reactive_flux
 
-from ._base import score_cv
 from . import msm
 from . import hmm
