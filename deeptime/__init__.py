@@ -1,6 +1,18 @@
 from ._version import get_versions
+
 __version__ = get_versions()['version']
 del get_versions
+
+from . import util
+from . import numeric
+from . import data
+from . import basis
+from . import kernels
+from . import sindy
+from . import clustering
+from . import covariance
+from . import decomposition
+from . import markov
 
 
 def capi_includes():
