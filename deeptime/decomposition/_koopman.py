@@ -431,7 +431,7 @@ class CovarianceKoopmanModel(KoopmanModel):
         out = self._instantaneous_whitening_backwards(out)  # (T, n) -> (T, N) back into original space
         return out
 
-    def score(self, r: Union[float, str], test_model=None, epsilon=1e-6):
+    def score(self, r: Union[float, str], test_model=None, epsilon=1e-6, dim=None):
         """Compute the VAMP score between a this model and potentially a test model for cross-validation.
 
         Parameters
@@ -464,6 +464,8 @@ class CovarianceKoopmanModel(KoopmanModel):
 
         epsilon : float, default=1e-6
             Regularization parameter for computing sqrt-inverses of spd matrices.
+        dim : int, optional, default=None
+            How many components to use for scoring.
 
         Returns
         -------
@@ -481,7 +483,8 @@ class CovarianceKoopmanModel(KoopmanModel):
         .. footbibliography::
         """
         test_cov = test_model.cov if test_model is not None else None
-        return vamp_score(self, r, test_cov, self.output_dimension, epsilon)
+        dim = self.output_dimension if dim is None else dim
+        return vamp_score(self, r, test_cov, dim, epsilon)
 
     def expectation(self, observables, statistics, lag_multiple=1, observables_mean_free=False,
                     statistics_mean_free=False):

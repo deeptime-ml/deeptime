@@ -9,8 +9,7 @@ import pytest
 
 from deeptime.covariance import CovarianceModel
 from deeptime.data import timeshifted_split
-from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel, VAMP
-from deeptime.markov._base import cvsplit_dtrajs
+from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel, VAMP, cvsplit_trajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 
 
@@ -317,8 +316,8 @@ class TestVAMPModel(unittest.TestCase):
         np.testing.assert_allclose(sE, NFro)  # see paper appendix H.2
 
     def test_score_vs_MSM(self):
-        trajs_test, trajs_train = cvsplit_dtrajs(self.trajs, random_state=32)
-        dtrajs_test, dtrajs_train = cvsplit_dtrajs(self.dtrajs, random_state=32)
+        trajs_test, trajs_train = cvsplit_trajs(self.trajs, random_state=32)
+        dtrajs_test, dtrajs_train = cvsplit_trajs(self.dtrajs, random_state=32)
 
         methods = (1, 2, 'E')
 

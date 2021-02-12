@@ -1,8 +1,9 @@
 import numbers
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 
 import numpy as np
 
+from ..base import Estimator
 from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
 
 
@@ -110,3 +111,181 @@ def vamp_score(koopman_model, r: Union[float, str],
     if koopman_model.cov.data_mean_removed:
         score += 1
     return score
+
+
+def blocksplit_trajs(trajs, lag=1, sliding=True, shift=None, random_state=None):
+    """ Splits trajectories into approximately uncorrelated fragments.
+
+    Will split trajectories into fragments of lengths lag or longer. These fragments
+    are overlapping in order to conserve the transition counts at given lag.
+    If sliding=True, the resulting trajectories will lead to exactly the same count
+    matrix as when counted from dtrajs. If sliding=False (sampling at lag), the
+    count matrices are only equal when also setting shift=0.
+
+    Parameters
+    ----------
+    trajs : list of ndarray(int)
+        Trajectories
+    lag : int
+        Lag time at which counting will be done.
+    sliding : bool
+        True for splitting trajectories for sliding count, False if lag-sampling will be applied
+    shift : None or int
+        Start of first full tau-window. If None, shift will be randomly generated
+    random_state : None or int or np.random.RandomState
+        Random seed to use.
+
+    Returns
+    -------
+    blocks : list of ndarray
+        The blocks.
+    """
+    from sklearn.utils.random import check_random_state
+    random_state = check_random_state(random_state)
+    blocks = []
+    for traj in trajs:
+        if len(traj) <= lag:
+            continue
+        if shift is None:
+            s = random_state.randint(min(lag, traj.size - lag))
+        else:
+            s = shift
+        if sliding:
+            if s > 0:
+                blocks.append(traj[:lag + s])
+            for t0 in range(s, traj.size - lag, lag):
+                blocks.append(traj[t0:t0 + 2 * lag])
+        else:
+            for t0 in range(s, traj.size - lag, lag):
+                blocks.append(traj[t0:t0 + lag + 1])
+    return blocks
+
+
+def cvsplit_trajs(trajs, random_state=None):
+    """ Splits the trajectories into a training and test set with approximately equal number of trajectories
+
+    Parameters
+    ----------
+    trajs : list of ndarray(int)
+        Discrete trajectories
+    random_state : None or int or np.random.RandomState
+        Random seed to use.
+    """
+    from sklearn.utils.random import check_random_state
+    if len(trajs) == 1:
+        raise ValueError('Only have a single trajectory. Cannot be split into train and test set')
+    random_state = check_random_state(random_state)
+    I0 = random_state.choice(len(trajs), int(len(trajs) / 2), replace=False)
+    I1 = np.array(list(set(list(np.arange(len(trajs)))) - set(list(I0))))
+    train_set = [trajs[i] for i in I0]
+    test_set = [trajs[i] for i in I1]
+    return train_set, test_set
+
+
+def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime, n=10, splitting_mode="sliding", r=2,
+                  dim: Optional[int] = None, blocksplit: bool = True, random_state=None, n_jobs=1):
+    r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
+
+    Implementation and ideas following :footcite:`noe2013variational` :footcite:`wu2020variational` and
+    cross-validation :footcite:`mcgibbon2015variational`.
+
+    Divides the data into training and test data, fits a MSM using the training
+    data using the parameters of this estimator, and scores is using the test
+    data.
+    Currently only one way of splitting is implemented, where for each n,
+    the data is randomly divided into two approximately equally large sets of
+    discrete trajectory fragments with lengths of at least the lagtime.
+
+    Currently only implemented using dense matrices - will be slow for large state spaces.
+
+    Parameters
+    ----------
+    fit_fetch : callable or estimator
+        Can be provided as callable for a custom fit and fetch method. Should be a function pointer or lambda which
+        takes a list of discrete trajectories as input and yields a
+        :class:`CovarianceKoomanModel <deeptime.decomposition.CovarianceKoopmanModel>`. Or an estimator which
+        yields this kind of model.
+    trajs : list of array_like
+        Input data.
+    lagtime : int
+        lag time
+    splitting_mode : str, optional, default="sliding"
+        Can be one of "sliding" and "sample". In former case the blocks may overlap, otherwise not.
+    n : number of samples
+        Number of repetitions of the cross-validation. Use large n to get solid means of the score.
+    r : float or str, default=2
+        Available scores are based on the variational approach for Markov processes :footcite:`noe2013variational`
+        :footcite:`wu2020variational`, see :meth:`deeptime.decomposition.vamp_score` for available options.
+    blocksplit : bool, optional, default=True
+        Whether to perform blocksplitting (see :meth:`blocksplit_dtrajs` ) before evaluating folds. Defaults to `True`.
+        In case no blocksplitting is performed, individual dtrajs are used for training and validation. This means that
+        at least two dtrajs must be provided (`len(dtrajs) >= 2`), otherwise this method raises an exception.
+    dim : int or None, optional, default=None
+        The maximum number of eigenvalues or singular values used in the score. If set to None,
+        all available eigenvalues will be used.
+    random_state : None or int or np.random.RandomState
+        Random seed to use.
+    n_jobs : int, optional, default=1
+        Number of jobs for folds. In case n_jobs is 1, no parallelization.
+
+    References
+    ----------
+    .. footbibliography::
+    """
+    from deeptime.util.parallel import handle_n_jobs
+    from deeptime.util.types import ensure_timeseries_data
+
+    n_jobs = handle_n_jobs(n_jobs)
+    if isinstance(fit_fetch, Estimator):
+        fit_fetch = _FitFetch(fit_fetch)
+
+    ttrajs = ensure_timeseries_data(trajs)  # ensure format
+    if splitting_mode not in ('sliding', 'sample'):
+        raise ValueError('score_cv currently only supports count modes "sliding" and "sample"')
+    scores = np.empty((n,), float)
+    sliding = splitting_mode == 'sliding'
+
+    args = [(i, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state) for i in range(n)]
+
+    if n_jobs > 1:
+        import multiprocessing as mp
+        with mp.pool.ThreadPool(processes=n_jobs) as pool:
+            for result in pool.imap_unordered(_worker, args):
+                fold, score = result
+                scores[fold] = score
+    else:
+        for fold in range(n):
+            _, score = _worker(args[fold])
+            scores[fold] = score
+    return scores
+
+
+class _FitFetch:
+
+    def __init__(self, est):
+        self._est = est
+
+    def __call__(self, x):
+        return self._est.fit(x).fetch_model()
+
+
+def _worker(args):
+    from deeptime.markov.msm import MarkovStateModel
+
+    fold, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state = args
+    if blocksplit:
+        trajs_split = blocksplit_trajs(ttrajs, lag=lagtime, sliding=sliding,
+                                       random_state=random_state)
+    else:
+        trajs_split = ttrajs
+        if len(trajs_split) <= 1:
+            raise ValueError("Need at least two trajectories if blocksplit is not used to decompose the data.")
+    trajs_train, trajs_test = cvsplit_trajs(trajs_split, random_state=random_state)
+    # this is supposed to construct a markov state model from data directly, for example what fit_fetch could do is
+    train_model = fit_fetch(trajs_train)
+    if isinstance(train_model, MarkovStateModel):
+        score = train_model.score(trajs_test, r=r, dim=dim)
+    else:
+        test_model = fit_fetch(trajs_test)
+        score = train_model.score(r=r, test_model=test_model, dim=dim)
+    return fold, score
