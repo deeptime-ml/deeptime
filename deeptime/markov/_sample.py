@@ -160,9 +160,6 @@ def by_state(dtrajs, n_samples, subset=None, replace=True):
     """Generates samples of the connected states.
 
     For each state in the active set of states, generates nsample samples with trajectory/time indices.
-    This information can be used in order to generate a trajectory of length nsample * nconnected using
-    :func:`pyemma.coordinates.save_traj` or nconnected trajectories of length nsample each using
-    :func:`pyemma.coordinates.save_traj`
 
     Parameters
     ----------
@@ -182,14 +179,6 @@ def by_state(dtrajs, n_samples, subset=None, replace=True):
         list of trajectory/time index arrays with an array for each state.
         Within each index array, each row consist of a tuple (i, t), where i is
         the index of the trajectory and t is the time index within the trajectory.
-
-    See also
-    --------
-    pyemma.coordinates.save_traj
-        in order to save the sampled frames sequentially in a trajectory file with molecular structures
-    pyemma.coordinates.save_trajs
-        in order to save the sampled frames in nconnected trajectory files with molecular structures
-
     """
     # generate connected state indices
     indices = compute_index_states(dtrajs, subset=subset)

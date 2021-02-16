@@ -127,7 +127,7 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
 class Model(_base_methods_mixin):
     r""" The model superclass. """
 
-    def copy(self):
+    def copy(self) -> "Model":
         r""" Makes a deep copy of this model.
 
         Returns

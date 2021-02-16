@@ -599,7 +599,7 @@ class CovarianceKoopmanModel(KoopmanModel):
             # compute future expectation
             return Q.dot(P)[:, 0]
 
-    def timescales(self, lagtime: Optional[int] = None) -> np.ndarray:
+    def timescales(self, k=None, lagtime: Optional[int] = None) -> np.ndarray:
         r"""Implied timescales of the TICA transformation
 
         For each :math:`i`-th eigenvalue, this returns
@@ -613,6 +613,8 @@ class CovarianceKoopmanModel(KoopmanModel):
 
         Parameters
         ----------
+        k : int, optional, default=None
+            Number of timescales to be returned. By default with respect to all available singular values.
         lagtime : int, optional, default=None
             The lagtime with respect to which to compute the timescale. If :code:`None`, this defaults to the
             lagtime under which the covariances were estimated.
@@ -634,7 +636,7 @@ class CovarianceKoopmanModel(KoopmanModel):
             raise ValueError("This is only meaningful for real singular values.")
         if lagtime is None:
             lagtime = self._cov.lagtime
-        return - lagtime / np.log(np.abs(self.singular_values))
+        return - lagtime / np.log(np.abs(self.singular_values[:k]))
 
     @property
     def feature_component_correlation(self):

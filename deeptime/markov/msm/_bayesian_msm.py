@@ -161,7 +161,7 @@ class BayesianMSM(_MSMBaseEstimator):
             value = np.copy(value) / np.sum(value)
         self._stationary_distribution_constraint = value
 
-    def fetch_model(self) -> BayesianPosterior:
+    def fetch_model(self) -> Optional[BayesianPosterior]:
         r"""
         Yields the model that was estimated the most recent.
 
