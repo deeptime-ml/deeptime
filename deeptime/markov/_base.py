@@ -144,3 +144,25 @@ class BayesianPosterior(Model):
         return QuantityStatistics.gather(self.samples, quantity=quantity, store_samples=store_samples,
                                          delimiter=delimiter, confidence=confidence, *args, **kwargs)
 
+    def evaluate_samples(self, quantity, delimiter='/', *args, **kwargs):
+        r""" Obtains a quantity (like an attribute or result of a method or a property) from each of the samples.
+        Returns as list.
+
+        Parameters
+        ----------
+        quantity : str
+            The quantity. Can be also deeper in the instance hierarchy, indicated by the delimiter.
+        delimiter : str, default='/'
+            The delimiter.
+        *args
+            Arguments passed to the evaluation point of the quantity.
+        **kwargs
+            Keyword arguments passed to the evaluation point of the quantity.
+
+        Returns
+        -------
+        result : list of any or ndarray
+            A list of the quantity evaluated on each of the samples. If can be converted to float ndarray then ndarray.
+        """
+        from deeptime.util.stats import evaluate_samples as _eval
+        return _eval(self.samples, quantity=quantity, delimiter=delimiter, *args, **kwargs)
