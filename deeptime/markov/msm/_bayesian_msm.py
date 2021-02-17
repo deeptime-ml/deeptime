@@ -307,7 +307,7 @@ class BayesianMSM(_MSMBaseEstimator):
         ----------
         n_metastable_sets : int
             Number of metastable sets to project the state space down to.
-        mlags : int or range or None
+        mlags : int or range or None or list
             Multiple of lagtimes of the test_model to test against.
         test_model : BayesianPosterior, optional, default=None
             The model that is tested. If not provided, uses this estimator's encapsulated model.

@@ -645,7 +645,7 @@ class BayesianHMM(Estimator):
 
         Parameters
         ----------
-        mlags : int or range or None
+        mlags : int or int-array
             Multiple of lagtimes of the test_model to test against.
         test_model : BayesianHMMPosterior, optional, default=None
             The model that is tested. If not provided, uses this estimator's encapsulated model.
