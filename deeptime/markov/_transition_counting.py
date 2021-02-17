@@ -551,7 +551,8 @@ class TransitionCountEstimator(Estimator, Transformer):
         # Compute count matrix
         count_mode = self.count_mode
         lagtime = self.lagtime
-        count_matrix = TransitionCountEstimator.count(count_mode, dtrajs, lagtime, sparse=self.sparse)
+        count_matrix = TransitionCountEstimator.count(count_mode, dtrajs, lagtime, sparse=self.sparse,
+                                                      n_jobs=kw.pop('n_jobs', None))
         if self.n_states is not None and self.n_states > count_matrix.shape[0]:
             histogram = np.pad(histogram, pad_width=[(0, self.n_states - count_matrix.shape[0])])
             if issparse(count_matrix):
@@ -569,7 +570,7 @@ class TransitionCountEstimator(Estimator, Transformer):
         return self
 
     @staticmethod
-    def count(count_mode: str, dtrajs: List[np.ndarray], lagtime: int, sparse: bool = False):
+    def count(count_mode: str, dtrajs: List[np.ndarray], lagtime: int, sparse: bool = False, n_jobs=None):
         r""" Computes a count matrix based on a counting mode, some discrete trajectories, a lagtime, and
         whether to use sparse matrices.
 
@@ -587,6 +588,9 @@ class TransitionCountEstimator(Estimator, Transformer):
         sparse : bool, default=False
             Whether to use sparse matrices or dense matrices. Sparse matrices can make sense when dealing with a lot of
             states.
+        n_jobs : int, optional, default=None
+            This only has an effect in effective counting. Determines the number of cores to use for estimating
+            statistical inefficiencies. Default resolves to number of available cores.
 
         Returns
         -------
@@ -609,7 +613,7 @@ class TransitionCountEstimator(Estimator, Transformer):
         elif count_mode == 'sample':
             count_matrix = msmest.count_matrix(dtrajs, lagtime, sliding=False, sparse_return=sparse)
         elif count_mode == 'effective':
-            count_matrix = msmest.effective_count_matrix(dtrajs, lagtime)
+            count_matrix = msmest.effective_count_matrix(dtrajs, lagtime, n_jobs=n_jobs)
             if not sparse and issparse(count_matrix):
                 count_matrix = count_matrix.toarray()
         else:

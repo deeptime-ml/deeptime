@@ -49,7 +49,6 @@ Models
     deep.VAMPNetModel
     deep.TAEModel
     deep.TVAEModel
-If the Koopman model was estimated using correlations that are based on data with its sample mean removed, this effectively removes the constant function from the singular function space and artificially lowers the score by 1. This is accounted for in this method, i.e., if koopman_model.cov.data_mean_removed evaluates to True, the score is internally incremented by 1.
 
 
 ===============================================================================

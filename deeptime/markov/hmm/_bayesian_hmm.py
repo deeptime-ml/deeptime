@@ -8,7 +8,7 @@ from deeptime.markov.tools.analysis import is_connected
 from deeptime.markov.tools.estimation import sample_tmatrix, transition_matrix
 
 from deeptime.base import Estimator
-from deeptime.markov._base import BayesianPosterior
+from deeptime.markov._base import BayesianPosterior, MembershipsChapmanKolmogorovValidator
 from deeptime.markov._transition_matrix import stationary_distribution
 from deeptime.markov.hmm import HiddenMarkovModel
 from ._output_model import DiscreteOutputModel
@@ -639,3 +639,43 @@ class BayesianHMM(Estimator):
                                               reversible=self.reversible, count_model=count_model),
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
+
+    def chapman_kolmogorov_validator(self, mlags=None, test_model: BayesianHMMPosterior = None):
+        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
+
+        Parameters
+        ----------
+        mlags : int or range or None
+            Multiple of lagtimes of the test_model to test against.
+        test_model : BayesianHMMPosterior, optional, default=None
+            The model that is tested. If not provided, uses this estimator's encapsulated model.
+
+        Returns
+        -------
+        validator : markov.MembershipsChapmanKolmogorovValidator
+            The validator.
+        """
+        test_model = self.fetch_model() if test_model is None else test_model
+        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
+                                       "fit to data."
+
+        from . import DiscreteOutputModel
+        assert isinstance(test_model.prior.output_model, DiscreteOutputModel), \
+            "Can only perform CKTest for discrete output models"
+        memberships = test_model.prior.metastable_memberships
+        lagtime = test_model.prior.lagtime
+        return BayesianHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
+
+
+class BayesianHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
+    def _estimate_model_for_lag(self, data, lagtime):
+        assert isinstance(self.test_estimator, BayesianHMM)
+        self.test_estimator.lagtime = lagtime
+        return self.test_estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+
+    def fit(self, data, **kw):
+        if 'n_jobs' in kw.keys():
+            import warnings
+            warnings.warn("ignoring n_jobs for HMM CKtest")
+
+        return super().fit(data, 1, **kw)

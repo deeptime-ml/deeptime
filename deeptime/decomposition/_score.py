@@ -241,7 +241,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime, n=10, s
 
     ttrajs = ensure_timeseries_data(trajs)  # ensure format
     if splitting_mode not in ('sliding', 'sample'):
-        raise ValueError('score_cv currently only supports count modes "sliding" and "sample"')
+        raise ValueError('vamp_score_cv currently only supports count modes "sliding" and "sample"')
     scores = np.empty((n,), float)
     sliding = splitting_mode == 'sliding'
 

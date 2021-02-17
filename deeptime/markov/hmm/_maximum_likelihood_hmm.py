@@ -2,14 +2,14 @@ import collections
 from typing import List, Union, Optional
 
 import numpy as np
+from deeptime.markov._base import MembershipsChapmanKolmogorovValidator
 from scipy.sparse import issparse
 
-from deeptime.base import Estimator
-from deeptime.markov._transition_matrix import estimate_P, stationary_distribution
+from ...base import Estimator
+from .._transition_matrix import estimate_P, stationary_distribution
 from ._hidden_markov_model import HiddenMarkovModel, viterbi
-from deeptime.markov.msm import MarkovStateModel
-from deeptime.markov import TransitionCountModel
-from deeptime.markov import compute_dtrajs_effective
+from ..msm import MarkovStateModel
+from .. import TransitionCountModel, compute_dtrajs_effective
 from ._hmm_bindings import util as _util
 from ...util.types import ensure_timeseries_data
 
@@ -412,3 +412,52 @@ class MaximumLikelihoodHMM(Estimator):
         model.initial_distribution[:] = pi
         model.transition_matrix[:] = T
         model.output_model.fit(observations, gammas)
+
+    def chapman_kolmogorov_validator(self, mlags=None, test_model: HiddenMarkovModel = None):
+        r""" Creates a validator instance which can be used to perform a Chapman-Kolmogorov test.
+
+        Parameters
+        ----------
+        mlags : int or int-array, optional, default=None
+            Multiples of lag times for testing the Model, e.g. range(10).
+            A single int will trigger a range, i.e. mlags=10 maps to
+            mlags=range(1, 10). The setting None will choose mlags automatically
+            according to the longest available trajectory.
+        test_model : HiddenMarkovModel, optional, default=None
+            The model that is tested. If not provided, uses this estimator's encapsulated model.
+
+        Returns
+        -------
+        validator : MembershipsChapmanKolmogorovValidator
+            The validator.
+
+        Raises
+        ------
+        AssertionError
+            If test_model is None and this estimator has not been :meth:`fit` on data yet or the output model
+            was not a discrete output model.
+        """
+        test_model = self.fetch_model() if test_model is None else test_model
+        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
+                                       "fit to data."
+        from . import DiscreteOutputModel
+        assert isinstance(test_model.output_model, DiscreteOutputModel), \
+            "Can only perform CKTest for discrete output models"
+        memberships = test_model.metastable_memberships
+        lagtime = test_model.lagtime
+        return MLHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
+
+
+class MLHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
+    def _estimate_model_for_lag(self, data, lagtime):
+        assert isinstance(self.test_model, HiddenMarkovModel)
+        assert isinstance(self.test_estimator, MaximumLikelihoodHMM)
+        self.test_estimator.lagtime = lagtime
+        return self.test_estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+
+    def fit(self, data, **kw):
+        if 'n_jobs' in kw.keys():
+            import warnings
+            warnings.warn("ignoring n_jobs for HMM CKtest")
+
+        return super().fit(data, 1, **kw)

@@ -13,7 +13,6 @@ Maximum-likelihood MSMs (ML-MSM) and Bayesian sampling
 
     BayesianMSM
     BayesianPosterior
-    QuantityStatistics
 
 Observable operator model MSMs (OOMs)
 -------------------------------------
@@ -41,7 +40,6 @@ from ._maximum_likelihood_msm import MaximumLikelihoodMSM
 from ._bayesian_msm import BayesianMSM, BayesianPosterior
 from ._koopman_reweighted_msm import KoopmanReweightedMSM, OOMReweightedMSM
 from ._augmented_msm import AugmentedMSMEstimator, AugmentedMSM, AMMOptimizerState
-from ...util.stats import QuantityStatistics
 
 # set up null handler
 logging.getLogger(__name__).addHandler(logging.NullHandler())

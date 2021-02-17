@@ -519,12 +519,17 @@ class CovarianceKoopmanModel(KoopmanModel):
             If false, coefficients in `statistics` refer to the
             unmodified input features.
 
+        Returns
+        -------
+        expectation : ndarray
+            The equilibrium expectation of observables or covariance if statistics is not None.
+
         Notes
         -----
         A "future expectation" of a observable g is the average of g computed
         over a time window that has the same total length as the input data
         from which the Koopman operator was estimated but is shifted
-        by lag_multiple*tau time steps into the future (where tau is the lag
+        by ``lag_multiple*tau`` time steps into the future (where tau is the lag
         time).
 
         It is computed with the equation:
@@ -549,7 +554,7 @@ class CovarianceKoopmanModel(KoopmanModel):
 
 
         A model prediction of time-lagged covariances between the
-        observable f and the statistic g at a lag-time of lag_multiple*tau
+        observable f and the statistic g at a lag-time of ``lag_multiple*tau``
         is computed with the equation:
 
         .. math::
