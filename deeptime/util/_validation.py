@@ -1,9 +1,15 @@
 import warnings
 
 import numpy as np
-
 from ..base import Estimator, Model
 from .parallel import handle_n_jobs
+from .platform import handle_progress_bar
+
+
+def _imap_wrapper(args):
+    i, fun, arguments = args
+    result = fun(*arguments)
+    return i, result
 
 
 class LaggedModelValidation(Model):
@@ -171,8 +177,9 @@ class LaggedModelValidator(Estimator):
             raise ValueError('multiples of lagtimes have to be greater zero.')
         self.mlags = mlags
 
-    def fit(self, data, n_jobs=None, **kw):
+    def fit(self, data, n_jobs=None, progress=None, **kw):
         n_jobs = handle_n_jobs(n_jobs)
+        progress = handle_progress_bar(progress)
         # set lag times
 
         self._set_mlags(data, self.input_lagtime)
@@ -190,14 +197,16 @@ class LaggedModelValidator(Estimator):
 
         # estimate models at multiple of input lag time.
         if n_jobs == 1:
-            for lag in lags:
+            for lag in progress(lags):
                 estimated_models.append(self._estimate_model_for_lag(data, lag))
         else:
             from multiprocessing import Pool
-            from itertools import repeat
             fun = self.__class__._estimate_model_for_lag
-            with Pool(n_jobs) as pool:
-                estimated_models = pool.starmap(fun, zip(repeat(self), repeat(data), lags))
+            args = [(i, fun, (self, data, lag)) for i, lag in enumerate(lags)]
+            estimated_models = [None for _ in range(len(args))]
+            with Pool(processes=n_jobs) as pool:
+                for result in progress(pool.imap_unordered(_imap_wrapper, args)):
+                    estimated_models[result[0]] = result[1]
 
         for mlag in self.mlags:
             # make a prediction using the test model

@@ -17,3 +17,12 @@ def module_available(modname: str) -> bool:
         return True
     except ImportError:
         return False
+
+
+def handle_progress_bar(progress):
+    if progress is None:
+        def identity(iterable):
+            for x in iterable:
+                yield x
+        return identity
+    return progress

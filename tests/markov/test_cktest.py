@@ -4,8 +4,9 @@ import deeptime as dt
 from numpy.testing import assert_allclose
 
 
+@pytest.mark.parametrize("n_jobs", [1, 2], ids=lambda x: f"n_jobs={x}")
 @pytest.mark.parametrize("estimator_type", ["MLMSM", "BMSM", "HMM", "BHMM"])
-def test_cktest_double_well(estimator_type):
+def test_cktest_double_well(estimator_type, n_jobs):
     # maximum-likelihood estimates
     estref = np.array([[[0.89806859, 0.10193141],
                         [0.10003466, 0.89996534]],
