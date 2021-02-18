@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
-from tests.util import GenerateTestMatrix
+from tests.testing_utilities import GenerateTestMatrix
 
 
 class TestTransitionCountEstimator(unittest.TestCase):

@@ -13,7 +13,7 @@ from deeptime.markov.hmm import DiscreteOutputModel
 from deeptime.markov.msm import MarkovStateModel
 from deeptime.markov import count_states
 from tests.markov.msm.test_mlmsm import estimate_markov_model
-from tests.util import assert_array_not_equal
+from tests.testing_utilities import assert_array_not_equal
 
 
 @pytest.mark.parametrize('mode', ['maximum-likelihood', 'bayesian'], ids=lambda mode: f"mode={mode}")
