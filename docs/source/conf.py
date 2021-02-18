@@ -105,8 +105,6 @@ autodoc_default_options = {
 }
 
 # -- Gallery settings ---------------------------------------------------------
-from sphinx_gallery.sorting import ExplicitOrder
-
 sphinx_gallery_conf = {
     'examples_dirs': ['../../examples/methods', '../../examples/datasets'],  # path to your example scripts
     'gallery_dirs': ['examples', 'datasets'],  # path to where to save gallery generated output
