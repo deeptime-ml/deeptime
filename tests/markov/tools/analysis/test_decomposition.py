@@ -11,7 +11,7 @@ from numpy.testing import assert_raises
 from scipy.linalg import eigvals as _eigvals
 from scipy.sparse import issparse
 
-from tests.util import nullcontext
+from tests.testing_utilities import nullcontext
 
 from deeptime.data import birth_death_chain
 from deeptime.markov.tools.analysis import rdl_decomposition, timescales

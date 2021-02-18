@@ -1,5 +1,5 @@
 import math
-from typing import Union, Callable, List
+from typing import Union, Callable, List, Any, Iterable
 
 import numpy as np
 
@@ -148,6 +148,42 @@ def call_member(obj, f: Union[str, Callable], *args, **kwargs):
     return method
 
 
+def evaluate_samples(samples: Iterable[Any], quantity: str, delimiter: str = '/', *args, **kwargs) -> List[Any]:
+    r"""Evaluate a quantity (like a property, function, attribute) of an iterable of objects and return the result.
+
+    Parameters
+    ----------
+    samples : list of object
+        The samples which contain sought after quantities.
+    quantity : str, optional, default=None
+        Name of attribute, which will be evaluated on samples. If None, no quantity is evaluated and the samples
+        are assumed to already be the quantity that is to be evaluated.
+    delimiter : str, optional, default='/'
+        Separator to call members of members.
+    *args
+        pass through
+    **kwargs
+        pass through
+
+    Returns
+    -------
+    result : list of any or ndarray
+        The collected data, if it can be converted to numpy array then numpy array.
+    """
+    if quantity is not None and delimiter in quantity:
+        qs = quantity.split(delimiter)
+        quantity = qs[-1]
+        for q in qs[:-1]:
+            samples = [call_member(s, q) for s in samples]
+    if quantity is not None:
+        samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
+    try:
+        samples = np.asfarray(samples)
+    except:
+        pass
+    return samples
+
+
 class QuantityStatistics:
     """ Container for statistical quantities computed on samples.
 
@@ -218,13 +254,8 @@ class QuantityStatistics:
         statistics : QuantityStatistics
             The collected statistics.
         """
-        if quantity is not None and delimiter in quantity:
-            qs = quantity.split(delimiter)
-            quantity = qs[-1]
-            for q in qs[:-1]:
-                samples = [call_member(s, q) for s in samples]
         if quantity is not None:
-            samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
+            samples = evaluate_samples(samples, quantity=quantity, delimiter=delimiter, *args, **kwargs)
         return QuantityStatistics(samples, quantity=quantity, store_samples=store_samples, confidence=confidence)
 
     def __init__(self, samples: List[np.ndarray], quantity, confidence=0.95, store_samples=False):

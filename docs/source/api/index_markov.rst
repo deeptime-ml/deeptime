@@ -27,7 +27,6 @@ Models
     msm.MarkovStateModel
     msm.MarkovStateModelCollection
     msm.BayesianPosterior
-    msm.QuantityStatistics
 
 Analysis tools
 ==============
@@ -37,7 +36,7 @@ Analysis tools
 
     pcca
     compute_reactive_flux
-    score_cv
+    MembershipsChapmanKolmogorovValidator
 
 With output models
 

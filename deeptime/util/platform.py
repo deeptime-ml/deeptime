@@ -17,3 +17,23 @@ def module_available(modname: str) -> bool:
         return True
     except ImportError:
         return False
+
+
+def handle_progress_bar(progress):
+    r"""Takes a (potential) progress bar, if None, just returns an iterable that does nothing but return everything.
+
+    Parameters
+    ----------
+    progress : progress bar or None, optional
+        The progressbar
+
+    Returns
+    -------
+    progress_bar : iterable
+        A progress bar (or no/identity progress bar if input was None).
+    """
+    if progress is None:
+        def progress(iterable, *args, **kw):
+            for x in iterable:
+                yield x
+    return progress

@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from deeptime.markov import sample
-from tests.util import timing
+from tests.testing_utilities import timing
 
 
 class TestSampleIndices(unittest.TestCase):

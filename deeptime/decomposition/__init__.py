@@ -42,11 +42,14 @@ Models
     CovarianceKoopmanModel
     DMDModel
     EDMDModel
+
     KernelEDMDModel
     KernelCCAModel
+
     deep.VAMPNetModel
     deep.TAEModel
     deep.TVAEModel
+
 
 ===============================================================================
 Utils

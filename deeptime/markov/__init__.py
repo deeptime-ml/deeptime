@@ -18,7 +18,7 @@ Transition counting and analysis tools
     ReactiveFlux
     compute_reactive_flux
 
-    score_cv
+    MembershipsChapmanKolmogorovValidator
 
 ===============================================================================
 Utilities
@@ -46,7 +46,7 @@ from ._util import number_of_states, count_states, compute_connected_sets, \
 from . import _sample as sample
 from . import tools  # former msmtools
 
-from ._base import BayesianPosterior, _MSMBaseEstimator
+from ._base import BayesianPosterior, _MSMBaseEstimator, MembershipsChapmanKolmogorovValidator
 from ._pcca import pcca, PCCAModel
 from ._transition_counting import TransitionCountEstimator, TransitionCountModel
 
