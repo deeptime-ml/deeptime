@@ -45,6 +45,8 @@ class RegularSpace(Estimator):
         self.metric = metric
         self.max_centers = max_centers
         self.n_jobs = n_jobs
+        self._clustercenters = []
+        self._converged = False
 
     @property
     def metric(self) -> str:
@@ -131,7 +133,25 @@ class RegularSpace(Estimator):
         model : ClusterModel or None
             The latest estimated model or None.
         """
+        clustercenters = np.asarray_chkfinite(self._clustercenters).squeeze()
+        self._model = ClusterModel(len(clustercenters), clustercenters, self.metric, self._converged)
         return self._model
+
+    def partial_fit(self, data, n_jobs=None):
+        r""" Fits data to an existing model. See :meth:`fit`. """
+        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
+        if data.ndim == 1:
+            data = data[:, np.newaxis]
+        try:
+            metric = metrics[self.metric]()
+            _regspace_ext.cluster(data, self._clustercenters, self.dmin, self.max_centers, n_jobs, metric)
+            self._converged = True
+        except _regspace_ext.MaxCentersReachedException:
+            warnings.warn('Maximum number of cluster centers reached.'
+                          ' Consider increasing max_centers or choose'
+                          ' a larger minimum distance, dmin.')
+
+        return self
 
     def fit(self, data, n_jobs=None):
         r"""
@@ -143,7 +163,7 @@ class RegularSpace(Estimator):
 
         Parameters
         ----------
-        data : (T, n) ndarray
+        data : (T, n) ndarray or list of ndarray
             the data to fit
         n_jobs : int, optional, default=None
             Number of jobs, superseeds :attr:`n_jobs` if set to an integer value
@@ -153,29 +173,13 @@ class RegularSpace(Estimator):
         self : RegularSpace
             reference to self
         """
+        self._clustercenters.clear()
+        self._converged = False
 
-        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
+        if not isinstance(data, (tuple, list)):
+            data = [data]
 
-        if data.ndim == 1:
-            data = data[:, np.newaxis]
-
-        clustercenters = []
-        converged = False
-        try:
-            _regspace_ext.cluster(data, clustercenters, self.dmin, self.max_centers, n_jobs, metrics[self.metric]())
-            converged = True
-        except _regspace_ext.MaxCentersReachedException:
-            warnings.warn('Maximum number of cluster centers reached.'
-                          ' Consider increasing max_centers or choose'
-                          ' a larger minimum distance, dmin.')
-        finally:
-            # even if not converged, we store the found centers.
-            clustercenters = np.asarray_chkfinite(clustercenters).squeeze()
-
-            self._model = ClusterModel(len(clustercenters), clustercenters, self.metric, converged)
-
-            if len(clustercenters) == 1:
-                warnings.warn('Have found only one center according to '
-                              'minimum distance requirement of %f' % self.dmin)
+        for traj in data:
+            self.partial_fit(traj, n_jobs=n_jobs)
 
         return self
