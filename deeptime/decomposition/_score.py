@@ -248,8 +248,8 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime, n=10, s
     args = [(i, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state) for i in range(n)]
 
     if n_jobs > 1:
-        import multiprocessing as mp
-        with mp.pool.ThreadPool(processes=n_jobs) as pool:
+        from multiprocessing import get_context
+        with get_context("spawn").Pool(processes=n_jobs) as pool:
             for result in pool.imap_unordered(_worker, args):
                 fold, score = result
                 scores[fold] = score
