@@ -17,7 +17,7 @@ git clone https://github.com/deeptime-ml/deeptime.git
 cd deeptime
 git submodule update --init
 
-conda install numpy scipy cython scikit-learn
+conda install numpy scipy cython scikit-learn pybind11
 
 python setup.py install
 ```
