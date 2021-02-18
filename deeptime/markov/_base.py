@@ -206,9 +206,6 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
     .. footbibliography::
     """
 
-    def _estimate_model_for_lag(self, data, lagtime):
-        raise NotImplementedError()
-
     def __init__(self, test_model, test_estimator, memberships, test_model_lagtime,
                  mlags=None, conf=0.95):
         super().__init__(test_model, test_estimator, test_model_lagtime=test_model_lagtime, conf=conf, mlags=mlags)

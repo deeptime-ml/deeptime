@@ -448,16 +448,15 @@ class MaximumLikelihoodHMM(Estimator):
         return MLHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
 
 
+def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
+    estimator.lagtime = lagtime
+    return estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+
+
 class MLHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-    def _estimate_model_for_lag(self, data, lagtime):
-        assert isinstance(self.test_model, HiddenMarkovModel)
-        assert isinstance(self.test_estimator, MaximumLikelihoodHMM)
-        self.test_estimator.lagtime = lagtime
-        return self.test_estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
 
-    def fit(self, data, **kw):
-        if 'n_jobs' in kw.keys():
+    def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
+        if n_jobs != 1:
             import warnings
-            warnings.warn("ignoring n_jobs for HMM CKtest")
-
-        return super().fit(data, 1, **kw)
+            warnings.warn("Ignoring n_jobs for hmm cktest")
+        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag)

@@ -383,8 +383,13 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         return MLMSMChapmanKolmogorovValidator(test_model, self, pcca.memberships, reference_lagtime, mlags)
 
 
+def _ck_estimate_model_for_lag(estimator, model, data, lag):
+    counting_mode = model.count_model.counting_mode
+    counts = TransitionCountEstimator(lag, counting_mode).fit(data).fetch_model().submodel_largest()
+    return estimator.fit(counts).fetch_model()
+
+
 class MLMSMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-    def _estimate_model_for_lag(self, data, lagtime):
-        counting_mode = self.test_model.count_model.counting_mode
-        counts = TransitionCountEstimator(lagtime, counting_mode).fit(data).fetch_model().submodel_largest()
-        return self.test_estimator.fit(counts).fetch_model()
+
+    def fit(self, data, n_jobs=None, progress=None, **kw):
+        return super().fit(data, n_jobs, progress, estimate_model_for_lag=_ck_estimate_model_for_lag, **kw)

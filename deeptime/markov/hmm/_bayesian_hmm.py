@@ -667,15 +667,16 @@ class BayesianHMM(Estimator):
         return BayesianHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
 
 
+def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
+    estimator.lagtime = lagtime
+    return estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+
+
 class BayesianHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-    def _estimate_model_for_lag(self, data, lagtime):
-        assert isinstance(self.test_estimator, BayesianHMM)
-        self.test_estimator.lagtime = lagtime
-        return self.test_estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
 
     def fit(self, data, **kw):
         if 'n_jobs' in kw.keys():
             import warnings
             warnings.warn("ignoring n_jobs for HMM CKtest")
 
-        return super().fit(data, 1, **kw)
+        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, **kw)

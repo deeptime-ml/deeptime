@@ -177,7 +177,8 @@ class LaggedModelValidator(Estimator):
             raise ValueError('multiples of lagtimes have to be greater zero.')
         self.mlags = mlags
 
-    def fit(self, data, n_jobs=None, progress=None, **kw):
+    def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
+        assert estimate_model_for_lag is not None
         n_jobs = handle_n_jobs(n_jobs)
         progress = handle_progress_bar(progress)
         # set lag times
@@ -197,15 +198,15 @@ class LaggedModelValidator(Estimator):
 
         # estimate models at multiple of input lag time.
         if n_jobs == 1:
-            for lag in progress(lags):
-                estimated_models.append(self._estimate_model_for_lag(data, lag))
+            for lag in progress(lags, total=len(lags), leave=False):
+                estimated_models.append(estimate_model_for_lag(self.test_estimator, self._test_model, data, lag))
         else:
-            from multiprocessing import Pool
-            fun = self.__class__._estimate_model_for_lag
-            args = [(i, fun, (self, data, lag)) for i, lag in enumerate(lags)]
+            from multiprocessing import get_context
+            fun = estimate_model_for_lag
+            args = [(i, fun, (self.test_estimator, self._test_model, data, lag)) for i, lag in enumerate(lags)]
             estimated_models = [None for _ in range(len(args))]
-            with Pool(processes=n_jobs) as pool:
-                for result in progress(pool.imap_unordered(_imap_wrapper, args)):
+            with get_context("spawn").Pool(processes=n_jobs) as pool:
+                for result in progress(pool.imap_unordered(_imap_wrapper, args), total=len(lags), leave=False):
                     estimated_models[result[0]] = result[1]
 
         for mlag in self.mlags:
@@ -243,9 +244,6 @@ class LaggedModelValidator(Estimator):
             predictions=predictions, predictions_conf=predictions_conf, lagtimes=lags, conf=self.conf)
 
         return self
-
-    def _estimate_model_for_lag(self, data, lagtime):
-        raise NotImplementedError()
 
     def _compute_observables(self, model, mlag=1):
         """Compute observables for given model
