@@ -5,6 +5,7 @@ import numpy as np
 
 from ..base import Estimator
 from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
+from ..util.parallel import joining
 
 
 def vamp_score(koopman_model, r: Union[float, str],
@@ -249,7 +250,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime, n=10, s
 
     if n_jobs > 1:
         from multiprocessing import get_context
-        with get_context("spawn").Pool(processes=n_jobs) as pool:
+        with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
             for result in pool.imap_unordered(_worker, args):
                 fold, score = result
                 scores[fold] = score

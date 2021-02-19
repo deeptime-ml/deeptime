@@ -1,7 +1,7 @@
 import numpy as np
 from . import _data_bindings as bd
-from deeptime.util.decorators import plotting_function
-from deeptime.util.parallel import handle_n_jobs
+from ..util.decorators import plotting_function
+from ..util.parallel import handle_n_jobs, joining
 
 
 class PBFSimulator:
@@ -309,7 +309,7 @@ def _transform_to_density_impl(domain_size, trajectory, n_grid_x=20, n_grid_y=10
     traj_kde = np.empty((len(trajectory), len(kde_input)))
 
     import multiprocessing as mp
-    with mp.Pool(processes=n_jobs) as pool:
+    with joining(mp.Pool(processes=n_jobs)) as pool:
         args = [(t, trajectory[t], kde_input) for t in range(len(trajectory))]
         for result in pool.imap_unordered(_transform_to_density_impl_worker, args):
             traj_kde[result[0]] = result[1]

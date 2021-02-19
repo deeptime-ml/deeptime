@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 from ..base import Estimator, Model
-from .parallel import handle_n_jobs
+from .parallel import handle_n_jobs, joining
 from .platform import handle_progress_bar
 
 
@@ -205,7 +205,7 @@ class LaggedModelValidator(Estimator):
             fun = estimate_model_for_lag
             args = [(i, fun, (self.test_estimator, self._test_model, data, lag)) for i, lag in enumerate(lags)]
             estimated_models = [None for _ in range(len(args))]
-            with get_context("spawn").Pool(processes=n_jobs) as pool:
+            with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
                 for result in progress(pool.imap_unordered(_imap_wrapper, args), total=len(lags), leave=False):
                     estimated_models[result[0]] = result[1]
 
