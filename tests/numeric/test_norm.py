@@ -15,8 +15,8 @@ def test_schatten_norm(hermitian):
     if hermitian:
         assert_array_almost_equal(schatten_norm(mat, 3.3, hermitian=True), schatten_norm(mat, 3.3, hermitian=False))
 
-    for i in range(1, 55):
+    for i in range(1, 15):
         n1 = schatten_norm(mat, i, hermitian=hermitian)
-        n2 = schatten_norm(mat, i + 0.5, hermitian=hermitian)
-        n3 = schatten_norm(mat, i + 1, hermitian=hermitian)
+        n2 = schatten_norm(mat, i + 0.9, hermitian=hermitian)
+        n3 = schatten_norm(mat, i + 1.8, hermitian=hermitian)
         assert_(n1 >= n2 >= n3)

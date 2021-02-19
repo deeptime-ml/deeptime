@@ -6,11 +6,10 @@ r"""This module implements effective transition counts
 
 import numpy as np
 import scipy.sparse
+from scipy.sparse.csr import csr_matrix
 
 from deeptime.util.stats import statistical_inefficiency
 from .count_matrix import count_matrix_coo2_mult
-
-from scipy.sparse.csr import csr_matrix
 
 __author__ = 'noe, marscher'
 
@@ -185,8 +184,7 @@ def statistical_inefficiencies(dtrajs, lag, C=None, truncate_acf=True, mact=2.0,
     # compute inefficiencies
     I, J = C.nonzero()
     if n_jobs > 1:
-        from multiprocessing.pool import Pool, MapResult
-        from contextlib import closing
+        from multiprocessing.pool import Pool
         import tempfile
 
         # to avoid pickling partial results, we store these in a numpy.memmap
@@ -200,13 +198,14 @@ def statistical_inefficiencies(dtrajs, lag, C=None, truncate_acf=True, mact=2.0,
             _callback = lambda _: callback(x)
         else:
             _callback = callback
-        with closing(Pool(n_jobs)) as pool:
+
+        from deeptime.util.parallel import joining
+        with joining(Pool(n_jobs)) as pool:
             result_async = [pool.apply_async(_wrapper, (args,), callback=_callback)
                             for args in gen]
 
             [t.get() for t in result_async]
             data = np.array(arr[:])
-            #assert np.all(np.isfinite(data))
         import os
         os.unlink(ntf.name)
     else:

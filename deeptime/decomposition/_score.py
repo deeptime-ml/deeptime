@@ -5,6 +5,7 @@ import numpy as np
 
 from ..base import Estimator
 from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
+from ..util.parallel import joining
 
 
 def vamp_score(koopman_model, r: Union[float, str],
@@ -182,7 +183,7 @@ def cvsplit_trajs(trajs, random_state=None):
     return train_set, test_set
 
 
-def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime, n=10, splitting_mode="sliding", r=2,
+def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=10, splitting_mode="sliding", r=2,
                   dim: Optional[int] = None, blocksplit: bool = True, random_state=None, n_jobs=1):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
@@ -207,8 +208,8 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime, n=10, s
         yields this kind of model.
     trajs : list of array_like
         Input data.
-    lagtime : int
-        lag time
+    lagtime : int, optional, default=None
+        lag time, must be provided if blocksplitting is used, otherwise can be left None
     splitting_mode : str, optional, default="sliding"
         Can be one of "sliding" and "sample". In former case the blocks may overlap, otherwise not.
     n : number of samples
@@ -235,6 +236,9 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime, n=10, s
     from deeptime.util.parallel import handle_n_jobs
     from deeptime.util.types import ensure_timeseries_data
 
+    if blocksplit and lagtime is None:
+        raise ValueError("In case blocksplit is used, please provide a lagtime.")
+
     n_jobs = handle_n_jobs(n_jobs)
     if isinstance(fit_fetch, Estimator):
         fit_fetch = _FitFetch(fit_fetch)
@@ -249,7 +253,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime, n=10, s
 
     if n_jobs > 1:
         from multiprocessing import get_context
-        with get_context("spawn").Pool(processes=n_jobs) as pool:
+        with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
             for result in pool.imap_unordered(_worker, args):
                 fold, score = result
                 scores[fold] = score

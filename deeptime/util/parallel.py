@@ -1,3 +1,4 @@
+from contextlib import AbstractContextManager
 from typing import Optional
 
 
@@ -34,3 +35,17 @@ def handle_n_jobs(value: Optional[int]) -> int:
                          f"or a positive number, but was {value}.")
     assert isinstance(value, int) and value > 0
     return value
+
+
+class joining(AbstractContextManager):
+    r""" Context manager for pools that will automatically join upon exit of scope. """
+
+    def __init__(self, thing):
+        self.thing = thing
+
+    def __enter__(self):
+        return self.thing
+
+    def __exit__(self, *info):
+        self.thing.close()
+        self.thing.join()

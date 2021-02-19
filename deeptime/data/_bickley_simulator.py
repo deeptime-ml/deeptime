@@ -3,7 +3,7 @@ from scipy.integrate import solve_ivp
 
 from . import TimeSeriesDataset, TimeLaggedDataset
 from ..util.decorators import plotting_function
-from ..util.parallel import handle_n_jobs
+from ..util.parallel import handle_n_jobs, joining
 
 
 class BickleyJet:
@@ -224,7 +224,7 @@ def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs: int) -> np.ndarray:
     Z = np.zeros((2, nT, n_particles))
 
     import multiprocessing as mp
-    with mp.Pool(processes=n_jobs) as pool:
+    with joining(mp.Pool(processes=n_jobs)) as pool:
         args = [(i, X[:, i], L0, U0, c, eps, k) for i in range(n_particles)]
         for result in pool.imap_unordered(_generate_impl_worker, args):
             Z[:, :, result[0]] = result[1]
