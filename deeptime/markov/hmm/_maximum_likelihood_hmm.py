@@ -459,4 +459,4 @@ class MLHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
         if n_jobs != 1:
             import warnings
             warnings.warn("Ignoring n_jobs for hmm cktest")
-        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag)
+        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, progress=progress, **kw)

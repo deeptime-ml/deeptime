@@ -674,9 +674,9 @@ def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
 
 class BayesianHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
 
-    def fit(self, data, **kw):
+    def fit(self, data, progress=None, **kw):
         if 'n_jobs' in kw.keys():
             import warnings
             warnings.warn("ignoring n_jobs for HMM CKtest")
 
-        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, **kw)
+        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, progress=progress, **kw)
