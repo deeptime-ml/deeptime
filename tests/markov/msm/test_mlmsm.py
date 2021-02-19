@@ -205,6 +205,8 @@ def test_score_cv(double_well_msm_all):
 
     with assert_raises(ValueError):
         vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=1, dim=2, n_jobs=1, splitting_mode="noop")
+    with assert_raises(ValueError):
+        vamp_score_cv(fit_fetch, trajs=scenario.dtraj)  # uses blocksplit but no lagtime
     s1 = vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=1, dim=2, n_jobs=1).mean()
     assert 1.0 <= s1 <= 2.0
     s2 = vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=2, dim=2, n_jobs=1).mean()
