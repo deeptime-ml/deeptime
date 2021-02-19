@@ -185,7 +185,7 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         Model to be tested
     test_estimator : Estimator
         Parametrized Estimator that has produced the model
-    mlags : int or int-array, default=10
+    mlags : int or int-array
         Multiples of lag times for testing the Model, e.g. range(10).
         A single int will trigger a range, i.e. `mlags=10` maps to
         `mlags=range(10)`. The setting None will choose mlags automatically
@@ -207,7 +207,7 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
     """
 
     def __init__(self, test_model, test_estimator, memberships, test_model_lagtime,
-                 mlags=None, conf=0.95):
+                 mlags, conf=0.95):
         super().__init__(test_model, test_estimator, test_model_lagtime=test_model_lagtime, conf=conf, mlags=mlags)
         self.memberships = memberships
         self.test_model = test_model
@@ -233,7 +233,6 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
             statdist = m.stationary_distribution
             symbols = m.count_model.state_symbols
             symbols_full = m.count_model.n_states_full
-        # todo hidden or no?
         assert self.memberships.shape[0] == n_states, 'provided memberships and test_model n_states mismatch'
         self._test_model = test_model
         # define starting distribution
@@ -255,7 +254,7 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         self.nstates, self.nsets = self._memberships.shape
         assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
 
-    def _compute_observables(self, model, mlag=1):
+    def _compute_observables(self, model, mlag):
         # otherwise compute or predict them by model.propagate
         pk_on_set = np.zeros((self.nsets, self.nsets))
         # compute observable on prior in case for Bayesian models.
@@ -276,7 +275,7 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
                 pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
         return pk_on_set
 
-    def _compute_observables_conf(self, model, mlag=1, conf=0.95):
+    def _compute_observables_conf(self, model, mlag, conf=0.95):
         # otherwise compute or predict them by model.propagate
         prior = model.prior
         if hasattr(prior, 'transition_model'):

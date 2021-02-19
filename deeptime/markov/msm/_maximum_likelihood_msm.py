@@ -350,7 +350,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime),
                                                      kw.pop("count_mode", "sliding"))
 
-    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags=None,
+    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags,
                                      test_model: Optional[MarkovStateModel] = None):
         r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
 
@@ -358,7 +358,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         ----------
         n_metastable_sets : int
             Number of metastable sets to project the state space down to.
-        mlags : int or range or list or None
+        mlags : int or range or list
             Multiple of lagtimes of the test_model to test against.
         test_model : MarkovStateModel, optional, default=None
             The model that is tested. If not provided, uses this estimator's encapsulated model.

@@ -132,7 +132,7 @@ class LaggedModelValidator(Estimator):
     """
 
     def __init__(self, test_model: Model, test_estimator: Estimator, test_model_lagtime: int,
-                 mlags=None, conf=0.95, err_est=False):
+                 mlags, conf=0.95, err_est=False):
         # set model and estimator
         self._test_model = test_model
         import copy
@@ -161,9 +161,7 @@ class LaggedModelValidator(Estimator):
         mlags = self.mlags
         maxlength = np.max([len(x) for x in data])
         maxmlag = int(np.floor(maxlength / lagtime))
-        if mlags is None:
-            mlags = maxmlag
-        elif isinstance(mlags, Integral):
+        if isinstance(mlags, Integral):
             mlags = np.arange(1, mlags)
         mlags = np.asarray(mlags, dtype=int)
         if np.any(mlags > maxmlag):
@@ -172,7 +170,7 @@ class LaggedModelValidator(Estimator):
         if np.any(mlags < 0):
             mlags = mlags[np.where(mlags >= 0)]
             warnings.warn('Dropped negative multiples of lag time')
-
+        mlags = np.atleast_1d(mlags)
         if any(x <= 0 for x in mlags):
             raise ValueError('multiples of lagtimes have to be greater zero.')
         self.mlags = mlags
@@ -221,9 +219,9 @@ class LaggedModelValidator(Estimator):
             if model is None:
                 continue
             # evaluate the estimate at lagtime*mlag
-            estimates.append(self._compute_observables(model))
+            estimates.append(self._compute_observables(model, 1))
             if self.has_errors and self.err_est:
-                l, r = self._compute_observables_conf(model)
+                l, r = self._compute_observables_conf(model, 1)
                 estimates_conf.append((l, r))
 
         # build arrays
@@ -245,7 +243,7 @@ class LaggedModelValidator(Estimator):
 
         return self
 
-    def _compute_observables(self, model, mlag=1):
+    def _compute_observables(self, model, mlag):
         """Compute observables for given model
 
         Parameters
@@ -253,7 +251,7 @@ class LaggedModelValidator(Estimator):
         model : Model
             model to compute observable for.
 
-        mlag : int, default=1
+        mlag : int
             if 1, just compute the observable for given model. If not 1, use
             model to predict result at multiple of given model lagtime.
 
@@ -265,7 +263,7 @@ class LaggedModelValidator(Estimator):
         """
         raise NotImplementedError()
 
-    def _compute_observables_conf(self, model, mlag=1, conf=0.95):
+    def _compute_observables_conf(self, model, mlag, conf=0.95):
         """Compute confidence interval for observables for given model
 
         Parameters

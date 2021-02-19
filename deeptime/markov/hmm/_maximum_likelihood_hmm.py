@@ -413,12 +413,12 @@ class MaximumLikelihoodHMM(Estimator):
         model.transition_matrix[:] = T
         model.output_model.fit(observations, gammas)
 
-    def chapman_kolmogorov_validator(self, mlags=None, test_model: HiddenMarkovModel = None):
+    def chapman_kolmogorov_validator(self, mlags, test_model: HiddenMarkovModel = None):
         r""" Creates a validator instance which can be used to perform a Chapman-Kolmogorov test.
 
         Parameters
         ----------
-        mlags : int or int-array, optional, default=None
+        mlags : int or int-array
             Multiples of lag times for testing the Model, e.g. range(10).
             A single int will trigger a range, i.e. mlags=10 maps to
             mlags=range(1, 10). The setting None will choose mlags automatically

@@ -640,7 +640,7 @@ class BayesianHMM(Estimator):
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
 
-    def chapman_kolmogorov_validator(self, mlags=None, test_model: BayesianHMMPosterior = None):
+    def chapman_kolmogorov_validator(self, mlags, test_model: BayesianHMMPosterior = None):
         r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
 
         Parameters
