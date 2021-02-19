@@ -455,7 +455,7 @@ def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
 
 class MLHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
 
-    def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
+    def fit(self, data, n_jobs=1, progress=None, estimate_model_for_lag=None, **kw):
         if n_jobs != 1:
             import warnings
             warnings.warn("Ignoring n_jobs for hmm cktest")
