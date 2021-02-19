@@ -1,19 +1,23 @@
 import numpy as np
 import pytest
 import deeptime as dt
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 
 @pytest.mark.parametrize("n_jobs", [1, 2], ids=lambda x: f"n_jobs={x}")
 @pytest.mark.parametrize("estimator_type", ["MLMSM", "BMSM", "HMM", "BHMM"])
-@pytest.mark.parametrize("mlags", [[1, 10]])
+@pytest.mark.parametrize("mlags", [[0, 1, 10]])
 def test_cktest_double_well(estimator_type, n_jobs, mlags):
     # maximum-likelihood estimates
-    estref = np.array([[[0.89806859, 0.10193141],
+    estref = np.array([[[1., 0.],
+                        [0., 1.]],
+                       [[0.89806859, 0.10193141],
                         [0.10003466, 0.89996534]],
                        [[0.64851782, 0.35148218],
                         [0.34411751, 0.65588249]]])
-    predref = np.array([[[0.89806859, 0.10193141],
+    predref = np.array([[[1., 0.],
+                         [0., 1.]],
+                        [[0.89806859, 0.10193141],
                          [0.10003466, 0.89996534]],
                         [[0.62613723, 0.37386277],
                          [0.3669059, 0.6330941]]])
@@ -41,6 +45,8 @@ def test_cktest_double_well(estimator_type, n_jobs, mlags):
         pytest.fail()
 
     cktest = validator.fit(dtraj).fetch_model()
+    assert_equal(cktest.lagtimes, mlags)
+
     # rough agreement with MLE
     assert_allclose(cktest.estimates, estref, rtol=.1, atol=10.)
     assert_allclose(cktest.predictions, predref, rtol=.1, atol=10.)

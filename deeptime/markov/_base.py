@@ -255,6 +255,8 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
 
     def _compute_observables(self, model, mlag):
+        if mlag == 0 or model is None:
+            return np.eye(self.nsets)
         # otherwise compute or predict them by model.propagate
         pk_on_set = np.zeros((self.nsets, self.nsets))
         # compute observable on prior in case for Bayesian models.
@@ -277,6 +279,8 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
 
     def _compute_observables_conf(self, model, mlag, conf=0.95):
         # otherwise compute or predict them by model.propagate
+        if mlag == 0 or model is None:
+            return np.eye(self.nsets), np.eye(self.nsets)
         prior = model.prior
         if hasattr(prior, 'transition_model'):
             symbols = prior.observation_symbols

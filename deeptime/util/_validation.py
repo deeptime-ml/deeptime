@@ -171,8 +171,8 @@ class LaggedModelValidator(Estimator):
             mlags = mlags[np.where(mlags >= 0)]
             warnings.warn('Dropped negative multiples of lag time')
         mlags = np.atleast_1d(mlags)
-        if any(x <= 0 for x in mlags):
-            raise ValueError('multiples of lagtimes have to be greater zero.')
+        if (mlags < 0).any():
+            raise ValueError('multiples of lagtimes have to be greater equal zero.')
         self.mlags = mlags
 
     def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
@@ -192,20 +192,27 @@ class LaggedModelValidator(Estimator):
 
         # do we have zero lag? this must be treated separately
         include0 = self.mlags[0] == 0
-        assert not include0
+        if include0:
+            lags_for_estimation = lags[1:]
+        else:
+            lags_for_estimation = lags
 
         # estimate models at multiple of input lag time.
         if n_jobs == 1:
-            for lag in progress(lags, total=len(lags), leave=False):
+            for lag in progress(lags_for_estimation, total=len(lags_for_estimation), leave=False):
                 estimated_models.append(estimate_model_for_lag(self.test_estimator, self._test_model, data, lag))
         else:
             from multiprocessing import get_context
             fun = estimate_model_for_lag
-            args = [(i, fun, (self.test_estimator, self._test_model, data, lag)) for i, lag in enumerate(lags)]
+            args = [(i, fun, (self.test_estimator, self._test_model, data, lag))
+                    for i, lag in enumerate(lags_for_estimation)]
             estimated_models = [None for _ in range(len(args))]
             with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
-                for result in progress(pool.imap_unordered(_imap_wrapper, args), total=len(lags), leave=False):
+                for result in progress(pool.imap_unordered(_imap_wrapper, args), total=len(lags_for_estimation), leave=False):
                     estimated_models[result[0]] = result[1]
+
+        if include0:
+            estimated_models = [None] + estimated_models
 
         for mlag in self.mlags:
             # make a prediction using the test model
@@ -216,8 +223,6 @@ class LaggedModelValidator(Estimator):
                 predictions_conf.append((l, r))
 
         for model in estimated_models:
-            if model is None:
-                continue
             # evaluate the estimate at lagtime*mlag
             estimates.append(self._compute_observables(model, 1))
             if self.has_errors and self.err_est:
