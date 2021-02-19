@@ -162,7 +162,7 @@ class LaggedModelValidator(Estimator):
         maxlength = np.max([len(x) for x in data])
         maxmlag = int(np.floor(maxlength / lagtime))
         if isinstance(mlags, Integral):
-            mlags = np.arange(1, mlags)
+            mlags = np.arange(mlags)
         mlags = np.asarray(mlags, dtype=int)
         if np.any(mlags > maxmlag):
             mlags = mlags[np.where(mlags <= maxmlag)]
