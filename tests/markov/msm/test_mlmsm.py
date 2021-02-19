@@ -194,15 +194,23 @@ class TestMSMRevPi(unittest.TestCase):
             estimate_markov_model(dtraj_invalid, lag=1, statdist=pi)
 
 
+class FF:
+
+    def __init__(self, est):
+        self._est = est
+
+    def __call__(self, dtrajs):
+        count_model = TransitionCountEstimator(lagtime=10, count_mode="sliding", n_states=85).fit(dtrajs) \
+            .fetch_model().submodel_largest()
+        return self._est.fit(count_model).fetch_model()
+
+
 @pytest.mark.parametrize("n_jobs", [1, 2])
 def test_score_cv(double_well_msm_all, n_jobs):
     scenario, est, msm = double_well_msm_all
     est.lagtime = 10
 
-    def fit_fetch(dtrajs):
-        count_model = TransitionCountEstimator(lagtime=10, count_mode="sliding", n_states=85).fit(dtrajs) \
-            .fetch_model().submodel_largest()
-        return est.fit(count_model).fetch_model()
+    fit_fetch = FF(est)
 
     with assert_raises(ValueError):
         vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=1, dim=2, n_jobs=1, splitting_mode="noop")
