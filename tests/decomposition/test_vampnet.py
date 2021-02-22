@@ -136,6 +136,3 @@ def test_no_side_effects():
     model2 = net.fit(train_loader, n_epochs=1).fetch_model()
     with torch.no_grad():
         assert_(model1.lobe is not model2.lobe)  # check it is not the same instance
-        # no side effects: if assert_equal raises, this is not equal, which is expected
-        with assert_raises(AssertionError):
-            assert_equal(model1.lobe.weight.data.cpu().numpy(), model2.lobe.weight.data.cpu().numpy())
