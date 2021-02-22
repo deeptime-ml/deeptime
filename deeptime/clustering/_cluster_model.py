@@ -111,7 +111,6 @@ class ClusterModel(Model, Transformer):
         discrete_trajectory : (T, 1) ndarray
             A discrete trajectory where each frame denotes the closest cluster center.
         """
-        assert data.dtype == self.cluster_centers.dtype
         n_jobs = handle_n_jobs(n_jobs)
         dtraj = _bd.assign(data, self.cluster_centers, n_jobs, metrics[self.metric]())
         return dtraj
