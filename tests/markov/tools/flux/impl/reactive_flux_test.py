@@ -5,7 +5,7 @@ r"""Unit test for the ReactiveFlux object
 """
 import unittest
 import numpy as np
-from deeptime.markov import compute_reactive_flux
+from deeptime.markov import reactive_flux
 from tests.markov.tools.numeric import assert_allclose
 
 from deeptime.markov.tools.flux import api as msmapi
@@ -53,7 +53,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
                                                  [0., 0., 0., 0., 0.]])
 
         # Testing:
-        self.tpt1 = compute_reactive_flux(self.P, self.A, self.B)
+        self.tpt1 = reactive_flux(self.P, self.A, self.B)
 
         # 16-state toy system
         P2_nonrev = np.array([[0.5, 0.2, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -105,7 +105,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
                                         [0., 0., 0., 0., 0., 0.]])
 
         # Testing
-        self.tpt2 = compute_reactive_flux(self.P2, self.A2, self.B2)
+        self.tpt2 = reactive_flux(self.P2, self.A2, self.B2)
 
 
     def test_nstates(self):

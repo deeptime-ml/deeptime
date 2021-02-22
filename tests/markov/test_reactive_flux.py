@@ -9,7 +9,7 @@ import deeptime.markov.tools.analysis as msmana
 import numpy as np
 from numpy.testing import assert_allclose
 
-from deeptime.markov import TransitionCountModel, compute_reactive_flux
+from deeptime.markov import TransitionCountModel, reactive_flux
 from deeptime.markov.msm import MarkovStateModel
 
 
@@ -119,7 +119,7 @@ class TestReactiveFluxFunctions(unittest.TestCase):
         with np.testing.assert_raises(ValueError):
             self.P.reactive_flux(source_states=[0], target_states=np.arange(self.P.n_states + 1))
         with np.testing.assert_raises(ValueError):
-            compute_reactive_flux(np.array([[.5, .6], [.3, .7]]), [0], [1])  # not a transition matrix
+            reactive_flux(np.array([[.5, .6], [.3, .7]]), [0], [1])  # not a transition matrix
 
     def test_n_states(self):
         self.assertEqual(self.tpt1.n_states, self.P.n_states)
