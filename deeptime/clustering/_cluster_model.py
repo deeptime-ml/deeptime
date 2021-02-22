@@ -55,7 +55,10 @@ class ClusterModel(Model, Transformer):
         np.ndarray
             Array containing estimated cluster centers.
         """
-        return self._cluster_centers if self._cluster_centers.ndim > 1 else self._cluster_centers[..., None]
+        if self._cluster_centers is None:
+            return None
+        else:
+            return self._cluster_centers if self._cluster_centers.ndim > 1 else self._cluster_centers[..., None]
 
     @property
     def n_clusters(self) -> int:
