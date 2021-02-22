@@ -10,7 +10,7 @@ import numpy as np
 
 from sklearn.mixture import GaussianMixture  # for example data generation
 
-from deeptime.clustering import Kmeans, RegularSpace
+from deeptime.clustering import KMeans, RegularSpace
 
 rnd = np.random.RandomState(seed=17)  # create a random state with fixed seed for reproducibility
 
@@ -25,13 +25,13 @@ gmm.covariances_ = rnd.uniform(low=15., high=18., size=(n_components, 2))  # sam
 samples, labels = gmm.sample(50000)  # generate data
 
 estimators = [
-    ('k-Means with uniform initialization', Kmeans(
+    ('k-Means with uniform initialization', KMeans(
         n_clusters=100,  # place 100 cluster centers
         init_strategy='uniform',  # uniform initialization strategy
         fixed_seed=13,
         n_jobs=8)
      ),
-    ('k-Means with k-means++ initialization', Kmeans(
+    ('k-Means with k-means++ initialization', KMeans(
         n_clusters=100,  # place 100 cluster centers
         init_strategy='kmeans++',  # uniform initialization strategy
         fixed_seed=13,

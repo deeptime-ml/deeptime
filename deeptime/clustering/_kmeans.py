@@ -8,7 +8,7 @@ from ..base import Estimator, Transformer
 from ._cluster_model import ClusterModel
 from . import _clustering_bindings as _bd, metrics
 
-__all__ = ['Kmeans', 'MiniBatchKmeans', 'KMeansModel']
+__all__ = ['KMeans', 'MiniBatchKMeans', 'KMeansModel']
 
 from ..util.parallel import handle_n_jobs
 
@@ -38,8 +38,8 @@ class KMeansModel(ClusterModel):
     See Also
     --------
     ClusterModel
-    Kmeans
-    MiniBatchKmeans
+    KMeans
+    MiniBatchKMeans
     """
 
     def __init__(self, n_clusters, cluster_centers, metric: str, tolerance: Optional[float] = None,
@@ -104,7 +104,7 @@ class KMeansModel(ClusterModel):
         return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, metrics[self.metric]())
 
 
-class Kmeans(Estimator, Transformer):
+class KMeans(Estimator, Transformer):
     r"""Clusters the data in a way that minimizes the cost function
 
     .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf{x}_j \in S_i} \left\| \mathbf{x}_j - \boldsymbol\mu_i \right\|^2
@@ -150,13 +150,13 @@ class Kmeans(Estimator, Transformer):
     See Also
     --------
     KMeansModel
-    MiniBatchKmeans
+    MiniBatchKMeans
     """
 
     def __init__(self, n_clusters: int, max_iter: int = 500, metric='euclidean',
                  tolerance=1e-5, init_strategy: str = 'kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None):
-        super(Kmeans, self).__init__()
+        super(KMeans, self).__init__()
 
         self.n_clusters = n_clusters
         self.max_iter = max_iter
@@ -384,7 +384,7 @@ class Kmeans(Estimator, Transformer):
 
         Returns
         -------
-        self : Kmeans
+        self : KMeans
             reference to self
         """
         if data.ndim == 1:
@@ -411,7 +411,7 @@ class Kmeans(Estimator, Transformer):
         return self
 
 
-class MiniBatchKmeans(Kmeans):
+class MiniBatchKMeans(KMeans):
     r""" K-means clustering in a mini-batched fashion.
 
     Parameters
@@ -421,13 +421,13 @@ class MiniBatchKmeans(Kmeans):
 
     See Also
     --------
-    Kmeans : Superclass, see for description of remaining parameters.
+    KMeans : Superclass, see for description of remaining parameters.
     KMeansModel
     """
 
     def __init__(self, n_clusters, batch_size=100, max_iter=5, metric='euclidean', tolerance=1e-5,
                  init_strategy='kmeans++', n_jobs=None, initial_centers=None):
-        super(MiniBatchKmeans, self).__init__(n_clusters, max_iter, metric,
+        super(MiniBatchKMeans, self).__init__(n_clusters, max_iter, metric,
                                               tolerance, init_strategy, False,
                                               n_jobs=n_jobs,
                                               initial_centers=initial_centers)
@@ -473,7 +473,7 @@ class MiniBatchKmeans(Kmeans):
 
         Returns
         -------
-        self : MiniBatchKmeans
+        self : MiniBatchKMeans
             reference to self
         """
         if self._model is None:

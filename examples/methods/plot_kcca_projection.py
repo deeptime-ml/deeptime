@@ -4,7 +4,7 @@ Kernel CCA on the sqrt-Model to transform data
 
 This example shows an application of :class:`KernelCCA <deeptime.decomposition.KernelCCA>` on the
 :meth:`sqrt model <deeptime.data.sqrt_model>` dataset. We transform the data by evaluating the estimated eigenfunctions
-into a (quasi) linearly separable space. Crisp assignments are obtained by :class:`Kmeans <deeptime.cluster.Kmeans>`
+into a (quasi) linearly separable space. Crisp assignments are obtained by :class:`KMeans <deeptime.cluster.KMeans>`
 clustering.
 """
 
@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from deeptime.clustering import Kmeans
+from deeptime.clustering import KMeans
 from deeptime.data import sqrt_model
 from deeptime.decomposition import KernelCCA
 from deeptime.kernels import GaussianKernel
@@ -24,7 +24,7 @@ kernel = GaussianKernel(2.)
 est = KernelCCA(kernel, n_eigs=2)
 model = est.fit((obs[1:], obs[:-1])).fetch_model()
 evals = model.transform(obs_test)
-clustering = Kmeans(2).fit(np.real(model.transform(obs))).fetch_model()
+clustering = KMeans(2).fit(np.real(model.transform(obs))).fetch_model()
 assignments = clustering.transform(np.real(evals))
 
 n_mismatch = np.sum(np.abs(assignments - dtraj_test))

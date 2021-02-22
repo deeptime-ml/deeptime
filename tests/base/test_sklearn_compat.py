@@ -1,7 +1,7 @@
 import unittest
 import warnings
 
-from deeptime.clustering import Kmeans
+from deeptime.clustering import KMeans
 from deeptime.decomposition import TICA
 from deeptime.markov import TransitionCountEstimator
 from deeptime.markov.msm import MaximumLikelihoodMSM
@@ -28,7 +28,7 @@ class TestSkLearnCompat(unittest.TestCase):
 
         pipeline = Pipeline(steps=[
             ('tica', TICA(dim=1, lagtime=1)),
-            ('cluster', Kmeans(n_clusters=2, max_iter=500)),
+            ('cluster', KMeans(n_clusters=2, max_iter=500)),
             ('counts', TransitionCountEstimator(lagtime=1, count_mode="sliding"))
         ])
         pipeline.fit(data)

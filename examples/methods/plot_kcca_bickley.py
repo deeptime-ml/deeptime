@@ -9,7 +9,7 @@ to find coherent structures.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from deeptime.clustering import Kmeans
+from deeptime.clustering import KMeans
 from deeptime.data import bickley_jet
 from deeptime.decomposition import KernelCCA
 from deeptime.kernels import GaussianKernel
@@ -21,7 +21,7 @@ estimator = KernelCCA(kernel, n_eigs=5, epsilon=1e-3)
 model = estimator.fit((dataset.data, dataset.data_lagged)).fetch_model()
 
 ev_real = np.real(model.eigenvectors)
-kmeans = Kmeans(n_clusters=7, n_jobs=8).fit(ev_real)
+kmeans = KMeans(n_clusters=7, n_jobs=8).fit(ev_real)
 kmeans = kmeans.fetch_model()
 
 fig = plt.figure()

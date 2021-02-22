@@ -57,7 +57,7 @@ Now estimator and model can be used:
 Adding transformer capabilities
 -------------------------------
 Some models have the capability to transform / project data. For example,
-:class:`k-means <deeptime.clustering.Kmeans>` can be used to transform time series to discrete series of
+:class:`k-means <deeptime.clustering.KMeans>` can be used to transform time series to discrete series of
 states by assigning each frame to its respective cluster center.
 
 To add this kind of functionality, one can use the :class:`Transformer` interface and implement the abstract
