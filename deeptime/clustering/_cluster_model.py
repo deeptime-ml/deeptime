@@ -55,7 +55,7 @@ class ClusterModel(Model, Transformer):
         np.ndarray
             Array containing estimated cluster centers.
         """
-        return self._cluster_centers
+        return self._cluster_centers if self._cluster_centers.ndim > 1 else self._cluster_centers[..., None]
 
     @property
     def n_clusters(self) -> int:
@@ -112,5 +112,7 @@ class ClusterModel(Model, Transformer):
             A discrete trajectory where each frame denotes the closest cluster center.
         """
         n_jobs = handle_n_jobs(n_jobs)
+        if data.ndim == 1:
+            data = data[..., None]
         dtraj = _bd.assign(data, self.cluster_centers, n_jobs, metrics[self.metric]())
         return dtraj

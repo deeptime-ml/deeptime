@@ -667,9 +667,18 @@ class BayesianHMM(Estimator):
         return BayesianHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
 
 
-def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
-    estimator.lagtime = lagtime
-    return estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+def _ck_estimate_model_for_lag(estimator: BayesianHMM, model, data, lagtime):
+    from . import MaximumLikelihoodHMM
+    hmm_estimator = MaximumLikelihoodHMM(estimator.initial_hmm, stride=estimator.stride, lagtime=lagtime,
+                                         reversible=estimator.reversible, stationary=estimator.stationary,
+                                         accuracy=1e-2)
+    hmm = hmm_estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+    estimator = BayesianHMM(initial_hmm=hmm, n_samples=estimator.n_samples,
+                            n_transition_matrix_sampling_steps=estimator.n_transition_matrix_sampling_steps,
+                            stride=estimator.stride, initial_distribution_prior=estimator.initial_distribution_prior,
+                            transition_matrix_prior=estimator.transition_matrix_prior, store_hidden=False,
+                            reversible=estimator.reversible, stationary=estimator.stationary)
+    return estimator.fit(data).fetch_model()
 
 
 class BayesianHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):

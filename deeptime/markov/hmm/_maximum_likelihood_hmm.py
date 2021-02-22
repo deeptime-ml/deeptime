@@ -79,7 +79,7 @@ class MaximumLikelihoodHMM(Estimator):
                  p: Optional[np.ndarray] = None, accuracy: float = 1e-3,
                  maxit: int = 1000, maxit_reversible: int = 100000):
         super().__init__()
-        self.initial_transition_model = initial_model
+        self.initial_model = initial_model
         self.stride = stride
         self.lagtime = lagtime
         self.reversible = reversible
@@ -209,15 +209,15 @@ class MaximumLikelihoodHMM(Estimator):
     @property
     def n_hidden_states(self) -> int:
         r""" The number of hidden states, coincides with the number of hidden states in the initial model."""
-        return self.initial_transition_model.n_hidden_states
+        return self.initial_model.n_hidden_states
 
     @property
-    def initial_transition_model(self) -> HiddenMarkovModel:
+    def initial_model(self) -> HiddenMarkovModel:
         r""" The initial transition model. """
         return self._initial_transition_model
 
-    @initial_transition_model.setter
-    def initial_transition_model(self, value: HiddenMarkovModel) -> None:
+    @initial_model.setter
+    def initial_model(self, value: HiddenMarkovModel) -> None:
         self._initial_transition_model = value
 
     def fit(self, dtrajs, initial_model=None, **kwargs):
@@ -228,7 +228,7 @@ class MaximumLikelihoodHMM(Estimator):
         dtrajs : array_like or list of array_like
             Timeseries data.
         initial_model : HiddenMarkovModel, optional, default=None
-            Override for :attr:`initial_transition_model`.
+            Override for :attr:`initial_model`.
         **kwargs
             Ignored kwargs for scikit-learn compatibility.
 
@@ -238,7 +238,7 @@ class MaximumLikelihoodHMM(Estimator):
             Reference to self.
         """
         if initial_model is None:
-            initial_model = self.initial_transition_model
+            initial_model = self.initial_model
         if initial_model is None or not isinstance(initial_model, HiddenMarkovModel):
             raise ValueError("For estimation, an initial model of type "
                              "`deeptime.markov.hmm.HiddenMarkovModel` is required.")
@@ -448,8 +448,10 @@ class MaximumLikelihoodHMM(Estimator):
         return MLHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
 
 
-def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
-    estimator.lagtime = lagtime
+def _ck_estimate_model_for_lag(estimator: MaximumLikelihoodHMM, model: HiddenMarkovModel, data, lagtime):
+    estimator = MaximumLikelihoodHMM(estimator.initial_model, lagtime=lagtime, reversible=estimator.reversible,
+                                     stationary=estimator.stationary, accuracy=estimator.accuracy,
+                                     maxit=estimator.maxit, maxit_reversible=estimator.maxit_reversible)
     return estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
 
 
