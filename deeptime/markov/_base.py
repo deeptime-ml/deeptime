@@ -224,15 +224,11 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         else:
             m = test_model
         if hasattr(m, 'transition_model'):
-            n_states = m.n_observation_states
-            statdist = m.stationary_distribution_obs
-            symbols = m.observation_symbols
-            symbols_full = m.observation_symbols_full
-        else:
-            n_states = m.n_states
-            statdist = m.stationary_distribution
-            symbols = m.count_model.state_symbols
-            symbols_full = m.count_model.n_states_full
+            m = m.transition_model
+        n_states = m.n_states
+        statdist = m.stationary_distribution
+        symbols = m.count_model.state_symbols
+        symbols_full = m.count_model.n_states_full
         assert self.memberships.shape[0] == n_states, 'provided memberships and test_model n_states mismatch'
         self._test_model = test_model
         # define starting distribution
@@ -263,9 +259,8 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         if hasattr(model, 'prior'):
             model = model.prior
         if hasattr(model, 'transition_model'):
-            symbols = model.observation_symbols
-        else:
-            symbols = model.count_model.state_symbols
+            model = model.transition_model
+        symbols = model.count_model.state_symbols
         subset = self._full2active[symbols]  # find subset we are now working on
         for i in range(self.nsets):
             p0 = self.P0[:, i]  # starting distribution on reference active set
@@ -283,7 +278,7 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
             return np.eye(self.nsets), np.eye(self.nsets)
         prior = model.prior
         if hasattr(prior, 'transition_model'):
-            symbols = prior.observation_symbols
+            symbols = prior.transition_model.count_model.state_symbols
         else:
             symbols = prior.count_model.state_symbols
         subset = self._full2active[symbols]  # find subset we are now working on
@@ -293,7 +288,11 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
             p0 = self.P0[:, i]  # starting distribution
             p0sub = p0[subset]  # map distribution to new active set
             p0sub /= p0sub.sum()  # renormalize
-            pksub_samples = [m.propagate(p0sub, mlag) for m in model.samples]
+            pksub_samples = []
+            for m in model.samples:
+                if hasattr(m, 'transition_model'):
+                    m = m.transition_model
+                pksub_samples.append(m.propagate(p0sub, mlag))
             for j in range(self.nsets):
                 pk_on_set_samples = np.fromiter((np.dot(pksub, self.memberships[subset, j])
                                                  for pksub in pksub_samples), dtype=np.float32,

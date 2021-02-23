@@ -440,9 +440,7 @@ class Covariance(Estimator):
         self._model = None
         self._rc.clear()
 
-        if n_splits is None:
-            dlen = min(len(d) for d in data)
-            n_splits = int(dlen // 100 if dlen >= 1e4 else 1)
+        n_splits = 1 if n_splits is None else n_splits
 
         if lagtime is None:
             lagtime = self.lagtime

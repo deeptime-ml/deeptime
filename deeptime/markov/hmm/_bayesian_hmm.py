@@ -662,22 +662,27 @@ class BayesianHMM(Estimator):
         from . import DiscreteOutputModel
         assert isinstance(test_model.prior.output_model, DiscreteOutputModel), \
             "Can only perform CKTest for discrete output models"
-        memberships = test_model.prior.metastable_memberships
+        memberships = np.eye(test_model.prior.n_hidden_states)
         lagtime = test_model.prior.lagtime
         return BayesianHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
 
 
 def _ck_estimate_model_for_lag(estimator: BayesianHMM, model, data, lagtime):
-    from . import MaximumLikelihoodHMM
-    hmm_estimator = MaximumLikelihoodHMM(estimator.initial_hmm, stride=estimator.stride, lagtime=lagtime,
-                                         reversible=estimator.reversible, stationary=estimator.stationary,
-                                         accuracy=1e-2)
-    hmm = hmm_estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
-    estimator = BayesianHMM(initial_hmm=hmm, n_samples=estimator.n_samples,
-                            n_transition_matrix_sampling_steps=estimator.n_transition_matrix_sampling_steps,
-                            stride=estimator.stride, initial_distribution_prior=estimator.initial_distribution_prior,
-                            transition_matrix_prior=estimator.transition_matrix_prior, store_hidden=False,
-                            reversible=estimator.reversible, stationary=estimator.stationary)
+    # from . import MaximumLikelihoodHMM
+    # hmm_estimator = MaximumLikelihoodHMM(estimator.initial_hmm, stride=estimator.stride, lagtime=lagtime,
+    #                                      reversible=estimator.reversible, stationary=estimator.stationary,
+    #                                      accuracy=1e-2)
+    # hmm = hmm_estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+    # estimator = BayesianHMM(initial_hmm=hmm, n_samples=estimator.n_samples,
+    #                         n_transition_matrix_sampling_steps=estimator.n_transition_matrix_sampling_steps,
+    #                         stride=estimator.stride, initial_distribution_prior=estimator.initial_distribution_prior,
+    #                         transition_matrix_prior=estimator.transition_matrix_prior, store_hidden=False,
+    #                         reversible=estimator.reversible, stationary=estimator.stationary)
+    estimator = BayesianHMM.default(dtrajs=data, n_hidden_states=estimator.initial_hmm.n_hidden_states,
+                                    lagtime=lagtime, n_samples=estimator.n_samples, stride=estimator.stride,
+                                    initial_distribution_prior=estimator.initial_distribution_prior,
+                                    transition_matrix_prior=estimator.transition_matrix_prior,
+                                    reversible=estimator.reversible, stationary=estimator.stationary)
     return estimator.fit(data).fetch_model()
 
 

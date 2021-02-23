@@ -443,16 +443,20 @@ class MaximumLikelihoodHMM(Estimator):
         from . import DiscreteOutputModel
         assert isinstance(test_model.output_model, DiscreteOutputModel), \
             "Can only perform CKTest for discrete output models"
-        memberships = test_model.metastable_memberships
         lagtime = test_model.lagtime
-        return MLHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
+        return MLHMMChapmanKolmogorovValidator(test_model, self, np.eye(test_model.n_hidden_states), lagtime, mlags)
 
 
 def _ck_estimate_model_for_lag(estimator: MaximumLikelihoodHMM, model: HiddenMarkovModel, data, lagtime):
-    estimator = MaximumLikelihoodHMM(estimator.initial_model, lagtime=lagtime, reversible=estimator.reversible,
+    from .init.discrete import metastable_from_data
+    initial_model = metastable_from_data(data, n_hidden_states=model.n_hidden_states, lagtime=lagtime,
+                                         stride=estimator.stride, reversible=estimator.reversible,
+                                         stationary=estimator.stationary)
+    estimator = MaximumLikelihoodHMM(initial_model, lagtime=lagtime, reversible=estimator.reversible,
                                      stationary=estimator.stationary, accuracy=estimator.accuracy,
                                      maxit=estimator.maxit, maxit_reversible=estimator.maxit_reversible)
-    return estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+    hmm = estimator.fit(data).fetch_model()
+    return hmm.submodel_largest(dtrajs=data)
 
 
 class MLHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
