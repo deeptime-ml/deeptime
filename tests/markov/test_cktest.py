@@ -5,8 +5,8 @@ from numpy.testing import assert_allclose, assert_equal
 
 
 @pytest.mark.parametrize("n_jobs", [1, 2], ids=lambda x: f"n_jobs={x}")
+@pytest.mark.parametrize("mlags", [2, [0, 1, 10], [1, 10]], ids=lambda x: f"mlags={x}")
 @pytest.mark.parametrize("estimator_type", ["MLMSM", "BMSM", "HMM", "BHMM"])
-@pytest.mark.parametrize("mlags", [[0, 1, 10]])
 def test_cktest_double_well(estimator_type, n_jobs, mlags):
     # maximum-likelihood estimates
     estref = np.array([[[1., 0.],
@@ -21,7 +21,7 @@ def test_cktest_double_well(estimator_type, n_jobs, mlags):
                          [0.10003466, 0.89996534]],
                         [[0.62613723, 0.37386277],
                          [0.3669059, 0.6330941]]])
-
+    include0 = (isinstance(mlags, list) and 0 in mlags) or isinstance(mlags, int)
     dtraj = dt.data.double_well_discrete().dtraj_n6good
     if estimator_type == "MLMSM":
         est = dt.markov.msm.MaximumLikelihoodMSM()
@@ -44,9 +44,21 @@ def test_cktest_double_well(estimator_type, n_jobs, mlags):
     else:
         pytest.fail()
 
+    validator.err_est = True
     cktest = validator.fit(dtraj).fetch_model()
-    assert_equal(cktest.lagtimes, mlags)
+    if not isinstance(mlags, list):
+        assert_equal(cktest.lagtimes, [0, 1])
+    else:
+        assert_equal(cktest.lagtimes, mlags)
 
-    # rough agreement with MLE
-    assert_allclose(cktest.estimates, estref, rtol=.1, atol=10.)
-    assert_allclose(cktest.predictions, predref, rtol=.1, atol=10.)
+    ix = []
+    if 0 in cktest.lagtimes:
+        ix.append(0)
+    if 1 in cktest.lagtimes:
+        ix.append(1)
+    if 10 in cktest.lagtimes:
+        ix.append(2)
+    ix = np.array(ix, dtype=int)
+
+    assert_allclose(cktest.estimates, estref[ix], rtol=.1, atol=10.)
+    assert_allclose(cktest.predictions, predref[ix], rtol=.1, atol=10.)
