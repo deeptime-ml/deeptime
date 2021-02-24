@@ -38,6 +38,8 @@ class ClusterModel(Model, Transformer):
     def __init__(self, cluster_centers: np.ndarray, metric: str = 'euclidean',
                  converged: bool = False):
         super().__init__()
+        if cluster_centers.ndim == 1:
+            cluster_centers = cluster_centers[..., None]
         self._cluster_centers = cluster_centers
         self._metric = metric
         self._converged = converged

@@ -93,7 +93,7 @@ def test_3gaussian_1d_singletraj(seed, init_strategy):
 
 
 def test_kmeans_model_direct():
-    m = dt.clustering.KMeansModel(3, np.random.normal(size=(3, 3)), 'euclidean')
+    m = dt.clustering.KMeansModel(np.random.normal(size=(3, 3)), 'euclidean')
     np.testing.assert_equal(m.inertias, None)
     np.testing.assert_equal(m.inertia, None)
 

@@ -387,7 +387,7 @@ class KMeans(Estimator, Transformer):
         """
         if data.ndim == 1:
             data = data[:, np.newaxis]
-        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
+        n_jobs = handle_n_jobs(self.n_jobs if n_jobs is None else n_jobs)
         if initial_centers is not None:
             self.initial_centers = initial_centers
         if self.initial_centers is None:
@@ -433,7 +433,7 @@ class MiniBatchKMeans(KMeans):
 
     def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
         r""" Perform clustering on whole data. """
-        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
+        n_jobs = handle_n_jobs(self.n_jobs if n_jobs is None else n_jobs)
         if data.ndim == 1:
             data = data[:, np.newaxis]
         if initial_centers is not None:
@@ -441,7 +441,7 @@ class MiniBatchKMeans(KMeans):
         if self.initial_centers is None:
             self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
         indices = np.arange(len(data))
-        self._model = KMeansModel(cluster_centers=None, metric=self.metric,
+        self._model = KMeansModel(cluster_centers=self.initial_centers, metric=self.metric,
                                   tolerance=self.tolerance, inertias=np.array([float('inf')]))
         for epoch in range(self.max_iter):
             np.random.shuffle(indices)
@@ -474,19 +474,16 @@ class MiniBatchKMeans(KMeans):
         self : MiniBatchKMeans
             reference to self
         """
+        n_jobs = handle_n_jobs(self.n_jobs if n_jobs is None else n_jobs)
+        if self.initial_centers is None:
+            # we have no initial centers set, pick some based on the first partial fit
+            self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs)
+
         if self._model is None:
-            self._model = KMeansModel(cluster_centers=None, metric=self.metric,
+            self._model = KMeansModel(cluster_centers=np.copy(self.initial_centers), metric=self.metric,
                                       tolerance=self.tolerance, inertias=np.array([float('inf')]))
         if data.ndim == 1:
             data = data[:, np.newaxis]
-        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
-        if self._model.cluster_centers is None:
-            if self.initial_centers is None:
-                # we have no initial centers set, pick some based on the first partial fit
-                self._model._cluster_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs)
-            else:
-                self._model._cluster_centers = np.copy(self.initial_centers)
-
         metric_instance = metrics[self.metric]()
         self._model._cluster_centers = _bd.kmeans.cluster(data, self._model.cluster_centers, n_jobs, metric_instance)[0]
         cost = _bd.kmeans.cost_function(data, self._model.cluster_centers, n_jobs, metric_instance)
