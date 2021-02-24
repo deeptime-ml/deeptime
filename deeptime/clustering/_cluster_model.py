@@ -13,8 +13,6 @@ class ClusterModel(Model, Transformer):
 
     Parameters
     ----------
-    n_clusters : int
-        Number of cluster centers.
     cluster_centers : (k, d) ndarray
         The cluster centers, length of the array should match :attr:`n_clusters`.
     metric : str, default='euclidean'
@@ -30,17 +28,16 @@ class ClusterModel(Model, Transformer):
 
     We can transform data with the model. The data are five frames sampled around the third cluster center.
 
-    >>> model = ClusterModel(n_clusters=3, cluster_centers=np.eye(3))
+    >>> model = ClusterModel(cluster_centers=np.eye(3))
     >>> data = np.random.normal(loc=[0, 0, 1], scale=0.01, size=(5, 3))
     >>> assignments = model.transform(data)
     >>> print(assignments)
     [2 2 2 2 2]
     """
 
-    def __init__(self, n_clusters: int, cluster_centers: np.ndarray, metric: str = 'euclidean',
+    def __init__(self, cluster_centers: np.ndarray, metric: str = 'euclidean',
                  converged: bool = False):
         super().__init__()
-        self._n_clusters = n_clusters
         self._cluster_centers = cluster_centers
         self._metric = metric
         self._converged = converged
@@ -55,10 +52,7 @@ class ClusterModel(Model, Transformer):
         np.ndarray
             Array containing estimated cluster centers.
         """
-        if self._cluster_centers is None:
-            return None
-        else:
-            return self._cluster_centers if self._cluster_centers.ndim > 1 else self._cluster_centers[..., None]
+        return self._cluster_centers
 
     @property
     def n_clusters(self) -> int:
@@ -70,7 +64,11 @@ class ClusterModel(Model, Transformer):
         int
             The number of cluster centers.
         """
-        return self._n_clusters
+        return self.cluster_centers.shape[0]
+
+    @property
+    def dim(self):
+        return self.cluster_centers.shape[1]
 
     @property
     def metric(self) -> str:

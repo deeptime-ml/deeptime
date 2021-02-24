@@ -1,7 +1,15 @@
 import numpy as np
 import pytest
 import deeptime as dt
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose, assert_equal, assert_raises
+
+
+def test_invalid_mlags():
+    data = dt.data.double_well_discrete().dtraj
+    est = dt.markov.msm.MaximumLikelihoodMSM()
+    est.fit(data, lagtime=1)
+    with assert_raises(ValueError):
+        est.chapman_kolmogorov_validator(2, mlags=[0, 1, -10])
 
 
 @pytest.mark.parametrize("n_jobs", [1, 2], ids=lambda x: f"n_jobs={x}")
@@ -21,7 +29,6 @@ def test_cktest_double_well(estimator_type, n_jobs, mlags):
                          [0.10003466, 0.89996534]],
                         [[0.62613723, 0.37386277],
                          [0.3669059, 0.6330941]]])
-    include0 = (isinstance(mlags, list) and 0 in mlags) or isinstance(mlags, int)
     dtraj = dt.data.double_well_discrete().dtraj_n6good
     if estimator_type == "MLMSM":
         est = dt.markov.msm.MaximumLikelihoodMSM()

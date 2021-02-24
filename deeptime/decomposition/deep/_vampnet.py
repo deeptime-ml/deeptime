@@ -564,7 +564,8 @@ class VAMPNet(DLEstimator, Transformer):
 
     def fit(self, data_loader: torch.utils.data.DataLoader, n_epochs=1, validation_loader=None,
             train_score_callback: Callable[[int, torch.Tensor], None] = None,
-            validation_score_callback: Callable[[int, torch.Tensor], None] = None, **kwargs):
+            validation_score_callback: Callable[[int, torch.Tensor], None] = None,
+            progress=None, **kwargs):
         r""" Fits a VampNet on data.
 
         Parameters
@@ -583,6 +584,8 @@ class VAMPNet(DLEstimator, Transformer):
             Callback function for validation data. Is invoked after each epoch if validation data is given
             and the callback function is not None. Same as the train callback, this gets the 'step' as well as
             the score.
+        progress : context manager, optional, default=None
+            Progress bar (eg tqdm), defaults to None.
         **kwargs
             Optional keyword arguments for scikit-learn compatibility
 
@@ -591,10 +594,12 @@ class VAMPNet(DLEstimator, Transformer):
         self : VAMPNet
             Reference to self.
         """
+        from deeptime.util.platform import handle_progress_bar
+        progress = handle_progress_bar(progress)
         self._step = 0
 
         # and train
-        for epoch in range(n_epochs):
+        for epoch in progress(range(n_epochs), desc="VAMPNet epoch", total=n_epochs, leave=False):
             for batch_0, batch_t in data_loader:
                 self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)),
                                  train_score_callback=train_score_callback)

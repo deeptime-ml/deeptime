@@ -143,7 +143,7 @@ class LaggedModelValidator(Estimator):
         # set conf and error handling
         self.conf = conf
         self.has_errors = hasattr(test_model, 'samples')
-        self.mlags = mlags
+        self._set_mlags(mlags)
 
         self.err_est = err_est
         if err_est and not self.has_errors:
@@ -152,28 +152,30 @@ class LaggedModelValidator(Estimator):
 
         super(LaggedModelValidator, self).__init__()
 
-    def _set_mlags(self, data, lagtime: int):
+    def _set_mlags(self, mlags):
         # set mlags, we do it in fit, so we can obtain the maximum possible lagtime from the trajectory data.
         from numbers import Integral
-        if not isinstance(data, list):
-            data = [data]
-
-        mlags = self.mlags
-        maxlength = np.max([len(x) for x in data])
-        maxmlag = int(np.floor(maxlength / lagtime))
         if isinstance(mlags, Integral):
             mlags = np.arange(mlags)
         mlags = np.asarray(mlags, dtype=int)
-        if np.any(mlags > maxmlag):
-            mlags = mlags[np.where(mlags <= maxmlag)]
-            warnings.warn('Dropped lag times exceeding data lengths')
-        if np.any(mlags < 0):
-            mlags = mlags[np.where(mlags >= 0)]
-            warnings.warn('Dropped negative multiples of lag time')
+
         mlags = np.atleast_1d(mlags)
         if (mlags < 0).any():
             raise ValueError('multiples of lagtimes have to be greater equal zero.')
         self.mlags = mlags
+
+    def _effective_mlags(self, data, lagtime):
+        if not isinstance(data, list):
+            data = [data]
+        maxlength = np.max([len(x) for x in data])
+        maxmlag = int(np.floor(maxlength / lagtime))
+        mlags = np.copy(self.mlags)
+
+        if np.any(mlags > maxmlag):
+            mlags = mlags[np.where(mlags <= maxmlag)]
+            warnings.warn('Dropped lag times exceeding data lengths')
+
+        return mlags
 
     def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
         assert estimate_model_for_lag is not None
@@ -181,8 +183,8 @@ class LaggedModelValidator(Estimator):
         progress = handle_progress_bar(progress)
         # set lag times
 
-        self._set_mlags(data, self.input_lagtime)
-        lags = self.mlags * self.input_lagtime
+        mlags = self._effective_mlags(data, self.input_lagtime)
+        lags = mlags * self.input_lagtime
 
         predictions = []
         predictions_conf = []
@@ -191,7 +193,7 @@ class LaggedModelValidator(Estimator):
         estimated_models = []
 
         # do we have zero lag? this must be treated separately
-        include0 = self.mlags[0] == 0
+        include0 = mlags[0] == 0
         if include0:
             lags_for_estimation = lags[1:]
         else:
@@ -214,7 +216,7 @@ class LaggedModelValidator(Estimator):
         if include0:
             estimated_models = [None] + estimated_models
 
-        for mlag in self.mlags:
+        for mlag in mlags:
             # make a prediction using the test model
             predictions.append(self._compute_observables(self._test_model, mlag=mlag))
             # compute prediction errors if we can

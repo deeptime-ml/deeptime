@@ -183,7 +183,7 @@ class BickleyJetEndpointsDataset3D(TimeLaggedDataset):
 
         grid = np.linspace(minval, maxval, num=n_bins, endpoint=True)
         mesh = np.vstack(np.meshgrid(grid, grid, grid)).reshape(3, -1).T
-        cm = ClusterModel(len(mesh), mesh)
+        cm = ClusterModel(mesh)
 
         dtraj1 = cm.transform(self.data.astype(np.float64))
         traj1 = np.zeros((len(self.data), mesh.shape[0]))

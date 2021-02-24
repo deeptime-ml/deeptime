@@ -25,6 +25,8 @@ __all__ = [
     'BayesianHMM',
 ]
 
+from ...util.platform import handle_progress_bar
+
 
 class BayesianHMMPosterior(BayesianPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior.
@@ -513,7 +515,7 @@ class BayesianHMM(Estimator):
         n = [traj[0] for traj in hidden_state_trajectories]
         return np.bincount(n, minlength=n_hidden_states)
 
-    def fit(self, data, n_burn_in: int = 0, n_thin: int = 1, **kwargs):
+    def fit(self, data, n_burn_in: int = 0, n_thin: int = 1, progress=None, **kwargs):
         r""" Sample from the posterior.
 
         Parameters
@@ -524,6 +526,8 @@ class BayesianHMM(Estimator):
             The number of samples to discard to burn-in, following which :attr:`n_samples` samples will be generated.
         n_thin : int, optional, default=1
             The number of Gibbs sampling updates used to generate each returned sample.
+        progress : iterable, optional, default=None
+            Optional progressbar. Tested for tqdm.
         **kwargs
             Ignored kwargs for scikit-learn compatibility.
 
@@ -532,6 +536,7 @@ class BayesianHMM(Estimator):
         self : BayesianHMM
             Reference to self.
         """
+        progress = handle_progress_bar(progress)
         dtrajs = ensure_dtraj_list(data)
 
         # fetch priors
@@ -604,7 +609,7 @@ class BayesianHMM(Estimator):
 
             # Collect data.
             models = []
-            for _ in range(self.n_samples):
+            for _ in progress(range(self.n_samples), desc="Drawing samples", leave=False):
                 # Run a number of Gibbs sampling updates to generate each sample.
                 for _ in range(n_thin):
                     self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior,
@@ -668,16 +673,6 @@ class BayesianHMM(Estimator):
 
 
 def _ck_estimate_model_for_lag(estimator: BayesianHMM, model, data, lagtime):
-    # from . import MaximumLikelihoodHMM
-    # hmm_estimator = MaximumLikelihoodHMM(estimator.initial_hmm, stride=estimator.stride, lagtime=lagtime,
-    #                                      reversible=estimator.reversible, stationary=estimator.stationary,
-    #                                      accuracy=1e-2)
-    # hmm = hmm_estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
-    # estimator = BayesianHMM(initial_hmm=hmm, n_samples=estimator.n_samples,
-    #                         n_transition_matrix_sampling_steps=estimator.n_transition_matrix_sampling_steps,
-    #                         stride=estimator.stride, initial_distribution_prior=estimator.initial_distribution_prior,
-    #                         transition_matrix_prior=estimator.transition_matrix_prior, store_hidden=False,
-    #                         reversible=estimator.reversible, stationary=estimator.stationary)
     estimator = BayesianHMM.default(dtrajs=data, n_hidden_states=estimator.initial_hmm.n_hidden_states,
                                     lagtime=lagtime, n_samples=estimator.n_samples, stride=estimator.stride,
                                     initial_distribution_prior=estimator.initial_distribution_prior,

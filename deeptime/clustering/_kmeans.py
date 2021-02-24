@@ -20,8 +20,6 @@ class KMeansModel(ClusterModel):
 
     Parameters
     ----------
-    n_clusters : int
-        The number of cluster centers.
     cluster_centers : (k, d) ndarray
         The d-dimensional cluster centers, length of the array should coincide with :attr:`n_clusters`.
     metric : str
@@ -42,9 +40,9 @@ class KMeansModel(ClusterModel):
     MiniBatchKMeans
     """
 
-    def __init__(self, n_clusters, cluster_centers, metric: str, tolerance: Optional[float] = None,
+    def __init__(self, cluster_centers, metric: str, tolerance: Optional[float] = None,
                  inertias: Optional[np.ndarray] = None, converged: bool = False):
-        super().__init__(n_clusters, cluster_centers, metric, converged=converged)
+        super().__init__(cluster_centers, metric, converged=converged)
         self._inertias = inertias
         self._tolerance = tolerance
 
@@ -405,7 +403,7 @@ class KMeans(Estimator, Transformer):
         else:
             warnings.warn(f"Algorithm did not reach convergence criterion"
                           f" of {self.tolerance} in {self.max_iter} iterations. Consider increasing max_iter.")
-        self._model = KMeansModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance,
+        self._model = KMeansModel(metric=self.metric, tolerance=self.tolerance,
                                   cluster_centers=cluster_centers, inertias=cost, converged=converged)
 
         return self
@@ -443,7 +441,7 @@ class MiniBatchKMeans(KMeans):
         if self.initial_centers is None:
             self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
         indices = np.arange(len(data))
-        self._model = KMeansModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
+        self._model = KMeansModel(cluster_centers=None, metric=self.metric,
                                   tolerance=self.tolerance, inertias=np.array([float('inf')]))
         for epoch in range(self.max_iter):
             np.random.shuffle(indices)
@@ -477,7 +475,7 @@ class MiniBatchKMeans(KMeans):
             reference to self
         """
         if self._model is None:
-            self._model = KMeansModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
+            self._model = KMeansModel(cluster_centers=None, metric=self.metric,
                                       tolerance=self.tolerance, inertias=np.array([float('inf')]))
         if data.ndim == 1:
             data = data[:, np.newaxis]
