@@ -185,7 +185,7 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         Model to be tested
     test_estimator : Estimator
         Parametrized Estimator that has produced the model
-    mlags : int or int-array, default=10
+    mlags : int or int-array
         Multiples of lag times for testing the Model, e.g. range(10).
         A single int will trigger a range, i.e. `mlags=10` maps to
         `mlags=range(10)`. The setting None will choose mlags automatically
@@ -207,7 +207,7 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
     """
 
     def __init__(self, test_model, test_estimator, memberships, test_model_lagtime,
-                 mlags=None, conf=0.95):
+                 mlags, conf=0.95):
         super().__init__(test_model, test_estimator, test_model_lagtime=test_model_lagtime, conf=conf, mlags=mlags)
         self.memberships = memberships
         self.test_model = test_model
@@ -224,16 +224,11 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         else:
             m = test_model
         if hasattr(m, 'transition_model'):
-            n_states = m.n_observation_states
-            statdist = m.stationary_distribution_obs
-            symbols = m.observation_symbols
-            symbols_full = m.observation_symbols_full
-        else:
-            n_states = m.n_states
-            statdist = m.stationary_distribution
-            symbols = m.count_model.state_symbols
-            symbols_full = m.count_model.n_states_full
-        # todo hidden or no?
+            m = m.transition_model
+        n_states = m.n_states
+        statdist = m.stationary_distribution
+        symbols = m.count_model.state_symbols
+        symbols_full = m.count_model.n_states_full
         assert self.memberships.shape[0] == n_states, 'provided memberships and test_model n_states mismatch'
         self._test_model = test_model
         # define starting distribution
@@ -255,16 +250,17 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         self.nstates, self.nsets = self._memberships.shape
         assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
 
-    def _compute_observables(self, model, mlag=1):
+    def _compute_observables(self, model, mlag):
+        if mlag == 0 or model is None:
+            return np.eye(self.nsets)
         # otherwise compute or predict them by model.propagate
         pk_on_set = np.zeros((self.nsets, self.nsets))
         # compute observable on prior in case for Bayesian models.
         if hasattr(model, 'prior'):
             model = model.prior
         if hasattr(model, 'transition_model'):
-            symbols = model.observation_symbols
-        else:
-            symbols = model.count_model.state_symbols
+            model = model.transition_model
+        symbols = model.count_model.state_symbols
         subset = self._full2active[symbols]  # find subset we are now working on
         for i in range(self.nsets):
             p0 = self.P0[:, i]  # starting distribution on reference active set
@@ -276,11 +272,13 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
                 pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
         return pk_on_set
 
-    def _compute_observables_conf(self, model, mlag=1, conf=0.95):
+    def _compute_observables_conf(self, model, mlag, conf=0.95):
         # otherwise compute or predict them by model.propagate
+        if mlag == 0 or model is None:
+            return np.eye(self.nsets), np.eye(self.nsets)
         prior = model.prior
         if hasattr(prior, 'transition_model'):
-            symbols = prior.observation_symbols
+            symbols = prior.transition_model.count_model.state_symbols
         else:
             symbols = prior.count_model.state_symbols
         subset = self._full2active[symbols]  # find subset we are now working on
@@ -290,7 +288,11 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
             p0 = self.P0[:, i]  # starting distribution
             p0sub = p0[subset]  # map distribution to new active set
             p0sub /= p0sub.sum()  # renormalize
-            pksub_samples = [m.propagate(p0sub, mlag) for m in model.samples]
+            pksub_samples = []
+            for m in model.samples:
+                if hasattr(m, 'transition_model'):
+                    m = m.transition_model
+                pksub_samples.append(m.propagate(p0sub, mlag))
             for j in range(self.nsets):
                 pk_on_set_samples = np.fromiter((np.dot(pksub, self.memberships[subset, j])
                                                  for pksub in pksub_samples), dtype=np.float32,

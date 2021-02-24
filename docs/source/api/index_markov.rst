@@ -35,7 +35,7 @@ Analysis tools
     :template: class_nomodule.rst
 
     pcca
-    compute_reactive_flux
+    reactive_flux
     MembershipsChapmanKolmogorovValidator
 
 With output models

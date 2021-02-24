@@ -905,9 +905,9 @@ class MarkovStateModel(Model):
         :class:`ReactiveFlux`
             Reactive Flux model
         """
-        from .._reactive_flux import compute_reactive_flux
+        from .._reactive_flux import reactive_flux
 
-        return compute_reactive_flux(
+        return reactive_flux(
             transition_matrix=self.transition_matrix,
             source_states=source_states,
             target_states=target_states,

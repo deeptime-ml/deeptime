@@ -8,7 +8,7 @@ import unittest
 import numpy as np
 
 from deeptime.data import birth_death_chain
-from deeptime.markov import compute_reactive_flux
+from deeptime.markov import reactive_flux
 from tests.markov.tools.numeric import assert_allclose
 
 from scipy.sparse import csr_matrix
@@ -38,14 +38,14 @@ class TestTPTDense(unittest.TestCase):
         self.T = self.bdc.transition_matrix
 
         """Compute mu, qminus, qplus in constructor"""
-        self.tpt = compute_reactive_flux(self.T, self.A, self.B)
+        self.tpt = reactive_flux(self.T, self.A, self.B)
 
         """Use precomputed mu, qminus, qplus"""
         self.mu = self.bdc.stationary_distribution
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         self.qplus = self.bdc.committor_forward(self.a, self.b)
-        self.tpt_fast = compute_reactive_flux(self.T, self.A, self.B, stationary_distribution=self.mu,
-                                              qminus=self.qminus, qplus=self.qplus)
+        self.tpt_fast = reactive_flux(self.T, self.A, self.B, stationary_distribution=self.mu,
+                                      qminus=self.qminus, qplus=self.qplus)
 
     def test_grossflux(self):
         flux = self.bdc.flux(self.a, self.b)
@@ -179,14 +179,14 @@ class TestTPTSparse(unittest.TestCase):
         self.T = T_sparse
 
         """Compute mu, qminus, qplus in constructor"""
-        self.tpt = compute_reactive_flux(self.T, self.A, self.B)
+        self.tpt = reactive_flux(self.T, self.A, self.B)
 
         """Use precomputed mu, qminus, qplus"""
         self.mu = self.bdc.stationary_distribution
         self.qminus = self.bdc.committor_backward(self.a, self.b)
         self.qplus = self.bdc.committor_forward(self.a, self.b)
-        self.tpt_fast = compute_reactive_flux(self.T, self.A, self.B, stationary_distribution=self.mu,
-                                              qminus=self.qminus, qplus=self.qplus)
+        self.tpt_fast = reactive_flux(self.T, self.A, self.B, stationary_distribution=self.mu,
+                                      qminus=self.qminus, qplus=self.qplus)
 
     def test_flux(self):
         flux = self.bdc.flux(self.a, self.b)

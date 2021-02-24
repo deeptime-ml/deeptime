@@ -116,7 +116,7 @@ class TestPathways(unittest.TestCase):
         """ test for #106 """
         from deeptime.markov.tools.analysis import committor, is_reversible
         from deeptime.markov.tools.flux import flux_matrix, to_netflux
-        from deeptime.markov import compute_reactive_flux, ReactiveFlux
+        from deeptime.markov import reactive_flux, ReactiveFlux
 
         T = np.array([[0.2576419223095193, 0.2254214623509954, 0.248270708174756,
                        0.2686659071647294],
@@ -142,7 +142,7 @@ class TestPathways(unittest.TestCase):
         else:
             qminus = committor(T, A, B, forward=False, mu=mu)
 
-        tpt_obj = compute_reactive_flux(T, A, B)
+        tpt_obj = reactive_flux(T, A, B)
         tpt_obj.major_flux(1.0)
         # gross flux
         grossflux = flux_matrix(T, mu, qminus, qplus, netflux=False)

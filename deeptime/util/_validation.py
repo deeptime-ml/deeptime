@@ -132,7 +132,7 @@ class LaggedModelValidator(Estimator):
     """
 
     def __init__(self, test_model: Model, test_estimator: Estimator, test_model_lagtime: int,
-                 mlags=None, conf=0.95, err_est=False):
+                 mlags, conf=0.95, err_est=False):
         # set model and estimator
         self._test_model = test_model
         import copy
@@ -143,7 +143,7 @@ class LaggedModelValidator(Estimator):
         # set conf and error handling
         self.conf = conf
         self.has_errors = hasattr(test_model, 'samples')
-        self.mlags = mlags
+        self._set_mlags(mlags)
 
         self.err_est = err_est
         if err_est and not self.has_errors:
@@ -152,30 +152,30 @@ class LaggedModelValidator(Estimator):
 
         super(LaggedModelValidator, self).__init__()
 
-    def _set_mlags(self, data, lagtime: int):
+    def _set_mlags(self, mlags):
         # set mlags, we do it in fit, so we can obtain the maximum possible lagtime from the trajectory data.
         from numbers import Integral
+        if isinstance(mlags, Integral):
+            mlags = np.arange(mlags)
+        mlags = np.asarray(mlags, dtype=int)
+
+        mlags = np.atleast_1d(mlags)
+        if (mlags < 0).any():
+            raise ValueError('multiples of lagtimes have to be greater equal zero.')
+        self.mlags = mlags
+
+    def _effective_mlags(self, data, lagtime):
         if not isinstance(data, list):
             data = [data]
-
-        mlags = self.mlags
         maxlength = np.max([len(x) for x in data])
         maxmlag = int(np.floor(maxlength / lagtime))
-        if mlags is None:
-            mlags = maxmlag
-        elif isinstance(mlags, Integral):
-            mlags = np.arange(1, mlags)
-        mlags = np.asarray(mlags, dtype=int)
+        mlags = np.copy(self.mlags)
+
         if np.any(mlags > maxmlag):
             mlags = mlags[np.where(mlags <= maxmlag)]
             warnings.warn('Dropped lag times exceeding data lengths')
-        if np.any(mlags < 0):
-            mlags = mlags[np.where(mlags >= 0)]
-            warnings.warn('Dropped negative multiples of lag time')
 
-        if any(x <= 0 for x in mlags):
-            raise ValueError('multiples of lagtimes have to be greater zero.')
-        self.mlags = mlags
+        return mlags
 
     def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
         assert estimate_model_for_lag is not None
@@ -183,8 +183,8 @@ class LaggedModelValidator(Estimator):
         progress = handle_progress_bar(progress)
         # set lag times
 
-        self._set_mlags(data, self.input_lagtime)
-        lags = self.mlags * self.input_lagtime
+        mlags = self._effective_mlags(data, self.input_lagtime)
+        lags = mlags * self.input_lagtime
 
         predictions = []
         predictions_conf = []
@@ -193,23 +193,30 @@ class LaggedModelValidator(Estimator):
         estimated_models = []
 
         # do we have zero lag? this must be treated separately
-        include0 = self.mlags[0] == 0
-        assert not include0
+        include0 = mlags[0] == 0
+        if include0:
+            lags_for_estimation = lags[1:]
+        else:
+            lags_for_estimation = lags
 
         # estimate models at multiple of input lag time.
         if n_jobs == 1:
-            for lag in progress(lags, total=len(lags), leave=False):
+            for lag in progress(lags_for_estimation, total=len(lags_for_estimation), leave=False):
                 estimated_models.append(estimate_model_for_lag(self.test_estimator, self._test_model, data, lag))
         else:
             from multiprocessing import get_context
             fun = estimate_model_for_lag
-            args = [(i, fun, (self.test_estimator, self._test_model, data, lag)) for i, lag in enumerate(lags)]
+            args = [(i, fun, (self.test_estimator, self._test_model, data, lag))
+                    for i, lag in enumerate(lags_for_estimation)]
             estimated_models = [None for _ in range(len(args))]
             with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
-                for result in progress(pool.imap_unordered(_imap_wrapper, args), total=len(lags), leave=False):
+                for result in progress(pool.imap_unordered(_imap_wrapper, args), total=len(lags_for_estimation), leave=False):
                     estimated_models[result[0]] = result[1]
 
-        for mlag in self.mlags:
+        if include0:
+            estimated_models = [None] + estimated_models
+
+        for mlag in mlags:
             # make a prediction using the test model
             predictions.append(self._compute_observables(self._test_model, mlag=mlag))
             # compute prediction errors if we can
@@ -218,12 +225,10 @@ class LaggedModelValidator(Estimator):
                 predictions_conf.append((l, r))
 
         for model in estimated_models:
-            if model is None:
-                continue
             # evaluate the estimate at lagtime*mlag
-            estimates.append(self._compute_observables(model))
+            estimates.append(self._compute_observables(model, 1))
             if self.has_errors and self.err_est:
-                l, r = self._compute_observables_conf(model)
+                l, r = self._compute_observables_conf(model, 1)
                 estimates_conf.append((l, r))
 
         # build arrays
@@ -245,7 +250,7 @@ class LaggedModelValidator(Estimator):
 
         return self
 
-    def _compute_observables(self, model, mlag=1):
+    def _compute_observables(self, model, mlag):
         """Compute observables for given model
 
         Parameters
@@ -253,7 +258,7 @@ class LaggedModelValidator(Estimator):
         model : Model
             model to compute observable for.
 
-        mlag : int, default=1
+        mlag : int
             if 1, just compute the observable for given model. If not 1, use
             model to predict result at multiple of given model lagtime.
 
@@ -265,7 +270,7 @@ class LaggedModelValidator(Estimator):
         """
         raise NotImplementedError()
 
-    def _compute_observables_conf(self, model, mlag=1, conf=0.95):
+    def _compute_observables_conf(self, model, mlag, conf=0.95):
         """Compute confidence interval for observables for given model
 
         Parameters

@@ -9,8 +9,8 @@ Estimators
     :toctree: generated/
     :template: class_nomodule.rst
 
-    Kmeans
-    MiniBatchKmeans
+    KMeans
+    MiniBatchKMeans
     RegularSpace
 
 
@@ -41,6 +41,6 @@ Adding a new metric
 
 from ._metric import metrics, MetricRegistry
 from ._clustering_bindings import Metric
-from ._kmeans import Kmeans, MiniBatchKmeans, KMeansModel
+from ._kmeans import KMeans, MiniBatchKMeans, KMeansModel
 from ._regspace import RegularSpace
 from ._cluster_model import ClusterModel

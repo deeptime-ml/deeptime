@@ -25,6 +25,8 @@ __all__ = [
     'BayesianHMM',
 ]
 
+from ...util.platform import handle_progress_bar
+
 
 class BayesianHMMPosterior(BayesianPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior.
@@ -513,7 +515,7 @@ class BayesianHMM(Estimator):
         n = [traj[0] for traj in hidden_state_trajectories]
         return np.bincount(n, minlength=n_hidden_states)
 
-    def fit(self, data, n_burn_in: int = 0, n_thin: int = 1, **kwargs):
+    def fit(self, data, n_burn_in: int = 0, n_thin: int = 1, progress=None, **kwargs):
         r""" Sample from the posterior.
 
         Parameters
@@ -524,6 +526,8 @@ class BayesianHMM(Estimator):
             The number of samples to discard to burn-in, following which :attr:`n_samples` samples will be generated.
         n_thin : int, optional, default=1
             The number of Gibbs sampling updates used to generate each returned sample.
+        progress : iterable, optional, default=None
+            Optional progressbar. Tested for tqdm.
         **kwargs
             Ignored kwargs for scikit-learn compatibility.
 
@@ -532,6 +536,7 @@ class BayesianHMM(Estimator):
         self : BayesianHMM
             Reference to self.
         """
+        progress = handle_progress_bar(progress)
         dtrajs = ensure_dtraj_list(data)
 
         # fetch priors
@@ -604,7 +609,7 @@ class BayesianHMM(Estimator):
 
             # Collect data.
             models = []
-            for _ in range(self.n_samples):
+            for _ in progress(range(self.n_samples), desc="Drawing samples", leave=False):
                 # Run a number of Gibbs sampling updates to generate each sample.
                 for _ in range(n_thin):
                     self._update(sample_model, dtrajs_lagged_strided, temp_alpha, transition_matrix_prior,
@@ -640,7 +645,7 @@ class BayesianHMM(Estimator):
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
 
-    def chapman_kolmogorov_validator(self, mlags=None, test_model: BayesianHMMPosterior = None):
+    def chapman_kolmogorov_validator(self, mlags, test_model: BayesianHMMPosterior = None):
         r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
 
         Parameters
@@ -662,21 +667,25 @@ class BayesianHMM(Estimator):
         from . import DiscreteOutputModel
         assert isinstance(test_model.prior.output_model, DiscreteOutputModel), \
             "Can only perform CKTest for discrete output models"
-        memberships = test_model.prior.metastable_memberships
+        memberships = np.eye(test_model.prior.n_hidden_states)
         lagtime = test_model.prior.lagtime
         return BayesianHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
 
 
-def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
-    estimator.lagtime = lagtime
-    return estimator.fit(data).fetch_model().submodel_largest(dtrajs=data)
+def _ck_estimate_model_for_lag(estimator: BayesianHMM, model, data, lagtime):
+    estimator = BayesianHMM.default(dtrajs=data, n_hidden_states=estimator.initial_hmm.n_hidden_states,
+                                    lagtime=lagtime, n_samples=estimator.n_samples, stride=estimator.stride,
+                                    initial_distribution_prior=estimator.initial_distribution_prior,
+                                    transition_matrix_prior=estimator.transition_matrix_prior,
+                                    reversible=estimator.reversible, stationary=estimator.stationary)
+    return estimator.fit(data).fetch_model()
 
 
 class BayesianHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
 
-    def fit(self, data, **kw):
-        if 'n_jobs' in kw.keys():
+    def fit(self, data, n_jobs=1, progress=None, **kw):
+        if n_jobs != 1:
             import warnings
             warnings.warn("ignoring n_jobs for HMM CKtest")
 
-        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, **kw)
+        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, progress=progress, **kw)

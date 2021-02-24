@@ -8,7 +8,7 @@ from ..base import Estimator, Transformer
 from ._cluster_model import ClusterModel
 from . import _clustering_bindings as _bd, metrics
 
-__all__ = ['Kmeans', 'MiniBatchKmeans', 'KMeansModel']
+__all__ = ['KMeans', 'MiniBatchKMeans', 'KMeansModel']
 
 from ..util.parallel import handle_n_jobs
 
@@ -20,8 +20,6 @@ class KMeansModel(ClusterModel):
 
     Parameters
     ----------
-    n_clusters : int
-        The number of cluster centers.
     cluster_centers : (k, d) ndarray
         The d-dimensional cluster centers, length of the array should coincide with :attr:`n_clusters`.
     metric : str
@@ -38,13 +36,13 @@ class KMeansModel(ClusterModel):
     See Also
     --------
     ClusterModel
-    Kmeans
-    MiniBatchKmeans
+    KMeans
+    MiniBatchKMeans
     """
 
-    def __init__(self, n_clusters, cluster_centers, metric: str, tolerance: Optional[float] = None,
+    def __init__(self, cluster_centers, metric: str, tolerance: Optional[float] = None,
                  inertias: Optional[np.ndarray] = None, converged: bool = False):
-        super().__init__(n_clusters, cluster_centers, metric, converged=converged)
+        super().__init__(cluster_centers, metric, converged=converged)
         self._inertias = inertias
         self._tolerance = tolerance
 
@@ -104,7 +102,7 @@ class KMeansModel(ClusterModel):
         return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, metrics[self.metric]())
 
 
-class Kmeans(Estimator, Transformer):
+class KMeans(Estimator, Transformer):
     r"""Clusters the data in a way that minimizes the cost function
 
     .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf{x}_j \in S_i} \left\| \mathbf{x}_j - \boldsymbol\mu_i \right\|^2
@@ -150,13 +148,13 @@ class Kmeans(Estimator, Transformer):
     See Also
     --------
     KMeansModel
-    MiniBatchKmeans
+    MiniBatchKMeans
     """
 
     def __init__(self, n_clusters: int, max_iter: int = 500, metric='euclidean',
                  tolerance=1e-5, init_strategy: str = 'kmeans++', fixed_seed=False,
                  n_jobs=None, initial_centers=None):
-        super(Kmeans, self).__init__()
+        super(KMeans, self).__init__()
 
         self.n_clusters = n_clusters
         self.max_iter = max_iter
@@ -384,12 +382,12 @@ class Kmeans(Estimator, Transformer):
 
         Returns
         -------
-        self : Kmeans
+        self : KMeans
             reference to self
         """
         if data.ndim == 1:
             data = data[:, np.newaxis]
-        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
+        n_jobs = handle_n_jobs(self.n_jobs if n_jobs is None else n_jobs)
         if initial_centers is not None:
             self.initial_centers = initial_centers
         if self.initial_centers is None:
@@ -405,13 +403,13 @@ class Kmeans(Estimator, Transformer):
         else:
             warnings.warn(f"Algorithm did not reach convergence criterion"
                           f" of {self.tolerance} in {self.max_iter} iterations. Consider increasing max_iter.")
-        self._model = KMeansModel(n_clusters=self.n_clusters, metric=self.metric, tolerance=self.tolerance,
+        self._model = KMeansModel(metric=self.metric, tolerance=self.tolerance,
                                   cluster_centers=cluster_centers, inertias=cost, converged=converged)
 
         return self
 
 
-class MiniBatchKmeans(Kmeans):
+class MiniBatchKMeans(KMeans):
     r""" K-means clustering in a mini-batched fashion.
 
     Parameters
@@ -421,13 +419,13 @@ class MiniBatchKmeans(Kmeans):
 
     See Also
     --------
-    Kmeans : Superclass, see for description of remaining parameters.
+    KMeans : Superclass, see for description of remaining parameters.
     KMeansModel
     """
 
     def __init__(self, n_clusters, batch_size=100, max_iter=5, metric='euclidean', tolerance=1e-5,
                  init_strategy='kmeans++', n_jobs=None, initial_centers=None):
-        super(MiniBatchKmeans, self).__init__(n_clusters, max_iter, metric,
+        super(MiniBatchKMeans, self).__init__(n_clusters, max_iter, metric,
                                               tolerance, init_strategy, False,
                                               n_jobs=n_jobs,
                                               initial_centers=initial_centers)
@@ -435,7 +433,7 @@ class MiniBatchKmeans(Kmeans):
 
     def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
         r""" Perform clustering on whole data. """
-        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
+        n_jobs = handle_n_jobs(self.n_jobs if n_jobs is None else n_jobs)
         if data.ndim == 1:
             data = data[:, np.newaxis]
         if initial_centers is not None:
@@ -443,7 +441,7 @@ class MiniBatchKmeans(Kmeans):
         if self.initial_centers is None:
             self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
         indices = np.arange(len(data))
-        self._model = KMeansModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
+        self._model = KMeansModel(cluster_centers=self.initial_centers, metric=self.metric,
                                   tolerance=self.tolerance, inertias=np.array([float('inf')]))
         for epoch in range(self.max_iter):
             np.random.shuffle(indices)
@@ -473,22 +471,19 @@ class MiniBatchKmeans(Kmeans):
 
         Returns
         -------
-        self : MiniBatchKmeans
+        self : MiniBatchKMeans
             reference to self
         """
+        n_jobs = handle_n_jobs(self.n_jobs if n_jobs is None else n_jobs)
+        if self.initial_centers is None:
+            # we have no initial centers set, pick some based on the first partial fit
+            self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs)
+
         if self._model is None:
-            self._model = KMeansModel(n_clusters=self.n_clusters, cluster_centers=None, metric=self.metric,
+            self._model = KMeansModel(cluster_centers=np.copy(self.initial_centers), metric=self.metric,
                                       tolerance=self.tolerance, inertias=np.array([float('inf')]))
         if data.ndim == 1:
             data = data[:, np.newaxis]
-        n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
-        if self._model.cluster_centers is None:
-            if self.initial_centers is None:
-                # we have no initial centers set, pick some based on the first partial fit
-                self._model._cluster_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs)
-            else:
-                self._model._cluster_centers = np.copy(self.initial_centers)
-
         metric_instance = metrics[self.metric]()
         self._model._cluster_centers = _bd.kmeans.cluster(data, self._model.cluster_centers, n_jobs, metric_instance)[0]
         cost = _bd.kmeans.cost_function(data, self._model.cluster_centers, n_jobs, metric_instance)

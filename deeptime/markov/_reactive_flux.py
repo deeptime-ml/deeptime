@@ -13,8 +13,6 @@ from .tools import flux as tptapi
 from deeptime.base import Model
 from deeptime.markov.tools.flux import to_netflux, pathways, coarsegrain
 
-__all__ = ['compute_reactive_flux', 'ReactiveFlux']
-
 from ..util.types import ensure_array
 
 
@@ -56,7 +54,7 @@ class ReactiveFlux(Model):
 
     See also
     --------
-    compute_reactive_flux : Method that produces ReactiveFlux instances
+    reactive_flux : Method that produces ReactiveFlux instances
     deeptime.markov.msm.MarkovStateModel.reactive_flux : TPT analysis based on a Markov state model
 
     References
@@ -321,9 +319,9 @@ class ReactiveFlux(Model):
         return tpt_sets, res
 
 
-def compute_reactive_flux(transition_matrix: np.ndarray, source_states: Iterable[int], target_states: Iterable[int],
-                          stationary_distribution=None, qminus=None, qplus=None,
-                          transition_matrix_tolerance: Optional[float] = None) -> ReactiveFlux:
+def reactive_flux(transition_matrix: np.ndarray, source_states: Iterable[int], target_states: Iterable[int],
+                  stationary_distribution=None, qminus=None, qplus=None,
+                  transition_matrix_tolerance: Optional[float] = None) -> ReactiveFlux:
     r""" Computes the A->B reactive flux using transition path theory (TPT).
 
     Parameters

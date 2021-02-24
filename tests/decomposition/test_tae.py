@@ -51,6 +51,6 @@ def test_sanity(fixed_seed, two_state_hmm, model):
     tae.fit(loader, n_epochs=40)
     out = tae.transform(traj_rot).reshape((-1, 1))
     out = Covariance().fit(out).fetch_model().whiten(out)
-    dtraj = dt.clustering.Kmeans(2).fit(out).transform(out)
+    dtraj = dt.clustering.KMeans(2).fit(out).transform(out)
     msm = dt.markov.msm.MaximumLikelihoodMSM().fit_from_discrete_timeseries(dtraj, 1).fetch_model()
     assert_array_almost_equal(msm.transition_matrix, [[.9, .1], [.1, .9]], decimal=1)

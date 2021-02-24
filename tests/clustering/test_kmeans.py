@@ -13,8 +13,8 @@ import deeptime.clustering._clustering_bindings as bindings
 
 
 def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=None, cluster_centers=None,
-                   callback_init_centers=None, callback_loop=None) -> (dt.clustering.Kmeans, dt.clustering.ClusterModel):
-    est = dt.clustering.Kmeans(n_clusters=k, max_iter=max_iter, init_strategy=init_strategy,
+                   callback_init_centers=None, callback_loop=None) -> (dt.clustering.KMeans, dt.clustering.ClusterModel):
+    est = dt.clustering.KMeans(n_clusters=k, max_iter=max_iter, init_strategy=init_strategy,
                                fixed_seed=fixed_seed, n_jobs=n_jobs,
                                initial_centers=np.array(cluster_centers) if cluster_centers is not None else None)
     est.fit(data, callback_init_centers=callback_init_centers, callback_loop=callback_loop)
@@ -93,7 +93,7 @@ def test_3gaussian_1d_singletraj(seed, init_strategy):
 
 
 def test_kmeans_model_direct():
-    m = dt.clustering.KMeansModel(3, np.random.normal(size=(3, 3)), 'euclidean')
+    m = dt.clustering.KMeansModel(np.random.normal(size=(3, 3)), 'euclidean')
     np.testing.assert_equal(m.inertias, None)
     np.testing.assert_equal(m.inertia, None)
 
@@ -105,8 +105,8 @@ class TestKmeans(unittest.TestCase):
         data = make_blobs(n_samples=500, random_state=45, centers=k, cluster_std=0.5, shuffle=False)[0]
         small_data = make_blobs(n_samples=2, random_state=45, centers=k, cluster_std=0.5, shuffle=False)[0]
 
-        estimator = dt.clustering.Kmeans(k, max_iter=10000, metric='euclidean', tolerance=1e-7, init_strategy='uniform',
-                           fixed_seed=17, n_jobs=1, initial_centers=None)
+        estimator = dt.clustering.KMeans(k, max_iter=10000, metric='euclidean', tolerance=1e-7, init_strategy='uniform',
+                                         fixed_seed=17, n_jobs=1, initial_centers=None)
 
         with np.testing.assert_raises(ValueError):
             estimator.initial_centers = np.random.normal(size=(7, 3))  # too many initial centers
@@ -144,7 +144,7 @@ class TestKmeans(unittest.TestCase):
 
     def test_data_are_centers(self):
         data = np.random.normal(size=(5, 500))
-        km = dt.clustering.Kmeans(n_clusters=5, initial_centers=data)
+        km = dt.clustering.KMeans(n_clusters=5, initial_centers=data)
         clustering = km.fit(data).fetch_model()
         np.testing.assert_equal(clustering.transform(data), np.arange(5))
 

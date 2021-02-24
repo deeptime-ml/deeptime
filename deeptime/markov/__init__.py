@@ -16,7 +16,7 @@ Transition counting and analysis tools
     TransitionCountModel
 
     ReactiveFlux
-    compute_reactive_flux
+    reactive_flux
 
     MembershipsChapmanKolmogorovValidator
 
@@ -50,7 +50,7 @@ from ._base import BayesianPosterior, _MSMBaseEstimator, MembershipsChapmanKolmo
 from ._pcca import pcca, PCCAModel
 from ._transition_counting import TransitionCountEstimator, TransitionCountModel
 
-from ._reactive_flux import ReactiveFlux, compute_reactive_flux
+from ._reactive_flux import ReactiveFlux, reactive_flux
 
 from . import msm
 from . import hmm

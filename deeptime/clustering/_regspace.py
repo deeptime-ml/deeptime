@@ -134,7 +134,7 @@ class RegularSpace(Estimator):
             The latest estimated model or None.
         """
         clustercenters = np.asarray_chkfinite(self._clustercenters).squeeze()
-        self._model = ClusterModel(len(clustercenters), clustercenters, self.metric, self._converged)
+        self._model = ClusterModel(clustercenters, self.metric, self._converged)
         return self._model
 
     def partial_fit(self, data, n_jobs=None):
