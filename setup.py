@@ -118,8 +118,14 @@ metadata = \
             'plotting': ['matplotlib', 'networkx']
         },
         package_data={
-            'deeptime.data': ['data/*.npz']
+            'deeptime.data': ['data/*.npz'],
+            'deeptime.src.include': ['*.h'],
+            'deeptime.clustering.include': ['*.h'],
+            'deeptime.markov._bindings.include': ['*.h'],
+            'deeptime.markov.hmm._bindings.include': ['*.h'],
+            'deeptime.data.include': ['*.h']
         },
+        include_package_data=True,
         python_requires='>= 3.6',
     )
 
