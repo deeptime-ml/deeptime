@@ -133,7 +133,10 @@ class RegularSpace(Estimator):
         model : ClusterModel or None
             The latest estimated model or None.
         """
-        clustercenters = np.asarray_chkfinite(self._clustercenters).squeeze()
+        clustercenters = np.array([])
+        if len(self._clustercenters) > 0:
+            dim = len(self._clustercenters[0][0])
+            clustercenters = np.asarray_chkfinite(self._clustercenters).reshape(-1, dim)
         self._model = ClusterModel(clustercenters, self.metric, self._converged)
         return self._model
 
