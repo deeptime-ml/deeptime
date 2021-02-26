@@ -1,15 +1,19 @@
 import warnings
 
 import numpy as np
+
+from threadpoolctl import threadpool_limits
+
 from ..base import Estimator, Model
 from .parallel import handle_n_jobs, joining
 from .platform import handle_progress_bar
 
 
 def _imap_wrapper(args):
-    i, fun, arguments = args
-    result = fun(*arguments)
-    return i, result
+    with threadpool_limits(limits=1, user_api='blas'):
+        i, fun, arguments = args
+        result = fun(*arguments)
+        return i, result
 
 
 class LaggedModelValidation(Model):
@@ -210,7 +214,8 @@ class LaggedModelValidator(Estimator):
                     for i, lag in enumerate(lags_for_estimation)]
             estimated_models = [None for _ in range(len(args))]
             with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
-                for result in progress(pool.imap_unordered(_imap_wrapper, args), total=len(lags_for_estimation), leave=False):
+                for result in progress(pool.imap_unordered(_imap_wrapper, args),
+                                       total=len(lags_for_estimation), leave=False):
                     estimated_models[result[0]] = result[1]
 
         if include0:

@@ -2,6 +2,7 @@ import numbers
 from typing import Optional, Union, Callable
 
 import numpy as np
+from threadpoolctl import threadpool_limits
 
 from ..base import Estimator
 from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
@@ -154,10 +155,10 @@ def blocksplit_trajs(trajs, lag=1, sliding=True, shift=None, random_state=None):
         if sliding:
             if s > 0:
                 blocks.append(traj[:lag + s])
-            for t0 in range(s, traj.size - lag, lag):
+            for t0 in range(s, len(traj) - lag, lag):
                 blocks.append(traj[t0:t0 + 2 * lag])
         else:
-            for t0 in range(s, traj.size - lag, lag):
+            for t0 in range(s, len(traj) - lag, lag):
                 blocks.append(traj[t0:t0 + lag + 1])
     return blocks
 
@@ -249,7 +250,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
     scores = np.empty((n,), float)
     sliding = splitting_mode == 'sliding'
 
-    args = [(i, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state) for i in range(n)]
+    args = [(i, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state, n_jobs) for i in range(n)]
 
     if n_jobs > 1:
         from multiprocessing import get_context
@@ -275,21 +276,22 @@ class _FitFetch:
 
 def _worker(args):
     from deeptime.markov.msm import MarkovStateModel
+    fold, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state, n_jobs = args
 
-    fold, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state = args
-    if blocksplit:
-        trajs_split = blocksplit_trajs(ttrajs, lag=lagtime, sliding=sliding,
-                                       random_state=random_state)
-    else:
-        trajs_split = ttrajs
-        if len(trajs_split) <= 1:
-            raise ValueError("Need at least two trajectories if blocksplit is not used to decompose the data.")
-    trajs_train, trajs_test = cvsplit_trajs(trajs_split, random_state=random_state)
-    # this is supposed to construct a markov state model from data directly, for example what fit_fetch could do is
-    train_model = fit_fetch(trajs_train)
-    if isinstance(train_model, MarkovStateModel):
-        score = train_model.score(trajs_test, r=r, dim=dim)
-    else:
-        test_model = fit_fetch(trajs_test)
-        score = train_model.score(r=r, test_model=test_model, dim=dim)
-    return fold, score
+    with threadpool_limits(limits=1 if n_jobs > 1 else None, user_api='blas'):
+        if blocksplit:
+            trajs_split = blocksplit_trajs(ttrajs, lag=lagtime, sliding=sliding,
+                                           random_state=random_state)
+        else:
+            trajs_split = ttrajs
+            if len(trajs_split) <= 1:
+                raise ValueError("Need at least two trajectories if blocksplit is not used to decompose the data.")
+        trajs_train, trajs_test = cvsplit_trajs(trajs_split, random_state=random_state)
+        # this is supposed to construct a markov state model from data directly, for example what fit_fetch could do is
+        train_model = fit_fetch(trajs_train)
+        if isinstance(train_model, MarkovStateModel):
+            score = train_model.score(trajs_test, r=r, dim=dim)
+        else:
+            test_model = fit_fetch(trajs_test)
+            score = train_model.score(r=r, test_model=test_model, dim=dim)
+        return fold, score
