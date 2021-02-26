@@ -1,4 +1,5 @@
 import numpy as np
+from threadpoolctl import threadpool_limits
 from scipy.integrate import solve_ivp
 
 from . import TimeSeriesDataset, TimeLaggedDataset
@@ -203,16 +204,17 @@ class BickleyJetEndpointsDataset3DClustered(TimeLaggedDataset):
 
 
 def _generate_impl_worker(args):
-    i, Xi, L0, U0, c, eps, k = args
+    with threadpool_limits(limits=1, user_api='blas'):
+        i, Xi, L0, U0, c, eps, k = args
 
-    T0 = 0    # start time
-    T1 = 40   # end time
-    nT = 401  # number of time points
-    T = np.linspace(T0, T1, nT)  # time points
+        T0 = 0    # start time
+        T1 = 40   # end time
+        nT = 401  # number of time points
+        T = np.linspace(T0, T1, nT)  # time points
 
-    sol = solve_ivp(_rhs, [T0, T1], Xi, t_eval=T, args=(L0, U0, c, eps, k))
-    
-    sol.y[0, :] = np.mod(sol.y[0, :], 20) # the domain is periodic in x-direction
+        sol = solve_ivp(_rhs, [T0, T1], Xi, t_eval=T, args=(L0, U0, c, eps, k))
+
+        sol.y[0, :] = np.mod(sol.y[0, :], 20) # the domain is periodic in x-direction
 
     return i, sol.y
 

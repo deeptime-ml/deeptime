@@ -8,6 +8,8 @@ import numpy as np
 import scipy.sparse
 from scipy.sparse.csr import csr_matrix
 
+from threadpoolctl import threadpool_limits
+
 from deeptime.util.stats import statistical_inefficiency
 from .count_matrix import count_matrix_coo2_mult
 
@@ -79,14 +81,15 @@ def _indicator_multitraj(ss, i, j):
 
 
 def _wrapper(*args):
-    # writes results of statistical_inefficiency to destination memmap (array_fn)
-    seqs, truncate_acf, mact, I, J, array_fn, start, stop = args[0]
-    array = np.memmap(array_fn, mode='r+', dtype=np.float64)
-    partial = np.empty(len(I))
-    for n, (i, j) in enumerate(zip(I, J)):
-         s = _indicator_multitraj(seqs, i, j)
-         partial[n] = statistical_inefficiency(s, truncate_acf=truncate_acf, mact=mact)
-    array[start:stop] = partial
+    with threadpool_limits(limits=1, user_api='blas'):
+        # writes results of statistical_inefficiency to destination memmap (array_fn)
+        seqs, truncate_acf, mact, I, J, array_fn, start, stop = args[0]
+        array = np.memmap(array_fn, mode='r+', dtype=np.float64)
+        partial = np.empty(len(I))
+        for n, (i, j) in enumerate(zip(I, J)):
+             s = _indicator_multitraj(seqs, i, j)
+             partial[n] = statistical_inefficiency(s, truncate_acf=truncate_acf, mact=mact)
+        array[start:stop] = partial
 
 
 class _arguments_generator:

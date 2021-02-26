@@ -1,4 +1,7 @@
 import numpy as np
+
+from threadpoolctl import threadpool_limits
+
 from . import _data_bindings as bd
 from ..util.decorators import plotting_function
 from ..util.parallel import handle_n_jobs, joining
@@ -292,11 +295,12 @@ class PBFSimulator:
 
 
 def _transform_to_density_impl_worker(args):
-    t, frame, kde_input = args[0], args[1], args[2]
-    from scipy.stats import gaussian_kde
-    out = gaussian_kde(frame.T, bw_method=0.2).evaluate(kde_input.T)
-    out /= out.sum()
-    return t, out
+    with threadpool_limits(limits=1, user_api='blas'):
+        t, frame, kde_input = args[0], args[1], args[2]
+        from scipy.stats import gaussian_kde
+        out = gaussian_kde(frame.T, bw_method=0.2).evaluate(kde_input.T)
+        out /= out.sum()
+        return t, out
 
 
 def _transform_to_density_impl(domain_size, trajectory, n_grid_x=20, n_grid_y=10, n_jobs: int = 1):
