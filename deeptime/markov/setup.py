@@ -11,5 +11,6 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('msm')
     config.add_subpackage('hmm')
     config.add_subpackage('tools')
+    config.add_subpackage('sample')
 
     return config
