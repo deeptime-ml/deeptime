@@ -15,7 +15,8 @@ When writing a custom estimator, first one should decide on what is supposed to 
 
 .. code-block:: python
 
-    class MeanModel(deeptime.base.Model):
+    from deeptime.base import Model
+    class MeanModel(Model):
 
         def __init__(self, mean):
             self._mean = mean
@@ -30,7 +31,8 @@ Subsequently, an Estimator for :code:`MeanModel` s can be implemented:
 
 .. code-block:: python
 
-    class MeanEstimator(deeptime.base.Estimator):
+    from deeptime.base import Estimator
+    class MeanEstimator(Estimator):
 
         def __init__(self, axis=-1):
             super(MeanEstimator, self).__init__()
@@ -65,7 +67,8 @@ To add this kind of functionality, one can use the :class:`Transformer` interfac
 
 .. code-block:: python
 
-    class Projector(deeptime.base.Model, deeptime.base.Transformer):
+    from deeptime.base import Model, Transformer
+    class Projector(Model, Transformer):
 
         def __init__(self, dim):
             self.dim = dim
@@ -115,7 +118,7 @@ of the :code:`MeanEstimator`, this style of documentation would look like the fo
 
     class MeanEstimator(deeptime.base.Estimator):
         r""" The mean estimator. It estimates the mean using a complicated algorithm
-        :cite:`mean-estimator-authorofthecomplicatedalgo1988`.
+        :footcite:`authorofthecomplicatedalgo1988`.
 
         Parameters
         ----------
@@ -124,10 +127,7 @@ of the :code:`MeanEstimator`, this style of documentation would look like the fo
 
         References
         ----------
-        .. bibliography:: /references.bib
-            :style: plain
-            :filter: docname in docnames
-            :keyprefix: mean-estimator-
+        .. footbibliography::
 
         See Also
         --------
@@ -166,7 +166,7 @@ of the :code:`MeanEstimator`, this style of documentation would look like the fo
 
 Note the specific style of using citations. For citations there is a package-global BibTeX file under
 :code:`docs/source/references.bib`. These references can then be included into the documentation website
-using the citation key as defined in the references file with a unique prefix - in this case :code:`mean-estimator-`.
+using the citation key as defined in the references file.
 
 The documentation website is hosted via GitHub pages, its sources can be found
 `here <https://github.com/deeptime-ml/deeptime-ml.github.io>`__. Please see the
