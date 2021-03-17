@@ -7,7 +7,10 @@ jobs:
     matrix:
       Python37:
         CONDA_PY: '3.7'
-        CONDA_NPY: '1.17'
+        CONDA_NPY: '1.19'
+      Python39:
+        CONDA_PY: '3.9'
+        CONDA_NPY: '1.19'
 
   steps:
   - template: checkout.yml
