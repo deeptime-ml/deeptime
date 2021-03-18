@@ -38,6 +38,8 @@ Analysis tools
     reactive_flux
     MembershipsChapmanKolmogorovValidator
 
+
+
 With output models
 
 .. autosummary::
@@ -50,6 +52,22 @@ With output models
 
 Utilities and alternatives
 ==========================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    number_of_states
+    count_states
+    compute_connected_sets
+
+    compute_dtrajs_effective
+    compute_effective_stride
+
+    sample.indices_by_distribution
+    sample.compute_index_states
+    sample.indices_by_sequence
+    sample.indices_by_state
 
 Transition counting
 -------------------

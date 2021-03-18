@@ -43,7 +43,7 @@ Utilities
 
 from ._util import number_of_states, count_states, compute_connected_sets, \
     compute_dtrajs_effective, compute_effective_stride
-from . import _sample as sample
+from . import sample
 from . import tools  # former msmtools
 
 from ._base import BayesianPosterior, _MSMBaseEstimator, MembershipsChapmanKolmogorovValidator

@@ -6,7 +6,7 @@ import scipy
 from ._koopman import KoopmanModel
 from ..base import Estimator, Model, Transformer
 from ..kernels import Kernel
-from ..numeric import sort_eigs, eigs
+from ..numeric import sort_eigs, eigs, spd_inv
 
 
 class DMDModel(Model, Transformer):
@@ -380,7 +380,8 @@ class KernelEDMD(Estimator):
             reg = self.epsilon * np.eye(gram_0.shape[0])
         else:
             reg = 0
-        A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1.T  # Koopman operator
+        A = spd_inv(gram_0 + reg) @ gram_1.T
+        # A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1.T  # Koopman operator
         eigenvalues, eigenvectors = eigs(A, n_eigs=self.n_eigs)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
         self._model = KernelEDMDModel(data[0], eigenvalues, eigenvectors, self.kernel)

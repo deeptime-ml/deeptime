@@ -13,7 +13,7 @@ from ...covariance import CovarianceModel
 from ...decomposition import CovarianceKoopmanModel, vamp_score
 from .._pcca import pcca, PCCAModel
 from .._reactive_flux import ReactiveFlux
-from .._sample import ensure_dtraj_list, compute_index_states
+from ..sample import ensure_dtraj_list, compute_index_states
 from ..tools import analysis as msmana
 from .._transition_counting import TransitionCountModel
 from .._util import count_states
