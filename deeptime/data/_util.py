@@ -171,8 +171,13 @@ class TimeLaggedDataset:
 
         Returns
         -------
-        dataset : TimeSeriesDataset
+        dataset : TimeLaggedDataset
             The resulting time series dataset.
+
+        Raises
+        ------
+        AssertionError
+            If lagtime is not positive or trajectory is too short for lagtime.
         """
         assert lagtime > 0, "Lagtime must be positive"
         assert len(data) > lagtime, "Not enough data to satisfy lagtime"
@@ -180,7 +185,7 @@ class TimeLaggedDataset:
 
     @staticmethod
     def from_trajectories(lagtime, data: List[np.ndarray]):
-        r"""
+        r""" Creates a time series dataset from multiples trajectories by applying a lagtime.
 
         Parameters
         ----------
@@ -193,6 +198,12 @@ class TimeLaggedDataset:
         -------
         dataset : ConcatDataset
             Concatenation of timeseries datasets.
+
+        Raises
+        ------
+        AssertionError
+            If data is empty, lagtime is not positive,
+            the shapes do not match, or lagtime is too long for any of the trajectories.
         """
         assert len(data) > 0, "List of data should not be empty."
         assert all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"

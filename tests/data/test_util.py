@@ -1,5 +1,5 @@
 import pytest
-from numpy.testing import assert_equal, assert_raises
+from numpy.testing import assert_equal, assert_raises, assert_
 
 pytest.importorskip("torch")
 
@@ -93,9 +93,12 @@ def test_timelagged_dataset(lagtime):
     np.testing.assert_equal(len(np.setdiff1d(collected_data, data)), 0)
 
 
-@pytest.mark.parametrize("lagtime", [1, 5])
-def test_timelagged_dataset_multitraj(lagtime):
+@pytest.mark.parametrize("lagtime", [1, 5], ids=lambda x: f"lag={x}")
+@pytest.mark.parametrize("ntraj", [1, 2, 3], ids=lambda x: f"ntraj={x}")
+def test_timelagged_dataset_multitraj(lagtime, ntraj):
     data = [np.random.normal(size=(6, 3)), np.random.normal(size=(555, 3)), np.random.normal(size=(55, 3))]
+    data = data[:ntraj]
+    assert_(len(data) == ntraj)
     with assert_raises(AssertionError):
         TimeLaggedDataset.from_trajectories(1, [])  # empty data
     with assert_raises(AssertionError):

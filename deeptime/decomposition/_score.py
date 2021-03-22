@@ -115,6 +115,44 @@ def vamp_score(koopman_model, r: Union[float, str],
     return score
 
 
+def vamp_score_data(data, data_lagged, transformation=None, r=2, epsilon=1e-6, dim=None):
+    r""" Computes VAMP score based on data and corresponding time-lagged data.
+    Can be equipped with a transformation, defaults to 'identity' transformation.
+
+    Parameters
+    ----------
+    data : (T, n) ndarray
+        Instantaneous data.
+    data_lagged : (T, n) ndarray
+        Time-lagged data.
+    transformation : Callable
+        Transformation on data that will be scored.
+    r : int or str, optional, default=2
+        The type of VAMP score evaluated, see :meth:`deeptime.decomposition.vamp_score`.
+    epsilon : float, optional, default=1e-6
+        Regularization parameter for the score, see :meth:`deeptime.decomposition.vamp_score`.
+    dim : int, optional, default=None
+        Number of components that should be scored. Defaults to all components. See
+        :meth:`deeptime.decomposition.vamp_score`.
+
+    Returns
+    -------
+    score : float
+        The VAMP score.
+
+    See Also
+    --------
+    vamp_score
+    """
+    if transformation is None:
+        def transformation(x):
+            return x
+    from deeptime.decomposition import VAMP
+    cov_estimator = VAMP.covariance_estimator(1)
+    cov = cov_estimator.partial_fit((transformation(data), transformation(data_lagged))).fetch_model()
+    return VAMP().fit(cov).fetch_model().score(r=r, dim=dim, epsilon=epsilon)
+
+
 def blocksplit_trajs(trajs, lag=1, sliding=True, shift=None, random_state=None):
     """ Splits trajectories into approximately uncorrelated fragments.
 
