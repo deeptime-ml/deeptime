@@ -39,7 +39,7 @@ class GaussianKernel(Kernel):
         return np.exp(-np.square(np.linalg.norm(x - y)) / (2 * np.square(self.sigma)))
 
     def apply(self, data_1: np.ndarray, data_2: np.ndarray) -> np.ndarray:
-        s = self.sigma.astype(data_1.dtype)
+        # s = self.sigma.astype(data_1.dtype)
         if self.impl == 'cdist':
             D = distance.cdist(data_1, data_2, metric='sqeuclidean')
         elif self.impl == 'binomial':
@@ -49,7 +49,7 @@ class GaussianKernel(Kernel):
             D = np.clip(D, a_min=1e-16, a_max=None)
         else:
             raise ValueError("Unknown impl type: {impl}")
-        return np.exp(-D / (2 * s * s))
+        return np.exp(-D / (2 * self.sigma * self.sigma))
 
     def __str__(self):
         return f"GaussianKernel[sigma={self.sigma}, impl={self.impl}]"

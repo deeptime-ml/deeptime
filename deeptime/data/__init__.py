@@ -45,8 +45,8 @@ Utilities
     :template: class_nomodule.rst
 
     timeshifted_split
-    TimeSeriesDataset
     TimeLaggedDataset
+    ConcatDataset
 
 ===============================================================================
 Implementations
@@ -65,7 +65,7 @@ Implementations
 
 """
 
-from ._util import timeshifted_split, TimeSeriesDataset, TimeLaggedDataset
+from ._util import timeshifted_split, ConcatDataset, TimeLaggedDataset
 from ._datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk, bickley_jet, \
     birth_death_chain, tmatrix_metropolis1d, sqrt_model, quadruple_well, triple_well_2d, abc_flow, ornstein_uhlenbeck, \
     triple_well_1d, quadruple_well_asymmetric, double_well_2d

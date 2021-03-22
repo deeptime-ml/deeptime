@@ -5,10 +5,6 @@ del module_available
 
 import numpy as np
 
-from torch.utils.data import DataLoader, Dataset
-
-from ..data import TimeLaggedDataset, TimeSeriesDataset
-
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -42,15 +38,6 @@ def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:
             else:
                 x = torch.from_numpy(np.asarray(x, dtype=dtype)).to(device=device)
             yield x
-
-
-def create_timelagged_data_loader(data, lagtime, batch_size, shuffle=True, dtype=np.float32):
-    r""" Helper method which yields a data loader from a torch dataset or numpy arrays. """
-    if not isinstance(data, (TimeSeriesDataset, Dataset)):
-        if isinstance(data, np.ndarray):
-            data = data.astype(dtype)
-        data = TimeLaggedDataset.from_trajectory(lagtime=lagtime, data=data)
-    return DataLoader(data, batch_size=batch_size, shuffle=shuffle)
 
 
 class MLP(nn.Module):

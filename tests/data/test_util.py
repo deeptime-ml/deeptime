@@ -1,4 +1,5 @@
 import pytest
+from numpy.testing import assert_equal, assert_raises
 
 pytest.importorskip("torch")
 
@@ -62,21 +63,21 @@ def test_timeshifted_split_shuffle(lagtime, n_splits):
             chunks_lagged.append(chunk)
     chunks = np.concatenate(chunks)
     chunks_lagged = np.concatenate(chunks_lagged)
-    np.testing.assert_equal(len(chunks), len(x)-lagtime)  # we lose lagtime many frames
-    np.testing.assert_equal(len(chunks_lagged), len(x)-lagtime)  # we lose lagtime many frames
-    np.testing.assert_equal(chunks+lagtime, chunks_lagged)  # since data is sequential this must hold
+    np.testing.assert_equal(len(chunks), len(x) - lagtime)  # we lose lagtime many frames
+    np.testing.assert_equal(len(chunks_lagged), len(x) - lagtime)  # we lose lagtime many frames
+    np.testing.assert_equal(chunks + lagtime, chunks_lagged)  # since data is sequential this must hold
     all_data = np.concatenate((chunks, chunks_lagged))  # check whether everything combined is the full dataset
     np.testing.assert_equal(len(np.setdiff1d(x, all_data)), 0)
 
 
 @pytest.mark.parametrize("lagtime", [1, 5])
-def test_timeseries_dataset(lagtime):
+def test_timelagged_dataset(lagtime):
     pytest.importorskip("torch.utils.data")
     import torch.utils.data as data_utils
     data = np.arange(5000)
     ds = TimeLaggedDataset.from_trajectory(lagtime, data)
-    np.testing.assert_equal(len(ds), 5000-lagtime)
-    sub_datasets = data_utils.random_split(ds, [1000, 2500, 1500-lagtime])
+    np.testing.assert_equal(len(ds), 5000 - lagtime)
+    sub_datasets = data_utils.random_split(ds, [1000, 2500, 1500 - lagtime])
 
     collected_data = []
     for sub_dataset in sub_datasets:
@@ -90,3 +91,28 @@ def test_timeseries_dataset(lagtime):
                 collected_data.append(batch.numpy())
     collected_data = np.unique(np.concatenate(collected_data))
     np.testing.assert_equal(len(np.setdiff1d(collected_data, data)), 0)
+
+
+@pytest.mark.parametrize("lagtime", [1, 5])
+def test_timelagged_dataset_multitraj(lagtime):
+    data = [np.random.normal(size=(6, 3)), np.random.normal(size=(555, 3)), np.random.normal(size=(55, 3))]
+    with assert_raises(AssertionError):
+        TimeLaggedDataset.from_trajectories(1, [])  # empty data
+    with assert_raises(AssertionError):
+        TimeLaggedDataset.from_trajectories(lagtime=6, data=data)  # lagtime too long
+    with assert_raises(AssertionError):
+        TimeLaggedDataset.from_trajectories(lagtime=1, data=data + [np.empty((55, 7))])  # shape mismatch
+    ds = TimeLaggedDataset.from_trajectories(lagtime=lagtime, data=data)
+    assert len(ds) == sum(len(data[i]) - lagtime for i in range(len(data)))
+
+    # Iterate over data and see if it is the same as iterating over dataset
+    itraj = 0
+    traj_ix = 0
+    for i in range(len(ds)):
+        x, y = ds[i]
+        assert_equal(x, data[itraj][traj_ix])
+        assert_equal(y, data[itraj][traj_ix+lagtime])
+        traj_ix += 1
+        if traj_ix + lagtime >= len(data[itraj]):
+            itraj += 1
+            traj_ix = 0

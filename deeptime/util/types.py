@@ -3,7 +3,7 @@ import numbers
 
 import numpy as np
 
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional, Union, List
 
 from scipy.sparse import spmatrix, issparse
 
@@ -123,7 +123,7 @@ def ensure_dtraj_list(dtrajs):
     return [ensure_integer_array(t) for t in dtrajs]
 
 
-def ensure_timeseries_data(input_data):
+def ensure_timeseries_data(input_data) -> List[np.ndarray]:
     r""" Ensures that the input data is a time series. This means it must be an iterable of ndarrays or an ndarray
     with a consistent dtype.
 
@@ -134,7 +134,7 @@ def ensure_timeseries_data(input_data):
 
     Returns
     -------
-    data : list of ndarray
+    data : list of array_like
         timeseries data
     """
     if not isinstance(input_data, (list, tuple)):
@@ -143,4 +143,5 @@ def ensure_timeseries_data(input_data):
     unique_types = [t for t, _ in grouped]
     if len(unique_types) > 1:
         raise ValueError("All arrays must be of same dtype, but got dtypes {}".format(unique_types))
+    assert isinstance(input_data, (list, tuple))
     return input_data

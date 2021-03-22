@@ -1,6 +1,9 @@
-from typing import Optional
+import bisect
+from typing import Optional, List
 
 import numpy as np
+
+from deeptime.util.types import ensure_timeseries_data
 
 
 def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int = 1, n_splits: Optional[int] = None,
@@ -105,60 +108,55 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
                 t += chunksize
 
 
-class TimeSeriesDataset:
-    r""" High-level container for time-series data.
-    This can be used together with pytorch data tools, i.e., data loaders and other utilities.
+class ConcatDataset:
+    r""" Concatenates existing datasets.
 
     Parameters
     ----------
-    data : (T, ...) ndarray
-        The dataset with T frames.
+    datasets : list of dataset
+        Datasets to concatenate.
     """
 
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, datasets):
+        self._lengths = [len(ds) for ds in datasets]
+        self._cumlen = np.cumsum(self._lengths)
+        self._datasets = datasets
 
-    def lag(self, lagtime: int):
-        r""" Creates a time lagged dataset out of this one.
-
-        Parameters
-        ----------
-        lagtime : int
-            The lagtime, must be positive.
-
-        Returns
-        -------
-        dataset : TimeLaggedDataset
-            Time lagged dataset.
-        """
-        return TimeLaggedDataset.from_trajectory(lagtime, self.data)
-
-    def __getitem__(self, item):
-        return self.data[item]
+    def __getitem__(self, ix):
+        ds_index = bisect.bisect_right(self._cumlen, ix)
+        item_index = ix if ds_index == 0 else ix - self._cumlen[ds_index - 1]
+        return self._datasets[ds_index][item_index]
 
     def __len__(self):
-        return len(self.data)
+        return self._cumlen[-1]
 
 
-class TimeLaggedDataset(TimeSeriesDataset):
+class TimeLaggedDataset:
     r""" High-level container for time-lagged time-series data.
     This can be used together with pytorch data tools, i.e., data loaders and other utilities.
 
     Parameters
     ----------
-    data : iterable of data
+    data : (T, n) ndarray
         The data which is wrapped into a dataset
-    data_lagged : iterable of data
+    data_lagged : (T, n) ndarray
         Corresponding timelagged data. Must be of same length.
-    dtype : numpy data type
-        The data type to map to when retrieving outputs
     """
 
-    def __init__(self, data, data_lagged, dtype=np.float32):
-        super().__init__(data)
-        assert len(data) == len(data_lagged), 'data and data lagged must be of same size'
-        self.data_lagged = data_lagged
-        self.dtype = dtype
+    def __init__(self, data, data_lagged):
+        assert data.shape == data_lagged.shape, "Shape of trajectory for data and data_lagged does not match"
+        self._data = data
+        self._data_lagged = data_lagged
+
+    @property
+    def data(self) -> np.ndarray:
+        r""" Instantaneous data. """
+        return self._data
+
+    @property
+    def data_lagged(self) -> np.ndarray:
+        r""" Time-lagged data. """
+        return self._data_lagged
 
     @staticmethod
     def from_trajectory(lagtime: int, data: np.ndarray):
@@ -177,10 +175,32 @@ class TimeLaggedDataset(TimeSeriesDataset):
             The resulting time series dataset.
         """
         assert lagtime > 0, "Lagtime must be positive"
-        return TimeLaggedDataset(data[:-lagtime], data[lagtime:], dtype=data.dtype)
+        assert len(data) > lagtime, "Not enough data to satisfy lagtime"
+        return TimeLaggedDataset(data[:-lagtime], data[lagtime:])
+
+    @staticmethod
+    def from_trajectories(lagtime, data: List[np.ndarray]):
+        r"""
+
+        Parameters
+        ----------
+        lagtime : int
+            Lagtime, must be positive. The effective size of the dataset reduces by the selected lagtime.
+        data : list of ndarray
+            List of trajectories.
+
+        Returns
+        -------
+        dataset : ConcatDataset
+            Concatenation of timeseries datasets.
+        """
+        assert len(data) > 0, "List of data should not be empty."
+        assert all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"
+        datasets = [TimeLaggedDataset.from_trajectory(lagtime, traj) for traj in data]
+        return ConcatDataset(datasets)
 
     def __getitem__(self, item):
-        return self.data[item].astype(self.dtype), self.data_lagged[item].astype(self.dtype)
+        return self._data[item], self._data_lagged[item]
 
     def __len__(self):
-        return len(self.data)
+        return len(self._data)

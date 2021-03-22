@@ -2,7 +2,7 @@ import numpy as np
 from threadpoolctl import threadpool_limits
 from scipy.integrate import solve_ivp
 
-from . import TimeSeriesDataset, TimeLaggedDataset
+from . import TimeLaggedDataset
 from ..util.decorators import plotting_function
 from ..util.parallel import handle_n_jobs, joining
 
@@ -90,10 +90,16 @@ class BickleyJet:
         return xyz.T
 
 
-class BickleyJetDataset(TimeSeriesDataset):
+class BickleyJetDataset:
 
     def __init__(self, trajectory):
-        super(BickleyJetDataset, self).__init__(trajectory)
+        self.data = trajectory
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, item):
+        return self.data[item]
 
     @plotting_function
     def make_animation(self, **kw):
