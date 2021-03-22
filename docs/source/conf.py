@@ -60,7 +60,8 @@ extensions = [
     'sphinx.ext.napoleon',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.katex',
-    'sphinx_gallery.gen_gallery'
+    'sphinx_gallery.gen_gallery',
+    'sphinx_gallery.load_style'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -112,6 +113,7 @@ sphinx_gallery_conf = {
     'show_memory': True,
     'capture_repr': (),
     'matplotlib_animations': True,
+    'download_all_examples': False
 }
 
 plot_rcparams = {

@@ -57,7 +57,7 @@ class MLP(nn.Module):
         The callable should take no arguments and produce an object of type :code:`torch.nn.Module`.
     """
 
-    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = True,
+    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = False,
                  output_nonlinearity=None):
         super().__init__()
         if len(units) > 1:
