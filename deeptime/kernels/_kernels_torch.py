@@ -17,6 +17,14 @@ class TorchGaussianKernel(GaussianKernel):
     GaussianKernel
     """
 
+    def __init__(self, sigma):
+        np_sigma = sigma
+        if isinstance(np_sigma, torch.Tensor):
+            np_sigma = sigma.detach().cpu().numpy()
+        super().__init__(np_sigma)
+        self._sigma = sigma
+        self.impl = 'cdist'
+
     @staticmethod
     def cdist(x1, x2):
         x1_norm = x1.pow(2).sum(dim=-1, keepdim=True)

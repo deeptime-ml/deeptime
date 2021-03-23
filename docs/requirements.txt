@@ -11,3 +11,4 @@ sphinxcontrib-katex
 sphinx-gallery
 torch
 memory_profiler
+mdshare

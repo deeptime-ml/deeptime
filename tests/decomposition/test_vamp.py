@@ -1,5 +1,5 @@
 """
-@author: paul
+@author: paul, clonker
 """
 
 import unittest
@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from deeptime.covariance import CovarianceModel
-from deeptime.data import timeshifted_split
+from deeptime.data import timeshifted_split, ellipsoids
 from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel, VAMP, cvsplit_trajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 
@@ -229,6 +229,14 @@ def assert_allclose_ignore_phase(A, B, atol=1e-14, rtol=1e-5):
     for i in range(B.shape[1]):
         assert (np.allclose(A[:, i], B[:, i], atol=atol, rtol=rtol)
                 or np.allclose(A[:, i], -B[:, i], atol=atol, rtol=rtol))
+
+
+def test_cktest():
+    traj = ellipsoids().observations(n_steps=10000)
+    estimator = VAMP(1, dim=1).fit(traj)
+    validator = estimator.chapman_kolmogorov_validator(4)
+    cktest = validator.fit(traj).fetch_model()
+    np.testing.assert_almost_equal(cktest.predictions, cktest.estimates, decimal=1)
 
 
 class TestVAMPModel(unittest.TestCase):

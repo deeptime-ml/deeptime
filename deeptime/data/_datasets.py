@@ -367,7 +367,7 @@ def sqrt_model(n_samples, seed=None):
     .. math::
         P = \begin{pmatrix}0.95 & 0.05 \\ 0.05 & 0.95 \end{pmatrix}.
 
-    The observations are generated via the means are :math:`\mu_0 = (0, 1)^\top` and :math:`\mu_1= (0, -1)`,
+    The observations are generated via the means are :math:`\mu_0 = (0, 1)^\top` and :math:`\mu_1= (0, -1)^\top`,
     respectively, as well as the covariance matrix
 
     .. math::
@@ -394,6 +394,76 @@ def sqrt_model(n_samples, seed=None):
 sqrt_model.cov = np.array([[30.0, 0.0], [0.0, 0.015]])
 sqrt_model.states = np.array([[0.0, 1.0], [0.0, -1.0]])
 sqrt_model.transition_matrix = np.array([[0.95, 0.05], [0.05, 0.95]])
+
+
+def swissroll_model(n_samples, seed=None):
+    r""" Sample a hidden state and an swissroll-transformed emission trajectory, so that the states are not
+    linearly separable.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        from matplotlib import animation
+        from deeptime.data import swissroll_model
+
+        n_samples = 15000
+        dtraj, traj = swissroll_model(n_samples)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(*traj.T, marker='o', s=20, c=dtraj, alpha=0.6)
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of samples to produce.
+    seed : int, optional, default=None
+        Random seed to use. Defaults to None, which means that the random device will be default-initialized.
+
+    Returns
+    -------
+    sequence : (n_samples, ) ndarray
+        The discrete states.
+    trajectory : (n_samples, ) ndarray
+        The observable.
+
+    Notes
+    -----
+    First, the hidden discrete-state trajectory is simulated. Its transition matrix is given by
+
+    .. math::
+        P = \begin{pmatrix}0.95 & 0.05 &      &      \\ 0.05 & 0.90 & 0.05 &      \\
+                                & 0.05 & 0.90 & 0.05 \\      &      & 0.05 & 0.95 \end{pmatrix}.
+
+    The observations are generated via the means are :math:`\mu_0 = (7.5, 7.5)^\top`, :math:`\mu_1= (7.5, 15)^\top`,
+    :math:`\mu_2 = (15, 15)^\top`, and :math:`\mu_3 = (15, 7.5)^\top`,
+    respectively, as well as the covariance matrix
+
+    .. math::
+        C = \begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix}.
+
+    Afterwards, the trajectory is transformed via
+
+    .. math::
+        (x, y) \mapsto (x \cos (x), y, x \sin (x))^\top.
+    """
+    from deeptime.markov.msm import MarkovStateModel
+
+    state = np.random.RandomState(seed)
+    cov = swissroll_model.cov
+    states = swissroll_model.states
+    msm = MarkovStateModel(swissroll_model.transition_matrix)
+    dtraj = msm.simulate(n_samples, seed=seed)
+    traj = states[dtraj, :] + state.multivariate_normal(np.zeros(len(cov)), cov, size=len(dtraj),
+                                                        check_valid='ignore')
+    x = traj[:, 0]
+    return dtraj, np.vstack([x * np.cos(x), traj[:, 1], x * np.sin(x)]).T
+
+
+swissroll_model.cov = np.array([[1.0, 0.0], [0.0, 1.0]])
+swissroll_model.states = np.array([[7.5, 7.5], [7.5, 15.0], [15.0, 15.0], [15.0, 7.5]])
+swissroll_model.transition_matrix = np.array([[0.95, 0.05, 0.00, 0.00], [0.05, 0.90, 0.05, 0.00],
+                                              [0.00, 0.05, 0.90, 0.05], [0.00, 0.00, 0.05, 0.95]])
 
 
 def quadruple_well(h: float = 1e-3, n_steps: int = 10000):

@@ -5,10 +5,6 @@ del module_available
 
 import numpy as np
 
-from torch.utils.data import DataLoader, Dataset
-
-from ..data import TimeLaggedDataset, TimeSeriesDataset
-
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -40,17 +36,8 @@ def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:
             if isinstance(x, torch.Tensor):
                 x = x.to(device=device)
             else:
-                x = torch.from_numpy(np.asarray(x, dtype=dtype)).to(device=device)
+                x = torch.from_numpy(np.asarray(x, dtype=dtype).copy()).to(device=device)
             yield x
-
-
-def create_timelagged_data_loader(data, lagtime, batch_size, shuffle=True, dtype=np.float32):
-    r""" Helper method which yields a data loader from a torch dataset or numpy arrays. """
-    if not isinstance(data, (TimeSeriesDataset, Dataset)):
-        if isinstance(data, np.ndarray):
-            data = data.astype(dtype)
-        data = TimeLaggedDataset.from_trajectory(lagtime=lagtime, data=data)
-    return DataLoader(data, batch_size=batch_size, shuffle=shuffle)
 
 
 class MLP(nn.Module):
@@ -70,7 +57,7 @@ class MLP(nn.Module):
         The callable should take no arguments and produce an object of type :code:`torch.nn.Module`.
     """
 
-    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = True,
+    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = False,
                  output_nonlinearity=None):
         super().__init__()
         if len(units) > 1:

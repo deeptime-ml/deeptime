@@ -1,5 +1,8 @@
 import pytest
 from numpy.testing import assert_array_almost_equal
+from torch.utils.data import DataLoader
+
+from deeptime.data import TimeLaggedDataset
 
 pytest.importorskip("torch")
 
@@ -10,7 +13,7 @@ import torch.nn as nn
 import numpy as np
 import deeptime as dt
 
-from deeptime.util.torch import MLP, create_timelagged_data_loader
+from deeptime.util.torch import MLP
 
 
 @pytest.fixture
@@ -29,7 +32,8 @@ def two_state_hmm():
         [np.sin(phi), np.cos(phi)]])
     traj_rot = np.dot(rot, traj_stacked).T
 
-    return traj, traj_rot, create_timelagged_data_loader(traj_rot, lagtime=1, batch_size=batch_size)
+    ds = TimeLaggedDataset.from_trajectory(1, traj_rot.astype(np.float32))
+    return traj, traj_rot, DataLoader(ds, batch_size=batch_size)
 
 
 def setup_tae():

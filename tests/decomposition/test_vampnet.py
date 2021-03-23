@@ -1,5 +1,8 @@
 import pytest
-from numpy.testing import assert_raises, assert_equal, assert_
+from numpy.testing import assert_raises, assert_, assert_almost_equal
+from torch.utils.data import DataLoader
+
+from deeptime.data import TimeLaggedDataset
 
 pytest.importorskip("torch")
 
@@ -8,10 +11,10 @@ import torch.nn as nn
 import numpy as np
 import deeptime
 from deeptime.clustering import KMeans
-from deeptime.decomposition import VAMP
+from deeptime.decomposition import VAMP, vamp_score_data
 from deeptime.decomposition.deep import sym_inverse, covariances, vamp_score, VAMPNet, vampnet_loss
 from deeptime.markov.msm import MaximumLikelihoodMSM
-from deeptime.util.torch import create_timelagged_data_loader, MLP
+from deeptime.util.torch import MLP
 
 
 @pytest.mark.parametrize('mode', ["trunc"])
@@ -53,11 +56,14 @@ def test_score(fixed_seed, method, mode):
         data_instantaneous = torch.from_numpy(data[:-tau].astype(np.float64))
         data_shifted = torch.from_numpy(data[tau:].astype(np.float64))
         score_value = vamp_score(data_instantaneous, data_shifted, method=f"VAMP{method}", mode=mode)
+        score_value_ref = vamp_score_data(data_instantaneous.numpy(), data_shifted.numpy(), r=method)
         if method == 'E':
             # less precise due to svd implementation of torch
-            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(method), decimal=2)
+            assert_almost_equal(score_value.numpy(), vamp_model.score(method), decimal=2)
+            assert_almost_equal(score_value.numpy(), score_value_ref, decimal=2)
         else:
-            np.testing.assert_array_almost_equal(score_value.numpy(), vamp_model.score(method))
+            np.testing.assert_almost_equal(score_value.numpy(), vamp_model.score(method))
+            assert_almost_equal(score_value.numpy(), score_value_ref)
 
 
 @pytest.mark.xfail(reason="May spuriously fail because of nondeterministic optimization of the NN", strict=False)
@@ -78,7 +84,8 @@ def test_estimator(fixed_seed):
 
     # now let's compare
     lobe.eval()
-    loader = create_timelagged_data_loader(obs, lagtime=1, batch_size=512)
+    ds = TimeLaggedDataset(1, obs)
+    loader = DataLoader(ds, batch_size=512)
     vampnet = VAMPNet(lobe=lobe)
     vampnet_model = vampnet.fit(loader).fetch_model()
     # reference model w/o learnt featurization
@@ -106,8 +113,8 @@ def test_estimator_fit(fixed_seed, dtype):
         linear_layer.bias[0] = -0.7392
 
     net = VAMPNet(lobe=lobe, dtype=dtype, learning_rate=1e-8)
-    train_loader = create_timelagged_data_loader(train, lagtime=1, batch_size=512)
-    val_loader = create_timelagged_data_loader(val, lagtime=1, batch_size=512)
+    train_loader = DataLoader(train, batch_size=512, shuffle=True)
+    val_loader = DataLoader(val, batch_size=512)
     net.fit(train_loader, n_epochs=1, validation_data=val_loader, validation_score_callback=lambda *x: x)
 
     # reference model w/o learnt featurization
@@ -131,7 +138,8 @@ def test_no_side_effects():
     data = deeptime.data.ellipsoids()
     obs = data.observations(100, n_dim=10).astype(np.float32)
     net = VAMPNet(lobe=mlp, dtype=np.float32, learning_rate=1e-8)
-    train_loader = create_timelagged_data_loader(obs, lagtime=1, batch_size=512)
+    ds = TimeLaggedDataset.from_trajectory(1, obs)
+    train_loader = DataLoader(ds, batch_size=512, shuffle=True)
     model1 = net.fit(train_loader, n_epochs=1).fetch_model()
     model2 = net.fit(train_loader, n_epochs=1).fetch_model()
     with torch.no_grad():
