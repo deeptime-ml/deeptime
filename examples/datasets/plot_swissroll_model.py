@@ -30,4 +30,4 @@ def animate(i):
 
 # Animate
 anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=120, interval=15, blit=False)
+                               frames=120, interval=40, blit=False)

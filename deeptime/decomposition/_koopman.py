@@ -687,6 +687,8 @@ class KoopmanChapmanKolmogorovValidator(LaggedModelValidator):
     @statistics.setter
     def statistics(self, value):
         self._statistics = value
+        if self._statistics is not None:
+            self.nsets = min(self.observables.shape[1], self._statistics.shape[1])
 
     def _compute_observables(self, model: CovarianceKoopmanModel, mlag):
         # todo for lag time 0 we return a matrix of nan, until the correct solution is implemented

@@ -458,13 +458,49 @@ class VAMP(Estimator, Transformer):
         ----------
         mlags : int or int-array
             Multiple of lagtimes of the test_model to test against.
-        test_model : BayesianHMMPosterior, optional, default=None
+        test_model : CovarianceKoopmanModel, optional, default=None
             The model that is tested. If not provided, uses this estimator's encapsulated model.
+        n_observables : int, optional, default=None
+            Limit the number of default observables (and of default statistics) to this number.
+            Only used if `observables` are None or `statistics` are None.
+        observables : (input_dimension, n_observables) ndarray
+            Coefficients that express one or multiple observables in
+            the basis of the input features.
+        statistics : (input_dimension, n_statistics) ndarray
+            Coefficients that express one or multiple statistics in the basis of the input features.
 
         Returns
         -------
         validator : KoopmanChapmanKolmogorovValidator
             The validator.
+
+        Notes
+        -----
+        This method computes two sets of time-lagged covariance matrices
+
+        * estimates at higher lag times :
+
+          .. math::
+
+              \left\langle \mathbf{K}(n\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
+
+          where :math:`\rho_{0}` is the empirical distribution implicitly defined
+          by all data points from time steps 0 to T-tau in all trajectories,
+          :math:`\mathbf{K}(n\tau)` is a rank-reduced Koopman matrix estimated
+          at the lag-time n*tau and g and f are some functions of the data.
+          Rank-reduction of the Koopman matrix is controlled by the `dim`
+          parameter of :class:`VAMP <deeptime.decomposition.VAMP>`.
+
+        * predictions at higher lag times :
+
+          .. math::
+
+              \left\langle \mathbf{K}^{n}(\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
+
+          where :math:`\mathbf{K}^{n}` is the n'th power of the rank-reduced
+          Koopman matrix contained in self.
+
+        The Champan-Kolmogorov test is to compare the predictions to the estimates.
         """
         test_model = self.fetch_model() if test_model is None else test_model
         assert test_model is not None, "We need a test model via argument or an estimator which was already" \
