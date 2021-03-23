@@ -36,7 +36,7 @@ def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:
             if isinstance(x, torch.Tensor):
                 x = x.to(device=device)
             else:
-                x = torch.from_numpy(np.asarray(x, dtype=dtype)).to(device=device)
+                x = torch.from_numpy(np.asarray(x, dtype=dtype).copy()).to(device=device)
             yield x
 
 

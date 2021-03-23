@@ -3,10 +3,11 @@ from typing import Optional, Union, List, Callable
 import numpy as np
 
 from . import vamp_score
-from ..base import Model, Transformer
+from ..base import Model, Transformer, Estimator
 from ..basis import Identity, Concatenation
 from ..covariance import CovarianceModel, WhiteningTransform
 from ..numeric import is_diagonal_matrix
+from ..util import LaggedModelValidator
 from ..util.decorators import cached_property
 
 
@@ -664,3 +665,40 @@ class CovarianceKoopmanModel(KoopmanModel):
         """
         feature_sigma = np.sqrt(np.diag(self.cov_00))
         return np.dot(self.cov_00, self.singular_vectors_left[:, : self.output_dimension]) / feature_sigma[:, None]
+
+
+class KoopmanChapmanKolmogorovValidator(LaggedModelValidator):
+    r""" Validates a Koopman model
+
+    """
+
+    def __init__(self, test_model: Model, test_estimator: Estimator, test_model_lagtime: int, mlags,
+                 observables, statistics, observables_mean_free, statistics_mean_free):
+        super().__init__(test_model, test_estimator, test_model_lagtime, mlags)
+        self.observables = observables
+        self.statistics = statistics
+        self.observables_mean_free = observables_mean_free
+        self.statistics_mean_free = statistics_mean_free
+
+    @property
+    def statistics(self):
+        return self._statistics
+
+    @statistics.setter
+    def statistics(self, value):
+        self._statistics = value
+
+    def _compute_observables(self, model: CovarianceKoopmanModel, mlag):
+        # todo for lag time 0 we return a matrix of nan, until the correct solution is implemented
+        if mlag == 0 or model is None:
+            if self.statistics is None:
+                return np.zeros(self.observables.shape[1]) + np.nan
+            else:
+                return np.zeros((self.observables.shape[1], self.statistics.shape[1])) + np.nan
+        else:
+            return model.expectation(statistics=self.statistics, observables=self.observables, lag_multiple=mlag,
+                                     statistics_mean_free=self.statistics_mean_free,
+                                     observables_mean_free=self.observables_mean_free)
+
+    def _compute_observables_conf(self, model, mlag, conf=0.95):
+        raise NotImplementedError('estimation of confidence intervals not yet implemented for Koopman models')

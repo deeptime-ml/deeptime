@@ -8,7 +8,7 @@ from typing import Optional, Union, List, Tuple, Callable
 
 import numpy as np
 
-from ._koopman import CovarianceKoopmanModel
+from ._koopman import CovarianceKoopmanModel, KoopmanChapmanKolmogorovValidator
 from ..base import Estimator, Transformer
 from ..basis import Identity
 from ..covariance import Covariance, CovarianceModel
@@ -449,3 +449,58 @@ class VAMP(Estimator, Transformer):
             self._model = self._decompose(self._covariance_estimator.fetch_model())
             self._covariance_estimator = None
         return self._model
+
+    def chapman_kolmogorov_validator(self, mlags, test_model: CovarianceKoopmanModel = None,
+                                     n_observables=None, observables='phi', statistics='psi'):
+        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
+
+        Parameters
+        ----------
+        mlags : int or int-array
+            Multiple of lagtimes of the test_model to test against.
+        test_model : BayesianHMMPosterior, optional, default=None
+            The model that is tested. If not provided, uses this estimator's encapsulated model.
+
+        Returns
+        -------
+        validator : KoopmanChapmanKolmogorovValidator
+            The validator.
+        """
+        test_model = self.fetch_model() if test_model is None else test_model
+        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
+                                       "fit to data."
+        lagtime = self.lagtime
+        if n_observables is not None:
+            if n_observables > test_model.dim:
+                import warnings
+                warnings.warn('Selected singular functions as observables but dimension '
+                              'is lower than requested number of observables.')
+                n_observables = test_model.dim
+        else:
+            n_observables = test_model.dim
+
+        if isinstance(observables, str) and observables == 'phi':
+            observables = test_model.singular_vectors_right[:, :n_observables]
+            observables_mean_free = True
+        else:
+            observables_mean_free = False
+
+        if isinstance(statistics, str) and statistics == 'psi':
+            statistics = test_model.singular_vectors_left[:, :n_observables]
+            statistics_mean_free = True
+        else:
+            statistics_mean_free = False
+        return VAMPKoopmanCKValidator(test_model, self, lagtime, mlags, observables, statistics,
+                                      observables_mean_free, statistics_mean_free)
+
+
+def _vamp_estimate_model_for_lag(estimator: VAMP, model, data, lagtime):
+    est = VAMP(lagtime=lagtime, dim=estimator.dim, var_cutoff=estimator.var_cutoff, scaling=estimator.scaling,
+               epsilon=estimator.epsilon, observable_transform=estimator.observable_transform)
+    return est.fit(data).fetch_model()
+
+
+class VAMPKoopmanCKValidator(KoopmanChapmanKolmogorovValidator):
+
+    def fit(self, data, n_jobs=None, progress=None, **kw):
+        return super().fit(data, n_jobs, progress, _vamp_estimate_model_for_lag, **kw)
