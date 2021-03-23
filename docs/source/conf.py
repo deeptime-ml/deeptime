@@ -113,7 +113,8 @@ sphinx_gallery_conf = {
     'show_memory': True,
     'capture_repr': (),
     'matplotlib_animations': True,
-    'download_all_examples': False
+    'download_all_examples': False,
+    'show_signature': False
 }
 
 plot_rcparams = {
