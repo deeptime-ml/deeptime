@@ -6,7 +6,7 @@ import scipy
 from ..base import Estimator
 from ..decomposition import KoopmanModel
 from ..kernels import Kernel
-from ..numeric import sort_eigs
+from ..numeric import sort_eigs, spd_inv
 
 
 class KernelCCAModel(KoopmanModel):
@@ -98,12 +98,18 @@ class KernelCCA(Estimator):
         # center Gram matrices
         n = data[0].shape[0]
         I = np.eye(n)
-        N = I - 1 / n * np.eye(n)
+        N = I - 1 / n * np.ones((n, n))
         G_0 = np.linalg.multi_dot([N, gram_0, N])
         G_1 = np.linalg.multi_dot([N, gram_t, N])
 
-        A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
-            @ scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
+        A = np.linalg.multi_dot([
+            spd_inv(G_0 + self.epsilon * I),
+            G_0,
+            spd_inv(G_1 + self.epsilon * I),
+            G_1
+        ])
+        #A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
+        #    @ scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
 
         eigenvalues, eigenvectors = scipy.linalg.eig(A)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
