@@ -376,12 +376,7 @@ class KernelEDMD(Estimator):
         gram_0 = self.kernel.gram(data[0])  # G_XX
         gram_1 = self.kernel.apply(*data)  # G_XY
 
-        if self.epsilon > 0:
-            reg = self.epsilon * np.eye(gram_0.shape[0])
-        else:
-            reg = 0
-        A = spd_inv(gram_0 + reg) @ gram_1.T
-        # A = np.linalg.pinv(gram_0 + reg, rcond=1e-15) @ gram_1.T  # Koopman operator
+        A = spd_inv(gram_0 + self.epsilon * np.eye(gram_0.shape[0])) @ gram_1.T
         eigenvalues, eigenvectors = eigs(A, n_eigs=self.n_eigs)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
         self._model = KernelEDMDModel(data[0], eigenvalues, eigenvectors, self.kernel)

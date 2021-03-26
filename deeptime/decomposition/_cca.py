@@ -108,9 +108,6 @@ class KernelCCA(Estimator):
             spd_inv(G_1 + self.epsilon * I),
             G_1
         ])
-        #A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
-        #    @ scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
-
         eigenvalues, eigenvectors = scipy.linalg.eig(A)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
 
