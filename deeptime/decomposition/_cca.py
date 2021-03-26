@@ -102,8 +102,8 @@ class KernelCCA(Estimator):
         G_0 = np.linalg.multi_dot([N, gram_0, N])
         G_1 = np.linalg.multi_dot([N, gram_t, N])
 
-        A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, sym_pos=True) @ \
-            scipy.linalg.solve(G_1 + self.epsilon * I, G_1, sym_pos=True)
+        A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='pos') @ \
+            scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='pos')
         #A = np.linalg.multi_dot([
         #    spd_inv(G_0 + self.epsilon * I),
         #    G_0,
