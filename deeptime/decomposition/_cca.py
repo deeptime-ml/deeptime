@@ -104,12 +104,6 @@ class KernelCCA(Estimator):
 
         A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='pos') @ \
             scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='pos')
-        #A = np.linalg.multi_dot([
-        #    spd_inv(G_0 + self.epsilon * I),
-        #    G_0,
-        #    spd_inv(G_1 + self.epsilon * I),
-        #    G_1
-        #])
         eigenvalues, eigenvectors = scipy.linalg.eig(A)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
 
