@@ -789,6 +789,78 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
     return system
 
 
+def prinz_potential(h=1e-3, n_steps=500, temperature_factor=1., mass=1., damping=1.):
+    r""" Particle diffusing in a one-dimensional quadruple well potential landscape. :footcite:`prinz2011markov`
+
+    The potential is defined as
+
+    .. math::
+        V(x) = 4 \left( x^8 + 0.8 e^{-80 x^2} + 0.2 e^{-80 (x-0.5)^2} + 0.5 e^{-40 (x+0.5)^2}\right).
+
+    The integrator is an Euler-Maruyama type integrator, updating the current state :math:`x_t` via
+
+    .. math::
+        x_{t+1} =  x_t - \frac{h\nabla V(x_t)}{m\cdot d} + \sqrt{2\frac{h\cdot\mathrm{kT}}{m\cdot d}}\eta_t,
+
+    where :math:`m` is the mass, :math:`d` the damping factor, and :math:`\eta_t \sim \mathcal{N}(0, 1)`.
+
+    .. plot:: datasets/plot_prinz.py
+
+    Parameters
+    ----------
+    h : float, default=1e-3
+        The integrator step size. If the temperature is too high and the step size too large, the
+        integrator may produce NaNs.
+    n_steps : int, default=500
+        Number of integration steps between each evaluation of the system's state.
+    temperature_factor : float, default=1
+        The temperature kT.
+    mass : float, default=1
+        The particle's mass.
+    damping : float, default=1
+        Damping factor.
+
+    Returns
+    -------
+    system
+        The system.
+
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> from deeptime.data import prinz_potential
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = prinz_potential(h=1e-3, n_steps=100)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(np.array([[-0.]]), 1000, seed=42)  # simulate trajectory
+    >>> assert traj.shape == (1000, 1)  # 1000 evaluations from initial condition [0]
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(.5, 1.5, (100, 1))  # 100 test points
+    >>> evaluations = model(test_points, seed=53, n_jobs=1)
+    >>> assert evaluations.shape == (100, 1)
+
+    References
+    ----------
+    .. footbibliography::
+    """
+    from ._data_bindings import Prinz
+    system = Prinz()
+    system.h = h
+    system.n_steps = n_steps
+    system.kT = temperature_factor
+    system.mass = mass
+    system.damping = damping
+    return system
+
+
 def triple_well_1d(h=1e-3, n_steps=500):
     r""" A simple one-dimensional triple-well potential landscape. It is given by the stochastic differential equation
 

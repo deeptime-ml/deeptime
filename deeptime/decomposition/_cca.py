@@ -6,7 +6,7 @@ import scipy
 from ..base import Estimator
 from ..decomposition import KoopmanModel
 from ..kernels import Kernel
-from ..numeric import sort_eigs, spd_inv
+from ..numeric import sort_eigs
 
 
 class KernelCCAModel(KoopmanModel):

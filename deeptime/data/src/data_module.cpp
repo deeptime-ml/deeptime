@@ -165,6 +165,15 @@ PYBIND11_MODULE(_data_bindings, m) {
     // more examples can be found at: https://github.com/sklus/d3s/tree/master/cpp
     exportSystem<ABCFlow<double>>(m, "ABCFlow");
     exportSystem<OrnsteinUhlenbeck<double>>(m, "OrnsteinUhlenbeck");
+    {
+        auto clazz = exportSystem<Prinz<double>>(m, "Prinz");
+        clazz.def_property("mass", [](const Prinz<double> &self) { return self.mass; },
+                                   [](Prinz<double> &self, double val) { self.mass = val; self.updateSigma(); });
+        clazz.def_property("damping", [](const Prinz<double> &self) { return self.damping; },
+                                      [](Prinz<double> &self, double val) { self.damping = val; self.updateSigma(); });
+        clazz.def_property("kT", [](const Prinz<double> &self) { return self.kT; },
+                                   [](Prinz<double> &self, double val) { self.kT = val; self.updateSigma(); });
+    }
     exportSystem<TripleWell1D<double>>(m, "TripleWell1D");
     exportSystem<DoubleWell2D<double>>(m, "DoubleWell2D");
     exportSystem<QuadrupleWell2D<double>>(m, "QuadrupleWell2D");

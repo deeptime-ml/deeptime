@@ -365,8 +365,6 @@ class VAMPNet(DLEstimator, Transformer):
         see :meth:`sym_inverse`.
     dtype : dtype, default=np.float32
         The data type of the modules and incoming data.
-    shuffle : bool, default=True
-        Whether to shuffle data during training after each epoch.
 
     See Also
     --------
@@ -381,14 +379,13 @@ class VAMPNet(DLEstimator, Transformer):
     def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
                  score_method: str = 'VAMP2', score_mode: str = 'regularize', epsilon: float = 1e-6,
-                 dtype=np.float32, shuffle: bool = True):
+                 dtype=np.float32):
         super().__init__()
         self.lobe = lobe
         self.lobe_timelagged = lobe_timelagged
         self.score_method = score_method
         self.score_mode = score_mode
         self._step = 0
-        self.shuffle = shuffle
         self._epsilon = epsilon
         self.device = device
         self.learning_rate = learning_rate
@@ -527,7 +524,7 @@ class VAMPNet(DLEstimator, Transformer):
 
         self.optimizer.zero_grad()
         x_0 = self.lobe(batch_0)
-        x_t = self.lobe_timelagged(batch_t)
+        x_t = self.lobe_timelagged(batch_t).detach()
         loss_value = vampnet_loss(x_0, x_t, method=self.score_method, epsilon=self.epsilon, mode=self.score_mode)
         loss_value.backward()
         self.optimizer.step()
