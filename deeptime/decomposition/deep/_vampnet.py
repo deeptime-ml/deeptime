@@ -524,7 +524,7 @@ class VAMPNet(DLEstimator, Transformer):
 
         self.optimizer.zero_grad()
         x_0 = self.lobe(batch_0)
-        x_t = self.lobe_timelagged(batch_t).detach()
+        x_t = self.lobe_timelagged(batch_t)
         loss_value = vampnet_loss(x_0, x_t, method=self.score_method, epsilon=self.epsilon, mode=self.score_mode)
         loss_value.backward()
         self.optimizer.step()
