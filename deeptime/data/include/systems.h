@@ -77,6 +77,43 @@ struct OrnsteinUhlenbeck {
 };
 
 //------------------------------------------------------------------------------
+// Prinz potential
+//------------------------------------------------------------------------------
+template<typename T>
+struct Prinz {
+    using system_type = sde_tag;
+
+    static constexpr std::size_t DIM = 1;
+    using dtype = T;
+    using State = Vector<dtype, DIM>;
+    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+
+    constexpr dtype energy(const State &x) const {
+        return 4. / (mass * damping) * (std::pow(x[0], 8) + 0.8 * std::exp(-80. * x[0] * x[0])
+                     + 0.2 * std::exp(-80. * (x[0] - .5) * (x[0] - .5))
+                     + 0.5 * std::exp(-40. * (x[0] + .5) * (x[0] + .5)));
+    }
+
+    State f(const State &x) const {
+        return {{ -4. / (mass * damping) * (8. * std::pow(x[0], 7) - 128. * std::exp(-80. * x[0] * x[0]) * x[0]
+                        - 32. * std::exp(-80. * (x[0] - 0.5) * (x[0] - 0.5)) * (x[0] - 0.5)
+                        - 40. * std::exp(-40. * (x[0] + 0.5) * (x[0] + 0.5)) * (x[0] + 0.5)) }};
+    }
+
+    Matrix<T, 1> sigma{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
+
+    T h {1e-3};
+    std::size_t nSteps{1};
+    T mass {1.};
+    T damping {1.};
+    T kT {1.};
+
+    void updateSigma() {
+        sigma = Matrix<T, 1>{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
+    };
+};
+
+//------------------------------------------------------------------------------
 // Simple triple-well in one dimension, use interval [0, 6]
 //------------------------------------------------------------------------------
 template<typename T>

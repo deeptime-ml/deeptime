@@ -97,14 +97,13 @@ class KernelCCA(Estimator):
         gram_t = self.kernel.gram(data[1])
         # center Gram matrices
         n = data[0].shape[0]
-        I = np.eye(n)
-        N = I - 1 / n * np.ones((n, n))
-        G_0 = N @ gram_0 @ N
-        G_1 = N @ gram_t @ N
+        I = np.eye(n)  # identity
+        N = I - np.full((n, n), fill_value=1. / n)  # centering matrix
+        G_0 = np.linalg.multi_dot([N, gram_0, N])
+        G_1 = np.linalg.multi_dot([N, gram_t, N])
 
-        A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') \
-            @ scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
-
+        A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') @ \
+            scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
         eigenvalues, eigenvectors = scipy.linalg.eig(A)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
 
