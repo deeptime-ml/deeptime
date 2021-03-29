@@ -376,8 +376,7 @@ class KernelEDMD(Estimator):
         gram_0 = self.kernel.gram(data[0])  # G_XX
         gram_1 = self.kernel.apply(*data)  # G_XY
 
-        A = scipy.linalg.solve(gram_0 + self.epsilon * np.eye(gram_0.shape[0]), gram_1.T, assume_a='pos')
-        # A = spd_inv(gram_0 + self.epsilon * np.eye(gram_0.shape[0])) @ gram_1.T
+        A = scipy.linalg.solve(gram_0 + self.epsilon * np.eye(gram_0.shape[0]), gram_1.T, assume_a='sym')
         eigenvalues, eigenvectors = eigs(A, n_eigs=self.n_eigs)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
         self._model = KernelEDMDModel(data[0], eigenvalues, eigenvectors, self.kernel)
