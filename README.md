@@ -10,7 +10,9 @@ Releases:
 
 Documentation: [deeptime-ml.github.io](https://deeptime-ml.github.io/).
 
-### Building the latest trunk version of the package:
+## Building the latest trunk version of the package:
+
+Using conda for dependency management and python `setup.py`:
 ```
 git clone https://github.com/deeptime-ml/deeptime.git
 
@@ -22,8 +24,7 @@ conda install numpy scipy cython scikit-learn pybind11
 python setup.py install
 ```
 
-or 
-
+Or using pip:
 ```
 pip install git+https://github.com/deeptime-ml/deeptime.git@main
 ```
