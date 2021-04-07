@@ -30,7 +30,7 @@ class Observable(Transformer):
 
         Parameters
         ----------
-        x : (N, d) np.ndarray
+        x : (N, d) np.ndarray or list thereof
             Evaluates the observable for N d-dimensional data points.
 
         Returns
@@ -38,10 +38,12 @@ class Observable(Transformer):
         out : (N, p) np.ndarray
             Result of the evaluation for each data point.
         """
-        return self._evaluate(x)
+        if not isinstance(x, (list, tuple)):
+            x = [x]
+        return [self._evaluate(traj) for traj in x]
 
     def transform(self, data, **kwargs):
-        return self._evaluate(data)
+        return self(data)
 
 
 class Concatenation(Observable):
