@@ -35,12 +35,13 @@ class Observable(Transformer):
 
         Returns
         -------
-        out : (N, p) np.ndarray
+        out : (N, p) np.ndarray or list thereof
             Result of the evaluation for each data point.
         """
-        if not isinstance(x, (list, tuple)):
-            x = [x]
-        return [self._evaluate(traj) for traj in x]
+        from deeptime.util.types import ensure_timeseries_data
+        x = ensure_timeseries_data(x)
+        out = [self._evaluate(traj) for traj in x]
+        return out if len(out) > 1 else out[0]  # unpack
 
     def transform(self, data, **kwargs):
         return self(data)
