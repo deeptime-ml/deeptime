@@ -30,18 +30,15 @@ class Observable(Transformer):
 
         Parameters
         ----------
-        x : (N, d) np.ndarray or list thereof
+        x : (N, d) np.ndarray
             Evaluates the observable for N d-dimensional data points.
 
         Returns
         -------
-        out : (N, p) np.ndarray or list thereof
+        out : (N, p) np.ndarray
             Result of the evaluation for each data point.
         """
-        from deeptime.util.types import ensure_timeseries_data
-        x = ensure_timeseries_data(x)
-        out = [self._evaluate(traj) for traj in x]
-        return out if len(out) > 1 else out[0]  # unpack
+        return self._evaluate(x)
 
     def transform(self, data, **kwargs):
         return self(data)

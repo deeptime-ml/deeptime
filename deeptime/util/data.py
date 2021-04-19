@@ -114,7 +114,7 @@ class ConcatDataset:
         Datasets to concatenate.
     """
 
-    def __init__(self, datasets):
+    def __init__(self, datasets: List):
         self._lengths = [len(ds) for ds in datasets]
         self._cumlen = np.cumsum(self._lengths)
         self._datasets = datasets
