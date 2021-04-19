@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 
 from deeptime.covariance import CovarianceModel
-from deeptime.data import timeshifted_split, ellipsoids
+from deeptime.util.data import timeshifted_split
+from deeptime.data import ellipsoids
 from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel, VAMP, cvsplit_trajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 

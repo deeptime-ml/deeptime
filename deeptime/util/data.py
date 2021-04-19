@@ -1,9 +1,6 @@
-import bisect
 from typing import Optional, List
 
 import numpy as np
-
-from deeptime.util.types import ensure_timeseries_data
 
 
 def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int = 1, n_splits: Optional[int] = None,
@@ -122,13 +119,74 @@ class ConcatDataset:
         self._cumlen = np.cumsum(self._lengths)
         self._datasets = datasets
 
-    def __getitem__(self, ix):
-        ds_index = bisect.bisect_right(self._cumlen, ix)
+    def _dataset_index(self, ix):
+        from bisect import bisect_right
+        ds_index = bisect_right(self._cumlen, ix)
         item_index = ix if ds_index == 0 else ix - self._cumlen[ds_index - 1]
+        return ds_index, item_index
+
+    def __getitem__(self, ix):
+        ds_index, item_index = self._dataset_index(ix)
         return self._datasets[ds_index][item_index]
 
     def __len__(self):
         return self._cumlen[-1]
+
+
+class TimeLaggedConcatDataset(ConcatDataset):
+
+    def __init__(self, datasets):
+        assert all(isinstance(x, TimeLaggedDataset) for x in datasets)
+        super().__init__(datasets)
+
+    @staticmethod
+    def _compute_overlap(stride, traj_len, skip):
+        r""" Given two trajectories :math:`T_1` and :math:`T_2`, this function calculates for the first trajectory
+        an overlap, i.e., a skip parameter for :math:`T_2` such that the trajectory fragments
+        :math:`T_1` and :math:`T_2` appear as one under the given stride.
+
+        :param stride: the (global) stride parameter
+        :param traj_len: length of T_1
+        :param skip: skip of T_1
+        :return: skip of T_2
+
+        Notes
+        -----
+        Idea for deriving the formula: It is
+
+        .. code::
+            K = ((traj_len - skip - 1) // stride + 1) = #(data points in trajectory of length (traj_len - skip)).
+
+        Therefore, the first point's position that is not contained in :math:`T_1` anymore is given by
+
+        .. code::
+            pos = skip + s * K.
+
+        Thus the needed skip of :math:`T_2` such that the same stride parameter makes :math:`T_1` and :math:`T_2`
+        "look as one" is
+
+        .. code::
+            overlap = pos - traj_len.
+        """
+        return stride * ((traj_len - skip - 1) // stride + 1) - traj_len + skip
+
+    def __getitem__(self, ix):
+        if isinstance(ix, slice):
+            xs, ys = [], []
+            end_ds, end_ix = self._dataset_index(ix.stop if ix.stop is not None else len(self))
+            start_ds, start = self._dataset_index(ix.start if ix.start is not None else 0)
+            stride = ix.step if ix.step is not None else 1
+            for ds in range(start_ds, end_ds + 1):
+                stop_ix = self._lengths[ds] if ds != end_ds else end_ix
+
+                if stop_ix > start and ds < len(self._lengths):
+                    local_slice = slice(start, stop_ix, stride)
+                    xs.append(self._datasets[ds].data[local_slice])
+                    ys.append(self._datasets[ds].data_lagged[local_slice])
+                    start = self._compute_overlap(stride, self._lengths[ds], start)
+            return np.concatenate(xs), np.concatenate(ys)
+        else:
+            return super().__getitem__(ix)
 
 
 class TimeLaggedDataset:
@@ -139,12 +197,13 @@ class TimeLaggedDataset:
     ----------
     data : (T, n) ndarray
         The data which is wrapped into a dataset
-    data_lagged : (T, n) ndarray
+    data_lagged : (T, m) ndarray
         Corresponding timelagged data. Must be of same length.
     """
 
     def __init__(self, data, data_lagged):
-        assert data.shape == data_lagged.shape, "Shape of trajectory for data and data_lagged does not match"
+        assert len(data) == len(data_lagged), \
+            f"Length of trajectory for data and data_lagged does not match ({len(data)} != {len(data_lagged)})"
         self._data = data
         self._data_lagged = data_lagged
 
@@ -208,7 +267,7 @@ class TimeLaggedDataset:
         assert len(data) > 0, "List of data should not be empty."
         assert all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"
         datasets = [TimeLaggedDataset.from_trajectory(lagtime, traj) for traj in data]
-        return ConcatDataset(datasets)
+        return TimeLaggedConcatDataset(datasets)
 
     def __getitem__(self, item):
         return self._data[item], self._data_lagged[item]

@@ -2,7 +2,7 @@ import pytest
 from numpy.testing import assert_array_almost_equal
 from torch.utils.data import DataLoader
 
-from deeptime.data import TimeLaggedDataset
+from deeptime.util.data import TimeLaggedDataset
 
 pytest.importorskip("torch")
 

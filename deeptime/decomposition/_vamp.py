@@ -165,11 +165,6 @@ class VAMP(Estimator, Transformer):
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
                                                                     'left_singular_vecs', 'right_singular_vecs'])
 
-    def _obs_transform(self, data):
-        r""" Consistently transform lists of trajectory data using the observable transform. """
-        data = ensure_timeseries_data(data)
-        return [self.observable_transform(traj) for traj in data]
-
     @staticmethod
     def _cumvar(singular_values) -> np.ndarray:
         cumvar = np.cumsum(singular_values ** 2)
@@ -249,7 +244,7 @@ class VAMP(Estimator, Transformer):
             raise ValueError("Calling partial fit requires that a lagtime is set.")
         if self._covariance_estimator is None:
             self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
-        self._covariance_estimator.partial_fit((self._obs_transform(data[0]), self._obs_transform(data[1])))
+        self._covariance_estimator.partial_fit((self.observable_transform(data[0]), self.observable_transform(data[1])))
         return self
 
     def fit_from_covariances(self, covariances: Union[Covariance, CovarianceModel]):
@@ -289,7 +284,7 @@ class VAMP(Estimator, Transformer):
             Reference to self.
         """
         self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
-        covariances = self._covariance_estimator.fit(self._obs_transform(data), weights=weights).fetch_model()
+        covariances = self._covariance_estimator.fit(self.observable_transform(data), weights=weights).fetch_model()
         return self.fit_from_covariances(covariances)
 
     @property

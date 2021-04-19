@@ -2,7 +2,7 @@ import numpy as np
 from threadpoolctl import threadpool_limits
 from scipy.integrate import solve_ivp
 
-from . import TimeLaggedDataset
+from ..util.data import TimeLaggedDataset
 from ..util.decorators import plotting_function
 from ..util.parallel import handle_n_jobs, joining
 

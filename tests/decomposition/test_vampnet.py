@@ -1,8 +1,8 @@
 import pytest
-from numpy.testing import assert_raises, assert_, assert_almost_equal
+from numpy.testing import assert_, assert_almost_equal
 from torch.utils.data import DataLoader
 
-from deeptime.data import TimeLaggedDataset
+from deeptime.util.data import TimeLaggedDataset
 
 pytest.importorskip("torch")
 

@@ -1,11 +1,11 @@
 import itertools
 import numbers
-
-import numpy as np
-
 from typing import Tuple, Optional, Union, List
 
+import numpy as np
 from scipy.sparse import spmatrix, issparse
+
+from .data import TimeLaggedDataset
 
 
 def atleast_nd(ary, ndim, pos=0):
@@ -145,3 +145,44 @@ def ensure_timeseries_data(input_data) -> List[np.ndarray]:
         raise ValueError("All arrays must be of same dtype, but got dtypes {}".format(unique_types))
     assert isinstance(input_data, (list, tuple))
     return input_data
+
+
+def to_dataset(data: Union[TimeLaggedDataset, Tuple[np.ndarray, np.ndarray], np.ndarray],
+               lagtime: Optional[int] = None) -> TimeLaggedDataset:
+    r"""Converts input data to a TimeLaggedDataset if possible, otherwise assumes that data implements `__len__` as well
+    as `__getitem__`, where `__getitem__` yields a tuple of data.
+
+    The possible cases are:
+
+    * input data is already a :class:`TimeLaggedDataset <deeptime.util.data.TimeLaggedDataset>`, then return immediately
+    * input data is a tuple of (X, Y), where X and Y are ndarrays - in this case they are interpreted as time-lagged
+      versions of another, i.e., :math:`Y_i = \mathcal{g}(X_i)`, where :math:`g(\cdot )` describes the temporal
+      evolution. In this case lagtime is ignored.
+    * input is a ndarray, in this case `Y[i] = X[i+lagtime]` and the result is a dataset of length `len(data) - lagtime`
+
+    Parameters
+    ----------
+    data : TimeLaggedDataset or tuple of arrays or array
+        Input data.
+    lagtime : int, optional, default=None
+        Lagtime, only is considered if input is array.
+
+    Returns
+    -------
+    dataset : TimeLaggedDataset
+        A dataset based on input arguments.
+
+    Raises
+    ------
+    ValueError
+        If data is single array but no lagtime is provided or input is list or tuple of length not equal to 2
+    """
+    if isinstance(data, tuple):
+        if len(data) != 2:
+            raise ValueError(f"If data is provided as list or tuple the length must be 2 but was {len(data)}.")
+        return TimeLaggedDataset(*data)
+    if isinstance(data, np.ndarray):
+        if lagtime is None:
+            raise ValueError("In case data is a single trajectory the lagtime must be given.")
+        return TimeLaggedDataset.from_trajectory(lagtime, data)
+    return data
