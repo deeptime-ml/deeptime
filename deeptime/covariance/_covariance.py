@@ -6,7 +6,7 @@ from scipy.linalg import eig
 
 from ..base import Estimator, Model, Transformer
 from ..basis import Observable
-from ..data import timeshifted_split
+from ..util.data import timeshifted_split
 from ..numeric import spd_inv_split, sort_eigs, spd_inv_sqrt
 from .util import running_covar
 from ..util.types import ensure_timeseries_data
@@ -485,7 +485,8 @@ class Covariance(Estimator):
             x, y = data
         else:
             x, y = data, None
-        # TODO: types, shapes checking!
+        if weights is not None and hasattr(weights, 'weights'):
+            weights = weights(x)
         try:
             self._rc.add(x, y, column_selection=column_selection, weights=weights)
         except MemoryError:

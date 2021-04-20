@@ -1,19 +1,18 @@
 import itertools
 import numbers
-
-import numpy as np
-
 from typing import Tuple, Optional, Union, List
 
+import numpy as np
 from scipy.sparse import spmatrix, issparse
+
+from .data import TimeLaggedDataset, TrajectoryDataset, TrajectoriesDataset
 
 
 def atleast_nd(ary, ndim, pos=0):
-    """ Taken from https://github.com/numpy/numpy/pull/7804
-
-    View input as array with at least `ndim` dimensions.
+    r"""View input as array with at least `ndim` dimensions.
     New unit dimensions are inserted at the index given by `pos` if
     necessary.
+
     Parameters
     ----------
     ary : array_like
@@ -31,6 +30,7 @@ def atleast_nd(ary, ndim, pos=0):
         ``pos=-1`` means to insert at the very end. 0 and -1 are always
         guaranteed to work. Any other number will depend on the
         dimensions of the existing array. Default is 0.
+
     Returns
     -------
     res : ndarray
@@ -40,11 +40,15 @@ def atleast_nd(ary, ndim, pos=0):
         shape ``(1, 1, 1, N)``. Dimensions are appended if `pos` is -1,
         so for example a 2-D array of shape ``(M, N)`` becomes a view of
         shape ``(M, N, 1, 1)`` when ``ndim=4``.
+
     See Also
     --------
-    atleast_1d, atleast_2d, atleast_3d
+    np.atleast_1d, np.atleast_2d, np.atleast_3d
+
     Notes
     -----
+    Taken from https://github.com/numpy/numpy/pull/7804.
+
     This function does not follow the convention of the other atleast_*d
     functions in numpy in that it only accepts a single array argument.
     To process multiple arrays, use a comprehension or loop around the
@@ -134,7 +138,7 @@ def ensure_timeseries_data(input_data) -> List[np.ndarray]:
 
     Returns
     -------
-    data : list of array_like
+    data : list of np.ndarray
         timeseries data
     """
     if not isinstance(input_data, (list, tuple)):
@@ -145,3 +149,109 @@ def ensure_timeseries_data(input_data) -> List[np.ndarray]:
         raise ValueError("All arrays must be of same dtype, but got dtypes {}".format(unique_types))
     assert isinstance(input_data, (list, tuple))
     return input_data
+
+
+def is_timelagged_dataset(dataset) -> bool:
+    r""" Checks whether an object can be ducktyped into a (time-lagged) dataset.
+
+    In particular, this method checks for presence of attributes
+
+    * `__len__`
+    * `__getitem__`
+
+    and, if length is positive, checks whether the first element is a tuple of length 2
+
+    Parameters
+    ----------
+    dataset
+
+    Returns
+    -------
+    is_dataset : bool
+        Whether the input is a time-lagged dataset.
+    """
+    has_len_and_getitem = hasattr(dataset, '__len__') and hasattr(dataset, '__getitem__')
+    if has_len_and_getitem:
+        if len(dataset) > 0:
+            first_elem = dataset[0]
+            return isinstance(first_elem, tuple) and len(first_elem) == 2
+        else:
+            return False
+    return False
+
+
+def to_dataset(data: Union[TimeLaggedDataset, Tuple[np.ndarray, np.ndarray], np.ndarray],
+               lagtime: Optional[int] = None):
+    r"""Converts input data to a TimeLaggedDataset if possible, otherwise assumes that data implements `__len__` as well
+    as `__getitem__`, where `__getitem__` yields a tuple of data.
+
+    The possible cases are:
+
+    * input data is already a time-lagged dataset, then return immediately (see :meth:`is_timelagged_dataset`).
+    * input data is a tuple of (X, Y), where X and Y are ndarrays - in this case they are interpreted as time-lagged
+      versions of another, i.e., :math:`Y_i = \mathcal{g}(X_i)`, where :math:`g(\cdot )` describes the temporal
+      evolution. In this case lagtime is ignored.
+    * input data is a list of trajectories, in this case a concatenated :class:`TrajectoriesDataset` is created
+    * input is a ndarray, in this case `Y[i] = X[i+lagtime]` and the result is a dataset of length `len(data) - lagtime`
+
+    Parameters
+    ----------
+    data : TimeLaggedDataset or tuple of arrays or array
+        Input data.
+    lagtime : int, optional, default=None
+        Lagtime, only is considered if input is array.
+
+    Returns
+    -------
+    dataset
+        A dataset based on input arguments.
+
+    Raises
+    ------
+    ValueError
+        If data is single array but no lagtime is provided or input is list or tuple of length not equal to 2
+
+    Examples
+    --------
+    Create dataset via trajectory + lagtime
+
+    >>> data = np.arange(0, 6)
+    >>> dataset = to_dataset(data, lagtime=1)
+    >>> print(dataset[:])
+    (array([0, 1, 2, 3, 4]), array([1, 2, 3, 4, 5]))
+
+    Create dataset via corresponding data matrices
+
+    >>> data_instantaneous = np.array([0, 1, 2, 3])
+    >>> data_timelagged = np.zeros((4, 2))
+    >>> dataset = to_dataset((data_instantaneous, data_timelagged))
+
+    Printing instantaneous data
+
+    >>> print(dataset[:][0])
+    [0 1 2 3]
+
+    Printing timelagged data
+
+    >>> print(dataset[:][1])
+    [[0. 0.]
+     [0. 0.]
+     [0. 0.]
+     [0. 0.]]
+    """
+    if isinstance(data, tuple):
+        if len(data) != 2:
+            raise ValueError(f"If data is provided as list or tuple the length must be 2 but was {len(data)}.")
+        return TimeLaggedDataset(*data)
+    if isinstance(data, np.ndarray):
+        if lagtime is None:
+            raise ValueError("In case data is a single trajectory the lagtime must be given.")
+        return TrajectoryDataset(lagtime, data)
+    if isinstance(data, list) and len(data) > 0 and isinstance(data[0], np.ndarray):
+        data = ensure_timeseries_data(data)
+        return TrajectoriesDataset.from_numpy(lagtime, data)
+    assert hasattr(data, '__len__') and len(data) > 0, "Data is empty."
+    assert is_timelagged_dataset(data), \
+        "Data is not a time-lagged dataset, i.e., yielding tuples of instantaneous and time-lagged data. " \
+        "In case of multiple trajectories, deeptime.util.data.TrajectoriesDataset may be used."
+    return data

@@ -1,8 +1,9 @@
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 
 import numpy as np
 
 from ._vamp import VAMP
+from ..basis import Identity
 from ..covariance import Covariance, CovarianceModel
 from ..numeric import eig_corr
 
@@ -47,9 +48,11 @@ class TICA(VAMP):
         Determines the number of output dimensions by including dimensions until their cumulative kinetic variance
         exceeds the fraction subspace variance. var_cutoff=1.0 means all numerically available dimensions
         (see epsilon) will be used, unless set by dim. Setting var_cutoff smaller than 1.0 is exclusive with dim.
-    scaling: str or None, default='kinetic_map'
+    scaling : str or None, default='kinetic_map'
         Can be set to :code:`None`, 'kinetic_map' (:footcite:`noe2015kinetic`),
         or 'commute_map' (:footcite:`noe2016commute`). For more details see :attr:`scaling`.
+    observable_transform : callable, optional, default=Identity
+        A feature transformation on the raw data which is used to estimate the model.
 
     Notes
     -----
@@ -122,8 +125,10 @@ class TICA(VAMP):
     """
 
     def __init__(self, lagtime: Optional[int] = None, epsilon: float = 1e-6, dim: Optional[int] = None,
-                 var_cutoff: Optional[float] = None, scaling: Optional[str] = 'kinetic_map'):
-        super(TICA, self).__init__(lagtime=lagtime, dim=dim, var_cutoff=var_cutoff, scaling=scaling, epsilon=epsilon)
+                 var_cutoff: Optional[float] = None, scaling: Optional[str] = 'kinetic_map',
+                 observable_transform: Callable[[np.ndarray], np.ndarray] = Identity()):
+        super(TICA, self).__init__(lagtime=lagtime, dim=dim, var_cutoff=var_cutoff, scaling=scaling, epsilon=epsilon,
+                                   observable_transform=observable_transform)
 
     @classmethod
     def covariance_estimator(cls, lagtime: int, ncov: Union[int] = float('inf')):

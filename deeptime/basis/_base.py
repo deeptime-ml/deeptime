@@ -41,7 +41,7 @@ class Observable(Transformer):
         return self._evaluate(x)
 
     def transform(self, data, **kwargs):
-        return self._evaluate(data)
+        return self(data)
 
 
 class Concatenation(Observable):

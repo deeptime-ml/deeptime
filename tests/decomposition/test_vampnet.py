@@ -1,8 +1,8 @@
 import pytest
-from numpy.testing import assert_raises, assert_, assert_almost_equal
+from numpy.testing import assert_, assert_almost_equal
 from torch.utils.data import DataLoader
 
-from deeptime.data import TimeLaggedDataset
+from deeptime.util.data import TimeLaggedDataset, TrajectoryDataset
 
 pytest.importorskip("torch")
 
@@ -76,7 +76,7 @@ def test_estimator(fixed_seed):
     # train the lobe
     opt = torch.optim.Adam(lobe.parameters(), lr=5e-4)
     for _ in range(50):
-        for X, Y in deeptime.data.timeshifted_split(obs, lagtime=1, chunksize=512):
+        for X, Y in deeptime.util.data.timeshifted_split(obs, lagtime=1, chunksize=512):
             opt.zero_grad()
             lval = vampnet_loss(lobe(torch.from_numpy(X)), lobe(torch.from_numpy(Y)))
             lval.backward()
@@ -101,7 +101,7 @@ def test_estimator(fixed_seed):
 def test_estimator_fit(fixed_seed, dtype):
     data = deeptime.data.ellipsoids()
     obs = data.observations(60000, n_dim=2).astype(dtype)
-    train, val = torch.utils.data.random_split(deeptime.data.TimeLaggedDataset.from_trajectory(1, obs), [50000, 9999])
+    train, val = torch.utils.data.random_split(TrajectoryDataset(1, obs), [50000, 9999])
 
     # set up the lobe
     linear_layer = nn.Linear(2, 1)
@@ -138,7 +138,7 @@ def test_no_side_effects():
     data = deeptime.data.ellipsoids()
     obs = data.observations(100, n_dim=10).astype(np.float32)
     net = VAMPNet(lobe=mlp, dtype=np.float32, learning_rate=1e-8)
-    ds = TimeLaggedDataset.from_trajectory(1, obs)
+    ds = TrajectoryDataset(1, obs)
     train_loader = DataLoader(ds, batch_size=512, shuffle=True)
     model1 = net.fit(train_loader, n_epochs=1).fetch_model()
     model2 = net.fit(train_loader, n_epochs=1).fetch_model()

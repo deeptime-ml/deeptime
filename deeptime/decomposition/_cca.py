@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import scipy
@@ -7,6 +7,7 @@ from ..base import Estimator
 from ..decomposition import KoopmanModel
 from ..kernels import Kernel
 from ..numeric import sort_eigs
+from ..util.types import to_dataset
 
 
 class KernelCCAModel(KoopmanModel):
@@ -78,25 +79,26 @@ class KernelCCA(Estimator):
         self.n_eigs = n_eigs
         self.epsilon = epsilon
 
-    def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
+    def fit(self, data, **kwargs):
         r""" Fit this estimator instance onto data.
 
         Parameters
         ----------
-        data : Tuple of np.ndarray
-            Input data consisting of a pair of data matrices.
+        data
+            Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
         **kwargs
-            Ignored kwargs.
+            Kwargs, may contain lagtime.
 
         Returns
         -------
         self : KernelCCA
             Reference to self.
         """
-        gram_0 = self.kernel.gram(data[0])
-        gram_t = self.kernel.gram(data[1])
+        dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
+        gram_0 = self.kernel.gram(dataset.data)
+        gram_t = self.kernel.gram(dataset.data_lagged)
         # center Gram matrices
-        n = data[0].shape[0]
+        n = dataset.data.shape[0]
         I = np.eye(n)  # identity
         N = I - np.full((n, n), fill_value=1. / n)  # centering matrix
         G_0 = np.linalg.multi_dot([N, gram_0, N])
@@ -112,7 +114,7 @@ class KernelCCA(Estimator):
             eigenvectors = eigenvectors[:, :self.n_eigs]
             eigenvalues = eigenvalues[:self.n_eigs]
 
-        self._model = KernelCCAModel(data[0], self.kernel, eigenvalues, eigenvectors)
+        self._model = KernelCCAModel(dataset.data, self.kernel, eigenvalues, eigenvectors)
         return self
 
     def fetch_model(self) -> Optional[KernelCCAModel]:

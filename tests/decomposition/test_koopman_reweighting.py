@@ -3,7 +3,7 @@ import numpy as np
 import pkg_resources
 
 from deeptime.covariance import KoopmanWeightingModel
-from deeptime.data import timeshifted_split
+from deeptime.util.data import timeshifted_split
 from deeptime.numeric import sort_eigs
 import numpy.linalg as scl
 

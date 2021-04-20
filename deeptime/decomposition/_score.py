@@ -288,6 +288,10 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
     scores = np.empty((n,), float)
     sliding = splitting_mode == 'sliding'
 
+    if random_state is None or isinstance(random_state, int):
+        random_state = np.random.RandomState(random_state)
+    assert isinstance(random_state, np.random.RandomState)
+
     args = [(i, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state, n_jobs) for i in range(n)]
 
     if n_jobs > 1:

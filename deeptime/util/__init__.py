@@ -1,5 +1,23 @@
 r"""
-.. currentmodule: deeptime.numeric
+.. currentmodule: deeptime.util
+
+===============================================================================
+Data utilities
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    data.timeshifted_split
+    data.TimeLaggedDataset
+    data.TrajectoryDataset
+    data.TrajectoriesDataset
+    data.ConcatDataset
+
+===============================================================================
+Statistics utilities
+===============================================================================
 
 .. autosummary::
     :toctree: generated/
@@ -8,7 +26,22 @@ r"""
     QuantityStatistics
     confidence_interval
     LaggedModelValidator
+
+===============================================================================
+Type utilities
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    types.to_dataset
+    types.is_timelagged_dataset
+    types.atleast_nd
 """
 
 from .stats import QuantityStatistics, confidence_interval
 from ._validation import LaggedModelValidator
+
+from . import data
+from . import types

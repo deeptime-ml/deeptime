@@ -121,10 +121,62 @@ class MarkovStateModel(Model):
 
     @cached_property
     def koopman_model(self) -> CovarianceKoopmanModel:
+        r"""Yields a :class:`CovarianceKoopmanModel` based on the transition matrix and stationary
+         distribution of this Markov state model.
+
+        Returns
+        -------
+        model : CovarianceKoopmanModel
+            The model.
+
+        Notes
+        -----
+        If :math:`P\in\mathbb{R}^{n\times n}` denotes the transition matrix and :math:`\mu\in\mathbb{R}^n` denotes
+        the stationary distribution, we define covariance matrices
+
+        .. math::
+            \begin{aligned}
+            C_{00} &= C_{11} = \text{diag} (\mu_1,\ldots,\mu_n)\\
+            C_{01} &= C_{00}P
+            \end{aligned}
+
+        and based on these a Koopman operator :math:`K = C_{00}^{-1/2}C_{01}C_{11}^{-1/2}`.
+
+        See Also
+        --------
+        to_koopman_model
+        """
         return self.to_koopman_model(False)
 
     @cached_property
     def empirical_koopman_model(self) -> CovarianceKoopmanModel:
+        r"""Yields a :class:`CovarianceKoopmanModel` based on the count matrix of this Markov state model.
+
+        Returns
+        -------
+        model : CovarianceKoopmanModel
+            The model.
+
+        Notes
+        -----
+        If :math:`C\in\mathbb{R}^{n\times n}` denotes the count matrix and :math:`P` the transition matrix,
+        we define covariance matrices based on transition count statistics
+
+        .. math::
+
+            \begin{aligned}
+            C_{00} &= \text{diag} \left( \sum_i C_{i1}, \ldots, \sum_i C_{in} \right) \\
+            C_{11} &= \text{diag} \left( \sum_i C_{1i}, \ldots, \sum_i C_{ni} \right) \\
+            C_{01} &= C,
+            \end{aligned}
+
+        and reweight the operator :math:`P` to the empirical distribution via :math:`C_{01\text{, re}} = C_{00}P`.
+        Based on these we define the Koopman operator :math:`K = C_{00}^{-1/2}C_{01\text{, re}}C_{11}^{-1/2}`.
+
+        See Also
+        --------
+        to_koopman_model
+        """
         return self.to_koopman_model(True)
 
     def to_koopman_model(self, empirical: bool = True, epsilon: float = 1e-10):
