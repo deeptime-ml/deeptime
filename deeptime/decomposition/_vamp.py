@@ -242,9 +242,9 @@ class VAMP(Estimator, Transformer):
         """
         if self._covariance_estimator is None:
             self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
-        dataset = to_dataset(data, lagtime=self.lagtime)
-        self._covariance_estimator.partial_fit((self.observable_transform(dataset.data),
-                                                self.observable_transform(dataset.data_lagged)))
+        x, y = to_dataset(data, lagtime=self.lagtime)[:]
+        self._covariance_estimator.partial_fit((self.observable_transform(x),
+                                                self.observable_transform(y)))
         return self
 
     def fit_from_covariances(self, covariances: Union[Covariance, CovarianceModel]):
@@ -284,7 +284,9 @@ class VAMP(Estimator, Transformer):
         """
         dataset = to_dataset(data, lagtime=self.lagtime)
         self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
-        covariances = self._covariance_estimator.partial_fit(dataset[:], weights=weights)\
+        x, y = dataset[:]
+        transformed = (self.observable_transform(x), self.observable_transform(y))
+        covariances = self._covariance_estimator.partial_fit(transformed, weights=weights)\
             .fetch_model()
         return self.fit_from_covariances(covariances)
 
