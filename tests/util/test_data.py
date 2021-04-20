@@ -3,7 +3,7 @@ from numpy.testing import assert_equal, assert_raises, assert_, assert_array_alm
 
 pytest.importorskip("torch")
 
-from deeptime.util.data import timeshifted_split, TimeLaggedDataset
+from deeptime.util.data import timeshifted_split, TrajectoryDataset
 import numpy as np
 
 
@@ -75,7 +75,7 @@ def test_timelagged_dataset(lagtime):
     pytest.importorskip("torch.utils.data")
     import torch.utils.data as data_utils
     data = np.arange(5000)
-    ds = TimeLaggedDataset.from_trajectory(lagtime, data)
+    ds = TrajectoryDataset(lagtime, data)
     np.testing.assert_equal(len(ds), 5000 - lagtime)
     sub_datasets = data_utils.random_split(ds, [1000, 2500, 1500 - lagtime])
 
@@ -103,12 +103,12 @@ def test_timelagged_dataset_multitraj(lagtime, ntraj, stride, start, stop):
     data = data[:ntraj]
     assert_(len(data) == ntraj)
     with assert_raises(AssertionError):
-        TimeLaggedDataset.from_trajectories(1, [])  # empty data
+        TrajectoryDataset.from_trajectories(1, [])  # empty data
     with assert_raises(AssertionError):
-        TimeLaggedDataset.from_trajectories(lagtime=7, data=data)  # lagtime too long
+        TrajectoryDataset.from_trajectories(lagtime=7, data=data)  # lagtime too long
     with assert_raises(AssertionError):
-        TimeLaggedDataset.from_trajectories(lagtime=1, data=data + [np.empty((55, 7))])  # shape mismatch
-    ds = TimeLaggedDataset.from_trajectories(lagtime=lagtime, data=data)
+        TrajectoryDataset.from_trajectories(lagtime=1, data=data + [np.empty((55, 7))])  # shape mismatch
+    ds = TrajectoryDataset.from_trajectories(lagtime=lagtime, data=data)
     assert len(ds) == sum(len(data[i]) - lagtime for i in range(len(data)))
 
     # Iterate over data and see if it is the same as iterating over dataset

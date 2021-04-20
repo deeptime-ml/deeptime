@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_, assert_equal, assert_raises
 
-from deeptime.util.data import TimeLaggedDataset
+from deeptime.util.data import TrajectoryDataset
 from deeptime.util.types import to_dataset
 
 
@@ -20,7 +20,7 @@ def does_not_raise():
     (np.zeros((100, 5)), 96, assert_raises(AssertionError)),
     ((np.zeros((100, 5)), np.zeros((100, 5))), None, does_not_raise()),
     ((np.zeros((100, 5)), np.zeros((105, 5))), None, assert_raises(AssertionError)),
-    (TimeLaggedDataset.from_trajectories(5, [np.zeros((55, 5)), np.zeros((55, 5))]), None, does_not_raise())
+    (TrajectoryDataset.from_trajectories(5, [np.zeros((55, 5)), np.zeros((55, 5))]), None, does_not_raise())
 ], ids=[
     "Trajectory with lagtime",
     "Trajectory without lagtime",

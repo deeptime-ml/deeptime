@@ -5,7 +5,7 @@ from typing import Tuple, Optional, Union, List
 import numpy as np
 from scipy.sparse import spmatrix, issparse
 
-from .data import TimeLaggedDataset
+from .data import TimeLaggedDataset, TrajectoryDataset
 
 
 def atleast_nd(ary, ndim, pos=0):
@@ -184,5 +184,5 @@ def to_dataset(data: Union[TimeLaggedDataset, Tuple[np.ndarray, np.ndarray], np.
     if isinstance(data, np.ndarray):
         if lagtime is None:
             raise ValueError("In case data is a single trajectory the lagtime must be given.")
-        return TimeLaggedDataset.from_trajectory(lagtime, data)
+        return TrajectoryDataset(lagtime, data)
     return data

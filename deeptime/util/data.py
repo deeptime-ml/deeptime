@@ -119,6 +119,14 @@ class ConcatDataset:
         self._cumlen = np.cumsum(self._lengths)
         self._datasets = datasets
 
+    @property
+    def subsets(self):
+        r""" Returns the list of datasets this concat dataset is composed of.
+
+        :type: list of dataset
+        """
+        return self._datasets
+
     def _dataset_index(self, ix):
         from bisect import bisect_right
         ds_index = bisect_right(self._cumlen, ix)
@@ -133,9 +141,52 @@ class ConcatDataset:
         return self._cumlen[-1]
 
 
-class TimeLaggedConcatDataset(ConcatDataset):
+class TimeLaggedDataset:
+    r""" High-level container for time-lagged time-series data.
+    This can be used together with pytorch data tools, i.e., data loaders and other utilities.
 
-    def __init__(self, datasets):
+    Parameters
+    ----------
+    data : (T, n) ndarray
+        The data which is wrapped into a dataset
+    data_lagged : (T, m) ndarray
+        Corresponding timelagged data. Must be of same length.
+    """
+
+    def __init__(self, data, data_lagged):
+        assert len(data) == len(data_lagged), \
+            f"Length of trajectory for data and data_lagged does not match ({len(data)} != {len(data_lagged)})"
+        self._data = data
+        self._data_lagged = data_lagged
+
+    @property
+    def data(self) -> np.ndarray:
+        r""" Instantaneous data. """
+        return self._data
+
+    @property
+    def data_lagged(self) -> np.ndarray:
+        r""" Time-lagged data. """
+        return self._data_lagged
+
+    def __getitem__(self, item):
+        return self._data[item], self._data_lagged[item]
+
+    def __len__(self):
+        return len(self._data)
+
+
+class TimeLaggedConcatDataset(ConcatDataset):
+    r""" Specialization of the :class:`ConcatDataset` which uses that all subsets are time lagged datasets, offering
+    fancy and more efficient slicing / getting items.
+
+    Parameters
+    ----------
+    datasets : list of TimeLaggedDataset
+        The input datasets
+    """
+
+    def __init__(self, datasets: List[TimeLaggedDataset]):
         assert all(isinstance(x, TimeLaggedDataset) for x in datasets)
         super().__init__(datasets)
 
@@ -189,58 +240,36 @@ class TimeLaggedConcatDataset(ConcatDataset):
             return super().__getitem__(ix)
 
 
-class TimeLaggedDataset:
-    r""" High-level container for time-lagged time-series data.
-    This can be used together with pytorch data tools, i.e., data loaders and other utilities.
+class TrajectoryDataset(TimeLaggedDataset):
+    r"""Creates a trajectory dataset from a single trajectory by applying a lagtime.
 
     Parameters
     ----------
-    data : (T, n) ndarray
-        The data which is wrapped into a dataset
-    data_lagged : (T, m) ndarray
-        Corresponding timelagged data. Must be of same length.
+    lagtime : int
+        Lagtime, must be positive. The effective size of the dataset reduces by the selected lagtime.
+    trajectory : (T, d) ndarray
+        Trajectory with T frames in d dimensions.
+
+    Raises
+    ------
+    AssertionError
+        If lagtime is not positive or trajectory is too short for lagtime.
     """
 
-    def __init__(self, data, data_lagged):
-        assert len(data) == len(data_lagged), \
-            f"Length of trajectory for data and data_lagged does not match ({len(data)} != {len(data_lagged)})"
-        self._data = data
-        self._data_lagged = data_lagged
-
-    @property
-    def data(self) -> np.ndarray:
-        r""" Instantaneous data. """
-        return self._data
-
-    @property
-    def data_lagged(self) -> np.ndarray:
-        r""" Time-lagged data. """
-        return self._data_lagged
-
-    @staticmethod
-    def from_trajectory(lagtime: int, data: np.ndarray):
-        r""" Creates a time series dataset from a single trajectory by applying a lagtime.
-
-        Parameters
-        ----------
-        lagtime : int
-            Lagtime, must be positive. The effective size of the dataset reduces by the selected lagtime.
-        data : (T, d) ndarray
-            Trajectory with T frames in d dimensions.
-
-        Returns
-        -------
-        dataset : TimeLaggedDataset
-            The resulting time series dataset.
-
-        Raises
-        ------
-        AssertionError
-            If lagtime is not positive or trajectory is too short for lagtime.
-        """
+    def __init__(self, lagtime, trajectory):
         assert lagtime > 0, "Lagtime must be positive"
-        assert len(data) > lagtime, "Not enough data to satisfy lagtime"
-        return TimeLaggedDataset(data[:-lagtime], data[lagtime:])
+        assert len(trajectory) > lagtime, "Not enough data to satisfy lagtime"
+        super().__init__(trajectory[:-lagtime], trajectory[lagtime:])
+        self._trajectory = trajectory
+        self._lagtime = lagtime
+
+    @property
+    def lagtime(self):
+        return self._lagtime
+
+    @property
+    def trajectory(self):
+        return self._trajectory
 
     @staticmethod
     def from_trajectories(lagtime, data: List[np.ndarray]):
@@ -255,7 +284,7 @@ class TimeLaggedDataset:
 
         Returns
         -------
-        dataset : ConcatDataset
+        dataset : TrajectoriesDataset
             Concatenation of timeseries datasets.
 
         Raises
@@ -264,13 +293,41 @@ class TimeLaggedDataset:
             If data is empty, lagtime is not positive,
             the shapes do not match, or lagtime is too long for any of the trajectories.
         """
-        assert len(data) > 0, "List of data should not be empty."
         assert all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"
-        datasets = [TimeLaggedDataset.from_trajectory(lagtime, traj) for traj in data]
-        return TimeLaggedConcatDataset(datasets)
+        return TrajectoriesDataset([TrajectoryDataset(lagtime, traj) for traj in data])
 
-    def __getitem__(self, item):
-        return self._data[item], self._data_lagged[item]
 
-    def __len__(self):
-        return len(self._data)
+class TrajectoriesDataset(TimeLaggedConcatDataset):
+    r""" Dataset composed of multiple trajectories.
+
+    Parameters
+    ----------
+    data : list of TrajectoryDataset
+        The trajectories in form of trajectory datasets.
+
+    See Also
+    --------
+    TrajectoryDataset.from_trajectories
+        Method to create a TrajectoriesDataset from multiple raw data trajectories.
+    """
+
+    def __init__(self, data: List[TrajectoryDataset]):
+        assert len(data) > 0, "List of data should not be empty."
+        assert all(x.lagtime == data[0].lagtime for x in data), "Lagtime must agree"
+        super().__init__(data)
+
+    @property
+    def lagtime(self):
+        r""" The lagtime.
+
+        :type: int
+        """
+        return self.subsets[0].lagtime
+
+    @property
+    def trajectories(self):
+        r""" Contained raw trajectories.
+
+        :type: list of ndarray
+        """
+        return [x.trajectory for x in self.subsets]
