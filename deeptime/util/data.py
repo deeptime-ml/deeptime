@@ -151,6 +151,10 @@ class TimeLaggedDataset:
         The data which is wrapped into a dataset
     data_lagged : (T, m) ndarray
         Corresponding timelagged data. Must be of same length.
+
+    See Also
+    --------
+    TimeLaggedConcatDataset, TrajectoryDataset, TrajectoriesDataset
     """
 
     def __init__(self, data, data_lagged):
@@ -293,8 +297,7 @@ class TrajectoryDataset(TimeLaggedDataset):
             If data is empty, lagtime is not positive,
             the shapes do not match, or lagtime is too long for any of the trajectories.
         """
-        assert all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"
-        return TrajectoriesDataset([TrajectoryDataset(lagtime, traj) for traj in data])
+        return TrajectoriesDataset.from_numpy(lagtime, data)
 
 
 class TrajectoriesDataset(TimeLaggedConcatDataset):
@@ -315,6 +318,31 @@ class TrajectoriesDataset(TimeLaggedConcatDataset):
         assert len(data) > 0, "List of data should not be empty."
         assert all(x.lagtime == data[0].lagtime for x in data), "Lagtime must agree"
         super().__init__(data)
+
+    @staticmethod
+    def from_numpy(lagtime, data: List[np.ndarray]):
+        r""" Creates a time series dataset from multiples trajectories by applying a lagtime.
+
+        Parameters
+        ----------
+        lagtime : int
+            Lagtime, must be positive. The effective size of the dataset reduces by the selected lagtime.
+        data : list of ndarray
+            List of trajectories.
+
+        Returns
+        -------
+        dataset : TrajectoriesDataset
+            Concatenation of timeseries datasets.
+
+        Raises
+        ------
+        AssertionError
+            If data is empty, lagtime is not positive,
+            the shapes do not match, or lagtime is too long for any of the trajectories.
+        """
+        assert len(data) > 0 and all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"
+        return TrajectoriesDataset([TrajectoryDataset(lagtime, traj) for traj in data])
 
     @property
     def lagtime(self):

@@ -13,7 +13,7 @@ from ..base import Estimator, Transformer
 from ..basis import Identity
 from ..covariance import Covariance, CovarianceModel
 from ..numeric import spd_inv_split
-from ..util.types import ensure_timeseries_data
+from ..util.types import to_dataset
 
 
 class VAMP(Estimator, Transformer):
@@ -226,7 +226,7 @@ class VAMP(Estimator, Transformer):
             covariances = covariances.fetch_model()
         return covariances
 
-    def partial_fit(self, data: Tuple[np.ndarray, np.ndarray]):
+    def partial_fit(self, data):
         r""" Updates the covariance estimates through a new batch of data.
 
         Parameters
@@ -240,11 +240,11 @@ class VAMP(Estimator, Transformer):
         self : VAMP
             Reference to self.
         """
-        if self.lagtime is None:
-            raise ValueError("Calling partial fit requires that a lagtime is set.")
         if self._covariance_estimator is None:
             self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
-        self._covariance_estimator.partial_fit((self.observable_transform(data[0]), self.observable_transform(data[1])))
+        dataset = to_dataset(data, lagtime=self.lagtime)
+        self._covariance_estimator.partial_fit((self.observable_transform(dataset.data),
+                                                self.observable_transform(dataset.data_lagged)))
         return self
 
     def fit_from_covariances(self, covariances: Union[Covariance, CovarianceModel]):
@@ -266,15 +266,14 @@ class VAMP(Estimator, Transformer):
         self._model = self._decompose(covariances)
         return self
 
-    def fit_from_timeseries(self, data: Union[np.ndarray, List[np.ndarray]],
-                            weights=None):
+    def fit_from_timeseries(self, data, weights=None):
         r""" Estimates a :class:`CovarianceKoopmanModel` directly from time-series data using the :class:`Covariance`
         estimator. For parameters `dim`, `scaling`, `epsilon`.
 
         Parameters
         ----------
-        data : (T, n) ndarray or list thereof
-            Input time-series.
+        data
+            Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
         weights
             See the :class:`Covariance <deeptime.covariance.Covariance>` estimator.
 
@@ -283,8 +282,10 @@ class VAMP(Estimator, Transformer):
         self : VAMP
             Reference to self.
         """
+        dataset = to_dataset(data, lagtime=self.lagtime)
         self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
-        covariances = self._covariance_estimator.fit(self.observable_transform(data), weights=weights).fetch_model()
+        covariances = self._covariance_estimator.partial_fit(dataset[:], weights=weights)\
+            .fetch_model()
         return self.fit_from_covariances(covariances)
 
     @property

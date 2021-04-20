@@ -485,7 +485,8 @@ class Covariance(Estimator):
             x, y = data
         else:
             x, y = data, None
-        # TODO: types, shapes checking!
+        if weights is not None and hasattr(weights, 'weights'):
+            weights = weights(x)
         try:
             self._rc.add(x, y, column_selection=column_selection, weights=weights)
         except MemoryError:

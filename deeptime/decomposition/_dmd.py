@@ -6,7 +6,8 @@ import scipy
 from ._koopman import KoopmanModel
 from ..base import Estimator, Model, Transformer
 from ..kernels import Kernel
-from ..numeric import sort_eigs, eigs, spd_inv
+from ..numeric import sort_eigs, eigs
+from ..util.types import to_dataset
 
 
 class DMDModel(Model, Transformer):
@@ -122,8 +123,23 @@ class DMD(Estimator, Transformer):
         elif self.driver == 'scipy':
             return scipy.linalg.eig(mat, **kw)
 
-    def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
-        X, Y = data[0].T, data[1].T  # per convention arrays are [T, d] so here we transpose them
+    def fit(self, data, **kwargs):
+        r""" Fit this estimator instance onto data.
+
+        Parameters
+        ----------
+        data
+            Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
+        **kwargs
+            Kwargs, may contain lagtime.
+
+        Returns
+        -------
+        self : DMD
+            Reference to self.
+        """
+        dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
+        X, Y = dataset.data.T, dataset.data_lagged.T  # per convention arrays are [T, d] so here we transpose them
 
         U, s, Vt = self._svd(X, full_matrices=False)
         if self.rank is not None:
@@ -274,8 +290,23 @@ class EDMD(Estimator):
         """
         return self._model
 
-    def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
-        x, y = data  # unpack
+    def fit(self, data, **kwargs):
+        r""" Fit this estimator instance onto data.
+
+        Parameters
+        ----------
+        data
+            Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
+        **kwargs
+            Kwargs, may contain lagtime.
+
+        Returns
+        -------
+        self : EDMD
+            Reference to self.
+        """
+        dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
+        x, y = dataset.data, dataset.data_lagged
         n_data = x.shape[0]
         assert n_data == y.shape[0], "Trajectories for data and timelagged data must be of same length!"
         psi_x = self.basis(x).T
@@ -358,26 +389,27 @@ class KernelEDMD(Estimator):
         """
         return super().fetch_model()
 
-    def fit(self, data: Tuple[np.ndarray, np.ndarray], **kwargs):
-        r""" Fits this instance of the kEDMD estimator on data.
+    def fit(self, data, **kwargs):
+        r""" Fit this estimator instance onto data.
 
         Parameters
         ----------
-        data : tuple of (T, n) np.ndarray
-            Input data of corresponding observations `data[0][i]` and `data[1][i]`.
+        data
+            Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
         **kwargs
-            Ignored kwargs for interface compatibility.
+            Kwargs, may contain lagtime.
 
         Returns
         -------
         self : KernelEDMD
             Reference to self.
         """
-        gram_0 = self.kernel.gram(data[0])  # G_XX
-        gram_1 = self.kernel.apply(*data)  # G_XY
+        dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
+        gram_0 = self.kernel.gram(dataset.data)  # G_XX
+        gram_1 = self.kernel.apply(dataset.data, dataset.data_lagged)  # G_XY
 
         A = scipy.linalg.solve(gram_0 + self.epsilon * np.eye(gram_0.shape[0]), gram_1.T, assume_a='sym')
         eigenvalues, eigenvectors = eigs(A, n_eigs=self.n_eigs)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
-        self._model = KernelEDMDModel(data[0], eigenvalues, eigenvectors, self.kernel)
+        self._model = KernelEDMDModel(dataset.data, eigenvalues, eigenvectors, self.kernel)
         return self

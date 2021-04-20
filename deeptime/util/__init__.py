@@ -26,9 +26,22 @@ Statistics utilities
     QuantityStatistics
     confidence_interval
     LaggedModelValidator
+
+===============================================================================
+Type utilities
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    types.to_dataset
+    types.is_timelagged_dataset
+    types.atleast_nd
 """
 
 from .stats import QuantityStatistics, confidence_interval
 from ._validation import LaggedModelValidator
 
 from . import data
+from . import types
