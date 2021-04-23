@@ -15,9 +15,7 @@ using void_t = void;
 template< class, class = void >
 struct system_has_potential : std::false_type { };
 template< class T >
-struct system_has_potential<T, void_t<decltype(std::declval<T>().energy(std::declval<typename T::State>()))>> : std::true_type { };
-template< class T >
-struct system_has_potential<T, void_t<decltype(std::declval<T>().energy(0., std::declval<typename T::State>()))>> : std::true_type { };
+struct system_has_potential<T, void_t<decltype(std::declval<T>().energy)>> : std::true_type { };
 }
 
 template<typename T>

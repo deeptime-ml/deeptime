@@ -9,34 +9,20 @@ random_state = np.random.RandomState(33)
 
 cmap = plt.cm.viridis
 
-system = time_dependent_quintuple_well(h=1e-3, n_steps=10, beta=100)
+system = time_dependent_quintuple_well(h=1e-4, n_steps=100, beta=5)
 x = np.arange(-2.5, 2.5, 0.1)
 y = np.arange(-2.5, 2.5, 0.1)
 xy = np.meshgrid(x, y)
 
-gradxs = []
-gradys = []
-gradn = []
-xxyy = np.dstack(xy)
-for pt in xxyy.reshape(-1, 2):
-    gradx, grady = system.rhs(0., [pt[0], pt[1]])
-    gradxs.append(gradx)
-    gradys.append(grady)
-    gradn.append(np.linalg.norm([gradx, grady]))
-
-cb = plt.contourf(*xy, np.array(gradn).reshape(xy[0].shape), levels=np.linspace(-5, 5, 100))
-plt.colorbar(cb)
-plt.show()
-
 trajs = []
-for _ in range(10):
+for _ in range(100):
     x0 = random_state.uniform(-2.5, 2.5, size=(1, 2))
-    traj = system.trajectory(0., [[0.1, 0.1]], n_evaluations=int(10 / (1e-3 * 10)))
+    traj = system.trajectory(0., x0, n_evaluations=500)
     trajs.append(traj)
 trajs = np.stack(trajs)
 
 l = []
-for t in tqdm(np.arange(0., 10., 1e-2)):
+for t in tqdm(np.arange(0., 100., 0.01)):
     V = system.potential(t, np.dstack(xy).reshape(-1, 2)).reshape(xy[0].shape)
     l.append(V)
 l = np.stack(l)
@@ -45,7 +31,9 @@ vmin = np.min(l)
 vmax = np.max(l)
 
 fig, ax = plt.subplots()
-handle = ax.contourf(*xy, l[0], vmin=vmin, vmax=vmax, cmap=cmap)
+ax.set_xlim([np.min(xy[0]), np.max(xy[0])])
+ax.set_ylim([np.min(xy[1]), np.max(xy[1])])
+handle = ax.contourf(*xy, l[0], vmin=vmin, vmax=vmax, cmap=cmap, levels=1000)
 scatter_handle = ax.scatter(*trajs[:, 0, :].T, color='red', zorder=100)
 handles = [scatter_handle, handle]
 
@@ -60,8 +48,4 @@ def update(i):
     return out
 
 
-interval = .01
-ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=False, frames=len(l))
-
-# ani.save('bleh.mp4')
-plt.show()
+ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=False, frames=trajs.shape[1])

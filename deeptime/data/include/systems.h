@@ -100,14 +100,13 @@ struct Prinz {
                         - 40. * std::exp(-40. * (x[0] + 0.5) * (x[0] + 0.5)) * (x[0] + 0.5)) }};
     }
 
-    Matrix<T, 1> sigma{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
-
     T h {1e-3};
     std::size_t nSteps{1};
     T mass {1.};
     T damping {1.};
     T kT {1.};
 
+    Matrix<T, 1> sigma{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
     void updateSigma() {
         sigma = Matrix<T, 1>{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
     };
@@ -294,8 +293,8 @@ struct TimeDependent5Well {
         auto y = xvec[1];
         auto pi = dt::constants::pi<T>();
         return {{
-                        -(s * y * std::sin(0.5 * pi * t - s * std::atan2(y, x)) + 10. * x * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y),
-                        -(s * x * std::sin(0.5 * pi * t - s * std::atan2(y, x)) - 10. * y * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y)
+                        + (s * y * std::sin(0.5 * pi * t - s * std::atan2(y, x)) - 10. * x * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y),
+                        - (s * x * std::sin(0.5 * pi * t - s * std::atan2(y, x)) + 10. * y * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y)
                 }};
     }
 
