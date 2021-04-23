@@ -8,19 +8,6 @@
 #include "pbf.h"
 #include "systems.h"
 
-namespace detail{
-template< class... >
-using void_t = void;
-
-template< class, class = void >
-struct system_has_potential : std::false_type { };
-template< class T >
-struct system_has_potential<T, void_t<decltype(std::declval<T>().energy)>> : std::true_type { };
-}
-
-template<typename T>
-static constexpr bool system_has_potential_v = detail::system_has_potential<T>::value;
-
 using namespace pybind11::literals;
 
 using dtype = float;

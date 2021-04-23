@@ -20,6 +20,21 @@ using Vector = std::array<T, DIM>;
 template<typename T, std::size_t DIM>
 using Matrix = Vector<Vector<T, DIM>, DIM>;
 
+namespace detail{
+template< class, class = void >
+struct system_has_potential : std::false_type { };
+template< class T >
+struct system_has_potential<T, std::void_t<decltype(std::declval<T>().energy(std::declval<typename T::State>()))>> : std::true_type { };
+
+template< class, class = void >
+struct system_has_potential_time : std::false_type { };
+template< class T >
+struct system_has_potential_time<T, std::void_t<decltype(std::declval<T>().energy(std::declval<double>(), std::declval<typename T::State>()))>> : std::true_type { };
+}
+
+template<typename T>
+static constexpr bool system_has_potential_v = detail::system_has_potential<T>::value || detail::system_has_potential_time<T>::value;
+
 //------------------------------------------------------------------------------
 // ABC flow
 //------------------------------------------------------------------------------

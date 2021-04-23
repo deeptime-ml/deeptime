@@ -963,15 +963,48 @@ def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
     .. math::
         V(t, x, y) = \cos \left(s\;\mathrm{arctan}(y, x) - \frac{\pi}{2}t \right) + 10 \left( \sqrt{x^2+y^2} - \frac{3}{2} - \frac{1}{2}\sin(2\pi t) \right)^2
 
+    subject to the SDE
+
+    .. math::
+        dX_t = -\nabla V(X_t, t) dt + \sqrt{2\beta^{-1}}dW_t,
+
+    where :math:`\beta` is the temperature and :math:`W_t` a Wiener process.
+
     Parameters
     ----------
-    h
-    n_steps
-    beta
+    h : float, optional, default=1e-3
+        Integration step size.
+    n_steps : int, optional, default=10000
+        Number of steps to evaluate between recording states.
+    beta : float, default=5.
+        The temperature.
 
     Returns
     -------
+    system
+        The system.
 
+    Examples
+    --------
+    The model possesses the capability to simulate trajectories as well as be evaluated at test points:
+
+    >>> import numpy as np
+    >>> import deeptime as dt
+
+    First, set up the model (which internally already creates the integrator).
+
+    >>> model = dt.data.time_dependent_quintuple_well(h=1e-3, n_steps=100, beta=5.)  # create model instance
+
+    Now, a trajectory can be generated:
+
+    >>> traj = model.trajectory(0., np.array([[-1., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0] with t=0
+
+    Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
+
+    >>> test_points = np.random.uniform(-2, 2, (100, 2))  # 100 test point in [-2, 2] x [-2, 2]
+    >>> evaluations = model(0, test_points, seed=53, n_jobs=1)  # start at t=0
+    >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import TimeDependent5Well2D
     system = TimeDependent5Well2D()
