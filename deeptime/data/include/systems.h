@@ -3,7 +3,6 @@
 #include <vector>
 #include <random>
 #include <chrono>
-#include <numbers>
 
 #include "common.h"
 #include "integrator.h"
@@ -285,7 +284,7 @@ struct TimeDependent5Well {
     constexpr dtype energy(double t, const State &x) const {
         const auto& xv = x[0];
         const auto& yv = x[1];
-        auto term1 = std::cos(s * std::atan2(yv, xv) - 0.5 * dt::constants::pi<T> * t);
+        auto term1 = std::cos(s * std::atan2(yv, xv) - 0.5 * dt::constants::pi<T>() * t);
         auto term2 = std::sqrt(xv*xv + yv*yv) - 3./2 - 0.5 * std::sin(2 * dt::constants::pi<T>() * t);
         return term1 + 10 * term2 * term2;
     }
@@ -293,16 +292,23 @@ struct TimeDependent5Well {
     constexpr State f(double t, const State &xvec) const {
         auto x = xvec[0];
         auto y = xvec[1];
+        auto pi = dt::constants::pi<T>();
         return {{
-                        (s * y * std::sin(1.5708 * t - s * std::atan2(y, x)) + 10. * x * std::sqrt(x*x + y*y) * (-std::sin(2*dt::constants::pi<T>() * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y),
-                        (s * x * std::sin(1.5708 * t - s * std::atan2(y, x)) - 10. * y * std::sqrt(x*x + y*y) * (-std::sin(2*dt::constants::pi<T>() * t) + 2 * std::sqrt(x*x + y*y) - 3))/ (x*x + y*y)
+                        -(s * y * std::sin(0.5 * pi * t - s * std::atan2(y, x)) + 10. * x * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y),
+                        -(s * x * std::sin(0.5 * pi * t - s * std::atan2(y, x)) - 10. * y * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y)
                 }};
     }
 
-    static constexpr Matrix<T, 2> sigma{{{{1.09, 0.0}}, {{0.0, 1.09}}}};
+    T beta = 5.;
     T h{1e-5};
     T s = 5;
     std::size_t nSteps{10000};
+
+    Matrix<T, 2> sigma{{ {{ std::sqrt( 2. / beta ), 0. }}, {{0., std::sqrt( 2. / beta ) }} }};
+
+    void updateSigma() {
+        sigma = {{ {{ std::sqrt( 2. / beta ), 0. }}, {{0., std::sqrt( 2. / beta ) }} }};
+    };
 };
 
 template<typename T, typename = void>
@@ -389,15 +395,17 @@ typename System::Integrator createIntegrator(std::int64_t seed, sde_tag) {
 }
 
 namespace detail {
-template<typename Time>
-auto toBuf(const Time &arr) {
+template<typename Time, typename System>
+auto toBuf(const Time &arr, System) {
     return arr.template unchecked<1>();
 }
 
-template<>
-auto toBuf(const double &arr) {
-    return [arr](int) {
-        return arr;
+template<typename System>
+auto toBuf(const double &t0, const System &system) {
+    auto h = system.h;
+    auto nSteps = system.nSteps;
+    return [t0, h, nSteps](int i) {
+        return t0 + h * nSteps * i;
     };
 }
 }
@@ -411,7 +419,7 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const Time &tArr, const
     np_array_nfc<dtype> y({x.shape(0), x.shape(1)});
 
     auto xBuf = x.template unchecked<2>();
-    auto tBuf = detail::toBuf(tArr);
+    auto tBuf = detail::toBuf(tArr, system);
     {
         const auto d = x.shape(1); // dimension of the state space
         if (d != static_cast<decltype(d)>(System::DIM)) {
@@ -479,7 +487,7 @@ trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::
 
     auto xBuf = x.template unchecked<2>();
     auto yBuf = y.template mutable_unchecked<2>();
-    auto tBuf = detail::toBuf(tArr);
+    auto tBuf = detail::toBuf(tArr, system);
 
     auto integrator = createIntegrator<System>(seed, typename System::system_type());
 

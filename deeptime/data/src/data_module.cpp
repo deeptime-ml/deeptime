@@ -16,6 +16,8 @@ template< class, class = void >
 struct system_has_potential : std::false_type { };
 template< class T >
 struct system_has_potential<T, void_t<decltype(std::declval<T>().energy(std::declval<typename T::State>()))>> : std::true_type { };
+template< class T >
+struct system_has_potential<T, void_t<decltype(std::declval<T>().energy(0., std::declval<typename T::State>()))>> : std::true_type { };
 }
 
 template<typename T>
@@ -96,9 +98,8 @@ auto exportSystem(py::module& m, const std::string &name) {
             .def(py::init<InitArgs...>())
             .def_readwrite("h", &System::h)
             .def_readwrite("n_steps", &System::nSteps)
-            .def_readonly_static("dimension", &System::DIM)
-
-            ;
+            .def("rhs", &System::f)
+            .def_readonly_static("dimension", &System::DIM);
     if constexpr(is_time_dependent<System>::value) {
         clazz.def("trajectory", [](System &self, double t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
             return trajectory(self, t, x, length, seed);
@@ -215,7 +216,14 @@ PYBIND11_MODULE(_data_bindings, m) {
     exportSystem<DoubleWell2D<double>>(m, "DoubleWell2D");
     exportSystem<QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
     exportSystem<TripleWell2D<double>>(m, "TripleWell2D");
-    exportSystem<TimeDependent5Well<double>>(m, "TimeDependent5Well2D");
+    {
+        using System = TimeDependent5Well<double>;
+        auto clazz = exportSystem<System>(m, "TimeDependent5Well2D");
+        clazz.def_property("beta", [](const System &self) { return self.beta; }, [](System &self, double beta) {
+            self.beta = beta;
+            self.updateSigma();
+        });
+    }
     exportSystem<QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
     exportPyODE<1>(m, "PyODE1D");

@@ -954,6 +954,27 @@ def double_well_2d(h=1e-3, n_steps=10000):
     return system
 
 
+def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
+    r"""todo
+
+    Parameters
+    ----------
+    h
+    n_steps
+    beta
+
+    Returns
+    -------
+
+    """
+    from ._data_bindings import TimeDependent5Well2D
+    system = TimeDependent5Well2D()
+    system.h = h
+    system.n_steps = n_steps
+    system.beta = beta
+    return system
+
+
 def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: int):
     r""" This function allows the definition of custom stochastic differential equations (SDEs) of the form
 
