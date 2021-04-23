@@ -15,13 +15,15 @@ def ncr(n, r):
     return numer // denom
 
 
-def test_feature_names():
+@pytest.mark.parametrize('input_features', [None, ['y']])
+def test_feature_names(input_features):
     mon = Monomials(3, 1)
-    feature_names = mon.get_feature_names(["y"])
+    feature_names = mon.get_feature_names(input_features=input_features)
+    feat = 'x0' if input_features is None else input_features[0]
     assert_('' in feature_names)
-    assert_('y' in feature_names)
-    assert_('y^2' in feature_names)
-    assert_('y^3' in feature_names)
+    assert_(f'{feat}' in feature_names)
+    assert_(f'{feat}^2' in feature_names)
+    assert_(f'{feat}^3' in feature_names)
 
     identity = Identity()
     assert_("z" in identity.get_feature_names(["z"]))

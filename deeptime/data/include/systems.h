@@ -20,6 +20,21 @@ using Vector = std::array<T, DIM>;
 template<typename T, std::size_t DIM>
 using Matrix = Vector<Vector<T, DIM>, DIM>;
 
+namespace detail{
+template< class, class = void >
+struct system_has_potential : std::false_type { };
+template< class T >
+struct system_has_potential<T, std::void_t<decltype(std::declval<T>().energy(std::declval<typename T::State>()))>> : std::true_type { };
+
+template< class, class = void >
+struct system_has_potential_time : std::false_type { };
+template< class T >
+struct system_has_potential_time<T, std::void_t<decltype(std::declval<T>().energy(std::declval<double>(), std::declval<typename T::State>()))>> : std::true_type { };
+}
+
+template<typename T>
+static constexpr bool system_has_potential_v = detail::system_has_potential<T>::value || detail::system_has_potential_time<T>::value;
+
 //------------------------------------------------------------------------------
 // ABC flow
 //------------------------------------------------------------------------------
@@ -100,14 +115,13 @@ struct Prinz {
                         - 40. * std::exp(-40. * (x[0] + 0.5) * (x[0] + 0.5)) * (x[0] + 0.5)) }};
     }
 
-    Matrix<T, 1> sigma{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
-
     T h {1e-3};
     std::size_t nSteps{1};
     T mass {1.};
     T damping {1.};
     T kT {1.};
 
+    Matrix<T, 1> sigma{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
     void updateSigma() {
         sigma = Matrix<T, 1>{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
     };
@@ -269,6 +283,53 @@ struct TripleWell2D {
     std::size_t nSteps{10000};
 };
 
+//------------------------------------------------------------------------------
+// Time-dependent 5-well
+//------------------------------------------------------------------------------
+template<typename T>
+struct TimeDependent5Well {
+    using system_type = sde_tag;
+
+    static constexpr std::size_t DIM = 2;
+    using dtype = T;
+    using State = Vector<T, DIM>;
+    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+
+    constexpr dtype energy(double t, const State &x) const {
+        const auto& xv = x[0];
+        const auto& yv = x[1];
+        auto term1 = std::cos(s * std::atan2(yv, xv) - 0.5 * dt::constants::pi<T>() * t);
+        auto term2 = std::sqrt(xv*xv + yv*yv) - 3./2 - 0.5 * std::sin(2 * dt::constants::pi<T>() * t);
+        return term1 + 10 * term2 * term2;
+    }
+
+    constexpr State f(double t, const State &xvec) const {
+        auto x = xvec[0];
+        auto y = xvec[1];
+        auto pi = dt::constants::pi<T>();
+        return {{
+                        + (s * y * std::sin(0.5 * pi * t - s * std::atan2(y, x)) - 10. * x * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y),
+                        - (s * x * std::sin(0.5 * pi * t - s * std::atan2(y, x)) + 10. * y * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y)
+                }};
+    }
+
+    T beta = 5.;
+    T h{1e-5};
+    T s = 5;
+    std::size_t nSteps{10000};
+
+    Matrix<T, 2> sigma{{ {{ std::sqrt( 2. / beta ), 0. }}, {{0., std::sqrt( 2. / beta ) }} }};
+
+    void updateSigma() {
+        sigma = {{ {{ std::sqrt( 2. / beta ), 0. }}, {{0., std::sqrt( 2. / beta ) }} }};
+    };
+};
+
+template<typename T, typename = void>
+struct is_time_dependent : std::false_type {};
+
+template<typename T>
+struct is_time_dependent<T, std::void_t<decltype(std::declval<T>().f(0., typename T::State{}))>> : std::true_type {};
 
 namespace detail {
 template<typename T>
@@ -285,23 +346,41 @@ using IsMemberSigma = decltype(is_member_sigma<T>(0));
 
 template<typename System>
 typename System::State evaluate(const System &system, typename System::Integrator &integrator,
-                                const typename System::State &x, double h, std::size_t nSteps, ode_tag) {
-    auto rhs = [&](const auto &_x) {
-        return system.f(_x);
-    };
-    return integrator.eval(rhs, h, nSteps, x);
+                                double t0, const typename System::State &x, double h, std::size_t nSteps, ode_tag) {
+    if constexpr(is_time_dependent<System>::value) {
+        auto rhs = [&](typename System::dtype t, const auto &_x) {
+            return system.f(t, _x);
+        };
+        return integrator.eval(rhs, h, nSteps, t0, x);
+    } else {
+        auto rhs = [&](typename System::dtype, const auto &_x) {
+            return system.f(_x);
+        };
+        return integrator.eval(rhs, h, nSteps, t0, x);
+    }
 }
 
 template<typename System>
 typename System::State evaluate(const System &system, typename System::Integrator &integrator,
-                                const typename System::State &x, double h, std::size_t nSteps, sde_tag) {
-    auto rhs = [&system](const auto &_x) {
-        return system.f(_x);
-    };
-    if constexpr(detail::IsMemberSigma<System>{}) {
-        return integrator.eval(rhs, system.sigma, h, nSteps, x);
+                                double t0, const typename System::State &x, double h, std::size_t nSteps, sde_tag) {
+    if constexpr(is_time_dependent<System>::value) {
+        auto rhs = [&system](typename System::dtype t, const auto &_x) {
+            return system.f(t, _x);
+        };
+        if constexpr(detail::IsMemberSigma<System>{}) {
+            return integrator.eval(rhs, system.sigma, h, nSteps, t0, x);
+        } else {
+            return integrator.eval(rhs, System::sigma, h, nSteps, t0, x);
+        }
     } else {
-        return integrator.eval(rhs, System::sigma, h, nSteps, x);
+        auto rhs = [&system](typename System::dtype, const auto &_x) {
+            return system.f(_x);
+        };
+        if constexpr(detail::IsMemberSigma<System>{}) {
+            return integrator.eval(rhs, system.sigma, h, nSteps, t0, x);
+        } else {
+            return integrator.eval(rhs, System::sigma, h, nSteps, t0, x);
+        }
     }
 }
 }
@@ -309,14 +388,14 @@ typename System::State evaluate(const System &system, typename System::Integrato
 
 template<typename System>
 typename System::State evaluate(const System &system, typename System::Integrator &integrator,
-                                const typename System::State &x, double h, std::size_t nSteps) {
-    return detail::evaluate(system, integrator, x, h, nSteps, typename System::system_type());
+                                double t0, const typename System::State &x, double h, std::size_t nSteps) {
+    return detail::evaluate(system, integrator, t0, x, h, nSteps, typename System::system_type());
 }
 
 template<typename System>
 typename System::State evaluate(const System &system, typename System::Integrator &integrator,
-                                const typename System::State &x) {
-    return detail::evaluate(system, integrator, x, system.h, system.nSteps, typename System::system_type());
+                                double t0, const typename System::State &x) {
+    return detail::evaluate(system, integrator, t0, x, system.h, system.nSteps, typename System::system_type());
 }
 
 template<typename System>
@@ -329,8 +408,24 @@ typename System::Integrator createIntegrator(std::int64_t seed, sde_tag) {
     return typename System::Integrator{seed};
 }
 
-template<typename dtype, typename System>
-np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtype> &x,
+namespace detail {
+template<typename Time, typename System>
+auto toBuf(const Time &arr, System) {
+    return arr.template unchecked<1>();
+}
+
+template<typename System>
+auto toBuf(const double &t0, const System &system) {
+    auto h = system.h;
+    auto nSteps = system.nSteps;
+    return [t0, h, nSteps](int i) {
+        return t0 + h * nSteps * i;
+    };
+}
+}
+
+template<typename dtype, typename System, typename Time>
+np_array_nfc<dtype> evaluateSystem(const System &system, const Time &tArr, const np_array_nfc<dtype> &x,
                                    std::int64_t seed = -1, int nThreads = -1) {
     if (seed >= 0 && nThreads != 1) {
         throw std::invalid_argument("Fixing the seed requires setting the number of threads to 1.");
@@ -338,6 +433,7 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
     np_array_nfc<dtype> y({x.shape(0), x.shape(1)});
 
     auto xBuf = x.template unchecked<2>();
+    auto tBuf = detail::toBuf(tArr, system);
     {
         const auto d = x.shape(1); // dimension of the state space
         if (d != static_cast<decltype(d)>(System::DIM)) {
@@ -361,7 +457,7 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
     typename System::State testPoint = {};
 
     // for all test points
-    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, testPoint, seed)
+    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, tBuf, testPoint, seed)
     {
         auto integrator = createIntegrator<System>(seed, typename System::system_type());
 
@@ -372,8 +468,8 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
             for (std::size_t k = 0; k < System::DIM; ++k) {
                 testPoint[k] = xBuf(i, k);
             }
-
-            auto yi = evaluate(system, integrator, testPoint); // evaluate dynamical system
+            auto t = tBuf(i);
+            auto yi = evaluate(system, integrator, t, testPoint); // evaluate dynamical system
 
             for (std::size_t k = 0; k < System::DIM; ++k) {
                 // copy result into y vector
@@ -385,9 +481,9 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
     return y;
 }
 
-template<typename dtype, typename System>
+template<typename dtype, typename System, typename Time>
 np_array_nfc<dtype>
-trajectory(System &system, const np_array_nfc<dtype> &x, std::size_t length, std::int64_t seed = -1) {
+trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::size_t length, std::int64_t seed = -1) {
     np_array_nfc<dtype> y({length, System::DIM});
     {
         const auto d = x.shape(1);
@@ -405,6 +501,7 @@ trajectory(System &system, const np_array_nfc<dtype> &x, std::size_t length, std
 
     auto xBuf = x.template unchecked<2>();
     auto yBuf = y.template mutable_unchecked<2>();
+    auto tBuf = detail::toBuf(tArr, system);
 
     auto integrator = createIntegrator<System>(seed, typename System::system_type());
 
@@ -421,7 +518,8 @@ trajectory(System &system, const np_array_nfc<dtype> &x, std::size_t length, std
         }
 
         // evaluate dynamical system
-        auto yi = evaluate(system, integrator, testPoint);
+        auto t = tBuf(i);
+        auto yi = evaluate(system, integrator, t, testPoint);
 
         // copy result into y vector
         for (size_t k = 0; k < System::DIM; ++k) {

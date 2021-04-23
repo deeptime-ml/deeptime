@@ -17,32 +17,34 @@ class RungeKutta {
 public:
 
     template<typename F>
-    State eval(F &&f, double h, std::size_t nSteps, const State &y0) {
+    State eval(F &&f, double h, std::size_t nSteps, double t0, const State &y0) {
         auto y = y0;
+        auto t = t0;
         for (std::size_t i = 0; i < nSteps; ++i) {
-            y = step(f, h, y);
+            y = step(f, h, t, y);
+            t += h;
         }
 
         return y;
     }
 
     template<typename F>
-    State step(F &&f, double h, const State &y) {
+    State step(F &&f, double h, double t, const State &y) {
         State yt;
 
-        k1 = f(y);  // k1 = f(y)
+        k1 = f(t, y);  // k1 = f(t, y)
         for (std::size_t j = 0; j < DIM; ++j) {
             yt[j] = y[j] + (h / 2.) * k1[j];
         }
-        k2 = f(yt); // compute k2 = f(y+h/2*k1)
+        k2 = f(t + h / 2., yt); // compute k2 = f(t + h/2, y+h/2*k1)
         for (std::size_t j = 0; j < DIM; ++j) {
             yt[j] = y[j] + (h / 2.) * k2[j];
         }
-        k3 = f(yt); // compute k3 = f(y+h/2*k2)
+        k3 = f(t + h/2, yt); // compute k3 = f(t + h/2, y+h/2*k2)
         for (std::size_t j = 0; j < DIM; ++j) {
             yt[j] = y[j] + h * k3[j];
         }
-        k4 = f(yt);  // compute k4 = f(y+h*k3)
+        k4 = f(t + h, yt);  // compute k4 = f(t+h, y+h*k3)
 
         for (size_t j = 0; j < DIM; ++j) {
             // compute x_{k+1} = x_k + h/6*(k1 + 2*k2 + 2*k3 + k4)
@@ -69,19 +71,21 @@ public:
     }
 
     template<typename F, typename Sigma>
-    State eval(F &&f, const Sigma& sigma, double h, std::size_t nSteps, const State &y0) {
+    State eval(F &&f, const Sigma& sigma, double h, std::size_t nSteps, double t0, const State &y0) {
         auto y = y0;
+        auto t = t0;
         auto sqrth = std::sqrt(h);
         for (std::size_t i = 0; i < nSteps; ++i) {
-            y = step(f, h, sqrth, y, sigma);
+            y = step(f, h, sqrth, t, y, sigma);
+            t += h;
         }
 
         return y;
     }
 
     template<typename F, typename Sigma>
-    State step(F &&f, double h, double sqrth, const State &y, const Sigma &sigma) {
-        auto mu = f(y);
+    State step(F &&f, double h, double sqrth, double t, const State &y, const Sigma &sigma) {
+        auto mu = f(t, y);
         auto w = noise(); // evaluate Wiener processes
         auto out = y;
 

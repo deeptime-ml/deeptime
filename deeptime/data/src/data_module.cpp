@@ -8,19 +8,6 @@
 #include "pbf.h"
 #include "systems.h"
 
-namespace detail{
-template< class... >
-using void_t = void;
-
-template< class, class = void >
-struct system_has_potential : std::false_type { };
-template< class T >
-struct system_has_potential<T, void_t<decltype(std::declval<T>().energy(std::declval<typename T::State>()))>> : std::true_type { };
-}
-
-template<typename T>
-static constexpr bool system_has_potential_v = detail::system_has_potential<T>::value;
-
 using namespace pybind11::literals;
 
 using dtype = float;
@@ -96,33 +83,69 @@ auto exportSystem(py::module& m, const std::string &name) {
             .def(py::init<InitArgs...>())
             .def_readwrite("h", &System::h)
             .def_readwrite("n_steps", &System::nSteps)
-            .def_readonly_static("dimension", &System::DIM)
-            .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
-                return evaluateSystem(self, x, seed, nThreads);
-            }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
-            .def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
-                return trajectory(self, x, length, seed);
-            }, "x0"_a, "n_evaluations"_a, "seed"_a = -1);
+            .def("rhs", &System::f)
+            .def_readonly_static("dimension", &System::DIM);
+    if constexpr(is_time_dependent<System>::value) {
+        clazz.def("trajectory", [](System &self, double t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
+            return trajectory(self, t, x, length, seed);
+        }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1)
+        .def("__call__", [](System &self, double t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return evaluateSystem(self, t, x, seed, nThreads);
+        }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        .def("__call__", [](System &self, const np_array_nfc<double>& t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return evaluateSystem(self, t, x, seed, nThreads);
+        }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
+    } else {
+        clazz.def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
+            return trajectory(self, 0., x, length, seed);
+        }, "x0"_a, "n_evaluations"_a, "seed"_a = -1)
+        .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return evaluateSystem(self, 0., x, seed, nThreads);
+        }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return evaluateSystem(self, 0., x, seed, nThreads);
+        }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
+    }
     if constexpr(system_has_potential_v<System>) {
-        clazz.def("potential", [](System &self, const np_array_nfc<npDtype> &x) {
-            auto nPoints = static_cast<std::size_t>(x.shape(0));
-            np_array_nfc<npDtype> y (nPoints);
+        if constexpr(is_time_dependent<System>::value) {
+            clazz.def("potential", [](System &self, double t, const np_array_nfc<npDtype> &x) {
+                auto nPoints = static_cast<std::size_t>(x.shape(0));
+                np_array_nfc<npDtype> y (nPoints);
 
-            auto yBuf = y.template mutable_unchecked<1>();
-            std::fill(y.mutable_data(), y.mutable_data() + nPoints, 0.);
+                auto yBuf = y.template mutable_unchecked<1>();
+                std::fill(y.mutable_data(), y.mutable_data() + nPoints, 0.);
 
-            auto xBuf = x.template unchecked<2>();
+                auto xBuf = x.template unchecked<2>();
 
-            typename System::State testPoint;
-            for (std::size_t i = 0; i < nPoints; ++i) {
-                for (std::size_t k = 0; k < System::DIM; ++k) {
-                    testPoint[k] = xBuf(i, k);
+                typename System::State testPoint;
+                for (std::size_t i = 0; i < nPoints; ++i) {
+                    for (std::size_t k = 0; k < System::DIM; ++k) {
+                        testPoint[k] = xBuf(i, k);
+                    }
+                    yBuf(i) = self.energy(t, testPoint);
                 }
-                yBuf(i) = self.energy(testPoint);
-            }
+                return y;
+            });
+        } else {
+            clazz.def("potential", [](System &self, const np_array_nfc<npDtype> &x) {
+                auto nPoints = static_cast<std::size_t>(x.shape(0));
+                np_array_nfc<npDtype> y (nPoints);
 
-            return y;
-        });
+                auto yBuf = y.template mutable_unchecked<1>();
+                std::fill(y.mutable_data(), y.mutable_data() + nPoints, 0.);
+
+                auto xBuf = x.template unchecked<2>();
+
+                typename System::State testPoint;
+                for (std::size_t i = 0; i < nPoints; ++i) {
+                    for (std::size_t k = 0; k < System::DIM; ++k) {
+                        testPoint[k] = xBuf(i, k);
+                    }
+                    yBuf(i) = self.energy(testPoint);
+                }
+                return y;
+            });
+        }
     }
 
     return clazz;
@@ -178,6 +201,14 @@ PYBIND11_MODULE(_data_bindings, m) {
     exportSystem<DoubleWell2D<double>>(m, "DoubleWell2D");
     exportSystem<QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
     exportSystem<TripleWell2D<double>>(m, "TripleWell2D");
+    {
+        using System = TimeDependent5Well<double>;
+        auto clazz = exportSystem<System>(m, "TimeDependent5Well2D");
+        clazz.def_property("beta", [](const System &self) { return self.beta; }, [](System &self, double beta) {
+            self.beta = beta;
+            self.updateSigma();
+        });
+    }
     exportSystem<QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
     exportPyODE<1>(m, "PyODE1D");

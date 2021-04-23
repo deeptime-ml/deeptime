@@ -42,6 +42,12 @@ void normalize(Iter1 begin, Iter2 end) {
     }
 }
 
+namespace dt {
+namespace constants {
+template<typename dtype>
+constexpr dtype pi() { return 3.141592653589793238462643383279502884e+00; }
+}
+}
 
 template<std::size_t Dims>
 class Index {
