@@ -9,7 +9,6 @@ origin.
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
-from tqdm import tqdm
 
 from deeptime.data import time_dependent_quintuple_well
 
@@ -25,12 +24,12 @@ xy = np.meshgrid(x, y)
 trajs = []
 for _ in range(100):
     x0 = random_state.uniform(-2.5, 2.5, size=(1, 2))
-    traj = system.trajectory(0., x0, n_evaluations=500)
+    traj = system.trajectory(0., x0, n_evaluations=100)
     trajs.append(traj)
 trajs = np.stack(trajs)
 
 l = []
-for t in tqdm(np.arange(0., 100., 0.01)):
+for t in np.arange(0., 20., 0.01):
     V = system.potential(t, np.dstack(xy).reshape(-1, 2)).reshape(xy[0].shape)
     l.append(V)
 l = np.stack(l)
@@ -56,4 +55,4 @@ def update(i):
     return out
 
 
-ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=False, frames=trajs.shape[1])
+ani = animation.FuncAnimation(fig, update, interval=50, blit=True, repeat=True, frames=trajs.shape[1])
