@@ -35,13 +35,13 @@ struct PyODE {
     using dtype = T;
     using State = Vector<T, DIM>;
     using Integrator = deeptime::RungeKutta<State, DIM>;
-    using Rhs = std::function<State(State)>;
+    using Rhs = std::function<State(double, State)>;
 
     explicit PyODE(Rhs &&rhs) : rhs(std::move(rhs)) {}
 
-    [[nodiscard]] State f(const State &x) const {
+    [[nodiscard]] State f(double t, const State &x) const {
         py::gil_scoped_acquire gil;
-        return rhs(x);
+        return rhs(t, x);
     }
 
     Rhs rhs {};
@@ -57,13 +57,13 @@ struct PySDE {
     using dtype = T;
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM, T>;
-    using Rhs = std::function<State(State)>;
+    using Rhs = std::function<State(double, State)>;
     using Sigma = Matrix<T, DIM>;
 
     PySDE(const Sigma &sigma, Rhs &&rhs) : sigma(sigma), rhs(std::move(rhs)) {}
 
-    [[nodiscard]] State f(const State &x) const {
-        return rhs(x);
+    [[nodiscard]] State f(double t, const State &x) const {
+        return rhs(t, x);
     }
 
     Sigma sigma;
@@ -97,14 +97,17 @@ auto exportSystem(py::module& m, const std::string &name) {
             .def_readwrite("h", &System::h)
             .def_readwrite("n_steps", &System::nSteps)
             .def_readonly_static("dimension", &System::DIM)
-            .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
-                return evaluateSystem(self, x, seed, nThreads);
-            }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
-            .def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
-                return trajectory(self, x, length, seed);
-            }, "x0"_a, "n_evaluations"_a, "seed"_a = -1);
+            .def("__call__", [](System &self, double t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+                return evaluateSystem(self, t, x, seed, nThreads);
+            }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
+            .def("__call__", [](System &self, const np_array_nfc<double>& t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+                return evaluateSystem(self, t, x, seed, nThreads);
+            }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
+            .def("trajectory", [](System &self, double t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
+                return trajectory(self, t, x, length, seed);
+            }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1);
     if constexpr(system_has_potential_v<System>) {
-        clazz.def("potential", [](System &self, const np_array_nfc<npDtype> &x) {
+        clazz.def("potential", [](System &self, double t, const np_array_nfc<npDtype> &x) {
             auto nPoints = static_cast<std::size_t>(x.shape(0));
             np_array_nfc<npDtype> y (nPoints);
 
@@ -118,9 +121,8 @@ auto exportSystem(py::module& m, const std::string &name) {
                 for (std::size_t k = 0; k < System::DIM; ++k) {
                     testPoint[k] = xBuf(i, k);
                 }
-                yBuf(i) = self.energy(testPoint);
+                yBuf(i) = self.energy(t, testPoint);
             }
-
             return y;
         });
     }
@@ -178,6 +180,7 @@ PYBIND11_MODULE(_data_bindings, m) {
     exportSystem<DoubleWell2D<double>>(m, "DoubleWell2D");
     exportSystem<QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
     exportSystem<TripleWell2D<double>>(m, "TripleWell2D");
+    exportSystem<TimeDependent5Well<double>>(m, "TimeDependent5Well2D");
     exportSystem<QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
     exportPyODE<1>(m, "PyODE1D");

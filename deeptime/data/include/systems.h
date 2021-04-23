@@ -3,6 +3,7 @@
 #include <vector>
 #include <random>
 #include <chrono>
+#include <numbers>
 
 #include "common.h"
 #include "integrator.h"
@@ -32,7 +33,7 @@ struct ABCFlow {
     using State = Vector<T, DIM>;
     using Integrator = deeptime::RungeKutta<State, DIM>;
 
-    constexpr State f(const State &x) const {
+    constexpr State f(double, const State &x) const {
         return {{
                         a_ * std::sin(x[2]) + c_ * std::cos(x[1]),
                         b_ * std::sin(x[0]) + a_ * std::cos(x[2]),
@@ -60,11 +61,11 @@ struct OrnsteinUhlenbeck {
     using State = Vector<dtype, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
-    constexpr dtype energy(const State &x) const {
+    constexpr dtype energy(double, const State &x) const {
         return 0.5 * alpha * x[0] * x[0];
     }
 
-    constexpr State f(const State &x) const {
+    constexpr State f(double, const State &x) const {
         return {{-alpha * x[0]}};
     }
 
@@ -88,13 +89,13 @@ struct Prinz {
     using State = Vector<dtype, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
-    constexpr dtype energy(const State &x) const {
+    constexpr dtype energy(double, const State &x) const {
         return 4. / (mass * damping) * (std::pow(x[0], 8) + 0.8 * std::exp(-80. * x[0] * x[0])
                      + 0.2 * std::exp(-80. * (x[0] - .5) * (x[0] - .5))
                      + 0.5 * std::exp(-40. * (x[0] + .5) * (x[0] + .5)));
     }
 
-    State f(const State &x) const {
+    State f(double, const State &x) const {
         return {{ -4. / (mass * damping) * (8. * std::pow(x[0], 7) - 128. * std::exp(-80. * x[0] * x[0]) * x[0]
                         - 32. * std::exp(-80. * (x[0] - 0.5) * (x[0] - 0.5)) * (x[0] - 0.5)
                         - 40. * std::exp(-40. * (x[0] + 0.5) * (x[0] + 0.5)) * (x[0] + 0.5)) }};
@@ -125,12 +126,12 @@ struct TripleWell1D {
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
-    constexpr dtype energy(const State &x) const {
+    constexpr dtype energy(double, const State &x) const {
         return -(24.82*x[0] - 41.4251*x[0]*x[0] + 27.5344*std::pow(x[0], 3)
                - 8.53128*std::pow(x[0], 4) + 1.24006 * std::pow(x[0], 5) - 0.0684 * std::pow(x[0], 6)) + 5;
     }
 
-    constexpr State f(const State &x) const {
+    constexpr State f(double, const State &x) const {
         return {{
                         -1 * (-24.82002100 + 82.85029600 * x[0] - 82.6031550 * x[0] * x[0]
                               + 34.125104 * std::pow(x[0], 3) - 6.20030 * std::pow(x[0], 4) +
@@ -156,11 +157,11 @@ struct DoubleWell2D {
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
-    constexpr dtype energy(const State &x) const {
+    constexpr dtype energy(double, const State &x) const {
         return (x[0]*x[0]-1.) * (x[0]*x[0]-1.) + x[1] * x[1];
     }
 
-    constexpr State f(const State &x) const {
+    constexpr State f(double, const State &x) const {
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -2 * x[1]}};
     }
 
@@ -181,11 +182,11 @@ struct QuadrupleWell2D {
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
-    constexpr dtype energy(const State &x) const {
+    constexpr dtype energy(double, const State &x) const {
         return (x[0]*x[0] - 1)*(x[0]*x[0] - 1) + (x[1]*x[1] - 1)*(x[1]*x[1] - 1);
     }
 
-    constexpr State f(const State &x) const {
+    constexpr State f(double, const State &x) const {
         // Quadruple well potential: V = (x(1, :).^2 - 1).^2 + (x(2, :).^2 - 1).^2
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -4 * x[1] * x[1] * x[1] + 4 * x[1]}};
     }
@@ -209,12 +210,12 @@ struct QuadrupleWellAsymmetric2D {
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
 
-    constexpr dtype energy(const State &x) const {
+    constexpr dtype energy(double, const State &x) const {
         return + x[0]*x[0]*x[0]*x[0] - (1. / 16.) * x[0]*x[0]*x[0] - 2.*x[0]*x[0] + (3./16.) * x[0]
                + x[1]*x[1]*x[1]*x[1] - (1. / 8.) * x[1]*x[1]*x[1] - 2*x[1]*x[1] + (3./8.) * x[1];
     }
 
-    constexpr State f(const State &x) const {
+    constexpr State f(double, const State &x) const {
         return {{
                         -4 * x[0] * x[0] * x[0] + (3.0 / 16.0) * x[0] * x[0] + 4 * x[0] - 3.0 / 16.0,
                         -4 * x[1] * x[1] * x[1] + (3.0 / 8.0) * x[1] * x[1] + 4 * x[1] - 3.0 / 8.0
@@ -238,7 +239,7 @@ struct TripleWell2D {
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM>;
     
-    constexpr dtype energy(const State &x) const {
+    constexpr dtype energy(double, const State &x) const {
         const auto& xv = x[0];
         const auto& yv = x[1];
         return + 3.*std::exp(- (xv * xv) - (yv - 1./3.)*(yv - 1./3.))
@@ -249,7 +250,7 @@ struct TripleWell2D {
                + (2./10.)*std::pow(yv - 1./3., 4.);
     }
 
-    constexpr State f(const State &x) const {
+    constexpr State f(double, const State &x) const {
         return {{
                         -(3 * std::exp(-x[0] * x[0] - (x[1] - 1.0 / 3) * (x[1] - 1.0 / 3)) * (-2 * x[0])
                           - 3 * std::exp(-x[0] * x[0] - (x[1] - 5.0 / 3) * (x[1] - 5.0 / 3)) * (-2 * x[0])
@@ -269,6 +270,47 @@ struct TripleWell2D {
     std::size_t nSteps{10000};
 };
 
+//------------------------------------------------------------------------------
+// Time-dependent 5-well
+//------------------------------------------------------------------------------
+template<typename T>
+struct TimeDependent5Well {
+    using system_type = sde_tag;
+
+    static constexpr std::size_t DIM = 2;
+    using dtype = T;
+    using State = Vector<T, DIM>;
+    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+
+    constexpr dtype energy(double t, const State &x) const {
+        const auto& xv = x[0];
+        const auto& yv = x[1];
+        auto term1 = std::cos(s * std::atan(yv, xv) - 0.5 * std::numbers::pi_v<T> * t);
+        auto term2 = std::sqrt(xv*xv + yv*yv) - 3./2 - 0.5 * std::sin(2 * std::numbers::pi_v<T> * t);
+        return term1 + 10 * term2 * term2;
+    }
+
+    constexpr State f(double, const State &x) const {
+        return {{
+                        -(3 * std::exp(-x[0] * x[0] - (x[1] - 1.0 / 3) * (x[1] - 1.0 / 3)) * (-2 * x[0])
+                          - 3 * std::exp(-x[0] * x[0] - (x[1] - 5.0 / 3) * (x[1] - 5.0 / 3)) * (-2 * x[0])
+                          - 5 * std::exp(-(x[0] - 1.0) * (x[0] - 1.0) - x[1] * x[1]) * (-2 * (x[0] - 1.0))
+                          - 5 * std::exp(-(x[0] + 1.0) * (x[0] + 1.0) - x[1] * x[1]) * (-2 * (x[0] + 1.0))
+                          + 8.0 / 10 * std::pow(x[0], 3)),
+                        -(3 * std::exp(-x[0] * x[0] - (x[1] - 1.0 / 3) * (x[1] - 1.0 / 3)) * (-2 * (x[1] - 1.0 / 3))
+                          - 3 * std::exp(-x[0] * x[0] - (x[1] - 5.0 / 3) * (x[1] - 5.0 / 3)) * (-2 * (x[1] - 5.0 / 3))
+                          - 5 * std::exp(-(x[0] - 1.0) * (x[0] - 1.0) - x[1] * x[1]) * (-2 * x[1])
+                          - 5 * std::exp(-(x[0] + 1.0) * (x[0] + 1.0) - x[1] * x[1]) * (-2 * x[1])
+                          + 8.0 / 10 * std::pow(x[1] - 1.0 / 3, 3))
+                }};
+    }
+
+    static constexpr Matrix<T, 2> sigma{{{{1.09, 0.0}}, {{0.0, 1.09}}}};
+    T h{1e-5};
+    T s = 5;
+    std::size_t nSteps{10000};
+};
+
 
 namespace detail {
 template<typename T>
@@ -283,25 +325,30 @@ std::false_type is_member_sigma(...);
 template<typename T>
 using IsMemberSigma = decltype(is_member_sigma<T>(0));
 
-template<typename System>
-typename System::State evaluate(const System &system, typename System::Integrator &integrator,
-                                const typename System::State &x, double h, std::size_t nSteps, ode_tag) {
-    auto rhs = [&](const auto &_x) {
-        return system.f(_x);
-    };
-    return integrator.eval(rhs, h, nSteps, x);
+template <typename R, typename ... Types>
+constexpr std::integral_constant<unsigned, sizeof ...(Types)> getArgumentCount( R(*f)(Types ...)) {
+    return std::integral_constant<unsigned, sizeof ...(Types)>{};
 }
 
 template<typename System>
 typename System::State evaluate(const System &system, typename System::Integrator &integrator,
-                                const typename System::State &x, double h, std::size_t nSteps, sde_tag) {
-    auto rhs = [&system](const auto &_x) {
-        return system.f(_x);
+                                double t0, const typename System::State &x, double h, std::size_t nSteps, ode_tag) {
+    auto rhs = [&](typename System::dtype t, const auto &_x) {
+        return system.f(t, _x);
+    };
+    return integrator.eval(rhs, h, nSteps, t0, x);
+}
+
+template<typename System>
+typename System::State evaluate(const System &system, typename System::Integrator &integrator,
+                                double t0, const typename System::State &x, double h, std::size_t nSteps, sde_tag) {
+    auto rhs = [&system](typename System::dtype t, const auto &_x) {
+        return system.f(t, _x);
     };
     if constexpr(detail::IsMemberSigma<System>{}) {
-        return integrator.eval(rhs, system.sigma, h, nSteps, x);
+        return integrator.eval(rhs, system.sigma, h, nSteps, t0, x);
     } else {
-        return integrator.eval(rhs, System::sigma, h, nSteps, x);
+        return integrator.eval(rhs, System::sigma, h, nSteps, t0, x);
     }
 }
 }
@@ -309,14 +356,14 @@ typename System::State evaluate(const System &system, typename System::Integrato
 
 template<typename System>
 typename System::State evaluate(const System &system, typename System::Integrator &integrator,
-                                const typename System::State &x, double h, std::size_t nSteps) {
-    return detail::evaluate(system, integrator, x, h, nSteps, typename System::system_type());
+                                double t0, const typename System::State &x, double h, std::size_t nSteps) {
+    return detail::evaluate(system, integrator, t0, x, h, nSteps, typename System::system_type());
 }
 
 template<typename System>
 typename System::State evaluate(const System &system, typename System::Integrator &integrator,
-                                const typename System::State &x) {
-    return detail::evaluate(system, integrator, x, system.h, system.nSteps, typename System::system_type());
+                                double t0, const typename System::State &x) {
+    return detail::evaluate(system, integrator, t0, x, system.h, system.nSteps, typename System::system_type());
 }
 
 template<typename System>
@@ -329,8 +376,22 @@ typename System::Integrator createIntegrator(std::int64_t seed, sde_tag) {
     return typename System::Integrator{seed};
 }
 
-template<typename dtype, typename System>
-np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtype> &x,
+namespace detail {
+template<typename Time>
+auto toBuf(const Time &arr) {
+    return arr.template unchecked<1>();
+}
+
+template<>
+auto toBuf(const double &arr) {
+    return [arr](int) {
+        return arr;
+    };
+}
+}
+
+template<typename dtype, typename System, typename Time>
+np_array_nfc<dtype> evaluateSystem(const System &system, const Time &tArr, const np_array_nfc<dtype> &x,
                                    std::int64_t seed = -1, int nThreads = -1) {
     if (seed >= 0 && nThreads != 1) {
         throw std::invalid_argument("Fixing the seed requires setting the number of threads to 1.");
@@ -338,6 +399,7 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
     np_array_nfc<dtype> y({x.shape(0), x.shape(1)});
 
     auto xBuf = x.template unchecked<2>();
+    auto tBuf = detail::toBuf(tArr);
     {
         const auto d = x.shape(1); // dimension of the state space
         if (d != static_cast<decltype(d)>(System::DIM)) {
@@ -361,7 +423,7 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
     typename System::State testPoint = {};
 
     // for all test points
-    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, testPoint, seed)
+    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, tBuf, testPoint, seed)
     {
         auto integrator = createIntegrator<System>(seed, typename System::system_type());
 
@@ -372,8 +434,8 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
             for (std::size_t k = 0; k < System::DIM; ++k) {
                 testPoint[k] = xBuf(i, k);
             }
-
-            auto yi = evaluate(system, integrator, testPoint); // evaluate dynamical system
+            auto t = tBuf(i);
+            auto yi = evaluate(system, integrator, t, testPoint); // evaluate dynamical system
 
             for (std::size_t k = 0; k < System::DIM; ++k) {
                 // copy result into y vector
@@ -385,9 +447,9 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const np_array_nfc<dtyp
     return y;
 }
 
-template<typename dtype, typename System>
+template<typename dtype, typename System, typename Time>
 np_array_nfc<dtype>
-trajectory(System &system, const np_array_nfc<dtype> &x, std::size_t length, std::int64_t seed = -1) {
+trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::size_t length, std::int64_t seed = -1) {
     np_array_nfc<dtype> y({length, System::DIM});
     {
         const auto d = x.shape(1);
@@ -405,6 +467,7 @@ trajectory(System &system, const np_array_nfc<dtype> &x, std::size_t length, std
 
     auto xBuf = x.template unchecked<2>();
     auto yBuf = y.template mutable_unchecked<2>();
+    auto tBuf = detail::toBuf(tArr);
 
     auto integrator = createIntegrator<System>(seed, typename System::system_type());
 
@@ -421,7 +484,8 @@ trajectory(System &system, const np_array_nfc<dtype> &x, std::size_t length, std
         }
 
         // evaluate dynamical system
-        auto yi = evaluate(system, integrator, testPoint);
+        auto t = tBuf(i);
+        auto yi = evaluate(system, integrator, t, testPoint);
 
         // copy result into y vector
         for (size_t k = 0; k < System::DIM; ++k) {
