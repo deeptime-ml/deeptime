@@ -35,13 +35,13 @@ struct PyODE {
     using dtype = T;
     using State = Vector<T, DIM>;
     using Integrator = deeptime::RungeKutta<State, DIM>;
-    using Rhs = std::function<State(double, State)>;
+    using Rhs = std::function<State(State)>;
 
     explicit PyODE(Rhs &&rhs) : rhs(std::move(rhs)) {}
 
-    [[nodiscard]] State f(double t, const State &x) const {
+    [[nodiscard]] State f(const State &x) const {
         py::gil_scoped_acquire gil;
-        return rhs(t, x);
+        return rhs(x);
     }
 
     Rhs rhs {};
@@ -57,13 +57,13 @@ struct PySDE {
     using dtype = T;
     using State = Vector<T, DIM>;
     using Integrator = deeptime::EulerMaruyama<State, DIM, T>;
-    using Rhs = std::function<State(double, State)>;
+    using Rhs = std::function<State(State)>;
     using Sigma = Matrix<T, DIM>;
 
     PySDE(const Sigma &sigma, Rhs &&rhs) : sigma(sigma), rhs(std::move(rhs)) {}
 
-    [[nodiscard]] State f(double t, const State &x) const {
-        return rhs(t, x);
+    [[nodiscard]] State f(const State &x) const {
+        return rhs(x);
     }
 
     Sigma sigma;
@@ -97,34 +97,69 @@ auto exportSystem(py::module& m, const std::string &name) {
             .def_readwrite("h", &System::h)
             .def_readwrite("n_steps", &System::nSteps)
             .def_readonly_static("dimension", &System::DIM)
-            .def("__call__", [](System &self, double t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
-                return evaluateSystem(self, t, x, seed, nThreads);
-            }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
-            .def("__call__", [](System &self, const np_array_nfc<double>& t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
-                return evaluateSystem(self, t, x, seed, nThreads);
-            }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
-            .def("trajectory", [](System &self, double t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
-                return trajectory(self, t, x, length, seed);
-            }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1);
+
+            ;
+    if constexpr(is_time_dependent<System>::value) {
+        clazz.def("trajectory", [](System &self, double t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
+            return trajectory(self, t, x, length, seed);
+        }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1)
+        .def("__call__", [](System &self, double t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return evaluateSystem(self, t, x, seed, nThreads);
+        }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        .def("__call__", [](System &self, const np_array_nfc<double>& t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return evaluateSystem(self, t, x, seed, nThreads);
+        }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
+    } else {
+        clazz.def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed) -> np_array_nfc<npDtype> {
+            return trajectory(self, 0., x, length, seed);
+        }, "x0"_a, "n_evaluations"_a, "seed"_a = -1)
+        .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return evaluateSystem(self, 0., x, seed, nThreads);
+        }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return evaluateSystem(self, 0., x, seed, nThreads);
+        }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
+    }
     if constexpr(system_has_potential_v<System>) {
-        clazz.def("potential", [](System &self, double t, const np_array_nfc<npDtype> &x) {
-            auto nPoints = static_cast<std::size_t>(x.shape(0));
-            np_array_nfc<npDtype> y (nPoints);
+        if constexpr(is_time_dependent<System>::value) {
+            clazz.def("potential", [](System &self, double t, const np_array_nfc<npDtype> &x) {
+                auto nPoints = static_cast<std::size_t>(x.shape(0));
+                np_array_nfc<npDtype> y (nPoints);
 
-            auto yBuf = y.template mutable_unchecked<1>();
-            std::fill(y.mutable_data(), y.mutable_data() + nPoints, 0.);
+                auto yBuf = y.template mutable_unchecked<1>();
+                std::fill(y.mutable_data(), y.mutable_data() + nPoints, 0.);
 
-            auto xBuf = x.template unchecked<2>();
+                auto xBuf = x.template unchecked<2>();
 
-            typename System::State testPoint;
-            for (std::size_t i = 0; i < nPoints; ++i) {
-                for (std::size_t k = 0; k < System::DIM; ++k) {
-                    testPoint[k] = xBuf(i, k);
+                typename System::State testPoint;
+                for (std::size_t i = 0; i < nPoints; ++i) {
+                    for (std::size_t k = 0; k < System::DIM; ++k) {
+                        testPoint[k] = xBuf(i, k);
+                    }
+                    yBuf(i) = self.energy(t, testPoint);
                 }
-                yBuf(i) = self.energy(t, testPoint);
-            }
-            return y;
-        });
+                return y;
+            });
+        } else {
+            clazz.def("potential", [](System &self, const np_array_nfc<npDtype> &x) {
+                auto nPoints = static_cast<std::size_t>(x.shape(0));
+                np_array_nfc<npDtype> y (nPoints);
+
+                auto yBuf = y.template mutable_unchecked<1>();
+                std::fill(y.mutable_data(), y.mutable_data() + nPoints, 0.);
+
+                auto xBuf = x.template unchecked<2>();
+
+                typename System::State testPoint;
+                for (std::size_t i = 0; i < nPoints; ++i) {
+                    for (std::size_t k = 0; k < System::DIM; ++k) {
+                        testPoint[k] = xBuf(i, k);
+                    }
+                    yBuf(i) = self.energy(testPoint);
+                }
+                return y;
+            });
+        }
     }
 
     return clazz;
