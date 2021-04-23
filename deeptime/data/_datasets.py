@@ -955,7 +955,13 @@ def double_well_2d(h=1e-3, n_steps=10000):
 
 
 def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
-    r"""todo
+    r"""This dataset generates trajectories of a two-dimensional particle living in a time-dependent quintuple-well
+    potential landscape. The potential wells are slowly oscillating around the origin.
+
+    The dynamics are described by the potential landscape
+
+    .. math::
+        V(t, x, y) = \cos \left(s\;\mathrm{arctan}(y, x) - \frac{\pi}{2}t \right) + 10 \left( \sqrt{x^2+y^2} - \frac{3}{2} - \frac{1}{2}\sin(2\pi t) \right)^2
 
     Parameters
     ----------

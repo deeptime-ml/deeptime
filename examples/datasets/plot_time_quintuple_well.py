@@ -1,3 +1,11 @@
+r"""
+Time-dependent quintuple well
+=============================
+
+Demonstrates :meth:`deeptime.data.time_dependent_quintuple_well`. The potential wells slowly oscillate around the
+origin.
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
