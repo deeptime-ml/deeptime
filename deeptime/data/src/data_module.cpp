@@ -92,6 +92,9 @@ auto exportSystem(py::module& m, const std::string &name) {
         clazz.def("trajectory", [](System &self, double t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
             return trajectory(self, t, x, length, seed, nThreads);
         }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        .def("trajectory", [](System &self, const np_array_nfc<double> &t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+            return trajectory(self, t, x, length, seed, nThreads);
+        }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, double t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
             return evaluateSystem(self, t, x, seed, nThreads);
         }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)

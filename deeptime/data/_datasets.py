@@ -955,7 +955,7 @@ def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
     n_steps : int, optional, default=10000
         Number of steps to evaluate between recording states.
     beta : float, default=5.
-        The temperature.
+        The inverse temperature.
 
     Returns
     -------

@@ -54,6 +54,9 @@ Implementations
     BickleyJet
     BirthDeathChain
 
+    TimeDependentSystem
+    TimeIndependentSystem
+    CustomSystem
 """
 
 from ._datasets import double_well_discrete, ellipsoids, position_based_fluids, drunkards_walk, bickley_jet, \
@@ -61,6 +64,7 @@ from ._datasets import double_well_discrete, ellipsoids, position_based_fluids, 
     triple_well_1d, quadruple_well_asymmetric, double_well_2d, swissroll_model, prinz_potential, \
     time_dependent_quintuple_well
 from ._datasets import custom_sde, custom_ode
+from ._datasets import CustomSystem, TimeIndependentSystem, TimeDependentSystem
 from ._double_well import DoubleWellDiscrete
 from ._ellipsoids import Ellipsoids
 from ._pbf_simulator import PBFSimulator

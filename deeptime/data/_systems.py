@@ -13,6 +13,7 @@ class SystemBase:
 
     @property
     def impl(self):
+        r""" The native object. """
         return self._impl
 
     @property
@@ -148,7 +149,7 @@ class _TimeDependentRhsMixin:
         x0 = np.array(x0).reshape((-1, self.impl.dimension))
         n_initial_conditions = x0.shape[0]
 
-        t0 = np.array(t0).squeeze()
+        t0 = np.atleast_1d(t0)
         if len(t0) == 1 and n_initial_conditions > 1:
             t0 = np.full((n_initial_conditions,), t0[0])
         traj = self.impl.trajectory(t0, x0, length, seed, n_jobs)
@@ -180,7 +181,7 @@ class _TimeDependentRhsMixin:
         test_points = np.array(test_points).reshape((-1, self.impl.dimension))
         n_test_points = len(test_points)
 
-        t0 = np.array(t0).squeeze()
+        t0 = np.atleast_1d(t0)
         if len(t0) == 1 and n_test_points > 1:
             t0 = np.full((n_test_points,), t0[0])
 
@@ -212,7 +213,7 @@ class _TimeDependentRhsMixin:
 
 
 class TimeDependentSystem(SystemBase, _TimeDependentRhsMixin):
-    r""" Wraps systems with a time-dependent right-hand side defined in c++.
+    r""" Wraps systems with a time-dependent right-hand side defined in extension code.
 
     Parameters
     ----------
@@ -229,7 +230,7 @@ class TimeDependentSystem(SystemBase, _TimeDependentRhsMixin):
 
 
 class TimeIndependentSystem(SystemBase, _TimeIndependentRhsMixin):
-    r""" Wraps systems with a time-independent right-hand side defined in c++.
+    r""" Wraps systems with a time-independent right-hand side defined in extension code.
 
     Parameters
     ----------
@@ -246,6 +247,9 @@ class TimeIndependentSystem(SystemBase, _TimeIndependentRhsMixin):
 
 
 class CustomSystem(TimeIndependentSystem):
+    r""" A system as yielded by :meth:`custom_sde <deeptime.data.custom_sde>`
+    or :meth:`custom_ode <deeptime.data.custom_ode>`.
+    """
 
     def trajectory(self: SystemBase, x0, length, seed=-1, **kw):
         return super().trajectory(x0, length, seed, n_jobs=1)
