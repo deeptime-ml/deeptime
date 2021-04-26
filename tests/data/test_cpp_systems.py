@@ -18,7 +18,9 @@ import deeptime as dt
     [dt.data.abc_flow, 3, 'RungeKutta', False],
 ])
 def test_interface(init, system, dim, integrator, has_potential):
-    instance = system()
+    instance = system(h=1e-5, n_steps=10)
+    assert_equal(instance.h, 1e-5)
+    assert_equal(instance.n_steps, 10)
     assert_equal(instance.dimension, dim)
     assert_equal(instance.integrator, integrator)
     assert_equal(instance.has_potential_function, has_potential)

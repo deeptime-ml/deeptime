@@ -17,6 +17,16 @@ class SystemBase:
                 setattr(self._impl, prop, props[prop])
 
     @property
+    def h(self) -> float:
+        r""" The integration step size. """
+        return self._impl.h
+
+    @property
+    def n_steps(self) -> int:
+        r""" The number of integration steps between each evaluation of the state. """
+        return self._impl.n_steps
+
+    @property
     def dimension(self) -> int:
         r""" The dimension of the system's state.
 

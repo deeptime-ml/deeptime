@@ -89,10 +89,7 @@ auto exportSystem(py::module& m, const std::string &name) {
             .def_property_readonly_static("has_potential_function", [](py::object /*self*/) { return system_has_potential_v<System>; })
             .def_property_readonly_static("time_dependent", [](py::object /*self*/) { return is_time_dependent<System>::value; });
     if constexpr(is_time_dependent<System>::value) {
-        clazz.def("trajectory", [](System &self, double t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
-            return trajectory(self, t, x, length, seed, nThreads);
-        }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
-        .def("trajectory", [](System &self, const np_array_nfc<double> &t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+        clazz.def("trajectory", [](System &self, const np_array_nfc<double> &t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
             return trajectory(self, t, x, length, seed, nThreads);
         }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, double t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
