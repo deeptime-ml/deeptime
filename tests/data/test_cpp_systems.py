@@ -130,6 +130,9 @@ def test_custom_ode(dim):
         return [0.] * dim
 
     ode = dt.data.custom_ode(dim, rhs, h=1e-3, n_steps=5)
+    assert_equal(ode.dimension, dim)
+    assert_equal(ode.has_potential_function, False)
+    assert_equal(ode.integrator, "RungeKutta")
     traj = ode.trajectory([[1] * dim], 50)
     assert_equal(traj.shape, (50, dim))
     assert_equal(traj[0], np.ones((dim,)))

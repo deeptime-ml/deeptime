@@ -838,11 +838,11 @@ def prinz_potential(h=1e-5, n_steps=500, temperature_factor=1., mass=1., damping
     .. footbibliography::
     """
     from ._data_bindings import Prinz
-    system = TimeIndependentSystem(Prinz(), h, n_steps)
-    system.impl.kT = temperature_factor
-    system.impl.mass = mass
-    system.impl.damping = damping
-    return system
+    return TimeIndependentSystem(Prinz(), h, n_steps, props={
+        'kT': temperature_factor,
+        'mass': mass,
+        'damping': damping
+    })
 
 
 def triple_well_1d(h=1e-3, n_steps=500):
@@ -985,8 +985,7 @@ def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
     >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import TimeDependent5Well2D
-    system = TimeDependentSystem(TimeDependent5Well2D(), h, n_steps)
-    system.impl.beta = beta
+    system = TimeDependentSystem(TimeDependent5Well2D(), h, n_steps, props={'beta': beta})
     return system
 
 
