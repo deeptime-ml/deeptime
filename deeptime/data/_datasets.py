@@ -510,7 +510,7 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory([0., 0.], 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory([0., 0.], 1000, seed=42, n_jobs=1)  # simulate trajectory
     >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -566,7 +566,7 @@ def quadruple_well_asymmetric(h=1e-3, n_steps=10000):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[0., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory(np.array([[0., 0.]]), 1000, seed=42, n_jobs=1)  # simulate trajectory
     >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -626,7 +626,7 @@ def triple_well_2d(h=1e-5, n_steps=10000):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[-1., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory(np.array([[-1., 0.]]), 1000, seed=42, n_jobs=1)  # simulate trajectory
     >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -709,7 +709,7 @@ def abc_flow(h=1e-3, n_steps=10000):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[-1., 0., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory(np.array([[-1., 0., 0.]]), 1000, seed=42, n_jobs=1)  # simulate trajectory
     >>> assert traj.shape == (1000, 3)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -762,7 +762,7 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[-1.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory(np.array([[-1.]]), 1000, seed=42, n_jobs=1)  # simulate trajectory
     >>> assert traj.shape == (1000, 1)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -824,7 +824,7 @@ def prinz_potential(h=1e-5, n_steps=500, temperature_factor=1., mass=1., damping
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[-0.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory(np.array([[-0.]]), 1000, seed=42, n_jobs=1)  # simulate trajectory
     >>> assert traj.shape == (1000, 1)  # 1000 evaluations from initial condition [0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -919,7 +919,7 @@ def double_well_2d(h=1e-3, n_steps=10000):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[-1., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory(np.array([[-1., 0.]]), 1000, seed=42, n_jobs=1)  # simulate trajectory
     >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -975,7 +975,7 @@ def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(0., np.array([[-1., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory(0., np.array([[-1., 0.]]), 1000, seed=42, n_jobs=1)  # simulate trajectory
     >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0] with t=0
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -1051,7 +1051,7 @@ def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: in
     integration steps for each evaluation.
     Given the SDE instance, we can generate trajectories via
 
-    >>> trajectory = sde.trajectory(x0=[[0., 0.]], n_evaluations=10, seed=55)
+    >>> trajectory = sde.trajectory(x0=[[0., 0.]], length=10, seed=55)
     >>> assert trajectory.shape == (10, 2)
 
     or propagate (in this case 300) sample points by :code:`n_steps`:
@@ -1120,7 +1120,7 @@ def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
     where :code:`n_steps` is the number of (Runge-Kutta 45) integration steps per evaluation and :code:`h` the
     step-size. With the system, one can generate trajectories
 
-    >>> traj = system.trajectory(x0=[[1.]], n_evaluations=50, seed=45)
+    >>> traj = system.trajectory(x0=[[1.]], length=50, seed=45)
     >>> assert traj.shape == (50, 1)
 
     as well as propagate sample points by :code:`n_steps`:
