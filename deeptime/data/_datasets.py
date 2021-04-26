@@ -1043,7 +1043,7 @@ def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: in
     ...     else:
     ...         return [0., 0.]
 
-    This, we can use as right-hand side to define our SDE with :math:`\sigma = \diag(1, 1)`.
+    This we can use as right-hand side to define our SDE with :math:`\sigma = \mathrm{diag}(1, 1)`.
 
     >>> sde = dt.data.custom_sde(dim=2, rhs=lambda x: harmonic_sphere_force(x, radius=.5, k=1),
     ...                          sigma=np.diag([1., 1.]), h=1e-3, n_steps=1)
