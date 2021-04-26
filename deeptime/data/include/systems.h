@@ -483,8 +483,20 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const Time &tArr, const
 
 template<typename dtype, typename System, typename Time>
 np_array_nfc<dtype>
-trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::size_t length, std::int64_t seed = -1) {
-    np_array_nfc<dtype> y({length, System::DIM});
+trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::size_t length, std::int64_t seed = -1,
+           int nThreads = 1) {
+    if (seed >= 0 && nThreads != 1) {
+        throw std::invalid_argument("Fixing the seed requires setting the number of threads to 1.");
+    }
+
+    #if defined(USE_OPENMP)
+    if (nThreads > 0) {
+        omp_set_num_threads(nThreads);
+    }
+    #else
+    nThreads = 0;
+    #endif
+
     {
         const auto d = x.shape(1);
         if (d != System::DIM) {
@@ -493,38 +505,43 @@ trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::
                    << d << " dimensions.";
             throw std::invalid_argument(errmsg.str());
         }
-        const auto m = x.shape(0);
-        if (m != 1) {
-            throw std::invalid_argument("Currently only supports one test point.");
-        }
     }
+    std::size_t nTestPoints = x.shape(0);
+    np_array_nfc<dtype> y({nTestPoints, length, System::DIM});
 
     auto xBuf = x.template unchecked<2>();
-    auto yBuf = y.template mutable_unchecked<2>();
+    auto yBuf = y.template mutable_unchecked<3>();
     auto tBuf = detail::toBuf(tArr, system);
 
-    auto integrator = createIntegrator<System>(seed, typename System::system_type());
+    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, tBuf, seed, length)
+    {
+        auto integrator = createIntegrator<System>(seed, typename System::system_type());
 
-    for (size_t k = 0; k < System::DIM; ++k) {
-        // copy initial condition
-        yBuf(0, k) = xBuf(0, k);
-    }
+        #pragma omp for
+        for (std::size_t testPointIndex = 0; testPointIndex < nTestPoints; ++testPointIndex) {
+            for (size_t k = 0; k < System::DIM; ++k) {
+                // copy initial condition
+                yBuf(testPointIndex, 0, k) = xBuf(testPointIndex, k);
+            }
 
-    typename System::State testPoint;
-    for (size_t i = 1; i < length; ++i) {
-        for (size_t k = 0; k < System::DIM; ++k) {
-            // copy new test point into x vector
-            testPoint[k] = yBuf(i - 1, k);
+            typename System::State testPoint;
+            for (size_t i = 1; i < length; ++i) {
+                for (size_t k = 0; k < System::DIM; ++k) {
+                    // copy new test point into x vector
+                    testPoint[k] = yBuf(testPointIndex, i - 1, k);
+                }
+
+                // evaluate dynamical system
+                auto yi = evaluate(system, integrator, tBuf(i), testPoint);
+
+                // copy result into y vector
+                for (size_t k = 0; k < System::DIM; ++k) {
+                    yBuf(testPointIndex, i, k) = yi[k];
+                }
+            }
         }
 
-        // evaluate dynamical system
-        auto t = tBuf(i);
-        auto yi = evaluate(system, integrator, t, testPoint);
-
-        // copy result into y vector
-        for (size_t k = 0; k < System::DIM; ++k) {
-            yBuf(i, k) = yi[k];
-        }
     }
+
     return y;
 }

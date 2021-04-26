@@ -8,6 +8,7 @@ from ._ellipsoids import Ellipsoids
 from ._pbf_simulator import PBFSimulator
 from ._drunkards_walk_simulator import DrunkardsWalk
 from ._bickley_simulator import BickleyJet, BickleyJetDataset
+from ._systems import TimeDependentSystem, TimeIndependentSystem, CustomSystem
 
 
 def double_well_discrete():
@@ -493,7 +494,7 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
 
     Returns
     -------
-    model : QuadrupleWell2D
+    model : TimeIndependentSystem
         The model.
 
     Examples
@@ -509,7 +510,7 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
 
     Now, a trajectory can be generated:
 
-    >>> traj = model.trajectory(np.array([[0., 0.]]), 1000, seed=42)  # simulate trajectory
+    >>> traj = model.trajectory([0., 0.], 1000, seed=42)  # simulate trajectory
     >>> assert traj.shape == (1000, 2)  # 1000 evaluations from initial condition [0, 0]
 
     Or, alternatively the model can be evaluated at test points (mapping forward using the dynamical system):
@@ -519,10 +520,7 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
     >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import QuadrupleWell2D
-    system = QuadrupleWell2D()
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return TimeIndependentSystem(QuadrupleWell2D(), h, n_steps)
 
 
 def quadruple_well_asymmetric(h=1e-3, n_steps=10000):
@@ -552,7 +550,7 @@ def quadruple_well_asymmetric(h=1e-3, n_steps=10000):
 
     Returns
     -------
-    model : QuadrupleWell2D
+    model : TimeIndependentSystem
         The model.
 
     Examples
@@ -578,10 +576,7 @@ def quadruple_well_asymmetric(h=1e-3, n_steps=10000):
     >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import QuadrupleWellAsymmetric2D
-    system = QuadrupleWellAsymmetric2D()
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return TimeIndependentSystem(QuadrupleWellAsymmetric2D(), h, n_steps)
 
 
 def triple_well_2d(h=1e-5, n_steps=10000):
@@ -615,7 +610,7 @@ def triple_well_2d(h=1e-5, n_steps=10000):
 
     Returns
     -------
-    model : TripleWell2D
+    model : TimeIndependentSystem
         The model.
 
     Examples
@@ -645,10 +640,7 @@ def triple_well_2d(h=1e-5, n_steps=10000):
     .. footbibliography::
     """
     from ._data_bindings import TripleWell2D
-    system = TripleWell2D()
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return TimeIndependentSystem(TripleWell2D(), h, n_steps)
 
 
 def abc_flow(h=1e-3, n_steps=10000):
@@ -701,7 +693,7 @@ def abc_flow(h=1e-3, n_steps=10000):
 
     Returns
     -------
-    system : ABCFlow
+    system : TimeIndependentSystem
         The system.
 
     Examples
@@ -731,10 +723,7 @@ def abc_flow(h=1e-3, n_steps=10000):
     .. footbibliography::
     """
     from ._data_bindings import ABCFlow
-    system = ABCFlow()
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return TimeIndependentSystem(ABCFlow(), h, n_steps)
 
 
 def ornstein_uhlenbeck(h=1e-3, n_steps=500):
@@ -757,7 +746,7 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
 
     Returns
     -------
-    system : OrnsteinUhlenbeck
+    system : TimeIndependentSystem
         The system.
 
     Examples
@@ -783,13 +772,10 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
     >>> assert evaluations.shape == (100, 1)
     """
     from ._data_bindings import OrnsteinUhlenbeck
-    system = OrnsteinUhlenbeck()
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return TimeIndependentSystem(OrnsteinUhlenbeck(), h, n_steps)
 
 
-def prinz_potential(h=1e-3, n_steps=500, temperature_factor=1., mass=1., damping=1.):
+def prinz_potential(h=1e-5, n_steps=500, temperature_factor=1., mass=1., damping=1.):
     r""" Particle diffusing in a one-dimensional quadruple well potential landscape. :footcite:`prinz2011markov`
 
     The potential is defined as
@@ -808,7 +794,7 @@ def prinz_potential(h=1e-3, n_steps=500, temperature_factor=1., mass=1., damping
 
     Parameters
     ----------
-    h : float, default=1e-3
+    h : float, default=1e-5
         The integrator step size. If the temperature is too high and the step size too large, the
         integrator may produce NaNs.
     n_steps : int, default=500
@@ -822,7 +808,7 @@ def prinz_potential(h=1e-3, n_steps=500, temperature_factor=1., mass=1., damping
 
     Returns
     -------
-    system
+    system : TimeIndependentSystem
         The system.
 
     Examples
@@ -852,12 +838,10 @@ def prinz_potential(h=1e-3, n_steps=500, temperature_factor=1., mass=1., damping
     .. footbibliography::
     """
     from ._data_bindings import Prinz
-    system = Prinz()
-    system.h = h
-    system.n_steps = n_steps
-    system.kT = temperature_factor
-    system.mass = mass
-    system.damping = damping
+    system = TimeIndependentSystem(Prinz(), h, n_steps)
+    system.impl.kT = temperature_factor
+    system.impl.mass = mass
+    system.impl.damping = damping
     return system
 
 
@@ -885,14 +869,11 @@ def triple_well_1d(h=1e-3, n_steps=500):
 
     Returns
     -------
-    system : TripleWell1D
+    system : TimeIndependentSystem
         The system.
     """
     from ._data_bindings import TripleWell1D
-    system = TripleWell1D()
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return TimeIndependentSystem(TripleWell1D(), h, n_steps)
 
 
 def double_well_2d(h=1e-3, n_steps=10000):
@@ -922,7 +903,7 @@ def double_well_2d(h=1e-3, n_steps=10000):
 
     Returns
     -------
-    model : DoubleWell2D
+    model : TimeIndependentSystem
         The model.
 
     Examples
@@ -948,10 +929,7 @@ def double_well_2d(h=1e-3, n_steps=10000):
     >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import DoubleWell2D
-    system = DoubleWell2D()
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return TimeIndependentSystem(DoubleWell2D(), h, n_steps)
 
 
 def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
@@ -981,7 +959,7 @@ def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
 
     Returns
     -------
-    system
+    system : TimeDependentSystem
         The system.
 
     Examples
@@ -1007,10 +985,8 @@ def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
     >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import TimeDependent5Well2D
-    system = TimeDependent5Well2D()
-    system.h = h
-    system.n_steps = n_steps
-    system.beta = beta
+    system = TimeDependentSystem(TimeDependent5Well2D(), h, n_steps)
+    system.impl.beta = beta
     return system
 
 
@@ -1047,7 +1023,7 @@ def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: in
 
     Returns
     -------
-    system : SDE
+    system : CustomSystem
         The system.
 
     Examples
@@ -1094,10 +1070,7 @@ def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: in
         raise ValueError("Sigma must be DIM x DIM matrix but had shape", sigma_shape)
 
     SDE = getattr(bindings, f'PySDE{dim}D')
-    system = SDE(sigma, rhs)
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return CustomSystem(SDE(sigma, rhs), h, n_steps)
 
 
 def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
@@ -1126,7 +1099,7 @@ def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
 
     Returns
     -------
-    system : ODE
+    system : CustomSystem
         The system.
 
     Examples
@@ -1161,7 +1134,4 @@ def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
         raise ValueError("Dimension must be positive and at most 5.")
 
     ODE = getattr(bindings, f'PyODE{dim}D')
-    system = ODE(rhs)
-    system.h = h
-    system.n_steps = n_steps
-    return system
+    return CustomSystem(ODE(rhs), h, n_steps)

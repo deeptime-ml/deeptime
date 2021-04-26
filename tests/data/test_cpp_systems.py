@@ -68,6 +68,9 @@ def test_custom_sde(dim):
         dt.data.custom_sde(dim, rhs, wrong_sigma, h=1e-3, n_steps=5)
 
     sde = dt.data.custom_sde(dim, rhs, sigma, h=1e-3, n_steps=5)
+    assert_equal(sde.dimension, dim)
+    assert_equal(sde.has_potential_function, False)
+    assert_equal(sde.integrator, "EulerMaruyama")
     traj = sde.trajectory([[1] * dim], 50)
     assert_equal(traj.shape, (50, dim))
     assert_equal(traj[0], np.ones((dim,)))

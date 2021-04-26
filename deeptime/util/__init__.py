@@ -38,6 +38,18 @@ Type utilities
     types.to_dataset
     types.is_timelagged_dataset
     types.atleast_nd
+
+
+===============================================================================
+Other utilities
+===============================================================================
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    parallel.handle_n_jobs
+    decorators.cached_property
+    decorators.plotting_function
 """
 
 from .stats import QuantityStatistics, confidence_interval
