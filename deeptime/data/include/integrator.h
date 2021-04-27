@@ -16,6 +16,8 @@ template<typename State, std::size_t DIM>
 class RungeKutta {
 public:
 
+    static constexpr const char* name = "RungeKutta";
+
     template<typename F>
     State eval(F &&f, double h, std::size_t nSteps, double t0, const State &y0) {
         auto y = y0;
@@ -65,6 +67,8 @@ private:
 template<typename State, std::size_t DIM, typename Value = double, typename Generator = std::mt19937>
 class EulerMaruyama {
 public:
+
+    static constexpr const char* name = "EulerMaruyama";
 
     explicit EulerMaruyama(std::int64_t seed = -1) {
         generator = seed < 0 ? rnd::randomlySeededGenerator<Generator>() : rnd::seededGenerator<Generator>(seed);

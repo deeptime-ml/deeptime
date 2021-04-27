@@ -14,7 +14,7 @@ system = triple_well_1d(h=1e-3, n_steps=500)
 xs = np.linspace(0, 6., num=500)
 ys = system.potential(xs.reshape(-1, 1))
 
-trajectory = system.trajectory([[0.5]], n_evaluations=20000, seed=53)
+trajectory = system.trajectory(x0=0.5, length=20000, seed=53)
 
 f, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(16, 8))
 ax1.plot(xs, ys.reshape(-1))

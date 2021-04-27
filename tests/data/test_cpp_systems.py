@@ -5,6 +5,56 @@ from numpy.testing import assert_equal, assert_raises
 import deeptime as dt
 
 
+@pytest.mark.parametrize("init", ['list', 'array'])
+@pytest.mark.parametrize("system,dim,integrator,has_potential", [
+    [dt.data.quadruple_well, 2, 'EulerMaruyama', True],
+    [dt.data.quadruple_well_asymmetric, 2, 'EulerMaruyama', True],
+    [dt.data.triple_well_2d, 2, 'EulerMaruyama', True],
+    [dt.data.triple_well_1d, 1, 'EulerMaruyama', True],
+    [dt.data.double_well_2d, 2, 'EulerMaruyama', True],
+    [dt.data.ornstein_uhlenbeck, 1, 'EulerMaruyama', True],
+    [dt.data.prinz_potential, 1, 'EulerMaruyama', True],
+    [dt.data.time_dependent_quintuple_well, 2, 'EulerMaruyama', True],
+    [dt.data.abc_flow, 3, 'RungeKutta', False],
+])
+def test_interface(init, system, dim, integrator, has_potential):
+    instance = system(h=1e-5, n_steps=10)
+    assert_equal(instance.h, 1e-5)
+    assert_equal(instance.n_steps, 10)
+    assert_equal(instance.dimension, dim)
+    assert_equal(instance.integrator, integrator)
+    assert_equal(instance.has_potential_function, has_potential)
+    assert_equal(instance.time_dependent, isinstance(instance, dt.data.TimeDependentSystem))
+
+    if init == 'list':
+        x0 = list(range(dim))
+    else:
+        x0 = np.random.normal(size=(dim,))
+    if instance.time_dependent:
+        assert_equal(instance.trajectory(0., x0, 50).shape, (50, dim))
+        assert_equal(instance(0., x0).shape, (1, dim))
+    else:
+        assert_equal(instance.trajectory(x0, 50).shape, (50, dim))
+        assert_equal(instance(x0).shape, (1, dim))
+
+    if init == 'list':
+        x0 = [list(range(dim)) for _ in range(5)]
+    else:
+        x0 = np.random.normal(size=(5, dim))
+    if instance.time_dependent:
+        assert_equal(instance.trajectory(1., x0, 50).shape, (5, 50, dim))
+        assert_equal(instance(1., x0).shape, (5, dim))
+    else:
+        assert_equal(instance.trajectory(x0, 50).shape, (5, 50, dim))
+        assert_equal(instance(x0).shape, (5, dim))
+
+    if has_potential:
+        if instance.time_dependent:
+            assert_equal(instance.potential(55., x0).shape, (len(x0),))
+        else:
+            assert_equal(instance.potential(x0).shape, (len(x0),))
+
+
 def test_quadruple_well_sanity():
     traj = dt.data.quadruple_well().trajectory(np.array([[0., 0.]]), 5)
     assert_equal(traj.shape, (5, 2))
@@ -68,6 +118,9 @@ def test_custom_sde(dim):
         dt.data.custom_sde(dim, rhs, wrong_sigma, h=1e-3, n_steps=5)
 
     sde = dt.data.custom_sde(dim, rhs, sigma, h=1e-3, n_steps=5)
+    assert_equal(sde.dimension, dim)
+    assert_equal(sde.has_potential_function, False)
+    assert_equal(sde.integrator, "EulerMaruyama")
     traj = sde.trajectory([[1] * dim], 50)
     assert_equal(traj.shape, (50, dim))
     assert_equal(traj[0], np.ones((dim,)))
@@ -79,6 +132,9 @@ def test_custom_ode(dim):
         return [0.] * dim
 
     ode = dt.data.custom_ode(dim, rhs, h=1e-3, n_steps=5)
+    assert_equal(ode.dimension, dim)
+    assert_equal(ode.has_potential_function, False)
+    assert_equal(ode.integrator, "RungeKutta")
     traj = ode.trajectory([[1] * dim], 50)
     assert_equal(traj.shape, (50, dim))
     assert_equal(traj[0], np.ones((dim,)))
