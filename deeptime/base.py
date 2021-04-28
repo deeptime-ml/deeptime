@@ -124,6 +124,22 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
             self.__dict__.update(state)
 
 
+class Dataset:
+    r""" The Dataset superclass. """
+
+    def setflags(self, write=True):
+        r""" Set writeable flags for contained arrays. """
+        raise NotImplementedError()
+
+    def __len__(self):
+        r""" Length of this dataset. """
+        raise NotImplementedError()
+
+    def __getitem__(self, item):
+        r""" Retrieves one or multiple items from this dataset. """
+        raise NotImplementedError()
+
+
 class Model(_base_methods_mixin):
     r""" The model superclass. """
 
@@ -153,6 +169,9 @@ class Estimator(_base_methods_mixin):
         A model which can be used for initialization. In case an estimator is capable of online learning, i.e.,
         capable of updating models, this can be used to resume the estimation process.
     """
+
+    """ class wide flag to control whether input of fit or partial_fit should be checked for modifications """
+    _MUTABLE_INPUT_DATA = False
 
     def __init__(self, model=None):
         self._model = model
@@ -200,6 +219,88 @@ class Estimator(_base_methods_mixin):
         :type: bool
         """
         return self._model is not None
+
+    def __getattribute__(self, item):
+        if (item == 'fit' or item == 'partial_fit') and not self._MUTABLE_INPUT_DATA:
+            fit = super(Estimator, self).__getattribute__(item)
+            return _ImmutableInputData(fit)
+
+        return super(_base_methods_mixin, self).__getattribute__(item)
+
+
+class _ImmutableInputData:
+    """A function decorator for Estimator.fit() to make input data immutable """
+
+    def __init__(self, fit_method):
+        self.fit_method = fit_method
+        self._data = None
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value_):
+        import numpy as np
+        args, kwargs = value_
+        self._data = []
+
+        # first argument is x
+        if len(args) == 0:
+            if 'data' in kwargs:
+                args = [kwargs['data']]
+            elif len(kwargs) == 1:
+                args = [kwargs[k] for k in kwargs.keys()]
+            else:
+                raise InputFormatError(f'No input at all for fit(). Input was {args}, kw={kwargs}')
+        value = args[0]
+        if hasattr(value, 'setflags'):
+            self._data.append(value)
+        elif isinstance(value, (list, tuple)):
+            for i, x in enumerate(value):
+                if isinstance(x, np.ndarray):
+                    self._data.append(x)
+                else:
+                    raise InputFormatError(f'Invalid input element in position {i}, only numpy.ndarrays allowed.')
+        elif isinstance(value, (Model, Estimator)):
+            self._data.append(value)
+        else:
+            raise InputFormatError(f'Only estimator, model, ndarray or list/tuple of ndarray allowed. '
+                                   f'But was of type {type(value)}: {value}.')
+
+    def __enter__(self):
+        import numpy as np
+        self.old_writable_flags = []
+        for d in self.data:
+            if isinstance(d, np.ndarray):
+                self.old_writable_flags.append(d.flags.writeable)
+                # set ndarray writabe flags to false
+                try:
+                    d.setflags(write=False)
+                except:
+                    # although this should not raise, occasionally it does raise
+                    # due to arrays stemming from torch which then cannot be set immutable
+                    ...
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # restore ndarray writable flags to old state
+        import numpy as np
+        for d, writable in zip(self.data, self.old_writable_flags):
+            if isinstance(d, np.ndarray):
+                try:
+                    d.setflags(write=writable)
+                except:
+                    # although this should not raise, occasionally it does raise
+                    # due to arrays stemming from torch which then cannot be set immutable
+                    ...
+
+    def __call__(self, *args, **kwargs):
+        # extract input data from args, **kwargs (namely x and y)
+        self.data = args, kwargs
+
+        # here we invoke the immutable setting context manager.
+        with self:
+            return self.fit_method(*args, **kwargs)
 
 
 class Transformer:

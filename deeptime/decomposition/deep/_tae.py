@@ -97,6 +97,8 @@ class TAE(DLEstimator, Transformer):
     ----------
     .. footbibliography::
     """
+    _MUTABLE_INPUT_DATA = True
+
     def __init__(self, encoder: nn.Module, decoder: nn.Module, optimizer='Adam', learning_rate=3e-4):
         super().__init__()
         self._encoder = encoder

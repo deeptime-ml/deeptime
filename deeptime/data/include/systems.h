@@ -64,9 +64,9 @@ private:
     static constexpr T c_ = 1;
 };
 
-//
+//------------------------------------------------------------------------------
 // Bickley Jet
-//
+//------------------------------------------------------------------------------
 template<typename T>
 struct BickleyJet {
     using system_type = ode_tag;

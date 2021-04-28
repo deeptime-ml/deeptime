@@ -220,7 +220,7 @@ PYBIND11_MODULE(_data_bindings, m) {
             .def_readonly_static("L0", &System::L0)
             .def_readonly_static("r0", &System::r0)
             .def_readonly_static("c", &System::c)
-            .def_readonly_static("eps", &System::eps) 
+            .def_readonly_static("eps", &System::eps)
             .def_readonly_static("k", &System::k);
     }
     exportSystem<QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");

@@ -374,6 +374,8 @@ class VAMPNet(DLEstimator, Transformer):
     ----------
     .. footbibliography::
     """
+    _MUTABLE_INPUT_DATA = True
+
     def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
                  score_method: str = 'VAMP2', score_mode: str = 'regularize', epsilon: float = 1e-6,
