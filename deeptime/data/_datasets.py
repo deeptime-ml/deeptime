@@ -247,7 +247,7 @@ def bickley_jet(n_particles: int, n_jobs=None):
     """
     from deeptime.util.parallel import handle_n_jobs
     n_jobs = handle_n_jobs(n_jobs)
-    simulator = BickleyJet(h=2e-3, n_steps=50)
+    simulator = BickleyJet(h=1e-2, n_steps=10)
     traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
     traj_reshaped = traj.transpose(1, 0, 2)
     return BickleyJetDataset(traj_reshaped)
