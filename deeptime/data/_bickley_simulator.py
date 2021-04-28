@@ -38,7 +38,7 @@ class BickleyJet:
         self.eps = np.array([0.075, 0.15, 0.3])
         self.k = np.array([2, 4, 6]) / self.r0
 
-    def generate(self, n_particles, n_jobs=None) -> np.ndarray:
+    def generate(self, n_particles, n_jobs=None, X=None) -> np.ndarray:
         """Generates a trajectory with a fixed number of particles / test points.
 
         Parameters
@@ -54,7 +54,7 @@ class BickleyJet:
             Trajectories for m uniformly distributed test points in Omega = [0, 20] x [-3, 3].
         """
         n_jobs = handle_n_jobs(n_jobs)
-        return _generate_impl(n_particles, self.L0, self.U0, self.c, self.eps, self.k, n_jobs=n_jobs)
+        return _generate_impl(n_particles, self.L0, self.U0, self.c, self.eps, self.k, n_jobs=n_jobs, X=X)
 
     @staticmethod
     def to_3d(data: np.ndarray, radius: float = 1.) -> np.ndarray:
@@ -225,9 +225,10 @@ def _generate_impl_worker(args):
     return i, sol.y
 
 
-def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs: int) -> np.ndarray:
+def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs: int, X=None) -> np.ndarray:
     # uniformly sampled test points in X = [0, 20] x [-3, 3]
-    X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3))
+    if X is None:
+        X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3))
     nT = 401
     Z = np.zeros((2, nT, n_particles))
 

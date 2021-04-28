@@ -42,7 +42,7 @@ public:
         for (std::size_t j = 0; j < DIM; ++j) {
             yt[j] = y[j] + (h / 2.) * k2[j];
         }
-        k3 = f(t + h/2, yt); // compute k3 = f(t + h/2, y+h/2*k2)
+        k3 = f(t + h / 2., yt); // compute k3 = f(t + h/2, y+h/2*k2)
         for (std::size_t j = 0; j < DIM; ++j) {
             yt[j] = y[j] + h * k3[j];
         }

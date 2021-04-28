@@ -3,6 +3,7 @@
 #include <vector>
 #include <random>
 #include <chrono>
+#include <complex>
 
 #include "common.h"
 #include "integrator.h"
@@ -61,6 +62,53 @@ private:
     static constexpr T a_ = 1.73205080757; // sqrt(3)
     static constexpr T b_ = 1.41421356237;  // sqrt(2.);
     static constexpr T c_ = 1;
+};
+
+//
+// Bickley Jet
+//
+template<typename T>
+struct BickleyJet {
+    using system_type = ode_tag;
+
+    static constexpr std::size_t DIM = 2;
+    using dtype = T;
+    using State = Vector<T, DIM>;
+    using Integrator = deeptime::RungeKutta<State, DIM>;
+
+    template<typename D>
+    static constexpr auto sech(D t) {
+        return 1./std::cosh(t);
+    }
+
+    constexpr State f(double t, const State &xVec) const {
+        using namespace std::complex_literals;
+        auto x = std::get<0>(xVec);
+        auto y = std::get<1>(xVec);
+        std::complex<T> fc {0};
+        std::complex<T> df_dx_c {0};
+        for (int j = 0; j < 3; ++j) {
+            fc += eps[j] * std::exp(-1i * k[j] * c[j] * t) * std::exp(1i * k[j] * x);
+            df_dx_c += eps[j] * std::exp(-1i * k[j] * c[j] * t) * 1i * k[j] * std::exp(1i * k[j] * x);
+        }
+        auto f = fc.real();
+        auto df_dx = df_dx_c.real();
+        auto sech_y = sech(y / L0);
+        return {{
+            U0 * sech_y * sech_y + 2. * U0 * std::tanh(y / L0) * sech_y * sech_y * f,
+            U0 * L0 * sech_y * sech_y * df_dx
+        }};
+    }
+
+    static constexpr T U0 { 5.4138 };
+    static constexpr T L0 { 1.77 };
+    static constexpr T r0 { 6.371 };
+    static constexpr std::array<T, 3> eps {{ 0.075, 0.15, 0.3 }};
+    static constexpr std::array<T, 3> c {{ U0 * 0.1446, U0 * 0.205, U0 * 0.461}};
+    static constexpr std::array<T, 3> k {{ 2. / r0, 4. / r0, 6. / r0 }};
+
+    T h{1e-2};
+    std::size_t nSteps{ static_cast<std::size_t>(0.1 / h)  };
 };
 
 //------------------------------------------------------------------------------

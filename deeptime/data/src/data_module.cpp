@@ -212,6 +212,15 @@ PYBIND11_MODULE(_data_bindings, m) {
             self.updateSigma();
         });
     }
+    {
+        using System = BickleyJet<double>;
+        auto clazz = exportSystem<System>(m, "BickleyJet");
+        clazz.def_readonly_static("U0", &System::U0)
+            .def_readonly_static("L0", &System::L0)
+            .def_readonly_static("r0", &System::r0)
+            .def_readonly_static("c", &System::c)
+            .def_readonly_static("k", &System::k);
+    }
     exportSystem<QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
     exportPyODE<1>(m, "PyODE1D");
