@@ -171,7 +171,7 @@ class BickleyJetDataset:
         ax.set_ylim([-3, 3])
 
         plot_handles = []
-        s_handle = ax.scatter(data[0, :, 0], data[0, :, 1], s=s, c=c, vmin=0, vmax=1,
+        s_handle = ax.scatter(*data[0].T, s=s, c=c, vmin=0, vmax=1,
                               cmap=cmap, edgecolor=edgecolor)
         plot_handles.append(s_handle)
 
