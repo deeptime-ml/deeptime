@@ -232,10 +232,6 @@ class Covariance(Estimator):
                  compute_ctt: bool = False, remove_data_mean: bool = False, reversible: bool = False,
                  bessels_correction: bool = True, sparse_mode: str = 'auto', ncov: int = 5, diag_only: bool = False,
                  model=None):
-
-        if (compute_c0t or compute_ctt) and lagtime is None:
-            raise ValueError('lagtime parameter mandatory due to requested covariance matrices.')
-
         super(Covariance, self).__init__(model=model)
         self.lagtime = lagtime
         self.compute_c00 = compute_c00
