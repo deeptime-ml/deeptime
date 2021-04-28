@@ -385,8 +385,8 @@ class Covariance(Estimator):
         return self._lagtime
 
     @lagtime.setter
-    def lagtime(self, value: int):
-        if value < 0:
+    def lagtime(self, value: Optional[int]):
+        if value is not None and value < 0:
             raise ValueError("Negative lagtime are not supported.")
         self._lagtime = value
 
