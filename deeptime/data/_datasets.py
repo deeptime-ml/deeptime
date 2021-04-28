@@ -247,9 +247,9 @@ def bickley_jet(n_particles: int, n_jobs=None):
     """
     from deeptime.util.parallel import handle_n_jobs
     n_jobs = handle_n_jobs(n_jobs)
-    simulator = BickleyJet()
+    simulator = BickleyJet(h=2e-3, n_steps=50)
     traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
-    traj_reshaped = traj.transpose(1, 2, 0)
+    traj_reshaped = traj.transpose(1, 0, 2)
     return BickleyJetDataset(traj_reshaped)
 
 
@@ -986,11 +986,6 @@ def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
     """
     from ._data_bindings import TimeDependent5Well2D
     return TimeDependentSystem(TimeDependent5Well2D(), h, n_steps, props={'beta': beta})
-
-
-def bickley_jet2(h=2e-3, n_steps=50):
-    from ._data_bindings import BickleyJet
-    return TimeDependentSystem(BickleyJet(), h, n_steps)
 
 
 def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: int):

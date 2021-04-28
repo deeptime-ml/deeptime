@@ -16,6 +16,7 @@ import deeptime as dt
     [dt.data.prinz_potential, 1, 'EulerMaruyama', True],
     [dt.data.time_dependent_quintuple_well, 2, 'EulerMaruyama', True],
     [dt.data.abc_flow, 3, 'RungeKutta', False],
+    [dt.data.BickleyJet, 2, 'RungeKutta', False]
 ])
 def test_interface(init, system, dim, integrator, has_potential):
     instance = system(h=1e-5, n_steps=10)
@@ -151,3 +152,24 @@ def test_custom_ode_wrong_dim(dim):
     with assert_raises(ValueError):
         dt.data.custom_ode(dim, lambda x: x, 1., 5)
 
+
+def test_bickley_params():
+    U_0 = 5.4138
+    L_0 = 1.77
+    r_0 = 6.371
+    c = np.array((0.1446, 0.205, 0.461)) * U_0
+    eps = np.array((0.075, 0.15, 0.3))
+    k = np.array((2, 4, 6)) * 1./r_0
+
+    system = dt.data.BickleyJet(1e-5, 10)
+    assert_equal(system.h, 1e-5)
+    assert_equal(system.n_steps, 10)
+    assert_equal(system.integrator, 'RungeKutta')
+    assert_equal(system.has_potential_function, False)
+    assert_equal(system.dimension, 2)
+    assert_equal(system.time_dependent, True)
+    assert_equal(system.c, c)
+    assert_equal(system.U0, U_0)
+    assert_equal(system.L0, L_0)
+    assert_equal(system.eps, eps)
+    assert_equal(system.k, k)
