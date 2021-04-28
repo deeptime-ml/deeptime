@@ -25,7 +25,6 @@ API
     position_based_fluids
     drunkards_walk
     bickley_jet
-    bickley_jet2
     birth_death_chain
     tmatrix_metropolis1d
 
