@@ -4,9 +4,11 @@
 
 Releases:
 
-|  [![PyPI](https://badge.fury.io/py/deeptime.svg)](https://pypi.org/project/deeptime) 	|  [![conda-forge](https://img.shields.io/conda/v/conda-forge/deeptime?color=brightgreen&label=conda-forge)](https://github.com/conda-forge/deeptime-feedstock) 	|
+Installation via conda recommended.
+
+|  [![conda-forge](https://img.shields.io/conda/v/conda-forge/deeptime?color=brightgreen&label=conda-forge)](https://github.com/conda-forge/deeptime-feedstock) 	|   [![PyPI](https://badge.fury.io/py/deeptime.svg)](https://pypi.org/project/deeptime)	|
 |:-:	|:-:	|
-|  `pip install deeptime` 	|  `conda install -c conda-forge deeptime` 	|
+|  `conda install -c conda-forge deeptime` |  `pip install deeptime`  	|
 
 Documentation: [deeptime-ml.github.io](https://deeptime-ml.github.io/).
 
