@@ -988,7 +988,7 @@ def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):
     return TimeDependentSystem(TimeDependent5Well2D(), h, n_steps, props={'beta': beta})
 
 
-def bickley_jet2(h=1e-1, n_steps=10):
+def bickley_jet2(h=2e-3, n_steps=50):
     from ._data_bindings import BickleyJet
     return TimeDependentSystem(BickleyJet(), h, n_steps)
 
