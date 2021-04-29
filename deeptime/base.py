@@ -6,7 +6,7 @@ from typing import Optional
 from sklearn.base import _pprint as pprint_sklearn
 
 
-class _base_methods_mixin(object, metaclass=abc.ABCMeta):
+class _BaseMethodsMixin(abc.ABC):
     """ Defines common methods used by both Estimator and Model classes. These are mostly static and low-level
     checking of conformity with respect to deeptime conventions.
     """
@@ -124,7 +124,39 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
             self.__dict__.update(state)
 
 
-class Model(_base_methods_mixin):
+class Dataset(abc.ABC):
+    r""" The Dataset superclass. It is an abstract class requiring implementations of
+
+    * :meth:`__len__` to obtain its length,
+    * :meth:`__getitem__` to obtain one or several items,
+    * :meth:`setflags` to set its writeable state.
+
+    See Also
+    --------
+    deeptime.util.data.TimeLaggedDataset
+        A dataset implementation for pairs of instantaneous and timelagged data.
+    deeptime.util.data.TimeLaggedConcatDataset
+        A concatenation of several :class:`TimeLaggedDataset <deeptime.util.data.TimeLaggedDataset>` .
+    deeptime.util.data.TrajectoryDataset
+        A dataset for one trajectory with a lagtime.
+    deeptime.util.data.TrajectoriesDataset
+        A dataset for multiple trajectories with a lagtime.
+    """
+
+    @abc.abstractmethod
+    def setflags(self, write=True):
+        r""" Set writeable flags for contained arrays. """
+
+    @abc.abstractmethod
+    def __len__(self):
+        r""" Length of this dataset. """
+
+    @abc.abstractmethod
+    def __getitem__(self, item):
+        r""" Retrieves one or multiple items from this dataset. """
+
+
+class Model(_BaseMethodsMixin):
     r""" The model superclass. """
 
     def copy(self) -> "Model":
@@ -144,7 +176,7 @@ class Model(_base_methods_mixin):
                 setattr(self, k, v)
 
 
-class Estimator(_base_methods_mixin):
+class Estimator(_BaseMethodsMixin):
     r""" Base class of all estimators
 
     Parameters
@@ -209,30 +241,7 @@ class Estimator(_base_methods_mixin):
             fit = super(Estimator, self).__getattribute__(item)
             return _ImmutableInputData(fit)
 
-        return super(_base_methods_mixin, self).__getattribute__(item)
-
-
-class Transformer:
-    r""" Base class of all transformers. """
-
-    @abc.abstractmethod
-    def transform(self, data, **kwargs):
-        r"""Transforms the input data.
-
-        Parameters
-        ----------
-        data : array_like
-            Input data.
-
-        Returns
-        -------
-        transformed : array_like
-            The transformed data
-        """
-        pass
-
-    def __call__(self, *args, **kwargs):
-        return self.transform(*args, **kwargs)
+        return super(_BaseMethodsMixin, self).__getattribute__(item)
 
 
 class _ImmutableInputData:
@@ -250,11 +259,7 @@ class _ImmutableInputData:
     def data(self, value_):
         import numpy as np
         args, kwargs = value_
-        # store data as a list of ndarrays
-        # handle optional y for supervised learning
-        y = kwargs.get('y', None)
-
-        self._data = [] if y is None else [y]
+        self._data = []
 
         # first argument is x
         if len(args) == 0:
@@ -265,7 +270,7 @@ class _ImmutableInputData:
             else:
                 raise InputFormatError(f'No input at all for fit(). Input was {args}, kw={kwargs}')
         value = args[0]
-        if isinstance(value, np.ndarray):
+        if hasattr(value, 'setflags'):
             self._data.append(value)
         elif isinstance(value, (list, tuple)):
             for i, x in enumerate(value):
@@ -312,6 +317,28 @@ class _ImmutableInputData:
         # here we invoke the immutable setting context manager.
         with self:
             return self.fit_method(*args, **kwargs)
+
+
+class Transformer(abc.ABC):
+    r""" Base class of all transformers. """
+
+    @abc.abstractmethod
+    def transform(self, data, **kwargs):
+        r"""Transforms the input data.
+
+        Parameters
+        ----------
+        data : array_like
+            Input data.
+
+        Returns
+        -------
+        transformed : array_like
+            The transformed data
+        """
+
+    def __call__(self, *args, **kwargs):
+        return self.transform(*args, **kwargs)
 
 
 class InputFormatError(ValueError):

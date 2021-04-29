@@ -2,6 +2,8 @@ from typing import Optional, List
 
 import numpy as np
 
+from ..base import Dataset
+
 
 def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int = 1, n_splits: Optional[int] = None,
                       shuffle: bool = False, random_state: Optional[np.random.RandomState] = None):
@@ -105,7 +107,7 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
                 t += chunksize
 
 
-class ConcatDataset:
+class ConcatDataset(Dataset):
     r""" Concatenates existing datasets.
 
     Parameters
@@ -114,10 +116,14 @@ class ConcatDataset:
         Datasets to concatenate.
     """
 
-    def __init__(self, datasets: List):
+    def __init__(self, datasets: List[Dataset]):
         self._lengths = [len(ds) for ds in datasets]
         self._cumlen = np.cumsum(self._lengths)
         self._datasets = datasets
+
+    def setflags(self, write=True):
+        for ds in self._datasets:
+            ds.setflags(write=write)
 
     @property
     def subsets(self):
@@ -141,7 +147,7 @@ class ConcatDataset:
         return self._cumlen[-1]
 
 
-class TimeLaggedDataset:
+class TimeLaggedDataset(Dataset):
     r""" High-level container for time-lagged time-series data.
     This can be used together with pytorch data tools, i.e., data loaders and other utilities.
 
@@ -162,6 +168,10 @@ class TimeLaggedDataset:
             f"Length of trajectory for data and data_lagged does not match ({len(data)} != {len(data_lagged)})"
         self._data = data
         self._data_lagged = data_lagged
+
+    def setflags(self, write=True):
+        self._data.setflags(write=write)
+        self._data_lagged.setflags(write=write)
 
     @property
     def data(self) -> np.ndarray:

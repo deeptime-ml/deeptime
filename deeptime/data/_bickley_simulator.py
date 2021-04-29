@@ -1,15 +1,13 @@
 import numpy as np
-from threadpoolctl import threadpool_limits
-from scipy.integrate import solve_ivp
 
+from ._systems import TimeDependentSystem
 from ..util.data import TimeLaggedDataset
 from ..util.decorators import plotting_function
-from ..util.parallel import handle_n_jobs, joining
+from ._data_bindings import BickleyJet as BickleyJetImpl
 
 
-class BickleyJet:
-    r"""Implementation of the Bickley jet.
-    Based on :footcite:`hadjighasem2016spectral`.
+class BickleyJet(TimeDependentSystem):
+    r"""Implementation of the Bickley jet. Based on :footcite:`hadjighasem2016spectral`.
 
     The parameters are set to
 
@@ -29,17 +27,48 @@ class BickleyJet:
     .. footbibliography::
     """
 
-    def __init__(self):
+    def __init__(self, h: float, n_steps: int):
         # set parameters
-        self.U0 = 5.4138  # units changed to 10^6 m per day
-        self.L0 = 1.77  # in 10^6 m
-        self.r0 = 6.371  # in 10^6 m
-        self.c = np.array([0.1446, 0.205, 0.461]) * self.U0
-        self.eps = np.array([0.075, 0.15, 0.3])
-        self.k = np.array([2, 4, 6]) / self.r0
+        super().__init__(BickleyJetImpl(), h, n_steps)
+
+    @property
+    def U0(self):
+        r""" The characteristic velocity scale :math:`U_0 = 5.4138` in :math:`10^6 \frac{\mathrm{m}}{\mathrm{day}}`. """
+        return self._impl.U0
+    
+    @property
+    def L0(self):
+        r""" The characteristic length scale :math:`L_0 = 1.77` in :math:`10^6\;\mathrm{m}`. """
+        return self._impl.L0
+
+    @property
+    def r0(self):
+        r""" The mean radius of the earth :math:`r_0 = 6.371` in :math:`10^6\;\mathrm{m}`. """
+        return self._impl.r0
+
+    @property
+    def c(self):
+        r""" Traveling speeds :math:`c = (0.1446, 0.205, 0.461)^\top U_0`. """
+        return self._impl.c
+
+    @property
+    def eps(self):
+        r""" Wave amplitudes :math:`\varepsilon = (0.075, 0.15, 0.3)^\top`. """
+        return self._impl.eps
+
+    @property
+    def k(self):
+        r""" Wave numbers :math:`k = (2,4,6)^\top \frac{1}{r_0}`. """
+        return self._impl.k
+
+    def trajectory(self, t0, x0, length, seed=-1, n_jobs=None):
+        traj = super().trajectory(t0, x0, length, seed, n_jobs)
+        traj[..., 0] = np.mod(traj[..., 0], 20)  # periodicity in x direction
+        return traj
 
     def generate(self, n_particles, n_jobs=None) -> np.ndarray:
-        """Generates a trajectory with a fixed number of particles / test points.
+        """Generates a trajectory with a fixed number of particles / test points for 401 evaluation steps, i.e.,
+        `401 * self.n_steps * self.h` integration steps.
 
         Parameters
         ----------
@@ -50,11 +79,11 @@ class BickleyJet:
 
         Returns
         -------
-        Z : np.ndarray (2, 401, m)
+        Z : np.ndarray (m, 401, 2)
             Trajectories for m uniformly distributed test points in Omega = [0, 20] x [-3, 3].
         """
-        n_jobs = handle_n_jobs(n_jobs)
-        return _generate_impl(n_particles, self.L0, self.U0, self.c, self.eps, self.k, n_jobs=n_jobs)
+        X = np.vstack((np.random.uniform(0, 20, (n_particles,)), np.random.uniform(-3, 3, (n_particles, ))))
+        return self.trajectory(0, X.T, 401, n_jobs=n_jobs)
 
     @staticmethod
     def to_3d(data: np.ndarray, radius: float = 1.) -> np.ndarray:
@@ -102,7 +131,7 @@ class BickleyJetDataset:
         return self.data[item]
 
     @plotting_function
-    def make_animation(self, **kw):
+    def make_animation(self, **kw):  # pragma: no cover
         import matplotlib as mpl
         import matplotlib.pyplot as plt
         import matplotlib.animation as animation
@@ -142,7 +171,7 @@ class BickleyJetDataset:
         ax.set_ylim([-3, 3])
 
         plot_handles = []
-        s_handle = ax.scatter(data[0, :, 0], data[0, :, 1], s=s, c=c, vmin=0, vmax=1,
+        s_handle = ax.scatter(*data[0].T, s=s, c=c, vmin=0, vmax=1,
                               cmap=cmap, edgecolor=edgecolor)
         plot_handles.append(s_handle)
 
@@ -207,54 +236,3 @@ class BickleyJetEndpointsDataset3DClustered(TimeLaggedDataset):
 
     def __init__(self, data, data_lagged):
         super().__init__(data, data_lagged)
-
-
-def _generate_impl_worker(args):
-    with threadpool_limits(limits=1, user_api='blas'):
-        i, Xi, L0, U0, c, eps, k = args
-
-        T0 = 0    # start time
-        T1 = 40   # end time
-        nT = 401  # number of time points
-        T = np.linspace(T0, T1, nT)  # time points
-
-        sol = solve_ivp(_rhs, [T0, T1], Xi, t_eval=T, args=(L0, U0, c, eps, k))
-
-        sol.y[0, :] = np.mod(sol.y[0, :], 20) # the domain is periodic in x-direction
-
-    return i, sol.y
-
-
-def _generate_impl(n_particles, L0, U0, c, eps, k, n_jobs: int) -> np.ndarray:
-    # uniformly sampled test points in X = [0, 20] x [-3, 3]
-    X = np.vstack((20 * np.random.rand(n_particles), 6 * np.random.rand(n_particles) - 3))
-    nT = 401
-    Z = np.zeros((2, nT, n_particles))
-
-    import multiprocessing as mp
-    with joining(mp.Pool(processes=n_jobs)) as pool:
-        args = [(i, X[:, i], L0, U0, c, eps, k) for i in range(n_particles)]
-        for result in pool.imap_unordered(_generate_impl_worker, args):
-            Z[:, :, result[0]] = result[1]
-    return Z
-
-
-def _sech(x):
-    """
-    Hyperbolic secant.
-    """
-    return 1 / np.cosh(x)
-
-
-def _rhs(t, x, L0, U0, c, eps, k):
-    f = np.real(eps[0] * np.exp(-1j * k[0] * c[0] * t) * np.exp(1j * k[0] * x[0])
-              + eps[1] * np.exp(-1j * k[1] * c[1] * t) * np.exp(1j * k[1] * x[0])
-              + eps[2] * np.exp(-1j * k[2] * c[2] * t) * np.exp(1j * k[2] * x[0]))
-    df_dx = np.real(eps[0] * np.exp(-1j * k[0] * c[0] * t) * 1j * k[0] * np.exp(1j * k[0] * x[0])
-                  + eps[1] * np.exp(-1j * k[1] * c[1] * t) * 1j * k[1] * np.exp(1j * k[1] * x[0])
-                  + eps[2] * np.exp(-1j * k[2] * c[2] * t) * 1j * k[2] * np.exp(1j * k[2] * x[0]))
-
-    sech_sq = _sech(x[1] / L0) ** 2
-
-    return np.array([U0 * sech_sq + 2 * U0 * np.tanh(x[1] / L0) * sech_sq * f,
-                     U0 * L0 * sech_sq * df_dx])

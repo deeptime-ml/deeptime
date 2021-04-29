@@ -11,6 +11,7 @@ Data utilities
 
     data.timeshifted_split
     data.TimeLaggedDataset
+    data.TimeLaggedConcatDataset
     data.TrajectoryDataset
     data.TrajectoriesDataset
     data.ConcatDataset

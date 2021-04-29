@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 
 from deeptime.covariance import CovarianceModel
-from deeptime.util.data import timeshifted_split
+from deeptime.util.data import timeshifted_split, TimeLaggedDataset, TimeLaggedConcatDataset, TrajectoryDataset, \
+    TrajectoriesDataset
 from deeptime.data import ellipsoids
 from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel, VAMP, cvsplit_trajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
@@ -59,8 +60,8 @@ def test_propagate(components):
         np.testing.assert_array_almost_equal(fwd, data @ K)
 
 
-@pytest.fixture
-def full_rank_time_series():
+@pytest.fixture(params=['trajectory', 'time-lagged-ds', 'concat-time-lagged-ds', 'traj-ds', 'trajs-ds'])
+def full_rank_time_series(request):
     """ Yields a time series of which the propagator has full rank (7 in this case as data is mean-free). """
     random_state = np.random.RandomState(42)
     d = 8
@@ -72,62 +73,76 @@ def full_rank_time_series():
     for _ in range(1000):
         traj.append(model.forward(traj[-1]))
     traj = np.concatenate(traj)
-    return traj
+    if request.param == 'trajectory':
+        return traj, traj
+    elif request.param == 'time-lagged-ds':
+        return traj, TimeLaggedDataset(traj[:-1], traj[1:])
+    elif request.param == 'concat-time-lagged-ds':
+        return traj, TimeLaggedConcatDataset([TimeLaggedDataset(traj[:-1], traj[1:])])
+    elif request.param == 'traj-ds':
+        return traj, TrajectoryDataset(1, traj)
+    elif request.param == 'trajs-ds':
+        return traj, TrajectoriesDataset([TrajectoryDataset(1, traj)])
+    else:
+        raise ValueError(f"Unexpected request param {request.param}")
 
 
 @pytest.mark.parametrize("dim", [0, 1, 2, 3, 4, 5, 6, 7], ids=lambda x: f"dim={x}")
 def test_dim(full_rank_time_series, dim):
+    traj, ds = full_rank_time_series
     if dim < 1:
         with np.testing.assert_raises(ValueError):
-            VAMP(lagtime=1, dim=dim).fit(full_rank_time_series).fetch_model()
+            VAMP(lagtime=1, dim=dim).fit(ds).fetch_model()
     else:
-        est = VAMP(lagtime=1, dim=dim).fit(full_rank_time_series)
-        projection = est.transform(full_rank_time_series)
-        np.testing.assert_equal(projection.shape, (len(full_rank_time_series), dim))
+        est = VAMP(lagtime=1, dim=dim).fit(ds)
+        projection = est.transform(traj)
+        np.testing.assert_equal(projection.shape, (len(traj), dim))
 
 
 @pytest.mark.parametrize("var_cutoff", [0., .5, 1., 1.1], ids=lambda x: f"var_cutoff={x}")
 def test_var_cutoff(full_rank_time_series, var_cutoff):
+    traj, ds = full_rank_time_series
     if 0 < var_cutoff <= 1:
-        est = VAMP(lagtime=1, var_cutoff=var_cutoff).fit(full_rank_time_series)
-        projection = est.transform(full_rank_time_series)
-        np.testing.assert_equal(projection.shape[0], full_rank_time_series.shape[0])
+        est = VAMP(lagtime=1, var_cutoff=var_cutoff).fit(ds)
+        projection = est.transform(traj)
+        np.testing.assert_equal(projection.shape[0], traj.shape[0])
         if var_cutoff == 1.:
             # data is internally mean-free
-            np.testing.assert_equal(projection.shape[1], full_rank_time_series.shape[1] - 1)
+            np.testing.assert_equal(projection.shape[1], traj.shape[1] - 1)
         else:
-            np.testing.assert_array_less(projection.shape[1], full_rank_time_series.shape[1])
+            np.testing.assert_array_less(projection.shape[1], traj.shape[1])
     else:
         with np.testing.assert_raises(ValueError):
-            VAMP(lagtime=1, var_cutoff=var_cutoff).fit(full_rank_time_series).fetch_model()
+            VAMP(lagtime=1, var_cutoff=var_cutoff).fit(ds).fetch_model()
 
 
 @pytest.mark.parametrize("dim", [None, 2, 3], ids=lambda x: f"dim={x}")
 @pytest.mark.parametrize("var_cutoff", [None, .5, 1.], ids=lambda x: f"var_cutoff={x}")
 @pytest.mark.parametrize("partial_fit", [False, True], ids=lambda x: f"partial_fit={x}")
 def test_dim_and_var_cutoff(full_rank_time_series, dim, var_cutoff, partial_fit):
+    traj, ds = full_rank_time_series
     # basically dim should be ignored here since var_cutoff takes precedence if it is None
     est = VAMP(lagtime=1, dim=dim, var_cutoff=var_cutoff)
     if partial_fit:
-        for chunk in timeshifted_split(full_rank_time_series, lagtime=1, chunksize=15):
+        for chunk in timeshifted_split(traj, lagtime=1, chunksize=15):
             est.partial_fit(chunk)
-        est2 = VAMP(lagtime=1, dim=dim, var_cutoff=var_cutoff).fit(full_rank_time_series)
+        est2 = VAMP(lagtime=1, dim=dim, var_cutoff=var_cutoff).fit(ds)
         np.testing.assert_array_almost_equal(est.fetch_model().operator,
                                              est2.fetch_model().operator, decimal=4)  # can fail on M$ with higher acc.
     else:
-        est.fit(full_rank_time_series)
-    projection = est.transform(full_rank_time_series)
-    np.testing.assert_equal(projection.shape[0], full_rank_time_series.shape[0])
+        est.fit(ds)
+    projection = est.transform(traj)
+    np.testing.assert_equal(projection.shape[0], traj.shape[0])
     if var_cutoff is not None:
         if var_cutoff == 1.:
             # data is internally mean-free
-            np.testing.assert_equal(projection.shape[1], full_rank_time_series.shape[1] - 1)
+            np.testing.assert_equal(projection.shape[1], traj.shape[1] - 1)
         else:
-            np.testing.assert_array_less(projection.shape[1], full_rank_time_series.shape[1])
+            np.testing.assert_array_less(projection.shape[1], traj.shape[1])
     else:
         if dim is None:
             # data is internally mean-free
-            np.testing.assert_equal(projection.shape[1], full_rank_time_series.shape[1] - 1)
+            np.testing.assert_equal(projection.shape[1], traj.shape[1] - 1)
         else:
             np.testing.assert_equal(projection.shape[1], dim)
 
