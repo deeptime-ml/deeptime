@@ -131,7 +131,7 @@ class BickleyJetDataset:
         return self.data[item]
 
     @plotting_function
-    def make_animation(self, **kw):
+    def make_animation(self, **kw):  # pragma: no cover
         import matplotlib as mpl
         import matplotlib.pyplot as plt
         import matplotlib.animation as animation
