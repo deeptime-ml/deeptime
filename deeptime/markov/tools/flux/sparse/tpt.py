@@ -70,13 +70,11 @@ def flux_matrix(T, pi, qminus, qplus, netflux=True):
         Matrix of flux values between pairs of states.
 
     """
-    D1 = diags((pi * qminus,), (0,))
-    D2 = diags((qplus,), (0,))
-
-    flux = D1.dot(T.dot(D2))
+    flux = T.multiply(qplus[None, ...]).multiply(pi[..., None]).multiply(qminus[..., None])
 
     """Remove self-fluxes"""
-    flux = flux - diags(flux.diagonal(), 0)
+    flux.setdiag(0)
+    flux.eliminate_zeros()
 
     """Return net or gross flux"""
     if netflux:
@@ -129,7 +127,7 @@ def coarsegrain(F, sets):
     Fin = F.tocsr()
     Fc = csr_matrix((nnew, nnew))
     for i in range(0, nnew - 1):
-        for j in range(i, nnew):
+        for j in range(i + 1, nnew):
             I = list(sets[i])
             J = list(sets[j])
             Fc[i, j] = (Fin[I, :][:, J]).sum()
