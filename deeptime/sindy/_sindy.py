@@ -130,7 +130,7 @@ class SINDyModel(Model):
 
         return scoring(y, self.predict(x), **scoring_kws)
 
-    def simulate(self, x0, t, integrator=odeint, integrator_kws={}):
+    def simulate(self, x0, t, integrator=odeint, integrator_kws=None):
         """
         Simulate the SINDy model forward in time.
 
@@ -148,7 +148,7 @@ class SINDyModel(Model):
             Function to use to integrate the system.
             Default is :code:`scipy.integrate.odeint`.
 
-        integrator_kws: dict, optional (default {})
+        integrator_kws: dict, optional (default None)
             Optional keyword arguments to pass to the integrator
 
         Returns
@@ -157,7 +157,10 @@ class SINDyModel(Model):
             Simulation results.
         """
 
-        def rhs(x, t):
+        if integrator_kws is None:
+            integrator_kws = {}
+
+        def rhs(x, _):
             return self.predict(x[np.newaxis, :])[0]
 
         return integrator(rhs, x0, t, **integrator_kws)

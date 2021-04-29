@@ -107,24 +107,6 @@ def error_perturbation_single(C, S, R=None):
     return X.sum()
 
 
-def error_perturbation_var(C, S):
-    r"""Error-perturbation arising from a given sensitivity
-
-    Parameters
-    ----------
-    C : (M, M) ndarray
-        Count matrix
-    S : (K, M, M) ndarray
-        Sensitivity tensor
-
-    """
-    K = S.shape[0]
-    cov = tmatrix_cov(C)
-    for i in range(K):
-        R = S[i, :, :]
-        X[i] = (R[:, :, np.newaxis] * cov * R[:, np.newaxis, :]).sum()
-
-
 def error_perturbation_cov(C, S):
     r"""Error-perturbation arising from a given sensitivity
 

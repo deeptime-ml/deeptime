@@ -66,7 +66,7 @@ class BickleyJet(TimeDependentSystem):
         traj[..., 0] = np.mod(traj[..., 0], 20)  # periodicity in x direction
         return traj
 
-    def generate(self, n_particles, n_jobs=None) -> np.ndarray:
+    def generate(self, n_particles, n_jobs=None, seed=None) -> np.ndarray:
         """Generates a trajectory with a fixed number of particles / test points for 401 evaluation steps, i.e.,
         `401 * self.n_steps * self.h` integration steps.
 
@@ -76,13 +76,16 @@ class BickleyJet(TimeDependentSystem):
             Number of particles.
         n_jobs : int, optional, default=None
             Number of jobs.
+        seed : int or None, optional, default=None
+            Random seed used for initialization of particle positions at :math:`t=0`.
 
         Returns
         -------
         Z : np.ndarray (m, 401, 2)
             Trajectories for m uniformly distributed test points in Omega = [0, 20] x [-3, 3].
         """
-        X = np.vstack((np.random.uniform(0, 20, (n_particles,)), np.random.uniform(-3, 3, (n_particles, ))))
+        state = np.random.RandomState(seed)
+        X = np.vstack((state.uniform(0, 20, (n_particles,)), state.uniform(-3, 3, (n_particles, ))))
         return self.trajectory(0, X.T, 401, n_jobs=n_jobs)
 
     @staticmethod

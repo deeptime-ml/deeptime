@@ -159,7 +159,7 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     return DrunkardsWalk(grid_size, bar_location=bar_location, home_location=home_location)
 
 
-def bickley_jet(n_particles: int, n_jobs: Optional[int] = None) -> BickleyJetDataset:
+def bickley_jet(n_particles: int, n_jobs: Optional[int] = None, seed: Optional[int] = None) -> BickleyJetDataset:
     r"""Simulates the Bickley jet for a number of particles.
     The implementation is based on :footcite:`hadjighasem2016spectral` with parameters
 
@@ -208,8 +208,10 @@ def bickley_jet(n_particles: int, n_jobs: Optional[int] = None) -> BickleyJetDat
     ----------
     n_particles : int
         Number of particles which are propagated.
-    n_jobs : n_jobs : int or None, default=None
+    n_jobs : int or None, default=None
         Number of threads to use for simulation.
+    seed : int or None, optional, default=None
+        Random seed used for initialization of particle positions at :math:`t=0`.
 
     Returns
     -------
@@ -253,7 +255,7 @@ def bickley_jet(n_particles: int, n_jobs: Optional[int] = None) -> BickleyJetDat
     from deeptime.util.parallel import handle_n_jobs
     n_jobs = handle_n_jobs(n_jobs)
     simulator = BickleyJet(h=1e-2, n_steps=10)
-    traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs)
+    traj = simulator.generate(n_particles=n_particles, n_jobs=n_jobs, seed=seed)
     traj_reshaped = traj.transpose(1, 0, 2)
     return BickleyJetDataset(traj_reshaped)
 

@@ -78,7 +78,6 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
         state_probabilities : (T, n_hidden) ndarray
             State probability trajectory.
         """
-        pass
 
     @abc.abstractmethod
     def generate_observation_trajectory(self, hidden_state_trajectory: np.ndarray) -> np.ndarray:
@@ -95,7 +94,6 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
             Observation timeseries :math:`\{o_t\}_t`, where :math:`o_t` is the observation
             associated to hidden state :math:`s_t`.
         """
-        pass
 
     @abc.abstractmethod
     def sample(self, observations_per_state: List[np.ndarray]) -> None:
@@ -108,7 +106,6 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
             The observations per state, i.e., :code:`len(observations_per_state)` must evaluate to the value
             of :attr:`n_hidden_states`.
         """
-        pass
 
     @abc.abstractmethod
     def submodel(self, states: Optional[np.ndarray] = None, obs: Optional[np.ndarray] = None):
@@ -126,7 +123,6 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
         submodel : OutputModel
             The restricted output model.
         """
-        pass
 
     @abc.abstractmethod
     def fit(self, observations: List[np.ndarray], weights: List[np.ndarray]):
@@ -145,7 +141,6 @@ class OutputModel(Model, metaclass=abc.ABCMeta):
         self : OutputModel
             Reference to self.
         """
-        pass
 
     @staticmethod
     def _handle_outliers(state_probability_trajectory: np.ndarray) -> None:
