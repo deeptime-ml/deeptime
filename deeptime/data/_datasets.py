@@ -1,4 +1,4 @@
-from typing import Tuple, List, Union, Callable
+from typing import Tuple, List, Union, Callable, Optional
 
 import numpy as np
 
@@ -159,7 +159,7 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     return DrunkardsWalk(grid_size, bar_location=bar_location, home_location=home_location)
 
 
-def bickley_jet(n_particles: int, n_jobs=None):
+def bickley_jet(n_particles: int, n_jobs: Optional[int] = None) -> BickleyJetDataset:
     r"""Simulates the Bickley jet for a number of particles.
     The implementation is based on :footcite:`hadjighasem2016spectral` with parameters
 
@@ -213,8 +213,13 @@ def bickley_jet(n_particles: int, n_jobs=None):
 
     Returns
     -------
-    dataset : deeptime.data.BickleyJetDataset
+    dataset : BickleyJetDataset
         Dataset over all the generated frames.
+
+    See Also
+    --------
+    BickleyJet
+        Underlying trajectory generator.
 
     Examples
     --------

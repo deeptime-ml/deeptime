@@ -6,7 +6,7 @@ from typing import Optional
 from sklearn.base import _pprint as pprint_sklearn
 
 
-class _base_methods_mixin(object, metaclass=abc.ABCMeta):
+class _BaseMethodsMixin(abc.ABC):
     """ Defines common methods used by both Estimator and Model classes. These are mostly static and low-level
     checking of conformity with respect to deeptime conventions.
     """
@@ -124,23 +124,39 @@ class _base_methods_mixin(object, metaclass=abc.ABCMeta):
             self.__dict__.update(state)
 
 
-class Dataset:
-    r""" The Dataset superclass. """
+class Dataset(abc.ABC):
+    r""" The Dataset superclass. It is an abstract class requiring implementations of
 
+    * :meth:`__len__` to obtain its length,
+    * :meth:`__getitem__` to obtain one or several items,
+    * :meth:`setflags` to set its writeable state.
+
+    See Also
+    --------
+    deeptime.util.data.TimeLaggedDataset
+        A dataset implementation for pairs of instantaneous and timelagged data.
+    deeptime.util.data.TimeLaggedConcatDataset
+        A concatenation of several :class:`TimeLaggedDataset <deeptime.util.data.TimeLaggedDataset>` .
+    deeptime.util.data.TrajectoryDataset
+        A dataset for one trajectory with a lagtime.
+    deeptime.util.data.TrajectoriesDataset
+        A dataset for multiple trajectories with a lagtime.
+    """
+
+    @abc.abstractmethod
     def setflags(self, write=True):
         r""" Set writeable flags for contained arrays. """
-        raise NotImplementedError()
 
+    @abc.abstractmethod
     def __len__(self):
         r""" Length of this dataset. """
-        raise NotImplementedError()
 
+    @abc.abstractmethod
     def __getitem__(self, item):
         r""" Retrieves one or multiple items from this dataset. """
-        raise NotImplementedError()
 
 
-class Model(_base_methods_mixin):
+class Model(_BaseMethodsMixin):
     r""" The model superclass. """
 
     def copy(self) -> "Model":
@@ -160,7 +176,7 @@ class Model(_base_methods_mixin):
                 setattr(self, k, v)
 
 
-class Estimator(_base_methods_mixin):
+class Estimator(_BaseMethodsMixin):
     r""" Base class of all estimators
 
     Parameters
@@ -225,7 +241,7 @@ class Estimator(_base_methods_mixin):
             fit = super(Estimator, self).__getattribute__(item)
             return _ImmutableInputData(fit)
 
-        return super(_base_methods_mixin, self).__getattribute__(item)
+        return super(_BaseMethodsMixin, self).__getattribute__(item)
 
 
 class _ImmutableInputData:
@@ -303,7 +319,7 @@ class _ImmutableInputData:
             return self.fit_method(*args, **kwargs)
 
 
-class Transformer:
+class Transformer(abc.ABC):
     r""" Base class of all transformers. """
 
     @abc.abstractmethod
@@ -320,7 +336,6 @@ class Transformer:
         transformed : array_like
             The transformed data
         """
-        pass
 
     def __call__(self, *args, **kwargs):
         return self.transform(*args, **kwargs)

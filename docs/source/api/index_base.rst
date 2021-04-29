@@ -14,3 +14,4 @@ This module contains all base classes of deeptime. They are the important when d
    Model
    Estimator
    Transformer
+   Dataset

@@ -153,7 +153,7 @@ def test_custom_ode_wrong_dim(dim):
         dt.data.custom_ode(dim, lambda x: x, 1., 5)
 
 
-def test_bickley_params():
+def test_bickley():
     U_0 = 5.4138
     L_0 = 1.77
     r_0 = 6.371
@@ -173,3 +173,19 @@ def test_bickley_params():
     assert_equal(system.L0, L_0)
     assert_equal(system.eps, eps)
     assert_equal(system.k, k)
+    assert_equal(system.r0, r_0)
+
+    dataset = dt.data.bickley_jet(10, n_jobs=1)
+    assert_equal(dataset.data.shape, (401, 10, 2))
+
+    dataset_endpoints = dataset.endpoints_dataset()
+    assert_equal(dataset_endpoints.data.shape, (10, 2))
+    assert_equal(dataset_endpoints.data_lagged.shape, (10, 2))
+
+    dataset_endpoints_3d = dataset_endpoints.to_3d(radius=1.)
+    assert_equal(dataset_endpoints_3d.data.shape, (10, 3))
+    assert_equal(dataset_endpoints_3d.data_lagged.shape, (10, 3))
+
+    dataset_clusters = dataset_endpoints_3d.cluster(13)
+    assert_equal(dataset_clusters.data.shape, (10, 13**3))
+    assert_equal(dataset_clusters.data_lagged.shape, (10, 13**3))
