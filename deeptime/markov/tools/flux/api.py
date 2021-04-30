@@ -1,39 +1,13 @@
-r"""
-===================
- Flux API
-===================
-
-"""
-
-from scipy.sparse.base import issparse
-from scipy.sparse.sputils import isdense
+import numpy as _np
 from scipy.sparse import csr_matrix
+from scipy.sparse.base import issparse
 
-from . import dense
-from . import sparse
+from deeptime.util.sparse import remove_negative_entries
 
 __docformat__ = "restructuredtext en"
-__author__ = "Benjamin Trendelkamp-Schroer, Martin Scherer, Frank Noe"
+__author__ = "Benjamin Trendelkamp-Schroer, Martin Scherer, Moritz Hoffmann, Frank Noe"
 __copyright__ = "Copyright 2014, Computational Molecular Biology Group, FU-Berlin"
-__credits__ = ["Benjamin Trendelkamp-Schroer", "Martin Scherer", "Frank Noe"]
-
-__version__ = "2.0.0"
-__maintainer__ = "Martin Scherer"
-__email__ = "m.scherer AT fu-berlin DOT de"
-
-__all__ = ['flux_matrix',
-           'to_netflux',
-           'flux_production',
-           'flux_producers',
-           'flux_consumers',
-           'coarsegrain',
-           'total_flux',
-           'rate',
-           'mfpt',
-           'pathways']
-
-_type_not_supported = \
-    TypeError("T is not a numpy.ndarray or a scipy.sparse matrix.")
+__credits__ = ["Benjamin Trendelkamp-Schroer", "Martin Scherer", "Moritz Hoffmann", "Frank Noe"]
 
 
 # ======================================================================
@@ -100,11 +74,20 @@ def flux_matrix(T, pi, qminus, qplus, netflux=True):
         Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
     """
     if issparse(T):
-        return sparse.tpt.flux_matrix(T, pi, qminus, qplus, netflux=netflux)
-    elif isdense(T):
-        return dense.tpt.flux_matrix(T, pi, qminus, qplus, netflux=netflux)
+        flux = T.multiply(qplus[None, ...]).multiply(pi[..., None]).multiply(qminus[..., None])
+        # Remove self-fluxes
+        flux.setdiag(0)
+        flux.eliminate_zeros()
     else:
-        raise _type_not_supported
+        flux = pi[:, None] * qminus[:, None] * T * qplus[None, :]
+        # Remove self fluxes
+        flux[_np.diag_indices(T.shape[0])] = 0.0
+
+    # Return net or gross flux
+    if netflux:
+        return to_netflux(flux)
+    else:
+        return flux
 
 
 def to_netflux(flux):
@@ -141,11 +124,10 @@ def to_netflux(flux):
 
     """
     if issparse(flux):
-        return sparse.tpt.to_netflux(flux)
-    elif isdense(flux):
-        return dense.tpt.to_netflux(flux)
+        netflux = remove_negative_entries(flux - flux.T)
     else:
-        raise _type_not_supported
+        netflux = _np.maximum(0, flux - flux.T)
+    return netflux
 
 
 def flux_production(F):
@@ -163,7 +145,24 @@ def flux_production(F):
         (negative) at each state
 
     """
-    return dense.tpt.flux_production(F)  # works for dense or sparse
+    influxes = _np.array(F.sum(axis=0)).flatten()  # all that flows in
+    outfluxes = _np.array(F.sum(axis=1)).flatten()  # all that flows out
+    prod = outfluxes - influxes  # net flux into nodes
+    return prod
+
+
+def _flux_producers_consumers(F, rtol, atol, producers):
+    influxes = _np.array(_np.sum(F, axis=0)).flatten()  # all that flows in
+    outfluxes = _np.array(_np.sum(F, axis=1)).flatten()  # all that flows out
+    # net out flux absolute
+    if producers:
+        net_abs = _np.maximum(outfluxes - influxes, 0)
+    else:
+        net_abs = _np.maximum(influxes - outfluxes, 0)
+    # net out flux relative
+    prod_rel = net_abs / (_np.maximum(outfluxes, influxes))
+    # return all indexes that are produces in terms of absolute and relative tolerance
+    return list(_np.where((net_abs > atol) * (prod_rel > rtol))[0])
 
 
 def flux_producers(F, rtol=1e-05, atol=1e-12):
@@ -181,13 +180,12 @@ def flux_producers(F, rtol=1e-05, atol=1e-12):
     Returns
     -------
     producers : (M, ) ndarray of int
-        indexes of states that are net flux producers. May include
+        indices of states that are net flux producers. May include
         "dirty" producers, i.e.  states that have influx but still
         produce more outflux and thereby violate flux conservation.
 
     """
-    # works for dense or sparse
-    return dense.tpt.flux_producers(F, rtol=rtol, atol=atol)
+    return _flux_producers_consumers(F, rtol, atol, producers=True)
 
 
 def flux_consumers(F, rtol=1e-05, atol=1e-12):
@@ -210,8 +208,7 @@ def flux_consumers(F, rtol=1e-05, atol=1e-12):
         produce more outflux and thereby violate flux conservation.
 
     """
-    # works for dense or sparse
-    return dense.tpt.flux_consumers(F, rtol=rtol, atol=atol)
+    return _flux_producers_consumers(F, rtol, atol, producers=False)
 
 
 def coarsegrain(F, sets):
@@ -242,12 +239,21 @@ def coarsegrain(F, sets):
         Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
 
     """
+    nnew = len(sets)
     if issparse(F):
-        return sparse.tpt.coarsegrain(F, sets)
-    elif isdense(F):
-        return dense.tpt.coarsegrain(F, sets)
+        Fc = csr_matrix((nnew, nnew))
+        Fin = F.tocsr()
     else:
-        raise _type_not_supported
+        Fc = _np.zeros((nnew, nnew))
+        Fin = F
+
+    for i in range(0, nnew - 1):
+        for j in range(i + 1, nnew):
+            I = list(sets[i])
+            J = list(sets[j])
+            Fc[i, j] = (Fin[I, :][:, J]).sum()
+            Fc[j, i] = (Fin[J, :][:, I]).sum()
+    return Fc
 
 
 # ======================================================================
@@ -279,12 +285,28 @@ def total_flux(F, A=None):
         Multiscale Model Simul 7: 1192-1219 (2009)
 
     """
-    if issparse(F):
-        return sparse.tpt.total_flux(F, A=A)
-    elif isdense(F):
-        return dense.tpt.total_flux(F, A=A)
+    if A is None:
+        prod = flux_production(F)
+        outflux = _np.sum(_np.maximum(prod, 0))
+        return outflux
     else:
-        raise _type_not_supported
+        X = set(_np.arange(F.shape[0]))  # total state space
+        A = set(A)
+        notA = X.difference(A)
+
+        if issparse(F):
+            # Extract rows corresponding to A
+            W = F.tocsr()
+            W = W[list(A), :]
+            # Extract columns corresponding to X\A
+            W = W.tocsc()
+            W = W[:, list(notA)]
+
+            F = W.sum()
+            return F
+        else:
+            outflux = (F[list(A), :])[:, list(notA)].sum()
+            return outflux
 
 
 def rate(totflux, pi, qminus):
@@ -328,7 +350,8 @@ def rate(totflux, pi, qminus):
         Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
 
     """
-    return dense.tpt.rate(totflux, pi, qminus)
+    kAB = totflux / (pi * qminus).sum()
+    return kAB
 
 
 def mfpt(totflux, pi, qminus):
@@ -364,7 +387,7 @@ def mfpt(totflux, pi, qminus):
         Proc. Natl. Acad. Sci. USA, 106, 19011-19016 (2009)
 
     """
-    return dense.tpt.mfpt(totflux, pi, qminus)
+    return 1.0 / rate(totflux, pi, qminus)
 
 
 ###############################################################################
@@ -415,9 +438,7 @@ def pathways(F, A, B, fraction=1.0, maxiter=1000):
         Multiscale Model Simul 7: 1192-1219 (2009)
 
     """
+    from .pathways import pathways as impl
     if issparse(F):
-        return sparse.pathways.pathways(F, A, B, fraction=fraction, maxiter=maxiter)
-    elif isdense(F):
-        return sparse.pathways.pathways(csr_matrix(F), A, B, fraction=fraction, maxiter=maxiter)
-    else:
-        raise _type_not_supported
+        return impl(F, A, B, fraction=fraction, maxiter=maxiter)
+    return impl(csr_matrix(F), A, B, fraction=fraction, maxiter=maxiter)

@@ -268,10 +268,11 @@ class TestBHMM(unittest.TestCase):
                          1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
                          0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])
 
-        h = BayesianHMM.default(dtrj, n_hidden_states=3, lagtime=2).fit(dtrj).fetch_model()
+        h = BayesianHMM.default(dtrj, n_hidden_states=3, lagtime=2).fit(dtrj, n_burn_in=5).fetch_model()
         hs = h.submodel_largest(directed=True, connectivity_threshold=5, observe_nonempty=True, dtrajs=dtrj)
+        hss = h.submodel_populous(directed=True, connectivity_threshold=5, observe_nonempty=True, dtrajs=dtrj)
 
-        models_to_check = [hs.prior] + hs.samples
+        models_to_check = [hs.prior] + hs.samples + [hss.prior] + hss.samples
         for i, m in enumerate(models_to_check):
             self.assertEqual(m.transition_model.timescales().shape[0], 1, msg=i)
             self.assertEqual(m.transition_model.stationary_distribution.shape[0], 2, msg=i)
