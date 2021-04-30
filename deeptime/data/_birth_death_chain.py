@@ -1,6 +1,7 @@
 import numpy as np
-
 from scipy.sparse import diags
+
+from deeptime.markov.tools.flux import flux_matrix, to_netflux, total_flux
 
 
 class BirthDeathChain:
@@ -183,11 +184,7 @@ class BirthDeathChain:
         qplus = self.committor_forward(a, b)
         P = self.transition_matrix
         pi = self.stationary_distribution
-
-        flux = pi[:, np.newaxis] * qminus[:, np.newaxis] * P * qplus[np.newaxis, :]
-        ind = np.diag_indices(P.shape[0])
-        flux[ind] = 0.0
-        return flux
+        return flux_matrix(P, pi, qminus, qplus, netflux=False)
 
     def netflux(self, a, b):
         r"""The netflux network for the reaction from
@@ -207,10 +204,7 @@ class BirthDeathChain:
 
         """
         flux = self.flux(a, b)
-        netflux = flux - np.transpose(flux)
-        ind = (netflux < 0.0)
-        netflux[ind] = 0.0
-        return netflux
+        return to_netflux(flux)
 
     def totalflux(self, a, b):
         r"""The tiotal flux for the reaction A=[0,...,a] => B=[b,...,M].
@@ -230,9 +224,7 @@ class BirthDeathChain:
         """
         flux = self.flux(a, b)
         A = list(range(a + 1))
-        notA = list(range(a + 1, flux.shape[0]))
-        F = flux[A, :][:, notA].sum()
-        return F
+        return total_flux(flux, A)
 
     def rate(self, a, b):
         r""" Yields the total transition rate between state sets `A=[0,...,a]` and `B=[0,...,b]`.

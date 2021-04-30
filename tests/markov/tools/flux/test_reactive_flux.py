@@ -3,8 +3,10 @@ import numpy as np
 import scipy.sparse as sparse
 from numpy.testing import assert_equal, assert_array_almost_equal, assert_almost_equal
 
+from deeptime.data import birth_death_chain
 from deeptime.markov.msm import MarkovStateModel
 from deeptime.markov.tools.analysis import stationary_distribution
+from deeptime.markov.tools.flux import flux_production, flux_producers, flux_consumers, total_flux
 
 
 def _to_dense(arr):
@@ -25,6 +27,36 @@ def tpt_scenario(sparse_mode):
     msm = MarkovStateModel(P)
     tpt = msm.reactive_flux([0], [4])
     return msm, tpt
+
+
+@pytest.fixture
+def tpt_scenario_bd(sparse_mode):
+    p = np.zeros(10)
+    q = np.zeros(10)
+    p[0:-1] = 0.5
+    q[1:] = 0.5
+    p[4] = 0.01
+    q[6] = 0.1
+
+    bdc = birth_death_chain(q, p, sparse=sparse_mode)
+    tpt = bdc.msm.reactive_flux([0, 1], [8, 9])
+    return tpt, bdc
+
+
+def test_bd_netflux(tpt_scenario_bd):
+    assert_array_almost_equal(_to_dense(tpt_scenario_bd[0].net_flux), _to_dense(tpt_scenario_bd[1].netflux(1, 8)))
+
+
+def test_bd_flux(tpt_scenario_bd):
+    assert_array_almost_equal(_to_dense(tpt_scenario_bd[0].gross_flux), _to_dense(tpt_scenario_bd[1].flux(1, 8)))
+
+
+def test_bd_totalflux(tpt_scenario_bd):
+    assert_array_almost_equal(_to_dense(tpt_scenario_bd[0].total_flux), _to_dense(tpt_scenario_bd[1].totalflux(1, 8)))
+
+
+def test_bd_rate(tpt_scenario_bd):
+    assert_almost_equal(tpt_scenario_bd[0].rate, tpt_scenario_bd[1].rate(1, 8))
 
 
 def test_nstates(tpt_scenario):
@@ -56,6 +88,21 @@ def test_netflux(tpt_scenario):
     )
 
 
+def test_flux_production(tpt_scenario):
+    prod = flux_production(tpt_scenario[1].net_flux)
+    assert_array_almost_equal(prod, [1.080508e-2, 0, 0, 0, -1.080508e-2])
+
+
+def test_flux_producers(tpt_scenario):
+    producers = flux_producers(tpt_scenario[1].net_flux)
+    assert_equal(producers, [0])
+
+
+def test_flux_consumers(tpt_scenario):
+    consumers = flux_consumers(tpt_scenario[1].net_flux)
+    assert_equal(consumers, [4])
+
+
 def test_grossflux(tpt_scenario):
     grossflux = _to_dense(tpt_scenario[1].gross_flux)
     assert_array_almost_equal(
@@ -70,6 +117,8 @@ def test_grossflux(tpt_scenario):
 
 def test_total_flux(tpt_scenario):
     assert_almost_equal(tpt_scenario[1].total_flux, 0.0108050847458)
+    assert_almost_equal(total_flux(tpt_scenario[1].net_flux), 0.0108050847458)
+    assert_almost_equal(total_flux(tpt_scenario[1].net_flux, A=[0]), 0.0108050847458)
 
 
 def test_forward_committor(tpt_scenario):
