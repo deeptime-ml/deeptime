@@ -86,8 +86,11 @@ def test_estimator(fixed_seed):
     lobe.eval()
     ds = TimeLaggedDataset(1, obs)
     loader = DataLoader(ds, batch_size=512)
+    loader_val = DataLoader(ds, batch_size=512)
     vampnet = VAMPNet(lobe=lobe)
-    vampnet_model = vampnet.fit(loader).fetch_model()
+    vampnet_model = vampnet.fit(loader, validation_loader=loader_val).fetch_model()
+    assert_(len(vampnet.train_scores) > 0)
+    assert_(len(vampnet.validation_scores) > 0)
     # reference model w/o learnt featurization
     projection = VAMP(lagtime=1, observable_transform=vampnet_model).fit(obs).transform(obs, propagate=True)
 

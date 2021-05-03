@@ -1,5 +1,5 @@
 import pytest
-from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_almost_equal, assert_
 from torch.utils.data import DataLoader
 
 from deeptime.util.data import TrajectoryDataset
@@ -19,7 +19,6 @@ from deeptime.util.torch import MLP
 @pytest.fixture
 def two_state_hmm():
     length = 1000
-    batch_size = 64
     transition_matrix = np.asarray([[0.9, 0.1], [0.1, 0.9]])
     msm = dt.markov.msm.MarkovStateModel(transition_matrix)
     dtraj = msm.simulate(length, seed=42)
@@ -33,7 +32,7 @@ def two_state_hmm():
     traj_rot = np.dot(rot, traj_stacked).T
 
     ds = TrajectoryDataset(1, traj_rot.astype(np.float32))
-    return traj, traj_rot, DataLoader(ds, batch_size=batch_size)
+    return traj, traj_rot, ds
 
 
 def setup_tae():
@@ -50,9 +49,13 @@ def setup_tvae():
 
 @pytest.mark.parametrize('model', ['tae', 'tvae'])
 def test_sanity(fixed_seed, two_state_hmm, model):
-    traj, traj_rot, loader = two_state_hmm
+    traj, traj_rot, ds = two_state_hmm
+    train_loader = DataLoader(ds, batch_size=128)
+    val_loader = DataLoader(ds, batch_size=128)
     tae = setup_tae() if model == 'tae' else setup_tvae()
-    tae.fit(loader, n_epochs=40)
+    tae.fit(train_loader, n_epochs=40, validation_loader=val_loader)
+    assert_(len(tae.train_losses) > 0)
+    assert_(len(tae.validation_losses) > 0)
     out = tae.transform(traj_rot).reshape((-1, 1))
     out = Covariance().fit(out).fetch_model().whiten(out)
     dtraj = dt.clustering.KMeans(2).fit(out).transform(out)

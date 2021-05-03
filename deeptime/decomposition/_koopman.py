@@ -1,3 +1,4 @@
+import abc
 from typing import Optional, Union, List, Callable
 
 import numpy as np
@@ -112,6 +113,7 @@ class KoopmanModel(Model, Transformer):
             out = out @ self.operator_inverse
         return out
 
+    @abc.abstractmethod
     def transform(self, data: np.ndarray, **kw):
         r""" Transforms data by applying the observables to it and then mapping them onto the modes of :math:`K`.
 
@@ -125,7 +127,6 @@ class KoopmanModel(Model, Transformer):
         transformed_data : (T,m) ndarray
             The transformed data.
         """
-        raise NotImplementedError()
 
 
 class CovarianceKoopmanModel(KoopmanModel):
@@ -351,9 +352,8 @@ class CovarianceKoopmanModel(KoopmanModel):
 
     @var_cutoff.setter
     def var_cutoff(self, value):
-        if value <= 0. or float(value) > 1.0:
-            raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of a floating point, "
-                             "can only be in the interval (0, 1].")
+        assert 0 < value <= 1., "Invalid dimension parameter, if it is given in terms of a variance cutoff, " \
+                                "it can only be in the interval (0, 1]."
         self._var_cutoff = value
         self._update_output_dimension()
 
@@ -372,11 +372,10 @@ class CovarianceKoopmanModel(KoopmanModel):
 
     @dim.setter
     def dim(self, value: Optional[int]):
-        if isinstance(value, int):
-            if value <= 0:
-                # first test against Integral as `isinstance(1, Real)` also evaluates to True
-                raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of the "
-                                 "dimension (integer), must be positive.")
+        if isinstance(value, int) and value <= 0:
+            # first test against Integral as `isinstance(1, Real)` also evaluates to True
+            raise ValueError("VAMP: Invalid dimension parameter, if it is given in terms of the "
+                             "dimension (integer), must be positive.")
         self._dim = value
         self._update_output_dimension()
 

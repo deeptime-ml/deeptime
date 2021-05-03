@@ -1,4 +1,4 @@
-from typing import Tuple, Optional, Callable
+from typing import Optional, Callable
 
 import numpy as np
 import scipy
@@ -103,13 +103,21 @@ class DMD(Estimator, Transformer):
 
     def __init__(self, mode='exact', rank=None, driver='scipy'):
         super().__init__()
-        if mode not in DMD.available_modes:
-            raise ValueError(f"Invalid mode {mode}, must be one of {DMD.available_modes}.")
         if driver not in DMD.available_drivers:
             raise ValueError(f"Invalid driver {driver}, must be one of {DMD.available_drivers}.")
         self.mode = mode
         self.rank = rank
         self.driver = driver
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, value):
+        if value not in DMD.available_modes:
+            raise ValueError(f"Invalid mode {value}, must be one of {DMD.available_modes}.")
+        self._mode = value
 
     def _svd(self, mat, **kw):
         if self.driver == 'numpy':
@@ -158,8 +166,6 @@ class DMD(Estimator, Transformer):
             dmd_modes = np.linalg.multi_dot([Y, V, S_inv, eigenvectors, np.diag(1 / eigenvalues)])
         elif self.mode == 'standard':
             dmd_modes = U @ eigenvectors
-        else:
-            raise ValueError('Only exact and standard DMD available.')
 
         self._model = DMDModel(eigenvalues, dmd_modes.T)
         return self

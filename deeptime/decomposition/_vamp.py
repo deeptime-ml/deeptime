@@ -4,7 +4,7 @@
 
 from collections import namedtuple
 from numbers import Integral
-from typing import Optional, Union, List, Tuple, Callable
+from typing import Optional, Union, Callable
 
 import numpy as np
 
@@ -164,12 +164,6 @@ class VAMP(Estimator, Transformer):
 
     _DiagonalizationResults = namedtuple("DiagonalizationResults", ['rank0', 'rankt', 'singular_values',
                                                                     'left_singular_vecs', 'right_singular_vecs'])
-
-    @staticmethod
-    def _cumvar(singular_values) -> np.ndarray:
-        cumvar = np.cumsum(singular_values ** 2)
-        cumvar /= cumvar[-1]
-        return cumvar
 
     @staticmethod
     def _decomposition(covariances, epsilon, scaling, dim, var_cutoff) -> _DiagonalizationResults:
