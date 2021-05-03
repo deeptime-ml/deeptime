@@ -177,6 +177,8 @@ def test_bickley():
 
     dataset = dt.data.bickley_jet(10, n_jobs=1)
     assert_equal(dataset.data.shape, (401, 10, 2))
+    assert_equal(len(dataset), 401)
+    assert_equal(dataset[0].shape, (10, 2))
 
     dataset_endpoints = dataset.endpoints_dataset()
     assert_equal(dataset_endpoints.data.shape, (10, 2))
