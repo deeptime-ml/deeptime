@@ -26,7 +26,7 @@ class KernelCCAModel(KoopmanModel):
     """
 
     def __init__(self, data, kernel: Kernel, eigenvalues: np.ndarray, eigenvectors: np.ndarray):
-        super().__init__(eigenvectors @ np.diag(eigenvalues),
+        super().__init__(eigenvectors @ np.diag(np.sqrt(eigenvalues)),
                          instantaneous_obs=lambda x: self.kernel.apply(x, self._data),
                          timelagged_obs=lambda x: self.kernel.apply(x, self._data))
         self._kernel = kernel
