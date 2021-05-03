@@ -29,5 +29,7 @@ def variable_cols(data: np.ndarray, tol=0.0, min_constant=0):
     from ._covartools import variable_cols as impl
     # prepare column array
     cols = np.zeros(data.shape[1], dtype=bool, order='C')
-    impl(cols, data, tol, min_constant)
-    return cols
+    completed = impl(cols, data, tol, min_constant)
+
+    # if interrupted, return all ones. Otherwise return the variable columns as bool array
+    return cols if completed == 1 else np.ones_like(cols, dtype=bool)

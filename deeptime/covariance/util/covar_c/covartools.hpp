@@ -19,7 +19,7 @@ namespace py = pybind11;
 
 */
 template<typename dtype>
-void _variable_cols(np_array_nfc<bool> &np_cols,
+int _variable_cols(np_array_nfc<bool> &np_cols,
                    const np_array_nfc<dtype> &np_X,
                    float tol=0, std::size_t min_constant=0) {
     // compare first and last row to get constant candidates
@@ -64,4 +64,5 @@ void _variable_cols(np_array_nfc<bool> &np_cols,
             }
         }
     }
+    return 1;
 }
