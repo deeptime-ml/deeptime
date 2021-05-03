@@ -26,9 +26,9 @@ class KernelCCAModel(KoopmanModel):
     """
 
     def __init__(self, data, kernel: Kernel, eigenvalues: np.ndarray, eigenvectors: np.ndarray):
-        super().__init__(eigenvectors @ np.diag(np.sqrt(eigenvalues)),
-                         instantaneous_obs=lambda x: self.kernel.apply(x, self._data),
-                         timelagged_obs=lambda x: self.kernel.apply(x, self._data))
+        super().__init__(np.diag(np.sqrt(eigenvalues)),
+                         instantaneous_obs=lambda x: self.kernel.apply(x, self._data) @ self.eigenvectors,
+                         timelagged_obs=lambda x: self.kernel.apply(x, self._data)) @ self.eigenvectors
         self._kernel = kernel
         self._eigenvalues = eigenvalues
         self._eigenvectors = eigenvectors
@@ -46,9 +46,6 @@ class KernelCCAModel(KoopmanModel):
     @property
     def eigenvectors(self) -> np.ndarray:
         return self._eigenvectors
-
-    def transform(self, data: np.ndarray, **kw):
-        return self.instantaneous_obs(data) @ self.eigenvectors
 
 
 class KernelCCA(Estimator):

@@ -113,7 +113,6 @@ class KoopmanModel(Model, Transformer):
             out = out @ self.operator_inverse
         return out
 
-    @abc.abstractmethod
     def transform(self, data: np.ndarray, **kw):
         r""" Transforms data by applying the observables to it and then mapping them onto the modes of :math:`K`.
 
@@ -127,6 +126,7 @@ class KoopmanModel(Model, Transformer):
         transformed_data : (T,m) ndarray
             The transformed data.
         """
+        return self.instantaneous_obs(data)
 
 
 class CovarianceKoopmanModel(KoopmanModel):
