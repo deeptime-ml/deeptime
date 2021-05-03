@@ -84,8 +84,6 @@ class Moments:
 
 
 class MomentsStorage:
-    """
-    """
 
     def __init__(self, nsave, remove_mean=False, rtol=1.5):
         """
@@ -196,7 +194,8 @@ class RunningCovar:
             warnings.warn('symmetrize=True has no effect with compute_XY=False.')
         if diag_only and sparse_mode != 'dense':
             if sparse_mode == 'sparse':
-                warnings.warn('Computing diagonal entries only is not implemented for sparse mode. Switching to dense mode.')
+                warnings.warn('Computing diagonal entries only is not implemented for sparse mode. '
+                              'Switching to dense mode.')
             sparse_mode = 'dense'
         # storage
         self.compute_XX = compute_XX
@@ -253,9 +252,10 @@ class RunningCovar:
             # Check appropriate length if weights is an array:
             elif isinstance(weights, np.ndarray):
                 if len(weights) != T:
-                    raise ValueError('weights and X must have equal length. Was {} and {} respectively.'.format(len(weights), len(X)))
+                    raise ValueError(f'Weights and X must have equal length. '
+                                     f'Was {len(weights)} and {len(X)}, respectively.')
             else:
-                raise TypeError('weights is of type %s, must be a number or ndarray' % (type(weights)))
+                raise TypeError(f'Weights is of type {type(weights)}, must be a number or ndarray.')
         # estimate and add to storage
         if self.compute_XX and not self.compute_XY and not self.compute_YY:
             w, s_X, C_XX = moments_XX(X, remove_mean=self.remove_mean, weights=weights, sparse_mode=self.sparse_mode,

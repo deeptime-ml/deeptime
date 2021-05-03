@@ -11,9 +11,12 @@ PYBIND11_MODULE(_covartools, m) {
     // ================================================
     // Check for constant columns
     // ================================================
-    m.def("variable_cols_char", &_variable_cols<char>);
-    m.def("variable_cols_int", &_variable_cols<int>);
-    m.def("variable_cols_long", &_variable_cols<long>);
-    m.def("variable_cols_float", &_variable_cols<float>);
-    m.def("variable_cols_double", &_variable_cols<double>);
+    m.def("variable_cols", &_variable_cols<char>);
+    m.def("variable_cols", &_variable_cols<bool>);
+    m.def("variable_cols", &_variable_cols<int>);
+    m.def("variable_cols", &_variable_cols<long>);
+    m.def("variable_cols", &_variable_cols<float>);
+    m.def("variable_cols", &_variable_cols<double>);
+    m.def("variable_cols", &_variable_cols<std::complex<float>>);
+    m.def("variable_cols", &_variable_cols<std::complex<double>>);
 }

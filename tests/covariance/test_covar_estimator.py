@@ -37,6 +37,7 @@ def test_whitening():
     np.testing.assert_array_almost_equal(cov.mean_0, np.zeros_like(cov.mean_0))
 
 
+
 def test_weights_incompatible():
     data = np.random.normal(size=(5000, 3))
     est = Covariance(5)

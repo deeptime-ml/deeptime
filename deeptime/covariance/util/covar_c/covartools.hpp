@@ -1,8 +1,11 @@
 #pragma once
 
 #include <cstdlib>
+#include <complex>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+
+#include "common.h"
 
 namespace py = pybind11;
 
@@ -16,8 +19,8 @@ namespace py = pybind11;
 
 */
 template<typename dtype>
-int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
-                   const py::array_t<dtype, py::array::c_style> &np_X,
+void _variable_cols(np_array_nfc<bool> &np_cols,
+                   const np_array_nfc<dtype> &np_X,
                    float tol=0, std::size_t min_constant=0) {
     // compare first and last row to get constant candidates
     std::size_t i, j;
@@ -36,10 +39,9 @@ int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
         ro = i * N;
         for (j = 0; j < N; j++) {
             if (! cols[j]) {
-                // note: the compiler will eliminate this branch, if dtype != (float, double)
-                if (std::is_floating_point<dtype>::value) {
+                if constexpr (std::is_floating_point<dtype>::value) {
                     diff = std::abs(X[j] - X[ro + j]);
-                    if (diff >= tol) {
+                    if (diff > tol) {
                         cols[j] = true;
                         nconstant--;
                         // are constant columns below threshold? Then interrupt.
@@ -62,5 +64,4 @@ int _variable_cols(py::array_t<bool, py::array::c_style> &np_cols,
             }
         }
     }
-    return 1;
 }

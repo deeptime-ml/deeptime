@@ -1,12 +1,12 @@
 import numpy as np
 
 
-def variable_cols(X: np.ndarray, tol=0.0, min_constant=0):
+def variable_cols(data: np.ndarray, tol=0.0, min_constant=0):
     """ Evaluates which columns are constant (0) or variable (1)
 
     Parameters
     ----------
-    X : ndarray
+    data : ndarray
         Matrix whose columns will be checked for constant or variable.
     tol : float
         Tolerance for float-matrices. When set to 0 only equal columns with
@@ -26,31 +26,8 @@ def variable_cols(X: np.ndarray, tol=0.0, min_constant=0):
         variable / non-constant. False: column is constant.
 
     """
-    if X is None:
-        return None
-    from ._covartools import (variable_cols_double,
-                              variable_cols_float,
-                              variable_cols_int,
-                              variable_cols_long,
-                              variable_cols_char)
+    from ._covartools import variable_cols as impl
     # prepare column array
-    cols = np.zeros(X.shape[1], dtype=bool, order='C')
-
-    if X.dtype == np.float64:
-        completed = variable_cols_double(cols, X, tol, min_constant)
-    elif X.dtype == np.float32:
-        completed = variable_cols_float(cols, X, tol, min_constant)
-    elif X.dtype == np.int32:
-        completed = variable_cols_int(cols, X, 0, min_constant)
-    elif X.dtype == np.int64:
-        completed = variable_cols_long(cols, X, 0, min_constant)
-    elif X.dtype == np.bool_:
-        completed = variable_cols_char(cols, X, 0, min_constant)
-    else:
-        raise TypeError('unsupported type of X: %s' % X.dtype)
-
-    # if interrupted, return all ones. Otherwise return the variable columns as bool array
-    if completed == 0:
-        return np.ones_like(cols, dtype=bool)
-
+    cols = np.zeros(data.shape[1], dtype=bool, order='C')
+    impl(cols, data, tol, min_constant)
     return cols
