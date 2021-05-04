@@ -11,12 +11,14 @@ from . import _clustering_bindings as _bd, metrics
 from ..util.parallel import handle_n_jobs
 
 
-def kmeans_plusplus(n_clusters: int, metric: str = 'euclidean', callback=None, seed: int = -1,
+def kmeans_plusplus(data, n_clusters: int, metric: str = 'euclidean', callback=None, seed: int = -1,
                     n_jobs: Optional[int] = None):
     r""" Performs kmeans++ initialization. :footcite:`arthur2006k`
 
     Parameters
     ----------
+    data : np.ndarray
+        Input data of shape (T, n_dim).
     n_clusters : int
         The number of cluster centers.
     metric : str, default='euclidean'
