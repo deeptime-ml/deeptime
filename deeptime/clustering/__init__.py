@@ -27,6 +27,17 @@ Models
 
 
 ===============================================================================
+Functions
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    kmeans_plusplus
+
+
+===============================================================================
 Adding a new metric
 ===============================================================================
 
@@ -44,3 +55,5 @@ from ._clustering_bindings import Metric
 from ._kmeans import KMeans, MiniBatchKMeans, KMeansModel
 from ._regspace import RegularSpace
 from ._cluster_model import ClusterModel
+
+from ._kmeans import kmeans_plusplus

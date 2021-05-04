@@ -8,9 +8,40 @@ from ..base import Estimator, Transformer
 from ._cluster_model import ClusterModel
 from . import _clustering_bindings as _bd, metrics
 
-__all__ = ['KMeans', 'MiniBatchKMeans', 'KMeansModel']
-
 from ..util.parallel import handle_n_jobs
+
+
+def kmeans_plusplus(n_clusters: int, metric: str = 'euclidean', callback=None, seed: int = -1,
+                    n_jobs: Optional[int] = None):
+    r""" Performs kmeans++ initialization. :footcite:`arthur2006k`
+
+    Parameters
+    ----------
+    n_clusters : int
+        The number of cluster centers.
+    metric : str, default='euclidean'
+        Metric to use during clustering, default evaluates to euclidean metric. For a list of available metrics,
+        see the :data:`metric registry <deeptime.clustering.metrics>`.
+    callback: callable or None
+        used for kmeans++ initialization to indicate progress, called once per assigned center.
+    seed : int, optional, default=-1
+        The random seed. If non-negative, this fixes the random generator's seed and makes results reproducible.
+    n_jobs : int, optional, default=None
+        Number of jobs.
+
+    Returns
+    -------
+    centers : np.ndarray
+        An (n_centers, dim)-shaped array with a kmeans++ cluster center initial guess.
+
+    References
+    ----------
+    .. footbibliography::
+    """
+    n_jobs = handle_n_jobs(n_jobs)
+    metric = metrics[metric]()
+    return _bd.kmeans.init_centers_kmpp(data, k=n_clusters, random_seed=seed, n_threads=n_jobs,
+                                        callback=callback, metric=metric)
 
 
 class KMeansModel(ClusterModel):
@@ -359,9 +390,7 @@ class KMeans(Estimator, Transformer):
         if strategy == 'uniform':
             return data[self.random_state.randint(0, len(data), size=self.n_clusters)]
         elif self.init_strategy == 'kmeans++':
-            metric = metrics[self.metric]()
-            return _bd.kmeans.init_centers_kmpp(data, k=self.n_clusters, random_seed=self.fixed_seed, n_threads=n_jobs,
-                                                callback=callback, metric=metric)
+            return kmeans_plusplus(self.n_clusters, self.metric, callback=callback, seed=self.fixed_seed, n_jobs=n_jobs)
 
     def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
         """ Perform the clustering.
