@@ -17,6 +17,16 @@ def test_estimator_args():
     with assert_raises(ValueError):
         BoxDiscretization(dim=2, n_boxes=[1, 2, 3])
 
+    est = BoxDiscretization(dim=2, n_boxes=2, v0=[0, 0], v1=[1, 2])
+    assert_equal(est.v0, [0, 0])
+    assert_equal(est.v1, [1, 2])
+
+    with assert_raises(ValueError):
+        BoxDiscretization(dim=2, n_boxes=2, v0=[1, 2, 3])
+
+    with assert_raises(ValueError):
+        BoxDiscretization(dim=2, n_boxes=2, v1=[1, 2, 3])
+
 
 @pytest.mark.parametrize("dim", [1, 2, 3, 4, 5, 6, 7])
 def test_discretization_1box(dim):
