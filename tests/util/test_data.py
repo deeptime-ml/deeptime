@@ -3,8 +3,18 @@ from numpy.testing import assert_equal, assert_raises, assert_, assert_array_alm
 
 pytest.importorskip("torch")
 
-from deeptime.util.data import timeshifted_split, TrajectoryDataset
+from deeptime.util.data import timeshifted_split, TrajectoryDataset, TimeLaggedDataset
 import numpy as np
+
+
+def test_astype():
+    data = np.zeros((5, 2), dtype=np.float64)
+    ds = TimeLaggedDataset(data, data)
+    assert_equal(ds.data.dtype, np.float64)
+    assert_equal(ds.data_lagged.dtype, np.float64)
+    ds = ds.astype(np.float32)
+    assert_equal(ds.data.dtype, np.float32)
+    assert_equal(ds.data_lagged.dtype, np.float32)
 
 
 @pytest.mark.parametrize("data", [np.arange(N) for N in [5, 6, 7, 8, 9, 10]],

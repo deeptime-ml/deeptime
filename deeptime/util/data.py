@@ -173,6 +173,21 @@ class TimeLaggedDataset(Dataset):
         self._data.setflags(write=write)
         self._data_lagged.setflags(write=write)
 
+    def astype(self, dtype):
+        r""" Sets the datatype of contained arrays and returns a new instance of TimeLaggedDataset.
+
+        Parameters
+        ----------
+        dtype
+            The new dtype.
+
+        Returns
+        -------
+        converted_ds : TimeLaggedDataset
+            The dataset with converted dtype.
+        """
+        return TimeLaggedDataset(self._data.astype(dtype), self._data_lagged.astype(dtype))
+
     @property
     def data(self) -> np.ndarray:
         r""" Instantaneous data. """
