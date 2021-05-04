@@ -392,7 +392,8 @@ class KMeans(Estimator, Transformer):
         if strategy == 'uniform':
             return data[self.random_state.randint(0, len(data), size=self.n_clusters)]
         elif self.init_strategy == 'kmeans++':
-            return kmeans_plusplus(self.n_clusters, self.metric, callback=callback, seed=self.fixed_seed, n_jobs=n_jobs)
+            return kmeans_plusplus(data, self.n_clusters, self.metric,
+                                   callback=callback, seed=self.fixed_seed, n_jobs=n_jobs)
 
     def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
         """ Perform the clustering.
