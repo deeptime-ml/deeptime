@@ -39,9 +39,17 @@ def test_discretization_1box(dim):
         assert_almost_equal(model.v1[d], np.max(data[:, d]))
 
 
+@pytest.mark.parametrize("v0_given", [False, True])
+@pytest.mark.parametrize("v1_given", [False, True])
 @pytest.mark.parametrize("dim", [1, 2, 3, 4, 5, 6, 7])
-def test_discretization_3box(dim):
-    est = BoxDiscretization(dim=dim, n_boxes=3)
+def test_discretization_3box(dim, v0_given, v1_given):
+    est = BoxDiscretization(
+        dim=dim, n_boxes=3,
+        v0=None if not v0_given else np.full((dim,), 0),
+        v1=None if not v1_given else np.full((dim,), 1),
+    )
+    assert_equal(est.v0, [0]*dim if v0_given else None)
+    assert_equal(est.v1, [1]*dim if v1_given else None)
     data = np.random.uniform(size=(20, dim))
     model = est.fit(data).fetch_model()
     dtraj = model.transform(data)
