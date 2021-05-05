@@ -51,6 +51,9 @@ class BoxDiscretizationModel(ClusterModel):
 class BoxDiscretization(Estimator):
     r"""An n-dimensional box discretization of Euclidean space.
 
+    It spans an n-dimensional grid based on linspaces along each axis which is then used as cluster centers.
+    The linspaces are bounded either by the user (attributes :attr:`v0` and :attr:`v1`) or estimated from data.
+
     Parameters
     ----------
     dim : int
@@ -98,4 +101,11 @@ class BoxDiscretization(Estimator):
         return self
 
     def fetch_model(self) -> Optional[BoxDiscretizationModel]:
+        r""" Yields the estimated model.
+
+        Returns
+        -------
+        model : BoxDiscretizationModel or None
+            The model.
+        """
         return super().fetch_model()
