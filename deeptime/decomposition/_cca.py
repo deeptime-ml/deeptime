@@ -94,6 +94,7 @@ class KernelCCA(Estimator):
         dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
         gram_0 = self.kernel.gram(dataset.data)
         gram_t = self.kernel.gram(dataset.data_lagged)
+
         # center Gram matrices
         n = dataset.data.shape[0]
         I = np.eye(n)  # identity
@@ -101,8 +102,9 @@ class KernelCCA(Estimator):
         G_0 = np.linalg.multi_dot([N, gram_0, N])
         G_1 = np.linalg.multi_dot([N, gram_t, N])
 
-        A = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym') @ \
-            scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
+        K = scipy.linalg.solve(G_0 + self.epsilon * I, G_0, assume_a='sym')
+        Ak = scipy.linalg.solve(G_1 + self.epsilon * I, G_1, assume_a='sym')
+        A = K @ Ak
         eigenvalues, eigenvectors = scipy.linalg.eig(A)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
 
