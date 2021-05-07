@@ -12,6 +12,7 @@ Estimators
     KMeans
     MiniBatchKMeans
     RegularSpace
+    BoxDiscretization
 
 
 ===============================================================================
@@ -24,6 +25,18 @@ Models
 
     ClusterModel
     KMeansModel
+    BoxDiscretizationModel
+
+
+===============================================================================
+Functions
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    kmeans_plusplus
 
 
 ===============================================================================
@@ -34,7 +47,7 @@ Adding a new metric
     :toctree: generated/
     :template: class_nomodule.rst
 
-    _clustering_bindings.Metric
+    Metric
     metrics
     MetricRegistry
 """
@@ -43,4 +56,7 @@ from ._metric import metrics, MetricRegistry
 from ._clustering_bindings import Metric
 from ._kmeans import KMeans, MiniBatchKMeans, KMeansModel
 from ._regspace import RegularSpace
+from ._box import BoxDiscretization, BoxDiscretizationModel
 from ._cluster_model import ClusterModel
+
+from ._kmeans import kmeans_plusplus

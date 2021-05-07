@@ -56,13 +56,7 @@ def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True)
     elif mode == 'clamp':
         eigval = torch.clamp_min(eigval, min=epsilon)
 
-    else:
-        raise RuntimeError("Invalid mode! Should have been caught by the assertion.")
-
-    if eigenvectors:
-        return eigval, eigvec
-    else:
-        return eigval, eigvec
+    return eigval, eigvec
 
 
 def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'):
@@ -207,10 +201,10 @@ def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', ep
         The score. It contains a contribution of :math:`+1` for the constant singular function since the
         internally estimated Koopman operator is defined on a decorrelated basis set.
     """
-    if method not in valid_score_methods:
-        raise ValueError(f"Invalid method '{method}', supported are {valid_score_methods}")
-    assert data.shape == data_lagged.shape
-
+    assert method in valid_score_methods, f"Invalid method '{method}', supported are {valid_score_methods}"
+    assert data.shape == data_lagged.shape, f"Data and data_lagged must be of same shape but were {data.shape} " \
+                                            f"and {data_lagged.shape}."
+    out = None
     if method == 'VAMP1':
         koopman = koopman_matrix(data, data_lagged, epsilon=epsilon, mode=mode)
         out = torch.norm(koopman, p='nuc')
@@ -238,8 +232,7 @@ def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', ep
             2. * torch.chain_matmul(s, u_t, c0t, v)
             - torch.chain_matmul(s, u_t, c00, u, s, v_t, ctt, v)
         )
-    else:
-        raise RuntimeError("This should have been caught earlier.")
+    assert out is not None
     return 1 + out
 
 
@@ -438,9 +431,8 @@ class VAMPNet(DLEstimator, Transformer):
 
     @score_method.setter
     def score_method(self, value: str):
-        if value not in valid_score_methods:
-            raise ValueError(f"Tried setting an unsupported scoring method '{value}', "
-                             f"available are {valid_score_methods}.")
+        assert value in valid_score_methods, f"Tried setting an unsupported scoring method '{value}', " \
+                                             f"available are {valid_score_methods}."
         self._score_method = value
 
     @property

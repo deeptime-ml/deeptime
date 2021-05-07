@@ -10,11 +10,3 @@ def test_kcca_sanity():
 
     assert_equal(kcca_model.eigenvalues.shape, (5,))
     assert_equal(kcca_model.eigenvectors.shape, (200, 5))
-    # import matplotlib.pyplot as plt
-    #
-    # for i in range(5):
-    #     plt.figure()
-    #     plt.scatter(*ds.data.T, c=model.eigenvectors[:, i])
-    # plt.show()
-    # print(model.eigenvalues)
-    # print(model.eigenvectors.shape)

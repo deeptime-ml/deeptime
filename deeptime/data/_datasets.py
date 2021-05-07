@@ -330,8 +330,7 @@ def tmatrix_metropolis1d(energies, d=1.0):
     """
     import math
     # check input
-    if d <= 0 or d > 1:
-        raise ValueError('Diffusivity must be in (0,1]. Trying to set the invalid value', str(d))
+    assert 0 < d <= 1, f'Diffusivity must be in (0,1]. Trying to set the invalid value {d}.'
     # init
     n = len(energies)
     transition_matrix = np.zeros((n, n))

@@ -1,5 +1,4 @@
 """
-
 Data Types
 ----------
 The standard data type for covariance computations is
@@ -75,20 +74,13 @@ take the following actions:
 __author__ = 'noe'
 
 import math
-import numbers
 import numpy as np
 from .covar_c import covartools
 
 
 def _is_zero(x):
     """ Returns True if x is numerically 0 or an array with 0's. """
-    if x is None:
-        return True
-    if isinstance(x, numbers.Number):
-        return x == 0.0
-    if isinstance(x, np.ndarray):
-        return np.all(x == 0)
-    return False
+    return x is None or np.all(np.asarray(x) == 0)
 
 
 def _sparsify(X, remove_mean=False, modify_data=False, sparse_mode='auto', sparse_tol=0.0):

@@ -37,8 +37,6 @@ class BayesianHMMPosterior(BayesianPosterior):
         The prior.
     samples : list of HiddenMarkovModel, optional, default=()
         Sampled models.
-    hidden_state_trajs : list of ndarray, optional, default=()
-        Hidden state trajectories for sampled models.
 
     See Also
     --------
@@ -47,10 +45,8 @@ class BayesianHMMPosterior(BayesianPosterior):
 
     def __init__(self,
                  prior: Optional[HiddenMarkovModel] = None,
-                 samples: Optional[List[HiddenMarkovModel]] = (),
-                 hidden_state_trajs: Optional[List[np.ndarray]] = ()):
+                 samples: Optional[List[HiddenMarkovModel]] = ()):
         super(BayesianHMMPosterior, self).__init__(prior=prior, samples=samples)
-        self._hidden_state_trajectories_samples = hidden_state_trajs
 
     def submodel_largest(self, directed=True, connectivity_threshold='1/n', observe_nonempty=True, dtrajs=None):
         r""" Creates a submodel from the largest connected set.
@@ -110,7 +106,7 @@ class BayesianHMMPosterior(BayesianPosterior):
         r""" Hidden state trajectories of sampled HMMs. Available if the estimator was configured to save them,
         see :attr:`BayesianHMM.store_hidden`.
         """
-        return self._hidden_state_trajectories_samples
+        return [s.hidden_state_trajectories for s in self.samples]
 
     @property
     def samples(self) -> Optional[List[HiddenMarkovModel]]:
@@ -151,7 +147,7 @@ class BayesianHMMPosterior(BayesianPosterior):
         # restrict reduce samples
         subsamples = [sample.submodel(states=states, obs=obs)
                       for sample in self]
-        return BayesianHMMPosterior(sub_model, subsamples, self.hidden_state_trajectories_samples)
+        return BayesianHMMPosterior(sub_model, subsamples)
 
 
 class BayesianHMM(Estimator):

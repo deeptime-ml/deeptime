@@ -215,22 +215,11 @@ class BickleyJetEndpointsDataset3D(TimeLaggedDataset):
         assert data_lagged.shape[1] == 3
 
     def cluster(self, n_bins):
-        from deeptime.clustering import ClusterModel
+        from deeptime.clustering import BoxDiscretization
 
-        minval = min(np.min(self.data), np.min(self.data_lagged))
-        maxval = max(np.max(self.data), np.max(self.data_lagged))
-
-        grid = np.linspace(minval, maxval, num=n_bins, endpoint=True)
-        mesh = np.vstack(np.meshgrid(grid, grid, grid)).reshape(3, -1).T
-        cm = ClusterModel(mesh)
-
-        dtraj1 = cm.transform(self.data.astype(np.float64))
-        traj1 = np.zeros((len(self.data), mesh.shape[0]))
-        traj1[np.arange(len(self.data)), dtraj1] = 1.
-
-        dtraj2 = cm.transform(self.data_lagged.astype(np.float64))
-        traj2 = np.zeros((len(self.data_lagged), mesh.shape[0]))
-        traj2[np.arange(len(self.data_lagged)), dtraj2] = 1.
+        disc = BoxDiscretization(3, n_bins).fit(np.concatenate((self.data, self.data_lagged))).fetch_model()
+        traj1 = disc.transform_onehot(self.data)
+        traj2 = disc.transform_onehot(self.data_lagged)
 
         return BickleyJetEndpointsDataset3DClustered(traj1, traj2)
 

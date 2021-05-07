@@ -29,6 +29,8 @@ class BirthDeathChain:
     """
 
     def __init__(self, q, p, sparse: bool = False):
+        q = np.asarray(q)
+        p = np.asarray(p)
         if q[0] != 0.0:
             raise ValueError('Probability q[0] must be zero')
         if p[-1] != 0.0:

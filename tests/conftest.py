@@ -34,3 +34,9 @@ def fixed_seed():
     random.seed(new_seed)
     np.random.mtrand.seed(new_seed)
     fix_torch_seed(new_seed)
+
+
+@pytest.fixture(params=[False, True], ids=lambda x: f"{'sparse' if x else 'dense'}")
+def sparse_mode(request):
+    yield request.param
+

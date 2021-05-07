@@ -4,6 +4,7 @@ import warnings
 
 import numpy as np
 import pytest
+from numpy.testing import assert_equal
 from sklearn.datasets import make_blobs
 from sklearn.utils.extmath import row_norms
 
@@ -20,6 +21,15 @@ def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=Fal
     est.fit(data, callback_init_centers=callback_init_centers, callback_loop=callback_loop)
     model = est.fetch_model()
     return est, model
+
+
+@pytest.mark.parametrize("est", [dt.clustering.KMeans, dt.clustering.MiniBatchKMeans])
+def test_1d_data(est):
+    data = np.ones((500,), dtype=np.float32)
+    estimator = est(1)
+    clustering = estimator.fit(data, initial_centers=np.array([[.5]])).fetch_model()
+    assert_equal(clustering.n_clusters, 1)
+    assert_equal(clustering.cluster_centers[0], [1])
 
 
 @pytest.mark.parametrize("squared", [True, False], ids=lambda x: "squared {}".format(x))

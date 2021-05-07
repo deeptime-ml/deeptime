@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pytest
 from numpy.testing import assert_, assert_almost_equal
 from torch.utils.data import DataLoader
@@ -84,10 +86,13 @@ def test_estimator(fixed_seed):
 
     # now let's compare
     lobe.eval()
-    ds = TimeLaggedDataset(1, obs)
+    ds = TrajectoryDataset(1, obs)
     loader = DataLoader(ds, batch_size=512)
+    loader_val = DataLoader(ds, batch_size=512)
     vampnet = VAMPNet(lobe=lobe)
-    vampnet_model = vampnet.fit(loader).fetch_model()
+    vampnet_model = vampnet.fit(loader, validation_loader=loader_val).fetch_model()
+    assert_(len(vampnet.train_scores) > 0)
+    assert_(len(vampnet.validation_scores) > 0)
     # reference model w/o learnt featurization
     projection = VAMP(lagtime=1, observable_transform=vampnet_model).fit(obs).transform(obs, propagate=True)
 
@@ -97,8 +102,9 @@ def test_estimator(fixed_seed):
     np.testing.assert_array_almost_equal(msm_vampnet.transition_matrix, data.msm.transition_matrix, decimal=2)
 
 
+@pytest.mark.parametrize("shared_lobe", [True, False])
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
-def test_estimator_fit(fixed_seed, dtype):
+def test_estimator_fit(fixed_seed, dtype, shared_lobe):
     data = deeptime.data.ellipsoids()
     obs = data.observations(60000, n_dim=2).astype(dtype)
     train, val = torch.utils.data.random_split(TrajectoryDataset(1, obs), [50000, 9999])
@@ -112,10 +118,15 @@ def test_estimator_fit(fixed_seed, dtype):
         linear_layer.weight[0, 1] = 0.3060
         linear_layer.bias[0] = -0.7392
 
-    net = VAMPNet(lobe=lobe, dtype=dtype, learning_rate=1e-8)
+    if shared_lobe:
+        lobe_t = None
+    else:
+        lobe_t = deepcopy(lobe)
+
+    net = VAMPNet(lobe=lobe, dtype=dtype, learning_rate=1e-8, lobe_timelagged=lobe_t)
     train_loader = DataLoader(train, batch_size=512, shuffle=True)
     val_loader = DataLoader(val, batch_size=512)
-    net.fit(train_loader, n_epochs=1, validation_data=val_loader, validation_score_callback=lambda *x: x)
+    net.fit(train_loader, n_epochs=1, validation_loader=val_loader, validation_score_callback=lambda *x: x)
 
     # reference model w/o learnt featurization
     projection = VAMP(lagtime=1, observable_transform=net).fit(obs).fetch_model().transform(obs)

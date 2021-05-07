@@ -85,7 +85,7 @@ class PBFSimulator:
                  gravity: float = 10., epsilon: float = 10., timestep: float = 0.016, rest_density: float = 1.,
                  tensile_instability_distance: float = .2, tensile_instability_k: float = 0.1):
         n_jobs = handle_n_jobs(n_jobs)
-        if np.atleast_1d(domain_size).ndim != 1 or domain_size.shape[0] != 2 or np.any(domain_size <= 0):
+        if np.atleast_1d(domain_size).ndim != 1 or np.atleast_1d(domain_size).shape[0] != 2 or np.any(domain_size <= 0):
             raise ValueError("Invalid domain size: must be positive and 1-dimensional of length two.")
         if initial_positions.ndim != 2 or initial_positions.shape[1] != 2:
             raise ValueError("initial positions must be a 2-dimensional numpy array of shape (N, 2), where N is"

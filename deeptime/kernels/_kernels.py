@@ -27,6 +27,16 @@ class GaussianKernel(Kernel):
         self.impl = impl
 
     @property
+    def impl(self):
+        return self._impl
+
+    @impl.setter
+    def impl(self, value):
+        assert value in GaussianKernel.valid_impls, f"impl {value} not known, " \
+                                                    f"supported are {GaussianKernel.valid_impls}"
+        self._impl = value
+
+    @property
     def sigma(self) -> np.ndarray:
         r""" Bandwidth of the Gaussian kernel.
 
@@ -47,8 +57,6 @@ class GaussianKernel(Kernel):
             x2_norm = np.square(data_2).sum(axis=-1, keepdims=True)
             D = x2_norm.T - 2. * data_1 @ data_2.T + x1_norm
             D = np.clip(D, a_min=1e-16, a_max=None)
-        else:
-            raise ValueError("Unknown impl type: {impl}")
         return np.exp(-D / (2 * self.sigma * self.sigma))
 
     def __str__(self):

@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from numpy.testing import assert_equal, assert_raises
+from numpy.testing import assert_equal, assert_raises, assert_allclose
 
 import deeptime as dt
 
@@ -118,13 +118,16 @@ def test_custom_sde(dim):
         wrong_sigma = np.diag([1.] * 99)
         dt.data.custom_sde(dim, rhs, wrong_sigma, h=1e-3, n_steps=5)
 
-    sde = dt.data.custom_sde(dim, rhs, sigma, h=1e-3, n_steps=5)
+    sde = dt.data.custom_sde(dim, rhs, sigma, h=1e-6, n_steps=5)
     assert_equal(sde.dimension, dim)
     assert_equal(sde.has_potential_function, False)
     assert_equal(sde.integrator, "EulerMaruyama")
     traj = sde.trajectory([[1] * dim], 50)
     assert_equal(traj.shape, (50, dim))
     assert_equal(traj[0], np.ones((dim,)))
+    test_points = sde(np.ones((1000, dim)))
+    assert_equal(test_points.shape, (1000, dim))
+    assert_allclose(np.mean(test_points), 1., rtol=1e-1, atol=1e-1)
 
 
 @pytest.mark.parametrize('dim', [1, 2, 3, 4, 5])
@@ -139,6 +142,9 @@ def test_custom_ode(dim):
     traj = ode.trajectory([[1] * dim], 50)
     assert_equal(traj.shape, (50, dim))
     assert_equal(traj[0], np.ones((dim,)))
+    test_points = ode(np.ones((100, dim)))
+    assert_equal(test_points.shape, (100, dim))
+    assert_allclose(test_points, 1.)
 
 
 @pytest.mark.parametrize('dim', [-1, 0, 1.5, 999])
@@ -177,6 +183,8 @@ def test_bickley():
 
     dataset = dt.data.bickley_jet(10, n_jobs=1)
     assert_equal(dataset.data.shape, (401, 10, 2))
+    assert_equal(len(dataset), 401)
+    assert_equal(dataset[0].shape, (10, 2))
 
     dataset_endpoints = dataset.endpoints_dataset()
     assert_equal(dataset_endpoints.data.shape, (10, 2))

@@ -144,7 +144,7 @@ class DrunkardsWalk:
             if e2 <= dx:
                 err += dx
                 y0 += sy
-            if e2 >= dy and e2 <= dx:
+            if dy <= e2 <= dx:
                 # introduced a 'diagonal' jump, append block so that diagonal is 'filled'
                 barrier.append((x0, y0 - sy))
 
