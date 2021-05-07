@@ -1,8 +1,17 @@
 import numpy as np
-from numpy.testing import assert_equal
+from numpy.testing import assert_equal, assert_raises
 
 import deeptime
 from deeptime.data import PBFSimulator
+
+
+def test_invalid_args():
+    with assert_raises(ValueError):
+        PBFSimulator(domain_size=np.array(-1), initial_positions=np.zeros((10, 2)), interaction_distance=.1)
+    with assert_raises(ValueError):
+        PBFSimulator(domain_size=np.array([1, 1]), initial_positions=np.zeros((10, 1)), interaction_distance=.1)
+    with assert_raises(ValueError):
+        PBFSimulator(domain_size=np.array([1, 1]), initial_positions=np.zeros((10, 2)), interaction_distance=-1.)
 
 
 def test_pbf_sanity():
