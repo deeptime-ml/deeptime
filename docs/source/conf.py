@@ -30,6 +30,7 @@ project = 'deeptime'
 copyright = '2020, AI4Science Group'
 author = 'AI4Science Group'
 
+version = f"{deeptime.__version__.split('+')[0]}"
 # The full version, including alpha/beta/rc tags
 release = f"{deeptime.__version__}"
 
@@ -155,9 +156,10 @@ html_sidebars = {
     '**': [
         'about.html',
         'navigation.html',
+        'version.html',
         'relations.html',
         'searchbox.html',
-        'github_button.html'
+        'github_button.html',
     ]
 }
 
