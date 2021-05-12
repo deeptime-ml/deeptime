@@ -57,6 +57,28 @@ class SystemBase:
         """
         return self._impl.has_potential_function
 
+    @property
+    def f(self):
+        r""" The right-hand side of the system as callable function. In case of SDEs, this only evaluates the
+        deterministic part of the function definition.
+
+        Some of these definitions are vectorized.
+
+        Returns
+        -------
+        right_hand_side : Callable
+            The right-hand side.
+        """
+        return lambda t, x: self._impl.rhs(t, x).squeeze()
+
+    @property
+    def vectorized_f(self) -> bool:
+        r""" Yields whether the right-hand side function is vectorized.
+
+        :type: bool
+        """
+        return self._impl.vectorized_rhs
+
 
 class _TimeIndependentRhsMixin:
     def trajectory(self: SystemBase, x0, length, seed=-1, n_jobs=None):
