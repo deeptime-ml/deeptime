@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
-from numpy.testing import assert_equal, assert_raises, assert_allclose
+from numpy.testing import assert_equal, assert_raises, assert_allclose, assert_, assert_array_almost_equal
+from scipy.integrate import solve_ivp
 
 import deeptime as dt
 
@@ -54,6 +55,27 @@ def test_interface(init, system, dim, integrator, has_potential):
             assert_equal(instance.potential(55., x0).shape, (len(x0),))
         else:
             assert_equal(instance.potential(x0).shape, (len(x0),))
+
+
+@pytest.mark.parametrize("vectorized", [True, False])
+@pytest.mark.parametrize("system", [dt.data.abc_flow, dt.data.BickleyJet])
+@pytest.mark.parametrize("ref_method", ['RK45', 'DOP853', 'LSODA', 'BDF'])
+def test_ode_against_scipy(system, vectorized, ref_method):
+    instance = system(h=1e-4, n_steps=100)
+    dim = instance.dimension
+    y0 = np.array([.5] * dim)
+    assert_(instance.vectorized_f)
+    if instance.time_dependent:
+        traj = instance.trajectory(0., y0, 2)
+    else:
+        traj = instance.trajectory(y0, 2)
+    soln = solve_ivp(instance.f, [0, 1e-2], y0=y0, vectorized=vectorized, method=ref_method, t_eval=[0, 1e-2]).y
+    assert_equal(soln.shape, (dim, 2))
+    assert_equal(traj.shape, (2, dim))
+
+    assert_allclose(soln[:, 0], y0)
+    assert_allclose(traj[0], y0)
+    assert_array_almost_equal(soln[:, 1], traj[1], decimal=3)
 
 
 def test_quadruple_well_sanity():
@@ -128,6 +150,7 @@ def test_custom_sde(dim):
     test_points = sde(np.ones((1000, dim)))
     assert_equal(test_points.shape, (1000, dim))
     assert_allclose(np.mean(test_points), 1., rtol=1e-1, atol=1e-1)
+    assert_(not sde.vectorized_f)
 
 
 @pytest.mark.parametrize('dim', [1, 2, 3, 4, 5])
@@ -145,6 +168,7 @@ def test_custom_ode(dim):
     test_points = ode(np.ones((100, dim)))
     assert_equal(test_points.shape, (100, dim))
     assert_allclose(test_points, 1.)
+    assert_(not ode.vectorized_f)
 
 
 @pytest.mark.parametrize('dim', [-1, 0, 1.5, 999])

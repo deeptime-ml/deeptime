@@ -77,18 +77,52 @@ PBF makePbf(np_array<dtype> pos, const np_array<dtype>& gridSize, dtype interact
     }
     return {particles, static_cast<std::size_t>(nParticles), gridSizeArr, interactionRadius, nJobs};
 }
-template<typename System, typename... InitArgs>
+template<bool VECTORIZE_RHS, typename System, typename... InitArgs>
 auto exportSystem(py::module& m, const std::string &name) {
     using npDtype = typename System::dtype;
     auto clazz = py::class_<System>(m, name.c_str())
             .def(py::init<InitArgs...>())
             .def_readwrite("h", &System::h)
             .def_readwrite("n_steps", &System::nSteps)
-            .def("rhs", &System::f)
             .def_readonly_static("dimension", &System::DIM)
             .def_readonly_static("integrator", &System::Integrator::name)
             .def_property_readonly_static("has_potential_function", [](py::object /*self*/) { return system_has_potential_v<System>; })
             .def_property_readonly_static("time_dependent", [](py::object /*self*/) { return is_time_dependent<System>::value; });
+    if constexpr(VECTORIZE_RHS) {
+        clazz.def("rhs", [](const System &self, double t, const np_array_nfc<npDtype> &x) {
+            if (x.ndim() > 2) {
+                throw std::runtime_error("right-hand side must be at most two-dimensional array");
+            }
+            if (x.shape(0) != System::DIM) {
+                throw std::runtime_error("first dimension of right-hand side must match dimension of system.");
+            }
+
+            auto nTestPoints = x.ndim() == 2 ? static_cast<std::size_t>(x.shape(1)) : static_cast<std::size_t>(1);
+            np_array<npDtype> out ({static_cast<std::size_t>(x.shape(0)), nTestPoints});
+
+            typename System::State testPoint {};
+            typename System::State fx {};
+            const auto* xPtr = x.data();
+            auto outBuf = out.template mutable_unchecked<2>();
+            for (std::size_t i = 0; i < nTestPoints; ++i) {
+                for(std::size_t d = 0; d < System::DIM; ++d) {
+                    testPoint[d] = xPtr[i + d*nTestPoints];
+                }
+                if constexpr(is_time_dependent<System>::value) {
+                    fx = self.f(t, testPoint);
+                } else {
+                    fx = self.f(testPoint);
+                }
+                for(std::size_t d = 0; d < System::DIM; ++d) {
+                    outBuf(d, i) = fx[d];
+                }
+            }
+            return out;
+        });
+    } else {
+        clazz.def("rhs", &System::f);
+    }
+    clazz.def_property_readonly_static("vectorized_rhs", [](py::object /* self */) { return VECTORIZE_RHS; });
     if constexpr(is_time_dependent<System>::value) {
         clazz.def("trajectory", [](System &self, const np_array_nfc<double> &t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
             return trajectory(self, t, x, length, seed, nThreads);
@@ -158,13 +192,13 @@ auto exportSystem(py::module& m, const std::string &name) {
 template<std::size_t DIM>
 void exportPyODE(py::module& m, const std::string& name) {
     using PyODE = PyODE<double, DIM>;
-    exportSystem<PyODE, typename PyODE::Rhs>(m, name);
+    exportSystem<false, PyODE, typename PyODE::Rhs>(m, name);
 }
 
 template<std::size_t DIM>
 void exportPySDE(py::module& m, const std::string& name) {
     using PySDE = PySDE<double, DIM>;
-    exportSystem<PySDE, typename PySDE::Sigma, typename PySDE::Rhs>(m, name);
+    exportSystem<false, PySDE, typename PySDE::Sigma, typename PySDE::Rhs>(m, name);
 }
 
 PYBIND11_MODULE(_data_bindings, m) {
@@ -190,10 +224,10 @@ PYBIND11_MODULE(_data_bindings, m) {
             .def_property_readonly("domain_size", &PBF::gridSize);
 
     // more examples can be found at: https://github.com/sklus/d3s/tree/master/cpp
-    exportSystem<ABCFlow<double>>(m, "ABCFlow");
-    exportSystem<OrnsteinUhlenbeck<double>>(m, "OrnsteinUhlenbeck");
+    exportSystem<true, ABCFlow<double>>(m, "ABCFlow");
+    exportSystem<true, OrnsteinUhlenbeck<double>>(m, "OrnsteinUhlenbeck");
     {
-        auto clazz = exportSystem<Prinz<double>>(m, "Prinz");
+        auto clazz = exportSystem<true, Prinz<double>>(m, "Prinz");
         clazz.def_property("mass", [](const Prinz<double> &self) { return self.mass; },
                                    [](Prinz<double> &self, double val) { self.mass = val; self.updateSigma(); });
         clazz.def_property("damping", [](const Prinz<double> &self) { return self.damping; },
@@ -201,13 +235,13 @@ PYBIND11_MODULE(_data_bindings, m) {
         clazz.def_property("kT", [](const Prinz<double> &self) { return self.kT; },
                                    [](Prinz<double> &self, double val) { self.kT = val; self.updateSigma(); });
     }
-    exportSystem<TripleWell1D<double>>(m, "TripleWell1D");
-    exportSystem<DoubleWell2D<double>>(m, "DoubleWell2D");
-    exportSystem<QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
-    exportSystem<TripleWell2D<double>>(m, "TripleWell2D");
+    exportSystem<true, TripleWell1D<double>>(m, "TripleWell1D");
+    exportSystem<true, DoubleWell2D<double>>(m, "DoubleWell2D");
+    exportSystem<true, QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
+    exportSystem<true, TripleWell2D<double>>(m, "TripleWell2D");
     {
         using System = TimeDependent5Well<double>;
-        auto clazz = exportSystem<System>(m, "TimeDependent5Well2D");
+        auto clazz = exportSystem<true, System>(m, "TimeDependent5Well2D");
         clazz.def_property("beta", [](const System &self) { return self.beta; }, [](System &self, double beta) {
             self.beta = beta;
             self.updateSigma();
@@ -215,7 +249,7 @@ PYBIND11_MODULE(_data_bindings, m) {
     }
     {
         using System = BickleyJet<double>;
-        auto clazz = exportSystem<System>(m, "BickleyJet");
+        auto clazz = exportSystem<true, System>(m, "BickleyJet");
         clazz.def_readonly_static("U0", &System::U0)
             .def_readonly_static("L0", &System::L0)
             .def_readonly_static("r0", &System::r0)
@@ -223,7 +257,7 @@ PYBIND11_MODULE(_data_bindings, m) {
             .def_readonly_static("eps", &System::eps)
             .def_readonly_static("k", &System::k);
     }
-    exportSystem<QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
+    exportSystem<true, QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
     exportPyODE<1>(m, "PyODE1D");
     exportPyODE<2>(m, "PyODE2D");
