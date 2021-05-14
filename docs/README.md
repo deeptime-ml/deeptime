@@ -36,15 +36,12 @@ confuse Sphinx' bookkeeping. For example, in the case of k-means, you can find
 ```
 References
 ----------
-.. bibliography:: /references.bib
-    :style: unsrt
-    :filter: docname in docnames
-    :keyprefix: kmeans-
+.. footbibliography::
 ```
-in the docstring, meaning that all bibtex keys are prefixed with `kmeans-`. To actually cite something in ReST,
-one can use the `:cite:` directive:
+in the docstring, meaning that a bibliography with all occurred references will appear at the bottom of the page. To actually cite something in ReST,
+one can use the `:footcite:` directive:
 ```
-[...] For details, see :cite:`kmeans-arthur2006k`.
+[...] For details, see :footcite:`arthur2006k`.
 ```
 This pulls the `arthur2006k` reference from the global `references.bib` file.
 
