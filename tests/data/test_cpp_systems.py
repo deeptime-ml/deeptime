@@ -59,9 +59,9 @@ def test_interface(init, system, dim, integrator, has_potential):
 
 @pytest.mark.parametrize("vectorized", [True, False])
 @pytest.mark.parametrize("system", [dt.data.abc_flow, dt.data.BickleyJet])
-@pytest.mark.parametrize("ref_method", ['RK45', 'DOP853', 'LSODA', 'BDF'])
+@pytest.mark.parametrize("ref_method", ['RK45', 'DOP853', 'LSODA'])
 def test_ode_against_scipy(system, vectorized, ref_method):
-    instance = system(h=1e-4, n_steps=100)
+    instance = system(h=1e-5, n_steps=1000)
     dim = instance.dimension
     y0 = np.array([.5] * dim)
     assert_(instance.vectorized_f)
@@ -75,7 +75,7 @@ def test_ode_against_scipy(system, vectorized, ref_method):
 
     assert_allclose(soln[:, 0], y0)
     assert_allclose(traj[0], y0)
-    assert_array_almost_equal(soln[:, 1], traj[1], decimal=3)
+    assert_array_almost_equal(soln[:, 1], traj[1], decimal=5)
 
 
 def test_quadruple_well_sanity():
@@ -189,7 +189,7 @@ def test_bickley():
     r_0 = 6.371
     c = np.array((0.1446, 0.205, 0.461)) * U_0
     eps = np.array((0.075, 0.15, 0.3))
-    k = np.array((2, 4, 6)) * 1./r_0
+    k = np.array((2, 4, 6)) * 1. / r_0
 
     system = dt.data.BickleyJet(1e-5, 10)
     assert_equal(system.h, 1e-5)
@@ -219,5 +219,5 @@ def test_bickley():
     assert_equal(dataset_endpoints_3d.data_lagged.shape, (10, 3))
 
     dataset_clusters = dataset_endpoints_3d.cluster(13)
-    assert_equal(dataset_clusters.data.shape, (10, 13**3))
-    assert_equal(dataset_clusters.data_lagged.shape, (10, 13**3))
+    assert_equal(dataset_clusters.data.shape, (10, 13 ** 3))
+    assert_equal(dataset_clusters.data_lagged.shape, (10, 13 ** 3))

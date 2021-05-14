@@ -594,7 +594,7 @@ trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::
                 }
 
                 // evaluate dynamical system
-                auto yi = evaluate(system, integrator, tBuf(i), testPoint);
+                auto yi = evaluate(system, integrator, tBuf(i-1), testPoint);
 
                 // copy result into y vector
                 for (size_t k = 0; k < System::DIM; ++k) {
