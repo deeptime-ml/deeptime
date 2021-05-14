@@ -30,6 +30,7 @@ class BickleyJet(TimeDependentSystem):
     def __init__(self, h: float, n_steps: int):
         # set parameters
         super().__init__(BickleyJetImpl(), h, n_steps)
+        self.periodic_bc = True
 
     @property
     def U0(self):
@@ -69,11 +70,37 @@ class BickleyJet(TimeDependentSystem):
         :setter: Sets a new value.
         :type: bool
         """
-        return self._impl.periodic
+        return self._periodic
 
     @periodic_bc.setter
     def periodic_bc(self, value: bool):
-        self._impl.periodic = value
+        self._periodic = value
+
+    @staticmethod
+    def apply_periodic_boundary_conditions(trajectory, inplace=False):
+        r""" Applies periodic boundary conditions for domain :math:`\Omega = [0, 20)\times [-3, 3)`.
+
+        Notes
+        -----
+        This method operates not in-place by default, i.e., makes a copy of the trajectory. This behavior
+        can be changed by setting `inplace=True`.
+
+        Parameters
+        ----------
+        trajectory : (..., 2) ndarray
+            Input trajectory, last axis must have length two for x and y, respectively.
+        inplace : bool, optional, default=False
+            Whether to operate in-place.
+
+        Returns
+        -------
+        trajectory
+            Trajectory with applied boundary conditions.
+        """
+        if not inplace:
+            trajectory = trajectory.copy()
+        trajectory[..., 0] = np.mod(trajectory[..., 0], 20)  # periodicity in x direction
+        return trajectory
 
     def trajectory(self, t0, x0, length, seed=-1, n_jobs=None, return_time=False):
         r""" Generates one or multiple trajectories for the Bickley jet.
@@ -95,9 +122,8 @@ class BickleyJet(TimeDependentSystem):
         """
         tarr, traj = super().trajectory(t0, x0, length, seed, n_jobs, return_time=True)
         if self.periodic_bc:
-            traj[..., 0] = np.mod(traj[..., 0], 20)  # periodicity in x direction
-            traj[..., 1] = np.mod(traj[..., 1] + 3, 6) - 3  # periodicity in y direction
-        return traj if not return_time else tarr, traj
+            BickleyJet.apply_periodic_boundary_conditions(traj, inplace=True)
+        return traj if not return_time else (tarr, traj)
 
     def generate(self, n_particles, n_jobs=None, seed=None) -> np.ndarray:
         """Generates a trajectory with a fixed number of particles / test points for 401 evaluation steps, i.e.,
@@ -119,7 +145,7 @@ class BickleyJet(TimeDependentSystem):
         """
         state = np.random.RandomState(seed)
         X = np.vstack((state.uniform(0, 20, (n_particles,)), state.uniform(-3, 3, (n_particles, ))))
-        return self.trajectory(0, X.T, 401, n_jobs=n_jobs)
+        return self.trajectory(0, X.T, 401, n_jobs=n_jobs, return_time=False)
 
     @staticmethod
     def to_3d(data: np.ndarray, radius: float = 1.) -> np.ndarray:

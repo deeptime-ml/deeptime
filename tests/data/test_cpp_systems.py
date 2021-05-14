@@ -184,9 +184,8 @@ def test_custom_ode_wrong_dim(dim):
         dt.data.custom_ode(dim, lambda x: x, 1., 5)
 
 
-@pytest.mark.parametrize('periodic', [True, False], ids=lambda x: f"periodic={x}")
 @pytest.mark.parametrize('vectorized_ivp', [True, False], ids=lambda x: f"vectorized={x}")
-def test_bickley_integrate(periodic, vectorized_ivp):
+def test_bickley_integrate(vectorized_ivp):
     X = np.vstack((np.full((5,), 0.1), np.linspace(-2.9, 2.9, num=5))).T
 
     simulator = dt.data.BickleyJet(1e-4, 10000)
@@ -196,30 +195,30 @@ def test_bickley_integrate(periodic, vectorized_ivp):
     simulator_back = dt.data.BickleyJet(-1e-4, 10000)
     simulator_back.periodic_bc = False
 
-    simulator.periodic_bc = periodic
-    simulator_back.periodic_bc = periodic
+    simulator.periodic_bc = False
+    simulator_back.periodic_bc = False
 
     time, traj = simulator.trajectory(0, X, 11, return_time=True)
+
     Xfinal = traj[:, -1]
     time_back, traj_back = simulator_back.trajectory(10, traj[:, -1], 11, return_time=True)
     assert_array_almost_equal(time, np.flip(time_back, axis=1))
     assert_array_almost_equal(traj, np.flip(traj_back, axis=1))
     t_eval = np.linspace(0, 10, num=11, endpoint=True)
+
+    periodic_traj = dt.data.BickleyJet.apply_periodic_boundary_conditions(traj, inplace=False)
+    assert_(np.all((periodic_traj[..., 0] <= 20) & (periodic_traj[..., 0] >= 0)))  # inside domain
+
     for i in range(5):
         assert_equal(t_eval, time[i])
         soln = solve_ivp(simulator.f, [0, 10], y0=X[i], vectorized=vectorized_ivp, method='RK45',
                          atol=1e-12, rtol=1e-12, t_eval=t_eval)
         soln_bwd = solve_ivp(simulator.f, [10, 0], y0=Xfinal[i], vectorized=vectorized_ivp, method='RK45',
                              atol=1e-12, rtol=1e-12, t_eval=t_eval[::-1])
-        if periodic:
-            soln.y[0] = np.mod(soln.y[0], 20)  # periodic b.c.
-            soln.y[1] = np.mod(soln.y[1] + 3, 6) - 3  # periodic b.c.
-            soln_bwd.y[0] = np.mod(soln_bwd.y[0], 20)  # periodic b.c.
-            soln_bwd.y[1] = np.mod(soln_bwd.y[1] + 3, 6) - 3  # periodic b.c.
-        assert_array_almost_equal(soln.y.T, traj[i], decimal=3)
-        assert_array_almost_equal(soln_bwd.y.T, traj_back[i], decimal=2)
-        assert_array_almost_equal(traj_back[i, -1], X[i], decimal=2)
-        assert_array_almost_equal(soln_bwd.y[:, -1], X[i], decimal=2)
+        assert_array_almost_equal(soln.y.T, traj[i])
+        assert_array_almost_equal(soln_bwd.y.T, traj_back[i])
+        assert_array_almost_equal(traj_back[i, -1], X[i])
+        assert_array_almost_equal(soln_bwd.y[:, -1], X[i])
 
 
 def test_bickley():

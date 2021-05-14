@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable
 
 import numpy as np
 
@@ -58,7 +58,7 @@ class SystemBase:
         return self._impl.has_potential_function
 
     @property
-    def f(self):
+    def f(self) -> Callable[[float, np.ndarray], np.ndarray]:
         r""" The right-hand side of the system as callable function. In case of SDEs, this only evaluates the
         deterministic part of the function definition.
 
@@ -66,7 +66,7 @@ class SystemBase:
 
         Returns
         -------
-        right_hand_side : Callable
+        right_hand_side : Callable[[float, ndarray], ndarray]
             The right-hand side.
         """
         return lambda t, x: self._impl.rhs(t, x).squeeze()
@@ -189,7 +189,7 @@ class _TimeDependentRhsMixin:
         tarr, traj = self._impl.trajectory(t0, x0, length, seed, n_jobs)
         if n_initial_conditions == 1:
             traj = traj[0]
-        return traj if not return_time else tarr, traj
+        return traj if not return_time else (tarr, traj)
 
     def __call__(self: SystemBase, t0, test_points, seed=-1, n_jobs=None):
         r"""Evolves the provided tests points under the dynamic for n_steps and returns.

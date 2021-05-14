@@ -7,7 +7,6 @@
 
 #include "common.h"
 #include "integrator.h"
-#include "periodic_boundary.h"
 
 namespace py = pybind11;
 
@@ -84,7 +83,7 @@ struct BickleyJet {
 
     constexpr State f(double t, const State &xVec) const {
         using namespace std::complex_literals;
-        auto [x, y] = periodic ? BoundaryConditions<DIM>::pbc(begin(xVec), {{0, -3}}, {{20, 3}}) : xVec;
+        auto [x, y] = xVec;
         std::complex<T> fc {0};
         std::complex<T> df_dx_c {0};
         for (int j = 0; j < 3; ++j) {
@@ -109,7 +108,6 @@ struct BickleyJet {
 
     T h{1e-2};
     std::size_t nSteps{ static_cast<std::size_t>(0.1 / h)  };
-    bool periodic {true};
 };
 
 //------------------------------------------------------------------------------
