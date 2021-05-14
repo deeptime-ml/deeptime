@@ -279,9 +279,7 @@ class HiddenMarkovModel(Model):
         -------
         The estimated likelihood, otherwise None.
         """
-        if self.likelihoods is not None:
-            return self.likelihoods[-1]
-        return None
+        return self.likelihoods[-1] if self.likelihoods is not None else None
 
     @property
     def state_probabilities(self) -> Optional[List[np.ndarray]]:

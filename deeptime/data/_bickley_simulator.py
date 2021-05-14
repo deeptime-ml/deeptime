@@ -30,6 +30,7 @@ class BickleyJet(TimeDependentSystem):
     def __init__(self, h: float, n_steps: int):
         # set parameters
         super().__init__(BickleyJetImpl(), h, n_steps)
+        self.periodic_bc = True
 
     @property
     def U0(self):
@@ -61,10 +62,68 @@ class BickleyJet(TimeDependentSystem):
         r""" Wave numbers :math:`k = (2,4,6)^\top \frac{1}{r_0}`. """
         return self._impl.k
 
-    def trajectory(self, t0, x0, length, seed=-1, n_jobs=None):
-        traj = super().trajectory(t0, x0, length, seed, n_jobs)
-        traj[..., 0] = np.mod(traj[..., 0], 20)  # periodicity in x direction
-        return traj
+    @property
+    def periodic_bc(self) -> bool:
+        r""" Whether periodic boundary conditions are applied.
+
+        :getter: Yields the current value. True corresponds to periodic boundaries.
+        :setter: Sets a new value.
+        :type: bool
+        """
+        return self._periodic
+
+    @periodic_bc.setter
+    def periodic_bc(self, value: bool):
+        self._periodic = value
+
+    @staticmethod
+    def apply_periodic_boundary_conditions(trajectory, inplace=False):
+        r""" Applies periodic boundary conditions for domain :math:`\Omega = [0, 20)\times [-3, 3)`.
+
+        Notes
+        -----
+        This method operates not in-place by default, i.e., makes a copy of the trajectory. This behavior
+        can be changed by setting `inplace=True`.
+
+        Parameters
+        ----------
+        trajectory : (..., 2) ndarray
+            Input trajectory, last axis must have length two for x and y, respectively.
+        inplace : bool, optional, default=False
+            Whether to operate in-place.
+
+        Returns
+        -------
+        trajectory
+            Trajectory with applied boundary conditions.
+        """
+        if not inplace:
+            trajectory = trajectory.copy()
+        trajectory[..., 0] = np.mod(trajectory[..., 0], 20)  # periodicity in x direction
+        return trajectory
+
+    def trajectory(self, t0, x0, length, seed=-1, n_jobs=None, return_time=False):
+        r""" Generates one or multiple trajectories for the Bickley jet.
+
+        Parameters
+        ----------
+        t0 : array_like
+            The initial time. Can be picked as single float across all test points or individually.
+        x0 : array_like
+            The initial condition. Must be compatible in shape to a (n_test_points, dimension)-array.
+        length : int
+            The length of the trajectory that is to be generated.
+        seed : int, optional, default=-1
+            The random seed. In case it is specified to be something else than `-1`, n_jobs must be set to `n_jobs=1`.
+        n_jobs : int, optional, default=None
+            Specify number of jobs according to :meth:`deeptime.util.parallel.handle_n_jobs`.
+        return_time : bool, optional, default=False
+            Whether to return the evaluation times too.
+        """
+        tarr, traj = super().trajectory(t0, x0, length, seed, n_jobs, return_time=True)
+        if self.periodic_bc:
+            BickleyJet.apply_periodic_boundary_conditions(traj, inplace=True)
+        return traj if not return_time else (tarr, traj)
 
     def generate(self, n_particles, n_jobs=None, seed=None) -> np.ndarray:
         """Generates a trajectory with a fixed number of particles / test points for 401 evaluation steps, i.e.,
@@ -86,7 +145,7 @@ class BickleyJet(TimeDependentSystem):
         """
         state = np.random.RandomState(seed)
         X = np.vstack((state.uniform(0, 20, (n_particles,)), state.uniform(-3, 3, (n_particles, ))))
-        return self.trajectory(0, X.T, 401, n_jobs=n_jobs)
+        return self.trajectory(0, X.T, 401, n_jobs=n_jobs, return_time=False)
 
     @staticmethod
     def to_3d(data: np.ndarray, radius: float = 1.) -> np.ndarray:

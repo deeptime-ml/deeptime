@@ -59,23 +59,24 @@ def test_interface(init, system, dim, integrator, has_potential):
 
 @pytest.mark.parametrize("vectorized", [True, False])
 @pytest.mark.parametrize("system", [dt.data.abc_flow, dt.data.BickleyJet])
-@pytest.mark.parametrize("ref_method", ['RK45', 'DOP853', 'LSODA', 'BDF'])
+@pytest.mark.parametrize("ref_method", ['RK45', 'DOP853', 'LSODA'])
 def test_ode_against_scipy(system, vectorized, ref_method):
-    instance = system(h=1e-4, n_steps=100)
+    instance = system(h=1e-5, n_steps=1000)
     dim = instance.dimension
-    y0 = np.array([.5] * dim)
+    y0 = np.array([[.5] * dim]*10)
     assert_(instance.vectorized_f)
     if instance.time_dependent:
         traj = instance.trajectory(0., y0, 2)
     else:
         traj = instance.trajectory(y0, 2)
-    soln = solve_ivp(instance.f, [0, 1e-2], y0=y0, vectorized=vectorized, method=ref_method, t_eval=[0, 1e-2]).y
+    soln = solve_ivp(instance.f, [0, 1e-2], y0=y0[0], vectorized=vectorized, method=ref_method, t_eval=[0, 1e-2]).y
     assert_equal(soln.shape, (dim, 2))
-    assert_equal(traj.shape, (2, dim))
+    assert_equal(traj.shape, (10, 2, dim))
 
-    assert_allclose(soln[:, 0], y0)
-    assert_allclose(traj[0], y0)
-    assert_array_almost_equal(soln[:, 1], traj[1], decimal=3)
+    for i in range(10):
+        assert_allclose(soln[:, 0], y0[0])
+        assert_allclose(traj[i, 0], y0[0])
+        assert_array_almost_equal(soln[:, 1], traj[i, 1], decimal=5)
 
 
 def test_quadruple_well_sanity():
@@ -183,13 +184,50 @@ def test_custom_ode_wrong_dim(dim):
         dt.data.custom_ode(dim, lambda x: x, 1., 5)
 
 
+@pytest.mark.parametrize('vectorized_ivp', [True, False], ids=lambda x: f"vectorized={x}")
+def test_bickley_integrate(vectorized_ivp):
+    X = np.vstack((np.full((5,), 0.1), np.linspace(-2.9, 2.9, num=5))).T
+
+    simulator = dt.data.BickleyJet(1e-4, 10000)
+    assert_(simulator.periodic_bc)
+    simulator.periodic_bc = False
+    assert_(not simulator.periodic_bc)
+    simulator_back = dt.data.BickleyJet(-1e-4, 10000)
+    simulator_back.periodic_bc = False
+
+    simulator.periodic_bc = False
+    simulator_back.periodic_bc = False
+
+    time, traj = simulator.trajectory(0, X, 11, return_time=True)
+
+    Xfinal = traj[:, -1]
+    time_back, traj_back = simulator_back.trajectory(10, traj[:, -1], 11, return_time=True)
+    assert_array_almost_equal(time, np.flip(time_back, axis=1))
+    assert_array_almost_equal(traj, np.flip(traj_back, axis=1))
+    t_eval = np.linspace(0, 10, num=11, endpoint=True)
+
+    periodic_traj = dt.data.BickleyJet.apply_periodic_boundary_conditions(traj, inplace=False)
+    assert_(np.all((periodic_traj[..., 0] <= 20) & (periodic_traj[..., 0] >= 0)))  # inside domain
+
+    for i in range(5):
+        assert_equal(t_eval, time[i])
+        soln = solve_ivp(simulator.f, [0, 10], y0=X[i], vectorized=vectorized_ivp, method='RK45',
+                         atol=1e-12, rtol=1e-12, t_eval=t_eval)
+        soln_bwd = solve_ivp(simulator.f, [10, 0], y0=Xfinal[i], vectorized=vectorized_ivp, method='RK45',
+                             atol=1e-12, rtol=1e-12, t_eval=t_eval[::-1])
+        assert_array_almost_equal(soln.y.T, traj[i])
+        assert_array_almost_equal(soln_bwd.y.T, traj_back[i])
+        assert_array_almost_equal(traj_back[i, -1], X[i])
+        assert_array_almost_equal(soln_bwd.y[:, -1], X[i])
+
+
 def test_bickley():
     U_0 = 5.4138
     L_0 = 1.77
     r_0 = 6.371
     c = np.array((0.1446, 0.205, 0.461)) * U_0
     eps = np.array((0.075, 0.15, 0.3))
-    k = np.array((2, 4, 6)) * 1./r_0
+    k = np.array((2, 4, 6)) * 1. / r_0
 
     system = dt.data.BickleyJet(1e-5, 10)
     assert_equal(system.h, 1e-5)
@@ -219,5 +257,5 @@ def test_bickley():
     assert_equal(dataset_endpoints_3d.data_lagged.shape, (10, 3))
 
     dataset_clusters = dataset_endpoints_3d.cluster(13)
-    assert_equal(dataset_clusters.data.shape, (10, 13**3))
-    assert_equal(dataset_clusters.data_lagged.shape, (10, 13**3))
+    assert_equal(dataset_clusters.data.shape, (10, 13 ** 3))
+    assert_equal(dataset_clusters.data_lagged.shape, (10, 13 ** 3))

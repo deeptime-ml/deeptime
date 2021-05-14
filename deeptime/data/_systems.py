@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable
 
 import numpy as np
 
@@ -58,7 +58,7 @@ class SystemBase:
         return self._impl.has_potential_function
 
     @property
-    def f(self):
+    def f(self) -> Callable[[float, np.ndarray], np.ndarray]:
         r""" The right-hand side of the system as callable function. In case of SDEs, this only evaluates the
         deterministic part of the function definition.
 
@@ -66,7 +66,7 @@ class SystemBase:
 
         Returns
         -------
-        right_hand_side : Callable
+        right_hand_side : Callable[[float, ndarray], ndarray]
             The right-hand side.
         """
         return lambda t, x: self._impl.rhs(t, x).squeeze()
@@ -104,7 +104,7 @@ class _TimeIndependentRhsMixin:
         n_jobs = handle_n_jobs(n_jobs)
         x0 = np.array(x0).reshape((-1, self._impl.dimension))
         n_initial_conditions = x0.shape[0]
-        traj = self._impl.trajectory(x0, length, seed, n_jobs)
+        _, traj = self._impl.trajectory(x0, length, seed, n_jobs)
         if n_initial_conditions == 1:
             traj = traj[0]
         return traj
@@ -155,7 +155,7 @@ class _TimeIndependentRhsMixin:
 
 
 class _TimeDependentRhsMixin:
-    def trajectory(self: SystemBase, t0, x0, length, seed=-1, n_jobs=None):
+    def trajectory(self: SystemBase, t0, x0, length, seed=-1, n_jobs=None, return_time=False):
         r""" Simulates one or multiple trajectories depending on initial state and initial time.
 
         Parameters
@@ -170,6 +170,8 @@ class _TimeDependentRhsMixin:
             The random seed. In case it is specified to be something else than `-1`, n_jobs must be set to `n_jobs=1`.
         n_jobs : int, optional, default=None
             Specify number of jobs according to :meth:`deeptime.util.parallel.handle_n_jobs`.
+        return_time : bool, optional, default=False
+            Whether to return the evaluation times too.
 
         Returns
         -------
@@ -184,10 +186,10 @@ class _TimeDependentRhsMixin:
         t0 = np.atleast_1d(t0)
         if len(t0) == 1 and n_initial_conditions > 1:
             t0 = np.full((n_initial_conditions,), t0[0])
-        traj = self._impl.trajectory(t0, x0, length, seed, n_jobs)
+        tarr, traj = self._impl.trajectory(t0, x0, length, seed, n_jobs)
         if n_initial_conditions == 1:
             traj = traj[0]
-        return traj
+        return traj if not return_time else (tarr, traj)
 
     def __call__(self: SystemBase, t0, test_points, seed=-1, n_jobs=None):
         r"""Evolves the provided tests points under the dynamic for n_steps and returns.
