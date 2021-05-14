@@ -7,6 +7,7 @@
 
 #include "common.h"
 #include "integrator.h"
+#include "periodic_boundary.h"
 
 namespace py = pybind11;
 
@@ -83,8 +84,7 @@ struct BickleyJet {
 
     constexpr State f(double t, const State &xVec) const {
         using namespace std::complex_literals;
-        auto x = std::get<0>(xVec);
-        auto y = std::get<1>(xVec);
+        auto [x, y] = periodic ? BoundaryConditions<DIM>::pbc(begin(xVec), {{0, -3}}, {{20, 3}}) : xVec;
         std::complex<T> fc {0};
         std::complex<T> df_dx_c {0};
         for (int j = 0; j < 3; ++j) {
@@ -109,6 +109,7 @@ struct BickleyJet {
 
     T h{1e-2};
     std::size_t nSteps{ static_cast<std::size_t>(0.1 / h)  };
+    bool periodic {true};
 };
 
 //------------------------------------------------------------------------------
@@ -542,7 +543,7 @@ np_array_nfc<dtype> evaluateSystem(const System &system, const Time &tArr, const
 }
 
 template<typename dtype, typename System, typename Time>
-np_array_nfc<dtype>
+auto
 trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::size_t length, std::int64_t seed = -1,
            int nThreads = 1) {
     {
@@ -569,12 +570,14 @@ trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::
     #endif
 
     np_array_nfc<dtype> y({nTestPoints, length, System::DIM});
+    np_array_nfc<double> tOut({nTestPoints, length});
 
     auto xBuf = x.template unchecked<2>();
     auto yBuf = y.template mutable_unchecked<3>();
+    auto tOutBuf = tOut.template mutable_unchecked<2>();
     auto tBufOuter = detail::toOuterBuf(tArr);
 
-    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, tBufOuter, seed, length)
+    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, tOutBuf, tBufOuter, seed, length)
     {
         auto integrator = createIntegrator<System>(seed, typename System::system_type());
 
@@ -586,6 +589,9 @@ trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::
                 yBuf(testPointIndex, 0, k) = xBuf(testPointIndex, k);
             }
 
+            auto tEval = tBuf(0);
+            tOutBuf(testPointIndex, 0) = tEval;
+
             typename System::State testPoint;
             for (size_t i = 1; i < length; ++i) {
                 for (size_t k = 0; k < System::DIM; ++k) {
@@ -594,16 +600,18 @@ trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::
                 }
 
                 // evaluate dynamical system
-                auto yi = evaluate(system, integrator, tBuf(i-1), testPoint);
+                auto yi = evaluate(system, integrator, tEval, testPoint);
 
                 // copy result into y vector
                 for (size_t k = 0; k < System::DIM; ++k) {
                     yBuf(testPointIndex, i, k) = yi[k];
                 }
+                tEval = tBuf(i);
+                tOutBuf(testPointIndex, i) = tEval;
             }
         }
 
     }
 
-    return y;
+    return std::make_tuple(tOut, y);
 }

@@ -61,10 +61,43 @@ class BickleyJet(TimeDependentSystem):
         r""" Wave numbers :math:`k = (2,4,6)^\top \frac{1}{r_0}`. """
         return self._impl.k
 
-    def trajectory(self, t0, x0, length, seed=-1, n_jobs=None):
-        traj = super().trajectory(t0, x0, length, seed, n_jobs)
-        traj[..., 0] = np.mod(traj[..., 0], 20)  # periodicity in x direction
-        return traj
+    @property
+    def periodic_bc(self) -> bool:
+        r""" Whether periodic boundary conditions are applied.
+
+        :getter: Yields the current value. True corresponds to periodic boundaries.
+        :setter: Sets a new value.
+        :type: bool
+        """
+        return self._impl.periodic
+
+    @periodic_bc.setter
+    def periodic_bc(self, value: bool):
+        self._impl.periodic = value
+
+    def trajectory(self, t0, x0, length, seed=-1, n_jobs=None, return_time=False):
+        r""" Generates one or multiple trajectories for the Bickley jet.
+
+        Parameters
+        ----------
+        t0 : array_like
+            The initial time. Can be picked as single float across all test points or individually.
+        x0 : array_like
+            The initial condition. Must be compatible in shape to a (n_test_points, dimension)-array.
+        length : int
+            The length of the trajectory that is to be generated.
+        seed : int, optional, default=-1
+            The random seed. In case it is specified to be something else than `-1`, n_jobs must be set to `n_jobs=1`.
+        n_jobs : int, optional, default=None
+            Specify number of jobs according to :meth:`deeptime.util.parallel.handle_n_jobs`.
+        return_time : bool, optional, default=False
+            Whether to return the evaluation times too.
+        """
+        tarr, traj = super().trajectory(t0, x0, length, seed, n_jobs, return_time=True)
+        if self.periodic_bc:
+            traj[..., 0] = np.mod(traj[..., 0], 20)  # periodicity in x direction
+            traj[..., 1] = np.mod(traj[..., 1] + 3, 6) - 3  # periodicity in y direction
+        return traj if not return_time else tarr, traj
 
     def generate(self, n_particles, n_jobs=None, seed=None) -> np.ndarray:
         """Generates a trajectory with a fixed number of particles / test points for 401 evaluation steps, i.e.,

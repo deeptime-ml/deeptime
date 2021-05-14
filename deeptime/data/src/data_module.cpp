@@ -124,7 +124,7 @@ auto exportSystem(py::module& m, const std::string &name) {
     }
     clazz.def_property_readonly_static("vectorized_rhs", [](py::object /* self */) { return VECTORIZE_RHS; });
     if constexpr(is_time_dependent<System>::value) {
-        clazz.def("trajectory", [](System &self, const np_array_nfc<double> &t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+        clazz.def("trajectory", [](System &self, const np_array_nfc<double> &t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) {
             return trajectory(self, t, x, length, seed, nThreads);
         }, py::call_guard<py::gil_scoped_release>(), "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, double t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
@@ -134,7 +134,7 @@ auto exportSystem(py::module& m, const std::string &name) {
             return evaluateSystem(self, t, x, seed, nThreads);
         }, py::call_guard<py::gil_scoped_release>(), "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
     } else {
-        clazz.def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
+        clazz.def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads){
             return trajectory(self, 0., x, length, seed, nThreads);
         }, py::call_guard<py::gil_scoped_release>(), "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
@@ -255,7 +255,8 @@ PYBIND11_MODULE(_data_bindings, m) {
             .def_readonly_static("r0", &System::r0)
             .def_readonly_static("c", &System::c)
             .def_readonly_static("eps", &System::eps)
-            .def_readonly_static("k", &System::k);
+            .def_readonly_static("k", &System::k)
+            .def_readwrite("periodic", &System::periodic);
     }
     exportSystem<true, QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
