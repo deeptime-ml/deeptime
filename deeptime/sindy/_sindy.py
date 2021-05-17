@@ -511,7 +511,8 @@ class STLSQ(LinearRegression):
         self.coef_ = coef
         self.ind_ = ind
 
-    def _sparse_coefficients(self, dim, ind, coef, threshold):
+    @staticmethod
+    def _sparse_coefficients(dim, ind, coef, threshold):
         r"""Perform thresholding of the weight vector(s)"""
         c = np.zeros(dim)
         c[ind] = coef
