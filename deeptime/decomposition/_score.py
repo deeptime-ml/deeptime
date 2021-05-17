@@ -148,9 +148,8 @@ def vamp_score_data(data, data_lagged, transformation=None, r=2, epsilon=1e-6, d
         def transformation(x):
             return x
     from deeptime.decomposition import VAMP
-    cov_estimator = VAMP.covariance_estimator(1)
-    cov = cov_estimator.partial_fit((transformation(data), transformation(data_lagged))).fetch_model()
-    return VAMP(epsilon=epsilon).fit(cov).fetch_model().score(r=r, dim=dim, epsilon=epsilon)
+    model = VAMP(epsilon=epsilon, observable_transform=transformation, dim=dim).fit((data, data_lagged)).fetch_model()
+    return model.score(r=r, dim=dim, epsilon=epsilon)
 
 
 def blocksplit_trajs(trajs, lag=1, sliding=True, shift=None, random_state=None):
