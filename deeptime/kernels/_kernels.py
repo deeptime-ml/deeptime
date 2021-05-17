@@ -49,7 +49,6 @@ class GaussianKernel(Kernel):
         return np.exp(-np.square(np.linalg.norm(x - y)) / (2 * np.square(self.sigma)))
 
     def apply(self, data_1: np.ndarray, data_2: np.ndarray) -> np.ndarray:
-        # s = self.sigma.astype(data_1.dtype)
         if self.impl == 'cdist':
             D = distance.cdist(data_1, data_2, metric='sqeuclidean')
         elif self.impl == 'binomial':
