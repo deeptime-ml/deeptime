@@ -151,7 +151,7 @@ class CovarianceModel(Model):
         """
         return self._symmetrized
 
-    def whiten(self, data: np.ndarray) -> np.ndarray:
+    def whiten(self, data: np.ndarray, epsilon=1e-10, method='QR') -> np.ndarray:
         r"""Whiten a (T, N)-shaped chunk of data by transforming it into the PCA basis. In case of rank deficiency
         this reduces the dimension.
 
@@ -159,6 +159,10 @@ class CovarianceModel(Model):
         ----------
         data : (T,N) ndarray
             The data to be whitened.
+        epsilon : float, optional, default=1e-10
+            Truncation parameter. See :meth:`deeptime.numeric.spd_inv_sqrt`.
+        method : str, optional, default='QR'
+            Decomposition method. See :meth:`deeptime.numeric.spd_inv_sqrt`.
 
         Returns
         -------
@@ -166,7 +170,7 @@ class CovarianceModel(Model):
             Whitened data.
         """
         assert self.cov_00 is not None and self.mean_0 is not None
-        projection = np.atleast_2d(spd_inv_sqrt(self.cov_00))
+        projection = np.atleast_2d(spd_inv_sqrt(self.cov_00, epsilon=epsilon, method=method))
         whitened_data = (data - self.mean_0[None, ...]) @ projection.T
         return whitened_data
 

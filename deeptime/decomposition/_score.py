@@ -148,7 +148,7 @@ def vamp_score_data(data, data_lagged, transformation=None, r=2, epsilon=1e-6, d
         def transformation(x):
             return x
     from deeptime.decomposition import VAMP
-    model = VAMP(epsilon=epsilon, observable_transform=transformation, dim=dim).fit((data, data_lagged)).fetch_model()
+    model = VAMP(epsilon=epsilon, observable_transform=transformation).fit((data, data_lagged)).fetch_model()
     return model.score(r=r, dim=dim, epsilon=epsilon)
 
 
