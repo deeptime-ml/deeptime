@@ -112,7 +112,7 @@ void sample(const std::vector<np_array_nfc<State>> &observationsPerState, np_arr
     auto& generator = deeptime::rnd::staticThreadLocalGenerator();
     deeptime::rnd::dirichlet_distribution<dtype> dirichlet;
 
-    for (const np_array<State> &observations : observationsPerState) {
+    for (const auto &observations : observationsPerState) {
 
         std::vector<dtype> hist(nObs, 0);
 
