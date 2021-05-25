@@ -45,18 +45,31 @@ struct BoundaryConditions {
         return vmax_impl(Indices{});
     }
 
+    template<std::size_t d, typename T>
+    static constexpr T apply_impl_d(T x) {
+        if constexpr(apply_pbc[d]) {
+            auto vmax = std::tuple_element<d, VMAX>::type::num / std::tuple_element<d, VMAX>::type::den;
+            auto vmin = std::tuple_element<d, VMIN>::type::num / std::tuple_element<d, VMIN>::type::den;
+            auto diam = vmax - vmin;
+            while (x >= vmax) x -= diam;
+            while (x < vmin) x += diam;
+        }
+        return x;
+    }
+
+    template<std::size_t... I>
+    static constexpr State apply_impl(State in, std::index_sequence<I...>) {
+        using expander = int[];
+        (void) expander{0, ((void) (in[I] = apply_impl_d<I>(in[I])), 0)...};
+        return in;
+    }
+
+    template<typename Indices = std::make_index_sequence<DIM>>
     static constexpr auto apply(State in) {
         if constexpr(sizeof...(periodic_dim) == 0) {
             return in;
         } else {
-            for (int d = 0; d < DIM; ++d) {
-                if (apply_pbc[d]) {
-                    auto diam = vmax()[d] - vmin()[d];
-                    while (in[d] >= vmax()[d]) in[d] -= diam;
-                    while (in[d] < vmin()[d]) in[d] += diam;
-                }
-            }
-            return in;
+            return apply_impl(in, Indices{});
         }
     }
 };
