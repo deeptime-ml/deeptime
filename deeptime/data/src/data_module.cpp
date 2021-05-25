@@ -8,6 +8,9 @@
 #include "pbf.h"
 #include "systems.h"
 
+static_assert(deeptime::data::system_has_periodic_boundaries_v<deeptime::data::BickleyJet<double, true>>);
+static_assert(!deeptime::data::system_has_periodic_boundaries_v<deeptime::data::Prinz<double>>);
+
 using namespace pybind11::literals;
 
 using dtype = float;
@@ -16,12 +19,12 @@ using PBF = deeptime::pbf::PBF<DIM, dtype>;
 
 template<typename T, std::size_t dim>
 struct PyODE {
-    using system_type = ode_tag;
+    using system_type = deeptime::data::ode_tag;
 
     static constexpr std::size_t DIM = dim;
     using dtype = T;
-    using State = Vector<T, DIM>;
-    using Integrator = deeptime::RungeKutta<State, DIM>;
+    using State = deeptime::data::Vector<T, DIM>;
+    using Integrator = deeptime::data::RungeKutta<State, DIM>;
     using Rhs = std::function<State(State)>;
 
     explicit PyODE(Rhs &&rhs) : rhs(std::move(rhs)) {}
@@ -38,14 +41,14 @@ struct PyODE {
 
 template<typename T, std::size_t dim>
 struct PySDE {
-    using system_type = sde_tag;
+    using system_type = deeptime::data::sde_tag;
 
     static constexpr std::size_t DIM = dim;
     using dtype = T;
-    using State = Vector<T, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM, T>;
+    using State = deeptime::data::Vector<T, DIM>;
+    using Integrator = deeptime::data::EulerMaruyama<State, DIM, T>;
     using Rhs = std::function<State(State)>;
-    using Sigma = Matrix<T, DIM>;
+    using Sigma = deeptime::data::Matrix<T, DIM>;
 
     PySDE(const Sigma &sigma, Rhs &&rhs) : sigma(sigma), rhs(std::move(rhs)) {}
 
@@ -86,8 +89,8 @@ auto exportSystem(py::module& m, const std::string &name) {
             .def_readwrite("n_steps", &System::nSteps)
             .def_readonly_static("dimension", &System::DIM)
             .def_readonly_static("integrator", &System::Integrator::name)
-            .def_property_readonly_static("has_potential_function", [](py::object /*self*/) { return system_has_potential_v<System>; })
-            .def_property_readonly_static("time_dependent", [](py::object /*self*/) { return is_time_dependent<System>::value; });
+            .def_property_readonly_static("has_potential_function", [](py::object /*self*/) { return deeptime::data::system_has_potential_v<System>; })
+            .def_property_readonly_static("time_dependent", [](py::object /*self*/) { return deeptime::data::is_time_dependent<System>::value; });
     if constexpr(VECTORIZE_RHS) {
         clazz.def("rhs", [](const System &self, double t, const np_array_nfc<npDtype> &x) {
             if (x.ndim() > 2) {
@@ -108,7 +111,7 @@ auto exportSystem(py::module& m, const std::string &name) {
                 for(std::size_t d = 0; d < System::DIM; ++d) {
                     testPoint[d] = xPtr[i + d*nTestPoints];
                 }
-                if constexpr(is_time_dependent<System>::value) {
+                if constexpr(deeptime::data::is_time_dependent<System>::value) {
                     fx = self.f(t, testPoint);
                 } else {
                     fx = self.f(testPoint);
@@ -123,7 +126,7 @@ auto exportSystem(py::module& m, const std::string &name) {
         clazz.def("rhs", &System::f);
     }
     clazz.def_property_readonly_static("vectorized_rhs", [](py::object /* self */) { return VECTORIZE_RHS; });
-    if constexpr(is_time_dependent<System>::value) {
+    if constexpr(deeptime::data::is_time_dependent<System>::value) {
         clazz.def("trajectory", [](System &self, const np_array_nfc<double> &t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) {
             return trajectory(self, t, x, length, seed, nThreads);
         }, py::call_guard<py::gil_scoped_release>(), "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
@@ -135,17 +138,17 @@ auto exportSystem(py::module& m, const std::string &name) {
         }, py::call_guard<py::gil_scoped_release>(), "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
     } else {
         clazz.def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads){
-            return trajectory(self, 0., x, length, seed, nThreads);
+            return deeptime::data::trajectory(self, 0., x, length, seed, nThreads);
         }, py::call_guard<py::gil_scoped_release>(), "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
-            return evaluateSystem(self, 0., x, seed, nThreads);
+            return deeptime::data::evaluateSystem(self, 0., x, seed, nThreads);
         }, py::call_guard<py::gil_scoped_release>(), "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
-            return evaluateSystem(self, 0., x, seed, nThreads);
+            return deeptime::data::evaluateSystem(self, 0., x, seed, nThreads);
         }, py::call_guard<py::gil_scoped_release>(), "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
     }
-    if constexpr(system_has_potential_v<System>) {
-        if constexpr(is_time_dependent<System>::value) {
+    if constexpr(deeptime::data::system_has_potential_v<System>) {
+        if constexpr(deeptime::data::is_time_dependent<System>::value) {
             clazz.def("potential", [](System &self, double t, const np_array_nfc<npDtype> &x) {
                 auto nPoints = static_cast<std::size_t>(x.shape(0));
                 np_array_nfc<npDtype> y (nPoints);
@@ -224,23 +227,23 @@ PYBIND11_MODULE(_data_bindings, m) {
             .def_property_readonly("domain_size", &PBF::gridSize);
 
     // more examples can be found at: https://github.com/sklus/d3s/tree/master/cpp
-    exportSystem<true, ABCFlow<double>>(m, "ABCFlow");
-    exportSystem<true, OrnsteinUhlenbeck<double>>(m, "OrnsteinUhlenbeck");
+    exportSystem<true, deeptime::data::ABCFlow<double>>(m, "ABCFlow");
+    exportSystem<true, deeptime::data::OrnsteinUhlenbeck<double>>(m, "OrnsteinUhlenbeck");
     {
-        auto clazz = exportSystem<true, Prinz<double>>(m, "Prinz");
-        clazz.def_property("mass", [](const Prinz<double> &self) { return self.mass; },
-                                   [](Prinz<double> &self, double val) { self.mass = val; self.updateSigma(); });
-        clazz.def_property("damping", [](const Prinz<double> &self) { return self.damping; },
-                                      [](Prinz<double> &self, double val) { self.damping = val; self.updateSigma(); });
-        clazz.def_property("kT", [](const Prinz<double> &self) { return self.kT; },
-                                   [](Prinz<double> &self, double val) { self.kT = val; self.updateSigma(); });
+        auto clazz = exportSystem<true, deeptime::data::Prinz<double>>(m, "Prinz");
+        clazz.def_property("mass", [](const deeptime::data::Prinz<double> &self) { return self.mass; },
+                                   [](deeptime::data::Prinz<double> &self, double val) { self.mass = val; self.updateSigma(); });
+        clazz.def_property("damping", [](const deeptime::data::Prinz<double> &self) { return self.damping; },
+                                      [](deeptime::data::Prinz<double> &self, double val) { self.damping = val; self.updateSigma(); });
+        clazz.def_property("kT", [](const deeptime::data::Prinz<double> &self) { return self.kT; },
+                                   [](deeptime::data::Prinz<double> &self, double val) { self.kT = val; self.updateSigma(); });
     }
-    exportSystem<true, TripleWell1D<double>>(m, "TripleWell1D");
-    exportSystem<true, DoubleWell2D<double>>(m, "DoubleWell2D");
-    exportSystem<true, QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
-    exportSystem<true, TripleWell2D<double>>(m, "TripleWell2D");
+    exportSystem<true, deeptime::data::TripleWell1D<double>>(m, "TripleWell1D");
+    exportSystem<true, deeptime::data::DoubleWell2D<double>>(m, "DoubleWell2D");
+    exportSystem<true, deeptime::data::QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
+    exportSystem<true, deeptime::data::TripleWell2D<double>>(m, "TripleWell2D");
     {
-        using System = TimeDependent5Well<double>;
+        using System = deeptime::data::TimeDependent5Well<double>;
         auto clazz = exportSystem<true, System>(m, "TimeDependent5Well2D");
         clazz.def_property("beta", [](const System &self) { return self.beta; }, [](System &self, double beta) {
             self.beta = beta;
@@ -248,7 +251,7 @@ PYBIND11_MODULE(_data_bindings, m) {
         });
     }
     {
-        using System = BickleyJet<double>;
+        using System = deeptime::data::BickleyJet<double, true>;
         auto clazz = exportSystem<true, System>(m, "BickleyJet");
         clazz.def_readonly_static("U0", &System::U0)
             .def_readonly_static("L0", &System::L0)
@@ -257,7 +260,7 @@ PYBIND11_MODULE(_data_bindings, m) {
             .def_readonly_static("eps", &System::eps)
             .def_readonly_static("k", &System::k);
     }
-    exportSystem<true, QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
+    exportSystem<true, deeptime::data::QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
     exportPyODE<1>(m, "PyODE1D");
     exportPyODE<2>(m, "PyODE2D");

@@ -6,16 +6,16 @@
 
 #include "common.h"
 #include "distribution_utils.h"
+#include "boundary_conditions.h"
 
-namespace deeptime {
+namespace deeptime::data {
 
 //------------------------------------------------------------------------------
 // Runge-Kutta integrator for ordinary differential equations
 //------------------------------------------------------------------------------
-template<typename State, std::size_t DIM>
+template<typename State, std::size_t DIM, typename Boundary = NoPeriodicBoundaryConditions<State>>
 class RungeKutta {
 public:
-
     static constexpr const char* name = "RungeKutta";
 
     template<typename F>
@@ -53,7 +53,7 @@ public:
             yt[j] = y[j] + (h / 6.0) * (k1[j] + 2. * k2[j] + 2. * k3[j] + k4[j]);
         }
 
-        return yt;
+        return Boundary::apply(yt);
     }
 
 private:

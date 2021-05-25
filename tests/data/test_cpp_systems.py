@@ -207,18 +207,20 @@ def test_bickley_integrate(vectorized_ivp):
     t_eval = np.linspace(0, 10, num=11, endpoint=True)
 
     periodic_traj = dt.data.BickleyJet.apply_periodic_boundary_conditions(traj, inplace=False)
-    assert_(np.all((periodic_traj[..., 0] <= 20) & (periodic_traj[..., 0] >= 0)))  # inside domain
+    assert_(np.all((traj[..., 0] <= 20) & (traj[..., 0] >= 0)))  # inside domain
 
     for i in range(5):
         assert_equal(t_eval, time[i])
         soln = solve_ivp(simulator.f, [0, 10], y0=X[i], vectorized=vectorized_ivp, method='RK45',
                          atol=1e-12, rtol=1e-12, t_eval=t_eval)
+        solnpbc = dt.data.BickleyJet.apply_periodic_boundary_conditions(soln.y.T, inplace=False)
+        assert_array_almost_equal(solnpbc, traj[i])
         soln_bwd = solve_ivp(simulator.f, [10, 0], y0=Xfinal[i], vectorized=vectorized_ivp, method='RK45',
                              atol=1e-12, rtol=1e-12, t_eval=t_eval[::-1])
-        assert_array_almost_equal(soln.y.T, traj[i])
-        assert_array_almost_equal(soln_bwd.y.T, traj_back[i])
+        soln_bwdpbc = dt.data.BickleyJet.apply_periodic_boundary_conditions(soln_bwd.y.T, inplace=False)
+        assert_array_almost_equal(soln_bwdpbc, traj_back[i], decimal=5)
         assert_array_almost_equal(traj_back[i, -1], X[i])
-        assert_array_almost_equal(soln_bwd.y[:, -1], X[i])
+        assert_array_almost_equal(soln_bwdpbc[-1], X[i], decimal=5)
 
 
 def test_bickley():

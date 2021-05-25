@@ -1,8 +1,6 @@
 import numpy as np
 from scipy.sparse import diags
 
-from deeptime.markov.tools.flux import flux_matrix, to_netflux, total_flux
-
 
 class BirthDeathChain:
     r"""Birth and death chain.
@@ -186,6 +184,7 @@ class BirthDeathChain:
         qplus = self.committor_forward(a, b)
         P = self.transition_matrix
         pi = self.stationary_distribution
+        from deeptime.markov.tools.flux import flux_matrix
         return flux_matrix(P, pi, qminus, qplus, netflux=False)
 
     def netflux(self, a, b):
@@ -206,6 +205,7 @@ class BirthDeathChain:
 
         """
         flux = self.flux(a, b)
+        from deeptime.markov.tools.flux import to_netflux
         return to_netflux(flux)
 
     def totalflux(self, a, b):
@@ -226,6 +226,7 @@ class BirthDeathChain:
         """
         flux = self.flux(a, b)
         A = list(range(a + 1))
+        from deeptime.markov.tools.flux import total_flux
         return total_flux(flux, A)
 
     def rate(self, a, b):

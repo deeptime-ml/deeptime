@@ -19,3 +19,4 @@ c /= c.max()
 
 fig, ax = plt.subplots(1, 1, figsize=(6, 4))
 ani = dataset.make_animation(c=c, agg_backend=False, interval=75, fig=fig, ax=ax, max_frame=100)
+plt.show()
