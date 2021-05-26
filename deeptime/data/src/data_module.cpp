@@ -252,13 +252,23 @@ PYBIND11_MODULE(_data_bindings, m) {
     }
     {
         using System = deeptime::data::BickleyJet<double, true>;
-        auto clazz = exportSystem<true, System>(m, "BickleyJet");
+        auto clazz = exportSystem<true, System>(m, "BickleyJetFullPeriodic");
         clazz.def_readonly_static("U0", &System::U0)
             .def_readonly_static("L0", &System::L0)
             .def_readonly_static("r0", &System::r0)
             .def_readonly_static("c", &System::c)
             .def_readonly_static("eps", &System::eps)
             .def_readonly_static("k", &System::k);
+    }
+    {
+        using System = deeptime::data::BickleyJet<double, false>;
+            auto clazz = exportSystem<true, System>(m, "BickleyJetPartiallyPeriodic");
+            clazz.def_readonly_static("U0", &System::U0)
+                .def_readonly_static("L0", &System::L0)
+                .def_readonly_static("r0", &System::r0)
+                .def_readonly_static("c", &System::c)
+                .def_readonly_static("eps", &System::eps)
+                .def_readonly_static("k", &System::k);
     }
     exportSystem<true, deeptime::data::QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
 
