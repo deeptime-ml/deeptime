@@ -7,8 +7,11 @@
 
 #include "common.h"
 #include "integrator.h"
+#include "boundary_conditions.h"
 
 namespace py = pybind11;
+
+namespace deeptime::data {
 
 struct ode_tag {
 };
@@ -21,20 +24,39 @@ using Vector = std::array<T, DIM>;
 template<typename T, std::size_t DIM>
 using Matrix = Vector<Vector<T, DIM>, DIM>;
 
-namespace detail{
-template< class, class = void >
-struct system_has_potential : std::false_type { };
-template< class T >
-struct system_has_potential<T, std::void_t<decltype(std::declval<T>().energy(std::declval<typename T::State>()))>> : std::true_type { };
+namespace detail {
+template<class, class = void>
+struct system_has_potential : std::false_type {
+};
+template<class T>
+struct system_has_potential<T, std::void_t<decltype(std::declval<T>().energy(std::declval<typename T::State>()))>>
+        : std::true_type {
+};
 
-template< class, class = void >
-struct system_has_potential_time : std::false_type { };
-template< class T >
-struct system_has_potential_time<T, std::void_t<decltype(std::declval<T>().energy(std::declval<double>(), std::declval<typename T::State>()))>> : std::true_type { };
+template<class, class = void>
+struct system_has_periodic_boundaries : std::false_type {
+};
+template<class T>
+struct system_has_periodic_boundaries<T, std::void_t<decltype(typename T::Boundary {})>>
+        : std::true_type {
+};
+
+template<class, class = void>
+struct system_has_potential_time : std::false_type {
+};
+template<class T>
+struct system_has_potential_time<T, std::void_t<decltype(std::declval<T>().energy(std::declval<double>(),
+                                                                                  std::declval<typename T::State>()))>>
+        : std::true_type {
+};
+
 }
 
 template<typename T>
-static constexpr bool system_has_potential_v = detail::system_has_potential<T>::value || detail::system_has_potential_time<T>::value;
+static constexpr bool system_has_potential_v =
+        detail::system_has_potential<T>::value || detail::system_has_potential_time<T>::value;
+template<typename T>
+static constexpr bool system_has_periodic_boundaries_v = detail::system_has_periodic_boundaries<T>::value;
 
 //------------------------------------------------------------------------------
 // ABC flow
@@ -46,7 +68,7 @@ struct ABCFlow {
     static constexpr std::size_t DIM = 3;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using Integrator = deeptime::RungeKutta<State, DIM>;
+    using Integrator = RungeKutta<State, DIM>;
 
     constexpr State f(const State &x) const {
         return {{
@@ -67,25 +89,27 @@ private:
 //------------------------------------------------------------------------------
 // Bickley Jet
 //------------------------------------------------------------------------------
-template<typename T>
+template<typename T, bool PERIODIC = false>
 struct BickleyJet {
     using system_type = ode_tag;
-
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using Integrator = deeptime::RungeKutta<State, DIM>;
+    using VMIN = std::tuple<std::ratio<0, 1>, std::ratio<-3, 1>>;
+    using VMAX = std::tuple<std::ratio<20, 1>, std::ratio<3, 1>>;
+    using Boundary = BoundaryConditions<State, 2, VMIN, VMAX, PERIODIC, false>;
+    using Integrator = RungeKutta<State, DIM, Boundary>;
 
     template<typename D>
     static constexpr auto sech(D t) {
-        return 1./std::cosh(t);
+        return 1. / std::cosh(t);
     }
 
     constexpr State f(double t, const State &xVec) const {
         using namespace std::complex_literals;
-        auto [x, y] = xVec;
-        std::complex<T> fc {0};
-        std::complex<T> df_dx_c {0};
+        auto[x, y] = Boundary::apply(xVec);
+        std::complex<T> fc{0};
+        std::complex<T> df_dx_c{0};
         for (int j = 0; j < 3; ++j) {
             fc += eps[j] * std::exp(-1i * k[j] * c[j] * t) * std::exp(1i * k[j] * x);
             df_dx_c += eps[j] * std::exp(-1i * k[j] * c[j] * t) * 1i * k[j] * std::exp(1i * k[j] * x);
@@ -94,20 +118,20 @@ struct BickleyJet {
         auto df_dx = df_dx_c.real();
         auto sech_y = sech(y / L0);
         return {{
-            U0 * sech_y * sech_y + 2. * U0 * std::tanh(y / L0) * sech_y * sech_y * f,
-            U0 * L0 * sech_y * sech_y * df_dx
-        }};
+                        U0 * sech_y * sech_y + 2. * U0 * std::tanh(y / L0) * sech_y * sech_y * f,
+                        U0 * L0 * sech_y * sech_y * df_dx
+                }};
     }
 
-    static constexpr T U0 { 5.4138 };
-    static constexpr T L0 { 1.77 };
-    static constexpr T r0 { 6.371 };
-    static constexpr std::array<T, 3> eps {{ 0.075, 0.15, 0.3 }};
-    static constexpr std::array<T, 3> c {{ U0 * 0.1446, U0 * 0.205, U0 * 0.461}};
-    static constexpr std::array<T, 3> k {{ 2. / r0, 4. / r0, 6. / r0 }};
+    static constexpr T U0{5.4138};
+    static constexpr T L0{1.77};
+    static constexpr T r0{6.371};
+    static constexpr std::array<T, 3> eps{{0.075, 0.15, 0.3}};
+    static constexpr std::array<T, 3> c{{U0 * 0.1446, U0 * 0.205, U0 * 0.461}};
+    static constexpr std::array<T, 3> k{{2. / r0, 4. / r0, 6. / r0}};
 
     T h{1e-2};
-    std::size_t nSteps{ static_cast<std::size_t>(0.1 / h)  };
+    std::size_t nSteps{static_cast<std::size_t>(0.1 / h)};
 };
 
 //------------------------------------------------------------------------------
@@ -120,7 +144,7 @@ struct OrnsteinUhlenbeck {
     static constexpr std::size_t DIM = 1;
     using dtype = T;
     using State = Vector<dtype, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+    using Integrator = EulerMaruyama<State, DIM>;
 
     constexpr dtype energy(const State &x) const {
         return 0.5 * alpha * x[0] * x[0];
@@ -148,29 +172,30 @@ struct Prinz {
     static constexpr std::size_t DIM = 1;
     using dtype = T;
     using State = Vector<dtype, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+    using Integrator = EulerMaruyama<State, DIM>;
 
     constexpr dtype energy(const State &x) const {
         return 4. / (mass * damping) * (std::pow(x[0], 8) + 0.8 * std::exp(-80. * x[0] * x[0])
-                     + 0.2 * std::exp(-80. * (x[0] - .5) * (x[0] - .5))
-                     + 0.5 * std::exp(-40. * (x[0] + .5) * (x[0] + .5)));
+                                        + 0.2 * std::exp(-80. * (x[0] - .5) * (x[0] - .5))
+                                        + 0.5 * std::exp(-40. * (x[0] + .5) * (x[0] + .5)));
     }
 
     State f(const State &x) const {
-        return {{ -4. / (mass * damping) * (8. * std::pow(x[0], 7) - 128. * std::exp(-80. * x[0] * x[0]) * x[0]
-                        - 32. * std::exp(-80. * (x[0] - 0.5) * (x[0] - 0.5)) * (x[0] - 0.5)
-                        - 40. * std::exp(-40. * (x[0] + 0.5) * (x[0] + 0.5)) * (x[0] + 0.5)) }};
+        return {{-4. / (mass * damping) * (8. * std::pow(x[0], 7) - 128. * std::exp(-80. * x[0] * x[0]) * x[0]
+                                           - 32. * std::exp(-80. * (x[0] - 0.5) * (x[0] - 0.5)) * (x[0] - 0.5)
+                                           - 40. * std::exp(-40. * (x[0] + 0.5) * (x[0] + 0.5)) * (x[0] + 0.5))}};
     }
 
-    T h {1e-3};
+    T h{1e-3};
     std::size_t nSteps{1};
-    T mass {1.};
-    T damping {1.};
-    T kT {1.};
+    T mass{1.};
+    T damping{1.};
+    T kT{1.};
 
-    Matrix<T, 1> sigma{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
+    Matrix<T, 1> sigma{{{{std::sqrt(2. * kT / (mass * damping))}}}};
+
     void updateSigma() {
-        sigma = Matrix<T, 1>{{{{ std::sqrt(2. * kT / (mass * damping)) }}}};
+        sigma = Matrix<T, 1>{{{{std::sqrt(2. * kT / (mass * damping))}}}};
     };
 };
 
@@ -184,11 +209,11 @@ struct TripleWell1D {
     static constexpr std::size_t DIM = 1;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+    using Integrator = EulerMaruyama<State, DIM>;
 
     constexpr dtype energy(const State &x) const {
-        return -(24.82*x[0] - 41.4251*x[0]*x[0] + 27.5344*std::pow(x[0], 3)
-               - 8.53128*std::pow(x[0], 4) + 1.24006 * std::pow(x[0], 5) - 0.0684 * std::pow(x[0], 6)) + 5;
+        return -(24.82 * x[0] - 41.4251 * x[0] * x[0] + 27.5344 * std::pow(x[0], 3)
+                 - 8.53128 * std::pow(x[0], 4) + 1.24006 * std::pow(x[0], 5) - 0.0684 * std::pow(x[0], 6)) + 5;
     }
 
     constexpr State f(const State &x) const {
@@ -215,10 +240,10 @@ struct DoubleWell2D {
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+    using Integrator = EulerMaruyama<State, DIM>;
 
     constexpr dtype energy(const State &x) const {
-        return (x[0]*x[0]-1.) * (x[0]*x[0]-1.) + x[1] * x[1];
+        return (x[0] * x[0] - 1.) * (x[0] * x[0] - 1.) + x[1] * x[1];
     }
 
     constexpr State f(const State &x) const {
@@ -240,10 +265,10 @@ struct QuadrupleWell2D {
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+    using Integrator = EulerMaruyama<State, DIM>;
 
     constexpr dtype energy(const State &x) const {
-        return (x[0]*x[0] - 1)*(x[0]*x[0] - 1) + (x[1]*x[1] - 1)*(x[1]*x[1] - 1);
+        return (x[0] * x[0] - 1) * (x[0] * x[0] - 1) + (x[1] * x[1] - 1) * (x[1] * x[1] - 1);
     }
 
     constexpr State f(const State &x) const {
@@ -268,11 +293,11 @@ struct QuadrupleWellAsymmetric2D {
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+    using Integrator = EulerMaruyama<State, DIM>;
 
     constexpr dtype energy(const State &x) const {
-        return + x[0]*x[0]*x[0]*x[0] - (1. / 16.) * x[0]*x[0]*x[0] - 2.*x[0]*x[0] + (3./16.) * x[0]
-               + x[1]*x[1]*x[1]*x[1] - (1. / 8.) * x[1]*x[1]*x[1] - 2*x[1]*x[1] + (3./8.) * x[1];
+        return +x[0] * x[0] * x[0] * x[0] - (1. / 16.) * x[0] * x[0] * x[0] - 2. * x[0] * x[0] + (3. / 16.) * x[0]
+               + x[1] * x[1] * x[1] * x[1] - (1. / 8.) * x[1] * x[1] * x[1] - 2 * x[1] * x[1] + (3. / 8.) * x[1];
     }
 
     constexpr State f(const State &x) const {
@@ -297,17 +322,17 @@ struct TripleWell2D {
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM>;
-    
+    using Integrator = EulerMaruyama<State, DIM>;
+
     constexpr dtype energy(const State &x) const {
-        const auto& xv = x[0];
-        const auto& yv = x[1];
-        return + 3.*std::exp(- (xv * xv) - (yv - 1./3.)*(yv - 1./3.))
-               - 3.*std::exp(- (xv * xv) - (yv - 5./3.)*(yv - 5./3.))
-               - 5.*std::exp(-(xv - 1.)*(xv - 1.) - yv * yv)
-               - 5.*std::exp(-(xv + 1.)*(xv + 1.) - yv * yv)
-               + (2./10.)*xv*xv*xv*xv
-               + (2./10.)*std::pow(yv - 1./3., 4.);
+        const auto &xv = x[0];
+        const auto &yv = x[1];
+        return +3. * std::exp(-(xv * xv) - (yv - 1. / 3.) * (yv - 1. / 3.))
+               - 3. * std::exp(-(xv * xv) - (yv - 5. / 3.) * (yv - 5. / 3.))
+               - 5. * std::exp(-(xv - 1.) * (xv - 1.) - yv * yv)
+               - 5. * std::exp(-(xv + 1.) * (xv + 1.) - yv * yv)
+               + (2. / 10.) * xv * xv * xv * xv
+               + (2. / 10.) * std::pow(yv - 1. / 3., 4.);
     }
 
     constexpr State f(const State &x) const {
@@ -340,13 +365,13 @@ struct TimeDependent5Well {
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using Integrator = deeptime::EulerMaruyama<State, DIM>;
+    using Integrator = EulerMaruyama<State, DIM>;
 
     constexpr dtype energy(double t, const State &x) const {
-        const auto& xv = x[0];
-        const auto& yv = x[1];
+        const auto &xv = x[0];
+        const auto &yv = x[1];
         auto term1 = std::cos(s * std::atan2(yv, xv) - 0.5 * dt::constants::pi<T>() * t);
-        auto term2 = std::sqrt(xv*xv + yv*yv) - 3./2 - 0.5 * std::sin(2 * dt::constants::pi<T>() * t);
+        auto term2 = std::sqrt(xv * xv + yv * yv) - 3. / 2 - 0.5 * std::sin(2 * dt::constants::pi<T>() * t);
         return term1 + 10 * term2 * term2;
     }
 
@@ -355,8 +380,14 @@ struct TimeDependent5Well {
         auto y = xvec[1];
         auto pi = dt::constants::pi<T>();
         return {{
-                        + (s * y * std::sin(0.5 * pi * t - s * std::atan2(y, x)) - 10. * x * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y),
-                        - (s * x * std::sin(0.5 * pi * t - s * std::atan2(y, x)) + 10. * y * std::sqrt(x*x + y*y) * (-std::sin(2 * pi * t) + 2 * std::sqrt(x*x + y*y) - 3)) / (x*x + y*y)
+                        +(s * y * std::sin(0.5 * pi * t - s * std::atan2(y, x)) - 10. * x * std::sqrt(x * x + y * y) *
+                                                                                  (-std::sin(2 * pi * t) +
+                                                                                   2 * std::sqrt(x * x + y * y) - 3)) /
+                        (x * x + y * y),
+                        -(s * x * std::sin(0.5 * pi * t - s * std::atan2(y, x)) + 10. * y * std::sqrt(x * x + y * y) *
+                                                                                  (-std::sin(2 * pi * t) +
+                                                                                   2 * std::sqrt(x * x + y * y) - 3)) /
+                        (x * x + y * y)
                 }};
     }
 
@@ -365,18 +396,20 @@ struct TimeDependent5Well {
     T s = 5;
     std::size_t nSteps{10000};
 
-    Matrix<T, 2> sigma{{ {{ std::sqrt( 2. / beta ), 0. }}, {{0., std::sqrt( 2. / beta ) }} }};
+    Matrix<T, 2> sigma{{{{std::sqrt(2. / beta), 0.}}, {{0., std::sqrt(2. / beta)}}}};
 
     void updateSigma() {
-        sigma = {{ {{ std::sqrt( 2. / beta ), 0. }}, {{0., std::sqrt( 2. / beta ) }} }};
+        sigma = {{{{std::sqrt(2. / beta), 0.}}, {{0., std::sqrt(2. / beta)}}}};
     };
 };
 
 template<typename T, typename = void>
-struct is_time_dependent : std::false_type {};
+struct is_time_dependent : std::false_type {
+};
 
 template<typename T>
-struct is_time_dependent<T, std::void_t<decltype(std::declval<T>().f(0., typename T::State{}))>> : std::true_type {};
+struct is_time_dependent<T, std::void_t<decltype(std::declval<T>().f(0., typename T::State{}))>> : std::true_type {
+};
 
 namespace detail {
 template<typename T>
@@ -556,7 +589,8 @@ trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::
     std::size_t nTestPoints = x.shape(0);
 
     if (nTestPoints > 1 && seed >= 0 && nThreads != 1) {
-        throw std::invalid_argument("Fixing the seed for multiple test points requires setting the number of threads to 1.");
+        throw std::invalid_argument(
+                "Fixing the seed for multiple test points requires setting the number of threads to 1.");
     }
 
     #if defined(USE_OPENMP)
@@ -612,4 +646,5 @@ trajectory(System &system, const Time &tArr, const np_array_nfc<dtype> &x, std::
     }
 
     return std::make_tuple(tOut, y);
+}
 }

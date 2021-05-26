@@ -516,18 +516,18 @@ def _M2_sparse_sym(Xvar, mask_X, Yvar, mask_Y, weights=None, column_selection=No
     return Cxxyy, Cxyyx
 
 
+def _default_mask(n):
+    return np.ones(n, dtype=np.bool_), np.ones(0, dtype=float)
+
+
 def _M2(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0, yconst=0, weights=None, diag_only=False):
     """ direct (nonsymmetric) second moment matrix. Decide if we need dense, sparse, const"""
     if mask_X is None and mask_Y is None:
         return _M2_dense(Xvar, Yvar, weights=weights, diag_only=diag_only)
     else:
         # Check if one of the masks is not None, modify it and also adjust the constant columns:
-        if mask_X is None:
-            mask_X = np.ones(Xvar.shape[1], dtype=np.bool_)
-            xconst = np.ones(0, dtype=float)
-        if mask_Y is None:
-            mask_Y = np.ones(Yvar.shape[1], dtype=np.bool_)
-            yconst = np.ones(0, dtype=float)
+        mask_X, xconst = _default_mask(Xvar.shape[1]) if mask_X is None else (mask_X, xconst)
+        mask_Y, yconst = _default_mask(Yvar.shape[1]) if mask_Y is None else (mask_Y, yconst)
     if _is_zero(xsum) and _is_zero(ysum) or _is_zero(xconst) and _is_zero(yconst):
         return _M2_sparse(Xvar, mask_X, Yvar, mask_Y, weights=weights)
     else:
@@ -551,12 +551,8 @@ def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0
         Cxyyx = Cxy + Cyx
     else:
         # Check if one of the masks is not None, modify it and also adjust the constant columns:
-        if mask_X is None:
-            mask_X = np.ones(Xvar.shape[1], dtype=np.bool_)
-            xconst = np.ones(0, dtype=float)
-        if mask_Y is None:
-            mask_Y = np.ones(Yvar.shape[1], dtype=np.bool_)
-            yconst = np.ones(0, dtype=float)
+        mask_X, xconst = _default_mask(Xvar.shape[1]) if mask_X is None else (mask_X, xconst)
+        mask_Y, yconst = _default_mask(Yvar.shape[1]) if mask_Y is None else (mask_Y, yconst)
         if _is_zero(xsum) and _is_zero(ysum) or _is_zero(xconst) and _is_zero(yconst):
             Cxxyy, Cxyyx = _M2_sparse_sym(Xvar, mask_X, Yvar, mask_Y, weights=weights, column_selection=column_selection)
         else:

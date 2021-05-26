@@ -3,7 +3,6 @@ import numpy as np
 from ._systems import TimeDependentSystem
 from ..util.data import TimeLaggedDataset
 from ..util.decorators import plotting_function
-from ._data_bindings import BickleyJet as BickleyJetImpl
 
 
 class BickleyJet(TimeDependentSystem):
@@ -22,14 +21,25 @@ class BickleyJet(TimeDependentSystem):
             k &= (2,4,6)^\top \frac{1}{r_0}.
         \end{aligned}
 
+    Parameters
+    ----------
+    h : float
+        Step size of the RK45 integrator.
+    n_steps : int
+        Number of steps before recording it in the trajectory.
+    full_periodic : bool, optional, default=True
+        Whether the quasi-periodic boundary is already built into right-hand side evaluation.
+
     References
     ----------
     .. footbibliography::
     """
 
-    def __init__(self, h: float, n_steps: int):
-        # set parameters
-        super().__init__(BickleyJetImpl(), h, n_steps)
+    def __init__(self, h: float, n_steps: int, full_periodic=True):
+        from ._data_bindings import BickleyJetFullPeriodic as BickleyJetImplFP
+        from ._data_bindings import BickleyJetPartiallyPeriodic as BickleyJetImplPP
+        super().__init__(BickleyJetImplFP() if full_periodic else BickleyJetImplPP(), h, n_steps)
+        self.full_periodic = full_periodic
         self.periodic_bc = True
 
     @property
@@ -74,6 +84,8 @@ class BickleyJet(TimeDependentSystem):
 
     @periodic_bc.setter
     def periodic_bc(self, value: bool):
+        if self.full_periodic and not value:
+            raise RuntimeError("The system respects boundary conditions fully, please use full_periodic=False.")
         self._periodic = value
 
     @staticmethod
@@ -121,7 +133,7 @@ class BickleyJet(TimeDependentSystem):
             Whether to return the evaluation times too.
         """
         tarr, traj = super().trajectory(t0, x0, length, seed, n_jobs, return_time=True)
-        if self.periodic_bc:
+        if self.periodic_bc and not self.full_periodic:
             BickleyJet.apply_periodic_boundary_conditions(traj, inplace=True)
         return traj if not return_time else (tarr, traj)
 

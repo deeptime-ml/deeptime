@@ -48,7 +48,7 @@ def count_matrix_coo2_mult(dtrajs, lag, sliding=True, sparse=True, nstates=None)
     # collect transition index pairs
     for dtraj in dtrajs:
         if dtraj.size > lag:
-            if (sliding):
+            if sliding:
                 rows.append(dtraj[0:-lag])
                 cols.append(dtraj[lag:])
             else:

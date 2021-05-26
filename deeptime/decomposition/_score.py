@@ -148,9 +148,8 @@ def vamp_score_data(data, data_lagged, transformation=None, r=2, epsilon=1e-6, d
         def transformation(x):
             return x
     from deeptime.decomposition import VAMP
-    cov_estimator = VAMP.covariance_estimator(1)
-    cov = cov_estimator.partial_fit((transformation(data), transformation(data_lagged))).fetch_model()
-    return VAMP(epsilon=epsilon).fit(cov).fetch_model().score(r=r, dim=dim, epsilon=epsilon)
+    model = VAMP(epsilon=epsilon, observable_transform=transformation).fit((data, data_lagged)).fetch_model()
+    return model.score(r=r, dim=dim, epsilon=epsilon)
 
 
 def blocksplit_trajs(trajs, lag=1, sliding=True, shift=None, random_state=None):
@@ -212,8 +211,7 @@ def cvsplit_trajs(trajs, random_state=None):
         Random seed to use.
     """
     from sklearn.utils.random import check_random_state
-    if len(trajs) == 1:
-        raise ValueError('Only have a single trajectory. Cannot be split into train and test set')
+    assert len(trajs) > 1, 'Only have a single trajectory. Cannot be split into train and test set'
     random_state = check_random_state(random_state)
     I0 = random_state.choice(len(trajs), int(len(trajs) / 2), replace=False)
     I1 = np.array(list(set(list(np.arange(len(trajs)))) - set(list(I0))))
@@ -326,8 +324,8 @@ def _worker(args):
                                            random_state=random_state)
         else:
             trajs_split = ttrajs
-            if len(trajs_split) <= 1:
-                raise ValueError("Need at least two trajectories if blocksplit is not used to decompose the data.")
+            assert len(trajs_split) > 1, "Need at least two trajectories if blocksplit " \
+                                         "is not used to decompose the data."
         trajs_train, trajs_test = cvsplit_trajs(trajs_split, random_state=random_state)
         # this is supposed to construct a markov state model from data directly, for example what fit_fetch could do is
         train_model = fit_fetch(trajs_train)

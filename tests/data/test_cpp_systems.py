@@ -4,6 +4,7 @@ from numpy.testing import assert_equal, assert_raises, assert_allclose, assert_,
 from scipy.integrate import solve_ivp
 
 import deeptime as dt
+from tests.testing_utilities import nullcontext
 
 
 @pytest.mark.parametrize("init", ['list', 'array'])
@@ -185,18 +186,20 @@ def test_custom_ode_wrong_dim(dim):
 
 
 @pytest.mark.parametrize('vectorized_ivp', [True, False], ids=lambda x: f"vectorized={x}")
-def test_bickley_integrate(vectorized_ivp):
+@pytest.mark.parametrize('full_periodic', [True, False], ids=lambda x: f"full_periodic={x}")
+def test_bickley_integrate(vectorized_ivp, full_periodic):
     X = np.vstack((np.full((5,), 0.1), np.linspace(-2.9, 2.9, num=5))).T
 
-    simulator = dt.data.BickleyJet(1e-4, 10000)
+    simulator = dt.data.BickleyJet(1e-4, 10000, full_periodic=full_periodic)
     assert_(simulator.periodic_bc)
-    simulator.periodic_bc = False
-    assert_(not simulator.periodic_bc)
-    simulator_back = dt.data.BickleyJet(-1e-4, 10000)
-    simulator_back.periodic_bc = False
+    simulator_back = dt.data.BickleyJet(-1e-4, 10000, full_periodic=full_periodic)
 
-    simulator.periodic_bc = False
-    simulator_back.periodic_bc = False
+    with assert_raises(RuntimeError) if full_periodic else nullcontext():
+        simulator.periodic_bc = False
+        assert_(not simulator.periodic_bc)
+    with assert_raises(RuntimeError) if full_periodic else nullcontext():
+        simulator_back.periodic_bc = False
+        assert_(not simulator_back.periodic_bc)
 
     time, traj = simulator.trajectory(0, X, 11, return_time=True)
 
@@ -206,19 +209,26 @@ def test_bickley_integrate(vectorized_ivp):
     assert_array_almost_equal(traj, np.flip(traj_back, axis=1))
     t_eval = np.linspace(0, 10, num=11, endpoint=True)
 
-    periodic_traj = dt.data.BickleyJet.apply_periodic_boundary_conditions(traj, inplace=False)
+    periodic_traj_back = traj_back if full_periodic else dt.data.BickleyJet.apply_periodic_boundary_conditions(traj_back)
+
+    if not full_periodic:
+        periodic_traj = dt.data.BickleyJet.apply_periodic_boundary_conditions(traj, inplace=False)
+    else:
+        periodic_traj = traj
     assert_(np.all((periodic_traj[..., 0] <= 20) & (periodic_traj[..., 0] >= 0)))  # inside domain
 
     for i in range(5):
         assert_equal(t_eval, time[i])
         soln = solve_ivp(simulator.f, [0, 10], y0=X[i], vectorized=vectorized_ivp, method='RK45',
                          atol=1e-12, rtol=1e-12, t_eval=t_eval)
+        solnpbc = dt.data.BickleyJet.apply_periodic_boundary_conditions(soln.y.T, inplace=False)
+        assert_array_almost_equal(solnpbc, periodic_traj[i])
         soln_bwd = solve_ivp(simulator.f, [10, 0], y0=Xfinal[i], vectorized=vectorized_ivp, method='RK45',
                              atol=1e-12, rtol=1e-12, t_eval=t_eval[::-1])
-        assert_array_almost_equal(soln.y.T, traj[i])
-        assert_array_almost_equal(soln_bwd.y.T, traj_back[i])
-        assert_array_almost_equal(traj_back[i, -1], X[i])
-        assert_array_almost_equal(soln_bwd.y[:, -1], X[i])
+        soln_bwdpbc = dt.data.BickleyJet.apply_periodic_boundary_conditions(soln_bwd.y.T, inplace=False)
+        assert_array_almost_equal(soln_bwdpbc, periodic_traj_back[i], decimal=5)
+        assert_array_almost_equal(periodic_traj_back[i, -1], X[i])
+        assert_array_almost_equal(soln_bwdpbc[-1], X[i], decimal=5)
 
 
 def test_bickley():
