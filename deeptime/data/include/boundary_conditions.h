@@ -11,19 +11,11 @@
 
 namespace deeptime::data {
 
-template<typename State>
-struct NoPeriodicBoundaryConditions {
-    static constexpr auto apply(State in) {
-        return in;
-    }
-};
-
-
 template<typename State, int D, typename VMIN, typename VMAX, bool... periodic_dim>
 struct BoundaryConditions {
     static_assert(sizeof...(periodic_dim) == D || sizeof...(periodic_dim) == 0);
     static constexpr int DIM = D;
-    static constexpr std::array<bool, DIM> apply_pbc = sizeof...(periodic_dim) == 0 ? std::array<bool, DIM>{} : std::array<bool, DIM>{{periodic_dim...}};
+    static constexpr std::array<bool, DIM> apply_pbc {{periodic_dim...}};
 
     template<std::size_t... I>
     static constexpr State vmin_impl(std::index_sequence<I...>) {
@@ -48,8 +40,8 @@ struct BoundaryConditions {
     template<std::size_t d, typename T>
     static constexpr T apply_impl_d(T x) {
         if constexpr(apply_pbc[d]) {
-            auto vmax = std::tuple_element<d, VMAX>::type::num / std::tuple_element<d, VMAX>::type::den;
-            auto vmin = std::tuple_element<d, VMIN>::type::num / std::tuple_element<d, VMIN>::type::den;
+            auto vmax = std::tuple_element_t<d, VMAX>::num / std::tuple_element_t<d, VMAX>::den;
+            auto vmin = std::tuple_element_t<d, VMIN>::num / std::tuple_element_t<d, VMIN>::den;
             auto diam = vmax - vmin;
             while (x >= vmax) x -= diam;
             while (x < vmin) x += diam;
@@ -59,8 +51,7 @@ struct BoundaryConditions {
 
     template<std::size_t... I>
     static constexpr State apply_impl(State in, std::index_sequence<I...>) {
-        using expander = int[];
-        (void) expander{0, ((void) (in[I] = apply_impl_d<I>(in[I])), 0)...};
+        ((in[I] = apply_impl_d<I>(in[I])), ...);
         return in;
     }
 
@@ -73,4 +64,8 @@ struct BoundaryConditions {
         }
     }
 };
+
+template<typename State>
+using NoPeriodicBoundaryConditions = BoundaryConditions<State, 0, void, void>;
+
 }
