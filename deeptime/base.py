@@ -336,5 +336,16 @@ class Transformer(abc.ABC):
         return self.transform(*args, **kwargs)
 
 
+class EstimatorTransformer(Estimator, Transformer, abc.ABC):
+
+    def fit_transform(self, data, fit_options=None, transform_options=None):
+        fit_options = {} if fit_options is None else fit_options
+        transform_options = {} if transform_options is None else transform_options
+        return self.fit(data, **fit_options).transform(data, **transform_options)
+
+    def transform(self, data, **kwargs):
+        return self.fetch_model().transform(data, **kwargs)
+
+
 class InputFormatError(ValueError):
     """Input data for Estimator is not allowed."""

@@ -1,55 +1,100 @@
+from typing import Optional, Callable
+
 import numpy as np
 
-from ..base import Model
-from ..kernels import GaussianKernel
-from ..numeric import spd_inv_sqrt, spd_eig
+from deeptime.basis import Identity
+from ..base import Transformer, Model, EstimatorTransformer
+from ..covariance import Covariance
+from ..kernels import Kernel
+from ..numeric import spd_truncated_svd
+from ..util.types import to_dataset
 
 
-class KVADModel(Model):
+class KVADModel(Model, Transformer):
 
-    def __init__(self, K, U, score, fX, fY):
-        super().__init__()
-        self.K = K
-        self.U = U
+    def __init__(self, koopman_matrix: np.ndarray, observable_transform, covariances,
+                 singular_values, singular_vectors, score):
+        super(KVADModel, self).__init__()
+        self.koopman_matrix = koopman_matrix
+        self.observable_transform = observable_transform
+        self.covariances = covariances
+        self.singular_values = singular_values
+        self.singular_vectors = singular_vectors
         self.score = score
-        self.fX = fX
-        self.fY = fY
+
+    def transform(self, data, **kwargs):
+        return self.covariances.whiten(self.observable_transform(data)) @ self.singular_vectors
 
 
-def whiten(X, epsilon=1e-10):
-    X_meanfree = X - X.mean(axis=0, keepdims=True)
+class KVAD(EstimatorTransformer):
 
-    cov = 1 / (X.shape[0] - 1) * X_meanfree.T @ X_meanfree
-    cov_sqrt_inv = spd_inv_sqrt(cov, epsilon=epsilon)
+    def __init__(self, kernel: Kernel, lagtime: Optional[int] = None,
+                 dim: Optional[int] = None,
+                 epsilon: float = 1e-6,
+                 observable_transform: Callable[[np.ndarray], np.ndarray] = Identity()):
+        super().__init__()
+        self.kernel = kernel
+        self.dim = dim
+        self.lagtime = lagtime
+        self.epsilon = epsilon
+        self.observable_transform = observable_transform
 
-    return X_meanfree @ cov_sqrt_inv
+    @property
+    def observable_transform(self) -> Callable[[np.ndarray], np.ndarray]:
+        return self._observable_transform
 
+    @observable_transform.setter
+    def observable_transform(self, value: Callable[[np.ndarray], np.ndarray]):
+        self._observable_transform = value
 
-def kvad(chi_X, chi_Y, Y, kernel=GaussianKernel(1.)):
-    N = Y.shape[0]
-    M = chi_X.shape[1]
+    @property
+    def epsilon(self):
+        return self._epsilon
 
-    assert chi_X.shape == (N, M)
-    assert chi_Y.shape == (N, M)
+    @epsilon.setter
+    def epsilon(self, value):
+        self._epsilon = value
 
-    Gyy = kernel.gram(Y)
-    assert Gyy.shape == (N, N)
+    @property
+    def dim(self) -> Optional[int]:
+        return self._dim
 
-    chi_X_w = whiten(chi_X)
-    chi_Y_w = whiten(chi_Y)
+    @dim.setter
+    def dim(self, value: Optional[int]):
+        self._dim = value
 
-    xGx = chi_X_w.T @ Gyy @ chi_X_w
+    def fit(self, data, **kwargs):
+        dataset = to_dataset(data, lagtime=self.lagtime)
+        x, y = dataset[:]
 
-    s, U = spd_eig(xGx)
+        chi_x = self.observable_transform(x)
+        chi_y = self.observable_transform(y)
 
-    U = U[:, :-1]
-    fX = np.ones((chi_X_w.shape[0], 1 + U.shape[1]))
-    fX[:, 1:] = chi_X_w @ U
+        N = y.shape[0]
+        M = chi_x.shape[1]
 
-    fY = np.ones((chi_Y_w.shape[0], 1 + U.shape[1]))
-    fY[:, 1:] = chi_Y_w @ U
+        assert chi_x.shape == (N, M)
+        assert chi_y.shape == (N, M)
 
-    K = 1 / N * fX.T @ fY
+        g_yy = self.kernel.gram(y)
+        assert g_yy.shape == (N, N)
 
-    score = 1/(N*N) * (np.sum(s) + np.sum(Gyy))
-    return KVADModel(K, U, score, fX, fY)
+        cov = Covariance().fit(chi_x).fetch_model()
+        chi_x_w = cov.whiten(chi_x, epsilon=self.epsilon)
+        chi_y_w = cov.whiten(chi_y, epsilon=self.epsilon)
+
+        x_g_x = np.linalg.multi_dot((chi_x_w.T, g_yy, chi_x_w)) / (N * N)
+        singular_values, singular_vectors = spd_truncated_svd(x_g_x, dim=self.dim, eps=self.epsilon)
+        singular_values = np.sqrt(singular_values)
+
+        f_x = chi_x_w @ singular_vectors
+        f_y = chi_y_w @ singular_vectors
+
+        K = np.zeros((len(singular_values) + 1, len(singular_values) + 1), dtype=y.dtype)
+        K[0, 0] = 1
+        K[0, 1:] = singular_vectors.T.dot(chi_y_w.mean(axis=0))
+        K[1:, 1:] = 1 / N * f_x.T @ f_y
+
+        score = np.sum(singular_values) + np.mean(g_yy)
+        self._model = KVADModel(K, self.observable_transform, cov, singular_values, singular_vectors, score)
+        return self
