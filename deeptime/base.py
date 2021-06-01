@@ -205,7 +205,6 @@ class Estimator(_BaseMethodsMixin):
         self : Estimator
             Reference to self.
         """
-        pass
 
     def fetch_model(self) -> Optional[Model]:
         r""" Yields the estimated model. Can be None if :meth:`fit` was not called.

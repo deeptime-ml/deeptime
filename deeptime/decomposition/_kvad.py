@@ -83,7 +83,7 @@ class KVAD(EstimatorTransformer):
         chi_x_w = cov.whiten(chi_x, epsilon=self.epsilon)
         chi_y_w = cov.whiten(chi_y, epsilon=self.epsilon)
 
-        x_g_x = np.linalg.multi_dot((chi_x_w.T, g_yy, chi_x_w))
+        x_g_x = np.linalg.multi_dot((chi_x_w.T, g_yy, chi_x_w)) / N*N
         singular_values, singular_vectors = spd_truncated_svd(x_g_x, dim=self.dim, eps=self.epsilon)
 
         f_x = chi_x_w @ singular_vectors
@@ -94,6 +94,6 @@ class KVAD(EstimatorTransformer):
         K[0, 1:] = singular_vectors.T.dot(chi_y_w.mean(axis=0))
         K[1:, 1:] = 1 / N * f_x.T @ f_y
 
-        score = np.sum(singular_values) / (N * N) + np.mean(g_yy)
+        score = np.sum(singular_values) + np.mean(g_yy)
         self._model = KVADModel(K, self.observable_transform, cov, singular_values, singular_vectors, score)
         return self

@@ -52,7 +52,7 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
     [0 1 2] [1 2 3]
     [3 4 5] [4 5 6]
     """
-    if lagtime < 0:
+    if lagtime <= 0:
         raise ValueError('lagtime has to be positive')
     if int(chunksize) < 0:
         raise ValueError('chunksize has to be positive')
@@ -61,8 +61,6 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
         random_state = np.random.RandomState()
 
     if not isinstance(inputs, list):
-        if isinstance(inputs, tuple):
-            inputs = list(inputs)
         inputs = [inputs]
 
     if not all(len(data) > lagtime for data in inputs):
