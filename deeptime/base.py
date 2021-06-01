@@ -393,9 +393,10 @@ class EstimatorTransformer(Estimator, Transformer, abc.ABC):
         output : array_like
             Transformed data.
         """
-        if self._model is None:
+        model = self.fetch_model()
+        if model is None:
             raise ValueError("This estimator contains no model yet, fit should be called first.")
-        return self.fetch_model().transform(data, **kwargs)
+        return model.transform(data, **kwargs)
 
 
 class InputFormatError(ValueError):
