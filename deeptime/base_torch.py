@@ -3,10 +3,8 @@ from typing import Callable, Union, List
 import numpy as np
 import torch
 
-from .base import Estimator
 
-
-class DLEstimator(Estimator):
+class DLEstimatorMixin:
     r""" Estimator subclass which offers some deep-learning estimators commonly used functionality.
     """
 
@@ -17,9 +15,6 @@ class DLEstimator(Estimator):
         self._dtype = np.float32
         self._optimizer = None
         self._learning_rate = 5e-4
-
-    def fit(self, data, **kwargs):
-        raise NotImplementedError()
 
     @property
     def learning_rate(self):

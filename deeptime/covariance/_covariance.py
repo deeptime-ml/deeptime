@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 from scipy.linalg import eig
 
-from ..base import Estimator, Model, Transformer
+from ..base import Estimator, Model, Transformer, EstimatorTransformer
 from ..basis import Observable
 from ..util.data import timeshifted_split
 from ..numeric import spd_inv_split, sort_eigs, spd_inv_sqrt
@@ -616,7 +616,7 @@ class KoopmanWeightingModel(Model, Transformer):
         return self._covariances
 
 
-class KoopmanWeightingEstimator(Estimator, Transformer):
+class KoopmanWeightingEstimator(EstimatorTransformer):
     r"""Computes Koopman operator and weights that can be plugged into the :class:`Covariance` estimator.
     The weights are determined by the procedure described in :footcite:`wu2017variational`.
 

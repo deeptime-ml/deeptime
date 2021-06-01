@@ -1,9 +1,11 @@
 import pytest
 
+from deeptime.kernels import GaussianKernel
+
 pytest.importorskip("torch")
 
 from deeptime.data import bickley_jet
-from deeptime.decomposition._kvad import kvad
+from deeptime.decomposition import KVAD
 from deeptime.decomposition.deep._kvadnet import whiten, kvad_score
 
 import numpy as np
@@ -20,12 +22,13 @@ def test_whiten():
 
 
 def test_score():
+    kernel = GaussianKernel(1.)
     dataset = bickley_jet(n_particles=100, n_jobs=1)
     ds_2d = dataset.endpoints_dataset()
     ds_3d = ds_2d.to_3d().cluster(4)
-    kvad_3d_cluster_model = kvad(ds_3d.data, ds_3d.data_lagged, Y=ds_2d.data_lagged)
+    ref_score = KVAD(kernel, epsilon=1e-6).fit_fetch(ds_3d).score
     with torch.no_grad():
-        chi_X = torch.from_numpy(ds_3d.data)
-        Y = torch.from_numpy(ds_2d.data_lagged)
-        score_net = kvad_score(chi_X, Y, mode='clamp', epsilon=1e-10).numpy()
-    np.testing.assert_almost_equal(score_net, kvad_3d_cluster_model.score, decimal=1)
+        chi_x = torch.from_numpy(ds_3d.data)
+        y = torch.from_numpy(ds_3d.data_lagged)
+        score_net = kvad_score(chi_x, y, kernel=kernel).numpy()
+    np.testing.assert_almost_equal(score_net, ref_score, decimal=1)

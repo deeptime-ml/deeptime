@@ -217,6 +217,24 @@ class Estimator(_BaseMethodsMixin):
         """
         return self._model
 
+    def fit_fetch(self, data, **kwargs):
+        r""" Fits the internal model on data and subsequently fetches it in one call.
+
+        Parameters
+        ----------
+        data : array_like
+            Data that is used to fit the model.
+        **kwargs
+            Additional arguments to :meth:`fit`.
+
+        Returns
+        -------
+        model
+            The estimated model.
+        """
+        self.fit(data, **kwargs)
+        return self.fetch_model()
+
     @property
     def model(self):
         """ Shortcut to :meth:`fetch_model`. """
@@ -339,11 +357,44 @@ class Transformer(abc.ABC):
 class EstimatorTransformer(Estimator, Transformer, abc.ABC):
 
     def fit_transform(self, data, fit_options=None, transform_options=None):
+        r""" Fits a model which simultaneously functions as transformer and subsequently transforms
+        the input data. The estimated model can be accessed by calling :meth:`fetch_model`.
+
+        Parameters
+        ----------
+        data : array_like
+            The input data.
+        fit_options : dict, optional, default=None
+            Optional keyword arguments passed on to the fit method.
+        transform_options : dict, optional, default=None
+            Optional keyword arguments passed on to the transform method.
+
+        Returns
+        -------
+        output : array_like
+            Transformed data.
+        """
         fit_options = {} if fit_options is None else fit_options
         transform_options = {} if transform_options is None else transform_options
         return self.fit(data, **fit_options).transform(data, **transform_options)
 
     def transform(self, data, **kwargs):
+        r""" Transforms data with the encapsulated model.
+
+        Parameters
+        ----------
+        data : array_like
+            Input data
+        **kwargs
+            Optional arguments.
+
+        Returns
+        -------
+        output : array_like
+            Transformed data.
+        """
+        if self._model is None:
+            raise ValueError("This estimator contains no model yet, fit should be called first.")
         return self.fetch_model().transform(data, **kwargs)
 
 

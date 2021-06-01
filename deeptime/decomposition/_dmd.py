@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 
 from ._koopman import KoopmanModel
-from ..base import Estimator, Model, Transformer
+from ..base import Model, Transformer, EstimatorTransformer
 from ..kernels import Kernel
 from ..numeric import sort_eigs, eigs
 from ..util.types import to_dataset
@@ -55,7 +55,7 @@ class DMDModel(Model, Transformer):
             ]).T
 
 
-class DMD(Estimator, Transformer):
+class DMD(EstimatorTransformer):
     r""" Dynamic mode decomposition estimator. :footcite:`schmid2010dynamic`
 
     There are two supported modes:
@@ -247,7 +247,7 @@ class EDMDModel(KoopmanModel):
         return out @ modes.T
 
 
-class EDMD(Estimator):
+class EDMD(EstimatorTransformer):
     r""" Extended dynamic mode decomposition for estimation of the Koopman (or optionally Perron-Frobenius)
     operator. :footcite:`williams2015data` :footcite:`klus2016edmd`.
 
@@ -361,7 +361,7 @@ class KernelEDMDModel(KoopmanModel):
         return self.instantaneous_obs(data) @ self.eigenvectors
 
 
-class KernelEDMD(Estimator):
+class KernelEDMD(EstimatorTransformer):
     r""" Estimator implementing kernel extended mode decomposition. :footcite:`williams2016kernel`
     :footcite:`klus2019eigendecomposition` :footcite:`klus2018kernel`.
 

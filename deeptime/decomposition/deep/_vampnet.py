@@ -1,12 +1,12 @@
-from typing import Optional, Union, Callable, Tuple, List
+from typing import Optional, Union, Callable, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 
-from ...base import Model, Transformer
-from ...base_torch import DLEstimator
+from ...base import Model, Transformer, EstimatorTransformer
+from ...base_torch import DLEstimatorMixin
 from ...util.torch import map_data
 
 
@@ -276,21 +276,8 @@ class VAMPNetModel(Transformer, Model):
         elif dtype == np.float64:
             self._lobe = self._lobe.double()
             self._lobe_timelagged = self._lobe_timelagged.double()
-        self._instantaneous = True
         self._dtype = dtype
         self._device = device
-
-    @property
-    def instantaneous(self) -> bool:
-        r""" Whether to use the instantaneous lobe or the time-shifted one.
-
-        :type: bool
-        """
-        return self._instantaneous
-
-    @instantaneous.setter
-    def instantaneous(self, value: bool):
-        self._instantaneous = value
 
     @property
     def lobe(self) -> nn.Module:
@@ -312,8 +299,24 @@ class VAMPNetModel(Transformer, Model):
         """
         return self._lobe_timelagged
 
-    def transform(self, data, **kwargs):
-        if self.instantaneous:
+    def transform(self, data, instantaneous: bool = True, **kwargs):
+        r""" Transforms data through the instantaneous or time-shifted network lobe.
+
+        Parameters
+        ----------
+        data : numpy array or torch tensor
+            The data to transform.
+        instantaneous : bool, default=True
+            Whether to use the instantaneous lobe or the time-shifted lobe for transformation.
+        **kwargs
+            Ignored kwargs for api compatibility.
+
+        Returns
+        -------
+        transform : array_like
+            List of numpy array or numpy array containing transformed data.
+        """
+        if instantaneous:
             self._lobe.eval()
             net = self._lobe
         else:
@@ -325,7 +328,7 @@ class VAMPNetModel(Transformer, Model):
         return out if len(out) > 1 else out[0]
 
 
-class VAMPNet(DLEstimator, Transformer):
+class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
     r""" Implementation of VAMPNets. :footcite:`mardt2018vampnets`
     These networks try to find an optimal featurization of data based on a VAMP score :footcite:`wu2020variational`
     by using neural networks as featurizing transforms which are equipped with a loss that is the negative VAMP score.
@@ -604,27 +607,6 @@ class VAMPNet(DLEstimator, Transformer):
                     if validation_score_callback is not None:
                         validation_score_callback(self._step, mean_score)
         return self
-
-    def transform(self, data, instantaneous: bool = True, **kwargs):
-        r""" Transforms data through the instantaneous or time-shifted network lobe.
-
-        Parameters
-        ----------
-        data : numpy array or torch tensor
-            The data to transform.
-        instantaneous : bool, default=True
-            Whether to use the instantaneous lobe or the time-shifted lobe for transformation.
-        **kwargs
-            Ignored kwargs for api compatibility.
-
-        Returns
-        -------
-        transform : array_like
-            List of numpy array or numpy array containing transformed data.
-        """
-        model = self.fetch_model()
-        model.instantaneous = instantaneous
-        return model.transform(data, **kwargs)
 
     def fetch_model(self) -> VAMPNetModel:
         r""" Yields the current model. """

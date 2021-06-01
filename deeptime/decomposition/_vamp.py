@@ -9,14 +9,14 @@ from typing import Optional, Union, Callable
 import numpy as np
 
 from ._koopman import CovarianceKoopmanModel, KoopmanChapmanKolmogorovValidator
-from ..base import Estimator, Transformer
+from ..base import EstimatorTransformer
 from ..basis import Identity
 from ..covariance import Covariance, CovarianceModel
 from ..numeric import spd_inv_split
 from ..util.types import to_dataset
 
 
-class VAMP(Estimator, Transformer):
+class VAMP(EstimatorTransformer):
     r"""Variational approach for Markov processes (VAMP).
 
     The implementation is based on :footcite:`wu2020variational`, :footcite:`noe2015kinetic`.
