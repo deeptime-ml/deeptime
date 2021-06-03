@@ -52,8 +52,8 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
     [0 1 2] [1 2 3]
     [3 4 5] [4 5 6]
     """
-    if lagtime <= 0:
-        raise ValueError('lagtime has to be positive')
+    if lagtime < 0:
+        raise ValueError('lagtime has to be non-negative')
     if int(chunksize) < 0:
         raise ValueError('chunksize has to be positive')
 
