@@ -68,6 +68,8 @@ class KVAD(EstimatorTransformer):
     --------
     KVADModel
 
+    References
+    ----------
     .. footbibliography::
     """
 
