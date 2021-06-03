@@ -59,6 +59,8 @@ class KVAD(EstimatorTransformer):
         The kernel to be used, see :mod:`deeptime.kernels` for a selection of predefined kernels.
     lagtime : int, optional, default=None
         Lagtime if data is not a list of instantaneous and time-lagged data pairs but a trajectory instead.
+    dim : int, optional, default=None
+        Dimension cutoff parameter.
     epsilon : float, default=1e-6
         Regularization parameter for truncated SVD.
     observable_transform : callable, optional, default=Identity
@@ -86,6 +88,10 @@ class KVAD(EstimatorTransformer):
 
     @property
     def observable_transform(self) -> Callable[[np.ndarray], np.ndarray]:
+        r""" Transforms observable instantaneous and time-lagged data into feature space.
+
+        :type: Callable[[ndarray], ndarray]
+        """
         return self._observable_transform
 
     @observable_transform.setter
@@ -94,6 +100,10 @@ class KVAD(EstimatorTransformer):
 
     @property
     def epsilon(self):
+        r""" Regularization parameter for truncated SVD.
+
+        :type: float
+        """
         return self._epsilon
 
     @epsilon.setter
@@ -102,6 +112,10 @@ class KVAD(EstimatorTransformer):
 
     @property
     def dim(self) -> Optional[int]:
+        r""" Dimension cutoff for the decomposition.
+
+        :type: int or None
+        """
         return self._dim
 
     @dim.setter
