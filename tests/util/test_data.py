@@ -20,8 +20,6 @@ def test_astype():
 def test_timeshifted_split_wrong_args():
     data = [np.empty(shape=(100, 3), dtype=np.float32),
             np.empty(shape=(10, 3), dtype=np.float32)]
-    with assert_raises(ValueError):  # non-positive lagtime
-        list(timeshifted_split(data, lagtime=0))
     with assert_raises(ValueError):  # negative chunksize
         list(timeshifted_split(data, lagtime=1, chunksize=-1))
     with assert_raises(ValueError):  # too long lagtime
