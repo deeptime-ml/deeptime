@@ -1,25 +1,12 @@
-from typing import Callable, Union, List
+from typing import Callable, Union, List, Optional
 
 import numpy as np
 import torch
 
-from .base import Estimator
 
-
-class DLEstimator(Estimator):
+class DLEstimatorMixin:
     r""" Estimator subclass which offers some deep-learning estimators commonly used functionality.
     """
-
-    def __init__(self):
-        super().__init__()
-
-        self._device = None
-        self._dtype = np.float32
-        self._optimizer = None
-        self._learning_rate = 5e-4
-
-    def fit(self, data, **kwargs):
-        raise NotImplementedError()
 
     @property
     def learning_rate(self):
@@ -28,6 +15,8 @@ class DLEstimator(Estimator):
 
         :type: float
         """
+        if not hasattr(self, '_learning_rate'):
+            self._learning_rate = 5e-4
         return self._learning_rate
 
     @learning_rate.setter
@@ -37,6 +26,8 @@ class DLEstimator(Estimator):
     @property
     def device(self):
         r""" The device on which the estimator's PyTorch module(s) are operating. """
+        if not hasattr(self, '_device'):
+            self._device = None
         return self._device
 
     @device.setter
@@ -51,6 +42,8 @@ class DLEstimator(Estimator):
         :setter: Sets a new data type, must be one of np.float32, np.float64
         :type: numpy data type type
         """
+        if not hasattr(self, '_dtype'):
+            self._dtype = np.float32
         return self._dtype
 
     @dtype.setter
@@ -59,13 +52,15 @@ class DLEstimator(Estimator):
         self._dtype = value
 
     @property
-    def optimizer(self) -> torch.optim.Optimizer:
+    def optimizer(self) -> Optional[torch.optim.Optimizer]:
         r""" The optimizer that is used.
 
         :getter: Gets the currently configured optimizer.
         :setter: Sets a new optimizer based on optimizer name (string) or optimizer class (class reference).
         :type: torch.optim.Optimizer
         """
+        if not hasattr(self, '_optimizer'):
+            self._optimizer = None
         return self._optimizer
 
     def setup_optimizer(self, kind: Union[str, Callable], parameters: List):

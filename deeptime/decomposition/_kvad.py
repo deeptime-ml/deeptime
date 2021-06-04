@@ -1,55 +1,159 @@
+from typing import Optional, Callable
+
 import numpy as np
 
-from ..base import Model
-from ..kernels import GaussianKernel
-from ..numeric import spd_inv_sqrt, spd_eig
+from deeptime.basis import Identity
+from . import KoopmanModel
+from ..base import EstimatorTransformer
+from ..covariance import Covariance
+from ..kernels import Kernel
+from ..numeric import spd_truncated_svd
+from ..util.types import to_dataset
 
 
-class KVADModel(Model):
+class KVADModel(KoopmanModel):
+    r"""The model produced by the :class:`KVAD` estimator.
 
-    def __init__(self, K, U, score, fX, fY):
-        super().__init__()
-        self.K = K
-        self.U = U
+    Parameters
+    ----------
+    kernel : Kernel
+        The kernel that was used for estimation and embedding.
+    koopman_matrix : ndarray
+        The estimated Koopman matrix.
+    observable_transform : callable
+        Transformation for data that was used for estimation.
+    covariances : deeptime.covariance.CovarianceModel
+        Estimated covariances for instantaneous data.
+    singular_values : ndarray
+        Singular values of truncated SVD.
+    singular_vectors : ndarray
+        Singular vectors of truncated SVD.
+    score : float
+        Estimated KVAD score.
+    """
+
+    def __init__(self, kernel, koopman_matrix: np.ndarray, observable_transform, covariances,
+                 singular_values, singular_vectors, score):
+        super(KVADModel, self).__init__(koopman_matrix=koopman_matrix,
+                                        instantaneous_obs=self._apply_singular_functions,
+                                        timelagged_obs=self._apply_singular_functions)
+        self.kernel = kernel
+        self.observable_transform = observable_transform
+        self.covariances = covariances
+        self.singular_values = singular_values
+        self.singular_vectors = singular_vectors
         self.score = score
-        self.fX = fX
-        self.fY = fY
+
+    def _apply_singular_functions(self, data):
+        return self.covariances.whiten(self.observable_transform(data)) @ self.singular_vectors
 
 
-def whiten(X, epsilon=1e-10):
-    X_meanfree = X - X.mean(axis=0, keepdims=True)
+class KVAD(EstimatorTransformer):
+    r""" An estimator for the "Kernel embedding based variational approach for dynamical systems" (KVAD).
 
-    cov = 1 / (X.shape[0] - 1) * X_meanfree.T @ X_meanfree
-    cov_sqrt_inv = spd_inv_sqrt(cov, epsilon=epsilon)
+    Theory and introduction into the method can be found in :footcite:`tian2020kernel`.
 
-    return X_meanfree @ cov_sqrt_inv
+    Parameters
+    ----------
+    kernel : Kernel
+        The kernel to be used, see :mod:`deeptime.kernels` for a selection of predefined kernels.
+    lagtime : int, optional, default=None
+        Lagtime if data is not a list of instantaneous and time-lagged data pairs but a trajectory instead.
+    dim : int, optional, default=None
+        Dimension cutoff parameter.
+    epsilon : float, default=1e-6
+        Regularization parameter for truncated SVD.
+    observable_transform : callable, optional, default=Identity
+        A feature transformation on the raw data which is used to estimate the model.
 
+    See Also
+    --------
+    KVADModel
 
-def kvad(chi_X, chi_Y, Y, kernel=GaussianKernel(1.)):
-    N = Y.shape[0]
-    M = chi_X.shape[1]
+    References
+    ----------
+    .. footbibliography::
+    """
 
-    assert chi_X.shape == (N, M)
-    assert chi_Y.shape == (N, M)
+    def __init__(self, kernel: Kernel, lagtime: Optional[int] = None,
+                 dim: Optional[int] = None,
+                 epsilon: float = 1e-6,
+                 observable_transform: Callable[[np.ndarray], np.ndarray] = Identity()):
+        super().__init__()
+        self.kernel = kernel
+        self.dim = dim
+        self.lagtime = lagtime
+        self.epsilon = epsilon
+        self.observable_transform = observable_transform
 
-    Gyy = kernel.gram(Y)
-    assert Gyy.shape == (N, N)
+    @property
+    def observable_transform(self) -> Callable[[np.ndarray], np.ndarray]:
+        r""" Transforms observable instantaneous and time-lagged data into feature space.
 
-    chi_X_w = whiten(chi_X)
-    chi_Y_w = whiten(chi_Y)
+        :type: Callable[[ndarray], ndarray]
+        """
+        return self._observable_transform
 
-    xGx = chi_X_w.T @ Gyy @ chi_X_w
+    @observable_transform.setter
+    def observable_transform(self, value: Callable[[np.ndarray], np.ndarray]):
+        self._observable_transform = value
 
-    s, U = spd_eig(xGx)
+    @property
+    def epsilon(self):
+        r""" Regularization parameter for truncated SVD.
 
-    U = U[:, :-1]
-    fX = np.ones((chi_X_w.shape[0], 1 + U.shape[1]))
-    fX[:, 1:] = chi_X_w @ U
+        :type: float
+        """
+        return self._epsilon
 
-    fY = np.ones((chi_Y_w.shape[0], 1 + U.shape[1]))
-    fY[:, 1:] = chi_Y_w @ U
+    @epsilon.setter
+    def epsilon(self, value):
+        self._epsilon = value
 
-    K = 1 / N * fX.T @ fY
+    @property
+    def dim(self) -> Optional[int]:
+        r""" Dimension cutoff for the decomposition.
 
-    score = 1/(N*N) * (np.sum(s) + np.sum(Gyy))
-    return KVADModel(K, U, score, fX, fY)
+        :type: int or None
+        """
+        return self._dim
+
+    @dim.setter
+    def dim(self, value: Optional[int]):
+        self._dim = value
+
+    def fit(self, data, **kwargs):
+        dataset = to_dataset(data, lagtime=self.lagtime)
+        x, y = dataset[:]
+
+        chi_x = self.observable_transform(x)
+        chi_y = self.observable_transform(y)
+
+        n_data = y.shape[0]
+        chi_output_dim = chi_x.shape[1]
+
+        assert chi_x.shape == (n_data, chi_output_dim)
+        assert chi_y.shape == (n_data, chi_output_dim)
+
+        g_yy = self.kernel.gram(y)
+        assert g_yy.shape == (n_data, n_data)
+
+        cov = Covariance().fit(chi_x).fetch_model()
+        chi_x_w = cov.whiten(chi_x, epsilon=self.epsilon)
+        chi_y_w = cov.whiten(chi_y, epsilon=self.epsilon)
+
+        x_g_x = np.linalg.multi_dot((chi_x_w.T, g_yy, chi_x_w)) / (n_data*n_data)
+        singular_values, singular_vectors = spd_truncated_svd(x_g_x, dim=self.dim, eps=self.epsilon)
+
+        f_x = chi_x_w @ singular_vectors
+        f_y = chi_y_w @ singular_vectors
+
+        koopman_matrix = np.zeros((len(singular_values) + 1, len(singular_values) + 1), dtype=y.dtype)
+        koopman_matrix[0, 0] = 1
+        koopman_matrix[0, 1:] = singular_vectors.T.dot(chi_y_w.mean(axis=0))
+        koopman_matrix[1:, 1:] = (1. / n_data) * f_x.T @ f_y
+
+        score = np.sum(singular_values) + np.mean(g_yy)
+        self._model = KVADModel(self.kernel, koopman_matrix, self.observable_transform,
+                                cov, singular_values, singular_vectors, score)
+        return self

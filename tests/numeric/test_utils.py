@@ -4,7 +4,7 @@ import scipy.sparse as sp
 from numpy.testing import assert_, assert_raises, assert_array_almost_equal, assert_almost_equal, assert_equal
 
 from deeptime.numeric import is_diagonal_matrix, spd_eig, spd_inv, ZeroRankError, spd_inv_sqrt, spd_inv_split, \
-    eig_corr, is_square_matrix, allclose_sparse, is_sorted
+    eig_corr, is_square_matrix, allclose_sparse, is_sorted, spd_truncated_svd
 
 
 @pytest.mark.parametrize("dtype", [None, int, float, np.int32, np.uint8])
@@ -51,6 +51,15 @@ def test_spd_eig_invalid_inputs(spd_matrix):
     # zero rank
     with assert_raises(ZeroRankError):
         spd_eig(np.zeros((3, 3)))
+
+
+@pytest.mark.parametrize('eps', [0, 1e-12, 1e-5], ids=lambda x: f"eps={x}")
+@pytest.mark.parametrize('dim', [None, 5, 3], ids=lambda x: f"dim={x}")
+def test_spd_truncated_svd(spd_matrix, eps, dim):
+    sm, vm = spd_truncated_svd(spd_matrix, dim=dim, eps=eps)
+    assert_(sm[0] >= sm[1] >= sm[2])
+    assert_array_almost_equal(vm @ np.diag(sm) @ vm.T, spd_matrix)
+    assert_array_almost_equal(vm.T @ vm, np.eye(3))
 
 
 @pytest.mark.parametrize('epsilon', [1e-5, 1e-12], ids=lambda x: f"epsilon={x}")

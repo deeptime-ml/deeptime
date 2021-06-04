@@ -2,7 +2,6 @@ import numpy as _np
 import scipy as _sp
 import scipy.sparse.linalg
 
-
 __author__ = 'noe, clonker'
 
 
@@ -35,6 +34,49 @@ def sort_eigs(evals, evecs, order='magnitude'):
 
 
 sort_eigs.supported_orders = 'magnitude', 'lexicographic'  #: The order in which eigenvalues can be sorted.
+
+
+def spd_truncated_svd(mat, dim=None, eps=0.):
+    r""" Rank-reduced singular value decomposition of symmetric positive (semi-)definite matrix.
+    The method yields for a matrix :math:`A\in\mathbb{R}^{n\times n}` singular values :math:`s\in\mathbb{R}^d`
+    and singular vectors :math:`U\in\mathbb{R}^{n\times d}` so that `A \approx U\mathrm{diag}(x)U^\top`.
+
+    All the negligible components are removed from the spectrum. In case of `dim` being specified it keeps
+    at most the `dim` dominant components but may remove even more, depending on the input matrix.
+
+    Eps influences the tolerance under which components are deemed negligible. In particular, if the product of
+    `eps` and the largest singular value is larger than a component of the spectrum, it is removed.
+
+    Parameters
+    ----------
+    mat : (n, n) ndarray
+        Input matrix.
+    dim : int, optional, default=None
+        The dimension.
+    eps : float, optional, default = 0
+        Tolerance.
+
+    Returns
+    -------
+    s : (k, ) ndarray
+        Leading singular values.
+    U : (n, k) ndarray
+        Leading singular vectors.
+    """
+    if dim is None:
+        dim = _np.inf
+    dim = min(dim, mat.shape[0])
+    S, U = scipy.linalg.schur(mat)
+    s = _np.diag(S)
+    max_sv = _np.abs(s).max()
+    tol = mat.shape[0] * _np.spacing(max_sv)
+    mi = _np.min(s)
+    if mi < 0 and -mi > tol:
+        tol = -mi
+    tol = _np.maximum(tol, max_sv * eps)
+    dim = min(dim, _np.count_nonzero(s > tol))
+    idx = s.argsort()[::-1][:dim]
+    return s[idx], U[:, idx]
 
 
 def spd_eig(W, epsilon=1e-10, method='QR', canonical_signs=False, check_sym: bool = False):

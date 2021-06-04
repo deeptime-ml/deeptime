@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from ...base import Transformer, Model
-from ...base_torch import DLEstimator
+from ...base import Transformer, Model, EstimatorTransformer
+from ...base_torch import DLEstimatorMixin
 from ...util.torch import map_data, MLP
 
 
@@ -77,7 +77,7 @@ class TAEModel(Model, Transformer):
         return out if len(out) > 1 else out[0]
 
 
-class TAE(DLEstimator, Transformer):
+class TAE(EstimatorTransformer, DLEstimatorMixin):
     r""" Time-lagged autoencoder. :footcite:`wehmeyer2018timelagged`
 
     Parameters
@@ -212,23 +212,6 @@ class TAE(DLEstimator, Transformer):
         """
         from copy import deepcopy
         return TAEModel(deepcopy(self._encoder), deepcopy(self._decoder), device=self.device, dtype=self.dtype)
-
-    def transform(self, data, **kwargs):
-        r""" Encodes input data.
-
-        Parameters
-        ----------
-        data : array_like or list of array_like
-            The input data
-        **kwargs
-            Ignored kw.
-
-        Returns
-        -------
-        transform : array_like or list of array_like
-            The transformed data.
-        """
-        return self.fetch_model().transform(data)
 
 
 def _reparameterize(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:

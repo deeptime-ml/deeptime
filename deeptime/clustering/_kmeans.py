@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 
-from ..base import Estimator, Transformer
+from ..base import EstimatorTransformer
 from ._cluster_model import ClusterModel
 from . import _clustering_bindings as _bd, metrics
 
@@ -135,7 +135,7 @@ class KMeansModel(ClusterModel):
         return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, metrics[self.metric]())
 
 
-class KMeans(Estimator, Transformer):
+class KMeans(EstimatorTransformer):
     r"""Clusters the data in a way that minimizes the cost function
 
     .. math:: C(S) = \sum_{i=1}^{k} \sum_{\mathbf{x}_j \in S_i} \left\| \mathbf{x}_j - \boldsymbol\mu_i \right\|^2
@@ -327,9 +327,7 @@ class KMeans(Estimator, Transformer):
         --------
         ClusterModel.transform : transform method of cluster model, implicitly called.
         """
-        if self._model is None:
-            raise ValueError("This estimator contains no model yet, fit should be called first.")
-        return self.fetch_model().transform(data)
+        return super().transform(data)
 
     @property
     def init_strategy(self):

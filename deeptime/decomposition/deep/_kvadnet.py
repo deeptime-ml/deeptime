@@ -10,19 +10,23 @@ def whiten(data, epsilon=1e-6, mode='clamp'):
     return data_meanfree @ cov_sqrt_inv
 
 
-def kvad_score(chi_x, y, kernel: Kernel = GaussianKernel(1.), epsilon=1e-6, mode='regularize'):
+def gramian(y, kernel):
     with torch.no_grad():
         if is_torch_kernel(kernel):
             gramian = kernel.gram(y)
         else:
             gramian_np = kernel.gram(y.cpu().numpy())
-            gramian = torch.as_tensor(gramian_np, dtype=y.dtype, device=chi_x.device)
+            gramian = torch.as_tensor(gramian_np, dtype=y.dtype, device=y.device)
+    return gramian
 
-    chi_x_whitened = whiten(chi_x, epsilon=epsilon, mode=mode)
-    x_g_x = torch.chain_matmul(chi_x_whitened.t(), gramian, chi_x_whitened)
 
-    evals_sum = torch.trace(x_g_x)
+def kvad_score(chi_x, y, kernel: Kernel = GaussianKernel(1.), epsilon=1e-6, mode='regularize'):
+    G = gramian(y, kernel)
 
     N = y.shape[0]
-    score = 1 / (N * N) * (evals_sum + torch.sum(gramian))
-    return score
+    chi_x_whitened = whiten(chi_x, epsilon=epsilon, mode=mode)
+    x_g_x = torch.chain_matmul(chi_x_whitened.t(), G, chi_x_whitened)
+
+    evals_sum = torch.trace(x_g_x / (N * N))
+
+    return evals_sum + torch.mean(G)

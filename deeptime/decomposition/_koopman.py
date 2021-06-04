@@ -1,4 +1,3 @@
-import abc
 from typing import Optional, Union, List, Callable
 
 import numpy as np

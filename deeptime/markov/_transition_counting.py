@@ -5,10 +5,10 @@ import numpy as np
 import scipy
 from scipy.sparse import coo_matrix, issparse
 
-from deeptime.base import Estimator, Model, Transformer
 from .tools import estimation as msmest
-from deeptime.util.matrix import submatrix
-from deeptime.util.types import ensure_dtraj_list
+from ..base import Model, EstimatorTransformer
+from ..util.matrix import submatrix
+from ..util.types import ensure_dtraj_list
 
 __author__ = 'noe, clonker'
 
@@ -406,7 +406,7 @@ class TransitionCountModel(Model):
         return self.count_matrix.sum(axis=1)
 
 
-class TransitionCountEstimator(Estimator, Transformer):
+class TransitionCountEstimator(EstimatorTransformer):
     r"""
     Estimator which produces a :class:`TransitionCountModel` given discretized trajectories.
     Hereby one can decide whether the count mode should be:
@@ -619,21 +619,3 @@ class TransitionCountEstimator(Estimator, Transformer):
         else:
             raise ValueError('Count mode {} is unknown.'.format(count_mode))
         return count_matrix
-
-    def transform(self, data, **kwargs):
-        r""" Transforms data into its respective count model.
-        This allows to use scikit-learn Pipelines to build and score markov state models.
-
-        Parameters
-        ----------
-        data : array_like or list of array_like
-            input data
-        **kwargs
-            ignored
-
-        Returns
-        -------
-        counts : TransitionCountModel
-            The estimated count matrix together with statistics over the data.
-        """
-        return self.fit(data).fetch_model()

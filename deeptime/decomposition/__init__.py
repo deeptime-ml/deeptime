@@ -15,6 +15,7 @@ Estimators
     EDMD
     KernelEDMD
     KernelCCA
+    KVAD
 
 ===============================================================================
 Deep estimators
@@ -45,6 +46,7 @@ Models
 
     KernelEDMDModel
     KernelCCAModel
+    KVADModel
 
     deep.VAMPNetModel
     deep.TAEModel
@@ -80,6 +82,7 @@ from ._vamp import VAMP
 from ._koopman import KoopmanModel, CovarianceKoopmanModel
 from ._dmd import DMD, DMDModel, EDMD, EDMDModel, KernelEDMD, KernelEDMDModel
 from ._cca import KernelCCA, KernelCCAModel
+from ._kvad import KVAD, KVADModel
 
 from ..util.platform import module_available
 if module_available("torch"):
