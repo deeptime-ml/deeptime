@@ -6,6 +6,7 @@ import scipy
 from scipy.sparse import coo_matrix, issparse
 
 from .tools import estimation as msmest
+from .tools.analysis import is_connected
 from ..base import Model, EstimatorTransformer
 from ..util.matrix import submatrix
 from ..util.types import ensure_dtraj_list
@@ -404,6 +405,11 @@ class TransitionCountModel(Model):
         A `(n_states,) np.ndarray` histogram over the collected counts per state.
         """
         return self.count_matrix.sum(axis=1)
+
+    def is_connected(self, directed: bool = True) -> bool:
+        r""" Dispatches to :meth:`tools.analysis.is_connected <deeptime.markov.tools.analysis.is_connected>`.
+        """
+        return is_connected(self.count_matrix, directed=directed)
 
 
 class TransitionCountEstimator(EstimatorTransformer):
