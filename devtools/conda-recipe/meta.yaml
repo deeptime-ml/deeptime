@@ -30,6 +30,7 @@ requirements:
     - numpy >=1.14
     - python
     - scipy
+    - threadpoolctl >=2.0.0
     - setuptools !=50.0.0
     - pip
     - pybind11

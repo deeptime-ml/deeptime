@@ -112,7 +112,7 @@ metadata = \
         cmdclass=cmdclass,
         zip_safe=False,
         setup_requires=['cython'],
-        install_requires=['numpy', 'scipy', 'scikit-learn'],
+        install_requires=['numpy', 'scipy', 'scikit-learn', 'threadpoolctl'],
         extras_require={
             'deep-learning': ['pytorch'],
             'plotting': ['matplotlib', 'networkx']
