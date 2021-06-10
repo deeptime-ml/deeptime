@@ -38,6 +38,10 @@ def compute_index_states(dtrajs, subset=None) -> List[np.ndarray]:
 def indices_by_sequence(indices: List[np.ndarray], sequence):
     r"""Samples trajectory/time indices according to the given sequence of states.
 
+    Notes
+    -----
+    Returns -1 indices for states that are not observed in the current sample.
+
     Parameters
     ----------
     indices : list of (N,2) ndarray
