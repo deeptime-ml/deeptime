@@ -530,7 +530,13 @@ class HiddenMarkovModel(Model):
         return [mapping[dtraj] for dtraj in transformed_dtrajs]
 
     def sample_by_observation_probabilities(self, dtrajs, nsample):
-        r"""Generates samples according to the current observation probability distribution
+        r"""Generates samples according to the current observation probability distribution.
+
+        Notes
+        -----
+        Sampling from off-sample-trajectories might yield -1 indices as discrete observable states
+        are drawn from output probability distributions and off-sample trajectories might not
+        contain all drawn observable states.
 
         Parameters
         ----------
