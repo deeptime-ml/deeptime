@@ -515,9 +515,19 @@ class HiddenMarkovModel(Model):
             Curated discretized trajectories so that unconsidered symbols are mapped to -1.
         """
         dtrajs = ensure_dtraj_list(dtrajs)
-        mapping = -1 * np.ones(self.observation_symbols_full.size, dtype=np.int32)
+
+        # add one so that -1 gets mapped to -1
+        mapping = np.full(len(self.observation_symbols_full) + 1, -1, dtype=np.int32)
         mapping[self.observation_symbols] = np.arange(self.observation_symbols.size)
-        return [mapping[dtraj] for dtraj in dtrajs]
+
+        # map elements which are too large to -1 directly
+        transformed_dtrajs = []
+        for dtraj in dtrajs:
+            transformed_dtrajs.append(dtraj.copy())
+            transformed_dtrajs[-1][np.where(dtraj >= len(self.observation_symbols_full))[0]] = -1
+
+        # perform mapping
+        return [mapping[dtraj] for dtraj in transformed_dtrajs]
 
     def sample_by_observation_probabilities(self, dtrajs, nsample):
         r"""Generates samples according to the current observation probability distribution
@@ -535,10 +545,12 @@ class HiddenMarkovModel(Model):
             List of the sampled indices by distribution.
             Each element is an index array with a number of rows equal to nsample, with rows consisting of a
             tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
-
         """
         mapped = self.transform_discrete_trajectories_to_observed_symbols(dtrajs)
-        observable_state_indices = sample.compute_index_states(mapped)
+        if all(np.all(x == -1) for x in mapped):
+            raise ValueError("The discrete trajectories contained no elements which are in the observation "
+                             "symbols of this HMM.")
+        observable_state_indices = sample.compute_index_states(mapped, subset=self.observation_symbols)
         return sample.indices_by_distribution(observable_state_indices, self.output_probabilities, nsample)
 
     # ================================================================================================================

@@ -1,11 +1,11 @@
-import typing
+from typing import List
 
 import numpy as np
 
 from deeptime.util.types import ensure_dtraj_list
 
 
-def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
+def compute_index_states(dtrajs, subset=None) -> List[np.ndarray]:
     """Generates a trajectory/time indices for the given list of states
 
     Parameters
@@ -35,8 +35,8 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
 ################################################################################
 
 
-def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
-    """Samples trajectory/time indices according to the given sequence of states
+def indices_by_sequence(indices: List[np.ndarray], sequence):
+    r"""Samples trajectory/time indices according to the given sequence of states.
 
     Parameters
     ----------
@@ -61,8 +61,8 @@ def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
     res = np.zeros((N, 2), dtype=int)
     for t in range(N):
         s = sequence[t]
-        i = np.random.randint(indices[s].shape[0])
-        res[t, :] = indices[s][i, :]
+        ind = indices[s]
+        res[t, :] = indices[s][np.random.randint(len(ind)), :] if len(ind) > 0 else -1
 
     return res
 
@@ -117,7 +117,7 @@ def indices_by_state(indices, nsample, subset=None, replace=True):
     return res
 
 
-def indices_by_distribution(indices: typing.List[np.ndarray], distributions, nsample):
+def indices_by_distribution(indices: List[np.ndarray], distributions, nsample):
     """Samples trajectory/time indices according to the given probability distributions
 
     Parameters

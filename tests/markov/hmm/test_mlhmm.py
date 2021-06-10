@@ -1,17 +1,18 @@
 import unittest
 
-import deeptime.markov.tools
+import deeptime.markov.hmm._hmm_bindings as _bindings
 import numpy as np
 import pytest
-import deeptime.markov.hmm._hmm_bindings as _bindings
+from numpy.testing import assert_raises
 
-from deeptime.markov.hmm import init, BayesianHMM
+import deeptime.markov.tools
 from deeptime.data import DoubleWellDiscrete
-from deeptime.markov.hmm import MaximumLikelihoodHMM
-from deeptime.markov.hmm import viterbi, HiddenMarkovModel
-from deeptime.markov.hmm import DiscreteOutputModel
-from deeptime.markov.msm import MarkovStateModel
 from deeptime.markov import count_states
+from deeptime.markov.hmm import DiscreteOutputModel
+from deeptime.markov.hmm import MaximumLikelihoodHMM
+from deeptime.markov.hmm import init, BayesianHMM
+from deeptime.markov.hmm import viterbi, HiddenMarkovModel
+from deeptime.markov.msm import MarkovStateModel
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 from tests.testing_utilities import assert_array_not_equal
 
@@ -496,6 +497,17 @@ class TestMLHMM(unittest.TestCase):
         for i in range(A.shape[0]):
             np.testing.assert_equal(I[i].shape[0], hist[A[i]])
             np.testing.assert_equal(I[i].shape[1], 2)
+
+    def test_sample_by_observation_probabilities_out_of_sample(self):
+        hmsm = self.hmm_lag10_largest
+        nsample = 50
+        with assert_raises(ValueError):  # symbols not in obs set
+            hmsm.sample_by_observation_probabilities([0, 1, 2], nsample)
+        # sanity check subset of observation symbols
+        hmsm.sample_by_observation_probabilities(np.arange(66), nsample)
+        dtraj2 = np.concatenate((hmsm.observation_symbols, [10000]))
+        # sanity check too large state in there
+        hmsm.sample_by_observation_probabilities(dtraj2, 50)
 
     def test_sample_by_observation_probabilities(self):
         hmsm = self.hmm_lag10_largest
