@@ -222,15 +222,14 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         statdists = []
         count_models = []
         for subset in sets:
-            if len(sets) == 1 or len(subset) > 1:
-                try:
-                    sub_counts = counts.submodel(subset)
-                    fit_result = self._fit_connected(sub_counts)
-                    transition_matrices.append(fit_result[0])
-                    statdists.append(fit_result[1])
-                    count_models.append(fit_result[2])
-                except ValueError as e:
-                    log.warning(f"Skipping state set {subset} due to error in estimation: {str(e)}.")
+            try:
+                sub_counts = counts.submodel(subset)
+                fit_result = self._fit_connected(sub_counts)
+                transition_matrices.append(fit_result[0])
+                statdists.append(fit_result[1])
+                count_models.append(fit_result[2])
+            except ValueError as e:
+                log.warning(f"Skipping state set {subset} due to error in estimation: {str(e)}.")
         if len(transition_matrices) == 0:
             raise ValueError(f"None of the {'strongly' if needs_strong_connectivity else 'weakly'} "
                              f"connected subsets could be fit to data or the state space decayed into "
