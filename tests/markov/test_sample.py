@@ -25,12 +25,6 @@ class TestSampleIndices(unittest.TestCase):
         for o1, o2 in zip(out, out2):
             np.testing.assert_array_almost_equal(o1, o2)
 
-    def test_subset_error(self):
-        dtraj = [0, 1, 2, 3, 2, 1, 0]
-        # should be a ValueError because this is not a subset
-        with self.assertRaises(ValueError):
-            sample.compute_index_states(dtraj, subset=[3, 4, 5])
-
     def test_onetraj(self):
         dtraj = [0, 1, 2, 3, 2, 1, 0]
         # should be a ValueError because this is not a subset

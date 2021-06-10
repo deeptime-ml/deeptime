@@ -520,7 +520,7 @@ class TestMLHMM(unittest.TestCase):
             # right shape
             np.testing.assert_equal(samples.shape, (nsample, 2))
             for row in samples:
-                np.testing.assert_equal(row[0], 0)  # right trajectory
+                np.testing.assert_(row[0] in (0, -1)) # right trajectory
 
     def test_simulate_HMSM(self):
         hmsm = self.hmm_lag10_largest

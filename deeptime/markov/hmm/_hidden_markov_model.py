@@ -517,14 +517,15 @@ class HiddenMarkovModel(Model):
         dtrajs = ensure_dtraj_list(dtrajs)
 
         # add one so that -1 gets mapped to -1
-        mapping = np.full(len(self.observation_symbols_full) + 1, -1, dtype=np.int32)
+        max_state = self.observation_symbols_full.max()
+        mapping = np.full(max_state + 1, -1, dtype=np.int32)
         mapping[self.observation_symbols] = np.arange(self.observation_symbols.size)
 
         # map elements which are too large to -1 directly
         transformed_dtrajs = []
         for dtraj in dtrajs:
             transformed_dtrajs.append(dtraj.copy())
-            transformed_dtrajs[-1][np.where(dtraj >= len(self.observation_symbols_full))[0]] = -1
+            transformed_dtrajs[-1][np.where(dtraj >= max_state)[0]] = -1
 
         # perform mapping
         return [mapping[dtraj] for dtraj in transformed_dtrajs]
