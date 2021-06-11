@@ -533,6 +533,20 @@ class TestMLHMM(unittest.TestCase):
             for row in samples:
                 np.testing.assert_equal(row[0], 0)  # right trajectory
 
+    def test_sample_by_observation_probabilities_mapping(self):
+        tmat = np.array([[0.9, .1], [.1, .9]])
+        # hidden states correspond to observable states
+        obs = np.eye(2)
+        hmm = HiddenMarkovModel(tmat, obs)
+        # dtraj halfway-split between states 0 and 1
+        dtrajs = np.repeat([0, 1], 10)
+        samples = hmm.sample_by_observation_probabilities(dtrajs, 10)
+        # test that all trajectory indices are 0 (only 1 traj)
+        np.testing.assert_array_equal(np.unique(np.concatenate(samples)[:, 0]), [0])
+        # test that both hidden states map to correct parts of dtraj
+        np.testing.assert_(np.all(samples[0][:, 1] < 10))
+        np.testing.assert_(np.all(samples[1][:, 1] >= 10))
+
     def test_simulate_HMSM(self):
         hmsm = self.hmm_lag10_largest
         N = 400
