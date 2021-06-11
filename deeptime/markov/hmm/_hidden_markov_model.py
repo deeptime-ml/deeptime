@@ -516,16 +516,16 @@ class HiddenMarkovModel(Model):
         """
         dtrajs = ensure_dtraj_list(dtrajs)
 
-        # add one so that -1 gets mapped to -1
         max_state = self.observation_symbols_full.max()
-        mapping = np.full(max_state + 1, -1, dtype=np.int32)
-        mapping[self.observation_symbols] = np.arange(self.observation_symbols.size)
+        # add one because of 0 indexing and another one so that -1 gets mapped to -1
+        mapping = np.full(max_state + 2, -1, dtype=np.int32)
+        mapping[self.observation_symbols] = self.observation_symbols
 
         # map elements which are too large to -1 directly
         transformed_dtrajs = []
         for dtraj in dtrajs:
             transformed_dtrajs.append(dtraj.copy())
-            transformed_dtrajs[-1][np.where(dtraj >= max_state)[0]] = -1
+            transformed_dtrajs[-1][np.where(dtraj > max_state)[0]] = -1
 
         # perform mapping
         return [mapping[dtraj] for dtraj in transformed_dtrajs]

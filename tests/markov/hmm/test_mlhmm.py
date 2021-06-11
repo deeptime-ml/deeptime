@@ -3,7 +3,7 @@ import unittest
 import deeptime.markov.hmm._hmm_bindings as _bindings
 import numpy as np
 import pytest
-from numpy.testing import assert_raises
+from numpy.testing import assert_raises, assert_equal
 
 import deeptime.markov.tools
 from deeptime.data import DoubleWellDiscrete
@@ -498,6 +498,17 @@ class TestMLHMM(unittest.TestCase):
             np.testing.assert_equal(I[i].shape[0], hist[A[i]])
             np.testing.assert_equal(I[i].shape[1], 2)
 
+    def test_transform_to_observed_symbols(self):
+        hmsm = self.hmm_lag10_largest
+        dtraj = np.concatenate((hmsm.observation_symbols_full, [500000]))
+        mapped = hmsm.transform_discrete_trajectories_to_observed_symbols(dtraj)[0]
+        for i in range(len(dtraj)):
+            state = dtraj[i]
+            if state in hmsm.observation_symbols:
+                assert_equal(mapped[i], state)
+            else:
+                assert_equal(mapped[i], -1)
+
     def test_sample_by_observation_probabilities_out_of_sample(self):
         hmsm = self.hmm_lag10_largest
         nsample = 50
@@ -520,7 +531,7 @@ class TestMLHMM(unittest.TestCase):
             # right shape
             np.testing.assert_equal(samples.shape, (nsample, 2))
             for row in samples:
-                np.testing.assert_(row[0] in (0, -1)) # right trajectory
+                np.testing.assert_equal(row[0], 0)  # right trajectory
 
     def test_simulate_HMSM(self):
         hmsm = self.hmm_lag10_largest

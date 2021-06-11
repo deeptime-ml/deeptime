@@ -17,7 +17,7 @@ def compute_index_states(dtrajs, subset=None) -> List[np.ndarray]:
 
     Returns
     -------
-    indices : list of ndarray( (N_i, 2) )
+    indices : List[np.ndarray]
         For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
@@ -44,19 +44,19 @@ def indices_by_sequence(indices: List[np.ndarray], sequence):
 
     Parameters
     ----------
-    indices : list of (N,2) ndarray
+    indices : List[np.ndarray]
         For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
         within the trajectory.
-    sequence : ndarray of integers
+    sequence : array_like of integers
         A sequence of discrete states. For each state, a trajectory/time index will be sampled at which dtrajs
         have an occurrences of this state
 
     Returns
     -------
-    indices : ndarray( (N, 2) )
-        The sampled index sequence.
+    indices : np.ndarray
+        The sampled index sequence of shape `(N, 2)`.
         Index array with a number of rows equal to N=len(sequence), with rows consisting of a tuple (i, t),
         where i is the index of the trajectory and t is the time index within the trajectory.
 
@@ -76,7 +76,7 @@ def indices_by_state(indices, nsample, subset=None, replace=True):
 
     Parameters
     ----------
-    indices : list of ndarray( (N_i, 2) )
+    indices : List[np.ndarray]
         For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
@@ -91,8 +91,8 @@ def indices_by_state(indices, nsample, subset=None, replace=True):
 
     Returns
     -------
-    indices : list of ndarray( (N, 2) )
-        List of the sampled indices by state.
+    indices : List[np.ndarray]
+        List of the sampled indices by state, each state corresponding to an ndarray of shape (N, 2).
         Each element is an index array with a number of rows equal to N=len(sequence), with rows consisting of a
         tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
