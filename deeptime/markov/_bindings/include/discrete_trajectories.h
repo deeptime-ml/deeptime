@@ -47,7 +47,8 @@ auto indexStates(const py::list& dtrajs, const py::object &pySubset) {
 
         auto max = std::max_element(subset.data(0), subset.data(0) + subset.size());
         if (*max >= nStates) {
-            throw std::invalid_argument("Selected subset is not a subset of the states in dtrajs.");
+            isRequested.resize(*max + 1);
+            nStates = *max + 1;
         }
 
         subsetSize = subset.size();
@@ -68,7 +69,8 @@ auto indexStates(const py::list& dtrajs, const py::object &pySubset) {
     py::list result;
     for(auto i = 0U; i < subsetSize; ++i) {
         auto state = subset.at(i);
-        py::array_t<std::int32_t> zeros {std::vector<std::size_t>{static_cast<std::size_t>(hist.at(state)), 2}};
+        auto nAppend = state < hist.size() ? hist.at(state) : 0;
+        py::array_t<std::int32_t> zeros {std::vector<std::size_t>{static_cast<std::size_t>(nAppend), 2}};
         result.append(std::move(zeros));
         stateToContiguousIndex[subset.at(i)] = i;
     }

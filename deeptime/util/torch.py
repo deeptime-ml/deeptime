@@ -165,7 +165,7 @@ class CheckpointManager:
     @staticmethod
     def _make_checkpoint(step, models: Dict[str, torch.nn.Module], outfile: Path):
         r""" Makes the actual checkpoint. """
-        save_dict = {k: v.state_dict() for k, v in models}
+        save_dict = {k: v.state_dict() for k, v in models.items()}
         save_dict['step'] = step
         torch.save(save_dict, outfile)
         return outfile

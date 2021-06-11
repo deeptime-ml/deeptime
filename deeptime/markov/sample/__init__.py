@@ -1,11 +1,11 @@
-import typing
+from typing import List
 
 import numpy as np
 
 from deeptime.util.types import ensure_dtraj_list
 
 
-def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
+def compute_index_states(dtrajs, subset=None) -> List[np.ndarray]:
     """Generates a trajectory/time indices for the given list of states
 
     Parameters
@@ -17,7 +17,7 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
 
     Returns
     -------
-    indices : list of ndarray( (N_i, 2) )
+    indices : List[np.ndarray]
         For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
@@ -35,24 +35,28 @@ def compute_index_states(dtrajs, subset=None) -> typing.List[np.ndarray]:
 ################################################################################
 
 
-def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
-    """Samples trajectory/time indices according to the given sequence of states
+def indices_by_sequence(indices: List[np.ndarray], sequence):
+    r"""Samples trajectory/time indices according to the given sequence of states.
+
+    Notes
+    -----
+    Returns -1 indices for states that are not observed in the current sample.
 
     Parameters
     ----------
-    indices : list of (N,2) ndarray
+    indices : List[np.ndarray]
         For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
         within the trajectory.
-    sequence : ndarray of integers
+    sequence : array_like of integers
         A sequence of discrete states. For each state, a trajectory/time index will be sampled at which dtrajs
         have an occurrences of this state
 
     Returns
     -------
-    indices : ndarray( (N, 2) )
-        The sampled index sequence.
+    indices : np.ndarray
+        The sampled index sequence of shape `(N, 2)`.
         Index array with a number of rows equal to N=len(sequence), with rows consisting of a tuple (i, t),
         where i is the index of the trajectory and t is the time index within the trajectory.
 
@@ -61,8 +65,8 @@ def indices_by_sequence(indices: typing.List[np.ndarray], sequence):
     res = np.zeros((N, 2), dtype=int)
     for t in range(N):
         s = sequence[t]
-        i = np.random.randint(indices[s].shape[0])
-        res[t, :] = indices[s][i, :]
+        ind = indices[s]
+        res[t, :] = indices[s][np.random.randint(len(ind)), :] if len(ind) > 0 else -1
 
     return res
 
@@ -72,7 +76,7 @@ def indices_by_state(indices, nsample, subset=None, replace=True):
 
     Parameters
     ----------
-    indices : list of ndarray( (N_i, 2) )
+    indices : List[np.ndarray]
         For each state, all trajectory and time indices where this state occurs.
         Each matrix has a number of rows equal to the number of occurrences of the corresponding state,
         with rows consisting of a tuple (i, t), where i is the index of the trajectory and t is the time index
@@ -87,8 +91,8 @@ def indices_by_state(indices, nsample, subset=None, replace=True):
 
     Returns
     -------
-    indices : list of ndarray( (N, 2) )
-        List of the sampled indices by state.
+    indices : List[np.ndarray]
+        List of the sampled indices by state, each state corresponding to an ndarray of shape (N, 2).
         Each element is an index array with a number of rows equal to N=len(sequence), with rows consisting of a
         tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
@@ -117,7 +121,7 @@ def indices_by_state(indices, nsample, subset=None, replace=True):
     return res
 
 
-def indices_by_distribution(indices: typing.List[np.ndarray], distributions, nsample):
+def indices_by_distribution(indices: List[np.ndarray], distributions, nsample):
     """Samples trajectory/time indices according to the given probability distributions
 
     Parameters

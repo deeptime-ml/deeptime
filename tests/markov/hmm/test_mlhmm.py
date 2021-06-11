@@ -1,17 +1,18 @@
 import unittest
 
-import deeptime.markov.tools
+import deeptime.markov.hmm._hmm_bindings as _bindings
 import numpy as np
 import pytest
-import deeptime.markov.hmm._hmm_bindings as _bindings
+from numpy.testing import assert_raises, assert_equal, assert_array_almost_equal
 
-from deeptime.markov.hmm import init, BayesianHMM
+import deeptime.markov.tools
 from deeptime.data import DoubleWellDiscrete
-from deeptime.markov.hmm import MaximumLikelihoodHMM
-from deeptime.markov.hmm import viterbi, HiddenMarkovModel
-from deeptime.markov.hmm import DiscreteOutputModel
-from deeptime.markov.msm import MarkovStateModel
 from deeptime.markov import count_states
+from deeptime.markov.hmm import DiscreteOutputModel
+from deeptime.markov.hmm import MaximumLikelihoodHMM
+from deeptime.markov.hmm import init, BayesianHMM
+from deeptime.markov.hmm import viterbi, HiddenMarkovModel
+from deeptime.markov.msm import MarkovStateModel
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 from tests.testing_utilities import assert_array_not_equal
 
@@ -497,6 +498,28 @@ class TestMLHMM(unittest.TestCase):
             np.testing.assert_equal(I[i].shape[0], hist[A[i]])
             np.testing.assert_equal(I[i].shape[1], 2)
 
+    def test_transform_to_observed_symbols(self):
+        hmsm = self.hmm_lag10_largest
+        dtraj = np.concatenate((hmsm.observation_symbols_full, [500000]))
+        mapped = hmsm.transform_discrete_trajectories_to_observed_symbols(dtraj)[0]
+        for i in range(len(dtraj)):
+            state = dtraj[i]
+            if state in hmsm.observation_symbols:
+                assert_equal(mapped[i], state)
+            else:
+                assert_equal(mapped[i], -1)
+
+    def test_sample_by_observation_probabilities_out_of_sample(self):
+        hmsm = self.hmm_lag10_largest
+        nsample = 50
+        with assert_raises(ValueError):  # symbols not in obs set
+            hmsm.sample_by_observation_probabilities([0, 1, 2], nsample)
+        # sanity check subset of observation symbols
+        hmsm.sample_by_observation_probabilities(np.arange(66), nsample)
+        dtraj2 = np.concatenate((hmsm.observation_symbols, [10000]))
+        # sanity check too large state in there
+        hmsm.sample_by_observation_probabilities(dtraj2, 50)
+
     def test_sample_by_observation_probabilities(self):
         hmsm = self.hmm_lag10_largest
         nsample = 100
@@ -509,6 +532,35 @@ class TestMLHMM(unittest.TestCase):
             np.testing.assert_equal(samples.shape, (nsample, 2))
             for row in samples:
                 np.testing.assert_equal(row[0], 0)  # right trajectory
+
+    def test_sample_by_observation_probabilities_mapping(self):
+        tmat = np.array([[0.9, .1], [.1, .9]])
+        # hidden states correspond to observable states
+        obs = np.eye(2)
+        hmm = HiddenMarkovModel(tmat, obs)
+        # dtraj halfway-split between states 0 and 1
+        dtrajs = np.repeat([0, 1], 10)
+        samples = hmm.sample_by_observation_probabilities(dtrajs, 10)
+        # test that all trajectory indices are 0 (only 1 traj)
+        np.testing.assert_array_equal(np.unique(np.concatenate(samples)[:, 0]), [0])
+        # test that both hidden states map to correct parts of dtraj
+        np.testing.assert_(np.all(samples[0][:, 1] < 10))
+        np.testing.assert_(np.all(samples[1][:, 1] >= 10))
+
+    def test_sample_by_noncrisp_observation_probabilities_mapping(self):
+        tmat = np.array([[0.9, .1], [.1, .9]])
+        # hidden states correspond to observable states
+        obs = np.array([[.9, .1], [.4, .6]])
+        hmm = HiddenMarkovModel(tmat, obs)
+        # dtraj halfway-split between states 0 and 1
+        dtrajs = np.repeat([0, 1], 10)
+        n_samples = 300000
+        samples = hmm.sample_by_observation_probabilities(dtrajs, n_samples)
+        # test that both hidden states map to correct distributions
+        probs_hidden1 = np.histogram(dtrajs[samples[0][:, 1]], bins=2)[0] / n_samples
+        probs_hidden2 = np.histogram(dtrajs[samples[1][:, 1]], bins=2)[0] / n_samples
+        assert_array_almost_equal(probs_hidden1, [.9, .1], decimal=3)
+        assert_array_almost_equal(probs_hidden2, [.4, .6], decimal=3)
 
     def test_simulate_HMSM(self):
         hmsm = self.hmm_lag10_largest

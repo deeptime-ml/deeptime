@@ -232,7 +232,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
                 log.warning(f"Skipping state set {subset} due to error in estimation: {str(e)}.")
         if len(transition_matrices) == 0:
             raise ValueError(f"None of the {'strongly' if needs_strong_connectivity else 'weakly'} "
-                             f"connected subsets could be fit to data!")
+                             f"connected subsets could be fit to data or the state space decayed into "
+                             f"individual states only!")
 
         self._model = MarkovStateModelCollection(transition_matrices, statdists, reversible=self.reversible,
                                                  count_models=count_models,
