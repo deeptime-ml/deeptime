@@ -3,7 +3,7 @@ import unittest
 import deeptime.markov.hmm._hmm_bindings as _bindings
 import numpy as np
 import pytest
-from numpy.testing import assert_raises, assert_equal
+from numpy.testing import assert_raises, assert_equal, assert_array_almost_equal
 
 import deeptime.markov.tools
 from deeptime.data import DoubleWellDiscrete
@@ -546,6 +546,21 @@ class TestMLHMM(unittest.TestCase):
         # test that both hidden states map to correct parts of dtraj
         np.testing.assert_(np.all(samples[0][:, 1] < 10))
         np.testing.assert_(np.all(samples[1][:, 1] >= 10))
+
+    def test_sample_by_noncrisp_observation_probabilities_mapping(self):
+        tmat = np.array([[0.9, .1], [.1, .9]])
+        # hidden states correspond to observable states
+        obs = np.array([[.9, .1], [.4, .6]])
+        hmm = HiddenMarkovModel(tmat, obs)
+        # dtraj halfway-split between states 0 and 1
+        dtrajs = np.repeat([0, 1], 10)
+        n_samples = 300000
+        samples = hmm.sample_by_observation_probabilities(dtrajs, n_samples)
+        # test that both hidden states map to correct distributions
+        probs_hidden1 = np.histogram(dtrajs[samples[0][:, 1]], bins=2)[0] / n_samples
+        probs_hidden2 = np.histogram(dtrajs[samples[1][:, 1]], bins=2)[0] / n_samples
+        assert_array_almost_equal(probs_hidden1, [.9, .1], decimal=3)
+        assert_array_almost_equal(probs_hidden2, [.4, .6], decimal=3)
 
     def test_simulate_HMSM(self):
         hmsm = self.hmm_lag10_largest
