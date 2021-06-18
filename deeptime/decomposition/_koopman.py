@@ -11,13 +11,13 @@ from ..util import LaggedModelValidator
 from ..util.decorators import cached_property
 
 
-class KoopmanModel(Model, Transformer):
-    r""" Model which contains a finite-dimensional Koopman operator (or approximation thereof).
+class TransferOperatorModel(Model, Transformer):
+    r""" Model which contains a finite-dimensional transfer operator (or approximation thereof).
     It describes the temporal evolution of observable space, i.e.,
 
     .. math:: \mathbb{E}[g(x_{t+\tau})] = K^\top \mathbb{E}[f(x_t)],
 
-    where :math:`K\in\mathbb{R}^{n\times m}` is the Koopman operator, :math:`x_t` the system's state at time :math:`t`,
+    where :math:`K\in\mathbb{R}^{n\times m}` is the transfer operator, :math:`x_t` the system's state at time :math:`t`,
     and :math:`f` and :math:`g` observables of the system's state.
 
     Parameters
@@ -128,7 +128,7 @@ class KoopmanModel(Model, Transformer):
         return self.instantaneous_obs(data)
 
 
-class CovarianceKoopmanModel(KoopmanModel):
+class CovarianceKoopmanModel(TransferOperatorModel):
     r"""A type of Koopman model :math:`\mathbb{E}[g(x_{t+\tau})] = K^\top \mathbb{E}[f(x_{t})]`
     which was obtained through diagonalization of covariance matrices. This leads to
     a Koopman operator which is a diagonal matrix and can be used to project onto specific processes of the system.
@@ -145,7 +145,7 @@ class CovarianceKoopmanModel(KoopmanModel):
     :class:`TICA <deeptime.decomposition.TICA>`.
 
     For a description of parameters `operator`, `basis_transform_forward`, `basis_transform_backward`,
-    and `output_dimension`: please see :class:`KoopmanModel`.
+    and `output_dimension`: please see :class:`TransferOperatorModel`.
 
     Parameters
     ----------

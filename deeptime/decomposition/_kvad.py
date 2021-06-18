@@ -3,7 +3,7 @@ from typing import Optional, Callable
 import numpy as np
 
 from deeptime.basis import Identity
-from . import KoopmanModel
+from . import TransferOperatorModel
 from ..base import EstimatorTransformer
 from ..covariance import Covariance
 from ..kernels import Kernel
@@ -22,7 +22,7 @@ class _KVADTransform:
         return self.cov.whiten(self.obs_transform(x)) @ self.singular_vectors
 
 
-class KVADModel(KoopmanModel):
+class KVADModel(TransferOperatorModel):
     r"""The model produced by the :class:`KVAD` estimator.
 
     Parameters

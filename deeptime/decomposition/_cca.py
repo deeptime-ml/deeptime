@@ -4,13 +4,13 @@ import numpy as np
 import scipy
 
 from ..base import Estimator
-from ..decomposition import KoopmanModel
+from ..decomposition import TransferOperatorModel
 from ..kernels import Kernel
 from ..numeric import sort_eigs
 from ..util.types import to_dataset
 
 
-class KernelCCAModel(KoopmanModel):
+class KernelCCAModel(TransferOperatorModel):
     r""" The model produced by the :class:`KernelCCA` estimator.
 
     Parameters

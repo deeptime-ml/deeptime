@@ -11,7 +11,7 @@ from deeptime.covariance import CovarianceModel
 from deeptime.util.data import timeshifted_split, TimeLaggedDataset, TimeLaggedConcatDataset, TrajectoryDataset, \
     TrajectoriesDataset
 from deeptime.data import ellipsoids
-from deeptime.decomposition import KoopmanModel, CovarianceKoopmanModel, VAMP, cvsplit_trajs
+from deeptime.decomposition import TransferOperatorModel, CovarianceKoopmanModel, VAMP, cvsplit_trajs
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 
 
@@ -67,7 +67,7 @@ def full_rank_time_series(request):
     d = 8
     Q = np.linalg.qr(random_state.normal(size=(d, d)))[0]
     K = Q @ (np.diag(np.arange(1, d + 1)).astype(np.float64) / d) @ Q.T
-    model = KoopmanModel(K)
+    model = TransferOperatorModel(K)
     x = np.ones((1, d,)) * 100000
     traj = [x]
     for _ in range(1000):

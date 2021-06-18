@@ -3,7 +3,7 @@ from typing import Optional, Callable
 import numpy as np
 import scipy
 
-from ._koopman import KoopmanModel
+from ._koopman import TransferOperatorModel
 from ..base import Model, Transformer, EstimatorTransformer
 from ..kernels import Kernel
 from ..numeric import sort_eigs, eigs
@@ -196,7 +196,7 @@ class DMD(EstimatorTransformer):
         return self.fetch_model().transform(data, **kwargs)
 
 
-class EDMDModel(KoopmanModel):
+class EDMDModel(TransferOperatorModel):
     r""" The EDMD model which can be estimated from a :class:`EDMD` estimator. It possesses the estimated operator
     as well as capabilities to project onto modes.
 
@@ -331,7 +331,7 @@ class EDMD(EstimatorTransformer):
         return self
 
 
-class KernelEDMDModel(KoopmanModel):
+class KernelEDMDModel(TransferOperatorModel):
     r""" The kEDMD model containing eigenvalues and eigenfunctions evaluated in the instantaneous data.
 
     Parameters

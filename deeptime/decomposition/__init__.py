@@ -39,7 +39,7 @@ Models
     :toctree: generated/
     :template: class_nomodule.rst
 
-    KoopmanModel
+    TransferOperatorModel
     CovarianceKoopmanModel
     DMDModel
     EDMDModel
@@ -79,7 +79,7 @@ Utils
 from ._score import vamp_score, vamp_score_data, vamp_score_cv, cvsplit_trajs
 from ._tica import TICA
 from ._vamp import VAMP
-from ._koopman import KoopmanModel, CovarianceKoopmanModel
+from ._koopman import TransferOperatorModel, CovarianceKoopmanModel
 from ._dmd import DMD, DMDModel, EDMD, EDMDModel, KernelEDMD, KernelEDMDModel
 from ._cca import KernelCCA, KernelCCAModel
 from ._kvad import KVAD, KVADModel
