@@ -135,6 +135,8 @@ def is_connected(T, directed=True):
 
 
     """
+    if not sparse.issparse(T):
+        T = sparse.csr_matrix(T)
     nc = sparse.csgraph.connected_components(T, directed=directed, connection='strong', return_labels=False)
     return nc == 1
 
@@ -156,6 +158,8 @@ def is_ergodic(T, tol):
         True, if # strongly connected components = 1
         False, otherwise
     """
+    if not sparse.issparse(T):
+        T = sparse.csr_matrix(T)
     if not is_transition_matrix(T, tol):
         raise ValueError("given matrix is not a valid transition matrix.")
     return is_connected(T, True)
