@@ -9,7 +9,7 @@ dynamical fingerprints, expectations and correlations
 import numpy as np
 
 from ._decomposition import rdl_decomposition, timescales_from_eigenvalues
-from ._stationary_vector import stationary_distribution as statdist
+from .._stationary_vector import stationary_distribution as statdist
 
 ################################################################################
 # Fingerprints

@@ -8,7 +8,7 @@ expectation values for a given transition matrix.
 import numpy as np
 
 from ._decomposition import rdl_decomposition
-from ._stationary_vector import stationary_distribution
+from .._stationary_vector import stationary_distribution
 
 
 def expected_counts(p0, T, n):

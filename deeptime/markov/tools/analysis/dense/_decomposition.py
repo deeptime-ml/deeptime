@@ -15,8 +15,8 @@ import warnings
 from scipy.linalg import eig, eigh, eigvals, eigvalsh, solve
 
 from deeptime.util.exceptions import ImaginaryEigenValueWarning, SpectralWarning
-from ._stationary_vector import stationary_distribution
-from ._assessment import is_reversible
+from .._stationary_vector import stationary_distribution
+from .._assessment import is_reversible
 
 
 def eigenvalues(T, k=None, reversible=False, mu=None):

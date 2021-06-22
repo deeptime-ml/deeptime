@@ -15,8 +15,8 @@ import warnings
 from scipy.sparse import diags
 
 from deeptime.util.exceptions import ImaginaryEigenValueWarning, SpectralWarning
-from ._stationary_vector import stationary_distribution
-from ._assessment import is_reversible
+from .._stationary_vector import stationary_distribution
+from .._assessment import is_reversible
 
 
 def eigenvalues(T, k=None, ncv=None, reversible=False, mu=None):

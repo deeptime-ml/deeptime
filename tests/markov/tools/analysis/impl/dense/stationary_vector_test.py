@@ -2,10 +2,9 @@ import unittest
 import numpy as np
 
 from deeptime.data import birth_death_chain
+from deeptime.markov.tools.analysis._stationary_vector import stationary_distribution_from_eigenvector, \
+    stationary_distribution_from_backward_iteration
 from tests.markov.tools.numeric import assert_allclose
-
-from deeptime.markov.tools.analysis.dense._stationary_vector import stationary_distribution_from_eigenvector
-from deeptime.markov.tools.analysis.dense._stationary_vector import stationary_distribution_from_backward_iteration
 
 
 class TestStationaryVector(unittest.TestCase):

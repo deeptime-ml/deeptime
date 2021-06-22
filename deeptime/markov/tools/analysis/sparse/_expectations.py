@@ -10,7 +10,7 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from scipy.sparse.construct import diags
 
-from ._stationary_vector import stationary_distribution
+from .._stationary_vector import stationary_distribution
 
 
 def expected_counts(p0, T, N):

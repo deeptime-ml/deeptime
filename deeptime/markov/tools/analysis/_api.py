@@ -10,12 +10,12 @@ import warnings
 
 import numpy as _np
 from scipy.sparse import issparse as _issparse
-from scipy.sparse import csr_matrix as _csr_matrix
-
 from deeptime.util.types import ensure_number_array, ensure_integer_array, ensure_floating_array
 
 from . import dense
 from . import sparse
+from . import _stationary_vector as _statvec
+from . import _assessment
 
 __docformat__ = "restructuredtext en"
 __authors__ = __author__ = "Benjamin Trendelkamp-Schroer, Martin Scherer, Jan-Hendrik Prinz, Frank Noe"
@@ -73,10 +73,7 @@ def is_transition_matrix(T, tol=1e-12):
 
     """
     T = ensure_number_array(T, ndim=2)
-    if _issparse(T):
-        return sparse.assessment.is_transition_matrix(T, tol)
-    else:
-        return dense.assessment.is_transition_matrix(T, tol)
+    return _assessment.is_transition_matrix(T, tol)
 
 
 def is_rate_matrix(K, tol=1e-12):
@@ -116,10 +113,7 @@ def is_rate_matrix(K, tol=1e-12):
 
     """
     K = ensure_number_array(K, ndim=2)
-    if _issparse(K):
-        return sparse.assessment.is_rate_matrix(K, tol)
-    else:
-        return dense.assessment.is_rate_matrix(K, tol)
+    return _assessment.is_rate_matrix(K, tol)
 
 
 def is_connected(T, directed=True):
@@ -179,11 +173,7 @@ def is_connected(T, directed=True):
 
     """
     T = ensure_number_array(T, ndim=2)
-    if _issparse(T):
-        return sparse.assessment.is_connected(T, directed=directed)
-    else:
-        T = _csr_matrix(T)
-        return sparse.assessment.is_connected(T, directed=directed)
+    return _assessment.is_connected(T, directed=directed)
 
 
 def is_reversible(T, mu=None, tol=1e-12):
@@ -239,10 +229,7 @@ def is_reversible(T, mu=None, tol=1e-12):
     T = ensure_number_array(T, ndim=2)
     if mu is not None:
         mu = ensure_number_array(mu, ndim=1)
-    if _issparse(T):
-        return sparse.assessment.is_reversible(T, mu, tol)
-    else:
-        return dense.assessment.is_reversible(T, mu, tol)
+    return _assessment.is_reversible(T, mu, tol)
 
 
 ################################################################################
@@ -294,12 +281,7 @@ def stationary_distribution(T, check_inputs: bool = True):
                              "Therefore it has no unique stationary "
                              "distribution. Separate disconnected components "
                              "and handle them separately")
-    # we're good to go...
-    if _issparse(T):
-        mu = sparse.stationary_vector.stationary_distribution(T)
-    else:
-        mu = dense.stationary_vector.stationary_distribution(T)
-    return mu
+    return _statvec.stationary_distribution(T)
 
 
 def _check_k(T, k):

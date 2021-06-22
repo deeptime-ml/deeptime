@@ -9,7 +9,7 @@ import numpy as np
 from scipy.sparse import eye, coo_matrix, diags
 from scipy.sparse.linalg import spsolve
 
-from ._stationary_vector import stationary_distribution
+from .._stationary_vector import stationary_distribution
 
 
 def forward_committor(T, A, B):
