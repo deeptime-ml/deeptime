@@ -64,7 +64,7 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
         inputs = [inputs]
 
     if not all(len(data) > lagtime for data in inputs):
-        too_short_inputs = [i for i, x in enumerate(inputs) if len(x) < lagtime]
+        too_short_inputs = [i for i, x in enumerate(inputs) if len(x) <= lagtime]
         raise ValueError(f'Input contained to short (smaller than lagtime({lagtime}) at following '
                          f'indices: {too_short_inputs}')
 

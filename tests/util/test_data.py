@@ -18,12 +18,15 @@ def test_astype():
 
 
 def test_timeshifted_split_wrong_args():
-    data = [np.empty(shape=(100, 3), dtype=np.float32),
-            np.empty(shape=(10, 3), dtype=np.float32)]
+    data = [np.zeros(shape=(100, 3), dtype=np.float32),
+            np.zeros(shape=(10, 3), dtype=np.float32)]
     with assert_raises(ValueError):  # negative chunksize
         list(timeshifted_split(data, lagtime=1, chunksize=-1))
     with assert_raises(ValueError):  # too long lagtime
         list(timeshifted_split(data, lagtime=15))
+    with assert_raises(ValueError):  # too long lagtime
+        list(timeshifted_split(data, lagtime=10))
+    list(timeshifted_split(data, lagtime=9))  # sanity this should not raise
 
 
 @pytest.mark.parametrize("data", [np.arange(N) for N in [5, 6, 7, 8, 9, 10]],
