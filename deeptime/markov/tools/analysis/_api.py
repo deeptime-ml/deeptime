@@ -12,10 +12,12 @@ import numpy as _np
 from scipy.sparse import issparse as _issparse
 from deeptime.util.types import ensure_number_array, ensure_integer_array, ensure_floating_array
 
+from ._stationary_vector import stationary_distribution
+
 from . import dense
 from . import sparse
-from . import _stationary_vector as _statvec
 from . import _assessment
+from . import _mean_first_passage_time
 
 __docformat__ = "restructuredtext en"
 __authors__ = __author__ = "Benjamin Trendelkamp-Schroer, Martin Scherer, Jan-Hendrik Prinz, Frank Noe"
@@ -235,54 +237,6 @@ def is_reversible(T, mu=None, tol=1e-12):
 ################################################################################
 # Eigenvalues and eigenvectors
 ################################################################################
-
-def stationary_distribution(T, check_inputs: bool = True):
-    r"""Compute stationary distribution of stochastic matrix T.
-
-    Parameters
-    ----------
-    T : (M, M) ndarray or scipy.sparse matrix
-        Transition matrix
-    check_inputs : bool, optional, default=True
-        Whether to check for connectivity and if it is a transition matrix.
-
-    Returns
-    -------
-    mu : (M,) ndarray
-        Vector of stationary probabilities.
-
-    Notes
-    -----
-    The stationary distribution :math:`\mu` is the left eigenvector
-    corresponding to the non-degenerate eigenvalue :math:`\lambda=1`,
-
-    .. math:: \mu^T T =\mu^T.
-
-    Examples
-    --------
-
-    >>> import numpy as np
-    >>> from deeptime.markov.tools.analysis import stationary_distribution
-
-    >>> T = np.array([[0.9, 0.1, 0.0], [0.4, 0.2, 0.4], [0.0, 0.1, 0.9]])
-    >>> mu = stationary_distribution(T)
-    >>> mu
-    array([0.44444444, 0.11111111, 0.44444444])
-
-    """
-    if check_inputs:
-        # is this a transition matrix?
-        if not is_transition_matrix(T):
-            raise ValueError("Input matrix is not a transition matrix. "
-                             "Cannot compute stationary distribution")
-        # is the stationary distribution unique?
-        if not is_connected(T, directed=False):
-            raise ValueError("Input matrix is not weakly connected. "
-                             "Therefore it has no unique stationary "
-                             "distribution. Separate disconnected components "
-                             "and handle them separately")
-    return _statvec.stationary_distribution(T)
-
 
 def _check_k(T, k):
     # ensure k is not exceeding shape of transition matrix
@@ -651,17 +605,10 @@ def mfpt(T, target, origin=None, tau=1, mu=None):
     target = ensure_integer_array(target, ndim=1)
     if origin is not None:
         origin = ensure_integer_array(origin, ndim=1)
-    if _issparse(T):
-        if origin is None:
-            t_tau = sparse.mean_first_passage_time.mfpt(T, target)
-        else:
-            t_tau = sparse.mean_first_passage_time.mfpt_between_sets(T, target, origin, mu=mu)
+    if origin is None:
+        t_tau = _mean_first_passage_time.mfpt(T, target)
     else:
-        if origin is None:
-            t_tau = dense.mean_first_passage_time.mfpt(T, target)
-        else:
-            t_tau = dense.mean_first_passage_time.mfpt_between_sets(T, target, origin, mu=mu)
-
+        t_tau = _mean_first_passage_time.mfpt_between_sets(T, target, origin, mu=mu)
     # scale answer by lag time used.
     return tau * t_tau
 

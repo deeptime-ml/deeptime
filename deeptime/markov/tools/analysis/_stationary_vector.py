@@ -4,6 +4,8 @@ vectors of stochastic matrices
 .. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 .. moduleauthor:: M. Hoffmann
 """
+from typing import Optional
+
 import numpy as np
 import scipy.sparse as sparse
 import scipy.linalg as la
@@ -131,34 +133,82 @@ def stationary_distribution_from_eigenvector(T, ncv=None):
     return mu
 
 
-def stationary_distribution(T, ncv=None):
+def stationary_distribution(T, ncv: Optional[int] = None, mode: str = 'fallback', check_inputs: bool = True):
     r"""Compute stationary distribution of stochastic matrix T.
-
-    Chooses the fastest applicable algorithm automatically
 
     Input:
     ------
-    T : numpy array, shape(d,d)
-        Transition matrix (stochastic matrix).
+    T : (M, M) ndarray or scipy.sparse matrix
+        Transition matrix
     ncv : int (optional)
         The number of Lanczos vectors generated, `ncv` must be greater than k;
         it is recommended that ncv > 2*k. Only relevant for sparse matrices and if backward iteration is unsuccessful.
+    mode : str, optional, default='fallback'
+        Determines whether the method first tries backward iteration and then eigenvector estimation (`'fallback'`) or
+        it uses backward iteration only (`'backward'`) or it uses eigenvector estimation only (`'eigenvector'`).
+    check_inputs : bool, optional, default=True
+        Whether to check for connectivity and if it is a transition matrix.
 
     Returns
     -------
-    mu : numpy array, shape(d,)
+    mu : (M,) ndarray
         Vector of stationary probabilities.
-    """
-    mu = None
-    try:
-        mu = stationary_distribution_from_backward_iteration(T)
-    except RuntimeError:
-        pass
 
-    if mu is None or np.any(mu < 0):  # numerical problem, fall back to more robust algorithm.
+    Notes
+    -----
+    The stationary distribution :math:`\mu` is the left eigenvector
+    corresponding to the non-degenerate eigenvalue :math:`\lambda=1`,
+
+    .. math:: \mu^T T =\mu^T.
+
+    Examples
+    --------
+
+    >>> import numpy as np
+    >>> from deeptime.markov.tools.analysis import stationary_distribution
+
+    >>> T = np.array([[0.9, 0.1, 0.0], [0.4, 0.2, 0.4], [0.0, 0.1, 0.9]])
+    >>> mu = stationary_distribution(T)
+    >>> mu
+    array([0.44444444, 0.11111111, 0.44444444])
+    """
+    if check_inputs:
+        from ._assessment import is_connected, is_transition_matrix
+        if not is_transition_matrix(T, tol=1e-12):
+            raise ValueError("Input matrix is not a transition matrix. "
+                             "Cannot compute stationary distribution")
+        if not is_connected(T, directed=False):
+            raise ValueError("Input matrix is not weakly connected. "
+                             "Therefore it has no unique stationary "
+                             "distribution. Separate disconnected components "
+                             "and handle them separately")
+
+    assert mode in stationary_distribution.valid_modes, f"Mode must be one of {stationary_distribution.valid_modes}."
+    use_backward, use_eigenvector = True, True
+    if mode == 'backward':
+        use_eigenvector = False
+    if mode == 'eigenvector':
+        use_backward = False
+    assert use_backward or use_eigenvector
+
+    mu = None
+    if use_backward:
+        try:
+            mu = stationary_distribution_from_backward_iteration(T)
+        except RuntimeError:
+            if not use_eigenvector:
+                raise  # we re-raise
+            else:
+                pass  # try next
+
+    if use_eigenvector and (mu is None or np.any(mu < 0)):
+        # numerical problem, fall back to more robust algorithm.
         mu = stationary_distribution_from_eigenvector(T, ncv=ncv)
         if np.any(mu < 0):  # still? Then set to 0 and renormalize
             mu = np.maximum(mu, 0.0)
             mu /= mu.sum()
 
     return mu
+
+
+stationary_distribution.valid_modes = ('fallback', 'backward', 'eigenvector')
