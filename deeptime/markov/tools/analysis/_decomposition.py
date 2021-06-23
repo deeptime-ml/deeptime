@@ -317,10 +317,10 @@ def rdl_decomposition_nrev(T, norm='standard', k=None, ncv=None):
         R[:, 0] = R[:, 0] * np.sum(L[:, 0])
         L[:, 0] = L[:, 0] / np.sum(L[:, 0])
 
-        # todo check if we need this
-        """Standard normalization L'R=Id"""
-        ov = np.diag(np.dot(np.transpose(L), R))
-        R = R / ov[np.newaxis, :]
+        if is_sparse:  # in dense case we already got this
+            """Standard normalization L'R=Id"""
+            ov = np.diag(np.dot(np.transpose(L), R))
+            R = R / ov[np.newaxis, :]
 
         return R, D, np.transpose(L)
 
