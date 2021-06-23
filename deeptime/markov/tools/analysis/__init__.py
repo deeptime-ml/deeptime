@@ -93,7 +93,8 @@ Sensitivity analysis
 """
 
 from ._api import is_transition_matrix, is_rate_matrix, is_connected, is_reversible
-from ._api import stationary_distribution, eigenvalues, eigenvectors, rdl_decomposition, timescales
+from ._api import stationary_distribution, eigenvalues, eigenvectors, rdl_decomposition, timescales, \
+    timescales_from_eigenvalues
 from ._api import expected_counts, expected_counts_stationary
 from ._api import mfpt
 from ._api import committor, pcca_memberships, hitting_probability

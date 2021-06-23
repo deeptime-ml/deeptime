@@ -13,11 +13,14 @@ from scipy.sparse import issparse as _issparse
 from deeptime.util.types import ensure_number_array, ensure_integer_array, ensure_floating_array
 
 from ._stationary_vector import stationary_distribution
+from ._decomposition import timescales_from_eigenvalues
 
 from . import dense
 from . import sparse
 from . import _assessment
 from . import _mean_first_passage_time
+from . import _decomposition
+from . import _fingerprints
 
 __docformat__ = "restructuredtext en"
 __authors__ = __author__ = "Benjamin Trendelkamp-Schroer, Martin Scherer, Jan-Hendrik Prinz, Frank Noe"
@@ -300,10 +303,7 @@ def eigenvalues(T, k=None, ncv=None, reversible=False, mu=None):
     """
     T = ensure_number_array(T, ndim=2)
     k = _check_k(T, k)
-    if _issparse(T):
-        return sparse.decomposition.eigenvalues(T, k, ncv=ncv, reversible=reversible, mu=mu)
-    else:
-        return dense.decomposition.eigenvalues(T, k, reversible=reversible, mu=mu)
+    return _decomposition.eigenvalues(T, k, ncv=ncv, reversible=reversible, mu=mu)
 
 
 def timescales(T, tau=1, k=None, ncv=None, reversible=False, mu=None):
@@ -359,11 +359,7 @@ def timescales(T, tau=1, k=None, ncv=None, reversible=False, mu=None):
     """
     T = ensure_number_array(T, ndim=2)
     k = _check_k(T, k)
-    if _issparse(T):
-        return sparse.decomposition.timescales(T, tau=tau, k=k, ncv=ncv,
-                                               reversible=reversible, mu=mu)
-    else:
-        return dense.decomposition.timescales(T, tau=tau, k=k, reversible=reversible, mu=mu)
+    return _decomposition.timescales(T, tau=tau, k=k, ncv=ncv, reversible=reversible, mu=mu)
 
 
 def eigenvectors(T, k=None, right=True, ncv=None, reversible=False, mu=None):
@@ -440,11 +436,7 @@ def eigenvectors(T, k=None, right=True, ncv=None, reversible=False, mu=None):
 
     T = ensure_number_array(T, ndim=2)
     k = _check_k(T, k)
-    if _issparse(T):
-        ev = sparse.decomposition.eigenvectors(T, k=k, right=right, ncv=ncv, reversible=reversible, mu=mu)
-    else:
-        ev = dense.decomposition.eigenvectors(T, k=k, right=right, reversible=reversible, mu=mu)
-
+    ev = _decomposition.eigenvectors(T, k=k, right=right, ncv=ncv, reversible=reversible, mu=mu)
     if not right:
         ev = ev.T
     return ev
@@ -527,12 +519,8 @@ def rdl_decomposition(T, k=None, norm='auto', ncv=None, reversible=False, mu=Non
     """
     T = ensure_number_array(T, ndim=2)
     k = _check_k(T, k)
-    if _issparse(T):
-        return sparse.decomposition.rdl_decomposition(T, k=k, norm=norm, ncv=ncv,
-                                                      reversible=reversible, mu=mu)
-    else:
-        return dense.decomposition.rdl_decomposition(T, k=k, norm=norm,
-                                                     reversible=reversible, mu=mu)
+    return _decomposition.rdl_decomposition(T, k=k, norm=norm, ncv=ncv,
+                                            reversible=reversible, mu=mu)
 
 
 def mfpt(T, target, origin=None, tau=1, mu=None):
@@ -993,10 +981,7 @@ def fingerprint_correlation(T, obs1, obs2=None, tau=1, k=None, ncv=None):
     if obs2 is not None:
         obs2 = ensure_number_array(obs2, ndim=1, size=n)
     # go
-    if _issparse(T):
-        return sparse.fingerprints.fingerprint_correlation(T, obs1, obs2=obs2, tau=tau, k=k, ncv=ncv)
-    else:
-        return dense.fingerprints.fingerprint_correlation(T, obs1, obs2, tau=tau, k=k)
+    return _fingerprints.fingerprint_correlation(T, obs1, obs2=obs2, tau=tau, k=k, ncv=ncv)
 
 
 def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
@@ -1083,10 +1068,7 @@ def fingerprint_relaxation(T, p0, obs, tau=1, k=None, ncv=None):
     p0 = ensure_number_array(p0, ndim=1, size=n)
     obs = ensure_number_array(obs, ndim=1, size=n)
     # go
-    if _issparse(T):
-        return sparse.fingerprints.fingerprint_relaxation(T, p0, obs, tau=tau, k=k, ncv=ncv)
-    else:
-        return dense.fingerprints.fingerprint_relaxation(T, p0, obs, tau=tau, k=k)
+    return _fingerprints.fingerprint_relaxation(T, p0, obs, tau=tau, k=k, ncv=ncv)
 
 
 def expectation(T, a, mu=None):
@@ -1226,10 +1208,7 @@ def correlation(T, obs1, obs2=None, times=(1,), k=None, ncv=None):
 
     # check input
     # go
-    if _issparse(T):
-        return sparse.fingerprints.correlation(T, obs1, obs2=obs2, times=times, k=k, ncv=ncv)
-    else:
-        return dense.fingerprints.correlation(T, obs1, obs2=obs2, times=times, k=k)
+    return _fingerprints.correlation(T, obs1, obs2=obs2, times=times, k=k, ncv=ncv)
 
 
 def relaxation(T, p0, obs, times=(1,), k=None):
@@ -1294,10 +1273,7 @@ def relaxation(T, p0, obs, times=(1,), k=None):
     obs = ensure_number_array(obs, ndim=1, size=n)
     times = ensure_integer_array(times, ndim=1)
     # go
-    if _issparse(T):
-        return sparse.fingerprints.relaxation(T, p0, obs, k=k, times=times)
-    else:
-        return dense.fingerprints.relaxation(T, p0, obs, k=k, times=times)
+    return _fingerprints.relaxation(T, p0, obs, k=k, times=times)
 
 
 # ========================

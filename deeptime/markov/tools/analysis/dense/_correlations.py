@@ -6,7 +6,7 @@ Created on 29.11.2013
 
 import numpy as np
 
-from ._decomposition import rdl_decomposition
+from .._decomposition import rdl_decomposition
 
 
 def time_correlation_by_diagonalization(P, pi, obs1, obs2=None, time=1, rdl=None):

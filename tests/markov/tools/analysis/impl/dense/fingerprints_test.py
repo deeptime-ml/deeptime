@@ -11,14 +11,14 @@ import numpy as np
 from deeptime.data import birth_death_chain
 from tests.markov.tools.numeric import assert_allclose
 
-from deeptime.markov.tools.analysis.dense._decomposition import rdl_decomposition, timescales
+from deeptime.markov.tools.analysis._decomposition import rdl_decomposition, timescales
 
 
-from deeptime.markov.tools.analysis.dense._fingerprints import fingerprint, fingerprint_correlation, fingerprint_relaxation
-from deeptime.markov.tools.analysis.dense._fingerprints import correlation_decomp, correlation_matvec, correlation
-from deeptime.markov.tools.analysis.dense._fingerprints import relaxation_decomp, relaxation_matvec, relaxation
-from deeptime.markov.tools.analysis.dense._fingerprints import expectation
-from deeptime.markov.tools.analysis.dense._fingerprints import propagate
+from deeptime.markov.tools.analysis._fingerprints import fingerprint, fingerprint_correlation, fingerprint_relaxation
+from deeptime.markov.tools.analysis._fingerprints import correlation_decomp, correlation_matvec, correlation
+from deeptime.markov.tools.analysis._fingerprints import relaxation_decomp, relaxation_matvec, relaxation
+from deeptime.markov.tools.analysis import expectation
+from deeptime.markov.tools.analysis._fingerprints import propagate
 
 ################################################################################
 # Fingerprints

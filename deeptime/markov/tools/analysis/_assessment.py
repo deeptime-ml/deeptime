@@ -36,7 +36,7 @@ def is_transition_matrix(T, tol):
     else:
         values = T
 
-    is_positive = np.allclose(values, np.abs(values), rtol=2*tol)
+    is_positive = np.allclose(values, np.abs(values), rtol=tol)
     is_normed = np.allclose(T.sum(axis=1), 1.0, rtol=tol)
 
     return is_positive and is_normed
