@@ -3,7 +3,7 @@ from typing import Optional, Callable
 import numpy as np
 
 from deeptime.basis import Identity
-from . import KoopmanModel
+from . import TransferOperatorModel
 from ..base import EstimatorTransformer
 from ..covariance import Covariance
 from ..kernels import Kernel
@@ -11,7 +11,18 @@ from ..numeric import spd_truncated_svd
 from ..util.types import to_dataset
 
 
-class KVADModel(KoopmanModel):
+class _KVADTransform:
+
+    def __init__(self, cov, obs_transform, singular_vectors):
+        self.cov = cov
+        self.obs_transform = obs_transform
+        self.singular_vectors = singular_vectors
+
+    def __call__(self, x):
+        return self.cov.whiten(self.obs_transform(x)) @ self.singular_vectors
+
+
+class KVADModel(TransferOperatorModel):
     r"""The model produced by the :class:`KVAD` estimator.
 
     Parameters
@@ -34,18 +45,16 @@ class KVADModel(KoopmanModel):
 
     def __init__(self, kernel, koopman_matrix: np.ndarray, observable_transform, covariances,
                  singular_values, singular_vectors, score):
+        transf = _KVADTransform(covariances, observable_transform, singular_vectors)
         super(KVADModel, self).__init__(koopman_matrix=koopman_matrix,
-                                        instantaneous_obs=self._apply_singular_functions,
-                                        timelagged_obs=self._apply_singular_functions)
+                                        instantaneous_obs=transf,
+                                        timelagged_obs=transf)
         self.kernel = kernel
         self.observable_transform = observable_transform
         self.covariances = covariances
         self.singular_values = singular_values
         self.singular_vectors = singular_vectors
         self.score = score
-
-    def _apply_singular_functions(self, data):
-        return self.covariances.whiten(self.observable_transform(data)) @ self.singular_vectors
 
 
 class KVAD(EstimatorTransformer):
@@ -142,7 +151,7 @@ class KVAD(EstimatorTransformer):
         chi_x_w = cov.whiten(chi_x, epsilon=self.epsilon)
         chi_y_w = cov.whiten(chi_y, epsilon=self.epsilon)
 
-        x_g_x = np.linalg.multi_dot((chi_x_w.T, g_yy, chi_x_w)) / (n_data*n_data)
+        x_g_x = np.linalg.multi_dot((chi_x_w.T, g_yy, chi_x_w)) / (n_data * n_data)
         singular_values, singular_vectors = spd_truncated_svd(x_g_x, dim=self.dim, eps=self.epsilon)
 
         f_x = chi_x_w @ singular_vectors

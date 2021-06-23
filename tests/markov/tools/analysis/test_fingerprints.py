@@ -4,8 +4,7 @@ r"""Unit test for the fingerprint API-functions
 
 """
 
-import unittest
-
+import pytest
 import numpy as np
 
 from deeptime.data import birth_death_chain
@@ -15,443 +14,187 @@ from deeptime.markov.tools.analysis import rdl_decomposition, timescales
 from deeptime.markov.tools.analysis import fingerprint_correlation, fingerprint_relaxation
 from deeptime.markov.tools.analysis import expectation, correlation, relaxation
 
-################################################################################
-# Dense
-################################################################################
+
+@pytest.fixture
+def fingerprints_data(sparse_mode):
+    p = np.zeros(10)
+    q = np.zeros(10)
+    p[0:-1] = 0.5
+    q[1:] = 0.5
+    p[4] = 0.01
+    q[6] = 0.1
+    return birth_death_chain(q, p, sparse=sparse_mode)
 
 
-class TestFingerprintDense(unittest.TestCase):
-    def setUp(self):
-        p = np.zeros(10)
-        q = np.zeros(10)
-        p[0:-1] = 0.5
-        q[1:] = 0.5
-        p[4] = 0.01
-        q[6] = 0.1
+@pytest.fixture
+def observables():
+    obs1 = np.zeros(10)
+    obs1[0] = 1
+    obs1[1] = 1
+    obs2 = np.zeros(10)
+    obs2[8] = 1
+    obs2[9] = 1
+    return obs1, obs2
 
-        self.bdc = birth_death_chain(q, p)
 
-        self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix
-        R, D, L = rdl_decomposition(self.T)
-        self.L = L
-        self.R = R
-        self.ts = timescales(self.T)
-        self.times = np.array([1, 5, 10, 20])
-
-        ev = np.diagonal(D)
-        self.ev_t = ev[np.newaxis, :] ** self.times[:, np.newaxis]
-
-        self.k = 4
-        self.tau = 7.5
-
-        """Observables"""
-        obs1 = np.zeros(10)
-        obs1[0] = 1
-        obs1[1] = 1
-        obs2 = np.zeros(10)
-        obs2[8] = 1
-        obs2[9] = 1
-
-        self.obs1 = obs1
-        self.obs2 = obs2
-
-        """Initial vector for relaxation"""
-        w0 = np.zeros(10)
-        w0[0:4] = 0.25
-        self.p0 = w0
-
-    def test_fingerprint_correlation(self):
-        """Autocorrelation"""
-
+def test_fingerprint_correlation(fingerprints_data, observables):
+    obs1, obs2 = observables
+    T = fingerprints_data.transition_matrix
+    ts = timescales(T, k=4 if fingerprints_data.sparse else None)
+    R, D, L = rdl_decomposition(T, k=4 if fingerprints_data.sparse else None)
+    mu = fingerprints_data.stationary_distribution
+    tau = 7.5
+    if not fingerprints_data.sparse:
         """k=None, tau=1"""
-        acorr_amp = np.dot(self.mu * self.obs1, self.R) * np.dot(self.L, self.obs1)
-        tsn, acorr_ampn = fingerprint_correlation(self.T, self.obs1)
-        assert_allclose(tsn, self.ts)
+        acorr_amp = np.dot(mu * obs1, R) * np.dot(L, obs1)
+        tsn, acorr_ampn = fingerprint_correlation(T, obs1)
+        assert_allclose(tsn, ts)
         assert_allclose(acorr_ampn, acorr_amp)
 
         """k=None, tau=7.5"""
-        tau = self.tau
-        tsn, acorr_ampn = fingerprint_correlation(self.T, self.obs1, tau=tau)
-        assert_allclose(tsn, tau * self.ts)
+        tau = tau
+        tsn, acorr_ampn = fingerprint_correlation(T, obs1, tau=tau)
+        assert_allclose(tsn, tau * ts)
         assert_allclose(acorr_ampn, acorr_amp)
 
-        """k=4, tau=1"""
-        k = self.k
-        acorr_amp = np.dot(self.mu * self.obs1, self.R[:, 0:k]) * np.dot(self.L[0:k, :], self.obs1)
-        tsn, acorr_ampn = fingerprint_correlation(self.T, self.obs1, k=k)
-        assert_allclose(tsn, self.ts[0:k])
-        assert_allclose(acorr_ampn, acorr_amp)
+    """k=4, tau=1"""
+    k = 4
+    acorr_amp = np.dot(mu * obs1, R[:, 0:k]) * np.dot(L[0:k, :], obs1)
+    tsn, acorr_ampn = fingerprint_correlation(T, obs1, k=k)
+    assert_allclose(tsn, ts[0:k])
+    assert_allclose(acorr_ampn, acorr_amp)
 
-        """k=4, tau=7.5"""
-        tau = self.tau
-        tsn, acorr_ampn = fingerprint_correlation(self.T, self.obs1, k=k, tau=tau)
-        assert_allclose(tsn, tau * self.ts[0:k])
-        assert_allclose(acorr_ampn, acorr_amp)
+    """k=4, tau=7.5"""
+    tau = tau
+    tsn, acorr_ampn = fingerprint_correlation(T, obs1, k=k, tau=tau)
+    assert_allclose(tsn, tau * ts[0:k])
+    assert_allclose(acorr_ampn, acorr_amp)
 
-        """Cross-correlation"""
+    """Cross-correlation"""
 
+    if not fingerprints_data.sparse:
         """k=None, tau=1"""
-        corr_amp = np.dot(self.mu * self.obs1, self.R) * np.dot(self.L, self.obs2)
-        tsn, corr_ampn = fingerprint_correlation(self.T, self.obs1, obs2=self.obs2)
-        assert_allclose(tsn, self.ts)
+        corr_amp = np.dot(mu * obs1, R) * np.dot(L, obs2)
+        tsn, corr_ampn = fingerprint_correlation(T, obs1, obs2=obs2)
+        assert_allclose(tsn, ts)
         assert_allclose(corr_ampn, corr_amp)
 
         """k=None, tau=7.5"""
-        tau = self.tau
-        tsn, corr_ampn = fingerprint_correlation(self.T, self.obs1, obs2=self.obs2, tau=tau)
-        assert_allclose(tsn, tau * self.ts)
+        tau = tau
+        tsn, corr_ampn = fingerprint_correlation(T, obs1, obs2=obs2, tau=tau)
+        assert_allclose(tsn, tau * ts)
         assert_allclose(corr_ampn, corr_amp)
 
-        """k=4, tau=1"""
-        k = self.k
-        corr_amp = np.dot(self.mu * self.obs1, self.R[:, 0:k]) * np.dot(self.L[0:k, :], self.obs2)
-        tsn, corr_ampn = fingerprint_correlation(self.T, self.obs1, obs2=self.obs2, k=k)
-        assert_allclose(tsn, self.ts[0:k])
-        assert_allclose(corr_ampn, corr_amp)
+    """k=4, tau=1"""
+    corr_amp = np.dot(mu * obs1, R[:, 0:k]) * np.dot(L[0:k, :], obs2)
+    tsn, corr_ampn = fingerprint_correlation(T, obs1, obs2=obs2, k=k)
+    assert_allclose(tsn, ts[0:k])
+    assert_allclose(corr_ampn, corr_amp)
 
-        """k=4, tau=7.5"""
-        tau = self.tau
-        tsn, corr_ampn = fingerprint_correlation(self.T, self.obs1, obs2=self.obs2, k=k, tau=tau)
-        assert_allclose(tsn, tau * self.ts[0:k])
-        assert_allclose(corr_ampn, corr_amp)
+    """k=4, tau=7.5"""
+    tsn, corr_ampn = fingerprint_correlation(T, obs1, obs2=obs2, k=k, tau=tau)
+    assert_allclose(tsn, tau * ts[0:k])
+    assert_allclose(corr_ampn, corr_amp)
 
-    def test_fingerprint_relaxation(self):
-        one_vec = np.ones(self.T.shape[0])
 
+def test_fingerprint_relaxation(fingerprints_data, observables):
+    obs1, obs2 = observables
+    T = fingerprints_data.transition_matrix
+    ts = timescales(T, k=4 if fingerprints_data.sparse else None)
+    R, D, L = rdl_decomposition(T, k=4 if fingerprints_data.sparse else None)
+    """Initial vector for relaxation"""
+    p0 = np.zeros(10)
+    p0[0:4] = 0.25
+    if not fingerprints_data.sparse:
         """k=None"""
-        relax_amp = np.dot(self.p0, self.R) * np.dot(self.L, self.obs1)
-        tsn, relax_ampn = fingerprint_relaxation(self.T, self.p0, self.obs1)
-        assert_allclose(tsn, self.ts)
+        relax_amp = np.dot(p0, R) * np.dot(L, obs1)
+        tsn, relax_ampn = fingerprint_relaxation(T, p0, obs1)
+        assert_allclose(tsn, ts)
         assert_allclose(relax_ampn, relax_amp)
 
-        """k=4"""
-        k = self.k
-        relax_amp = np.dot(self.p0, self.R[:, 0:k]) * np.dot(self.L[0:k, :], self.obs1)
-        tsn, relax_ampn = fingerprint_relaxation(self.T, self.p0, self.obs1, k=k)
-        assert_allclose(tsn, self.ts[0:k])
-        assert_allclose(relax_ampn, relax_amp)
+    """k=4"""
+    k = 4
+    relax_amp = np.dot(p0, R[:, 0:k]) * np.dot(L[0:k, :], obs1)
+    tsn, relax_ampn = fingerprint_relaxation(T, p0, obs1, k=k)
+    assert_allclose(tsn, ts[0:k])
+    assert_allclose(relax_ampn, relax_amp)
 
 
-class TestExpectation(unittest.TestCase):
-    def setUp(self):
-        p = np.zeros(10)
-        q = np.zeros(10)
-        p[0:-1] = 0.5
-        q[1:] = 0.5
-        p[4] = 0.01
-        q[6] = 0.1
-
-        self.bdc = birth_death_chain(q, p)
-
-        self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix
-
-        obs1 = np.zeros(10)
-        obs1[0] = 1
-        obs1[1] = 1
-
-        self.obs1 = obs1
-
-    def test_expectation(self):
-        exp = np.dot(self.mu, self.obs1)
-        expn = expectation(self.T, self.obs1)
-        assert_allclose(exp, expn)
+def test_expectation(fingerprints_data):
+    obs1 = np.zeros(10)
+    obs1[0] = 1
+    obs1[1] = 1
+    exp = np.dot(fingerprints_data.stationary_distribution, obs1)
+    expn = expectation(fingerprints_data.transition_matrix, obs1)
+    assert_allclose(exp, expn)
 
 
-class TestCorrelationDense(unittest.TestCase):
-    def setUp(self):
-        p = np.zeros(10)
-        q = np.zeros(10)
-        p[0:-1] = 0.5
-        q[1:] = 0.5
-        p[4] = 0.01
-        q[6] = 0.1
+def test_correlation(fingerprints_data, observables):
+    obs1, obs2 = observables
+    T = fingerprints_data.transition_matrix
+    R, D, L = rdl_decomposition(T, k=4 if fingerprints_data.sparse else None)
+    mu = fingerprints_data.stationary_distribution
+    times = np.array([1, 5, 10, 20, 100])
 
-        self.bdc = birth_death_chain(q, p)
+    ev = np.diagonal(D)
+    ev_t = ev[np.newaxis, :] ** times[:, np.newaxis]
 
-        self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix
-        R, D, L = rdl_decomposition(self.T, norm='reversible')
-        self.L = L
-        self.R = R
-        self.ts = timescales(self.T)
-        self.times = np.array([1, 5, 10, 20, 100])
-
-        ev = np.diagonal(D)
-        self.ev_t = ev[np.newaxis, :] ** self.times[:, np.newaxis]
-
-        self.k = 4
-
-        obs1 = np.zeros(10)
-        obs1[0] = 1
-        obs1[1] = 1
-        obs2 = np.zeros(10)
-        obs2[8] = 1
-        obs2[9] = 1
-
-        self.obs1 = obs1
-        self.obs2 = obs2
-        self.one_vec = np.ones(10)
-
-    def test_correlation(self):
-        """Auto-correlation"""
-
+    if not fingerprints_data.sparse:
         """k=None"""
-        acorr_amp = np.dot(self.mu * self.obs1, self.R) * np.dot(self.L, self.obs1)
-        acorr = np.dot(self.ev_t, acorr_amp)
-        acorrn = correlation(self.T, self.obs1, times=self.times)
+        acorr_amp = np.dot(mu * obs1, R) * np.dot(L, obs1)
+        acorr = np.dot(ev_t, acorr_amp)
+        acorrn = correlation(T, obs1, times=times)
         assert_allclose(acorrn, acorr)
 
-        """k=4"""
-        k = self.k
-        acorr_amp = np.dot(self.mu * self.obs1, self.R[:, 0:k]) * np.dot(self.L[0:k, :], self.obs1)
-        acorr = np.dot(self.ev_t[:, 0:k], acorr_amp)
-        acorrn = correlation(self.T, self.obs1, times=self.times, k=k)
-        assert_allclose(acorrn, acorr)
+    """k=4"""
+    k = 4
+    acorr_amp = np.dot(mu * obs1, R[:, 0:k]) * np.dot(L[0:k, :], obs1)
+    acorr = np.dot(ev_t[:, 0:k], acorr_amp)
+    acorrn = correlation(T, obs1, times=times, k=k)
+    assert_allclose(acorrn, acorr)
 
-        """Cross-correlation"""
+    """Cross-correlation"""
 
+    if not fingerprints_data.sparse:
         """k=None"""
-        corr_amp = np.dot(self.mu * self.obs1, self.R) * np.dot(self.L, self.obs2)
-        corr = np.dot(self.ev_t, corr_amp)
-        corrn = correlation(self.T, self.obs1, obs2=self.obs2, times=self.times)
+        corr_amp = np.dot(mu * obs1, R) * np.dot(L, obs2)
+        corr = np.dot(ev_t, corr_amp)
+        corrn = correlation(T, obs1, obs2=obs2, times=times)
         assert_allclose(corrn, corr)
 
-        """k=4"""
-        k = self.k
-        corr_amp = np.dot(self.mu * self.obs1, self.R[:, 0:k]) * np.dot(self.L[0:k, :], self.obs2)
-        corr = np.dot(self.ev_t[:, 0:k], corr_amp)
-        corrn = correlation(self.T, self.obs1, obs2=self.obs2, times=self.times, k=k)
-        assert_allclose(corrn, corr)
+    """k=4"""
+    k = k
+    corr_amp = np.dot(mu * obs1, R[:, 0:k]) * np.dot(L[0:k, :], obs2)
+    corr = np.dot(ev_t[:, 0:k], corr_amp)
+    corrn = correlation(T, obs1, obs2=obs2, times=times, k=k)
+    assert_allclose(corrn, corr)
 
 
-class TestRelaxationDense(unittest.TestCase):
-    def setUp(self):
-        p = np.zeros(10)
-        q = np.zeros(10)
-        p[0:-1] = 0.5
-        q[1:] = 0.5
-        p[4] = 0.01
-        q[6] = 0.1
+def test_relaxation(fingerprints_data):
+    T = fingerprints_data.transition_matrix
+    R, D, L = rdl_decomposition(T, k=4 if fingerprints_data.sparse else None)
 
-        self.bdc = birth_death_chain(q, p)
+    times = np.array([1, 5, 10, 20, 100])
+    ev = np.diagonal(D)
+    ev_t = ev[np.newaxis, :] ** times[:, np.newaxis]
 
-        self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix
+    obs = np.zeros(10)
+    obs[0] = 1
+    obs[1] = 1
 
-        """Test matrix-vector product against spectral decomposition"""
-        R, D, L = rdl_decomposition(self.T)
-        self.L = L
-        self.R = R
-        self.ts = timescales(self.T)
-        self.times = np.array([1, 5, 10, 20, 100])
+    p0 = np.zeros(10)
+    p0[:4] = 0.25
 
-        ev = np.diagonal(D)
-        self.ev_t = ev[np.newaxis, :] ** self.times[:, np.newaxis]
-
-        self.k = 4
-
-        """Observable"""
-        obs1 = np.zeros(10)
-        obs1[0] = 1
-        obs1[1] = 1
-        self.obs = obs1
-
-        """Initial distribution"""
-        w0 = np.zeros(10)
-        w0[0:4] = 0.25
-        self.p0 = w0
-
-    def test_relaxation(self):
+    if not fingerprints_data.sparse:
         """k=None"""
-        relax_amp = np.dot(self.p0, self.R) * np.dot(self.L, self.obs)
-        relax = np.dot(self.ev_t, relax_amp)
-        relaxn = relaxation(self.T, self.p0, self.obs, times=self.times)
+        relax_amp = np.dot(p0, R) * np.dot(L, obs)
+        relax = np.dot(ev_t, relax_amp)
+        relaxn = relaxation(T, p0, obs, times=times)
         assert_allclose(relaxn, relax)
 
-        """k=4"""
-        k = self.k
-        relax_amp = np.dot(self.p0, self.R[:, 0:k]) * np.dot(self.L[0:k, :], self.obs)
-        relax = np.dot(self.ev_t[:, 0:k], relax_amp)
-        relaxn = relaxation(self.T, self.p0, self.obs, k=k, times=self.times)
-        assert_allclose(relaxn, relax)
-
-
-# ===================
-# Sparse
-# ===================
-
-class TestFingerprintSparse(unittest.TestCase):
-    def setUp(self):
-        self.k = 4
-
-        p = np.zeros(10)
-        q = np.zeros(10)
-        p[0:-1] = 0.5
-        q[1:] = 0.5
-        p[4] = 0.01
-        q[6] = 0.1
-
-        self.bdc = birth_death_chain(q, p, sparse=True)
-
-        self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix
-        R, D, L = rdl_decomposition(self.T, k=self.k)
-        self.L = L
-        self.R = R
-        self.ts = timescales(self.T, k=self.k)
-        self.times = np.array([1, 5, 10, 20])
-
-        ev = np.diagonal(D)
-        self.ev_t = ev[np.newaxis, :] ** self.times[:, np.newaxis]
-
-        self.tau = 7.5
-
-        """Observables"""
-        obs1 = np.zeros(10)
-        obs1[0] = 1
-        obs1[1] = 1
-        obs2 = np.zeros(10)
-        obs2[8] = 1
-        obs2[9] = 1
-
-        self.obs1 = obs1
-        self.obs2 = obs2
-
-        """Initial vector for relaxation"""
-        w0 = np.zeros(10)
-        w0[0:4] = 0.25
-        self.p0 = w0
-
-    def test_fingerprint_correlation(self):
-        """Autocorrelation"""
-
-        """k=4, tau=1"""
-        k = self.k
-        acorr_amp = np.dot(self.mu * self.obs1, self.R) * np.dot(self.L, self.obs1)
-        tsn, acorr_ampn = fingerprint_correlation(self.T, self.obs1, k=k)
-        assert_allclose(tsn, self.ts)
-        assert_allclose(acorr_ampn, acorr_amp)
-
-        """k=4, tau=7.5"""
-        tau = self.tau
-        tsn, acorr_ampn = fingerprint_correlation(self.T, self.obs1, k=k, tau=tau)
-        assert_allclose(tsn, tau * self.ts)
-        assert_allclose(acorr_ampn, acorr_amp)
-
-        """Cross-correlation"""
-
-        """k=4, tau=1"""
-        k = self.k
-        corr_amp = np.dot(self.mu * self.obs1, self.R) * np.dot(self.L, self.obs2)
-        tsn, corr_ampn = fingerprint_correlation(self.T, self.obs1, obs2=self.obs2, k=k)
-        assert_allclose(tsn, self.ts)
-        assert_allclose(corr_ampn, corr_amp)
-
-        """k=4, tau=7.5"""
-        tau = self.tau
-        tsn, corr_ampn = fingerprint_correlation(self.T, self.obs1, obs2=self.obs2, k=k, tau=tau)
-        assert_allclose(tsn, tau * self.ts)
-        assert_allclose(corr_ampn, corr_amp)
-
-    def test_fingerprint_relaxation(self):
-        one_vec = np.ones(self.T.shape[0])
-
-        relax_amp = np.dot(self.p0, self.R) * np.dot(self.L, self.obs1)
-        tsn, relax_ampn = fingerprint_relaxation(self.T, self.p0, self.obs1, k=self.k)
-        assert_allclose(tsn, self.ts)
-        assert_allclose(relax_ampn, relax_amp)
-
-
-class TestCorrelationSparse(unittest.TestCase):
-    def setUp(self):
-        self.k = 4
-
-        p = np.zeros(10)
-        q = np.zeros(10)
-        p[0:-1] = 0.5
-        q[1:] = 0.5
-        p[4] = 0.01
-        q[6] = 0.1
-
-        self.bdc = birth_death_chain(q, p, sparse=True)
-
-        self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix
-        R, D, L = rdl_decomposition(self.T, k=self.k)
-        self.L = L
-        self.R = R
-        self.ts = timescales(self.T, k=self.k)
-        self.times = np.array([1, 5, 10, 20, 100])
-
-        ev = np.diagonal(D)
-        self.ev_t = ev[np.newaxis, :] ** self.times[:, np.newaxis]
-
-        obs1 = np.zeros(10)
-        obs1[0] = 1
-        obs1[1] = 1
-        obs2 = np.zeros(10)
-        obs2[8] = 1
-        obs2[9] = 1
-
-        self.obs1 = obs1
-        self.obs2 = obs2
-        self.one_vec = np.ones(10)
-
-    def test_correlation(self):
-        """Auto-correlation"""
-        acorr_amp = np.dot(self.mu * self.obs1, self.R) * np.dot(self.L, self.obs1)
-        acorr = np.dot(self.ev_t, acorr_amp)
-        acorrn = correlation(self.T, self.obs1, k=self.k, times=self.times)
-        assert_allclose(acorrn, acorr)
-
-        """Cross-correlation"""
-        corr_amp = np.dot(self.mu * self.obs1, self.R) * np.dot(self.L, self.obs2)
-        corr = np.dot(self.ev_t, corr_amp)
-        corrn = correlation(self.T, self.obs1, obs2=self.obs2, k=self.k, times=self.times)
-        assert_allclose(corrn, corr)
-
-
-class TestRelaxationSparse(unittest.TestCase):
-    def setUp(self):
-        self.k = 4
-
-        p = np.zeros(10)
-        q = np.zeros(10)
-        p[0:-1] = 0.5
-        q[1:] = 0.5
-        p[4] = 0.01
-        q[6] = 0.1
-
-        self.bdc = birth_death_chain(q, p, sparse=True)
-
-        self.mu = self.bdc.stationary_distribution
-        self.T = self.bdc.transition_matrix
-
-        """Test matrix-vector product against spectral decomposition"""
-        R, D, L = rdl_decomposition(self.T, k=self.k)
-        self.L = L
-        self.R = R
-        self.ts = timescales(self.T, k=self.k)
-        self.times = np.array([1, 5, 10, 20, 100])
-
-        ev = np.diagonal(D)
-        self.ev_t = ev[np.newaxis, :] ** self.times[:, np.newaxis]
-
-        """Observable"""
-        obs1 = np.zeros(10)
-        obs1[0] = 1
-        obs1[1] = 1
-        self.obs = obs1
-
-        """Initial distribution"""
-        w0 = np.zeros(10)
-        w0[0:4] = 0.25
-        self.p0 = w0
-
-    def test_relaxation(self):
-        relax_amp = np.dot(self.p0, self.R) * np.dot(self.L, self.obs)
-        relax = np.dot(self.ev_t, relax_amp)
-        relaxn = relaxation(self.T, self.p0, self.obs, k=self.k, times=self.times)
-        assert_allclose(relaxn, relax)
+    """k=4"""
+    k = 4
+    relax_amp = np.dot(p0, R[:, 0:k]) * np.dot(L[0:k, :], obs)
+    relax = np.dot(ev_t[:, 0:k], relax_amp)
+    relaxn = relaxation(T, p0, obs, k=k, times=times)
+    assert_allclose(relaxn, relax)

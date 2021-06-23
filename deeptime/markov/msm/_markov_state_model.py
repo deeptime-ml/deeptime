@@ -268,20 +268,21 @@ class MarkovStateModel(Model):
         """ Number of Lanczos vectors used when computing the partial eigenvalue decomposition """
         return self._ncv
 
-    def submodel(self, states: np.ndarray):
+    def submodel(self, states):
         r"""
         Restricts this markov state model to a subset of states by taking a submatrix of the transition matrix
         and re-normalizing it, as well as restricting the stationary distribution and count model if given.
 
         Parameters
         ----------
-        states : ndarray(m, dtype=int)
+        states : array_like of int
             states to restrict to
         Returns
         -------
         submodel : MarkovStateModel
             A onto the given states restricted MSM.
         """
+        states = np.asarray(states)
         if np.any(states >= self.n_states):
             raise ValueError("At least one of the given states is not contained in this model "
                              "(n_states={}, max. given state={}).".format(self.n_states, np.max(states)))
@@ -492,7 +493,7 @@ class MarkovStateModel(Model):
             self._ensure_eigenvalues()
         else:
             self._ensure_eigenvalues(neig=k + 1)
-        from deeptime.markov.tools.analysis.dense._decomposition import timescales_from_eigenvalues as timescales
+        from deeptime.markov.tools.analysis import timescales_from_eigenvalues as timescales
 
         ts = timescales(self._eigenvalues, tau=self.lagtime)
         if k is None:

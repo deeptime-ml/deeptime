@@ -10,7 +10,7 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from scipy.sparse.construct import diags
 
-from ._stationary_vector import stationary_distribution
+from .._stationary_vector import stationary_distribution
 
 
 def expected_counts(p0, T, N):
@@ -80,12 +80,12 @@ def expected_counts_stationary(T, n, mu=None):
         Expected value for transition counts after N steps.
 
     """
-    if (n <= 0):
+    if n <= 0:
         EC = coo_matrix(T.shape, dtype=float)
         return EC
     else:
         if mu is None:
-            mu = stationary_distribution(T)
+            mu = stationary_distribution(T, check_inputs=False)
         D_mu = diags(mu, 0)
         EC = n * D_mu.dot(T)
         return EC

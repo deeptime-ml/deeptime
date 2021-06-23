@@ -2,13 +2,11 @@
     Sparse assessment module of msm analysis package
 """
 
-from scipy.sparse.csgraph import connected_components
-from scipy.sparse.sputils import isdense
-from scipy.sparse.construct import diags
-
 import numpy as np
+import scipy.sparse as sparse
 
 from deeptime.numeric import allclose_sparse
+from ._stationary_vector import stationary_distribution
 
 
 def is_transition_matrix(T, tol):
@@ -29,21 +27,24 @@ def is_transition_matrix(T, tol):
         False, otherwise
 
     """
-    T = T.tocsr()  # compressed sparse row for fast row slicing
-    values = T.data  # non-zero entries of T
+    if T.ndim != 2 or T.shape[0] != T.shape[1]:
+        return False
 
-    """Check entry-wise positivity"""
+    if sparse.issparse(T):
+        T = T.tocsr()  # compressed sparse row for fast row slicing
+        values = T.data  # non-zero entries of T
+    else:
+        values = T
+
     is_positive = np.allclose(values, np.abs(values), rtol=tol)
-
-    """Check row normalization"""
     is_normed = np.allclose(T.sum(axis=1), 1.0, rtol=tol)
 
     return is_positive and is_normed
 
 
 def is_rate_matrix(K, tol):
-    """
-    True if K is a rate matrix
+    r""" True if K is a rate matrix
+
     Parameters
     ----------
     K : scipy.sparse matrix
@@ -57,26 +58,19 @@ def is_rate_matrix(K, tol):
         True, if K negated diagonal is positive and row sums up to zero.
         False, otherwise
     """
-    K = K.tocsr()
+    if sparse.issparse(K):
+        K = K.tocsr()
 
     # check rows sum up to zero.
     row_sum = K.sum(axis=1)
-    sum_eq_zero = np.allclose(row_sum, np.zeros(shape=row_sum.shape), atol=tol)
+    sum_eq_zero = np.allclose(row_sum, 0., atol=tol)
 
-    # store copy of original diagonal
-    org_diag = K.diagonal()
+    R = K - K.diagonal()
+    if sparse.issparse(R):
+        R = R.values  # extract nonzero entries
+    off_diagonal_positive = np.allclose(R, np.abs(R), rtol=0, atol=tol)
 
-    # substract diagonal
-    K = K - diags(org_diag, 0)
-
-    # check off diagonals are > 0
-    values = K.data
-    values_gt_zero = np.allclose(values, np.abs(values), atol=tol)
-
-    # add diagonal
-    K = K + diags(org_diag, 0)
-
-    return values_gt_zero and sum_eq_zero
+    return off_diagonal_positive and sum_eq_zero
 
 
 def is_reversible(T, mu=None, tol=1e-15):
@@ -104,16 +98,21 @@ def is_reversible(T, mu=None, tol=1e-15):
     if not is_transition_matrix(T, tol):
         raise ValueError("given matrix is not a valid transition matrix.")
 
-    T = T.tocsr()
+    if sparse.issparse(T):
+        T = T.tocsr()
 
     if mu is None:
-        from deeptime.markov.tools.analysis import stationary_distribution
         mu = stationary_distribution(T)
 
-    Mu = diags(mu, 0)
-    prod = Mu * T
+    if sparse.issparse(T):
+        prod = sparse.construct.diags(mu) * T
+    else:
+        prod = mu[:, None] * T
 
-    return allclose_sparse(prod, prod.transpose(), rtol=tol)
+    if sparse.issparse(T):
+        return allclose_sparse(prod, prod.transpose(), rtol=tol)
+    else:
+        return np.allclose(prod, prod.transpose(), rtol=tol)
 
 
 def is_connected(T, directed=True):
@@ -136,7 +135,9 @@ def is_connected(T, directed=True):
 
 
     """
-    nc = connected_components(T, directed=directed, connection='strong', return_labels=False)
+    if not sparse.issparse(T):
+        T = sparse.csr_matrix(T)
+    nc = sparse.csgraph.connected_components(T, directed=directed, connection='strong', return_labels=False)
     return nc == 1
 
 
@@ -154,16 +155,11 @@ def is_ergodic(T, tol):
     Returns
     -------
     Truth value : bool
-    True, if # strongly connected components = 1
-    False, otherwise
+        True, if # strongly connected components = 1
+        False, otherwise
     """
-    if isdense(T):
-        T = T.tocsr()
+    if not sparse.issparse(T):
+        T = sparse.csr_matrix(T)
     if not is_transition_matrix(T, tol):
         raise ValueError("given matrix is not a valid transition matrix.")
-
-    num_components = connected_components(T, directed=True, \
-                                          connection='strong', \
-                                          return_labels=False)
-
-    return num_components == 1
+    return is_connected(T, True)

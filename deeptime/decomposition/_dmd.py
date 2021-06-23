@@ -3,7 +3,7 @@ from typing import Optional, Callable
 import numpy as np
 import scipy
 
-from ._koopman import KoopmanModel
+from ._koopman import TransferOperatorModel
 from ..base import Model, Transformer, EstimatorTransformer
 from ..kernels import Kernel
 from ..numeric import sort_eigs, eigs
@@ -147,7 +147,8 @@ class DMD(EstimatorTransformer):
             Reference to self.
         """
         dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
-        X, Y = dataset.data.T, dataset.data_lagged.T  # per convention arrays are [T, d] so here we transpose them
+        X, Y = dataset[:]
+        X, Y = X.T, Y.T  # per convention arrays are [T, d] so here we transpose them
 
         U, s, Vt = self._svd(X, full_matrices=False)
         if self.rank is not None:
@@ -196,7 +197,7 @@ class DMD(EstimatorTransformer):
         return self.fetch_model().transform(data, **kwargs)
 
 
-class EDMDModel(KoopmanModel):
+class EDMDModel(TransferOperatorModel):
     r""" The EDMD model which can be estimated from a :class:`EDMD` estimator. It possesses the estimated operator
     as well as capabilities to project onto modes.
 
@@ -312,7 +313,7 @@ class EDMD(EstimatorTransformer):
             Reference to self.
         """
         dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
-        x, y = dataset.data, dataset.data_lagged
+        x, y = dataset[:]
         n_data = x.shape[0]
         assert n_data == y.shape[0], "Trajectories for data and timelagged data must be of same length!"
         psi_x = self.basis(x).T
@@ -331,7 +332,7 @@ class EDMD(EstimatorTransformer):
         return self
 
 
-class KernelEDMDModel(KoopmanModel):
+class KernelEDMDModel(TransferOperatorModel):
     r""" The kEDMD model containing eigenvalues and eigenfunctions evaluated in the instantaneous data.
 
     Parameters
@@ -411,11 +412,12 @@ class KernelEDMD(EstimatorTransformer):
             Reference to self.
         """
         dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
-        gram_0 = self.kernel.gram(dataset.data)  # G_XX
-        gram_1 = self.kernel.apply(dataset.data, dataset.data_lagged)  # G_XY
+        x, y = dataset[:]
+        gram_0 = self.kernel.gram(x)  # G_XX
+        gram_1 = self.kernel.apply(x, y)  # G_XY
 
         A = scipy.linalg.solve(gram_0 + self.epsilon * np.eye(gram_0.shape[0]), gram_1.T, assume_a='sym')
         eigenvalues, eigenvectors = eigs(A, n_eigs=self.n_eigs)
         eigenvalues, eigenvectors = sort_eigs(eigenvalues, eigenvectors)
-        self._model = KernelEDMDModel(dataset.data, eigenvalues, eigenvectors, self.kernel)
+        self._model = KernelEDMDModel(x, eigenvalues, eigenvectors, self.kernel)
         return self

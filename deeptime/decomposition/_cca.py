@@ -4,13 +4,13 @@ import numpy as np
 import scipy
 
 from ..base import Estimator
-from ..decomposition import KoopmanModel
+from ..decomposition import TransferOperatorModel
 from ..kernels import Kernel
 from ..numeric import sort_eigs
 from ..util.types import to_dataset
 
 
-class KernelCCAModel(KoopmanModel):
+class KernelCCAModel(TransferOperatorModel):
     r""" The model produced by the :class:`KernelCCA` estimator.
 
     Parameters
@@ -92,11 +92,12 @@ class KernelCCA(Estimator):
             Reference to self.
         """
         dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
-        gram_0 = self.kernel.gram(dataset.data)
-        gram_t = self.kernel.gram(dataset.data_lagged)
+        x, y = dataset[:]
+        gram_0 = self.kernel.gram(x)
+        gram_t = self.kernel.gram(y)
 
         # center Gram matrices
-        n = dataset.data.shape[0]
+        n = x.shape[0]
         I = np.eye(n)  # identity
         N = I - np.full((n, n), fill_value=1. / n)  # centering matrix
         G_0 = np.linalg.multi_dot([N, gram_0, N])
@@ -113,7 +114,7 @@ class KernelCCA(Estimator):
             eigenvectors = eigenvectors[:, :self.n_eigs]
             eigenvalues = eigenvalues[:self.n_eigs]
 
-        self._model = KernelCCAModel(dataset.data, self.kernel, eigenvalues, eigenvectors)
+        self._model = KernelCCAModel(x, self.kernel, eigenvalues, eigenvectors)
         return self
 
     def fetch_model(self) -> Optional[KernelCCAModel]:

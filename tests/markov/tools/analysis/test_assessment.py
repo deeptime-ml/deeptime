@@ -11,7 +11,6 @@ from scipy.sparse import dia_matrix, csr_matrix, issparse, coo_matrix
 
 from deeptime.data import birth_death_chain
 from deeptime.markov.tools.analysis import is_rate_matrix, is_transition_matrix, is_reversible, is_connected
-from deeptime.markov.tools.analysis.dense import assessment
 
 
 def normalize_rows(A):
@@ -100,14 +99,14 @@ def rate_matrix(request):
 
 @pytest.mark.parametrize("rate_matrix", [False, True], indirect=True, ids=lambda x: f"sparse={x}")
 def test_is_rate_matrix(rate_matrix):
-    assert_(assessment.is_rate_matrix(rate_matrix))
+    assert_(is_rate_matrix(rate_matrix))
     if issparse(rate_matrix):
         rate_matrix = rate_matrix.toarray()
         rate_matrix[0][0] = 3
         rate_matrix = csr_matrix(rate_matrix)
     else:
         rate_matrix[0][0] = 3
-    assert_(not assessment.is_rate_matrix(rate_matrix))
+    assert_(not is_rate_matrix(rate_matrix))
 
 
 @pytest.mark.parametrize("mm1_queue_rate_matrix", [(10, False), (10, True)], indirect=True,

@@ -5,7 +5,7 @@ Created on 22.11.2013
 """
 
 import numpy
-from ._stationary_vector import stationary_distribution
+from .._stationary_vector import stationary_distribution
 
 
 # TODO:make faster. So far not effectively programmed

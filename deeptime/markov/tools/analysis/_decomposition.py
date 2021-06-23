@@ -1,49 +1,63 @@
 r"""This module provides matrix-decomposition based functions for the
 analysis of stochastic matrices
 
-Below are the dense implementations for functions specified in api
-Dense matrices are represented by numpy.ndarrays throughout this module.
-
 .. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
-
+.. moduleauthor:: M.Hoffmann
 """
 
 import numpy as np
-import numbers
+import scipy.sparse as sparse
+import scipy.linalg as la
+import scipy.sparse.linalg as sla
 import warnings
 
-from scipy.linalg import eig, eigh, eigvals, eigvalsh, solve
-
 from deeptime.util.exceptions import ImaginaryEigenValueWarning, SpectralWarning
+
 from ._stationary_vector import stationary_distribution
 from ._assessment import is_reversible
 
 
-def eigenvalues(T, k=None, reversible=False, mu=None):
-    r"""Compute eigenvalues of given transition matrix.
+def _symmetrize(T, mu=None):
+    if mu is None:
+        mu = stationary_distribution(T)
+    if np.any(mu <= 0):
+        raise ValueError('Cannot symmetrize transition matrix')
+    """ symmetrize T """
+    smu = np.sqrt(mu)
+    if sparse.issparse(T):
+        D = sparse.diags(smu, 0)
+        Dinv = sparse.diags(1.0 / smu, 0)
+        S = (D.dot(T)).dot(Dinv)
+    else:
+        S = smu[:, None] * T / smu
+    return smu, S
+
+
+def eigenvalues(T, k=None, ncv=None, reversible=False, mu=None):
+    r"""Compute the eigenvalues of a sparse transition matrix.
 
     Parameters
     ----------
-    T : (d, d) ndarray
-        Transition matrix (stochastic matrix)
-    k : int or tuple of ints, optional
-        Compute the first k eigenvalues of T
+    T : (M, M) scipy.sparse matrix or ndarray
+        Transition matrix
+    k : int, optional
+        Number of eigenvalues to compute.
+    ncv : int, optional
+        The number of Lanczos vectors generated, `ncv` must be greater than k;
+        it is recommended that ncv > 2*k
     reversible : bool, optional
         Indicate that transition matrix is reversible
-    mu : (d,) ndarray, optional
+    mu : (M,) ndarray, optional
         Stationary distribution of T
 
     Returns
     -------
-    eig : (n,) ndarray,
-        The eigenvalues of T ordered with decreasing absolute value.
-        If k is None then n=d, if k is int then n=k otherwise
-        n is the length of the given tuple of eigenvalue indices.
+    v : (k,) ndarray
+        Eigenvalues of T
 
     Notes
     -----
-    Eigenvalues are computed using the numpy.linalg interface
-    for the corresponding LAPACK routines.
+    The first k eigenvalues of largest magnitude are computed.
 
     If reversible=True the the eigenvalues of the similar symmetric
     matrix `\sqrt(\mu_i / \mu_j) p_{ij}` will be computed.
@@ -52,69 +66,70 @@ def eigenvalues(T, k=None, reversible=False, mu=None):
     reversible=True.
 
     """
-    if reversible:
-        try:
-            evals = eigenvalues_rev(T, k=k, mu=mu)
-        except ValueError:
-            evals = eigvals(T).real  # use fallback code but cast to real
+    is_sparse = sparse.issparse(T)
+    if is_sparse and k is None:
+        raise ValueError("Number of eigenvalues required for decomposition of sparse matrix")
     else:
-        evals = eigvals(T)  # nonreversible
+        if reversible:
+            try:
+                v = eigenvalues_rev(T, k, ncv=ncv, mu=mu)
+            except ValueError:  # use fallback code, but cast to real
+                if is_sparse:
+                    v = sla.eigs(T, k=k, which='LM', return_eigenvectors=False, ncv=ncv).real
+                else:
+                    v = la.eigvals(T).real
+        else:
+            # nonreversible
+            if is_sparse:
+                v = sla.eigs(T, k=k, which='LM', return_eigenvectors=False, ncv=ncv)
+            else:
+                v = la.eigvals(T)
 
-    """Sort by decreasing absolute value"""
-    ind = np.argsort(np.abs(evals))[::-1]
-    evals = evals[ind]
-
-    if isinstance(k, (list, set, tuple)):
-        try:
-            return [evals[n] for n in k]
-        except IndexError:
-            raise ValueError("given indices do not exist: ", k)
-    elif k is not None:
-        return evals[: k]
-    else:
-        return evals
+    ind = np.argsort(np.abs(v))[::-1][:k]  # top k
+    return v[ind]
 
 
-def eigenvalues_rev(T, k=None, mu=None):
-    r"""Compute eigenvalues of reversible transition matrix.
+def eigenvalues_rev(T, k, ncv=None, mu=None):
+    r"""Compute the eigenvalues of a reversible, sparse transition matrix.
 
     Parameters
     ----------
-    T : (d, d) ndarray
-        Transition matrix (stochastic matrix)
-    k : int or tuple of ints, optional
-        Compute the first k eigenvalues of T
-    mu : (d,) ndarray, optional
+    T : (M, M) scipy.sparse matrix
+        Transition matrix
+    k : int
+        Number of eigenvalues to compute.
+    ncv : int, optional
+        The number of Lanczos vectors generated, `ncv` must be greater than k;
+        it is recommended that ncv > 2*k
+    mu : (M,) ndarray, optional
         Stationary distribution of T
 
     Returns
     -------
-    eig : (n,) ndarray,
-        The eigenvalues of T ordered with decreasing absolute value.
-        If k is None then n=d, if k is int then n=k otherwise
-        n is the length of the given tuple of eigenvalue indices.
+    v : (k,) ndarray
+        Eigenvalues of T
 
     Raises
     ------
     ValueError
         If stationary distribution is nonpositive.
 
+    Notes
+    -----
+    The first k eigenvalues of largest magnitude are computed.
+
     """
 
-    """compute stationary distribution if not given"""
-    if mu is None:
-        mu = stationary_distribution(T)
-    if np.any(mu <= 0):
-        raise ValueError('Cannot symmetrize transition matrix')
-    """ symmetrize T """
-    smu = np.sqrt(mu)
-    S = smu[:,None] * T / smu
-    """ symmetric eigenvalue problem """
-    evals = eigvalsh(S)
+    _, S = _symmetrize(T, mu=mu)
+    """Compute eigenvalues using a solver for symmetric/hermititan eigenproblems"""
+    if sparse.issparse(T):
+        evals = sla.eigsh(S, k=k, ncv=ncv, which='LM', return_eigenvectors=False)
+    else:
+        evals = la.eigvalsh(S)
     return evals
 
 
-def eigenvectors(T, k=None, right=True, reversible=False, mu=None):
+def eigenvectors(T, k=None, right=True, reversible=False, mu=None, ncv=None):
     r"""Compute eigenvectors of transition matrix.
 
     Parameters
@@ -152,94 +167,36 @@ def eigenvectors(T, k=None, right=True, reversible=False, mu=None):
     reversible=True.
 
     """
+    is_sparse = sparse.issparse(T)
+
+    if is_sparse and k is None:
+        raise ValueError("Number of eigenvectors required for decomposition of sparse matrix")
+
     if reversible:
-        eigvec = eigenvectors_rev(T, right=right, mu=mu)
+        smu, S = _symmetrize(T, mu=mu)
+        if is_sparse:
+            val, vecs = sla.eigsh(S, k=k, ncv=ncv, which='LM', return_eigenvectors=True)
+        else:
+            val, vecs = la.eigh(S)
+        """Sort eigenvectors"""
+        perm = np.argsort(np.abs(val))[::-1][:k]
+        eigvec = vecs[:, perm]
+        if right:
+            eigvec /= smu[:, None]
+        else:
+            eigvec *= smu[:, None]
     else:
-        eigvec = eigenvectors_nrev(T, right=right)
+        if not is_sparse:
+            val, vecs = la.eig(T, left=not right, right=right)
+        else:
+            val, vecs = sla.eigs(T if right else T.transpose(), k=k, which='LM', ncv=ncv)
+        perm = np.argsort(np.abs(val))[::-1][:k]
+        eigvec = vecs[:, perm]
 
-    """ Return eigenvectors """
-    if k is None:
-        return eigvec
-    elif isinstance(k, numbers.Integral):
-        return eigvec[:, 0:k]
-    else:
-        ind = np.asarray(k)
-        return eigvec[:, ind]
-
-
-def eigenvectors_nrev(T, right=True):
-    r"""Compute eigenvectors of transition matrix.
-
-    Parameters
-    ----------
-    T : (d, d) ndarray
-        Transition matrix (stochastic matrix)
-    k : int or tuple of ints, optional
-        Compute the first k eigenvalues of T
-    right : bool, optional
-        If right=True compute right eigenvectors, left eigenvectors
-        otherwise
-
-    Returns
-    -------
-    eigvec : (d, d) ndarray
-        The eigenvectors of T ordered with decreasing absolute value
-        of the corresponding eigenvalue
-
-    """
-    if right:
-        val, R = eig(T, left=False, right=True)
-        """ Sorted eigenvalues and left and right eigenvectors. """
-        perm = np.argsort(np.abs(val))[::-1]
-        # eigval=val[perm]
-        eigvec = R[:, perm]
-
-    else:
-        val, L = eig(T, left=True, right=False)
-
-        """ Sorted eigenvalues and left and right eigenvectors. """
-        perm = np.argsort(np.abs(val))[::-1]
-        # eigval=val[perm]
-        eigvec = L[:, perm]
     return eigvec
 
 
-def eigenvectors_rev(T, right=True, mu=None):
-    r"""Compute eigenvectors of reversible transition matrix.
-
-    Parameters
-    ----------
-    T : (d, d) ndarray
-        Transition matrix (stochastic matrix)
-    right : bool, optional
-        If right=True compute right eigenvectors, left eigenvectors
-        otherwise
-    mu : (d,) ndarray, optional
-        Stationary distribution of T
-
-    Returns
-    -------
-    eigvec : (d, d) ndarray
-        The eigenvectors of T ordered with decreasing absolute value
-        of the corresponding eigenvalue
-
-    """
-    if mu is None:
-        mu = stationary_distribution(T)
-    """ symmetrize T """
-    smu = np.sqrt(mu)
-    S = smu[:,None] * T / smu
-    val, eigvec = eigh(S)
-    """Sort eigenvectors"""
-    perm = np.argsort(np.abs(val))[::-1]
-    eigvec = eigvec[:, perm]
-    if right:
-        return eigvec / smu[:, np.newaxis]
-    else:
-        return eigvec * smu[:, np.newaxis]
-
-
-def rdl_decomposition(T, k=None, reversible=False, norm='standard', mu=None):
+def rdl_decomposition(T, k=None, ncv=None, reversible=False, norm='standard', mu=None):
     r"""Compute the decomposition into left and right eigenvectors.
 
     Parameters
@@ -283,6 +240,8 @@ def rdl_decomposition(T, k=None, reversible=False, norm='standard', mu=None):
     reversible=True.
 
     """
+    if sparse.issparse(T) and k is None:
+        raise ValueError("Number of eigenvectors required for decomposition of sparse matrix")
     # auto-set norm
     if norm == 'auto':
         if is_reversible(T):
@@ -291,20 +250,17 @@ def rdl_decomposition(T, k=None, reversible=False, norm='standard', mu=None):
             norm = 'standard'
 
     if reversible:
-        R, D, L = rdl_decomposition_rev(T, norm=norm, mu=mu)
+        R, D, L = rdl_decomposition_rev(T, norm=norm, mu=mu, k=k, ncv=ncv)
     else:
-        R, D, L = rdl_decomposition_nrev(T, norm=norm)
+        R, D, L = rdl_decomposition_nrev(T, norm=norm, k=k, ncv=ncv)
 
     if reversible or norm == 'reversible':
         D = D.real
 
-    if k is None:
-        return R, D, L
-    else:
-        return R[:, 0:k], D[0:k, 0:k], L[0:k, :]
+    return R[:, :k], D[:k, :k], L[:k, :]
 
 
-def rdl_decomposition_nrev(T, norm='standard'):
+def rdl_decomposition_nrev(T, norm='standard', k=None, ncv=None):
     r"""Decomposition into left and right eigenvectors.
 
     Parameters
@@ -333,35 +289,52 @@ def rdl_decomposition_nrev(T, norm='standard'):
 
 
     """
+    is_sparse = sparse.issparse(T)
     d = T.shape[0]
-    w, R = eig(T)
+    if is_sparse:
+        v, R = sla.eigs(T, k=k, which='LM', ncv=ncv)
+    else:
+        v, R = la.eig(T)
 
     """Sort by decreasing magnitude of eigenvalue"""
-    ind = np.argsort(np.abs(w))[::-1]
-    w = w[ind]
+    ind = np.argsort(np.abs(v))[::-1]
+    v = v[ind]
     R = R[:, ind]
 
     """Diagonal matrix containing eigenvalues"""
-    D = np.diag(w)
+    D = np.diag(v)
 
     # Standard norm: Euclidean norm is 1 for r and LR = I.
     if norm == 'standard':
-        L = solve(np.transpose(R), np.eye(d))
+        if is_sparse:
+            r, L = sla.eigs(T.transpose(), k=k, which='LM', ncv=ncv)
+            ind = np.argsort(np.abs(r))[::-1]
+            L = L[:, ind]
+        else:
+            L = la.solve(np.transpose(R), np.eye(d))
 
         """l1- normalization of L[:, 0]"""
         R[:, 0] = R[:, 0] * np.sum(L[:, 0])
         L[:, 0] = L[:, 0] / np.sum(L[:, 0])
 
+        if is_sparse:  # in dense case we already got this
+            """Standard normalization L'R=Id"""
+            ov = np.diag(np.dot(np.transpose(L), R))
+            R = R / ov[np.newaxis, :]
+
         return R, D, np.transpose(L)
 
     # Reversible norm:
     elif norm == 'reversible':
-        b = np.zeros(d)
-        b[0] = 1.0
+        if is_sparse:
+            mu = stationary_distribution(T)
+        else:
+            b = np.zeros(d)
+            b[0] = 1.0
 
-        A = np.transpose(R)
-        nu = solve(A, b)
-        mu = nu / np.sum(nu)
+            A = np.transpose(R)
+            nu = la.solve(A, b)
+            mu = nu / np.sum(nu)
 
         """Ensure that R[:,0] is positive"""
         R[:, 0] = R[:, 0] / np.sign(R[0, 0])
@@ -382,7 +355,7 @@ def rdl_decomposition_nrev(T, norm='standard'):
         raise ValueError("Keyword 'norm' has to be either 'standard' or 'reversible'")
 
 
-def rdl_decomposition_rev(T, norm='reversible', mu=None):
+def rdl_decomposition_rev(T, norm='reversible', mu=None, ncv=None, k=None):
     r"""Decomposition into left and right eigenvectors for reversible
     transition matrices.
 
@@ -422,12 +395,14 @@ def rdl_decomposition_rev(T, norm='reversible', mu=None):
     distribution is given.
 
     """
-    if mu is None:
-        mu = stationary_distribution(T)
     """ symmetrize T """
-    smu = np.sqrt(mu)
-    S = smu[:,None] * T / smu
-    val, eigvec = eigh(S)
+    is_sparse = sparse.issparse(T)
+    smu, S = _symmetrize(T, mu)
+    if is_sparse:
+        val, eigvec = sla.eigsh(S, k=k, ncv=ncv, which='LM', return_eigenvectors=True)
+    else:
+        val, eigvec = la.eigh(S)
+
     """Sort eigenvalues and eigenvectors"""
     perm = np.argsort(np.abs(val))[::-1]
     val = val[perm]
@@ -445,7 +420,7 @@ def rdl_decomposition_rev(T, norm='reversible', mu=None):
     R[:, 0] = R[:, 0] / tmp
 
     """Ensure that L[:, 0] is probability vector"""
-    L[:, 0] = L[:, 0] *  tmp
+    L[:, 0] = L[:, 0] * tmp
 
     if norm == 'reversible':
         return R, D, L.T
@@ -463,7 +438,7 @@ def rdl_decomposition_rev(T, norm='reversible', mu=None):
         raise ValueError("Keyword 'norm' has to be either 'standard' or 'reversible'")
 
 
-def timescales(T, tau=1, k=None, reversible=False, mu=None):
+def timescales(T, tau=1, k=None, ncv=None, reversible=False, mu=None):
     r"""Compute implied time scales of given transition matrix
 
     Parameters
@@ -494,18 +469,9 @@ def timescales(T, tau=1, k=None, reversible=False, mu=None):
     reversible=True.
 
     """
-    values = eigenvalues(T, reversible=reversible, mu=mu)
-
-    """Sort by absolute value"""
-    ind = np.argsort(np.abs(values))[::-1]
-    values = values[ind]
-
-    if k is None:
-        values = values
-    else:
-        values = values[0:k]
-
-    """Compute implied time scales"""
+    if sparse.issparse(T) and k is None:
+        raise ValueError("Number of time scales required for decomposition of sparse matrix")
+    values = eigenvalues(T, reversible=reversible, mu=mu, k=k, ncv=ncv)
     return timescales_from_eigenvalues(values, tau)
 
 

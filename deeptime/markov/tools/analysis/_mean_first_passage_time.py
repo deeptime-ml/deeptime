@@ -1,11 +1,7 @@
-r"""Dense implementation of mean first passage time computation
-
-.. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
-.. moduleauthor:: C.Wehmeyer <christoph DOT wehmeyer AT fu-berlin DOT de>
-
-"""
 import numpy as np
-from scipy.linalg import solve
+import scipy.linalg
+import scipy.sparse as sparse
+import scipy.sparse.linalg as sla
 from ._stationary_vector import stationary_distribution
 
 
@@ -14,7 +10,7 @@ def mfpt(T, target):
 
     Parameters
     ----------
-    T : ndarray, shape=(n,n)
+    T : sparse matrix or ndarray
         Transition matrix.
     target : int or list of int
         Target states for mfpt calculation.
@@ -60,11 +56,27 @@ def mfpt(T, target):
 
     """
     dim = T.shape[0]
-    A = np.eye(dim) - T
-    A[target, :] = 0.0
-    A[target, target] = 1.0
+    if sparse.issparse(T):
+        solve = sla.spsolve
+
+        A = sparse.eye(dim, dim) - T
+        # Convert to DOK (dictionary of keys) matrix to enable row-slicing and assignement
+        A = A.todok()
+        D = A.diagonal()
+        A[target, :] = 0.0
+        D[target] = 1.0
+        A.setdiag(D)
+        # Convert back to CSR-format for fast sparse linear algebra
+        A = A.tocsr()
+    else:
+        solve = scipy.linalg.solve
+
+        A = np.eye(dim) - T
+        A[target, :] = 0.0
+        A[target, target] = 1.0
     b = np.ones(dim)
     b[target] = 0.0
+
     m_t = solve(A, b)
     return m_t
 
@@ -74,7 +86,7 @@ def mfpt_between_sets(T, target, origin, mu=None):
 
     Parameters
     ----------
-    T : (M, M) ndarray
+    T : sparse matrix or ndarray
         Transition matrix.
     target : int or list of int
         Set of target states.

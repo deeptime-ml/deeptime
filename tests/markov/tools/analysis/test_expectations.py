@@ -57,6 +57,7 @@ def random_orthonormal_sparse_vectors(d, k):
     values = 1.0 / np.sqrt(k) * np.ones(k * k)
     return scipy.sparse.csc_matrix((values, indices, indptr))
 
+
 def to_sparse_setting(setting, output_dim):
     T, mu, v, L, R = setting
     k = T.shape[0]
@@ -98,7 +99,6 @@ def test_expected_counts_stationary(setting, sparse_mode, statdist):
     T, mu, v, L, R = setting
     N = 20
     D_mu = diags(mu, 0)
-
     EC_n = expected_counts_stationary(T, N, mu=mu if statdist else None)
     EC_true = N * D_mu.dot(T)
     assert_allclose(EC_true, EC_n)
