@@ -554,13 +554,13 @@ class TestMLHMM(unittest.TestCase):
         hmm = HiddenMarkovModel(tmat, obs)
         # dtraj halfway-split between states 0 and 1
         dtrajs = np.repeat([0, 1], 10)
-        n_samples = 300000
+        n_samples = 500000
         samples = hmm.sample_by_observation_probabilities(dtrajs, n_samples)
         # test that both hidden states map to correct distributions
         probs_hidden1 = np.histogram(dtrajs[samples[0][:, 1]], bins=2)[0] / n_samples
         probs_hidden2 = np.histogram(dtrajs[samples[1][:, 1]], bins=2)[0] / n_samples
-        assert_array_almost_equal(probs_hidden1, [.9, .1], decimal=3)
-        assert_array_almost_equal(probs_hidden2, [.4, .6], decimal=3)
+        assert_array_almost_equal(probs_hidden1, [.9, .1], decimal=2)
+        assert_array_almost_equal(probs_hidden2, [.4, .6], decimal=2)
 
     def test_simulate_HMSM(self):
         hmsm = self.hmm_lag10_largest
