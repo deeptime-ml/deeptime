@@ -198,24 +198,3 @@ def test_relaxation(fingerprints_data):
     relax = np.dot(ev_t[:, 0:k], relax_amp)
     relaxn = relaxation(T, p0, obs, k=k, times=times)
     assert_allclose(relaxn, relax)
-
-class TestPropagate(unittest.TestCase):
-    def setUp(self):
-        self.A = np.array([[0.2, 0.5, 0.3], [0.4, 0.2, 0.4], [0.0, 0.1, 0.9]])
-        self.x = np.array([0.2, 0.2, 0.2])
-
-    def test_propagate(self):
-        A = self.A
-        x = self.x
-
-        yn = propagate(A, x, 1)
-        y = np.dot(A, x)
-        assert_allclose(yn, y)
-
-        yn = propagate(A, x, 2)
-        y = np.dot(A, np.dot(A, x))
-        assert_allclose(yn, y)
-
-        yn = propagate(A, x, 100)
-        y = np.dot(np.linalg.matrix_power(A, 100), x)
-        assert_allclose(yn, y)
