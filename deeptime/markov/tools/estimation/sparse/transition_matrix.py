@@ -78,7 +78,5 @@ def transition_matrix_reversible_pisym(C, return_statdist=False, **kwargs):
     pi_rev = np.array(X.sum(axis=1)).squeeze()
     T_rev = scipy.sparse.diags(1.0/pi_rev).dot(X)
     if return_statdist:
-        #np.testing.assert_allclose(pi, stationary_distribution(T_rev))
-        #np.testing.assert_allclose(T_rev.T.dot(pi), pi)
         return T_rev, pi
     return T_rev

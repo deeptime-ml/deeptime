@@ -9,7 +9,7 @@ import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 from scipy.linalg import eig
 
-from deeptime.markov.tools.analysis.dense import expectations
+from deeptime.markov.tools.analysis import _expectations
 
 
 class TestEcMatrixVector(unittest.TestCase):
@@ -36,7 +36,7 @@ class TestEcMatrixVector(unittest.TestCase):
         T = self.T
 
         N = 20
-        EC_n = expectations.ec_matrix_vector(p0, T, N)
+        EC_n = _expectations.ec_matrix_vector(p0, T, N)
 
         """
         If p0 is the stationary vector the computation can
@@ -47,7 +47,7 @@ class TestEcMatrixVector(unittest.TestCase):
 
         """Zero length chain"""
         N = 0
-        EC_n = expectations.ec_matrix_vector(p0, T, N)
+        EC_n = _expectations.ec_matrix_vector(p0, T, N)
         EC_true = np.zeros(T.shape)
         assert_allclose(EC_true, EC_n)
 
@@ -76,7 +76,7 @@ class TestEcGeometricSeries(unittest.TestCase):
         T = self.T
 
         N = 2000
-        EC_n = expectations.ec_geometric_series(p0, T, N)
+        EC_n = _expectations.ec_geometric_series(p0, T, N)
 
         """
         If p0 is the stationary vector the computation can
@@ -87,7 +87,7 @@ class TestEcGeometricSeries(unittest.TestCase):
 
         """Zero length chain"""
         N = 0
-        EC_n = expectations.ec_geometric_series(p0, T, N)
+        EC_n = _expectations.ec_geometric_series(p0, T, N)
         EC_true = np.zeros(T.shape)
         assert_allclose(EC_true, EC_n)
 
@@ -110,15 +110,15 @@ class TestGeometricSeries(unittest.TestCase):
         pass
 
     def test_geometric_series(self):
-        x = expectations.geometric_series(self.q, self.n)
+        x = _expectations.geometric_series(self.q, self.n)
         assert_allclose(x, self.s)
 
-        x = expectations.geometric_series(self.q_array, self.n)
+        x = _expectations.geometric_series(self.q_array, self.n)
         assert_allclose(x, self.s_array)
 
         """Assert ValueError for negative n"""
         with self.assertRaises(ValueError):
-            expectations.geometric_series(self.q, -2)
+            _expectations.geometric_series(self.q, -2)
 
         with self.assertRaises(ValueError):
-            expectations.geometric_series(self.q_array, -2)
+            _expectations.geometric_series(self.q_array, -2)

@@ -6,9 +6,9 @@ expectation values for a given transition matrix.
 """
 
 import numpy as np
-
-from .._decomposition import rdl_decomposition
-from .._stationary_vector import stationary_distribution
+import scipy.sparse as sparse
+from ._decomposition import rdl_decomposition
+from ._stationary_vector import stationary_distribution
 
 
 def expected_counts(p0, T, n):
@@ -40,7 +40,7 @@ def expected_counts(p0, T, n):
 
     """
     M = T.shape[0]
-    if n <= M:
+    if sparse.issparse(T) or n <= M:
         return ec_matrix_vector(p0, T, n)
     else:
         return ec_geometric_series(p0, T, n)
@@ -72,12 +72,19 @@ def expected_counts_stationary(T, n, mu=None):
 
     """
     if n <= 0:
-        EC = np.zeros(T.shape)
+        if sparse.issparse(T):
+            EC = sparse.coo_matrix(T.shape, dtype=float)
+        else:
+            EC = np.zeros(T.shape)
         return EC
     else:
         if mu is None:
-            mu = stationary_distribution(T)
-        EC = n * mu[:, np.newaxis] * T
+            mu = stationary_distribution(T, check_inputs=False)
+        if sparse.issparse(T):
+            D_mu = sparse.diags(mu, 0)
+            EC = n * D_mu.dot(T)
+        else:
+            EC = n * mu[:, np.newaxis] * T
         return EC
 
 
@@ -158,21 +165,29 @@ def ec_matrix_vector(p0, T, n):
         Expected value for transition counts after N steps.
 
     """
-    if (n <= 0):
-        EC = np.zeros(T.shape)
-        return EC
+    if n <= 0:
+        if sparse.issparse(T):
+            return sparse.coo_matrix(T.shape, dtype=float)
+        else:
+            return np.zeros(T.shape)
     else:
         """Probability vector after (k=0) propagations"""
         p_k = 1.0 * p0
         """Sum of vectors after (k=0) propagations"""
         p_sum = 1.0 * p_k
+        """Transpose T to use sparse dot product"""
+        Tt = T.transpose()
         for k in range(n - 1):
             """Propagate one step p_{k} -> p_{k+1}"""
-            p_k = np.dot(p_k, T)
+            p_k = Tt.dot(p_k)
             """Update sum"""
             p_sum += p_k
         """Expected counts"""
-        EC = p_sum[:, np.newaxis] * T
+        if sparse.issparse(T):
+            D_psum = sparse.diags(p_sum, 0)
+            EC = D_psum.dot(T)
+        else:
+            EC = p_sum[:, np.newaxis] * T
         return EC
 
 
@@ -208,7 +223,7 @@ def ec_geometric_series(p0, T, n):
         Expected value for transition counts after N steps.
 
     """
-    if (n <= 0):
+    if n <= 0:
         EC = np.zeros(T.shape)
         return EC
     else:
