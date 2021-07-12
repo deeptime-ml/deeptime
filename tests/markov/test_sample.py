@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import pytest
 from numpy.testing import assert_equal, assert_array_almost_equal
 
 from deeptime.markov import sample
@@ -71,12 +72,16 @@ def test_sample_by_sequence():
         assert (dtraj[sidx[t, 1]] == seq[t])  # did we pick the right states?
 
 
-def test_sample_by_state_replace():
-    dtraj = [0, 1, 2, 3, 2, 1, 0]
+@pytest.mark.parametrize("replace", [True, False])
+def test_sample_by_state_replace(replace):
+    dtraj = [0, 1, 2, 3, 5, 5, 3, 2, 1, 0]
     idx = sample.compute_index_states(dtraj)
-    sidx = sample.indices_by_state(idx, 5)
+    sidx = sample.indices_by_state(idx, 5, replace=replace)
     for i in range(4):
-        assert (sidx[i].shape[0] == 5)
+        if replace:
+            assert (sidx[i].shape[0] == 5)
+        else:
+            assert (sidx[i].shape[0] == 2)
         for t in range(sidx[i].shape[0]):
             assert (dtraj[sidx[i][t, 1]] == i)
 
