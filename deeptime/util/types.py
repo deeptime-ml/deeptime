@@ -141,6 +141,8 @@ def ensure_timeseries_data(input_data) -> List[np.ndarray]:
     data : list of np.ndarray
         timeseries data
     """
+    if isinstance(input_data, np.ndarray) and input_data.ndim >= 3:
+        input_data = [x for x in input_data]
     if not isinstance(input_data, (list, tuple)):
         input_data = [input_data]
     grouped = itertools.groupby(input_data, type)
@@ -239,9 +241,11 @@ def to_dataset(data: Union[TimeLaggedDataset, Tuple[np.ndarray, np.ndarray], np.
      [0. 0.]
      [0. 0.]]
     """
+    if isinstance(data, np.ndarray) and data.ndim >= 3:
+        data = [x for x in data]
     if isinstance(data, tuple):
         if len(data) != 2:
-            raise ValueError(f"If data is provided as list or tuple the length must be 2 but was {len(data)}.")
+            raise ValueError(f"If data is provided as tuple the length must be 2 but was {len(data)}.")
         return TimeLaggedDataset(*data)
     if isinstance(data, np.ndarray):
         if lagtime is None:

@@ -302,11 +302,12 @@ std::tuple<np_array<dtype>, np_array<dtype>> fit(std::size_t nHiddenStates, cons
         for (decltype(nObsTrajs) k = 0; k < nObsTrajs; ++k, ++weightsIt, ++obsIt) {
             const auto &w = py::cast<np_array<dtype>>(*weightsIt);
             const auto &obs = py::cast<np_array<dtype>>(*obsIt);
+            const auto* obsPtr = obs.data();
             for (decltype(nHiddenStates) i = 0; i < nHiddenStates; ++i) {
                 dtype dot = 0;
                 dtype wStateSum = 0;
                 for (ssize_t t = 0; t < obs.shape(0); ++t) {
-                    dot += w.at(t, i) * obs.at(t);
+                    dot += w.at(t, i) * obsPtr[t];
                     wStateSum += w.at(t, i);
                 }
                 // update nominator
@@ -329,12 +330,13 @@ std::tuple<np_array<dtype>, np_array<dtype>> fit(std::size_t nHiddenStates, cons
         for (decltype(nObsTrajs) k = 0; k < nObsTrajs; ++k, ++weightsIt, ++obsIt) {
             const auto &w = py::cast<np_array<dtype>>(*weightsIt);
             const auto &obs = py::cast<np_array<dtype>>(*obsIt);
+            const auto *obsPtr = obs.data();
 
             for (decltype(nHiddenStates) i = 0; i < nHiddenStates; ++i) {
                 dtype wStateSum = 0;
                 dtype sigmaUpdate = 0;
                 for (ssize_t t = 0; t < obs.shape(0); ++t) {
-                    auto sqrty = static_cast<dtype>(obs.at(t)) - static_cast<dtype>(means.at(i));
+                    auto sqrty = static_cast<dtype>(obsPtr[t]) - static_cast<dtype>(means.at(i));
                     sigmaUpdate += w.at(t, i) * sqrty*sqrty;
                     wStateSum += w.at(t, i);
                 }

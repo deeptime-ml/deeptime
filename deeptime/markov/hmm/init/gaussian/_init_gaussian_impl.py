@@ -1,14 +1,14 @@
 import numpy as np
 
 
-def from_data(dtrajs, n_hidden_states, reversible):
+def from_data(trajs, n_hidden_states, reversible):
     r""" Makes an initial guess :class:`HMM <HiddenMarkovModel>` with Gaussian output model.
 
     To this end, a Gaussian mixture model is estimated using `scikit-learn <https://scikit-learn.org/>`_.
 
     Parameters
     ----------
-    dtrajs : array_like or list of array_like
+    trajs : array_like or list of array_like
         Trajectories which are used for making the initial guess.
     n_hidden_states : int
         Number of hidden states.
@@ -32,15 +32,17 @@ def from_data(dtrajs, n_hidden_states, reversible):
     import deeptime.markov.tools.analysis as msmana
     from deeptime.util.types import ensure_timeseries_data
 
-    dtrajs = ensure_timeseries_data(dtrajs)
-    collected_observations = np.concatenate(dtrajs)
+    trajs = ensure_timeseries_data(trajs)
+    collected_observations = np.concatenate(trajs)
+    if collected_observations.ndim == 1:
+        collected_observations = collected_observations[..., None]
     gmm = GaussianMixture(n_components=n_hidden_states)
-    gmm.fit(collected_observations[:, None])
+    gmm.fit(collected_observations)
     output_model = GaussianOutputModel(n_hidden_states, means=gmm.means_[:, 0], sigmas=np.sqrt(gmm.covariances_[:, 0]))
 
     # Compute fractional state memberships.
     Nij = np.zeros((n_hidden_states, n_hidden_states))
-    for o_t in dtrajs:
+    for o_t in trajs:
         # length of trajectory
         T = o_t.shape[0]
         # output probability

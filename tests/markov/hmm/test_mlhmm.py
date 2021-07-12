@@ -3,16 +3,14 @@ import unittest
 import deeptime.markov.hmm._hmm_bindings as _bindings
 import numpy as np
 import pytest
-from numpy.testing import assert_raises, assert_equal, assert_array_almost_equal
+from numpy.testing import assert_raises, assert_equal, assert_array_almost_equal, assert_
 
 import deeptime.markov.tools
 from deeptime.data import DoubleWellDiscrete
 from deeptime.markov import count_states
-from deeptime.markov.hmm import DiscreteOutputModel
-from deeptime.markov.hmm import MaximumLikelihoodHMM
-from deeptime.markov.hmm import init, BayesianHMM
-from deeptime.markov.hmm import viterbi, HiddenMarkovModel
-from deeptime.markov.msm import MarkovStateModel
+from deeptime.data import prinz_potential
+from deeptime.markov.hmm import DiscreteOutputModel, MaximumLikelihoodHMM, init, BayesianHMM, viterbi, HiddenMarkovModel
+from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 from tests.testing_utilities import assert_array_not_equal
 
@@ -665,3 +663,15 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
                or np.allclose(hmm.transition_model.transition_matrix, A_ref[np.ix_(perm, perm)], atol=1e-5)
         assert np.allclose(hmm.output_probabilities, B_ref, atol=1e-5) \
                or np.allclose(hmm.output_probabilities, B_ref[[perm]], atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_gaussian_prinz(dtype):
+    system = prinz_potential()
+    trajs = system.trajectory(np.zeros((5, 1)), length=5000).astype(dtype)
+    init_ghmm = init.gaussian.from_data(trajs, 4, reversible=True)
+    ghmm = MaximumLikelihoodHMM(init_ghmm, lagtime=1).fit_fetch(trajs)
+    means = ghmm.output_model.means
+
+    for minimum in system.minima:
+        assert_(np.any(np.abs(means - minimum) < 0.1))
