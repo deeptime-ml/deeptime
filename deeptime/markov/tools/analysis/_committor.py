@@ -1,15 +1,35 @@
-r"""This module provides functions for the computation of forward and
-backward comittors using sparse linear algebra.
-
-.. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
-
-"""
 import numpy as np
-
-from scipy.sparse import eye, coo_matrix, diags
+from scipy.linalg import solve
 from scipy.sparse.linalg import spsolve
 
-from .._stationary_vector import stationary_distribution
+import scipy.sparse as sparse
+
+from ._stationary_vector import stationary_distribution
+
+
+def _set_up_linear_system(K, A, B):
+    """Assemble left-hand side W for linear system"""
+    """Equation (I)"""
+    W = 1.0 * K
+    """Equation (II)"""
+    if sparse.issparse(W):
+        W = W.todok()
+        W[list(A), :] = 0.0
+        W.tocsr()
+        W = W + sparse.coo_matrix((np.ones(len(A)), (list(A), list(A))), shape=W.shape).tocsr()
+    else:
+        W[list(A), :] = 0.0
+        W[list(A), list(A)] = 1.0
+    """Equation (III)"""
+    if sparse.issparse(W):
+        W = W.todok()
+        W[list(B), :] = 0.0
+        W.tocsr()
+        W = W + sparse.coo_matrix((np.ones(len(B)), (list(B), list(B))), shape=W.shape).tocsr()
+    else:
+        W[list(B), :] = 0.0
+        W[list(B), list(B)] = 1.0
+    return W
 
 
 def forward_committor(T, A, B):
@@ -20,7 +40,7 @@ def forward_committor(T, A, B):
 
     Parameters
     ----------
-    T : (M, M) scipy.sparse matrix
+    T : (M, M) ndarray
         Transition matrix
     A : array_like
         List of integer state labels for set A
@@ -50,38 +70,22 @@ def forward_committor(T, A, B):
     A = set(A)
     B = set(B)
     AB = A.intersection(B)
-    notAB = X.difference(A).difference(B)
     if len(AB) > 0:
         raise ValueError("Sets A and B have to be disjoint")
-    L = T - eye(T.shape[0], T.shape[0])
+    L = T - np.eye(T.shape[0])  # Generator matrix
 
-    """Assemble left hand-side W for linear system"""
-    """Equation (I)"""
-    W = 1.0 * L
-
-    """Equation (II)"""
-    W = W.todok()
-    W[list(A), :] = 0.0
-    W.tocsr()
-    W = W + coo_matrix((np.ones(len(A)), (list(A), list(A))), shape=W.shape).tocsr()
-
-    """Equation (III)"""
-    W = W.todok()
-    W[list(B), :] = 0.0
-    W.tocsr()
-    W = W + coo_matrix((np.ones(len(B)), (list(B), list(B))), shape=W.shape).tocsr()
-
+    W = _set_up_linear_system(L, A, B)
     """Assemble right hand side r for linear system"""
     """Equation (I+II)"""
     r = np.zeros(T.shape[0])
     """Equation (III)"""
     r[list(B)] = 1.0
 
-    u = spsolve(W, r)
+    u = solve(W, r) if not sparse.issparse(W) else spsolve(W, r)
     return u
 
 
-def backward_committor(T, A, B):
+def backward_committor(T, A, B, mu=None):
     r"""Backward committor between given sets.
 
     The backward committor u(x) between sets A and B is the
@@ -96,6 +100,8 @@ def backward_committor(T, A, B):
         List of integer state labels for set A
     B : array_like
         List of integer state labels for set B
+    mu : (M, ) ndarray (optional)
+        Stationary vector
 
     Returns
     -------
@@ -120,36 +126,25 @@ def backward_committor(T, A, B):
     A = set(A)
     B = set(B)
     AB = A.intersection(B)
-    notAB = X.difference(A).difference(B)
     if len(AB) > 0:
         raise ValueError("Sets A and B have to be disjoint")
-    pi = stationary_distribution(T)
-    L = T - eye(T.shape[0], T.shape[0])
-    D = diags([pi, ], [0, ])
-    K = (D.dot(L)).T
+    if mu is None:
+        mu = stationary_distribution(T)
+    if sparse.issparse(T):
+        L = T - sparse.eye(T.shape[0], T.shape[0])
+        D = sparse.diags([mu, ], [0, ])
+        K = (D.dot(L)).T
+    else:
+        K = np.transpose(mu[:, np.newaxis] * (T - np.eye(T.shape[0])))
 
     """Assemble left-hand side W for linear system"""
-    """Equation (I)"""
-    W = 1.0 * K
-
-    """Equation (II)"""
-    W = W.todok()
-    W[list(A), :] = 0.0
-    W.tocsr()
-    W = W + coo_matrix((np.ones(len(A)), (list(A), list(A))), shape=W.shape).tocsr()
-
-    """Equation (III)"""
-    W = W.todok()
-    W[list(B), :] = 0.0
-    W.tocsr()
-    W = W + coo_matrix((np.ones(len(B)), (list(B), list(B))), shape=W.shape).tocsr()
-
+    W = _set_up_linear_system(K, A, B)
     """Assemble right-hand side r for linear system"""
     """Equation (I)+(III)"""
     r = np.zeros(T.shape[0])
     """Equation (II)"""
     r[list(A)] = 1.0
 
-    u = spsolve(W, r)
+    u = solve(W, r) if not sparse.issparse(W) else spsolve(W, r)
 
     return u

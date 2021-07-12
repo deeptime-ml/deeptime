@@ -16,11 +16,12 @@ from ._stationary_vector import stationary_distribution
 from ._decomposition import timescales_from_eigenvalues
 
 from . import dense
-from . import sparse
 from . import _assessment
 from . import _mean_first_passage_time
 from . import _decomposition
 from . import _fingerprints
+from . import _committor
+from . import _expectations
 
 __docformat__ = "restructuredtext en"
 __authors__ = __author__ = "Benjamin Trendelkamp-Schroer, Martin Scherer, Jan-Hendrik Prinz, Frank Noe"
@@ -739,26 +740,15 @@ def committor(T, A, B, forward=True, mu=None):
     T = ensure_number_array(T, ndim=2)
     A = ensure_integer_array(A, ndim=1)
     B = ensure_integer_array(B, ndim=1)
-    if _issparse(T):
-        if forward:
-            return sparse.committor.forward_committor(T, A, B)
-        else:
-            """ if P is time reversible backward commitor is equal 1 - q+"""
-            if is_reversible(T, mu=mu):
-                return 1.0 - sparse.committor.forward_committor(T, A, B)
-
-            else:
-                return sparse.committor.backward_committor(T, A, B)
-
+    if forward:
+        return _committor.forward_committor(T, A, B)
     else:
-        if forward:
-            return dense.committor.forward_committor(T, A, B)
+        """ if P is time reversible backward commitor is equal 1 - q+"""
+        if is_reversible(T, mu=mu):
+            return 1.0 - _committor.forward_committor(T, A, B)
+
         else:
-            """ if P is time reversible backward commitor is equal 1 - q+"""
-            if is_reversible(T, mu=mu):
-                return 1.0 - dense.committor.forward_committor(T, A, B)
-            else:
-                return dense.committor.backward_committor(T, A, B)
+            return _committor.backward_committor(T, A, B)
 
 
 ################################################################################
@@ -811,10 +801,7 @@ def expected_counts(T, p0, N):
     T = ensure_number_array(T, ndim=2)
     p0 = ensure_floating_array(p0, ndim=1)
     # go
-    if _issparse(T):
-        return sparse.expectations.expected_counts(p0, T, N)
-    else:
-        return dense.expectations.expected_counts(p0, T, N)
+    return _expectations.expected_counts(p0, T, N)
 
 
 def expected_counts_stationary(T, N, mu=None):
@@ -867,10 +854,7 @@ def expected_counts_stationary(T, N, mu=None):
     if mu is not None:
         mu = ensure_floating_array(mu, ndim=1)
     # go
-    if _issparse(T):
-        return sparse.expectations.expected_counts_stationary(T, N, mu=mu)
-    else:
-        return dense.expectations.expected_counts_stationary(T, N, mu=mu)
+    return _expectations.expected_counts_stationary(T, N, mu=mu)
 
 
 ################################################################################

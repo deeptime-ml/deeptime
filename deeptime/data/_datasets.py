@@ -796,6 +796,8 @@ def prinz_potential(h=1e-5, n_steps=500, temperature_factor=1., mass=1., damping
 
     where :math:`m` is the mass, :math:`d` the damping factor, and :math:`\eta_t \sim \mathcal{N}(0, 1)`.
 
+    The locations of the minima can be accessed via the `minima` attribute.
+
     .. plot:: datasets/plot_prinz.py
 
     Parameters
@@ -844,11 +846,13 @@ def prinz_potential(h=1e-5, n_steps=500, temperature_factor=1., mass=1., damping
     .. footbibliography::
     """
     from ._data_bindings import Prinz
-    return TimeIndependentSystem(Prinz(), h, n_steps, props={
+    system = TimeIndependentSystem(Prinz(), h, n_steps, props={
         'kT': temperature_factor,
         'mass': mass,
         'damping': damping
     })
+    system.minima = [-0.73943018, -0.22373758, 0.26914935, 0.67329636]
+    return system
 
 
 def triple_well_1d(h=1e-3, n_steps=500):
