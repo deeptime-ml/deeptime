@@ -95,9 +95,9 @@ struct BickleyJet {
     static constexpr std::size_t DIM = 2;
     using dtype = T;
     using State = Vector<T, DIM>;
-    using VMIN = std::tuple<std::ratio<0, 1>, std::ratio<-3, 1>>;
-    using VMAX = std::tuple<std::ratio<20, 1>, std::ratio<3, 1>>;
-    using Boundary = BoundaryConditions<State, 2, VMIN, VMAX, PERIODIC, false>;
+    using vmin_type = std::tuple<std::ratio<0, 1>, std::ratio<-3, 1>>;
+    using vmax_type = std::tuple<std::ratio<20, 1>, std::ratio<3, 1>>;
+    using Boundary = BoundaryConditions<State, 2, vmin_type, vmax_type, PERIODIC, false>;
     using Integrator = RungeKutta<State, DIM, Boundary>;
 
     template<typename D>
