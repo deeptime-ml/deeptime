@@ -5,6 +5,9 @@ jobs:
     vmImage: 'macOS-10.14'
   strategy:
     matrix:
+      Python36:
+        CONDA_PY: '3.6'
+        CONDA_NPY: '1.17'
       Python37:
         CONDA_PY: '3.7'
         CONDA_NPY: '1.19'

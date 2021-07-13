@@ -11,7 +11,7 @@
 
 namespace deeptime::data {
 
-template<typename State, int D, typename VMIN, typename VMAX, bool... periodic_dim>
+template<typename State, int D, typename vmin_type, typename vmax_type, bool... periodic_dim>
 struct BoundaryConditions {
     static_assert(sizeof...(periodic_dim) == D || sizeof...(periodic_dim) == 0);
     static constexpr int DIM = D;
@@ -20,8 +20,8 @@ struct BoundaryConditions {
     template<std::size_t d, typename T>
     static constexpr T apply_impl_d(T x) noexcept {
         if constexpr(apply_pbc[d]) {
-            auto vmax = std::tuple_element_t<d, VMAX>::num / std::tuple_element_t<d, VMAX>::den;
-            auto vmin = std::tuple_element_t<d, VMIN>::num / std::tuple_element_t<d, VMIN>::den;
+            auto vmax = std::tuple_element_t<d, vmax_type>::num / std::tuple_element_t<d, vmax_type>::den;
+            auto vmin = std::tuple_element_t<d, vmin_type>::num / std::tuple_element_t<d, vmin_type>::den;
             auto diam = vmax - vmin;
             while (x >= vmax) x -= diam;
             while (x < vmin) x += diam;
