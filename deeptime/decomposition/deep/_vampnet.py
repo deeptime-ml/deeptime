@@ -90,7 +90,7 @@ def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'
     else:
         diag = torch.diag(1. / eigval)
 
-    return torch.chain_matmul(eigvec.t(), diag, eigvec)
+    return torch.linalg.multi_dot(eigvec.t(), diag, eigvec)
 
 
 sym_inverse.valid_modes = ('trunc', 'regularize', 'clamp')
@@ -128,7 +128,7 @@ def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode
         c00, c0t, ctt = covariances(x, y, remove_mean=True)
     c00_sqrt_inv = sym_inverse(c00, return_sqrt=True, epsilon=epsilon, mode=mode)
     ctt_sqrt_inv = sym_inverse(ctt, return_sqrt=True, epsilon=epsilon, mode=mode)
-    return torch.chain_matmul(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
+    return torch.linalg.multi_dot(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
 
 
 def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
@@ -215,7 +215,7 @@ def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', ep
         c00, c0t, ctt = covariances(data, data_lagged, remove_mean=True)
         c00_sqrt_inv = sym_inverse(c00, epsilon=epsilon, return_sqrt=True, mode=mode)
         ctt_sqrt_inv = sym_inverse(ctt, epsilon=epsilon, return_sqrt=True, mode=mode)
-        koopman = torch.chain_matmul(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
+        koopman = torch.linalg.multi_dot(c00_sqrt_inv, c0t, ctt_sqrt_inv).t()
 
         u, s, v = torch.svd(koopman)
         mask = s > epsilon
@@ -229,8 +229,8 @@ def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', ep
         s = torch.diag(s)
 
         out = torch.trace(
-            2. * torch.chain_matmul(s, u_t, c0t, v)
-            - torch.chain_matmul(s, u_t, c00, u, s, v_t, ctt, v)
+            2. * torch.linalg.multi_dot(s, u_t, c0t, v)
+            - torch.linalg.multi_dot(s, u_t, c00, u, s, v_t, ctt, v)
         )
     assert out is not None
     return 1 + out

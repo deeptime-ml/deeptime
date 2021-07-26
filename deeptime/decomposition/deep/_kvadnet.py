@@ -25,7 +25,7 @@ def kvad_score(chi_x, y, kernel: Kernel = GaussianKernel(1.), epsilon=1e-6, mode
 
     N = y.shape[0]
     chi_x_whitened = whiten(chi_x, epsilon=epsilon, mode=mode)
-    x_g_x = torch.chain_matmul(chi_x_whitened.t(), G, chi_x_whitened)
+    x_g_x = torch.linalg.multi_dot(chi_x_whitened.t(), G, chi_x_whitened)
 
     evals_sum = torch.trace(x_g_x / (N * N))
 
