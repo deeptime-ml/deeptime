@@ -39,7 +39,7 @@ def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True)
         mat = mat + epsilon * identity
 
     # Calculate eigvalues and potentially eigvectors
-    eigval, eigvec = torch.symeig(mat, eigenvectors=True)
+    eigval, eigvec = torch.linalg.eigh(mat)
 
     if eigenvectors:
         eigvec = eigvec.transpose(0, 1)
