@@ -136,8 +136,8 @@ def stationary_distribution_from_eigenvector(T, ncv=None):
 def stationary_distribution(T, ncv: Optional[int] = None, mode: str = 'fallback', check_inputs: bool = True):
     r"""Compute stationary distribution of stochastic matrix T.
 
-    Input:
-    ------
+    Parameters
+    ----------
     T : (M, M) ndarray or scipy.sparse matrix
         Transition matrix
     ncv : int (optional)
