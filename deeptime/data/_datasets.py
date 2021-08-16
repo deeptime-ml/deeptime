@@ -851,7 +851,7 @@ def prinz_potential(h=1e-5, n_steps=500, temperature_factor=1., mass=1., damping
         'mass': mass,
         'damping': damping
     })
-    system.minima = [-0.73943018, -0.22373758, 0.26914935, 0.67329636]
+    system.minima = np.array([-0.73943019, -0.22373758, 0.26914935, 0.67329635])
     return system
 
 
