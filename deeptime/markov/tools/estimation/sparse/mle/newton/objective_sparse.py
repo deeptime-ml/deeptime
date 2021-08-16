@@ -92,7 +92,7 @@ def _DF(z: np.ndarray, Cs, c: np.ndarray):
 
     """All subblocks DF_ij can be written as follows, DF_ij = H_ij +
     D_ij. H_ij has the same sparsity structure as C+C.T and D_ij is a
-    diagonal matrix, i, j \in {x, y}
+    diagonal matrix, i, j in {x, y}
     """
 
     data_Hxx = np.zeros_like(data)

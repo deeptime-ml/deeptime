@@ -841,6 +841,11 @@ def prinz_potential(h=1e-5, n_steps=500, temperature_factor=1., mass=1., damping
     >>> evaluations = model(test_points, seed=53, n_jobs=1)
     >>> assert evaluations.shape == (100, 1)
 
+    We can obtain the x-coordinates of the energy minima via the minima attribute:
+
+    >>> model.minima
+    array([-0.73943019, -0.22373758,  0.26914935,  0.67329635])
+
     References
     ----------
     .. footbibliography::
