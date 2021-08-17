@@ -7,4 +7,15 @@ Examples
 .. include:: examples/index.rst
     :start-after: :orphan:
 
-.. include:: notebooks/examples/index.rst
+
+Notebook examples
+-----------------
+Notebooks containing some longer example systems.
+
+.. nbgallery::
+    :name: gallery
+
+    notebooks/examples/ala2-example
+    notebooks/examples/msm-prinz
+    notebooks/examples/sqrt-model-dimrx
+    notebooks/examples/coherence-bickley-jet
