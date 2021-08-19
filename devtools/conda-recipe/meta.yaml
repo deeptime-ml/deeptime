@@ -54,4 +54,4 @@ test:
     - pytest-sugar
     - importlib_metadata  # [py<38]
     - typing_extensions  # [py<38]
-    - pytorch >=1.1
+    - pytorch >1.7
