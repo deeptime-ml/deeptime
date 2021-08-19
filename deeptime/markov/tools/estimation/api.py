@@ -739,7 +739,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
     rev_pisym : bool, optional, default=False
         Fast computation of reversible transition matrix by normalizing
         :math:`x_{ij} = \pi_i p_{ij} + \pi_j p_{ji}`. :math:`p_{ij}` is the direct
-        (nonreversible) estimate and :math:`pi_i` is its stationary distribution.
+        (nonreversible) estimate and :math:`\pi_i` is its stationary distribution.
         This estimator is asympotically unbiased but not maximum likelihood.
     return_statdist : bool, optional, default=False
         Optional parameter with reversible = True.
