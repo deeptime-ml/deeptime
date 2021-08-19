@@ -2,11 +2,12 @@ import itertools
 
 import numpy as np
 import pytest
-
-from deeptime.markov import tools
+from numpy.testing import assert_allclose, assert_almost_equal
 
 import deeptime
-from deeptime.markov.hmm import MaximumLikelihoodHMM
+from deeptime.data import prinz_potential
+from deeptime.markov import tools
+from deeptime.markov.hmm import MaximumLikelihoodHMM, HiddenMarkovModel
 from deeptime.markov.msm import MarkovStateModel
 
 
@@ -92,7 +93,7 @@ def test_observation_probabilities(hmm_scenario):
         err = np.max(np.abs(hmm_scenario.output_probabilities[np.array(perm)] -
                             hmm_scenario.hmm.output_probabilities))
         minerr = min(minerr, err)
-    np.testing.assert_almost_equal(minerr, 0, decimal=2)
+    assert_almost_equal(minerr, 0, decimal=2)
 
 
 def test_stationary_distribution(hmm_scenario):
@@ -101,7 +102,7 @@ def test_stationary_distribution(hmm_scenario):
     for perm in itertools.permutations(range(hmm_scenario.n_hidden)):
         minerr = min(minerr, np.max(np.abs(model.transition_model.stationary_distribution[np.array(perm)] -
                                            hmm_scenario.hidden_stationary_distribution)))
-    np.testing.assert_almost_equal(minerr, 0, decimal=2)
+    assert_almost_equal(minerr, 0, decimal=2)
 
 
 def test_hidden_transition_matrix(hmm_scenario):
@@ -110,7 +111,7 @@ def test_hidden_transition_matrix(hmm_scenario):
     for perm in permutation_matrices(hmm_scenario.n_hidden):
         minerr = min(minerr, np.max(np.abs(perm.T @ model.transition_model.transition_matrix @ perm -
                                            hmm_scenario.msm.transition_matrix)))
-    np.testing.assert_almost_equal(minerr, 0, decimal=1)  # spuriously fails with higher precision
+    assert_almost_equal(minerr, 0, decimal=1)  # spuriously fails with higher precision
 
 
 def test_hidden_path(hmm_scenario):
@@ -121,4 +122,29 @@ def test_hidden_path(hmm_scenario):
         minerr = min(minerr, (np.array(perm)[viterbi_est] != hmm_scenario.hidden_state_traj).sum()
                      / hmm_scenario.n_steps)
 
-    np.testing.assert_almost_equal(minerr, 0, decimal=1)
+    assert_almost_equal(minerr, 0, decimal=1)
+
+
+def test_gaussian_prinz():
+    system = prinz_potential()
+    trajs = system.trajectory(np.zeros((5, 1)), length=10000)
+    # this corresponds to a GMM with the means being the correct potential landscape minima
+    om = deeptime.markov.hmm.GaussianOutputModel(n_states=4, means=system.minima, sigmas=[0.1]*4)
+    # this is almost the right hidden transition matrix
+    tmat = np.array(
+        [
+            [9.59e-1, 0, 4.06e-2, 1-9.59e-1-4.06e-2],
+            [0, 9.79e-1, 0, 1 - 9.79e-1],
+            [2.64e-2, 0, 9.68e-1, 1 - 9.68e-1 - 2.64e-2],
+            [0, 1.67e-2, 1 - 9.74e-1 - 1.67e-2, 9.74e-1]
+        ]
+    )
+    msm = MarkovStateModel(tmat)
+    init_ghmm = HiddenMarkovModel(msm, om, initial_distribution=msm.stationary_distribution)
+
+    ghmm = MaximumLikelihoodHMM(init_ghmm, lagtime=1).fit_fetch(trajs)
+    gom = ghmm.output_model
+    for minimum_ix in range(4):
+        x = gom.means[minimum_ix]
+        xref = system.minima[np.argmin(np.abs(system.minima - x))]
+        assert_allclose(x, xref, atol=1e-1)

@@ -5,7 +5,7 @@ Table Of Contents
 .. only:: notebooks
 
     .. toctree::
-        :maxdepth: 3
+        :maxdepth: 4
         :caption: Documentation
 
         index_dimreduction
