@@ -289,3 +289,8 @@ class Stats:
         r""" Empties the statistics. This is default behavior if statistics are written to a summary file, but
         sometimes it can be useful to track statistics for some more time and eventually clear it manually. """
         self._stats.clear()
+
+
+# wrappers for older pytorch versions that lack linalg module
+eigh = torch.linalg.eigh if hasattr(torch, 'linalg') else lambda x: torch.symeig(x, eigenvectors=True)
+multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') else lambda args: torch.chain_matmul(*args)
