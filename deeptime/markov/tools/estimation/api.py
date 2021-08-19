@@ -48,6 +48,14 @@ __all__ = ['bootstrap_trajectories',
            ]
 
 
+def _ensure_dense(data):
+    if issparse(data):
+        warnings.warn('Converting input to dense, since method is '
+                      'currently only implemented for dense matrices.', UserWarning)
+        data = data.toarray()
+    return data
+
+
 ################################################################################
 # Count matrix
 ################################################################################
@@ -625,11 +633,9 @@ def prior_const(C, alpha=0.001):
            [0.001, 0.001, 0.001]])
 
     """
-    if isdense(C):
-        return sparse.prior.prior_const(C, alpha=alpha)
-    else:
+    if not isdense(C):
         warnings.warn("Prior will be a dense matrix for sparse input")
-        return sparse.prior.prior_const(C, alpha=alpha)
+    return sparse.prior.prior_const(C, alpha=alpha)
 
 
 __all__.append('prior_const')
@@ -697,7 +703,7 @@ def prior_rev(C, alpha=-1.0):
 
 def transition_matrix(C, reversible=False, mu=None, method='auto',
                       maxiter: int = 1000000, maxerr: float = 1e-8,
-                      rev_pisym : bool = False, return_statdist: bool = False, warn_not_converged: bool = True,
+                      rev_pisym: bool = False, return_statdist: bool = False, warn_not_converged: bool = True,
                       sparse_newton: bool = False):
     r"""Estimate the transition matrix from the given countmatrix. :footcite:`prinz2011markov`
     :footcite:`bowman2009progress` :footcite:`trendelkamp2015estimation`
@@ -998,9 +1004,7 @@ def tmatrix_cov(C, k=None):
     returned.
 
     """
-    if issparse(C):
-        warnings.warn("Covariance matrix will be dense for sparse input")
-        C = C.toarray()
+    C = _ensure_dense(C)
     return dense.covariance.tmatrix_cov(C, row=k)
 
 
@@ -1052,15 +1056,8 @@ def error_perturbation(C, S):
                                                        \text{cov}[t_{ij}, t_{kl}] s_{\beta kl}
 
     """
-    if issparse(C):
-        warnings.warn("Error-perturbation will be dense for sparse input")
-        C = C.toarray()
+    C = _ensure_dense(C)
     return dense.covariance.error_perturbation(C, S)
-
-
-def _showSparseConversionWarning():
-    warnings.warn('Converting input to dense, since method is '
-                  'currently only implemented for dense matrices.', UserWarning)
 
 
 def sample_tmatrix(C, nsample=1, nsteps=None, reversible=False, mu=None, T0=None, return_statdist=False):
@@ -1110,10 +1107,7 @@ def sample_tmatrix(C, nsample=1, nsteps=None, reversible=False, mu=None, T0=None
     tmatrix_sampler
 
     """
-    if issparse(C):
-        _showSparseConversionWarning()
-        C = C.toarray()
-
+    C = _ensure_dense(C)
     sampler = tmatrix_sampler(C, reversible=reversible, mu=mu, T0=T0, nsteps=nsteps)
     return sampler.sample(nsamples=nsample, return_statdist=return_statdist)
 
@@ -1179,11 +1173,9 @@ def tmatrix_sampler(C, reversible=False, mu=None, T0=None, nsteps=None, prior='s
         uncertainty of reversible Markov models. J. Chem. Phys. (submitted)
 
     """
-    if issparse(C):
-        _showSparseConversionWarning()
-        C = C.toarray()
-
     from .dense.tmat_sampling.tmatrix_sampler import TransitionMatrixSampler
+
+    C = _ensure_dense(C)
     sampler = TransitionMatrixSampler(C, reversible=reversible, mu=mu, P0=T0,
                                       n_steps=nsteps, prior=prior)
     return sampler
