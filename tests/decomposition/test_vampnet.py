@@ -1,12 +1,12 @@
 from copy import deepcopy
 
 import pytest
+pytest.importorskip("torch")
+
 from numpy.testing import assert_, assert_almost_equal
 from torch.utils.data import DataLoader
 
 from deeptime.util.data import TimeLaggedDataset, TrajectoryDataset
-
-pytest.importorskip("torch")
 
 import torch
 import torch.nn as nn

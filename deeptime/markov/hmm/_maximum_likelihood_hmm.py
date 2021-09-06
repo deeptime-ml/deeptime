@@ -220,7 +220,7 @@ class MaximumLikelihoodHMM(Estimator):
     def initial_model(self, value: HiddenMarkovModel) -> None:
         self._initial_transition_model = value
 
-    def fit(self, dtrajs, initial_model=None, **kwargs):
+    def fit(self, dtrajs, initial_model=None, progress=None, **kwargs):
         r""" Fits a new :class:`HMM <HiddenMarkovModel>` to data.
 
         Parameters
@@ -275,31 +275,37 @@ class MaximumLikelihoodHMM(Estimator):
         tmatrix_nonzeros = hmm_data.transition_matrix.nonzero()
         converged = False
 
-        while not converged and it < self.maxit:
-            loglik = 0.0
-            for obs, gamma, counts in zip(dtrajs, gammas, count_matrices):
-                loglik_update, _ = self._forward_backward(hmm_data, obs, alpha, beta, gamma, counts)
-                loglik += loglik_update
-            assert np.isfinite(loglik), it
+        from deeptime.util.platform import handle_progress_bar
+        progress = handle_progress_bar(progress)
 
-            # convergence check
-            if it > 0:
-                dL = loglik - likelihoods[it - 1]
-                if dL < self.accuracy:
-                    converged = True
+        with progress(total=self.maxit) as prog:
+            while not converged and it < self.maxit:
+                loglik = 0.0
+                for obs, gamma, counts in zip(dtrajs, gammas, count_matrices):
+                    loglik_update, _ = self._forward_backward(hmm_data, obs, alpha, beta, gamma, counts)
+                    loglik += loglik_update
+                assert np.isfinite(loglik), it
 
-            # update model
-            self._update_model(hmm_data, dtrajs, gammas, count_matrices, maxiter=self.maxit_reversible)
+                # convergence check
+                if it > 0:
+                    dL = loglik - likelihoods[it - 1]
+                    if dL < self.accuracy:
+                        converged = True
 
-            # connectivity change check
-            tmatrix_nonzeros_new = hmm_data.transition_matrix.nonzero()
-            if not np.array_equal(tmatrix_nonzeros, tmatrix_nonzeros_new):
-                converged = False  # unset converged
-                tmatrix_nonzeros = tmatrix_nonzeros_new
+                # update model
+                self._update_model(hmm_data, dtrajs, gammas, count_matrices, maxiter=self.maxit_reversible)
 
-            # end of iteration
-            likelihoods[it] = loglik
-            it += 1
+                # connectivity change check
+                tmatrix_nonzeros_new = hmm_data.transition_matrix.nonzero()
+                if not np.array_equal(tmatrix_nonzeros, tmatrix_nonzeros_new):
+                    converged = False  # unset converged
+                    tmatrix_nonzeros = tmatrix_nonzeros_new
+
+                # end of iteration
+                likelihoods[it] = loglik
+                it += 1
+
+                prog.update()
 
         likelihoods = np.resize(likelihoods, it)
 

@@ -33,7 +33,18 @@ def handle_progress_bar(progress):
         A progress bar (or no/identity progress bar if input was None).
     """
     if progress is None:
-        def progress(iterable, *args, **kw):
-            for x in iterable:
-                yield x
+        class progress:
+            def __init__(self, x=None, **_):
+                self._x = x
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                return True
+
+            def __iter__(self):
+                for x in self._x:
+                    yield x
+
     return progress
