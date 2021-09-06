@@ -47,4 +47,6 @@ def handle_progress_bar(progress):
                 for x in self._x:
                     yield x
 
+            def update(self): pass
+
     return progress
