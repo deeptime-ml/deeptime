@@ -1,10 +1,10 @@
 import pytest
+pytest.importorskip("torch")
+
 from numpy.testing import assert_array_almost_equal, assert_
 from torch.utils.data import DataLoader
 
 from deeptime.util.data import TrajectoryDataset
-
-pytest.importorskip("torch")
 
 from deeptime.covariance import Covariance
 from deeptime.decomposition.deep import TVAEEncoder
