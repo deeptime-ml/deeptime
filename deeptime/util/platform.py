@@ -41,7 +41,7 @@ def handle_progress_bar(progress):
                 return self
 
             def __exit__(self, exc_type, exc_val, exc_tb):
-                return True
+                return False
 
             def __iter__(self):
                 for x in self._x:

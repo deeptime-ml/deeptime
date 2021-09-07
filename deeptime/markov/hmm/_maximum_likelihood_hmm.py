@@ -305,7 +305,10 @@ class MaximumLikelihoodHMM(Estimator):
                 likelihoods[it] = loglik
                 it += 1
 
-                prog.update()
+                if not converged:
+                    prog.update()
+                else:
+                    prog.total = it - 1
 
         likelihoods = np.resize(likelihoods, it)
 
