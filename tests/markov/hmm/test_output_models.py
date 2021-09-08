@@ -159,7 +159,7 @@ class TestGaussian(unittest.TestCase):
         obs = gmm.sample(100000 + np.random.randint(-3, 3))[0].squeeze()
 
         init = deeptime.markov.hmm.init.gaussian.from_data(obs, n_hidden_states=3, reversible=True)
-        hmm_est = deeptime.markov.hmm.MaximumLikelihoodHMM(init)
+        hmm_est = deeptime.markov.hmm.MaximumLikelihoodHMM(init, lagtime=1)
         hmm = hmm_est.fit(obs).fetch_model()
 
         np.testing.assert_array_almost_equal(hmm.transition_model.transition_matrix, np.eye(3), decimal=3)

@@ -127,7 +127,7 @@ class TestMLHMM(unittest.TestCase):
         cls.hmm_lag10_largest = cls.hmm_lag10.submodel_largest(dtrajs=dtraj)
         cls.msm_lag10 = estimate_markov_model(dtraj, 10, reversible=True)
         initial_hmm_1 = init.discrete.metastable_from_data(dtraj, n_hidden_states=2, lagtime=1)
-        cls.hmm_lag1 = MaximumLikelihoodHMM(initial_hmm_1).fit(dtraj).fetch_model()
+        cls.hmm_lag1 = MaximumLikelihoodHMM(initial_hmm_1, lagtime=1).fit(dtraj).fetch_model()
         cls.hmm_lag1_largest = cls.hmm_lag1.submodel_largest(dtrajs=dtraj)
         cls.msm_lag1 = estimate_markov_model(dtraj, 1, reversible=True)
         cls.dtrajs = dtraj
@@ -616,7 +616,7 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
     def test_1state(self):
         obs = np.array([0, 0, 0, 0, 0], dtype=int)
         init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=1, lagtime=1)
-        hmm = MaximumLikelihoodHMM(init_hmm).fit(obs).fetch_model()
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
         # hmm = bhmm.estimate_hmm([obs], n_states=1, lag=1, accuracy=1e-6)
         p0_ref = np.array([1.0])
         A_ref = np.array([[1.0]])
@@ -633,7 +633,7 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
     def test_2state_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
         init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1)
-        hmm = MaximumLikelihoodHMM(init_hmm, accuracy=1e-6).fit(obs).fetch_model()
+        hmm = MaximumLikelihoodHMM(init_hmm, accuracy=1e-6, lagtime=1).fit(obs).fetch_model()
         p0_ref = np.array([1, 0])
         A_ref = np.array([[0.8, 0.2],
                           [0.0, 1.0]])
@@ -650,7 +650,7 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
     def test_2state_2step(self):
         obs = np.array([0, 1, 0], dtype=int)
         init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1)
-        hmm = MaximumLikelihoodHMM(init_hmm).fit(obs).fetch_model()
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
         p0_ref = np.array([1, 0])
         A_ref = np.array([[0.0, 1.0],
                           [1.0, 0.0]])
