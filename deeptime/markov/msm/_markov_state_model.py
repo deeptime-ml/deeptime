@@ -575,7 +575,7 @@ class MarkovStateModel(Model):
         from deeptime.markov.tools.analysis import mfpt
         self._assert_in_active(A)
         self._assert_in_active(B)
-        return self.lagtime * mfpt(self.transition_matrix, B, origin=A, mu=self.stationary_distribution)
+        return mfpt(self.transition_matrix, B, tau=self.lagtime, origin=A, mu=self.stationary_distribution)
 
     def committor_forward(self, A, B):
         """Forward committor (also known as p_fold or splitting probability) from set A to set B.
