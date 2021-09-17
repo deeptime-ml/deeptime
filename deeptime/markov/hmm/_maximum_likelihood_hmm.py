@@ -31,6 +31,10 @@ class MaximumLikelihoodHMM(Estimator):
         This model will be used to initialize the hidden markov model estimation routine. Since it is prone to
         get stuck in local optima, several initializations should be tried and scored and/or one of the available
         initialization heuristics should be applied, if appropriate.
+    lagtime : int
+        Lag parameter used for fitting the HMM.
+
+        Note that this parameter is completely independent from what was used for estimating the initial HMM.
     stride : int or str, optional, default=1
         stride between two lagged trajectories extracted from the input trajectories. Given trajectory s[t], stride
         and lag will result in trajectories
@@ -43,8 +47,6 @@ class MaximumLikelihoodHMM(Estimator):
         Bayesian estimator requires a longer stride in order to have statistically uncorrelated trajectories.
         Setting stride = 'effective' uses the largest neglected timescale as an fit for the correlation time and
         sets the stride accordingly.
-    lagtime : int, optional, default=1
-        Lag parameter used for fitting the HMM
     reversible : bool, optional, default=True
         If True, a prior that enforces reversible transition matrices (detailed balance) is used;
         otherwise, a standard  non-reversible prior is used.
@@ -74,8 +76,8 @@ class MaximumLikelihoodHMM(Estimator):
     _HMMModelStorage = collections.namedtuple('_HMMModelStorage', ['transition_matrix', 'output_model',
                                                                    'initial_distribution'])
 
-    def __init__(self, initial_model: HiddenMarkovModel, stride: Union[int, str] = 1,
-                 lagtime: int = 1, reversible: bool = True, stationary: bool = False,
+    def __init__(self, initial_model: HiddenMarkovModel, lagtime: int, stride: Union[int, str] = 1,
+                 reversible: bool = True, stationary: bool = False,
                  p: Optional[np.ndarray] = None, accuracy: float = 1e-3,
                  maxit: int = 1000, maxit_reversible: int = 100000):
         super().__init__()

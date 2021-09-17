@@ -41,7 +41,7 @@ def test_cktest_double_well(estimator_type, n_jobs, mlags):
         validator = bmsm_est.chapman_kolmogorov_validator(2, mlags=mlags)
     elif estimator_type == "HMM":
         hmm_init = dt.markov.hmm.init.discrete.metastable_from_data(dtraj, 2, lagtime=1)
-        hmm_est = dt.markov.hmm.MaximumLikelihoodHMM(hmm_init)
+        hmm_est = dt.markov.hmm.MaximumLikelihoodHMM(hmm_init, lagtime=1)
         hmm_test = hmm_est.fit(dtraj).fetch_model()
         validator = hmm_est.chapman_kolmogorov_validator(mlags, hmm_test.submodel_largest(dtrajs=dtraj))
     elif estimator_type == "BHMM":
