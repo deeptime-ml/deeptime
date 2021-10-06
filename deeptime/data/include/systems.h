@@ -231,6 +231,44 @@ struct TripleWell1D {
 
 
 //------------------------------------------------------------------------------
+// Temperature dependent double well problem
+//------------------------------------------------------------------------------
+template<typename T>
+struct TemperatureDependentDoubleWell2D {
+    using system_type = sde_tag;
+
+    static constexpr std::size_t DIM = 2;
+    using dtype = T;
+    using State = Vector<T, DIM>;
+    using Integrator = EulerMaruyama<State, DIM>;
+
+    constexpr dtype energy(const State &x) const {
+        return (x[0] * x[0] - 1.) * (x[0] * x[0] - 1.) + x[1] * x[1];
+    }
+
+    constexpr State f(const State &x) const {
+        return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -2 * x[1]}};
+    }
+
+    T h{1e-3};
+    std::size_t nSteps{10000};
+    T mass{1.};
+    T damping{1.};
+    T kT{1.};
+
+    Matrix<T, 2> sigma{{{{std::sqrt(0.5 * kT / (mass * damping)), 0.0}}, 
+                        {{0.0, std::sqrt(0.5 * kT / (mass * damping))}}}};
+
+    void updateSigma() {
+        sigma = Matrix<T, 2>{{{{std::sqrt(0.5 * kT / (mass * damping)), 0.0}}, 
+                            {{0.0, std::sqrt(0.5 * kT / (mass * damping))}}}};
+    };
+
+};
+
+
+
+//------------------------------------------------------------------------------
 // Double well problem
 //------------------------------------------------------------------------------
 template<typename T>
