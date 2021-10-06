@@ -239,16 +239,15 @@ PYBIND11_MODULE(_data_bindings, m) {
                                    [](deeptime::data::Prinz<double> &self, double val) { self.kT = val; self.updateSigma(); });
     }
     {
-        auto clazz = exportSystem<true, deeptime::data::TemperatureDependentDoubleWell2D<double>>(m, "TemperatureDependentDoubleWell2D");
-        clazz.def_property("mass", [](const deeptime::data::TemperatureDependentDoubleWell2D<double> &self) { return self.mass; },
-                                   [](deeptime::data::TemperatureDependentDoubleWell2D<double> &self, double val) { self.mass = val; self.updateSigma(); });
-        clazz.def_property("damping", [](const deeptime::data::TemperatureDependentDoubleWell2D<double> &self) { return self.damping; },
-                                      [](deeptime::data::TemperatureDependentDoubleWell2D<double> &self, double val) { self.damping = val; self.updateSigma(); });
-        clazz.def_property("kT", [](const deeptime::data::TemperatureDependentDoubleWell2D<double> &self) { return self.kT; },
-                                   [](deeptime::data::TemperatureDependentDoubleWell2D<double> &self, double val) { self.kT = val; self.updateSigma(); });
+        auto clazz = exportSystem<true, deeptime::data::DoubleWell2D<double>>(m, "DoubleWell2D");
+        clazz.def_property("mass", [](const deeptime::data::DoubleWell2D<double> &self) { return self.mass; },
+                                   [](deeptime::data::DoubleWell2D<double> &self, double val) { self.mass = val; self.updateSigma(); });
+        clazz.def_property("damping", [](const deeptime::data::DoubleWell2D<double> &self) { return self.damping; },
+                                      [](deeptime::data::DoubleWell2D<double> &self, double val) { self.damping = val; self.updateSigma(); });
+        clazz.def_property("kT", [](const deeptime::data::DoubleWell2D<double> &self) { return self.kT; },
+                                   [](deeptime::data::DoubleWell2D<double> &self, double val) { self.kT = val; self.updateSigma(); });
     }
     exportSystem<true, deeptime::data::TripleWell1D<double>>(m, "TripleWell1D");
-    exportSystem<true, deeptime::data::DoubleWell2D<double>>(m, "DoubleWell2D");
     exportSystem<true, deeptime::data::QuadrupleWell2D<double>>(m, "QuadrupleWell2D");
     exportSystem<true, deeptime::data::TripleWell2D<double>>(m, "TripleWell2D");
     {

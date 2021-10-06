@@ -13,7 +13,7 @@ from matplotlib.collections import LineCollection
 
 from deeptime.data import double_well_2d
 
-system = double_well_2d(n_steps=10000)
+system = double_well_2d(n_steps=10000, temperature_factor=0.5, mass=0.5)
 traj = system.trajectory(np.array([[-1, 0]]), 20, seed=42)
 
 x = np.arange(-2, 2, 0.01)
