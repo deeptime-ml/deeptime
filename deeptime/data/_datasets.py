@@ -891,7 +891,7 @@ def triple_well_1d(h=1e-3, n_steps=500):
     return TimeIndependentSystem(TripleWell1D(), h, n_steps)
 
 
-def double_well_2d(h=1e-3, n_steps=10000):
+def double_well_2d(h=1e-3, n_steps=10000, temperature_factor=1., mass=1., damping=1.):
     r""" This dataset generates trajectories of a two-dimensional particle living in a double-well potential
     landscape.
 
@@ -901,7 +901,7 @@ def double_well_2d(h=1e-3, n_steps=10000):
 
         \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sigma(t, X_t)\mathrm{d}W_t
 
-    with :math:`W_t` being a Wiener process, :math:`\sigma = 0.7`, and the potential :math:`V` being given by
+    with :math:`W_t` being a Wiener process, :math:`\sigma = \sqrt{\frac{\mathrm{kT}}{2\cdot m\cdot d}}`, where :math:`m` is the mass, :math:`d` the damping factor, and the potential :math:`V` being given by
 
     .. math::
 
@@ -911,10 +911,16 @@ def double_well_2d(h=1e-3, n_steps=10000):
 
     Parameters
     ----------
-    h : float, default = 1e-5
+    h : float, default = 1e-3
         Integration step size. The implementation uses an Euler-Maruyama integrator.
     n_steps : int, default = 10000
         Number of integration steps between each evaluation. That means the default lag time is :code:`h*n_steps=0.1`.
+    temperature_factor : float, default=1
+        The temperature kT.
+    mass : float, default=1
+        The particle's mass.
+    damping : float, default=1
+        Damping factor.
 
     Returns
     -------
@@ -944,7 +950,12 @@ def double_well_2d(h=1e-3, n_steps=10000):
     >>> assert evaluations.shape == (100, 2)
     """
     from ._data_bindings import DoubleWell2D
-    return TimeIndependentSystem(DoubleWell2D(), h, n_steps)
+    system = TimeIndependentSystem(DoubleWell2D(), h, n_steps, props={
+        'kT': temperature_factor,
+        'mass': mass,
+        'damping': damping
+    })
+    return system
 
 
 def time_dependent_quintuple_well(h=1e-3, n_steps=10000, beta=5.):

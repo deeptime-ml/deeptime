@@ -2,13 +2,12 @@ jobs:
 - job:
   displayName: Win
   pool:
-    vmImage: vs2017-win2016
-    # vmImage: "windows-2019"
+    vmImage: "windows-2019"
   strategy:
     matrix:
       Python37:
         CONDA_PY: '3.7'
-        CONDA_NPY: '1.16'
+        CONDA_NPY: '1.18'
 
   steps:
   - template: checkout.yml

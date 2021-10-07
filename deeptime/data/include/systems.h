@@ -250,9 +250,20 @@ struct DoubleWell2D {
         return {{-4 * x[0] * x[0] * x[0] + 4 * x[0], -2 * x[1]}};
     }
 
-    static constexpr Matrix<T, 2> sigma{{{{0.7, 0.0}}, {{0.0, 0.7}}}};
     T h{1e-3};
     std::size_t nSteps{10000};
+    T mass{1.};
+    T damping{1.};
+    T kT{1.};
+
+    Matrix<T, 2> sigma{{{{std::sqrt(0.5 * kT / (mass * damping)), 0.0}}, 
+                        {{0.0, std::sqrt(0.5 * kT / (mass * damping))}}}};
+
+    void updateSigma() {
+        sigma = Matrix<T, 2>{{{{std::sqrt(0.5 * kT / (mass * damping)), 0.0}}, 
+                            {{0.0, std::sqrt(0.5 * kT / (mass * damping))}}}};
+    };
+
 };
 
 //------------------------------------------------------------------------------
