@@ -29,7 +29,7 @@ requirements:
     - numpy
     - scipy
     - pybind11 <2.8,>2.8  # [win]
-    - pybind11 <2.8,>2.8  # [not win]
+    - pybind11  # [not win]
     - intel-openmp  # [osx]
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
