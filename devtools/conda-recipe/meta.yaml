@@ -21,26 +21,25 @@ requirements:
   build:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
-    - llvm-openmp # [osx]
-    - intel-openmp # [osx]
 
   host:
-    - cython
-    - intel-openmp # [osx]
-    - numpy >=1.14
     - python
-    - scipy
-    - threadpoolctl >=2.0.0
-    - setuptools !=50.0.0
+    - cython
     - pip
+    - numpy
+    - scipy
     - pybind11
+    - intel-openmp  # [osx]
+    - llvm-openmp  # [osx]
+    - libgomp  # [linux]
 
   run:
-    - intel-openmp # [osx]
-    - vs2015_runtime  # [win]
-    - {{ pin_compatible('numpy') }}
     - python
+    - {{ pin_compatible('numpy') }}
     - scipy
+    - scikit-learn
+    - threadpoolctl
+    - intel-openmp  # [osx]
 
 test:
   source_files:
