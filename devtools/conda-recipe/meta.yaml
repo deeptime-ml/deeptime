@@ -28,7 +28,7 @@ requirements:
     - pip
     - numpy
     - scipy
-    - pybind11
+    - pybind11 != 2.8.0
     - intel-openmp  # [osx]
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
