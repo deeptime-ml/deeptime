@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-import setuptools
+import setuptools  # noqa # pylint: disable=unused-import
 
 from numpy.distutils.command.build_ext import build_ext
 
@@ -135,9 +135,7 @@ def configuration(parent_package='', top_path=None):
     config = Configuration(None, parent_package, top_path)
     config.set_options(ignore_setup_xxx_py=True,
                        assume_default_configuration=True,
-                       delegate_options_to_subpackages=True,
-                       # quiet=True,
-                       )
+                       delegate_options_to_subpackages=True)
     config.add_subpackage('deeptime')
     return config
 
