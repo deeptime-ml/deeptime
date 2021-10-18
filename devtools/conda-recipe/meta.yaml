@@ -28,9 +28,8 @@ requirements:
     - pip
     - numpy
     - scipy
-    - pybind11 <2.8.0  # [win]
-    - pybind11  # [not win]
-    - intel-openmp  # [osx]
+    - pybind11
+    - pybind11-abi
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
 
@@ -40,7 +39,6 @@ requirements:
     - scipy
     - scikit-learn
     - threadpoolctl
-    - intel-openmp  # [osx]
 
 test:
   source_files:
