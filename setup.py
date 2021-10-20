@@ -65,7 +65,7 @@ class Build(build_ext):
         common_inc = Path('deeptime') / 'src' / 'include'
 
         if self.compiler.compiler_type == 'msvc':
-            cxx_flags = ['/EHsc', '/std:c++17', '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()]
+            cxx_flags = ['/EHsc', '/std:c++17', '/permissive', '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()]
             extra_link_args.append('/machine:X64')
         else:
             cxx_flags = ['-std=c++17']

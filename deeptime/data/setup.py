@@ -8,7 +8,7 @@ def configuration(parent_package='', top_path=None):
     config.add_data_files(
         'data/double_well_discrete.npz',
     )
-    ext = Pybind11Extension('_data_bindings',
+    ext = Pybind11Extension(config.paths(['_data_bindings'])[0],
                             sources=config.paths(['src/data_module.cpp']),
                             include_dirs=config.paths(['include']),
                             cxx_std=17)
