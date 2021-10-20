@@ -12,8 +12,6 @@ steps:
       conda install conda-build conda-verify pip
     displayName: 'Install dependencies'
     continueOnError: false
-  - script: set PYTHONUNBUFFERED=1
-      displayName: Set PYTHONUNBUFFERED
   - bash: |
       conda build devtools
     displayName: 'Build and test'
