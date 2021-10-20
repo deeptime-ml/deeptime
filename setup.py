@@ -7,7 +7,6 @@ from numpy.distutils.command.build_ext import build_ext
 
 import versioneer
 import pybind11
-from pybind11.setup_helpers import Pybind11Extension
 
 CCODE_TEMPLATE = """{includes}
 int main(void) {{
@@ -65,12 +64,28 @@ class Build(build_ext):
         common_inc = Path('deeptime') / 'src' / 'include'
 
         if self.compiler.compiler_type == 'msvc':
-            cxx_flags = ['/EHsc', '/std:c++17', '/permissive', '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()]
+            cxx_flags = ['/EHsc', '/std:c++17', '/bigobj', f'/DVERSION_INFO=\\"{self.distribution.get_version()}\\"']
             extra_link_args.append('/machine:X64')
         else:
             cxx_flags = ['-std=c++17']
             extra_compile_args += ['-pthread']
             extra_link_args = ['-lpthread']
+
+        self.setup_openmp(define_macros, extra_compile_args, extra_link_args)
+        for ext in self.extensions:
+            ext.include_dirs.append(common_inc.resolve())
+            ext.include_dirs.append(np_inc)
+            ext.include_dirs.append(pybind_inc.resolve())
+
+            if ext.language == 'c++':
+                ext.extra_compile_args += cxx_flags
+                ext.extra_compile_args += extra_compile_args
+                ext.extra_link_args += extra_link_args
+                ext.define_macros += define_macros
+
+        super(Build, self).build_extensions()
+
+    def setup_openmp(self, define_macros, extra_compile_args, extra_link_args):
         has_openmp = supports_omp(self.compiler)
         if has_openmp:
             extra_compile_args += ['-fopenmp' if sys.platform != 'darwin' else '-fopenmp=libiomp5']
@@ -81,21 +96,6 @@ class Build(build_ext):
             else:
                 raise ValueError("Should not happen.")
             define_macros += [('USE_OPENMP', None)]
-
-        for ext in self.extensions:
-            ext.include_dirs.append(common_inc.resolve())
-            if ext.language == 'c++':
-                ext.extra_compile_args += extra_compile_args
-                ext.extra_link_args += extra_link_args
-                ext.define_macros += define_macros
-
-            if not isinstance(ext, Pybind11Extension):
-                ext.include_dirs.append(np_inc)
-                ext.include_dirs.append(pybind_inc.resolve())
-                if ext.language == 'c++':
-                    ext.extra_compile_args += cxx_flags
-
-        super(Build, self).build_extensions()
 
 
 cmdclass = versioneer.get_cmdclass()
