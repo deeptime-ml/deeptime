@@ -1,3 +1,6 @@
+from pybind11.setup_helpers import Pybind11Extension
+
+
 def configuration(parent_package='', top_path=None):
     from numpy.distutils.misc_util import Configuration
 
@@ -5,9 +8,9 @@ def configuration(parent_package='', top_path=None):
     config.add_data_files(
         'data/double_well_discrete.npz',
     )
-    config.add_extension('_data_bindings',
-                         sources=['src/data_module.cpp'],
-                         include_dirs=['include'],
-                         language='c++',
-                         )
+    ext = Pybind11Extension('_data_bindings',
+                            sources=config.paths(['src/data_module.cpp']),
+                            include_dirs=config.paths(['include']),
+                            cxx_std=17)
+    config.ext_modules.append(ext)
     return config
