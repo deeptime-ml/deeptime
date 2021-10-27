@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from sktime.base import Estimator, Model, InputFormatError
+from deeptime.base import Estimator, Model, InputFormatError
 
 
 class EvilEstimator(Estimator):
@@ -81,7 +81,3 @@ class TestImmutableData(unittest.TestCase):
         class Supervised(WellBehavingEstimator):
             def fit(self, x, y=None, foobar=None):
                 return super(Supervised, self).fit(x)
-
-
-if __name__ == '__main__':
-    unittest.main()

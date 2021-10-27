@@ -1,0 +1,14 @@
+numpy
+scipy
+scikit-learn
+deeptime
+sphinx
+nbsphinx
+sphinxcontrib-bibtex
+matplotlib
+networkx
+sphinxcontrib-katex
+sphinx-gallery
+torch
+memory_profiler
+mdshare

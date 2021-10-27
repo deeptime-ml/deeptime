@@ -1,0 +1,20 @@
+[report]
+exclude_lines =
+    @plotting_function
+    pragma: no cover
+omit =
+    # omit setup.py files
+    */**/setup.py
+    # omit test directory
+    tests/*
+    deeptime/_version.py
+
+[run]
+omit =
+    # omit setup.py files
+    */**/setup.py
+    # omit test directory
+    tests/*
+    # omit cython
+    */**/*.pyx
+    deeptime/_version.py

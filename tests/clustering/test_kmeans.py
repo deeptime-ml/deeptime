@@ -3,67 +3,160 @@ import unittest
 import warnings
 
 import numpy as np
+import pytest
+from numpy.testing import assert_equal
 from sklearn.datasets import make_blobs
-from sklearn.model_selection import ParameterGrid
+from sklearn.utils.extmath import row_norms
 
-from sktime.clustering import KmeansClustering
-from sktime.clustering.cluster_model import ClusterModel
+import deeptime as dt
+
+import deeptime.clustering._clustering_bindings as bindings
 
 
-def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=0, cluster_centers=None,
-                   callback_init_centers=None, callback_loop=None) -> (KmeansClustering, ClusterModel):
-    est = KmeansClustering(n_clusters=k, max_iter=max_iter, init_strategy=init_strategy,
-                           fixed_seed=fixed_seed, n_jobs=n_jobs,
-                           initial_centers=np.array(cluster_centers) if cluster_centers is not None else None)
+def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=None, cluster_centers=None,
+                   callback_init_centers=None, callback_loop=None) -> (dt.clustering.KMeans, dt.clustering.ClusterModel):
+    est = dt.clustering.KMeans(n_clusters=k, max_iter=max_iter, init_strategy=init_strategy,
+                               fixed_seed=fixed_seed, n_jobs=n_jobs,
+                               initial_centers=np.array(cluster_centers) if cluster_centers is not None else None)
     est.fit(data, callback_init_centers=callback_init_centers, callback_loop=callback_loop)
     model = est.fetch_model()
     return est, model
 
 
+@pytest.mark.parametrize("est", [dt.clustering.KMeans, dt.clustering.MiniBatchKMeans])
+def test_1d_data(est):
+    data = np.ones((500,), dtype=np.float32)
+    estimator = est(1)
+    clustering = estimator.fit(data, initial_centers=np.array([[.5]])).fetch_model()
+    assert_equal(clustering.n_clusters, 1)
+    assert_equal(clustering.cluster_centers[0], [1])
+
+
+@pytest.mark.parametrize("squared", [True, False], ids=lambda x: "squared {}".format(x))
+@pytest.mark.parametrize("precomputed_XX", [True, False], ids=lambda x: "XX {}".format(x))
+@pytest.mark.parametrize("precomputed_YY", [True, False], ids=lambda x: "YY {}".format(x))
+def test_distances(squared, precomputed_XX, precomputed_YY):
+    X = np.random.uniform(-5, 5, size=(50, 3)).astype(np.float64)
+    Y = np.random.uniform(-3, 3, size=(70, 3)).astype(np.float64)
+    XX = row_norms(X, squared=True).astype(np.float64) if precomputed_XX else None
+    YY = row_norms(Y, squared=True).astype(np.float64) if precomputed_YY else None
+
+    if squared:
+        dists = bindings.distances_squared(X, Y, XX=XX, YY=YY)
+    else:
+        dists = bindings.distances(X, Y, XX=XX, YY=YY)
+    np.testing.assert_equal(dists.shape, (len(X), len(Y)))
+    for i in range(len(X)):
+        for j in range(len(Y)):
+            d = np.linalg.norm(X[i] - Y[j])
+            if squared:
+                d *= d
+            np.testing.assert_almost_equal(dists[i, j], d, decimal=4)
+
+
+@pytest.mark.parametrize("seed", [463498, True, 555])
+@pytest.mark.parametrize("init_strategy", ["uniform", "kmeans++"])
+def test_3gaussian_1d_singletraj(seed, init_strategy):
+    # generate 1D data from three gaussians
+    state = np.random.RandomState(42)
+    X = [state.randn(200) - 2.0,
+         state.randn(200),
+         state.randn(200) + 2.0]
+    X = np.atleast_2d(np.hstack(X)).T
+    X = X.astype(np.float32)
+    k = 50
+
+    kmeans, model = cluster_kmeans(X, k=k, init_strategy=init_strategy, n_jobs=1, fixed_seed=seed, max_iter=500)
+    cc = model.cluster_centers
+    np.testing.assert_(np.all(np.isfinite(cc)), msg="cluster centers borked for strat %s" % init_strategy)
+    assert (np.any(cc < 1.0)), "failed for init_strategy=%s" % init_strategy
+    assert (np.any((cc > -1.0) * (cc < 1.0))), "failed for init_strategy=%s" % init_strategy
+    assert (np.any(cc > -1.0)), "failed for init_strategy=%s" % init_strategy
+
+    km1, model1 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=seed, n_jobs=1, max_iter=500)
+    km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=seed, n_jobs=1, max_iter=500)
+    np.testing.assert_equal(len(model1.cluster_centers), k)
+    np.testing.assert_equal(len(model2.cluster_centers), k)
+    np.testing.assert_equal(model1.n_clusters, k)
+    np.testing.assert_equal(model2.n_clusters, k)
+    np.testing.assert_(model1.converged)
+    np.testing.assert_(model2.converged)
+
+    # check initial centers (after kmeans++, uniform init) are equal.
+    np.testing.assert_equal(km1.initial_centers, km2.initial_centers, err_msg='not eq for {} and seed={}'
+                            .format(init_strategy, seed))
+
+    while not model1.converged:
+        km1.fit(data=X, initial_centers=model1.cluster_centers)
+        model1 = km1.fetch_model()
+    while not model2.converged:
+        km2.fit(data=X, initial_centers=model2.cluster_centers)
+        model2 = km2.fetch_model()
+
+    assert np.linalg.norm(model1.cluster_centers - km1.initial_centers) > 0
+    np.testing.assert_array_almost_equal(model1.cluster_centers, model2.cluster_centers)
+    np.testing.assert_allclose(model1.cluster_centers, model2.cluster_centers,
+                               err_msg="should yield same centers with fixed seed=%s for strategy %s, "
+                                       "Initial centers=%s"
+                                       % (seed, init_strategy, km2.initial_centers))
+    np.testing.assert_almost_equal(model1.inertia, model1.score(X), decimal=4)
+
+
+def test_kmeans_model_direct():
+    m = dt.clustering.KMeansModel(np.random.normal(size=(3, 3)), 'euclidean')
+    np.testing.assert_equal(m.inertias, None)
+    np.testing.assert_equal(m.inertia, None)
+
+
 class TestKmeans(unittest.TestCase):
 
-    def test_3gaussian_1d_singletraj(self):
-        # generate 1D data from three gaussians
-        state = np.random.RandomState(42)
-        X = [state.randn(200) - 2.0,
-             state.randn(200),
-             state.randn(200) + 2.0]
-        X = np.atleast_2d(np.hstack(X)).T
-        X = X.astype(np.float32)
-        k = 50
-        grid = ParameterGrid({'init_strategy': ['uniform', 'kmeans++'], 'fixed_seed': [463498, True]})
-        for param in grid:
-            init_strategy = param['init_strategy']
-            fixed_seed = param['fixed_seed']
-            kmeans, model = cluster_kmeans(X, k=k, init_strategy=init_strategy, n_jobs=0, fixed_seed=fixed_seed)
-            cc = model.cluster_centers
-            self.assertTrue(np.all(np.isfinite(cc)), "cluster centers borked for strat %s" % init_strategy)
-            assert (np.any(cc < 1.0)), "failed for init_strategy=%s" % init_strategy
-            assert (np.any((cc > -1.0) * (cc < 1.0))), "failed for init_strategy=%s" % init_strategy
-            assert (np.any(cc > -1.0)), "failed for init_strategy=%s" % init_strategy
+    def test_properties(self):
+        k = 6
+        data = make_blobs(n_samples=500, random_state=45, centers=k, cluster_std=0.5, shuffle=False)[0]
+        small_data = make_blobs(n_samples=2, random_state=45, centers=k, cluster_std=0.5, shuffle=False)[0]
 
-            km1, model1 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=0)
-            km2, model2 = cluster_kmeans(X, k=k, init_strategy=init_strategy, fixed_seed=fixed_seed, n_jobs=0)
-            self.assertEqual(len(model1.cluster_centers), k)
-            self.assertEqual(len(model2.cluster_centers), k)
+        estimator = dt.clustering.KMeans(k, max_iter=10000, metric='euclidean', tolerance=1e-7, init_strategy='uniform',
+                                         fixed_seed=17, n_jobs=1, initial_centers=None)
 
-            # check initial centers (after kmeans++, uniform init) are equal.
-            np.testing.assert_equal(km1.initial_centers, km2.initial_centers, err_msg='not eq for {} and seed={}'
-                                    .format(init_strategy, fixed_seed))
+        with np.testing.assert_raises(ValueError):
+            estimator.initial_centers = np.random.normal(size=(7, 3))  # too many initial centers
 
-            while not model1.converged:
-                km1.fit(data=X, initial_centers=model1.cluster_centers)
-                model1 = km1.fetch_model()
-            while not model2.converged:
-                km2.fit(data=X, initial_centers=model2.cluster_centers)
-                model2 = km2.fetch_model()
+        with np.testing.assert_raises(ValueError):
+            estimator.metric = 'bogus'  # does not exist
 
-            assert np.linalg.norm(model1.cluster_centers - km1.initial_centers) > 0
-            np.testing.assert_array_almost_equal(model1.cluster_centers, model2.cluster_centers)
-            np.testing.assert_allclose(model1.cluster_centers, model2.cluster_centers,
-                                       err_msg="should yield same centers with fixed seed=%s for strategy %s, "
-                                               "Initial centers=%s"
-                                               % (fixed_seed, init_strategy, km2.initial_centers))
+        with np.testing.assert_raises(ValueError):
+            estimator.init_strategy = 'bogus'  # does not exist
+
+        with np.testing.assert_raises(ValueError):
+            estimator.fixed_seed = 'test'  # not supported to use strings
+
+        with np.testing.assert_raises(ValueError):
+            estimator.transform(np.random.normal(size=(5, 3)))  # no model there yet
+
+        np.testing.assert_equal(estimator.n_clusters, k)
+        np.testing.assert_equal(estimator.max_iter, 10000)
+        np.testing.assert_equal(estimator.metric, 'euclidean')
+        np.testing.assert_equal(estimator.tolerance, 1e-7)
+        np.testing.assert_equal(estimator.init_strategy, 'uniform')
+        np.testing.assert_equal(estimator.fixed_seed, 17)
+        np.testing.assert_equal(estimator.n_jobs, 1)
+        np.testing.assert_equal(estimator.initial_centers, None)
+
+        with np.testing.assert_raises(ValueError):
+            estimator.fit(small_data)  # data is too small to pick initial centers
+
+        model = estimator.fit(data).fetch_model()
+        np.testing.assert_equal(model.n_clusters, k)
+        np.testing.assert_equal(model.tolerance, 1e-7)
+        np.testing.assert_equal(model.inertia, model.inertias[-1])
+        np.testing.assert_(np.abs(model.inertias[-2] - model.inertias[-1]) <= model.tolerance)
+        np.testing.assert_equal(model.metric, 'euclidean')
+
+    def test_data_are_centers(self):
+        data = np.random.normal(size=(5, 500))
+        km = dt.clustering.KMeans(n_clusters=5, initial_centers=data)
+        clustering = km.fit(data).fetch_model()
+        np.testing.assert_equal(clustering.transform(data), np.arange(5))
 
     def test_check_convergence_serial_parallel(self):
         """ check serial and parallel version of kmeans converge to the same centers.
@@ -81,7 +174,7 @@ class TestKmeans(unittest.TestCase):
         while repeat and it < 3:
             for strat in ('uniform', 'kmeans++'):
                 seed = random.randint(0, 2 ** 32 - 1)
-                cl_serial, model_serial = cluster_kmeans(data, k=k, n_jobs=0, fixed_seed=seed, max_iter=max_iter,
+                cl_serial, model_serial = cluster_kmeans(data, k=k, n_jobs=1, fixed_seed=seed, max_iter=max_iter,
                                                          init_strategy=strat)
                 cl_parallel, model_parallel = cluster_kmeans(data, k=k, n_jobs=2, fixed_seed=seed, max_iter=max_iter,
                                                              init_strategy=strat)
@@ -139,7 +232,7 @@ class TestKmeans(unittest.TestCase):
             np.array([-1, 1, -1], dtype=np.float32), np.array([1, -1, 1], dtype=np.float32)
         ])
         X = np.atleast_2d(X)
-        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=0)
+        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centersequilibrium, max_iter=500, n_jobs=1)
         cl = model.cluster_centers
         import sklearn.cluster as skcl
         with warnings.catch_warnings():
@@ -217,13 +310,12 @@ class TestKmeans(unittest.TestCase):
             nonlocal iter
             iter += 1
 
-
         state = np.random.RandomState(42)
         data = state.rand(100, 3)
         cluster_kmeans(data, k=3, max_iter=2, callback_init_centers=callback_init,
                        callback_loop=callback_loop)
         assert init == 3
-        assert iter == 2
+        assert iter <= 2
 
 
 class TestKmeansResume(unittest.TestCase):
@@ -273,7 +365,3 @@ class TestKmeansResume(unittest.TestCase):
                     found[i] = True
 
         assert np.all(found)
-
-
-if __name__ == "__main__":
-    unittest.main()

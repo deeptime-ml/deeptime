@@ -1,8 +1,9 @@
 import unittest
 import numpy as np
-from sktime.covariance.util import running_moments
 
 __author__ = 'noe'
+
+from deeptime.covariance.util import RunningCovar
 
 
 class TestRunningMoments(unittest.TestCase):
@@ -17,11 +18,11 @@ class TestRunningMoments(unittest.TestCase):
         # Number of chunks:
         cls.nchunks = cls.T // cls.L
         # Set a lag time for time-lagged tests:
-        #cls.lag = 50
+        # cls.lag = 50
         # Weights references:
         cls.weights = np.random.rand(10000)
         # Trajectory weights:
-        cls.trajweights = 3*np.random.rand(cls.nchunks)
+        cls.trajweights = 3 * np.random.rand(cls.nchunks)
         # bias the first part
         cls.X[:2000] += 1.0
         cls.Y[:2000] -= 1.0
@@ -30,7 +31,7 @@ class TestRunningMoments(unittest.TestCase):
 
         # direct calculation, moments of X and Y
         cls.w = np.shape(cls.X)[0]
-        cls.wsym = 2*np.shape(cls.X)[0]
+        cls.wsym = 2 * np.shape(cls.X)[0]
         cls.sx = cls.X.sum(axis=0)
         cls.sy = cls.Y.sum(axis=0)
         cls.Mxx = np.dot(cls.X.T, cls.X)
@@ -69,258 +70,258 @@ class TestRunningMoments(unittest.TestCase):
 
         # direct calculation, weighted symmetric moments
         cls.s_sym_w = cls.sx_w + cls.sy_w
-        cls.Mxx_sym_w = np.dot((cls.weights[:, None] * cls.X).T, cls.X) + np.dot((cls.weights[:, None] * cls.Y).T, cls.Y)
-        cls.Mxy_sym_w = np.dot((cls.weights[:, None] * cls.X).T, cls.Y) + np.dot((cls.weights[:, None] * cls.Y).T, cls.X)
+        cls.Mxx_sym_w = np.dot((cls.weights[:, None] * cls.X).T, cls.X) + np.dot((cls.weights[:, None] * cls.Y).T,
+                                                                                 cls.Y)
+        cls.Mxy_sym_w = np.dot((cls.weights[:, None] * cls.X).T, cls.Y) + np.dot((cls.weights[:, None] * cls.Y).T,
+                                                                                 cls.X)
         cls.m_sym_w = cls.s_sym_w / float(2 * cls.wesum)
         cls.X0_sym_w = cls.X - cls.m_sym_w
         cls.Y0_sym_w = cls.Y - cls.m_sym_w
-        cls.Mxx0_sym_w = np.dot((cls.weights[:, None] *cls.X0_sym_w).T, cls.X0_sym_w) + np.dot((cls.weights[:, None] *cls.Y0_sym_w).T, cls.Y0_sym_w)
-        cls.Mxy0_sym_w = np.dot((cls.weights[:, None] *cls.X0_sym_w).T, cls.Y0_sym_w) + np.dot((cls.weights[:, None] *cls.Y0_sym_w).T, cls.X0_sym_w)
+        cls.Mxx0_sym_w = np.dot((cls.weights[:, None] * cls.X0_sym_w).T, cls.X0_sym_w) + np.dot(
+            (cls.weights[:, None] * cls.Y0_sym_w).T, cls.Y0_sym_w)
+        cls.Mxy0_sym_w = np.dot((cls.weights[:, None] * cls.X0_sym_w).T, cls.Y0_sym_w) + np.dot(
+            (cls.weights[:, None] * cls.Y0_sym_w).T, cls.X0_sym_w)
 
         return cls
 
     def test_XX_withmean(self):
         # many passes
-        cc = running_moments.RunningCovar(remove_mean=False)
+        cc = RunningCovar(remove_mean=False)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L])
+            cc.add(self.X[i:i + self.L])
         np.testing.assert_allclose(cc.weight_XX(), self.T)
         np.testing.assert_allclose(cc.sum_X(), self.sx)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx)
-        cc = running_moments.RunningCovar(remove_mean=False)
+        cc = RunningCovar(remove_mean=False)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], column_selection=self.cols_2)
+            cc.add(self.X[i:i + self.L], column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx[:, self.cols_2])
-        cc = running_moments.RunningCovar(remove_mean=False, diag_only=True)
+        cc = RunningCovar(remove_mean=False, diag_only=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L])
+            cc.add(self.X[i:i + self.L])
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx))
 
     def test_XX_meanfree(self):
         # many passes
-        cc = running_moments.RunningCovar(remove_mean=True)
+        cc = RunningCovar(remove_mean=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L])
+            cc.add(self.X[i:i + self.L])
         np.testing.assert_allclose(cc.weight_XX(), self.T)
         np.testing.assert_allclose(cc.sum_X(), self.sx)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0)
-        cc = running_moments.RunningCovar(remove_mean=True)
+        cc = RunningCovar(remove_mean=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], column_selection=self.cols_2)
+            cc.add(self.X[i:i + self.L], column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0[:, self.cols_2])
-        cc = running_moments.RunningCovar(remove_mean=True, diag_only=True)
+        cc = RunningCovar(remove_mean=True, diag_only=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L])
+            cc.add(self.X[i:i + self.L])
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0))
 
     def test_XXXY_withmean(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
         np.testing.assert_allclose(cc.weight_XY(), self.T)
         np.testing.assert_allclose(cc.sum_X(), self.sx)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], column_selection=self.cols_2)
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, diag_only=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy))
 
     def test_XXXY_meanfree(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
         np.testing.assert_allclose(cc.weight_XY(), self.T)
         np.testing.assert_allclose(cc.sum_X(), self.sx)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], column_selection=self.cols_2)
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, diag_only=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy0))
 
     def test_XXXY_weighted_withmean(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
         for i in range(0, self.T, self.L):
-            iX = self.X[i:i+self.L, :]
-            iY = self.Y[i:i+self.L, :]
-            iwe = self.weights[i:i+self.L]
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
             cc.add(iX, iY, weights=iwe)
         np.testing.assert_allclose(cc.weight_XY(), self.wesum)
         np.testing.assert_allclose(cc.sum_X(), self.sx_w)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx_w)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy_w)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False)
         for i in range(0, self.T, self.L):
-            iX = self.X[i:i+self.L, :]
-            iY = self.Y[i:i+self.L, :]
-            iwe = self.weights[i:i+self.L]
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
             cc.add(iX, iY, weights=iwe, column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx_w[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy_w[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, diag_only=True)
         for i in range(0, self.T, self.L):
-            iX = self.X[i:i+self.L, :]
-            iY = self.Y[i:i+self.L, :]
-            iwe = self.weights[i:i+self.L]
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
             cc.add(iX, iY, weights=iwe)
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx_w))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy_w))
 
     def test_XXXY_weighted_meanfree(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True)
         for i in range(0, self.T, self.L):
-            iX = self.X[i:i+self.L, :]
-            iY = self.Y[i:i+self.L, :]
-            iwe = self.weights[i:i+self.L]
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
             cc.add(iX, iY, weights=iwe)
         np.testing.assert_allclose(cc.weight_XY(), self.wesum)
         np.testing.assert_allclose(cc.sum_X(), self.sx_w)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_w)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_w)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True)
         for i in range(0, self.T, self.L):
-            iX = self.X[i:i+self.L, :]
-            iY = self.Y[i:i+self.L, :]
-            iwe = self.weights[i:i+self.L]
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
             cc.add(iX, iY, weights=iwe, column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_w[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_w[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, diag_only=True)
         for i in range(0, self.T, self.L):
-            iX = self.X[i:i+self.L, :]
-            iY = self.Y[i:i+self.L, :]
-            iwe = self.weights[i:i+self.L]
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
             cc.add(iX, iY, weights=iwe)
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0_w))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy0_w))
 
     def test_XXXY_sym_withmean(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
-        np.testing.assert_allclose(cc.weight_XY(), 2*self.T)
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
+        np.testing.assert_allclose(cc.weight_XY(), 2 * self.T)
         np.testing.assert_allclose(cc.sum_X(), self.s_sym)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx_sym)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy_sym)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], column_selection=self.cols_2)
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx_sym[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy_sym[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True, diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True, diag_only=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx_sym))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy_sym))
 
     def test_XXXY_sym_meanfree(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
-        np.testing.assert_allclose(cc.weight_XY(), 2*self.T)
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
+        np.testing.assert_allclose(cc.weight_XY(), 2 * self.T)
         np.testing.assert_allclose(cc.sum_X(), self.s_sym)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_sym)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_sym)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], column_selection=self.cols_2)
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_sym[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_sym[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True, diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True, diag_only=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0_sym))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy0_sym))
 
     def test_XXXY_weighted_sym_withmean(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
         for i in range(0, self.T, self.L):
-            iwe = self.weights[i:i+self.L]
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], weights=iwe)
+            iwe = self.weights[i:i + self.L]
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], weights=iwe)
         np.testing.assert_allclose(cc.weight_XY(), 2 * self.wesum)
         np.testing.assert_allclose(cc.sum_X(), self.s_sym_w)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx_sym_w)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy_sym_w)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True)
         for i in range(0, self.T, self.L):
-            iwe = self.weights[i:i+self.L]
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], weights=iwe, column_selection=self.cols_2)
+            iwe = self.weights[i:i + self.L]
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], weights=iwe, column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx_sym_w[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy_sym_w[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True, diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=False, symmetrize=True, diag_only=True)
         for i in range(0, self.T, self.L):
-            iwe = self.weights[i:i+self.L]
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], weights=iwe)
+            iwe = self.weights[i:i + self.L]
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], weights=iwe)
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx_sym_w))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy_sym_w))
 
     def test_XXXY_weighted_sym_meanfree(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
         for i in range(0, self.T, self.L):
-            iwe = self.weights[i:i+self.L]
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], weights=iwe)
-        np.testing.assert_allclose(cc.weight_XY(), 2*self.wesum)
+            iwe = self.weights[i:i + self.L]
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], weights=iwe)
+        np.testing.assert_allclose(cc.weight_XY(), 2 * self.wesum)
         np.testing.assert_allclose(cc.sum_X(), self.s_sym_w)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_sym_w)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_sym_w)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True)
         for i in range(0, self.T, self.L):
-            iwe = self.weights[i:i+self.L]
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], weights=iwe, column_selection=self.cols_2)
+            iwe = self.weights[i:i + self.L]
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], weights=iwe, column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_sym_w[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_sym_w[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True, diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, remove_mean=True, symmetrize=True, diag_only=True)
         for i in range(0, self.T, self.L):
-            iwe = self.weights[i:i+self.L]
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], weights=iwe)
+            iwe = self.weights[i:i + self.L]
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], weights=iwe)
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0_sym_w))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy0_sym_w))
 
     def test_XXYY_meanfree(self):
         # many passes
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
         np.testing.assert_allclose(cc.weight_XY(), self.T)
         np.testing.assert_allclose(cc.sum_X(), self.sx)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0)
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0)
         np.testing.assert_allclose(cc.moments_YY(), self.Myy0)
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L], column_selection=self.cols_2)
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L], column_selection=self.cols_2)
         np.testing.assert_allclose(cc.moments_XX(), self.Mxx0[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_XY(), self.Mxy0[:, self.cols_2])
         np.testing.assert_allclose(cc.moments_YY(), self.Myy0[:, self.cols_2])
-        cc = running_moments.RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True,
-                                          diag_only=True)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True,
+                          diag_only=True)
         for i in range(0, self.T, self.L):
-            cc.add(self.X[i:i+self.L], self.Y[i:i+self.L])
+            cc.add(self.X[i:i + self.L], self.Y[i:i + self.L])
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy0))
         np.testing.assert_allclose(cc.moments_YY(), np.diag(self.Myy0))
-
-
-if __name__ == "__main__":
-    unittest.main()

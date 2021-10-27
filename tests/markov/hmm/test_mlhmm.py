@@ -1,17 +1,31 @@
 import unittest
 
-import msmtools
+import deeptime.markov.hmm._hmm_bindings as _bindings
 import numpy as np
-import sktime.markov.hmm._hmm_bindings as _bindings
+import pytest
+from numpy.testing import assert_raises, assert_equal, assert_array_almost_equal, assert_
 
-from sktime.data.double_well import DoubleWellDiscrete
-from sktime.markov.hmm import MaximumLikelihoodHMSM
-from sktime.markov.hmm.hmm import viterbi
-from sktime.markov.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
-from sktime.markov.hmm.output_model import DiscreteOutputModel
-from sktime.markov.util import count_states
-from tests.markov.msm.test_msm import estimate_markov_model
-from tests.util import assert_array_not_equal
+import deeptime.markov.tools
+from deeptime.data import DoubleWellDiscrete
+from deeptime.markov import count_states
+from deeptime.data import prinz_potential
+from deeptime.markov.hmm import DiscreteOutputModel, MaximumLikelihoodHMM, init, BayesianHMM, viterbi, HiddenMarkovModel
+from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
+from tests.markov.msm.test_mlmsm import estimate_markov_model
+from tests.testing_utilities import assert_array_not_equal
+
+
+@pytest.mark.parametrize('mode', ['maximum-likelihood', 'bayesian'], ids=lambda mode: f"mode={mode}")
+@pytest.mark.parametrize('reversible', [True, False], ids=lambda rev: f"reversible={rev}")
+def test_disconnected_dtraj_sanity(mode, reversible):
+    msm1 = MarkovStateModel([[.8, .2], [.3, .7]])
+    msm2 = MarkovStateModel([[.9, .05, .05], [.3, .6, .1], [.1, .1, .8]])
+    dtrajs = [msm1.simulate(10000), 2 + msm2.simulate(10000), np.array([5]*100)]
+    init_hmm = init.discrete.random_guess(6, 3)
+    hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1, reversible=reversible) \
+        .fit(dtrajs).fetch_model()
+    if mode == 'bayesian':
+        BayesianHMM(hmm.submodel_largest(dtrajs=dtrajs), reversible=reversible).fit(dtrajs)
 
 
 class TestAlgorithmsAgainstReference(unittest.TestCase):
@@ -36,6 +50,12 @@ class TestAlgorithmsAgainstReference(unittest.TestCase):
             [0.9, 0.2],
             [0.9, 0.2]
         ])
+
+    def test_model_likelihood(self):
+        hmm = HiddenMarkovModel(self.transition_probabilities, self.conditional_probabilities)
+        loglik = hmm.compute_observation_likelihood(self.dtraj)
+        ref_logprob = -3.3725
+        np.testing.assert_array_almost_equal(loglik, ref_logprob, decimal=4)
 
     def test_forward(self):
         alpha_out = np.zeros_like(self.state_probabilities)
@@ -102,12 +122,12 @@ class TestMLHMM(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         dtraj = DoubleWellDiscrete().dtraj
-        initial_hmm_10 = initial_guess_discrete_from_data(dtraj, n_hidden_states=2, lagtime=10)
-        cls.hmm_lag10 = MaximumLikelihoodHMSM(initial_hmm_10, lagtime=10).fit(dtraj).fetch_model()
+        initial_hmm_10 = init.discrete.metastable_from_data(dtraj, n_hidden_states=2, lagtime=10)
+        cls.hmm_lag10 = MaximumLikelihoodHMM(initial_hmm_10, lagtime=10).fit(dtraj).fetch_model()
         cls.hmm_lag10_largest = cls.hmm_lag10.submodel_largest(dtrajs=dtraj)
         cls.msm_lag10 = estimate_markov_model(dtraj, 10, reversible=True)
-        initial_hmm_1 = initial_guess_discrete_from_data(dtraj, n_hidden_states=2, lagtime=1)
-        cls.hmm_lag1 = MaximumLikelihoodHMSM(initial_hmm_1).fit(dtraj).fetch_model()
+        initial_hmm_1 = init.discrete.metastable_from_data(dtraj, n_hidden_states=2, lagtime=1)
+        cls.hmm_lag1 = MaximumLikelihoodHMM(initial_hmm_1, lagtime=1).fit(dtraj).fetch_model()
         cls.hmm_lag1_largest = cls.hmm_lag1.submodel_largest(dtrajs=dtraj)
         cls.msm_lag1 = estimate_markov_model(dtraj, 1, reversible=True)
         cls.dtrajs = dtraj
@@ -116,6 +136,13 @@ class TestMLHMM(unittest.TestCase):
     # Test basic HMM properties
     # =============================================================================
 
+    def test_likelihood(self):
+        ref_loglik = self.hmm_lag10.likelihood
+        new_loglik = self.hmm_lag10.compute_observation_likelihood(self.dtrajs)
+        np.testing.assert_allclose(new_loglik, ref_loglik, rtol=1e-1)
+
+    def test_collect_observations_in_state_sanity(self):
+        self.hmm_lag1.collect_observations_in_state(self.dtrajs, 1)
 
     def test_output_model(self):
         assert isinstance(self.hmm_lag1.output_model, DiscreteOutputModel)
@@ -140,7 +167,7 @@ class TestMLHMM(unittest.TestCase):
         np.testing.assert_equal(self.hmm_lag10.transition_model.n_states, 2)
 
     def test_transition_matrix(self):
-        import msmtools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
         for P in [self.hmm_lag1.transition_model.transition_matrix, self.hmm_lag10.transition_model.transition_matrix]:
             np.testing.assert_(msmana.is_transition_matrix(P))
             np.testing.assert_(msmana.is_reversible(P))
@@ -236,20 +263,22 @@ class TestMLHMM(unittest.TestCase):
     def test_observation_probabilities(self):
         np.testing.assert_array_equal(self.hmm_lag1.output_probabilities.shape, (2, self.hmm_lag1.n_observation_states))
         np.testing.assert_allclose(self.hmm_lag1.output_probabilities.sum(axis=1), np.ones(2))
-        np.testing.assert_array_equal(self.hmm_lag10.output_probabilities.shape, (2, self.hmm_lag10.n_observation_states))
+        np.testing.assert_array_equal(self.hmm_lag10.output_probabilities.shape,
+                                      (2, self.hmm_lag10.n_observation_states))
         np.testing.assert_allclose(self.hmm_lag10.output_probabilities.sum(axis=1), np.ones(2))
 
     def test_transition_matrix_obs(self):
         assert np.array_equal(self.hmm_lag1_largest.transition_matrix_obs().shape,
                               (self.hmm_lag1_largest.n_observation_states, self.hmm_lag1_largest.n_observation_states))
         assert np.array_equal(self.hmm_lag10_largest.transition_matrix_obs().shape,
-                              (self.hmm_lag10_largest.n_observation_states, self.hmm_lag10_largest.n_observation_states))
+                              (
+                              self.hmm_lag10_largest.n_observation_states, self.hmm_lag10_largest.n_observation_states))
         for T in [self.hmm_lag1_largest.transition_matrix_obs(),
                   self.hmm_lag1_largest.transition_matrix_obs(k=2),
                   self.hmm_lag10_largest.transition_matrix_obs(),
                   self.hmm_lag10_largest.transition_matrix_obs(k=4)]:
-            np.testing.assert_(msmtools.analysis.is_transition_matrix(T))
-            np.testing.assert_(msmtools.analysis.is_reversible(T))
+            np.testing.assert_(deeptime.markov.tools.analysis.is_transition_matrix(T))
+            np.testing.assert_(deeptime.markov.tools.analysis.is_reversible(T))
 
     def test_stationary_distribution_obs(self):
         for hmsm in [self.hmm_lag1_largest, self.hmm_lag10_largest]:
@@ -323,7 +352,8 @@ class TestMLHMM(unittest.TestCase):
         np.testing.assert_(corr3[0] < corr3[-1])
 
         # test error case of incompatible vector size
-        np.testing.assert_raises(ValueError, hmsm.correlation_obs, np.arange(hmsm.n_hidden_states + hmsm.n_observation_states))
+        np.testing.assert_raises(ValueError, hmsm.correlation_obs,
+                                 np.arange(hmsm.n_hidden_states + hmsm.n_observation_states))
 
     def test_relaxation(self):
         # todo this only really tests the hidden msm relaxation
@@ -371,7 +401,8 @@ class TestMLHMM(unittest.TestCase):
         np.testing.assert_allclose(fp1[1][1:], -fp3[1][1:])
 
         # test error case of incompatible vector size
-        self.assertRaises(ValueError, hmsm.fingerprint_correlation_obs, np.arange(hmsm.n_hidden_states + hmsm.n_observation_states))
+        self.assertRaises(ValueError, hmsm.fingerprint_correlation_obs,
+                          np.arange(hmsm.n_hidden_states + hmsm.n_observation_states))
 
     def test_fingerprint_relaxation(self):
         hmsm = self.hmm_lag10_largest
@@ -451,10 +482,10 @@ class TestMLHMM(unittest.TestCase):
     # STATISTICS, SAMPLING
     # ---------------------------------
     def test_observable_state_indices(self):
-        from sktime.markov.sample import compute_index_states
+        from deeptime.markov import sample
 
         hmsm = self.hmm_lag10_largest
-        I = compute_index_states(self.dtrajs, subset=hmsm.observation_symbols)
+        I = sample.compute_index_states(self.dtrajs, subset=hmsm.observation_symbols)
         # I = hmsm.observable_state_indexes
         np.testing.assert_equal(len(I), hmsm.n_observation_states)
         # compare to histogram
@@ -464,6 +495,28 @@ class TestMLHMM(unittest.TestCase):
         for i in range(A.shape[0]):
             np.testing.assert_equal(I[i].shape[0], hist[A[i]])
             np.testing.assert_equal(I[i].shape[1], 2)
+
+    def test_transform_to_observed_symbols(self):
+        hmsm = self.hmm_lag10_largest
+        dtraj = np.concatenate((hmsm.observation_symbols_full, [500000]))
+        mapped = hmsm.transform_discrete_trajectories_to_observed_symbols(dtraj)[0]
+        for i in range(len(dtraj)):
+            state = dtraj[i]
+            if state in hmsm.observation_symbols:
+                assert_equal(mapped[i], state)
+            else:
+                assert_equal(mapped[i], -1)
+
+    def test_sample_by_observation_probabilities_out_of_sample(self):
+        hmsm = self.hmm_lag10_largest
+        nsample = 50
+        with assert_raises(ValueError):  # symbols not in obs set
+            hmsm.sample_by_observation_probabilities([0, 1, 2], nsample)
+        # sanity check subset of observation symbols
+        hmsm.sample_by_observation_probabilities(np.arange(66), nsample)
+        dtraj2 = np.concatenate((hmsm.observation_symbols, [10000]))
+        # sanity check too large state in there
+        hmsm.sample_by_observation_probabilities(dtraj2, 50)
 
     def test_sample_by_observation_probabilities(self):
         hmsm = self.hmm_lag10_largest
@@ -478,18 +531,42 @@ class TestMLHMM(unittest.TestCase):
             for row in samples:
                 np.testing.assert_equal(row[0], 0)  # right trajectory
 
+    def test_sample_by_observation_probabilities_mapping(self):
+        tmat = np.array([[0.9, .1], [.1, .9]])
+        # hidden states correspond to observable states
+        obs = np.eye(2)
+        hmm = HiddenMarkovModel(tmat, obs)
+        # dtraj halfway-split between states 0 and 1
+        dtrajs = np.repeat([0, 1], 10)
+        samples = hmm.sample_by_observation_probabilities(dtrajs, 10)
+        # test that all trajectory indices are 0 (only 1 traj)
+        np.testing.assert_array_equal(np.unique(np.concatenate(samples)[:, 0]), [0])
+        # test that both hidden states map to correct parts of dtraj
+        np.testing.assert_(np.all(samples[0][:, 1] < 10))
+        np.testing.assert_(np.all(samples[1][:, 1] >= 10))
+
+    def test_sample_by_noncrisp_observation_probabilities_mapping(self):
+        tmat = np.array([[0.9, .1], [.1, .9]])
+        # hidden states correspond to observable states
+        obs = np.array([[.9, .1], [.4, .6]])
+        hmm = HiddenMarkovModel(tmat, obs)
+        # dtraj halfway-split between states 0 and 1
+        dtrajs = np.repeat([0, 1], 10)
+        n_samples = 500000
+        samples = hmm.sample_by_observation_probabilities(dtrajs, n_samples)
+        # test that both hidden states map to correct distributions
+        probs_hidden1 = np.histogram(dtrajs[samples[0][:, 1]], bins=2)[0] / n_samples
+        probs_hidden2 = np.histogram(dtrajs[samples[1][:, 1]], bins=2)[0] / n_samples
+        assert_array_almost_equal(probs_hidden1, [.9, .1], decimal=2)
+        assert_array_almost_equal(probs_hidden2, [.4, .6], decimal=2)
+
     def test_simulate_HMSM(self):
         hmsm = self.hmm_lag10_largest
         N = 400
         start = 1
-        traj, obs = hmsm.simulate(N=N, start=start)
+        traj, obs = hmsm.simulate(n_steps=N, start=start)
         assert len(traj) <= N
         assert len(np.unique(traj)) <= len(hmsm.transition_model.transition_matrix)
-
-    def test_dt_model(self):
-        count_model = self.hmm_lag10_largest.transition_model.count_model
-        self.assertEqual((count_model.lagtime * count_model.physical_time).m, 10)
-        self.assertEqual(count_model.physical_time.units, '1 step')
 
     # ----------------------------------
     # MORE COMPLEX TESTS / SANITY CHECKS
@@ -516,8 +593,8 @@ class TestMLHMM(unittest.TestCase):
                            0, 2, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
                            1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 2, 0, 0, 1, 1, 2, 0, 1, 1, 1,
                            0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0])]
-        init_hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=2)
-        hmm = MaximumLikelihoodHMSM(init_hmm, lagtime=2).fit(dtraj).fetch_model()
+        init_hmm = init.discrete.metastable_from_data(dtraj, n_hidden_states=3, lagtime=2)
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=2).fit(dtraj).fetch_model()
         hmm_sub = hmm.submodel_largest(connectivity_threshold=5, dtrajs=dtraj)
 
         self.assertEqual(hmm_sub.transition_model.timescales().shape[0], 1)
@@ -527,8 +604,8 @@ class TestMLHMM(unittest.TestCase):
     def test_separate_states(self):
         dtrajs = [np.array([0, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1]),
                   np.array([2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2]), ]
-        init_hmm = initial_guess_discrete_from_data(dtrajs, n_hidden_states=3, lagtime=1, separate_symbols=[0])
-        hmm = MaximumLikelihoodHMSM(init_hmm, lagtime=1).fit(dtrajs).fetch_model().submodel_largest(dtrajs=dtrajs)
+        init_hmm = init.discrete.metastable_from_data(dtrajs, n_hidden_states=3, lagtime=1, separate_symbols=[0])
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(dtrajs).fetch_model().submodel_largest(dtrajs=dtrajs)
         # we expect zeros in all samples at the following indices:
         pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))
         assert np.allclose(hmm.output_probabilities[pobs_zeros], 0)
@@ -538,8 +615,8 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
 
     def test_1state(self):
         obs = np.array([0, 0, 0, 0, 0], dtype=int)
-        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=1, lagtime=1)
-        hmm = MaximumLikelihoodHMSM(init_hmm).fit(obs).fetch_model()
+        init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=1, lagtime=1)
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
         # hmm = bhmm.estimate_hmm([obs], n_states=1, lag=1, accuracy=1e-6)
         p0_ref = np.array([1.0])
         A_ref = np.array([[1.0]])
@@ -551,12 +628,12 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
     def test_1state_fail(self):
         obs = np.array([0, 0, 0, 0, 0], dtype=int)
         with self.assertRaises(ValueError):
-            _ = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
+            _ = init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1)
 
     def test_2state_step(self):
         obs = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=int)
-        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
-        hmm = MaximumLikelihoodHMSM(init_hmm, accuracy=1e-6).fit(obs).fetch_model()
+        init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1)
+        hmm = MaximumLikelihoodHMM(init_hmm, accuracy=1e-6, lagtime=1).fit(obs).fetch_model()
         p0_ref = np.array([1, 0])
         A_ref = np.array([[0.8, 0.2],
                           [0.0, 1.0]])
@@ -572,8 +649,8 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
 
     def test_2state_2step(self):
         obs = np.array([0, 1, 0], dtype=int)
-        init_hmm = initial_guess_discrete_from_data(obs, n_hidden_states=2, lagtime=1)
-        hmm = MaximumLikelihoodHMSM(init_hmm).fit(obs).fetch_model()
+        init_hmm = init.discrete.metastable_from_data(obs, n_hidden_states=2, lagtime=1)
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit(obs).fetch_model()
         p0_ref = np.array([1, 0])
         A_ref = np.array([[0.0, 1.0],
                           [1.0, 0.0]])
@@ -588,5 +665,13 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
                or np.allclose(hmm.output_probabilities, B_ref[[perm]], atol=1e-5)
 
 
-if __name__ == '__main__':
-    unittest.main()
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_gaussian_prinz(dtype):
+    system = prinz_potential()
+    trajs = system.trajectory(np.zeros((5, 1)), length=5000).astype(dtype)
+    init_ghmm = init.gaussian.from_data(trajs, 4, reversible=True)
+    ghmm = MaximumLikelihoodHMM(init_ghmm, lagtime=1).fit_fetch(trajs)
+    means = ghmm.output_model.means
+
+    for minimum in system.minima:
+        assert_(np.any(np.abs(means - minimum) < 0.1))

@@ -1,5 +1,5 @@
 package:
-  name: scikit-time
+  name: deeptime
   #version: dev+{{ GIT_DESCRIBE_TAG[1:] + '+' + GIT_DESCRIBE_NUMBER + '.' + GIT_DESCRIBE_HASH}}
   version: 0
 
@@ -13,31 +13,34 @@ build:
     - AGENT_BUILDDIRECTORY
   script:
     - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
+  skip_compile_pyc:
+    - "deeptime/util_torch.py"
+    - "deeptime/decomposition/vampnet.py"
 
 requirements:
   build:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
-    - llvm-openmp # [osx]
-    - intel-openmp # [osx]
 
   host:
-    - cython
-    - intel-openmp # [osx]
-    - numpy
     - python
-    - scipy
-    - setuptools
+    - cython
     - pip
+    - numpy
+    - scipy
+    - pybind11 <2.8.0  # [win]
+    - pybind11  # [not win]
+    - intel-openmp  # [osx]
+    - llvm-openmp  # [osx]
+    - libgomp  # [linux]
 
   run:
-    - intel-openmp # [osx]
-    - vs2015_runtime  # [win]
-    - msmtools
-    - {{ pin_compatible('numpy') }}
     - python
+    - {{ pin_compatible('numpy') }}
     - scipy
-    - pint
+    - scikit-learn
+    - threadpoolctl
+    - intel-openmp  # [osx]
 
 test:
   source_files:
@@ -49,4 +52,6 @@ test:
     - pytest-cov
     - pytest-faulthandler
     - pytest-sugar
-    - mdshare
+    - importlib_metadata  # [py<38]
+    - typing_extensions  # [py<38]
+    - pytorch >=1.1

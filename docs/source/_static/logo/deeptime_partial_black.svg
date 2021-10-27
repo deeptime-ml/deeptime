@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   id="svg8"
+   version="1.1"
+   viewBox="0 0 45 15"
+   height="15mm"
+   width="45mm">
+  <defs
+     id="defs2" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="layer1">
+    <g
+       transform="translate(1.4566512,-28.863071)"
+       id="g1595">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:17.2636px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.431591"
+         x="-0.7664873"
+         y="42.275696"
+         id="text1027-1-9-8-8"><tspan
+           id="tspan1025-4-2-6-2"
+           x="-0.7664873"
+           y="42.275696"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Optima;-inkscape-font-specification:Optima;stroke-width:0.431591">∂</tspan></text>
+      <g
+         id="g1223-0-8"
+         transform="matrix(1.3161391,0,0,1.3161391,45.453965,77.800519)">
+        <path
+           style="fill:none;stroke:#000000;stroke-width:0.264999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           d="m -21.934968,-35.971329 c 0,0 0.389894,1.978565 -2.10536,4.048637 -0.282733,0.234557 -0.37123,0.82729 -0.09922,1.030431 2.424243,1.810434 2.204576,3.92547 2.204576,3.92547 v 0 h -5.879851 c 0,0 -0.219666,-2.115036 2.204576,-3.92547 0.27201,-0.203141 0.183513,-0.795874 -0.09922,-1.030431 -2.495253,-2.070072 -2.105359,-4.048637 -2.105359,-4.048637 z"
+           id="path1184-5-0-7" />
+        <path
+           id="path1203-0-2"
+           d="m -26.834754,-34.054142 3.587521,0.705941 c 0,0 0.259313,-0.417121 0,0 -0.259313,0.417121 -1.299053,1.022099 -1.541774,1.87256 -0.477128,-0.896946 -1.09069,-1.327157 -1.442303,-1.689426 -0.351613,-0.362269 -0.603444,-0.889075 -0.603444,-0.889075 z"
+           style="fill:#000000;stroke:none;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+        <path
+           style="fill:#000000;stroke:none;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           d="m -27.279687,-27.30891 h 4.819563 c -0.01413,-0.305286 -0.03965,-0.542239 -0.144895,-0.813358 -1.445509,-0.338718 -1.902801,-1.189921 -2.314037,-1.185314 -0.37597,0.0042 -1.105154,1.158036 -2.30873,1.446976 -0.06347,0.218271 -0.0346,0.367797 -0.0519,0.551696 z"
+           id="path1203-2-2-28" />
+      </g>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:7.0829px;line-height:0.95;font-family:'Apple Color Emoji';-inkscape-font-specification:'Apple Color Emoji';letter-spacing:-0.0948904px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.177072"
+         x="25.098763"
+         y="35.664185"
+         id="text910-5-2"><tspan
+           id="tspan908-9-6"
+           x="25.098763"
+           y="35.664185"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.95;font-family:'Apple Color Emoji';-inkscape-font-specification:'Apple Color Emoji';letter-spacing:-0.0948904px;stroke-width:0.177072">deep</tspan><tspan
+           x="25.098763"
+           y="42.392941"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.95;font-family:'Apple Color Emoji';-inkscape-font-specification:'Apple Color Emoji';letter-spacing:0.296532px;stroke-width:0.177072"
+           id="tspan912-1-4">time</tspan></text>
+    </g>
+  </g>
+</svg>

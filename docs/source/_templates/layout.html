@@ -1,0 +1,17 @@
+{% extends '!layout.html' %}
+
+{% set global_toc = toctree(maxdepth=4,
+                            collapse=theme_collapse_navigation|tobool,
+                            includehidden=theme_includehidden|tobool,
+                            titles_only=theme_titles_only|tobool) %}
+
+{%- block extrahead %}
+<link rel="apple-touch-icon" sizes="180x180" href="{{pathto('_static/apple-touch-icon.png', 1)|e}}">
+<link rel="icon" type="image/png" sizes="32x32" href="{{pathto('_static/favicon-32x32.png', 1)|e}}">
+<link rel="icon" type="image/png" sizes="16x16" href="{{pathto('_static/favicon-16x16.png', 1)|e}}">
+<link rel="manifest" href="{{pathto('_static/site.webmanifest', 1)|e}}">
+{% endblock %}
+
+{% block footer %}
+<script src="{{pathto('_static/scrollbar.js', 1)|e}}"></script>
+{% endblock %}

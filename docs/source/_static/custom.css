@@ -1,0 +1,257 @@
+div.sphinxsidebarwrapper p.logo {
+    text-align: center;
+}
+
+.searchlabel {
+    display: none;
+}
+
+#searchbox {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.github-wrapper {
+    width: 90%;
+    margin-top: 1rem;
+    margin-left: auto;
+    margin-right: auto;
+    height: 3.2rem;
+    overflow: hidden;
+    background-color: #2c367d;
+    position: relative;
+    text-align: center;
+}
+
+.logo-github {
+    width: 32px;
+    height: 32px;
+    margin: 0.5rem 0.5rem 0.5rem 1rem;
+    background-position: center;
+    background-repeat: no-repeat;
+    float: left;
+}
+
+.github-text {
+    display: block;
+    float: left;
+    height: 100%;
+    font-size: 130%;
+}
+
+div.documentwrapper {
+    background-color: #f5f5f5;
+    line-height: 1.5;
+    color: rgb(73, 73, 73);
+}
+
+div.sphinxsidebar {
+    background-color: rgb(32, 41, 90);
+    color: rgb(32, 41, 90);
+}
+
+div.sphinxsidebarwrapper {
+    background-color: rgb(32, 41, 90)
+}
+
+.sphinxsidebarwrapper {
+    color: #d6daef;
+}
+
+div.sphinxsidebar a {
+    color: #EFF0F4;
+    text-decoration-color: rgb(239, 240, 244);
+}
+
+.sphinxsidebarwrapper a, .sphinxsidebarwrapper a:visited {
+    color: #EFF0F4;
+}
+
+.sphinxsidebarwrapper a:hover, .sphinxsidebarwrapper a:focus {
+    color: #CAC0F0;
+}
+
+.sphinxsidebarwrapper span, .sphinxsidebarwrapper h3, .sphinxsidebarwrapper .h4 {
+    color: #f1f2f9
+}
+
+a.current {
+    background-color: #2d397e;
+}
+
+div.sphinxsidebarwrapper a.current ul {
+    color: #605C69
+}
+
+.method > dt {
+    background-color: #ebebeb;
+}
+
+dt:target, .highlight {
+    background: #d6daef;
+}
+
+dl.class > dt {
+    background: #d6daef;
+}
+
+@media screen and (min-width: 876px) {
+
+    div.nboutput.container div.output_area {
+        overflow-x: hidden !important;
+    }
+
+    .sphinxsidebarwrapper > p.caption {
+        font-size: 130%;
+    }
+
+    html {
+        overflow: hidden;
+    }
+
+    div.document {
+        margin-top: 0;
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        height: 100vh;
+    }
+
+    div.bodywrapper {
+        margin-left: 6rem;
+        margin-right: 6rem;
+        box-shadow: 0 0 50px 18px #e8e8e8;
+        max-width: 65rem;
+    }
+
+    div.documentwrapper {
+        box-sizing: border-box;
+        display: block;
+        height: 100vh;
+        min-width: 0;
+        margin-left: 18rem;
+        width: auto;
+        float: none;
+        overflow: auto;
+        position: relative;
+    }
+
+    div.sphinxsidebar {
+        box-sizing: border-box;
+        display: block;
+        float: left;
+        overflow: hidden;
+        overflow-wrap: unset;
+        position: relative;
+        touch-action: auto;
+        width: 18rem;
+        height: 100vh;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    div.sphinxsidebarwrapper {
+        background-color: rgb(32, 41, 90)
+    }
+
+    .sphinxsidebarwrapper {
+        padding: 2rem 0;
+    }
+
+    div.sphinxsidebar ul ul,
+    div.sphinxsidebar ul.want-points {
+        margin-left: 20px;
+        list-style: none;
+    }
+
+    div.sphinxsidebarwrapper ul {
+        list-style: none;
+    }
+
+    div.sphinxsidebar a {
+        border-bottom: none;
+        text-decoration: none;
+        text-decoration-style: solid;
+    }
+
+    div.sphinxsidebar a:hover {
+        border-bottom: none;
+    }
+
+    .sphinxsidebarwrapper a:hover, .sphinxsidebarwrapper a:focus {
+        border-bottom: none;
+    }
+
+    a.current {
+        box-sizing: border-box;
+        display: block;
+    }
+
+    li.toctree-l1 {
+        margin-left: 1rem;
+    }
+
+    dl.method {
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+
+    dl.field-list > dt {
+        font-weight: bold;
+        word-break: break-word;
+        padding-left: 0;
+        padding-right: 5px;
+    }
+}
+
+/* landing page css */
+.gallery {
+    margin: 5px;
+    border: 1px solid #ccc;
+    float: left;
+    width: 250px;
+    height: 250px;
+}
+
+div.gallery:hover {
+    border: 1px solid #777;
+}
+
+div.gallery img {
+    width: 100%;
+    height: 70%;
+    object-fit: contain;
+}
+
+.gallery .desc {
+    height: 30%;
+    text-align: center;
+}
+/*div.tooltip {
+    position: absolute;
+    text-align: center;
+    width: 160px;
+    padding: 2px;
+    font: 12px sans-serif;
+    background: lightsteelblue;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+    display: block;
+    overflow: auto;
+}*/
+div.tooltip {
+    position: absolute;
+    background-color: white;
+    max-width: 200px;
+    height: auto;
+    padding: 1px;
+    border-style: solid;
+    border-radius: 4px;
+    border-width: 1px;
+    box-shadow: 3px 3px 10px rgba(0, 0, 0, .5);
+    pointer-events: none;
+}
+.link {
+    stroke: #999;
+    stroke-opacity: .6;
+}

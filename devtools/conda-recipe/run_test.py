@@ -4,7 +4,7 @@ import sys
 import pytest
 import tempfile
 
-cover_pkg = 'sktime'
+cover_pkg = 'deeptime'
 xml_results_dest = os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir())
 assert os.path.isdir(xml_results_dest), 'no dest dir available'
 # where to write junit xml
@@ -18,10 +18,12 @@ pytest_args = ("-vv "
                "--doctest-modules "
                "--junit-xml={junit_xml} "
                "--durations=20 "
-               "--pyargs tests/ sktime"
+               "--cov-config {cov_config} "
+               "--pyargs tests/ deeptime"
                .format(cover_pkg=cover_pkg,
                        junit_xml=junit_xml,
                        dest_report=cov_xml,
+                       cov_config=".coveragerc"
                        )
                .split(' '))
 

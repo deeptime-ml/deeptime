@@ -1,11 +1,11 @@
 import unittest
 
-import msmtools.analysis as msmana
+import deeptime.markov.tools.analysis as msmana
 import numpy as np
 
-from sktime.markov import TransitionCountEstimator
-from sktime.markov.hmm.maximum_likelihood_hmm import initial_guess_discrete_from_data
-from sktime.markov.msm import MarkovStateModel
+import deeptime.markov.hmm.init as init
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import MarkovStateModel
 
 
 class TestInitHMMDiscrete(unittest.TestCase):
@@ -17,10 +17,10 @@ class TestInitHMMDiscrete(unittest.TestCase):
         T = 10000
         dtrajs = [MarkovStateModel(P).simulate(T)]
         # estimate initial HMM with 2 states - should be identical to P
-        init_hmm = initial_guess_discrete_from_data(dtrajs, n_hidden_states=2, lagtime=1)
+        init_hmm = init.discrete.metastable_from_data(dtrajs, n_hidden_states=2, lagtime=1)
         # test
         A = init_hmm.transition_model.transition_matrix
-        B = init_hmm.output_model.output_probabilities
+        B = init_hmm.output_probabilities
         # Test stochasticity
         np.testing.assert_(msmana.is_transition_matrix(A))
         np.testing.assert_allclose(B.sum(axis=1), np.ones(B.shape[0]))
@@ -41,11 +41,11 @@ class TestInitHMMDiscrete(unittest.TestCase):
         T = 50000
         dtrajs = [MarkovStateModel(P).simulate(T)]
         # estimate initial HMM with 2 states - should be identical to P
-        hmm = initial_guess_discrete_from_data(dtrajs, n_states, lagtime=1, regularize=False)
+        hmm = init.discrete.metastable_from_data(dtrajs, n_states, lagtime=1, regularize=False)
         # Test if model fit is close to reference. Note that we do not have an exact reference, so we cannot set the
         # tolerance in a rigorous way to test statistical significance. These are just sanity checks.
         Tij = hmm.transition_model.transition_matrix
-        B = hmm.output_model.output_probabilities
+        B = hmm.output_probabilities
         # Test stochasticity
         np.testing.assert_(msmana.is_transition_matrix(Tij))
         np.testing.assert_allclose(B.sum(axis=1), np.ones(B.shape[0]))
@@ -72,10 +72,10 @@ class TestInitHMMDiscrete(unittest.TestCase):
         T = 10000
         dtrajs = [MarkovStateModel(P).simulate(T)]
         # estimate initial HMM with 2 states - should be identical to P
-        hmm = initial_guess_discrete_from_data(dtrajs, n_states, 1)
+        hmm = init.discrete.metastable_from_data(dtrajs, n_states, 1)
         # Test stochasticity and reversibility
         Tij = hmm.transition_model.transition_matrix
-        B = hmm.output_model.output_probabilities
+        B = hmm.output_probabilities
         np.testing.assert_(msmana.is_transition_matrix(Tij))
         np.testing.assert_(msmana.is_reversible(Tij))
         np.testing.assert_allclose(B.sum(axis=1), np.ones(B.shape[0]))
@@ -89,18 +89,18 @@ class TestInitHMMDiscrete(unittest.TestCase):
         Aref = np.array([[1.0]])
         Bref = np.array([[1.0]])
         for rev in [True, False]:  # reversibiliy doesn't matter in this example
-            hmm = initial_guess_discrete_from_data(dtraj, 1, 1, reversible=rev)
+            hmm = init.discrete.metastable_from_data(dtraj, 1, 1, reversible=rev)
             np.testing.assert_allclose(hmm.transition_model.transition_matrix, Aref)
-            np.testing.assert_allclose(hmm.output_model.output_probabilities, Bref)
+            np.testing.assert_allclose(hmm.output_probabilities, Bref)
 
     def test_2state_2obs_deadend(self):
         dtraj = np.array([0, 0, 0, 0, 1])
         Aref = np.array([[1.0]])
         for rev in [True, False]:  # reversibiliy doesn't matter in this example
-            hmm = initial_guess_discrete_from_data(dtraj, 1, 1, reversible=rev)
+            hmm = init.discrete.metastable_from_data(dtraj, 1, 1, reversible=rev)
             np.testing.assert_allclose(hmm.transition_model.transition_matrix, Aref)
             # output must be 1 x 2, and no zeros
-            B = hmm.output_model.output_probabilities
+            B = hmm.output_probabilities
             np.testing.assert_equal(B.shape, (1, 2))
             np.testing.assert_array_less(0, B)
 
@@ -108,12 +108,12 @@ class TestInitHMMDiscrete(unittest.TestCase):
         obs = np.array([0, 0, 1, 1, 0])
         Aref = np.array([[1.0]])
         for rev in [True, False]:  # reversibiliy doesn't matter in this example
-            hmm = initial_guess_discrete_from_data(obs, n_hidden_states=1, lagtime=1, reversible=rev)
+            hmm = init.discrete.metastable_from_data(obs, n_hidden_states=1, lagtime=1, reversible=rev)
             np.testing.assert_(msmana.is_transition_matrix(hmm.transition_model.transition_matrix))
             np.testing.assert_allclose(hmm.transition_model.transition_matrix, Aref)
             # output must be 1 x 2, and no zeros
-            np.testing.assert_equal(hmm.output_model.output_probabilities.shape, (1, 2))
-            np.testing.assert_(np.all(hmm.output_model.output_probabilities > 0))
+            np.testing.assert_equal(hmm.output_probabilities.shape, (1, 2))
+            np.testing.assert_(np.all(hmm.output_probabilities > 0))
 
     def test_2state_2obs_unidirectional(self):
         dtraj = np.array([0, 0, 0, 0, 1])
@@ -123,25 +123,25 @@ class TestInitHMMDiscrete(unittest.TestCase):
                                [0., 1.]])
         perm = [1, 0]  # permutation
         for rev in [True, False]:  # reversibiliy doesn't matter in this example
-            hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=2, lagtime=1, reversible=rev,
-                                                   regularize=False, mode='all')
+            hmm = init.discrete.metastable_from_data(dtraj, n_hidden_states=2, lagtime=1, reversible=rev,
+                                                     regularize=False, mode='all')
             assert np.allclose(hmm.transition_model.transition_matrix, Aref_naked) \
                    or np.allclose(hmm.transition_model.transition_matrix,
                                   Aref_naked[np.ix_(perm, perm)])  # test permutation
-            assert np.allclose(hmm.output_model.output_probabilities, Bref_naked) \
-                   or np.allclose(hmm.output_model.output_probabilities, Bref_naked[perm])  # test permutation
+            assert np.allclose(hmm.output_probabilities, Bref_naked) \
+                   or np.allclose(hmm.output_probabilities, Bref_naked[perm])  # test permutation
 
     def test_3state_fail(self):
         dtraj = np.array([0, 1, 0, 0, 1, 1])
         # this example doesn't admit more than 2 metastable states. Raise.
         with self.assertRaises(ValueError):
-            initial_guess_discrete_from_data(dtraj, 3, 1, reversible=False)
+            init.discrete.metastable_from_data(dtraj, 3, 1, reversible=False)
 
     def test_3state_prev(self):
         dtraj = np.array([0, 1, 2, 0, 3, 4])
-        import msmtools.estimation as msmest
+        import deeptime.markov.tools.estimation as msmest
         for rev in [True, False]:
-            hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=1, reversible=rev)
+            hmm = init.discrete.metastable_from_data(dtraj, n_hidden_states=3, lagtime=1, reversible=rev)
             assert msmana.is_transition_matrix(hmm.transition_model.transition_matrix)
             if rev:
                 assert msmana.is_reversible(hmm.transition_model.transition_matrix)
@@ -150,16 +150,16 @@ class TestInitHMMDiscrete(unittest.TestCase):
         for rev in [True, False]:
             C = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(dtraj).fetch_model().count_matrix
             C += msmest.prior_neighbor(C, 0.001)
-            hmm = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=1, reversible=rev)
+            hmm = init.discrete.metastable_from_data(dtraj, n_hidden_states=3, lagtime=1, reversible=rev)
             np.testing.assert_(msmana.is_transition_matrix(hmm.transition_model.transition_matrix))
             if rev:
                 np.testing.assert_(msmana.is_reversible(hmm.transition_model.transition_matrix))
-            np.testing.assert_allclose(hmm.output_model.output_probabilities.sum(axis=1), 1.)
+            np.testing.assert_allclose(hmm.output_probabilities.sum(axis=1), 1.)
 
     def test_state_splitting(self):
         dtraj = np.array([0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2,
                           0, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 2, 2])
-        hmm0 = initial_guess_discrete_from_data(dtraj, n_hidden_states=3, lagtime=1, separate_symbols=np.array([0]))
+        hmm0 = init.discrete.metastable_from_data(dtraj, n_hidden_states=3, lagtime=1, separate_symbols=np.array([0]))
         piref = np.array([0.35801876, 0.55535398, 0.08662726])
         Aref = np.array([[0.76462978, 0.10261978, 0.13275044],
                          [0.06615566, 0.89464821, 0.03919614],
@@ -168,7 +168,7 @@ class TestInitHMMDiscrete(unittest.TestCase):
                          [0, 0, 1],
                          [1, 0, 0]])
         np.testing.assert_array_almost_equal(hmm0.transition_model.transition_matrix, Aref, decimal=2)
-        np.testing.assert_array_almost_equal(hmm0.output_model.output_probabilities, Bref, decimal=2)
+        np.testing.assert_array_almost_equal(hmm0.output_probabilities, Bref, decimal=2)
         np.testing.assert_array_almost_equal(hmm0.initial_distribution, piref, decimal=2)
 
     def test_state_splitting_empty(self):
@@ -177,7 +177,8 @@ class TestInitHMMDiscrete(unittest.TestCase):
         # create empty labels
         dtraj += 2
         # include an empty label in separate
-        hmm0 = initial_guess_discrete_from_data(dtraj, 3, lagtime=1, separate_symbols=np.array([1, 2]), mode='populous')
+        hmm0 = init.discrete.metastable_from_data(dtraj, 3, lagtime=1, separate_symbols=np.array([1, 2]),
+                                                  mode='populous')
         piref = np.array([0.35801876, 0.55535398, 0.08662726])
         Aref = np.array([[0.76462978, 0.10261978, 0.13275044],
                          [0.06615566, 0.89464821, 0.03919614],
@@ -185,11 +186,11 @@ class TestInitHMMDiscrete(unittest.TestCase):
         Bref = np.array([[0, 0, 0, 1, 0],
                          [0, 0, 0, 0, 1],
                          [0, 0, 1, 0, 0]])
-        np.testing.assert_(np.max(np.abs(hmm0.output_model.output_probabilities - Bref)) < 0.01)
+        np.testing.assert_(np.max(np.abs(hmm0.output_probabilities - Bref)) < 0.01)
         np.testing.assert_array_almost_equal(hmm0.transition_model.transition_matrix, Aref, decimal=2)
         np.testing.assert_array_almost_equal(hmm0.initial_distribution, piref, decimal=2)
 
     def test_state_splitting_fail(self):
         dtraj = np.array([0, 0, 1, 1])
         with self.assertRaises(ValueError):
-            initial_guess_discrete_from_data(dtraj, 2, 1, separate_symbols=np.array([0, 2]))
+            init.discrete.metastable_from_data(dtraj, 2, 1, separate_symbols=np.array([0, 2]))

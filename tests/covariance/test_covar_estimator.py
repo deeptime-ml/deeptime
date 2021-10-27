@@ -2,15 +2,62 @@ import unittest
 
 import numpy as np
 
-from sktime.covariance.covariance import Covariance
+from deeptime.covariance import Covariance
 
-__author__ = 'noe'
+__author__ = 'noe, clonker'
 
-state = np.random.RandomState(123)
 
-data = state.rand(5000, 2)
-weights = state.randn(len(data))
-mean_const = state.rand(2)
+def test_weights():
+    weights = np.concatenate([np.ones((1001,)) * 1e-16, np.ones((3999,))])
+    np.testing.assert_equal(len(weights), 5000)
+    data = np.random.normal(size=(5000, 2))
+    cov = Covariance(lagtime=5, compute_c00=True, compute_c0t=True, compute_ctt=False)
+    model = cov.fit(data, weights=weights, n_splits=64).fetch_model()
+    model2 = cov.fit(data[1002:], weights=weights[1002:], n_splits=55).fetch_model()
+    np.testing.assert_array_almost_equal(model.cov_00, model2.cov_00, decimal=2)
+    np.testing.assert_array_almost_equal(model.cov_0t, model2.cov_0t, decimal=2)
+    np.testing.assert_array_almost_equal(model.mean_0, model2.mean_0, decimal=2)
+    np.testing.assert_array_almost_equal(model.mean_t, model2.mean_t, decimal=2)
+
+
+def test_whitening_on_whitened():
+    data = np.random.normal(size=(1000, 50))
+    from sklearn.decomposition import PCA
+    data = PCA(whiten=True).fit_transform(data)
+    cov = Covariance().fit(data).fetch_model()
+    whitened = cov.whiten(data)
+    np.testing.assert_array_almost_equal(whitened, data)
+
+
+def test_whitening():
+    data = np.random.normal(size=(5000, 50))
+    data = Covariance().fit(data).fetch_model().whiten(data)
+    cov = Covariance().fit(data).fetch_model()
+    np.testing.assert_array_almost_equal(cov.cov_00, np.eye(50), decimal=2)
+    np.testing.assert_array_almost_equal(cov.mean_0, np.zeros_like(cov.mean_0))
+
+
+
+def test_weights_incompatible():
+    data = np.random.normal(size=(5000, 3))
+    est = Covariance(5)
+    with np.testing.assert_raises(ValueError):
+        est.fit(data, weights=np.arange(10))  # incompatible shape
+
+    with np.testing.assert_raises(ValueError):
+        est.fit(data, weights=np.ones((len(data), 2)))  # incompatible shape
+
+
+def test_multiple_fetch():
+    # checks that the model instance does not change when the estimator was not updated
+    data = np.random.normal(size=(5000, 3))
+    est = Covariance(5, compute_c00=True, compute_c0t=False, compute_ctt=False)
+    m1 = est.fit(data).model
+    m2 = est.model
+    m3 = est.partial_fit(np.random.normal(size=(50, 3))).model
+    np.testing.assert_(m1 is m2)
+    np.testing.assert_(m1 is not m3)
+    np.testing.assert_(m2 is not m3)
 
 
 class TestCovarEstimator(unittest.TestCase):
@@ -18,7 +65,10 @@ class TestCovarEstimator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.lag = 10
-        cls.data = data
+        cls.state = np.random.RandomState(123)
+        cls.data = cls.state.rand(5000, 2)
+        cls.weights = cls.state.randn(len(cls.data))
+        cls.mean_const = cls.state.rand(2)
         cls.X = cls.data[:-cls.lag, :]
         cls.Y = cls.data[cls.lag:, :]
         cls.T = cls.X.shape[0]
@@ -33,7 +83,7 @@ class TestCovarEstimator(unittest.TestCase):
 
         cls.wobj = weight_object()
         # Constant mean to be removed:
-        cls.mean_const = mean_const
+        cls.mean_const = cls.mean_const
         # column subsets
         cls.cols_2 = np.array([0])
 
@@ -122,11 +172,11 @@ class TestCovarEstimator(unittest.TestCase):
         cls.X0_sym_wobj = cls.X - cls.m_sym_wobj
         cls.Y0_sym_wobj = cls.Y - cls.m_sym_wobj
         cls.Mxx0_sym_wobj = (1.0 / cls.wesum_obj_sym) * (
-                    np.dot((cls.X_weights[:, None] * cls.X0_sym_wobj).T, cls.X0_sym_wobj)
-                    + np.dot((cls.X_weights[:, None] * cls.Y0_sym_wobj).T, cls.Y0_sym_wobj))
+                np.dot((cls.X_weights[:, None] * cls.X0_sym_wobj).T, cls.X0_sym_wobj)
+                + np.dot((cls.X_weights[:, None] * cls.Y0_sym_wobj).T, cls.Y0_sym_wobj))
         cls.Mxy0_sym_wobj = (1.0 / cls.wesum_obj_sym) * (
-                    np.dot((cls.X_weights[:, None] * cls.X0_sym_wobj).T, cls.Y0_sym_wobj)
-                    + np.dot((cls.X_weights[:, None] * cls.Y0_sym_wobj).T, cls.X0_sym_wobj))
+                np.dot((cls.X_weights[:, None] * cls.X0_sym_wobj).T, cls.Y0_sym_wobj)
+                + np.dot((cls.X_weights[:, None] * cls.Y0_sym_wobj).T, cls.X0_sym_wobj))
 
         # weighted moments, object case, constant mean
         cls.sx_c_wobj = (cls.X_weights[:, None] * cls.Xc).sum(axis=0)
@@ -224,21 +274,22 @@ class TestCovarEstimator(unittest.TestCase):
         np.testing.assert_allclose(cc.cov_0t, self.Mxy_wobj[:, self.cols_2])
 
     def test_XXXY_weightobj_meanfree(self):
-        #TODO: tests do not pass for n_splits > 1!
-        # many passes
-        est = Covariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, bessels_correction=False)
-        cc = est.fit(self.data, weights=self.data_weights, n_splits=1).fetch_model()
-        np.testing.assert_allclose(cc.mean_0, self.mx_wobj)
-        np.testing.assert_allclose(cc.mean_t, self.my_wobj)
-        np.testing.assert_allclose(cc.cov_00, self.Mxx0_wobj)
-        np.testing.assert_allclose(cc.cov_0t, self.Mxy0_wobj)
-        cc = est.fit(self.data, weights=self.data_weights, column_selection=self.cols_2, n_splits=1).fetch_model()
-        np.testing.assert_allclose(cc.cov_00, self.Mxx0_wobj[:, self.cols_2])
-        np.testing.assert_allclose(cc.cov_0t, self.Mxy0_wobj[:, self.cols_2])
+        for n_splits in [1, 2, 3, 4, 5, 6, 7]:
+            est = Covariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, bessels_correction=False)
+            cc = est.fit(self.data, weights=self.data_weights, n_splits=n_splits).fetch_model()
+            np.testing.assert_allclose(cc.mean_0, self.mx_wobj)
+            np.testing.assert_allclose(cc.mean_t, self.my_wobj)
+            np.testing.assert_allclose(cc.cov_00, self.Mxx0_wobj)
+            np.testing.assert_allclose(cc.cov_0t, self.Mxy0_wobj)
+            cc = est.fit(self.data, weights=self.data_weights, column_selection=self.cols_2,
+                         n_splits=n_splits).fetch_model()
+            np.testing.assert_allclose(cc.cov_00, self.Mxx0_wobj[:, self.cols_2])
+            np.testing.assert_allclose(cc.cov_0t, self.Mxy0_wobj[:, self.cols_2])
 
     def test_XXXY_sym_withmean(self):
         # many passes
-        est = Covariance(lagtime=self.lag, remove_data_mean=False, compute_c0t=True, reversible=True, bessels_correction=False)
+        est = Covariance(lagtime=self.lag, remove_data_mean=False, compute_c0t=True, reversible=True,
+                         bessels_correction=False)
         cc = est.fit(self.data).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_sym)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_sym)
@@ -249,7 +300,8 @@ class TestCovarEstimator(unittest.TestCase):
 
     def test_XXXY_sym_meanfree(self):
         # many passes
-        est = Covariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, reversible=True, bessels_correction=False)
+        est = Covariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, reversible=True,
+                         bessels_correction=False)
         cc = est.fit(self.data, lagtime=self.lag).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_sym)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_sym)
@@ -260,7 +312,8 @@ class TestCovarEstimator(unittest.TestCase):
 
     def test_XXXY_weightobj_sym_withmean(self):
         # many passes
-        est = Covariance(lagtime=self.lag, remove_data_mean=False, compute_c0t=True, reversible=True, bessels_correction=False)
+        est = Covariance(lagtime=self.lag, remove_data_mean=False, compute_c0t=True, reversible=True,
+                         bessels_correction=False)
         cc = est.fit(self.data, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_sym_wobj)
         np.testing.assert_allclose(cc.cov_00, self.Mxx_sym_wobj)
@@ -271,7 +324,8 @@ class TestCovarEstimator(unittest.TestCase):
 
     def test_XXXY_weightobj_sym_meanfree(self):
         # many passes
-        est = Covariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, reversible=True, bessels_correction=False)
+        est = Covariance(lagtime=self.lag, remove_data_mean=True, compute_c0t=True, reversible=True,
+                         bessels_correction=False)
         cc = est.fit(self.data, weights=self.data_weights).fetch_model()
         np.testing.assert_allclose(cc.mean_0, self.m_sym_wobj)
         np.testing.assert_allclose(cc.cov_00, self.Mxx0_sym_wobj)
@@ -360,7 +414,7 @@ class TestCovarEstimatorWeightsList(unittest.TestCase):
 
         est = Covariance(lagtime=1, compute_c0t=True)
         for data_traj, weights_traj in zip(data, weights):
-           est.partial_fit((data_traj[:-3], data_traj[3:]), weights=weights_traj[:-3])
+            est.partial_fit((data_traj[:-3], data_traj[3:]), weights=weights_traj[:-3])
         cov = est.fetch_model()
         # cov = covariance_lagged(data, lag=3, weights=weights, chunksize=10)
         assert np.all(cov.cov_00 < 1)
@@ -385,7 +439,3 @@ class TestCovarEstimatorWeightsList(unittest.TestCase):
         c.fit(x, weights=np.ones((len(x),))).fetch_model()
         c.fit(x, weights=None).fetch_model()
         c.fit(x, weights=x[:, 0]).fetch_model()
-
-
-if __name__ == "__main__":
-    unittest.main()

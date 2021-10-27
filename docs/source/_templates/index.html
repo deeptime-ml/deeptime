@@ -1,0 +1,76 @@
+{% extends 'layout.html' %}
+{% set title = _('Deeptime') %}
+
+{% block body %}
+    <h1>Deeptime</h1>
+    <p>
+        Deeptime is a Python library for analysis of time series data. In particular, methods for dimension
+        reduction, clustering, and Markov model estimation are implemented.
+    </p>
+    <p>
+        The API is similar to that of <a href="https://scikit-learn.org/">scikit-learn</a> and offers basic
+        compatibility to its tools via ducktyping.
+    </p>
+    <p>
+        Deeptime can be installed via pip (<code class="code docutils literal notranslate"><span class="pre">pip install deeptime</span></code>)
+        and is also available via conda on conda-forge
+        (<code class="code docutils literal notranslate"><span class="pre">conda install -c conda-forge deeptime</span></code>).
+    </p>
+
+    <div class="section" id="contents">
+        <h3>Main algorithms</h3>
+
+        <a href="index_dimreduction.html">
+            <div class="gallery">
+                <div class="desc">Dimension reduction of dynamical data</div>
+                <img src="_static/landing-page/dimredux_tica.png" alt="TICA on Ellipsoids dataset">
+            </div>
+        </a>
+
+        <a href="index_deepdimreduction.html">
+            <div class="gallery">
+                <div class="desc">Deep dimension reduction with neural networks</div>
+                <img src="_static/landing-page/vamp_v_vampnet.png" alt="VAMPNet vs. VAMP">
+            </div>
+        </a>
+
+        <a href="notebooks/sindy.html">
+            <div class="gallery">
+                <div class="desc">SINDy - Find governing equations from data</div>
+                <img src="_static/landing-page/sindy.png" alt="SINDy on the Rossler system.">
+            </div>
+        </a>
+
+        <a href="index_msm.html">
+            <div class="gallery">
+                <div class="desc">Markov state models</div>
+                <img src="_static/landing-page/msm_tpt.png" alt="TPT on drunkard's walk">
+            </div>
+        </a>
+
+        <a href="notebooks/hmm.html">
+            <div class="gallery">
+                <div class="desc">Hidden markov models</div>
+                <img src="_static/landing-page/hmm.png" alt="Discrete HMM example.">
+            </div>
+        </a>
+    </div>
+    <div class="section" id="contents">
+        <h3>Tools and data</h3>
+
+        <a href="notebooks/clustering.html">
+            <div class="gallery">
+                <div class="desc">Clustering algorithms</div>
+                <img src="_static/landing-page/clustering_regspace.png" alt="Regular space clustering">
+            </div>
+        </a>
+
+        <a href="datasets/index.html">
+            <div class="gallery">
+                <div class="desc">Data - Some toy datasets</div>
+                <img src="_static/landing-page/bickley.png" alt="The Bickley jet.">
+            </div>
+        </a>
+    </div>
+
+{% endblock %}

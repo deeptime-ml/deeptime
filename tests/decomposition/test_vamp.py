@@ -1,33 +1,18 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2017 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 """
-@author: paul
+@author: paul, clonker
 """
 
 import unittest
 
 import numpy as np
+import pytest
 
-from sktime.data.util import timeshifted_split
-from sktime.decomposition.vamp import VAMP
-from sktime.markov._base import cvsplit_dtrajs
-from tests.markov.msm.test_msm import estimate_markov_model
+from deeptime.covariance import CovarianceModel
+from deeptime.util.data import timeshifted_split, TimeLaggedDataset, TimeLaggedConcatDataset, TrajectoryDataset, \
+    TrajectoriesDataset
+from deeptime.data import ellipsoids
+from deeptime.decomposition import TransferOperatorModel, CovarianceKoopmanModel, VAMP, cvsplit_trajs
+from tests.markov.msm.test_mlmsm import estimate_markov_model
 
 
 def random_matrix(n, rank=None, eps=0.01):
@@ -39,6 +24,127 @@ def random_matrix(n, rank=None, eps=0.01):
         rank = n
     s = np.concatenate((np.maximum(s, eps)[0:rank], np.zeros(n - rank)))
     return u.dot(np.diag(s)).dot(v)
+
+
+@pytest.mark.parametrize("with_statistics", [True, False], ids=["w/ statistics", "w/o statistics"])
+@pytest.mark.parametrize("lag_multiple", [1, 2, 3], ids=lambda x: f"lag_multiple={x}")
+def test_expectation_sanity(with_statistics, lag_multiple):
+    data = np.random.normal(size=(10000, 5))
+    vamp = VAMP(lagtime=1).fit_from_timeseries(data).fetch_model()
+    input_dimension = 5
+    n_observables = 10
+
+    observations = np.random.normal(size=(input_dimension, n_observables))
+    if with_statistics:
+        n_statistics = 50
+        statistics = np.random.normal(size=(input_dimension, n_statistics))
+    else:
+        statistics = None
+    vamp.expectation(observations, statistics, lag_multiple=lag_multiple)
+
+
+@pytest.mark.parametrize('components', [None, 0, [0, 1]], ids=lambda x: f"components={x}")
+def test_propagate(components):
+    K = np.diag(np.array([3., 2., 1.]))
+    model = CovarianceKoopmanModel(np.eye(3), K, np.eye(3), CovarianceModel(), 3, 3)
+    data = np.random.normal(size=(100, 3))
+    fwd = model.propagate(data, components=components)
+    if components is not None:
+        components = np.atleast_1d(components)
+        # update K
+        K = K.copy()
+        for i in range(len(K)):
+            if i not in components:
+                K[i, i] = 0.
+    if components is None:
+        np.testing.assert_array_almost_equal(fwd, data @ K)
+
+
+@pytest.fixture(params=['trajectory', 'time-lagged-ds', 'concat-time-lagged-ds', 'traj-ds', 'trajs-ds'])
+def full_rank_time_series(request):
+    """ Yields a time series of which the propagator has full rank (7 in this case as data is mean-free). """
+    random_state = np.random.RandomState(42)
+    d = 8
+    Q = np.linalg.qr(random_state.normal(size=(d, d)))[0]
+    K = Q @ (np.diag(np.arange(1, d + 1)).astype(np.float64) / d) @ Q.T
+    model = TransferOperatorModel(K)
+    x = np.ones((1, d,)) * 100000
+    traj = [x]
+    for _ in range(1000):
+        traj.append(model.forward(traj[-1]))
+    traj = np.concatenate(traj)
+    if request.param == 'trajectory':
+        return traj, traj
+    elif request.param == 'time-lagged-ds':
+        return traj, TimeLaggedDataset(traj[:-1], traj[1:])
+    elif request.param == 'concat-time-lagged-ds':
+        return traj, TimeLaggedConcatDataset([TimeLaggedDataset(traj[:-1], traj[1:])])
+    elif request.param == 'traj-ds':
+        return traj, TrajectoryDataset(1, traj)
+    elif request.param == 'trajs-ds':
+        return traj, TrajectoriesDataset([TrajectoryDataset(1, traj)])
+    else:
+        raise ValueError(f"Unexpected request param {request.param}")
+
+
+@pytest.mark.parametrize("dim", [0, 1, 2, 3, 4, 5, 6, 7], ids=lambda x: f"dim={x}")
+def test_dim(full_rank_time_series, dim):
+    traj, ds = full_rank_time_series
+    if dim < 1:
+        with np.testing.assert_raises(ValueError):
+            VAMP(lagtime=1, dim=dim).fit(ds).fetch_model()
+    else:
+        est = VAMP(lagtime=1, dim=dim).fit(ds)
+        projection = est.transform(traj)
+        np.testing.assert_equal(projection.shape, (len(traj), dim))
+
+
+@pytest.mark.parametrize("var_cutoff", [0., .5, 1., 1.1], ids=lambda x: f"var_cutoff={x}")
+def test_var_cutoff(full_rank_time_series, var_cutoff):
+    traj, ds = full_rank_time_series
+    if 0 < var_cutoff <= 1:
+        est = VAMP(lagtime=1, var_cutoff=var_cutoff).fit(ds)
+        projection = est.transform(traj)
+        np.testing.assert_equal(projection.shape[0], traj.shape[0])
+        if var_cutoff == 1.:
+            # data is internally mean-free
+            np.testing.assert_equal(projection.shape[1], traj.shape[1] - 1)
+        else:
+            np.testing.assert_array_less(projection.shape[1], traj.shape[1])
+    else:
+        with np.testing.assert_raises(ValueError):
+            VAMP(lagtime=1, var_cutoff=var_cutoff).fit(ds).fetch_model()
+
+
+@pytest.mark.parametrize("dim", [None, 2, 3], ids=lambda x: f"dim={x}")
+@pytest.mark.parametrize("var_cutoff", [None, .5, 1.], ids=lambda x: f"var_cutoff={x}")
+@pytest.mark.parametrize("partial_fit", [False, True], ids=lambda x: f"partial_fit={x}")
+def test_dim_and_var_cutoff(full_rank_time_series, dim, var_cutoff, partial_fit):
+    traj, ds = full_rank_time_series
+    # basically dim should be ignored here since var_cutoff takes precedence if it is None
+    est = VAMP(lagtime=1, dim=dim, var_cutoff=var_cutoff)
+    if partial_fit:
+        for chunk in timeshifted_split(traj, lagtime=1, chunksize=15):
+            est.partial_fit(chunk)
+        est2 = VAMP(lagtime=1, dim=dim, var_cutoff=var_cutoff).fit(ds)
+        np.testing.assert_array_almost_equal(est.fetch_model().operator,
+                                             est2.fetch_model().operator, decimal=4)  # can fail on M$ with higher acc.
+    else:
+        est.fit(ds)
+    projection = est.transform(traj)
+    np.testing.assert_equal(projection.shape[0], traj.shape[0])
+    if var_cutoff is not None:
+        if var_cutoff == 1.:
+            # data is internally mean-free
+            np.testing.assert_equal(projection.shape[1], traj.shape[1] - 1)
+        else:
+            np.testing.assert_array_less(projection.shape[1], traj.shape[1])
+    else:
+        if dim is None:
+            # data is internally mean-free
+            np.testing.assert_equal(projection.shape[1], traj.shape[1] - 1)
+        else:
+            np.testing.assert_equal(projection.shape[1], dim)
 
 
 class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
@@ -66,13 +172,13 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         # test
         tau = 50
-        vamp = VAMP(lagtime=tau, scaling=None, right=True).fit(trajs).fetch_model()
+        vamp = VAMP(scaling=None, lagtime=tau).fit(trajs).fetch_model()
 
         assert vamp.output_dimension <= rank
 
         atol = np.finfo(np.float32).eps * 10.0
         rtol = np.finfo(np.float32).resolution
-        phi_trajs = [vamp.transform(X)[tau:, :] for X in trajs]
+        phi_trajs = [vamp.backward(X, propagate=False)[tau:, :] for X in trajs]
         phi = np.concatenate(phi_trajs)
         mean_right = phi.sum(axis=0) / phi.shape[0]
         cov_right = phi.T.dot(phi) / phi.shape[0]
@@ -81,7 +187,7 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
         vamp.right = False
         # vamp = estimate_vamp(trajs, lag=tau, scaling=None, right=False)
-        psi_trajs = [vamp.transform(X)[0:-tau, :] for X in trajs]
+        psi_trajs = [vamp.forward(X, propagate=False)[0:-tau, :] for X in trajs]
         psi = np.concatenate(psi_trajs)
         mean_left = psi.sum(axis=0) / psi.shape[0]
         cov_left = psi.T.dot(psi) / psi.shape[0]
@@ -93,10 +199,11 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
         C01_psi_phi = psi.T.dot(phi) / phi.shape[0]
         n = max(C01_psi_phi.shape)
         C01_psi_phi = C01_psi_phi[0:n, :][:, 0:n]
-        np.testing.assert_allclose(C01_psi_phi, np.diag(vamp.singular_values[0:vamp.output_dimension]), rtol=rtol, atol=atol)
+        np.testing.assert_allclose(C01_psi_phi, np.diag(vamp.singular_values[0:vamp.output_dimension]), rtol=rtol,
+                                   atol=atol)
 
         if test_partial_fit:
-            vamp2 = VAMP(lagtime=tau, scaling=None).fit(trajs).fetch_model()
+            vamp2 = VAMP(lagtime=tau).fit(trajs).fetch_model()
 
             atol = 1e-14
             rtol = 1e-5
@@ -115,10 +222,10 @@ class TestVAMPEstimatorSelfConsistency(unittest.TestCase):
 
             # vamp2.singular_values # trigger diagonalization
             for t, ref in zip(trajs, phi_trajs):
-                assert_allclose_ignore_phase(vamp2.transform(t[tau:], right=True), ref, rtol=rtol, atol=atol)
+                assert_allclose_ignore_phase(vamp2.backward(t[tau:], propagate=False), ref, rtol=rtol, atol=atol)
 
             for t, ref in zip(trajs, psi_trajs):
-                assert_allclose_ignore_phase(vamp2.transform(t[0:-tau], right=False), ref, rtol=rtol, atol=atol)
+                assert_allclose_ignore_phase(vamp2.transform(t[0:-tau], propagate=False), ref, rtol=rtol, atol=atol)
 
 
 def generate(T, N_steps, s0=0):
@@ -140,6 +247,14 @@ def assert_allclose_ignore_phase(A, B, atol=1e-14, rtol=1e-5):
                 or np.allclose(A[:, i], -B[:, i], atol=atol, rtol=rtol))
 
 
+def test_cktest():
+    traj = ellipsoids().observations(n_steps=10000)
+    estimator = VAMP(1, dim=1).fit(traj)
+    validator = estimator.chapman_kolmogorov_validator(4)
+    cktest = validator.fit(traj).fetch_model()
+    np.testing.assert_almost_equal(cktest.predictions, cktest.estimates, decimal=1)
+
+
 class TestVAMPModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -157,8 +272,9 @@ class TestVAMPModel(unittest.TestCase):
             trajs.append(traj)
             p0 += traj[:-lag, :].sum(axis=0)
             p1 += traj[lag:, :].sum(axis=0)
-        estimator = VAMP(lagtime=lag, scaling=None, dim=1.0)
-        vamp = estimator.fit(trajs).fetch_model()
+        estimator = VAMP(scaling=None, var_cutoff=1.0)
+        cov = VAMP.covariance_estimator(lagtime=lag).fit(trajs).fetch_model()
+        vamp = estimator.fit(cov).fetch_model()
         msm = estimate_markov_model(dtrajs, lag=lag, reversible=False)
         cls.trajs = trajs
         cls.dtrajs = dtrajs
@@ -192,21 +308,19 @@ class TestVAMPModel(unittest.TestCase):
         assert_allclose_ignore_phase(V[:, 0], np.ones(3), atol=1E-5)
         U = U[:, 1:]
         V = V[:, 1:]
-        self.vamp.right = True
-        phi = self.vamp.transform(np.eye(3))
-        self.vamp.right = False
-        psi = self.vamp.transform(np.eye(3))
+        phi = self.vamp.backward(np.eye(3), propagate=False)
+        psi = self.vamp.forward(np.eye(3), propagate=False)
         assert_allclose_ignore_phase(U, psi, atol=1E-5)
         assert_allclose_ignore_phase(V, phi, atol=1E-5)
 
         cumsum_Tsym = np.cumsum(S[1:] ** 2)
         cumsum_Tsym /= cumsum_Tsym[-1]
-        np.testing.assert_allclose(self.vamp.cumvar, cumsum_Tsym)
+        np.testing.assert_allclose(self.vamp.cumulative_kinetic_variance, cumsum_Tsym)
 
     def test_cumvar_variance_cutoff(self):
         for d in (0.2, 0.5, 0.8, 0.9, 1.0):
-            self.vamp.dim = d
-            special_cumvar = np.asarray([0] + self.vamp.cumvar.tolist())
+            self.vamp.var_cutoff = d
+            special_cumvar = np.asarray([0] + self.vamp.cumulative_kinetic_variance.tolist())
             self.assertLessEqual(d, special_cumvar[self.vamp.output_dimension], )
             self.assertLessEqual(special_cumvar[self.vamp.output_dimension - 1], d)
 
@@ -214,36 +328,35 @@ class TestVAMPModel(unittest.TestCase):
         T = self.msm.transition_matrix
         Tadj = np.diag(1. / self.p1).dot(T.T).dot(np.diag(self.p0))
         NFro = np.trace(T.dot(Tadj))
-        s2 = self.vamp.score(score_method='VAMP2')
+        s2 = self.vamp.score(2)
         np.testing.assert_allclose(s2, NFro)
 
         Tsym = np.diag(self.p0 ** 0.5).dot(T).dot(np.diag(self.p1 ** -0.5))
         Nnuc = np.linalg.norm(Tsym, ord='nuc')
-        s1 = self.vamp.score(score_method='VAMP1')
+        s1 = self.vamp.score(1)
         np.testing.assert_allclose(s1, Nnuc)
 
-        sE = self.vamp.score(score_method='VAMPE')
+        sE = self.vamp.score("E")
         np.testing.assert_allclose(sE, NFro)  # see paper appendix H.2
 
     def test_score_vs_MSM(self):
-        trajs_test, trajs_train = cvsplit_dtrajs(self.trajs, random_state=32)
-        dtrajs_test, dtrajs_train = cvsplit_dtrajs(self.dtrajs, random_state=32)
+        trajs_test, trajs_train = cvsplit_trajs(self.trajs, random_state=32)
+        dtrajs_test, dtrajs_train = cvsplit_trajs(self.dtrajs, random_state=32)
 
-        methods = ('VAMP1', 'VAMP2', 'VAMPE')
+        methods = (1, 2, 'E')
 
         for m in methods:
             msm_train = estimate_markov_model(dtrajs=dtrajs_train, lag=self.lag, reversible=False)
-            score_msm = msm_train.score(dtrajs_test, score_method=m, score_k=None)
+            score_msm = msm_train.score(dtrajs_test, m, dim=None)
+            vamp_train = VAMP(lagtime=self.lag, var_cutoff=1.0).fit_from_timeseries(trajs_train).fetch_model()
+            vamp_test = VAMP(lagtime=self.lag, var_cutoff=1.0).fit_from_timeseries(trajs_test).fetch_model()
+            score_vamp = vamp_train.score(test_model=vamp_test, r=m)
 
-            vamp_train = VAMP(lagtime=self.lag, dim=1.0).fit(trajs_train).fetch_model()
-            vamp_test = VAMP(lagtime=self.lag, dim=1.0).fit(trajs_test).fetch_model()
-            score_vamp = vamp_train.score(test_model=vamp_test, score_method=m)
-
-            self.assertAlmostEqual(score_msm, score_vamp, places=2 if m == 'VAMPE' else 3, msg=m)
+            self.assertAlmostEqual(score_msm, score_vamp, places=2 if m == 'E' else 3, msg=m)
 
     def test_kinetic_map(self):
         lag = 10
-        vamp = VAMP(lagtime=lag, scaling='km', right=False).fit(self.trajs).fetch_model()
+        vamp = VAMP(lagtime=lag, scaling='km').fit_from_timeseries(self.trajs).fetch_model()
         transformed = [vamp.transform(X)[:-lag] for X in self.trajs]
         std = np.std(np.concatenate(transformed), axis=0)
         np.testing.assert_allclose(std, vamp.singular_values[:vamp.output_dimension], atol=1e-4, rtol=1e-4)
@@ -252,17 +365,13 @@ class TestVAMPModel(unittest.TestCase):
 class TestVAMPWithEdgeCaseData(unittest.TestCase):
     def test_1D_data(self):
         x = np.random.randn(10, 1)
-        vamp = VAMP(lagtime=1, right=True).fit([x]).fetch_model()
+        vamp = VAMP(lagtime=1).fit([x]).fetch_model()
         # Doing VAMP with 1-D data is just centering and normalizing the data.
-        assert_allclose_ignore_phase(vamp.transform(x), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
+        assert_allclose_ignore_phase(vamp.backward(x, propagate=False), (x - np.mean(x[1:, 0])) / np.std(x[1:, 0]))
 
     def test_const_data(self):
-        from sktime.numeric.eigen import ZeroRankError
+        from deeptime.numeric import ZeroRankError
         with self.assertRaises(ZeroRankError):
-            print(VAMP(lagtime=1).fit([np.ones((10, 2))]).fetch_model().singular_values)
+            print(VAMP(lagtime=1).fit(np.ones((10, 2))).fetch_model().singular_values)
         with self.assertRaises(ZeroRankError):
-            print(VAMP(lagtime=1).fit([np.ones((10, 1))]).fetch_model().singular_values)
-
-
-if __name__ == "__main__":
-    unittest.main()
+            print(VAMP(lagtime=1).fit(np.ones((10, 1))).fetch_model().singular_values)

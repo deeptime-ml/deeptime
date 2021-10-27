@@ -1,29 +1,12 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import unittest
 from unittest import TestCase
 import numpy as np
 
-from sktime.clustering import MiniBatchKmeansClustering
+from deeptime.clustering import MiniBatchKMeans
 
 
 def cluster_mini_batch_kmeans(X, k=100, max_iter=10000):
-    est = MiniBatchKmeansClustering(n_clusters=k, max_iter=max_iter)
+    est = MiniBatchKMeans(n_clusters=k, max_iter=max_iter)
     if isinstance(X, (list, tuple)):
         for x in X:
             est.partial_fit(x)
@@ -77,7 +60,7 @@ class TestMiniBatchKmeansResume(unittest.TestCase):
         # centers are far off
         initial_centers = np.array([[1, 2, 3]]).T
 
-        est = MiniBatchKmeansClustering(n_clusters=3, max_iter=2, initial_centers=initial_centers)
+        est = MiniBatchKMeans(n_clusters=3, max_iter=2, initial_centers=initial_centers)
         est.partial_fit(self.X)
 
         resume_centers = np.copy(est.fetch_model().cluster_centers)
@@ -92,7 +75,3 @@ class TestMiniBatchKmeansResume(unittest.TestCase):
         diff_next = np.linalg.norm(d1)
 
         self.assertLess(diff_next, diff, 'resume_centers=%s, new_centers=%s' % (resume_centers, new_centers))
-
-
-if __name__ == '__main__':
-    unittest.main()

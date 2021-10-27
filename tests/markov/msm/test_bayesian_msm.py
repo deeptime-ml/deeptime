@@ -1,27 +1,10 @@
-# This file is part of PyEMMA.
-#
-# Copyright (c) 2015, 2014 Computational Molecular Biology Group, Freie Universitaet Berlin (GER)
-#
-# PyEMMA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import unittest
 
 import numpy as np
 
-from sktime.markov import TransitionCountEstimator
-from sktime.markov.msm import MarkovStateModel, BayesianPosterior, BayesianMSM
-from sktime.util import confidence_interval
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import MarkovStateModel, BayesianPosterior, BayesianMSM
+from deeptime.util.stats import confidence_interval
 from tests.markov.factory import bmsm_double_well
 
 
@@ -119,14 +102,14 @@ class TestBMSM(unittest.TestCase):
         # shape
         assert np.array_equal(np.shape(Psamples), (self.nsamples, self.n_states, self.n_states))
         # consistency
-        import msmtools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
         for P in Psamples:
             assert msmana.is_transition_matrix(P)
             try:
                 assert msmana.is_reversible(P)
             except AssertionError:
                 # re-do calculation msmtools just performed to get details
-                from msmtools.analysis import stationary_distribution
+                from deeptime.markov.tools.analysis import stationary_distribution
                 mu = stationary_distribution(P)
                 X = mu[:, np.newaxis] * P
                 np.testing.assert_allclose(X, np.transpose(X), atol=1e-12,
@@ -137,7 +120,7 @@ class TestBMSM(unittest.TestCase):
         self._transition_matrix_stats(self.bmsm_revpi)
 
     def _transition_matrix_stats(self, msm):
-        import msmtools.analysis as msmana
+        import deeptime.markov.tools.analysis as msmana
         # mean
         Ps = np.array([s.transition_matrix for s in msm.samples])
         Pmean = Ps.mean(axis=0)
@@ -319,7 +302,6 @@ class TestBMSM(unittest.TestCase):
         # shape
         np.testing.assert_equal(np.shape(samples), (self.nsamples, self.n_states - 1))
         # consistency
-        u = msm.prior.count_model.physical_time
         lag = msm.prior.count_model.lagtime
         for l in samples:
             assert np.all(l > 0.0)
@@ -347,7 +329,3 @@ class TestBMSM(unittest.TestCase):
         # test consistency
         assert np.all(L <= mean)
         assert np.all(R >= mean)
-
-
-if __name__ == "__main__":
-    unittest.main()

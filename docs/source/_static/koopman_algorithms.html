@@ -1,0 +1,337 @@
+<script type="text/javascript">
+
+const width = 600;
+const height = 400;
+const linkDistance = 300;
+const nodeRadius = 8;
+const nodeRadiusExpanded = 16;
+const linkLength = 200;
+
+const data = {
+
+    nodes: [
+        {id: 0, name: "TICA", full_name: "time-lagged independent component analysis", group: 0, url: "notebooks/tica.html", ix: [0, 0]},
+        // {id: 1, name: "VAC", full_name: "variational approach of conformational dynamics", group: 0, url: "notebooks/vamp.html"},
+        {id: 2, name: "VAMP / TCCA", full_name: "variational approach for Markov processes / time-lagged canonical correlation analysis", group: 0, url: "notebooks/vamp.html", ix: [1.3, 0]},
+        {id: 3, name: "kVAMP / kCCA", full_name: "kernel VAMP / kernel canonical correlation analysis", group: 0, url: "notebooks/kcca.html", ix: [2, 0]},
+
+        {id: 4, name: "MSM", full_name: "Markov state model", group: 1, url: "index_msm.html", ix: [0.5, 1]},
+
+        {id: 5, name: "DMD", full_name: "dynamic mode decomposition", group: 2, url: "notebooks/dmd.html", ix: [0, 2]},
+        {id: 6, name: "EDMD", full_name: "extended dynamic mode decomposition", group: 2, url: "notebooks/edmd.html", ix: [1.3, 2]},
+        {id: 7, name: "kEDMD", full_name: "kernel extended dynamic mode decomposition", group: 2, url: "notebooks/kedmd.html", ix: [2, 2]},
+        // {id: 8, name: "KVAD", full_name: "kernel embedding-based variational approach for dynamical systems", group: 0},
+        {id: 9, name: "SINDy", full_name: "Sparse Identification of Nonlinear Dynamics", group: 2, url: "notebooks/sindy.html", ix: [3, 2]},
+    ],
+    edges: [
+        {source: 2, target: 0, value: 1, label: "reversible + identity observable"},  // VAC -> TICA
+        // {source: 1, target: 2, value: 1, label: "generalize to nonreversible"},  // VAC -> VAMP
+        {source: 7, target: 3, value: 1, label: "generalize to nonreversible"},  // kEDMD -> kCCA
+        {source: 2, target: 3, value: 1, label: "kernelize"},  // VAMP -> kCCA
+        // {source: 1, target: 4, value: 1, label: "for indicator observable"},  // VAC -> MSM
+        {source: 2, target: 4, value: 1, label: "for indicator observable"},  // VAMP -> MSM
+        {source: 6, target: 4, value: 1, label: "for indicator observable"},  // EDMD -> MSM
+        // {source: 2, target: 8, value: 1},  // VAMP -> KVAD
+        {source: 0, target: 5, value: 2, label: "dual"},  // TICA <-> DMD
+        {source: 5, target: 0, value: 2, label: ""},  // TICA <-> DMD
+        {source: 2, target: 6, value: 2, label: "equivalent under VAMP-1 score"},  // VAC <-> EDMD
+        {source: 6, target: 2, value: 2, label: ""},  // VAC <-> EDMD
+        {source: 6, target: 5, value: 1, label: "for identity observable"},  // EDMD -> DMD
+        {source: 6, target: 7, value: 1, label: "kernelize"},  // EDMD -> kEDMD
+        {source: 7, target: 9, value: 1, label: "via generator kEDMD"},  // kEDMD -> SINDy
+    ]
+};
+
+const scale = d3.scaleOrdinal(d3.schemeCategory10);
+
+const links = data.edges.map(d => Object.create(d));
+const nodes = data.nodes.map(d => Object.create(d));
+
+const midpoints_w = Array.from(new Array(3), (val, ix) => ix * width / 3 + width / 4)
+const midpoints_h = Array.from(new Array(4), (val, ix) => ix * height / 4 + height / 8)
+const lerp = (x, y, a) => x * (1 - a) + y * a;
+
+// Define the div for the tooltip
+const tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+
+const svg = d3.select("div#koopman_algos_container")
+   .append("div")
+   // Container class to make it responsive.
+   .classed("svg-container", true)
+   .append("svg")
+   // Responsive SVG needs these 2 attributes and no width and height attr.
+   .attr("preserveAspectRatio", "xMinYMin meet")
+   .attr("viewBox", "0 0 " + width + " " + height)
+   // Class to make it responsive.
+   .classed("svg-content-responsive", true)
+
+svg.append("svg:defs").selectAll("marker")
+    .data(["arrowhead", "arrowhead_fade"])      // Different link/path types can be defined here
+    .enter().append("svg:marker")    // This section adds in the arrows
+    .attr("id", String)
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 15)
+    .attr("refY", 0.5)
+    .attr("markerWidth", 5)
+    .attr("markerHeight", 5)
+    .attr("orient", "auto")
+    .attr("opacity", function (d, i) {return i === 0? .5 : 0;})
+  .append("svg:path")
+    .attr("d", "M0,-5L10,0L0,5");
+
+const forceX = d3.forceX().x(function(d) {
+    const ix = d.ix[1];
+    if (Number.isInteger(ix)) {
+        return midpoints_w[ix];
+    } else {
+        const lower = Math.floor(ix);
+        const upper = Math.ceil(ix);
+        return lerp(midpoints_w[lower], midpoints_w[upper], ix - lower);
+    }
+}).strength(0.1);
+
+const forceY = d3.forceY().y(function(d) {
+    const ix = d.ix[0];
+    if (Number.isInteger(ix)) {
+        return midpoints_h[ix];
+    } else {
+        const lower = Math.floor(ix);
+        const upper = Math.ceil(ix);
+        return lerp(midpoints_h[lower], midpoints_h[upper], ix - lower);
+    }
+}).strength(.1);
+
+const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(d => linkLength).strength(0.00001))
+    //.force("charge", d3.forceManyBody().strength(-200))
+    //.force("center", d3.forceCenter(width / 2, height / 2))
+    .force('x', forceX)
+    .force('y',  forceY);
+
+var x = d3.scaleBand()
+    .rangeRound([0, width])
+    .padding(0.1);
+
+function getTargetNodeCircumferencePoint(d){
+        var t_radius = nodeRadius; // nodeWidth is just a custom attribute I calculate during the creation of the nodes depending on the node width
+        var dx = d.target.x - d.source.x;
+        var dy = d.target.y - d.source.y;
+        var gamma = Math.atan2(dy,dx); // Math.atan2 returns the angle in the correct quadrant as opposed to Math.atan
+        var tx = d.target.x - (Math.cos(gamma) * t_radius);
+        var ty = d.target.y - (Math.sin(gamma) * t_radius);
+
+        return [tx,ty];
+}
+
+const linkGroup = svg.append("g")
+    .attr("class", "links-group")
+    .selectAll("g")
+    .data(links)
+    .join("g")
+    .attr("class", "link-group");
+
+const linkNode = svg.selectAll(".link-group")
+    .append("line")
+    .data(links)
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6)
+    .attr("stroke-width", 1.5)
+    .attr('marker-begin','url(#arrowhead)')
+    .attr('marker-end','url(#arrowhead)');
+
+var linkPaths = svg.selectAll(".link-group")
+    .append('path')
+    .attr('d', function(d) {return 'M '+d.source.x+' '+d.source.y+' L '+ d.target.x +' '+d.target.y;})
+    .attr('class', 'edgepath')
+    .attr('fill-opacity', 0)
+    .attr('stroke-opacity', 0)
+    .attr('fill', 'blue')
+    .attr('stroke', 'red')
+    .attr('id', function(d,i) {return 'edgepath'+i})
+    .style("pointer-events", "none");
+
+var linkText = svg.selectAll(".link-group")
+    .append("text")
+    .data(links)
+    .attr("dy", -5)
+    .attr("dx", function(d) {
+        return 0.5 * Math.sqrt((d.source.x - d.target.x)**2 + (d.source.y - d.target.y)**2);
+    })
+    .attr("font-size", 9)
+    .attr("fill", "#000")
+    .attr("text-anchor", "middle")
+    .call(getBB);
+
+linkText.append('textPath')
+    .attr('xlink:href',function(d,i) {return '#edgepath'+i})
+    .style("pointer-events", "none")
+    .text(function(d) { return d.label; });
+
+var rects =  svg.selectAll(".link-group").insert("rect", "text")
+    .attr("x", function(d){return d.bbox.x})
+    .attr("y", function(d){return d.bbox.y})
+    .attr("width", function(d){return d.bbox.width})
+    .attr("height", function(d){return d.bbox.height})
+    .style("fill", "#FFE6F0");
+
+function getBB(selection) {
+    selection.each(function(d){d.bbox = this.getBBox();});
+    return selection;
+}
+
+var node = svg.selectAll("g.node")
+    .data(nodes)
+    .enter()
+    .append("svg:g")
+    .attr("class", "clickable")
+    .attr("cursor", "pointer")
+    .on("click", function(d) { window.open(d.url) })
+    .on('mouseover.tooltip', function(d) {
+        d3.select(this).select('circle')
+          .transition()
+          .duration(300)
+          .attr("r", nodeRadiusExpanded)
+        tooltip.transition()
+            .duration(300)
+            .style("opacity", .8);
+        tooltip.html(d.full_name)
+            .style("left", (d3.event.pageX) + "px")
+            .style("top", (d3.event.pageY + 10) + "px");
+    })
+    .on('mouseover.fade', fade(0.1))
+    .on("mouseout.tooltip", function() {
+        d3.select(this).select('circle')
+            .transition()
+            .duration(300)
+            .attr("r", nodeRadius);
+        tooltip.transition()
+            .duration(100)
+            .style("opacity", 0);
+    })
+    .on('mouseout.fade', fade(1))
+        .on("mousemove", function() {
+          tooltip.style("left", (d3.event.pageX) + "px")
+            .style("top", (d3.event.pageY + 10) + "px");
+    });
+
+var circles = node.append("circle")
+    .attr("r", nodeRadius)
+    .attr("fill", d => scale(d.group));
+
+var labels = node.append("text")
+    .text(d => d.name)
+    .merge(node)
+    .attr('x', 10)
+    .attr('y', 7)
+    .style("font-size", "11px")
+    .style("fill", "Black");
+
+circles.call(
+    d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended)
+);
+
+simulation.on("tick", () => {
+    linkNode.attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", function(d) {
+             return getTargetNodeCircumferencePoint(d)[0];
+        })
+        .attr("y2", function(d) {
+             return getTargetNodeCircumferencePoint(d)[1];
+        });
+    circles.attr("cx", d => d.x)
+           .attr("cy", d => d.y);
+
+    labels.attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+    linkPaths.attr('d', function(d) { return 'M '+d.source.x+' '+d.source.y+' L '+ d.target.x +' '+d.target.y});
+
+    linkText.attr('transform',function(d,i){
+            if (d.target.x<d.source.x){
+                bbox = this.getBBox();
+                rx = bbox.x+bbox.width/2;
+                ry = bbox.y+bbox.height/2;
+                return 'rotate(180 '+rx+' '+ry+')';
+                }
+            else {
+                return 'rotate(0)';
+                }
+        });
+    linkText.attr("dx", function(d) {
+        return 0.5 * Math.sqrt((d.source.x - d.target.x)**2 + (d.source.y - d.target.y)**2);
+    })
+
+    rects.attr("x", function(d) { return d.bbox.x; })
+         .attr("y", function(d) { return d.bbox.y; })
+});
+
+function dragstarted(d) {
+    d3.event.sourceEvent.stopPropagation();
+    if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+}
+
+function dragged(d) {
+    d.fx = d3.event.x;
+    d.fy = d3.event.y;
+}
+
+function dragended(d) {
+    if (!d3.event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+}
+
+const linkedByIndex = {};
+links.forEach(d => {
+    linkedByIndex[`${d.source.index},${d.target.index}`] = 1;
+});
+
+function isConnected(a, b) {
+    return linkedByIndex[`${a.index},${b.index}`] || linkedByIndex[`${b.index},${a.index}`] || a.index === b.index;
+}
+
+//Fade rules for hovering over nodes
+function fade(opacity) {
+    return d => {
+      node.style('stroke-opacity', function (o) {
+          const thisOpacity = isConnected(d, o) ? 1 : opacity;
+          this.setAttribute('fill-opacity', thisOpacity);
+          return thisOpacity;
+      });
+      linkNode
+          .style('stroke-opacity', o => (o.source === d || o.target === d ? 1 : opacity))
+          .attr("marker-begin", o => (o.source === d || o.target === d ? "url(#arrowhead)" : "url(#arrowhead_fade)"))
+          .attr("marker-end", o => (o.source === d || o.target === d ? "url(#arrowhead)" : "url(#arrowhead_fade)"));
+      if (opacity === 1) {
+          linkNode.attr("marker-begin", "url(#arrowhead)").attr("marker-end", "url(#arrowhead)");
+      }
+      linkText.style('opacity', o => (o.source === d || o.target === d ? 1 : opacity))
+    };
+}
+
+var sequentialScale = d3.scaleOrdinal(d3.schemeCategory10)
+  .domain(['Variational principle', 'MSMs', 'Regression-based']);
+
+svg.append("g")
+    .attr("class", "legendSequential")
+    .attr("x", 40)
+    .attr("y", 40)
+    .attr('font-size', 11);
+
+var legendSequential = d3.legendColor()
+    .shapeWidth(30)
+    .cells(3)
+    .orient("vertical")
+    .scale(sequentialScale)
+
+svg.select(".legendSequential")
+  .call(legendSequential);
+</script>

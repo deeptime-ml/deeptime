@@ -1,10 +1,16 @@
 [build-system]
 requires = [
- "setuptools",
- "wheel",
- "numpy>=1.10",
- "Cython",
- "scipy",
- "pybind11",
+    "setuptools",
+    "wheel",
+    "numpy>=1.14",
+    "Cython",
+    "scipy",
+    "pybind11",
+    "threadpoolctl>=2.0.0"
 ]
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    "once",
+    "ignore::UserWarning",
+]
