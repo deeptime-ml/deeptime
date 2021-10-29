@@ -12,9 +12,14 @@
         compatibility to its tools via ducktyping.
     </p>
     <p>
-        Deeptime can be installed via pip (<code class="code docutils literal notranslate"><span class="pre">pip install deeptime</span></code>)
-        and is also available via conda on conda-forge
-        (<code class="code docutils literal notranslate"><span class="pre">conda install -c conda-forge deeptime</span></code>).
+        Deeptime can be installed via conda (<code class="code docutils literal notranslate"><span class="pre">conda
+        install -c conda-forge deeptime</span></code>) delivering pre-compiled binaries
+        and is also available via pip
+        (<code class="code docutils literal notranslate"><span class="pre">pip install deeptime</span></code>),
+        causing the binaries to be compiled locally.
+    </p>
+    <p>
+        Please note our preprint <a href="https://arxiv.org/abs/2110.15013">https://arxiv.org/abs/2110.15013</a>.
     </p>
 
     <div class="section" id="contents">
@@ -72,5 +77,19 @@
             </div>
         </a>
     </div>
+    <div class="section" id="contents">
+        <h3>Citation</h3>
 
+        When using deeptime in your work, please cite the following preprint
+        <div class="highlight">
+            <pre>
+<code>@article{hoffmann2021deeptime,
+      title={Deeptime: a Python library for machine learning dynamical models from time series data},
+      author={Moritz Hoffmann and Martin Scherer and Tim Hempel and Andreas Mardt and Brian de Silva and Brooke E. Husic and Stefan Klus and Hao Wu and Nathan Kutz and Steven L. Brunton and Frank Noé},
+      year={2021},
+      journal={arXiv preprint arXiv:2110.15013}
+}</code>
+            </pre>
+        </div>
+    </div>
 {% endblock %}
