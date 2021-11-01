@@ -1,7 +1,7 @@
 import numpy as np
 from deeptime.base import Model, Transformer
 
-from . import _clustering_bindings as _bd, metrics
+from . import metrics
 from ..util.parallel import handle_n_jobs
 
 
