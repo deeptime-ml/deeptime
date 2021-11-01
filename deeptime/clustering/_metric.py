@@ -14,7 +14,7 @@ class MetricRegistry:
 
     def __init__(self):
         self._registered = None
-        self.register("euclidean", _bd.EuclideanMetric)
+        self.register("euclidean", _bd.euclidean)
 
     def register(self, name: str, clazz):
         r""" Adds a new metric to the registry.
@@ -24,7 +24,7 @@ class MetricRegistry:
         name : str
             The name of the metric.
         clazz : class
-            Reference to the class of the metric.
+            Reference to the implementation module.
         """
         self._mapping[name] = clazz
 

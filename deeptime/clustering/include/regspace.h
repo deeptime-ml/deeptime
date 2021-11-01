@@ -11,6 +11,7 @@
 #include <omp.h>
 #endif
 
+namespace deeptime {
 namespace clustering {
 namespace regspace {
 
@@ -31,13 +32,9 @@ private:
  * @param chunk array shape(n, d)
  * @param py_centers python list containing found centers.
  */
-template<typename T>
+template<typename Metric, typename T>
 void cluster(const np_array_nfc<T> &chunk, py::list& py_centers, T dmin, std::size_t maxClusters,
-             int n_threads, const Metric *metric) {
-
-    if (metric == nullptr) {
-        metric = default_metric();
-    }
+             int n_threads) {
 
     // this checks for ndim == 2
     if(chunk.ndim() != 2) {
@@ -65,7 +62,7 @@ void cluster(const np_array_nfc<T> &chunk, py::list& py_centers, T dmin, std::si
         #pragma omp parallel for reduction(min:mindist)
         for (auto j = 0U; j < N_centers; ++j) {
             auto point = npCenters.at(j).data();
-            auto d = metric->compute(data + i*dim, point, dim);
+            auto d = Metric::template compute(data + i*dim, point, dim);
             if (d < mindist) mindist = d;
         }
         if (mindist > dmin) {
@@ -84,6 +81,7 @@ void cluster(const np_array_nfc<T> &chunk, py::list& py_centers, T dmin, std::si
             N_centers++;
         }
     }
+}
 }
 }
 }

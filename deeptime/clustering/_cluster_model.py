@@ -117,5 +117,6 @@ class ClusterModel(Model, Transformer):
         n_jobs = handle_n_jobs(n_jobs)
         if data.ndim == 1:
             data = data[..., None]
-        dtraj = _bd.assign(data, self.cluster_centers, n_jobs, metrics[self.metric]())
+        impl = metrics[self.metric]
+        dtraj = impl.assign(data, self.cluster_centers, n_jobs)
         return dtraj
