@@ -9,12 +9,11 @@
 #include <stdexcept>
 #include <cmath>
 #include <vector>
+#include <type_traits>
 
 #include "common.h"
 
 struct EuclideanMetric {
-    static constexpr bool IS_EUCLIDEAN = true;
-
     template<typename dtype>
     static dtype compute(const dtype* xs, const dtype* ys, std::size_t dim) {
         return std::sqrt(compute_squared(xs, ys, dim));
@@ -88,7 +87,7 @@ template<bool squared, typename Metric, typename dtype>
 Distances<dtype> computeDistances(const dtype* xs, std::size_t nXs,
                                   const dtype* ys, std::size_t nYs, std::size_t dim, const double* xxPrecomputed, const double* yyPrecomputed) {
     Distances<dtype> result (nXs, nYs, dim);
-    if(!Metric::IS_EUCLIDEAN) {
+    if constexpr (!std::is_same<Metric, EuclideanMetric>::value) {
         dtype* outPtr = result.data();
         if (squared) {
             #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, outPtr)
