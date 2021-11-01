@@ -101,9 +101,9 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
                 for (auto i = begin; i < end; ++i) {
                     std::size_t argMinDist = 0;
                     {
-                        T minDist = metric->compute(&chunk(i, 0), &centers(0, 0), dim);
+                        T minDist = Metric::template compute(&chunk(i, 0), &centers(0, 0), dim);
                         for (std::size_t j = 1; j < n_centers; ++j) {
-                            auto dist = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
+                            auto dist = Metric::template compute(&chunk(i, 0), &centers(j, 0), dim);
                             if(dist < minDist) {
                                 minDist = dist;
                                 argMinDist = j;
