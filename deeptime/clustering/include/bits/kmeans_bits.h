@@ -11,14 +11,9 @@ namespace deeptime {
 namespace clustering {
 namespace kmeans {
 
-template<typename T>
+template<typename Metric, typename T>
 inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_chunk,
-                                                      const np_array_nfc<T> &np_centers, int n_threads,
-                                                      const Metric *metric) {
-    if (metric == nullptr) {
-        metric = default_metric();
-    }
-
+                                                      const np_array_nfc<T> &np_centers, int n_threads) {
     if (np_chunk.ndim() != 2) {
         throw std::runtime_error(R"(Number of dimensions of "chunk" ain't 2.)");
     }
@@ -51,9 +46,9 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
         for (pybind11::ssize_t i = 0; i < n_frames; ++i) {
             int argMinDist = 0;
             {
-                T minDist = metric->compute(&chunk(i, 0), &centers(0, 0), dim);
+                T minDist = Metric::template compute(&chunk(i, 0), &centers(0, 0), dim);
                 for (std::size_t j = 1; j < n_centers; ++j) {
-                    auto dist = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
+                    auto dist = Metric::template compute(&chunk(i, 0), &centers(j, 0), dim);
                     if (dist < minDist) {
                         minDist = dist;
                         argMinDist = j;
@@ -77,7 +72,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
         for (pybind11::ssize_t i = 0; i < n_frames; ++i) {
             std::vector<T> dists(n_centers);
             for (std::size_t j = 0; j < n_centers; ++j) {
-                dists[j] = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
+                dists[j] = Metric::template compute(&chunk(i, 0), &centers(j, 0), dim);
             }
 #pragma omp flush(dists)
 
@@ -106,9 +101,9 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
                 for (auto i = begin; i < end; ++i) {
                     std::size_t argMinDist = 0;
                     {
-                        T minDist = metric->compute(&chunk(i, 0), &centers(0, 0), dim);
+                        T minDist = Metric::template compute(&chunk(i, 0), &centers(0, 0), dim);
                         for (std::size_t j = 1; j < n_centers; ++j) {
-                            auto dist = metric->compute(&chunk(i, 0), &centers(j, 0), dim);
+                            auto dist = Metric::template compute(&chunk(i, 0), &centers(j, 0), dim);
                             if(dist < minDist) {
                                 minDist = dist;
                                 argMinDist = j;
@@ -151,13 +146,10 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
     return std::make_tuple(newCenters, std::move(assignments));
 }
 
-template<typename T>
+template<typename Metric, typename T>
 inline std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
         const np_array_nfc<T> &np_chunk, const np_array_nfc<T> &np_centers,
-        int n_threads, int max_iter, T tolerance, py::object &callback, const Metric *metric) {
-    if (metric == nullptr) {
-        metric = default_metric();
-    }
+        int n_threads, int max_iter, T tolerance, py::object &callback) {
     int it = 0;
     bool converged = false;
     T rel_change;
@@ -168,10 +160,10 @@ inline std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
     inertias.reserve(max_iter);
 
     do {
-        auto clusterResult = cluster<T>(np_chunk, currentCenters, n_threads, metric);
+        auto clusterResult = cluster<Metric>(np_chunk, currentCenters, n_threads);
         currentCenters = std::get<0>(clusterResult);
         const auto &assignments = std::get<1>(clusterResult);
-        auto cost = costFunction(np_chunk, currentCenters, assignments, n_threads, metric);
+        auto cost = costFunction<Metric>(np_chunk, currentCenters, assignments, n_threads);
         inertias.push_back(cost);
         rel_change = (cost != 0.0) ? std::abs(cost - prev_cost) / cost : 0;
         prev_cost = cost;
@@ -193,12 +185,9 @@ inline std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
     return std::make_tuple(currentCenters, res, it, npInertias);
 }
 
-template<typename T>
+template<typename Metric, typename T>
 inline T costFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_centers,
-                      const np_array<int> &assignments, int n_threads, const Metric *metric) {
-    if(metric == nullptr) {
-        metric = default_metric();
-    }
+                      const np_array<int> &assignments, int n_threads) {
     auto data = np_data.template unchecked<2>();
     auto centers = np_centers.template unchecked<2>();
 
@@ -210,9 +199,9 @@ inline T costFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_
     omp_set_num_threads(n_threads);
     #endif
 
-    #pragma omp parallel for reduction(+:value) default(none) firstprivate(n_frames, metric, data, centers, assignmentsPtr, dim)
+    #pragma omp parallel for reduction(+:value) default(none) firstprivate(n_frames, data, centers, assignmentsPtr, dim)
     for (std::size_t i = 0; i < n_frames; i++) {
-        auto l = metric->compute(&data(i, 0), &centers(assignmentsPtr[i], 0), dim);
+        auto l = Metric::template compute(&data(i, 0), &centers(assignmentsPtr[i], 0), dim);
         {
             value += l * l;
         }

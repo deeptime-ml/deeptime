@@ -9,8 +9,7 @@ from sklearn.datasets import make_blobs
 from sklearn.utils.extmath import row_norms
 
 import deeptime as dt
-
-import deeptime.clustering._clustering_bindings as bindings
+import deeptime.clustering
 
 
 def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=None, cluster_centers=None,
@@ -40,11 +39,11 @@ def test_distances(squared, precomputed_XX, precomputed_YY):
     Y = np.random.uniform(-3, 3, size=(70, 3)).astype(np.float64)
     XX = row_norms(X, squared=True).astype(np.float64) if precomputed_XX else None
     YY = row_norms(Y, squared=True).astype(np.float64) if precomputed_YY else None
-
+    impl = deeptime.clustering.metrics['euclidean']
     if squared:
-        dists = bindings.distances_squared(X, Y, XX=XX, YY=YY)
+        dists = impl.distances_squared(X, Y, XX=XX, YY=YY)
     else:
-        dists = bindings.distances(X, Y, XX=XX, YY=YY)
+        dists = impl.distances(X, Y, XX=XX, YY=YY)
     np.testing.assert_equal(dists.shape, (len(X), len(Y)))
     for i in range(len(X)):
         for j in range(len(Y)):

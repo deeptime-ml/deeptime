@@ -6,7 +6,7 @@ import numpy as np
 
 from ..base import EstimatorTransformer
 from ._cluster_model import ClusterModel
-from . import _clustering_bindings as _bd, metrics
+from . import metrics
 
 from ..util.parallel import handle_n_jobs
 
@@ -41,9 +41,8 @@ def kmeans_plusplus(data, n_clusters: int, metric: str = 'euclidean', callback=N
     .. footbibliography::
     """
     n_jobs = handle_n_jobs(n_jobs)
-    metric = metrics[metric]()
-    return _bd.kmeans.init_centers_kmpp(data, k=n_clusters, random_seed=seed, n_threads=n_jobs,
-                                        callback=callback, metric=metric)
+    impl = metrics[metric]
+    return impl.kmeans.init_centers_kmpp(data, k=n_clusters, random_seed=seed, n_threads=n_jobs, callback=callback)
 
 
 class KMeansModel(ClusterModel):
@@ -132,7 +131,8 @@ class KMeansModel(ClusterModel):
             the inertia
         """
         n_jobs = handle_n_jobs(n_jobs)
-        return _bd.kmeans.cost_function(data, self.cluster_centers, n_jobs, metrics[self.metric]())
+        impl = metrics[self.metric]
+        return impl.kmeans.cost_function(data, self.cluster_centers, n_jobs)
 
 
 class KMeans(EstimatorTransformer):
@@ -425,9 +425,10 @@ class KMeans(EstimatorTransformer):
 
         # run k-means with all the data
         converged = False
-        cluster_centers, code, iterations, cost = _bd.kmeans.cluster_loop(
+        impl = metrics[self.metric]
+        cluster_centers, code, iterations, cost = impl.kmeans.cluster_loop(
             data, self.initial_centers.copy(), n_jobs, self.max_iter,
-            self.tolerance, callback_loop, metrics[self.metric]())
+            self.tolerance, callback_loop)
         if code == 0:
             converged = True
         else:
@@ -514,9 +515,9 @@ class MiniBatchKMeans(KMeans):
                                       tolerance=self.tolerance, inertias=np.array([float('inf')]))
         if data.ndim == 1:
             data = data[:, np.newaxis]
-        metric_instance = metrics[self.metric]()
-        self._model._cluster_centers = _bd.kmeans.cluster(data, self._model.cluster_centers, n_jobs, metric_instance)[0]
-        cost = _bd.kmeans.cost_function(data, self._model.cluster_centers, n_jobs, metric_instance)
+        impl = metrics[self.metric]
+        self._model._cluster_centers = impl.kmeans.cluster(data, self._model.cluster_centers, n_jobs)[0]
+        cost = impl.kmeans.cost_function(data, self._model.cluster_centers, n_jobs)
 
         rel_change = np.abs(cost - self._model.inertia) / cost if cost != 0.0 else 0.0
         self._model._inertias = np.append(self._model._inertias, cost)

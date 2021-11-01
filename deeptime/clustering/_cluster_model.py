@@ -1,7 +1,7 @@
 import numpy as np
 from deeptime.base import Model, Transformer
 
-from . import _clustering_bindings as _bd, metrics
+from . import metrics
 from ..util.parallel import handle_n_jobs
 
 
@@ -117,5 +117,6 @@ class ClusterModel(Model, Transformer):
         n_jobs = handle_n_jobs(n_jobs)
         if data.ndim == 1:
             data = data[..., None]
-        dtraj = _bd.assign(data, self.cluster_centers, n_jobs, metrics[self.metric]())
+        impl = metrics[self.metric]
+        dtraj = impl.assign(data, self.cluster_centers, n_jobs)
         return dtraj

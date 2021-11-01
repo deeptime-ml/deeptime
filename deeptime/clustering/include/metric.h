@@ -9,66 +9,32 @@
 #include <stdexcept>
 #include <cmath>
 #include <vector>
+#include <type_traits>
 
 #include "common.h"
 
-class Metric {
-public:
-    virtual ~Metric() = default;
-    virtual double compute_squared_d(const double* xs, const double* ys, std::size_t dim) const = 0;
-    virtual float compute_squared_f(const float* xs, const float* ys, std::size_t dim) const = 0;
-
-    virtual bool isEuclidean() const {
-        return false;
-    }
-
-    template<typename T>
-    T compute(const T* xs, const T* ys, std::size_t dim) const {
+struct EuclideanMetric {
+    template<typename dtype>
+    static dtype compute(const dtype* xs, const dtype* ys, std::size_t dim) {
         return std::sqrt(compute_squared(xs, ys, dim));
     }
 
-    template<typename T>
-    T compute_squared(const T* xs, const T* ys, std::size_t dim) const;
-};
-
-class EuclideanMetric : public Metric {
-public:
-
-    double compute_squared_d(const double *xs, const double *ys, std::size_t dim) const override {
-        return _compute_squared(xs, ys, dim);
-    }
-
-    float compute_squared_f(const float *xs, const float *ys, std::size_t dim) const override {
-        return _compute_squared(xs, ys, dim);
-    }
-
-    bool isEuclidean() const override {
-        return true;
-    }
-
-private:
-    template<typename T>
-    T _compute_squared(const T* xs, const T* ys, std::size_t dim) const {
+    template<typename dtype>
+    static dtype compute_squared(const dtype* xs, const dtype* ys, std::size_t dim) {
         double sum = 0.0;
         #pragma omp simd reduction(+:sum)
         for (size_t i = 0; i < dim; ++i) {
             auto d = xs[i] - ys[i];
             sum += d * d;
         }
-        return static_cast<T>(sum);
+        return static_cast<dtype>(sum);
     }
 };
 
-inline static const EuclideanMetric* default_metric(){
-    static thread_local EuclideanMetric instance = EuclideanMetric{};
-    return &instance;
-}
-
-template<typename T>
+template<typename Metric, typename T>
 py::array_t<int> assign_chunk_to_centers(const np_array_nfc<T>& chunk,
                                          const np_array_nfc<T>& centers,
-                                         int n_threads,
-                                         const Metric * metric);
+                                         int n_threads);
 
 template<typename dtype>
 class Distances {
@@ -89,10 +55,10 @@ public:
         return result;
     }
 
-    std::size_t nXs() const { return _nXs; }
-    std::size_t nYs() const { return _nYs; }
-    std::size_t size() const { return _nXs * _nYs; }
-    std::size_t dim() const { return _dim; }
+    [[nodiscard]] std::size_t nXs() const { return _nXs; }
+    [[nodiscard]] std::size_t nYs() const { return _nYs; }
+    [[nodiscard]] std::size_t size() const { return _nXs * _nYs; }
+    [[nodiscard]] std::size_t dim() const { return _dim; }
 
     dtype* begin() { return data(); }
     dtype* end() { return data() + nXs() * nYs(); }
@@ -117,25 +83,24 @@ std::unique_ptr<double[]> precomputeXX(const dtype* xs, std::size_t nXs, std::si
     return xx;
 }
 
-template<bool squared, typename dtype>
+template<bool squared, typename Metric, typename dtype>
 Distances<dtype> computeDistances(const dtype* xs, std::size_t nXs,
-                                  const dtype* ys, std::size_t nYs, std::size_t dim, const double* xxPrecomputed, const double* yyPrecomputed,
-                                  const Metric * metric) {
+                                  const dtype* ys, std::size_t nYs, std::size_t dim, const double* xxPrecomputed, const double* yyPrecomputed) {
     Distances<dtype> result (nXs, nYs, dim);
-    if(!metric->isEuclidean()) {
+    if constexpr (!std::is_same<Metric, EuclideanMetric>::value) {
         dtype* outPtr = result.data();
         if (squared) {
-            #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, metric, outPtr)
+            #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, outPtr)
             for (std::size_t i = 0; i < nXs; ++i) {
                 for (std::size_t j = 0; j < nYs; ++j) {
-                    outPtr[i * nYs + j] = metric->compute_squared(xs + i * dim, ys + j * dim, dim);
+                    outPtr[i * nYs + j] = Metric::template compute_squared<dtype>(xs + i * dim, ys + j * dim, dim);
                 }
             }
         } else {
-            #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, metric, outPtr)
+            #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, outPtr)
             for (std::size_t i = 0; i < nXs; ++i) {
                 for (std::size_t j = 0; j < nYs; ++j) {
-                    outPtr[i * nYs + j] = metric->compute(xs + i * dim, ys + j * dim, dim);
+                    outPtr[i * nYs + j] = Metric::template compute<dtype>(xs + i * dim, ys + j * dim, dim);
                 }
             }
         }
