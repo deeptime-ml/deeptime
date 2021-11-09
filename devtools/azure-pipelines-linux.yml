@@ -26,7 +26,7 @@ jobs:
   - script: pip install nox
     displayName: 'Install nox'
 
-  - script: nox -s "tests-$(python.version)"
+  - script: nox -s "tests-$(python.version)" -- cov
     displayName: 'Run nox tests'
 
   - template: test-results.yml

@@ -21,7 +21,7 @@ def tests(session: nox.Session) -> None:
         cov_args = [f'--cov={cover_pkg}', f"--cov-report=xml:{cov_xml}", f"--junit-xml={junit_xml}",
                     "--cov-config=.coveragerc"]
     else:
-        session.run("Running without coverage")
+        session.log("Running without coverage")
         cov_args = []
     session.run("pytest", '-vv', '--doctest-modules', '--durations=20', *cov_args, '--pyargs', "tests/", 'deeptime')
 
