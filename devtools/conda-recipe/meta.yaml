@@ -35,3 +35,8 @@ requirements:
 test:
   imports:
     - deeptime
+  requires:
+    - pytest
+    - pytest-sugar
+  commands:
+    - pytest tests/

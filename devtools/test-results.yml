@@ -17,4 +17,3 @@ steps:
     #failIfCoverageEmpty: false # Optional
 
 - bash: curl -s https://codecov.io/bash | bash
-  displayName: 'Upload test results'
