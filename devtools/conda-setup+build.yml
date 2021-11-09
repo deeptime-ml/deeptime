@@ -11,6 +11,6 @@ steps:
   continueOnError: false
 - template: checkout.yml
 - bash: |
-    conda build devtools --python=3.9 --numpy=1.21
+    conda build devtools
   displayName: 'Build and test'
   continueOnError: false

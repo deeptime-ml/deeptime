@@ -2,6 +2,11 @@ jobs:
 - job: 'Linux_with_conda'
   pool:
     vmImage: 'Ubuntu-18.04'
+  variables:
+    - name: 'CONDA_PY'
+      value: '3.9'
+    - name: 'CONDA_NPY'
+      value: '1.21'
   steps:
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add conda to PATH
@@ -10,6 +15,11 @@ jobs:
 - job: 'MacOS_with_conda'
   pool:
     vmImage: 'macOS-10.14'
+  variables:
+    - name: 'CONDA_PY'
+      value: '3.9'
+    - name: 'CONDA_NPY'
+      value: '1.21'
   steps:
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add conda to PATH
@@ -20,7 +30,15 @@ jobs:
 - job: 'Windows_with_conda'
   pool:
     vmImage: 'vs2017-win2016'
+  variables:
+    - name: 'CONDA_PY'
+      value: '3.9'
+    - name: 'CONDA_NPY'
+      value: '1.21'
   steps:
-    - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+    - task: BatchScript@1
+      inputs:
+        filename: "$(CONDA)\\Scripts\\activate.bat"
+        modifyEnvironment: True
       displayName: Add conda to PATH
     - template: conda-setup+build.yml
