@@ -31,4 +31,4 @@ jobs:
   - script: nox -s "tests-$(python.version)"
     displayName: 'Run nox tests'
 
-
+  - template: test-results.yml
