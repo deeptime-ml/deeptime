@@ -1,5 +1,5 @@
 jobs:
-- job: 'Linux-with-conda'
+- job: 'Linux_with_conda'
   pool:
     vmImage: 'Ubuntu-18.04'
   timeoutInMinutes: 360
@@ -9,9 +9,9 @@ jobs:
       displayName: Add conda to PATH
     - template: conda.yml
 
-- job: 'MacOS-with-conda'
+- job: 'MacOS_with_conda'
   pool:
-    vmImage: 'Ubuntu-18.04'
+    vmImage: 'macOS-10.14'
   timeoutInMinutes: 360
 
   steps:
@@ -21,7 +21,7 @@ jobs:
       displayName: Take ownership of conda installation
     - template: conda.yml
 
-- job: 'Windows-with-conda'
+- job: 'Windows_with_conda'
   pool:
     vmImage: 'vs2017-win2016'
 
