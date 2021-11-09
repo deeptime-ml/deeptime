@@ -3,26 +3,31 @@ jobs:
   displayName: "OS X"
   pool:
     vmImage: 'macOS-10.14'
+  timeoutInMinutes: 360
+
   strategy:
     matrix:
-      Python36:
-        CONDA_PY: '3.6'
-        CONDA_NPY: '1.17'
       Python37:
-        CONDA_PY: '3.7'
-        CONDA_NPY: '1.19'
+        python.version: '3.7'
+      Python38:
+        python.version: '3.8'
       Python39:
-        CONDA_PY: '3.9'
-        CONDA_NPY: '1.19'
+        python.version: '3.9'
+
+    maxParallel: 10
 
   steps:
-  - template: checkout.yml
-  - bash: echo "##vso[task.prependpath]$CONDA/bin"
-    displayName: Add conda to PATH
+    - template: checkout.yml
 
-  - script: sudo chmod -R 777 /usr/local/miniconda
-    displayName: Fix Conda permissions
-  - script: env
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(python.version)'
+      inputs:
+        versionSpec: '$(python.version)'
 
-  - template: conda-setup+build.yml
-  - template: test-results.yml
+    - script: pip install nox
+      displayName: 'Install nox'
+
+    - script: nox -s "tests-$(python.version)" -- cov
+      displayName: 'Run nox tests'
+
+    - template: test-results.yml

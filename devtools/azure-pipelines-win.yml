@@ -3,18 +3,30 @@ jobs:
   displayName: Win
   pool:
     vmImage: "vs2017-win2016"
+
   strategy:
     matrix:
       Python37:
-        CONDA_PY: '3.7'
-        CONDA_NPY: '1.18'
+        python.version: '3.7'
+      Python38:
+        python.version: '3.8'
+      Python39:
+        python.version: '3.9'
+
+    maxParallel: 10
 
   steps:
-  - template: checkout.yml
-  - task: BatchScript@1
-    inputs:
-      filename: "$(CONDA)\\Scripts\\activate.bat"
-      modifyEnvironment: True
-    displayName: Add conda to PATH
-  - template: conda-setup+build.yml
-  - template: test-results.yml
+    - template: checkout.yml
+
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(python.version)'
+      inputs:
+        versionSpec: '$(python.version)'
+
+    - script: pip install nox
+      displayName: 'Install nox'
+
+    - script: nox -s "tests-$(python.version)" -- cov
+      displayName: 'Run nox tests'
+
+    - template: test-results.yml
