@@ -1,0 +1,31 @@
+jobs:
+- job: 'Linux with conda'
+  pool:
+    vmImage: 'Ubuntu-18.04'
+  timeoutInMinutes: 360
+
+  steps:
+    - bash: echo "##vso[task.prependpath]$CONDA/bin"
+      displayName: Add conda to PATH
+    - template: conda.yml
+
+- job: 'MacOS with conda'
+  pool:
+    vmImage: 'Ubuntu-18.04'
+  timeoutInMinutes: 360
+
+  steps:
+    - bash: echo "##vso[task.prependpath]$CONDA/bin"
+      displayName: Add conda to PATH
+    - bash: sudo chown -R $USER $CONDA
+      displayName: Take ownership of conda installation
+    - template: conda.yml
+
+- job: 'Windows with conda'
+  pool:
+    vmImage: 'vs2017-win2016'
+
+  steps:
+    - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+      displayName: Add conda to PATH
+    - template: conda.yml

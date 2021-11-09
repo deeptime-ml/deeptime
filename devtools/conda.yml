@@ -1,0 +1,17 @@
+steps:
+- bash: |
+    conda config --add channels conda-forge
+    conda config --set always_yes true
+    conda config --set quiet true
+  displayName: Configure conda
+
+- bash: conda install conda-build conda-verify pip
+  displayName: 'Install dependencies'
+  continueOnError: false
+
+- template: checkout.yml
+
+- bash: |
+    conda build devtools --python=3.9 --numpy=1.21
+  displayName: 'Build and test'
+  continueOnError: false

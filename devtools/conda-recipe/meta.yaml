@@ -1,0 +1,37 @@
+package:
+  name: deeptime
+  version: 0
+
+source:
+  path: ../..
+
+build:
+  script:
+    - "{{ PYTHON }} -m pip install . -v"
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+
+  host:
+    - python
+    - cython
+    - pip
+    - numpy
+    - scipy
+    - pybind11
+    - pybind11-abi
+    - llvm-openmp  # [osx]
+    - libgomp  # [linux]
+
+  run:
+    - python
+    - {{ pin_compatible('numpy') }}
+    - scipy
+    - scikit-learn
+    - threadpoolctl
+
+test:
+  imports:
+    - deeptime
