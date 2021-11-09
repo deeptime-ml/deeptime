@@ -8,8 +8,8 @@ PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9", "3.10"]
 
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.Session) -> None:
-    session.install("-r", "tests/requirements.txt", silent=False)
-    session.install(".", '--ignore-installed', '--no-cache-dir', '-vvv', silent=False)
+    session.install("-r", "tests/requirements.txt")
+    session.install(".", '--ignore-installed', '--no-cache-dir', '-v', silent=False)
     if session.posargs and session.posargs[0] == 'cov':
         session.log("Running with coverage")
         xml_results_dest = os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir())
