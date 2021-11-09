@@ -12,6 +12,6 @@ steps:
 - template: checkout.yml
 
 - bash: |
-    conda build devtools --python=3.9 --numpy=1.21
+    conda build devtools/conda-recipe --python=3.9 --numpy=1.21
   displayName: 'Build and test'
   continueOnError: false
