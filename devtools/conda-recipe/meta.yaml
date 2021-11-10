@@ -7,9 +7,6 @@ source:
 
 build:
   skip: true  # [win and vc<14]
-  script_env:
-    - OMP_NUM_THREADS
-    - AGENT_BUILDDIRECTORY
   script:
     - "{{ PYTHON }} -m pip install . -v"
 
