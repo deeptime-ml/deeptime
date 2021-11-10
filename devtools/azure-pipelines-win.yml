@@ -2,7 +2,7 @@ jobs:
 - job:
   displayName: Win
   pool:
-    vmImage: "windows2019"
+    vmImage: "windows-2019"
 
   strategy:
     matrix:
