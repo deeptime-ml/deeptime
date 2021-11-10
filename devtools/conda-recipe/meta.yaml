@@ -36,3 +36,5 @@ requirements:
 test:
   imports:
     - deeptime
+  requires:
+    - pytest
