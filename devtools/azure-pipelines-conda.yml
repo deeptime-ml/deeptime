@@ -14,7 +14,7 @@ jobs:
 
 - job: 'MacOS_with_conda'
   pool:
-    vmImage: 'macOS-10.14'
+    vmImage: 'macOS-1015'
   variables:
     - name: 'CONDA_PY'
       value: '3.9'
@@ -29,7 +29,7 @@ jobs:
 
 - job: 'Windows_with_conda'
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows2019'
   variables:
     - name: 'CONDA_PY'
       value: '3.9'
