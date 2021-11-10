@@ -41,5 +41,6 @@ test:
   requires:
     - pytest
     - pytest-sugar
-    - pytorch
     - scikit-learn
+    - pytorch
+    - cpuonly
