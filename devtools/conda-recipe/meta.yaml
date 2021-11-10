@@ -8,7 +8,7 @@ source:
 build:
   skip: true  # [win and vc<14]
   script:
-    - "{{ PYTHON }} -m pip install . -v"
+    - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -v"
 
 requirements:
   build:
@@ -41,5 +41,5 @@ test:
   requires:
     - pytest
     - pytest-sugar
-    - pytorch >=1.1
+    - pytorch
     - scikit-learn

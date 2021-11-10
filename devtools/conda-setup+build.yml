@@ -1,3 +1,11 @@
+parameters:
+- name: pythonVersion
+  type: string
+  default: 3.9
+- name: numpyVersion
+  type: string
+  default: 1.21
+
 steps:
 - bash: |
     conda config --add channels conda-forge
@@ -11,6 +19,6 @@ steps:
   continueOnError: false
 - template: checkout.yml
 - bash: |
-    conda build devtools --python 3.9 --numpy 1.21
+    conda build devtools --python ${{ parameters.pythonVersion }} --numpy ${{ parameters.numpyVersion }} -c pytorch
   displayName: 'Build and test'
   continueOnError: false
