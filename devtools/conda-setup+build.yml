@@ -10,6 +10,6 @@ steps:
   displayName: 'Update and install dependencies'
   continueOnError: false
 - bash: |
-    conda build devtools --python 3.9 --numpy 1.21 -c pytorch
+    conda build devtools --python 3.9 --numpy 1.21
   displayName: 'Build and test'
   continueOnError: false
