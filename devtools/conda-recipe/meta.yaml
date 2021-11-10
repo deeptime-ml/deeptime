@@ -43,4 +43,4 @@ test:
     - pytest-sugar
     - scikit-learn
     - pytorch
-    - nocpu
+    - cpuonly
