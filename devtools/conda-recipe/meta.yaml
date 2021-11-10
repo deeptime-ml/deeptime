@@ -1,6 +1,5 @@
 package:
   name: deeptime
-  #version: dev+{{ GIT_DESCRIBE_TAG[1:] + '+' + GIT_DESCRIBE_NUMBER + '.' + GIT_DESCRIBE_HASH}}
   version: 0
 
 source:
@@ -8,14 +7,8 @@ source:
 
 build:
   skip: true  # [win and vc<14]
-  script_env:
-    - OMP_NUM_THREADS
-    - AGENT_BUILDDIRECTORY
   script:
-    - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
-  skip_compile_pyc:
-    - "deeptime/util_torch.py"
-    - "deeptime/decomposition/vampnet.py"
+    - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -v"
 
 requirements:
   build:
@@ -41,15 +34,13 @@ requirements:
     - threadpoolctl
 
 test:
+  imports:
+    - deeptime
   source_files:
     - tests/*
-
   requires:
-    - scikit-learn
     - pytest
-    - pytest-cov
-    - pytest-faulthandler
     - pytest-sugar
-    - importlib_metadata  # [py<38]
-    - typing_extensions  # [py<38]
-    - pytorch >=1.1
+    - scikit-learn
+    - pytorch
+    - cpuonly
