@@ -6,6 +6,10 @@ source:
   path: ../..
 
 build:
+  skip: true  # [win and vc<14]
+  script_env:
+    - OMP_NUM_THREADS
+    - AGENT_BUILDDIRECTORY
   script:
     - "{{ PYTHON }} -m pip install . -v"
 
@@ -40,5 +44,5 @@ test:
   requires:
     - pytest
     - pytest-sugar
-    - pytorch
+    - pytorch >=1.1
     - scikit-learn
