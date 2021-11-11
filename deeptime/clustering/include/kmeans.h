@@ -20,25 +20,25 @@ namespace deeptime {
 namespace clustering {
 namespace kmeans {
 
-template<typename T>
+template<typename Metric, typename T>
 std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T>& np_chunk, const np_array_nfc<T>& np_centers,
-                                               int n_threads, const Metric *metric);
+                                               int n_threads);
 
-template<typename T>
+template<typename Metric, typename T>
 std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
         const np_array_nfc<T> &np_chunk, const np_array_nfc<T> &np_centers,
-        int n_threads, int max_iter, T tolerance, py::object &callback, const Metric *metric);
+        int n_threads, int max_iter, T tolerance, py::object &callback);
 
 
-template<typename T>
+template<typename Metric, typename T>
 T costFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_centers,
-               const np_array<int> &assignments, int n_threads, const Metric *metric);
+               const np_array<int> &assignments, int n_threads);
 
-template<typename T>
+template<typename Metric, typename T>
 T costAssignFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_centers,
-               int n_threads, const Metric *metric) {
-    auto assignments = assign_chunk_to_centers(np_data, np_centers, n_threads, metric);
-    return costFunction(np_data, np_centers, assignments, n_threads, metric);
+               int n_threads) {
+    auto assignments = assign_chunk_to_centers<Metric>(np_data, np_centers, n_threads);
+    return costFunction<Metric>(np_data, np_centers, assignments, n_threads);
 }
 
 namespace util {
@@ -48,18 +48,14 @@ void assignCenter(itype frameIndex, std::size_t dim, const dtype *const data, dt
 }
 }
 
-template<typename dtype>
+template<typename Metric, typename dtype>
 np_array<dtype> initKmeansPlusPlus(const np_array_nfc<dtype> &data, std::size_t k,
-                                   std::int64_t seed, int n_threads, py::object &callback, const Metric *metric) {
+                                   std::int64_t seed, int n_threads, py::object &callback) {
     if (static_cast<std::size_t>(data.shape(0)) < k) {
         std::stringstream ss;
         ss << "not enough data to initialize desired number of centers.";
         ss << "Provided frames (" << data.shape(0) << ") < n_centers (" << k << ").";
         throw std::invalid_argument(ss.str());
-    }
-
-    if(metric == nullptr) {
-        metric = default_metric();
     }
 
     #ifdef USE_OPENMP
@@ -102,12 +98,12 @@ np_array<dtype> initKmeansPlusPlus(const np_array_nfc<dtype> &data, std::size_t 
     }
 
     // 1 x nFrames distance matrix
-    Distances<dtype> distances = computeDistances<true>(
+    Distances<dtype> distances = computeDistances<true, Metric>(
             centersPtr, 1, // 1 center picked
             dataPtr, nFrames, // data set
             dim, // dimension
-            nullptr, dataNormsSquared.get(), // yy precomputed
-            metric);
+            nullptr, dataNormsSquared.get() // yy precomputed
+            );
 
     double currentPotential {0};
     std::vector<dtype> distancesCumsum (distances.size(), 0);
@@ -149,8 +145,8 @@ np_array<dtype> initKmeansPlusPlus(const np_array_nfc<dtype> &data, std::size_t 
             }
         }
         // nTrials x nFrames distance matrix
-        auto distsToCandidates = computeDistances<true>(candidatesCoords.data(), nTrials, dataPtr, nFrames, dim,
-                                                        nullptr, dataNormsSquared.get(), metric);
+        auto distsToCandidates = computeDistances<true, Metric>(candidatesCoords.data(), nTrials, dataPtr, nFrames, dim,
+                                                        nullptr, dataNormsSquared.get());
         // update with current best distances
         auto distsToCandidatesPtr = distsToCandidates.data();
         auto distancesPtr = distances.data();

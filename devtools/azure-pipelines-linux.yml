@@ -6,28 +6,19 @@ jobs:
 
   strategy:
     matrix:
-      Python36:
-        CONDA_PY: '3.6'
-        CONDA_NPY: '1.16'
       Python37:
-        CONDA_PY: '3.7'
-        CONDA_NPY: '1.18'
+        python.version: '3.7'
       Python38:
-        CONDA_PY: '3.8'
-        CONDA_NPY: '1.19'
+        python.version: '3.8'
       Python39:
-        CONDA_PY: '3.9'
-        CONDA_NPY: '1.19'
+        python.version: '3.9'
  
     maxParallel: 10
 
   steps:
-  - template: checkout.yml
-  - bash: echo "##vso[task.prependpath]$CONDA/bin"
-    displayName: Add conda to PATH
+  - task: UsePythonVersion@0
+    displayName: 'Use Python $(python.version)'
+    inputs:
+      versionSpec: '$(python.version)'
 
-  - bash: sudo install -d -m 0777 /usr/envs
-    displayName: Fix Conda permissions
-
-  - template: conda-setup+build.yml
-  - template: test-results.yml
+  - template: setup+build+test.yml

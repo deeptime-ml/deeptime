@@ -3,7 +3,6 @@ import warnings
 import numpy as np
 
 from . import metrics
-from ._clustering_bindings import regspace as _regspace_ext
 from ._cluster_model import ClusterModel
 from ..base import Estimator
 
@@ -142,14 +141,14 @@ class RegularSpace(Estimator):
 
     def partial_fit(self, data, n_jobs=None):
         r""" Fits data to an existing model. See :meth:`fit`. """
+        impl = metrics[self.metric]
         n_jobs = self.n_jobs if n_jobs is None else handle_n_jobs(n_jobs)
         if data.ndim == 1:
             data = data[:, np.newaxis]
         try:
-            metric = metrics[self.metric]()
-            _regspace_ext.cluster(data, self._clustercenters, self.dmin, self.max_centers, n_jobs, metric)
+            impl.regspace.cluster(data, self._clustercenters, self.dmin, self.max_centers, n_jobs)
             self._converged = True
-        except _regspace_ext.MaxCentersReachedException:
+        except impl.regspace.MaxCentersReachedException:
             warnings.warn('Maximum number of cluster centers reached.'
                           ' Consider increasing max_centers or choose'
                           ' a larger minimum distance, dmin.')

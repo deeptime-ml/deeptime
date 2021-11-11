@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-import setuptools
+import setuptools  # noqa # pylint: disable=unused-import
 
 from numpy.distutils.command.build_ext import build_ext
 
@@ -64,12 +64,28 @@ class Build(build_ext):
         common_inc = Path('deeptime') / 'src' / 'include'
 
         if self.compiler.compiler_type == 'msvc':
-            cxx_flags = ['/EHsc', '/std:c++latest', '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()]
+            cxx_flags = ['/EHsc', '/std:c++17', '/bigobj', f'/DVERSION_INFO=\\"{self.distribution.get_version()}\\"', '/permissive-']
             extra_link_args.append('/machine:X64')
         else:
             cxx_flags = ['-std=c++17']
             extra_compile_args += ['-pthread']
             extra_link_args = ['-lpthread']
+
+        self.setup_openmp(define_macros, extra_compile_args, extra_link_args)
+        for ext in self.extensions:
+            ext.include_dirs.append(common_inc.resolve())
+            ext.include_dirs.append(np_inc)
+            ext.include_dirs.append(pybind_inc.resolve())
+
+            if ext.language == 'c++':
+                ext.extra_compile_args += cxx_flags
+                ext.extra_compile_args += extra_compile_args
+                ext.extra_link_args += extra_link_args
+                ext.define_macros += define_macros
+
+        super(Build, self).build_extensions()
+
+    def setup_openmp(self, define_macros, extra_compile_args, extra_link_args):
         has_openmp = supports_omp(self.compiler)
         if has_openmp:
             extra_compile_args += ['-fopenmp' if sys.platform != 'darwin' else '-fopenmp=libiomp5']
@@ -80,18 +96,6 @@ class Build(build_ext):
             else:
                 raise ValueError("Should not happen.")
             define_macros += [('USE_OPENMP', None)]
-
-        for ext in self.extensions:
-            ext.include_dirs.append(np_inc)
-            ext.include_dirs.append(pybind_inc.resolve())
-            ext.include_dirs.append(common_inc.resolve())
-            if ext.language == 'c++':
-                ext.extra_compile_args += cxx_flags
-                ext.extra_compile_args += extra_compile_args
-                ext.extra_link_args += extra_link_args
-                ext.define_macros += define_macros
-
-        super(Build, self).build_extensions()
 
 
 cmdclass = versioneer.get_cmdclass()
@@ -135,9 +139,7 @@ def configuration(parent_package='', top_path=None):
     config = Configuration(None, parent_package, top_path)
     config.set_options(ignore_setup_xxx_py=True,
                        assume_default_configuration=True,
-                       delegate_options_to_subpackages=True,
-                       # quiet=True,
-                       )
+                       delegate_options_to_subpackages=True)
     config.add_subpackage('deeptime')
     return config
 

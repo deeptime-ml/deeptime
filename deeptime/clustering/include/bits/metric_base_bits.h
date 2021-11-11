@@ -10,24 +10,10 @@
 #include <omp.h>
 #endif
 
-template<>
-inline float Metric::compute_squared<float>(const float* xs, const float* ys, std::size_t dim) const {
-    return compute_squared_f(xs, ys, dim);
-}
-
-template<>
-inline double Metric::compute_squared<double>(const double* xs, const double* ys, std::size_t dim) const {
-    return compute_squared_d(xs, ys, dim);
-}
-
-template<typename T>
+template<typename Metric, typename T>
 inline py::array_t<int> assign_chunk_to_centers(const np_array_nfc<T>& chunk,
                                                 const np_array_nfc<T>& centers,
-                                                int n_threads,
-                                                const Metric* metric) {
-    if (metric == nullptr) {
-        metric = default_metric();
-    }
+                                                int n_threads) {
     if (chunk.ndim() != 2) {
         throw std::invalid_argument("provided chunk does not have two dimensions.");
     }
@@ -57,12 +43,12 @@ inline py::array_t<int> assign_chunk_to_centers(const np_array_nfc<T>& chunk,
     omp_set_num_threads(n_threads);
 #endif
 
-    #pragma omp parallel default(none) firstprivate(N_frames, N_centers, centers_buff, input_dim, metric, chunk_buff, dtraj_buff, dists)
+    #pragma omp parallel default(none) firstprivate(N_frames, N_centers, centers_buff, input_dim, chunk_buff, dtraj_buff, dists)
     {
         #pragma omp for
         for(size_t i = 0; i < N_frames; ++i) {
             for(size_t j = 0; j < N_centers; ++j) {
-                dists[j] = metric->compute(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
+                dists[j] = Metric::template compute<T>(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
             }
 
             {

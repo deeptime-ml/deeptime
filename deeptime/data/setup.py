@@ -5,9 +5,5 @@ def configuration(parent_package='', top_path=None):
     config.add_data_files(
         'data/double_well_discrete.npz',
     )
-    config.add_extension('_data_bindings',
-                         sources=['src/data_module.cpp'],
-                         include_dirs=['include'],
-                         language='c++',
-                         )
+    config.add_extension("_data_bindings", sources=["src/data_module.cpp"], include_dirs=['include'])
     return config

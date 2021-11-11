@@ -47,13 +47,11 @@ Adding a new metric
     :toctree: generated/
     :template: class_nomodule.rst
 
-    Metric
     metrics
     MetricRegistry
 """
 
 from ._metric import metrics, MetricRegistry
-from ._clustering_bindings import Metric
 from ._kmeans import KMeans, MiniBatchKMeans, KMeansModel
 from ._regspace import RegularSpace
 from ._box import BoxDiscretization, BoxDiscretizationModel

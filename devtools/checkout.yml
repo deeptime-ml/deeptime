@@ -1,4 +1,4 @@
 steps:
 - checkout: self
   submodules: true
- 
+  displayName: 'checkout'

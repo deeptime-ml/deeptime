@@ -8,25 +8,53 @@ class MetricRegistry:
     If a custom metric is implemented, it can be registered through a call to
     :meth:`register <deeptime.clustering.MetricRegistry.register>`.
 
-    Note that the registry should not be instantiated directly but rather be accessed
-    through :data:`metrics <deeptime.clustering.metrics>`.
+    .. note::
+
+        The registry should not be instantiated directly but rather be accessed
+        through the :data:`metrics <deeptime.clustering.metrics>` singleton.
+
+
+    .. rubric:: Adding a new metric
+
+    A new metric may be added by linking against the deeptime clustering c++ library (directory is provided by
+    `deeptime.capi_includes(inc_clustering=True)`) and subsequently exposing the clustering algorithms with your custom
+    metric like
+
+    .. code-block:: cpp
+
+        #include "register_clustering.h"
+
+        PYBIND11_MODULE(_clustering_bindings, m) {
+            m.doc() = "module containing clustering algorithms.";
+            auto customModule = m.def_submodule("custom");
+            deeptime::clustering::registerClusteringImplementation<Custom>(customModule);
+        }
+
+    and registering it with the deeptime library through
+
+    .. code-block:: python
+
+        import deeptime
+        import bindings  # this is your compiled extension, rename as appropriate
+
+        deeptime.clustering.metrics.register("custom", bindings.custom)
     """
 
     def __init__(self):
         self._registered = None
-        self.register("euclidean", _bd.EuclideanMetric)
+        self.register("euclidean", _bd.euclidean)
 
-    def register(self, name: str, clazz):
+    def register(self, name: str, impl):
         r""" Adds a new metric to the registry.
 
         Parameters
         ----------
         name : str
             The name of the metric.
-        clazz : class
-            Reference to the class of the metric.
+        impl : module
+            Reference to the implementation module.
         """
-        self._mapping[name] = clazz
+        self._mapping[name] = impl
 
     @property
     def available(self) -> Tuple[str]:

@@ -16,7 +16,7 @@ else()
     add_compile_options(-Wall -Wextra -pedantic -Werror)
 endif()
 
-include("${PYBIND_CMAKE_DIR}/pybind11Config.cmake")
+find_package(pybind11 REQUIRED)
 
 set(common_includes "${CMAKE_CURRENT_LIST_DIR}/deeptime/src/include")
 

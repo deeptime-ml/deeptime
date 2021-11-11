@@ -25,9 +25,9 @@ struct PyODE {
     using dtype = T;
     using State = deeptime::data::Vector<T, DIM>;
     using Integrator = deeptime::data::RungeKutta<State, DIM>;
-    using Rhs = std::function<State(State)>;
+    using Rhs = std::function<State(const State&)>;
 
-    explicit PyODE(Rhs &&rhs) : rhs(std::move(rhs)) {}
+    explicit PyODE(const Rhs &_rhs) : rhs(_rhs) {}
 
     [[nodiscard]] State f(const State &x) const {
         py::gil_scoped_acquire gil;
@@ -50,7 +50,7 @@ struct PySDE {
     using Rhs = std::function<State(State)>;
     using Sigma = deeptime::data::Matrix<T, DIM>;
 
-    PySDE(const Sigma &sigma, Rhs &&rhs) : sigma(sigma), rhs(std::move(rhs)) {}
+    PySDE(const Sigma &sigma, const Rhs &_rhs) : sigma(sigma), rhs(_rhs) {}
 
     [[nodiscard]] State f(const State &x) const {
         py::gil_scoped_acquire gil;

@@ -3,18 +3,22 @@ jobs:
   displayName: Win
   pool:
     vmImage: "windows-2019"
+
   strategy:
     matrix:
       Python37:
-        CONDA_PY: '3.7'
-        CONDA_NPY: '1.18'
+        python.version: '3.7'
+      Python38:
+        python.version: '3.8'
+      Python39:
+        python.version: '3.9'
+
+    maxParallel: 10
 
   steps:
-  - template: checkout.yml
-  - task: BatchScript@1
+  - task: UsePythonVersion@0
+    displayName: 'Use Python $(python.version)'
     inputs:
-      filename: "$(CONDA)\\Scripts\\activate.bat"
-      modifyEnvironment: True
-    displayName: Add conda to PATH
-  - template: conda-setup+build.yml
-  - template: test-results.yml
+      versionSpec: '$(python.version)'
+
+  - template: setup+build+test.yml
