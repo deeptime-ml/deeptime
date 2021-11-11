@@ -293,4 +293,4 @@ class Stats:
 
 # wrappers for older pytorch versions that lack linalg module
 eigh = torch.linalg.eigh if hasattr(torch, 'linalg') else lambda x: torch.symeig(x, eigenvectors=True)
-multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') else lambda args: torch.chain_matmul(*args)
+multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else lambda args: torch.chain_matmul(*args)
