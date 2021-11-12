@@ -12,3 +12,4 @@ sphinx-gallery
 torch
 memory_profiler
 mdshare
+nbconvert

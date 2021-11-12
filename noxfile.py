@@ -28,6 +28,14 @@ def tests(session: nox.Session) -> None:
 
 
 @nox.session(reuse_venv=True)
+def make_docs(session: nox.Session) -> None:
+    session.install("-r", "tests/requirements.txt")
+    session.install("-r", "docs/requirements.txt")
+    session.chdir("docs")
+    session.run("sphinx-build", "-M", "html", "source", "build", "-t", "notebooks")
+
+
+@nox.session(reuse_venv=True)
 def build(session: nox.Session) -> None:
     session.install("build")
     session.log("Building normal files")
