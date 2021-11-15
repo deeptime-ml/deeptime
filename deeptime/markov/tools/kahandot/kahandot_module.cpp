@@ -8,7 +8,7 @@ template<typename dtype>
 auto ksum(const dtype* const begin, const dtype* const end) -> dtype {
     auto n = std::distance(begin, end);
     dtype sum {0};
-    ssize_t o {0};
+    py::ssize_t o {0};
     dtype correction {0};
 
     while (n--) {
