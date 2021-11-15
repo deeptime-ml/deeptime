@@ -36,11 +36,3 @@ requirements:
 test:
   imports:
     - deeptime
-  source_files:
-    - tests/*
-  requires:
-    - pytest
-    - pytest-sugar
-    - scikit-learn
-    - pytorch
-    - cpuonly

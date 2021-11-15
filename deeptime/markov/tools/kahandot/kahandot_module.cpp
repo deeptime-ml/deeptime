@@ -8,7 +8,7 @@ template<typename dtype>
 auto ksum(const dtype* const begin, const dtype* const end) -> dtype {
     auto n = std::distance(begin, end);
     dtype sum {0};
-    ssize_t o {0};
+    py::ssize_t o {0};
     dtype correction {0};
 
     while (n--) {
@@ -44,11 +44,11 @@ auto kdot(const np_array_nfc<dtype> &arrA, const np_array_nfc<dtype> &arrB) -> n
 
     auto C = Carr.template mutable_unchecked<2>();
 
-    for (ssize_t i = 0; i < n; ++i) {
-        for (ssize_t j = 0; j < l; ++j) {
+    for (py::ssize_t i = 0; i < n; ++i) {
+        for (py::ssize_t j = 0; j < l; ++j) {
             dtype err{0};
             dtype sum{0};
-            for (ssize_t k = 0; k < m; ++k) {
+            for (py::ssize_t k = 0; k < m; ++k) {
                 auto y = A(i, k) * B(k, j) - err;
                 auto t = sum + y;
                 err = (t - sum) - y;

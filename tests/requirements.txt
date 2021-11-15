@@ -6,7 +6,7 @@ scipy==1.7.2
 pybind11==2.8.1
 scikit-learn==1.0.1
 threadpoolctl==3.0.0
-torch==1.10.0
+torch>=1.10.0; python_version<"3.10"
 
 pytest==6.2.5
 pytest-cov

@@ -34,8 +34,8 @@ public:
         auto b = arrB.template unchecked<1>();
         auto X = arrX.template mutable_unchecked<2>();
 
-        for (ssize_t k = 0; k < M; ++k) {
-            for (ssize_t l = 0; l < k; ++l) {
+        for (py::ssize_t k = 0; k < M; ++k) {
+            for (py::ssize_t l = 0; l < k; ++l) {
                 if (C(k, l) + C(k, l) > 0) {
                     auto xkl = X(k, l);
                     auto xkl_new = sample_quad(X(k, l), X(k, k), X(l, l),
