@@ -94,7 +94,7 @@ np_array<dtype> toOutputProbabilityTrajectory(const np_array_nfc<State> &observa
     auto T = observations.shape(0);
 
     #pragma omp parallel for collapse(2) default(none) firstprivate(P, obs, nHidden, nObs, T, outputPtr)
-    for (ssize_t t = 0; t < T; ++t) {
+    for (pybind11::ssize_t t = 0; t < T; ++t) {
         for (std::size_t i = 0; i < nHidden; ++i) {
             outputPtr[t*nHidden + i] = P[obs[t] + i*nObs];
         }
@@ -107,7 +107,7 @@ template<typename dtype, typename State>
 void sample(const std::vector<np_array_nfc<State>> &observationsPerState, np_array_nfc<dtype> &outputProbabilities,
             const np_array_nfc<dtype> &prior) {
     auto nObs = outputProbabilities.shape(1);
-    ssize_t currentState{0};
+    pybind11::ssize_t currentState{0};
 
     auto& generator = deeptime::rnd::staticThreadLocalGenerator();
     deeptime::rnd::dirichlet_distribution<dtype> dirichlet;
@@ -126,7 +126,7 @@ void sample(const std::vector<np_array_nfc<State>> &observationsPerState, np_arr
             std::vector<dtype> histPrivate(nObs, 0);
 
             #pragma omp for
-            for(ssize_t i = 0; i < T; ++i) {
+            for(pybind11::ssize_t i = 0; i < T; ++i) {
                 ++histPrivate.at(observationsBuf[i]);
             }
 
@@ -140,7 +140,7 @@ void sample(const std::vector<np_array_nfc<State>> &observationsPerState, np_arr
 
         #else
 
-        for (ssize_t i = 0; i < observations.size(); ++i) {
+        for (pybind11::ssize_t i = 0; i < observations.size(); ++i) {
             ++hist.at(observations.at(i));
         }
 
@@ -306,7 +306,7 @@ std::tuple<np_array<dtype>, np_array<dtype>> fit(std::size_t nHiddenStates, cons
             for (decltype(nHiddenStates) i = 0; i < nHiddenStates; ++i) {
                 dtype dot = 0;
                 dtype wStateSum = 0;
-                for (ssize_t t = 0; t < obs.shape(0); ++t) {
+                for (pybind11::ssize_t t = 0; t < obs.shape(0); ++t) {
                     dot += w.at(t, i) * obsPtr[t];
                     wStateSum += w.at(t, i);
                 }
@@ -335,7 +335,7 @@ std::tuple<np_array<dtype>, np_array<dtype>> fit(std::size_t nHiddenStates, cons
             for (decltype(nHiddenStates) i = 0; i < nHiddenStates; ++i) {
                 dtype wStateSum = 0;
                 dtype sigmaUpdate = 0;
-                for (ssize_t t = 0; t < obs.shape(0); ++t) {
+                for (pybind11::ssize_t t = 0; t < obs.shape(0); ++t) {
                     auto sqrty = static_cast<dtype>(obsPtr[t]) - static_cast<dtype>(means.at(i));
                     sigmaUpdate += w.at(t, i) * sqrty*sqrty;
                     wStateSum += w.at(t, i);
