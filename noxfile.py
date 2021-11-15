@@ -24,7 +24,15 @@ def tests(session: nox.Session) -> None:
         session.log("Running without coverage")
         cov_args = []
 
-    session.run("pytest", '-vv', '--doctest-modules', '--durations=20', *cov_args, '--pyargs', "tests/", 'deeptime')
+    test_dirs = ["tests/"]
+    try:
+        import torch
+        # only run doctests if torch is available
+        test_dirs.append('deeptime')
+    except ImportError:
+        pass
+
+    session.run("pytest", '-vv', '--doctest-modules', '--durations=20', *cov_args, '--pyargs', *test_dirs)
 
 
 @nox.session(reuse_venv=True)
