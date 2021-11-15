@@ -44,11 +44,11 @@ auto kdot(const np_array_nfc<dtype> &arrA, const np_array_nfc<dtype> &arrB) -> n
 
     auto C = Carr.template mutable_unchecked<2>();
 
-    for (ssize_t i = 0; i < n; ++i) {
-        for (ssize_t j = 0; j < l; ++j) {
+    for (py::ssize_t i = 0; i < n; ++i) {
+        for (py::ssize_t j = 0; j < l; ++j) {
             dtype err{0};
             dtype sum{0};
-            for (ssize_t k = 0; k < m; ++k) {
+            for (py::ssize_t k = 0; k < m; ++k) {
                 auto y = A(i, k) * B(k, j) - err;
                 auto t = sum + y;
                 err = (t - sum) - y;

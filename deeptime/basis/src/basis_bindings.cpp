@@ -92,7 +92,7 @@ np_array<std::int32_t> computePowerMatrix(std::size_t stateSpaceDim, std::size_t
 }
 
 template<typename dtype>
-np_array<dtype> evaluateMonomials(ssize_t p, const np_array_nfc<dtype> &xArr,
+np_array<dtype> evaluateMonomials(py::ssize_t p, const np_array_nfc<dtype> &xArr,
                                   const np_array<std::int32_t> &powerMatrixArr) {
     auto x = xArr.template unchecked<2>();
     auto stateSpaceDim = x.shape(0);
@@ -106,10 +106,10 @@ np_array<dtype> evaluateMonomials(ssize_t p, const np_array_nfc<dtype> &xArr,
     std::fill(outArr.mutable_data(), outArr.mutable_data() + outArr.size(), static_cast<dtype>(1));
     auto out = outArr.template mutable_unchecked<2>();
 
-    for (ssize_t i = 0; i < nMonomials; ++i) {
-        for (ssize_t j = 0; j < stateSpaceDim; ++j) {
+    for (py::ssize_t i = 0; i < nMonomials; ++i) {
+        for (py::ssize_t j = 0; j < stateSpaceDim; ++j) {
             auto power = powerMatrix(stateSpaceDim - 1 - j, i);
-            for (ssize_t k = 0; k < nTestPoints; ++k) {
+            for (py::ssize_t k = 0; k < nTestPoints; ++k) {
                 out(i, k) *= std::pow(x(j, k), power);
             }
         }
@@ -131,9 +131,9 @@ PYBIND11_MODULE(_basis_bindings, m) {
         std::vector<std::string> out;
         out.reserve(nMonomials);
 
-        for (ssize_t i = 0; i < nMonomials; ++i) {
+        for (py::ssize_t i = 0; i < nMonomials; ++i) {
             std::string monFeature {};
-            for (ssize_t j = 0; j < stateSpaceDim; ++j) {
+            for (py::ssize_t j = 0; j < stateSpaceDim; ++j) {
                 auto power = powerMatrix.at(stateSpaceDim - 1 - j, i);
 
                 if (power != 0) {

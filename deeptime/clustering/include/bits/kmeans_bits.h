@@ -43,7 +43,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
 
     /* do the clustering */
     if (n_threads == 0) {
-        for (pybind11::ssize_t i = 0; i < n_frames; ++i) {
+        for (py::ssize_t i = 0; i < n_frames; ++i) {
             int argMinDist = 0;
             {
                 T minDist = Metric::template compute(&chunk(i, 0), &centers(0, 0), dim);
@@ -59,7 +59,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
             {
                 assignmentsPtr[i] = argMinDist;
                 centers_counter.at(argMinDist)++;
-                for (pybind11::ssize_t j = 0; j < dim; j++) {
+                for (py::ssize_t j = 0; j < dim; j++) {
                     newCentersRef(argMinDist, j) += chunk(i, j);
                 }
             }
@@ -69,7 +69,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
         omp_set_num_threads(n_threads);
 
 #pragma omp parallel for schedule(static, 1)
-        for (pybind11::ssize_t i = 0; i < n_frames; ++i) {
+        for (py::ssize_t i = 0; i < n_frames; ++i) {
             std::vector<T> dists(n_centers);
             for (std::size_t j = 0; j < n_centers; ++j) {
                 dists[j] = Metric::template compute(&chunk(i, 0), &centers(j, 0), dim);
@@ -82,7 +82,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
                 {
                     assignmentsPtr[i] = argMinDist;
                     centers_counter.at(static_cast<std::size_t>(argMinDist))++;
-                    for (pybind11::ssize_t j = 0; j < dim; j++) {
+                    for (py::ssize_t j = 0; j < dim; j++) {
                         newCentersRef(argMinDist, j) += chunk(i, j);
                     }
                 }
@@ -115,7 +115,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
                         std::unique_lock<std::mutex> lock(m);
                         assignmentsPtr[i] = argMinDist;
                         centers_counter.at(argMinDist)++;
-                        for (pybind11::ssize_t j = 0; j < dim; j++) {
+                        for (py::ssize_t j = 0; j < dim; j++) {
                             newCentersRef(argMinDist, j) += chunk(i, j);
                         }
                     }
@@ -133,11 +133,11 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
     auto centers_counter_it = centers_counter.begin();
     for (std::size_t i = 0; i < n_centers; ++i, ++centers_counter_it) {
         if (*centers_counter_it == 0) {
-            for (pybind11::ssize_t j = 0; j < dim; ++j) {
+            for (py::ssize_t j = 0; j < dim; ++j) {
                 newCentersRef(i, j) = centers(i, j);
             }
         } else {
-            for (pybind11::ssize_t j = 0; j < dim; ++j) {
+            for (py::ssize_t j = 0; j < dim; ++j) {
                 newCentersRef(i, j) /= static_cast<T>(*centers_counter_it);
             }
         }
@@ -180,7 +180,7 @@ inline std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
         it += 1;
     } while (it < max_iter && !converged);
     int res = converged ? 0 : 1;
-    np_array<T> npInertias({static_cast<pybind11::ssize_t>(inertias.size())});
+    np_array<T> npInertias({static_cast<py::ssize_t>(inertias.size())});
     std::copy(inertias.begin(), inertias.end(), npInertias.mutable_data());
     return std::make_tuple(currentCenters, res, it, npInertias);
 }

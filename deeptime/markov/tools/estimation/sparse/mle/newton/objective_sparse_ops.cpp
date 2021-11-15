@@ -5,7 +5,7 @@
 #include "common.h"
 
 template<typename dtype>
-void convertImpl(ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype> &yArr,
+void convertImpl(py::ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype> &yArr,
                  const np_array_nfc<dtype> &dataArr, np_array_nfc<dtype> &nuArr,
                  np_array_nfc<dtype> &dataPArr, np_array_nfc<dtype> &diagPArr,
                  const np_array<std::int32_t> &indicesArr, const np_array<std::int32_t> &indptrArr) {
@@ -22,7 +22,7 @@ void convertImpl(ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<
     auto nu = nuArr.template mutable_unchecked<1>();
 
     // Loop over rows of Cs
-    for (ssize_t k = 0; k < M; ++k) {
+    for (py::ssize_t k = 0; k < M; ++k) {
         nu(k) = std::exp(y(k));
         // Loop over nonzero entries in row of Cs
         for (std::int32_t l = indptr(k); l < indptr(k + 1); ++l) {
@@ -46,7 +46,7 @@ void convertImpl(ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<
 }
 
 template<typename dtype>
-void FImpl(ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype> &yArr,
+void FImpl(py::ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype> &yArr,
            const np_array_nfc<dtype> &cArr, const np_array_nfc<dtype> &dataArr,
            np_array_nfc<dtype> &FvalArr,
            const np_array<std::int32_t> &indicesArr, const np_array<std::int32_t> &indptrArr) {
@@ -61,7 +61,7 @@ void FImpl(ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype>
     auto Fval = FvalArr.template mutable_unchecked<1>();
 
     // Loop over rows of Cs
-    for (ssize_t k = 0; k < M; ++k) {
+    for (py::ssize_t k = 0; k < M; ++k) {
         Fval(k) += 1.0;
         Fval(k + M) -= c(k);
 
@@ -83,7 +83,7 @@ void FImpl(ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype>
 }
 
 template<typename dtype>
-void dfImpl(ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype> &yArr,
+void dfImpl(py::ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype> &yArr,
             const np_array_nfc<dtype> &dataArr,
             np_array_nfc<dtype> &dataHxxArr, np_array_nfc<dtype> &dataHyyArr, np_array_nfc<dtype> &dataHyxArr,
             np_array_nfc<dtype> &diagDxxArr, np_array_nfc<dtype> &diagDyyArr, np_array_nfc<dtype> &diagDyxArr,
@@ -104,7 +104,7 @@ void dfImpl(ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype
 
 
     // Loop over rows of Cs
-    for (ssize_t k = 0; k < M; ++k) {
+    for (py::ssize_t k = 0; k < M; ++k) {
         // Loop over nonzero entries in row of Cs
         for (std::int32_t l = indptr(k); l < indptr(k + 1); ++l) {
             // Column index of current element
