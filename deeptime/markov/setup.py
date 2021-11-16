@@ -8,6 +8,12 @@ def configuration(parent_package='', top_path=None):
                          language='c++',
                          )
 
+    config.add_extension('_tram_bindings',
+                         sources=['_bindings/src/markov_module.cpp'],
+                         include_dirs=['_bindings/include'],
+                         language='c++',
+                         )
+
     config.add_subpackage('msm')
     config.add_subpackage('hmm')
     config.add_subpackage('tools')

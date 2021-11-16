@@ -1,112 +1,178 @@
 import logging
-from typing import Optional, Union, List
+from typing import Optional
+
+from ._markov_state_model import MarkovStateModelCollection
+from deeptime.markov import TransitionCountEstimator, count_states
+from .._base import _MSMBaseEstimator
+from deeptime.util import types
+from deeptime.markov import _tram_bindings, compute_connected_sets, cset
 
 import numpy as np
-from scipy.sparse import issparse
 
-from deeptime.markov.tools import estimation as msmest
-from ._markov_state_model import MarkovStateModelCollection, MarkovStateModel
-from .._base import _MSMBaseEstimator, MembershipsChapmanKolmogorovValidator
-from .._transition_counting import TransitionCountModel, TransitionCountEstimator
-from ...numeric import is_square_matrix
-
-__all__ = ['MaximumLikelihoodMSM']
+__all__ = ['TRAM']
 
 log = logging.getLogger(__file__)
 
 
-class MaximumLikelihoodMSM(_MSMBaseEstimator):
-    r"""Maximum likelihood estimator for MSMs (:class:`MarkovStateModel <deeptime.markov.msm.MarkovStateModel>`)
-    given discrete trajectories or statistics thereof. This estimator produces instances of MSMs in form of
-    MSM collections (:class:`MarkovStateModelCollection`) which contain as many MSMs as there are connected
-    sets in the counting. A collection of MSMs per default behaves exactly like an ordinary MSM model on the largest
-    connected set. The connected set can be switched, changing the state of the collection to be have like an MSM on
-    the selected state subset.
-
-    Implementation according to :footcite:`wu2020variational`.
-
+class TRAM(_MSMBaseEstimator):
+    r"""
     Parameters
     ----------
-    reversible : bool, optional, default=True
-        If true compute reversible MarkovStateModel, else non-reversible MarkovStateModel
-    stationary_distribution_constraint : (N,) ndarray, optional, default=None
-        Stationary vector on the full set of states. Estimation will be made such the the resulting transition
-        matrix has this distribution as an equilibrium distribution. Set probabilities to zero if the states which
-        should be excluded from the analysis.
-    sparse : bool, optional, default=False
-        If true compute count matrix, transition matrix and all derived quantities using sparse matrix algebra.
-        In this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
-        This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
-        more efficient.
-    allow_disconnected : bool, optional, default=False
-        If set to true, the resulting transition matrix may have disconnected and transient states, and the
-        estimated stationary distribution is only meaningful on the respective connected sets.
-    maxiter : int, optional, default=1000000
-        Optional parameter with reversible = True, sets the maximum number of iterations before the transition
-        matrix estimation method exits.
-    maxerr : float, optional, default = 1e-8
-        Optional parameter with reversible = True. Convergence tolerance for transition matrix estimation. This
-        specifies the maximum change of the Euclidean norm of relative stationary probabilities
-        (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
-        :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
-        probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
-    transition_matrix_tolerance : float, default=1e-8
-        The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
-        row sums of 1).
-    connectivity_threshold : float, optional, default=0.
-        Number of counts required to consider two states connected.
-    lagtime : int, optional, default=None
-        Optional lagtime that can be provided at estimator level if fitting from timeseries directly.
-
     References
     ----------
-    .. footbibliography::
     """
 
-    def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
-                 sparse: bool = False, allow_disconnected: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8,
-                 connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-6, lagtime=None):
-        super(MaximumLikelihoodMSM, self).__init__(reversible=reversible, sparse=sparse)
+    def __init__(
+            self, lagtime=None, count_mode='sliding',
+            connectivity='post_hoc_RE',
+            nstates_full=None, equilibrium=None,
+            maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
+            nn=None, connectivity_factor: float = 1.0, connectivity_threshold: float = 0,
+            direct_space=False, N_dtram_accelerations=0,
+            callback=None,
+            init='mbar', init_maxiter=5000, init_maxerr: float = 1.0E-8,
+            overcounting_factor=1.0):
+        r"""Transition(-based) Reweighting Analysis Method
+        Parameters
+        ----------
+        lag : int
+            Integer lag time at which transitions are counted.
+        count_mode : str, optional, default='sliding'
+            mode to obtain count matrices from discrete trajectories. Should be
+            one of:
+            * 'sliding' : A trajectory of length T will have :math:`T-\tau` counts at time indexes
+                  .. math::
+                     (0 \rightarrow \tau), (1 \rightarrow \tau+1), ..., (T-\tau-1 \rightarrow T-1)
+            * 'sample' : A trajectory of length T will have :math:`T/\tau` counts
+              at time indexes
+                  .. math::
+                        (0 \rightarrow \tau), (\tau \rightarrow 2 \tau), ..., ((T/\tau-1) \tau \rightarrow T)
+            Currently only 'sliding' is supported.
+        connectivity : str, optional, default='post_hoc_RE'
+            One of 'post_hoc_RE', 'BAR_variance', 'reversible_pathways' or
+            'summed_count_matrix'. Defines what should be considered a connected set
+            in the joint (product) space of conformations and thermodynamic ensembles.
+            * 'reversible_pathways' : requires that every state in the connected set
+              can be reached by following a pathway of reversible transitions. A
+              reversible transition between two Markov states (within the same
+              thermodynamic state k) is a pair of Markov states that belong to the
+              same strongly connected component of the count matrix (from
+              thermodynamic state k). A pathway of reversible transitions is a list of
+              reversible transitions [(i_1, i_2), (i_2, i_3),..., (i_(N-2), i_(N-1)),
+              (i_(N-1), i_N)]. The thermodynamic state where the reversible
+              transitions happen, is ignored in constructing the reversible pathways.
+              This is equivalent to assuming that two ensembles overlap at some Markov
+              state whenever there exist frames from both ensembles in that Markov
+              state.
+            * 'post_hoc_RE' : similar to 'reversible_pathways' but with a more strict
+              requirement for the overlap between thermodynamic states. It is required
+              that every state in the connected set can be reached by following a
+              pathway of reversible transitions or jumping between overlapping
+              thermodynamic states while staying in the same Markov state. A reversible
+              transition between two Markov states (within the same thermodynamic
+              state k) is a pair of Markov states that belong to the same strongly
+              connected component of the count matrix (from thermodynamic state k).
+              Two thermodynamic states k and l are defined to overlap at Markov state
+              n if a replica exchange simulation [2]_ restricted to state n would show
+              at least one transition from k to l or one transition from from l to k.
+              The expected number of replica exchanges is estimated from the
+              simulation data. The minimal number required of replica exchanges
+              per Markov state can be increased by decreasing `connectivity_factor`.
+            * 'BAR_variance' : like 'post_hoc_RE' but with a different condition to
+              define the thermodynamic overlap based on the variance of the BAR
+              estimator [3]_. Two thermodynamic states k and l are defined to overlap
+              at Markov state n if the variance of the free energy difference Delta
+              f_{kl} computed with BAR (and restricted to conformations form Markov
+              state n) is less or equal than one. The minimally required variance
+              can be controlled with `connectivity_factor`.
+            * 'summed_count_matrix' : all thermodynamic states are assumed to overlap.
+              The connected set is then computed by summing the count matrices over
+              all thermodynamic states and taking it's largest strongly connected set.
+              Not recommended!
+            For more details see :func:`pyemma.thermo.extensions.cset.compute_csets_TRAM`.
+        nstates_full : int, optional, default=None
+            Number of cluster centers, i.e., the size of the full set of states.
+        equilibrium : list of booleans, optional
+            For every trajectory triple (ttraj[i], dtraj[i], btraj[i]), indicates
+            whether to assume global equilibrium. If true, the triple is not used
+            for computing kinetic quantities (but only thermodynamic quantities).
+            By default, no trajectory is assumed to be in global equilibrium.
+            This is the TRAMMBAR extension.
+        maxiter : int, optional, default=10000
+            The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
+        maxerr : float, optional, default=1E-15
+            Convergence criterion based on the maximal free energy change in a self-consistent
+            iteration step.
+        save_convergence_info : int, optional, default=0
+            Every save_convergence_info iteration steps, store the actual increment
+            and the actual log-likelihood; 0 means no storage.
+        connectivity_factor : float, optional, default=1.0
+            Only needed if connectivity='post_hoc_RE' or 'BAR_variance'. Values
+            greater than 1.0 weaken the connectivity conditions. For 'post_hoc_RE'
+            this multiplies the number of hypothetically observed transitions. For
+            'BAR_variance' this scales the threshold for the minimal allowed variance
+            of free energy differences.
+        direct_space : bool, optional, default=False
+            Whether to perform the self-consistent iteration with Boltzmann factors
+            (direct space) or free energies (log-space). When analyzing data from
+            multi-temperature simulations, direct-space is not recommended.
+        N_dtram_accelerations : int, optional, default=0
+            Convergence of TRAM can be speeded up by interleaving the updates
+            in the self-consistent iteration with a dTRAM-like update step.
+            N_dtram_accelerations says how many times the dTRAM-like update
+            step should be applied in every iteration of the TRAM equations.
+            Currently this is only effective if direct_space=True.
+        init : str, optional, default=None
+            Use a specific initialization for self-consistent iteration:
+            | None:    use a hard-coded guess for free energies and Lagrangian multipliers
+            | 'mbar':  perform a short MBAR estimate to initialize the free energies
+        init_maxiter : int, optional, default=5000
+            The maximum number of self-consistent iterations during the initialization.
+        init_maxerr : float, optional, default=1.0E-8
+            Convergence criterion for the initialization.
+        overcounting_factor : double, default = 1.0
+            Only needed if equilibrium contains True (TRAMMBAR).
+            Sets the relative statistical weight of equilibrium and non-equilibrium
+            frames. An overcounting_factor of value n means that every
+            non-equilibrium frame is counted n times. Values larger than 1 increase
+            the relative weight of the non-equilibrium data. Values less than 1
+            increase the relative weight of the equilibrium data.
+        References
+        ----------
+        .. [1] Wu, H. et al 2016
+            Multiensemble Markov models of molecular thermodynamics and kinetics
+            Proc. Natl. Acad. Sci. USA 113 E3221--E3230
+        .. [2]_ Hukushima et al, Exchange Monte Carlo method and application to spin
+            glass simulations, J. Phys. Soc. Jan. 65, 1604 (1996)
+        .. [3]_ Shirts and Chodera, Statistically optimal analysis of samples
+            from multiple equilibrium states, J. Chem. Phys. 129, 124105 (2008)
+        """
+        super(TRAM, self).__init__()
 
-        self.stationary_distribution_constraint = stationary_distribution_constraint
-        self.allow_disconnected = allow_disconnected
+        self.lagtime = lagtime
+        assert count_mode == 'sliding', 'Currently the only implemented count_mode is \'sliding\''
+        self.count_mode = count_mode
+        self.connectivity = connectivity
+        self.nn = nn
+        self.connectivity_factor = connectivity_factor
+        self.nstates_full = nstates_full
+        self.equilibrium = equilibrium
         self.maxiter = maxiter
         self.maxerr = maxerr
-        self.connectivity_threshold = connectivity_threshold
-        self.transition_matrix_tolerance = transition_matrix_tolerance
-        self.lagtime = lagtime
-
-    @property
-    def allow_disconnected(self) -> bool:
-        r""" If set to true, the resulting transition matrix may have disconnected and transient states. """
-        return self._allow_disconnected
-
-    @allow_disconnected.setter
-    def allow_disconnected(self, value: bool):
-        self._allow_disconnected = bool(value)
-
-    @property
-    def stationary_distribution_constraint(self) -> Optional[np.ndarray]:
-        r"""
-        The stationary distribution constraint that can either be None (no constraint) or constrains the
-        count and transition matrices to states with positive stationary vector entries.
-
-        :getter: Yields the currently configured constraint vector, can be None.
-        :setter: Sets a stationary distribution constraint by giving a stationary vector as value. The estimated count-
-                 and transition-matrices are restricted to states that have positive entries. In case the vector is not
-                 normalized, setting it here implicitly copies and normalizes it.
-        :type: ndarray or None
-        """
-        return self._stationary_distribution_constraint
-
-    @stationary_distribution_constraint.setter
-    def stationary_distribution_constraint(self, value: Optional[np.ndarray]):
-        if value is not None and (np.any(value < 0) or np.any(value > 1)):
-            raise ValueError("not a distribution, contained negative entries and/or entries > 1.")
-        if value is not None and np.sum(value) != 1.0:
-            # re-normalize if not already normalized
-            value = np.copy(value) / np.sum(value)
-        self._stationary_distribution_constraint = value
+        self.direct_space = direct_space
+        self.N_dtram_accelerations = N_dtram_accelerations
+        self.callback = callback
+        self.save_convergence_info = save_convergence_info
+        assert init in (None, 'mbar'), 'Currently only None and \'mbar\' are supported'
+        self.init = init
+        self.init_maxiter = init_maxiter
+        self.init_maxerr = init_maxerr
+        self.overcounting_factor = overcounting_factor
+        self.active_set = None
+        self.biased_conf_energies = None
+        self.mbar_therm_energies = None
+        self.log_lagrangian_mult = None
+        self.loglikelihoods = None
 
     def fetch_model(self) -> Optional[MarkovStateModelCollection]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -119,278 +185,368 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         """
         return self._model
 
-    def _fit_connected(self, counts):
-        from .. import _transition_matrix as tmat
+    def cluster_and_fit(self):
+        r""" Discretize given data according to chosen clustering method and fit model to clustered data. """
+        # step 1: cluster data
+        # step 2: call fit_from_discrete_timeseries
+        pass
 
-        if isinstance(counts, np.ndarray):
-            if not is_square_matrix(counts) or np.any(counts < 0.):
-                raise ValueError("If fitting a count matrix directly, only non-negative square matrices can be used.")
-            count_model = TransitionCountModel(counts)
-        elif isinstance(counts, TransitionCountModel):
-            count_model = counts
-        else:
-            raise ValueError(f"Unknown type of counts {counts}, only n x n ndarray, TransitionCountModel,"
-                             f" or TransitionCountEstimators with a count model are supported.")
+    def fit_from_clustered_data(self):
+        r""" Fits a model directly from given timeseries that has been discretized into Markov states by the user. """
+        # step 1: make count matrices
+        # step 2: call fit_from_count_matrices
+        pass
 
-        if self.stationary_distribution_constraint is not None:
-            if len(self.stationary_distribution_constraint) != count_model.n_states_full:
-                raise ValueError(f"Stationary distribution constraint must be defined over full "
-                                 f"set of states ({count_model.n_states_full}), but contained "
-                                 f"{len(self.stationary_distribution_constraint)} elements.")
-            if np.any(self.stationary_distribution_constraint[count_model.state_symbols]) == 0.:
-                raise ValueError("The count matrix contains symbols that have no probability in the stationary "
-                                 "distribution constraint.")
-            if count_model.count_matrix.sum() == 0.0:
-                raise ValueError("The set of states with positive stationary probabilities is not visited by the "
-                                 "trajectories. A MarkovStateModel reversible with respect to the given stationary"
-                                 " vector can not be estimated")
 
-        count_matrix = count_model.count_matrix
+    def fit_from_count_matrices(self, count_matrices, state_counts, bias_energy_sequences, state_sequences,
+                                maxiter=1000, maxerr=1.0E-8, save_convergence_info=0,
+                                biased_conf_energies=None, log_lagrangian_mult=None):
+        r""" Fits a model directly from given timeseries that has been discretized into Markov states by the user.
 
-        # continue sparse or dense?
-        if not self.sparse and issparse(count_matrix):
-            # converting count matrices to arrays. As a result the
-            # transition matrix and all subsequent properties will be
-            # computed using dense arrays and dense matrix algebra.
-            count_matrix = count_matrix.toarray()
-
-        # restrict stationary distribution to active set
-        if self.stationary_distribution_constraint is None:
-            statdist = None
-        else:
-            statdist = self.stationary_distribution_constraint[count_model.state_symbols]
-            statdist /= statdist.sum()  # renormalize
-
-        # Estimate transition matrix
-        if self.allow_disconnected:
-            P = tmat.estimate_P(count_matrix, reversible=self.reversible, fixed_statdist=statdist,
-                                maxiter=self.maxiter, maxerr=self.maxerr)
-        else:
-            opt_args = {}
-            # TODO: non-rev estimate of msmtools does not comply with its own api...
-            if statdist is None and self.reversible:
-                opt_args['return_statdist'] = True
-            P = msmest.transition_matrix(count_matrix, reversible=self.reversible,
-                                         mu=statdist, maxiter=self.maxiter,
-                                         maxerr=self.maxerr, **opt_args)
-        # msmtools returns a tuple for statdist_active=None.
-        if isinstance(P, tuple):
-            P, statdist = P
-
-        if statdist is None and self.allow_disconnected:
-            statdist = tmat.stationary_distribution(P, C=count_matrix)
-        return (
-            P, statdist, counts
-        )
-
-    def _needs_strongly_connected_sets(self):
-        return self.reversible and self.stationary_distribution_constraint is None
-
-    def fit_from_counts(self, counts: Union[np.ndarray, TransitionCountEstimator, TransitionCountModel]):
-        r""" Fits a model from counts in form of a (n, n) count matrix, a :class:`TransitionCountModel` or an instance
-        of `TransitionCountEstimator`, which has been fit on data previously.
-
-        Parameters
         ----------
-        counts : (n, n) ndarray or TransitionCountModel or TransitionCountEstimator
+        count_matrices : numpy.ndarray(shape=(T, M, M), dtype=numpy.intc)
+            transition count matrices for all T thermodynamic states
+        state_counts : numpy.ndarray(shape=(T, M), dtype=numpy.intc)
+            state counts for all M discrete and T thermodynamic states
+        bias_energy_sequences : list of numpy.ndarray(shape=(X_i, T), dtype=numpy.float64)
+            reduced bias energies in the T thermodynamic states for all X samples
+        state_sequences : list of numpy.ndarray(shape=(X_i), dtype=numpy.float64)
+            discrete state indices for all X samples
+        maxiter : int
+            maximum number of iterations
+        maxerr : float
+            convergence criterion based on absolute change in free energies
+        save_convergence_info : int, optional
+            every save_convergence_info iteration steps, store the actual increment
+            and the actual loglikelihood
+        biased_conf_energies : numpy.ndarray(shape=(T, M), dtype=numpy.float64), OPTIONAL
+            initial guess for the reduced discrete state free energies for all T thermodynamic states
+        log_lagrangian_mult : numpy.ndarray(shape=(T, M), dtype=numpy.float64), OPTIONAL
+            initial guess for the logarithm of the Lagrangian multipliers
 
         Returns
         -------
-        self : MaximumLikelihoodMSM
-            Reference to self.
+        biased_conf_energies : numpy.ndarray(shape=(T, M), dtype=numpy.float64)
+            reduced discrete state free energies for all T thermodynamic states
+        conf_energies : numpy.ndarray(shape=(M), dtype=numpy.float64)
+            reduced unbiased discrete state free energies
+        therm_energies : numpy.ndarray(shape=(M), dtype=numpy.float64)
+            reduced thermodynamic free energies
+        log_lagrangian_mult : numpy.ndarray(shape=(T, M), dtype=numpy.float64)
+            logarithm of the Lagrangian multipliers
+        increments : numpy.ndarray(dtype=numpy.float64, ndim=1)
+            stored sequence of increments
+        loglikelihoods : numpy.ndarray(dtype=numpy.float64, ndim=1)
+            stored sequence of loglikelihoods
+        Note
+        ----
+        The self-consitent iteration terminates when
+        .. math::
+           \max\{\max_{i,k}{\Delta \pi_i^k}, \max_k \Delta f^k \}<\mathrm{maxerr}.
+        Different termination criteria can be implemented with the callback
+        function. Raising `CallbackInterrupt` in the callback will cleanly
+        terminate the iteration.
         """
-        if isinstance(counts, TransitionCountEstimator):
-            if counts.has_model:
-                counts = counts.fetch_model()
-            else:
-                raise ValueError("Can only fit on transition count estimator if the estimator "
-                                 "has been fit to data previously.")
-        elif isinstance(counts, np.ndarray):
-            counts = TransitionCountModel(counts)
-        elif isinstance(counts, TransitionCountModel):
-            counts = counts
+        if biased_conf_energies is None:
+            biased_conf_energies = np.zeros(shape=state_counts.shape, dtype=np.float64)
+        if log_lagrangian_mult is None:
+            log_lagrangian_mult = np.zeros(shape=state_counts.shape, dtype=np.float64)
+        init_lagrangian_mult(count_matrices, log_lagrangian_mult)
+        increments = []
+        loglikelihoods = []
+        sci_count = 0
+        assert len(state_sequences) == len(bias_energy_sequences)
+        for s, b in zip(state_sequences, bias_energy_sequences):
+            assert s.ndim == 1
+        assert s.dtype == np.intc
+        assert b.ndim == 2
+        assert b.dtype == np.float64
+        assert s.shape[0] == b.shape[0]
+        assert b.shape[1] == count_matrices.shape[0]
+        assert s.flags.c_contiguous
+        assert b.flags.c_contiguous
+        log_R_K_i = np.zeros(shape=state_counts.shape, dtype=np.float64)
+        scratch_T = np.zeros(shape=(count_matrices.shape[0],), dtype=np.float64)
+        scratch_M = np.zeros(shape=(count_matrices.shape[1],), dtype=np.float64)
+        scratch_MM = np.zeros(shape=count_matrices.shape[1:3], dtype=np.float64)
+        old_biased_conf_energies = biased_conf_energies.copy()
+        old_log_lagrangian_mult = log_lagrangian_mult.copy()
+        old_stat_vectors = np.zeros(shape=state_counts.shape, dtype=np.float64)
+        old_therm_energies = np.zeros(shape=count_matrices.shape[0], dtype=np.float64)
+        for _m in range(maxiter):
+            sci_count += 1
+        update_lagrangian_mult(
+            old_log_lagrangian_mult, biased_conf_energies, count_matrices, state_counts,
+            scratch_M, log_lagrangian_mult)
+        l = update_biased_conf_energies(
+            log_lagrangian_mult, old_biased_conf_energies, count_matrices, bias_energy_sequences,
+            state_sequences, state_counts, log_R_K_i, scratch_M, scratch_T, biased_conf_energies,
+            scratch_MM, sci_count == save_convergence_info)
+
+        therm_energies = get_therm_energies(biased_conf_energies, scratch_M)
+        stat_vectors = np.exp(therm_energies[:, np.newaxis] - biased_conf_energies)
+        delta_therm_energies = np.abs(therm_energies - old_therm_energies)
+        delta_stat_vectors =  np.abs(stat_vectors - old_stat_vectors)
+        err = max(np.max(delta_therm_energies), np.max(delta_stat_vectors))
+        if sci_count == save_convergence_info:
+            sci_count = 0
+        increments.append(err)
+        loglikelihoods.append(l)
+        # if callback is not None:
+        #     try:
+        #         callback(biased_conf_energies=biased_conf_energies,
+        #                  log_lagrangian_mult=log_lagrangian_mult,
+        #                  therm_energies=therm_energies,
+        #                  stat_vectors=stat_vectors,
+        #                  old_biased_conf_energies=old_biased_conf_energies,
+        #                  old_log_lagrangian_mult=old_log_lagrangian_mult,
+        #                  old_stat_vectors=old_stat_vectors,
+        #                  old_therm_energies=old_therm_energies,
+        #                  iteration_step=_m,
+        #                  err=err,
+        #                  maxerr=maxerr,
+        #                  maxiter=maxiter)
+        #     except CallbackInterrupt:
+        #         break
+        if err < maxerr:
+            break
         else:
-            raise ValueError("Unknown type of counts argument, can only be one of TransitionCountModel, "
-                             "TransitionCountEstimator, (N, N) ndarray. But was: {}".format(type(counts)))
-        needs_strong_connectivity = self._needs_strongly_connected_sets()
-        if not self.allow_disconnected:
-            sets = counts.connected_sets(connectivity_threshold=self.connectivity_threshold,
-                                         directed=needs_strong_connectivity)
+            shift = np.min(biased_conf_energies)
+            biased_conf_energies -= shift
+            old_biased_conf_energies[:] = biased_conf_energies
+            old_log_lagrangian_mult[:] = log_lagrangian_mult[:]
+            old_therm_energies[:] = therm_energies[:] - shift
+            old_stat_vectors[:] = stat_vectors[:]
+        conf_energies = get_conf_energies(bias_energy_sequences, state_sequences, log_R_K_i, scratch_T)
+        therm_energies = get_therm_energies(biased_conf_energies, scratch_M)
+        normalize(conf_energies, biased_conf_energies, therm_energies, scratch_M)
+        if err >= maxerr:
+            _warn("TRAM did not converge: last increment = %.5e" % err, _NotConvergedWarning)
+        if save_convergence_info == 0:
+            increments = None
+            loglikelihoods = None
         else:
-            sets = [counts.states]
-        transition_matrices = []
-        statdists = []
-        count_models = []
-        for subset in sets:
-            try:
-                sub_counts = counts.submodel(subset)
-                fit_result = self._fit_connected(sub_counts)
-                transition_matrices.append(fit_result[0])
-                statdists.append(fit_result[1])
-                count_models.append(fit_result[2])
-            except ValueError as e:
-                log.warning(f"Skipping state set {subset} due to error in estimation: {str(e)}.")
-        if len(transition_matrices) == 0:
-            raise ValueError(f"None of the {'strongly' if needs_strong_connectivity else 'weakly'} "
-                             f"connected subsets could be fit to data or the state space decayed into "
-                             f"individual states only!")
+            increments = np.array(increments, dtype=np.float64)
+            loglikelihoods = np.array(loglikelihoods, dtype=np.float64)
 
-        self._model = MarkovStateModelCollection(transition_matrices, statdists, reversible=self.reversible,
-                                                 count_models=count_models,
-                                                 transition_matrix_tolerance=self.transition_matrix_tolerance)
-        return self
+        return biased_conf_energies, conf_energies, therm_energies, log_lagrangian_mult, \
+               increments, loglikelihoods
 
-    def fit_from_discrete_timeseries(self, discrete_timeseries: Union[np.ndarray, List[np.ndarray]],
-                                     lagtime: int, count_mode: str = "sliding"):
-        r"""Fits a model directly from discrete time series data. This type of data can either be a single
-        trajectory in form of a 1d integer numpy array or a list thereof.
-
-        Parameters
-        ----------
-        discrete_timeseries : ndarray or list of ndarray
-            Discrete timeseries data.
-        lagtime : int
-            The lag time under which to estimate state transitions and ultimately also the transition matrix.
-        count_mode : str, default="sliding"
-            The count mode to use for estimating transition counts. For maximum-likelihood estimation, the recommended
-            choice is "sliding". If the MSM should be used for sampling in a
-            :class:`BayesianMSM <deeptime.markov.msm.BayesianMSM>`, the recommended choice is "effective", which yields
-            transition counts that are statistically uncorrelated. A description can be found
-            in :footcite:`noe2015statistical`.
-
-        Returns
-        -------
-        self : MaximumLikelihoodMSM
-            Reference to self.
-        """
-        count_model = TransitionCountEstimator(lagtime=lagtime, count_mode=count_mode) \
-            .fit(discrete_timeseries).fetch_model()
-        return self.fit_from_counts(count_model)
 
     def fit(self, data, *args, **kw):
-        r""" Fits a new markov state model according to data.
+        r""" Fits a new markov state model according to data. Data may be provided clustered or non-clustered. In the
+        latter case the data will be clustered first by the deeptime.clustering module. """
+        # transition_matrix = np.ones((2, 2)) * 0.5
+        # stationary_distribution = np.ones(2)
+        #
+        # res = _markov_bindings.tram.tram_test(1)
+        # print(res)
 
-        Parameters
-        ----------
-        data : TransitionCountModel or (n, n) ndarray or discrete timeseries
-            Input data, can either be :class:`TransitionCountModel <deeptime.markov.TransitionCountModel>` or
-            a 2-dimensional ndarray which is interpreted as count matrix or a discrete timeseries (or a list thereof)
-            directly.
+        # self._model = MarkovStateModelCollection([transition_matrix], [stationary_distribution], reversible=True, count_models=[None], transition_matrix_tolerance=0)
 
-            In the case of a timeseries, a lagtime must be provided in the keyword arguments. In this case, also the
-            keyword argument "count_mode" can be used, which defaults to "sliding".
-            See also :meth:`fit_from_discrete_timeseries`.
-        *args
-            Dummy parameters for scikit-learn compatibility.
-        **kw
-            Parameters for scikit-learn compatibility and optionally lagtime if fitting with time series data.
+        # TODO: if dtrajs is empty: discretize samples using some clustering algorithm
+        ttrajs, dtrajs_full, btrajs = data
+        # shape and type checks
+        assert len(ttrajs) == len(dtrajs_full) == len(btrajs)
+        for t in ttrajs:
+            types.ensure_integer_array(t, ndim=1)
+        for d in dtrajs_full:
+            types.ensure_integer_array(d, ndim=1)
+        for b in btrajs:
+            types.ensure_floating_array(b, ndim=2)
+        # find dimensions
+        nstates_full = max(np.max(d) for d in dtrajs_full) + 1
+        if self.nstates_full is None:
+            self.nstates_full = nstates_full
+        elif self.nstates_full < nstates_full:
+            raise RuntimeError("Found more states (%d) than specified by nstates_full (%d)" % (
+                nstates_full, self.nstates_full))
+        self.nthermo = max(np.max(t) for t in ttrajs) + 1
+        # dimensionality checks
+        for t, d, b, in zip(ttrajs, dtrajs_full, btrajs):
+            assert t.shape[0] == d.shape[0] == b.shape[0]
+            assert b.shape[1] == self.nthermo
 
-        Returns
-        -------
-        self : MaximumLikelihoodMSM
-            Reference to self.
+        # cast types and change axis order if needed
+        ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
+        dtrajs_full = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs_full]
+        btrajs = [np.require(b, dtype=np.float64, requirements='C') for b in btrajs]
 
-        See Also
-        --------
-        TransitionCountModel : Transition count model
-        TransitionCountEstimator : Estimating transition count models from data
+        # # if equilibrium information is given, separate the trajectories
+        # if self.equilibrium is not None:
+        #     assert len(self.equilibrium) == len(ttrajs)
+        #     _ttrajs, _dtrajs_full, _btrajs = ttrajs, dtrajs_full, btrajs
+        #     ttrajs = [ttraj for eq, ttraj in zip(self.equilibrium, _ttrajs) if not eq]
+        #     dtrajs_full = [dtraj for eq, dtraj in zip(self.equilibrium, _dtrajs_full) if not eq]
+        #     self.btrajs = [btraj for eq, btraj in zip(self.equilibrium, _btrajs) if not eq]
+        #     equilibrium_ttrajs = [ttraj for eq, ttraj in zip(self.equilibrium, _ttrajs) if eq]
+        #     equilibrium_dtrajs_full = [dtraj for eq, dtraj in zip(self.equilibrium, _dtrajs_full) if eq]
+        #     self.equilibrium_btrajs = [btraj for eq, btraj in zip(self.equilibrium, _btrajs) if eq]
+        # else:  # set dummy values
+        equilibrium_ttrajs = []
+        equilibrium_dtrajs_full = []
+        self.equilibrium_btrajs = []
+        self.btrajs = btrajs
 
-        Examples
-        --------
-        This example is demonstrating how to fit a Markov state model collection from data which decomposes into a
-        collection of two sets of states with corresponding transition matrices.
+        # # TODO: handle RE case:
+        # #  define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
+        # #  At every RE swapp point, the trajectory is sliced, so that swap point occurs as a trajectory start
+        # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(ttrajs)
+        # trajectory_fragments = [[dtrajs_full[tidx][start:end] for tidx, start, end in mapping_therm] for mapping_therm
+        #                         in trajectory_fragment_mapping]
 
-        >>> from deeptime.markov.msm import MarkovStateModel  # import MSM
-        >>> msm1 = MarkovStateModel([[.7, .3], [.3, .7]])  # create first MSM
-        >>> msm2 = MarkovStateModel([[.9, .05, .05], [.3, .6, .1], [.1, .1, .8]])  # create second MSM
+        # find state visits and transition counts: N^k_i  with shape (K,B)
+        state_counts_full = np.asarray([count_states(dtrajs_full[i]) for i in range(nstates_full)])
 
-        Now, simulate a trajectory where the states of msm2 are shifted by a fixed number `2`, i.e., msm1 describes
-        states [0, 1] and msm2 describes states [2, 3, 4] in the generated trajectory.
+        # find count matrixes C^k_ij with shape (K,B,B)
+        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
 
-        >>> traj = np.concatenate([msm1.simulate(1000000), 2 + msm2.simulate(1000000)])  # simulate trajectory
+        count_matrices_full = np.asarray(
+            [estimator.fit(dtrajs_full[i]).fetch_model().count_matrix for i in range(self.nthermo)])
 
-        Given the trajectory, we fit a collection of MSMs:
+        self.therm_state_counts_full = state_counts_full.sum(axis=1)
 
-        >>> model = MaximumLikelihoodMSM(reversible=True).fit(traj, lagtime=1).fetch_model()
+        # if self.equilibrium is not None:
+        #     self.equilibrium_state_counts_full = _util.state_counts(equilibrium_ttrajs, equilibrium_dtrajs_full,
+        #                                                             nstates=self.nstates_full, nthermo=self.nthermo)
+        # else:
+        #     self.equilibrium_state_counts_full = _np.zeros((self.nthermo, self.nstates_full), dtype=_np.float64)
 
-        The model behaves like a MSM on the largest connected set, but the behavior can be changed by selecting,
-        e.g., the second largest connected set:
+        self.csets, pcset = cset.compute_csets_TRAM(
+            self.connectivity, state_counts_full, count_matrices_full,
+            equilibrium_state_counts=self.equilibrium_state_counts_full,
+            ttrajs=ttrajs + equilibrium_ttrajs, dtrajs=dtrajs_full + equilibrium_dtrajs_full,
+            bias_trajs=self.btrajs + self.equilibrium_btrajs,
+            nn=self.nn, factor=self.connectivity_factor
+        )
+        self.active_set = pcset
 
-        >>> model.state_symbols()
-        array([2, 3, 4])
-        >>> model.select(1)  # change to second largest connected set
-        >>> model.state_symbols()
-        array([0, 1])
+        # check for empty states
+        for k in range(self.nthermo):
+            if len(self.csets[k]) == 0:
+                import warnings
+                with warnings.catch_warnings():
+                    from deeptime.util.exceptions import EmptyStateWarning
+                    warnings.filterwarnings('always', message='Thermodynamic state %d' % k
+                                                        + ' contains no samples after reducing to the connected set.',
+                                            category=EmptyStateWarning)
 
-        And this is all the models contained in the collection:
+        # deactivate samples not in the csets, states are *not* relabeled
+        self.state_counts, self.count_matrices, self.dtrajs, _ = cset.restrict_to_csets(
+            self.csets,
+            state_counts=state_counts_full, count_matrices=count_matrices_full,
+            ttrajs=ttrajs, dtrajs=dtrajs_full)
 
-        >>> model.n_connected_msms
-        2
-
-        Alternatively, one can fit with a previously estimated count model (that can be restricted to a subset
-        of states):
-
-        >>> counts = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(traj).fetch_model()
-        >>> counts = counts.submodel([0, 1])  # select submodel with state symbols [0, 1]
-        >>> msm = MaximumLikelihoodMSM(reversible=True).fit(counts).fetch_model()
-        >>> msm.state_symbols()
-        array([0, 1])
-
-        And this is the only model in the collection:
-
-        >>> msm.n_connected_msms
-        1
-        """
-        if isinstance(data, (TransitionCountModel, TransitionCountEstimator)):
-            return self.fit_from_counts(data)
-        elif isinstance(data, np.ndarray) and data.ndim == 2 and data.shape[0] == data.shape[1]:
-            return self.fit_from_counts(data)
+        if self.equilibrium is not None:
+            self.equilibrium_state_counts, _, self.equilibrium_dtrajs, _ = cset.restrict_to_csets(
+                self.csets,
+                state_counts=self.equilibrium_state_counts_full, ttrajs=equilibrium_ttrajs,
+                dtrajs=equilibrium_dtrajs_full)
         else:
-            if 'lagtime' not in kw.keys() and self.lagtime is None:
-                raise ValueError("To fit directly from a discrete timeseries, a lagtime must be provided!")
-            return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime),
-                                                     kw.pop("count_mode", "sliding"))
+            self.equilibrium_state_counts = np.zeros((self.nthermo, self.nstates_full),
+                                                      dtype=np.intc)  # (remember: no relabeling)
+            self.equilibrium_dtrajs = []
 
-    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags,
-                                     test_model: Optional[MarkovStateModel] = None):
-        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
+        # self-consistency tests
+        assert np.all(self.state_counts >= np.maximum(self.count_matrices.sum(axis=1), \
+                                                        self.count_matrices.sum(axis=2)))
+        assert np.all(np.sum(
+            [np.bincount(d[d >= 0], minlength=self.nstates_full) for d in self.dtrajs],
+            axis=0) == self.state_counts.sum(axis=0))
+        assert np.all(np.sum(
+            [np.bincount(t[d >= 0], minlength=self.nthermo) for t, d in zip(ttrajs, self.dtrajs)],
+            axis=0) == self.state_counts.sum(axis=1))
+        if self.equilibrium is not None:
+            assert np.all(np.sum(
+                [np.bincount(d[d >= 0], minlength=self.nstates_full) for d in self.equilibrium_dtrajs],
+                axis=0) == self.equilibrium_state_counts.sum(axis=0))
+            assert np.all(np.sum(
+                [np.bincount(t[d >= 0], minlength=self.nthermo) for t, d in
+                 zip(equilibrium_ttrajs, self.equilibrium_dtrajs)],
+                axis=0) == self.equilibrium_state_counts.sum(axis=1))
 
-        Parameters
-        ----------
-        n_metastable_sets : int
-            Number of metastable sets to project the state space down to.
-        mlags : int or range or list
-            Multiple of lagtimes of the test_model to test against.
-        test_model : MarkovStateModel, optional, default=None
-            The model that is tested. If not provided, uses this estimator's encapsulated model.
+        # check for empty states
+        for k in range(self.state_counts.shape[0]):
+            if self.count_matrices[k, :, :].sum() == 0 and self.equilibrium_state_counts[k, :].sum() == 0:
+                import warnings
+                with warnings.catch_warnings():
+                    from deeptime.util.exceptions import EmptyStateWarning
+                    warnings.filterwarnings('always', message='Thermodynamic state %d' % k \
+                        + ' contains no transitions and no equilibrium data after reducing to the connected set.',
+                                            category=EmptyStateWarning)
 
-        Returns
-        -------
-        validator : markov.MembershipsChapmanKolmogorovValidator
-            The validator that can be fit on data.
+        # if self.init == 'mbar' and self.biased_conf_energies is None:
+        #     # if self.direct_space:
+        #     #     mbar = _mbar_direct
+        #     # else:
+        #     #     mbar = _mbar
+        #     stage = 'MBAR init.'
+        #     self.mbar_therm_energies, self.mbar_unbiased_conf_energies, \
+        #         self.mbar_biased_conf_energies, _ = mbar.estimate(
+        #             (state_counts_full.sum(axis=1) + self.equilibrium_state_counts_full.sum(axis=1)).astype(_np.intc),
+        #             self.btrajs + self.equilibrium_btrajs, dtrajs_full + equilibrium_dtrajs_full,
+        #             maxiter=self.init_maxiter, maxerr=self.init_maxerr,
+        #             n_conf_states=self.nstates_full)
+        #     self.biased_conf_energies = self.mbar_biased_conf_energies.copy()
 
-        Raises
-        ------
-        AssertionError
-            If test_model is None and this estimator has not been :meth:`fit` on data yet or the output model
-            was not a discrete output model.
-        """
-        test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
-                                       "fit to data."
-        assert test_model.has_count_model, "The test model needs to have a count model, i.e., be estimated from data."
-        pcca = test_model.pcca(n_metastable_sets)
-        reference_lagtime = test_model.count_model.lagtime
-        return MLMSMChapmanKolmogorovValidator(test_model, self, pcca.memberships, reference_lagtime, mlags)
+        # run estimator
+        # if self.direct_space:
+        #     tram = _tram_direct
+        #     trammbar = _trammbar_direct
+        # else:
+        #     tram = _tram
+        #     trammbar = _trammbar
+        # import warnings
+        # with warnings.catch_warnings() as cm:
+        # warnings.filterwarnings('ignore', RuntimeWarning)
+        stage = 'TRAM'
+        if self.equilibrium is None:
+            self.biased_conf_energies, conf_energies, self.therm_energies, self.log_lagrangian_mult, \
+            self.increments, self.loglikelihoods = self.fit_from_count_matrices(
+                self.count_matrices, self.state_counts, self.btrajs, self.dtrajs,
+                maxiter=self.maxiter, maxerr=self.maxerr,
+                biased_conf_energies=self.biased_conf_energies,
+                log_lagrangian_mult=self.log_lagrangian_mult,
+                save_convergence_info=self.save_convergence_info,
+                N_dtram_accelerations=self.N_dtram_accelerations)
+        # else:  # use trammbar
+        #     self.biased_conf_energies, conf_energies, self.therm_energies, self.log_lagrangian_mult, \
+        #     self.increments, self.loglikelihoods = trammbar.estimate(
+        #         self.count_matrices, self.state_counts, self.btrajs, self.dtrajs,
+        #         equilibrium_therm_state_counts=self.equilibrium_state_counts.sum(axis=1).astype(_np.intc),
+        #         equilibrium_bias_energy_sequences=self.equilibrium_btrajs,
+        #         equilibrium_state_sequences=self.equilibrium_dtrajs,
+        #         maxiter=self.maxiter, maxerr=self.maxerr,
+        #         save_convergence_info=self.save_convergence_info,
+        #         biased_conf_energies=self.biased_conf_energies,
+        #         log_lagrangian_mult=self.log_lagrangian_mult,
+        #         callback=_ConvergenceProgressIndicatorCallBack(
+        #             pg, stage, self.maxiter, self.maxerr, subcallback=self.callback),
+        #         N_dtram_accelerations=self.N_dtram_accelerations,
+        #         overcounting_factor=self.overcounting_factor)
 
+        # compute models
+        # fmsms = [np.ascontiguousarray((
+        #                                    tram.estimate_transition_matrix(
+        #                                        self.log_lagrangian_mult, self.biased_conf_energies, self.count_matrices,
+        #                                        None,
+        #                                        K)[self.active_set, :])[:, self.active_set]) for K in
+        #          range(self.nthermo)]
+        #
+        # active_sets = [compute_connected_sets(msm, directed=False)[0] for msm in fmsms]
+        # fmsms = [np.ascontiguousarray(
+        #     (msm[lcc, :])[:, lcc]) for msm, lcc in zip(fmsms, active_sets)]
+        #
+        # models = []
+        # for i, (msm, acs) in enumerate(zip(fmsms, active_sets)):
+        #     pi_acs = np.exp(self.therm_energies[i] - self.biased_conf_energies[i, :])[self.active_set[acs]]
+        #     pi_acs = pi_acs / pi_acs.sum()
+        #     # models.append(_ThermoMSM(
+        #     #     msm, self.active_set[acs], self.nstates_full, pi=pi_acs,
+        #     #     dt_model=self.timestep_traj.get_scaled(self.lag)))
+        #
+        # # set model parameters to self
+        # self.set_model_params(
+        #     models=models, f_therm=self.therm_energies, f=conf_energies[self.active_set].copy())
 
-def _ck_estimate_model_for_lag(estimator, model, data, lag):
-    counting_mode = model.count_model.counting_mode
-    counts = TransitionCountEstimator(lag, counting_mode).fit(data).fetch_model().submodel_largest()
-    return estimator.fit(counts).fetch_model()
-
-
-class MLMSMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-
-    def fit(self, data, n_jobs=None, progress=None, **kw):
-        return super().fit(data, n_jobs, progress, estimate_model_for_lag=_ck_estimate_model_for_lag, **kw)
+        return self

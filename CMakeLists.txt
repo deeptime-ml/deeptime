@@ -11,7 +11,7 @@ find_package(OpenMP REQUIRED)
 add_definitions(-DUSE_OPENMP)
 
 if(MSVC)
-    add_compile_options(/W4 /WX)
+    add_compile_options(/W3 /EHsc /std:c++17)
 else()
     add_compile_options(-Wall -Wextra -pedantic -Werror)
 endif()
