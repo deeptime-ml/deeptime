@@ -236,7 +236,7 @@ def _compute_csets(
         if equilibrium_state_counts is not None:
             eq_states = _np.where(equilibrium_state_counts.sum(axis=0) > 0)[0]
             C_sum[eq_states, eq_states[:, _np.newaxis]] = 1
-        cset_projected = compute_connected_sets(C_sum, directed=True)
+        cset_projected = compute_connected_sets(C_sum, directed=True)[0]
         csets = []
         for k in range(n_therm_states):
             cset = _np.intersect1d(_np.where(all_state_counts[k, :] > 0), cset_projected)
@@ -327,7 +327,7 @@ def _compute_csets(
 
         data = _np.ones(len(i_s), dtype=int)
         A = _sp.sparse.coo_matrix((data, (i_s, j_s)), shape=(dim, dim))
-        cset = compute_connected_sets(A, directed=False)
+        cset = compute_connected_sets(A, directed=False)[0]
         # group by thermodynamic state
         cset = _np.unravel_index(cset, (n_therm_states, n_conf_states), order='C')
         csets = [[] for k in range(n_therm_states)]

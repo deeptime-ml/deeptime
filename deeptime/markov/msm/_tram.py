@@ -5,7 +5,8 @@ from ._markov_state_model import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, count_states
 from .._base import _MSMBaseEstimator
 from deeptime.util import types
-from deeptime.markov import _tram_bindings, compute_connected_sets, cset
+from deeptime.markov._tram_bindings import tram
+from deeptime.markov import _markov_bindings, compute_connected_sets, cset
 
 import numpy as np
 
@@ -170,7 +171,7 @@ class TRAM(_MSMBaseEstimator):
         self.overcounting_factor = overcounting_factor
         self.active_set = None
         self.biased_conf_energies = None
-        self.mbar_therm_energies = None
+        self.therm_energies = None
         self.log_lagrangian_mult = None
         self.loglikelihoods = None
 
@@ -196,7 +197,6 @@ class TRAM(_MSMBaseEstimator):
         # step 1: make count matrices
         # step 2: call fit_from_count_matrices
         pass
-
 
     def fit_from_count_matrices(self, count_matrices, state_counts, bias_energy_sequences, state_sequences,
                                 maxiter=1000, maxerr=1.0E-8, save_convergence_info=0,
@@ -251,7 +251,7 @@ class TRAM(_MSMBaseEstimator):
             biased_conf_energies = np.zeros(shape=state_counts.shape, dtype=np.float64)
         if log_lagrangian_mult is None:
             log_lagrangian_mult = np.zeros(shape=state_counts.shape, dtype=np.float64)
-        init_lagrangian_mult(count_matrices, log_lagrangian_mult)
+        tram.init_lagrangian_mult(count_matrices, self.nthermo, self.nstates_full, log_lagrangian_mult)
         increments = []
         loglikelihoods = []
         sci_count = 0
@@ -274,54 +274,59 @@ class TRAM(_MSMBaseEstimator):
         old_stat_vectors = np.zeros(shape=state_counts.shape, dtype=np.float64)
         old_therm_energies = np.zeros(shape=count_matrices.shape[0], dtype=np.float64)
         for _m in range(maxiter):
+            print(sci_count)
             sci_count += 1
-        update_lagrangian_mult(
-            old_log_lagrangian_mult, biased_conf_energies, count_matrices, state_counts,
-            scratch_M, log_lagrangian_mult)
-        l = update_biased_conf_energies(
-            log_lagrangian_mult, old_biased_conf_energies, count_matrices, bias_energy_sequences,
-            state_sequences, state_counts, log_R_K_i, scratch_M, scratch_T, biased_conf_energies,
-            scratch_MM, sci_count == save_convergence_info)
+            tram.update_lagrangian_mult(
+                old_log_lagrangian_mult, biased_conf_energies, count_matrices, state_counts,
+                self.nthermo, self.nstates_full, scratch_M, log_lagrangian_mult)
+            l = self.update_biased_conf_energies(
+                log_lagrangian_mult, old_biased_conf_energies, count_matrices, bias_energy_sequences,
+                state_sequences, state_counts, log_R_K_i, scratch_M, scratch_T, biased_conf_energies,
+                scratch_MM, sci_count == save_convergence_info)
 
-        therm_energies = get_therm_energies(biased_conf_energies, scratch_M)
-        stat_vectors = np.exp(therm_energies[:, np.newaxis] - biased_conf_energies)
-        delta_therm_energies = np.abs(therm_energies - old_therm_energies)
-        delta_stat_vectors =  np.abs(stat_vectors - old_stat_vectors)
-        err = max(np.max(delta_therm_energies), np.max(delta_stat_vectors))
-        if sci_count == save_convergence_info:
-            sci_count = 0
-        increments.append(err)
-        loglikelihoods.append(l)
-        # if callback is not None:
-        #     try:
-        #         callback(biased_conf_energies=biased_conf_energies,
-        #                  log_lagrangian_mult=log_lagrangian_mult,
-        #                  therm_energies=therm_energies,
-        #                  stat_vectors=stat_vectors,
-        #                  old_biased_conf_energies=old_biased_conf_energies,
-        #                  old_log_lagrangian_mult=old_log_lagrangian_mult,
-        #                  old_stat_vectors=old_stat_vectors,
-        #                  old_therm_energies=old_therm_energies,
-        #                  iteration_step=_m,
-        #                  err=err,
-        #                  maxerr=maxerr,
-        #                  maxiter=maxiter)
-        #     except CallbackInterrupt:
-        #         break
-        if err < maxerr:
-            break
-        else:
-            shift = np.min(biased_conf_energies)
-            biased_conf_energies -= shift
-            old_biased_conf_energies[:] = biased_conf_energies
-            old_log_lagrangian_mult[:] = log_lagrangian_mult[:]
-            old_therm_energies[:] = therm_energies[:] - shift
-            old_stat_vectors[:] = stat_vectors[:]
-        conf_energies = get_conf_energies(bias_energy_sequences, state_sequences, log_R_K_i, scratch_T)
-        therm_energies = get_therm_energies(biased_conf_energies, scratch_M)
-        normalize(conf_energies, biased_conf_energies, therm_energies, scratch_M)
+            self.therm_energies = np.zeros(shape=(self.nthermo), dtype=np.float64)
+            tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates_full,
+                                    scratch_M, self.therm_energies)
+            stat_vectors = np.exp(self.therm_energies[:, np.newaxis] - biased_conf_energies)
+            delta_therm_energies = np.abs(self.therm_energies - old_therm_energies)
+            delta_stat_vectors = np.abs(stat_vectors - old_stat_vectors)
+            err = max(np.max(delta_therm_energies), np.max(delta_stat_vectors))
+            if sci_count == save_convergence_info:
+                sci_count = 0
+                increments.append(err)
+                loglikelihoods.append(l)
+            # if callback is not None:
+            #     try:
+            #         callback(biased_conf_energies=biased_conf_energies,
+            #                  log_lagrangian_mult=log_lagrangian_mult,
+            #                  therm_energies=therm_energies,
+            #                  stat_vectors=stat_vectors,
+            #                  old_biased_conf_energies=old_biased_conf_energies,
+            #                  old_log_lagrangian_mult=old_log_lagrangian_mult,
+            #                  old_stat_vectors=old_stat_vectors,
+            #                  old_therm_energies=old_therm_energies,
+            #                  iteration_step=_m,
+            #                  err=err,
+            #                  maxerr=maxerr,
+            #                  maxiter=maxiter)
+            #     except CallbackInterrupt:
+            #         break
+            if err < maxerr:
+                break
+            else:
+                shift = np.min(biased_conf_energies)
+                biased_conf_energies -= shift
+                old_biased_conf_energies[:] = biased_conf_energies
+                old_log_lagrangian_mult[:] = log_lagrangian_mult[:]
+                old_therm_energies[:] = self.therm_energies[:] - shift
+                old_stat_vectors[:] = stat_vectors[:]
+        conf_energies = self.get_conf_energies(bias_energy_sequences, state_sequences, log_R_K_i, scratch_T)
+        tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates_full, scratch_M, self.therm_energies)
+        tram.normalize(conf_energies, biased_conf_energies, self.therm_energies, self.nthermo, self.nstates_full,
+                       scratch_M)
         if err >= maxerr:
-            _warn("TRAM did not converge: last increment = %.5e" % err, _NotConvergedWarning)
+            import warnings
+            warnings.warn("TRAM did not converge: last increment = %.5e" % err, UserWarning)
         if save_convergence_info == 0:
             increments = None
             loglikelihoods = None
@@ -329,9 +334,8 @@ class TRAM(_MSMBaseEstimator):
             increments = np.array(increments, dtype=np.float64)
             loglikelihoods = np.array(loglikelihoods, dtype=np.float64)
 
-        return biased_conf_energies, conf_energies, therm_energies, log_lagrangian_mult, \
+        return biased_conf_energies, conf_energies, self.therm_energies, log_lagrangian_mult, \
                increments, loglikelihoods
-
 
     def fit(self, data, *args, **kw):
         r""" Fits a new markov state model according to data. Data may be provided clustered or non-clustered. In the
@@ -395,14 +399,24 @@ class TRAM(_MSMBaseEstimator):
         # trajectory_fragments = [[dtrajs_full[tidx][start:end] for tidx, start, end in mapping_therm] for mapping_therm
         #                         in trajectory_fragment_mapping]
 
-        # find state visits and transition counts: N^k_i  with shape (K,B)
-        state_counts_full = np.asarray([count_states(dtrajs_full[i]) for i in range(nstates_full)])
+        # find state visits and transition counts
+        state_counts_hist = [count_states(dtrajs_full[i]) for i in range(self.nthermo)]
+
+        # histograms row sizes are equal to highest occurring markov state index.
+        # Pad with zeros into a rectangular np array
+        state_counts_full = np.zeros((self.nthermo, self.nstates_full))
+        for idx, row in enumerate(state_counts_hist):
+            state_counts_full[idx, :len(row)] += row
 
         # find count matrixes C^k_ij with shape (K,B,B)
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
+        count_matrices = [estimator.fit(dtrajs_full[i]).fetch_model().count_matrix for i in range(self.nthermo)]
 
-        count_matrices_full = np.asarray(
-            [estimator.fit(dtrajs_full[i]).fetch_model().count_matrix for i in range(self.nthermo)])
+        # again, histograms sizes are equal to highest occurring markov state index.
+        # Pad with zeros so that all histograms are equal size
+        count_matrices_full = np.zeros((self.nthermo, self.nstates_full, self.nstates_full))
+        for idx, count_matrix in enumerate(count_matrices):
+            count_matrices_full[idx][:len(count_matrix), :len(count_matrix)] += count_matrix
 
         self.therm_state_counts_full = state_counts_full.sum(axis=1)
 
@@ -410,7 +424,7 @@ class TRAM(_MSMBaseEstimator):
         #     self.equilibrium_state_counts_full = _util.state_counts(equilibrium_ttrajs, equilibrium_dtrajs_full,
         #                                                             nstates=self.nstates_full, nthermo=self.nthermo)
         # else:
-        #     self.equilibrium_state_counts_full = _np.zeros((self.nthermo, self.nstates_full), dtype=_np.float64)
+        self.equilibrium_state_counts_full = np.zeros((self.nthermo, self.nstates_full), dtype=np.float64)
 
         self.csets, pcset = cset.compute_csets_TRAM(
             self.connectivity, state_counts_full, count_matrices_full,
@@ -428,7 +442,7 @@ class TRAM(_MSMBaseEstimator):
                 with warnings.catch_warnings():
                     from deeptime.util.exceptions import EmptyStateWarning
                     warnings.filterwarnings('always', message='Thermodynamic state %d' % k
-                                                        + ' contains no samples after reducing to the connected set.',
+                                                              + ' contains no samples after reducing to the connected set.',
                                             category=EmptyStateWarning)
 
         # deactivate samples not in the csets, states are *not* relabeled
@@ -444,12 +458,12 @@ class TRAM(_MSMBaseEstimator):
                 dtrajs=equilibrium_dtrajs_full)
         else:
             self.equilibrium_state_counts = np.zeros((self.nthermo, self.nstates_full),
-                                                      dtype=np.intc)  # (remember: no relabeling)
+                                                     dtype=np.intc)  # (remember: no relabeling)
             self.equilibrium_dtrajs = []
 
         # self-consistency tests
         assert np.all(self.state_counts >= np.maximum(self.count_matrices.sum(axis=1), \
-                                                        self.count_matrices.sum(axis=2)))
+                                                      self.count_matrices.sum(axis=2)))
         assert np.all(np.sum(
             [np.bincount(d[d >= 0], minlength=self.nstates_full) for d in self.dtrajs],
             axis=0) == self.state_counts.sum(axis=0))
@@ -472,7 +486,7 @@ class TRAM(_MSMBaseEstimator):
                 with warnings.catch_warnings():
                     from deeptime.util.exceptions import EmptyStateWarning
                     warnings.filterwarnings('always', message='Thermodynamic state %d' % k \
-                        + ' contains no transitions and no equilibrium data after reducing to the connected set.',
+                                                              + ' contains no transitions and no equilibrium data after reducing to the connected set.',
                                             category=EmptyStateWarning)
 
         # if self.init == 'mbar' and self.biased_conf_energies is None:
@@ -507,8 +521,7 @@ class TRAM(_MSMBaseEstimator):
                 maxiter=self.maxiter, maxerr=self.maxerr,
                 biased_conf_energies=self.biased_conf_energies,
                 log_lagrangian_mult=self.log_lagrangian_mult,
-                save_convergence_info=self.save_convergence_info,
-                N_dtram_accelerations=self.N_dtram_accelerations)
+                save_convergence_info=self.save_convergence_info)
         # else:  # use trammbar
         #     self.biased_conf_energies, conf_energies, self.therm_energies, self.log_lagrangian_mult, \
         #     self.increments, self.loglikelihoods = trammbar.estimate(
@@ -550,3 +563,54 @@ class TRAM(_MSMBaseEstimator):
         #     models=models, f_therm=self.therm_energies, f=conf_energies[self.active_set].copy())
 
         return self
+
+    # TODO: move to tram.h
+    def update_biased_conf_energies(self, log_lagrangian_mult, biased_conf_energies, count_matrices,
+                                    bias_energy_sequences, state_sequences, state_counts, log_R_K_i,
+                                    scratch_M, scratch_T, new_biased_conf_energies, scratch_MM, return_log_L=False):
+        new_biased_conf_energies[:] = np.inf
+
+        tram.get_log_Ref_K_i(log_lagrangian_mult, biased_conf_energies,
+                             count_matrices, state_counts, log_lagrangian_mult.shape[0],
+                             log_lagrangian_mult.shape[1], scratch_M, log_R_K_i)
+        log_L = 0.0
+
+        for i in range(len(bias_energy_sequences)):
+            log_L += tram.update_biased_conf_energies(bias_energy_sequences[i], state_sequences[i],
+                                                      state_sequences[i].shape[0], log_R_K_i,
+                                                      log_lagrangian_mult.shape[0],
+                                                      log_lagrangian_mult.shape[1],
+                                                      scratch_T, new_biased_conf_energies, int(return_log_L))
+        if return_log_L:
+            assert scratch_MM is not None
+            log_L += tram.discrete_log_likelihood_lower_bound(log_lagrangian_mult, new_biased_conf_energies,
+                                                              count_matrices, state_counts, state_counts.shape[0],
+                                                              state_counts.shape[1], scratch_M, scratch_MM)
+            return log_L
+
+        # TODO: move to tram.h
+
+    def get_conf_energies(self, bias_energy_sequences, state_sequences, log_R_K_i, scratch_T):
+        r"""
+        Update the reduced unbiased free energies
+        Parameters
+        ----------
+        bias_energy_sequences : list of numpy.ndarray(shape=(X_i, T), dtype=numpy.float64)
+            reduced bias energies in the T thermodynamic states for all X samples
+        state_sequence : list of numpy.ndarray(shape=(X_i,), dtype=numpy.intc)
+            Markov state indices for all X samples
+        log_R_K_i : numpy.ndarray(shape=(T, M), dtype=numpy.float64)
+            precomputed sum of TRAM log pseudo-counts and biased_conf_energies
+        scratch_T : numpy.ndarray(shape=(T), dtype=numpy.float64)
+            scratch array for logsumexp operations
+        Returns
+        -------
+        conf_energies : numpy.ndarray(shape=(M,), dtype=numpy.float64)
+            unbiased (Markov) free energies
+        """
+        conf_energies = np.zeros(shape=(log_R_K_i.shape[1],), dtype=np.float64)
+        conf_energies[:] = np.inf
+        for i in range(len(bias_energy_sequences)):
+            tram.get_conf_energies(bias_energy_sequences[i], state_sequences[i], state_sequences[i].shape[0],
+                                   log_R_K_i, self.nthermo, self.nstates_full, scratch_T, conf_energies)
+        return conf_energies
