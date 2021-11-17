@@ -128,7 +128,7 @@ class TRAM(_MSMBaseEstimator):
         self.connectivity = connectivity
         self.nn = nn
         self.connectivity_factor = connectivity_factor
-        self.nstates_full = None
+        self.nstates = None
         self.nthermo = None
         self.maxiter = maxiter
         self.maxerr = maxerr
@@ -219,7 +219,7 @@ class TRAM(_MSMBaseEstimator):
             biased_conf_energies = np.zeros(shape=state_counts.shape, dtype=np.float64)
         if log_lagrangian_mult is None:
             log_lagrangian_mult = np.zeros(shape=state_counts.shape, dtype=np.float64)
-        tram.init_lagrangian_mult(count_matrices, self.nthermo, self.nstates_full, log_lagrangian_mult)
+        tram.init_lagrangian_mult(count_matrices, self.nthermo, self.nstates, log_lagrangian_mult)
         increments = []
         loglikelihoods = []
         sci_count = 0
@@ -241,19 +241,20 @@ class TRAM(_MSMBaseEstimator):
         old_log_lagrangian_mult = log_lagrangian_mult.copy()
         old_stat_vectors = np.zeros(shape=state_counts.shape, dtype=np.float64)
         old_therm_energies = np.zeros(shape=count_matrices.shape[0], dtype=np.float64)
+
         for _m in range(self.maxiter):
             print(sci_count)
             sci_count += 1
             tram.update_lagrangian_mult(
                 old_log_lagrangian_mult, biased_conf_energies, count_matrices, state_counts,
-                self.nthermo, self.nstates_full, scratch_M, log_lagrangian_mult)
+                self.nthermo, self.nstates, scratch_M, log_lagrangian_mult)
             l = self.update_biased_conf_energies(
                 log_lagrangian_mult, old_biased_conf_energies, count_matrices, bias_energy_sequences,
                 state_sequences, state_counts, log_R_K_i, scratch_M, scratch_T, biased_conf_energies,
                 scratch_MM, sci_count == self.save_convergence_info)
 
             self.therm_energies = np.zeros(shape=(self.nthermo), dtype=np.float64)
-            tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates_full,
+            tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates,
                                     scratch_M, self.therm_energies)
             stat_vectors = np.exp(self.therm_energies[:, np.newaxis] - biased_conf_energies)
             delta_therm_energies = np.abs(self.therm_energies - old_therm_energies)
@@ -274,8 +275,8 @@ class TRAM(_MSMBaseEstimator):
                 old_therm_energies[:] = self.therm_energies[:] - shift
                 old_stat_vectors[:] = stat_vectors[:]
         conf_energies = self.get_conf_energies(bias_energy_sequences, state_sequences, log_R_K_i, scratch_T)
-        tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates_full, scratch_M, self.therm_energies)
-        tram.normalize(conf_energies, biased_conf_energies, self.therm_energies, self.nthermo, self.nstates_full,
+        tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates, scratch_M, self.therm_energies)
+        tram.normalize(conf_energies, biased_conf_energies, self.therm_energies, self.nthermo, self.nstates,
                        scratch_M)
         if err >= self.maxerr:
             import warnings
@@ -298,11 +299,12 @@ class TRAM(_MSMBaseEstimator):
         ttrajs, dtrajs_full, bias_matrix = self._check_data(data)
 
         # count all transitions and state counts, without restricting to connected sets
-        state_counts_full, transition_counts_full = self._get_state_counts(dtrajs_full)
+        state_counts_full, transition_counts_full, transition_counts_models = self._get_state_counts(dtrajs_full)
 
         state_counts, transition_counts, dtrajs = self._restrict_to_connected_set(ttrajs, dtrajs_full, bias_matrix,
                                                                                   state_counts_full,
                                                                                   transition_counts_full)
+        self.nstates = state_counts.shape[0]
 
         self.biased_conf_energies, conf_energies, self.therm_energies, self.log_lagrangian_mult, \
         self.increments, self.loglikelihoods = self.fit_from_count_matrices(
@@ -311,24 +313,25 @@ class TRAM(_MSMBaseEstimator):
             log_lagrangian_mult=self.log_lagrangian_mult)
 
         # compute models
-        # fmsms = [np.ascontiguousarray((
-        #                                    tram.estimate_transition_matrix(
-        #                                        self.log_lagrangian_mult, self.biased_conf_energies, self.count_matrices,
-        #                                        None,
-        #                                        K)[self.active_set, :])[:, self.active_set]) for K in
-        #          range(self.nthermo)]
-        #
+        # fmsms = self._estimate_transition_matrices(transition_counts)
+
         # active_sets = [compute_connected_sets(msm, directed=False)[0] for msm in fmsms]
         # fmsms = [np.ascontiguousarray(
         #     (msm[lcc, :])[:, lcc]) for msm, lcc in zip(fmsms, active_sets)]
         #
-        # models = []
+        # stationary_distributions = []
         # for i, (msm, acs) in enumerate(zip(fmsms, active_sets)):
         #     pi_acs = np.exp(self.therm_energies[i] - self.biased_conf_energies[i, :])[self.active_set[acs]]
         #     pi_acs = pi_acs / pi_acs.sum()
+        #     stationary_distributions.append(pi_acs)
+        #     #
         #     # models.append(_ThermoMSM(
         #     #     msm, self.active_set[acs], self.nstates_full, pi=pi_acs,
         #     #     dt_model=self.timestep_traj.get_scaled(self.lag)))
+        #
+        # self._model = MarkovStateModelCollection(fmsms, stationary_distributions, reversible=True,
+        #                                          count_models=transition_counts_models)
+
         #
         # # set model parameters to self
         # self.set_model_params(
@@ -435,7 +438,8 @@ class TRAM(_MSMBaseEstimator):
 
         # find count matrixes C^k_ij with shape (K,B,B)
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
-        transition_counts = [estimator.fit(dtrajs_full[i]).fetch_model().count_matrix for i in range(self.nthermo)]
+        transition_counts_models = [estimator.fit(dtrajs_full[i]).fetch_model() for i in range(self.nthermo)]
+        transition_counts = [model.count_matrix for model in transition_counts_models]
 
         # again, histograms sizes are equal to highest occurring markov state index.
         # Pad with zeros so that all histograms are equal size
@@ -443,7 +447,7 @@ class TRAM(_MSMBaseEstimator):
         for idx, count_matrix in enumerate(transition_counts):
             transition_counts_padded[idx][:len(count_matrix), :len(count_matrix)] += count_matrix
 
-        return state_counts_padded, transition_counts_padded
+        return state_counts_padded, transition_counts_padded, transition_counts_models
 
     def _restrict_to_connected_set(self, ttrajs, dtrajs_full, bias_matrix, state_counts_full, transition_counts_full):
 
@@ -497,3 +501,21 @@ class TRAM(_MSMBaseEstimator):
                     warnings.filterwarnings('always', message='Thermodynamic state %d' % k \
                                                               + ' contains no transitions after reducing to the connected set.',
                                             category=EmptyStateWarning)
+
+    def _estimate_transition_matrices(self, transition_counts):
+        scratch_M = np.zeros(shape=(self.nstates,), dtype=np.float64)
+        transition_matrix = np.zeros((self.nstates, self.nstates), dtype=np.float64)
+
+        transition_matrices = []
+
+        for k in range(self.nthermo):
+            transition_matrices.append(np.ascontiguousarray(
+                tram.estimate_transition_matrix(self.log_lagrangian_mult[k],
+                                                self.biased_conf_energies[k],
+                                                transition_counts[k],
+                                                self.nstates_full,
+                                                scratch_M,
+                                                transition_matrix)[self.active_set, :]
+            )[self.active_set, :])
+
+        return transition_matrices
