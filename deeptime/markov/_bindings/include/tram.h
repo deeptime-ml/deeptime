@@ -18,14 +18,14 @@ double THERMOTOOLS_TRAM_PRIOR = 0.0;
 double THERMOTOOLS_TRAM_LOG_PRIOR = 1.0;
 
 template<typename dtype>
-void init_lagrangian_mult(np_array<dtype> count_matrices, int n_therm_states, int n_conf_states,
+void init_lagrangian_mult(np_array<int> count_matrices, int n_therm_states, int n_conf_states,
                           np_array<dtype> log_lagrangian_mult) {
     int i, j, K;
     int MM = n_conf_states * n_conf_states, KMM;
     dtype sum;
 
     py::buffer_info count_matrices_buf = count_matrices.request();
-    dtype *count_matrices_ptr = (dtype *) count_matrices_buf.ptr;
+    int *count_matrices_ptr = (int *) count_matrices_buf.ptr;
 
     py::buffer_info log_lagrangian_mult_buf = log_lagrangian_mult.request();
     dtype *log_lagrangian_mult_ptr = (dtype *) log_lagrangian_mult_buf.ptr;
@@ -38,7 +38,7 @@ void init_lagrangian_mult(np_array<dtype> count_matrices, int n_therm_states, in
                 sum += 0.5 * (count_matrices_ptr[KMM + i * n_conf_states + j] +
                               count_matrices_ptr[KMM + j * n_conf_states + i]);
             }
-            log_lagrangian_mult_ptr[K * n_conf_states + i] = (dtype) log(sum);
+            log_lagrangian_mult_ptr[K * n_conf_states + i] = log(sum);
         }
     }
 }

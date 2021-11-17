@@ -8,6 +8,8 @@ from deeptime.util import types
 from deeptime.markov._tram_bindings import tram
 from deeptime.markov import _markov_bindings, compute_connected_sets, cset
 
+from memory_profiler import profile
+
 import numpy as np
 
 __all__ = ['TRAM']
@@ -167,16 +169,16 @@ class TRAM(_MSMBaseEstimator):
         pass
 
     # TODO: move to tram.h
-    def fit_from_count_matrices(self, count_matrices, state_counts, bias_energy_sequences, state_sequences,
+    def fit_from_count_matrices(self, transition_counts, state_counts, bias_matrix, state_sequences,
                                 biased_conf_energies=None, log_lagrangian_mult=None):
         r""" Fits a model directly from given timeseries that has been discretized into Markov states by the user.
 
         ----------
-        count_matrices : numpy.ndarray(shape=(T, M, M), dtype=numpy.intc)
+        transition_counts : numpy.ndarray(shape=(T, M, M), dtype=numpy.intc)
             transition count matrices for all T thermodynamic states
         state_counts : numpy.ndarray(shape=(T, M), dtype=numpy.intc)
             state counts for all M discrete and T thermodynamic states
-        bias_energy_sequences : list of numpy.ndarray(shape=(X_i, T), dtype=numpy.float64)
+        bias_matrix : list of numpy.ndarray(shape=(X_i, T), dtype=numpy.float64)
             reduced bias energies in the T thermodynamic states for all X samples
         state_sequences : list of numpy.ndarray(shape=(X_i), dtype=numpy.float64)
             discrete state indices for all X samples
@@ -219,37 +221,38 @@ class TRAM(_MSMBaseEstimator):
             biased_conf_energies = np.zeros(shape=state_counts.shape, dtype=np.float64)
         if log_lagrangian_mult is None:
             log_lagrangian_mult = np.zeros(shape=state_counts.shape, dtype=np.float64)
-        tram.init_lagrangian_mult(count_matrices, self.nthermo, self.nstates, log_lagrangian_mult)
+
+        tram.init_lagrangian_mult(transition_counts, self.nthermo, self.nstates, log_lagrangian_mult)
         increments = []
         loglikelihoods = []
         sci_count = 0
-        assert len(state_sequences) == len(bias_energy_sequences)
-        for s, b in zip(state_sequences, bias_energy_sequences):
+        assert len(state_sequences) == len(bias_matrix)
+        for s, b in zip(state_sequences, bias_matrix):
             assert s.ndim == 1
         assert s.dtype == np.intc
         assert b.ndim == 2
         assert b.dtype == np.float64
         assert s.shape[0] == b.shape[0]
-        assert b.shape[1] == count_matrices.shape[0]
+        assert b.shape[1] == transition_counts.shape[0]
         assert s.flags.c_contiguous
         assert b.flags.c_contiguous
         log_R_K_i = np.zeros(shape=state_counts.shape, dtype=np.float64)
-        scratch_T = np.zeros(shape=(count_matrices.shape[0],), dtype=np.float64)
-        scratch_M = np.zeros(shape=(count_matrices.shape[1],), dtype=np.float64)
-        scratch_MM = np.zeros(shape=count_matrices.shape[1:3], dtype=np.float64)
+        scratch_T = np.zeros(shape=(transition_counts.shape[0],), dtype=np.float64)
+        scratch_M = np.zeros(shape=(transition_counts.shape[1],), dtype=np.float64)
+        scratch_MM = np.zeros(shape=transition_counts.shape[1:3], dtype=np.float64)
         old_biased_conf_energies = biased_conf_energies.copy()
         old_log_lagrangian_mult = log_lagrangian_mult.copy()
         old_stat_vectors = np.zeros(shape=state_counts.shape, dtype=np.float64)
-        old_therm_energies = np.zeros(shape=count_matrices.shape[0], dtype=np.float64)
+        old_therm_energies = np.zeros(shape=transition_counts.shape[0], dtype=np.float64)
 
         for _m in range(self.maxiter):
             print(sci_count)
             sci_count += 1
             tram.update_lagrangian_mult(
-                old_log_lagrangian_mult, biased_conf_energies, count_matrices, state_counts,
+                old_log_lagrangian_mult, biased_conf_energies, transition_counts, state_counts,
                 self.nthermo, self.nstates, scratch_M, log_lagrangian_mult)
             l = self.update_biased_conf_energies(
-                log_lagrangian_mult, old_biased_conf_energies, count_matrices, bias_energy_sequences,
+                log_lagrangian_mult, old_biased_conf_energies, transition_counts, bias_matrix,
                 state_sequences, state_counts, log_R_K_i, scratch_M, scratch_T, biased_conf_energies,
                 scratch_MM, sci_count == self.save_convergence_info)
 
@@ -274,7 +277,7 @@ class TRAM(_MSMBaseEstimator):
                 old_log_lagrangian_mult[:] = log_lagrangian_mult[:]
                 old_therm_energies[:] = self.therm_energies[:] - shift
                 old_stat_vectors[:] = stat_vectors[:]
-        conf_energies = self.get_conf_energies(bias_energy_sequences, state_sequences, log_R_K_i, scratch_T)
+        conf_energies = self.get_conf_energies(bias_matrix, state_sequences, log_R_K_i, scratch_T)
         tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates, scratch_M, self.therm_energies)
         tram.normalize(conf_energies, biased_conf_energies, self.therm_energies, self.nthermo, self.nstates,
                        scratch_M)
@@ -304,7 +307,7 @@ class TRAM(_MSMBaseEstimator):
         state_counts, transition_counts, dtrajs = self._restrict_to_connected_set(ttrajs, dtrajs_full, bias_matrix,
                                                                                   state_counts_full,
                                                                                   transition_counts_full)
-        self.nstates = state_counts.shape[0]
+        self.nstates = np.int32(state_counts.shape[1])
 
         self.biased_conf_energies, conf_energies, self.therm_energies, self.log_lagrangian_mult, \
         self.increments, self.loglikelihoods = self.fit_from_count_matrices(
