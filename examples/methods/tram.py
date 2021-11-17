@@ -23,7 +23,7 @@ bias_functions = []
 
 for i, bias_center in enumerate(bias_centers):
     bias = lambda x, x0=bias_center: harmonic(x0, x)
-        # return harmonic(x0=bias_center, x=x)
+    # return harmonic(x0=bias_center, x=x)
 
     bias_functions.append(bias)
 
@@ -34,7 +34,7 @@ for i, bias_center in enumerate(bias_centers):
     msm = MarkovStateModel(transition_matrix)
 
     traj = msm.simulate(n_steps=n_samples)
-    trajs[i] = traj/100 * 3 - 1.5
+    trajs[i] = traj / 100 * 3 - 1.5
     # plt.plot(xs, biased_energies, color='C0', label='Energy')
     # plt.plot(xs, biased_energies, marker='x', color='C0')
     # plt.hist(xs[trajs[i]], bins=100, density=True, alpha=.6, color='C1', label='Histogram over visited states')
@@ -75,6 +75,7 @@ def plot_contour_with_colourbar(data, vmin=None, vmax=None):
     im = ax1.contourf(data, vmin=vmin, vmax=vmax, levels=50, cmap='jet')
     plt.colorbar(im)
     plt.show()
+
 
 plot_contour_with_colourbar(tram.biased_conf_energies)
 plt.plot(tram.therm_energies)

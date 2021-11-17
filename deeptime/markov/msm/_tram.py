@@ -26,13 +26,9 @@ class TRAM(_MSMBaseEstimator):
     def __init__(
             self, lagtime=None, count_mode='sliding',
             connectivity='post_hoc_RE',
-            nstates_full=None, equilibrium=None,
             maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
-            nn=None, connectivity_factor: float = 1.0, connectivity_threshold: float = 0,
-            direct_space=False, N_dtram_accelerations=0,
-            callback=None,
-            init='mbar', init_maxiter=5000, init_maxerr: float = 1.0E-8,
-            overcounting_factor=1.0):
+            nn=None, connectivity_factor: float = 1.0,
+            init='mbar', init_maxiter=5000, init_maxerr: float = 1.0E-8):
         r"""Transition(-based) Reweighting Analysis Method
         Parameters
         ----------
@@ -91,14 +87,6 @@ class TRAM(_MSMBaseEstimator):
               all thermodynamic states and taking it's largest strongly connected set.
               Not recommended!
             For more details see :func:`pyemma.thermo.extensions.cset.compute_csets_TRAM`.
-        nstates_full : int, optional, default=None
-            Number of cluster centers, i.e., the size of the full set of states.
-        equilibrium : list of booleans, optional
-            For every trajectory triple (ttraj[i], dtraj[i], btraj[i]), indicates
-            whether to assume global equilibrium. If true, the triple is not used
-            for computing kinetic quantities (but only thermodynamic quantities).
-            By default, no trajectory is assumed to be in global equilibrium.
-            This is the TRAMMBAR extension.
         maxiter : int, optional, default=10000
             The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
         maxerr : float, optional, default=1E-15
@@ -113,16 +101,6 @@ class TRAM(_MSMBaseEstimator):
             this multiplies the number of hypothetically observed transitions. For
             'BAR_variance' this scales the threshold for the minimal allowed variance
             of free energy differences.
-        direct_space : bool, optional, default=False
-            Whether to perform the self-consistent iteration with Boltzmann factors
-            (direct space) or free energies (log-space). When analyzing data from
-            multi-temperature simulations, direct-space is not recommended.
-        N_dtram_accelerations : int, optional, default=0
-            Convergence of TRAM can be speeded up by interleaving the updates
-            in the self-consistent iteration with a dTRAM-like update step.
-            N_dtram_accelerations says how many times the dTRAM-like update
-            step should be applied in every iteration of the TRAM equations.
-            Currently this is only effective if direct_space=True.
         init : str, optional, default=None
             Use a specific initialization for self-consistent iteration:
             | None:    use a hard-coded guess for free energies and Lagrangian multipliers
@@ -131,13 +109,7 @@ class TRAM(_MSMBaseEstimator):
             The maximum number of self-consistent iterations during the initialization.
         init_maxerr : float, optional, default=1.0E-8
             Convergence criterion for the initialization.
-        overcounting_factor : double, default = 1.0
-            Only needed if equilibrium contains True (TRAMMBAR).
-            Sets the relative statistical weight of equilibrium and non-equilibrium
-            frames. An overcounting_factor of value n means that every
-            non-equilibrium frame is counted n times. Values larger than 1 increase
-            the relative weight of the non-equilibrium data. Values less than 1
-            increase the relative weight of the equilibrium data.
+
         References
         ----------
         .. [1] Wu, H. et al 2016
@@ -156,19 +128,15 @@ class TRAM(_MSMBaseEstimator):
         self.connectivity = connectivity
         self.nn = nn
         self.connectivity_factor = connectivity_factor
-        self.nstates_full = nstates_full
-        self.equilibrium = equilibrium
+        self.nstates_full = None
+        self.nthermo = None
         self.maxiter = maxiter
         self.maxerr = maxerr
-        self.direct_space = direct_space
-        self.N_dtram_accelerations = N_dtram_accelerations
-        self.callback = callback
         self.save_convergence_info = save_convergence_info
         assert init in (None, 'mbar'), 'Currently only None and \'mbar\' are supported'
         self.init = init
         self.init_maxiter = init_maxiter
         self.init_maxerr = init_maxerr
-        self.overcounting_factor = overcounting_factor
         self.active_set = None
         self.biased_conf_energies = None
         self.therm_energies = None
@@ -198,8 +166,8 @@ class TRAM(_MSMBaseEstimator):
         # step 2: call fit_from_count_matrices
         pass
 
+    # TODO: move to tram.h
     def fit_from_count_matrices(self, count_matrices, state_counts, bias_energy_sequences, state_sequences,
-                                maxiter=1000, maxerr=1.0E-8, save_convergence_info=0,
                                 biased_conf_energies=None, log_lagrangian_mult=None):
         r""" Fits a model directly from given timeseries that has been discretized into Markov states by the user.
 
@@ -273,7 +241,7 @@ class TRAM(_MSMBaseEstimator):
         old_log_lagrangian_mult = log_lagrangian_mult.copy()
         old_stat_vectors = np.zeros(shape=state_counts.shape, dtype=np.float64)
         old_therm_energies = np.zeros(shape=count_matrices.shape[0], dtype=np.float64)
-        for _m in range(maxiter):
+        for _m in range(self.maxiter):
             print(sci_count)
             sci_count += 1
             tram.update_lagrangian_mult(
@@ -282,7 +250,7 @@ class TRAM(_MSMBaseEstimator):
             l = self.update_biased_conf_energies(
                 log_lagrangian_mult, old_biased_conf_energies, count_matrices, bias_energy_sequences,
                 state_sequences, state_counts, log_R_K_i, scratch_M, scratch_T, biased_conf_energies,
-                scratch_MM, sci_count == save_convergence_info)
+                scratch_MM, sci_count == self.save_convergence_info)
 
             self.therm_energies = np.zeros(shape=(self.nthermo), dtype=np.float64)
             tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates_full,
@@ -291,27 +259,12 @@ class TRAM(_MSMBaseEstimator):
             delta_therm_energies = np.abs(self.therm_energies - old_therm_energies)
             delta_stat_vectors = np.abs(stat_vectors - old_stat_vectors)
             err = max(np.max(delta_therm_energies), np.max(delta_stat_vectors))
-            if sci_count == save_convergence_info:
+            if sci_count == self.save_convergence_info:
                 sci_count = 0
                 increments.append(err)
                 loglikelihoods.append(l)
-            # if callback is not None:
-            #     try:
-            #         callback(biased_conf_energies=biased_conf_energies,
-            #                  log_lagrangian_mult=log_lagrangian_mult,
-            #                  therm_energies=therm_energies,
-            #                  stat_vectors=stat_vectors,
-            #                  old_biased_conf_energies=old_biased_conf_energies,
-            #                  old_log_lagrangian_mult=old_log_lagrangian_mult,
-            #                  old_stat_vectors=old_stat_vectors,
-            #                  old_therm_energies=old_therm_energies,
-            #                  iteration_step=_m,
-            #                  err=err,
-            #                  maxerr=maxerr,
-            #                  maxiter=maxiter)
-            #     except CallbackInterrupt:
-            #         break
-            if err < maxerr:
+
+            if err < self.maxerr:
                 break
             else:
                 shift = np.min(biased_conf_energies)
@@ -324,10 +277,10 @@ class TRAM(_MSMBaseEstimator):
         tram.get_therm_energies(biased_conf_energies, self.nthermo, self.nstates_full, scratch_M, self.therm_energies)
         tram.normalize(conf_energies, biased_conf_energies, self.therm_energies, self.nthermo, self.nstates_full,
                        scratch_M)
-        if err >= maxerr:
+        if err >= self.maxerr:
             import warnings
             warnings.warn("TRAM did not converge: last increment = %.5e" % err, UserWarning)
-        if save_convergence_info == 0:
+        if self.save_convergence_info == 0:
             increments = None
             loglikelihoods = None
         else:
@@ -340,203 +293,22 @@ class TRAM(_MSMBaseEstimator):
     def fit(self, data, *args, **kw):
         r""" Fits a new markov state model according to data. Data may be provided clustered or non-clustered. In the
         latter case the data will be clustered first by the deeptime.clustering module. """
-        # transition_matrix = np.ones((2, 2)) * 0.5
-        # stationary_distribution = np.ones(2)
-        #
-        # res = _markov_bindings.tram.tram_test(1)
-        # print(res)
-
-        # self._model = MarkovStateModelCollection([transition_matrix], [stationary_distribution], reversible=True, count_models=[None], transition_matrix_tolerance=0)
 
         # TODO: if dtrajs is empty: discretize samples using some clustering algorithm
-        ttrajs, dtrajs_full, btrajs = data
-        # shape and type checks
-        assert len(ttrajs) == len(dtrajs_full) == len(btrajs)
-        for t in ttrajs:
-            types.ensure_integer_array(t, ndim=1)
-        for d in dtrajs_full:
-            types.ensure_integer_array(d, ndim=1)
-        for b in btrajs:
-            types.ensure_floating_array(b, ndim=2)
-        # find dimensions
-        nstates_full = max(np.max(d) for d in dtrajs_full) + 1
-        if self.nstates_full is None:
-            self.nstates_full = nstates_full
-        elif self.nstates_full < nstates_full:
-            raise RuntimeError("Found more states (%d) than specified by nstates_full (%d)" % (
-                nstates_full, self.nstates_full))
-        self.nthermo = max(np.max(t) for t in ttrajs) + 1
-        # dimensionality checks
-        for t, d, b, in zip(ttrajs, dtrajs_full, btrajs):
-            assert t.shape[0] == d.shape[0] == b.shape[0]
-            assert b.shape[1] == self.nthermo
+        ttrajs, dtrajs_full, bias_matrix = self._check_data(data)
 
-        # cast types and change axis order if needed
-        ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
-        dtrajs_full = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs_full]
-        btrajs = [np.require(b, dtype=np.float64, requirements='C') for b in btrajs]
+        # count all transitions and state counts, without restricting to connected sets
+        state_counts_full, transition_counts_full = self._get_state_counts(dtrajs_full)
 
-        # # if equilibrium information is given, separate the trajectories
-        # if self.equilibrium is not None:
-        #     assert len(self.equilibrium) == len(ttrajs)
-        #     _ttrajs, _dtrajs_full, _btrajs = ttrajs, dtrajs_full, btrajs
-        #     ttrajs = [ttraj for eq, ttraj in zip(self.equilibrium, _ttrajs) if not eq]
-        #     dtrajs_full = [dtraj for eq, dtraj in zip(self.equilibrium, _dtrajs_full) if not eq]
-        #     self.btrajs = [btraj for eq, btraj in zip(self.equilibrium, _btrajs) if not eq]
-        #     equilibrium_ttrajs = [ttraj for eq, ttraj in zip(self.equilibrium, _ttrajs) if eq]
-        #     equilibrium_dtrajs_full = [dtraj for eq, dtraj in zip(self.equilibrium, _dtrajs_full) if eq]
-        #     self.equilibrium_btrajs = [btraj for eq, btraj in zip(self.equilibrium, _btrajs) if eq]
-        # else:  # set dummy values
-        equilibrium_ttrajs = []
-        equilibrium_dtrajs_full = []
-        self.equilibrium_btrajs = []
-        self.btrajs = btrajs
+        state_counts, transition_counts, dtrajs = self._restrict_to_connected_set(ttrajs, dtrajs_full, bias_matrix,
+                                                                                  state_counts_full,
+                                                                                  transition_counts_full)
 
-        # # TODO: handle RE case:
-        # #  define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
-        # #  At every RE swapp point, the trajectory is sliced, so that swap point occurs as a trajectory start
-        # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(ttrajs)
-        # trajectory_fragments = [[dtrajs_full[tidx][start:end] for tidx, start, end in mapping_therm] for mapping_therm
-        #                         in trajectory_fragment_mapping]
-
-        # find state visits and transition counts
-        state_counts_hist = [count_states(dtrajs_full[i]) for i in range(self.nthermo)]
-
-        # histograms row sizes are equal to highest occurring markov state index.
-        # Pad with zeros into a rectangular np array
-        state_counts_full = np.zeros((self.nthermo, self.nstates_full))
-        for idx, row in enumerate(state_counts_hist):
-            state_counts_full[idx, :len(row)] += row
-
-        # find count matrixes C^k_ij with shape (K,B,B)
-        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
-        count_matrices = [estimator.fit(dtrajs_full[i]).fetch_model().count_matrix for i in range(self.nthermo)]
-
-        # again, histograms sizes are equal to highest occurring markov state index.
-        # Pad with zeros so that all histograms are equal size
-        count_matrices_full = np.zeros((self.nthermo, self.nstates_full, self.nstates_full))
-        for idx, count_matrix in enumerate(count_matrices):
-            count_matrices_full[idx][:len(count_matrix), :len(count_matrix)] += count_matrix
-
-        self.therm_state_counts_full = state_counts_full.sum(axis=1)
-
-        # if self.equilibrium is not None:
-        #     self.equilibrium_state_counts_full = _util.state_counts(equilibrium_ttrajs, equilibrium_dtrajs_full,
-        #                                                             nstates=self.nstates_full, nthermo=self.nthermo)
-        # else:
-        self.equilibrium_state_counts_full = np.zeros((self.nthermo, self.nstates_full), dtype=np.float64)
-
-        self.csets, pcset = cset.compute_csets_TRAM(
-            self.connectivity, state_counts_full, count_matrices_full,
-            equilibrium_state_counts=self.equilibrium_state_counts_full,
-            ttrajs=ttrajs + equilibrium_ttrajs, dtrajs=dtrajs_full + equilibrium_dtrajs_full,
-            bias_trajs=self.btrajs + self.equilibrium_btrajs,
-            nn=self.nn, factor=self.connectivity_factor
-        )
-        self.active_set = pcset
-
-        # check for empty states
-        for k in range(self.nthermo):
-            if len(self.csets[k]) == 0:
-                import warnings
-                with warnings.catch_warnings():
-                    from deeptime.util.exceptions import EmptyStateWarning
-                    warnings.filterwarnings('always', message='Thermodynamic state %d' % k
-                                                              + ' contains no samples after reducing to the connected set.',
-                                            category=EmptyStateWarning)
-
-        # deactivate samples not in the csets, states are *not* relabeled
-        self.state_counts, self.count_matrices, self.dtrajs, _ = cset.restrict_to_csets(
-            self.csets,
-            state_counts=state_counts_full, count_matrices=count_matrices_full,
-            ttrajs=ttrajs, dtrajs=dtrajs_full)
-
-        if self.equilibrium is not None:
-            self.equilibrium_state_counts, _, self.equilibrium_dtrajs, _ = cset.restrict_to_csets(
-                self.csets,
-                state_counts=self.equilibrium_state_counts_full, ttrajs=equilibrium_ttrajs,
-                dtrajs=equilibrium_dtrajs_full)
-        else:
-            self.equilibrium_state_counts = np.zeros((self.nthermo, self.nstates_full),
-                                                     dtype=np.intc)  # (remember: no relabeling)
-            self.equilibrium_dtrajs = []
-
-        # self-consistency tests
-        assert np.all(self.state_counts >= np.maximum(self.count_matrices.sum(axis=1), \
-                                                      self.count_matrices.sum(axis=2)))
-        assert np.all(np.sum(
-            [np.bincount(d[d >= 0], minlength=self.nstates_full) for d in self.dtrajs],
-            axis=0) == self.state_counts.sum(axis=0))
-        assert np.all(np.sum(
-            [np.bincount(t[d >= 0], minlength=self.nthermo) for t, d in zip(ttrajs, self.dtrajs)],
-            axis=0) == self.state_counts.sum(axis=1))
-        if self.equilibrium is not None:
-            assert np.all(np.sum(
-                [np.bincount(d[d >= 0], minlength=self.nstates_full) for d in self.equilibrium_dtrajs],
-                axis=0) == self.equilibrium_state_counts.sum(axis=0))
-            assert np.all(np.sum(
-                [np.bincount(t[d >= 0], minlength=self.nthermo) for t, d in
-                 zip(equilibrium_ttrajs, self.equilibrium_dtrajs)],
-                axis=0) == self.equilibrium_state_counts.sum(axis=1))
-
-        # check for empty states
-        for k in range(self.state_counts.shape[0]):
-            if self.count_matrices[k, :, :].sum() == 0 and self.equilibrium_state_counts[k, :].sum() == 0:
-                import warnings
-                with warnings.catch_warnings():
-                    from deeptime.util.exceptions import EmptyStateWarning
-                    warnings.filterwarnings('always', message='Thermodynamic state %d' % k \
-                                                              + ' contains no transitions and no equilibrium data after reducing to the connected set.',
-                                            category=EmptyStateWarning)
-
-        # if self.init == 'mbar' and self.biased_conf_energies is None:
-        #     # if self.direct_space:
-        #     #     mbar = _mbar_direct
-        #     # else:
-        #     #     mbar = _mbar
-        #     stage = 'MBAR init.'
-        #     self.mbar_therm_energies, self.mbar_unbiased_conf_energies, \
-        #         self.mbar_biased_conf_energies, _ = mbar.estimate(
-        #             (state_counts_full.sum(axis=1) + self.equilibrium_state_counts_full.sum(axis=1)).astype(_np.intc),
-        #             self.btrajs + self.equilibrium_btrajs, dtrajs_full + equilibrium_dtrajs_full,
-        #             maxiter=self.init_maxiter, maxerr=self.init_maxerr,
-        #             n_conf_states=self.nstates_full)
-        #     self.biased_conf_energies = self.mbar_biased_conf_energies.copy()
-
-        # run estimator
-        # if self.direct_space:
-        #     tram = _tram_direct
-        #     trammbar = _trammbar_direct
-        # else:
-        #     tram = _tram
-        #     trammbar = _trammbar
-        # import warnings
-        # with warnings.catch_warnings() as cm:
-        # warnings.filterwarnings('ignore', RuntimeWarning)
-        stage = 'TRAM'
-        if self.equilibrium is None:
-            self.biased_conf_energies, conf_energies, self.therm_energies, self.log_lagrangian_mult, \
-            self.increments, self.loglikelihoods = self.fit_from_count_matrices(
-                self.count_matrices, self.state_counts, self.btrajs, self.dtrajs,
-                maxiter=self.maxiter, maxerr=self.maxerr,
-                biased_conf_energies=self.biased_conf_energies,
-                log_lagrangian_mult=self.log_lagrangian_mult,
-                save_convergence_info=self.save_convergence_info)
-        # else:  # use trammbar
-        #     self.biased_conf_energies, conf_energies, self.therm_energies, self.log_lagrangian_mult, \
-        #     self.increments, self.loglikelihoods = trammbar.estimate(
-        #         self.count_matrices, self.state_counts, self.btrajs, self.dtrajs,
-        #         equilibrium_therm_state_counts=self.equilibrium_state_counts.sum(axis=1).astype(_np.intc),
-        #         equilibrium_bias_energy_sequences=self.equilibrium_btrajs,
-        #         equilibrium_state_sequences=self.equilibrium_dtrajs,
-        #         maxiter=self.maxiter, maxerr=self.maxerr,
-        #         save_convergence_info=self.save_convergence_info,
-        #         biased_conf_energies=self.biased_conf_energies,
-        #         log_lagrangian_mult=self.log_lagrangian_mult,
-        #         callback=_ConvergenceProgressIndicatorCallBack(
-        #             pg, stage, self.maxiter, self.maxerr, subcallback=self.callback),
-        #         N_dtram_accelerations=self.N_dtram_accelerations,
-        #         overcounting_factor=self.overcounting_factor)
+        self.biased_conf_energies, conf_energies, self.therm_energies, self.log_lagrangian_mult, \
+        self.increments, self.loglikelihoods = self.fit_from_count_matrices(
+            transition_counts, state_counts, bias_matrix, dtrajs,
+            biased_conf_energies=self.biased_conf_energies,
+            log_lagrangian_mult=self.log_lagrangian_mult)
 
         # compute models
         # fmsms = [np.ascontiguousarray((
@@ -614,3 +386,114 @@ class TRAM(_MSMBaseEstimator):
             tram.get_conf_energies(bias_energy_sequences[i], state_sequences[i], state_sequences[i].shape[0],
                                    log_R_K_i, self.nthermo, self.nstates_full, scratch_T, conf_energies)
         return conf_energies
+
+    def _check_data(self, data):
+
+        ttrajs, dtrajs_full, bias_energy_sequences = data
+
+        # shape and type checks
+        assert len(ttrajs) == len(dtrajs_full) == len(bias_energy_sequences)
+        for t in ttrajs:
+            types.ensure_integer_array(t, ndim=1)
+        for d in dtrajs_full:
+            types.ensure_integer_array(d, ndim=1)
+        for b in bias_energy_sequences:
+            types.ensure_floating_array(b, ndim=2)
+
+        # find dimensions
+        self.nstates_full = max(np.max(d) for d in dtrajs_full) + 1
+        self.nthermo = max(np.max(t) for t in ttrajs) + 1
+
+        # dimensionality checks
+        for t, d, b, in zip(ttrajs, dtrajs_full, bias_energy_sequences):
+            assert t.shape[0] == d.shape[0] == b.shape[0]
+            assert b.shape[1] == self.nthermo
+
+        # cast types and change axis order if needed
+        ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
+        dtrajs_full = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs_full]
+        bias_energy_sequences = [np.require(b, dtype=np.float64, requirements='C') for b in bias_energy_sequences]
+
+        return ttrajs, dtrajs_full, bias_energy_sequences
+
+    def _get_state_counts(self, dtrajs_full):
+        # # TODO: handle RE case:
+        # #  define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
+        # #  At every RE swapp point, the trajectory is sliced, so that swap point occurs as a trajectory start
+        # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(ttrajs)
+        # trajectory_fragments = [[dtrajs_full[tidx][start:end] for tidx, start, end in mapping_therm] for mapping_therm
+        #                         in trajectory_fragment_mapping]
+
+        # find state visits and transition counts
+        state_counts_hist = [count_states(dtrajs_full[i]) for i in range(self.nthermo)]
+
+        # histograms row sizes are equal to highest occurring markov state index.
+        # Pad with zeros into a rectangular np array
+        state_counts_padded = np.zeros((self.nthermo, self.nstates_full))
+        for idx, row in enumerate(state_counts_hist):
+            state_counts_padded[idx, :len(row)] += row
+
+        # find count matrixes C^k_ij with shape (K,B,B)
+        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
+        transition_counts = [estimator.fit(dtrajs_full[i]).fetch_model().count_matrix for i in range(self.nthermo)]
+
+        # again, histograms sizes are equal to highest occurring markov state index.
+        # Pad with zeros so that all histograms are equal size
+        transition_counts_padded = np.zeros((self.nthermo, self.nstates_full, self.nstates_full))
+        for idx, count_matrix in enumerate(transition_counts):
+            transition_counts_padded[idx][:len(count_matrix), :len(count_matrix)] += count_matrix
+
+        return state_counts_padded, transition_counts_padded
+
+    def _restrict_to_connected_set(self, ttrajs, dtrajs_full, bias_matrix, state_counts_full, transition_counts_full):
+
+        csets, pcset = cset.compute_csets_TRAM(
+            self.connectivity, state_counts_full, transition_counts_full,
+            ttrajs=ttrajs, dtrajs=dtrajs_full,
+            bias_trajs=bias_matrix,
+            nn=self.nn, factor=self.connectivity_factor
+        )
+        self.active_set = pcset
+
+        self._check_for_empty_csets(csets)
+
+        # deactivate samples not in the csets, states are *not* relabeled
+        state_counts, transition_counts, dtrajs, _ = cset.restrict_to_csets(
+            csets, state_counts=state_counts_full, count_matrices=transition_counts_full,
+            ttrajs=ttrajs, dtrajs=dtrajs_full)
+
+        # self-consistency tests
+        assert np.all(state_counts >= np.maximum(transition_counts.sum(axis=1),
+                                                 transition_counts.sum(axis=2)))
+        assert np.all(np.sum(
+            [np.bincount(d[d >= 0], minlength=self.nstates_full) for d in dtrajs],
+            axis=0) == state_counts.sum(axis=0))
+        assert np.all(np.sum(
+            [np.bincount(t[d >= 0], minlength=self.nthermo) for t, d in zip(ttrajs, dtrajs)],
+            axis=0) == state_counts.sum(axis=1))
+
+        self._check_for_states_without_transitions(transition_counts)
+
+        return state_counts, transition_counts, dtrajs
+
+    def _check_for_empty_csets(self, csets):
+        # check for empty states
+        for k in range(self.nthermo):
+            if len(csets[k]) == 0:
+                import warnings
+                with warnings.catch_warnings():
+                    from deeptime.util.exceptions import EmptyStateWarning
+                    warnings.filterwarnings('always', message='Thermodynamic state %d' % k
+                                                              + ' contains no samples after reducing to the connected set.',
+                                            category=EmptyStateWarning)
+
+    def _check_for_states_without_transitions(self, transition_counts):
+        # check for empty states
+        for k in range(self.nthermo):
+            if transition_counts[k, :, :].sum() == 0:
+                import warnings
+                with warnings.catch_warnings():
+                    from deeptime.util.exceptions import EmptyStateWarning
+                    warnings.filterwarnings('always', message='Thermodynamic state %d' % k \
+                                                              + ' contains no transitions after reducing to the connected set.',
+                                            category=EmptyStateWarning)
