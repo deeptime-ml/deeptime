@@ -50,7 +50,7 @@ def _split_sequences_multitraj(dtrajs, lag):
     ----------
     dtrajs : list of int-iterables
         discrete trajectories
-    nstates : int
+    n_markov_states : int
         total number of discrete states
     lag : int
         lag time

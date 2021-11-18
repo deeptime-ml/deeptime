@@ -20,8 +20,8 @@ class TestBMSMBasic(unittest.TestCase):
         np.testing.assert_equal(estimator.stationary_distribution_constraint, [0.5, 0.5])
         np.testing.assert_equal(estimator.sparse, True)
         np.testing.assert_equal(estimator.confidence, 0.9)
-        np.testing.assert_equal(estimator.maxiter, 5000)
-        np.testing.assert_equal(estimator.maxerr, 1e-12)
+        np.testing.assert_equal(estimator.max_iter, 5000)
+        np.testing.assert_equal(estimator.max_err, 1e-12)
         with self.assertRaises(ValueError):
             estimator.stationary_distribution_constraint = np.array([1.1, .5])
         with self.assertRaises(ValueError):
@@ -82,8 +82,8 @@ class TestBMSM(unittest.TestCase):
         self._lag(self.bmsm_revpi)
 
     def _lag(self, msm):
-        assert msm.prior.lagtime == self.lag
-        assert all(s.lagtime == self.lag for s in msm.samples)
+        assert msm.prior.lag_time == self.lag
+        assert all(s.lag_time == self.lag for s in msm.samples)
 
     def test_n_states(self):
         self._n_states(self.bmsm_rev)
@@ -302,7 +302,7 @@ class TestBMSM(unittest.TestCase):
         # shape
         np.testing.assert_equal(np.shape(samples), (self.nsamples, self.n_states - 1))
         # consistency
-        lag = msm.prior.count_model.lagtime
+        lag = msm.prior.count_model.lag_time
         for l in samples:
             assert np.all(l > 0.0)
 

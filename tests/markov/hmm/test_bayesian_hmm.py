@@ -63,8 +63,8 @@ def test_reversible(bhmm_fixture):
 
 
 def test_lag(bhmm_fixture):
-    assert bhmm_fixture.bhmm.prior.lagtime == bhmm_fixture.lag
-    lags = [sample.lagtime for sample in bhmm_fixture.bhmm]
+    assert bhmm_fixture.bhmm.prior.lag_time == bhmm_fixture.lag
+    lags = [sample.lag_time for sample in bhmm_fixture.bhmm]
     np.testing.assert_allclose(bhmm_fixture.lag, lags)
 
 

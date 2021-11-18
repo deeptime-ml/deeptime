@@ -361,10 +361,10 @@ def restrict_to_csets(
         Is used to determine which frames are in the connected sets.
     dtrajs : list of ndarray(X_i), optional
         List of configurational state trajectories (disctrajs).
-        If given, ttrajs must be set as well.
+        If given, therm_state_sequences_full must be set as well.
     bias_trajs : list of ndarray((X_i, T)), optional
         List of bias energy trajectories for all T thermodynamic states.
-        If given, ttrajs and dtrajs must be given as well.
+        If given, therm_state_sequences_full and dtrajs must be given as well.
     Returns
     -------
     Modified copies of:
@@ -375,7 +375,7 @@ def restrict_to_csets(
     connected sets are negative.
     bias_trajs : list of ndarray((Y_i, T))
     Same as input but with frames removed where the combination
-    of thermodynamic state and Markov state as given in ttrajs and
+    of thermodynamic state and Markov state as given in therm_state_sequences_full and
     dtrajs is not in the connected sets.
     """
     if state_counts is not None:
@@ -394,7 +394,7 @@ def restrict_to_csets(
     else:
         new_count_matrices = None
     if dtrajs is not None:
-        assert ttrajs is not None, 'ttrajs can\'t be None, when dtrajs are given.'
+        assert ttrajs is not None, 'therm_state_sequences_full can\'t be None, when dtrajs are given.'
         n_therm_states, n_conf_states = state_counts.shape
         invalid = _np.ones((n_therm_states, n_conf_states), dtype=bool)
         for k, cset in enumerate(csets):
@@ -412,7 +412,7 @@ def restrict_to_csets(
     else:
         new_dtrajs = None
     if bias_trajs is not None:
-        assert ttrajs is not None, 'ttrajs can\'t be None, when bias_trajs are given.'
+        assert ttrajs is not None, 'therm_state_sequences_full can\'t be None, when bias_trajs are given.'
         assert dtrajs is not None, 'dtrajs can\'t be None, when bias_trajs are given.'
         n_therm_states, n_conf_states = state_counts.shape
         valid = _np.zeros((n_therm_states, n_conf_states), dtype=bool)

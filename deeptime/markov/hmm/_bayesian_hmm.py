@@ -504,7 +504,7 @@ class BayesianHMM(Estimator):
 
         Returns
         -------
-        n : ndarray(nstates)
+        n : ndarray(n_markov_states)
             n[i] is the number of trajectories starting in state i
 
         """
@@ -555,7 +555,7 @@ class BayesianHMM(Estimator):
 
         # EVALUATE STRIDE
         dtrajs_lagged_strided = compute_dtrajs_effective(
-            dtrajs, lagtime=prior.lagtime, n_states=prior.n_hidden_states, stride=self.stride
+            dtrajs, lagtime=prior.lag_time, n_states=prior.n_hidden_states, stride=self.stride
         )
         # if stride is different to init_hmm, check if microstates in lagged-strided trajs are compatible
         if self.stride != self.initial_hmm.stride:
@@ -633,7 +633,7 @@ class BayesianHMM(Estimator):
             model_copy.hidden_trajs.clear()
         # potentially restrict sampled models to observed space
         # since model_copy is defined on full space, observation_symbols are also observation states
-        count_model = TransitionCountModel(model_copy.counts, lagtime=prior.lagtime)
+        count_model = TransitionCountModel(model_copy.counts, lagtime=prior.lag_time)
         models.append(HiddenMarkovModel(
             transition_model=MarkovStateModel(model_copy.transition_matrix,
                                               stationary_distribution=model_copy.stationary_distribution,
@@ -664,7 +664,7 @@ class BayesianHMM(Estimator):
         assert isinstance(test_model.prior.output_model, DiscreteOutputModel), \
             "Can only perform CKTest for discrete output models"
         memberships = np.eye(test_model.prior.n_hidden_states)
-        lagtime = test_model.prior.lagtime
+        lagtime = test_model.prior.lag_time
         return BayesianHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
 
 

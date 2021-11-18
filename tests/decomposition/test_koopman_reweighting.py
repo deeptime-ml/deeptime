@@ -203,10 +203,10 @@ class TestKoopmanTICA(unittest.TestCase):
     def test_koopman_estimator_partial_fit(self):
         from deeptime.covariance import KoopmanWeightingEstimator
         est = KoopmanWeightingEstimator(lagtime=self.tau)
-        est.lagtime = 1
-        np.testing.assert_equal(est.lagtime, 1)
-        est.lagtime = self.tau
-        np.testing.assert_equal(est.lagtime, self.tau)
+        est.lag_time = 1
+        np.testing.assert_equal(est.lag_time, 1)
+        est.lag_time = self.tau
+        np.testing.assert_equal(est.lag_time, self.tau)
 
         data_lagged = timeshifted_split(self.data, lagtime=self.tau, n_splits=10)
         for traj in data_lagged:

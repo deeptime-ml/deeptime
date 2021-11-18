@@ -139,14 +139,14 @@ class DMD(EstimatorTransformer):
         data
             Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
         **kwargs
-            Kwargs, may contain lagtime.
+            Kwargs, may contain lag_time.
 
         Returns
         -------
         self : DMD
             Reference to self.
         """
-        dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
+        dataset = to_dataset(data, lagtime=kwargs.get("lag_time", None))
         X, Y = dataset[:]
         X, Y = X.T, Y.T  # per convention arrays are [T, d] so here we transpose them
 
@@ -305,14 +305,14 @@ class EDMD(EstimatorTransformer):
         data
             Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
         **kwargs
-            Kwargs, may contain lagtime.
+            Kwargs, may contain lag_time.
 
         Returns
         -------
         self : EDMD
             Reference to self.
         """
-        dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
+        dataset = to_dataset(data, lagtime=kwargs.get("lag_time", None))
         x, y = dataset[:]
         n_data = x.shape[0]
         assert n_data == y.shape[0], "Trajectories for data and timelagged data must be of same length!"
@@ -404,14 +404,14 @@ class KernelEDMD(EstimatorTransformer):
         data
             Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
         **kwargs
-            Kwargs, may contain lagtime.
+            Kwargs, may contain lag_time.
 
         Returns
         -------
         self : KernelEDMD
             Reference to self.
         """
-        dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
+        dataset = to_dataset(data, lagtime=kwargs.get("lag_time", None))
         x, y = dataset[:]
         gram_0 = self.kernel.gram(x)  # G_XX
         gram_1 = self.kernel.apply(x, y)  # G_XY

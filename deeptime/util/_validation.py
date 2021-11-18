@@ -157,7 +157,7 @@ class LaggedModelValidator(Estimator):
         super(LaggedModelValidator, self).__init__()
 
     def _set_mlags(self, mlags):
-        # set mlags, we do it in fit, so we can obtain the maximum possible lagtime from the trajectory data.
+        # set mlags, we do it in fit, so we can obtain the maximum possible lag_time from the trajectory data.
         from numbers import Integral
         if isinstance(mlags, Integral):
             mlags = np.arange(mlags)
@@ -230,7 +230,7 @@ class LaggedModelValidator(Estimator):
                 predictions_conf.append((l, r))
 
         for model in estimated_models:
-            # evaluate the estimate at lagtime*mlag
+            # evaluate the estimate at lag_time*mlag
             estimates.append(self._compute_observables(model, 1))
             if self.has_errors and self.err_est:
                 l, r = self._compute_observables_conf(model, 1)
@@ -265,7 +265,7 @@ class LaggedModelValidator(Estimator):
 
         mlag : int
             if 1, just compute the observable for given model. If not 1, use
-            model to predict result at multiple of given model lagtime.
+            model to predict result at multiple of given model lag_time.
 
         Returns
         -------
@@ -286,7 +286,7 @@ class LaggedModelValidator(Estimator):
 
         mlag : int, default=1
             if 1, just compute the observable for given model. If not 1, use
-            model to predict result at multiple of given model lagtime.
+            model to predict result at multiple of given model lag_time.
 
         Returns
         -------

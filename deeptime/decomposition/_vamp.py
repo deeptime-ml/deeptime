@@ -24,7 +24,7 @@ class VAMP(EstimatorTransformer):
     Parameters
     ----------
     lagtime : int or None, optional, default=None
-        The lagtime under which covariances are estimated. This is only relevant when estimating from data, in case
+        The lag_time under which covariances are estimated. This is only relevant when estimating from data, in case
         covariances are provided this should either be None or exactly the value that was used to estimate
         said covariances.
     dim : int, optional, default=None
@@ -227,7 +227,7 @@ class VAMP(EstimatorTransformer):
         ----------
         data : tuple(ndarray, ndarray)
             A tuple of ndarrays which have to have same shape and are :math:`X_t` and :math:`X_{t+\tau}`, respectively.
-            Here, :math:`\tau` denotes the lagtime.
+            Here, :math:`\tau` denotes the lag_time.
 
         Returns
         -------
@@ -300,11 +300,11 @@ class VAMP(EstimatorTransformer):
 
     @property
     def lagtime(self) -> Optional[int]:
-        r""" The lagtime under which covariances are estimated. Can be `None` in case covariances are provided
+        r""" The lag_time under which covariances are estimated. Can be `None` in case covariances are provided
         directly instead of estimating them inside this estimator.
 
-        :getter: Yields the current lagtime.
-        :setter: Sets a new lagtime, must be positive.
+        :getter: Yields the current lag_time.
+        :setter: Sets a new lag_time, must be positive.
         :type: int or None
         """
         return self._lagtime
@@ -393,7 +393,7 @@ class VAMP(EstimatorTransformer):
         data : CovarianceModel or Covariance or timeseries
             Covariance matrices :math:`C_{00}, C_{0t}, C_{tt}` in form of a CovarianceModel instance. If the model
             should be fitted directly from data, please see :meth:`from_data`.
-            Optionally, this can also be timeseries data directly, in which case a 'lagtime' must be provided.
+            Optionally, this can also be timeseries data directly, in which case a 'lag_time' must be provided.
         *args
             Optional arguments
         **kw

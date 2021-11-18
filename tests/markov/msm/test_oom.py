@@ -223,8 +223,8 @@ def test_score_cv(five_state_msm, reversible, sparse):
 def test_basic_oom_properties(oom_msm_scenario):
     for est in oom_msm_scenario.estimators:
         model = est.fetch_model()
-        np.testing.assert_equal(est.lagtime, oom_msm_scenario.tau)
-        np.testing.assert_equal(model.lagtime, oom_msm_scenario.tau)
+        np.testing.assert_equal(est.lag_time, oom_msm_scenario.tau)
+        np.testing.assert_equal(model.lag_time, oom_msm_scenario.tau)
         np.testing.assert_(model.count_model.is_full_model == oom_msm_scenario.complete)
         np.testing.assert_equal(len(model.count_model.connected_sets()), 1)
         np.testing.assert_equal(model.n_states, 5 if oom_msm_scenario.complete else 4)

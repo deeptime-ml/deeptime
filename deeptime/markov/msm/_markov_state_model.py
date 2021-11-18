@@ -203,13 +203,13 @@ class MarkovStateModel(Model):
 
     @property
     def lagtime(self) -> int:
-        r""" The lagtime this model was estimated at. In case no count model was provided, this property defaults
-        to a lagtime of `1`.
+        r""" The lag_time this model was estimated at. In case no count model was provided, this property defaults
+        to a lag_time of `1`.
 
         Returns
         -------
-        lagtime : int
-            The lagtime.
+        lag_time : int
+            The lag_time.
         """
         if self.count_model is not None:
             return self.count_model.lagtime

@@ -22,9 +22,9 @@ def test_timeshifted_split_wrong_args():
             np.zeros(shape=(10, 3), dtype=np.float32)]
     with assert_raises(ValueError):  # negative chunksize
         list(timeshifted_split(data, lagtime=1, chunksize=-1))
-    with assert_raises(ValueError):  # too long lagtime
+    with assert_raises(ValueError):  # too long lag_time
         list(timeshifted_split(data, lagtime=15))
-    with assert_raises(ValueError):  # too long lagtime
+    with assert_raises(ValueError):  # too long lag_time
         list(timeshifted_split(data, lagtime=10))
     list(timeshifted_split(data, lagtime=9))  # sanity this should not raise
 
@@ -70,7 +70,7 @@ def test_timeshifted_split_nolag():
         np.testing.assert_(len(splits[i]) > 0)
 
 
-@pytest.mark.parametrize('lagtime', [0, 5], ids=lambda x: f"lagtime={x}")
+@pytest.mark.parametrize('lag_time', [0, 5], ids=lambda x: f"lag_time={x}")
 @pytest.mark.parametrize('n_splits', [3, 7, 23], ids=lambda x: f"n_splits={x}")
 def test_timeshifted_split_shuffle(lagtime, n_splits):
     x = np.arange(31, 5000)
@@ -85,14 +85,14 @@ def test_timeshifted_split_shuffle(lagtime, n_splits):
             chunks_lagged.append(chunk)
     chunks = np.concatenate(chunks)
     chunks_lagged = np.concatenate(chunks_lagged)
-    np.testing.assert_equal(len(chunks), len(x) - lagtime)  # we lose lagtime many frames
-    np.testing.assert_equal(len(chunks_lagged), len(x) - lagtime)  # we lose lagtime many frames
+    np.testing.assert_equal(len(chunks), len(x) - lagtime)  # we lose lag_time many frames
+    np.testing.assert_equal(len(chunks_lagged), len(x) - lagtime)  # we lose lag_time many frames
     np.testing.assert_equal(chunks + lagtime, chunks_lagged)  # since data is sequential this must hold
     all_data = np.concatenate((chunks, chunks_lagged))  # check whether everything combined is the full dataset
     np.testing.assert_equal(len(np.setdiff1d(x, all_data)), 0)
 
 
-@pytest.mark.parametrize("lagtime", [1, 5])
+@pytest.mark.parametrize("lag_time", [1, 5])
 def test_timelagged_dataset(lagtime):
     pytest.importorskip("torch.utils.data")
     import torch.utils.data as data_utils
@@ -115,7 +115,7 @@ def test_timelagged_dataset(lagtime):
     np.testing.assert_equal(len(np.setdiff1d(collected_data, data)), 0)
 
 
-@pytest.mark.parametrize("lagtime", [1, 5], ids=lambda x: f"lag={x}")
+@pytest.mark.parametrize("lag_time", [1, 5], ids=lambda x: f"lag={x}")
 @pytest.mark.parametrize("ntraj", [1, 2, 3], ids=lambda x: f"ntraj={x}")
 @pytest.mark.parametrize("stride", [None, 1, 2, 3], ids=lambda x: f"stride={x}")
 @pytest.mark.parametrize("start", [None, 0, 1], ids=lambda x: f"start={x}")
@@ -127,7 +127,7 @@ def test_timelagged_dataset_multitraj(lagtime, ntraj, stride, start, stop):
     with assert_raises(AssertionError):
         TrajectoryDataset.from_trajectories(1, [])  # empty data
     with assert_raises(AssertionError):
-        TrajectoryDataset.from_trajectories(lagtime=7, data=data)  # lagtime too long
+        TrajectoryDataset.from_trajectories(lagtime=7, data=data)  # lag_time too long
     with assert_raises(AssertionError):
         TrajectoryDataset.from_trajectories(lagtime=1, data=data + [np.empty((55, 7))])  # shape mismatch
     ds = TrajectoryDataset.from_trajectories(lagtime=lagtime, data=data)

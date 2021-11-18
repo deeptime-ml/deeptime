@@ -138,9 +138,9 @@ class Dataset(abc.ABC):
     deeptime.util.data.TimeLaggedConcatDataset
         A concatenation of several :class:`TimeLaggedDataset <deeptime.util.data.TimeLaggedDataset>` .
     deeptime.util.data.TrajectoryDataset
-        A dataset for one trajectory with a lagtime.
+        A dataset for one trajectory with a lag_time.
     deeptime.util.data.TrajectoriesDataset
-        A dataset for multiple trajectories with a lagtime.
+        A dataset for multiple trajectories with a lag_time.
     """
 
     @abc.abstractmethod

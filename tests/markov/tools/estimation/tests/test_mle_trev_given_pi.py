@@ -33,10 +33,10 @@ def transition_matrix_reversible_fixpi(Z, mu, maxerr=1e-10, maxiter=10000, retur
     mu: ndarray, shape (n)
         stationary distribution
     maxerr: float
-        Will exit (as converged) when the 2-norm of the Langrange multiplier vector changes less than maxerr
+        Will exit (as converged) when the 2-norm of the Langrange multiplier vector changes less than max_err
         in one iteration
     maxiter: int
-        Will exit when reaching maxiter iterations without reaching convergence.
+        Will exit when reaching max_iter iterations without reaching convergence.
     return_iterations: bool (False)
         set true in order to return (T, it), where T is the transition matrix and it is the number of iterations needed
     warn_not_converged : bool, default=True
@@ -88,7 +88,7 @@ def transition_matrix_reversible_fixpi(Z, mu, maxerr=1e-10, maxiter=10000, retur
     if warn_not_converged and (not converged) and (it >= maxiter):
         warnings.warn('NOT CONVERGED: 2-norm of Langrange multiplier vector is still ' +
                          str(err) + ' > ' + str(maxerr) + ' after ' + str(it) +
-                         ' iterations. Increase maxiter or decrease maxerr',
+                         ' iterations. Increase max_iter or decrease max_err',
                       NotConvergedWarning)
     # compute T from Langrangian multipliers
     T = np.divide(A, l[:, np.newaxis])

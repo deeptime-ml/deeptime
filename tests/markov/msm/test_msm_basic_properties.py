@@ -22,7 +22,7 @@ class TestMSMBasicProperties(object):
 
     def test_lagtime_property(self, setting):
         scenario = make_double_well(setting)
-        assert_equal(scenario.msm.lagtime, scenario.lagtime)
+        assert_equal(scenario.msm.lag_time, scenario.lag_time)
 
     def test_state_symbols(self, setting):
         scenario = make_double_well(setting)
@@ -328,8 +328,8 @@ class TestMSMBasicProperties(object):
         # should decrease
         a = list(range(msm.n_states))
         times, corr1 = msm.correlation(a, maxtime=maxtime, k=k)
-        assert_equal(len(corr1), maxtime / msm.lagtime)
-        assert_equal(len(times), maxtime / msm.lagtime)
+        assert_equal(len(corr1), maxtime / msm.lag_time)
+        assert_equal(len(times), maxtime / msm.lag_time)
         assert_(corr1[0] > corr1[-1])
         a = list(range(msm.n_states))
         times, corr2 = msm.correlation(a, a, maxtime=maxtime, k=k)
@@ -338,8 +338,8 @@ class TestMSMBasicProperties(object):
         # Test: should be increasing in time
         b = list(range(msm.n_states))[::-1]
         times, corr3 = msm.correlation(a, b, maxtime=maxtime, k=k)
-        assert_equal(len(times), maxtime / msm.lagtime)
-        assert_equal(len(corr3), maxtime / msm.lagtime)
+        assert_equal(len(times), maxtime / msm.lag_time)
+        assert_equal(len(corr3), maxtime / msm.lag_time)
         assert_(corr3[0] < corr3[-1])
 
     def test_relaxation(self, setting):

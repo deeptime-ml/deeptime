@@ -106,7 +106,7 @@ class TestDiscrete(unittest.TestCase):
             [0.1, 0.1, 0.1, 0.1, 0.6],
             [0.6, 0.1, 0.1, 0.1, 0.1],
         ]))
-        np.testing.assert_equal(m.nstates, 4)
+        np.testing.assert_equal(m.n_markov_states, 4)
         np.testing.assert_equal(m.nsymbols, 5)
         traj = m.generate_observation_trajectory(np.array([0] * 1000000))
         bc = np.bincount(traj.astype(np.int32), minlength=m.nsymbols).astype(np.float32)

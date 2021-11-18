@@ -13,7 +13,7 @@ def does_not_raise():
     yield
 
 
-@pytest.mark.parametrize("data,lagtime,expectation", [
+@pytest.mark.parametrize("data,lag_time,expectation", [
     (np.zeros((100, 5)), 5, does_not_raise()),
     (np.zeros((100, 5)), None, assert_raises(ValueError)),
     (np.zeros((100, 5)), 0, assert_raises(AssertionError)),
@@ -22,10 +22,10 @@ def does_not_raise():
     ((np.zeros((100, 5)), np.zeros((105, 5))), None, assert_raises(AssertionError)),
     (TrajectoryDataset.from_trajectories(5, [np.zeros((55, 5)), np.zeros((55, 5))]), None, does_not_raise())
 ], ids=[
-    "Trajectory with lagtime",
-    "Trajectory without lagtime",
-    "Trajectory with zero lagtime",
-    "Trajectory with too large lagtime",
+    "Trajectory with lag_time",
+    "Trajectory without lag_time",
+    "Trajectory with zero lag_time",
+    "Trajectory with too large lag_time",
     "X-Y tuple of data",
     "X-Y tuple of data, length mismatch",
     "Custom concat dataset of list of trajectories",

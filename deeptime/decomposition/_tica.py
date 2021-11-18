@@ -30,7 +30,7 @@ class TICA(VAMP):
     Parameters
     ----------
     lagtime : int or None, optional, default=None
-        The lagtime under which covariances are estimated. This is only relevant when estimating from data, in case
+        The lag_time under which covariances are estimated. This is only relevant when estimating from data, in case
         covariances are provided this should either be None or exactly the value that was used to estimate
         said covariances.
     epsilon : float, optional, default=1e-6
@@ -101,14 +101,14 @@ class TICA(VAMP):
     >>> from deeptime.decomposition import TICA
     >>> data = np.random.random((100,3))
     >>> # fixed output dimension
-    >>> estimator = TICA(dim=1, lagtime=2).fit(data)
+    >>> estimator = TICA(dim=1, lag_time=2).fit(data)
     >>> model_onedim = estimator.fetch_model()
     >>> projected_data = model_onedim.transform(data)
     >>> np.testing.assert_equal(projected_data.shape[1], 1)
 
     or invoke it with a percentage value of to-be captured kinetic variance (80% in the example)
 
-    >>> estimator = TICA(var_cutoff=0.8, lagtime=2).fit(data)
+    >>> estimator = TICA(var_cutoff=0.8, lag_time=2).fit(data)
     >>> model_var = estimator.fetch_model()
     >>> projected_data = model_var.transform(data)
 
@@ -150,7 +150,7 @@ class TICA(VAMP):
         if scaling in ('km', 'kinetic_map'):  # scale by eigenvalues
             eigenvectors *= eigenvalues[None, :]
         elif scaling == 'commute_map':  # scale by (regularized) timescales
-            lagtime = covariances.lagtime
+            lagtime = covariances.lag_time
             timescales = 1. - lagtime / np.log(np.abs(eigenvalues))
             # dampen timescales smaller than the lag time, as in section 2.5 of ref. [5]
             regularized_timescales = 0.5 * timescales * np.maximum(

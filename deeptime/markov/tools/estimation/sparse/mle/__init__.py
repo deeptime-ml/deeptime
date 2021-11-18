@@ -9,8 +9,8 @@ from .. import _mle_sparse_bindings as _bindings
 def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),
              warn_not_converged=True, return_statdist=False,
              eps_mu=1.0E-15):
-    assert maxerr > 0, 'maxerr must be positive'
-    assert maxiter > 0, 'maxiter must be positive'
+    assert maxerr > 0, 'max_err must be positive'
+    assert maxiter > 0, 'max_iter must be positive'
     assert C.shape[0] == C.shape[1], 'C must be a square matrix.'
     from deeptime.markov.tools.estimation import is_connected
     assert is_connected(C, directed=True), 'C must be strongly connected'
@@ -50,8 +50,8 @@ def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),
 
 
 def mle_trev_given_pi(C, mu, maxerr=1.0E-12, maxiter=1000000, warn_not_converged=True):
-    assert maxerr > 0, 'maxerr must be positive'
-    assert maxiter > 0, 'maxiter must be positive'
+    assert maxerr > 0, 'max_err must be positive'
+    assert maxiter > 0, 'max_iter must be positive'
     from deeptime.markov.tools.estimation import is_connected
     assert is_connected(C, directed=False), 'C must be (weakly) connected'
     dtype = C.dtype
