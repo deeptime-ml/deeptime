@@ -44,7 +44,7 @@ for i, traj in enumerate(trajs):
     for j, bias_function in enumerate(bias_functions):
         bias_matrix[i, :, j] = bias_function(traj)
 
-tram = TRAM(lag_time=1, connectivity="summed_count_matrix", max_iter=100)
+tram = TRAM(lagtime=1, connectivity="summed_count_matrix", max_iter=100)
 
 from deeptime.clustering import KMeans
 

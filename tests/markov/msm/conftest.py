@@ -52,7 +52,7 @@ def double_well_all(request):
     raise ValueError("unknown request param {}".format(request.param[0]))
 
 DoubleWellScenario = collections.namedtuple("DoubleWellScenario", [
-    "dtraj", "lag_time", "stationary_distribution", "n_states", "selected_count_fraction"
+    "dtraj", "lagtime", "stationary_distribution", "n_states", "selected_count_fraction"
 ])
 
 

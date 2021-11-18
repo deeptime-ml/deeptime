@@ -157,8 +157,8 @@ class TestMLHMM(unittest.TestCase):
         np.testing.assert_(self.hmm_lag10.transition_model.stationary)
 
     def test_lag(self):
-        assert self.hmm_lag1.transition_model.lag_time == 1
-        assert self.hmm_lag10.transition_model.lag_time == 10
+        assert self.hmm_lag1.transition_model.lagtime == 1
+        assert self.hmm_lag10.transition_model.lagtime == 10
 
     def test_n_states(self):
         np.testing.assert_equal(self.hmm_lag1.n_hidden_states, 2)
@@ -337,8 +337,8 @@ class TestMLHMM(unittest.TestCase):
         # should decrease
         a = np.arange(hmsm.n_observation_states)
         times, corr1 = hmsm.correlation_obs(a, maxtime=maxtime)
-        np.testing.assert_equal(len(corr1), maxtime / hmsm.transition_model.lag_time)
-        np.testing.assert_equal(len(times), maxtime / hmsm.transition_model.lag_time)
+        np.testing.assert_equal(len(corr1), maxtime / hmsm.transition_model.lagtime)
+        np.testing.assert_equal(len(times), maxtime / hmsm.transition_model.lagtime)
         np.testing.assert_(corr1[0] > corr1[-1])
         a = np.arange(hmsm.n_observation_states)
         times, corr2 = hmsm.correlation_obs(a, a, maxtime=maxtime)
@@ -347,8 +347,8 @@ class TestMLHMM(unittest.TestCase):
         # Test: should be increasing in time
         b = np.arange(hmsm.n_observation_states)[::-1]
         times, corr3 = hmsm.correlation_obs(a, b, maxtime=maxtime)
-        np.testing.assert_equal(len(times), maxtime / hmsm.transition_model.lag_time)
-        np.testing.assert_equal(len(corr3), maxtime / hmsm.transition_model.lag_time)
+        np.testing.assert_equal(len(times), maxtime / hmsm.transition_model.lagtime)
+        np.testing.assert_equal(len(corr3), maxtime / hmsm.transition_model.lagtime)
         np.testing.assert_(corr3[0] < corr3[-1])
 
         # test error case of incompatible vector size
@@ -367,8 +367,8 @@ class TestMLHMM(unittest.TestCase):
         pi_perturbed = [1, 0]
         times, rel2 = hmsm.transition_model.relaxation(pi_perturbed, a, maxtime=maxtime)
         # should relax
-        assert len(times) == maxtime / hmsm.transition_model.lag_time
-        assert len(rel2) == maxtime / hmsm.transition_model.lag_time
+        assert len(times) == maxtime / hmsm.transition_model.lagtime
+        assert len(rel2) == maxtime / hmsm.transition_model.lagtime
         assert rel2[0] < rel2[-1]
 
         # test error case of incompatible vector size

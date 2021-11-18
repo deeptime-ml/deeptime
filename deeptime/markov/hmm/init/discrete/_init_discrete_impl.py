@@ -289,7 +289,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
     n_hidden_states : int
         Number of hidden states.
     lagtime : int
-        The lag_time at which transitions are counted.
+        The lagtime at which transitions are counted.
     stride : int or str, optional, default=1
         stride between two lagged trajectories extracted from the input trajectories. Given trajectory :code:`s[t]`,
         stride and lag will result in trajectories

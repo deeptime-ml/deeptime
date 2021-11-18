@@ -84,14 +84,14 @@ class KernelCCA(Estimator):
         data
             Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
         **kwargs
-            Kwargs, may contain lag_time.
+            Kwargs, may contain lagtime.
 
         Returns
         -------
         self : KernelCCA
             Reference to self.
         """
-        dataset = to_dataset(data, lagtime=kwargs.get("lag_time", None))
+        dataset = to_dataset(data, lagtime=kwargs.get("lagtime", None))
         x, y = dataset[:]
         gram_0 = self.kernel.gram(x)
         gram_t = self.kernel.gram(y)

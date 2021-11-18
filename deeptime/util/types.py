@@ -192,9 +192,9 @@ def to_dataset(data: Union[TimeLaggedDataset, Tuple[np.ndarray, np.ndarray], np.
     * input data is already a time-lagged dataset, then return immediately (see :meth:`is_timelagged_dataset`).
     * input data is a tuple of (X, Y), where X and Y are ndarrays - in this case they are interpreted as time-lagged
       versions of another, i.e., :math:`Y_i = \mathcal{g}(X_i)`, where :math:`g(\cdot )` describes the temporal
-      evolution. In this case lag_time is ignored.
+      evolution. In this case lagtime is ignored.
     * input data is a list of trajectories, in this case a concatenated :class:`TrajectoriesDataset` is created
-    * input is a ndarray, in this case `Y[i] = X[i+lag_time]` and the result is a dataset of length `len(data) - lag_time`
+    * input is a ndarray, in this case `Y[i] = X[i+lagtime]` and the result is a dataset of length `len(data) - lagtime`
 
     Parameters
     ----------
@@ -211,14 +211,14 @@ def to_dataset(data: Union[TimeLaggedDataset, Tuple[np.ndarray, np.ndarray], np.
     Raises
     ------
     ValueError
-        If data is single array but no lag_time is provided or input is list or tuple of length not equal to 2
+        If data is single array but no lagtime is provided or input is list or tuple of length not equal to 2
 
     Examples
     --------
-    Create dataset via trajectory + lag_time
+    Create dataset via trajectory + lagtime
 
     >>> data = np.arange(0, 6)
-    >>> dataset = to_dataset(data, lag_time=1)
+    >>> dataset = to_dataset(data, lagtime=1)
     >>> print(dataset[:])
     (array([0, 1, 2, 3, 4]), array([1, 2, 3, 4, 5]))
 
@@ -249,7 +249,7 @@ def to_dataset(data: Union[TimeLaggedDataset, Tuple[np.ndarray, np.ndarray], np.
         return TimeLaggedDataset(*data)
     if isinstance(data, np.ndarray):
         if lagtime is None:
-            raise ValueError("In case data is a single trajectory the lag_time must be given.")
+            raise ValueError("In case data is a single trajectory the lagtime must be given.")
         return TrajectoryDataset(lagtime, data)
     if isinstance(data, list) and len(data) > 0 and isinstance(data[0], np.ndarray):
         data = ensure_timeseries_data(data)

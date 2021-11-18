@@ -13,7 +13,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         for mode in valid_count_modes:
             estimator = TransitionCountEstimator(lagtime=5, count_mode=mode)
             self.assertEqual(estimator.count_mode, mode)
-            np.testing.assert_equal(estimator.lag_time, 5)
+            np.testing.assert_equal(estimator.lagtime, 5)
 
     def test_sample_counting(self):
         dtraj = np.array([0, 0, 0, 0, 1, 1, 0, 1])
@@ -22,7 +22,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         # sample strides the trajectory with "lag" and then counts instantaneous transitions
         # get counts 0 -> 0, 0 -> 1, 1 -> 0
         np.testing.assert_array_equal(model.count_matrix, np.array([[1., 1.], [1., 0.]]))
-        np.testing.assert_equal(model.lag_time, 2)
+        np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sample", "expected sample counting mode, got {}".format(model.counting_mode)
 
         np.testing.assert_equal(model.state_symbols, [0, 1], err_msg="Trajectory only contained states 0 and 1")
@@ -41,7 +41,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         # sliding window across trajectory counting transitions, overestimating total count:
         # 0 -> 0, 0 -> 0, 0 -> 1, 0-> 1, 1-> 0, 1-> 1
         np.testing.assert_array_equal(model.count_matrix, np.array([[2., 2.], [1., 1.]]))
-        np.testing.assert_equal(model.lag_time, 2)
+        np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sliding", "expected sliding counting mode, got {}".format(model.counting_mode)
         np.testing.assert_equal(model.state_symbols, [0, 1], err_msg="Trajectory only contained states 0 and 1")
         np.testing.assert_equal(model.n_states, 2)
@@ -58,9 +58,9 @@ class TestTransitionCountEstimator(unittest.TestCase):
         model = estimator.fit(dtraj).fetch_model()
         # sliding window across trajectory counting transitions, overestimating total count:
         # 0 -> 0, 0 -> 0, 0 -> 1, 0-> 1, 1-> 0, 1-> 1
-        # then divide by lag_time
+        # then divide by lagtime
         np.testing.assert_array_equal(model.count_matrix, np.array([[2., 2.], [1., 1.]]) / 2.)
-        np.testing.assert_equal(model.lag_time, 2)
+        np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "sliding-effective", \
             "expected sliding-effective counting mode, got {}".format(model.counting_mode)
         np.testing.assert_equal(model.state_symbols, [0, 1], err_msg="Trajectory only contained states 0 and 1")
@@ -78,7 +78,7 @@ class TestTransitionCountEstimator(unittest.TestCase):
         model = estimator.fit(dtraj).fetch_model()
         # effective counting
         np.testing.assert_array_equal(model.count_matrix, np.array([[1.6, 1.6], [1., 1.]]))
-        np.testing.assert_equal(model.lag_time, 2)
+        np.testing.assert_equal(model.lagtime, 2)
         assert model.counting_mode == "effective", "expected effective counting mode, " \
                                                    "got {}".format(model.counting_mode)
         np.testing.assert_equal(model.state_symbols, [0, 1], err_msg="Trajectory only contained states 0 and 1")
@@ -100,7 +100,7 @@ class TestTransitionCountModel(unittest.TestCase, metaclass=GenerateTestMatrix):
     def _check_submodel_transitive_properties(histogram, count_matrix, model: TransitionCountModel):
         """ checks properties of the model which do not / should not change when taking a submodel """
         np.testing.assert_equal(model.state_histogram_full, histogram)
-        np.testing.assert_equal(model.lag_time, 1)
+        np.testing.assert_equal(model.lagtime, 1)
         np.testing.assert_equal(model.n_states_full, 4)
         np.testing.assert_equal(model.count_matrix_full, count_matrix)
         np.testing.assert_equal(model.counting_mode, "effective")

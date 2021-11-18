@@ -232,7 +232,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
     data.
     Currently only one way of splitting is implemented, where for each n,
     the data is randomly divided into two approximately equally large sets of
-    discrete trajectory fragments with lengths of at least the lag_time.
+    discrete trajectory fragments with lengths of at least the lagtime.
 
     Currently only implemented using dense matrices - will be slow for large state spaces.
 
@@ -274,7 +274,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
     from deeptime.util.types import ensure_timeseries_data
 
     if blocksplit and lagtime is None:
-        raise ValueError("In case blocksplit is used, please provide a lag_time.")
+        raise ValueError("In case blocksplit is used, please provide a lagtime.")
 
     n_jobs = handle_n_jobs(n_jobs)
     if isinstance(fit_fetch, Estimator):

@@ -133,12 +133,12 @@ class HiddenMarkovModel(Model):
 
     @property
     def lagtime(self) -> int:
-        r""" The lag_time this model was estimated at.
+        r""" The lagtime this model was estimated at.
 
         Returns
         -------
-        lag_time : int
-            The lag_time.
+        lagtime : int
+            The lagtime.
         """
         return self.transition_model.lagtime
 

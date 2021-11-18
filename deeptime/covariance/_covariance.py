@@ -67,7 +67,7 @@ class CovarianceModel(Model):
     bessels_correction : bool, optional, default=True
         Whether Bessel's correction was used during estimation.
     lagtime : int, default=None
-        The lag_time that was used during estimation.
+        The lagtime that was used during estimation.
     data_mean_removed : bool, default=False
         Whether the data mean was removed. This can have an influence on the effective VAMP score.
     """
@@ -137,7 +137,7 @@ class CovarianceModel(Model):
 
     @property
     def lagtime(self) -> Optional[int]:
-        r""" The lag_time at which estimation was performed.
+        r""" The lagtime at which estimation was performed.
 
         :type: int or None
         """
@@ -197,15 +197,15 @@ class Covariance(Estimator):
     Parameters
     ----------
     lagtime : int, default=0
-        The lag_time, must be :math:`\geq 0` .
+        The lagtime, must be :math:`\geq 0` .
     compute_c00 : bool, optional, default=True
-        Compute instantaneous correlations over the first part of the data. If :attr:`lag_time` ==0,
+        Compute instantaneous correlations over the first part of the data. If :attr:`lagtime` ==0,
         use all of the data.
     compute_c0t : bool, optional, default=False
-        Compute lagged correlations. Does not work with :attr:`lag_time` ==0.
+        Compute lagged correlations. Does not work with :attr:`lagtime` ==0.
     compute_ctt : bool, optional, default=False
         Compute instantaneous covariance over the time-shifted chunks of the data.
-        Does not work with :attr:`lag_time` ==0.
+        Does not work with :attr:`lagtime` ==0.
     remove_data_mean : bool, optional, default=False
         Subtract the sample mean from the time series (mean-free correlations).
     reversible : bool, optional, default=False
@@ -353,7 +353,7 @@ class Covariance(Estimator):
 
     @property
     def compute_c0t(self) -> bool:
-        r"""Whether to compute time lagged correlations with a defined :attr:`lag_time`.
+        r"""Whether to compute time lagged correlations with a defined :attr:`lagtime`.
 
         :type: bool
         """
@@ -378,11 +378,11 @@ class Covariance(Estimator):
     @property
     def lagtime(self) -> int:
         r"""
-        The lag_time of the estimator. This attribute determines how big the temporal difference for timelagged
+        The lagtime of the estimator. This attribute determines how big the temporal difference for timelagged
         autocorrelations are.
 
-        :getter: Yields the currently selected lag_time.
-        :setter: Sets a new lag_time, must be :math:`\geq 0`, for :attr:`compute_c0t` and :attr:`compute_ctt` it
+        :getter: Yields the currently selected lagtime.
+        :setter: Sets a new lagtime, must be :math:`\geq 0`, for :attr:`compute_c0t` and :attr:`compute_ctt` it
                  must be :math:`> 0`.
         :type: int
         """
@@ -391,7 +391,7 @@ class Covariance(Estimator):
     @lagtime.setter
     def lagtime(self, value: Optional[int]):
         if value is not None and value < 0:
-            raise ValueError("Negative lag_time are not supported.")
+            raise ValueError("Negative lagtime are not supported.")
         self._lagtime = value
 
     @property
@@ -412,7 +412,7 @@ class Covariance(Estimator):
             The input data. If it is a list of trajectories, all elements of the list must have the same dtype and
             size in the second dimension, i.e., the elements of :code:`[x.shape[1] for x in data]` must all be equal.
         lagtime : int, optional, default=None
-            Override for :attr:`lag_time`.
+            Override for :attr:`lagtime`.
         weights : array_like or list of array_like or object, optional, default=None
 
             * Optional weights for the input data. Must be of matching shape.
@@ -651,7 +651,7 @@ class KoopmanWeightingEstimator(EstimatorTransformer):
         data : (T, d) ndarray
             The input data.
         lagtime : int, optional, default=None
-            Optional override for estimator's :attr:`lag_time`.
+            Optional override for estimator's :attr:`lagtime`.
         **kw
             Ignored keyword args for scikit-learn compatibility.
 
@@ -754,10 +754,10 @@ class KoopmanWeightingEstimator(EstimatorTransformer):
 
     @property
     def lagtime(self) -> int:
-        r""" The lag_time at which the Koopman operator is estimated.
+        r""" The lagtime at which the Koopman operator is estimated.
 
-        :getter: Yields the currently configured lag_time.
-        :setter: Sets a new lag_time, must be >= 0.
+        :getter: Yields the currently configured lagtime.
+        :setter: Sets a new lagtime, must be >= 0.
         :type: int
         """
         return self._cov.lagtime

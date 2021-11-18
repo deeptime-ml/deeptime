@@ -208,14 +208,14 @@ class FF:
 @pytest.mark.parametrize("n_jobs", [1, 2])
 def test_score_cv(double_well_msm_all, n_jobs):
     scenario, est, msm = double_well_msm_all
-    est.lag_time = 10
+    est.lagtime = 10
 
     fit_fetch = FF(est)
 
     with assert_raises(ValueError):
         vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=1, dim=2, n_jobs=1, splitting_mode="noop")
     with assert_raises(ValueError):
-        vamp_score_cv(fit_fetch, trajs=scenario.dtraj)  # uses blocksplit but no lag_time
+        vamp_score_cv(fit_fetch, trajs=scenario.dtraj)  # uses blocksplit but no lagtime
     s1 = vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=1, dim=2, n_jobs=n_jobs).mean()
     assert 1.0 <= s1 <= 2.0
     s2 = vamp_score_cv(fit_fetch, trajs=scenario.dtraj, lagtime=10, n=5, r=2, dim=2, n_jobs=n_jobs).mean()
@@ -337,7 +337,7 @@ def test_msm_submodel_statdist(disconnected_states, lag, reversible, count_mode)
                                                      "cmat {}".format(cset, submodel.count_matrix))
 
 
-@pytest.mark.parametrize("lag_time", [1, 2])
+@pytest.mark.parametrize("lagtime", [1, 2])
 @pytest.mark.parametrize("reversible", [True, False])
 @pytest.mark.parametrize("count_mode", ["sliding", "sample"])
 def test_msm_invalid_statdist_constraint(disconnected_states, lagtime, reversible, count_mode):
@@ -419,7 +419,7 @@ def test_invalid_arguments():
         # fit with bogus object
         MaximumLikelihoodMSM().fit(object())
     with assert_raises(ValueError):
-        # fit from timeseries without lag_time
+        # fit from timeseries without lagtime
         MaximumLikelihoodMSM().fit(np.array([0, 1, 2, 3, 4, 5, 6]))
     with assert_raises(ValueError):
         # empty collection is not allowed

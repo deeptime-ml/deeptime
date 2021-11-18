@@ -56,7 +56,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     connectivity_threshold : float, optional, default=0.
         Number of counts required to consider two states connected.
     lagtime : int, optional, default=None
-        Optional lag_time that can be provided at estimator level if fitting from timeseries directly.
+        Optional lagtime that can be provided at estimator level if fitting from timeseries directly.
 
     References
     ----------
@@ -277,13 +277,13 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             a 2-dimensional ndarray which is interpreted as count matrix or a discrete timeseries (or a list thereof)
             directly.
 
-            In the case of a timeseries, a lag_time must be provided in the keyword arguments. In this case, also the
+            In the case of a timeseries, a lagtime must be provided in the keyword arguments. In this case, also the
             keyword argument "count_mode" can be used, which defaults to "sliding".
             See also :meth:`fit_from_discrete_timeseries`.
         *args
             Dummy parameters for scikit-learn compatibility.
         **kw
-            Parameters for scikit-learn compatibility and optionally lag_time if fitting with time series data.
+            Parameters for scikit-learn compatibility and optionally lagtime if fitting with time series data.
 
         Returns
         -------
@@ -311,7 +311,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
         Given the trajectory, we fit a collection of MSMs:
 
-        >>> model = MaximumLikelihoodMSM(reversible=True).fit(traj, lag_time=1).fetch_model()
+        >>> model = MaximumLikelihoodMSM(reversible=True).fit(traj, lagtime=1).fetch_model()
 
         The model behaves like a MSM on the largest connected set, but the behavior can be changed by selecting,
         e.g., the second largest connected set:
@@ -330,7 +330,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         Alternatively, one can fit with a previously estimated count model (that can be restricted to a subset
         of states):
 
-        >>> counts = TransitionCountEstimator(lag_time=1, count_mode="sliding").fit(traj).fetch_model()
+        >>> counts = TransitionCountEstimator(lagtime=1, count_mode="sliding").fit(traj).fetch_model()
         >>> counts = counts.submodel([0, 1])  # select submodel with state symbols [0, 1]
         >>> msm = MaximumLikelihoodMSM(reversible=True).fit(counts).fetch_model()
         >>> msm.state_symbols()
@@ -346,9 +346,9 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         elif isinstance(data, np.ndarray) and data.ndim == 2 and data.shape[0] == data.shape[1]:
             return self.fit_from_counts(data)
         else:
-            if 'lag_time' not in kw.keys() and self.lagtime is None:
-                raise ValueError("To fit directly from a discrete timeseries, a lag_time must be provided!")
-            return self.fit_from_discrete_timeseries(data, kw.pop('lag_time', self.lagtime),
+            if 'lagtime' not in kw.keys() and self.lagtime is None:
+                raise ValueError("To fit directly from a discrete timeseries, a lagtime must be provided!")
+            return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime),
                                                      kw.pop("count_mode", "sliding"))
 
     def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags,

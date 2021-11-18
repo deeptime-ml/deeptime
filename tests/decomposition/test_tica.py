@@ -175,7 +175,7 @@ class TestTICAExtensive(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         test_data = generate_hmm_test_data()
-        cls.lagtime = test_data['lag_time']
+        cls.lagtime = test_data['lagtime']
         cls.cov_ref_00 = test_data['cov_ref_00']
         cls.cov_ref_00_nr = test_data['cov_ref_00_nr']
         cls.cov_ref_0t = test_data['cov_ref_0t']

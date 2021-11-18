@@ -612,7 +612,7 @@ class CovarianceKoopmanModel(TransferOperatorModel):
 
             t_i = -\frac{\tau}{\log(|\lambda_i|)}
 
-        where :math:`\tau` is the :attr:`lag_time` of the TICA object and :math:`\lambda_i` is the `i`-th
+        where :math:`\tau` is the :attr:`lagtime` of the TICA object and :math:`\lambda_i` is the `i`-th
         :attr:`eigenvalue <eigenvalues>` of the TICA object.
 
         Parameters
@@ -620,8 +620,8 @@ class CovarianceKoopmanModel(TransferOperatorModel):
         k : int, optional, default=None
             Number of timescales to be returned. By default with respect to all available singular values.
         lagtime : int, optional, default=None
-            The lag_time with respect to which to compute the timescale. If :code:`None`, this defaults to the
-            lag_time under which the covariances were estimated.
+            The lagtime with respect to which to compute the timescale. If :code:`None`, this defaults to the
+            lagtime under which the covariances were estimated.
 
         Returns
         -------

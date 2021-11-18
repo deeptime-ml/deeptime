@@ -64,7 +64,7 @@ class BayesianMSM(_MSMBaseEstimator):
     >>> import numpy as np
     >>> import deeptime
     >>> dtrajs = [np.array([0,1,2,2,2,2,1,2,2,2,1,0,0,0,0,0,0,0]), np.array([0,0,0,0,1,1,2,2,2,2,2,2,2,1,0,0])]
-    >>> counts = deeptime.markov.TransitionCountEstimator(lag_time=2, count_mode="effective").fit(dtrajs).fetch_model()
+    >>> counts = deeptime.markov.TransitionCountEstimator(lagtime=2, count_mode="effective").fit(dtrajs).fetch_model()
     >>> mm = deeptime.markov.msm.BayesianMSM().fit(counts).fetch_model()
 
     The resulting Model contains a prior :class:`MSM <deeptime.markov.msm.MarkovStateModel>` as well as a list of sample
@@ -244,7 +244,7 @@ class BayesianMSM(_MSMBaseEstimator):
         >>> import deeptime as dt
         >>> dtrajs = [np.array([0,1,2,2,2,2,1,2,2,2,1,0,0,0,0,0,0,0]),
         ...           np.array([0,0,0,0,1,1,2,2,2,2,2,2,2,1,0,0])]
-        >>> prior = dt.markov.msm.MaximumLikelihoodMSM().fit(dtrajs, lag_time=1)
+        >>> prior = dt.markov.msm.MaximumLikelihoodMSM().fit(dtrajs, lagtime=1)
         >>> estimator = dt.markov.msm.BayesianMSM()
         >>> posterior = estimator.fit(prior).fetch_model()
         >>> n_samples = len(posterior.samples)

@@ -51,13 +51,13 @@ class TransitionCountModel(Model):
     Parameters
     ----------
     count_matrix : (N, N) ndarray or sparse matrix
-        The count matrix. In case it was estimated with 'sliding', it contains a factor of `lag_time` more counts
+        The count matrix. In case it was estimated with 'sliding', it contains a factor of `lagtime` more counts
         than are statistically uncorrelated.
     counting_mode : str, optional, default=None
         If not None, one of 'sliding', 'sample', or 'effective'.
         Indicates the counting method that was used to estimate the count matrix. In case of 'sliding', a sliding
-        window of the size of the lag_time was used to count transitions. It therefore contains a factor
-        of `lag_time` more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
+        window of the size of the lagtime was used to count transitions. It therefore contains a factor
+        of `lagtime` more counts than are statistically uncorrelated. It's fine to use this matrix for maximum
         likelihood estimation, but it will give far too small errors if you use it for uncertainty calculations.
         In order to do uncertainty calculations, use the effective count matrix, see
         :attr:`effective_count_matrix`, divide this count matrix by tau, or use 'effective' as estimation parameter.
@@ -247,8 +247,8 @@ class TransitionCountModel(Model):
                        sort_by_population: bool = False) -> List[np.ndarray]:
         r""" Computes the connected sets of the counting matrix. A threshold can be set fixing a number of counts
         required to consider two states connected. In case of sliding window the number of counts is increased by a
-        factor of `lag_time`. In case of 'sliding-effective' counting, the number of sliding window counts were
-        divided by the lag_time and can therefore also be in the open interval (0, 1). Same for 'effective' counting.
+        factor of `lagtime`. In case of 'sliding-effective' counting, the number of sliding window counts were
+        divided by the lagtime and can therefore also be in the open interval (0, 1). Same for 'effective' counting.
 
         Parameters
         ----------
@@ -427,10 +427,10 @@ class TransitionCountEstimator(EstimatorTransformer):
 
           .. math:: (0 \rightarrow \tau), (1 \rightarrow \tau+1), ..., (T-\tau-1 \rightarrow T-1)
 
-          This introduces an overestimation of the actual count values by a factor of "lag_time". For
+          This introduces an overestimation of the actual count values by a factor of "lagtime". For
           maximum-likelihood MSMs this plays no role but it leads to wrong error bars in uncertainty estimation.
 
-        * sliding-effective: See sliding mode, just that the resulting count matrix is divided by the lag_time after
+        * sliding-effective: See sliding mode, just that the resulting count matrix is divided by the lagtime after
           counting. This which can be shown to provide a likelihood that is the geometrical average
           over shifted subsamples of the trajectory, :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc.
           This geometrical average converges to the correct likelihood in the statistical limit
@@ -448,7 +448,7 @@ class TransitionCountEstimator(EstimatorTransformer):
     count_mode : str
         One of "sample", "sliding", "sliding-effective", and "effective".
 
-        * "sample" strides the trajectory with lag_time :math:`\tau` and uses the strided counts as transitions.
+        * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
         * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
           large by a factor of :math:`\tau`; in uncertainty estimation this yields wrong uncertainties.
         * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
@@ -525,7 +525,7 @@ class TransitionCountEstimator(EstimatorTransformer):
 
     @property
     def lagtime(self) -> int:
-        r""" The lag_time at which transitions are counted. """
+        r""" The lagtime at which transitions are counted. """
         return self._lagtime
 
     @lagtime.setter
@@ -579,7 +579,7 @@ class TransitionCountEstimator(EstimatorTransformer):
 
     @staticmethod
     def count(count_mode: str, dtrajs: List[np.ndarray], lagtime: int, sparse: bool = False, n_jobs=None):
-        r""" Computes a count matrix based on a counting mode, some discrete trajectories, a lag_time, and
+        r""" Computes a count matrix based on a counting mode, some discrete trajectories, a lagtime, and
         whether to use sparse matrices.
 
         Parameters
@@ -610,7 +610,7 @@ class TransitionCountEstimator(EstimatorTransformer):
         -------
         >>> dtrajs = [np.array([0,0,1,1]), np.array([0,0,1])]
         >>> count_matrix = TransitionCountEstimator.count(
-        ...     count_mode="sliding", dtrajs=dtrajs, lag_time=1, sparse=False
+        ...     count_mode="sliding", dtrajs=dtrajs, lagtime=1, sparse=False
         ... )
         >>> np.testing.assert_equal(count_matrix, np.array([[2, 2], [0, 1]]))
         """

@@ -20,14 +20,14 @@ class TRAM(_MSMBaseEstimator):
     """
 
     def __init__(
-            self, lag_time=None, count_mode='sliding',
+            self, lagtime=None, count_mode='sliding',
             connectivity='post_hoc_RE',
             max_iter=10000, max_err: float = 1.0E-15, save_convergence_info=0,
             nn=None, connectivity_factor: float = 1.0):
         r"""Transition(-based) Reweighting Analysis Method
         Parameters
         ----------
-        lag_time : int
+        lagtime : int
             Integer lag time at which transitions are counted.
         count_mode : str, optional, default='sliding'
             mode to obtain count matrices from discrete trajectories. Should be
@@ -109,7 +109,7 @@ class TRAM(_MSMBaseEstimator):
         """
         super(TRAM, self).__init__()
 
-        self.lag_time = lag_time
+        self.lagtime = lagtime
         assert count_mode == 'sliding', 'Currently the only implemented count_mode is \'sliding\''
         self.count_mode = count_mode
         self.connectivity = connectivity
@@ -397,7 +397,7 @@ class TRAM(_MSMBaseEstimator):
             [count_states(markov_state_sequences[i]) for i in range(self.n_therm_states)])
 
         # find count matrixes C^k_ij with shape (K,B,B)
-        estimator = TransitionCountEstimator(lagtime=self.lag_time, count_mode=self.count_mode)
+        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
         transition_counts_models = [estimator.fit(markov_state_sequences[i]).fetch_model() for i in
                                     range(self.n_therm_states)]
 

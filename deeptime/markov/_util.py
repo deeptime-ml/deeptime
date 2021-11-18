@@ -61,8 +61,8 @@ def count_states(dtrajs, ignore_negative: bool = False):
 def compute_effective_stride(dtrajs, lagtime, n_states) -> int:
     r"""
     Computes the effective stride which is an estimate of the striding required to produce uncorrelated samples.
-    By default this is the lag_time (lag sampling). A nonreversible MSM is estimated, if its number of states is larger
-    than the number of states provided to this method, stride is set to the minimum of lag_time and two times the
+    By default this is the lagtime (lag sampling). A nonreversible MSM is estimated, if its number of states is larger
+    than the number of states provided to this method, stride is set to the minimum of lagtime and two times the
     correlation time of the next neglected timescale.
 
     Parameters
@@ -145,7 +145,7 @@ def compute_dtrajs_effective(dtrajs, lagtime: int, n_states: int, stride: Union[
     dtrajs : array_like or list of array_like
         discrete trajectories
     lagtime : int
-        lag_time
+        lagtime
     n_states : int
         number of resolved states
     stride : int or str

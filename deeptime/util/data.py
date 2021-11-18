@@ -39,7 +39,7 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
     Using chunksize:
 
     >>> data = np.array([0, 1, 2, 3, 4, 5, 6])
-    >>> for X, Y in timeshifted_split(data, lag_time=1, chunksize=4):
+    >>> for X, Y in timeshifted_split(data, lagtime=1, chunksize=4):
     ...     print(X, Y)
     [0 1 2 3] [1 2 3 4]
     [4 5] [5 6]
@@ -47,13 +47,13 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
     Using n_splits:
 
     >>> data = np.array([0, 1, 2, 3, 4, 5, 6])
-    >>> for X, Y in timeshifted_split(data, lag_time=1, n_splits=2):
+    >>> for X, Y in timeshifted_split(data, lagtime=1, n_splits=2):
     ...     print(X, Y)
     [0 1 2] [1 2 3]
     [3 4 5] [4 5 6]
     """
     if lagtime < 0:
-        raise ValueError('lag_time has to be non-negative')
+        raise ValueError('lagtime has to be non-negative')
     if int(chunksize) < 0:
         raise ValueError('chunksize has to be positive')
 
@@ -65,7 +65,7 @@ def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int =
 
     if not all(len(data) > lagtime for data in inputs):
         too_short_inputs = [i for i, x in enumerate(inputs) if len(x) <= lagtime]
-        raise ValueError(f'Input contained to short (smaller than lag_time({lagtime}) at following '
+        raise ValueError(f'Input contained to short (smaller than lagtime({lagtime}) at following '
                          f'indices: {too_short_inputs}')
 
     for data in inputs:
@@ -268,24 +268,24 @@ class TimeLaggedConcatDataset(ConcatDataset):
 
 
 class TrajectoryDataset(TimeLaggedDataset):
-    r"""Creates a trajectory dataset from a single trajectory by applying a lag_time.
+    r"""Creates a trajectory dataset from a single trajectory by applying a lagtime.
 
     Parameters
     ----------
     lagtime : int
-        Lagtime, must be positive. The effective size of the dataset reduces by the selected lag_time.
+        Lagtime, must be positive. The effective size of the dataset reduces by the selected lagtime.
     trajectory : (T, d) ndarray
         Trajectory with T frames in d dimensions.
 
     Raises
     ------
     AssertionError
-        If lag_time is not positive or trajectory is too short for lag_time.
+        If lagtime is not positive or trajectory is too short for lagtime.
     """
 
     def __init__(self, lagtime, trajectory):
         assert lagtime > 0, "Lagtime must be positive"
-        assert len(trajectory) > lagtime, "Not enough data to satisfy lag_time"
+        assert len(trajectory) > lagtime, "Not enough data to satisfy lagtime"
         super().__init__(trajectory[:-lagtime], trajectory[lagtime:])
         self._trajectory = trajectory
         self._lagtime = lagtime
@@ -300,12 +300,12 @@ class TrajectoryDataset(TimeLaggedDataset):
 
     @staticmethod
     def from_trajectories(lagtime, data: List[np.ndarray]):
-        r""" Creates a time series dataset from multiples trajectories by applying a lag_time.
+        r""" Creates a time series dataset from multiples trajectories by applying a lagtime.
 
         Parameters
         ----------
         lagtime : int
-            Lagtime, must be positive. The effective size of the dataset reduces by the selected lag_time.
+            Lagtime, must be positive. The effective size of the dataset reduces by the selected lagtime.
         data : list of ndarray
             List of trajectories.
 
@@ -317,8 +317,8 @@ class TrajectoryDataset(TimeLaggedDataset):
         Raises
         ------
         AssertionError
-            If data is empty, lag_time is not positive,
-            the shapes do not match, or lag_time is too long for any of the trajectories.
+            If data is empty, lagtime is not positive,
+            the shapes do not match, or lagtime is too long for any of the trajectories.
         """
         return TrajectoriesDataset.from_numpy(lagtime, data)
 
@@ -344,12 +344,12 @@ class TrajectoriesDataset(TimeLaggedConcatDataset):
 
     @staticmethod
     def from_numpy(lagtime, data: List[np.ndarray]):
-        r""" Creates a time series dataset from multiples trajectories by applying a lag_time.
+        r""" Creates a time series dataset from multiples trajectories by applying a lagtime.
 
         Parameters
         ----------
         lagtime : int
-            Lagtime, must be positive. The effective size of the dataset reduces by the selected lag_time.
+            Lagtime, must be positive. The effective size of the dataset reduces by the selected lagtime.
         data : list of ndarray
             List of trajectories.
 
@@ -361,15 +361,15 @@ class TrajectoriesDataset(TimeLaggedConcatDataset):
         Raises
         ------
         AssertionError
-            If data is empty, lag_time is not positive,
-            the shapes do not match, or lag_time is too long for any of the trajectories.
+            If data is empty, lagtime is not positive,
+            the shapes do not match, or lagtime is too long for any of the trajectories.
         """
         assert len(data) > 0 and all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"
         return TrajectoriesDataset([TrajectoryDataset(lagtime, traj) for traj in data])
 
     @property
     def lagtime(self):
-        r""" The lag_time.
+        r""" The lagtime.
 
         :type: int
         """

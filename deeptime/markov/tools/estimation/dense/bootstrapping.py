@@ -72,12 +72,12 @@ def bootstrap_trajectories(trajs, correlation_length):
 
 def bootstrap_counts_singletraj(dtraj, lagtime, n):
     """
-    Samples n counts at the given lag_time from the given trajectory
+    Samples n counts at the given lagtime from the given trajectory
     """
     # check if length is sufficient
     L = len(dtraj)
     if lagtime > L:
-        raise ValueError(f'Cannot sample counts with lag_time {lagtime} from a trajectory with length {L}.')
+        raise ValueError(f'Cannot sample counts with lagtime {lagtime} from a trajectory with length {L}.')
     # sample
     I = np.random.randint(0, L - lagtime - 1, size=n)
     J = I + lagtime
