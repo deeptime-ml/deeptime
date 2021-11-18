@@ -7,12 +7,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include "common.h"
-#include "logsumexp.h"
-//
-//template<typename dtype>
-//int tram_test(dtype testVar) {
-//    return testVar + 1;
-//}
+#include "../../tools/kahandot/include/kahan_summation.h"
+
 
 double THERMOTOOLS_TRAM_PRIOR = 0.0;
 double THERMOTOOLS_TRAM_LOG_PRIOR = 1.0;
@@ -91,12 +87,12 @@ void update_lagrangian_mult(
                 if (0 == CK) continue;
                 /* regular case */
                 Kj = KM + j;
-                divisor = _logsumexp_pair(
+                divisor = logsumexp_pair(
                         log_lagrangian_mult_ptr[Kj] - biased_conf_energies_ptr[Ki] - log_lagrangian_mult_ptr[Ki] +
                         biased_conf_energies_ptr[Kj], 0.0);
                 scratch_M_ptr[o++] = log((dtype) CK) - divisor;
             }
-            new_log_lagrangian_mult_ptr[Ki] = _logsumexp_sort_kahan_inplace(scratch_M_ptr, o);
+            new_log_lagrangian_mult_ptr[Ki] = logsumexp_sort_kahan_inplace(scratch_M_ptr, o);
         }
     }
 }
@@ -135,10 +131,10 @@ dtype update_biased_conf_energies(
             scratch_T_ptr[o++] =
                     log_R_K_i_ptr[K * n_conf_states + i] - bias_energy_sequence_ptr[x * n_therm_states + K];
         }
-        divisor = _logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
+        divisor = logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
 
         for (K = 0; K < n_therm_states; ++K) {
-            new_biased_conf_energies_ptr[K * n_conf_states + i] = -_logsumexp_pair(
+            new_biased_conf_energies_ptr[K * n_conf_states + i] = -logsumexp_pair(
                     -new_biased_conf_energies_ptr[K * n_conf_states + i],
                     -(divisor + bias_energy_sequence_ptr[x * n_therm_states + K]));
         }
@@ -158,7 +154,7 @@ dtype update_biased_conf_energies(
                     scratch_T_ptr[o++] =
                             log_R_K_i_ptr[Ki] - bias_energy_sequence_ptr[x * n_therm_states + K];
             }
-            log_L -= _logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
+            log_L -= logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
         }
         return log_L;
     } else
@@ -224,14 +220,14 @@ void get_log_Ref_K_i(
                 if (0 == CK) continue;
                 /* regular case */
                 Kj = KM + j;
-                divisor = _logsumexp_pair(
+                divisor = logsumexp_pair(
                         log_lagrangian_mult_ptr[Kj] - biased_conf_energies_ptr[Ki],
                         log_lagrangian_mult_ptr[Ki] - biased_conf_energies_ptr[Kj]);
                 scratch_M_ptr[o++] = log((dtype) CK) + log_lagrangian_mult_ptr[Kj] - divisor;
             }
             NC = state_counts_ptr[Ki] - Ci;
             R_addon = (0 < NC) ? log((dtype) NC) + biased_conf_energies_ptr[Ki] : -INFINITY; /* IGNORE PRIOR */
-            log_R_K_i_ptr[Ki] = _logsumexp_pair(_logsumexp_sort_kahan_inplace(scratch_M_ptr, o), R_addon);
+            log_R_K_i_ptr[Ki] = logsumexp_pair(logsumexp_sort_kahan_inplace(scratch_M_ptr, o), R_addon);
         }
     }
 
@@ -252,7 +248,7 @@ void get_log_Ref_K_i(
                 for(i=0; i<n_conf_states; ++i)
                 {
                     Ki = KM + i;
-                    log_R_K_i[Ki] = _logsumexp_pair(log_R_K_i[Ki], log(equilibrium_therm_state_counts[K]) + therm_energies[K]);
+                    log_R_K_i[Ki] = logsumexp_pair(log_R_K_i[Ki], log(equilibrium_therm_state_counts[K]) + therm_energies[K]);
                 }
             }
         }
@@ -288,8 +284,8 @@ void get_conf_energies(
             scratch_T_ptr[o++] =
                     log_R_K_i_ptr[K * n_conf_states + i] - bias_energy_sequence_ptr[x * n_therm_states + K];
         }
-        divisor = _logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
-        conf_energies_ptr[i] = -_logsumexp_pair(-conf_energies_ptr[i], -divisor);
+        divisor = logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
+        conf_energies_ptr[i] = -logsumexp_pair(-conf_energies_ptr[i], -divisor);
     }
 }
 
@@ -309,7 +305,7 @@ void get_therm_energies(
     for (K = 0; K < n_therm_states; ++K) {
         for (i = 0; i < n_conf_states; ++i)
             scratch_M_ptr[i] = -biased_conf_energies_ptr[K * n_conf_states + i];
-        therm_energies_ptr[K] = -_logsumexp_sort_kahan_inplace(scratch_M_ptr, n_conf_states);
+        therm_energies_ptr[K] = -logsumexp_sort_kahan_inplace(scratch_M_ptr, n_conf_states);
     }
 }
 
@@ -331,7 +327,7 @@ void normalize(
     dtype f0;
     for (i = 0; i < n_conf_states; ++i)
         scratch_M_ptr[i] = -conf_energies_ptr[i];
-    f0 = -_logsumexp_sort_kahan_inplace(scratch_M_ptr, n_conf_states);
+    f0 = -logsumexp_sort_kahan_inplace(scratch_M_ptr, n_conf_states);
     for (i = 0; i < n_conf_states; ++i)
         conf_energies_ptr[i] -= f0;
     for (i = 0; i < KM; ++i)
@@ -379,7 +375,7 @@ void estimate_transition_matrix(
                 transition_matrix_ptr[ij] = 0.5 * C * exp(-log_lagrangian_mult_ptr[i]);
             } else {
                 /* regular case */
-                divisor = _logsumexp_pair(
+                divisor = logsumexp_pair(
                         log_lagrangian_mult_ptr[j] - conf_energies_ptr[i],
                         log_lagrangian_mult_ptr[i] - conf_energies_ptr[j]);
                 transition_matrix_ptr[ij] = C * exp(-(conf_energies_ptr[j] + divisor));
@@ -520,7 +516,7 @@ void get_pointwise_unbiased_free_energies(
             scratch_T_ptr[o++] =
                     log_R_K_i_ptr[L * n_conf_states + i] - bias_energy_sequence_ptr[x * n_therm_states + L];
         }
-        log_divisor = _logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
+        log_divisor = logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
         if (k == -1)
             pointwise_unbiased_free_energies_ptr[x] = log_divisor;
         else
@@ -545,10 +541,10 @@ extern dtype _bar_df(np_array<dtype> db_IJ, int L1, np_array<dtype> db_JI, int L
     for (i = 0; i < L1; i++) {
         scratch_ptr[i] = db_IJ_ptr[i] > 0 ? 0 : db_IJ_ptr[i];
     }
-    ln_avg1 = _logsumexp_sort_kahan_inplace(scratch_ptr, L1);
+    ln_avg1 = logsumexp_sort_kahan_inplace(scratch_ptr, L1);
     for (i = 0; i < L1; i++) {
         scratch_ptr[i] = db_JI_ptr[i] > 0 ? 0 : db_JI_ptr[i];
     }
-    ln_avg2 = _logsumexp_sort_kahan_inplace(scratch_ptr, L2);
+    ln_avg2 = logsumexp_sort_kahan_inplace(scratch_ptr, L2);
     return ln_avg2 - ln_avg1;
 }
