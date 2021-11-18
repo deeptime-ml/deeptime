@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 
 import nox
@@ -39,7 +40,14 @@ def tests(session: nox.Session) -> None:
 def make_docs(session: nox.Session) -> None:
     session.install("-r", "tests/requirements.txt")
     session.install("-r", "docs/requirements.txt")
+    session.install("-e", ".", '-v', silent=False)
     session.chdir("docs")
+    if session.posargs and session.posargs[0] == 'clean':
+        session.log("First run clean")
+        shutil.rmtree('source/api/generated')
+        shutil.rmtree('source/examples')
+        shutil.rmtree('source/datasets')
+        session.run("sphinx-build", "-M", "clean", "source", "build")
     session.run("sphinx-build", "-M", "html", "source", "build", "-t", "notebooks")
 
 
