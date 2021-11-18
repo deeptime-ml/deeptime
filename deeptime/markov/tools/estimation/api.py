@@ -732,16 +732,16 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
 
     Other Parameters
     ----------------
-    max_iter : int, optional, default=1000000
+    maxiter : int, optional, default=1000000
         Optional parameter with reversible = True.
         maximum number of iterations before the method exits
-    max_err : float, optional, default=1e-8
+    maxerr : float, optional, default=1e-8
         Optional parameter with reversible = True.
         convergence tolerance for transition matrix estimation.
         This specifies the maximum change of the Euclidean norm of relative
         stationary probabilities (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
         :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
-        probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to max_err.
+        probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
     rev_pisym : bool, optional, default=False
         Fast computation of reversible transition matrix by normalizing
         :math:`x_{ij} = \pi_i p_{ij} + \pi_j p_{ji}`. :math:`p_{ij}` is the direct

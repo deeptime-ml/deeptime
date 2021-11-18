@@ -22,7 +22,7 @@ class TRAM(_MSMBaseEstimator):
     def __init__(
             self, lagtime=None, count_mode='sliding',
             connectivity='post_hoc_RE',
-            max_iter=10000, max_err: float = 1.0E-15, save_convergence_info=0,
+            maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
             nn=None, connectivity_factor: float = 1.0):
         r"""Transition(-based) Reweighting Analysis Method
         Parameters
@@ -82,9 +82,9 @@ class TRAM(_MSMBaseEstimator):
               all thermodynamic states and taking it's largest strongly connected set.
               Not recommended!
             For more details see :func:`pyemma.thermo.extensions.cset.compute_csets_TRAM`.
-        max_iter : int, optional, default=10000
+        maxiter : int, optional, default=10000
             The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
-        max_err : float, optional, default=1E-15
+        maxerr : float, optional, default=1E-15
             Convergence criterion based on the maximal free energy change in a self-consistent
             iteration step.
         save_convergence_info : int, optional, default=0
@@ -117,8 +117,8 @@ class TRAM(_MSMBaseEstimator):
         self.connectivity_factor = connectivity_factor
         self.n_markov_states = None
         self.n_therm_states = None
-        self.max_iter = max_iter
-        self.max_err = max_err
+        self.maxiter = maxiter
+        self.maxerr = maxerr
         self.save_convergence_info = save_convergence_info
         self.active_set = None
         self.biased_conf_energies = None
@@ -156,9 +156,9 @@ class TRAM(_MSMBaseEstimator):
             reduced bias energies in the T thermodynamic states for all X samples
         markov_state_sequences : list of numpy.ndarray(shape=(X_i), dtype=numpy.float64)
             discrete markov state indices for all X samples
-        max_iter : int
+        maxiter : int
             maximum number of iterations
-        max_err : float
+        maxerr : float
             convergence criterion based on absolute change in free energies
         save_convergence_info : int, optional
             every save_convergence_info iteration steps, store the actual increment
@@ -186,7 +186,7 @@ class TRAM(_MSMBaseEstimator):
         ----
         The self-consistent iteration terminates when
         .. math::
-           \max\{\max_{i,k}{\Delta \pi_i^k}, \max_k \Delta f^k \}<\mathrm{max_err}.
+           \max\{\max_{i,k}{\Delta \pi_i^k}, \max_k \Delta f^k \}<\mathrm{maxerr}.
         Different termination criteria can be implemented with the callback
         function. Raising `CallbackInterrupt` in the callback will cleanly
         terminate the iteration.
@@ -221,7 +221,7 @@ class TRAM(_MSMBaseEstimator):
         old_stat_vectors = np.zeros(shape=state_counts.shape, dtype=np.float64)
         old_therm_energies = np.zeros(shape=transition_counts.shape[0], dtype=np.float64)
 
-        for _m in range(self.max_iter):
+        for _m in range(self.maxiter):
             iteration_count += 1
             tram.update_lagrangian_mult(
                 old_log_lagrangian_mult, self.biased_conf_energies, transition_counts, state_counts,
@@ -243,7 +243,7 @@ class TRAM(_MSMBaseEstimator):
                 increments.append(err)
                 log_likelihoods.append(l)
 
-            if err < self.max_err:
+            if err < self.maxerr:
                 break
             else:
                 shift = np.min(self.biased_conf_energies)
@@ -258,7 +258,7 @@ class TRAM(_MSMBaseEstimator):
                                 self.therm_energies)
         tram.normalize(self.markov_energies, self.biased_conf_energies, self.therm_energies, self.n_therm_states,
                        self.n_markov_states, scratch_M)
-        if err >= self.max_err:
+        if err >= self.maxerr:
             import warnings
             warnings.warn(f"TRAM did not converge: last increment = {err}", UserWarning)
 

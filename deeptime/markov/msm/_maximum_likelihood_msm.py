@@ -49,7 +49,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         specifies the maximum change of the Euclidean norm of relative stationary probabilities
         (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
         :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
-        probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to max_err.
+        probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
     transition_matrix_tolerance : float, default=1e-8
         The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
         row sums of 1).

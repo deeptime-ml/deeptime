@@ -37,8 +37,8 @@ def estimate_markov_model(dtrajs, lag, **kw) -> MarkovStateModel:
 @pytest.mark.parametrize("statdist", [None, np.array([0.5, 0.5]), np.array([1.1, .5]), np.array([.1, .1]),
                                       np.array([-.1, .5])])
 @pytest.mark.parametrize("sparse", [True, False])
-@pytest.mark.parametrize("max_iter", [1])
-@pytest.mark.parametrize("max_err", [1e-3])
+@pytest.mark.parametrize("maxiter", [1])
+@pytest.mark.parametrize("maxerr", [1e-3])
 def test_estimator_params(reversible, statdist, sparse, maxiter, maxerr):
     if statdist is not None and (np.any(statdist > 1) or np.any(statdist < 0)):
         with assert_raises(ValueError):

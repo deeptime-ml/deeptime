@@ -423,11 +423,11 @@ def pathways(F, A, B, fraction=1.0, maxiter=1000):
     pathways for the flux network are computed. For large netorks the
     number of possible reaction paths can increase rapidly so that it
     becomes prohibitevely expensive to compute all possible reaction
-    paths. To prevent this from happening max_iter sets the maximum
+    paths. To prevent this from happening maxiter sets the maximum
     number of reaction pathways that will be computed.
 
     For large flux networks it might be necessary to decrease fraction
-    or to increase max_iter. It is advisable to begin with a small
+    or to increase maxiter. It is advisable to begin with a small
     value for fraction and monitor the number of pathways returned
     when increasing the value of fraction.
 

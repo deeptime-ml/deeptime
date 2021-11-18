@@ -19,7 +19,7 @@ def estimate_P(C, reversible=True, fixed_statdist=None, maxiter=1000000, maxerr=
     maxerr : float
         Stopping criterion for reversible iteration: Will stop when infinity
         norm  of difference vector of two subsequent equilibrium distributions
-        is below max_err.
+        is below maxerr.
     mincount_connectivity : float
         Minimum count which counts as a connection.
 

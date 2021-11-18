@@ -10,8 +10,8 @@ def mle_trev(C, maxerr=1.0e-12, maxiter=int(1.0E6), warn_not_converged=True, ret
     from ._mle_bindings import mle_trev_dense
     from ...analysis import is_connected
 
-    assert maxerr > 0, 'max_err must be positive'
-    assert maxiter > 0, 'max_iter must be positive'
+    assert maxerr > 0, 'maxerr must be positive'
+    assert maxiter > 0, 'maxiter must be positive'
     assert C.shape[0] == C.shape[1], 'C must be a square matrix.'
     assert is_connected(C, directed=True), 'C must be strongly connected'
 
@@ -39,8 +39,8 @@ def mle_trev_given_pi(C, mu, maxerr=1.0E-12, maxiter=1000000):
     from ._mle_bindings import mle_trev_given_pi_dense
     from ...analysis import is_connected
 
-    assert maxerr > 0, 'max_err must be positive'
-    assert maxiter > 0, 'max_iter must be positive'
+    assert maxerr > 0, 'maxerr must be positive'
+    assert maxiter > 0, 'maxiter must be positive'
     assert is_connected(C, directed=False), 'C must be (weakly) connected'
 
     dtype = C.dtype

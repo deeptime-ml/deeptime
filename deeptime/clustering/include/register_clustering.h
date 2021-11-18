@@ -15,10 +15,10 @@ void registerKmeans(py::module &mod) {
     mod.def("cluster", kmeans::cluster<Metric, double>, "chunk"_a, "centers"_a,
             "n_threads"_a);
     mod.def("cluster_loop", &kmeans::cluster_loop<Metric, float>,
-            "chunk"_a, "centers"_a, "n_threads"_a, "max_iter"_a, "tolerance"_a,
+            "chunk"_a, "centers"_a, "n_threads"_a, "maxiter"_a, "tolerance"_a,
             "callback"_a);
     mod.def("cluster_loop", &kmeans::cluster_loop<Metric, double>,
-            "chunk"_a, "centers"_a, "n_threads"_a, "max_iter"_a, "tolerance"_a,
+            "chunk"_a, "centers"_a, "n_threads"_a, "maxiter"_a, "tolerance"_a,
             "callback"_a);
     mod.def("cost_function", &kmeans::costAssignFunction<Metric, float>,
             "chunk"_a, "centers"_a, "n_threads"_a);

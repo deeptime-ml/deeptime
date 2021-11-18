@@ -20,8 +20,8 @@ class TestBMSMBasic(unittest.TestCase):
         np.testing.assert_equal(estimator.stationary_distribution_constraint, [0.5, 0.5])
         np.testing.assert_equal(estimator.sparse, True)
         np.testing.assert_equal(estimator.confidence, 0.9)
-        np.testing.assert_equal(estimator.max_iter, 5000)
-        np.testing.assert_equal(estimator.max_err, 1e-12)
+        np.testing.assert_equal(estimator.maxiter, 5000)
+        np.testing.assert_equal(estimator.maxerr, 1e-12)
         with self.assertRaises(ValueError):
             estimator.stationary_distribution_constraint = np.array([1.1, .5])
         with self.assertRaises(ValueError):
