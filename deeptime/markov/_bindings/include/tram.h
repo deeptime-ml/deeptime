@@ -356,6 +356,9 @@ void estimate_transition_matrix(
     dtype *scratch_M_ptr = (dtype *) scratch_M_buf.ptr;
     dtype *transition_matrix_ptr = (dtype *) transition_matrix_buf.ptr;
 
+//    auto transition_matrix_arr = np_array<dtype>({n_conf_states * n_conf_states});
+//    auto transition_matrix = transition_matrix_arr.template mutable_unchecked<1>();
+
     int i, j;
     int ij, ji;
     int C;
@@ -400,7 +403,6 @@ void estimate_transition_matrix(
             }
         }
     }
-
 }
 
 /* TRAM log-likelihood that comes from the terms containing discrete quantities */

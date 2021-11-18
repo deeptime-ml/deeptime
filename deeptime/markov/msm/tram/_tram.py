@@ -1,15 +1,14 @@
 import logging
 from typing import Optional
 
-from markov.msm import MarkovStateModelCollection
+from deeptime.markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, count_states
-from markov._base import _MSMBaseEstimator
+from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
 from deeptime.markov._tram_bindings import tram
 from deeptime.markov import _markov_bindings, compute_connected_sets
 from ._cset import *
 
-from memory_profiler import profile
 
 import numpy as np
 
@@ -317,24 +316,24 @@ class TRAM(_MSMBaseEstimator):
             log_lagrangian_mult=self.log_lagrangian_mult)
 
         # compute models
-        # fmsms = self._estimate_transition_matrices(transition_counts)
+        fmsms = self._estimate_transition_matrices(transition_counts)
 
-        # active_sets = [compute_connected_sets(msm, directed=False)[0] for msm in fmsms]
-        # fmsms = [np.ascontiguousarray(
-        #     (msm[lcc, :])[:, lcc]) for msm, lcc in zip(fmsms, active_sets)]
-        #
-        # stationary_distributions = []
-        # for i, (msm, acs) in enumerate(zip(fmsms, active_sets)):
-        #     pi_acs = np.exp(self.therm_energies[i] - self.biased_conf_energies[i, :])[self.active_set[acs]]
-        #     pi_acs = pi_acs / pi_acs.sum()
-        #     stationary_distributions.append(pi_acs)
-        #     #
-        #     # models.append(_ThermoMSM(
-        #     #     msm, self.active_set[acs], self.nstates_full, pi=pi_acs,
-        #     #     dt_model=self.timestep_traj.get_scaled(self.lag)))
-        #
-        # self._model = MarkovStateModelCollection(fmsms, stationary_distributions, reversible=True,
-        #                                          count_models=transition_counts_models)
+        active_sets = [compute_connected_sets(msm, directed=False)[0] for msm in fmsms]
+        fmsms = [np.ascontiguousarray(
+            (msm[lcc, :])[:, lcc]) for msm, lcc in zip(fmsms, active_sets)]
+
+        stationary_distributions = []
+        for i, (msm, acs) in enumerate(zip(fmsms, active_sets)):
+            pi_acs = np.exp(self.therm_energies[i] - self.biased_conf_energies[i, :])[self.active_set[acs]]
+            pi_acs = pi_acs / pi_acs.sum()
+            stationary_distributions.append(pi_acs)
+            #
+            # models.append(_ThermoMSM(
+            #     msm, self.active_set[acs], self.nstates_full, pi=pi_acs,
+            #     dt_model=self.timestep_traj.get_scaled(self.lag)))
+
+        self._model = MarkovStateModelCollection(fmsms, stationary_distributions, reversible=True,
+                                                 count_models=transition_counts_models, transition_matrix_tolerance=1e-8)
 
         #
         # # set model parameters to self
@@ -513,13 +512,13 @@ class TRAM(_MSMBaseEstimator):
         transition_matrices = []
 
         for k in range(self.nthermo):
-            transition_matrices.append(np.ascontiguousarray(
-                tram.estimate_transition_matrix(self.log_lagrangian_mult[k],
-                                                self.biased_conf_energies[k],
-                                                transition_counts[k],
-                                                self.nstates_full,
-                                                scratch_M,
-                                                transition_matrix)[self.active_set, :]
-            )[self.active_set, :])
+            tram.estimate_transition_matrix(self.log_lagrangian_mult[k],
+                                            self.biased_conf_energies[k],
+                                            transition_counts[k],
+                                            self.nstates_full,
+                                            scratch_M,
+                                            transition_matrix)
+
+            transition_matrices.append(np.ascontiguousarray(transition_matrix.copy()[self.active_set, :])[self.active_set, :])
 
         return transition_matrices
