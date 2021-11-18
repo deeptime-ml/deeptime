@@ -1,12 +1,13 @@
 import logging
 from typing import Optional
 
-from ._markov_state_model import MarkovStateModelCollection
+from markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, count_states
-from .._base import _MSMBaseEstimator
+from markov._base import _MSMBaseEstimator
 from deeptime.util import types
 from deeptime.markov._tram_bindings import tram
-from deeptime.markov import _markov_bindings, compute_connected_sets, cset
+from deeptime.markov import _markov_bindings, compute_connected_sets
+from ._cset import *
 
 from memory_profiler import profile
 
@@ -454,7 +455,7 @@ class TRAM(_MSMBaseEstimator):
 
     def _restrict_to_connected_set(self, ttrajs, dtrajs_full, bias_matrix, state_counts_full, transition_counts_full):
 
-        csets, pcset = cset.compute_csets_TRAM(
+        csets, pcset = compute_csets_TRAM(
             self.connectivity, state_counts_full, transition_counts_full,
             ttrajs=ttrajs, dtrajs=dtrajs_full,
             bias_trajs=bias_matrix,
@@ -465,7 +466,7 @@ class TRAM(_MSMBaseEstimator):
         self._check_for_empty_csets(csets)
 
         # deactivate samples not in the csets, states are *not* relabeled
-        state_counts, transition_counts, dtrajs, _ = cset.restrict_to_csets(
+        state_counts, transition_counts, dtrajs, _ = restrict_to_csets(
             csets, state_counts=state_counts_full, count_matrices=transition_counts_full,
             ttrajs=ttrajs, dtrajs=dtrajs_full)
 

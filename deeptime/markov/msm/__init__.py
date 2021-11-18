@@ -37,8 +37,7 @@ import logging
 
 from ._markov_state_model import MarkovStateModel, MarkovStateModelCollection
 from ._maximum_likelihood_msm import MaximumLikelihoodMSM
-from ._tram import TRAM
-from ._bayesian_msm import BayesianMSM, BayesianPosterior
+from ..msm.tram._tram import TRAM
 from ._koopman_reweighted_msm import KoopmanReweightedMSM, OOMReweightedMSM
 from ._augmented_msm import AugmentedMSMEstimator, AugmentedMSM, AMMOptimizerState
 
