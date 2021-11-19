@@ -10,7 +10,7 @@ def configuration(parent_package='', top_path=None):
 
     config.add_extension('_tram_bindings',
                          sources=['_bindings/src/tram_module.cpp'],
-                         include_dirs=['_bindings/include'],
+                         include_dirs=['_bindings/include', '../numeric/_bindings/include'],
                          language='c++',
                          )
 

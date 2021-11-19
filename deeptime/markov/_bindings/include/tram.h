@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include <stdio.h>
-#include <assert.h>
+#include <cstdio>
+#include <cassert>
 #include "common.h"
-#include "../../tools/kahandot/include/kahan_summation.h"
+#include "kahan_summation.h"
 
 
 double THERMOTOOLS_TRAM_PRIOR = 0.0;

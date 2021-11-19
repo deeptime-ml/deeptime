@@ -1,7 +1,7 @@
 
-#include "../include/kahan_summation.h"
+#include "kahan_summation.h"
 
-PYBIND11_MODULE(kahandot, m) {
+PYBIND11_MODULE(_numeric_bindings, m) {
     m.def("kdot", &kdot<float>);
     m.def("kdot", &kdot<double>);
     m.def("kdot", &kdot<long double>);

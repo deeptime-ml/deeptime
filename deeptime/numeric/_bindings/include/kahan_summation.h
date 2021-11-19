@@ -139,4 +139,3 @@ extern dtype logsumexp_pair(dtype a, dtype b)
         return b + log(1.0 + exp(a - b));
     return a + log(1.0 + exp(b - a));
 }
-
