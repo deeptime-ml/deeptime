@@ -7,8 +7,11 @@ if(DEFINED PROJECT_NAME)
 endif()
 project(deeptime LANGUAGES C CXX VERSION 0.0.0)
 
-find_package(OpenMP REQUIRED)
-add_definitions(-DUSE_OPENMP)
+set(DEEPTIME_USE_OPENMP ON CACHE BOOL "Whether to use OpenMP")
+if (DEEPTIME_USE_OPENMP)
+    find_package(OpenMP REQUIRED)
+    add_definitions(-DUSE_OPENMP)
+endif()
 
 if(MSVC)
     add_compile_options(/W3 /EHsc /std:c++17)
