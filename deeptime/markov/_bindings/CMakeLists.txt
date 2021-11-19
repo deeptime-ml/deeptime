@@ -6,3 +6,10 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/incl
 if (DEEPTIME_USE_OPENMP)
     target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
 endif()
+
+set(SRC src/tram_module.cpp)
+pybind11_add_module(_tram_bindings src/tram_module.cpp)
+target_include_directories(_tram_bindings PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ${common_includes} ${numeric_includes})
+if (DEEPTIME_USE_OPENMP)
+    target_link_libraries(_tram_bindings PUBLIC OpenMP::OpenMP_CXX)
+endif()

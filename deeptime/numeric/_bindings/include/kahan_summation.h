@@ -2,19 +2,27 @@
 // Created by Maaike on 18/11/2021.
 //
 
+#pragma once
+
+#include <algorithm>
+#include <cmath>
+
 #include "common.h"
+
+namespace deeptime {
+namespace numeric {
+namespace kahan {
 
 /***************************************************************************************************
 *   Kahan summation
 ***************************************************************************************************/
 template<typename dtype>
-auto ksum(const dtype* const begin, const dtype* const end) -> dtype {
-    auto n = std::distance(begin, end);
-    dtype sum {0};
-    ssize_t o {0};
-    dtype correction {0};
+auto ksum(const dtype *const begin, const dtype *const end) -> dtype {
+    dtype sum{0};
+    ssize_t o{0};
+    dtype correction{0};
 
-    while (n--) {
+    for (auto n = std::distance(begin, end); n > 0; --n) {
         auto y = begin[o] - correction;
         auto t = sum + y;
         correction = (t - sum) - y;
@@ -68,74 +76,36 @@ auto kdot(const np_array_nfc<dtype> &arrA, const np_array_nfc<dtype> &arrB) -> n
 }
 
 /***************************************************************************************************
-*   sorting
-***************************************************************************************************/
-template<typename dtype>
-extern void _mixed_sort(dtype *array, int L, int R)
-/* _mixed_sort() is based on examples from http://www.linux-related.de (2004) */
-{
-    int l, r;
-    dtype swap;
-    if(R - L > 25) /* use quicksort */
-    {
-        l = L - 1;
-        r = R;
-        for(;;)
-        {
-            while(array[++l] < array[R]);
-            while((array[--r] > array[R]) && (r > l));
-            if(l >= r) break;
-            swap = array[l];
-            array[l] = array[r];
-            array[r] = swap;
-        }
-        swap = array[l];
-        array[l] = array[R];
-        array[R] = swap;
-        _mixed_sort(array, L, l - 1);
-        _mixed_sort(array, l + 1, R);
-    }
-    else /* use insertion sort */
-    {
-        for(l=L+1; l<=R; ++l)
-        {
-            swap = array[l];
-            for(r=l-1; (r >= L) && (swap < array[r]); --r)
-                array[r + 1] = array[r];
-            array[r + 1] = swap;
-        }
-    }
-}
-
-/***************************************************************************************************
 *   logspace Kahan summation
 ***************************************************************************************************/
 template<typename dtype>
-extern double logsumexp_kahan_inplace(dtype *array, int size, dtype array_max)
-{
-    int i;
-    if(0 == size) return -INFINITY;
-    if(-INFINITY == array_max)
-        return -INFINITY;
-    for(i=0; i<size; ++i)
-        array[i] = exp(array[i] - array_max);
-    return array_max + log(ksum(array, array + size));
+dtype logsumexp_kahan_inplace(dtype *array, int size, dtype array_max) {
+    if (0 == size) return -std::numeric_limits<dtype>::infinity();
+    if (-std::numeric_limits<dtype>::infinity() == array_max)
+        return -std::numeric_limits<dtype>::infinity();
+    for (int i = 0; i < size; ++i)
+        array[i] = std::exp(array[i] - array_max);
+    return array_max + std::log(ksum(array, array + size));
 }
 
 template<typename dtype>
-extern double logsumexp_sort_kahan_inplace(dtype *array, int size)
-{
-    if(0 == size) return -INFINITY;
-    _mixed_sort(array, 0, size - 1);
+dtype logsumexp_sort_kahan_inplace(dtype *array, int size) {
+    if (0 == size) return -std::numeric_limits<dtype>::infinity();
+    std::sort(array, array + size);
     return logsumexp_kahan_inplace(array, size, array[size - 1]);
 }
 
 template<typename dtype>
-extern dtype logsumexp_pair(dtype a, dtype b)
-{
-    if((-INFINITY == a) && (-INFINITY == b))
-        return -INFINITY;
-    if(b > a)
-        return b + log(1.0 + exp(a - b));
-    return a + log(1.0 + exp(b - a));
+dtype logsumexp_pair(dtype a, dtype b) {
+    if ((-std::numeric_limits<dtype>::infinity() == a) && (-std::numeric_limits<dtype>::infinity() == b))
+        return -std::numeric_limits<dtype>::infinity();
+    if (b > a) {
+        return b + std::log(1.0 + std::exp(a - b));
+    } else {
+        return a + std::log(1.0 + std::exp(b - a));
+    }
+}
+
+}
+}
 }

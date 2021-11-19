@@ -1,10 +1,11 @@
-// author: clonker
+// author: maaike
 
-#include <tram.h>
+#include "tram.h"
 
 using namespace pybind11::literals;
 
 PYBIND11_MODULE(_tram_bindings, m) {
+    using namespace deeptime::tram;
     {
         auto tramMod = m.def_submodule("tram");
 
@@ -19,6 +20,9 @@ PYBIND11_MODULE(_tram_bindings, m) {
         tramMod.def("get_log_Ref_K_i", &get_log_Ref_K_i<double>, "log_lagrangian_mult"_a, "biased_conf_energies"_a,
                     "count_matrices"_a, "state_counts"_a, "n_therm_states"_a, "n_conf_states"_a, "scratch_M"_a,
                     "log_R_K_i"_a);
+        /*tramMod.def("get_log_Ref_K_i_mbar", &get_log_Ref_K_i<double, true>, "log_lagrangian_mult"_a, "biased_conf_energies"_a,
+                    "count_matrices"_a, "state_counts"_a, "n_therm_states"_a, "n_conf_states"_a, "scratch_M"_a,
+                    "log_R_K_i"_a);*/
 
         tramMod.def("update_biased_conf_energies", &update_biased_conf_energies<double>, "bias_energy_sequence"_a,
                     "state_sequence"_a, "seq_length"_a, "log_R_K_i"_a, "n_therm_states"_a, "n_conf_states"_a,
