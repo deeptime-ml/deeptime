@@ -172,7 +172,7 @@ def metastable_from_msm(msm, n_hidden_states: int,
         equilibrium distribution.
     separate_symbols : array_like, optional, default=None
         Force the given set of observed states to stay in a separate hidden state.
-        The remaining n_markov_states-1 states will be assigned by a metastable decomposition.
+        The remaining `#(observed states)-1` states will be assigned by a metastable decomposition.
     regularize : bool, optional, default=True
         If set to True, makes sure that the hidden initial distribution and transition matrix have nonzero probabilities
         by setting them to eps and then renormalizing. Avoids zeros that would cause estimation algorithms to crash or
@@ -333,7 +333,7 @@ def metastable_from_data(dtrajs, n_hidden_states, lagtime, stride=1, mode='large
         equilibrium distribution.
     separate_symbols : array_like, optional, default=None
         Force the given set of observed states to stay in a separate hidden state.
-        The remaining n_markov_states-1 states will be assigned by a metastable decomposition.
+        The remaining `#(observed states)-1` states will be assigned by a metastable decomposition.
     states : (dtype=int) ndarray, optional, default=None
         Artifically restrict count model to selection of states, even before regularization.
     regularize : bool, optional, default=True

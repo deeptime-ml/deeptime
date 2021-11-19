@@ -50,11 +50,8 @@ def _split_sequences_multitraj(dtrajs, lag):
     ----------
     dtrajs : list of int-iterables
         discrete trajectories
-    n_markov_states : int
-        total number of discrete states
     lag : int
         lag time
-
     """
     from deeptime.markov import number_of_states
     n = number_of_states(dtrajs)

@@ -75,7 +75,7 @@ def count_matrix(dtraj, lag, sliding=True, sparse_return=True, nstates=None):
     sparse_return : bool (optional)
         Whether to return a dense or a sparse matrix.
     nstates : int, optional
-        Enforce a count-matrix with shape=(n_markov_states, n_markov_states)
+        Enforce a count-matrix with shape=(n_states, n_states)
 
     Returns
     -------

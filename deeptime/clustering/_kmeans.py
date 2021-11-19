@@ -433,7 +433,7 @@ class KMeans(EstimatorTransformer):
             converged = True
         else:
             warnings.warn(f"Algorithm did not reach convergence criterion"
-                          f" of {self.tolerance} in {self.max_iter} iterations. Consider increasing maxiter.")
+                          f" of {self.tolerance} in {self.max_iter} iterations. Consider increasing max_iter.")
         self._model = KMeansModel(metric=self.metric, tolerance=self.tolerance,
                                   cluster_centers=cluster_centers, inertias=cost, converged=converged)
 

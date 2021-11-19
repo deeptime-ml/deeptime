@@ -29,7 +29,7 @@ def count_matrix_coo2_mult(dtrajs, lag, sliding=True, sparse=True, nstates=None)
     sparse : bool (optional)
         Whether to return a dense or a sparse matrix
     nstates : int, optional
-        Enforce a count-matrix with shape=(n_markov_states, n_markov_states). If there are
+        Enforce a count-matrix with shape=(n_states, n_states). If there are
         more states in the data, this will lead to an exception.
 
     Returns

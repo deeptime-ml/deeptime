@@ -59,4 +59,3 @@ for i, (label, estimator) in enumerate(estimators):
     ax2.scatter(*samples[::10].T, c=clustering.transform(samples)[::10])
     ax2.axis('off')
     ax2.set_title(label + ': assignments')
-plt.show()
