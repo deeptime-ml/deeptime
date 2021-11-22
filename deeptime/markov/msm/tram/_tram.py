@@ -148,11 +148,11 @@ class TRAM(_MSMBaseEstimator):
         r""" Fits a model directly from given timeseries that has been discretized into Markov states by the user.
 
         ----------
-        transition_counts : numpy.ndarray(shape=(T, M, M), dtype=numpy.intc)
+        get_transition_counts : numpy.ndarray(shape=(T, M, M), dtype=numpy.intc)
             transition count matrices for all T thermodynamic states
-        state_counts : numpy.ndarray(shape=(T, M), dtype=numpy.intc)
+        get_state_counts : numpy.ndarray(shape=(T, M), dtype=numpy.intc)
             state counts for all M discrete and T thermodynamic states
-        bias_matrix : list of numpy.ndarray(shape=(X_i, T), dtype=numpy.float64)
+        get_bias_matrix_row : list of numpy.ndarray(shape=(X_i, T), dtype=numpy.float64)
             reduced bias energies in the T thermodynamic states for all X samples
         markov_state_sequences : list of numpy.ndarray(shape=(X_i), dtype=numpy.float64)
             discrete markov state indices for all X samples

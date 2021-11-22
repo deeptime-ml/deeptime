@@ -15,226 +15,380 @@ namespace tram {
 double THERMOTOOLS_TRAM_PRIOR = 0.0;
 double THERMOTOOLS_TRAM_LOG_PRIOR = 1.0;
 
+//template<typename dtype>
+//struct TwoDimArray {
+//
+//    auto* column(std::size_t i) {
+//        return data.data() + i*width;
+//    }
+//
+//private:
+//    std::vector<dtype> data;
+//};
+//template<typename dtype> using BiasedConfEnergies = TwoDimArray<dtype>;
+
 template<typename dtype>
-void init_lagrangian_mult(np_array<int> count_matrices, int n_therm_states, int n_conf_states,
-                          np_array<dtype> log_lagrangian_mult) {
-    int i, j, K;
-    int MM = n_conf_states * n_conf_states, KMM;
-    dtype sum;
+class TRAMInput {
+public:
+    TRAMInput(const np_array_nfc<int> &state_counts, const np_array_nfc<int> transition_counts,
+              py::list bias_matrix, py::list dtrajs)
+            : state_counts(state_counts),
+              transition_counts(transition_counts),
+              bias_matrix(bias_matrix),
+              dtrajs(dtrajs) {
+        validateInput();
+    }
 
-    py::buffer_info count_matrices_buf = count_matrices.request();
-    int *count_matrices_ptr = (int *) count_matrices_buf.ptr;
+    TRAMInput() {}
 
-    py::buffer_info log_lagrangian_mult_buf = log_lagrangian_mult.request();
-    dtype *log_lagrangian_mult_ptr = (dtype *) log_lagrangian_mult_buf.ptr;
+    void validateInput() {
+        throwIfInvalid(dtrajs.size() != bias_matrix.size(),
+                       "Input invalid. Number of trajectories should be equal to the size of the first dimension of the bias matrix.");
 
-    for (K = 0; K < n_therm_states; ++K) {
-        KMM = K * MM;
-        for (i = 0; i < n_conf_states; ++i) {
-            sum = 0.0;
-            for (j = 0; j < n_conf_states; ++j) {
-                sum += 0.5 * (count_matrices_ptr[KMM + i * n_conf_states + j] +
-                              count_matrices_ptr[KMM + j * n_conf_states + i]);
-            }
-            log_lagrangian_mult_ptr[K * n_conf_states + i] = log(sum);
+        for(int i = 0; i < dtrajs.size(); ++i) {
+            auto dtrajs_i =  py::cast<np_array_nfc<int>>(dtrajs[i]);
+            auto bias_matrix_i = py::cast<np_array_nfc<dtype>>(bias_matrix[i]);
+            auto dtrajs_buf_i = dtrajs_i.request();
+            auto bias_matrix_buf_i = bias_matrix_i.request();
+
+            throwIfInvalid(dtrajs_buf_i.ndim == 1, "dtraj at index {i} has an incorrect number of dimension. ndims should be 1.");
+            throwIfInvalid(bias_matrix_buf_i.ndim == 2, "get_bias_matrix_row at index {i} has an incorrect number of dimension. ndims should be 2.");
+            throwIfInvalid(dtrajs_buf_i.shape[0] == bias_matrix_buf_i.shape[0], "dtraj and get_bias_matrix_row at index {i} should be of equal length.");
+            throwIfInvalid(bias_matrix_buf_i.shape[1] == transition_counts.shape()[0], "get_bias_matrix_row{i}.shape[1] should be equal to get_transition_counts.shape[0].");
+
+            throwIfInvalid(get_dtraj(i).flags().c_contiguous, "dtraj at index {i} is not contiguous.");
+            throwIfInvalid(get_bias_matrix_row(i).flags().c_contiguous, "_bias_matrix at index {i} is not contiguous.");
         }
     }
-}
 
-// TODO: Make this just return whatever is needed in stead of this weird method
+    void throwIfInvalid(bool isValid, std::string message) {
+        if (!isValid) {
+            throw std::invalid_argument(message);
+        }
+    }
+
+    auto get_bias_matrix_row(int K) {
+        np_array_nfc<dtype> bias_matrix_K =  py::cast<np_array_nfc<dtype>>(bias_matrix[K]);
+        return bias_matrix_K.template unchecked<2>();
+    }
+
+    auto get_dtraj(int K) {
+        np_array_nfc<int> dtrajs_K =  py::cast<np_array_nfc<int>>(dtrajs[K]);
+        return dtrajs_K.template unchecked<1>();
+    }
+
+    auto get_transition_counts() {
+        return transition_counts.template unchecked<3>();
+    }
+
+    auto get_state_counts() {
+        return state_counts.template unchecked<2>();
+    }
+
+private:
+    np_array<int> state_counts;
+    np_array<int> transition_counts;
+    py::list dtrajs;
+    py::list bias_matrix;
+};
+
 template<typename dtype>
-void update_lagrangian_mult(
-        np_array<dtype> log_lagrangian_mult, np_array<dtype> biased_conf_energies, np_array<int> count_matrices,
-        np_array<int> state_counts, int n_therm_states, int n_conf_states, np_array<dtype> scratch_M,
-        np_array<dtype> new_log_lagrangian_mult) {
-    // TODO: define get_pointer_from_array() function for this shit
-    py::buffer_info log_lagrangian_mult_buf = log_lagrangian_mult.request();
-    py::buffer_info biased_conf_energies_buf = biased_conf_energies.request();
-    py::buffer_info count_matrices_buf = count_matrices.request();
-    py::buffer_info state_counts_buf = state_counts.request();
-    py::buffer_info scratch_M_buf = scratch_M.request();
-    py::buffer_info new_log_lagrangian_mult_buf = new_log_lagrangian_mult.request();
+struct TRAM {
+// # TODO: wrap vector in something nice for happy indexing
+// TODO: make this a vector (no need for np_array)
+    np_array<dtype> biased_conf_energies;
+    np_array<dtype> log_lagrangian_mult;
+    np_array<dtype> modified_state_counts_log;
 
-    dtype *log_lagrangian_mult_ptr = (dtype *) log_lagrangian_mult_buf.ptr;
-    dtype *biased_conf_energies_ptr = (dtype *) biased_conf_energies_buf.ptr;
-    int *count_matrices_ptr = (int *) count_matrices_buf.ptr;
-    int *state_counts_ptr = (int *) state_counts_buf.ptr;
-    dtype *scratch_M_ptr = (dtype *) scratch_M_buf.ptr;
-    dtype *new_log_lagrangian_mult_ptr = (dtype *) new_log_lagrangian_mult_buf.ptr;
+//    std::vector<dtype> biased_conf_energies;
+//    std::vector<dtype> log_lagrangian_mult;
+//    std::vector<dtype> modified_state_counts_log;
 
-    int i, j, K, o;
-    int Ki, Kj, KM, KMM;
-    int CK, CKij;
-    double divisor;
-    for (K = 0; K < n_therm_states; ++K) {
-        KM = K * n_conf_states;
-        KMM = KM * n_conf_states;
-        for (i = 0; i < n_conf_states; ++i) {
-            Ki = KM + i;
-            if (0 == state_counts_ptr[Ki]) {
-                new_log_lagrangian_mult_ptr[Ki] = -INFINITY;
-                continue;
+
+    np_array<dtype> conf_energies;
+    np_array<dtype> therm_energies;
+    np_array<dtype> transition_matrices;
+
+    TRAMInput<dtype> input;
+
+    int n_therm_states;
+    int n_markov_states;
+
+    int save_convergence_info;
+
+    // scratch matrices used to facilitate calculation of logsumexp
+    np_array<dtype> scratch_M;
+    np_array<dtype> scratch_T;
+
+    TRAM(const np_array_nfc<int> state_counts, np_array_nfc<int> transition_counts, py::list dtrajs,
+         py::list bias_matrix, int save_convergence_info = 0)
+            : n_therm_states(state_counts.shape()[0]),
+              n_markov_states(state_counts.shape()[1]),
+              save_convergence_info(save_convergence_info) {
+
+        input = TRAMInput<dtype>(state_counts, transition_counts, dtrajs, bias_matrix);
+
+
+        biased_conf_energies = np_array<dtype>({n_therm_states, n_markov_states});
+        log_lagrangian_mult = np_array<dtype>({n_therm_states, n_markov_states});
+        modified_state_counts_log = np_array<dtype>({n_therm_states, n_markov_states});
+
+        transition_matrices = np_array<dtype>({n_therm_states, n_markov_states, n_markov_states});
+
+        conf_energies = np_array<dtype>({n_markov_states});
+        therm_energies = np_array<dtype>({n_therm_states});
+
+        scratch_M = np_array<dtype>({n_markov_states});
+        scratch_T = np_array<dtype>({n_therm_states});
+
+        initLagrangianMult();
+
+
+
+//        old_biased_conf_energies = self.biased_conf_energies.copy()
+//        old_log_lagrangian_mult = self.log_lagrangian_mult.copy()
+//        old_stat_vectors = np.zeros(shape=get_state_counts.shape, dtype=np.float64)
+//        old_therm_energies = np.zeros(shape=get_transition_counts.shape[0], dtype=np.float64)
+
+    }
+
+
+    void estimate(int maxiter = 1000) {
+
+        int iterationCount = 0;
+
+//#TODO: do something with these. logging?
+        increments = []
+        log_likelihoods = []
+
+
+        for (int m = 0; m < maxiter; ++m) {
+
+
+            iterationCount += 1
+
+            updateLagrangianMult()
+            updateStateCounts();
+            updateBiasedConfEnergies()
+
+            self.therm_energies = np.zeros(shape = self.n_therm_states, dtype = np.float64)
+            tram.get_therm_energies(self.biased_conf_energies, self.n_therm_states, self.n_markov_states,
+                                    scratch_M, self.therm_energies)
+            stat_vectors = np.exp(self.therm_energies[:, np.newaxis] -self.biased_conf_energies)
+            delta_therm_energies = np.abs(self.therm_energies - old_therm_energies)
+            delta_stat_vectors = np.abs(stat_vectors - old_stat_vectors)
+            err = max(np.max(delta_therm_energies), np.max(delta_stat_vectors))
+            if iteration_count == self.save_convergence_info:
+            iteration_count = 0
+            increments.append(err)
+            log_likelihoods.append(l)
+
+            if err < self.maxerr:
+            break
+            else:
+            shift = np.min(self.biased_conf_energies)
+            self.biased_conf_energies -= shift
+            old_biased_conf_energies[:] = self.biased_conf_energies
+            old_log_lagrangian_mult[:] = self.log_lagrangian_mult[:]
+            old_therm_energies[:] = self.therm_energies[:] -shift
+            old_stat_vectors[:] = stat_vectors[:]
+
+            self.markov_energies = self.get_conf_energies(bias_matrix, markov_state_sequences, log_R_K_i, scratch_T)
+            tram.get_therm_energies(self.biased_conf_energies, self.n_therm_states, self.n_markov_states, scratch_M,
+                                    self.therm_energies)
+            tram.normalize(self.markov_energies, self.biased_conf_energies, self.therm_energies, self.n_therm_states,
+                           self.n_markov_states, scratch_M)
+            if err >= self.maxerr:
+            import warnings
+            warnings.warn(f
+            "TRAM did not converge: last increment = {err}", UserWarning)
+        }
+    }
+
+    void initLagrangianMult() {
+        auto _transition_counts = input.get_transition_counts();
+        auto _log_lagrangian_mult = log_lagrangian_mult.template mutable_unchecked<2>();
+
+        for (int K = 0; K < n_therm_states; ++K) {
+            for (int i = 0; i < n_markov_states; ++i) {
+                dtype sum = 0.0;
+                for (int j = 0; j < n_markov_states; ++j) {
+                    sum += (_transition_counts(K, i, j) +
+                            _transition_counts(K, j, i));
+                }
+                _log_lagrangian_mult(K, i) = std::log(sum / 2);
             }
-            o = 0;
-            for (j = 0; j < n_conf_states; ++j) {
-                CKij = count_matrices_ptr[KMM + i * n_conf_states + j];
-                /* special case: most variables cancel out, here */
-                if (i == j) {
-                    scratch_M_ptr[o++] = (0 == CKij) ?
-                                         THERMOTOOLS_TRAM_LOG_PRIOR : log(THERMOTOOLS_TRAM_PRIOR + (dtype) CKij);
+        }
+    }
+
+    // TODO: Make this just return whatever is needed in stead of this weird method
+    np_array<dtype> updateLagrangianMult() {
+        auto _log_lagrangian_mult = log_lagrangian_mult.template unchecked<2>();
+        auto _biased_conf_energies = biased_conf_energies.template unchecked<2>();
+
+        auto _transition_counts = input.get_transition_counts();
+        auto _state_counts = input.get_state_counts();
+
+        auto _scratch_M = scratch_M.template mutable_unchecked<1>();
+
+        auto new_log_lagrangian_mult = np_array<dtype>({n_therm_states, n_markov_states});
+        auto _new_log_lagrangian_mult = new_log_lagrangian_mult.template mutable_unchecked<2>();
+
+        int CK, CKij;
+        dtype divisor;
+
+        for (int K = 0; K < n_therm_states; ++K) {
+            for (int i = 0; i < n_markov_states; ++i) {
+                if (0 == _state_counts(K, i)) {
+                    _new_log_lagrangian_mult(K, i) = -INFINITY;
                     continue;
                 }
-                CK = CKij + count_matrices_ptr[KMM + j * n_conf_states + i];
-                /* special case */
-                if (0 == CK) continue;
-                /* regular case */
-                Kj = KM + j;
-                divisor = numeric::kahan::logsumexp_pair(
-                        log_lagrangian_mult_ptr[Kj] - biased_conf_energies_ptr[Ki] - log_lagrangian_mult_ptr[Ki] +
-                        biased_conf_energies_ptr[Kj], 0.0);
-                scratch_M_ptr[o++] = log((dtype) CK) - divisor;
+                int o = 0;
+                for (int j = 0; j < n_markov_states; ++j) {
+                    CKij = _transition_counts(K, i, j);
+                    /* special case: most variables cancel out, here */
+                    if (i == j) {
+                        _scratch_M(o++) = (0 == CKij) ?
+                                          THERMOTOOLS_TRAM_LOG_PRIOR : log(THERMOTOOLS_TRAM_PRIOR + (dtype) CKij);
+                        continue;
+                    }
+                    CK = CKij + _transition_counts(K, j, i);
+                    /* special case */
+                    if (0 == CK) continue;
+                    /* regular case */
+                    divisor = numeric::kahan::logsumexp_pair(
+                            _log_lagrangian_mult(K, j) - _biased_conf_energies(K, i)
+                            - _log_lagrangian_mult(K, i) + _biased_conf_energies(K, j), 0.0);
+                    _scratch_M(o++) = log((dtype) CK) - divisor;
+                }
+                _new_log_lagrangian_mult(K, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M, o);
             }
-            new_log_lagrangian_mult_ptr[Ki] = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M_ptr, o);
         }
-    }
-}
-
-template<typename dtype>
-dtype update_biased_conf_energies(
-        np_array<dtype> bias_energy_sequence, np_array<int> state_sequence, int seq_length, np_array<dtype> log_R_K_i,
-        int n_therm_states, int n_conf_states, np_array<dtype> scratch_T, np_array<dtype> new_biased_conf_energies,
-        int return_log_L) {
-    py::buffer_info bias_energy_sequence_buf = bias_energy_sequence.request();
-    py::buffer_info state_sequence_buf = state_sequence.request();
-    py::buffer_info log_R_K_i_buf = log_R_K_i.request();
-    py::buffer_info scratch_T_buf = scratch_T.request();
-    py::buffer_info new_biased_conf_energies_buf = new_biased_conf_energies.request();
-
-    dtype *bias_energy_sequence_ptr = (dtype *) bias_energy_sequence_buf.ptr;
-    int *state_sequence_ptr = (int *) state_sequence_buf.ptr;
-    dtype *log_R_K_i_ptr = (dtype *) log_R_K_i_buf.ptr;
-    dtype *scratch_T_ptr = (dtype *) scratch_T_buf.ptr;
-    dtype *new_biased_conf_energies_ptr = (dtype *) new_biased_conf_energies_buf.ptr;
-
-    int i, K, x, o, Ki;
-    int KM;
-    dtype divisor, log_L;
-
-    /* assume that new_biased_conf_energies have been set to INF by the caller in the first call */
-    for (x = 0; x < seq_length; ++x) {
-        i = state_sequence_ptr[x];
-        if (i < 0) continue; /* skip frames that have negative Markov state indices */
-        o = 0;
-        for (K = 0; K < n_therm_states; ++K) {
-            assert(K < n_therm_states);
-            assert(K >= 0);
-            /* applying Hao's speed-up recomendation */
-            if (-INFINITY == log_R_K_i_ptr[K * n_conf_states + i]) continue;
-            scratch_T_ptr[o++] =
-                    log_R_K_i_ptr[K * n_conf_states + i] - bias_energy_sequence_ptr[x * n_therm_states + K];
-        }
-        divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
-
-        for (K = 0; K < n_therm_states; ++K) {
-            new_biased_conf_energies_ptr[K * n_conf_states + i] = -numeric::kahan::logsumexp_pair(
-                    -new_biased_conf_energies_ptr[K * n_conf_states + i],
-                    -(divisor + bias_energy_sequence_ptr[x * n_therm_states + K]));
-        }
+        return new_log_lagrangian_mult;
     }
 
-    if (return_log_L) {
-        /* -\sum_{x}\log\sum_{l}R_{i(x)}^{(l)}e^{-b^{(l)}(x)+f_{i(x)}^{(l)}} */
-        log_L = 0;
-        for (x = 0; x < seq_length; ++x) {
-            o = 0;
-            i = state_sequence_ptr[x];
-            if (i < 0) continue;
-            for (K = 0; K < n_therm_states; ++K) {
-                KM = K * n_conf_states;
-                Ki = KM + i;
-                if (log_R_K_i_ptr[Ki] > 0)
-                    scratch_T_ptr[o++] =
-                            log_R_K_i_ptr[Ki] - bias_energy_sequence_ptr[x * n_therm_states + K];
+    np_array<dtype> updateBiasedConfEnergies(int return_log_l = 0) {
+        dtype log_L = 0.0;
+//        new_biased_conf_energies[:] = _np.inf
+
+        auto new_biased_conf_energies = np_array<dtype>({n_therm_states, n_markov_states});
+
+        for (int K = 0; K < n_therm_states; ++K){
+            log_L += update_biased_conf_energies(K, new_biased_conf_energies, return_log_l);
+        }
+        return new_biased_conf_energies;
+    }
+
+    np_array<dtype>
+    update_biased_conf_energies(int therm_state, np_array<dtype> new_biased_conf_energies, int return_log_L) {
+        auto _new_biased_conf_energies = new_biased_conf_energies.template mutable_unchecked<2>();
+
+        auto _modified_state_counts_log = modified_state_counts_log.template unchecked<2>();
+
+        auto _dtraj = input.get_dtraj(therm_state);
+        auto _bias_matrix = input.get_bias_matrix_row(therm_state);
+
+        auto _scratch_T = scratch_T.template mutable_unchecked<1>();
+
+        int seq_length = _dtraj.shape[0];
+
+        dtype divisor, log_L;
+
+        /* assume that new_biased_conf_energies have been set to INF by the caller in the first call */
+        for (int x = 0; x < seq_length; ++x) {
+            int i = _dtraj(x);
+            if (i < 0) continue; /* skip frames that have negative Markov state indices */
+            int o = 0;
+            for (int K = 0; K < n_therm_states; ++K) {
+
+                /* applying Hao's speed-up recomendation */
+                if (-INFINITY == _modified_state_counts_log(K, i)) continue;
+                _scratch_T(o++) = _modified_state_counts_log(K, i) - _bias_matrix(x, K);
             }
-            log_L -= numeric::kahan::logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
+            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_T, o);
+
+            for (int K = 0; K < n_therm_states; ++K) {
+                _new_biased_conf_energies(K, i) = -numeric::kahan::logsumexp_pair(
+                        -_new_biased_conf_energies(K, i), //TODO: THIS SHOULD BE INF?????
+                        -(divisor + _bias_matrix(x, K)));
+            }
+        }
+
+        // TODO: mechanism to save this progress indicator. Maybe a callback?
+        if (return_log_L) {
+            /* -\sum_{x}\log\sum_{l}R_{i(x)}^{(l)}e^{-b^{(l)}(x)+f_{i(x)}^{(l)}} */
+            log_L = 0;
+            for (int x = 0; x < seq_length; ++x) {
+                int o = 0;
+                int i = _dtraj(x);
+                if (i < 0) continue;
+                for (int K = 0; K < n_therm_states; ++K) {
+                    if (_modified_state_counts_log(K, i) > 0)
+                        _scratch_T(o++) =
+                                _modified_state_counts_log(K, i) - _bias_matrix(x, K);
+                }
+                log_L -= numeric::kahan::logsumexp_sort_kahan_inplace(scratch_T, o);
+            }
         }
         return log_L;
-    } else
-        return 0;
-}
-
-template<typename dtype, bool trammbar=false>
-void get_log_Ref_K_i(
-        np_array<dtype> log_lagrangian_mult, np_array<dtype> biased_conf_energies,
-        np_array<int> count_matrices, np_array<int> state_counts,
-        int n_therm_states, int n_conf_states, np_array<dtype> scratch_M, np_array<dtype> log_R_K_i
-#ifdef TRAMMBAR
-        ,
-    double *therm_energies, int *equilibrium_therm_state_counts,
-    double overcounting_factor
-#endif
-) {
-
-    // TODO: define get_pointer_from_array() function for this shit
-    py::buffer_info log_lagrangian_mult_buf = log_lagrangian_mult.request();
-    py::buffer_info biased_conf_energies_buf = biased_conf_energies.request();
-    py::buffer_info count_matrices_buf = count_matrices.request();
-    py::buffer_info state_counts_buf = state_counts.request();
-    py::buffer_info scratch_M_buf = scratch_M.request();
-    py::buffer_info log_R_K_i_buf = log_R_K_i.request();
-
-    dtype *log_lagrangian_mult_ptr = (dtype *) log_lagrangian_mult_buf.ptr;
-    dtype *biased_conf_energies_ptr = (dtype *) biased_conf_energies_buf.ptr;
-    int *count_matrices_ptr = (int *) count_matrices_buf.ptr;
-    int *state_counts_ptr = (int *) state_counts_buf.ptr;
-    dtype *scratch_M_ptr = (dtype *) scratch_M_buf.ptr;
-    dtype *log_R_K_i_ptr = (dtype *) log_R_K_i_buf.ptr;
-
-    int i, j, K, o;
-    int Ki, Kj, KM, KMM;
-    int Ci, CK, CKij, CKji, NC;
-    dtype divisor, R_addon;
-
-    for (K = 0; K < n_therm_states; ++K) {
-        KM = K * n_conf_states;
-        KMM = KM * n_conf_states;
-        for (i = 0; i < n_conf_states; ++i) {
-            Ki = KM + i;
-            if (0 == state_counts_ptr[Ki]) /* applying Hao's speed-up recomendation */
-            {
-                log_R_K_i_ptr[Ki] = -INFINITY;
-                continue;
-            }
-            Ci = 0;
-            o = 0;
-            for (j = 0; j < n_conf_states; ++j) {
-                CKij = count_matrices_ptr[KMM + i * n_conf_states + j];
-                CKji = count_matrices_ptr[KMM + j * n_conf_states + i];
-                Ci += CKji;
-                /* special case: most variables cancel out, here */
-                if (i == j) {
-                    scratch_M_ptr[o] = (0 == CKij) ? THERMOTOOLS_TRAM_LOG_PRIOR : log(
-                            THERMOTOOLS_TRAM_PRIOR + (dtype) CKij);
-                    scratch_M_ptr[o++] += biased_conf_energies_ptr[Ki];
-                    continue;
-                }
-                CK = CKij + CKji;
-                /* special case */
-                if (0 == CK) continue;
-                /* regular case */
-                Kj = KM + j;
-                divisor = numeric::kahan::logsumexp_pair(
-                        log_lagrangian_mult_ptr[Kj] - biased_conf_energies_ptr[Ki],
-                        log_lagrangian_mult_ptr[Ki] - biased_conf_energies_ptr[Kj]);
-                scratch_M_ptr[o++] = log((dtype) CK) + log_lagrangian_mult_ptr[Kj] - divisor;
-            }
-            NC = state_counts_ptr[Ki] - Ci;
-            R_addon = (0 < NC) ? log((dtype) NC) + biased_conf_energies_ptr[Ki] : -INFINITY; /* IGNORE PRIOR */
-            log_R_K_i_ptr[Ki] = numeric::kahan::logsumexp_pair(numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M_ptr, o), R_addon);
-        }
     }
 
-    if constexpr(trammbar) {
+//    template<typename dtype, bool trammbar = false>
+    void updateStateCounts() {
+        auto _biased_conf_energies = biased_conf_energies.template unchecked<2>();
+        auto _log_lagrangian_mult = log_lagrangian_mult.template unchecked<2>();
+        auto _modified_state_counts_log = modified_state_counts_log.template unchecked<2>();
+
+        auto _state_counts = input.get_state_counts();
+        auto _transition_counts = input.get_transition_counts();
+
+        auto _scratch_M = scratch_M.template mutable_unchecked<1>();
+
+        auto new_biased_conf_energies = np_array<dtype>({n_therm_states, n_markov_states});
+        auto _new_biased_conf_energies = new_biased_conf_energies.template mutable_unchecked<2>();
+
+
+        int o;
+        int Ci, CK, CKij, CKji, NC;
+        dtype divisor, R_addon;
+
+        for (int K = 0; K < n_therm_states; ++K) {
+            for (int i = 0; i < n_markov_states; ++i) {
+                if (0 == _state_counts(K, i)) /* applying Hao's speed-up recomendation */
+                {
+                    _modified_state_counts_log(K, i) = -INFINITY;
+                    continue;
+                }
+                Ci = 0;
+                o = 0;
+                for (int j = 0; j < n_markov_states; ++j) {
+                    CKij = _transition_counts(K, i, j);
+                    CKji = _transition_counts(K, j, i);
+                    Ci += CKji;
+                    /* special case: most variables cancel out, here */
+                    if (i == j) {
+                        _scratch_M(o) = (0 == CKij) ? THERMOTOOLS_TRAM_LOG_PRIOR : log(
+                                THERMOTOOLS_TRAM_PRIOR + (dtype) CKij);
+                        _scratch_M(o++) += _biased_conf_energies(K, i);
+                        continue;
+                    }
+                    CK = CKij + CKji;
+                    /* special case */
+                    if (0 == CK) continue;
+                    /* regular case */
+                    divisor = numeric::kahan::logsumexp_pair(
+                            _log_lagrangian_mult(K, j) - _biased_conf_energies(K, i),
+                            _log_lagrangian_mult(K, i) - _biased_conf_energies(K, j));
+                    _scratch_M(o++) = log((dtype) CK) + _log_lagrangian_mult(K, j) - divisor;
+                }
+                NC = _state_counts(K, i) - Ci;
+                R_addon = (0 < NC) ? log((dtype) NC) + _biased_conf_energies(K, i) : -INFINITY; /* IGNORE PRIOR */
+                _modified_state_counts_log(K, i) = numeric::kahan::logsumexp_pair(
+                        numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M, o), R_addon);
+            }
+        }
+
+//        if constexpr(trammbar) {
         // todo
         /*if(equilibrium_therm_state_counts && therm_energies)
         {
@@ -257,278 +411,197 @@ void get_log_Ref_K_i(
                 }
             }
         } */
+//        }
+
     }
 
-}
+    void compute_conf_energies(np_array<dtype> bias_energy_sequence,
+                               np_array<int> dtraj, int seq_length) {
+        auto _dtraj = dtraj.template unchecked<1>();
+        auto _bias_energy_sequence = bias_energy_sequence.template unchecked<2>();
 
-template<typename dtype>
-void get_conf_energies(
-        np_array<dtype> bias_energy_sequence, np_array<int> state_sequence, int seq_length, np_array<dtype> log_R_K_i,
-        int n_therm_states, int n_conf_states, np_array<dtype> scratch_T, np_array<dtype> conf_energies) {
-    py::buffer_info bias_energy_sequence_buf = bias_energy_sequence.request();
-    py::buffer_info state_sequence_buf = state_sequence.request();
-    py::buffer_info log_R_K_i_buf = log_R_K_i.request();
-    py::buffer_info scratch_T_buf = scratch_T.request();
-    py::buffer_info conf_energies_buf = conf_energies.request();
+        auto _modified_state_counts_log = modified_state_counts_log.template unchecked<2>();
 
-    dtype *bias_energy_sequence_ptr = (dtype *) bias_energy_sequence_buf.ptr;
-    int *state_sequence_ptr = (int *) state_sequence_buf.ptr;
-    dtype *log_R_K_i_ptr = (dtype *) log_R_K_i_buf.ptr;
-    dtype *scratch_T_ptr = (dtype *) scratch_T_buf.ptr;
-    dtype *conf_energies_ptr = (dtype *) conf_energies_buf.ptr;
+        auto _scratch_T = scratch_T.template mutable_unchecked<1>();
 
-    int i, K, x, o;
-    double divisor;
-    /* assume that conf_energies was set to INF by the caller on the first call */
-    for (x = 0; x < seq_length; ++x) {
-        i = state_sequence_ptr[x];
-        if (i < 0) continue;
-        o = 0;
-        for (K = 0; K < n_therm_states; ++K) {
-            if (-INFINITY == log_R_K_i_ptr[K * n_conf_states + i]) continue;
-            scratch_T_ptr[o++] =
-                    log_R_K_i_ptr[K * n_conf_states + i] - bias_energy_sequence_ptr[x * n_therm_states + K];
-        }
-        divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
-        conf_energies_ptr[i] = -numeric::kahan::logsumexp_pair(-conf_energies_ptr[i], -divisor);
-    }
-}
+        auto _conf_energies = conf_energies.template mutable_checked<1>();
 
-template<typename dtype>
-void get_therm_energies(
-        np_array<dtype> biased_conf_energies, int n_therm_states, int n_conf_states, np_array<dtype> scratch_M,
-        np_array<dtype> therm_energies) {
-    py::buffer_info biased_conf_energies_buf = biased_conf_energies.request();
-    py::buffer_info scratch_M_buf = scratch_M.request();
-    py::buffer_info therm_energies_buf = therm_energies.request();
-
-    dtype *biased_conf_energies_ptr = (dtype *) biased_conf_energies_buf.ptr;
-    dtype *scratch_M_ptr = (dtype *) scratch_M_buf.ptr;
-    dtype *therm_energies_ptr = (dtype *) therm_energies_buf.ptr;
-
-    int i, K;
-    for (K = 0; K < n_therm_states; ++K) {
-        for (i = 0; i < n_conf_states; ++i)
-            scratch_M_ptr[i] = -biased_conf_energies_ptr[K * n_conf_states + i];
-        therm_energies_ptr[K] = -numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M_ptr, n_conf_states);
-    }
-}
-
-template<typename dtype>
-void normalize(
-        np_array<dtype> conf_energies, np_array<dtype> biased_conf_energies, np_array<dtype> therm_energies,
-        int n_therm_states, int n_conf_states, np_array<dtype> scratch_M) {
-    py::buffer_info conf_energies_buf = conf_energies.request();
-    py::buffer_info biased_conf_energies_buf = biased_conf_energies.request();
-    py::buffer_info therm_energies_buf = therm_energies.request();
-    py::buffer_info scratch_M_buf = scratch_M.request();
-
-    dtype *conf_energies_ptr = (dtype *) conf_energies_buf.ptr;
-    dtype *biased_conf_energies_ptr = (dtype *) biased_conf_energies_buf.ptr;
-    dtype *therm_energies_ptr = (dtype *) therm_energies_buf.ptr;
-    dtype *scratch_M_ptr = (dtype *) scratch_M_buf.ptr;
-
-    int i, KM = n_therm_states * n_conf_states;
-    dtype f0;
-    for (i = 0; i < n_conf_states; ++i)
-        scratch_M_ptr[i] = -conf_energies_ptr[i];
-    f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M_ptr, n_conf_states);
-    for (i = 0; i < n_conf_states; ++i)
-        conf_energies_ptr[i] -= f0;
-    for (i = 0; i < KM; ++i)
-        biased_conf_energies_ptr[i] -= f0;
-    for (i = 0; i < n_therm_states; ++i)
-        therm_energies_ptr[i] -= f0;
-}
-
-template<typename dtype>
-void estimate_transition_matrix(
-        np_array<dtype> log_lagrangian_mult, np_array<dtype> conf_energies, np_array<int> count_matrix,
-        int n_conf_states, np_array<dtype> scratch_M, np_array<dtype> transition_matrix) {
-    py::buffer_info log_lagrangian_mult_buf = log_lagrangian_mult.request();
-    py::buffer_info conf_energies_buf = conf_energies.request();
-    py::buffer_info count_matrix_buf = count_matrix.request();
-    py::buffer_info scratch_M_buf = scratch_M.request();
-    py::buffer_info transition_matrix_buf = transition_matrix.request();
-
-    dtype *log_lagrangian_mult_ptr = (dtype *) log_lagrangian_mult_buf.ptr;
-    dtype *conf_energies_ptr = (dtype *) conf_energies_buf.ptr;
-    int *count_matrix_ptr = (int *) count_matrix_buf.ptr;
-    dtype *scratch_M_ptr = (dtype *) scratch_M_buf.ptr;
-    dtype *transition_matrix_ptr = (dtype *) transition_matrix_buf.ptr;
-
-//    auto transition_matrix_arr = np_array<dtype>({n_conf_states * n_conf_states});
-//    auto transition_matrix = transition_matrix_arr.template mutable_unchecked<1>();
-
-    int i, j;
-    int ij, ji;
-    int C;
-    dtype divisor, max_sum;
-    dtype *sum;
-    sum = scratch_M_ptr;
-    for (i = 0; i < n_conf_states; ++i) {
-        sum[i] = 0.0;
-        for (j = 0; j < n_conf_states; ++j) {
-            ij = i * n_conf_states + j;
-            ji = j * n_conf_states + i;
-            transition_matrix_ptr[ij] = 0.0;
-            C = count_matrix_ptr[ij] + count_matrix_ptr[ji];
-            /* special case: this element is zero */
-            if (0 == C) continue;
-            if (i == j) {
-                /* special case: diagonal element */
-                transition_matrix_ptr[ij] = 0.5 * C * exp(-log_lagrangian_mult_ptr[i]);
-            } else {
-                /* regular case */
-                divisor = numeric::kahan::logsumexp_pair(
-                        log_lagrangian_mult_ptr[j] - conf_energies_ptr[i],
-                        log_lagrangian_mult_ptr[i] - conf_energies_ptr[j]);
-                transition_matrix_ptr[ij] = C * exp(-(conf_energies_ptr[j] + divisor));
+        int i, K, x, o;
+        dtype divisor;
+        /* assume that conf_energies was set to INF by the caller on the first call */
+        for (x = 0; x < seq_length; ++x) {
+            i = _dtraj(x);
+            if (i < 0) continue;
+            o = 0;
+            for (K = 0; K < n_therm_states; ++K) {
+                if (-INFINITY == _modified_state_counts_log(K, i)) continue;
+                _scratch_T(o++) =
+                        _modified_state_counts_log(K, i) - _bias_energy_sequence(x, K);
             }
-            sum[i] += transition_matrix_ptr[ij];
+            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_T, o);
+            _conf_energies(i) = -numeric::kahan::logsumexp_pair(-_conf_energies(i), -divisor);
         }
     }
-    /* normalize T matrix */ /* TODO: unify with util._renormalize_transition_matrix? */
-    max_sum = 0;
-    for (i = 0; i < n_conf_states; ++i) if (sum[i] > max_sum) max_sum = sum[i];
-    if (max_sum == 0) max_sum = 1.0; /* completely empty T matrix -> generate Id matrix */
-    for (i = 0; i < n_conf_states; ++i) {
-        for (j = 0; j < n_conf_states; ++j) {
-            if (i == j) {
-                transition_matrix_ptr[i * n_conf_states + i] =
-                        (transition_matrix_ptr[i * n_conf_states + i] + max_sum - sum[i]) / max_sum;
-                if (0 == transition_matrix_ptr[i * n_conf_states + i] && 0 < count_matrix_ptr[i * n_conf_states + i])
-                    fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n", i, i);
-            } else {
-                transition_matrix_ptr[i * n_conf_states + j] = transition_matrix_ptr[i * n_conf_states + j] / max_sum;
+
+    void compute_therm_energies() {
+        auto _biased_conf_energies = biased_conf_energies.template unchecked<2>();
+        auto _therm_energies = therm_energies.template mutable_unchecked<1>();
+        auto _scratch_M = scratch_M.template mutable_unchecked<1>();
+
+        for (int K = 0; K < n_therm_states; ++K) {
+            for (int i = 0; i < n_markov_states; ++i)
+                _scratch_M(i) = -_biased_conf_energies(K, i);
+            _therm_energies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M, n_markov_states);
+        }
+    }
+
+    void normalize() {
+        auto _biased_conf_energies = biased_conf_energies.template unchecked<2>();
+        auto _conf_energies = therm_energies.template mutable_unchecked<1>();
+        auto _therm_energies = therm_energies.template mutable_unchecked<1>();
+        auto _scratch_M = scratch_M.template mutable_unchecked<1>();
+
+        for (int i = 0; i < n_markov_states; ++i) {
+            _scratch_M(i) = -_conf_energies(i);
+        }
+        auto f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M, n_markov_states);
+
+        for (int i = 0; i < n_markov_states; ++i) {
+            _conf_energies(i) -= f0;
+            _therm_energies(i) -= f0;
+            for (int K = 0; K < n_therm_states; ++K) {
+                _biased_conf_energies(i) -= f0;
             }
         }
     }
-}
 
-/* TRAM log-likelihood that comes from the terms containing discrete quantities */
-template<typename dtype>
-dtype discrete_log_likelihood_lower_bound(
-        np_array<dtype> log_lagrangian_mult, np_array<dtype> biased_conf_energies,
-        np_array<int> count_matrices, np_array<int> state_counts,
-        int n_therm_states, int n_conf_states, np_array<dtype> scratch_M, np_array<dtype> scratch_MM
-#ifdef TRAMMBAR
-        ,
-    double *therm_energies, int *equilibrium_therm_state_counts,
-    double overcounting_factor
-#endif
-) {
-    py::buffer_info log_lagrangian_mult_buf = log_lagrangian_mult.request();
-    py::buffer_info biased_conf_energies_buf = biased_conf_energies.request();
-    py::buffer_info count_matrices_buf = count_matrices.request();
-    py::buffer_info state_counts_buf = state_counts.request();
-    py::buffer_info scratch_M_buf = scratch_M.request();
-    py::buffer_info scratch_MM_buf = scratch_MM.request();
+    void estimate_transition_matrices() {
+        auto _biased_conf_energies = biased_conf_energies.template unchecked<2>();
+        auto _log_lagrangian_mult = log_lagrangian_mult.template unchecked<2>();
+        auto _modified_state_counts_log = modified_state_counts_log.template unchecked<2>();
 
-    dtype *log_lagrangian_mult_ptr = (dtype *) log_lagrangian_mult_buf.ptr;
-    dtype *biased_conf_energies_ptr = (dtype *) biased_conf_energies_buf.ptr;
-    int *count_matrices_ptr = (int *) count_matrices_buf.ptr;
-    int *state_counts_ptr = (int *) state_counts_buf.ptr;
-    dtype *scratch_M_ptr = (dtype *) scratch_M_buf.ptr;
-    dtype *scratch_MM_ptr = (dtype *) scratch_MM_buf.ptr;
+        auto _transition_counts = input.get_transition_counts();
+        auto sum = scratch_M.template mutable_unchecked<1>();
 
-    dtype a, b;
-    int K, i, j;
-    int KM, KMM, Ki;
-    int CKij;
-    dtype *T_ij;
+        auto _transition_matrices = transition_matrices.template mutable_unchecked<33>();
 
-    /* \sum_{i,j,k}c_{ij}^{(k)}\log p_{ij}^{(k)} */
-    a = 0;
-    T_ij = scratch_MM_ptr;
-    for (K = 0; K < n_therm_states; ++K) {
-        KM = K * n_conf_states;
-        KMM = KM * n_conf_states;
-        estimate_transition_matrix<dtype>(
-                log_lagrangian_mult(KM), biased_conf_energies(KM), count_matrices(KMM),
-                n_conf_states, scratch_M, scratch_MM);
-        for (i = 0; i < n_conf_states; ++i) {
-            for (j = 0; j < n_conf_states; ++j) {
-                CKij = count_matrices_ptr[KMM + i * n_conf_states + j];
-                if (0 == CKij) continue;
-                if (i == j) {
-                    a += ((dtype) CKij + THERMOTOOLS_TRAM_PRIOR) * log(T_ij[i * n_conf_states + j]);
-                } else {
-                    a += CKij * log(T_ij[i * n_conf_states + j]);
+        int C;
+        dtype divisor, max_sum;
+        for (int K = 0; K < n_therm_states; ++K) {
+            for (int i = 0; i < n_markov_states; ++i) {
+                sum(i) = 0.0;
+                for (int j = 0; j < n_markov_states; ++j) {
+                    _transition_matrices(i, j) = 0.0;
+                    C = _transition_matrices(i, j) + _transition_counts(K, j, i);
+                    /* special case: this element is zero */
+                    if (0 == C) continue;
+                    if (i == j) {
+                        /* special case: diagonal element */
+                        _transition_matrices(K, i, j) = 0.5 * C * exp(-_log_lagrangian_mult(K, i));
+                    } else {
+                        /* regular case */
+                        divisor = numeric::kahan::logsumexp_pair(
+                                _log_lagrangian_mult(K, j) - _biased_conf_energies(K, i),
+                                _log_lagrangian_mult(K, i) - _biased_conf_energies(K, j));
+                        _transition_matrices(K, i, j) = C * exp(-(_biased_conf_energies(K, j) + divisor));
+                    }
+                    sum(i) += _transition_matrices(K, i, j);
+                }
+            }
+            /* normalize T matrix */ /* TODO: unify with util._renormalize_transition_matrix? */
+            max_sum = 0;
+            for (int i = 0; i < n_markov_states; ++i) if (sum(i) > max_sum) max_sum = sum(i);
+            if (max_sum == 0) max_sum = 1.0; /* completely empty T matrix -> generate Id matrix */
+            for (int i = 0; i < n_markov_states; ++i) {
+                for (int j = 0; j < n_markov_states; ++j) {
+                    if (i == j) {
+                        _transition_matrices(K, i, i) = (_transition_matrices(K, i, i) + max_sum - sum(i)) / max_sum;
+                        if (0 == _transition_matrices(K, i, i) && 0 < _transition_counts(K, i, i))
+                            fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n", i, i);
+                    } else {
+                        _transition_matrices(K, i, j) = _transition_matrices(K, i, j) / max_sum;
+                    }
                 }
             }
         }
     }
 
-    /* \sum_{i,k}N_{i}^{(k)}f_{i}^{(k)} */
-    b = 0;
-    for (K = 0; K < n_therm_states; ++K) {
-        KM = K * n_conf_states;
-        for (i = 0; i < n_conf_states; ++i) {
-            Ki = KM + i;
-            if (state_counts_ptr[Ki] > 0)
-                b += (state_counts_ptr[Ki] + THERMOTOOLS_TRAM_PRIOR) * biased_conf_energies_ptr[Ki];
+    /* TRAM log-likelihood that comes from the terms containing discrete quantities */
+    dtype discrete_log_likelihood_lower_bound() {
+        auto _biased_conf_energies = biased_conf_energies.template unchecked<2>();
+        auto _transition_counts = input.get_transition_counts();
+        auto _state_counts = input.get_state_counts();
+        auto _transition_matrices = transition_matrices.template unchecked<3>();
+
+        int CKij;
+
+        /* \sum_{i,j,k}c_{ij}^{(k)}\log p_{ij}^{(k)} */
+        dtype a = 0;
+        estimate_transition_matrices();
+        for (int K = 0; K < n_therm_states; ++K) {
+            for (int i = 0; i < n_markov_states; ++i) {
+                for (int j = 0; j < n_markov_states; ++j) {
+                    CKij = _transition_counts(K, i, j);
+                    if (0 == CKij) continue;
+                    if (i == j) {
+                        a += ((dtype) CKij + THERMOTOOLS_TRAM_PRIOR) * log(_transition_matrices(K, i, j));
+                    } else {
+                        a += CKij * log(_transition_matrices(K, i, j));
+                    }
+                }
+            }
         }
+        /* \sum_{i,k}N_{i}^{(k)}f_{i}^{(k)} */
+        dtype b = 0;
+        for (int K = 0; K < n_therm_states; ++K) {
+            for (int i = 0; i < n_markov_states; ++i) {
+                if (_state_counts(K, i) > 0)
+                    b += (_state_counts(K, i) + THERMOTOOLS_TRAM_PRIOR) * _biased_conf_energies(K, i);
+            }
+        }
+        return a + b;
     }
 
-#ifdef TRAMMBAR
-    a *= overcounting_factor;
-    b *= overcounting_factor;
-
-    /* \sum_k N_{eq}^{(k)}f^{(k)}*/
-    if(equilibrium_therm_state_counts && therm_energies) {
-        for(K=0; K<n_therm_states; ++K) {
-            if(0 < equilibrium_therm_state_counts[K])
-                b += equilibrium_therm_state_counts[K] * therm_energies[K];
-        }
-    }
-#endif
-
-    return a + b;
-}
-
-template<typename dtype>
-void get_pointwise_unbiased_free_energies(
-        int k, np_array<dtype> bias_energy_sequence, np_array<dtype> therm_energies, np_array<int> state_sequence,
-        int seq_length, np_array<dtype> log_R_K_i, int n_therm_states, int n_conf_states,
-        np_array<dtype> scratch_T, np_array<dtype> pointwise_unbiased_free_energies) {
-    py::buffer_info bias_energy_sequence_buf = bias_energy_sequence.request();
-    py::buffer_info therm_energies_buf = therm_energies.request();
-    py::buffer_info state_sequence_buf = state_sequence.request();
-    py::buffer_info log_R_K_i_buf = log_R_K_i.request();
-    py::buffer_info scratch_T_buf = scratch_T.request();
-    py::buffer_info pointwise_unbiased_free_energies_buf = pointwise_unbiased_free_energies.request();
-
-    dtype *bias_energy_sequence_ptr = (dtype *) bias_energy_sequence_buf.ptr;
-    dtype *therm_energies_ptr = (dtype *) therm_energies_buf.ptr;
-    int *state_sequence_ptr = (int *) state_sequence_buf.ptr;
-    dtype *log_R_K_i_ptr = (dtype *) log_R_K_i_buf.ptr;
-    dtype *scratch_T_ptr = (dtype *) scratch_T_buf.ptr;
-    dtype *pointwise_unbiased_free_energies_ptr = (dtype *) pointwise_unbiased_free_energies_buf.ptr;
-
-    int L, o, i, x;
-    dtype log_divisor;
-
-    for (x = 0; x < seq_length; ++x) {
-        i = state_sequence_ptr[x];
-        if (i < 0) {
-            pointwise_unbiased_free_energies_ptr[x] = INFINITY;
-            continue;
-        }
-        o = 0;
-        for (L = 0; L < n_therm_states; ++L) {
-            if (-INFINITY == log_R_K_i_ptr[L * n_conf_states + i]) continue;
-            scratch_T_ptr[o++] =
-                    log_R_K_i_ptr[L * n_conf_states + i] - bias_energy_sequence_ptr[x * n_therm_states + L];
-        }
-        log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_T_ptr, o);
-        if (k == -1)
-            pointwise_unbiased_free_energies_ptr[x] = log_divisor;
-        else
-            pointwise_unbiased_free_energies_ptr[x] =
-                    bias_energy_sequence_ptr[x * n_therm_states + k] + log_divisor - therm_energies_ptr[k];
-    }
-}
+    // TODO: fix this
+//    template<typename dtype>
+//    void get_pointwise_unbiased_free_energies(int K) {
+//        auto _dtrajs = input.get_dtraj();
+//        auto _bias_matrix = input.get_bias_matrix_row();
+//
+//        auto _therm_energies = therm_energies.template unchecked<1>();
+//        auto _modified_state_counts_log = modified_state_counts_log.template unchecked<2>();
+//
+//        auto _scratch_T = scratch_T.template unchecked<1>();
+//
+//        int traj_length = _dtraj.shape[0];
+//        np_array<dtype> pointwise_unbiased_free_energies = np_array<dtype>({traj_length});
+//        auto _pointwise_unbiased_free_energies = pointwise_unbiased_free_energies.template mutable_unchecked<2>();
+//
+//        int L, o, i, x;
+//        dtype log_divisor;
+//
+//        for (int x = 0; x < traj_length; ++x) {
+//            i = _dtraj(x);
+//            if (i < 0) {
+//                _pointwise_unbiased_free_energies(x) = INFINITY;
+//                continue;
+//            }
+//            o = 0;
+//            for (L = 0; L < n_therm_states; ++L) {
+//                if (-INFINITY == _modified_state_counts_log(L, i)) continue;
+//                _scratch_T(o++) =
+//                        _modified_state_counts_log(L, i) - _bias_matrix(x, L);
+//            }
+//            log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_T, o);
+//            if (K == -1)
+//                pointwise_unbiased_free_energies_ptr[x] = log_divisor;
+//            else
+//                pointwise_unbiased_free_energies_ptr[x] =
+//                        bias_energy_sequence_ptr[x * n_therm_states + k] + log_divisor - therm_energies_ptr[k];
+//        }
+//    }
+//};
+};
 
 template<typename dtype>
 extern dtype _bar_df(np_array<dtype> db_IJ, int L1, np_array<dtype> db_JI, int L2, np_array<dtype> scratch) {
@@ -553,6 +626,5 @@ extern dtype _bar_df(np_array<dtype> db_IJ, int L1, np_array<dtype> db_JI, int L
     ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, L2);
     return ln_avg2 - ln_avg1;
 }
-
 }
 }
