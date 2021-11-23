@@ -79,8 +79,8 @@ auto kdot(const np_array_nfc<dtype> &arrA, const np_array_nfc<dtype> &arrB) -> n
 *   logspace Kahan summation
 ***************************************************************************************************/
 template<typename dtype>
-dtype logsumexp_kahan_inplace(dtype *array, int size, dtype array_max) {
-    if (0 == size) return -std::numeric_limits<dtype>::infinity();
+dtype logsumexp_kahan_inplace(dtype * const array, const int size, dtype array_max) {
+    if (size == 0) return -std::numeric_limits<dtype>::infinity();
     if (-std::numeric_limits<dtype>::infinity() == array_max)
         return -std::numeric_limits<dtype>::infinity();
     for (int i = 0; i < size; ++i)
@@ -89,11 +89,20 @@ dtype logsumexp_kahan_inplace(dtype *array, int size, dtype array_max) {
 }
 
 template<typename dtype>
-dtype logsumexp_sort_kahan_inplace(dtype *array, int size) {
+dtype logsumexp_sort_kahan_inplace(np_array_nfc<dtype> &array, const int size) {
+    py::buffer_info array_buf = array.request();
+    dtype *begin = (dtype *) array_buf.ptr;
+    return logsumexp_sort_kahan_inplace(begin, size);
+}
+
+
+template<typename dtype>
+dtype logsumexp_sort_kahan_inplace(dtype * const array, const int size) {
     if (0 == size) return -std::numeric_limits<dtype>::infinity();
     std::sort(array, array + size);
     return logsumexp_kahan_inplace(array, size, array[size - 1]);
 }
+
 
 template<typename dtype>
 dtype logsumexp_pair(dtype a, dtype b) {

@@ -53,11 +53,11 @@ def main():
     therm_state_sequences = np.asarray([[i] * n_samples for i in range(len(bias_centers))])
     trajectories = sample_trajectories(bias_functions)
 
-    [plt.plot(xs, fn(xs), label=f'Bias {i}') for i, fn in enumerate(bias_functions)]
-    plt.hist(xs[trajectories.flatten()], bins=100, density=True, alpha=.6, color='C1',
-             label='Histogram over visited states')
-    plt.legend()
-    plt.show()
+    # [plt.plot(xs, fn(xs), label=f'Bias {i}') for i, fn in enumerate(bias_functions)]
+    # plt.hist(xs[trajectories.flatten()], bins=100, density=True, alpha=.6, color='C1',
+    #          label='Histogram over visited states')
+    # plt.legend()
+    # plt.show()
 
     # move from trajectory over 100 bins back to the space of the xs: (-1.5, 1.5)
     trajectories = trajectories / 100 * 3 - 1.5
