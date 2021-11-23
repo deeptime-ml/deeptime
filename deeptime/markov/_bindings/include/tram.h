@@ -5,8 +5,8 @@
 #pragma once
 
 #include <cstdio>
-#include <format>
 #include <cassert>
+#include <utility>
 #include "common.h"
 #include "kahan_summation.h"
 
@@ -29,87 +29,95 @@ double THERMOTOOLS_TRAM_LOG_PRIOR = 1.0;
 //};
 //template<typename dtype> using BiasedConfEnergies = TwoDimArray<dtype>;
 
+namespace detail {
+void throwIfInvalid(bool isValid, const std::string &message) {
+    if (!isValid) {
+        throw std::runtime_error(message);
+    }
+}
+}
+
+using DTrajs = py::list;
+
 template<typename dtype>
 class TRAMInput {
+    using DTraj = np_array_nfc<std::int32_t>;
+    using DTrajs = std::vector<DTraj>;
+
+    using BiasMatrix = np_array_nfc<dtype>;
+    using BiasMatrices = std::vector<BiasMatrix>;
+
 public:
-    TRAMInput(const np_array_nfc<std::int32_t> stateCounts, const np_array_nfc<std::int32_t> transitionCounts,
+    TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
               py::list dtrajs, py::list biasMatrix)
-            : stateCounts(stateCounts),
-              transitionCounts(transitionCounts),
-              biasMatrix(biasMatrix),
-              dtrajs(dtrajs) {
+            : _stateCounts(std::move(stateCounts)),
+              _transitionCounts(std::move(transitionCounts)) {
+        _dtrajs.reserve(dtrajs.size());
+        std::transform(dtrajs.begin(), dtrajs.end(), std::back_inserter(_dtrajs), [](const auto &pyObject) {
+            return py::cast<DTraj>(pyObject);
+        });
+        _biasMatrices.reserve(biasMatrix.size());
+        std::transform(biasMatrix.begin(), biasMatrix.end(), std::back_inserter(_biasMatrices), [](const auto &pyObject) {
+            return py::cast<BiasMatrix>(pyObject);
+        });
         validateInput();
     }
 
-    TRAMInput() {}
+    TRAMInput() = default;
+    TRAMInput(const TRAMInput&) = delete;
+    TRAMInput &operator=(const TRAMInput &) = delete;
 
     void validateInput() {
 
-//        char* s = static_cast<char *>(malloc(1000 * sizeof(char)));
-//        sprintf(s, ,
-//                dtrajs.size(), biasMatrix.size());
-
-        if (dtrajs.size() != biasMatrix.size()){
+        if (_dtrajs.size() != _biasMatrices.size()){
             std::stringstream ss;
-            ss << "Input invalid. Number of trajectories should be equal to the size of the first dimension of the bias matrix.";
-            ss << "\nNumber of trajectories: " << dtrajs.size() << "\nNumber of bias matrices: "<< biasMatrix.size();
+            ss << "Input invalid. Number of trajectories should be equal to the size of the first dimension "
+                  "of the bias matrix.";
+            ss << "\nNumber of trajectories: " << _dtrajs.size() << "\nNumber of bias matrices: "
+               << _biasMatrices.size();
             throw std::runtime_error(ss.str());
         }
 
-        for (int K = 0; K < dtrajs.size(); ++K) {
-            auto dtrajs_K = py::cast<np_array_nfc<std::int32_t>>(dtrajs[K]);
-            auto biasMatrix_K = py::cast<np_array_nfc<dtype>>(biasMatrix[K]);
+        for (int K = 0; K < _dtrajs.size(); ++K) {
+            const auto &dtrajs_K = _dtrajs.at(K);
+            const auto &biasMatrix_K = _biasMatrices.at(K);
 
-            auto dtrajsBuf_K = dtrajs_K.request();
-            auto biasMatrixBuf_K = biasMatrix_K.request();
-
-            throwIfInvalid(dtrajsBuf_K.ndim == 1,
+            detail::throwIfInvalid(dtrajs_K.ndim() == 1,
                            "dtraj at index {i} has an incorrect number of dimension. ndims should be 1.");
-            throwIfInvalid(biasMatrixBuf_K.ndim == 2,
-                           "getBiasMatrixRow at index {i} has an incorrect number of dimension. ndims should be 2.");
-            throwIfInvalid(dtrajsBuf_K.shape[0] == biasMatrixBuf_K.shape[0],
-                           "dtraj and getBiasMatrixRow at index {i} should be of equal length.");
-            throwIfInvalid(biasMatrixBuf_K.shape[1] == transitionCounts.shape()[0],
-                           "getBiasMatrixRow{i}.shape[1] should be equal to getTransitionCounts.shape[0].");
+            detail::throwIfInvalid(biasMatrix_K.ndim() == 2,
+                           "biasMatrix at index {i} has an incorrect number of dimension. ndims should be 2.");
+            detail::throwIfInvalid(dtrajs_K.shape(0) == biasMatrix_K.shape(0),
+                           "dtraj and biasMatrix at index {i} should be of equal length.");
+            detail::throwIfInvalid(biasMatrix_K.shape(1) == _transitionCounts.shape(0),
+                           "biasMatrix{i}.shape[1] should be equal to transitionCounts.shape[0].");
         }
     }
 
-    void throwIfInvalid(bool isValid, std::string message) {
-        if (!isValid) {
-            throw std::runtime_error(message);
-        }
+    auto biasMatrix(int K) const {
+        return _biasMatrices.at(K).template unchecked<2>();
     }
 
-    const auto getBiasMatrixRow(int K) {
-//        return  py::cast<np_array_nfc<dtype>>(biasMatrix[K]);
-        np_array_nfc<dtype> biasMatrix_K = py::cast<np_array_nfc<dtype>>(biasMatrix[K]);
-        return biasMatrix_K.template unchecked<2>();
+    auto dtraj(int K) const {
+        return _dtrajs.at(K).template unchecked<1>();
     }
 
-    const auto getDtraj(int K) {
-//        auto dtrajs_K = py::cast<np_array_nfc<std::int32_t>>(dtrajs[K]);
-//        return dtrajs_K;
-        np_array_nfc<int> dtrajs_K = py::cast<np_array_nfc<int>>(dtrajs[K]);
-        return dtrajs_K.template unchecked<1>();
+    auto transitionCounts() const {
+        return _transitionCounts.template unchecked<3>();
     }
 
-    auto getTransitionCounts() {
-        return transitionCounts.template unchecked<3>();
+    auto stateCounts() const {
+        return _stateCounts.template unchecked<2>();
     }
 
-    auto getStateCounts() {
-        return stateCounts.template unchecked<2>();
-    }
-
-    int getSequenceLength(int K) {
-        return py::cast<np_array_nfc<std::int32_t>>(dtrajs[K]).size();
+    auto sequenceLength(int K) const {
+        return _dtrajs.at(K).size();
     }
 
 private:
-    np_array_nfc<std::int32_t> stateCounts;
-    np_array_nfc<std::int32_t> transitionCounts;
-    py::list dtrajs;
-    py::list biasMatrix;
+    np_array_nfc<std::int32_t> _stateCounts;
+    np_array_nfc<std::int32_t> _transitionCounts;
+    DTrajs _dtrajs;
+    BiasMatrices _biasMatrices;
 };
 
 template<typename dtype>
@@ -133,22 +141,22 @@ struct TRAM {
 
     TRAMInput<dtype> input;
 
-    int nThermStates;
-    int nMarkovStates;
+    std::size_t nThermStates;
+    std::size_t nMarkovStates;
 
-    int saveConvergenceInfo;
+    std::size_t saveConvergenceInfo;
 
     // scratch matrices used to facilitate calculation of logsumexp
-    np_array_nfc<dtype> scratch_M;
+    np_array_nfc<dtype> scratchM;
     np_array_nfc<dtype> scratchT;
 
-    TRAM(const np_array_nfc<std::int32_t> stateCounts, np_array_nfc<std::int32_t> transitionCounts, const py::list dtrajs,
-         const py::list biasMatrix, int saveConvergenceInfo = 0)
+    TRAM(np_array_nfc<std::int32_t> &&stateCounts,
+         np_array_nfc<std::int32_t> &&transitionCounts, const DTrajs &dtrajs,
+         const py::list &biasMatrices, std::size_t saveConvergenceInfo = 0)
             : nThermStates(stateCounts.shape()[0]),
               nMarkovStates(stateCounts.shape()[1]),
-              saveConvergenceInfo(saveConvergenceInfo) {
-
-        input = TRAMInput<dtype>(stateCounts, transitionCounts, dtrajs, biasMatrix);
+              saveConvergenceInfo(saveConvergenceInfo),
+              input(std::move(stateCounts), std::move(transitionCounts), dtrajs, biasMatrices) {
 
         biasedConfEnergies = np_array_nfc<dtype>({nThermStates, nMarkovStates});
         lagrangianMultLog = np_array_nfc<dtype>({nThermStates, nMarkovStates});
@@ -156,12 +164,12 @@ struct TRAM {
 
         transitionMatrices = np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates});
 
-        markovStateEnergies = np_array_nfc<dtype>({nMarkovStates});
-        thermStateEnergies = np_array_nfc<dtype>({nThermStates});
+        markovStateEnergies = np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nMarkovStates});
+        thermStateEnergies = np_array_nfc<dtype>(std::vector<decltype(nThermStates)>{nThermStates});
         statVectors = np_array_nfc<dtype>({nThermStates, nMarkovStates});
 
-        scratch_M = np_array_nfc<dtype>({nMarkovStates});
-        scratchT = np_array_nfc<dtype>({nThermStates});
+        scratchM = np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nMarkovStates});
+        scratchT = np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nThermStates});
 
         initLagrangianMult();
         initBiasedConfEnergies();
@@ -226,7 +234,7 @@ struct TRAM {
     }
 
     void initLagrangianMult() {
-        auto _transitionCounts = input.getTransitionCounts();
+        auto _transitionCounts = input.transitionCounts();
         auto _lagrangianMultLog = lagrangianMultLog.template mutable_unchecked<2>();
 
         for (int K = 0; K < nThermStates; ++K) {
@@ -256,10 +264,10 @@ struct TRAM {
         auto _lagrangianMultLog = lagrangianMultLog.template unchecked<2>();
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
 
-        auto _transitionCounts = input.getTransitionCounts();
-        auto _stateCounts = input.getStateCounts();
+        auto _transitionCounts = input.transitionCounts();
+        auto _stateCounts = input.stateCounts();
 
-        auto _scratchM = scratch_M.template mutable_unchecked<1>();
+        auto _scratchM = scratchM.template mutable_unchecked<1>();
 
         auto newLagrangianMultLog = np_array_nfc<dtype>({nThermStates, nMarkovStates});
         auto _newLagrangianMultLog = newLagrangianMultLog.template mutable_unchecked<2>();
@@ -291,7 +299,7 @@ struct TRAM {
                             - _lagrangianMultLog(K, i) + _biasedConfEnergies(K, j), 0.0);
                     _scratchM(o++) = log((dtype) CK) - divisor;
                 }
-                _newLagrangianMultLog(K, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M, o);
+                _newLagrangianMultLog(K, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratchM, o);
             }
         }
         lagrangianMultLog = newLagrangianMultLog;
@@ -310,7 +318,7 @@ struct TRAM {
         }
 
         for (int K = 0; K < nThermStates; ++K) {
-            logLikelihood += updateBiasedConfEnergies(K, return_log_l, input.getSequenceLength(K));
+            logLikelihood += updateBiasedConfEnergies(K, return_log_l, input.sequenceLength(K));
         }
         return logLikelihood;
     }
@@ -319,8 +327,8 @@ struct TRAM {
         auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
 
-        auto _dtraj = input.getDtraj(therm_state);
-        auto _biasMatrix = input.getBiasMatrixRow(therm_state);
+        auto _dtraj = input.dtraj(therm_state);
+        auto _biasMatrix = input.biasMatrix(therm_state);
 
         auto _scratchT = scratchT.template mutable_unchecked<1>();
 
@@ -372,10 +380,10 @@ struct TRAM {
         auto _lagrangianMultLog = lagrangianMultLog.template unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template mutable_unchecked<2>();
 
-        auto _stateCounts = input.getStateCounts();
-        auto _transitionCounts = input.getTransitionCounts();
+        auto _stateCounts = input.stateCounts();
+        auto _transitionCounts = input.transitionCounts();
 
-        auto _scratchM = scratch_M.template mutable_unchecked<1>();
+        auto _scratchM = scratchM.template mutable_unchecked<1>();
 
         int o;
         int Ci, CK, CKij, CKji, NC;
@@ -414,7 +422,7 @@ struct TRAM {
                 extraStateCounts = (0 < NC) ? log((dtype) NC) + _biasedConfEnergies(K, i)
                                             : -INFINITY; /* IGNORE PRIOR */
                 _modifiedStateCountsLog(K, i) = numeric::kahan::logsumexp_pair(
-                        numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M, o), extraStateCounts);
+                        numeric::kahan::logsumexp_sort_kahan_inplace(scratchM, o), extraStateCounts);
             }
         }
 
@@ -490,9 +498,9 @@ struct TRAM {
         }
 
         for (int K = 0; K < nThermStates; ++K) {
-            auto _dtraj_K = input.getDtraj(K);
-            auto _biasMatrix_K = input.getBiasMatrixRow(K);
-            int trajLength = input.getSequenceLength(K);
+            auto _dtraj_K = input.dtraj(K);
+            auto _biasMatrix_K = input.biasMatrix(K);
+            int trajLength = input.sequenceLength(K);
 
             computeMarkovStateEnergiesForSingleTrajectory(_biasMatrix_K, _dtraj_K, trajLength);
         }
@@ -526,15 +534,15 @@ struct TRAM {
     np_array_nfc<dtype> computeThermStateEnergies() {
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
 
-        auto newThermStateEnergies = np_array_nfc<dtype>({nThermStates});
+        auto newThermStateEnergies = np_array_nfc<dtype>(std::vector<decltype(nThermStates)>{nThermStates});
         auto _newThermStateEnergies = newThermStateEnergies.template mutable_unchecked<1>();
 
-        auto _scratch_M = scratch_M.template mutable_unchecked<1>();
+        auto _scratch_M = scratchM.template mutable_unchecked<1>();
 
         for (int K = 0; K < nThermStates; ++K) {
             for (int i = 0; i < nMarkovStates; ++i)
                 _scratch_M(i) = -_biasedConfEnergies(K, i);
-            _newThermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M, nMarkovStates);
+            _newThermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM, nMarkovStates);
         }
         return newThermStateEnergies;
     }
@@ -565,12 +573,12 @@ struct TRAM {
         auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
         auto _thermStateEnergies = thermStateEnergies.template mutable_unchecked<1>();
-        auto _scratch_M = scratch_M.template mutable_unchecked<1>();
+        auto _scratch_M = scratchM.template mutable_unchecked<1>();
 
         for (int i = 0; i < nMarkovStates; ++i) {
             _scratch_M(i) = -_markovStateEnergies(i);
         }
-        dtype f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratch_M, nMarkovStates);
+        dtype f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM, nMarkovStates);
 
         for (int i = 0; i < nMarkovStates; ++i) {
             _markovStateEnergies(i) -= f0;
@@ -586,8 +594,8 @@ struct TRAM {
         auto _lagrangianMultLog = lagrangianMultLog.template unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
 
-        auto _transitionCounts = input.getTransitionCounts();
-        auto sum = scratch_M.template mutable_unchecked<1>();
+        auto _transitionCounts = input.transitionCounts();
+        auto sum = scratchM.template mutable_unchecked<1>();
 
         auto _transitionMatrices = transitionMatrices.template mutable_unchecked<3>();
 
@@ -638,8 +646,8 @@ struct TRAM {
     /* TRAM log-likelihood that comes from the terms containing discrete quantities */
     dtype discreteLogLikelihoodLowerBound() {
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _transitionCounts = input.getTransitionCounts();
-        auto _stateCounts = input.getStateCounts();
+        auto _transitionCounts = input.transitionCounts();
+        auto _stateCounts = input.stateCounts();
         auto _transitionMatrices = transitionMatrices.template unchecked<3>();
 
         int CKij;
@@ -675,8 +683,8 @@ struct TRAM {
     // TODO: fix this
 //    template<typename dtype>
 //    void get_pointwise_unbiased_free_energies(int K) {
-//        auto _dtrajs = input.getDtraj();
-//        auto _bias_matrix = input.getBiasMatrixRow();
+//        auto _dtrajs = input.dtraj();
+//        auto _bias_matrix = input.biasMatrix();
 //
 //        auto _therm_energies = thermStateEnergies.template unchecked<1>();
 //        auto _modified_state_counts_log = modifiedStateCountsLog.template unchecked<2>();

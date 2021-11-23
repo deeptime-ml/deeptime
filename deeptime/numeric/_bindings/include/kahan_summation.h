@@ -89,20 +89,16 @@ dtype logsumexp_kahan_inplace(dtype * const array, const int size, dtype array_m
 }
 
 template<typename dtype>
-dtype logsumexp_sort_kahan_inplace(np_array_nfc<dtype> &array, const int size) {
-    py::buffer_info array_buf = array.request();
-    dtype *begin = (dtype *) array_buf.ptr;
-    return logsumexp_sort_kahan_inplace(begin, size);
-}
-
-
-template<typename dtype>
-dtype logsumexp_sort_kahan_inplace(dtype * const array, const int size) {
+dtype logsumexp_sort_kahan_inplace(dtype * const array, std::size_t size) {
     if (0 == size) return -std::numeric_limits<dtype>::infinity();
     std::sort(array, array + size);
     return logsumexp_kahan_inplace(array, size, array[size - 1]);
 }
 
+template<typename dtype>
+dtype logsumexp_sort_kahan_inplace(np_array_nfc<dtype> &array, std::size_t size) {
+    return logsumexp_sort_kahan_inplace(array.template mutable_data(), size);
+}
 
 template<typename dtype>
 dtype logsumexp_pair(dtype a, dtype b) {
