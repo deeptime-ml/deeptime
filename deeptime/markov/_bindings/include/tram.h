@@ -506,10 +506,11 @@ struct TRAM {
         }
     }
 
+    template<typename BiasMatrixK, typename Dtraj>
     void
-    computeMarkovStateEnergiesForSingleTrajectory(pybind11::detail::unchecked_reference<dtype,2> _biasMatrix_K,
-                                                  pybind11::detail::unchecked_reference<std::int32_t, 1> _dtraj,
-                                                  int trajlength) {
+    computeMarkovStateEnergiesForSingleTrajectory(const BiasMatrixK &_biasMatrix_K,
+                                                  const Dtraj &_dtraj,
+                                                  int trajlength /*todo this is just dtraj length*/) {
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
         auto _scratch_T = scratchT.template mutable_unchecked<1>();
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
@@ -737,11 +738,11 @@ extern dtype _bar_df(np_array_nfc<dtype> db_IJ, int L1, np_array_nfc<dtype> db_J
     for (i = 0; i < L1; i++) {
         scratch_ptr[i] = db_IJ_ptr[i] > 0 ? 0 : db_IJ_ptr[i];
     }
-    ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, L1);
+    ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr+L1);
     for (i = 0; i < L1; i++) {
         scratch_ptr[i] = db_JI_ptr[i] > 0 ? 0 : db_JI_ptr[i];
     }
-    ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, L2);
+    ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr+L2);
     return ln_avg2 - ln_avg1;
 }
 }

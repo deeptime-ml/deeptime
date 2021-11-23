@@ -78,26 +78,29 @@ auto kdot(const np_array_nfc<dtype> &arrA, const np_array_nfc<dtype> &arrB) -> n
 /***************************************************************************************************
 *   logspace Kahan summation
 ***************************************************************************************************/
-template<typename dtype>
-dtype logsumexp_kahan_inplace(dtype * const array, const int size, dtype array_max) {
-    if (size == 0) return -std::numeric_limits<dtype>::infinity();
+template<typename Iterator, typename dtype = typename std::iterator_traits<Iterator>::value_type>
+auto logsumexp_kahan_inplace(Iterator begin, Iterator end, dtype array_max) {
+    if (begin == end) return -std::numeric_limits<dtype>::infinity();
     if (-std::numeric_limits<dtype>::infinity() == array_max)
         return -std::numeric_limits<dtype>::infinity();
-    for (int i = 0; i < size; ++i)
-        array[i] = std::exp(array[i] - array_max);
-    return array_max + std::log(ksum(array, array + size));
+    std::transform(begin, end, begin, [array_max](auto element) { return std::exp(element - array_max); });
+
+    return array_max + std::log(ksum(begin, end));
 }
 
-template<typename dtype>
-dtype logsumexp_sort_kahan_inplace(dtype * const array, std::size_t size) {
-    if (0 == size) return -std::numeric_limits<dtype>::infinity();
-    std::sort(array, array + size);
-    return logsumexp_kahan_inplace(array, size, array[size - 1]);
+template<typename Iterator>
+auto logsumexp_sort_kahan_inplace(Iterator begin, Iterator end) {
+    using dtype = typename std::iterator_traits<Iterator>::value_type;
+    if (begin == end) return -std::numeric_limits<dtype>::infinity();
+    std::sort(begin, end);
+    return logsumexp_kahan_inplace(begin, end, *std::prev(end));
 }
 
 template<typename dtype>
 dtype logsumexp_sort_kahan_inplace(np_array_nfc<dtype> &array, std::size_t size) {
-    return logsumexp_sort_kahan_inplace(array.template mutable_data(), size);
+    /*todo: replace with a templated signature ...inplace(begin, end)*/
+    auto *ptr = array.template mutable_data();
+    return logsumexp_sort_kahan_inplace(ptr, ptr+size);
 }
 
 template<typename dtype>
