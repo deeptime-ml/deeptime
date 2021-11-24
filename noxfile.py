@@ -8,17 +8,7 @@ PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9", "3.10"]
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.Session) -> None:
     session.install("-r", "tests/requirements.txt")
-
-    if session.posargs and 'cpp_tests' in session.posargs:
-        session.log("Running C++ unit tests")
-        tmpdir = session.create_tmp()
-        session.install("cmake")
-        session.install("conan")
-        pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True).strip()
-        session.log(f"Found pybind11 module dir: {pybind11_module_dir}")
-        session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON',
-                    "-Dpybind11_DIR={}".format(pybind11_module_dir), '-DCMAKE_BUILD_TYPE=Release', silent=True)
-        session.run("cmake", "--build", tmpdir, "--target", "run_tests")
+    session.install("-e", ".", '-v', silent=False)
 
     if session.posargs and 'cov' in session.posargs:
         session.log("Running with coverage")
@@ -42,7 +32,6 @@ def tests(session: nox.Session) -> None:
     except ImportError:
         pass
 
-    session.install("-e", ".", '-v', silent=False)
     session.run("pytest", '-vv', '--doctest-modules', '--durations=20', *cov_args, '--pyargs', *test_dirs)
 
 
@@ -51,10 +40,11 @@ def cpp_tests(session: nox.Session) -> None:
     tmpdir = session.create_tmp()
     session.install("cmake")
     session.install("conan")
-    session.install("-r", "tests/requirements.txt")
-    session.install("-e", ".", '-v', silent=False)
-    session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON')
-    session.run("cmake", "--build", tmpdir, "--config=Release", "--target", "run_tests")
+    pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True).strip()
+    session.log(f"Found pybind11 module dir: {pybind11_module_dir}")
+    session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON',
+                "-Dpybind11_DIR={}".format(pybind11_module_dir), '-DCMAKE_BUILD_TYPE=Release', silent=True)
+    session.run("cmake", "--build", tmpdir, "--target", "run_tests")
 
 
 @nox.session(reuse_venv=True)
