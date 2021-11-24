@@ -229,7 +229,6 @@ struct TRAM {
             // compare new with old to get the iteration error (= how much the energies changed).
             iterationError = getError(oldThermEnergies, oldStatVectors);
 
-//
 //            if (iterationCount == saveConvergenceInfo) {
 //                iterationCount = 0;
 //                increments.append(iterationError)
@@ -475,7 +474,7 @@ struct TRAM {
 
     }
 
-    dtype getError(np_array_nfc<dtype> newThermEnergies, np_array_nfc<dtype> newStatVectors) {
+    dtype getError(np_array_nfc<dtype> &newThermEnergies, np_array_nfc<dtype> &newStatVectors) {
         auto _thermEnergies = thermStateEnergies.template unchecked<1>();
         auto _newThermEnergies = newThermEnergies.template unchecked<1>();
         auto _statVectors = statVectors.template unchecked<2>();
