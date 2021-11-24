@@ -1,3 +1,5 @@
+project(deeptime_tests)
+
 include(${CMAKE_CURRENT_LIST_DIR}/../devtools/cmake/Conan.cmake)
 run_conan()
 find_package(Catch2 REQUIRED)

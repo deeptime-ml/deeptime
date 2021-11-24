@@ -13,13 +13,13 @@ def tests(session: nox.Session) -> None:
         session.log("Running C++ unit tests")
         tmpdir = session.create_tmp()
         session.install("cmake")
+        session.install("ninja")
         session.install("conan")
         pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True).strip()
         session.log(f"Found pybind11 module dir: {pybind11_module_dir}")
-        session.run("ls", pybind11_module_dir)
         session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON',
-                    "-Dpybind11_DIR={}".format(pybind11_module_dir))
-        session.run("cmake", "--build", tmpdir, "--config=Release", "--target", "run_tests")
+                    "-Dpybind11_DIR={}".format(pybind11_module_dir), '-DCMAKE_BUILD_TYPE=Release')
+        session.run("cmake", "--build", tmpdir, "--target", "run_tests")
 
     if session.posargs and 'cov' in session.posargs:
         session.log("Running with coverage")
