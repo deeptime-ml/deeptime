@@ -13,7 +13,6 @@ def tests(session: nox.Session) -> None:
         session.log("Running C++ unit tests")
         tmpdir = session.create_tmp()
         session.install("cmake")
-        session.install("ninja")
         session.install("conan")
         pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True).strip()
         session.log(f"Found pybind11 module dir: {pybind11_module_dir}")
