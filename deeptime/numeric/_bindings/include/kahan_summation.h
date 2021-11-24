@@ -16,14 +16,14 @@ namespace kahan {
 /***************************************************************************************************
 *   Kahan summation
 ***************************************************************************************************/
-template<typename dtype>
-auto ksum(const dtype *const begin, const dtype *const end) -> dtype {
+template<typename Iterator, typename dtype = typename std::iterator_traits<Iterator>::value_type>
+auto ksum(Iterator begin, Iterator end) -> dtype {
     dtype sum{0};
     ssize_t o{0};
     dtype correction{0};
 
     for (auto n = std::distance(begin, end); n > 0; --n) {
-        auto y = begin[o] - correction;
+        auto y = *std::next(begin, o) - correction;
         auto t = sum + y;
         correction = (t - sum) - y;
         sum = t;
@@ -96,11 +96,9 @@ auto logsumexp_sort_kahan_inplace(Iterator begin, Iterator end) {
     return logsumexp_kahan_inplace(begin, end, *std::prev(end));
 }
 
-template<typename dtype>
-dtype logsumexp_sort_kahan_inplace(np_array_nfc<dtype> &array, std::size_t size) {
-    /*todo: replace with a templated signature ...inplace(begin, end)*/
-    auto *ptr = array.mutable_data();
-    return logsumexp_sort_kahan_inplace(ptr, ptr+size);
+template<typename Iterator>
+auto logsumexp_sort_kahan_inplace(Iterator begin, std::size_t size) {
+    return logsumexp_sort_kahan_inplace(begin, std::next(begin, size));
 }
 
 template<typename dtype>

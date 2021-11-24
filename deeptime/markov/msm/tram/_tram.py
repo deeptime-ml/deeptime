@@ -162,7 +162,9 @@ class TRAM(_MSMBaseEstimator):
         import sys
         sys.path.append(r'D:\Users\Maaike\Documents\PhD\Deeptime\deeptime\cmake-build-debug-visual-studio\deeptime\markov\_bindings')
         import _tram_bindings
-        tram = _tram_bindings.TRAM(state_counts, transition_counts, dtrajs, bias_matrix, 0)
+
+        tram_input = _tram_bindings.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrix)
+        tram = _tram_bindings.TRAM(tram_input, 0)
         tram.estimate(100, np.float64(1e-8))
         self.biased_conf_energies = tram.biased_conf_energies()
         return self
