@@ -38,6 +38,7 @@ def tests(session: nox.Session) -> None:
 @nox.session(python=PYTHON_VERSIONS)
 def cpp_tests(session: nox.Session) -> None:
     tmpdir = session.create_tmp()
+    session.install("-r", "tests/requirements.txt")
     session.install("cmake")
     session.install("conan")
     pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True).strip()
