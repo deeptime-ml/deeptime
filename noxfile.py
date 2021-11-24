@@ -10,7 +10,7 @@ PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9", "3.10"]
 def tests(session: nox.Session) -> None:
     session.install("-r", "tests/requirements.txt")
     session.install("-e", ".", '-v', silent=False)
-    if session.posargs and session.posargs[0] == 'cov':
+    if session.posargs and 'cov' in session.posargs:
         session.log("Running with coverage")
         xml_results_dest = os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir())
         assert os.path.isdir(xml_results_dest), 'no dest dir available'
@@ -33,6 +33,25 @@ def tests(session: nox.Session) -> None:
         pass
 
     session.run("pytest", '-vv', '--doctest-modules', '--durations=20', *cov_args, '--pyargs', *test_dirs)
+
+    if session.posargs and 'cpp_tests' in session.posargs:
+        session.log("Running C++ unit tests")
+        tmpdir = session.create_tmp()
+        session.install("cmake")
+        session.install("conan")
+        session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON')
+        session.run("cmake", "--build", tmpdir, "--config=Release", "--target", "run_tests")
+
+
+@nox.session(python=PYTHON_VERSIONS)
+def cpp_tests(session: nox.Session) -> None:
+    tmpdir = session.create_tmp()
+    session.install("cmake")
+    session.install("conan")
+    session.install("-r", "tests/requirements.txt")
+    session.install("-e", ".", '-v', silent=False)
+    session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON')
+    session.run("cmake", "--build", tmpdir, "--config=Release", "--target", "run_tests")
 
 
 @nox.session(reuse_venv=True)
