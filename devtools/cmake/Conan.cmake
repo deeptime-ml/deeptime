@@ -47,10 +47,10 @@ macro(run_conan)
         # PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR} is used to tell conan to process
         # the external "conanfile.py" provided with the project
         # Alternatively a conanfile.txt could be used
-        message(STATUS "Conan using path ${CMAKE_CURRENT_LIST_DIR}")
+        message(STATUS "Conan using path ${CMAKE_SOURCE_DIR}")
         conan_cmake_install(
                 PATH_OR_REFERENCE
-                ${CMAKE_CURRENT_LIST_DIR}
+                ${CMAKE_SOURCE_DIR}
                 BUILD
                 missing
                 SETTINGS
