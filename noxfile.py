@@ -1,6 +1,5 @@
 import os
 import tempfile
-
 import nox
 
 PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9", "3.10"]
@@ -15,8 +14,10 @@ def tests(session: nox.Session) -> None:
         tmpdir = session.create_tmp()
         session.install("cmake")
         session.install("conan")
-        session.install("pybind11")
-        session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON')
+        pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True)
+        session.log(f"Found pybind11 module dir: {pybind11_module_dir}")
+        session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON',
+                    f'-Dpybind11_DIR={pybind11_module_dir}')
         session.run("cmake", "--build", tmpdir, "--config=Release", "--target", "run_tests")
 
     if session.posargs and 'cov' in session.posargs:
