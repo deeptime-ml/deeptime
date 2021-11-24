@@ -17,7 +17,7 @@ def tests(session: nox.Session) -> None:
         pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True).strip()
         session.log(f"Found pybind11 module dir: {pybind11_module_dir}")
         session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON',
-                    "-Dpybind11_DIR={}".format(pybind11_module_dir), '-DCMAKE_BUILD_TYPE=Release')
+                    "-Dpybind11_DIR={}".format(pybind11_module_dir), '-DCMAKE_BUILD_TYPE=Release', silent=True)
         session.run("cmake", "--build", tmpdir, "--target", "run_tests")
 
     if session.posargs and 'cov' in session.posargs:
