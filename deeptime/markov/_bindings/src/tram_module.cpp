@@ -13,7 +13,8 @@ PYBIND11_MODULE(_tram_bindings, m) {
                               const py::list, std::size_t>(), "state_counts"_a, "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a,
                               "convergence_logging_interval"_a = 0)
                 .def("estimate", &TRAM<double>::estimate)
-                .def("estimate_transition_matrices", &TRAM<double>::estimateTransitionMatrices);
+                .def("estimate_transition_matrices", &TRAM<double>::estimateTransitionMatrices)
+                .def("biased_conf_energies", &TRAM<double>::getBiasedConfEnergies);
 
         tramMod.def("_bar_df", &_bar_df<double>, "db_IJ"_a, "L1"_a, "db_JI"_a, "L2"_a, "scratch"_a);
 

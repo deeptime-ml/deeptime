@@ -99,7 +99,7 @@ auto logsumexp_sort_kahan_inplace(Iterator begin, Iterator end) {
 template<typename dtype>
 dtype logsumexp_sort_kahan_inplace(np_array_nfc<dtype> &array, std::size_t size) {
     /*todo: replace with a templated signature ...inplace(begin, end)*/
-    auto *ptr = array.template mutable_data();
+    auto *ptr = array.mutable_data();
     return logsumexp_sort_kahan_inplace(ptr, ptr+size);
 }
 

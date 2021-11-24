@@ -17,6 +17,7 @@ namespace tram {
 double THERMOTOOLS_TRAM_PRIOR = 0.0;
 double THERMOTOOLS_TRAM_LOG_PRIOR = 1.0;
 
+
 //template<typename dtype>
 //struct TwoDimArray {
 //
@@ -34,6 +35,18 @@ void throwIfInvalid(bool isValid, const std::string &message) {
     if (!isValid) {
         throw std::runtime_error(message);
     }
+}
+
+template<typename dtype>
+np_array_nfc<dtype> getFilledArray(std::vector<std::size_t> dims, dtype fillValue) {
+
+    auto array = np_array_nfc<dtype>(dims);
+    auto *ptr = array.mutable_data();
+    auto size = array.size();
+    for (int i = 0; i < size; ++i) {
+        ptr[i] = fillValue;
+    }
+    return array;
 }
 }
 
@@ -150,17 +163,21 @@ struct TRAM {
     np_array_nfc<dtype> scratchM;
     np_array_nfc<dtype> scratchT;
 
+    dtype inf = std::numeric_limits<dtype>::infinity();
+
     TRAM(np_array_nfc<std::int32_t> &&stateCounts,
          np_array_nfc<std::int32_t> &&transitionCounts, const DTrajs &dtrajs,
          const py::list &biasMatrices, std::size_t saveConvergenceInfo = 0)
-            : nThermStates(stateCounts.shape()[0]),
-              nMarkovStates(stateCounts.shape()[1]),
-              saveConvergenceInfo(saveConvergenceInfo),
+            : saveConvergenceInfo(saveConvergenceInfo),
               input(std::move(stateCounts), std::move(transitionCounts), dtrajs, biasMatrices) {
 
-        biasedConfEnergies = np_array_nfc<dtype>({nThermStates, nMarkovStates});
-        lagrangianMultLog = np_array_nfc<dtype>({nThermStates, nMarkovStates});
-        modifiedStateCountsLog = np_array_nfc<dtype>({nThermStates, nMarkovStates});
+        // moved back out of the constructor because the std::move caused stateCounts.shape to be a NULLptr.
+        nThermStates = input.stateCounts().shape(0);
+        nMarkovStates = input.stateCounts().shape(1);
+
+        biasedConfEnergies = detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.);
+        lagrangianMultLog = detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.);
+        modifiedStateCountsLog = detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.);
 
         transitionMatrices = np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates});
 
@@ -174,6 +191,11 @@ struct TRAM {
         initLagrangianMult();
         initBiasedConfEnergies();
     }
+
+    auto getBiasedConfEnergies() {
+        return biasedConfEnergies;
+    }
+
 
     void estimate(int maxIter = 1000, dtype maxErr = 1e-8) {
 
@@ -278,7 +300,7 @@ struct TRAM {
         for (int K = 0; K < nThermStates; ++K) {
             for (int i = 0; i < nMarkovStates; ++i) {
                 if (0 == _stateCounts(K, i)) {
-                    _newLagrangianMultLog(K, i) = -INFINITY;
+                    _newLagrangianMultLog(K, i) = -inf;
                     continue;
                 }
                 int o = 0;
@@ -305,7 +327,7 @@ struct TRAM {
         lagrangianMultLog = newLagrangianMultLog;
     }
 
-    dtype updateBiasedConfEnergies(int return_log_l = 0) {
+    dtype updateBiasedConfEnergies(int return_log_l = 1) {
         // TODO: what to do with log L?
         dtype logLikelihood = 0.0;
 
@@ -313,7 +335,7 @@ struct TRAM {
 
         for (int K = 0; K < nThermStates; ++K) {
             for (int i = 0; i < nMarkovStates; ++i) {
-                _biasedConfEnergies(K, i) = -INFINITY;
+                _biasedConfEnergies(K, i) = inf;
             }
         }
 
@@ -343,7 +365,7 @@ struct TRAM {
             for (int K = 0; K < nThermStates; ++K) {
 
                 /* applying Hao's speed-up recomendation */
-                if (-INFINITY == _modifiedStateCountsLog(K, i)) continue;
+                if (-inf == _modifiedStateCountsLog(K, i)) continue;
                 _scratchT(o++) = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
             }
             divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT, o);
@@ -393,7 +415,7 @@ struct TRAM {
             for (int i = 0; i < nMarkovStates; ++i) {
                 if (0 == _stateCounts(K, i)) /* applying Hao's speed-up recomendation */
                 {
-                    _modifiedStateCountsLog(K, i) = -INFINITY;
+                    _modifiedStateCountsLog(K, i) = -inf;
                     continue;
                 }
                 Ci = 0;
@@ -420,7 +442,7 @@ struct TRAM {
                 }
                 NC = _stateCounts(K, i) - Ci;
                 extraStateCounts = (0 < NC) ? log((dtype) NC) + _biasedConfEnergies(K, i)
-                                            : -INFINITY; /* IGNORE PRIOR */
+                                            : -inf; /* IGNORE PRIOR */
                 _modifiedStateCountsLog(K, i) = numeric::kahan::logsumexp_pair(
                         numeric::kahan::logsumexp_sort_kahan_inplace(scratchM, o), extraStateCounts);
             }
@@ -494,7 +516,7 @@ struct TRAM {
 
         // first reset all confirmation energies to infinity
         for (int i = 0; i < nMarkovStates; i++) {
-            _markovStateEnergies(i) = INFINITY;
+            _markovStateEnergies(i) = inf;
         }
 
         for (int K = 0; K < nThermStates; ++K) {
@@ -523,7 +545,7 @@ struct TRAM {
             if (i < 0) continue;
             o = 0;
             for (K = 0; K < nThermStates; ++K) {
-                if (-INFINITY == _modifiedStateCountsLog(K, i)) continue;
+                if (-inf == _modifiedStateCountsLog(K, i)) continue;
                 _scratch_T(o++) =
                         _modifiedStateCountsLog(K, i) - _biasMatrix_K(x, K);
             }
@@ -532,20 +554,16 @@ struct TRAM {
         }
     }
 
-    np_array_nfc<dtype> computeThermStateEnergies() {
+    void computeThermStateEnergies() {
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-
-        auto newThermStateEnergies = np_array_nfc<dtype>(std::vector<decltype(nThermStates)>{nThermStates});
-        auto _newThermStateEnergies = newThermStateEnergies.template mutable_unchecked<1>();
-
+        auto _thermStateEnergies = thermStateEnergies.template mutable_unchecked<1>();
         auto _scratch_M = scratchM.template mutable_unchecked<1>();
 
         for (int K = 0; K < nThermStates; ++K) {
             for (int i = 0; i < nMarkovStates; ++i)
                 _scratch_M(i) = -_biasedConfEnergies(K, i);
-            _newThermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM, nMarkovStates);
+            _thermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM, nMarkovStates);
         }
-        return newThermStateEnergies;
     }
 
     void shiftEnergiesToHaveZeroMinimum() {
@@ -702,12 +720,12 @@ struct TRAM {
 //        for (int x = 0; x < traj_length; ++x) {
 //            i = _dtraj(x);
 //            if (i < 0) {
-//                _pointwise_unbiased_free_energies(x) = INFINITY;
+//                _pointwise_unbiased_free_energies(x) = inf;
 //                continue;
 //            }
 //            o = 0;
 //            for (L = 0; L < nThermStates; ++L) {
-//                if (-INFINITY == _modified_state_counts_log(L, i)) continue;
+//                if (-inf == _modified_state_counts_log(L, i)) continue;
 //                _scratch_T(o++) =
 //                        _modified_state_counts_log(L, i) - _bias_matrix(x, L);
 //            }

@@ -164,7 +164,8 @@ class TRAM(_MSMBaseEstimator):
         import _tram_bindings
         tram = _tram_bindings.TRAM(state_counts, transition_counts, dtrajs, bias_matrix, 0)
         tram.estimate(100, np.float64(1e-8))
-
+        self.biased_conf_energies = tram.biased_conf_energies()
+        return self
         # compute models
         transition_matrices = tram.estimate_transition_matrices()
 
