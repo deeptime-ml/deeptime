@@ -80,7 +80,7 @@ public:
 
     TRAMInput &operator=(const TRAMInput &) = delete;
 
-    void validateInput() {
+    void validateInput() const {
 
         if (_dtrajs.size() != _biasMatrices.size()) {
             std::stringstream ss;
@@ -133,11 +133,12 @@ private:
     BiasMatrices _biasMatrices;
 };
 
-using Callback = std::function<void(std::int32_t, std::int32_t)>;
 
 
 template<typename dtype>
 struct TRAM {
+    using Callback = std::function<void(std::int32_t, dtype)>;
+
     std::size_t nThermStates;
     std::size_t nMarkovStates;
 
@@ -185,7 +186,7 @@ struct TRAM {
         initLagrangianMult();
     }
 
-    auto getBiasedConfEnergies() {
+    auto getBiasedConfEnergies() const {
         return biasedConfEnergies;
     }
 
@@ -197,8 +198,9 @@ struct TRAM {
         // For checking our iteration error we need to keep track of the previous thermStateEnergies and so-called
         // statVectors (statVectors(K,i) = thermStateEnergy(K) - biasedConfEnergy(K,i))
         // Hold them in these variables.
-        auto oldThermEnergies = np_array_nfc<dtype>(thermStateEnergies);
-        auto oldStatVectors = np_array_nfc<dtype>(statVectors);
+        np_array_nfc<dtype> oldThermEnergies;
+        np_array_nfc<dtype> oldStatVectors;
+        pybind11::buffer_info bufferInfo;
 
         for (std::int32_t iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
             iterationCount += 1;
@@ -209,8 +211,10 @@ struct TRAM {
             updateBiasedConfEnergies();
 
             // Store current values of these arrays to use for calculating the iteration error.
-            oldThermEnergies = np_array_nfc<dtype>(thermStateEnergies);
-            oldStatVectors = np_array_nfc<dtype>(statVectors);
+            bufferInfo = thermStateEnergies.request();
+            oldThermEnergies = np_array_nfc<dtype>(bufferInfo);
+            bufferInfo = statVectors.request();
+            oldStatVectors = np_array_nfc<dtype>(bufferInfo);
 
             // Compute their respective new values
             computeThermStateEnergies();
@@ -446,22 +450,22 @@ struct TRAM {
 
     }
 
-    dtype getError(np_array_nfc<dtype> &newThermEnergies, np_array_nfc<dtype> &newStatVectors) {
+    dtype getError(np_array_nfc<dtype> &oldThermEnergies, np_array_nfc<dtype> &oldStatVectors) {
         auto _thermEnergies = thermStateEnergies.template unchecked<1>();
-        auto _newThermEnergies = newThermEnergies.template unchecked<1>();
+        auto _oldThermEnergies = oldThermEnergies.template unchecked<1>();
         auto _statVectors = statVectors.template unchecked<2>();
-        auto _newStatVectors = newStatVectors.template unchecked<2>();
+        auto _oldStatVectors = oldStatVectors.template unchecked<2>();
 
         dtype maxError = 0;
         dtype deltaThermEnergy;
         dtype deltaStatVector;
 
         for (int K = 0; K < nThermStates; ++K) {
-            auto deltaThermEnergy = std::abs(_thermEnergies(K) - _newThermEnergies(K));
+            auto deltaThermEnergy = std::abs(_thermEnergies(K) - _oldThermEnergies(K));
             if (deltaThermEnergy > maxError) maxError = deltaThermEnergy;
 
             for (int i = 0; i < nThermStates; ++i) {
-                deltaStatVector = std::abs(_statVectors(K, i) - _newStatVectors(K, i));
+                deltaStatVector = std::abs(_statVectors(K, i) - _oldStatVectors(K, i));
                 if (deltaStatVector > maxError) maxError = deltaStatVector;
             }
         }
