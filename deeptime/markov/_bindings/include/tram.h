@@ -162,8 +162,8 @@ struct TRAM {
     std::size_t callbackInterval;
 
     // scratch matrices used to facilitate calculation of logsumexp
-    std::vector<dtype> scratchM;
-    std::vector<dtype> scratchT;
+    std::unique_ptr<dtype[]> scratchM;
+    std::unique_ptr<dtype[]> scratchT;
 
     dtype inf = std::numeric_limits<dtype>::infinity();
 
@@ -172,8 +172,8 @@ struct TRAM {
               input(std::shared_ptr(tramInput)),
               nThermStates(tramInput->stateCounts().shape(0)),
               nMarkovStates(tramInput->stateCounts().shape(1)),
-              scratchM(std::vector<dtype>(nMarkovStates)),
-              scratchT(std::vector<dtype>(nThermStates)),
+              scratchM(std::unique_ptr<dtype[]>(new dtype[nMarkovStates]())),
+              scratchT(std::unique_ptr<dtype[]>(new dtype[nThermStates]())),
               biasedConfEnergies(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
               lagrangianMultLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
               modifiedStateCountsLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
@@ -301,8 +301,8 @@ struct TRAM {
                             - _lagrangianMultLog(K, i) + _biasedConfEnergies(K, j), 0.0);
                     scratchM[o++] = log((dtype) CK) - divisor;
                 }
-                _newLagrangianMultLog(K, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.begin(),
-                                                                                           scratchM.begin() + o);
+                _newLagrangianMultLog(K, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(),
+                                                                                           scratchM.get() + o);
             }
         }
         lagrangianMultLog = std::move(newLagrangianMultLog);
@@ -341,7 +341,7 @@ struct TRAM {
                 if (-inf == _modifiedStateCountsLog(K, i)) continue;
                 scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
             }
-            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.begin(), o);
+            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
 
             for (int K = 0; K < nThermStates; ++K) {
                 _biasedConfEnergies(K, i) = -numeric::kahan::logsumexp_pair(
@@ -363,7 +363,7 @@ struct TRAM {
                         scratchT[o++] =
                                 _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
                 }
-                logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.begin(), o);
+                logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
             }
         }
         return logLikelihood;
@@ -415,7 +415,7 @@ struct TRAM {
                 extraStateCounts = (0 < NC) ? log((dtype) NC) + _biasedConfEnergies(K, i)
                                             : -inf; /* IGNORE PRIOR */
                 _modifiedStateCountsLog(K, i) = numeric::kahan::logsumexp_pair(
-                        numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.begin(), o), extraStateCounts);
+                        numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), o), extraStateCounts);
             }
         }
 
@@ -519,7 +519,7 @@ struct TRAM {
                 scratchT[o++] =
                         _modifiedStateCountsLog(K, i) - _biasMatrix_K(x, K);
             }
-            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.begin(), o);
+            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
             _markovStateEnergies(i) = -numeric::kahan::logsumexp_pair(-_markovStateEnergies(i), -divisor);
         }
     }
@@ -531,7 +531,7 @@ struct TRAM {
         for (int K = 0; K < nThermStates; ++K) {
             for (int i = 0; i < nMarkovStates; ++i)
                 scratchM[i] = -_biasedConfEnergies(K, i);
-            _thermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.begin(), nMarkovStates);
+            _thermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), nMarkovStates);
         }
     }
 
@@ -565,7 +565,7 @@ struct TRAM {
         for (int i = 0; i < nMarkovStates; ++i) {
             scratchM[i] = -_markovStateEnergies(i);
         }
-        dtype f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.begin(), nMarkovStates);
+        dtype f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), nMarkovStates);
 
         for (int i = 0; i < nMarkovStates; ++i) {
             _markovStateEnergies(i) -= f0;
