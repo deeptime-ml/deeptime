@@ -163,8 +163,9 @@ class TRAM(_MSMBaseEstimator):
         sys.path.append(r'D:\Users\Maaike\Documents\PhD\Deeptime\deeptime\cmake-build-debug-visual-studio\deeptime\markov\_bindings')
         import _tram_bindings
 
-        def callback(i):
-            print(i)
+        #TODO: user should provide this.
+        def callback(iteration, error):
+            print(f"Iteration {iteration}: error {error}")
 
         tram_input = _tram_bindings.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrix)
         tram = _tram_bindings.TRAM(tram_input)

@@ -133,7 +133,7 @@ private:
     BiasMatrices _biasMatrices;
 };
 
-using Callback = std::function<void(std::int32_t)>;
+using Callback = std::function<void(std::int32_t, std::int32_t)>;
 
 
 template<typename dtype>
@@ -194,10 +194,11 @@ struct TRAM {
 
         dtype iterationError = 0;
 
-//#TODO: do something with these. logging?
-//        increments = []
-//        log_likelihoods = []
-
+        // For checking our iteration error we need to keep track of the previous thermStateEnergies and so-called
+        // statVectors (statVectors(K,i) = thermStateEnergy(K) - biasedConfEnergy(K,i))
+        // Hold them in these variables.
+        auto oldThermEnergies = np_array_nfc<dtype>(thermStateEnergies);
+        auto oldStatVectors = np_array_nfc<dtype>(statVectors);
 
         for (std::int32_t iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
             iterationCount += 1;
@@ -207,12 +208,9 @@ struct TRAM {
             updateStateCounts();
             updateBiasedConfEnergies();
 
-            // Save old values of these arrays to use for calculating the iteration error.
-            auto bufferInfo = thermStateEnergies.request();
-            auto oldThermEnergies = np_array_nfc<dtype>(bufferInfo);
-
-            bufferInfo = statVectors.request();
-            auto oldStatVectors = np_array_nfc<dtype>(bufferInfo);
+            // Store current values of these arrays to use for calculating the iteration error.
+            oldThermEnergies = np_array_nfc<dtype>(thermStateEnergies);
+            oldStatVectors = np_array_nfc<dtype>(statVectors);
 
             // Compute their respective new values
             computeThermStateEnergies();
@@ -223,7 +221,7 @@ struct TRAM {
 
             if (iterationCount % callbackInterval == 0) {
                 if (callback != nullptr) {
-                    (*callback)(iterationCount);
+                    (*callback)(iterationCount, iterationError);
                 }
 //                increments.append(iterationError)
 //                log_likelihoods.append(l)
