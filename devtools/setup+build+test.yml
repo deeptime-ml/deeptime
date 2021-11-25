@@ -4,10 +4,10 @@ steps:
 - script: pip install nox
   displayName: 'Install nox'
 
-- script: nox -s "cpp_tests-$(python.version)"
-  displayName: 'Run C++ tests'
-
 - script: nox -s "tests-$(python.version)" -- cov
   displayName: 'Run tests'
+
+- script: nox -s "tests-$(python.version)" --reuse-existing-venvs -- cpp
+  displayName: 'Run C++ tests'
 
 - template: test-results.yml
