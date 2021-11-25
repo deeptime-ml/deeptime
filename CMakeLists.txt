@@ -2,24 +2,25 @@ cmake_minimum_required(VERSION 3.9)
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(DEEPTIME_BUILD_CPP_TESTS OFF CACHE BOOL "Whether to build the c++ unit tests")
+
 if(DEFINED PROJECT_NAME)
     set(DEEPTIME_IS_SUBPROJECT ON)
 endif()
 project(deeptime LANGUAGES C CXX VERSION 0.0.0)
 
-find_package(OpenMP REQUIRED)
-add_definitions(-DUSE_OPENMP)
+find_package(OpenMP)
+if(OpenMP_FOUND)
+    add_definitions(-DUSE_OPENMP)
+endif()
 
 if(MSVC)
-    add_compile_options(/W4 /WX)
-else()
-    add_compile_options(-Wall -Wextra -pedantic -Werror)
+    add_compile_options(/EHsc /bigobj /permissive-)
 endif()
 
 find_package(pybind11 REQUIRED)
 
-set(common_includes "${CMAKE_CURRENT_LIST_DIR}/deeptime/src/include")
-
+add_subdirectory(deeptime/src)
 add_subdirectory(deeptime/data)
 add_subdirectory(deeptime/covariance/util/covar_c)
 add_subdirectory(deeptime/clustering)
@@ -30,3 +31,7 @@ add_subdirectory(deeptime/markov/tools/kahandot)
 add_subdirectory(deeptime/markov/tools/estimation/dense/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/sparse/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/sparse/mle/newton)
+
+if(DEEPTIME_BUILD_CPP_TESTS)
+    add_subdirectory(tests)
+endif()
