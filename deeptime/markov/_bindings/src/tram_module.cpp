@@ -9,9 +9,9 @@ PYBIND11_MODULE(_tram_bindings, m) {
         auto tramMod = m.def_submodule("tram");
 
         py::class_<TRAM<double>>(m, "TRAM")
-                .def(py::init<std::shared_ptr<TRAMInput<double>>&, std::size_t>(), "tram_input"_a,
-                     "convergence_logging_interval"_a = 0)
-                .def("estimate", &TRAM<double>::estimate)
+                .def(py::init<std::shared_ptr<TRAMInput<double>> &, std::size_t>(), "tram_input"_a,
+                     "callback_interval"_a = 1)
+                .def("estimate", &TRAM<double>::estimate, "maxIter"_a = 1000, "maxErr"_a = 1e-8, "callback"_a = nullptr)
                 .def("estimate_transition_matrices", &TRAM<double>::estimateTransitionMatrices)
                 .def("biased_conf_energies", &TRAM<double>::getBiasedConfEnergies);
 

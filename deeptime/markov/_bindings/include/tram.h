@@ -133,6 +133,9 @@ private:
     BiasMatrices _biasMatrices;
 };
 
+using Callback = std::function<void(std::int32_t)>;
+
+
 template<typename dtype>
 struct TRAM {
     std::size_t nThermStates;
@@ -151,13 +154,12 @@ struct TRAM {
 //    std::vector<dtype> lagrangianMultLog;
 //    std::vector<dtype> modifiedStateCountsLog;
 
-
     np_array_nfc<dtype> markovStateEnergies;
     np_array_nfc<dtype> thermStateEnergies;
     np_array_nfc<dtype> transitionMatrices;
     np_array_nfc<dtype> statVectors;
 
-    std::size_t saveConvergenceInfo;
+    std::size_t callbackInterval;
 
     // scratch matrices used to facilitate calculation of logsumexp
     std::vector<dtype> scratchM;
@@ -165,13 +167,13 @@ struct TRAM {
 
     dtype inf = std::numeric_limits<dtype>::infinity();
 
-    TRAM(std::shared_ptr<TRAMInput<dtype>> &tramInput, std::size_t saveConvergenceInfo)
-            : saveConvergenceInfo(saveConvergenceInfo),
+    TRAM(std::shared_ptr<TRAMInput<dtype>> &tramInput, std::size_t callbackInterval)
+            : callbackInterval(callbackInterval),
               input(std::shared_ptr(tramInput)),
               nThermStates(tramInput->stateCounts().shape(0)),
               nMarkovStates(tramInput->stateCounts().shape(1)),
               scratchM(std::vector<dtype>(nMarkovStates)),
-              scratchT(std::vector<dtype>(nMarkovStates)),
+              scratchT(std::vector<dtype>(nThermStates)),
               biasedConfEnergies(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
               lagrangianMultLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
               modifiedStateCountsLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
@@ -188,9 +190,8 @@ struct TRAM {
     }
 
 
-    void estimate(int maxIter = 1000, dtype maxErr = 1e-8) {
+    void estimate(std::int32_t maxIter = 10000, dtype maxErr = 1e-8, Callback *callback = nullptr) {
 
-        int iterationCount = 0;
         dtype iterationError = 0;
 
 //#TODO: do something with these. logging?
@@ -198,7 +199,7 @@ struct TRAM {
 //        log_likelihoods = []
 
 
-        for (int m = 0; m < maxIter; ++m) {
+        for (std::int32_t iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
             iterationCount += 1;
 
             // Self-consistent update of the TRAM equations.
@@ -220,11 +221,13 @@ struct TRAM {
             // compare new with old to get the iteration error (= how much the energies changed).
             iterationError = getError(oldThermEnergies, oldStatVectors);
 
-//            if (iterationCount == saveConvergenceInfo) {
-//                iterationCount = 0;
+            if (iterationCount % callbackInterval == 0) {
+                if (callback != nullptr) {
+                    (*callback)(iterationCount);
+                }
 //                increments.append(iterationError)
 //                log_likelihoods.append(l)
-//            }
+            }
             if (iterationError < maxErr) {
                 // We have converged!
                 break;
