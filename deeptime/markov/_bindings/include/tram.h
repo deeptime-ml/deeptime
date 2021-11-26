@@ -148,11 +148,11 @@ public:
     UpdatableArray(const UpdatableArray &) = delete;
     UpdatableArray &operator=(const UpdatableArray &) = delete;
 
-    auto * const getOld() const {
+    auto * getOld() {
         return _oldValues;
     }
 
-    auto * const getNew() const {
+    auto * getNew() {
         return _newValues;
     }
 
@@ -636,10 +636,10 @@ struct TRAM {
 
         int C;
         dtype divisor, maxSum;
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i) {
+        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
+            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
                 scratchM[i] = 0.0;
-                for (int j = 0; j < nMarkovStates; ++j) {
+                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
                     _transitionMatrices(K, i, j) = 0.0;
                     C = _transitionMatrices(K, i, j) + _transitionCounts(K, j, i);
                     /* special case: this element is zero */
@@ -659,16 +659,16 @@ struct TRAM {
             }
             /* normalize T matrix */ /* TODO: unify with util._renormalize_transition_matrix? */
             maxSum = 0;
-            for (int i = 0; i < nMarkovStates; ++i) if (scratchM[i] > maxSum) maxSum = scratchM[i];
+            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) if (scratchM[i] > maxSum) maxSum = scratchM[i];
             if (maxSum == 0) maxSum = 1.0; /* completely empty T matrix -> generate Id matrix */
-            for (int i = 0; i < nMarkovStates; ++i) {
-                for (int j = 0; j < nMarkovStates; ++j) {
+            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
+                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
                     if (i == j) {
                         _transitionMatrices(K, i, i) =
                                 (_transitionMatrices(K, i, i) + maxSum - scratchM[i]) / maxSum;
                         if (0 == _transitionMatrices(K, i, i) && 0 < _transitionCounts(K, i, i))
-                            fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n", i,
-                                    i);
+                            fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n", static_cast<int>(i),
+                                    static_cast<int>(i));
                     } else {
                         _transitionMatrices(K, i, j) = _transitionMatrices(K, i, j) / maxSum;
                     }
