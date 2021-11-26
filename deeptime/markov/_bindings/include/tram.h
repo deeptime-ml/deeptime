@@ -158,7 +158,6 @@ struct TRAM {
     np_array_nfc<dtype> markovStateEnergies;
     np_array_nfc<dtype> thermStateEnergies;
     np_array_nfc<dtype> transitionMatrices;
-    np_array_nfc<dtype> statVectors;
 
     std::size_t callbackInterval;
 
@@ -180,8 +179,8 @@ struct TRAM {
               modifiedStateCountsLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
               transitionMatrices(np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates})),
               markovStateEnergies(np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nMarkovStates})),
-              thermStateEnergies(np_array_nfc<dtype>(std::vector<decltype(nThermStates)>{nThermStates})),
-              statVectors(np_array_nfc<dtype>({nThermStates, nMarkovStates})) {
+              thermStateEnergies(np_array_nfc<dtype>(std::vector<decltype(nThermStates)>{nThermStates}))
+               {
 
         initLagrangianMult();
     }
@@ -197,13 +196,21 @@ struct TRAM {
 
         // For checking our iteration error we need to keep track of the previous thermStateEnergies and so-called
         // statVectors (statVectors(K,i) = thermStateEnergy(K) - biasedConfEnergy(K,i))
-        // Hold them in these variables.
-        np_array_nfc<dtype> oldThermEnergies;
-        np_array_nfc<dtype> oldStatVectors;
-        pybind11::buffer_info bufferInfo;
+        // Hold them in these arrays.
+        auto thermEnergies1 = np_array_nfc<dtype> (std::vector<decltype(nThermStates)>{nThermStates});
+        auto thermEnergies2 = np_array_nfc<dtype> (std::vector<decltype(nThermStates)>{nThermStates});
+
+        auto statVectors1 = np_array_nfc<dtype>({nThermStates, nMarkovStates});
+        auto statVectors2 = np_array_nfc<dtype>({nThermStates, nMarkovStates});
+
+        // Define pointers to the arrays that hold the old and new values. Pointers get swapped around on each iteration,
+        // so new becomes old, and old will hold values that will be calculated in the current iteration.
+        auto* thermEnergiesOldPtr = &thermEnergies1;
+        auto* thermEnergiesNewPtr = &thermEnergies2;
+        auto* statVectorsOldPtr = &statVectors1;
+        auto* statVectorsNewPtr = &statVectors2;
 
         for (std::int32_t iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
-            iterationCount += 1;
 
             // Self-consistent update of the TRAM equations.
             updateLagrangianMult();
@@ -211,17 +218,15 @@ struct TRAM {
             updateBiasedConfEnergies();
 
             // Store current values of these arrays to use for calculating the iteration error.
-            bufferInfo = thermStateEnergies.request();
-            oldThermEnergies = np_array_nfc<dtype>(bufferInfo);
-            bufferInfo = statVectors.request();
-            oldStatVectors = np_array_nfc<dtype>(bufferInfo);
+            std::swap(thermEnergiesOldPtr, thermEnergiesNewPtr);
+            std::swap(statVectorsOldPtr, statVectorsNewPtr);
 
             // Compute their respective new values
-            computeThermStateEnergies();
-            computeStatVectors();
+            computeThermStateEnergies(thermEnergiesNewPtr);
+            computeStatVectors(statVectorsNewPtr);
 
             // compare new with old to get the iteration error (= how much the energies changed).
-            iterationError = getError(oldThermEnergies, oldStatVectors);
+            iterationError = getError(thermEnergiesOldPtr, thermEnergiesNewPtr, statVectorsOldPtr, statVectorsNewPtr);
 
             if (iterationCount % callbackInterval == 0) {
                 if (callback != nullptr) {
@@ -241,7 +246,7 @@ struct TRAM {
         }
         // Done iterating. Compute all energies for the thermodynamic states and markov states.
         computeMarkovStateEnergies();
-        computeThermStateEnergies();
+        computeThermStateEnergies(&thermStateEnergies);
         normalize();
 
         if (iterationError >= maxErr) {
@@ -450,11 +455,11 @@ struct TRAM {
 
     }
 
-    dtype getError(np_array_nfc<dtype> &oldThermEnergies, np_array_nfc<dtype> &oldStatVectors) {
-        auto _thermEnergies = thermStateEnergies.template unchecked<1>();
-        auto _oldThermEnergies = oldThermEnergies.template unchecked<1>();
-        auto _statVectors = statVectors.template unchecked<2>();
-        auto _oldStatVectors = oldStatVectors.template unchecked<2>();
+    dtype getError(np_array_nfc<dtype> *oldThermEnergies, np_array_nfc<dtype> * newThermEnergies, np_array_nfc<dtype> *oldStatVectors, np_array_nfc<dtype> *newStatVectors) {
+        auto _thermEnergies = newThermEnergies->template unchecked<1>();
+        auto _oldThermEnergies = oldThermEnergies->template unchecked<1>();
+        auto _statVectors = newStatVectors->template unchecked<2>();
+        auto _oldStatVectors = oldStatVectors->template unchecked<2>();
 
         dtype maxError = 0;
         dtype deltaThermEnergy;
@@ -472,9 +477,8 @@ struct TRAM {
         return maxError;
     }
 
-    np_array_nfc<dtype> computeStatVectors() {
-        auto statVectors = np_array_nfc<dtype>({nThermStates, nMarkovStates});
-        auto _statVectors = statVectors.template mutable_unchecked<2>();
+    void computeStatVectors(np_array_nfc<dtype> * statVectors) {
+        auto _statVectors = statVectors->template mutable_unchecked<2>();
         auto _thermStateEnergies = thermStateEnergies.template unchecked<1>();
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
 
@@ -483,7 +487,6 @@ struct TRAM {
                 _statVectors(K, i) = std::exp(_thermStateEnergies(K) - _biasedConfEnergies(K, i));
             }
         }
-        return statVectors;
     }
 
     void computeMarkovStateEnergies() {
@@ -528,9 +531,17 @@ struct TRAM {
         }
     }
 
-    void computeThermStateEnergies() {
+    /* Why does this method suddenly take a pointer? Can't I just calculate my values into TRAM::thermStateEnergies
+     * directly and get rid of the argument?
+     *
+     * NO!
+     *
+     * See TRAM::estimate(). Pointers to newThermEnergies and oldThermEnergies are swapped around so there is no
+     * needless copying of memory. Only after estimation are these values written to TRAM::thermStateEnergies.
+     * */
+    void computeThermStateEnergies(np_array_nfc<dtype>* thermEnergies) {
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _thermStateEnergies = thermStateEnergies.template mutable_unchecked<1>();
+        auto _thermStateEnergies = thermEnergies->template mutable_unchecked<1>();
 
         for (int K = 0; K < nThermStates; ++K) {
             for (int i = 0; i < nMarkovStates; ++i)
