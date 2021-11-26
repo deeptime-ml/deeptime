@@ -49,14 +49,59 @@ constexpr dtype pi() { return 3.141592653589793238462643383279502884e+00; }
 }
 }
 
-template<std::size_t Dims>
+namespace detail {
+    template <ssize_t Dim = 0, typename Strides> ssize_t byte_offset_unsafe(const Strides &) { return 0; }
+    template <ssize_t Dim = 0, typename Strides, typename... Ix>
+    ssize_t byte_offset_unsafe(const Strides &strides, ssize_t i, Ix... index) {
+        std::size_t y {0};
+
+        return i * strides[Dim] + byte_offset_unsafe<Dim + 1>(strides, index...);
+    }
+}
+
+namespace detail {
+template<typename... Ix>
+struct ComputeIndex {
+    template<typename Strides, typename Indices = std::make_index_sequence<sizeof...(Ix)>>
+    static constexpr auto compute(const Strides &strides, Ix &&... ix) {
+        std::tuple<Ix...> tup(std::forward<Ix>(ix)...);
+        return compute(strides, tup, Indices{});
+    }
+
+    template<typename Arr, std::size_t... I>
+    static constexpr auto compute(const Arr &strides, const std::tuple<Ix...> &tup, std::index_sequence<I...>) {
+        return (0 + ... + (strides[I] * std::get<I>(tup)));;
+    }
+};
+
+template <ssize_t Dim = 0, typename Strides> ssize_t ComputeIndex2(const Strides &) { return 0; }
+template <ssize_t Dim = 0, typename Strides, typename... Ix>
+ssize_t ComputeIndex2(const Strides &strides, ssize_t i, Ix... index) {
+    return i * strides[Dim] + ComputeIndex2<Dim + 1>(strides, index...);
+}
+
+}
+
+template<std::size_t Dims, typename GridDims = std::array<std::uint32_t, Dims>>
 class Index {
     static_assert(Dims > 0, "Dims has to be > 0");
 public:
-    /**
-     * Type that holds the dimensions of the index grid
-     */
-    using GridDims = std::array<std::uint32_t, Dims>;
+
+    template<typename It>
+    static auto make_index(It shapeBegin, It shapeEnd) {
+        GridDims dims;
+        std::copy(shapeBegin, shapeEnd, begin(dims));
+        auto n_elems = std::accumulate(begin(dims), end(dims), 1u, std::multiplies<value_type>());
+
+        GridDims strides;
+        strides[0] = n_elems / dims[0];
+        for (std::size_t d = 0; d < Dims - 1; ++d) {
+            strides[d+1] = strides[d] / dims[d + 1];
+        }
+
+        return Index<Dims, GridDims>{dims, strides, n_elems};
+    }
+
     /**
      * The value type, inherited from GridDims::value_type
      */
@@ -65,7 +110,19 @@ public:
     /**
      * Constructs an empty index object of specified dimensionality. Not of much use, really.
      */
-    Index() : _size(), n_elems(0) {}
+    Index() : _size(), _cum_size(), n_elems(0) {}
+
+    template<typename Shape>
+    Index(const Shape &size) : _size(), n_elems(std::accumulate(begin(size), end(size), 1u, std::multiplies<value_type>())) {
+        std::copy(begin(size), end(size), begin(_size));
+
+        GridDims strides;
+        strides[0] = n_elems / size[0];
+        for (std::size_t d = 0; d < Dims - 1; ++d) {
+            strides[d+1] = strides[d] / size[d + 1];
+        }
+        _cum_size = std::move(strides);
+    }
 
     /**
      * Constructs an index object with a number of size_t arguments that must coincide with the number of dimensions,
@@ -73,9 +130,7 @@ public:
      * @tparam Args the argument types, must all be size_t
      * @param args the arguments
      */
-     Index(std::array<std::uint32_t, Dims> size) : _size(std::move(size)) {
-        n_elems = std::accumulate(_size.begin(), _size.end(), 1u, std::multiplies<value_type>());
-     }
+     Index(GridDims size, GridDims strides, value_type nElems) : _size(std::move(size)), _cum_size(std::move(strides)), n_elems(nElems) {}
 
     /**
      * the number of elements in this index, exactly the product of the grid dimensions
@@ -119,12 +174,10 @@ public:
      * @param ix the d-dimensional index
      * @return the 1D index
      */
-    template<typename... Ix>
+    template<typename... Ix, typename Indices = std::make_index_sequence<Dims>>
     constexpr value_type operator()(Ix &&... ix) const {
-        static_assert(sizeof...(ix) == Dims, "wrong input dim");
-        std::array<typename detail::variadic_first<Ix...>::type, Dims> indices{std::forward<Ix>(ix)...};
-        // std::array<value_type, Dims> indices{std::forward<Ix>(ix)...}; // require ix to be unsigned?
-        return index(indices);
+        static_assert(std::size_t(sizeof...(ix)) == Dims, "wrong input dim");
+        return detail::ComputeIndex<Ix...>::compute(_cum_size, std::forward<Ix>(ix)...);
     }
 
     /**
@@ -134,14 +187,11 @@ public:
      */
     template<typename Arr>
     value_type index(const Arr &indices) const {
-        std::size_t result = 0;
-        auto prefactor = n_elems / _size[0];
-        for (std::size_t d = 0; d < Dims - 1; ++d) {
-            result += prefactor * indices[d];
-            prefactor /= _size[d + 1];
+        std::size_t result {0};
+        for(std::size_t i = 0; i < Dims; ++i) {
+            result += _cum_size[i] * indices[i];
         }
-        result += indices[Dims - 1];
-        return static_cast<value_type>(result);
+        return result;
     }
 
     /**
@@ -164,7 +214,15 @@ public:
 
 private:
     GridDims _size;
+    GridDims _cum_size;
     value_type n_elems;
+
+    template<typename Arr, std::size_t... I>
+    value_type _index_compile_time(const Arr &arr, std::index_sequence<I...>) const {
+        value_type result {0};
+        ((result += _cum_size[I] * arr[I]), ...);
+        return result;
+    }
 };
 
 namespace util {

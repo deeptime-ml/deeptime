@@ -15,3 +15,6 @@ add_custom_target(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         DEPENDS tests
 )
+
+add_executable(bla bla.cpp)
+target_link_libraries(bla PUBLIC CONAN_PKG::benchmark deeptime::common pybind11::embed)
