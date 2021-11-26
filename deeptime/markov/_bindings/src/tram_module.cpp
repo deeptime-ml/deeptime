@@ -5,7 +5,7 @@
 PYBIND11_MODULE(_tram_bindings, m) {
     using namespace pybind11::literals;
     using namespace deeptime::tram;
-    { 
+    {
         auto tramMod = m.def_submodule("tram");
 
         py::class_<TRAM<double>>(m, "TRAM")
