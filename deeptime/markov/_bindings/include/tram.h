@@ -183,41 +183,6 @@ private:
     BiasMatrices _biasMatrices;
 };
 
-template<typename dtype>
-struct UpdatableArray {
-public:
-    UpdatableArray(np_array_nfc<dtype> arr) :
-            _values1(arr) {
-        _newValues = &_values1;
-        auto buf = arr.request();
-        _values2 = np_array_nfc<dtype>(buf);
-        _oldValues = &_values2;
-    }
-    UpdatableArray() = default;
-
-    UpdatableArray(const UpdatableArray &) = delete;
-    UpdatableArray &operator=(const UpdatableArray &) = delete;
-
-    auto * getOld() {
-        return _oldValues;
-    }
-
-    auto * getNew() {
-        return _newValues;
-    }
-
-    void swap() {
-        std::swap(_oldValues, _newValues);
-    }
-
-private:
-    np_array_nfc<dtype> _values1;
-    np_array_nfc<dtype> _values2;
-
-    np_array_nfc<dtype> * _oldValues;
-    np_array_nfc<dtype> * _newValues;
-};
-
 
 template<typename dtype>
 struct TRAM {
@@ -232,7 +197,7 @@ struct TRAM {
     // TODO: make this a vector (no need for np_array)
     // TODO: find a better name than biasedConfEnergies!
     np_array_nfc<dtype> biasedConfEnergies;
-    UpdatableArray<dtype> lagrangianMultLog;
+    ExchangeableArray<dtype, 2> lagrangianMultLog;
     np_array_nfc<dtype> modifiedStateCountsLog;
 
 //    std::vector<dtype> biasedConfEnergies;
@@ -240,7 +205,7 @@ struct TRAM {
 //    std::vector<dtype> modifiedStateCountsLog;
 
     np_array_nfc<dtype> markovStateEnergies;
-    UpdatableArray<dtype> thermStateEnergies;
+    ExchangeableArray<dtype, 1> thermStateEnergies;
     np_array_nfc<dtype> transitionMatrices;
 
     std::size_t callbackInterval;
@@ -259,11 +224,11 @@ struct TRAM {
               scratchM(std::unique_ptr<dtype[]>(new dtype[nMarkovStates])),
               scratchT(std::unique_ptr<dtype[]>(new dtype[nThermStates])),
               biasedConfEnergies(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
-              lagrangianMultLog(UpdatableArray<dtype>(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.))),
+              lagrangianMultLog(ExchangeableArray<dtype,2>(std::vector({nThermStates, nMarkovStates}), 0.)),
               modifiedStateCountsLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
               transitionMatrices(np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates})),
               markovStateEnergies(np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nMarkovStates})),
-              thermStateEnergies(UpdatableArray<dtype>(detail::getFilledArray(std::vector<decltype(nThermStates)>{nThermStates}, 0))) {
+              thermStateEnergies(ExchangeableArray<dtype,1>(std::vector<decltype(nThermStates)>{nThermStates}, 0)) {
 
         initLagrangianMult();
     }
@@ -277,22 +242,7 @@ struct TRAM {
 
         dtype iterationError = 0;
 
-        // For checking our iteration error we need to keep track of the previous thermStateEnergies and so-called
-        // statVectors (statVectors(K,i) = thermStateEnergy(K) - biasedConfEnergy(K,i))
-        // Hold them in these arrays.
-//        auto thermEnergies1 = np_array_nfc<dtype> (std::vector<decltype(nThermStates)>{nThermStates});
-//        auto thermEnergies2 = np_array_nfc<dtype> (std::vector<decltype(nThermStates)>{nThermStates});
-//        auto statVectors = UpdatableArray<dtype>(std::vector({nThermStates, nMarkovStates}));
-        auto statVectors = UpdatableArray<dtype>(detail::getFilledArray({nThermStates, nMarkovStates}, 0.));
-
-//        auto statVectors2 = np_array_nfc<dtype>({nThermStates, nMarkovStates});
-
-        // Define pointers to the arrays that hold the old and new values. Pointers get swapped around on each iteration,
-        // so new becomes old, and old will hold values that will be calculated in the current iteration.
-//        auto* thermEnergiesOldPtr = &thermEnergies1;
-//        auto* thermEnergiesNewPtr = &thermEnergies2;
-//        auto* statVectorsOldPtr = &statVectors1;
-//        auto* statVectorsNewPtr = &statVectors2;
+        auto statVectors = ExchangeableArray<dtype, 2>(std::vector({nThermStates, nMarkovStates}), 0.);
 
         for (std::int32_t iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
 
@@ -301,14 +251,7 @@ struct TRAM {
             updateStateCounts();
             updateBiasedConfEnergies();
 
-            // Store current values of these arrays to use for calculating the iteration error.
-//            std::swap(thermEnergiesOldPtr, thermEnergiesNewPtr);
-//            std::swap(statVectorsOldPtr, statVectorsNewPtr);
-
             // Compute their respective new values
-//            computeThermStateEnergies(thermEnergiesNewPtr);
-//            updateStatVectors(statVectorsNewPtr);
-
             updateThermStateEnergies();
             updateStatVectors(statVectors);
 
@@ -343,7 +286,7 @@ struct TRAM {
 
     void initLagrangianMult() {
         auto _transitionCounts = input->transitionCounts();
-        auto _lagrangianMultLog = lagrangianMultLog.getNew()->template mutable_unchecked<2>();
+        auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
 
         for (int K = 0; K < nThermStates; ++K) {
             for (int i = 0; i < nMarkovStates; ++i) {
@@ -360,9 +303,9 @@ struct TRAM {
 
 
     void updateLagrangianMult() {
-        lagrangianMultLog.swap();
-        auto _oldLagrangianMultLog = lagrangianMultLog.getOld()->template unchecked<2>();
-        auto _newLagrangianMultLog = lagrangianMultLog.getNew()->template mutable_unchecked<2>();
+        lagrangianMultLog.exchange();
+        auto _oldLagrangianMultLog = lagrangianMultLog.secondBuf();
+        auto _newLagrangianMultLog = lagrangianMultLog.firstBuf();
 
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
 
@@ -466,7 +409,7 @@ struct TRAM {
 //    template<typename dtype, bool trammbar = false>
     void updateStateCounts() {
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _lagrangianMultLog = lagrangianMultLog.getNew()->template unchecked<2>();
+        auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template mutable_unchecked<2>();
 
         auto _stateCounts = input->stateCounts();
@@ -540,11 +483,11 @@ struct TRAM {
 
     }
 
-    dtype getError(UpdatableArray<dtype> & statVectors) {
-        auto _thermEnergies = thermStateEnergies.getNew()->template unchecked<1>();
-        auto _oldThermEnergies = thermStateEnergies.getOld()->template unchecked<1>();
-        auto _statVectors = statVectors.getNew()->template unchecked<2>();
-        auto _oldStatVectors = statVectors.getOld()->template unchecked<2>();
+    dtype getError(ExchangeableArray<dtype, 2> & statVectors) {
+        auto _thermEnergies = thermStateEnergies.firstBuf();
+        auto _oldThermEnergies = thermStateEnergies.secondBuf();
+        auto _statVectors = statVectors.firstBuf();
+        auto _oldStatVectors = statVectors.secondBuf();
 
         dtype maxError = 0;
         dtype deltaThermEnergy;
@@ -562,13 +505,13 @@ struct TRAM {
         return maxError;
     }
 
-    void updateStatVectors(UpdatableArray<dtype> & statVectors) {
+    void updateStatVectors(ExchangeableArray<dtype, 2> & statVectors) {
         // move current values to old
-        statVectors.swap();
+        statVectors.exchange();
 
         // compute new values
-        auto _statVectors = statVectors.getNew()->template mutable_unchecked<2>();
-        auto _thermStateEnergies = thermStateEnergies.getNew()->template unchecked<1>();
+        auto _statVectors = statVectors.firstBuf();
+        auto _thermStateEnergies = thermStateEnergies.firstBuf();
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
 
         for (int K = 0; K < nThermStates; ++K) {
@@ -622,11 +565,11 @@ struct TRAM {
 
     void updateThermStateEnergies() {
         // move current values to old
-        thermStateEnergies.swap();
+        thermStateEnergies.exchange();
 
         // compute new
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _thermStateEnergies = thermStateEnergies.getNew()->template mutable_unchecked<1>();
+        auto _thermStateEnergies = thermStateEnergies.firstBuf();
 
         for (int K = 0; K < nThermStates; ++K) {
             for (int i = 0; i < nMarkovStates; ++i)
@@ -637,7 +580,7 @@ struct TRAM {
 
     void shiftEnergiesToHaveZeroMinimum() {
         auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
-        auto _thermStateEnergies = thermStateEnergies.getNew()->template mutable_unchecked<1>();
+        auto _thermStateEnergies = thermStateEnergies.firstBuf();
 
         dtype shift = 0;
 
@@ -660,7 +603,7 @@ struct TRAM {
     void normalize() {
         auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
-        auto _thermStateEnergies = thermStateEnergies.getNew()->template mutable_unchecked<1>();
+        auto _thermStateEnergies = thermStateEnergies.firstBuf();
 
         for (int i = 0; i < nMarkovStates; ++i) {
             scratchM[i] = -_markovStateEnergies(i);
@@ -678,7 +621,7 @@ struct TRAM {
 
     np_array_nfc<dtype> estimateTransitionMatrices() {
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _lagrangianMultLog = lagrangianMultLog.getNew()->template unchecked<2>();
+        auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
 
         auto _transitionCounts = input->transitionCounts();
