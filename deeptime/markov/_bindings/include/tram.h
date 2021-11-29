@@ -490,16 +490,15 @@ struct TRAM {
         auto _oldStatVectors = statVectors.secondBuf();
 
         dtype maxError = 0;
-        dtype deltaThermEnergy;
-        dtype deltaStatVector;
+        dtype energyDelta = 0;
 
         for (int K = 0; K < nThermStates; ++K) {
-            auto deltaThermEnergy = std::abs(_thermEnergies(K) - _oldThermEnergies(K));
-            if (deltaThermEnergy > maxError) maxError = deltaThermEnergy;
+            auto energyDelta = std::abs(_thermEnergies(K) - _oldThermEnergies(K));
+            if (energyDelta > maxError) maxError = energyDelta;
 
-            for (int i = 0; i < nThermStates; ++i) {
-                deltaStatVector = std::abs(_statVectors(K, i) - _oldStatVectors(K, i));
-                if (deltaStatVector > maxError) maxError = deltaStatVector;
+            for (int i = 0; i < nMarkovStates; ++i) {
+                energyDelta = std::abs(_statVectors(K, i) - _oldStatVectors(K, i));
+                if (energyDelta > maxError) maxError = energyDelta;
             }
         }
         return maxError;
