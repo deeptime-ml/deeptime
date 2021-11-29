@@ -10,8 +10,7 @@
 #include "common.h"
 #include "kahan_summation.h"
 
-namespace deeptime {
-namespace tram {
+namespace deeptime::tram {
 
 // TODO: WTF to do with this????
 double THERMOTOOLS_TRAM_PRIOR = 0.0;
@@ -108,7 +107,7 @@ class TRAMInput : public std::enable_shared_from_this<TRAMInput<dtype>> {
 
 public:
     TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
-              py::list dtrajs, py::list biasMatrix)
+              const py::list dtrajs, const py::list biasMatrix)
             : _stateCounts(std::move(stateCounts)),
               _transitionCounts(std::move(transitionCounts)) {
 
@@ -492,10 +491,10 @@ struct TRAM {
         auto _oldStatVectors = statVectors.secondBuf();
 
         dtype maxError = 0;
-        dtype energyDelta = 0;
+        dtype energyDelta;
 
         for (std::int32_t K = 0; K < nThermStates; ++K) {
-            auto energyDelta = std::abs(_thermEnergies(K) - _oldThermEnergies(K));
+            energyDelta = std::abs(_thermEnergies(K) - _oldThermEnergies(K));
             if (energyDelta > maxError) maxError = energyDelta;
 
             for (std::int32_t i = 0; i < nMarkovStates; ++i) {
@@ -757,9 +756,9 @@ _bar_df(np_array_nfc<dtype> db_IJ, std::int32_t L1, np_array_nfc<dtype> db_JI, s
     py::buffer_info db_JI_buf = db_JI.request();
     py::buffer_info scratch_buf = scratch.request();
 
-    dtype *db_IJ_ptr = (dtype *) db_IJ_buf.ptr;
-    dtype *db_JI_ptr = (dtype *) db_JI_buf.ptr;
-    dtype *scratch_ptr = (dtype *) scratch_buf.ptr;
+    auto *db_IJ_ptr = (dtype *) db_IJ_buf.ptr;
+    auto *db_JI_ptr = (dtype *) db_JI_buf.ptr;
+    auto *scratch_ptr = (dtype *) scratch_buf.ptr;
 
     std::int32_t i;
     dtype ln_avg1;
@@ -773,6 +772,5 @@ _bar_df(np_array_nfc<dtype> db_IJ, std::int32_t L1, np_array_nfc<dtype> db_JI, s
     }
     ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L2);
     return ln_avg2 - ln_avg1;
-}
 }
 }
