@@ -76,10 +76,16 @@ struct ComputeIndex {
 
 }
 
-template<std::size_t Dims, typename GridDims = std::array<std::uint32_t, Dims>>
+template<std::size_t Dims, typename T = std::array<std::uint32_t, Dims>>
 class Index {
     static_assert(Dims > 0, "Dims has to be > 0");
 public:
+    using GridDims = T;
+
+    template<typename Container = std::initializer_list<T>>
+    static auto make_index(const Container &container) {
+        return make_index(begin(container), end(container));
+    }
 
     template<typename It>
     static auto make_index(It shapeBegin, It shapeEnd) {
@@ -157,8 +163,8 @@ public:
      * @param N N
      * @return size of N-th axis
      */
-    template<typename T>
-    constexpr value_type operator[](T N) const {
+    template<typename D>
+    constexpr value_type operator[](D N) const {
         return _size[N];
     }
 

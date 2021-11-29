@@ -11,7 +11,7 @@ TEST_CASE("Normalize yields discrete probability distributions", "[common]") {
 }
 
 TEST_CASE("Index object", "[common]") {
-    Index<5> ix {{{3, 3, 3, 3 ,3}}};
+    auto ix = Index<5>::make_index({3, 3, 3, 3 ,3});
     REQUIRE(ix(0, 0, 0, 0, 0) == 0);
     REQUIRE(ix(0, 0, 0, 0, 1) == 1);
     REQUIRE(ix(0, 0, 0, 1, 0) == 3);
