@@ -242,6 +242,8 @@ struct TRAM {
 
         dtype iterationError = 0;
 
+        // Array to keep track of _statVectors(K, i) = exp(_thermStateEnergies(K) - _biasedConfEnergies(K, i))
+        // difference between previous and current statvectors is used for calculting the iteration error.
         auto statVectors = ExchangeableArray<dtype, 2>(std::vector({nThermStates, nMarkovStates}), 0.);
 
         for (std::int32_t iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
@@ -288,11 +290,11 @@ struct TRAM {
         auto _transitionCounts = input->transitionCounts();
         auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
 
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
                 dtype sum = 0.0;
 
-                for (int j = 0; j < nMarkovStates; ++j) {
+                for (std::int32_t j = 0; j < nMarkovStates; ++j) {
                     sum += (_transitionCounts(K, i, j) +
                             _transitionCounts(K, j, i));
                 }
@@ -312,17 +314,17 @@ struct TRAM {
         auto _transitionCounts = input->transitionCounts();
         auto _stateCounts = input->stateCounts();
 
-        int CK, CKij;
+        std::int32_t CK, CKij;
         dtype divisor;
 
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
                 if (0 == _stateCounts(K, i)) {
                     _newLagrangianMultLog(K, i) = -inf;
                     continue;
                 }
                 std::size_t o = 0;
-                for (int j = 0; j < nMarkovStates; ++j) {
+                for (std::int32_t j = 0; j < nMarkovStates; ++j) {
                     CKij = _transitionCounts(K, i, j);
                     /* special case: most variables cancel out, here */
                     if (i == j) {
@@ -345,20 +347,20 @@ struct TRAM {
         }
     }
 
-    dtype updateBiasedConfEnergies(int return_log_l = 1) {
+    dtype updateBiasedConfEnergies(bool return_log_l = 1) {
         // TODO: what to do with log L?
         dtype logLikelihood = 0.0;
 
         std::fill(biasedConfEnergies.mutable_data(), biasedConfEnergies.mutable_data() + nMarkovStates * nThermStates,
                   inf);
 
-        for (int K = 0; K < nThermStates; ++K) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
             logLikelihood += updateBiasedConfEnergies(K, return_log_l, input->sequenceLength(K));
         }
         return logLikelihood;
     }
 
-    dtype updateBiasedConfEnergies(int therm_state, bool returnLogLikelihood, int trajLength) {
+    dtype updateBiasedConfEnergies(std::int32_t therm_state, bool returnLogLikelihood, std::int32_t trajLength) {
         auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
 
@@ -368,11 +370,11 @@ struct TRAM {
         dtype divisor, logLikelihood = 0;
 
         /* assume that new_biased_conf_energies have been set to INF by the caller in the first call */
-        for (int x = 0; x < trajLength; ++x) {
-            int i = _dtraj(x);
+        for (std::int32_t x = 0; x < trajLength; ++x) {
+            std::int32_t i = _dtraj(x);
             if (i < 0) continue; /* skip frames that have negative Markov state indices */
-            int o = 0;
-            for (int K = 0; K < nThermStates; ++K) {
+            std::int32_t o = 0;
+            for (std::int32_t K = 0; K < nThermStates; ++K) {
 
                 /* applying Hao's speed-up recomendation */
                 if (-inf == _modifiedStateCountsLog(K, i)) continue;
@@ -380,7 +382,7 @@ struct TRAM {
             }
             divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
 
-            for (int K = 0; K < nThermStates; ++K) {
+            for (std::int32_t K = 0; K < nThermStates; ++K) {
                 _biasedConfEnergies(K, i) = -numeric::kahan::logsumexp_pair(
                         -_biasedConfEnergies(K, i), //TODO: THIS SHOULD BE INF?????
                         -(divisor + _biasMatrix(x, K)));
@@ -391,11 +393,11 @@ struct TRAM {
         if (returnLogLikelihood) {
             /* -\sum_{x}\log\sum_{l}R_{i(x)}^{(l)}e^{-b^{(l)}(x)+f_{i(x)}^{(l)}} */
             logLikelihood = 0;
-            for (int x = 0; x < trajLength; ++x) {
-                int o = 0;
-                int i = _dtraj(x);
+            for (std::int32_t x = 0; x < trajLength; ++x) {
+                std::int32_t o = 0;
+                std::int32_t i = _dtraj(x);
                 if (i < 0) continue;
-                for (int K = 0; K < nThermStates; ++K) {
+                for (std::int32_t K = 0; K < nThermStates; ++K) {
                     if (_modifiedStateCountsLog(K, i) > 0)
                         scratchT[o++] =
                                 _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
@@ -415,12 +417,12 @@ struct TRAM {
         auto _stateCounts = input->stateCounts();
         auto _transitionCounts = input->transitionCounts();
 
-        int o;
-        int Ci, CK, CKij, CKji, NC;
+        std::int32_t o;
+        std::int32_t Ci, CK, CKij, CKji, NC;
         dtype divisor, extraStateCounts;
 
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
                 if (0 == _stateCounts(K, i)) /* applying Hao's speed-up recomendation */
                 {
                     _modifiedStateCountsLog(K, i) = -inf;
@@ -428,7 +430,7 @@ struct TRAM {
                 }
                 Ci = 0;
                 o = 0;
-                for (int j = 0; j < nMarkovStates; ++j) {
+                for (std::int32_t j = 0; j < nMarkovStates; ++j) {
                     CKij = _transitionCounts(K, i, j);
                     CKji = _transitionCounts(K, j, i);
                     Ci += CKji;
@@ -492,11 +494,11 @@ struct TRAM {
         dtype maxError = 0;
         dtype energyDelta = 0;
 
-        for (int K = 0; K < nThermStates; ++K) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
             auto energyDelta = std::abs(_thermEnergies(K) - _oldThermEnergies(K));
             if (energyDelta > maxError) maxError = energyDelta;
 
-            for (int i = 0; i < nMarkovStates; ++i) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
                 energyDelta = std::abs(_statVectors(K, i) - _oldStatVectors(K, i));
                 if (energyDelta > maxError) maxError = energyDelta;
             }
@@ -513,8 +515,8 @@ struct TRAM {
         auto _thermStateEnergies = thermStateEnergies.firstBuf();
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
 
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
                 _statVectors(K, i) = std::exp(_thermStateEnergies(K) - _biasedConfEnergies(K, i));
             }
         }
@@ -524,14 +526,14 @@ struct TRAM {
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
 
         // first reset all confirmation energies to infinity
-        for (int i = 0; i < nMarkovStates; i++) {
+        for (std::int32_t i = 0; i < nMarkovStates; i++) {
             _markovStateEnergies(i) = inf;
         }
 
-        for (int K = 0; K < nThermStates; ++K) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
             auto _dtraj_K = input->dtraj(K);
             auto _biasMatrix_K = input->biasMatrix(K);
-            int trajLength = input->sequenceLength(K);
+            std::int32_t trajLength = input->sequenceLength(K);
 
             computeMarkovStateEnergiesForSingleTrajectory(_biasMatrix_K, _dtraj_K, trajLength);
         }
@@ -541,11 +543,11 @@ struct TRAM {
     void
     computeMarkovStateEnergiesForSingleTrajectory(const BiasMatrixK &_biasMatrix_K,
                                                   const Dtraj &_dtraj,
-                                                  int trajlength /*todo this is just dtraj length*/) {
+                                                  std::int32_t trajlength /*todo this is just dtraj length*/) {
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
 
-        int i, K, x, o;
+        std::int32_t i, K, x, o;
         dtype divisor;
         /* assume that markovStateEnergies was set to INF by the caller on the first call */
         for (x = 0; x < trajlength; ++x) {
@@ -570,8 +572,8 @@ struct TRAM {
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
         auto _thermStateEnergies = thermStateEnergies.firstBuf();
 
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i)
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i)
                 scratchM[i] = -_biasedConfEnergies(K, i);
             _thermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), nMarkovStates);
         }
@@ -583,17 +585,17 @@ struct TRAM {
 
         dtype shift = 0;
 
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
                 if (_biasedConfEnergies(K, i) < shift) {
                     shift = _biasedConfEnergies(K, i);
                 }
             }
         }
-        for (int K = 0; K < nThermStates; ++K) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
             _thermStateEnergies(K) -= shift;
 
-            for (int i = 0; i < nMarkovStates; ++i) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
                 _biasedConfEnergies(K, i) -= shift;
             }
         }
@@ -604,15 +606,15 @@ struct TRAM {
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
         auto _thermStateEnergies = thermStateEnergies.firstBuf();
 
-        for (int i = 0; i < nMarkovStates; ++i) {
+        for (std::int32_t i = 0; i < nMarkovStates; ++i) {
             scratchM[i] = -_markovStateEnergies(i);
         }
         dtype f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), nMarkovStates);
 
-        for (int i = 0; i < nMarkovStates; ++i) {
+        for (std::int32_t i = 0; i < nMarkovStates; ++i) {
             _markovStateEnergies(i) -= f0;
             _thermStateEnergies(i) -= f0;
-            for (int K = 0; K < nThermStates; ++K) {
+            for (std::int32_t K = 0; K < nThermStates; ++K) {
                 _biasedConfEnergies(K, i) -= f0;
             }
         }
@@ -626,7 +628,7 @@ struct TRAM {
         auto _transitionCounts = input->transitionCounts();
         auto _transitionMatrices = transitionMatrices.template mutable_unchecked<3>();
 
-        int C;
+        std::int32_t C;
         dtype divisor, maxSum;
         for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
             for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
@@ -677,15 +679,15 @@ struct TRAM {
         auto _stateCounts = input->stateCounts();
         auto _transitionMatrices = transitionMatrices.template unchecked<3>();
 
-        int CKij;
+        std::int32_t CKij;
 
         /* \sum_{i,j,k}c_{ij}^{(k)}\log p_{ij}^{(k)} */
         dtype a = 0;
         estimateTransitionMatrices();
 
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i) {
-                for (int j = 0; j < nMarkovStates; ++j) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
+                for (std::int32_t j = 0; j < nMarkovStates; ++j) {
                     CKij = _transitionCounts(K, i, j);
                     if (0 == CKij) continue;
                     if (i == j) {
@@ -698,8 +700,8 @@ struct TRAM {
         }
         /* \sum_{i,k}N_{i}^{(k)}f_{i}^{(k)} */
         dtype b = 0;
-        for (int K = 0; K < nThermStates; ++K) {
-            for (int i = 0; i < nMarkovStates; ++i) {
+        for (std::int32_t K = 0; K < nThermStates; ++K) {
+            for (std::int32_t i = 0; i < nMarkovStates; ++i) {
                 if (_stateCounts(K, i) > 0)
                     b += (_stateCounts(K, i) + THERMOTOOLS_TRAM_PRIOR) * _biasedConfEnergies(K, i);
             }
@@ -750,7 +752,7 @@ struct TRAM {
 
 template<typename dtype>
 extern dtype
-_bar_df(np_array_nfc<dtype> db_IJ, int L1, np_array_nfc<dtype> db_JI, int L2, np_array_nfc<dtype> scratch) {
+_bar_df(np_array_nfc<dtype> db_IJ, std::int32_t L1, np_array_nfc<dtype> db_JI, std::int32_t L2, np_array_nfc<dtype> scratch) {
     py::buffer_info db_IJ_buf = db_IJ.request();
     py::buffer_info db_JI_buf = db_JI.request();
     py::buffer_info scratch_buf = scratch.request();
@@ -759,7 +761,7 @@ _bar_df(np_array_nfc<dtype> db_IJ, int L1, np_array_nfc<dtype> db_JI, int L2, np
     dtype *db_JI_ptr = (dtype *) db_JI_buf.ptr;
     dtype *scratch_ptr = (dtype *) scratch_buf.ptr;
 
-    int i;
+    std::int32_t i;
     dtype ln_avg1;
     dtype ln_avg2;
     for (i = 0; i < L1; i++) {
