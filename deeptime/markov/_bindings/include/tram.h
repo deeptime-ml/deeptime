@@ -622,7 +622,6 @@ struct TRAM {
     np_array_nfc<dtype> estimateTransitionMatrices() {
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
         auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
-        auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
 
         auto _transitionCounts = input->transitionCounts();
         auto _transitionMatrices = transitionMatrices.template mutable_unchecked<3>();
