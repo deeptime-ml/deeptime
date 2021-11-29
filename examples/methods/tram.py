@@ -67,7 +67,7 @@ def main():
         for j, bias_function in enumerate(bias_functions):
             bias_matrix[i, :, j] = bias_function(traj)
 
-    tram = TRAM(lagtime=1, connectivity="summed_count_matrix", maxiter=100)
+    tram = TRAM(lagtime=1, connectivity="summed_count_matrix", maxiter=1000)
 
     estimator = KMeans(
         n_clusters=2,  # place 100 cluster centers

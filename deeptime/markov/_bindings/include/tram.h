@@ -238,7 +238,7 @@ struct TRAM {
     }
 
 
-    void estimate(std::size_t maxIter = 10000, dtype maxErr = 1e-8, Callback *callback = nullptr) {
+    void estimate(std::size_t maxIter, dtype maxErr, Callback *callback) {
 
         dtype iterationError = 0;
 

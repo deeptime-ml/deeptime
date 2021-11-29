@@ -4,7 +4,7 @@ from deeptime.markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, count_states
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
-# from deeptime.markov import _tram_bindings
+from deeptime.markov import _tram_bindings
 from deeptime.markov import _markov_bindings, compute_connected_sets
 from ._cset import *
 
@@ -121,10 +121,6 @@ class TRAM(_MSMBaseEstimator):
         self.maxerr = maxerr
         self.save_convergence_info = save_convergence_info
         self.active_set = None
-        self.biased_conf_energies = None
-        self.therm_energies = None
-        self.markov_energies = None
-        self.log_lagrangian_mult = None
 
     def fetch_model(self) -> Optional[MarkovStateModelCollection]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -159,17 +155,18 @@ class TRAM(_MSMBaseEstimator):
         state_counts, transition_counts, dtrajs = \
             self._restrict_to_connected_sets(therm_state_sequences_full, dtrajs_full, bias_matrix,
                                              state_counts_full, transition_counts_full)
-        import sys
-        sys.path.append(r'D:\Users\Maaike\Documents\PhD\Deeptime\deeptime\cmake-build-debug-visual-studio\deeptime\markov\_bindings')
-        import _tram_bindings
 
         #TODO: user should provide this.
         def callback(iteration, error):
             print(f"Iteration {iteration}: error {error}")
 
+        print("INSTANTIATING TRAM INPUT...")
         tram_input = _tram_bindings.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrix)
+        print("INSTANTIATING TRAM...")
         tram = _tram_bindings.TRAM(tram_input)
-        tram.estimate(100, np.float64(1e-8), callback)
+        print("STARTING ESTIMATION...")
+        tram.estimate(self.maxiter, np.float64(1e-8), callback)
+        print("TRAM ESTIMATION DONE.")
         self.biased_conf_energies = tram.biased_conf_energies()
         return self
         # compute models
