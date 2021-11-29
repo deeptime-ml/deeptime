@@ -19,6 +19,26 @@ struct NpArrayMock {
         return std::accumulate(begin(_shape), end(_shape), 1, std::multiplies<>());
     }
 
+    template<pybind11::ssize_t Dims>
+    auto unchecked() const {
+        return NpArrayMock<T>(*this);
+    }
+
+    template<pybind11::ssize_t Dims>
+    auto mutable_unchecked() {
+        return NpArrayMock<T>(*this);
+    }
+
+    template<typename... Ix>
+    const T& operator()(Ix... ix) const {
+
+    }
+
+    template<typename... Ix>
+    T& operator()(Ix... ix) {
+
+    }
+
 private:
     pybind11::array::ShapeContainer _shape;
     std::shared_ptr<T*> _data;

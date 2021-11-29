@@ -82,11 +82,6 @@ class Index {
 public:
     using GridDims = T;
 
-    template<typename Container = std::initializer_list<T>>
-    static auto make_index(const Container &container) {
-        return make_index(begin(container), end(container));
-    }
-
     template<typename It>
     static auto make_index(It shapeBegin, It shapeEnd) {
         GridDims dims;
@@ -100,6 +95,11 @@ public:
         }
 
         return Index<Dims, GridDims>{dims, strides, n_elems};
+    }
+
+    template<typename Container = std::initializer_list<typename GridDims::value_type>>
+    static auto make_index(const Container &container) {
+        return make_index(begin(container), end(container));
     }
 
     /**
