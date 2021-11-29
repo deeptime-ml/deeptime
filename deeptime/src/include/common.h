@@ -74,12 +74,6 @@ struct ComputeIndex {
     }
 };
 
-template <ssize_t Dim = 0, typename Strides> ssize_t ComputeIndex2(const Strides &) { return 0; }
-template <ssize_t Dim = 0, typename Strides, typename... Ix>
-ssize_t ComputeIndex2(const Strides &strides, ssize_t i, Ix... index) {
-    return i * strides[Dim] + ComputeIndex2<Dim + 1>(strides, index...);
-}
-
 }
 
 template<std::size_t Dims, typename GridDims = std::array<std::uint32_t, Dims>>
