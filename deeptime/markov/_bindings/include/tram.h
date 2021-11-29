@@ -140,7 +140,7 @@ public:
             throw std::runtime_error(ss.str());
         }
 
-        for (std::int32_t K = 0; K < _dtrajs.size(); ++K) {
+        for (std::size_t K = 0; K < _dtrajs.size(); ++K) {
             const auto &dtrajs_K = _dtrajs.at(K);
             const auto &biasMatrix_K = _biasMatrices.at(K);
 
@@ -187,10 +187,12 @@ template<typename dtype>
 struct TRAM {
     using Callback = std::function<void(std::size_t, dtype)>;
 
+    std::shared_ptr<TRAMInput<dtype>> input;
+
     std::size_t nThermStates;
     std::size_t nMarkovStates;
 
-    std::shared_ptr<TRAMInput<dtype>> input;
+    std::size_t callbackInterval;
 
     // # TODO: wrap vector in something nice for happy indexing
     // TODO: make this a vector (no need for np_array)
@@ -203,11 +205,10 @@ struct TRAM {
 //    std::vector<dtype> lagrangianMultLog;
 //    std::vector<dtype> modifiedStateCountsLog;
 
-    np_array_nfc<dtype> markovStateEnergies;
     ExchangeableArray<dtype, 1> thermStateEnergies;
+    np_array_nfc<dtype> markovStateEnergies;
     np_array_nfc<dtype> transitionMatrices;
 
-    std::size_t callbackInterval;
 
     // scratch matrices used to facilitate calculation of logsumexp
     std::unique_ptr<dtype[]> scratchM;
@@ -216,18 +217,18 @@ struct TRAM {
     dtype inf = std::numeric_limits<dtype>::infinity();
 
     TRAM(std::shared_ptr<TRAMInput<dtype>> &tramInput, std::size_t callbackInterval)
-            : callbackInterval(callbackInterval),
-              input(std::shared_ptr(tramInput)),
+            : input(std::shared_ptr(tramInput)),
               nThermStates(tramInput->stateCounts().shape(0)),
               nMarkovStates(tramInput->stateCounts().shape(1)),
-              scratchM(std::unique_ptr<dtype[]>(new dtype[nMarkovStates])),
-              scratchT(std::unique_ptr<dtype[]>(new dtype[nThermStates])),
+              callbackInterval(callbackInterval),
               biasedConfEnergies(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
               lagrangianMultLog(ExchangeableArray<dtype,2>(std::vector({nThermStates, nMarkovStates}), 0.)),
               modifiedStateCountsLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
-              transitionMatrices(np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates})),
+              thermStateEnergies(ExchangeableArray<dtype,1>(std::vector<decltype(nThermStates)>{nThermStates}, 0)),
               markovStateEnergies(np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nMarkovStates})),
-              thermStateEnergies(ExchangeableArray<dtype,1>(std::vector<decltype(nThermStates)>{nThermStates}, 0)) {
+              transitionMatrices(np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates})),
+              scratchM(std::unique_ptr<dtype[]>(new dtype[nMarkovStates])),
+              scratchT(std::unique_ptr<dtype[]>(new dtype[nThermStates])){
 
         initLagrangianMult();
     }
