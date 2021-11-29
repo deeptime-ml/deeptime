@@ -155,11 +155,11 @@ public:
         }
     }
 
-    auto biasMatrix(int K) const {
+    auto biasMatrix(std::size_t K) const {
         return _biasMatrices.at(K).template unchecked<2>();
     }
 
-    auto dtraj(int K) const {
+    auto dtraj(std::size_t K) const {
         return _dtrajs.at(K).template unchecked<1>();
     }
 
@@ -171,7 +171,7 @@ public:
         return _stateCounts.template unchecked<2>();
     }
 
-    auto sequenceLength(int K) const {
+    auto sequenceLength(std::size_t K) const {
         return _dtrajs.at(K).size();
     }
 
@@ -185,7 +185,7 @@ private:
 
 template<typename dtype>
 struct TRAM {
-    using Callback = std::function<void(std::int32_t, dtype)>;
+    using Callback = std::function<void(std::size_t, dtype)>;
 
     std::size_t nThermStates;
     std::size_t nMarkovStates;
@@ -359,7 +359,7 @@ struct TRAM {
         return logLikelihood;
     }
 
-    dtype updateBiasedConfEnergies(std::int32_t therm_state, bool returnLogLikelihood, std::int32_t trajLength) {
+    dtype updateBiasedConfEnergies(std::size_t therm_state, bool returnLogLikelihood, std::size_t trajLength) {
         auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
 
@@ -532,7 +532,7 @@ struct TRAM {
         for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
             auto _dtraj_K = input->dtraj(K);
             auto _biasMatrix_K = input->biasMatrix(K);
-            std::size_t trajLength = input->sequenceLength(K);
+            auto trajLength = input->sequenceLength(K);
 
             computeMarkovStateEnergiesForSingleTrajectory(_biasMatrix_K, _dtraj_K, trajLength);
         }
@@ -542,13 +542,13 @@ struct TRAM {
     void
     computeMarkovStateEnergiesForSingleTrajectory(const BiasMatrixK &_biasMatrix_K,
                                                   const Dtraj &_dtraj,
-                                                  std::int32_t trajlength /*todo this is just dtraj length*/) {
+                                                  std::size_t trajlength /*todo this is just dtraj length*/) {
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
 
         dtype divisor;
         /* assume that markovStateEnergies was set to INF by the caller on the first call */
-        for (std::size_t x = 0; x < trajlength; ++x) {
+        for (decltype(trajlength) x = 0; x < trajlength; ++x) {
             std::int32_t i = _dtraj(x);
             if (i < 0) continue;
             std::size_t o = 0;
@@ -633,7 +633,7 @@ struct TRAM {
                 scratchM[i] = 0.0;
                 for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
                     _transitionMatrices(K, i, j) = 0.0;
-                    C = _transitionMatrices(K, i, j) + _transitionCounts(K, j, i);
+                    C = _transitionCounts(K, i, j) + _transitionCounts(K, j, i);
                     /* special case: this element is zero */
                     if (0 == C) continue;
                     if (i == j) {
