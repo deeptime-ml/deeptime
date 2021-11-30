@@ -193,8 +193,21 @@ public:
         initLagrangianMult();
     }
 
+    auto getEnergiesPerThermodynamicState() {
+    	return thermStateEnergies.first();
+    }
+
+    auto getEnergiesPerMarkovState() const {
+	return markovStateEnergies;
+    }
+
     auto getBiasedConfEnergies() const {
         return biasedConfEnergies;
+    }
+
+    auto getTransitionMatrices() {
+	computeTransitionMatrices();
+	return transitionMatrices;
     }
 
     // estimation loop to estimate the free energies. The current iteration number and iteration error are
@@ -253,56 +266,6 @@ public:
         }
     }
 
-    np_array_nfc<dtype> estimateTransitionMatrices() {
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
-
-        auto _transitionCounts = input->transitionCounts();
-        auto _transitionMatrices = transitionMatrices.template mutable_unchecked<3>();
-
-        std::int32_t C;
-        dtype divisor, maxSum;
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                scratchM[i] = 0.0;
-                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    _transitionMatrices(K, i, j) = 0.0;
-                    C = _transitionCounts(K, i, j) + _transitionCounts(K, j, i);
-                    /* special case: this element is zero */
-                    if (0 == C) continue;
-                    if (i == j) {
-                        /* special case: diagonal element */
-                        _transitionMatrices(K, i, j) = 0.5 * C * exp(-_lagrangianMultLog(K, i));
-                    } else {
-                        /* regular case */
-                        divisor = numeric::kahan::logsumexp_pair(
-                                _lagrangianMultLog(K, j) - _biasedConfEnergies(K, i),
-                                _lagrangianMultLog(K, i) - _biasedConfEnergies(K, j));
-                        _transitionMatrices(K, i, j) = C * exp(-(_biasedConfEnergies(K, j) + divisor));
-                    }
-                    scratchM[i] += _transitionMatrices(K, i, j);
-                }
-            }
-            /* normalize T matrix */ /* TODO: unify with util._renormalize_transition_matrix? */
-            maxSum = 0;
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) if (scratchM[i] > maxSum) maxSum = scratchM[i];
-            if (maxSum == 0) maxSum = 1.0; /* completely empty T matrix -> generate Id matrix */
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    if (i == j) {
-                        _transitionMatrices(K, i, i) =
-                                (_transitionMatrices(K, i, i) + maxSum - scratchM[i]) / maxSum;
-                        if (0 == _transitionMatrices(K, i, i) && 0 < _transitionCounts(K, i, i))
-                            fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n", static_cast<int>(i),
-                                    static_cast<int>(i));
-                    } else {
-                        _transitionMatrices(K, i, j) = _transitionMatrices(K, i, j) / maxSum;
-                    }
-                }
-            }
-        }
-        return transitionMatrices;
-    }
 
     // compute the log-likelihood of observing the input data under the current 
     // biasedConfEnergies. 
@@ -696,7 +659,7 @@ private:
 
         /* \sum_{i,j,k}c_{ij}^{(k)}\log p_{ij}^{(k)} */
         dtype a = 0;
-        estimateTransitionMatrices();
+        computeTransitionMatrices();
 
         for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
             for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
@@ -722,6 +685,55 @@ private:
         return a + b;
     }
 
+    void computeTransitionMatrices() {
+        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
+        auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
+
+        auto _transitionCounts = input->transitionCounts();
+        auto _transitionMatrices = transitionMatrices.template mutable_unchecked<3>();
+
+        std::int32_t C;
+        dtype divisor, maxSum;
+        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
+            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
+                scratchM[i] = 0.0;
+                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
+                    _transitionMatrices(K, i, j) = 0.0;
+                    C = _transitionCounts(K, i, j) + _transitionCounts(K, j, i);
+                    /* special case: this element is zero */
+                    if (0 == C) continue;
+                    if (i == j) {
+                        /* special case: diagonal element */
+                        _transitionMatrices(K, i, j) = 0.5 * C * exp(-_lagrangianMultLog(K, i));
+                    } else {
+                        /* regular case */
+                        divisor = numeric::kahan::logsumexp_pair(
+                                _lagrangianMultLog(K, j) - _biasedConfEnergies(K, i),
+                                _lagrangianMultLog(K, i) - _biasedConfEnergies(K, j));
+                        _transitionMatrices(K, i, j) = C * exp(-(_biasedConfEnergies(K, j) + divisor));
+                    }
+                    scratchM[i] += _transitionMatrices(K, i, j);
+                }
+            }
+            /* normalize T matrix */ /* TODO: unify with util._renormalize_transition_matrix? */
+            maxSum = 0;
+            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) if (scratchM[i] > maxSum) maxSum = scratchM[i];
+            if (maxSum == 0) maxSum = 1.0; /* completely empty T matrix -> generate Id matrix */
+            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
+                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
+                    if (i == j) {
+                        _transitionMatrices(K, i, i) =
+                                (_transitionMatrices(K, i, i) + maxSum - scratchM[i]) / maxSum;
+                        if (0 == _transitionMatrices(K, i, i) && 0 < _transitionCounts(K, i, i))
+                            fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n", static_cast<int>(i),
+                                    static_cast<int>(i));
+                    } else {
+                        _transitionMatrices(K, i, j) = _transitionMatrices(K, i, j) / maxSum;
+                    }
+                }
+            }
+        }
+    }
 //    void get_pointwise_unbiased_free_energies(int K) {
 //        auto _dtrajs = input.dtraj();
 //        auto _bias_matrix = input.biasMatrix();

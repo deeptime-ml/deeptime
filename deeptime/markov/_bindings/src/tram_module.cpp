@@ -12,8 +12,10 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 .def(py::init<std::shared_ptr<TRAMInput<double>> &, std::size_t>(), "tram_input"_a,
                      "callback_interval"_a = 1)
                 .def("estimate", &TRAM<double>::estimate, "max_iter"_a = 1000, "max_err"_a = 1e-8, "track_log_likelihoods"_a=false, "callback"_a = nullptr)
-                .def("estimate_transition_matrices", &TRAM<double>::estimateTransitionMatrices)
-                .def("biased_conf_energies", &TRAM<double>::getBiasedConfEnergies);
+                .def("transition_matrices", &TRAM<double>::getTransitionMatrices)
+                .def("biased_conf_energies", &TRAM<double>::getBiasedConfEnergies)
+		.def("therm_state_energies", &TRAM<double>::getEnergiesPerThermodynamicState)
+		.def("markov_state_energies", &TRAM<double>::getEnergiesPerMarkovState);
 
         py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(m, "TRAM_input").def(
                 py::init<np_array_nfc<int> &&, np_array_nfc<int> &&, py::list, py::list>(), "state_counts"_a,
