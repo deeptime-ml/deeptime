@@ -9,9 +9,6 @@ set(TEST_SRC src/test_common_utilities.cpp src/test_swap_arr.cpp src/test_kahan_
 add_executable(tests catch_main.cpp ${TEST_SRC})
 target_link_libraries(tests PUBLIC ${CONAN_LIBS} CONAN_PKG::catch2 deeptime::tram pybind11::embed)
 
-add_executable(bla bla.cpp)
-target_link_libraries(bla PUBLIC ${CONAN_LIBS} CONAN_PKG::catch2 deeptime::tram pybind11::embed)
-
 add_custom_target(
         run_tests
         COMMAND tests --durations=yes -r console
