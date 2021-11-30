@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
-#include "common.h"
 #include "kahan_summation.h"
+
 
 TEST_CASE("Kahan pairwise logsumexp", "[kahan_summation]") {
 
@@ -108,10 +108,14 @@ TEST_CASE("logsumexp_sort_kahan_inplace", "[kahan_summation]") {
 }
 
 
+//struct mock_np_array : np_array_nfc<int> {
+//
+//};
+
 // TODO: create np_array mock object and test with that
 
-//TEST_CASE("kdot") {
-//    SECTION("shape mismatch") {
+TEST_CASE("kdot") {
+    SECTION("shape mismatch") {
 //        auto a = np_array_nfc<double>({3, 2});
 //        auto b = np_array_nfc<double>({2, 3});
 //        try {
@@ -123,7 +127,7 @@ TEST_CASE("logsumexp_sort_kahan_inplace", "[kahan_summation]") {
 //        catch (...) {
 //            FAIL("Unexpected exception was thrown.");
 //        }
-//    }
+    }
 //    SECTION("check correct output shape") {
 //        auto a = np_array_nfc<double>({1, 2});
 //        auto b = np_array_nfc<double>({2, 3});
@@ -131,7 +135,7 @@ TEST_CASE("logsumexp_sort_kahan_inplace", "[kahan_summation]") {
 //        auto res = deeptime::numeric::kahan::kdot(a, b);
 //        REQUIRE(res.shape(0) == a.shape(0));
 //        REQUIRE(res.shape(1) == b.shape(1));
-//    }
+    }
 //
 //    SECTION("check correct output vectors") {
 //        auto a = np_array_nfc<double>(std::vector<int>{2});
