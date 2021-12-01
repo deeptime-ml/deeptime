@@ -15,12 +15,12 @@
 namespace deeptime::tram {
 
 // TODO: WTF to do with this????
-double THERMOTOOLS_TRAM_PRIOR = 0.0;
-double THERMOTOOLS_TRAM_LOG_PRIOR = 1.0;
+constexpr double THERMOTOOLS_TRAM_PRIOR() { return 0.0; }
+constexpr double THERMOTOOLS_TRAM_LOG_PRIOR(){ return 1.0; }
 
 
 namespace detail {
-void throwIfInvalid(bool isValid, const std::string &message) {
+constexpr void throwIfInvalid(bool isValid, const std::string &message) {
     if (!isValid) {
         throw std::runtime_error(message);
     }
