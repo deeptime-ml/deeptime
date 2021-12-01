@@ -157,15 +157,15 @@ class TRAM(_MSMBaseEstimator):
                                              state_counts_full, transition_counts_full)
 
         #TODO: user should provide this.
-        def callback(iteration, error):
-            print(f"Iteration {iteration}: error {error}")
+        def callback(iteration, error, log_likelihood):
+            print(f"Iteration {iteration}: error {error}. log_L: {log_likelihood}")
 
         print("INSTANTIATING TRAM INPUT...")
         tram_input = _tram_bindings.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrix)
         print("INSTANTIATING TRAM...")
         tram = _tram_bindings.TRAM(tram_input)
         print("STARTING ESTIMATION...")
-        tram.estimate(self.maxiter, np.float64(1e-8), callback)
+        tram.estimate(self.maxiter, np.float64(1e-8), True, callback)
         print("TRAM ESTIMATION DONE.")
         self.biased_conf_energies = tram.biased_conf_energies()
         return self
