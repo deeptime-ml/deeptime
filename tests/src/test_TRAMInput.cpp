@@ -45,14 +45,13 @@ TEST_CASE("TRAMInput", "[TRAMInput]") {
         REQUIRE_THROWS_AS(deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
                                                             biasMatrices), std::runtime_error);
     }SECTION("dtrajs and bias matrices lengths don't match should throw") {
-        dtrajs = np_array_nfc<int>[nThermStates - 1];
+        dtrajs.append(np_array_nfc<int>(std::vector<int>{10}));
         REQUIRE_THROWS_AS(deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
                                                             biasMatrices), std::runtime_error);
     }SECTION("bias matrix and transition counts dimensions don't match should throw") {
         // lengthen the last dtraj by one
         int length = trajlengths[nThermStates - 1];
         dtrajs[nThermStates - 1] = np_array_nfc<double>(std::vector<int>{length + 1});
-
         REQUIRE_THROWS_AS(deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
                                                             biasMatrices), std::runtime_error);
     }SECTION("bias matrix and transition counts dimensions don't match should throw") {
