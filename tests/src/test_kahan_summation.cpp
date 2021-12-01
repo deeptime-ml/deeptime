@@ -143,20 +143,16 @@ TEST_CASE("kdot") {
 
         a.mutable_at(0, 0) = std::sqrt(2.)/2;
         a.mutable_at(0, 1) = -std::sqrt(2.)/2;
-
+        
         // some values on the unit circle with their respective cosine.
-        double test_cases[5][3] = {{1,                0,                std::sqrt(2)/2 },
-                                   {0,                1,                -std::sqrt(2)/2},
-				   {-std::sqrt(2.)/2, std::sqrt(2.)/2,  -1 },
-				   { std::sqrt(2.)/2, -std::sqrt(2.)/2, 1 },
-				   {0.5,              -std::sqrt(3)/2,  std::cos(1/12) }};
-
-        for (auto test_case: test_cases) {
-            b.mutable_at(0,0) = test_case[0];
-            b.mutable_at(1,0) = test_case[1];
-            auto res = deeptime::numeric::kahan::kdot(a, b);
-            REQUIRE(Approx(res.at(0,0)) == test_case[2]);
-        }
+        auto x = GENERATE(0, 1, -std::sqrt(2.)/2, std::sqrt(2.)/2, -1);
+        auto y = GENERATE(0, 1, -std::sqrt(2.)/2, std::sqrt(2.)/2, -1);
+	
+        b.mutable_at(0,0) = x;
+        b.mutable_at(1,0) = y;
+	auto correct = a.at(0,0) * b.at(0,0) + a.at(0, 1) * b.at(1,0);
+        auto res = deeptime::numeric::kahan::kdot(a, b);
+        REQUIRE(Approx(res.at(0,0)) == correct);
     }
 
     SECTION("check correct output matrix") {
