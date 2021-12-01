@@ -178,8 +178,6 @@ private:
 
 template<typename dtype>
 struct TRAM {
-    using Callback = std::function<void(std::size_t, dtype, dtype)>;
-
 public:
 
     TRAM(std::shared_ptr<TRAMInput<dtype>> &tramInput, std::size_t callbackInterval)
@@ -220,7 +218,7 @@ public:
     // returned through the callback function if it is provided. log-likelihoods are returned if 
     // trackLogLikelihoods = true. By default, this is false, since calculating the log-likelihood required
     // an estimation of the transition matrices, which slows down estimation.
-    void estimate(std::size_t maxIter, dtype maxErr, bool trackLogLikelihoods=false, Callback *callback=nullptr) {
+    void estimate(std::size_t maxIter, dtype maxErr, bool trackLogLikelihoods=false, const py::object * callback = nullptr) {
 
         dtype iterationError = 0.;
         dtype logLikelihood = 0.;

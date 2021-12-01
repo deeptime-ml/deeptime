@@ -1,6 +1,6 @@
  //  author: maaike
-
 #include "tram.h"
+
 
 PYBIND11_MODULE(_tram_bindings, m) {
     using namespace pybind11::literals;
@@ -20,9 +20,6 @@ PYBIND11_MODULE(_tram_bindings, m) {
         py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(m, "TRAM_input").def(
                 py::init<np_array_nfc<int> &&, np_array_nfc<int> &&, py::list, py::list>(), "state_counts"_a,
                 "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a);
-
-//        py::class_<TRAMInput<double>>(m, "TRAM_input").def(py::init<np_array_nfc<int> &&, np_array_nfc<int> &&,
-//                py::list, py::list>(), "state_counts"_a, "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a);
 
         tramMod.def("_bar_df", &_bar_df<double>, "db_IJ"_a, "L1"_a, "db_JI"_a, "L2"_a, "scratch"_a);
 
