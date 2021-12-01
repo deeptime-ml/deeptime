@@ -34,8 +34,11 @@ TEMPLATE_TEST_CASE("TRAMInput", "[tram][template]", std::vector<np_array_nfc<dou
 	    THEN("TRAMInput contains the correct input") {
                 for (int K = 0; K < nThermStates; ++K) {
                     REQUIRE(input.sequenceLength(K) == trajlengths[K]);
-		    // TODO CHECK OTHER PROPERTIES
+		    REQUIRE(input.biasMatrix(K).ndim() == 2);
+		    REQUIRE(input.dtraj(K).ndim() ==1);
                 }
+		REQUIRE(input.stateCounts().ndim() == 2);
+		REQUIRE(input.transitionCounts().ndim() ==3);
             }
 	}
     
