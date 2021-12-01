@@ -17,8 +17,9 @@ PYBIND11_MODULE(_tram_bindings, m) {
 		.def("therm_state_energies", &TRAM<double>::getEnergiesPerThermodynamicState)
 		.def("markov_state_energies", &TRAM<double>::getEnergiesPerMarkovState);
 
-        py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(m, "TRAM_input").def(
-                py::init<np_array_nfc<int> &&, np_array_nfc<int> &&, py::list, py::list>(), "state_counts"_a,
+        using Input = TRAMInput<double>;
+        py::class_<Input, std::shared_ptr<Input>>(m, "TRAM_input").def(
+                py::init<np_array_nfc<int> &&, np_array_nfc<int> &&, Input::DTrajs, Input::BiasMatrices>(), "state_counts"_a,
                 "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a);
 
         tramMod.def("_bar_df", &_bar_df<double>, "db_IJ"_a, "L1"_a, "db_JI"_a, "L2"_a, "scratch"_a);

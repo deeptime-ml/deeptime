@@ -1,27 +1,27 @@
 #include <pybind11/embed.h>
 #include <catch2/catch.hpp>
-#include "tram.h"
+#include <tram.h>
 
 //
 // Created by Maaike on 01/12/2021.
 //
 
 TEST_CASE("TRAMInput", "[TRAMInput]") {
-    int nThermStates = 3;
-    int nMarkovStates = 5;
+    const int nThermStates = 3;
+    const int nMarkovStates = 5;
     int trajlengths[nThermStates];
 
     auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
     auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
 
-    pybind11::list dtrajs;
-    pybind11::list biasMatrices;
+    std::vector<np_array_nfc<int>> dtrajs;
+    std::vector<np_array_nfc<double>> biasMatrices;
 
     for (int i = 0; i < nThermStates; ++i) {
         int length = i + 10;
         trajlengths[i] = length;
-        dtrajs[i] = np_array_nfc<double>(std::vector<int>{length});
-        biasMatrices[i] = np_array_nfc<double>({length, nThermStates});
+        dtrajs.push_back(np_array_nfc<double>(std::vector<int>{length}));
+        biasMatrices.push_back(np_array_nfc<double>({length, nThermStates}));
     }
 
     SECTION("correct dimensions should not throw") {

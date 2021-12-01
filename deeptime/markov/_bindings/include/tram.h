@@ -7,8 +7,10 @@
 #include <cstdio>
 #include <cassert>
 #include <utility>
+#include <pybind11/stl.h>
 #include "common.h"
 #include "kahan_summation.h"
+
 
 namespace deeptime::tram {
 
@@ -86,27 +88,19 @@ private:
 
 template<typename dtype>
 class TRAMInput : public std::enable_shared_from_this<TRAMInput<dtype>> {
+
+public:
     using DTraj = np_array_nfc<std::int32_t>;
     using DTrajs = std::vector<DTraj>;
 
     using BiasMatrix = np_array_nfc<dtype>;
     using BiasMatrices = std::vector<BiasMatrix>;
-
-public:
     TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
-              const py::list &dtrajs, const py::list &biasMatrix)
+              const DTrajs &dtrajs, const BiasMatrices &biasMatrix)
             : _stateCounts(std::move(stateCounts)),
-              _transitionCounts(std::move(transitionCounts)) {
-
-        _dtrajs.reserve(dtrajs.size());
-        std::transform(dtrajs.begin(), dtrajs.end(), std::back_inserter(_dtrajs), [](const auto &pyObject) {
-            return py::cast<DTraj>(pyObject);
-        });
-        _biasMatrices.reserve(biasMatrix.size());
-        std::transform(biasMatrix.begin(), biasMatrix.end(), std::back_inserter(_biasMatrices),
-                       [](const auto &pyObject) {
-                           return py::cast<BiasMatrix>(pyObject);
-                       });
+              _transitionCounts(std::move(transitionCounts)),
+              _dtrajs(dtrajs),
+              _biasMatrices(biasMatrix){
         validateInput();
     }
 
