@@ -139,6 +139,12 @@ public:
                << _biasMatrices.size();
             throw std::runtime_error(ss.str());
         }
+        detail::throwIfInvalid(_stateCounts.shape(0) == _transitionCounts.shape(0),
+                               "stateCounts.shape(0) should equal transitionCounts.shape(0)");
+        detail::throwIfInvalid(_stateCounts.shape(1) == _transitionCounts.shape(1),
+                               "stateCounts.shape(1) should equal transitionCounts.shape(1)");
+        detail::throwIfInvalid(_transitionCounts.shape(1) == _transitionCounts.shape(2),
+                               "transitionCounts.shape(1) should equal transitionCounts.shape(2)");
 
         for (std::size_t K = 0; K < _dtrajs.size(); ++K) {
             const auto &dtrajs_K = _dtrajs.at(K);
