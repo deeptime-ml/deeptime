@@ -19,8 +19,6 @@ TEST_CASE("Index object", "[common]") {
 
 TEST_CASE("Swap np array", "[common]") {
     pybind11::scoped_interpreter guard{};
-    auto fast_calc = py::module_::import("numpy");
-    py::print("Hello, World!");
     deeptime::np_array<int> arr1 {{3, 3}};
     deeptime::np_array<int> arr2 {{3, 3}};
     arr1.mutable_at(2, 1) = 10;
