@@ -11,15 +11,13 @@
 #include <deeptime/common.h>
 #include "metric.h"
 
-namespace deeptime {
-namespace clustering {
-namespace regspace {
+namespace deeptime::clustering::regspace {
 
 class MaxCentersReachedException : public std::exception {
 public:
     explicit MaxCentersReachedException(const char *m) : message{m} {}
 
-    const char *what() const noexcept override { return message.c_str(); }
+    [[nodiscard]] const char *what() const noexcept override { return message.c_str(); }
 
 private:
     std::string message;
@@ -81,7 +79,5 @@ void cluster(const np_array_nfc<T> &chunk, py::list& py_centers, T dmin, std::si
             N_centers++;
         }
     }
-}
-}
 }
 }

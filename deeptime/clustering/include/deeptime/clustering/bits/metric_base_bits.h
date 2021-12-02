@@ -10,9 +10,11 @@
 #include <omp.h>
 #endif
 
+namespace deeptime::clustering {
+
 template<typename Metric, typename T>
-inline py::array_t<int> assign_chunk_to_centers(const np_array_nfc<T>& chunk,
-                                                const np_array_nfc<T>& centers,
+inline py::array_t<int> assign_chunk_to_centers(const np_array_nfc <T> &chunk,
+                                                const np_array_nfc <T> &centers,
                                                 int n_threads) {
     if (chunk.ndim() != 2) {
         throw std::invalid_argument("provided chunk does not have two dimensions.");
@@ -46,8 +48,8 @@ inline py::array_t<int> assign_chunk_to_centers(const np_array_nfc<T>& chunk,
     #pragma omp parallel default(none) firstprivate(N_frames, N_centers, centers_buff, input_dim, chunk_buff, dtraj_buff, dists)
     {
         #pragma omp for
-        for(size_t i = 0; i < N_frames; ++i) {
-            for(size_t j = 0; j < N_centers; ++j) {
+        for (size_t i = 0; i < N_frames; ++i) {
+            for (size_t j = 0; j < N_centers; ++j) {
                 dists[j] = Metric::template compute<T>(&chunk_buff(i, 0), &centers_buff(j, 0), input_dim);
             }
 
@@ -65,4 +67,6 @@ inline py::array_t<int> assign_chunk_to_centers(const np_array_nfc<T>& chunk,
         }
     }
     return dtraj;
+}
+
 }

@@ -7,29 +7,20 @@
 
 namespace py = pybind11;
 
+namespace deeptime {
+
 template<typename dtype>
 using np_array = py::array_t<dtype, py::array::c_style | py::array::forcecast>;
 template<typename dtype>
 using np_array_nfc = py::array_t<dtype, py::array::c_style>;
 
-namespace detail {
-template<typename T1, typename... T>
-struct variadic_first {
-    /**
-     * type of the first element of a variadic type tuple
-     */
-    using type = typename std::decay<T1>::type;
-};
-
-}
-
 template<typename T, typename D>
-bool arraySameShape(const np_array<T>& lhs, const np_array<D>& rhs) {
-    if(lhs.ndim() != rhs.ndim()) {
+bool arraySameShape(const np_array<T> &lhs, const np_array<D> &rhs) {
+    if (lhs.ndim() != rhs.ndim()) {
         return false;
     }
-    for(decltype(lhs.ndim()) d = 0; d < lhs.ndim(); ++d) {
-        if(lhs.shape(d) != rhs.shape(d)) return false;
+    for (decltype(lhs.ndim()) d = 0; d < lhs.ndim(); ++d) {
+        if (lhs.shape(d) != rhs.shape(d)) return false;
     }
     return true;
 }
@@ -39,23 +30,6 @@ void normalize(Iter1 begin, Iter2 end) {
     auto sum = std::accumulate(begin, end, typename std::iterator_traits<Iter1>::value_type());
     for (auto it = begin; it != end; ++it) {
         *it /= sum;
-    }
-}
-
-namespace dt {
-namespace constants {
-template<typename dtype>
-constexpr dtype pi() { return 3.141592653589793238462643383279502884e+00; }
-}
-}
-
-namespace detail {
-    template <ssize_t Dim = 0, typename Strides> ssize_t byte_offset_unsafe(const Strides &) { return 0; }
-    template <ssize_t Dim = 0, typename Strides, typename... Ix>
-    ssize_t byte_offset_unsafe(const Strides &strides, ssize_t i, Ix... index) {
-        std::size_t y {0};
-
-        return i * strides[Dim] + byte_offset_unsafe<Dim + 1>(strides, index...);
     }
 }
 
@@ -91,7 +65,7 @@ public:
         GridDims strides;
         strides[0] = n_elems / dims[0];
         for (std::size_t d = 0; d < Dims - 1; ++d) {
-            strides[d+1] = strides[d] / dims[d + 1];
+            strides[d + 1] = strides[d] / dims[d + 1];
         }
 
         return Index<Dims, GridDims>{dims, strides, n_elems};
@@ -113,13 +87,14 @@ public:
     Index() : _size(), _cum_size(), n_elems(0) {}
 
     template<typename Shape>
-    Index(const Shape &size) : _size(), n_elems(std::accumulate(begin(size), end(size), 1u, std::multiplies<value_type>())) {
+    Index(const Shape &size)
+            : _size(), n_elems(std::accumulate(begin(size), end(size), 1u, std::multiplies<value_type>())) {
         std::copy(begin(size), end(size), begin(_size));
 
         GridDims strides;
         strides[0] = n_elems / size[0];
         for (std::size_t d = 0; d < Dims - 1; ++d) {
-            strides[d+1] = strides[d] / size[d + 1];
+            strides[d + 1] = strides[d] / size[d + 1];
         }
         _cum_size = std::move(strides);
     }
@@ -130,7 +105,8 @@ public:
      * @tparam Args the argument types, must all be size_t
      * @param args the arguments
      */
-     Index(GridDims size, GridDims strides, value_type nElems) : _size(std::move(size)), _cum_size(std::move(strides)), n_elems(nElems) {}
+    Index(GridDims size, GridDims strides, value_type nElems) : _size(std::move(size)), _cum_size(std::move(strides)),
+                                                                n_elems(nElems) {}
 
     /**
      * the number of elements in this index, exactly the product of the grid dimensions
@@ -187,8 +163,8 @@ public:
      */
     template<typename Arr>
     value_type index(const Arr &indices) const {
-        std::size_t result {0};
-        for(std::size_t i = 0; i < Dims; ++i) {
+        std::size_t result{0};
+        for (std::size_t i = 0; i < Dims; ++i) {
             result += _cum_size[i] * indices[i];
         }
         return result;
@@ -202,13 +178,13 @@ public:
     GridDims inverse(std::size_t idx) const {
         GridDims result;
         auto prefactor = n_elems / _size[0];
-        for(std::size_t d = 0; d < Dims-1; ++d) {
+        for (std::size_t d = 0; d < Dims - 1; ++d) {
             auto x = std::floor(idx / prefactor);
             result[d] = x;
             idx -= x * prefactor;
-            prefactor /= _size[d+1];
+            prefactor /= _size[d + 1];
         }
-        result[Dims-1] = idx;
+        result[Dims - 1] = idx;
         return result;
     }
 
@@ -216,13 +192,6 @@ private:
     GridDims _size;
     GridDims _cum_size;
     value_type n_elems;
-
-    template<typename Arr, std::size_t... I>
-    value_type _index_compile_time(const Arr &arr, std::index_sequence<I...>) const {
-        value_type result {0};
-        ((result += _cum_size[I] * arr[I]), ...);
-        return result;
-    }
 };
 
 namespace util {
@@ -249,5 +218,6 @@ static dtype distsq(const std::size_t n, const dtype *const a, const dtype *cons
         d += (a[i] - b[i]) * (a[i] - b[i]);
     }
     return d;
+}
 }
 }
