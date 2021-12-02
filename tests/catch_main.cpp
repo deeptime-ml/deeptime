@@ -1,10 +1,11 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
+#if false
 #include <string>
 #include <sstream>
-#include <filesystem>
 #include <cstdlib>
+#include <filesystem>
 
 constexpr char osPathsep() {
 #ifdef _WIN32
@@ -44,6 +45,7 @@ void setupPythonHome() {
         std::cerr << "python not found in path" << "\n";
     }
 }
+#endif
 
 int main(int argc, char **argv) {
     Catch::Session session;
