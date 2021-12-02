@@ -160,7 +160,7 @@ TEST_CASE("kdot") {
         auto b = np_array_nfc<double>(std::vector<int>{4, 1});
 
         // fill with some random numbers (use number generator??)
-        auto aBuf = a.template mutable_unchecked();
+        auto aBuf = a.mutable_unchecked();
         aBuf(0, 0) = -9364837;
         aBuf(0, 1) = 6354931;
         aBuf(0, 2) = 2933099;

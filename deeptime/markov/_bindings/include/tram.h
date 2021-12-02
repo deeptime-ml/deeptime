@@ -14,11 +14,6 @@
 
 namespace deeptime::tram {
 
-// TODO: WTF to do with this????
-constexpr double THERMOTOOLS_TRAM_PRIOR() { return 0.0; }
-constexpr double THERMOTOOLS_TRAM_LOG_PRIOR(){ return 1.0; }
-
-
 namespace detail {
 constexpr void throwIfInvalid(bool isValid, const std::string &message) {
     if (!isValid) {
@@ -30,7 +25,7 @@ template<typename dtype>
 np_array_nfc<dtype> getFilledArray(std::vector<std::size_t> dims, dtype fillValue) {
     auto array = np_array_nfc<dtype>(dims);
 
-    auto totalSize = std::accumulate(begin(dims), end(dims), 1, std::multiplies<double>());
+    auto totalSize = std::accumulate(begin(dims), end(dims), 1, std::multiplies<dtype>());
     std::fill(array.mutable_data(), array.mutable_data() + totalSize, fillValue);
 
     return array;
@@ -47,27 +42,31 @@ class ExchangeableArray {
     using MutableBufferType = decltype(detail::getMutableBuf<Dims>(std::declval<np_array<dtype>>()));
 public:
     template<typename Shape>
-    ExchangeableArray(Shape shape, dtype fillValue) : arrays(std::make_tuple(np_array<dtype>(shape), np_array<dtype>(shape))) {
-        std::fill(std::get<0>(arrays).mutable_data(), std::get<0>(arrays).mutable_data() + std::get<0>(arrays).size(), fillValue);
-        std::fill(std::get<1>(arrays).mutable_data(), std::get<1>(arrays).mutable_data() + std::get<1>(arrays).size(), fillValue);
+    ExchangeableArray(Shape shape, dtype fillValue) : arrays(
+            std::make_tuple(np_array<dtype>(shape), np_array<dtype>(shape))) {
+        std::fill(std::get<0>(arrays).mutable_data(), std::get<0>(arrays).mutable_data() + std::get<0>(arrays).size(),
+                  fillValue);
+        std::fill(std::get<1>(arrays).mutable_data(), std::get<1>(arrays).mutable_data() + std::get<1>(arrays).size(),
+                  fillValue);
         buffers = std::make_tuple(
                 std::make_unique<MutableBufferType>(std::get<0>(arrays).template mutable_unchecked<Dims>()),
                 std::make_unique<MutableBufferType>(std::get<1>(arrays).template mutable_unchecked<Dims>())
         );
     }
 
-    ExchangeableArray(const ExchangeableArray&) = delete;
-    ExchangeableArray &operator=(const ExchangeableArray&) = delete;
+    ExchangeableArray(const ExchangeableArray &) = delete;
+
+    ExchangeableArray &operator=(const ExchangeableArray &) = delete;
 
     void exchange() {
         current = !current;
     }
 
-    auto* first() {
+    auto *first() {
         return current ? &std::get<0>(arrays) : &std::get<1>(arrays);
     }
 
-    auto* second() {
+    auto *second() {
         return current ? &std::get<1>(arrays) : &std::get<0>(arrays);
     }
 
@@ -95,12 +94,13 @@ public:
 
     using BiasMatrix = np_array_nfc<dtype>;
     using BiasMatrices = std::vector<BiasMatrix>;
+
     TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
               const DTrajs &dtrajs, const BiasMatrices &biasMatrix)
             : _stateCounts(std::move(stateCounts)),
               _transitionCounts(std::move(transitionCounts)),
               _dtrajs(dtrajs),
-              _biasMatrices(biasMatrix){
+              _biasMatrices(biasMatrix) {
         validateInput();
     }
 
@@ -180,23 +180,23 @@ public:
               nMarkovStates(tramInput->stateCounts().shape(1)),
               callbackInterval(callbackInterval),
               biasedConfEnergies(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
-              lagrangianMultLog(ExchangeableArray<dtype,2>(std::vector({nThermStates, nMarkovStates}), 0.)),
+              lagrangianMultLog(ExchangeableArray<dtype, 2>(std::vector({nThermStates, nMarkovStates}), 0.)),
               modifiedStateCountsLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
-              thermStateEnergies(ExchangeableArray<dtype,1>(std::vector<decltype(nThermStates)>{nThermStates}, 0)),
+              thermStateEnergies(ExchangeableArray<dtype, 1>(std::vector<decltype(nThermStates)>{nThermStates}, 0)),
               markovStateEnergies(np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nMarkovStates})),
               transitionMatrices(np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates})),
               scratchM(std::unique_ptr<dtype[]>(new dtype[nMarkovStates])),
-              scratchT(std::unique_ptr<dtype[]>(new dtype[nThermStates])){
+              scratchT(std::unique_ptr<dtype[]>(new dtype[nThermStates])) {
 
         initLagrangianMult();
     }
 
     auto getEnergiesPerThermodynamicState() {
-    	return thermStateEnergies.first();
+        return thermStateEnergies.first();
     }
 
     auto getEnergiesPerMarkovState() const {
-	return markovStateEnergies;
+        return markovStateEnergies;
     }
 
     auto getBiasedConfEnergies() const {
@@ -204,15 +204,31 @@ public:
     }
 
     auto getTransitionMatrices() {
-	computeTransitionMatrices();
-	return transitionMatrices;
+        computeTransitionMatrices();
+        return transitionMatrices;
     }
 
+    // compute the log-likelihood of observing the input data under the current
+    // biasedConfEnergies.
+    dtype computeLogLikelihood() {
+
+        dtype logLikelihood = 0.;
+
+        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
+            logLikelihood += computeSampleLikelihood(K, input->sequenceLength(K));
+        }
+        logLikelihood += computeTransitionLikelihood();
+
+        return logLikelihood;
+    }
+
+
     // estimation loop to estimate the free energies. The current iteration number and iteration error are
-    // returned through the callback function if it is provided. log-likelihoods are returned if 
+    // returned through the callback function if it is provided. log-likelihoods are returned if
     // trackLogLikelihoods = true. By default, this is false, since calculating the log-likelihood required
     // an estimation of the transition matrices, which slows down estimation.
-    void estimate(std::size_t maxIter, dtype maxErr, bool trackLogLikelihoods=false, const py::object * callback = nullptr) {
+    void estimate(std::size_t maxIter, dtype maxErr, bool trackLogLikelihoods = false,
+                  const py::object *callback = nullptr) {
 
         dtype iterationError = 0.;
         dtype logLikelihood = 0.;
@@ -226,21 +242,21 @@ public:
             updateLagrangianMult();
             updateStateCounts();
             updateBiasedConfEnergies();
-        
-	    // Tracking of energy vectors for error calculation.
+
+            // Tracking of energy vectors for error calculation.
             updateThermStateEnergies();
             updateStatVectors(statVectors);
 
-            // compare new thermStateEnergies and statVectors with old to get the 
-	    // iteration error (= how much the energies changed).
+            // compare new thermStateEnergies and statVectors with old to get the
+            // iteration error (= how much the energies changed).
             iterationError = getError(statVectors);
-            
-	    if(trackLogLikelihoods) {
-	        logLikelihood = computeLogLikelihood();
-	    }
+
+            if (trackLogLikelihoods) {
+                logLikelihood = computeLogLikelihood();
+            }
 
             if (callback != nullptr && iterationCount % callbackInterval == 0) {
-                    // TODO: callback doesn't work in release???
+                // TODO: callback doesn't work in release???
                 (*callback)(iterationCount, iterationError, logLikelihood);
             }
 
@@ -265,21 +281,6 @@ public:
     }
 
 
-    // compute the log-likelihood of observing the input data under the current 
-    // biasedConfEnergies. 
-    dtype computeLogLikelihood() {
-
-        dtype logLikelihood = 0.;
-
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-	    logLikelihood += computeSampleLikelihood(K, input->sequenceLength(K));
-        }
-	logLikelihood += computeTransitionLikelihood();
-
-	return logLikelihood;
-    }
-
-
 private:
     std::shared_ptr<TRAMInput<dtype>> input;
 
@@ -300,8 +301,14 @@ private:
     std::unique_ptr<dtype[]> scratchM;
     std::unique_ptr<dtype[]> scratchT;
 
-    
+
     dtype inf = std::numeric_limits<dtype>::infinity();
+
+
+// TODO: WTF to do with this????
+    dtype TRAM_PRIOR() { return 0.0; }
+
+    dtype TRAM_LOG_PRIOR() { return 1.0; }
 
     void initLagrangianMult() {
         auto _transitionCounts = input->transitionCounts();
@@ -345,14 +352,14 @@ private:
                     /* special case: most variables cancel out, here */
                     if (i == j) {
                         scratchM[o++] = (0 == CKij) ?
-                                        THERMOTOOLS_TRAM_LOG_PRIOR : log(THERMOTOOLS_TRAM_PRIOR + (dtype) CKij);
+                                        TRAM_LOG_PRIOR() : log(TRAM_PRIOR() + (dtype) CKij);
                         continue;
                     }
                     CK = CKij + _transitionCounts(K, j, i);
                     /* special case */
                     if (0 == CK) continue;
                     /* regular case */
-                    divisor = numeric::kahan::logsumexp_pair(
+                    divisor = numeric::kahan::logsumexp_pair<dtype>(
                             _oldLagrangianMultLog(K, j) - _biasedConfEnergies(K, i)
                             - _oldLagrangianMultLog(K, i) + _biasedConfEnergies(K, j), 0.0);
                     scratchM[o++] = log((dtype) CK) - divisor;
@@ -368,18 +375,18 @@ private:
 
         std::fill(biasedConfEnergies.mutable_data(), biasedConfEnergies.mutable_data() + nMarkovStates * nThermStates,
                   inf);
-        
-	for (decltype(nThermStates) K = 0; K < nThermStates; K++) {
-	    updateBiasedConfEnergies(K, input->sequenceLength(K));
+
+        for (decltype(nThermStates) K = 0; K < nThermStates; K++) {
+            updateBiasedConfEnergies(K, input->sequenceLength(K));
         }
     }
 
     // update conformation energies based on one observed trajectory
     void updateBiasedConfEnergies(std::size_t thermState, std::size_t trajLength) {
-	auto _biasMatrix = input->biasMatrix(thermState);
+        auto _biasMatrix = input->biasMatrix(thermState);
         auto _dtraj = input->dtraj(thermState);
-        
-	auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
+
+        auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
 
         dtype divisor = 0;
@@ -433,8 +440,8 @@ private:
                     Ci += CKji;
                     /* special case: most variables cancel out, here */
                     if (i == j) {
-                        scratchM[o] = (0 == CKij) ? THERMOTOOLS_TRAM_LOG_PRIOR : log(
-                                THERMOTOOLS_TRAM_PRIOR + (dtype) CKij);
+                        scratchM[o] = (0 == CKij) ? TRAM_LOG_PRIOR() : log(
+                                TRAM_PRIOR() + (dtype) CKij);
                         scratchM[o++] += _biasedConfEnergies(K, i);
                         continue;
                     }
@@ -483,7 +490,7 @@ private:
     }
 
     // Get the error in the energies between this iteration and the previous one.
-    dtype getError(ExchangeableArray<dtype, 2> & statVectors) {
+    dtype getError(ExchangeableArray<dtype, 2> &statVectors) {
         auto _thermEnergies = thermStateEnergies.firstBuf();
         auto _oldThermEnergies = thermStateEnergies.secondBuf();
         auto _statVectors = statVectors.firstBuf();
@@ -504,7 +511,7 @@ private:
         return maxError;
     }
 
-    void updateStatVectors(ExchangeableArray<dtype, 2> & statVectors) {
+    void updateStatVectors(ExchangeableArray<dtype, 2> &statVectors) {
         // move current values to old
         statVectors.exchange();
 
@@ -573,8 +580,8 @@ private:
         for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
             for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
                 scratchM[i] = -_biasedConfEnergies(K, i);
-	    }
-	    _thermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), nMarkovStates);
+            }
+            _thermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), nMarkovStates);
         }
     }
 
@@ -629,7 +636,7 @@ private:
         auto _biasMatrix = input->biasMatrix(thermState);
         auto _dtraj = input->dtraj(thermState);
 
-            /* -\sum_{x}\log\sum_{l}R_{i(x)}^{(l)}e^{-b^{(l)}(x)+f_{i(x)}^{(l)}} */
+        /* -\sum_{x}\log\sum_{l}R_{i(x)}^{(l)}e^{-b^{(l)}(x)+f_{i(x)}^{(l)}} */
         dtype logLikelihood = 0;
         for (std::size_t x = 0; x < trajLength; ++x) {
             std::int32_t o = 0;
@@ -641,7 +648,7 @@ private:
             }
             logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
         }
-	return logLikelihood;
+        return logLikelihood;
     }
 
 
@@ -665,7 +672,7 @@ private:
                     CKij = _transitionCounts(K, i, j);
                     if (0 == CKij) continue;
                     if (i == j) {
-                        a += ((dtype) CKij + THERMOTOOLS_TRAM_PRIOR) * log(_transitionMatrices(K, i, j));
+                        a += ((dtype) CKij + TRAM_PRIOR()) * log(_transitionMatrices(K, i, j));
                     } else {
                         a += CKij * log(_transitionMatrices(K, i, j));
                     }
@@ -677,7 +684,7 @@ private:
         for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
             for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
                 if (_stateCounts(K, i) > 0)
-                    b += (_stateCounts(K, i) + THERMOTOOLS_TRAM_PRIOR) * _biasedConfEnergies(K, i);
+                    b += (_stateCounts(K, i) + TRAM_PRIOR()) * _biasedConfEnergies(K, i);
             }
         }
         return a + b;
@@ -723,7 +730,8 @@ private:
                         _transitionMatrices(K, i, i) =
                                 (_transitionMatrices(K, i, i) + maxSum - scratchM[i]) / maxSum;
                         if (0 == _transitionMatrices(K, i, i) && 0 < _transitionCounts(K, i, i))
-                            fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n", static_cast<int>(i),
+                            fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n",
+                                    static_cast<int>(i),
                                     static_cast<int>(i));
                     } else {
                         _transitionMatrices(K, i, j) = _transitionMatrices(K, i, j) / maxSum;
@@ -774,7 +782,8 @@ private:
 
 template<typename dtype>
 extern dtype
-_bar_df(np_array_nfc<dtype> db_IJ, std::int32_t L1, np_array_nfc<dtype> db_JI, std::int32_t L2, np_array_nfc<dtype> scratch) {
+_bar_df(np_array_nfc<dtype> db_IJ, std::int32_t L1, np_array_nfc<dtype> db_JI, std::int32_t L2,
+        np_array_nfc<dtype> scratch) {
     py::buffer_info db_IJ_buf = db_IJ.request();
     py::buffer_info db_JI_buf = db_JI.request();
     py::buffer_info scratch_buf = scratch.request();
