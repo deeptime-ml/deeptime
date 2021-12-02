@@ -210,7 +210,7 @@ constexpr dtype sample(dtype o, dtype mu, dtype sigma) {
     double d = (o - mu) / sigma;
     return c * std::exp(-0.5 * d * d);
     #else
-    return exp(-0.5 * ((o - mu) / sigma) * ((o - mu) / sigma)) / (std::sqrt(2.0 * dt::constants::pi<dtype>()) * sigma);
+    return exp(-0.5 * ((o - mu) / sigma) * ((o - mu) / sigma)) / (std::sqrt(2.0 * constants::pi<dtype>()) * sigma);
     #endif
 }
 
