@@ -74,7 +74,7 @@ int mle_trev_dense(np_array<dtype> &T_arr, const np_array<dtype> &CCt_arr,
         }
 
         iteration += 1;
-        rel_err = util::relativeError(dim, sum_x.get(), sum_x_new.get());
+        rel_err = deeptime::util::relativeError(dim, sum_x.get(), sum_x_new.get());
     } while (rel_err > maxerr && iteration < maxiter);
 
     /* calculate T*/
@@ -153,7 +153,7 @@ int mle_trev_given_pi_dense(np_array<dtype>& T_arr, const np_array<dtype> &C_arr
             }
         }
         iteration += 1;
-        d_sq = util::distsq(n, lam_ptr, lam_new_ptr);
+        d_sq = deeptime::util::distsq(n, lam_ptr, lam_new_ptr);
     } while (d_sq > maxerr * maxerr && iteration < maxiter);
 
     /* calculate T */
