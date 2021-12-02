@@ -8,11 +8,12 @@
 #include <thread>
 #include <iomanip>
 
-#include "common.h"
-#include "thread_utils.h"
+#include <deeptime/common.h>
+#include <deeptime/constants.h>
+#include <deeptime/util/thread_utils.h>
+#include <deeptime/util/distribution_utils.h>
 
-namespace hmm {
-namespace output_models {
+namespace deeptime::markov::hmm::output_models {
 
 template<typename dtype>
 void handleOutliers(np_array_nfc<dtype> &outputProbabilityTrajectory) {
@@ -205,11 +206,11 @@ namespace gaussian {
 template<typename dtype>
 constexpr dtype sample(dtype o, dtype mu, dtype sigma) {
     #ifndef _WIN32
-    double c = 1.0 / (std::sqrt(2.0 * dt::constants::pi<dtype>()) * sigma);
+    double c = 1.0 / (std::sqrt(2.0 * constants::pi<dtype>()) * sigma);
     double d = (o - mu) / sigma;
     return c * std::exp(-0.5 * d * d);
     #else
-    return exp(-0.5 * ((o - mu) / sigma) * ((o - mu) / sigma)) / (std::sqrt(2.0 * dt::constants::pi<dtype>()) * sigma);
+    return exp(-0.5 * ((o - mu) / sigma) * ((o - mu) / sigma)) / (std::sqrt(2.0 * constants::pi<dtype>()) * sigma);
     #endif
 }
 
@@ -355,5 +356,4 @@ std::tuple<np_array<dtype>, np_array<dtype>> fit(std::size_t nHiddenStates, cons
 
 }
 
-}
 }

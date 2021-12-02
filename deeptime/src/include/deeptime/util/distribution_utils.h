@@ -4,10 +4,9 @@
 #include <random>
 #include <ctime>
 
-#include "common.h"
+#include <deeptime/common.h>
 
-namespace deeptime {
-namespace rnd {
+namespace deeptime::rnd {
 
 template<typename Generator = std::mt19937>
 Generator seededGenerator(std::uint32_t seed) {
@@ -163,5 +162,4 @@ private:
     }
 };
 
-}
 }

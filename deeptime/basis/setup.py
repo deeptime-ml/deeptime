@@ -4,7 +4,7 @@ def configuration(parent_package='', top_path=None):
 
     config.add_extension('_basis_bindings',
                          sources=['src/basis_bindings.cpp'],
-                         include_dirs=[],
+                         include_dirs=['include'],
                          language='c++',
                          )
     return config

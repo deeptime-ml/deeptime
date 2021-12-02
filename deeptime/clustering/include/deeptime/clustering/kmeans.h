@@ -11,14 +11,12 @@
 #include <pybind11/pytypes.h>
 #include <mutex>
 
-#include "common.h"
+#include <deeptime/common.h>
 #include "metric.h"
-#include "thread_utils.h"
-#include "distribution_utils.h"
+#include <deeptime/util/thread_utils.h>
+#include <deeptime/util/distribution_utils.h>
 
-namespace deeptime {
-namespace clustering {
-namespace kmeans {
+namespace deeptime::clustering::kmeans {
 
 template<typename Metric, typename T>
 std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T>& np_chunk, const np_array_nfc<T>& np_centers,
@@ -197,8 +195,5 @@ np_array<dtype> initKmeansPlusPlus(const np_array_nfc<dtype> &data, std::size_t 
     return centers;
 }
 
-}
-
-}
 }
 #include "bits/kmeans_bits.h"

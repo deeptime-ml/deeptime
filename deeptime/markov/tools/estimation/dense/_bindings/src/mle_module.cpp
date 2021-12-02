@@ -2,8 +2,8 @@
 // Created by mho on 7/29/20.
 //
 
-#include "mle_trev.h"
-#include "sampler.h"
+#include <deeptime/markov/tools/mle_trev.h>
+#include <deeptime/markov/tools/sampler.h>
 
 template<typename Sampler, typename Mod>
 void exportSampler(Mod &m, const std::string &name) {
@@ -14,6 +14,8 @@ void exportSampler(Mod &m, const std::string &name) {
 
 
 PYBIND11_MODULE(_mle_bindings, m) {
+    using namespace deeptime::markov::tools;
+
     m.def("mle_trev_dense", &mle_trev_dense<float>);
     m.def("mle_trev_dense", &mle_trev_dense<double>);
     m.def("mle_trev_dense", &mle_trev_dense<long double>);

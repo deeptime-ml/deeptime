@@ -3,8 +3,7 @@
 #include <thread>
 #include <atomic>
 
-namespace deeptime {
-namespace thread {
+namespace deeptime::thread {
 
 class scoped_thread {
     std::thread t;
@@ -129,5 +128,4 @@ public:
     }
 };
 
-}
 }

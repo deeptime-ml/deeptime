@@ -1,11 +1,10 @@
 #pragma once
 
-#include "metric.h"
-#include "kmeans.h"
-#include "regspace.h"
+#include <deeptime/clustering/metric.h>
+#include <deeptime/clustering/kmeans.h>
+#include <deeptime/clustering/regspace.h>
 
-namespace deeptime{
-namespace clustering {
+namespace deeptime::clustering {
 
 template<typename Metric>
 void registerKmeans(py::module &mod) {
@@ -88,5 +87,4 @@ void registerClusteringImplementation(py::module &m) {
     registerAssignFunctions<Metric>(m);
 }
 
-}
 }
