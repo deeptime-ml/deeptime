@@ -19,8 +19,8 @@ namespace py = pybind11;
 
 */
 template<typename dtype>
-int _variable_cols(np_array_nfc<bool> &np_cols,
-                   const np_array_nfc<dtype> &np_X,
+int _variable_cols(deeptime::np_array_nfc<bool> &np_cols,
+                   const deeptime::np_array_nfc<dtype> &np_X,
                    float tol=0, std::size_t min_constant=0) {
     // compare first and last row to get constant candidates
     std::size_t M = static_cast<std::size_t>(np_X.shape(0)), N = static_cast<std::size_t>(np_X.shape(1));
