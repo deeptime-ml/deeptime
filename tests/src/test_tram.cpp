@@ -2,7 +2,8 @@
 #include <pybind11/embed.h>
 #include <catch2/catch.hpp>
 #include <tram.h>
-
+#include <iostream>
+#include <fstream>
 //
 // Created by Maaike on 01/12/2021.
 //
@@ -90,10 +91,18 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 REQUIRE(tram.getBiasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
             }
+	    THEN("... and are initialized with zeros") {
+	        REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
+	    }
+	    std::ofstream f;
+	    f.open("~/tram_test_log.txt");
+	    f << "logging input data" << std::endl;
+	    f.close();
 
+	    tram.estimate(1, 1e-8);
             TestType logLikelihood = tram.computeLogLikelihood();
             AND_WHEN("estimate() is called") {
-                tram.estimate(10, 1e-8);
+                tram.estimate(13, 1e-8);
                 THEN("loglikelihood increases") {
                     REQUIRE(tram.computeLogLikelihood() > logLikelihood);
                 }
