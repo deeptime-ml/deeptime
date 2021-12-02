@@ -4,6 +4,8 @@
 
 #include <deeptime/common.h>
 
+using namespace deeptime;
+
 template<typename dtype>
 auto ksum(const dtype* const begin, const dtype* const end) -> dtype {
     auto n = std::distance(begin, end);

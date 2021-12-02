@@ -4,6 +4,8 @@
 
 #include <deeptime/common.h>
 
+using namespace deeptime;
+
 template<typename dtype>
 void convertImpl(py::ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype> &yArr,
                  const np_array_nfc<dtype> &dataArr, np_array_nfc<dtype> &nuArr,
