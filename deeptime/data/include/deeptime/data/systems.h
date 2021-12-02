@@ -5,9 +5,9 @@
 #include <chrono>
 #include <complex>
 
-#include "common.h"
-#include "integrator.h"
-#include "boundary_conditions.h"
+#include <deeptime/common.h>
+#include <deeptime/data/integrator.h>
+#include <deeptime/data/boundary_conditions.h>
 
 namespace py = pybind11;
 

@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "common.h"
-#include "metric.h"
-
 #if defined(USE_OPENMP)
 #include <omp.h>
 #endif
+
+#include <deeptime/common.h>
+#include "metric.h"
 
 namespace deeptime {
 namespace clustering {

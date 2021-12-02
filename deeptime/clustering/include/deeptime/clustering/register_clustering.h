@@ -1,8 +1,8 @@
 #pragma once
 
-#include "metric.h"
-#include "kmeans.h"
-#include "regspace.h"
+#include <deeptime/clustering/metric.h>
+#include <deeptime/clustering/kmeans.h>
+#include <deeptime/clustering/regspace.h>
 
 namespace deeptime{
 namespace clustering {

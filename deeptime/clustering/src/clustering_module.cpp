@@ -1,4 +1,4 @@
-#include "register_clustering.h"
+#include <deeptime/clustering/register_clustering.h>
 
 PYBIND11_MODULE(_clustering_bindings, m) {
     m.doc() = "module containing clustering algorithms.";

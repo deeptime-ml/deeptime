@@ -4,7 +4,10 @@
 
 #pragma once
 
-#include "common.h"
+#include <deeptime/common.h>
+
+namespace deeptime {
+namespace markov {
 
 py::array_t<std::int32_t> countStates(const py::list& dtrajs) {
     std::vector<std::int32_t> counts;
@@ -100,4 +103,7 @@ auto indexStates(const py::list& dtrajs, const py::object &pySubset) {
         }
     }
     return result;
+}
+
+}
 }

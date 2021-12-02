@@ -6,8 +6,12 @@
 
 #include <thread>
 
-#include "common.h"
-#include "distribution_utils.h"
+#include <deeptime/common.h>
+#include <deeptime/util/distribution_utils.h>
+
+namespace deeptime{
+namespace markov {
+namespace hmm {
 
 /**
  * computes viterbi path
@@ -250,7 +254,7 @@ void backward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &po
 template<typename dtype>
 void stateProbabilitiesImpl(const dtype* const alpha, const dtype* const beta, dtype* const gamma,
                             std::size_t N, std::size_t T) {
-    #pragma omp parallel for default(none) firstprivate(T, N, alpha, beta, gamma)
+#pragma omp parallel for default(none) firstprivate(T, N, alpha, beta, gamma)
     for (std::size_t t = 0; t < T; ++t) {
         dtype rowSum = 0;
         for (std::size_t n = 0; n < N; ++n) {
@@ -418,8 +422,8 @@ np_array<dtype> countMatrix(const py::list& dtrajs, std::uint32_t lag, std::uint
 
 template<typename dtype>
 dtype forwardBackward(const np_array<dtype> &transitionMatrix, const np_array<dtype> &pObs,
-    const np_array<dtype> &pi, np_array<dtype> &alpha, np_array_nfc<dtype> &beta, np_array_nfc<dtype> &gamma,
-    np_array_nfc<dtype> &counts, const py::object &pyT) {
+                      const np_array<dtype> &pi, np_array<dtype> &alpha, np_array_nfc<dtype> &beta, np_array_nfc<dtype> &gamma,
+                      np_array_nfc<dtype> &counts, const py::object &pyT) {
     std::size_t T = [&pyT, &pObs]() {
         if (pyT.is_none()) {
             return static_cast<std::size_t>(pObs.shape(0));
@@ -451,4 +455,8 @@ dtype forwardBackward(const np_array<dtype> &transitionMatrix, const np_array<dt
     stateProbabilitiesImpl(alphaBuf, betaBuf, gammaBuf, N, T);
     transitionCountsImpl(alphaBuf, betaBuf, P, pObsBuf, countsBuf, N, T);
     return logprob;
+}
+
+}
+}
 }

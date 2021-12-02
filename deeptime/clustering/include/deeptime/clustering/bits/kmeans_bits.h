@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "kmeans.h"
+#include <deeptime/clustering/kmeans.h>
 
 namespace deeptime {
 namespace clustering {

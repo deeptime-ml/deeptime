@@ -4,7 +4,11 @@
 
 #pragma once
 
-#include "common.h"
+#include <deeptime/common.h>
+
+namespace deeptime {
+namespace markov {
+namespace tools {
 
 template<typename dtype>
 int mle_trev_sparse(np_array_nfc<dtype> &TArr, const np_array_nfc<dtype> &CCtArr,
@@ -211,4 +215,8 @@ int mle_trev_given_pi_sparse(np_array_nfc<dtype> &TunnormalizedArr, const np_arr
         return 0;
     }
 
+}
+
+}
+}
 }

@@ -2,7 +2,7 @@
 // Created by mho on 8/6/20.
 //
 
-#include "common.h"
+#include <deeptime/common.h>
 
 template<typename dtype>
 auto ksum(const dtype* const begin, const dtype* const end) -> dtype {

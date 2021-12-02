@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "metric.h"
+#include <deeptime/clustering/metric.h>
 
 #ifdef USE_OPENMP
 #include <omp.h>

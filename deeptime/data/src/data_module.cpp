@@ -4,9 +4,9 @@
 #include <utility>
 #include <type_traits>
 
-#include "common.h"
-#include "pbf.h"
-#include "systems.h"
+#include <deeptime/common.h>
+#include <deeptime/data/pbf.h>
+#include <deeptime/data/systems.h>
 
 static_assert(deeptime::data::system_has_periodic_boundaries_v<deeptime::data::BickleyJet<double, true>>);
 static_assert(!deeptime::data::system_has_periodic_boundaries_v<deeptime::data::Prinz<double>>);

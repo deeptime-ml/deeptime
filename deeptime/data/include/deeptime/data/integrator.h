@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "common.h"
-#include "distribution_utils.h"
-#include "boundary_conditions.h"
+#include <deeptime/common.h>
+#include <deeptime/util/distribution_utils.h>
+#include <deeptime/data/boundary_conditions.h>
 
 namespace deeptime::data {
 

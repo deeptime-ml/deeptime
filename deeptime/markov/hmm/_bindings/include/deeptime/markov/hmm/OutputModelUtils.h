@@ -8,9 +8,12 @@
 #include <thread>
 #include <iomanip>
 
-#include "common.h"
-#include "thread_utils.h"
+#include <deeptime/common.h>
+#include <deeptime/util/thread_utils.h>
+#include <deeptime/util/distribution_utils.h>
 
+namespace deeptime{
+namespace markov {
 namespace hmm {
 namespace output_models {
 
@@ -355,5 +358,7 @@ std::tuple<np_array<dtype>, np_array<dtype>> fit(std::size_t nHiddenStates, cons
 
 }
 
+}
+}
 }
 }

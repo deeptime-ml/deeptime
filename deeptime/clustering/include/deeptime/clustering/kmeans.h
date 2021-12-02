@@ -11,10 +11,10 @@
 #include <pybind11/pytypes.h>
 #include <mutex>
 
-#include "common.h"
+#include <deeptime/common.h>
 #include "metric.h"
-#include "thread_utils.h"
-#include "distribution_utils.h"
+#include <deeptime/util/thread_utils.h>
+#include <deeptime/util/distribution_utils.h>
 
 namespace deeptime {
 namespace clustering {

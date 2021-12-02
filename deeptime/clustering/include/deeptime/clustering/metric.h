@@ -11,7 +11,7 @@
 #include <vector>
 #include <type_traits>
 
-#include "common.h"
+#include "deeptime/common.h"
 
 struct EuclideanMetric {
     template<typename dtype>

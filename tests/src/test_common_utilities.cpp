@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
 #include <pybind11/embed.h>
-#include "common.h"
+#include <deeptime/common.h>
 
 TEST_CASE("Normalize yields discrete probability distributions", "[common]") {
     std::vector<float> v(1000, 0);

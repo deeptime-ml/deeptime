@@ -5,7 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
-#include "common.h"
+#include <deeptime/common.h>
 
 namespace py = pybind11;
 

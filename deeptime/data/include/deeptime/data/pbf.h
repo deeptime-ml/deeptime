@@ -11,7 +11,7 @@
 
 #endif
 
-#include "thread_utils.h"
+#include <deeptime/util/thread_utils.h>
 
 namespace deeptime::pbf {
 
