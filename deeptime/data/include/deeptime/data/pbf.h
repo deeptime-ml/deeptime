@@ -13,7 +13,7 @@
 
 #include <deeptime/util/thread_utils.h>
 
-namespace deeptime::pbf {
+namespace deeptime::data::pbf {
 
 template<int DIM, typename dtype>
 class ParticleCollection;

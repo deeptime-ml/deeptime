@@ -10,8 +10,7 @@
 #include <deeptime/common.h>
 #include <deeptime/util/distribution_utils.h>
 
-namespace deeptime {
-namespace markov {
+namespace deeptime::markov {
 
 template<typename dtype>
 np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, const py::object& stop, long seed) {
@@ -58,5 +57,4 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
     return result;
 }
 
-}
 }

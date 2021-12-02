@@ -9,9 +9,7 @@
 #include <deeptime/common.h>
 #include <deeptime/util/distribution_utils.h>
 
-namespace deeptime{
-namespace markov {
-namespace hmm {
+namespace deeptime::markov::hmm {
 
 /**
  * computes viterbi path
@@ -457,6 +455,4 @@ dtype forwardBackward(const np_array<dtype> &transitionMatrix, const np_array<dt
     return logprob;
 }
 
-}
-}
 }

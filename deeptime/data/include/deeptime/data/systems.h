@@ -8,8 +8,7 @@
 #include <deeptime/common.h>
 #include <deeptime/data/integrator.h>
 #include <deeptime/data/boundary_conditions.h>
-
-namespace py = pybind11;
+#include <deeptime/constants.h>
 
 namespace deeptime::data {
 
@@ -381,15 +380,15 @@ struct TimeDependent5Well {
     constexpr dtype energy(double t, const State &x) const {
         const auto &xv = x[0];
         const auto &yv = x[1];
-        auto term1 = std::cos(s * std::atan2(yv, xv) - 0.5 * dt::constants::pi<T>() * t);
-        auto term2 = std::sqrt(xv * xv + yv * yv) - 3. / 2 - 0.5 * std::sin(2 * dt::constants::pi<T>() * t);
+        auto term1 = std::cos(s * std::atan2(yv, xv) - 0.5 * constants::pi<T>() * t);
+        auto term2 = std::sqrt(xv * xv + yv * yv) - 3. / 2 - 0.5 * std::sin(2 * constants::pi<T>() * t);
         return term1 + 10 * term2 * term2;
     }
 
     constexpr State f(double t, const State &xvec) const {
         auto x = xvec[0];
         auto y = xvec[1];
-        auto pi = dt::constants::pi<T>();
+        auto pi = constants::pi<T>();
         return {{
                         +(s * y * std::sin(0.5 * pi * t - s * std::atan2(y, x)) - 10. * x * std::sqrt(x * x + y * y) *
                                                                                   (-std::sin(2 * pi * t) +

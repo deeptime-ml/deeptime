@@ -10,9 +10,7 @@
 #include <deeptime/util/distribution_utils.h>
 #include <deeptime/markov/tools/mle_trev.h>
 
-namespace deeptime {
-namespace markov {
-namespace tools {
+namespace deeptime::markov::tools {
 
 namespace util {
 template<typename dtype>
@@ -412,6 +410,4 @@ private:
     }
 };
 
-}
-}
 }

@@ -3,11 +3,8 @@
 //
 
 #pragma once
-namespace deeptime {
-namespace markov {
-namespace hmm {
 
-namespace docs {
+namespace deeptime::markov::hmm::docs {
 static constexpr const char* FORWARD = R"mydelim(Compute P( obs | A, B, pi ) and all forward coefficients.
 
 Parameters
@@ -123,8 +120,4 @@ Returns
 S : (T,) ndarray
     maximum likelihood hidden path
 )mydelim";
-}
-
-}
-}
 }

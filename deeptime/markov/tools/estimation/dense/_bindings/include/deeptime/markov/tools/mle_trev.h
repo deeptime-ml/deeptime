@@ -9,9 +9,7 @@
 
 #include <deeptime/common.h>
 
-namespace deeptime {
-namespace markov {
-namespace tools {
+namespace deeptime::markov::tools {
 
 template<typename dtype>
 int mle_trev_dense(np_array<dtype> &T_arr, const np_array<dtype> &CCt_arr,
@@ -185,6 +183,4 @@ int mle_trev_given_pi_dense(np_array<dtype>& T_arr, const np_array<dtype> &C_arr
     return 0;
 }
 
-}
-}
 }

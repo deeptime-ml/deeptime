@@ -10,8 +10,7 @@
 
 #include <deeptime/common.h>
 
-namespace deeptime {
-namespace basis {
+namespace deeptime::basis {
 
 // trim from start (in place)
 static inline void ltrim(std::string &s) {
@@ -154,5 +153,4 @@ std::vector<std::string> featureNames(const std::vector<std::string> &inputFeatu
     return out;
 }
 
-}
 }
