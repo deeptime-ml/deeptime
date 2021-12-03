@@ -7,7 +7,9 @@
 #include <cmath>
 #include <memory>
 
-#include "common.h"
+#include <deeptime/common.h>
+
+namespace deeptime::markov::tools {
 
 template<typename dtype>
 int mle_trev_dense(np_array<dtype> &T_arr, const np_array<dtype> &CCt_arr,
@@ -72,7 +74,7 @@ int mle_trev_dense(np_array<dtype> &T_arr, const np_array<dtype> &CCt_arr,
         }
 
         iteration += 1;
-        rel_err = util::relativeError(dim, sum_x.get(), sum_x_new.get());
+        rel_err = deeptime::util::relativeError(dim, sum_x.get(), sum_x_new.get());
     } while (rel_err > maxerr && iteration < maxiter);
 
     /* calculate T*/
@@ -137,7 +139,7 @@ int mle_trev_given_pi_dense(np_array<dtype>& T_arr, const np_array<dtype> &C_arr
         auto lam_ptr = lam.get();
         auto lam_new_ptr = lam_new.get();
 
-        #pragma omp parallel for default(none) firstprivate(C, lam_ptr, lam_new_ptr, n, mu)
+#pragma omp parallel for default(none) firstprivate(C, lam_ptr, lam_new_ptr, n, mu)
         for (std::size_t j = 0; j < n; j++) {
             lam_new_ptr[j] = 0.0;
             for (std::size_t i = 0; i < n; i++) {
@@ -151,7 +153,7 @@ int mle_trev_given_pi_dense(np_array<dtype>& T_arr, const np_array<dtype> &C_arr
             }
         }
         iteration += 1;
-        d_sq = util::distsq(n, lam_ptr, lam_new_ptr);
+        d_sq = deeptime::util::distsq(n, lam_ptr, lam_new_ptr);
     } while (d_sq > maxerr * maxerr && iteration < maxiter);
 
     /* calculate T */
@@ -179,4 +181,6 @@ int mle_trev_given_pi_dense(np_array<dtype>& T_arr, const np_array<dtype> &C_arr
         return -5;
     }
     return 0;
+}
+
 }

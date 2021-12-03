@@ -1,9 +1,13 @@
-project(_basis_bindings CXX)
+project(deeptime_basis CXX)
+
+add_library(${PROJECT_NAME} INTERFACE)
+target_include_directories(${PROJECT_NAME} INTERFACE include)
+target_link_libraries(${PROJECT_NAME} INTERFACE deeptime::common)
+add_library(deeptime::basis ALIAS ${PROJECT_NAME})
 
 set(SRC src/basis_bindings.cpp)
-pybind11_add_module(${PROJECT_NAME} ${SRC})
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
-target_link_libraries(${PROJECT_NAME} PUBLIC deeptime::common)
+pybind11_add_module(_basis_bindings ${SRC})
+target_link_libraries(_basis_bindings PUBLIC deeptime::basis)
 if(OpenMP_FOUND)
-    target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
+    target_link_libraries(_basis_bindings PUBLIC OpenMP::OpenMP_CXX)
 endif()

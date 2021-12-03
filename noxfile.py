@@ -11,6 +11,11 @@ def tests(session: nox.Session) -> None:
     if 'cpp' in session.posargs:
         session.install("cmake")
         session.install("conan")
+
+        site_packages_dir = session.run("python", "devtools/cmake/find_site_packages.py", silent=True).strip()
+        session.log(f"Found site-packages {site_packages_dir}, adding to PYTHONPATH")
+        session.env['PYTHONPATH'] = site_packages_dir
+
         pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True).strip()
         session.log(f"Found pybind11 module dir: {pybind11_module_dir}")
         tmpdir = session.create_tmp()

@@ -2,7 +2,9 @@
 // Created by mho on 8/28/20.
 //
 
-#include "common.h"
+#include <deeptime/common.h>
+
+using namespace deeptime;
 
 template<typename dtype>
 void convertImpl(py::ssize_t M, const np_array_nfc<dtype> &xArr, const np_array_nfc<dtype> &yArr,

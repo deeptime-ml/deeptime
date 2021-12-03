@@ -7,8 +7,10 @@
 #include <chrono>
 #include <random>
 
-#include "common.h"
-#include "distribution_utils.h"
+#include <deeptime/common.h>
+#include <deeptime/util/distribution_utils.h>
+
+namespace deeptime::markov {
 
 template<typename dtype>
 np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, const py::object& stop, long seed) {
@@ -53,4 +55,6 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
         }
     }
     return result;
+}
+
 }

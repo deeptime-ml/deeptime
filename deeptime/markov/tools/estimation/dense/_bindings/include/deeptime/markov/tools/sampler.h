@@ -5,9 +5,12 @@
 #pragma once
 
 #include <random>
-#include <distribution_utils.h>
-#include "common.h"
-#include "mle_trev.h"
+
+#include <deeptime/common.h>
+#include <deeptime/util/distribution_utils.h>
+#include <deeptime/markov/tools/mle_trev.h>
+
+namespace deeptime::markov::tools {
 
 namespace util {
 template<typename dtype>
@@ -76,13 +79,13 @@ private:
     dtype f(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
         dtype r = s / (s - static_cast<dtype>(1));
         return (a1 + static_cast<dtype>(1)) * std::log(v) + a3 * std::log(r + v)
-                - (a1 + a2 + a3 + static_cast<dtype>(1)) * std::log(static_cast<dtype>(1) + v);
+               - (a1 + a2 + a3 + static_cast<dtype>(1)) * std::log(static_cast<dtype>(1) + v);
     }
 
     dtype F(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
         dtype r = s / (s - static_cast<dtype>(1));
         return (a1 + static_cast<dtype>(1)) / v + a3 / (r + v)
-                - (a1 + a2 + a3 + static_cast<dtype>(2)) / (static_cast<dtype>(1) + v);
+               - (a1 + a2 + a3 + static_cast<dtype>(2)) / (static_cast<dtype>(1) + v);
     }
 
     dtype DF(dtype v, dtype s, dtype a1, dtype a2, dtype a3) const {
@@ -92,8 +95,8 @@ private:
     }
 
     dtype qacc(dtype w, dtype v, dtype s,
-         dtype a1, dtype a2, dtype a3,
-         dtype alpha, dtype beta) const {
+               dtype a1, dtype a2, dtype a3,
+               dtype alpha, dtype beta) const {
         auto r = s / (s - static_cast<dtype>(1));
         return beta * (w - v) + (a1 + static_cast<dtype>(1) - alpha) * std::log(w / v) + a3 * std::log((r + w) / (r + v)) -
                (a1 + a2 + a3 + static_cast<dtype>(2)) * std::log((static_cast<dtype>(1) + w) / (static_cast<dtype>(1) + v));
@@ -405,6 +408,6 @@ private:
             X[I[k] * n + J[k]] /= sum;
         }
     }
-
-
 };
+
+}

@@ -5,11 +5,9 @@
 
 #pragma once
 
-#include "kmeans.h"
+#include <deeptime/clustering/kmeans.h>
 
-namespace deeptime {
-namespace clustering {
-namespace kmeans {
+namespace deeptime::clustering::kmeans {
 
 template<typename Metric, typename T>
 inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_chunk,
@@ -209,6 +207,4 @@ inline T costFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_
     return value;
 }
 
-}
-}
 }
