@@ -125,23 +125,10 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
                 REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
             }
-	    std::ofstream f;
-	    f.open("tram_test_log.txt", std::ofstream::out | std::ofstream::trunc);
-	    for (int K = 0; K< nThermStates; ++K) {
-		for (int i=0; i < dtrajs[K].size(); ++i) {
-		    f << dtrajs[K].at(i) << ": ";
-	            for (int L = 0; L < nThermStates; ++L) {
-		        f << biasMatrices[K].at(i, L) << " ";
-		    }
-		    f << std::endl;
-	        }
-	    }
-	    f.close();
-
 
             AND_WHEN("estimate() is called") {
                 tram.estimate(3, 1e-8, true);
-                THEN("Energies are not infinite") {
+		THEN("Energies are finite") {
                     auto thermStateEnergies = tram.getEnergiesPerThermodynamicState();
 
                     for (int K = 0; K < nThermStates; ++K) {

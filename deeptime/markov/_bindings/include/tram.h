@@ -255,8 +255,6 @@ public:
                 logLikelihood = computeLogLikelihood();
             }
 
-	    std::cout << "LL: " << logLikelihood << " err: " << iterationError << std::endl;
-
             if (callback != nullptr && iterationCount % callbackInterval == 0) {
                 // TODO: callback doesn't work in release???
                 (*callback)(iterationCount, iterationError, logLikelihood);
