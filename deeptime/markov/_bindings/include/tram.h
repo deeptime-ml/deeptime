@@ -255,6 +255,8 @@ public:
                 logLikelihood = computeLogLikelihood();
             }
 
+	    std::cout << "LL: " << logLikelihood << " err: " << iterationError << std::endl;
+
             if (callback != nullptr && iterationCount % callbackInterval == 0) {
                 // TODO: callback doesn't work in release???
                 (*callback)(iterationCount, iterationError, logLikelihood);
@@ -442,7 +444,6 @@ private:
                     if (i == j) {
                         scratchM[o] = (0 == CKij) ? TRAM_LOG_PRIOR() : log(
                                 TRAM_PRIOR() + (dtype) CKij);
-                        scratchM[o++] += _biasedConfEnergies(K, i);
                         continue;
                     }
                     CK = CKij + CKji;
@@ -632,6 +633,7 @@ private:
     // i.e. the sum over all sample likelihoods from one trajectory within on 
     // thermodynamic state.
     dtype computeSampleLikelihood(std::size_t thermState, std::size_t trajLength) {
+        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
         auto _biasMatrix = input->biasMatrix(thermState);
         auto _dtraj = input->dtraj(thermState);
@@ -644,7 +646,7 @@ private:
             if (i < 0) continue;
             for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
                 if (_modifiedStateCountsLog(K, i) > 0)
-                    scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K) + _modifiedStateCountsLog(K, i);
+                    scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K) + _biasedConfEnergies(K, i);
             }
             logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
         }
