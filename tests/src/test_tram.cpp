@@ -147,18 +147,23 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                     auto thermStateEnergies = tram.getEnergiesPerThermodynamicState();
 
                     for (int K = 0; K < nThermStates; ++K) {
-                        REQUIRE(thermStateEnergies.at(K) > -inf);
-                        REQUIRE(thermStateEnergies.at(K) < inf);
+                        REQUIRE(std::isfinite(thermStateEnergies.at(K)));
                     }
 
                     auto markovStateEnergies = tram.getEnergiesPerMarkovState();
                     for (int i = 0; i < nMarkovStates; i++) {
-                        REQUIRE(markovStateEnergies.at(i) > -inf);
-                        REQUIRE(markovStateEnergies.at(i) < inf);
+                        REQUIRE(std::isfinite(markovStateEnergies.at(i)));
                     }
-                }THEN("log-likelihood is smaller than 0") {
-                    auto LL = tram.computeLogLikelihood();
-                    REQUIRE(LL > -inf);
+  //              }
+//		THEN("log-likelihood is smaller than 0") {
+                    TestType LL = tram.computeLogLikelihood();
+                    std::cout << "----------------------test print LL "<< LL << std::endl;
+		    LL = tram.computeLogLikelihood();
+                    std::cout << "----------------------test print LL "<< LL << std::endl;
+		    LL = tram.computeLogLikelihood();
+                    std::cout << "----------------------test print LL "<< LL << std::endl;
+		    LL = tram.computeLogLikelihood();
+                    REQUIRE(std::isfinite(LL));
                     REQUIRE(LL < 0);
                 }
             }

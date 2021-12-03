@@ -218,7 +218,7 @@ public:
             logLikelihood += computeSampleLikelihood(K, input->sequenceLength(K));
         }
         logLikelihood += computeTransitionLikelihood();
-
+        std::cout << "LL computed: " << logLikelihood << std::endl;
         return logLikelihood;
     }
 
