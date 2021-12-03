@@ -37,17 +37,17 @@ auto generateDtrajs(int nThermsStates, int nMarkovStates, int *trajLengths) {
     for (int K = 0; K < nThermsStates; ++K) {
         dtrajs.push_back(generateDtraj(nMarkovStates, trajLengths[K], 0.1 * K));
         // a very ugly way to ensure all markovstates are samples at least once.
-	for(int i = 0; i < nMarkovStates; ++i) {
-           dtrajs[K].mutable_at(1+i) = i;
+        for (int i = 0; i < nMarkovStates; ++i) {
+            dtrajs[K].mutable_at(1 + i) = i;
         }
     }
     return dtrajs;
-    
+
 }
 
 template<typename dtype>
 auto generateBiasMatrix(int nThermStates, np_array_nfc<int> dtraj) {
-    auto biasMatrix = np_array_nfc<dtype>({(int)dtraj.size(), nThermStates});
+    auto biasMatrix = np_array_nfc<dtype>({(int) dtraj.size(), nThermStates});
     auto biasMatrixBuf = biasMatrix.template mutable_unchecked<2>();
 
     std::uniform_real_distribution<> distribution(-0.5, 0.5);
@@ -55,8 +55,8 @@ auto generateBiasMatrix(int nThermStates, np_array_nfc<int> dtraj) {
 
     for (int i = 0; i < dtraj.size(); ++i) {
         dtype coord = dtraj.data()[i] + distribution(gen);
-	for (int K = 0; K < nThermStates; ++K) {
-            biasMatrixBuf(i,K) = (coord - K) * (coord - K);
+        for (int K = 0; K < nThermStates; ++K) {
+            biasMatrixBuf(i, K) = (coord - K) * (coord - K);
         };
     }
     return biasMatrix;
@@ -78,18 +78,19 @@ auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<i
     std::fill(stateCounts.mutable_data(), stateCounts.mutable_data() + stateCounts.size(), 0);
     std::fill(transitionCounts.mutable_data(), transitionCounts.mutable_data() + transitionCounts.size(), 0);
 
-    int state = -1; int prevstate = -1;
+    int state = -1;
+    int prevstate = -1;
 
-    for(int K = 0; K<nThermStates; ++K) {
-        for(int i=0; i< dtrajs[K].size(); ++i) {
-	    prevstate = state;
-	    state = dtrajs[K].at(i);
+    for (int K = 0; K < nThermStates; ++K) {
+        for (int i = 0; i < dtrajs[K].size(); ++i) {
+            prevstate = state;
+            state = dtrajs[K].at(i);
 
             stateCounts.mutable_at(K, state)++;
-	    if (prevstate != -1){
-	        transitionCounts.mutable_at(K, prevstate, state)++;
-	    }
-	}
+            if (prevstate != -1) {
+                transitionCounts.mutable_at(K, prevstate, state)++;
+            }
+        }
     }
     return std::tuple(stateCounts, transitionCounts);
 }
@@ -109,9 +110,9 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
         auto biasMatrices = generateBiasMatrices<TestType>(nThermStates, dtrajs);
 
         np_array_nfc<int> stateCounts, transitionCounts;
-	    std::tie(stateCounts, transitionCounts) = countStates(nThermStates, nMarkovStates, dtrajs);
-        
-    	auto inputPtr = std::make_shared<deeptime::tram::TRAMInput<TestType>>(
+        std::tie(stateCounts, transitionCounts) = countStates(nThermStates, nMarkovStates, dtrajs);
+
+        auto inputPtr = std::make_shared<deeptime::tram::TRAMInput<TestType>>(
                 std::move(stateCounts), std::move(transitionCounts), dtrajs,
                 biasMatrices);
 
@@ -123,8 +124,8 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 REQUIRE(tram.getEnergiesPerThermodynamicState().size() == nThermStates);
                 REQUIRE(tram.getBiasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
-	            REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
-	        }
+                REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
+            }
 /*	    std::ofstream f;
 	    f.open("tram_test_log.txt", std::ofstream::out | std::ofstream::trunc);
 	    for (int K = 0; K< nThermStates; ++K) {
@@ -151,12 +152,11 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                     }
 
                     auto markovStateEnergies = tram.getEnergiesPerMarkovState();
-                    for(int i = 0; i < nMarkovStates; i++) {
+                    for (int i = 0; i < nMarkovStates; i++) {
                         REQUIRE(markovStateEnergies.at(i) > -inf);
                         REQUIRE(markovStateEnergies.at(i) < inf);
                     }
-                }
-                THEN("log-likelihood is smaller than 0") {
+                }THEN("log-likelihood is smaller than 0") {
                     auto LL = tram.computeLogLikelihood();
                     REQUIRE(LL > -inf);
                     REQUIRE(LL < 0);
