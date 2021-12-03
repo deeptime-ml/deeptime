@@ -96,7 +96,6 @@ auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<i
 }
 
 TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
-    auto inf = std::numeric_limits<TestType>::infinity();
 
     GIVEN("Input") {
         py::scoped_interpreter guard;
@@ -126,46 +125,37 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
                 REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
             }
-/*	    std::ofstream f;
-	    f.open("tram_test_log.txt", std::ofstream::out | std::ofstream::trunc);
-	    for (int K = 0; K< nThermStates; ++K) {
-		for (int i=0; i < dtrajs[K].size(); ++i) {
-		    f << dtrajs[K].at(i) << ": ";
-	            for (int L = 0; L < nThermStates; ++L) {
-		        f << biasMatrices[K].at(i, L) << " ";
-		    }
-		    f << std::endl;
-	        }
-	    }
-	    f.close();
-*/
-//	        TestType logLikelihood = tram.computeLogLikelihood();
 
             AND_WHEN("estimate() is called") {
-                tram.estimate(13, 1e-8, true);
-                THEN("Energies are not infinite") {
+                tram.estimate(3, 1e-8, true);
+		THEN("Energies are finite") {
                     auto thermStateEnergies = tram.getEnergiesPerThermodynamicState();
 
                     for (int K = 0; K < nThermStates; ++K) {
-                        REQUIRE(std::isfinite(thermStateEnergies.at(K)));
+			std::cout << K << ": " << thermStateEnergies.at(K) << std::endl;
+			REQUIRE(std::isfinite(thermStateEnergies.at(K)));
                     }
 
                     auto markovStateEnergies = tram.getEnergiesPerMarkovState();
                     for (int i = 0; i < nMarkovStates; i++) {
                         REQUIRE(std::isfinite(markovStateEnergies.at(i)));
                     }
-  //              }
-//		THEN("log-likelihood is smaller than 0") {
+                }
+                THEN("log-likelihood is smaller than 0") {
                     TestType LL = tram.computeLogLikelihood();
-                    std::cout << "----------------------test print LL "<< LL << std::endl;
-		    LL = tram.computeLogLikelihood();
-                    std::cout << "----------------------test print LL "<< LL << std::endl;
-		    LL = tram.computeLogLikelihood();
-                    std::cout << "----------------------test print LL "<< LL << std::endl;
-		    LL = tram.computeLogLikelihood();
                     REQUIRE(std::isfinite(LL));
                     REQUIRE(LL < 0);
-                }
+                   
+		    AND_WHEN("estimate() is called again") {
+                        tram.estimate(3, 1e-8, true);
+			
+			THEN("loglikelihood increases") {
+                            TestType newLL = tram.computeLogLikelihood();
+			    REQUIRE(newLL > LL);
+			    REQUIRE(newLL < 0);
+		        }
+		    }
+		}
             }
         }
     }
