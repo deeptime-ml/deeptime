@@ -402,7 +402,7 @@ private:
 
                 /* applying Hao's speed-up recomendation */
                 if (-inf == _modifiedStateCountsLog(K, i)) continue;
-                scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K) + _biasedConfEnergies(K,i);
+                scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
             }
             divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
 
@@ -410,6 +410,7 @@ private:
                 _biasedConfEnergies(K, i) = -numeric::kahan::logsumexp_pair(
                         -_biasedConfEnergies(K, i), -(divisor + _biasMatrix(x, K)));
             }
+
         }
     }
 
@@ -442,8 +443,9 @@ private:
                     Ci += CKji;
                     /* special case: most variables cancel out, here */
                     if (i == j) {
-                        scratchM[o] = (0 == CKij) ? TRAM_LOG_PRIOR() : log(
+                        scratchM[o] = (0 == CKij) ? TRAM_LOG_PRIOR() : std::log(
                                 TRAM_PRIOR() + (dtype) CKij);
+			scratchM[o++] += _biasedConfEnergies(K, i);
                         continue;
                     }
                     CK = CKij + CKji;
@@ -456,10 +458,10 @@ private:
                     scratchM[o++] = log((dtype) CK) + _lagrangianMultLog(K, j) - divisor;
                 }
                 NC = _stateCounts(K, i) - Ci;
-                extraStateCounts = (0 < NC) ? log((dtype) NC) : -inf; /* IGNORE PRIOR */
+                extraStateCounts = (0 < NC) ? log((dtype) NC) + _biasedConfEnergies(K, i) : -inf; /* IGNORE PRIOR */
                 _modifiedStateCountsLog(K, i) = numeric::kahan::logsumexp_pair(
                         numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), o), extraStateCounts);
-            }
+	    }
         }
 
 //        if constexpr(trammbar) {
@@ -549,7 +551,6 @@ private:
     computeMarkovStateEnergiesForSingleTrajectory(const BiasMatrixK &_biasMatrix_K,
                                                   const Dtraj &_dtraj,
                                                   std::size_t trajlength /*todo this is just dtraj length*/) {
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
 
@@ -562,7 +563,7 @@ private:
             for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
                 if (-inf == _modifiedStateCountsLog(K, i)) continue;
                 scratchT[o++] =
-                        _modifiedStateCountsLog(K, i) - _biasMatrix_K(x, K) + _biasedConfEnergies(K,i);
+                        _modifiedStateCountsLog(K, i) - _biasMatrix_K(x, K);
             }
             divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
             _markovStateEnergies(i) = -numeric::kahan::logsumexp_pair(-_markovStateEnergies(i), -divisor);
@@ -627,13 +628,16 @@ private:
                 _biasedConfEnergies(K, i) -= f0;
             }
         }
+	// update the state counts because they also include biased conf energies.
+	// If this is not done after normalizing, the log likelihood computations will
+	// not produce the correct output, due to incorrect values for mu(x).
+	updateStateCounts();
     }
 
     // log likelihood of observing a sampled trajectory from the local equilibrium.
     // i.e. the sum over all sample likelihoods from one trajectory within on 
     // thermodynamic state.
     dtype computeSampleLikelihood(std::size_t thermState, std::size_t trajLength) {
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
         auto _biasMatrix = input->biasMatrix(thermState);
         auto _dtraj = input->dtraj(thermState);
@@ -646,7 +650,7 @@ private:
             if (i < 0) continue;
             for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
                 if (_modifiedStateCountsLog(K, i) > 0)
-                    scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K) + _biasedConfEnergies(K, i);
+                    scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
             }
             logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
         }
