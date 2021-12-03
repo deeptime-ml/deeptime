@@ -95,6 +95,8 @@ auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<i
 }
 
 TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
+    auto inf = std::numeric_limits<TestType>::infinity();
+
     GIVEN("Input") {
         py::scoped_interpreter guard;
 
@@ -118,7 +120,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
             auto tram = deeptime::tram::TRAM<TestType>(inputPtr, 0);
 
             THEN("Result matrices are initialized") {
-                REQUIRE(tram.getEnergiesPerThermodynamicState()->size() == nThermStates);
+                REQUIRE(tram.getEnergiesPerThermodynamicState().size() == nThermStates);
                 REQUIRE(tram.getBiasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
 	            REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
@@ -136,12 +138,28 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 	    }
 	    f.close();
 */
-	        TestType logLikelihood = tram.computeLogLikelihood();
+//	        TestType logLikelihood = tram.computeLogLikelihood();
 
             AND_WHEN("estimate() is called") {
-                tram.estimate(100, 1e-8, true);
-                THEN("loglikelihood increases") {
-                    REQUIRE(tram.computeLogLikelihood() > logLikelihood);
+                tram.estimate(13, 1e-8, true);
+                THEN("Energies are not infinite") {
+                    auto thermStateEnergies = tram.getEnergiesPerThermodynamicState();
+
+                    for (int K = 0; K < nThermStates; ++K) {
+                        REQUIRE(thermStateEnergies.at(K) > -inf);
+                        REQUIRE(thermStateEnergies.at(K) < inf);
+                    }
+
+                    auto markovStateEnergies = tram.getEnergiesPerMarkovState();
+                    for(int i = 0; i < nMarkovStates; i++) {
+                        REQUIRE(markovStateEnergies.at(i) > -inf);
+                        REQUIRE(markovStateEnergies.at(i) < inf);
+                    }
+                }
+                THEN("log-likelihood is smaller than 0") {
+                    auto LL = tram.computeLogLikelihood();
+                    REQUIRE(LL > -inf);
+                    REQUIRE(LL < 0);
                 }
             }
         }

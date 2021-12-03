@@ -192,7 +192,7 @@ public:
     }
 
     auto getEnergiesPerThermodynamicState() {
-        return thermStateEnergies.first();
+        return *thermStateEnergies.first();
     }
 
     auto getEnergiesPerMarkovState() const {
