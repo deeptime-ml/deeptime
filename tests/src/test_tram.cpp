@@ -34,8 +34,13 @@ auto generateDtrajs(int nThermsStates, int nMarkovStates, int *trajLengths) {
 
     for (int K = 0; K < nThermsStates; ++K) {
         dtrajs.push_back(generateDtraj(nMarkovStates, trajLengths[K], 0.1 * K));
+        // a very ugly way to ensure all markovstates are samples at least once.
+	for(int i = 0; i < nMarkovStates; ++i) {
+           dtrajs[K].mutable_at(1+i) = i;
+        }
     }
     return dtrajs;
+    
 }
 
 template<typename dtype>
@@ -43,12 +48,13 @@ auto generateBiasMatrix(int nThermStates, np_array_nfc<int> dtraj) {
     auto biasMatrix = np_array_nfc<dtype>({(int)dtraj.size(), nThermStates});
     auto biasMatrixBuf = biasMatrix.template mutable_unchecked<2>();
 
-    std::uniform_int_distribution<int> distribution(0, 1);
+    std::uniform_real_distribution<> distribution(-0.5, 0.5);
     std::mt19937 gen;
 
     for (int i = 0; i < dtraj.size(); ++i) {
-        for (int K = 0; K < nThermStates; ++K) {
-            biasMatrixBuf(i,K) = (dtraj.data()[i] - K) * (dtraj.data()[i] - K) + distribution(gen);
+        dtype coord = dtraj.data()[i] + distribution(gen);
+	for (int K = 0; K < nThermStates; ++K) {
+            biasMatrixBuf(i,K) = (coord - K) * (coord - K);
         };
     }
     return biasMatrix;
@@ -64,6 +70,28 @@ auto generateBiasMatrices(int nThermsStates, std::vector<np_array_nfc<int>> dtra
     return matrices;
 }
 
+auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<int>> dtrajs) {
+    auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
+    auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
+    std::fill(stateCounts.mutable_data(), stateCounts.mutable_data() + nThermStates * nMarkovStates, 0); 
+    std::fill(transitionCounts.mutable_data(), transitionCounts.mutable_data() + nThermStates * nMarkovStates * nMarkovStates, 0);
+
+    int state = -1; int prevstate = -1;
+
+    for(int K = 0; K<nThermStates; ++K) {
+        for(int i=0; i< dtrajs[K].size(); ++i) {
+	    prevstate = state;
+	    state = dtrajs[K].at(i);
+
+            stateCounts.mutable_at(K, state)++;
+	    if (prevstate != -1){
+	        transitionCounts.mutable_at(K, prevstate, state)++;
+	    }
+	}
+    }
+    return std::pair(stateCounts, transitionCounts);
+}
+
 TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
     GIVEN("Input") {
         py::scoped_interpreter guard;
@@ -71,38 +99,47 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
         int nThermStates = 3;
         int nMarkovStates = 5;
 
-        auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
-        auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
-
-        int trajLengths[] = {10, 100, 50};
+        int trajLengths[] = {100, 100, 100};
 
         auto dtrajs = generateDtrajs(nThermStates, nMarkovStates, trajLengths);
         auto biasMatrices = generateBiasMatrices<TestType>(nThermStates, dtrajs);
 
-        auto inputPtr = std::make_shared<deeptime::tram::TRAMInput<TestType>>(
+        np_array_nfc<int> stateCounts, transitionCounts;
+	std::tie(stateCounts, transitionCounts) = countStates(nThermStates, nMarkovStates, dtrajs);
+        
+	auto inputPtr = std::make_shared<deeptime::tram::TRAMInput<TestType>>(
                 std::move(stateCounts), std::move(transitionCounts), dtrajs,
                 biasMatrices);
+
 
         WHEN("TRAM is constructed") {
             auto tram = deeptime::tram::TRAM<TestType>(inputPtr, 0);
 
-            THEN("Result matrices have correct shape") {
+            THEN("Result matrices are initialized") {
                 REQUIRE(tram.getEnergiesPerThermodynamicState()->size() == nThermStates);
                 REQUIRE(tram.getBiasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
-            }
-	    THEN("... and are initialized with zeros") {
 	        REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
 	    }
-	    std::ofstream f;
-	    f.open("~/tram_test_log.txt");
-	    f << "logging input data" << std::endl;
+/*	    std::ofstream f;
+	    f.open("tram_test_log.txt", std::ofstream::out | std::ofstream::trunc);
+	    for (int K = 0; K< nThermStates; ++K) {
+		for (int i=0; i < dtrajs[K].size(); ++i) {
+		    f << dtrajs[K].at(i) << ": ";
+	            for (int L = 0; L < nThermStates; ++L) {
+		        f << biasMatrices[K].at(i, L) << " ";
+		    }
+		    f << std::endl;
+	        }
+	    }
 	    f.close();
+*/
+	    tram.estimate(100, 1e-8, true);
 
-	    tram.estimate(1, 1e-8);
-            TestType logLikelihood = tram.computeLogLikelihood();
+	    TestType logLikelihood = tram.computeLogLikelihood();
+
             AND_WHEN("estimate() is called") {
-                tram.estimate(13, 1e-8);
+                tram.estimate(100, 1e-8, true);
                 THEN("loglikelihood increases") {
                     REQUIRE(tram.computeLogLikelihood() > logLikelihood);
                 }

@@ -255,6 +255,7 @@ public:
                 logLikelihood = computeLogLikelihood();
             }
 
+	    std::cout<<iterationError << " " << logLikelihood << std::endl;
             if (callback != nullptr && iterationCount % callbackInterval == 0) {
                 // TODO: callback doesn't work in release???
                 (*callback)(iterationCount, iterationError, logLikelihood);
@@ -276,7 +277,8 @@ public:
 
         if (iterationError >= maxErr) {
             // We exceeded maxIter but we did not converge.
-            std::cout << "TRAM did not converge. Last increment = " << iterationError;
+            std::cout << "TRAM did not converge. Last increment = " << iterationError << std::endl;
+	    std::cout << "current LL: " << logLikelihood << std::endl;
         }
     }
 
