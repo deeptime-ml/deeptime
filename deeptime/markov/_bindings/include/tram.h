@@ -548,6 +548,7 @@ private:
     computeMarkovStateEnergiesForSingleTrajectory(const BiasMatrixK &_biasMatrix_K,
                                                   const Dtraj &_dtraj,
                                                   std::size_t trajlength /*todo this is just dtraj length*/) {
+        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
         auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
 
@@ -560,7 +561,7 @@ private:
             for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
                 if (-inf == _modifiedStateCountsLog(K, i)) continue;
                 scratchT[o++] =
-                        _modifiedStateCountsLog(K, i) - _biasMatrix_K(x, K);
+                        _modifiedStateCountsLog(K, i) - _biasMatrix_K(x, K) + _biasedConfEnergies(K,i);
             }
             divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
             _markovStateEnergies(i) = -numeric::kahan::logsumexp_pair(-_markovStateEnergies(i), -divisor);
@@ -643,7 +644,7 @@ private:
             if (i < 0) continue;
             for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
                 if (_modifiedStateCountsLog(K, i) > 0)
-                    scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
+                    scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K) + _modifiedStateCountsLog(K, i);
             }
             logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
         }
