@@ -7,6 +7,8 @@
 //
 // Created by Maaike on 01/12/2021.
 //
+using namespace deeptime;
+
 auto generateDtraj(int nMarkovStates, int length, float shift) {
     std::vector<float> weights(nMarkovStates, 0.);
     std::iota(begin(weights), end(weights), 0.);
@@ -73,8 +75,8 @@ auto generateBiasMatrices(int nThermsStates, std::vector<np_array_nfc<int>> dtra
 auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<int>> dtrajs) {
     auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
     auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
-    std::fill(stateCounts.mutable_data(), stateCounts.mutable_data() + nThermStates * nMarkovStates, 0); 
-    std::fill(transitionCounts.mutable_data(), transitionCounts.mutable_data() + nThermStates * nMarkovStates * nMarkovStates, 0);
+    std::fill(stateCounts.mutable_data(), stateCounts.mutable_data() + stateCounts.size(), 0);
+    std::fill(transitionCounts.mutable_data(), transitionCounts.mutable_data() + transitionCounts.size(), 0);
 
     int state = -1; int prevstate = -1;
 
@@ -89,7 +91,7 @@ auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<i
 	    }
 	}
     }
-    return std::pair(stateCounts, transitionCounts);
+    return std::tuple(stateCounts, transitionCounts);
 }
 
 TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
@@ -105,9 +107,9 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
         auto biasMatrices = generateBiasMatrices<TestType>(nThermStates, dtrajs);
 
         np_array_nfc<int> stateCounts, transitionCounts;
-	std::tie(stateCounts, transitionCounts) = countStates(nThermStates, nMarkovStates, dtrajs);
+	    std::tie(stateCounts, transitionCounts) = countStates(nThermStates, nMarkovStates, dtrajs);
         
-	auto inputPtr = std::make_shared<deeptime::tram::TRAMInput<TestType>>(
+    	auto inputPtr = std::make_shared<deeptime::tram::TRAMInput<TestType>>(
                 std::move(stateCounts), std::move(transitionCounts), dtrajs,
                 biasMatrices);
 
@@ -119,8 +121,8 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 REQUIRE(tram.getEnergiesPerThermodynamicState()->size() == nThermStates);
                 REQUIRE(tram.getBiasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
-	        REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
-	    }
+	            REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
+	        }
 /*	    std::ofstream f;
 	    f.open("tram_test_log.txt", std::ofstream::out | std::ofstream::trunc);
 	    for (int K = 0; K< nThermStates; ++K) {
@@ -134,9 +136,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 	    }
 	    f.close();
 */
-	    tram.estimate(100, 1e-8, true);
-
-	    TestType logLikelihood = tram.computeLogLikelihood();
+	        TestType logLikelihood = tram.computeLogLikelihood();
 
             AND_WHEN("estimate() is called") {
                 tram.estimate(100, 1e-8, true);

@@ -8,7 +8,7 @@
 #include <cassert>
 #include <utility>
 #include <pybind11/stl.h>
-#include "common.h"
+#include <deeptime/common.h>
 #include "kahan_summation.h"
 
 

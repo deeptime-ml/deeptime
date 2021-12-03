@@ -5,6 +5,8 @@
 //
 // Created by Maaike on 01/12/2021.
 //
+using namespace deeptime;
+
 TEST_CASE("TRAMInput", "[tram]") {
     GIVEN("Input") {
         py::scoped_interpreter guard;

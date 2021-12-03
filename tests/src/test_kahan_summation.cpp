@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 #include "kahan_summation.h"
 
+using namespace deeptime;
 
 TEST_CASE("Kahan pairwise logsumexp", "[kahan_summation]") {
 

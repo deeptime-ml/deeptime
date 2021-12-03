@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "common.h"
+#include "deeptime/common.h"
 
 namespace deeptime {
 namespace numeric {
