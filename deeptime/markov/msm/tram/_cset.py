@@ -138,6 +138,7 @@ def compute_csets_TRAM(
         nn=nn, equilibrium_state_counts=equilibrium_state_counts,
         factor=factor, callback=callback)
 
+
 def compute_csets_dTRAM(connectivity, count_matrices, nn=None, callback=None):
     r"""
     Computes the largest connected sets for dTRAM data.
@@ -194,9 +195,9 @@ def compute_csets_dTRAM(connectivity, count_matrices, nn=None, callback=None):
         The overall connected set. This is the union of the individual
         connected sets of the thermodynamic states.
     """
-    if connectivity=='post_hoc_RE' or connectivity=='BAR_variance':
-        raise Exception('Connectivity type %s not supported for dTRAM data.'%connectivity)
-    state_counts =  _np.maximum(count_matrices.sum(axis=1), count_matrices.sum(axis=2))
+    if connectivity == 'post_hoc_RE' or connectivity == 'BAR_variance':
+        raise Exception('Connectivity type %s not supported for dTRAM data.' % connectivity)
+    state_counts = _np.maximum(count_matrices.sum(axis=1), count_matrices.sum(axis=2))
     return _compute_csets(
         connectivity, state_counts, count_matrices, None, None, None, nn=nn, callback=callback)
 
@@ -227,7 +228,7 @@ def _compute_csets(
 
     if connectivity is None:
         cset_projected = _np.where(all_state_counts.sum(axis=0) > 0)[0]
-        csets = [ _np.where(all_state_counts[k, :] > 0)[0] for k in range(n_therm_states) ]
+        csets = [_np.where(all_state_counts[k, :] > 0)[0] for k in range(n_therm_states)]
         return csets, cset_projected
     elif connectivity == 'summed_count_matrix':
         # assume that two thermodynamic states overlap when there are samples from both
@@ -246,7 +247,7 @@ def _compute_csets(
         C_proxy = _np.zeros((n_conf_states, n_conf_states), dtype=int)
         for C in count_matrices:
             for comp in compute_connected_sets(C, directed=True):
-                C_proxy[comp[0:-1], comp[1:]] = 1 # add chain of states
+                C_proxy[comp[0:-1], comp[1:]] = 1  # add chain of states
         if equilibrium_state_counts is not None:
             eq_states = _np.where(equilibrium_state_counts.sum(axis=0) > 0)[0]
             C_proxy[eq_states, eq_states[:, _np.newaxis]] = 1
@@ -269,7 +270,7 @@ def _compute_csets(
                 # can take a very long time, allow to report progress via callback
                 if callback is not None:
                     callback(maxiter=n_conf_states, iteration_step=i)
-                therm_states = _np.where(all_state_counts[:, i] > 0)[0] # therm states that have samples
+                therm_states = _np.where(all_state_counts[:, i] > 0)[0]  # therm states that have samples
                 # prepare list of indices for all thermodynamic states
                 traj_indices = {}
                 frame_indices = {}
@@ -279,7 +280,7 @@ def _compute_csets(
                     traj_indices[k] = [j for j, fi in enumerate(frame_indices[k]) if len(fi) > 0]
                 for k in therm_states:
                     for l in therm_states:
-                        if k!=l:
+                        if k != l:
                             kl = _np.array([k, l])
                             a = _np.concatenate([
                                 bias_trajs[j][:, kl][frame_indices[k][j], :] for j in traj_indices[k]])
@@ -290,7 +291,7 @@ def _compute_csets(
                                 y = i + l * n_conf_states
                                 i_s.append(x)
                                 j_s.append(y)
-        else: # assume overlap between nn neighboring umbrellas
+        else:  # assume overlap between nn neighboring umbrellas
             assert nn is not None, 'With connectivity="neighbors", nn can\'t be None.'
             assert nn >= 1 and nn <= n_therm_states - 1
             i_s = []
@@ -313,13 +314,13 @@ def _compute_csets(
             for comp in compute_connected_sets(count_matrices[k, :, :], directed=True):
                 # add chain that links all states in the component
                 i_s += list(comp[0:-1] + k * n_conf_states)
-                j_s += list(comp[1:]   + k * n_conf_states)
+                j_s += list(comp[1:] + k * n_conf_states)
 
         # If there is global equilibrium data, assume full connectivity
         # between all visited conformational states within the same thermodynamic state.
         if equilibrium_state_counts is not None:
             for k in range(n_therm_states):
-                vertices = _np.where(equilibrium_state_counts[k, :]>0)[0]
+                vertices = _np.where(equilibrium_state_counts[k, :] > 0)[0]
                 # add bidirectional chain that links all states
                 chain = (vertices[0:-1], vertices[1:])
                 i_s += list(chain[0] + k * n_conf_states)
@@ -331,9 +332,9 @@ def _compute_csets(
         # group by thermodynamic state
         cset = _np.unravel_index(cset, (n_therm_states, n_conf_states), order='C')
         csets = [[] for k in range(n_therm_states)]
-        for k,i in zip(*cset):
+        for k, i in zip(*cset):
             csets[k].append(i)
-        csets = [_np.array(c,dtype=int) for c in csets]
+        csets = [_np.array(c, dtype=int) for c in csets]
         projected_cset = _np.unique(_np.concatenate(csets))
         return csets, projected_cset
     else:
@@ -341,6 +342,7 @@ def _compute_csets(
             'Unknown value "%s" of connectivity. Should be one of: \
             summed_count_matrix, strong_in_every_ensemble, neighbors, \
             post_hoc_RE or BAR_variance.' % connectivity)
+
 
 def restrict_to_csets(
         csets, state_counts=None, count_matrices=None, ttrajs=None, dtrajs=None, bias_trajs=None):
@@ -380,15 +382,15 @@ def restrict_to_csets(
     """
     if state_counts is not None:
         new_state_counts = _np.zeros_like(state_counts, order='C', dtype=_np.intc)
-        for k,cset in enumerate(csets):
-            if len(cset)>0:
+        for k, cset in enumerate(csets):
+            if len(cset) > 0:
                 new_state_counts[k, cset] = state_counts[k, cset]
     else:
         new_state_counts = None
     if count_matrices is not None:
         new_count_matrices = _np.zeros_like(count_matrices, order='C', dtype=_np.intc)
-        for k,cset in enumerate(csets):
-            if len(cset)>0:
+        for k, cset in enumerate(csets):
+            if len(cset) > 0:
                 csetT = cset[:, _np.newaxis]
                 new_count_matrices[k, csetT, cset] = count_matrices[k, csetT, cset]
     else:
@@ -406,7 +408,7 @@ def restrict_to_csets(
             assert len(t) == len(d)
             new_d = _np.array(d, dtype=_np.intc, copy=True, order='C', ndmin=1)
             bad = invalid[t, d]
-            new_d[bad] = new_d[bad] - n_conf_states # 'numpy equivalent' indices as in x[i]==x[i+len(x)]
+            new_d[bad] = new_d[bad] - n_conf_states  # 'numpy equivalent' indices as in x[i]==x[i+len(x)]
             assert _np.all(new_d[bad] < 0)
             new_dtrajs.append(new_d)
     else:
@@ -432,7 +434,7 @@ def restrict_to_csets(
     return new_state_counts, new_count_matrices, new_dtrajs, new_bias_trajs
 
 
-#TODO: move to c++
+# TODO: move to c++
 def _overlap_post_hoc_RE(a, b, factor=1.0):
     n = a.shape[0]
     m = b.shape[0]

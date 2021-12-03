@@ -11,6 +11,13 @@ from ._cset import *
 import numpy as np
 
 
+def _to_zero_padded_array(array_list, desired_shape):
+    for i, array in enumerate(array_list):
+        pad_amount = [(0, diff) for diff in np.asarray(desired_shape) - np.asarray(array.shape)]
+        array_list[i] = np.pad(array, pad_amount, 'constant')
+    return np.ascontiguousarray(array_list)
+
+
 class TRAM(_MSMBaseEstimator):
     r"""
     Parameters
@@ -151,12 +158,6 @@ class TRAM(_MSMBaseEstimator):
         """
         return self._model
 
-    def cluster_and_fit(self):
-        r""" Discretize given data according to chosen clustering method and fit model to clustered data. """
-        # step 1: cluster data
-        # step 2: call fit_from_discrete_timeseries
-        pass
-
     def fit(self, data, *args, **kw):
         r""" Fits a new markov state model according to data. Data may be provided clustered or non-clustered. In the
         latter case the data will be clustered first by the deeptime.clustering module. """
@@ -247,7 +248,7 @@ class TRAM(_MSMBaseEstimator):
 
         state_counts_list = [count_states(dtrajs_full[i]) for i in range(self.n_therm_states)]
 
-        state_counts = self._to_zero_padded_array(state_counts_list, self.nstates_full)
+        state_counts = _to_zero_padded_array(state_counts_list, self.nstates_full)
 
         # find count matrixes C^k_ij with shape (K,B,B)
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
@@ -255,15 +256,9 @@ class TRAM(_MSMBaseEstimator):
                                          range(self.n_therm_states)]
 
         transition_counts_list = [model.count_matrix for model in self.transition_counts_models]
-        transition_counts = self._to_zero_padded_array(transition_counts_list, (self.nstates_full, self.nstates_full))
+        transition_counts = _to_zero_padded_array(transition_counts_list, (self.nstates_full, self.nstates_full))
 
         return state_counts, transition_counts
-
-    def _to_zero_padded_array(self, array_list, desired_shape):
-        for i, array in enumerate(array_list):
-            pad_amount = [(0, diff) for diff in np.asarray(desired_shape) - np.asarray(array.shape)]
-            array_list[i] = np.pad(array, pad_amount, 'constant')
-        return np.ascontiguousarray(array_list)
 
     def _restrict_to_connected_sets(self, therm_state_sequences_full, markov_state_sequences_full, bias_matrix,
                                     state_counts_full, transition_counts_full):
