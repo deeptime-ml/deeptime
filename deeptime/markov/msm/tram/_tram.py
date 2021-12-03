@@ -162,7 +162,7 @@ class TRAM(_MSMBaseEstimator):
         latter case the data will be clustered first by the deeptime.clustering module. """
         # TODO: if markov_state_sequences_full is empty: discretize samples using some clustering algorithm
 
-        therm_state_sequences_full, dtrajs_full, bias_matrix = self._check_data(data)
+        therm_state_sequences_full, dtrajs_full, bias_matrix = self._validate_input(data)
 
         # count all transitions and state counts, without restricting to connected sets
         state_counts_full, transition_counts_full = self._get_state_counts(dtrajs_full)
@@ -204,7 +204,7 @@ class TRAM(_MSMBaseEstimator):
                                                  count_models=self.transition_counts_models,
                                                  transition_matrix_tolerance=1e-8)
 
-    def _check_data(self, data):
+    def _validate_input(self, data):
         therm_state_sequences, dtrajs, bias_energy_sequences = data
 
         # shape and type checks
