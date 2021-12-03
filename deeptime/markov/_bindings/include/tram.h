@@ -218,7 +218,7 @@ public:
             logLikelihood += computeSampleLikelihood(K, input->sequenceLength(K));
         }
         logLikelihood += computeTransitionLikelihood();
-        std::cout << "LL computed: " << logLikelihood << std::endl;
+
         return logLikelihood;
     }
 
@@ -255,7 +255,6 @@ public:
                 logLikelihood = computeLogLikelihood();
             }
 
-	    std::cout<<iterationError << " " << logLikelihood << std::endl;
             if (callback != nullptr && iterationCount % callbackInterval == 0) {
                 // TODO: callback doesn't work in release???
                 (*callback)(iterationCount, iterationError, logLikelihood);
@@ -278,7 +277,6 @@ public:
         if (iterationError >= maxErr) {
             // We exceeded maxIter but we did not converge.
             std::cout << "TRAM did not converge. Last increment = " << iterationError << std::endl;
-	    std::cout << "current LL: " << logLikelihood << std::endl;
         }
     }
 
@@ -402,7 +400,7 @@ private:
 
                 /* applying Hao's speed-up recomendation */
                 if (-inf == _modifiedStateCountsLog(K, i)) continue;
-                scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
+                scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K) + _biasedConfEnergies(K,i);
             }
             divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
 
@@ -457,8 +455,7 @@ private:
                     scratchM[o++] = log((dtype) CK) + _lagrangianMultLog(K, j) - divisor;
                 }
                 NC = _stateCounts(K, i) - Ci;
-                extraStateCounts = (0 < NC) ? log((dtype) NC) + _biasedConfEnergies(K, i)
-                                            : -inf; /* IGNORE PRIOR */
+                extraStateCounts = (0 < NC) ? log((dtype) NC) : -inf; /* IGNORE PRIOR */
                 _modifiedStateCountsLog(K, i) = numeric::kahan::logsumexp_pair(
                         numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), o), extraStateCounts);
             }
@@ -693,6 +690,8 @@ private:
     }
 
     void computeTransitionMatrices() {
+
+
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
         auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
 
