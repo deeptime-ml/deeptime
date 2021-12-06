@@ -16,10 +16,11 @@ namespace kahan {
 /***************************************************************************************************
 *   Kahan summation
 ***************************************************************************************************/
-template<typename Iterator, typename dtype = typename std::iterator_traits<Iterator>::value_type>
+template<typename Iterator, typename dtype = typename std::iterator_traits<Iterator>::value_type,
+        typename ntype = typename std::iterator_traits<Iterator>::difference_type>
 auto ksum(Iterator begin, Iterator end) -> dtype {
     dtype sum{0};
-    ssize_t o{0};
+    ntype o{0};
     dtype correction{0};
 
     for (auto n = std::distance(begin, end); n > 0; --n) {
