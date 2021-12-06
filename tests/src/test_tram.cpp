@@ -157,7 +157,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                             auto rowSum = std::reduce(transitionMatrices.data() + K * matrixSize + i * rowSize,
                                                           transitionMatrices.data() + K * matrixSize +
                                                           (i + 1) * rowSize,
-                                                          0.0, std::plus());
+                                                          0.0, std::plus<TestType>());
                             REQUIRE(Catch::Detail::Approx(rowSum) == 1.0);
                         }
                     }
