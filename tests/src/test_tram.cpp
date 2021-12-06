@@ -95,7 +95,7 @@ auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<i
     return std::tuple(stateCounts, transitionCounts);
 }
 
-template <typename dtype>
+template<typename dtype>
 bool areFinite(np_array_nfc<dtype> arr) {
     return std::transform_reduce(
             arr.data(), arr.data() + arr.size(),
@@ -135,7 +135,9 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
             }
 
             AND_WHEN("estimate() is called") {
-                tram.estimate(3, 1e-8, true);
+                tram.estimate(1, 1e-8, true);
+
+                TestType LL = tram.computeLogLikelihood();
 
                 THEN("Energies are finite") {
                     auto thermStateEnergies = tram.getEnergiesPerThermodynamicState();
@@ -144,19 +146,15 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                     REQUIRE(areFinite<TestType>(thermStateEnergies));
                     REQUIRE(areFinite<TestType>(markovStateEnergies));
 
-                }THEN("log-likelihood is smaller than 0") {
-                    TestType LL = tram.computeLogLikelihood();
-                    REQUIRE(std::isfinite(LL));
-                    REQUIRE(LL < 0);
+                }AND_WHEN("estimate() is called again") {
+                    tram.estimate(1, (TestType) 1e-8, true);
 
-                    AND_WHEN("estimate() is called again") {
-                        tram.estimate(3, (TestType)1e-8, true);
-
-                        THEN("loglikelihood increases") {
-                            TestType newLL = tram.computeLogLikelihood();
-                            REQUIRE(newLL > LL);
-                            REQUIRE(newLL < 0);
-                        }
+                    THEN("loglikelihood increases") {
+                        TestType newLL = tram.computeLogLikelihood();
+                        REQUIRE(std::isfinite(LL));
+                        REQUIRE(std::isfinite(newLL));
+                        REQUIRE(newLL > LL);
+                        REQUIRE(newLL < 0);
                     }
                 }
             }
