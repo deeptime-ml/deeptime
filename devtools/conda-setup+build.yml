@@ -1,15 +1,15 @@
 steps:
-- bash: |
-    conda config --add channels conda-forge
-    conda config --set always_yes true
-    conda config --set quiet true
-  displayName: Configure conda
-- bash: |
-    conda install mamba
-    mamba install boa conda-build conda-verify pip
-  displayName: 'Update and install dependencies'
-  continueOnError: false
-- bash: |
-    conda mambabuild devtools --python 3.10 --numpy 1.21
-  displayName: 'Build and test'
-  continueOnError: false
+  - bash: |
+      conda config --add channels conda-forge
+      conda config --set always_yes true
+      conda config --set quiet true
+    displayName: Configure conda
+  - bash: |
+      conda update --all
+      conda install conda-build conda-verify pip
+    displayName: 'Update and install dependencies'
+    continueOnError: false
+  - bash: |
+      conda build devtools --python 3.10 --numpy 1.21
+    displayName: 'Build and test'
+    continueOnError: false
