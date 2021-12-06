@@ -95,6 +95,14 @@ auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<i
     return std::tuple(stateCounts, transitionCounts);
 }
 
+template <typename dtype>
+bool areFinite(np_array_nfc<dtype> arr) {
+    return std::transform_reduce(
+            arr.data(), arr.data() + arr.size(),
+            true, std::logical_and<bool>(),
+            [](dtype x) { return std::isfinite<dtype>(x); });
+}
+
 TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
     GIVEN("Input") {
@@ -128,34 +136,29 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
             AND_WHEN("estimate() is called") {
                 tram.estimate(3, 1e-8, true);
-		THEN("Energies are finite") {
+
+                THEN("Energies are finite") {
                     auto thermStateEnergies = tram.getEnergiesPerThermodynamicState();
-
-                    for (int K = 0; K < nThermStates; ++K) {
-			std::cout << K << ": " << thermStateEnergies.at(K) << std::endl;
-			REQUIRE(std::isfinite(thermStateEnergies.at(K)));
-                    }
-
                     auto markovStateEnergies = tram.getEnergiesPerMarkovState();
-                    for (int i = 0; i < nMarkovStates; i++) {
-                        REQUIRE(std::isfinite(markovStateEnergies.at(i)));
-                    }
-                }
-                THEN("log-likelihood is smaller than 0") {
+
+                    REQUIRE(areFinite<TestType>(thermStateEnergies));
+                    REQUIRE(areFinite<TestType>(markovStateEnergies));
+
+                }THEN("log-likelihood is smaller than 0") {
                     TestType LL = tram.computeLogLikelihood();
                     REQUIRE(std::isfinite(LL));
                     REQUIRE(LL < 0);
-                   
-		    AND_WHEN("estimate() is called again") {
-                        tram.estimate(3, 1e-8, true);
-			
-			THEN("loglikelihood increases") {
+
+                    AND_WHEN("estimate() is called again") {
+                        tram.estimate(3, (TestType)1e-8, true);
+
+                        THEN("loglikelihood increases") {
                             TestType newLL = tram.computeLogLikelihood();
-			    REQUIRE(newLL > LL);
-			    REQUIRE(newLL < 0);
-		        }
-		    }
-		}
+                            REQUIRE(newLL > LL);
+                            REQUIRE(newLL < 0);
+                        }
+                    }
+                }
             }
         }
     }
