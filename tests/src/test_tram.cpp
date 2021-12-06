@@ -103,6 +103,14 @@ bool areFinite(np_array_nfc<dtype> arr) {
             [](dtype x) { return std::isfinite<dtype>(x); });
 }
 
+template<typename dtype>
+bool rowsSumUpToOne(np_array_nfc<dtype> transitionMatrices) {
+    return std::transform_reduce(
+            arr.data(), arr.data() + arr.size(),
+            true, std::logical_and<bool>(),
+            [](dtype x) { return std::isfinite<dtype>(x); });
+}
+
 TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
     GIVEN("Input") {
@@ -146,6 +154,23 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                     REQUIRE(areFinite<TestType>(thermStateEnergies));
                     REQUIRE(areFinite<TestType>(markovStateEnergies));
 
+                }
+                AND_THEN("Transition matrices are transition matrices") {
+                    auto transitionMatrices = tram.getTransitionMatrices();
+
+                    REQUIRE(areFinite<TestType>(transitionMatrices));
+                    auto matrixSize = nMarkovStates * nMarkovStates;
+                    auto rowSize = nMarkovStates;
+
+                    REQUIRE(rowsSumUpToOne(transitionMatrices));
+                    for (int K = 0;K<nThermStates;++K) {
+                        for (int i= 0; i < nMarkovStates; ++i) {
+                            auto rowSum = std::accumulate(transitionMatrices.data() + K * matrixSize + i * rowSize,
+                                                          transitionMatrices.data() + K * matrixSize + (i + 1) * rowSize,
+                                                          0.0, std::plus());
+                            REQUIRE(Catch::Detail::Approx(rowSum) == 1.0);
+                        }
+                    }
                 }
                 AND_WHEN("estimate() is called again") {
                     tram.estimate(1, (TestType) 1e-8, true);
