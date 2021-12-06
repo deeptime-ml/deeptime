@@ -6,7 +6,7 @@ from deeptime.markov.msm import TRAM, MarkovStateModel
 from deeptime.clustering import KMeans
 
 xs = np.linspace(-1.5, 1.5, num=100)
-n_samples = 10000
+n_samples = 10
 bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
 
@@ -67,7 +67,7 @@ def main():
         for j, bias_function in enumerate(bias_functions):
             bias_matrix[i, :, j] = bias_function(traj)
 
-    tram = TRAM(lagtime=1, connectivity="summed_count_matrix", maxiter=1000)
+    tram = TRAM(lagtime=1, connectivity="summed_count_matrix", maxiter=100)
 
     estimator = KMeans(
         n_clusters=2,  # place 100 cluster centers
@@ -88,7 +88,7 @@ def main():
 
     plot_contour_with_colourbar(tram.biased_conf_energies)
 
-    plt.plot(tram.therm_energies)
+    plt.plot(tram.therm_state_energies)
     plt.show()
 
 
