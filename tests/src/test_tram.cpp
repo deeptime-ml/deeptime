@@ -127,7 +127,10 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
             }
 
             AND_WHEN("estimate() is called") {
-                tram.estimate(3, 1e-8, true);
+                tram.estimate(1, 1e-8, true);
+		
+                TestType LL = tram.computeLogLikelihood();
+		
 		THEN("Energies are finite") {
                     auto thermStateEnergies = tram.getEnergiesPerThermodynamicState();
 
@@ -140,22 +143,18 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                     for (int i = 0; i < nMarkovStates; i++) {
                         REQUIRE(std::isfinite(markovStateEnergies.at(i)));
                     }
-                }
-                THEN("log-likelihood is smaller than 0") {
-                    TestType LL = tram.computeLogLikelihood();
-                    REQUIRE(std::isfinite(LL));
-                    REQUIRE(LL < 0);
-                   
-		    AND_WHEN("estimate() is called again") {
-                        tram.estimate(3, 1e-8, true);
-			
-			THEN("loglikelihood increases") {
-                            TestType newLL = tram.computeLogLikelihood();
-			    REQUIRE(newLL > LL);
-			    REQUIRE(newLL < 0);
-		        }
-		    }
 		}
+		AND_WHEN("estimate() is called again"){
+                    tram.estimate(1, 1e-8, true);
+                    
+		    THEN("log-likelihood increases") {
+                        TestType newLL = tram.computeLogLikelihood();
+                        REQUIRE(std::isfinite(newLL));
+                        REQUIRE(newLL < 0);
+	                REQUIRE(newLL > LL);
+		        REQUIRE(newLL < 0);
+		    }
+	        }
             }
         }
     }
