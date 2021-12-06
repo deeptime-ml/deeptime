@@ -2,7 +2,6 @@
 #include <pybind11/embed.h>
 #include <catch2/catch.hpp>
 #include <deeptime/markov/tram/tram.h>
-#include <execution>
 //
 // Created by Maaike on 01/12/2021.
 //
@@ -96,11 +95,12 @@ auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<i
 
 template<typename dtype>
 bool areFinite(np_array_nfc<dtype> arr) {
-    return std::transform_reduce(
-            std::execution::seq, arr.data(), arr.data() + arr.size(),
-            true, std::logical_and<bool>(),
-            [](dtype x) { return std::isfinite(x); });
+    auto finiteBools = np_array_nfc<bool>(std::vector<int>(arr.shape(), arr.shape() + arr.ndim()));
+    std::transform(arr.data(), arr.data() + arr.size(),
+                   finiteBools.mutable_data(), [](dtype x) { return std::isfinite(x); });
+    return std::reduce(finiteBools.data(), finiteBools.data() + finiteBools.size(), true, std::logical_and<bool>());
 }
+
 
 TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
@@ -145,8 +145,23 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                     REQUIRE(areFinite<TestType>(thermStateEnergies));
                     REQUIRE(areFinite<TestType>(markovStateEnergies));
 
-                }
-                AND_WHEN("estimate() is called again") {
+                }AND_THEN("Transition matrices are transition matrices") {
+                    auto transitionMatrices = tram.getTransitionMatrices();
+
+                    REQUIRE(areFinite<TestType>(transitionMatrices));
+                    auto matrixSize = nMarkovStates * nMarkovStates;
+                    auto rowSize = nMarkovStates;
+
+                    for (int K = 0; K < nThermStates; ++K) {
+                        for (int i = 0; i < nMarkovStates; ++i) {
+                            auto rowSum = std::reduce(transitionMatrices.data() + K * matrixSize + i * rowSize,
+                                                          transitionMatrices.data() + K * matrixSize +
+                                                          (i + 1) * rowSize,
+                                                          0.0, std::plus());
+                            REQUIRE(Catch::Detail::Approx(rowSum) == 1.0);
+                        }
+                    }
+                }AND_WHEN("estimate() is called again") {
                     tram.estimate(1, (TestType) 1e-8, true);
 
                     THEN("loglikelihood increases") {
