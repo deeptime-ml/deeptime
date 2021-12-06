@@ -2,8 +2,7 @@
 #include <pybind11/embed.h>
 #include <catch2/catch.hpp>
 #include <deeptime/markov/tram/tram.h>
-#include <iostream>
-#include <fstream>
+#include <execution>
 //
 // Created by Maaike on 01/12/2021.
 //
@@ -98,9 +97,9 @@ auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<i
 template<typename dtype>
 bool areFinite(np_array_nfc<dtype> arr) {
     return std::transform_reduce(
-            arr.data(), arr.data() + arr.size(),
+            std::execution::seq, arr.data(), arr.data() + arr.size(),
             true, std::logical_and<bool>(),
-            [](dtype x) { return std::isfinite<dtype>(x); });
+            [](dtype x) { return std::isfinite(x); });
 }
 
 TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
