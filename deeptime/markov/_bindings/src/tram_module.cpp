@@ -1,5 +1,5 @@
 //  author: maaike
-#include "tram.h"
+#include "deeptime/markov/tram/tram.h"
 
 
 PYBIND11_MODULE(_tram_bindings, m) {

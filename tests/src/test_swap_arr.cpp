@@ -1,7 +1,7 @@
 #include <pybind11/embed.h>
 #include <catch2/catch.hpp>
 
-#include "tram.h"
+#include "deeptime/markov/tram/tram.h"
 
 TEST_CASE("TRAM Swap", "[tram]") {
     using namespace deeptime::tram;

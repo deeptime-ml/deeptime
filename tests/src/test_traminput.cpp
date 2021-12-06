@@ -1,6 +1,6 @@
 #include <pybind11/embed.h>
 #include <catch2/catch.hpp>
-#include <tram.h>
+#include <deeptime/markov/tram/tram.h>
 
 //
 // Created by Maaike on 01/12/2021.
