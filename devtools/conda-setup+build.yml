@@ -5,11 +5,12 @@ steps:
     conda config --set quiet true
   displayName: Configure conda
 - bash: |
-    conda update --all
-    conda install conda-build conda-verify pip
+    conda install mamba
+    mamba update --all
+    mamba install boa conda-build conda-verify pip
   displayName: 'Update and install dependencies'
   continueOnError: false
 - bash: |
-    conda build devtools --python 3.10 --numpy 1.21
+    conda mambabuild devtools --python 3.10 --numpy 1.21
   displayName: 'Build and test'
   continueOnError: false
