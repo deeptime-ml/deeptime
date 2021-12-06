@@ -146,7 +146,8 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                     REQUIRE(areFinite<TestType>(thermStateEnergies));
                     REQUIRE(areFinite<TestType>(markovStateEnergies));
 
-                }AND_WHEN("estimate() is called again") {
+                }
+                AND_WHEN("estimate() is called again") {
                     tram.estimate(1, (TestType) 1e-8, true);
 
                     THEN("loglikelihood increases") {
