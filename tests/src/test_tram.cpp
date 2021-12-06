@@ -98,7 +98,7 @@ bool areFinite(np_array_nfc<dtype> arr) {
     auto finiteBools = np_array_nfc<bool>(std::vector<int>(arr.shape(), arr.shape() + arr.ndim()));
     std::transform(arr.data(), arr.data() + arr.size(),
                    finiteBools.mutable_data(), [](dtype x) { return std::isfinite(x); });
-    return std::reduce(finiteBools.data(), finiteBools.data() + finiteBools.size(), true, std::logical_and<bool>());
+    return std::accumulate(finiteBools.data(), finiteBools.data() + finiteBools.size(), true, std::logical_and<bool>());
 }
 
 
@@ -154,7 +154,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
                     for (int K = 0; K < nThermStates; ++K) {
                         for (int i = 0; i < nMarkovStates; ++i) {
-                            auto rowSum = std::reduce(transitionMatrices.data() + K * matrixSize + i * rowSize,
+                            auto rowSum = std::accumulate(transitionMatrices.data() + K * matrixSize + i * rowSize,
                                                           transitionMatrices.data() + K * matrixSize +
                                                           (i + 1) * rowSize,
                                                           0.0, std::plus());
