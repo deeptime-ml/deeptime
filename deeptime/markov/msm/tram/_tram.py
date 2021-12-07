@@ -1,7 +1,7 @@
 from typing import Optional
 
 from deeptime.markov.msm import MarkovStateModelCollection
-from deeptime.markov import TransitionCountEstimator, count_states
+from deeptime.markov import TransitionCountEstimator
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
 from deeptime.markov import _tram_bindings
@@ -30,7 +30,7 @@ class TRAM(_MSMBaseEstimator):
             self, lagtime=None, count_mode='sliding',
             connectivity='post_hoc_RE',
             maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
-            nn=None, connectivity_factor: float = 1.0):
+            nn=None, connectivity_threshold: float = 1.0):
         r"""Transition(-based) Reweighting Analysis Method
         Parameters
         ----------
@@ -97,7 +97,7 @@ class TRAM(_MSMBaseEstimator):
         save_convergence_info : int, optional, default=0
             Every saveConvergenceInfo iteration steps, store the actual increment
             and the actual log-likelihood; 0 means no storage.
-        connectivity_factor : float, optional, default=1.0
+        connectivity_threshold : float, optional, default=1.0
             Only needed if connectivity='post_hoc_RE' or 'BAR_variance'. Values
             greater than 1.0 weaken the connectivity conditions. For 'post_hoc_RE'
             this multiplies the number of hypothetically observed transitions. For
@@ -121,7 +121,7 @@ class TRAM(_MSMBaseEstimator):
         self.count_mode = count_mode
         self.connectivity = connectivity
         self.nn = nn
-        self.connectivity_factor = connectivity_factor
+        self.connectivity_threshold = connectivity_threshold
         self.n_markov_states = None
         self.n_therm_states = None
         self.maxiter = maxiter
@@ -129,6 +129,7 @@ class TRAM(_MSMBaseEstimator):
         self.save_convergence_info = save_convergence_info
         self.active_set = None
 
+        self.counts_models = []
         self.tram_estimator = None
 
     @property
@@ -161,17 +162,14 @@ class TRAM(_MSMBaseEstimator):
     def fit(self, data, *args, **kw):
         r""" Fits a new markov state model according to data. Data may be provided clustered or non-clustered. In the
         latter case the data will be clustered first by the deeptime.clustering module. """
-        # TODO: if markov_state_sequences_full is empty: discretize samples using some clustering algorithm
-
-        therm_state_sequences_full, dtrajs_full, bias_matrix = self._validate_input(data)
+        # TODO: allow for empty ttrajs
+        therm_state_sequences, dtrajs, bias_matrix = self._validate_input(data)
 
         # count all transitions and state counts, without restricting to connected sets
-        state_counts_full, transition_counts_full = self._get_state_counts(dtrajs_full)
+        self.counts_models = self._get_state_counts(dtrajs)
 
-        # restrict input data to connected set
-        state_counts, transition_counts, dtrajs = \
-            self._restrict_to_connected_sets(therm_state_sequences_full, dtrajs_full, bias_matrix,
-                                             state_counts_full, transition_counts_full)
+        # restrict input data to largest connected set
+        transition_counts, state_counts, dtrajs = self._restrict_to_connected_set(dtrajs)
 
         # TODO: make progress bar
         def callback(iteration, error, log_likelihood):
@@ -189,20 +187,17 @@ class TRAM(_MSMBaseEstimator):
         # compute models
         transition_matrices = self.tram_estimator.transition_matrices()
 
-        active_sets = [compute_connected_sets(msm, directed=False)[0] for msm in transition_matrices]
-        transition_matrices = [np.ascontiguousarray(
-            (msm[lcc, :])[:, lcc]) for msm, lcc in zip(transition_matrices, active_sets)]
-
+        transition_matrices_connected = []
         stationary_distributions = []
-        for i, (msm, acs) in enumerate(zip(transition_matrices, active_sets)):
-            pi_acs = \
-                np.exp(self.therm_state_energies[i] - self.biased_conf_energies[i, :])[
-                    self.active_set[acs]]
-            pi_acs = pi_acs / pi_acs.sum()
-            stationary_distributions.append(pi_acs)
+        for i, msm in enumerate(transition_matrices):
+            states = self.counts_models[i].states
+            transition_matrices_connected.append(transition_matrices[i][states][:, states])
+            pi = np.exp(self.therm_state_energies[i] - self.biased_conf_energies[i, :])[states]
+            pi = pi / pi.sum()
+            stationary_distributions.append(pi)
 
-        self._model = MarkovStateModelCollection(transition_matrices, stationary_distributions, reversible=True,
-                                                 count_models=self.transition_counts_models,
+        self._model = MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
+                                                 reversible=True, count_models=self.counts_models,
                                                  transition_matrix_tolerance=1e-8)
 
     def _validate_input(self, data):
@@ -233,7 +228,7 @@ class TRAM(_MSMBaseEstimator):
 
         return therm_state_sequences, markov_state_sequences, bias_energy_sequences
 
-    def _get_state_counts(self, dtrajs_full):
+    def _get_state_counts(self, dtrajs):
         """ Get transition counts and state counts for the discrete trajectories. """
         # find state visits and transition counts
         # TODO:
@@ -246,71 +241,41 @@ class TRAM(_MSMBaseEstimator):
         # trajectory_fragments = [[markov_state_sequences[tidx][start:end] for tidx, start, end in mapping_therm]
         #                               for mapping_therm in trajectory_fragment_mapping]
 
-        state_counts_list = [count_states(dtrajs_full[i]) for i in range(self.n_therm_states)]
-
-        state_counts = _to_zero_padded_array(state_counts_list, self.nstates_full)
-
         # find count matrixes C^k_ij with shape (K,B,B)
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
-        self.transition_counts_models = [estimator.fit(dtrajs_full[i]).fetch_model() for i in
-                                         range(self.n_therm_states)]
 
-        transition_counts_list = [model.count_matrix for model in self.transition_counts_models]
+        count_models = []
+
+        for i in range(self.n_therm_states):
+            counts = estimator.fit_fetch(dtrajs[i])
+            count_models.append(counts)
+
+        return count_models
+
+    def _restrict_to_connected_set(self, dtrajs):
+        transition_counts_list = []
+        state_counts_list = []
+        dtrajs_connected = []
+
+        for i in range(self.n_therm_states):
+            # submodel is the largest connected set
+            submodel = self.counts_models[i].submodel_largest(connectivity_threshold=self.connectivity_threshold,
+                                                              directed=True)
+
+            # Assign -1 to all indices not in the submodel.
+            restricted_dtraj = submodel.transform_discrete_trajectories_to_submodel(dtrajs[i])
+
+            # The restricted_dtraj indices are those that belong to the submodel states. We don't want that, we want the
+            # original state indices (and those -1s). Convert the newly assigned indices back to the original state
+            # symbols
+            restricted_dtraj_symb = submodel.states_to_symbols(restricted_dtraj)
+
+            dtrajs_connected.append(restricted_dtraj_symb)
+            transition_counts_list.append(submodel.count_matrix.astype(np.intc))
+            state_counts_list.append(submodel.state_histogram.astype(np.intc))
+
+        # for TRAM, all count matrices need to be the same size. Pad the smaller ones (that were restricted) with zeros.
+        state_counts = _to_zero_padded_array(state_counts_list, self.nstates_full)
         transition_counts = _to_zero_padded_array(transition_counts_list, (self.nstates_full, self.nstates_full))
 
-        return state_counts, transition_counts
-
-    def _restrict_to_connected_sets(self, therm_state_sequences_full, markov_state_sequences_full, bias_matrix,
-                                    state_counts_full, transition_counts_full):
-        """ restict input trajectories to only contain samples that are in the connected sets. """
-        csets, pcset = compute_csets_TRAM(
-            self.connectivity, state_counts_full, transition_counts_full,
-            ttrajs=therm_state_sequences_full, dtrajs=markov_state_sequences_full,
-            bias_trajs=bias_matrix,
-            nn=self.nn, factor=self.connectivity_factor
-        )
-        self.active_set = pcset
-
-        self._check_for_empty_csets(csets)
-
-        # deactivate samples not in the csets, states are *not* relabeled
-        state_counts, transition_counts, markov_state_sequences, _ = restrict_to_csets(
-            csets, state_counts=state_counts_full, count_matrices=transition_counts_full,
-            ttrajs=therm_state_sequences_full, dtrajs=markov_state_sequences_full)
-
-        # self-consistency tests
-        assert np.all(state_counts >= np.maximum(transition_counts.sum(axis=1),
-                                                 transition_counts.sum(axis=2)))
-        assert np.all(np.sum(
-            [np.bincount(d[d >= 0], minlength=self.nstates_full) for d in markov_state_sequences],
-            axis=0) == state_counts.sum(axis=0))
-        assert np.all(np.sum(
-            [np.bincount(t[d >= 0], minlength=self.n_therm_states) for t, d in
-             zip(therm_state_sequences_full, markov_state_sequences)],
-            axis=0) == state_counts.sum(axis=1))
-
-        self._check_for_states_without_transitions(transition_counts)
-
-        return state_counts, transition_counts, markov_state_sequences
-
-    def _check_for_empty_csets(self, csets):
-        # check for empty states
-        for k in range(self.n_therm_states):
-            if len(csets[k]) == 0:
-                import warnings
-                with warnings.catch_warnings():
-                    from deeptime.util.exceptions import EmptyStateWarning
-                    warnings.filterwarnings('always', message='Thermodynamic state %d' % k
-                                                              + ' contains no samples after reducing to the connected set.',
-                                            category=EmptyStateWarning)
-
-    def _check_for_states_without_transitions(self, transition_counts):
-        # check for empty states
-        for k in range(self.n_therm_states):
-            if transition_counts[k, :, :].sum() == 0:
-                import warnings
-                with warnings.catch_warnings():
-                    from deeptime.util.exceptions import EmptyStateWarning
-                    warnings.filterwarnings('always', message='Thermodynamic state %d' % k \
-                                                              + ' contains no transitions after reducing to the connected set.',
-                                            category=EmptyStateWarning)
+        return transition_counts, state_counts, dtrajs_connected

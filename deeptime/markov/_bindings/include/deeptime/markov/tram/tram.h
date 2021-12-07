@@ -443,7 +443,7 @@ private:
                     if (i == j) {
                         scratchM[o] = (0 == CKij) ? TRAM_LOG_PRIOR() : std::log(
                                 TRAM_PRIOR() + (dtype) CKij);
-			scratchM[o++] += _biasedConfEnergies(K, i);
+                        scratchM[o++] += _biasedConfEnergies(K, i);
                         continue;
                     }
                     CK = CKij + CKji;
@@ -459,7 +459,7 @@ private:
                 extraStateCounts = (0 < NC) ? log((dtype) NC) + _biasedConfEnergies(K, i) : -inf; /* IGNORE PRIOR */
                 _modifiedStateCountsLog(K, i) = numeric::kahan::logsumexp_pair(
                         numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), o), extraStateCounts);
-	    }
+            }
         }
 
 //        if constexpr(trammbar) {
@@ -626,10 +626,10 @@ private:
                 _biasedConfEnergies(K, i) -= f0;
             }
         }
-	// update the state counts because they also include biased conf energies.
-	// If this is not done after normalizing, the log likelihood computations will
-	// not produce the correct output, due to incorrect values for mu(x).
-	updateStateCounts();
+        // update the state counts because they also include biased conf energies.
+        // If this is not done after normalizing, the log likelihood computations will
+        // not produce the correct output, due to incorrect values for mu(x).
+        updateStateCounts();
     }
 
     // log likelihood of observing a sampled trajectory from the local equilibrium.
@@ -695,7 +695,6 @@ private:
     }
 
     void computeTransitionMatrices() {
-
 
         auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
         auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
