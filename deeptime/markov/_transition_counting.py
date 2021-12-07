@@ -104,7 +104,7 @@ class TransitionCountModel(Model):
         if len(state_symbols) != self.n_states:
             raise ValueError("Number of symbols in counting model must coincide with the number of states in the "
                              "count matrix! (#symbols = {}, #states = {})".format(len(state_symbols), self.n_states))
-        self._state_symbols = state_symbols
+        self._state_symbols_with_blank = np.concatenate((state_symbols, (-1,)))
         if count_matrix_full is None:
             count_matrix_full = count_matrix
         self._count_matrix_full = count_matrix_full
@@ -140,8 +140,14 @@ class TransitionCountModel(Model):
 
     @property
     def state_symbols(self) -> np.ndarray:
-        r""" Symbols (states) that are represented in this count model. """
-        return self._state_symbols
+        r""" Symbols for states that are represented in this count model. """
+        return self._state_symbols_with_blank[:-1]
+
+    @property
+    def state_symbols_with_blank(self):
+        r""" Symbols for states that are represented in this count model plus a state `-1` for states which are
+        not represented in this count model. """
+        return self._state_symbols_with_blank
 
     @property
     def counting_mode(self) -> Optional[str]:
@@ -306,7 +312,7 @@ class TransitionCountModel(Model):
         symbols : (N,) ndarray
             Array of symbols.
         """
-        return self.state_symbols[states]
+        return self.state_symbols_with_blank[states]
 
     def symbols_to_states(self, symbols):
         r"""
