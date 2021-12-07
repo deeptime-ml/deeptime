@@ -89,7 +89,7 @@ template<typename dtype>
 class TRAMInput : public std::enable_shared_from_this<TRAMInput<dtype>> {
 
 public:
-    using DTraj = np_array_nfc<std::int32_t>;
+    using DTraj = np_array<std::int32_t>;
     using DTrajs = std::vector<DTraj>;
 
     using BiasMatrix = np_array_nfc<dtype>;
@@ -204,7 +204,6 @@ public:
     }
 
     auto getTransitionMatrices() {
-        computeTransitionMatrices();
         return transitionMatrices;
     }
 
@@ -273,6 +272,9 @@ public:
         computeMarkovStateEnergies();
         updateThermStateEnergies();
         normalize();
+
+        // And compute final transition matrices
+        computeTransitionMatrices();
 
         if (iterationError >= maxErr) {
             // We exceeded maxIter but we did not converge.

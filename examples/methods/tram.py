@@ -6,7 +6,7 @@ from deeptime.markov.msm import TRAM, MarkovStateModel
 from deeptime.clustering import KMeans
 
 xs = np.linspace(-1.5, 1.5, num=100)
-n_samples = 10000
+n_samples = 1000
 bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
 
@@ -53,11 +53,11 @@ def main():
     therm_state_sequences = np.asarray([[i] * n_samples for i in range(len(bias_centers))])
     trajectories = sample_trajectories(bias_functions)
 
-    [plt.plot(xs, fn(xs), label=f'Bias {i}') for i, fn in enumerate(bias_functions)]
-    plt.hist(xs[trajectories.flatten()], bins=100, density=True, alpha=.6, color='C1',
-             label='Histogram over visited states')
-    plt.legend()
-    plt.show()
+    # [plt.plot(xs, fn(xs), label=f'Bias {i}') for i, fn in enumerate(bias_functions)]
+    # plt.hist(xs[trajectories.flatten()], bins=100, density=True, alpha=.6, color='C1',
+    #          label='Histogram over visited states')
+    # plt.legend()
+    # plt.show()
 
     # move from trajectory over 100 bins back to the space of the xs: (-1.5, 1.5)
     trajectories = trajectories / 100 * 3 - 1.5
@@ -70,7 +70,7 @@ def main():
     tram = TRAM(lagtime=1, connectivity="summed_count_matrix", maxiter=100)
 
     estimator = KMeans(
-        n_clusters=50,  # place 100 cluster centers
+        n_clusters=5,  # place 100 cluster centers
         init_strategy='uniform',  # uniform initialization strategy
         max_iter=0,  # don't actually perform the optimization, just place centers
         fixed_seed=13,
@@ -84,7 +84,7 @@ def main():
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
     # Umbrella/Hamiltonian/temperature).
-    model = tram.fit_fetch((therm_state_sequences, markov_state_sequences, bias_matrix))
+    model = tram.fit_fetch((markov_state_sequences, bias_matrix))
 
     plot_contour_with_colourbar(tram.biased_conf_energies)
 

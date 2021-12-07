@@ -4,18 +4,11 @@ from deeptime.markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
-import _tram_bindings
+from deeptime.markov import _tram_bindings  # import _tram_bindings
 from deeptime.markov import _markov_bindings, compute_connected_sets
 from ._cset import *
 
 import numpy as np
-
-
-def _to_zero_padded_array(array_list, desired_shape):
-    for i, array in enumerate(array_list):
-        pad_amount = [(0, diff) for diff in np.asarray(desired_shape) - np.asarray(array.shape)]
-        array_list[i] = np.pad(array, pad_amount, 'constant')
-    return np.ascontiguousarray(array_list)
 
 
 class TRAM(_MSMBaseEstimator):
@@ -162,8 +155,10 @@ class TRAM(_MSMBaseEstimator):
     def fit(self, data, *args, **kw):
         r""" Fits a new markov state model according to data. Data may be provided clustered or non-clustered. In the
         latter case the data will be clustered first by the deeptime.clustering module. """
-        # TODO: allow for empty ttrajs
-        therm_state_sequences, dtrajs, bias_matrix = self._validate_input(data)
+
+        dtrajs, bias_matrices, ttrajs = self._unpack_input(data)
+
+        ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
 
         # count all transitions and state counts, without restricting to connected sets
         self.counts_models = self._get_state_counts(dtrajs)
@@ -175,7 +170,7 @@ class TRAM(_MSMBaseEstimator):
         def callback(iteration, error, log_likelihood):
             print(f"Iteration {iteration}: error {error}. log_L: {log_likelihood}")
 
-        tram_input = _tram_bindings.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrix)
+        tram_input = _tram_bindings.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
         self.tram_estimator = _tram_bindings.TRAM(tram_input)
         self.tram_estimator.estimate(10, np.float64(1e-8), True, callback)
 
@@ -183,50 +178,86 @@ class TRAM(_MSMBaseEstimator):
 
         return self
 
-    def _to_markov_model(self):
-        # compute models
-        transition_matrices = self.tram_estimator.transition_matrices()
+    def _unpack_input(self, data):
+        """ Get input from the data tuple. Data is of variable size.
 
-        transition_matrices_connected = []
-        stationary_distributions = []
-        for i, msm in enumerate(transition_matrices):
-            states = self.counts_models[i].states
-            transition_matrices_connected.append(transition_matrices[i][states][:, states])
-            pi = np.exp(self.therm_state_energies[i] - self.biased_conf_energies[i, :])[states]
-            pi = pi / pi.sum()
-            stationary_distributions.append(pi)
+        Parameters
+        ----------
+        data: tuple(2) or tuple(3)
+            data[0] contains the dtrajs. data[1] the bias matrix, and data[2] may or may not contain the ttrajs.
 
-        self._model = MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
-                                                 reversible=True, count_models=self.counts_models,
-                                                 transition_matrix_tolerance=1e-8)
+        Returns
+        ---------
+        dtrajs: object
+            the first element from the data tuple.
+        bias_matrices: object
+            the second element from the data tuple.
+        ttrajs: object, optional
+            the third element from the data tuple, or None.
+        """
+        dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
+        if ttrajs is not None and len(ttrajs) > 0:
+            ttrajs = ttrajs[0]
+        return dtrajs, bias_matrices, ttrajs
 
-    def _validate_input(self, data):
-        therm_state_sequences, dtrajs, bias_energy_sequences = data
+    def _validate_input(self, ttrajs, dtrajs, bias_matrices):
+        """ Check type and shape of input to ensure it can be handled by the _tram_bindings module.
+        The ttrajs, dtrajs and bias matrices should all contain the same number of trajectories (i.e. shape(0) should be
+        equal for all input arrays).
+        Trajectories can vary in length, but for each trajectory the corresponding arrays in dtrajs, ttrajs and
+        bias_matrices should be of the same length (i.e. array[i].shape(0) for any i should be equal in all input arrays).
+
+        Parameters
+        ----------
+        ttrajs: array-like, optional
+            ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was sampled
+            at. If ttrajs is None, we assume no replica exchange was done. We then assume each trajectory corresponds to
+            a unique thermodynamic state, and assign that trajectory index to the thermodynamic state index.
+        dtrajs: array-like
+            The discrete trajectories. dtrajs[i, n] contains the Markov state index for the n-th sample in the i-th
+            trajectory.
+        bias_matrices: array-like
+            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i'th
+            trajectory, evaluated at thermodynamic state k.
+
+        Returns
+        -------
+        ttrajs: list(ndarray(n)), int32
+            The validated ttrajs converted to a list of contiguous numpy arrays.
+        dtrajs: list(ndarray(n)), int32
+            The validated dtrajs converted to a list of contiguous numpy arrays.
+        bias_matrices: List(ndarray(n,m)), float64
+            The validated bias matrices converted to a list of contiguous numpy arrays.
+        """
+
+        # If we were not given ttrajs
+        if ttrajs is None or len(ttrajs) == 0:
+            ttrajs = [np.asarray([i] * len(dtrajs[i])) for i in range(len(dtrajs))]
 
         # shape and type checks
-        assert len(therm_state_sequences) == len(dtrajs) == len(bias_energy_sequences)
-        for t in therm_state_sequences:
+        assert len(ttrajs) == len(dtrajs) == len(bias_matrices)
+        for t in ttrajs:
             types.ensure_integer_array(t, ndim=1)
         for d in dtrajs:
             types.ensure_integer_array(d, ndim=1)
-        for b in bias_energy_sequences:
+        for b in bias_matrices:
             types.ensure_floating_array(b, ndim=2)
 
         # find dimensions
-        self.nstates_full = max(np.max(d) for d in dtrajs) + 1
-        self.n_therm_states = max(np.max(t) for t in therm_state_sequences) + 1
+        self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
+        self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
 
         # dimensionality checks
-        for t, d, b, in zip(therm_state_sequences, dtrajs, bias_energy_sequences):
+        for t, d, b, in zip(ttrajs, dtrajs, bias_matrices):
             assert t.shape[0] == d.shape[0] == b.shape[0]
             assert b.shape[1] == self.n_therm_states
 
         # cast types and change axis order if needed
-        therm_state_sequences = [np.require(t, dtype=np.intc, requirements='C') for t in therm_state_sequences]
-        markov_state_sequences = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs]
-        bias_energy_sequences = [np.require(b, dtype=np.float64, requirements='C') for b in bias_energy_sequences]
+        ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
+        dtrajs = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs]
+        bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in bias_matrices]
 
-        return therm_state_sequences, markov_state_sequences, bias_energy_sequences
+        return ttrajs, dtrajs, bias_matrices
 
     def _get_state_counts(self, dtrajs):
         """ Get transition counts and state counts for the discrete trajectories. """
@@ -253,29 +284,74 @@ class TRAM(_MSMBaseEstimator):
         return count_models
 
     def _restrict_to_connected_set(self, dtrajs):
-        transition_counts_list = []
-        state_counts_list = []
+        """
+        Find the largest connected set for each thermodynamic state and restrict the count matrices and dtrajs to the
+        connected set. Count matrices will only contain counts from the largest connected set. All dtraj samples not in
+        the largest connected set will be set to -1.
+
+
+        hey are full-sized, containing all states, also those that are not in the connected set.
+        this is because the current c++ tram implementation expects the same size matrix for each therm. stat.
+
+        Parameters
+        ----------
+        dtrajs: list(ndarray(n))
+            the discrete trajectories. dtrajs[i] is a numpy array containing the trajectories sampled in the i-th
+            thermodynamic state. dtrajs[i][n] is the Markov state that the n-th sample sampled at thermodynamic state i
+            falls in.
+
+        Returns
+        ----------
+        transition_counts: ndarray(n, m, m)
+            The transition counts matrices. transition_counts[k] contains the transition counts for thermodynamic state
+            k, restricted to the largest connected set of state k.
+        state_counts: ndarray(n, m)
+            The state counts histogram. state_counts[k] contains the state histogram for thermodynamic state k,
+            restricted to the largest connected set of state k.
+        dtrajs_connected: list(ndarray(n))
+            The list of discrete trajectories. Identical to the input dtrajs, except that all samples that do not belong
+            in the largest connected set are set to -1.
+
+        """
+        transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=np.intc)
+        state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.intc)
+
         dtrajs_connected = []
 
         for i in range(self.n_therm_states):
-            # submodel is the largest connected set
+            # Get largest connected set
             submodel = self.counts_models[i].submodel_largest(connectivity_threshold=self.connectivity_threshold,
                                                               directed=True)
 
             # Assign -1 to all indices not in the submodel.
             restricted_dtraj = submodel.transform_discrete_trajectories_to_submodel(dtrajs[i])
-
-            # The restricted_dtraj indices are those that belong to the submodel states. We don't want that, we want the
-            # original state indices (and those -1s). Convert the newly assigned indices back to the original state
-            # symbols
+            # Convert the newly assigned indices back to the original state symbols
             restricted_dtraj_symb = submodel.states_to_symbols(restricted_dtraj)
 
             dtrajs_connected.append(restricted_dtraj_symb)
-            transition_counts_list.append(submodel.count_matrix.astype(np.intc))
-            state_counts_list.append(submodel.state_histogram.astype(np.intc))
 
-        # for TRAM, all count matrices need to be the same size. Pad the smaller ones (that were restricted) with zeros.
-        state_counts = _to_zero_padded_array(state_counts_list, self.nstates_full)
-        transition_counts = _to_zero_padded_array(transition_counts_list, (self.nstates_full, self.nstates_full))
+            # create index for all elements in transition matrix
+            xs, ys = np.meshgrid(submodel.state_symbols, submodel.state_symbols)
+
+            # place submodel counts in our full-sized count matrices
+            transition_counts[i, xs, ys] = submodel.count_matrix
+            state_counts[i, submodel.state_symbols] = submodel.state_histogram
 
         return transition_counts, state_counts, dtrajs_connected
+
+    def _to_markov_model(self):
+        # compute models
+        transition_matrices = self.tram_estimator.transition_matrices()
+
+        transition_matrices_connected = []
+        stationary_distributions = []
+        for i, msm in enumerate(transition_matrices):
+            states = self.counts_models[i].states
+            transition_matrices_connected.append(transition_matrices[i][states][:, states])
+            pi = np.exp(self.therm_state_energies[i] - self.biased_conf_energies[i, :])[states]
+            pi = pi / pi.sum()
+            stationary_distributions.append(pi)
+
+        self._model = MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
+                                                 reversible=True, count_models=self.counts_models,
+                                                 transition_matrix_tolerance=1e-8)
