@@ -4,7 +4,7 @@ from deeptime.markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
-from deeptime.markov import _tram_bindings
+import _tram_bindings
 from deeptime.markov import _markov_bindings, compute_connected_sets
 from ._cset import *
 

@@ -70,7 +70,7 @@ def main():
     tram = TRAM(lagtime=1, connectivity="summed_count_matrix", maxiter=100)
 
     estimator = KMeans(
-        n_clusters=5,  # place 100 cluster centers
+        n_clusters=50,  # place 100 cluster centers
         init_strategy='uniform',  # uniform initialization strategy
         max_iter=0,  # don't actually perform the optimization, just place centers
         fixed_seed=13,
