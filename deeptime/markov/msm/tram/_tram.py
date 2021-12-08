@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional
 
 from deeptime.markov.msm import MarkovStateModelCollection
@@ -112,7 +113,7 @@ class TRAM(_MSMBaseEstimator):
             each position where an exchange occurred. This will affect the computed connected sets.
             Default is true, so that this check is always performed. If no replica exchange was performed, this pre-
             processing step is not necessary, and will do anything. In this case this flag may be set to False to boost
-            performance.
+            performance. If ttrajs are not provided, replica_exchange will be set to False in the preprocessing step.
             .
 
         References
@@ -170,15 +171,8 @@ class TRAM(_MSMBaseEstimator):
         return self._model
 
     def fit(self, data, *args, **kw):
-        r""" Fits a new markov state model according to data. Data may be provided clustered or non-clustered. In the
-        latter case the data will be clustered first by the deeptime.clustering module. """
-
-        dtrajs, bias_matrices, ttrajs = self._unpack_input(data)
-
-        ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
-
-        if self.replica_exchange:
-            self._handle_replica_exchange_data(ttrajs, dtrajs, bias_matrices)
+        # unpack the data tuple, do input validation and check for any replica exchanges.
+        ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
         # count all transitions and state counts, without restricting to connected sets
         self.largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
@@ -197,6 +191,97 @@ class TRAM(_MSMBaseEstimator):
         self._to_markov_model()
 
         return self
+
+    def _preprocess(self, data):
+        dtrajs, bias_matrices, ttrajs = self._unpack_input(data)
+        ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
+
+        if self.replica_exchange:
+            self._handle_replica_exchange_data(ttrajs, dtrajs, bias_matrices)
+        return ttrajs, dtrajs, bias_matrices
+
+    def _unpack_input(self, data):
+        """ Get input from the data tuple. Data is of variable size.
+
+        Parameters
+        ----------
+        data: tuple(2) or tuple(3)
+            data[0] contains the dtrajs. data[1] the bias matrix, and data[2] may or may not contain the ttrajs.
+
+        Returns
+        ---------
+        dtrajs: object
+            the first element from the data tuple.
+        bias_matrices: object
+            the second element from the data tuple.
+        ttrajs: object, optional
+            the third element from the data tuple, or None.
+        """
+        dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
+        if ttrajs is not None and len(ttrajs) > 0:
+            ttrajs = ttrajs[0]
+        else:
+            self.replica_exchange = False
+        return dtrajs, bias_matrices, ttrajs
+
+    def _validate_input(self, ttrajs, dtrajs, bias_matrices):
+        """ Check type and shape of input to ensure it can be handled by the _tram_bindings module.
+        The ttrajs, dtrajs and bias matrices should all contain the same number of trajectories (i.e. shape(0) should be
+        equal for all input arrays).
+        Trajectories can vary in length, but for each trajectory the corresponding arrays in dtrajs, ttrajs and
+        bias_matrices should be of the same length (i.e. array[i].shape(0) for any i should be equal in all input arrays).
+
+        Parameters
+        ----------
+        ttrajs: array-like, optional
+            ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was sampled
+            at. If ttrajs is None, we assume no replica exchange was done. We then assume each trajectory corresponds to
+            a unique thermodynamic state, and assign that trajectory index to the thermodynamic state index.
+        dtrajs: array-like
+            The discrete trajectories. dtrajs[i, n] contains the Markov state index for the n-th sample in the i-th
+            trajectory.
+        bias_matrices: array-like
+            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i'th
+            trajectory, evaluated at thermodynamic state k.
+
+        Returns
+        -------
+        ttrajs: list(ndarray(n)), int32
+            The validated ttrajs converted to a list of contiguous numpy arrays.
+        dtrajs: list(ndarray(n)), int32
+            The validated dtrajs converted to a list of contiguous numpy arrays.
+        bias_matrices: List(ndarray(n,m)), float64
+            The validated bias matrices converted to a list of contiguous numpy arrays.
+        """
+
+        # If we were not given ttrajs
+        if ttrajs is None or len(ttrajs) == 0:
+            ttrajs = [np.asarray([i] * len(dtrajs[i])) for i in range(len(dtrajs))]
+
+        # shape and type checks
+        assert len(ttrajs) == len(dtrajs) == len(bias_matrices)
+        for t in ttrajs:
+            types.ensure_integer_array(t, ndim=1)
+        for d in dtrajs:
+            types.ensure_integer_array(d, ndim=1)
+        for b in bias_matrices:
+            types.ensure_floating_array(b, ndim=2)
+
+        # find dimensions
+        self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
+        self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
+
+        # dimensionality checks
+        for t, d, b, in zip(ttrajs, dtrajs, bias_matrices):
+            assert t.shape[0] == d.shape[0] == b.shape[0]
+            assert b.shape[1] == self.n_therm_states
+
+        # cast types and change axis order if needed
+        ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
+        dtrajs = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs]
+        bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in bias_matrices]
+
+        return ttrajs, dtrajs, bias_matrices
 
     def _handle_replica_exchange_data(self, ttrajs, dtrajs, bias_matrices):
         """ Get transition counts and state counts for the discrete trajectories. """
@@ -262,86 +347,10 @@ class TRAM(_MSMBaseEstimator):
                                                 order='C')
             return full_counts_model.submodel(np.unique(connected_states[1]))
 
-    def _unpack_input(self, data):
-        """ Get input from the data tuple. Data is of variable size.
-
-        Parameters
-        ----------
-        data: tuple(2) or tuple(3)
-            data[0] contains the dtrajs. data[1] the bias matrix, and data[2] may or may not contain the ttrajs.
-
-        Returns
-        ---------
-        dtrajs: object
-            the first element from the data tuple.
-        bias_matrices: object
-            the second element from the data tuple.
-        ttrajs: object, optional
-            the third element from the data tuple, or None.
-        """
-        dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
-        if ttrajs is not None and len(ttrajs) > 0:
-            ttrajs = ttrajs[0]
-        return dtrajs, bias_matrices, ttrajs
-
-    def _validate_input(self, ttrajs, dtrajs, bias_matrices):
-        """ Check type and shape of input to ensure it can be handled by the _tram_bindings module.
-        The ttrajs, dtrajs and bias matrices should all contain the same number of trajectories (i.e. shape(0) should be
-        equal for all input arrays).
-        Trajectories can vary in length, but for each trajectory the corresponding arrays in dtrajs, ttrajs and
-        bias_matrices should be of the same length (i.e. array[i].shape(0) for any i should be equal in all input arrays).
-
-        Parameters
-        ----------
-        ttrajs: array-like, optional
-            ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was sampled
-            at. If ttrajs is None, we assume no replica exchange was done. We then assume each trajectory corresponds to
-            a unique thermodynamic state, and assign that trajectory index to the thermodynamic state index.
-        dtrajs: array-like
-            The discrete trajectories. dtrajs[i, n] contains the Markov state index for the n-th sample in the i-th
-            trajectory.
-        bias_matrices: array-like
-            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i'th
-            trajectory, evaluated at thermodynamic state k.
-
-        Returns
-        -------
-        ttrajs: list(ndarray(n)), int32
-            The validated ttrajs converted to a list of contiguous numpy arrays.
-        dtrajs: list(ndarray(n)), int32
-            The validated dtrajs converted to a list of contiguous numpy arrays.
-        bias_matrices: List(ndarray(n,m)), float64
-            The validated bias matrices converted to a list of contiguous numpy arrays.
-        """
-
-        # If we were not given ttrajs
-        if ttrajs is None or len(ttrajs) == 0:
-            ttrajs = [np.asarray([i] * len(dtrajs[i])) for i in range(len(dtrajs))]
-
-        # shape and type checks
-        assert len(ttrajs) == len(dtrajs) == len(bias_matrices)
-        for t in ttrajs:
-            types.ensure_integer_array(t, ndim=1)
-        for d in dtrajs:
-            types.ensure_integer_array(d, ndim=1)
-        for b in bias_matrices:
-            types.ensure_floating_array(b, ndim=2)
-
-        # find dimensions
-        self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
-        self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
-
-        # dimensionality checks
-        for t, d, b, in zip(ttrajs, dtrajs, bias_matrices):
-            assert t.shape[0] == d.shape[0] == b.shape[0]
-            assert b.shape[1] == self.n_therm_states
-
-        # cast types and change axis order if needed
-        ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
-        dtrajs = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs]
-        bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in bias_matrices]
-
-        return ttrajs, dtrajs, bias_matrices
+        warnings.warn(
+            "connectivity type unknown. Data has not been restricted to the largest connected set."
+            "To find the largest connected set, choose one of 'summed_state_counts', 'post_hoc_RE', or 'BAR_variance'")
+        return full_counts_model
 
     def _restrict_to_connected_set(self, dtrajs):
         """

@@ -6,7 +6,7 @@ from deeptime.markov.msm import TRAM, MarkovStateModel
 from deeptime.clustering import KMeans
 
 xs = np.linspace(-1.5, 1.5, num=100)
-n_samples = 1000
+n_samples = 10000
 bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
 
@@ -89,7 +89,7 @@ def main():
     # bias_matrix[0][:, 0] *= 0.5
     # bias_matrix[1][:, 0] *= 0.5
 
-    tram = TRAM(lagtime=1, connectivity="post_hoc_RE", maxiter=100)
+    tram = TRAM(lagtime=1, connectivity="BAR_variance", maxiter=100)
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
