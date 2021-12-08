@@ -49,8 +49,6 @@ def sample_trajectories(bias_functions):
 
 def main():
     bias_functions = get_bias_functions()
-
-    therm_state_sequences = np.asarray([[i] * n_samples for i in range(len(bias_centers))])
     trajectories = sample_trajectories(bias_functions)
 
     # [plt.plot(xs, fn(xs), label=f'Bias {i}') for i, fn in enumerate(bias_functions)]
@@ -67,7 +65,6 @@ def main():
         for j, bias_function in enumerate(bias_functions):
             bias_matrix[i, :, j] = bias_function(traj)
 
-    tram = TRAM(lagtime=1, connectivity="summed_count_matrix", maxiter=100)
 
     estimator = KMeans(
         n_clusters=5,  # place 100 cluster centers
@@ -78,13 +75,26 @@ def main():
     )
 
     clustering = estimator.fit_fetch(trajectories.flatten())
-    markov_state_sequences = clustering.transform(trajectories.flatten()).reshape(
-        (len(therm_state_sequences), n_samples))
+    dtrajs = clustering.transform(trajectories.flatten()).reshape(
+        (len(bias_matrix), n_samples))
+
+
+
+    # dtrajs = np.asarray([[1, 2, 1, 3, 2],[3, 4, 3, 3, 4]])
+    # ttrajs = np.asarray([[0, 1, 0, 0, 0],[1, 1, 1, 1, 1]])
+    # # ttrajs = [np.asarray([i] * len(dtrajs[i])) for i in range(len(dtrajs))]
+    # bias_matrix = np.asarray([np.ones((len(dtrajs[i]), len(dtrajs))) for i in range(len(dtrajs))])
+    #
+    # bias_matrix[0] *= 0.5
+    # bias_matrix[0][:, 0] *= 0.5
+    # bias_matrix[1][:, 0] *= 0.5
+
+    tram = TRAM(lagtime=1, connectivity="post_hoc_RE", maxiter=100)
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
     # Umbrella/Hamiltonian/temperature).
-    model = tram.fit_fetch((markov_state_sequences, bias_matrix))
+    model = tram.fit_fetch((dtrajs, bias_matrix))
 
     plot_contour_with_colourbar(tram.biased_conf_energies)
 

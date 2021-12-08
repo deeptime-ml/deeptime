@@ -812,32 +812,4 @@ private:
 //    }
 //};
 };
-
-
-template<typename dtype>
-extern dtype
-_bar_df(np_array_nfc<dtype> db_IJ, std::int32_t L1, np_array_nfc<dtype> db_JI, std::int32_t L2,
-        np_array_nfc<dtype> scratch) {
-    py::buffer_info db_IJ_buf = db_IJ.request();
-    py::buffer_info db_JI_buf = db_JI.request();
-    py::buffer_info scratch_buf = scratch.request();
-
-    auto *db_IJ_ptr = (dtype *) db_IJ_buf.ptr;
-    auto *db_JI_ptr = (dtype *) db_JI_buf.ptr;
-    auto *scratch_ptr = (dtype *) scratch_buf.ptr;
-
-    std::int32_t i;
-    dtype ln_avg1;
-    dtype ln_avg2;
-    for (i = 0; i < L1; i++) {
-        scratch_ptr[i] = db_IJ_ptr[i] > 0 ? 0 : db_IJ_ptr[i];
-    }
-    ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L1);
-    for (i = 0; i < L1; i++) {
-        scratch_ptr[i] = db_JI_ptr[i] > 0 ? 0 : db_JI_ptr[i];
-    }
-    ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L2);
-    return ln_avg2 - ln_avg1;
-}
-
 }

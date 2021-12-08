@@ -1,14 +1,24 @@
 from typing import Optional
 
 from deeptime.markov.msm import MarkovStateModelCollection
-from deeptime.markov import TransitionCountEstimator
+from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
-from deeptime.markov import _tram_bindings  # import _tram_bindings
+from deeptime.markov._tram_bindings import tram
+# import _tram_bindings
 from deeptime.markov import _markov_bindings, compute_connected_sets
 from ._cset import *
 
 import numpy as np
+import scipy as sp
+
+
+def to_zero_padded_array(array, desired_shape):
+    new_array = np.zeros((len(array), desired_shape))
+    for i, array in enumerate(array):
+        pad_amount = [(0, diff) for diff in np.asarray(desired_shape) - np.asarray(array.shape)]
+        new_array[i] = np.pad(array, pad_amount, 'constant')
+    return np.ascontiguousarray(new_array)
 
 
 class TRAM(_MSMBaseEstimator):
@@ -21,9 +31,10 @@ class TRAM(_MSMBaseEstimator):
 
     def __init__(
             self, lagtime=None, count_mode='sliding',
-            connectivity='post_hoc_RE',
+            connectivity='summed_counts_matrix',
             maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
-            nn=None, connectivity_threshold: float = 1.0):
+            nn=None, connectivity_factor: float = 1.0,
+            replica_exchange=True):
         r"""Transition(-based) Reweighting Analysis Method
         Parameters
         ----------
@@ -96,6 +107,13 @@ class TRAM(_MSMBaseEstimator):
             this multiplies the number of hypothetically observed transitions. For
             'BAR_variance' this scales the threshold for the minimal allowed variance
             of free energy differences.
+        replica_exchange : bool, optional, default=True
+            When True, the data is preprocessed to handle replica exchanges. The dtrajs will be cut into fragments at
+            each position where an exchange occurred. This will affect the computed connected sets.
+            Default is true, so that this check is always performed. If no replica exchange was performed, this pre-
+            processing step is not necessary, and will do anything. In this case this flag may be set to False to boost
+            performance.
+            .
 
         References
         ----------
@@ -114,15 +132,14 @@ class TRAM(_MSMBaseEstimator):
         self.count_mode = count_mode
         self.connectivity = connectivity
         self.nn = nn
-        self.connectivity_threshold = connectivity_threshold
+        self.connectivity_factor = connectivity_factor
         self.n_markov_states = None
         self.n_therm_states = None
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.save_convergence_info = save_convergence_info
-        self.active_set = None
-
-        self.counts_models = []
+        self.replica_exchange = replica_exchange
+        self.largest_connected_set = None
         self.tram_estimator = None
 
     @property
@@ -160,8 +177,11 @@ class TRAM(_MSMBaseEstimator):
 
         ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
 
+        if self.replica_exchange:
+            self._handle_replica_exchange_data(ttrajs, dtrajs, bias_matrices)
+
         # count all transitions and state counts, without restricting to connected sets
-        self.counts_models = self._get_state_counts(dtrajs)
+        self.largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
 
         # restrict input data to largest connected set
         transition_counts, state_counts, dtrajs = self._restrict_to_connected_set(dtrajs)
@@ -170,13 +190,77 @@ class TRAM(_MSMBaseEstimator):
         def callback(iteration, error, log_likelihood):
             print(f"Iteration {iteration}: error {error}. log_L: {log_likelihood}")
 
-        tram_input = _tram_bindings.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
-        self.tram_estimator = _tram_bindings.TRAM(tram_input)
+        tram_input = tram.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
+        self.tram_estimator = tram.TRAM(tram_input)
         self.tram_estimator.estimate(10, np.float64(1e-8), True, callback)
 
         self._to_markov_model()
 
         return self
+
+    def _handle_replica_exchange_data(self, ttrajs, dtrajs, bias_matrices):
+        """ Get transition counts and state counts for the discrete trajectories. """
+        # find state visits and transition counts
+        # TODO:
+        #  1. handle RE case:
+        #     define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
+        #     At every RE swapp point, the trajectory is sliced, so that swap point occurs as a trajectory start
+        #  2. Include therm_state_sequences_full --> don't assume that each dtraj[i] was sampled at thermodynamc state i.
+        # for 1.: do something like this
+        # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(therm_state_sequences_full)
+        # trajectory_fragments = [[markov_state_sequences[tidx][start:end] for tidx, start, end in mapping_therm]
+        #                               for mapping_therm in trajectory_fragment_mapping]
+        pass
+
+    def _find_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
+        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
+
+        # make a counts model over all observed samples.
+        full_counts_model = estimator.fit_fetch(dtrajs)
+
+        if self.connectivity == 'summed_count_matrix':
+            # We assume the thermodynamic states have overlap when they contain counts from the same markov state.
+            # Full counts model contains the sum of the state counts over all therm. states., and we simply ignore
+            # the thermodynamic state indices.
+            return full_counts_model.submodel_largest(
+                connectivity_threshold=self.connectivity_factor,
+                directed=True)
+
+        if self.connectivity in ['post_hoc_RE', 'BAR_variance']:
+            # get state counts for each trajectory (=for each therm. state)
+            all_state_counts = np.asarray([estimator.fit_fetch(dtraj).state_histogram for dtraj in dtrajs],
+                                          dtype=object)
+            # pad with zero's so they are all the same size and easier for the cpp module to handle
+            all_state_counts = to_zero_padded_array(all_state_counts, self.n_markov_states)
+
+            # get list of all possible transitions between thermodynamic states. A transition is only possible when two
+            # thermodynamic states have an overlapping markov state. Whether the markov state overlaps depends on the
+            # sampled data and the connectivity settings and is computed in get_state_transitions:
+            connectivity_fn = tram.post_hoc_RE if self.connectivity == 'post_hoc_RE' else tram.bar_variance
+            (i_s, j_s) = tram.get_state_transitions(ttrajs, dtrajs, bias_matrices,
+                                                    all_state_counts,
+                                                    self.n_therm_states, self.n_markov_states,
+                                                    self.connectivity_factor, connectivity_fn)
+
+            # add transitions that occurred within each thermodynamic state. These are simply the connected sets:
+            for k in range(self.n_therm_states):
+                for cset in estimator.fit_fetch(dtrajs[k]).connected_sets():
+                    i_s.extend(list(cset[0:-1] + k * self.n_markov_states))
+                    j_s.extend(list(cset[1:] + k * self.n_markov_states))
+
+            # turn the list of transitions into a boolean matrix that has a one whenever a transition has occurred
+            data = np.ones(len(i_s), dtype=int)
+            dim = self.n_therm_states * self.n_markov_states
+            sparse_transition_counts = sp.sparse.coo_matrix((data, (i_s, j_s)), shape=(dim, dim))
+
+            # Now we have all possible paths in the list of transitions. Get the connected set of that
+            overlap_counts_model = TransitionCountModel(sparse_transition_counts)
+            connected_states_ravelled = overlap_counts_model.submodel_largest(directed=False).state_symbols
+
+            # unravel the index and combine all separate csets to one cset
+            connected_states = np.unravel_index(connected_states_ravelled, (self.n_therm_states, self.n_markov_states),
+                                                order='C')
+            return full_counts_model.submodel(np.unique(connected_states[1]))
 
     def _unpack_input(self, data):
         """ Get input from the data tuple. Data is of variable size.
@@ -259,30 +343,6 @@ class TRAM(_MSMBaseEstimator):
 
         return ttrajs, dtrajs, bias_matrices
 
-    def _get_state_counts(self, dtrajs):
-        """ Get transition counts and state counts for the discrete trajectories. """
-        # find state visits and transition counts
-        # TODO:
-        #  1. handle RE case:
-        #     define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
-        #     At every RE swapp point, the trajectory is sliced, so that swap point occurs as a trajectory start
-        #  2. Include therm_state_sequences_full --> don't assume that each dtraj[i] was sampled at thermodynamc state i.
-        # for 1.: do something like this
-        # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(therm_state_sequences_full)
-        # trajectory_fragments = [[markov_state_sequences[tidx][start:end] for tidx, start, end in mapping_therm]
-        #                               for mapping_therm in trajectory_fragment_mapping]
-
-        # find count matrixes C^k_ij with shape (K,B,B)
-        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
-
-        count_models = []
-
-        for i in range(self.n_therm_states):
-            counts = estimator.fit_fetch(dtrajs[i])
-            count_models.append(counts)
-
-        return count_models
-
     def _restrict_to_connected_set(self, dtrajs):
         """
         Find the largest connected set for each thermodynamic state and restrict the count matrices and dtrajs to the
@@ -320,22 +380,22 @@ class TRAM(_MSMBaseEstimator):
 
         for i in range(self.n_therm_states):
             # Get largest connected set
-            submodel = self.counts_models[i].submodel_largest(connectivity_threshold=self.connectivity_threshold,
-                                                              directed=True)
 
             # Assign -1 to all indices not in the submodel.
-            restricted_dtraj = submodel.transform_discrete_trajectories_to_submodel(dtrajs[i])
+            restricted_dtraj = self.largest_connected_set.transform_discrete_trajectories_to_submodel(dtrajs[i])
             # Convert the newly assigned indices back to the original state symbols
-            restricted_dtraj_symb = submodel.states_to_symbols(restricted_dtraj)
+            restricted_dtraj_symb = self.largest_connected_set.states_to_symbols(restricted_dtraj)
 
             dtrajs_connected.append(restricted_dtraj_symb)
 
+            connected_states = self.largest_connected_set.state_symbols
+
             # create index for all elements in transition matrix
-            xs, ys = np.meshgrid(submodel.state_symbols, submodel.state_symbols)
+            xs, ys = np.meshgrid(connected_states, connected_states)
 
             # place submodel counts in our full-sized count matrices
-            transition_counts[i, xs, ys] = submodel.count_matrix
-            state_counts[i, submodel.state_symbols] = submodel.state_histogram
+            transition_counts[i, xs, ys] = self.largest_connected_set.count_matrix
+            state_counts[i, connected_states] = self.largest_connected_set.state_histogram
 
         return transition_counts, state_counts, dtrajs_connected
 
@@ -346,12 +406,13 @@ class TRAM(_MSMBaseEstimator):
         transition_matrices_connected = []
         stationary_distributions = []
         for i, msm in enumerate(transition_matrices):
-            states = self.counts_models[i].states
+            states = self.largest_connected_set.states
             transition_matrices_connected.append(transition_matrices[i][states][:, states])
             pi = np.exp(self.therm_state_energies[i] - self.biased_conf_energies[i, :])[states]
             pi = pi / pi.sum()
             stationary_distributions.append(pi)
 
         self._model = MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
-                                                 reversible=True, count_models=self.counts_models,
+                                                 reversible=True, count_models=[self.largest_connected_set] * len(
+                transition_matrices_connected),
                                                  transition_matrix_tolerance=1e-8)
