@@ -252,7 +252,8 @@ class TransitionCountModel(Model):
                        probability_constraint: Optional[np.ndarray] = None,
                        sort_by_population: bool = False) -> List[np.ndarray]:
         r""" Computes the connected sets of the counting matrix. A threshold can be set fixing a number of counts
-        required to consider two states connected. In case of sliding window the number of counts is increased by a
+        required to consider two states connected (states are always considered self-connected, regardless of the
+        connectivity threshold). In case of sliding window the number of counts is increased by a
         factor of `lagtime`. In case of 'sliding-effective' counting, the number of sliding window counts were
         divided by the lagtime and can therefore also be in the open interval (0, 1). Same for 'effective' counting.
 
@@ -273,6 +274,10 @@ class TransitionCountModel(Model):
         -------
         A list of arrays containing integers (states), each array representing a connected set. The list is
         ordered decreasingly by the size of the individual components.
+
+        See also
+        --------
+        submodel_largest, submodel
         """
         from deeptime.markov import compute_connected_sets
         count_matrix = self.count_matrix
@@ -348,6 +353,10 @@ class TransitionCountModel(Model):
         -------
         submodel : TransitionCountModel
             A submodel restricted to the requested states.
+
+        See also
+        --------
+        submodel_largest
         """
         states = np.atleast_1d(states)
         if np.max(states) >= self.n_states:
@@ -370,7 +379,8 @@ class TransitionCountModel(Model):
                          probability_constraint: Optional[np.ndarray] = None, sort_by_population: bool = False):
         r"""
         Restricts this model to the submodel corresponding to the largest connected set of states after eliminating
-        states that fall below the specified connectivity threshold.
+        states that fall below the specified connectivity threshold. Note that the connectivity threshold only applies
+        to the implied graph weight between states, singleton sets are always considered connected.
         
         Parameters
         ----------
@@ -390,6 +400,10 @@ class TransitionCountModel(Model):
         -------
         submodel : TransitionCountModel
             The submodel.
+
+        See also
+        --------
+        connected_sets, submodel
         """
         if directed is None:
             # if probability constraint is given, we want undirected per default

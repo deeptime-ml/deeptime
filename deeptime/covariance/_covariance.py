@@ -425,8 +425,7 @@ class Covariance(Estimator):
 
         n_splits : int, optional, default=None
             The number of times the data is split uniformly when performing the covariance estimation. If no value
-            is given, it estimates the number of splits by :code:`min(trajectory_lengths) // 100` if the shortest
-            trajectory contains at least 1000 frames. Otherwise, the number of splits is set to one.
+            is given, the data is not split.
         column_selection : ndarray, optional, default=None
             Columns of the trajectories to restrict estimation to. Must be given in terms of an index array.
 
