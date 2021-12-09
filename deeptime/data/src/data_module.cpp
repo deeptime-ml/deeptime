@@ -4,9 +4,9 @@
 #include <utility>
 #include <type_traits>
 
-#include "common.h"
-#include "pbf.h"
-#include "systems.h"
+#include <deeptime/common.h>
+#include <deeptime/data/pbf.h>
+#include <deeptime/data/systems.h>
 
 static_assert(deeptime::data::system_has_periodic_boundaries_v<deeptime::data::BickleyJet<double, true>>);
 static_assert(!deeptime::data::system_has_periodic_boundaries_v<deeptime::data::Prinz<double>>);
@@ -15,7 +15,7 @@ using namespace pybind11::literals;
 
 using dtype = float;
 static constexpr int DIM = 2;
-using PBF = deeptime::pbf::PBF<DIM, dtype>;
+using PBF = deeptime::data::pbf::PBF<DIM, dtype>;
 
 template<typename T, std::size_t dim>
 struct PyODE {
@@ -64,7 +64,7 @@ struct PySDE {
     std::size_t nSteps {1000};
 };
 
-PBF makePbf(np_array<dtype> pos, const np_array<dtype>& gridSize, dtype interactionRadius, int nJobs) {
+PBF makePbf(deeptime::np_array<dtype> pos, const deeptime::np_array<dtype>& gridSize, dtype interactionRadius, int nJobs) {
     if(pos.ndim() != 2) {
         throw std::invalid_argument("position array must be 2-dimensional");
     }
@@ -82,6 +82,7 @@ PBF makePbf(np_array<dtype> pos, const np_array<dtype>& gridSize, dtype interact
 }
 template<bool VECTORIZE_RHS, typename System, typename... InitArgs>
 auto exportSystem(py::module& m, const std::string &name) {
+    using namespace deeptime;
     using npDtype = typename System::dtype;
     auto clazz = py::class_<System>(m, name.c_str())
             .def(py::init<InitArgs...>())
@@ -205,6 +206,7 @@ void exportPySDE(py::module& m, const std::string& name) {
 }
 
 PYBIND11_MODULE(_data_bindings, m) {
+    using namespace deeptime;
     py::class_<PBF>(m, "PBF").def(py::init(&makePbf))
             .def("predict_positions", &PBF::predictPositions)
             .def("update_neighborlist", &PBF::updateNeighborlist)

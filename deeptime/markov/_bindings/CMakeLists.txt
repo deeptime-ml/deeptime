@@ -1,6 +1,13 @@
-project(_markov_bindings CXX)
+project(deeptime_markov CXX)
+
+add_library(${PROJECT_NAME} INTERFACE)
+target_include_directories(${PROJECT_NAME} INTERFACE include)
+target_link_libraries(${PROJECT_NAME} INTERFACE deeptime::common)
+add_library(deeptime::markov ALIAS ${PROJECT_NAME})
 
 set(SRC src/markov_module.cpp)
-pybind11_add_module(${PROJECT_NAME} ${SRC})
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ${common_includes})
-target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
+pybind11_add_module(_markov_bindings ${SRC})
+target_link_libraries(_markov_bindings PUBLIC deeptime::markov)
+if(OpenMP_FOUND)
+    target_link_libraries(_markov_bindings PUBLIC OpenMP::OpenMP_CXX)
+endif()
