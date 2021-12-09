@@ -46,16 +46,6 @@ transitionVector getStateTransitions(const DTrajs &ttrajs, const DTrajs &dtrajs,
                 for (std::size_t l = 0; l < nThermStates; ++l) {
                     // therm state must have counts in markov state i
                     if (k != l && stateCounts.at(l, i) > 0) {
-                        // TODO: we are now looping through the trajectories for each combination of states k/l
-                        // this is a waste!
-                        // also: if replica exchange pre-processing is done, we can assume that ttraj[i] == i for all i.
-                        // So: then we only have to loop through one trajectory per state, and we can do this at the
-                        // start of the loop over the markov states: find markov index i in each trajectory and store
-                        // the indices in an array of n_therm_states vectors.
-
-                        // Then we can get rid of ttrajs alltogether and life will be good.
-//                        auto &[samplesFromK, samplesFromL] = getSamplesFromStates(i, k, l, ttrajs, dtrajs, biasMatrices);
-
                         if (overlapFunction(k, l, sampleIndicesIn_i, biasMatrices, connectivity_factor)) {
                             // push the ravelled index of the therm state transition to the transition list.
                             auto x = i + k * nConfStates;

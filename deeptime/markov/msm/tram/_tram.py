@@ -29,11 +29,10 @@ class TRAM(_MSMBaseEstimator):
     """
 
     def __init__(
-            self, lagtime=None, count_mode='sliding',
+            self, lagtime=1, count_mode='sliding',
             connectivity='summed_counts_matrix',
             maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
-            nn=None, connectivity_factor: float = 1.0,
-            replica_exchange=True):
+            nn=None, connectivity_factor: float = 1.0):
         r"""Transition(-based) Reweighting Analysis Method
         Parameters
         ----------
@@ -106,13 +105,6 @@ class TRAM(_MSMBaseEstimator):
             this multiplies the number of hypothetically observed transitions. For
             'BAR_variance' this scales the threshold for the minimal allowed variance
             of free energy differences.
-        replica_exchange : bool, optional, default=True
-            When True, the data is preprocessed to handle replica exchanges. The dtrajs will be cut into fragments at
-            each position where an exchange occurred. This will affect the computed connected sets.
-            Default is true, so that this check is always performed. If no replica exchange was performed, this pre-
-            processing step is not necessary, and will do anything. In this case this flag may be set to False to boost
-            performance. If ttrajs are not provided, replica_exchange will be set to False in the preprocessing step.
-            .
 
         References
         ----------
@@ -137,7 +129,6 @@ class TRAM(_MSMBaseEstimator):
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.save_convergence_info = save_convergence_info
-        self.replica_exchange = replica_exchange
         self.largest_connected_set = None
         self.tram_estimator = None
 
@@ -176,7 +167,9 @@ class TRAM(_MSMBaseEstimator):
         self.largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
 
         # restrict input data to largest connected set
-        transition_counts, state_counts, dtrajs = self._restrict_to_connected_set(dtrajs)
+        dtrajs = self._restrict_to_connected_set(dtrajs)
+
+        state_counts, transition_counts = self._make_count_models(dtrajs)
 
         # TODO: make progress bar
         def callback(iteration, error, log_likelihood):
@@ -192,9 +185,12 @@ class TRAM(_MSMBaseEstimator):
 
     def _preprocess(self, data):
         dtrajs, bias_matrices, ttrajs = self._unpack_input(data)
+
+        do_replica_exchange_step = True if ttrajs is None or len(ttrajs) == 0 else False
+
         ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
 
-        if self.replica_exchange:
+        if do_replica_exchange_step:
             self._handle_replica_exchange_data(ttrajs, dtrajs, bias_matrices)
         return ttrajs, dtrajs, bias_matrices
 
@@ -216,10 +212,6 @@ class TRAM(_MSMBaseEstimator):
             the third element from the data tuple, or None.
         """
         dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
-        if ttrajs is not None and len(ttrajs) > 0:
-            ttrajs = ttrajs[0]
-        else:
-            self.replica_exchange = False
         return dtrajs, bias_matrices, ttrajs
 
     def _validate_input(self, ttrajs, dtrajs, bias_matrices):
@@ -254,7 +246,7 @@ class TRAM(_MSMBaseEstimator):
 
         # If we were not given ttrajs
         if ttrajs is None or len(ttrajs) == 0:
-            ttrajs = [np.asarray([i] * len(dtrajs[i])) for i in range(len(dtrajs))]
+            ttrajs = [np.asarray([i] * len(traj)) for i, traj in enumerate(dtrajs)]
 
         # shape and type checks
         assert len(ttrajs) == len(dtrajs) == len(bias_matrices)
@@ -282,17 +274,17 @@ class TRAM(_MSMBaseEstimator):
         return ttrajs, dtrajs, bias_matrices
 
     def _handle_replica_exchange_data(self, ttrajs, dtrajs, bias_matrices):
-        """ Get transition counts and state counts for the discrete trajectories. """
-        # find state visits and transition counts
         # TODO:
         #  1. handle RE case:
         #     define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
-        #     At every RE swapp point, the trajectory is sliced, so that swap point occurs as a trajectory start
-        #  2. Include therm_state_sequences_full --> don't assume that each dtraj[i] was sampled at thermodynamc state i.
+        #     At every RE swap point, the trajectory is sliced, so that swap point occurs as a trajectory start
+        #  2. Include ttrajs --> don't assume that each dtraj[i] was sampled at thermodynamc state i.
         # for 1.: do something like this
         # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(therm_state_sequences_full)
         # trajectory_fragments = [[markov_state_sequences[tidx][start:end] for tidx, start, end in mapping_therm]
         #                               for mapping_therm in trajectory_fragment_mapping]
+
+        # want to know: for each trajectory --> start and end of fragments ++++ what therm state do the fragments belong to?
         pass
 
     def _find_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
@@ -375,13 +367,7 @@ class TRAM(_MSMBaseEstimator):
             in the largest connected set are set to -1.
 
         """
-        transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=np.intc)
-        state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.intc)
-
         dtrajs_connected = []
-
-        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
-        self.count_models = []
 
         for i in range(self.n_therm_states):
             # Get largest connected set
@@ -392,7 +378,18 @@ class TRAM(_MSMBaseEstimator):
             restricted_dtraj = self.largest_connected_set.states_to_symbols(restricted_dtraj)
             dtrajs_connected.append(restricted_dtraj)
 
-            samples_in_connected_set = restricted_dtraj[restricted_dtraj >= 0]
+        return dtrajs_connected
+
+    def _make_count_models(self, dtrajs):
+        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
+
+        transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=np.intc)
+        state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.intc)
+
+        self.count_models = []
+        for i in range(self.n_therm_states):
+            samples_in_connected_set = dtrajs[i][dtrajs[i] >= 0]
+
             if len(samples_in_connected_set) == 0:
                 # there are no samples from this state that belong to the connected set. Make an empty count model.
                 self.count_models.append(TransitionCountModel(np.zeros(self.n_markov_states, self.n_markov_states)))
@@ -407,8 +404,8 @@ class TRAM(_MSMBaseEstimator):
                 state_counts[i, traj_counts_model.state_symbols] = traj_counts_model.state_histogram
 
                 self.count_models.append(traj_counts_model)
+        return state_counts, transition_counts
 
-        return transition_counts, state_counts, dtrajs_connected
 
     def _to_markov_model(self):
         # compute models
