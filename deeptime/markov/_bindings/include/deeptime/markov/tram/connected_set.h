@@ -147,7 +147,7 @@ bool hasOverlapBarVariance(SampleListFromTwoStates<dtype> &samplesFromK,
     for(int i = 0; i < n + m; ++i) {
         b += (1.0 / (2.0 + 2.0 * std::cosh(df - du[i] - std::log(1.0 * n/m))));
     }
-    return (1 / b - (n+m) / (n * m) ) < connectivity_factor;
+    return 1 / b - ( n + m ) / (double)(n * m) < connectivity_factor;
 }
 
 template<typename dtype>

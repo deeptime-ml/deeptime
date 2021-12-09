@@ -6,7 +6,7 @@ from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
 from deeptime.markov._tram_bindings import tram
-# import _tram_bindings
+# from _tram_bindings import tram
 from deeptime.markov import _markov_bindings, compute_connected_sets
 from ._cset import *
 

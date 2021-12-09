@@ -78,18 +78,16 @@ def main():
     dtrajs = clustering.transform(trajectories.flatten()).reshape(
         (len(bias_matrix), n_samples))
 
-
-
-    # dtrajs = np.asarray([[1, 2, 1, 3, 2],[3, 4, 3, 3, 4]])
+    dtrajs = np.asarray([[1, 2, 3, 2, 1], [3, 5, 6, 5, 3], [3, 5, 6, 5, 3]])
     # ttrajs = np.asarray([[0, 1, 0, 0, 0],[1, 1, 1, 1, 1]])
-    # # ttrajs = [np.asarray([i] * len(dtrajs[i])) for i in range(len(dtrajs))]
-    # bias_matrix = np.asarray([np.ones((len(dtrajs[i]), len(dtrajs))) for i in range(len(dtrajs))])
+    ttrajs = [np.asarray([i] * len(dtrajs[i])) for i in range(len(dtrajs))]
+    bias_matrix = np.asarray([np.ones((len(dtrajs[i]), len(dtrajs))) for i in range(len(dtrajs))])
     #
     # bias_matrix[0] *= 0.5
     # bias_matrix[0][:, 0] *= 0.5
     # bias_matrix[1][:, 0] *= 0.5
 
-    tram = TRAM(lagtime=1, connectivity="BAR_variance", maxiter=100)
+    tram = TRAM(lagtime=1, connectivity="BAR_variance", connectivity_factor=1, maxiter=100)
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
