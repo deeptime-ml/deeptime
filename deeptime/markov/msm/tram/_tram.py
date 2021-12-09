@@ -6,9 +6,7 @@ from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
 from deeptime.markov._tram_bindings import tram
-# from _tram_bindings import tram
-from deeptime.markov import _markov_bindings, compute_connected_sets
-from ._cset import *
+
 
 import numpy as np
 import scipy as sp
@@ -354,13 +352,8 @@ class TRAM(_MSMBaseEstimator):
 
     def _restrict_to_connected_set(self, dtrajs):
         """
-        Find the largest connected set for each thermodynamic state and restrict the count matrices and dtrajs to the
-        connected set. Count matrices will only contain counts from the largest connected set. All dtraj samples not in
-        the largest connected set will be set to -1.
-
-
-        hey are full-sized, containing all states, also those that are not in the connected set.
-        this is because the current c++ tram implementation expects the same size matrix for each therm. stat.
+        Restrict the count matrices and dtrajs to the connected set. Count matrices will only contain counts from the
+        largest connected set. All dtraj samples not in the largest connected set will be set to -1.
 
         Parameters
         ----------
@@ -387,24 +380,33 @@ class TRAM(_MSMBaseEstimator):
 
         dtrajs_connected = []
 
+        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
+        self.count_models = []
+
         for i in range(self.n_therm_states):
             # Get largest connected set
-
             # Assign -1 to all indices not in the submodel.
             restricted_dtraj = self.largest_connected_set.transform_discrete_trajectories_to_submodel(dtrajs[i])
-            # Convert the newly assigned indices back to the original state symbols
-            restricted_dtraj_symb = self.largest_connected_set.states_to_symbols(restricted_dtraj)
+            # The transformation has converted all indices to the state indices of the submodel. We want the original
+            # indices (but with the -1's). Convert the newly assigned indices back to the original state symbols
+            restricted_dtraj = self.largest_connected_set.states_to_symbols(restricted_dtraj)
+            dtrajs_connected.append(restricted_dtraj)
 
-            dtrajs_connected.append(restricted_dtraj_symb)
+            samples_in_connected_set = restricted_dtraj[restricted_dtraj >= 0]
+            if len(samples_in_connected_set) == 0:
+                # there are no samples from this state that belong to the connected set. Make an empty count model.
+                self.count_models.append(TransitionCountModel(np.zeros(self.n_markov_states, self.n_markov_states)))
+            else:
+                # make a counts model for the samples that belong to the connected set.
+                traj_counts_model = estimator.fit_fetch(samples_in_connected_set)
+                # create index for all elements in transition matrix
+                xs, ys = np.meshgrid(traj_counts_model.state_symbols, traj_counts_model.state_symbols)
 
-            connected_states = self.largest_connected_set.state_symbols
+                # place submodel counts in our full-sized count matrices
+                transition_counts[i, xs, ys] = traj_counts_model.count_matrix
+                state_counts[i, traj_counts_model.state_symbols] = traj_counts_model.state_histogram
 
-            # create index for all elements in transition matrix
-            xs, ys = np.meshgrid(connected_states, connected_states)
-
-            # place submodel counts in our full-sized count matrices
-            transition_counts[i, xs, ys] = self.largest_connected_set.count_matrix
-            state_counts[i, connected_states] = self.largest_connected_set.state_histogram
+                self.count_models.append(traj_counts_model)
 
         return transition_counts, state_counts, dtrajs_connected
 
@@ -415,13 +417,12 @@ class TRAM(_MSMBaseEstimator):
         transition_matrices_connected = []
         stationary_distributions = []
         for i, msm in enumerate(transition_matrices):
-            states = self.largest_connected_set.states
+            states = self.count_models[i].states
             transition_matrices_connected.append(transition_matrices[i][states][:, states])
             pi = np.exp(self.therm_state_energies[i] - self.biased_conf_energies[i, :])[states]
             pi = pi / pi.sum()
             stationary_distributions.append(pi)
 
         self._model = MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
-                                                 reversible=True, count_models=[self.largest_connected_set] * len(
-                transition_matrices_connected),
+                                                 reversible=True, count_models=self.count_models,
                                                  transition_matrix_tolerance=1e-8)
