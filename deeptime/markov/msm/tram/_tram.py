@@ -174,8 +174,8 @@ class TRAM(_MSMBaseEstimator):
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
-        dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set()
-
+        dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set(ttrajs, dtrajs,
+                                                                                              bias_matrices)
         # TODO: make progress bar
         def callback(iteration, error, log_likelihood):
             print(f"Iteration {iteration}: error {error}. log_L: {log_likelihood}")
@@ -256,7 +256,10 @@ class TRAM(_MSMBaseEstimator):
 
         # find dimensions
         self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
+
         if ttrajs is None or len(ttrajs) == 0:
+            # ensure it's None. empty tuple will break the call to _tram_bindings
+            ttrajs = None
             self.n_therm_states = len(dtrajs)
 
         # dimensionality checks
