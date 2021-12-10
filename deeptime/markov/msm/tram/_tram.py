@@ -129,24 +129,29 @@ class TRAM(_MSMBaseEstimator):
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.save_convergence_info = save_convergence_info
-        self.largest_connected_set = None
-        self.tram_estimator = None
+        self._largest_connected_set = None
+        self._tram_estimator = None
 
     @property
     def therm_state_energies(self) -> Optional:
-        if self.tram_estimator is not None:
-            return self.tram_estimator.therm_state_energies()
+        if self._tram_estimator is not None:
+            return self._tram_estimator.therm_state_energies()
         return None
 
     @property
-    def biased_conf_energies(self):
-        if self.tram_estimator is not None:
-            return self.tram_estimator.biased_conf_energies()
+    def _biased_conf_energies(self):
+        if self._tram_estimator is not None:
+            return self._tram_estimator.biased_conf_energies()
 
     @property
     def markov_state_energies(self):
-        if self.tram_estimator is not None:
-            return self.tram_estimator.markov_state_energies()
+        if self._tram_estimator is not None:
+            return self._tram_estimator.markov_state_energies()
+
+    @property
+    def _transition_matrices(self):
+        if self._tram_estimator is not None:
+            return self._tram_estimator.transition_matrices()
 
     def fetch_model(self) -> Optional[MarkovStateModelCollection]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -164,7 +169,7 @@ class TRAM(_MSMBaseEstimator):
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
         # count all transitions and state counts, without restricting to connected sets
-        self.largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
+        self._largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
 
         # restrict input data to largest connected set
         dtrajs = self._restrict_to_connected_set(dtrajs)
@@ -176,8 +181,8 @@ class TRAM(_MSMBaseEstimator):
             print(f"Iteration {iteration}: error {error}. log_L: {log_likelihood}")
 
         tram_input = tram.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
-        self.tram_estimator = tram.TRAM(tram_input)
-        self.tram_estimator.estimate(10, np.float64(1e-8), True, callback)
+        self._tram_estimator = tram.TRAM(tram_input)
+        self._tram_estimator.estimate(10, np.float64(1e-8), True, callback)
 
         self._to_markov_model()
 
@@ -372,10 +377,10 @@ class TRAM(_MSMBaseEstimator):
         for i in range(self.n_therm_states):
             # Get largest connected set
             # Assign -1 to all indices not in the submodel.
-            restricted_dtraj = self.largest_connected_set.transform_discrete_trajectories_to_submodel(dtrajs[i])
+            restricted_dtraj = self._largest_connected_set.transform_discrete_trajectories_to_submodel(dtrajs[i])
             # The transformation has converted all indices to the state indices of the submodel. We want the original
             # indices (but with the -1's). Convert the newly assigned indices back to the original state symbols
-            restricted_dtraj = self.largest_connected_set.states_to_symbols(restricted_dtraj)
+            restricted_dtraj = self._largest_connected_set.states_to_symbols(restricted_dtraj)
             dtrajs_connected.append(restricted_dtraj)
 
         return dtrajs_connected
@@ -406,17 +411,14 @@ class TRAM(_MSMBaseEstimator):
                 self.count_models.append(traj_counts_model)
         return state_counts, transition_counts
 
-
     def _to_markov_model(self):
-        # compute models
-        transition_matrices = self.tram_estimator.transition_matrices()
-
         transition_matrices_connected = []
         stationary_distributions = []
-        for i, msm in enumerate(transition_matrices):
+
+        for i, msm in enumerate(self._transition_matrices):
             states = self.count_models[i].states
-            transition_matrices_connected.append(transition_matrices[i][states][:, states])
-            pi = np.exp(self.therm_state_energies[i] - self.biased_conf_energies[i, :])[states]
+            transition_matrices_connected.append(self._transition_matrices[i][states][:, states])
+            pi = np.exp(self.therm_state_energies[i] - self._biased_conf_energies[i, :])[states]
             pi = pi / pi.sum()
             stationary_distributions.append(pi)
 
