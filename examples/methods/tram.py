@@ -85,7 +85,7 @@ def main():
     # Umbrella/Hamiltonian/temperature).
     model = tram.fit_fetch((dtrajs, bias_matrix))
 
-    plot_contour_with_colourbar(tram.biased_conf_energies)
+    plot_contour_with_colourbar(tram._biased_conf_energies)
 
     plt.plot(tram.therm_state_energies)
     plt.show()
