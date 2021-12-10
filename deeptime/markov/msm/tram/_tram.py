@@ -168,13 +168,7 @@ class TRAM(_MSMBaseEstimator):
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
-        # count all transitions and state counts, without restricting to connected sets
-        self._largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
-
-        # restrict input data to largest connected set
-        dtrajs = self._restrict_to_connected_set(dtrajs)
-
-        state_counts, transition_counts = self._make_count_models(dtrajs)
+        dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set()
 
         # TODO: make progress bar
         def callback(iteration, error, log_likelihood):
@@ -182,7 +176,7 @@ class TRAM(_MSMBaseEstimator):
 
         tram_input = tram.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
         self._tram_estimator = tram.TRAM(tram_input)
-        self._tram_estimator.estimate(10, np.float64(1e-8), True, callback)
+        self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
 
         self._to_markov_model()
 
@@ -191,12 +185,11 @@ class TRAM(_MSMBaseEstimator):
     def _preprocess(self, data):
         dtrajs, bias_matrices, ttrajs = self._unpack_input(data)
 
-        do_replica_exchange_step = True if ttrajs is None or len(ttrajs) == 0 else False
-
         ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
 
-        if do_replica_exchange_step:
+        if ttrajs is not None and len(ttrajs) > 0:
             self._handle_replica_exchange_data(ttrajs, dtrajs, bias_matrices)
+
         return ttrajs, dtrajs, bias_matrices
 
     def _unpack_input(self, data):
@@ -248,15 +241,8 @@ class TRAM(_MSMBaseEstimator):
         bias_matrices: List(ndarray(n,m)), float64
             The validated bias matrices converted to a list of contiguous numpy arrays.
         """
-
-        # If we were not given ttrajs
-        if ttrajs is None or len(ttrajs) == 0:
-            ttrajs = [np.asarray([i] * len(traj)) for i, traj in enumerate(dtrajs)]
-
         # shape and type checks
-        assert len(ttrajs) == len(dtrajs) == len(bias_matrices)
-        for t in ttrajs:
-            types.ensure_integer_array(t, ndim=1)
+        assert len(dtrajs) == len(bias_matrices)
         for d in dtrajs:
             types.ensure_integer_array(d, ndim=1)
         for b in bias_matrices:
@@ -264,17 +250,31 @@ class TRAM(_MSMBaseEstimator):
 
         # find dimensions
         self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
-        self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
+        if ttrajs is None or len(ttrajs) == 0:
+            self.n_therm_states = len(dtrajs)
 
         # dimensionality checks
-        for t, d, b, in zip(ttrajs, dtrajs, bias_matrices):
-            assert t.shape[0] == d.shape[0] == b.shape[0]
-            assert b.shape[1] == self.n_therm_states
+        for d, b, in zip(dtrajs, bias_matrices):
+            assert d.shape[0] == b.shape[0]
 
         # cast types and change axis order if needed
-        ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
         dtrajs = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs]
         bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in bias_matrices]
+
+        # If we were given ttrajs, do the same checks for those.
+        if ttrajs is not None and len(ttrajs) > 0:
+            self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
+
+            assert len(ttrajs) == len(dtrajs)
+
+            for t in ttrajs:
+                types.ensure_integer_array(t, ndim=1)
+
+            for t, b in zip(ttrajs, bias_matrices):
+                assert t.shape[0] == b.shape[0]
+                assert b.shape[1] == self.n_therm_states
+
+            ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
 
         return ttrajs, dtrajs, bias_matrices
 
@@ -291,6 +291,16 @@ class TRAM(_MSMBaseEstimator):
 
         # want to know: for each trajectory --> start and end of fragments ++++ what therm state do the fragments belong to?
         pass
+
+    def _get_counts_from_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
+        # count all transitions and state counts, without restricting to connected sets
+        self._largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
+
+        # restrict input data to largest connected set
+        dtrajs = self._restrict_to_connected_set(dtrajs)
+
+        state_counts, transition_counts = self._make_count_models(dtrajs)
+        return dtrajs, state_counts, transition_counts
 
     def _find_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)

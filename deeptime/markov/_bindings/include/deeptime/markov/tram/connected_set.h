@@ -23,7 +23,7 @@ using transitionVector = std::tuple<stateVector, stateVector>;
 
 
 template<typename dtype>
-transitionVector getStateTransitions(const DTrajs &ttrajs, const DTrajs &dtrajs,
+transitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
                     const std::vector<np_array_nfc<dtype>> &biasMatrices,
                     const np_array<std::int32_t> &stateCounts,
                     std::int32_t nThermStates,
@@ -38,7 +38,9 @@ transitionVector getStateTransitions(const DTrajs &ttrajs, const DTrajs &dtrajs,
 
     // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
     for (std::size_t i = 0; i < nConfStates; ++i) {
-        auto sampleIndicesIn_i = getIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
+
+        // Get all indices in all trajectories of all samples that were binned in markov state i.
+        IndexList sampleIndicesIn_i = getIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
 
         for (std::size_t k = 0; k < nThermStates; ++k) {
             // therm state must have counts in markov state i
@@ -61,8 +63,26 @@ transitionVector getStateTransitions(const DTrajs &ttrajs, const DTrajs &dtrajs,
     return std::tuple(i_s, j_s);
 }
 
+IndexList getIndexOfSamplesInMarkovState(size_t i, const DTrajs &dtrajs, int32_t nThermStates) {
+    IndexList indices (nThermStates);
+
+    for (std::size_t j = 0; j < dtrajs.size(); ++j) {
+        std::size_t trajLength = dtrajs[j].size();
+
+        auto dtraj = dtrajs[j].template unchecked<1>();
+
+        for (std::int32_t n = 0; n < trajLength; ++n) {
+            if (dtraj[n] == i) {
+                // markov state i sampled in therm state j can be found at bias matrix index (j, n,)
+                indices[j].push_back({j, n});
+            }
+        }
+    }
+    return indices;
+}
+
 IndexList getIndexOfSamplesInMarkovState(std::size_t i, const DTrajs &ttrajs, const DTrajs &dtrajs,
-                                                    std::int32_t nThermStates) {
+                                         std::int32_t nThermStates) {
     IndexList indices (nThermStates);
 
     for (std::size_t j = 0; j < dtrajs.size(); ++j) {
@@ -82,35 +102,16 @@ IndexList getIndexOfSamplesInMarkovState(std::size_t i, const DTrajs &ttrajs, co
     return indices;
 }
 
-//
-//template<typename dtype>
-//std::tuple<SampleListFromTwoStates<dtype>, SampleListFromTwoStates<dtype>> getSamplesFromStates(
-//        std::size_t i, std::size_t k, std::size_t l, const DTrajs &ttrajs, const DTrajs &dtrajs,
-//        const std::vector<np_array_nfc<dtype>> &biasMatrices) {
-//
-//    // find all bias energy values for all samples in markov state i sampled at state k and l.
-//    // store them in two vectors, depending on the thermodynamic state they were sampled at.
-//    SampleListFromTwoStates<dtype> samplesFromK;
-//    SampleListFromTwoStates<dtype> samplesFromL;
-//
-//    for (std::size_t j = 0; j < dtrajs.size(); ++j) {
-//        std::size_t trajLength = dtrajs[j].size();
-//
-//        auto dtraj = dtrajs[j].template unchecked<1>();
-//        auto ttraj = ttrajs[j].template unchecked<1>();
-//
-//        for (std::size_t n = 0; n < trajLength; ++n) {
-//            if (dtraj[n] == i && ttraj[n] == k) {
-//                samplesFromK.push_back({biasMatrices[j].at(n, k), biasMatrices[j].at(n, l)});
-//            }
-//            if (dtraj[n] == i && ttraj[n] == l) {
-//                samplesFromL.push_back({biasMatrices[j].at(n, k), biasMatrices[j].at(n, l)});
-//            }
-//        }
-//    }
-//    return std::make_tuple(samplesFromK, samplesFromL);
-//}
-//
+IndexList getIndexOfSamplesInMarkovState (std::size_t i, const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
+                                          std::int32_t nThermStates) {
+    if (ttrajs) {
+        return getIndexOfSamplesInMarkovState(i, *ttrajs, dtrajs, nThermStates);
+    }
+    else {
+        return getIndexOfSamplesInMarkovState(i, dtrajs, nThermStates);
+    }
+}
+
 
 template<typename dtype>
 bool hasOverlapPostHocReplicaExchange(std::size_t k, std::size_t l, IndexList &sampleIndicesIn_i,

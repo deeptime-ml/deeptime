@@ -13,13 +13,16 @@ class tram_estimator_mock():
         self.transition_matrices = lambda: transition_matrices / np.sum(transition_matrices, axis=-1, keepdims=True)
 
 
-
-def get_connected_set_from_dtrajs_input(dtrajs, tram):
+def get_connected_set_from_dtrajs_input(dtrajs, tram, has_ttrajs=True):
     tram.n_markov_states = np.max(np.concatenate(dtrajs)) + 1
     tram.n_therm_states = len(dtrajs)
 
     dtrajs = [np.asarray(traj) for traj in dtrajs]
-    ttrajs = np.asarray([[i] * len(traj) for i, traj in enumerate(dtrajs)])
+    if has_ttrajs:
+        ttrajs = np.asarray([[i] * len(traj) for i, traj in enumerate(dtrajs)])
+    else:
+        ttrajs = None
+
     bias_matrices = [np.ones((len(dtrajs[i]), len(dtrajs))) for i in range(len(dtrajs))]
 
     return tram._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
@@ -35,9 +38,10 @@ def get_connected_set_from_dtrajs_input(dtrajs, tram):
      ([[1, 2, 3, 2], [3, 4, 3, 4]], [2, 3, 4]),
      ([[1, 2, 1, 3, 2, 7, 7, 7, 6], [3, 4, 3, 3, 4, 5, 6, 6, 5, 4]], [1, 2, 3, 4, 5, 6, 7])],
 )
-def test_connected_set_summed_count_matrix(test_input, expected):
+@pytest.mark.parametrize("has_ttrajs", [True, False])
+def test_connected_set_summed_count_matrix(test_input, has_ttrajs, expected):
     tram = TRAM(lagtime=1, count_mode='sliding', connectivity='summed_count_matrix')
-    cset = get_connected_set_from_dtrajs_input(test_input, tram)
+    cset = get_connected_set_from_dtrajs_input(test_input, tram, has_ttrajs)
     assert np.array_equal(cset.state_symbols, np.asarray(expected))
 
 
@@ -51,9 +55,10 @@ def test_connected_set_summed_count_matrix(test_input, expected):
      ([[1, 2, 1, 3, 2, 7, 7, 6], [3, 4, 3, 3, 4, 5, 6, 5, 4]], [1, 2, 3, 4, 5, 6]),
      ([[1, 2, 3, 2, 1], [3, 5, 6, 5, 3], [3, 5, 6, 5, 3]], [1, 2, 3, 5, 6])]
 )
-def test_connected_set_post_hoc_RE(test_input, expected):
+@pytest.mark.parametrize("has_ttrajs", [True, False])
+def test_connected_set_post_hoc_RE(test_input, has_ttrajs, expected):
     tram = TRAM(lagtime=1, count_mode='sliding', connectivity='post_hoc_RE')
-    cset = get_connected_set_from_dtrajs_input(test_input, tram)
+    cset = get_connected_set_from_dtrajs_input(test_input, tram, has_ttrajs)
     assert np.array_equal(cset.state_symbols, np.asarray(expected))
 
 
@@ -65,10 +70,11 @@ def test_connected_set_post_hoc_RE(test_input, expected):
      ([[1, 2, 1, 3, 2, 7, 7, 6], [3, 4, 3, 3, 4, 5, 6, 5, 4]], [3, 4, 5, 6]),
      ([[1, 2, 3, 2, 1], [3, 5, 6, 5, 3], [3, 5, 6, 5, 3]], [1, 2, 3])]
 )
-def test_connected_set_post_hoc_RE_no_connectivity(test_input, expected):
+@pytest.mark.parametrize("has_ttrajs", [True, False])
+def test_connected_set_post_hoc_RE_no_connectivity(test_input, has_ttrajs, expected):
     tram = TRAM(lagtime=1, count_mode='sliding', connectivity='post_hoc_RE')
     tram.connectivity_factor = 0.0
-    cset = get_connected_set_from_dtrajs_input(test_input, tram)
+    cset = get_connected_set_from_dtrajs_input(test_input, tram, has_ttrajs)
     assert np.array_equal(cset.state_symbols, np.asarray(expected))
 
 
@@ -78,14 +84,14 @@ def test_connected_set_post_hoc_RE_no_connectivity(test_input, expected):
      ([[1, 2, 3, 2, 1], [3, 4, 5, 4, 4]], [1, 2, 3]),
      ([[1, 2, 3, 2, 1], [4, 3, 4, 5, 4]], [1, 2, 3, 4, 5]),
      ([[1, 2, 3], [3, 4, 5], [5, 3, 2]], [3]),
-     # ([[0, 1, 2, 3]], []),
      ([[1, 2, 3, 2], [3, 1, 2]], [2, 3]),
      ([[1, 2, 1, 3, 2, 7, 7, 6], [3, 4, 3, 3, 4, 5, 6, 5, 4]], [3, 4, 5, 6]),
      ([[1, 2, 3, 2, 1], [3, 5, 6, 5, 3], [3, 5, 6, 5, 3]], [1, 2, 3, 5, 6])]
 )
-def test_connected_set_BAR_variance(test_input, expected):
+@pytest.mark.parametrize("has_ttrajs", [True, False])
+def test_connected_set_BAR_variance(test_input, has_ttrajs, expected):
     tram = TRAM(lagtime=1, count_mode='sliding', connectivity='BAR_variance', connectivity_factor=1.0)
-    cset = get_connected_set_from_dtrajs_input(test_input, tram)
+    cset = get_connected_set_from_dtrajs_input(test_input, tram, has_ttrajs)
     assert np.array_equal(cset.state_symbols, np.asarray(expected))
 
 
@@ -97,10 +103,11 @@ def test_connected_set_BAR_variance(test_input, expected):
      ([[1, 2, 1, 3, 2, 7, 7, 6], [3, 4, 3, 3, 4, 5, 6, 5, 4]], [3, 4, 5, 6]),
      ([[1, 2, 3, 2, 1], [3, 5, 6, 5, 3], [3, 5, 6, 5, 3]], [1, 2, 3])]
 )
-def test_connected_set_BAR_variance_no_connectivity(test_input, expected):
+@pytest.mark.parametrize("has_ttrajs", [True, False])
+def test_connected_set_BAR_variance_no_connectivity(test_input, has_ttrajs, expected):
     tram = TRAM(lagtime=1, count_mode='sliding', connectivity='BAR_variance')
     tram.connectivity_factor = 0.0
-    cset = get_connected_set_from_dtrajs_input(test_input, tram)
+    cset = get_connected_set_from_dtrajs_input(test_input, tram, has_ttrajs)
     assert np.array_equal(cset.state_symbols, np.asarray(expected))
 
 
