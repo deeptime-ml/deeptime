@@ -111,14 +111,18 @@ def test_connected_set_BAR_variance_no_connectivity(test_input, has_ttrajs, expe
     assert np.array_equal(cset.state_symbols, np.asarray(expected))
 
 
-def test_restrict_to_connected_set():
+@pytest.mark.parametrize(
+    "test_input,expected",
+    [([[0, 1, 2, 3, 4, 5, 1], [2, 4, 2, 1, 3, 1, 4]], [[-1, 1, 2, 3, -1, -1, 1], [2, -1, 2, 1, 3, 1, -1]])]
+)
+def test_restrict_to_connected_set(test_input, expected):
     tram = TRAM()
-    input = np.asarray([[0, 1, 2, 3, 4, 5, 1], [2, 4, 2, 1, 3, 1, 4]])
+    input = np.asarray(test_input)
     tram.n_therm_states = len(input)
     counts_model = TransitionCountEstimator(1, 'sliding').fit_fetch(input)
     tram._largest_connected_set = counts_model.submodel([1, 2, 3])
     output = tram._restrict_to_connected_set(input)
-    assert np.array_equal(output, [[-1, 1, 2, 3, -1, -1, 1], [2, -1, 2, 1, 3, 1, -1]])
+    assert np.array_equal(output, expected)
 
 
 def test_make_count_models():
@@ -135,7 +139,6 @@ def test_make_count_models():
     assert np.array_equal(tram.count_models[2].state_symbols, [0, 1, 2, 3, 4])
     assert np.all(state_counts[2] == 0)
 
-
 def test_to_markov_model():
     tram = TRAM()
     tram.n_markov_states = 3
@@ -146,5 +149,7 @@ def test_to_markov_model():
     tram._to_markov_model()
     model = tram.fetch_model()
     assert isinstance(model, MarkovStateModelCollection)
-    assert ((model.transition_matrix == tram._transition_matrices[0]).all())
-    assert (model.n_connected_msms == tram.n_therm_states)
+    assert (model.transition_matrix == tram._transition_matrices[0]).all()
+    assert model.n_connected_msms == tram.n_therm_states
+    model.select(1)
+    assert (model.transition_matrix == tram._transition_matrices[1]).all()
