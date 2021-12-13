@@ -76,7 +76,7 @@ def test_estimator(fixed_seed):
     # set up the lobe
     lobe = nn.Sequential(nn.Linear(10, 1), nn.Tanh())
     # train the lobe
-    opt = torch.optim.Adam(lobe.parameters(), lr=5e-4)
+    opt = torch.optim.Adam(lobe.parameters(), lr=1e-2)
     for _ in range(50):
         for X, Y in deeptime.util.data.timeshifted_split(obs, lagtime=1, chunksize=512):
             opt.zero_grad()

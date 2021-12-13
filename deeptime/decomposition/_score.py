@@ -6,7 +6,7 @@ from threadpoolctl import threadpool_limits
 
 from ..base import Estimator
 from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
-from ..util.parallel import joining
+from ..util.parallel import joining, multiprocessing_context
 
 
 def vamp_score(koopman_model, r: Union[float, str],
@@ -293,8 +293,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
     args = [(i, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state, n_jobs) for i in range(n)]
 
     if n_jobs > 1:
-        from multiprocessing import get_context
-        with joining(get_context("forkserver").Pool(processes=n_jobs)) as pool:
+        with joining(multiprocessing_context().Pool(processes=n_jobs)) as pool:
             for result in pool.imap_unordered(_worker, args):
                 fold, score = result
                 scores[fold] = score
