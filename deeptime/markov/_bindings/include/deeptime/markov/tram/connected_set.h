@@ -21,56 +21,6 @@ using OverlapFunction = std::function<bool(std::size_t, std::size_t, IndexList &
 using stateVector = std::vector<std::size_t>;
 using transitionVector = std::tuple<stateVector, stateVector>;
 
-
-template<typename dtype>
-transitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
-                    const std::vector<np_array_nfc<dtype>> &biasMatrices,
-                    const np_array<std::int32_t> &stateCounts,
-                    std::int32_t nThermStates,
-                    std::int32_t nMarkovStates,
-                    dtype connectivityFactor,
-                    OverlapFunction<dtype> overlapFunction) {
-    // Find all possible transition paths between thermodynamic states. A possible path between thermodynamic states
-    // occurs when a transition is possible from [k, i] to [l, i], i.e. we are looking for thermodynamic state pairs
-    // that overlap within Markov state i.
-    // Whether two thermodynamic states k and l overlap in Markov state i is determined by the samples from k and l that
-    // were binned into Markov state i, according to some overlap criterion defined by the overlapFunction and
-    // connectivityFactor.
-
-    // i_s and j_s will hold all possible transition pairs: (i_s[n], j_s[n]) is one possible transition.
-    // The therm./Markov state index in unraveled to one dimension, i.e. markov state i in therm state k is represented
-    // in these stateVectors as k * nMarkovStates + i
-    stateVector i_s;
-    stateVector j_s;
-
-    // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
-    for (std::size_t i = 0; i < nMarkovStates; ++i) {
-
-        // Get all indices in all trajectories of all samples that were binned in markov state i.
-        IndexList sampleIndicesIn_i = getIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
-
-        for (std::int32_t k = 0; k < nThermStates; ++k) {
-            // therm state must have counts in markov state i
-            if (stateCounts.at(k, i) > 0) {
-                for (std::int32_t l = 0; l < nThermStates; ++l) {
-                    // therm state must have counts in markov state i
-                    if (k != l && stateCounts.at(l, i) > 0)  {
-                        // check if states k and l overlap at Markov state i.
-                        if (overlapFunction(k, l, sampleIndicesIn_i, biasMatrices, connectivityFactor)) {
-                            // push the unraveled index of the therm state transition to the transition list.
-                            auto x = i + k * nMarkovStates;
-                            auto y = i + l * nMarkovStates;
-                            i_s.push_back(x);
-                            j_s.push_back(y);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return std::tuple(i_s, j_s);
-}
-
 IndexList getIndexOfSamplesInMarkovState(size_t i, const DTrajs &dtrajs, int32_t nThermStates) {
     IndexList indices (nThermStates);
 
@@ -145,6 +95,28 @@ bool hasOverlapPostHocReplicaExchange(std::size_t k, std::size_t l, IndexList &s
 
 
 template<typename dtype>
+extern dtype
+_bar_df(dtype db_IJ[], std::size_t L1, dtype db_JI[], std::size_t L2,
+        np_array_nfc<dtype> scratch) {
+
+    py::buffer_info scratch_buf = scratch.request();
+    auto *scratch_ptr = (dtype *) scratch_buf.ptr;
+
+    dtype ln_avg1;
+    dtype ln_avg2;
+    for (std::size_t i = 0; i < L1; i++) {
+        scratch_ptr[i] = db_IJ[i] > 0 ? 0 : db_IJ[i];
+    }
+    ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L1);
+    for (std::size_t i = 0; i < L1; i++) {
+        scratch_ptr[i] = db_JI[i] > 0 ? 0 : db_JI[i];
+    }
+    ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L2);
+    return ln_avg2 - ln_avg1;
+}
+
+
+template<typename dtype>
 bool hasOverlapBarVariance(std::size_t k, std::size_t l, IndexList &sampleIndicesIn_i,
                            const std::vector<np_array_nfc<dtype>> &biasMatrices,
                             dtype connectivity_factor) {
@@ -175,23 +147,53 @@ bool hasOverlapBarVariance(std::size_t k, std::size_t l, IndexList &sampleIndice
 }
 
 template<typename dtype>
-extern dtype
-_bar_df(dtype db_IJ[], std::size_t L1, dtype db_JI[], std::size_t L2,
-        np_array_nfc<dtype> scratch) {
+transitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
+                                     const std::vector<np_array_nfc<dtype>> &biasMatrices,
+                                     const np_array<std::int32_t> &stateCounts,
+                                     std::int32_t nThermStates,
+                                     std::int32_t nMarkovStates,
+                                     dtype connectivityFactor,
+                                     OverlapFunction<dtype> overlapFunction) {
+    // Find all possible transition paths between thermodynamic states. A possible path between thermodynamic states
+    // occurs when a transition is possible from [k, i] to [l, i], i.e. we are looking for thermodynamic state pairs
+    // that overlap within Markov state i.
+    // Whether two thermodynamic states k and l overlap in Markov state i is determined by the samples from k and l that
+    // were binned into Markov state i, according to some overlap criterion defined by the overlapFunction and
+    // connectivityFactor.
 
-    py::buffer_info scratch_buf = scratch.request();
-    auto *scratch_ptr = (dtype *) scratch_buf.ptr;
+    // i_s and j_s will hold all possible transition pairs: (i_s[n], j_s[n]) is one possible transition.
+    // The therm./Markov state index in unraveled to one dimension, i.e. markov state i in therm state k is represented
+    // in these stateVectors as k * nMarkovStates + i
+    stateVector i_s;
+    stateVector j_s;
 
-    dtype ln_avg1;
-    dtype ln_avg2;
-    for (std::size_t i = 0; i < L1; i++) {
-        scratch_ptr[i] = db_IJ[i] > 0 ? 0 : db_IJ[i];
+    // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
+    for (std::size_t i = 0; i < nMarkovStates; ++i) {
+
+        // Get all indices in all trajectories of all samples that were binned in markov state i.
+        IndexList sampleIndicesIn_i = getIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
+
+        for (std::int32_t k = 0; k < nThermStates; ++k) {
+            // therm state must have counts in markov state i
+            if (stateCounts.at(k, i) > 0) {
+                for (std::int32_t l = 0; l < nThermStates; ++l) {
+                    // therm state must have counts in markov state i
+                    if (k != l && stateCounts.at(l, i) > 0)  {
+                        // check if states k and l overlap at Markov state i.
+                        if (overlapFunction(k, l, sampleIndicesIn_i, biasMatrices, connectivityFactor)) {
+                            // push the unraveled index of the therm state transition to the transition list.
+                            auto x = i + k * nMarkovStates;
+                            auto y = i + l * nMarkovStates;
+                            i_s.push_back(x);
+                            j_s.push_back(y);
+                        }
+                    }
+                }
+            }
+        }
     }
-    ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L1);
-    for (std::size_t i = 0; i < L1; i++) {
-        scratch_ptr[i] = db_JI[i] > 0 ? 0 : db_JI[i];
-    }
-    ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L2);
-    return ln_avg2 - ln_avg1;
+    return std::tuple(i_s, j_s);
 }
+
 }
+
