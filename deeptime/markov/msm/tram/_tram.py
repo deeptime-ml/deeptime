@@ -177,6 +177,7 @@ class TRAM(_MSMBaseEstimator):
 
         dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set(ttrajs, dtrajs,
                                                                                               bias_matrices)
+
         # TODO: make progress bar
         def callback(iteration, error, log_likelihood):
             print(f"Iteration {iteration}: error {error}. log_L: {log_likelihood}")
@@ -291,20 +292,36 @@ class TRAM(_MSMBaseEstimator):
         # count all transitions and state counts, without restricting to connected sets
         self._largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
 
-        # restrict input data to largest connected set
+        # get rid of any state indices that do not belong to the largest connected set
         dtrajs = self._restrict_to_connected_set(dtrajs)
 
-        trajectory_fragment_mapping = None
-        if ttrajs is not None and len(ttrajs) > 0:
-            # replica exchange data means that the trajectories to not correspond 1:1 to thermodynamic states.
-            # get a mapping from trajectory segments to thermodynamic states
-            fragment_indices = self._get_trajectory_mapping(ttrajs)
-
-        state_counts, transition_counts = self._make_count_models(dtrajs, fragment_indices)
+        # get all trajectory fragments without any negative state indices
+        dtraj_fragments = self._get_trajectory_fragments(dtrajs, ttrajs)
+        # ... and convert those into count matrices.
+        state_counts, transition_counts = self._make_count_models(dtraj_fragments)
 
         return dtrajs, state_counts, transition_counts
 
-    def _get_trajectory_mapping(self, ttrajs):
+    def _get_trajectory_fragments(self, dtrajs, ttrajs):
+        if ttrajs is None or len(ttrajs) == 0:
+            # No ttrajs were given. We assume each trajectory in dtrajs was sampled in a distinct thermodynamic state.
+            # The thermodynamic state index equals the trajectory index, and the dtrajs are unchanged.
+            return [dtrajs[k][dtrajs[k] >= 0] for k in range(self.n_therm_states)]
+
+        # replica exchange data means that the trajectories to not correspond 1:1 to thermodynamic states.
+        # get a mapping from trajectory segments to thermodynamic states
+        fragment_indices = self._get_trajectory_fragment_mapping(ttrajs)
+
+        fragments = []
+        # for each them. state k, gather all trajectory fragments that were sampled at that state.
+        for k in range(self.n_therm_states):
+            # take the fragments based on the list of indices. Exclude all values that are less than zero. They don't
+            # belong in the connected set.
+            fragments.append(np.asarray([dtrajs[traj_idx][start:stop][dtrajs[traj_idx][start:stop] >= 0]
+                                         for (traj_idx, start, stop) in fragment_indices[k]]))
+        return fragments
+
+    def _get_trajectory_fragment_mapping(self, ttrajs):
         """ define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
             At every RE swap point, the trajectory is sliced, so that swap point occurs as a trajectory start.
 
@@ -316,17 +333,13 @@ class TRAM(_MSMBaseEstimator):
         Returns
         -------
         fragment_indices: List(List(Tuple(Int)))
-            fragment_indices[k][i] gives a tuple of indices that define the i-th fragment sampled at thermodynamic state
-            k. the tuple consists of (traj_idx, start, stop) where traj_index is the index of the trajectory the
-            fragment can be found at, start is the start index of the trajectory, and stop the end index (exclusive) of
-            the fragment.
+            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
+            that thermodynamic state.
+            fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k. The tuple consists of
+            (traj_idx, start, stop) where traj_index is the index of the trajectory the fragment can be found at, start
+            is the start index of the trajectory, and stop the end index (exclusive) of the fragment.
+
         """
-
-        # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(therm_state_sequences_full)
-        # trajectory_fragments = [[markov_state_sequences[tidx][start:end] for tidx, start, end in mapping_therm]
-        #                               for mapping_therm in trajectory_fragment_mapping]
-
-        # want to know: for each trajectory --> start and end of fragments ++++ what therm state do the fragments belong to?
         return tram.find_trajectory_fragment_indices(ttrajs, self.n_therm_states)
 
     def _find_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
@@ -405,18 +418,20 @@ class TRAM(_MSMBaseEstimator):
         """
         dtrajs_connected = []
 
-        for i in range(self.n_therm_states):
+        for k in range(self.n_therm_states):
             # Get largest connected set
             # Assign -1 to all indices not in the submodel.
-            restricted_dtraj = self._largest_connected_set.transform_discrete_trajectories_to_submodel(dtrajs[i])
+            restricted_dtraj = self._largest_connected_set.transform_discrete_trajectories_to_submodel(dtrajs[k])
+
             # The transformation has converted all indices to the state indices of the submodel. We want the original
-            # indices (but with the -1's). Convert the newly assigned indices back to the original state symbols
+            # indices. Convert the newly assigned indices back to the original state symbols
             restricted_dtraj = self._largest_connected_set.states_to_symbols(restricted_dtraj)
+
             dtrajs_connected.append(restricted_dtraj)
 
         return dtrajs_connected
 
-    def _make_count_models(self, dtrajs, trajectory_fragment_mapping):
+    def _make_count_models(self, dtraj_fragments):
         """ Construct a TransitionCountModel for each thermodynamic state based on the dtrajs, and store in
         self.count_models.
         Based on each TransitionCountModel, construct state_count and transition_count matrices that contain the counts
@@ -429,6 +444,13 @@ class TRAM(_MSMBaseEstimator):
         ----------
         dtrajs: list(ndarray(n))
            the discrete trajectories. The dtrajs should have already been restricted to the largest connected set.
+
+        fragment_indices: List(List(Tuple(Int)))
+            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
+            that thermodynamic state.
+            fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k. The tuple consists of
+            (traj_idx, start, stop) where traj_index is the index of the trajectory the fragment can be found at, start
+            is the start index of the trajectory, and stop the end index (exclusive) of the fragment.
 
         Returns
         -------
@@ -446,21 +468,20 @@ class TRAM(_MSMBaseEstimator):
         state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.intc)
 
         self.count_models = []
-        for i in range(self.n_therm_states):
-            samples_in_connected_set = dtrajs[i][dtrajs[i] >= 0]
+        for k in range(self.n_therm_states):
 
-            if len(samples_in_connected_set) == 0:
+            if len(dtraj_fragments[k]) == 0:
                 # there are no samples from this state that belong to the connected set. Make an empty count model.
                 self.count_models.append(TransitionCountModel(np.zeros(self.n_markov_states, self.n_markov_states)))
             else:
                 # make a counts model for the samples that belong to the connected set.
-                traj_counts_model = estimator.fit_fetch(samples_in_connected_set)
+                traj_counts_model = estimator.fit_fetch(dtraj_fragments[k])
                 # create index for all elements in transition matrix
-                xs, ys = np.meshgrid(traj_counts_model.state_symbols, traj_counts_model.state_symbols)
+                i_s, j_s = np.meshgrid(traj_counts_model.state_symbols, traj_counts_model.state_symbols)
 
                 # place submodel counts in our full-sized count matrices
-                transition_counts[i, xs, ys] = traj_counts_model.count_matrix
-                state_counts[i, traj_counts_model.state_symbols] = traj_counts_model.state_histogram
+                transition_counts[k, i_s, j_s] = traj_counts_model.count_matrix
+                state_counts[k, traj_counts_model.state_symbols] = traj_counts_model.state_histogram
 
                 self.count_models.append(traj_counts_model)
         return state_counts, transition_counts

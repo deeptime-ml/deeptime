@@ -4,6 +4,7 @@ from deeptime.markov.msm.tram import TRAM
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
 
+
 class tram_estimator_mock():
     def __init__(self, n_therm_states, n_markov_states):
         self.therm_state_energies = lambda: np.zeros(n_therm_states)
@@ -125,9 +126,12 @@ def test_restrict_to_connected_set(test_input, expected):
     assert np.array_equal(output, expected)
 
 
-def test_make_count_models():
-    tram = TRAM()
-    input = [np.asarray([-1, 1, 2, 3, -1, -1, 1]), np.asarray([2, -5, 0, 1, 3, 1, 4]), np.asarray([-1, -1, -1, -1])]
+@pytest.mark.parametrize(
+    "lagtime", [1, 3]
+)
+def test_make_count_models(lagtime):
+    tram = TRAM(lagtime=lagtime)
+    input = [np.asarray([1, 1, 2, 3, 1, 1, 1]), np.asarray([2, 0, 0, 1, 3, 1, 4]), np.asarray([2, 2, 2, 2])]
     tram.n_therm_states = len(input)
     tram.n_markov_states = np.max(np.concatenate(input)) + 1
     state_counts, transition_counts = tram._make_count_models(input)
@@ -136,8 +140,11 @@ def test_make_count_models():
     assert transition_counts.shape == (tram.n_therm_states, tram.n_markov_states, tram.n_markov_states)
     assert np.array_equal(tram.count_models[0].state_symbols, [0, 1, 2, 3])
     assert np.array_equal(tram.count_models[1].state_symbols, [0, 1, 2, 3, 4])
-    assert np.array_equal(tram.count_models[2].state_symbols, [0, 1, 2, 3, 4])
-    assert np.all(state_counts[2] == 0)
+    assert np.array_equal(tram.count_models[2].state_symbols, [0, 1, 2])
+    for k in range(tram.n_therm_states):
+        assert transition_counts[k].sum() == len(input[k]) - lagtime
+        assert state_counts[k].sum() == len(input[k])
+
 
 def test_to_markov_model():
     tram = TRAM()
@@ -164,5 +171,21 @@ def test_to_markov_model():
 def test_trajectory_fragments_mapping(test_input, expected):
     tram = TRAM()
     tram.n_therm_states = np.max(np.concatenate(test_input)) + 1
-    mapping = tram._get_trajectory_mapping([np.asarray(inp) for inp in test_input])
+    mapping = tram._get_trajectory_fragment_mapping([np.asarray(inp) for inp in test_input])
     assert mapping == expected
+
+
+@pytest.mark.parametrize(
+    "dtrajs, ttrajs,expected",
+    [([[1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14]],
+      [[0, 0, 0, 1, 0, 0, 1], [0, 0, 1, 1, 0, 1, 1]],
+      [[[1, 2, 3], [4, 5, 6], [8, 9]], [[10, 11], [12, 13, 14]]] )]
+)
+def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
+    tram = TRAM()
+    tram.n_therm_states = np.max(np.concatenate(ttrajs)) + 1
+    mapping = tram._get_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
+                                             [np.asarray(ttraj) for ttraj in ttrajs])
+    for k in range(tram.n_therm_states):
+        assert len(mapping[k]) == len(expected[k])
+        assert np.all([np.array_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))])
