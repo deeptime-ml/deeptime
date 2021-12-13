@@ -147,23 +147,6 @@ def enforce_reversible_on_closed(P):
     return Prev
 
 
-def is_reversible(P):
-    """ Returns if P is reversible on its weakly connected sets """
-    from deeptime.markov.tools.analysis import stationary_distribution, is_transition_matrix
-    # treat each weakly connected set separately
-    sets = compute_connected_sets(P, directed=False)
-    for s in sets:
-        Ps = P[s, :][:, s]
-        if not is_transition_matrix(Ps):
-            return False  # isn't even a transition matrix!
-        pi = stationary_distribution(Ps)
-        X = pi[:, None] * Ps
-        if not np.allclose(X, X.T):
-            return False
-    # survived.
-    return True
-
-
 def stationary_distribution(P, C=None, mincount_connectivity=0):
     """ Simple estimator for stationary distribution for multiple strongly connected sets """
     # can be replaced by deeptime.markov.tools.analysis.stationary_distribution in next msmtools release

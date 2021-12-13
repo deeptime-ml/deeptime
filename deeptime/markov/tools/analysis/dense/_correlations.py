@@ -134,6 +134,7 @@ def time_correlations_direct(P, pi, obs1, obs2=None, times=(1,)):
     f = np.zeros(n_t)
 
     # maximum time > number of rows?
+    use_diagonalization = False
     if times[-1] > P.shape[0]:
         use_diagonalization = True
         R, D, L = rdl_decomposition(P)
@@ -145,8 +146,6 @@ def time_correlations_direct(P, pi, obs1, obs2=None, times=(1,)):
         if not np.any(np.iscomplex(L)):
             L = np.real(L)
         rdl = (R, D, L)
-    else:
-        use_diagonalization = False
 
     if use_diagonalization:
         for i in range(n_t):

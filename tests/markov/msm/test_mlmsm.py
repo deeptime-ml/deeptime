@@ -55,6 +55,23 @@ def test_estimator_params(reversible, statdist, sparse, maxiter, maxerr):
         assert_equal(msm.maxerr, maxerr)
 
 
+def test_fit_with_invalid_args():
+    estimator_without_model = TransitionCountEstimator(lagtime=1, count_mode='sliding')
+
+    with assert_raises(ValueError):
+        MaximumLikelihoodMSM().fit(estimator_without_model)
+    with assert_raises(ValueError):
+        MaximumLikelihoodMSM().fit_from_counts(estimator_without_model)
+    with assert_raises(ValueError):
+        class Bogus:
+            pass
+        MaximumLikelihoodMSM().fit(Bogus())
+    with assert_raises(ValueError):
+        class Bogus:
+            pass
+        MaximumLikelihoodMSM().fit_from_counts(Bogus())
+
+
 def test_weakly_connected_count_matrix():
     count_matrix = np.array([[10, 1, 0, 0], [0, 1, 1, 0], [0, 1, 1, 1], [0, 0, 0, 1]], dtype=np.float32)
     assert_equal(MaximumLikelihoodMSM().fit(count_matrix).fetch_model().n_connected_msms, 3,
