@@ -194,9 +194,6 @@ class TRAM(_MSMBaseEstimator):
 
         ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
 
-        if ttrajs is not None and len(ttrajs) > 0:
-            self._handle_replica_exchange_data(ttrajs)
-
         return ttrajs, dtrajs, bias_matrices
 
     def _unpack_input(self, data):
@@ -290,21 +287,6 @@ class TRAM(_MSMBaseEstimator):
 
         return ttrajs, dtrajs, bias_matrices
 
-    def _handle_replica_exchange_data(self, ttrajs):
-        # TODO:
-        #  1. handle RE case:
-        #     define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
-        #     At every RE swap point, the trajectory is sliced, so that swap point occurs as a trajectory start
-        #  2. Include ttrajs --> don't assume that each dtraj[i] was sampled at thermodynamc state i.
-        # for 1.: do something like this
-        # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(therm_state_sequences_full)
-        # trajectory_fragments = [[markov_state_sequences[tidx][start:end] for tidx, start, end in mapping_therm]
-        #                               for mapping_therm in trajectory_fragment_mapping]
-
-        # want to know: for each trajectory --> start and end of fragments ++++ what therm state do the fragments belong to?
-        trajectory_fragments = tram.find_trajectory_fragment_indices(ttrajs, self.n_therm_states)
-        return trajectory_fragments
-
     def _get_counts_from_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
         # count all transitions and state counts, without restricting to connected sets
         self._largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
@@ -312,8 +294,40 @@ class TRAM(_MSMBaseEstimator):
         # restrict input data to largest connected set
         dtrajs = self._restrict_to_connected_set(dtrajs)
 
-        state_counts, transition_counts = self._make_count_models(dtrajs)
+        trajectory_fragment_mapping = None
+        if ttrajs is not None and len(ttrajs) > 0:
+            # replica exchange data means that the trajectories to not correspond 1:1 to thermodynamic states.
+            # get a mapping from trajectory segments to thermodynamic states
+            fragment_indices = self._get_trajectory_mapping(ttrajs)
+
+        state_counts, transition_counts = self._make_count_models(dtrajs, fragment_indices)
+
         return dtrajs, state_counts, transition_counts
+
+    def _get_trajectory_mapping(self, ttrajs):
+        """ define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
+            At every RE swap point, the trajectory is sliced, so that swap point occurs as a trajectory start.
+
+        Parameters
+        ----------
+        ttrajs: ndarray
+            the thermodynamic state sequences.
+
+        Returns
+        -------
+        fragment_indices: List(List(Tuple(Int)))
+            fragment_indices[k][i] gives a tuple of indices that define the i-th fragment sampled at thermodynamic state
+            k. the tuple consists of (traj_idx, start, stop) where traj_index is the index of the trajectory the
+            fragment can be found at, start is the start index of the trajectory, and stop the end index (exclusive) of
+            the fragment.
+        """
+
+        # trajectory_fragment_mapping = _binding.get_RE_trajectory_fragments(therm_state_sequences_full)
+        # trajectory_fragments = [[markov_state_sequences[tidx][start:end] for tidx, start, end in mapping_therm]
+        #                               for mapping_therm in trajectory_fragment_mapping]
+
+        # want to know: for each trajectory --> start and end of fragments ++++ what therm state do the fragments belong to?
+        return tram.find_trajectory_fragment_indices(ttrajs, self.n_therm_states)
 
     def _find_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
@@ -402,8 +416,8 @@ class TRAM(_MSMBaseEstimator):
 
         return dtrajs_connected
 
-    def _make_count_models(self, dtrajs):
-        """ Construct a TransitionCountModel for each thermodynamic state based on the dtrajs and store in
+    def _make_count_models(self, dtrajs, trajectory_fragment_mapping):
+        """ Construct a TransitionCountModel for each thermodynamic state based on the dtrajs, and store in
         self.count_models.
         Based on each TransitionCountModel, construct state_count and transition_count matrices that contain the counts
         for each thermodynamic state. These are reshaped to contain all possible markov states, even the once without

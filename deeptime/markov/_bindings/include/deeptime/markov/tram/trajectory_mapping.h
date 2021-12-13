@@ -26,20 +26,29 @@ std::vector<Fragments> getTrajectoryFragmentIndices(const TTrajs &ttrajs, std::i
 
         // first and last indices of the fragment
         auto * first = begin;
+
+        // replica-exchange swap point
         auto * last = end;
 
         std::int32_t thermState;
 
-        while(first < end) {
-            // find the first occurrence of a different therm. state index than the one we started with.
+        while(first < end - 1) {
             thermState = *first;
+            // look for the first occurrence of a different therm. state index.
             last = std::find_if_not(first, end, [thermState](auto x) { return x == thermState;});
 
-            // trajectories of length one are not trajectories (they are a replica exchange swap)
-            if (last - first > 1) {
-                Fragment fragment = std::make_tuple(i, first - begin, last - begin);
-                fragments[thermState].push_back(fragment);
+            // trajectories of length one are not trajectories, they are a replica exchange swap points.
+            // The swap point is the start index of the trajectory, but originates from a different therm. state.
+            // e.g. [0, 0, 0, 1, 0, 0, 0] contains fragments [(0, 0, 3), (0, 3, 7)], both belonging to therm. state 0.
+            if (last - first == 1) {
+                thermState = *(first + 1);
+                last = std::find_if_not(first + 1, end, [thermState](auto x) { return x == thermState;});
             }
+
+            // save the indices as a trajectory fragment.
+            Fragment fragment = std::make_tuple(i, first - begin, last - begin);
+            fragments[thermState].push_back(fragment);
+
             // start next search from end of this fragment
             first = last;
         }

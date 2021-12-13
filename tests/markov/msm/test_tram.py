@@ -157,10 +157,12 @@ def test_to_markov_model():
 
 @pytest.mark.parametrize(
     "test_input,expected",
-    [([[0, 0, 0, 1, 1, 0, 0], [1, 0, 1, 0, 1, 1]], [[(0, 0, 3), (0, 5, 7)], [(0, 3, 5), (1, 4, 6)]])]
+    [([[0, 0, 0, 1, 0, 0, 0], [1, 0, 1, 1, 1, 1]], [[(0, 0, 3), (0, 3, 7), (1, 0, 2)], [(1, 2, 6)]]),
+     ([[0, 0, 0, 1, 1, 1, 0], [1, 0, 0, 1, 1, 1]], [[(0, 0, 3), (1, 0, 3)], [(0, 3, 6), (1, 3, 6)]]),
+     ([[0, 0, 0, 1, 0, 0, 0], [1, 0, 0, 1, 0, 0]], [[(0, 0, 3), (0, 3, 7), (1, 0, 3), (1, 3, 6)], []])]
 )
 def test_trajectory_fragments_mapping(test_input, expected):
     tram = TRAM()
     tram.n_therm_states = np.max(np.concatenate(test_input)) + 1
-    mapping = tram._handle_replica_exchange_data([np.asarray(inp) for inp in test_input])
+    mapping = tram._get_trajectory_mapping([np.asarray(inp) for inp in test_input])
     assert mapping == expected
