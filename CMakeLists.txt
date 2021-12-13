@@ -30,7 +30,6 @@ add_subdirectory(deeptime/markov/hmm/_bindings)
 add_subdirectory(deeptime/markov/tools/kahandot)
 add_subdirectory(deeptime/markov/tools/estimation/dense/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/sparse/_bindings)
-add_subdirectory(deeptime/markov/tools/estimation/sparse/mle/newton)
 
 if(DEEPTIME_BUILD_CPP_TESTS)
     add_subdirectory(tests)
