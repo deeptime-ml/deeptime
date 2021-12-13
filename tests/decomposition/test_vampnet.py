@@ -71,12 +71,12 @@ def test_score(fixed_seed, method, mode):
 @pytest.mark.xfail(reason="May spuriously fail because of nondeterministic optimization of the NN", strict=False)
 def test_estimator(fixed_seed):
     data = deeptime.data.ellipsoids()
-    obs = data.observations(60000, n_dim=10).astype(np.float32)
+    obs = data.observations(6000, n_dim=10).astype(np.float32)
 
     # set up the lobe
     lobe = nn.Sequential(nn.Linear(10, 1), nn.Tanh())
     # train the lobe
-    opt = torch.optim.Adam(lobe.parameters(), lr=5e-4)
+    opt = torch.optim.Adam(lobe.parameters(), lr=1e-2)
     for _ in range(50):
         for X, Y in deeptime.util.data.timeshifted_split(obs, lagtime=1, chunksize=512):
             opt.zero_grad()

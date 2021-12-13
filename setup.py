@@ -145,8 +145,6 @@ def configuration(parent_package='', top_path=None):
 
 
 if __name__ == '__main__':
-    import os
-
     from numpy.distutils.core import setup
     metadata['configuration'] = configuration
     setup(**metadata)

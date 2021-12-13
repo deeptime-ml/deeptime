@@ -66,7 +66,6 @@ def forward_committor(T, A, B):
     with generator matrix L=(P-I).
 
     """
-    X = set(range(T.shape[0]))
     A = set(A)
     B = set(B)
     AB = A.intersection(B)
@@ -122,7 +121,6 @@ def backward_committor(T, A, B, mu=None):
     with adjoint of the generator matrix K=(D_pi(P-I))'.
 
     """
-    X = set(range(T.shape[0]))
     A = set(A)
     B = set(B)
     AB = A.intersection(B)

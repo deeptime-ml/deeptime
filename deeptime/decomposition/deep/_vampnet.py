@@ -3,7 +3,6 @@ from typing import Optional, Union, Callable, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
 
 from ...base import Model, Transformer, EstimatorTransformer
 from ...base_torch import DLEstimatorMixin
@@ -590,7 +589,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         self._step = 0
 
         # and train
-        for epoch in progress(range(n_epochs), desc="VAMPNet epoch", total=n_epochs, leave=False):
+        for _ in progress(range(n_epochs), desc="VAMPNet epoch", total=n_epochs, leave=False):
             for batch_0, batch_t in data_loader:
                 self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)),
                                  train_score_callback=train_score_callback)

@@ -97,11 +97,6 @@ class TestTransitionRevPiSym(unittest.TestCase):
         P, pi = transition_matrix(self.Cs, method='sparse', return_statdist=True)
         assert_allclose(P.T.dot(pi), pi)
 
-        # primal-dual interior-point solver
-        P, pi = transition_matrix(self.Cs, method='sparse', return_statdist=True, sparse_newton=True, reversible=True)
-        assert_allclose(P.T.dot(pi), pi)
-        P = transition_matrix(self.Cs, method='sparse', return_statdist=False, sparse_newton=True, reversible=True)
-
         # reversible maximum likelihood
         P = transition_matrix(self.Cs, reversible=True).toarray()
         assert_allclose(P, self.P_rev_ml)

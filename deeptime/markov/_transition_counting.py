@@ -3,7 +3,7 @@ from typing import Union, Optional, List, Callable
 
 import numpy as np
 import scipy
-from scipy.sparse import coo_matrix, issparse
+from scipy.sparse import issparse
 
 from .tools import estimation as msmest
 from .tools.analysis import is_connected

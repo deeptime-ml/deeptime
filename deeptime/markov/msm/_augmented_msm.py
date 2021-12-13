@@ -571,7 +571,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             if i > 1:
                 X_old = np.copy(state.X)
                 state.update_X_and_pi()
-                if np.any(state.X[nonzero_counts] < 0) and i > 0:
+                if np.any(state.X[nonzero_counts] < 0):
                     die = True
                     self._log.warning(
                         "Warning: new X is not proportional to C... reverting to previous step and terminating")

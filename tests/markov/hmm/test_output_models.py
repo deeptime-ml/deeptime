@@ -97,22 +97,6 @@ class TestDiscrete(unittest.TestCase):
         m.fit(obs, weights)
         np.testing.assert_allclose(m.output_probabilities, 1. / 3, atol=.01)
 
-    @unittest.skip("reference to bhmm")
-    def test_observation_trajectory2(self):
-        from bhmm.output_models import DiscreteOutputModel as DOM
-        m = DOM(np.array([
-            [0.1, 0.6, 0.1, 0.1, 0.1],
-            [0.1, 0.3, 0.1, 0.3, 0.2],
-            [0.1, 0.1, 0.1, 0.1, 0.6],
-            [0.6, 0.1, 0.1, 0.1, 0.1],
-        ]))
-        np.testing.assert_equal(m.nstates, 4)
-        np.testing.assert_equal(m.nsymbols, 5)
-        traj = m.generate_observation_trajectory(np.array([0] * 1000000))
-        bc = np.bincount(traj.astype(np.int32), minlength=m.nsymbols).astype(np.float32)
-        bc /= np.sum(bc)
-        print(bc)
-
 
 class TestGaussian(unittest.TestCase):
 

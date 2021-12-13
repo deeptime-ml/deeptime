@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <deeptime/clustering/metric.h>
-
 #ifdef USE_OPENMP
 #include <omp.h>
 #endif
@@ -67,6 +65,73 @@ inline py::array_t<int> assign_chunk_to_centers(const np_array_nfc <T> &chunk,
         }
     }
     return dtraj;
+}
+
+template<typename dtype>
+inline std::unique_ptr<double[]> precomputeXX(const dtype *xs, std::size_t nXs, std::size_t dim) {
+    std::unique_ptr<double[]> xx(new double[nXs]);
+    auto xp = xx.get();
+
+    #pragma omp parallel for default(none) firstprivate(xs, nXs, dim, xp)
+    for (std::size_t i = 0; i < nXs; ++i) {
+        xp[i] = std::inner_product(xs + i * dim, xs + i * dim + dim, xs + i * dim, static_cast<double>(0));
+    }
+    return xx;
+}
+
+template<bool squared, typename Metric, typename dtype>
+inline Distances<dtype> computeDistances(const dtype *xs, std::size_t nXs,
+                                  const dtype *ys, std::size_t nYs, std::size_t dim, const double *xxPrecomputed,
+                                  const double *yyPrecomputed) {
+    Distances<dtype> result(nXs, nYs, dim);
+    if constexpr (!std::is_same<Metric, EuclideanMetric>::value) {
+        dtype *outPtr = result.data();
+        #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, ys, dim, outPtr)
+        for (std::size_t i = 0; i < nXs; ++i) {
+            for (std::size_t j = 0; j < nYs; ++j) {
+                if constexpr(squared) {
+                    outPtr[i * nYs + j] = Metric::template compute_squared<dtype>(xs + i * dim, ys + j * dim, dim);
+                } else {
+                    outPtr[i * nYs + j] = Metric::template compute<dtype>(xs + i * dim, ys + j * dim, dim);
+                }
+            }
+        }
+    } else {
+        dtype *outPtr = result.data();
+        // xxPrecomputed has shape (nXs,)
+        // yyPrecomputed has shape (nYs,)
+        std::unique_ptr<double[]> xx;
+        if (xxPrecomputed == nullptr) {
+            xx = precomputeXX(xs, nXs, dim);
+            xxPrecomputed = xx.get();
+        }
+        std::unique_ptr<double[]> yy;
+        if (yyPrecomputed == nullptr) {
+            yy = precomputeXX(ys, nYs, dim);
+            yyPrecomputed = yy.get();
+        }
+        {
+            // compute -2 * XY
+            #pragma omp parallel for default(none) firstprivate(nXs, nYs, xs, dim, ys, xxPrecomputed, yyPrecomputed, outPtr) collapse(2)
+            for (std::size_t i = 0; i < nXs; ++i) {
+                for (std::size_t j = 0; j < nYs; ++j) {
+                    outPtr[i * nYs + j] = std::inner_product(xs + i * dim, xs + i * dim + dim, ys + j * dim,
+                                                             static_cast<double>(0));
+                    outPtr[i * nYs + j] *= -2.;
+                    outPtr[i * nYs + j] += xxPrecomputed[i] + yyPrecomputed[j];
+                }
+            }
+        }
+        if (!squared) {
+            auto size = result.size();
+            auto* ptr = result.data();
+            #pragma omp parallel for default(none) firstprivate(size, ptr)
+            for (std::size_t i = 0; i < size; ++i) {
+                ptr[i] = std::sqrt(ptr[i]);
+            }
+        }
+    }
+    return result;
 }
 
 }

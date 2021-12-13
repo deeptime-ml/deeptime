@@ -328,7 +328,6 @@ class SINDy(Estimator):
         # Some differentiation methods produce nans near boundaries
         x, x_dot = drop_nan_rows(x, x_dot)
 
-        steps = [("features", self.library), ("model", self.optimizer)]
         if hasattr(self.library, 'fit'):
             self.library.fit(x)
 

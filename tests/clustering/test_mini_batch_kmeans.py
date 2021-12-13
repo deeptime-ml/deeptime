@@ -23,7 +23,7 @@ class TestMiniBatchKmeans(TestCase):
              np.random.randn(300),
              np.random.randn(400) + 2.0]
         X = np.hstack(X)
-        estimator, model = cluster_mini_batch_kmeans(X, k=100, max_iter=10000)
+        estimator, model = cluster_mini_batch_kmeans(X, k=100, max_iter=10)
         cc = model.cluster_centers
         assert (np.any(cc < 1.0))
         assert (np.any((cc > -1.0) * (cc < 1.0)))
