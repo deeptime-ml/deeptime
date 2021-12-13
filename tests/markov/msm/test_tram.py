@@ -176,16 +176,34 @@ def test_trajectory_fragments_mapping(test_input, expected):
 
 
 @pytest.mark.parametrize(
-    "dtrajs, ttrajs,expected",
-    [([[1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14]],
+    "dtrajs, ttrajs, expected",
+    [([[1, -1, 3, -1, 5, 6, 7], [8, 9, 10, 11, 12, 13, -1]],
       [[0, 0, 0, 1, 0, 0, 1], [0, 0, 1, 1, 0, 1, 1]],
-      [[[1, 2, 3], [4, 5, 6], [8, 9]], [[10, 11], [12, 13, 14]]])]
+      [[[1, 3], [5, 6], [8, 9]], [[10, 11], [12, 13]]])]
 )
 def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
     tram = TRAM()
-    tram.n_therm_states = np.max(np.concatenate(ttrajs)) + 1
+    tram.n_therm_states = 2
     mapping = tram._get_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
                                              [np.asarray(ttraj) for ttraj in ttrajs])
+    for k in range(tram.n_therm_states):
+        assert len(mapping[k]) == len(expected[k])
+        assert np.all([np.array_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))])
+
+
+@pytest.mark.parametrize(
+    "dtrajs, expected",
+    [([[1, 2, -1, -1, -1, 6, 7], [8, 9, 10, 11, 12, 13, 14]], [[1, 2, 6, 7], [8, 9, 10, 11, 12, 13, 14]]),
+     ([[1, 2, 3, 4], [5, -1, -1, 8], [-1, -1, -1]], [[1, 2, 3, 4], [5, 8], []])]
+)
+@pytest.mark.parametrize(
+    "ttrajs", [None, []]
+)
+def test_get_trajectory_fragments_no_ttrajs(dtrajs, ttrajs, expected):
+    tram = TRAM()
+    tram.n_therm_states = 2
+    mapping = tram._get_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
+                                             ttrajs)
     for k in range(tram.n_therm_states):
         assert len(mapping[k]) == len(expected[k])
         assert np.all([np.array_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))])

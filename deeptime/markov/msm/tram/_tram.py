@@ -393,6 +393,30 @@ class TRAM(_MSMBaseEstimator):
         return dtrajs_connected
 
     def _get_trajectory_fragments(self, dtrajs, ttrajs):
+        """ Find all trajectory fragments given the discrete trajectories and the thermodynamic state indices of each
+        sample. Get rid of any negative state indices.
+        If no replica exchange was done, this will simply return all positive values from dtrajs. If ttrajs are
+        given, we assume replica exchange was done and restructure dtrajs in such a way that every replica-exchange
+        swap is the start of a new trajectory.
+
+        Parameters
+        ----------
+        dtrajs: list(ndarray(n))
+            the discrete trajectories. dtrajs[i] is a numpy array containing the trajectories sampled in the i-th
+            thermodynamic state. dtrajs[i][n] is the Markov state that the n-th sample sampled at thermodynamic state i
+            falls in. May contain negative state indices.
+
+        ttrajs: list(ndarray(n)), optional
+            ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was sampled
+            at.
+
+        Returns
+        -------
+        dtraj_fragments: list(List(Int))
+           A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
+           that thermodynamic state. fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k.
+           The fragments are be restricted to the largest connected set and negative state indices are excluded.
+        """
         if ttrajs is None or len(ttrajs) == 0:
             # No ttrajs were given. We assume each trajectory in dtrajs was sampled in a distinct thermodynamic state.
             # The thermodynamic state index equals the trajectory index, and the dtrajs are unchanged.
@@ -433,7 +457,7 @@ class TRAM(_MSMBaseEstimator):
         return tram.find_trajectory_fragment_indices(ttrajs, self.n_therm_states)
 
     def _make_count_models(self, dtraj_fragments):
-        """ Construct a TransitionCountModel for each thermodynamic state based on the dtrajs, and store in
+        """ Construct a TransitionCountModel for each thermodynamic state based on the dtraj_fragments, and store in
         self.count_models.
         Based on each TransitionCountModel, construct state_count and transition_count matrices that contain the counts
         for each thermodynamic state. These are reshaped to contain all possible markov states, even the once without
@@ -443,15 +467,10 @@ class TRAM(_MSMBaseEstimator):
 
         Parameters
         ----------
-        dtrajs: list(ndarray(n))
-           the discrete trajectories. The dtrajs should have already been restricted to the largest connected set.
-
-        fragment_indices: List(List(Tuple(Int)))
-            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
-            that thermodynamic state.
-            fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k. The tuple consists of
-            (traj_idx, start, stop) where traj_index is the index of the trajectory the fragment can be found at, start
-            is the start index of the trajectory, and stop the end index (exclusive) of the fragment.
+        dtraj_fragments: list(List(Int))
+           A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
+           that thermodynamic state. fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k.
+           The fragments should be restricted to the largest connected set and not contain any negative state indices.
 
         Returns
         -------
