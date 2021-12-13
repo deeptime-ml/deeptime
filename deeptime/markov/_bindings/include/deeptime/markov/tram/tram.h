@@ -162,6 +162,10 @@ public:
         return _dtrajs.at(K).size();
     }
 
+    auto nTrajectories() const {
+        return _dtrajs.size();
+    };
+
 private:
     np_array_nfc<std::int32_t> _stateCounts;
     np_array_nfc<std::int32_t> _transitionCounts;
@@ -282,6 +286,14 @@ public:
         }
     }
 
+    std::vector<np_array_nfc<dtype>> getSampleWeights(std::size_t K) {
+        std::vector<np_array_nfc<dtype>> sampleWeights(nThermStates);
+
+        for (std::size_t i = 0; i < input->nTrajectories(); ++i) {
+            sampleWeights.push_back(getSampleWeightsForTrajectory(i, K));
+        }
+        return sampleWeights;
+    }
 
 private:
     std::shared_ptr<TRAMInput<dtype>> input;
@@ -378,8 +390,8 @@ private:
         std::fill(biasedConfEnergies.mutable_data(), biasedConfEnergies.mutable_data() + nMarkovStates * nThermStates,
                   inf);
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; K++) {
-            updateBiasedConfEnergies(K, input->sequenceLength(K));
+        for (std::size_t i = 0; i < input->nTrajectories(); ++i) {
+            updateBiasedConfEnergies(i, input->sequenceLength(i));
         }
     }
 
@@ -537,10 +549,10 @@ private:
             _markovStateEnergies(i) = inf;
         }
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            auto _dtraj_K = input->dtraj(K);
-            auto _biasMatrix_K = input->biasMatrix(K);
-            auto trajLength = input->sequenceLength(K);
+        for (std::size_t i = 0; i < input->nTrajectories(); ++i) {
+            auto _dtraj_K = input->dtraj(i);
+            auto _biasMatrix_K = input->biasMatrix(i);
+            auto trajLength = input->sequenceLength(i);
 
             computeMarkovStateEnergiesForSingleTrajectory(_biasMatrix_K, _dtraj_K, trajLength);
         }
@@ -569,7 +581,6 @@ private:
             _markovStateEnergies(i) = -numeric::kahan::logsumexp_pair(-_markovStateEnergies(i), -divisor);
         }
     }
-
 
     void updateThermStateEnergies() {
         // move current values to old
@@ -640,48 +651,24 @@ private:
 // log likelihood of observing a sampled trajectory from the local equilibrium.
 // i.e. the sum over all sample likelihoods from one trajectory within on
 // thermodynamic state.
-    dtype
-
-    computeSampleLikelihood(std::size_t
-                            thermState,
-                            std::size_t trajLength
-    ) {
+dtype computeSampleLikelihood(std::size_t thermState, std::size_t trajLength) {
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
         auto _biasMatrix = input->biasMatrix(thermState);
         auto _dtraj = input->dtraj(thermState);
 
 /* -\sum_{x}\log\sum_{l}R_{i(x)}^{(l)}e^{-b^{(l)}(x)+f_{i(x)}^{(l)}} */
         dtype logLikelihood = 0;
-        for (
-                std::size_t x = 0;
-                x < trajLength;
-                ++x) {
+        for (std::size_t x = 0; x < trajLength; ++x) {
             std::int32_t o = 0;
             std::int32_t i = _dtraj(x);
             if (i < 0) continue;
-            for (
-                    decltype(nThermStates) K = 0;
-                    K < nThermStates;
-                    ++K) {
-                if (
-                        _modifiedStateCountsLog(K, i
-                        ) > 0)
-                    scratchT[o++] =
-                            _modifiedStateCountsLog(K, i
-                            ) -
-                            _biasMatrix(x, K
-                            );
+            for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
+                if (_modifiedStateCountsLog(K, i) > 0)
+                    scratchT[o++] =_modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
             }
-            logLikelihood -=
-                    numeric::kahan::logsumexp_sort_kahan_inplace(scratchT
-                                                                         .
-
-                                                                                 get(), o
-
-                    );
+            logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
         }
-        return
-                logLikelihood;
+        return logLikelihood;
     }
 
 
@@ -774,42 +761,41 @@ private:
             }
         }
     }
-//    void get_pointwise_unbiased_free_energies(int K) {
-//        auto _dtrajs = input.dtraj();
-//        auto _bias_matrix = input.biasMatrix();
-//
-//        auto _therm_energies = thermStateEnergies.template unchecked<1>();
-//        auto _modified_state_counts_log = modifiedStateCountsLog.template unchecked<2>();
-//
-//        auto _scratch_T = scratchT.template unchecked<1>();
-//
-//        int traj_length = _dtraj.shape[0];
-//        np_array<dtype> pointwise_unbiased_free_energies = np_array<dtype>({traj_length});
-//        auto _pointwise_unbiased_free_energies = pointwise_unbiased_free_energies.template mutable_unchecked<2>();
-//
-//        int L, o, i, x;
-//        dtype log_divisor;
-//
-//        for (int x = 0; x < traj_length; ++x) {
-//            i = _dtraj(x);
-//            if (i < 0) {
-//                _pointwise_unbiased_free_energies(x) = inf;
-//                continue;
-//            }
-//            o = 0;
-//            for (L = 0; L < nThermStates; ++L) {
-//                if (-inf == _modified_state_counts_log(L, i)) continue;
-//                _scratch_T(o++) =
-//                        _modified_state_counts_log(L, i) - _bias_matrix(x, L);
-//            }
-//            log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT, o);
-//            if (K == -1)
-//                pointwise_unbiased_free_energies_ptr[x] = log_divisor;
-//            else
-//                pointwise_unbiased_free_energies_ptr[x] =
-//                        bias_energy_sequence_ptr[x * nThermStates + k] + log_divisor - therm_energies_ptr[k];
-//        }
-//    }
-//};
+
+    np_array_nfc<dtype> getSampleWeightsForTrajectory(std::size_t trajectoryIndex, std::size_t k) {
+        // k = -1 for unbiased sample weigths.
+        auto sampleWeights = np_array_nfc<dtype>(std::vector{input->dtraj(trajectoryIndex).size()});
+        auto _sampleWeights = sampleWeights.template mutable_unchecked<1>();
+
+        auto _dtraj = input->dtraj(trajectoryIndex);
+        auto _biasMatrix = input->biasMatrix(trajectoryIndex);
+
+        auto _thermStateEnergies = thermStateEnergies.firstBuf();
+        auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
+
+        int L, o, i;
+        dtype log_divisor;
+
+        for (auto x = 0; x < input->sequenceLength(trajectoryIndex); ++x) {
+            i = _dtraj(x);
+            if (i < 0) {
+                _sampleWeights(x) = inf;
+                continue;
+            }
+            o = 0;
+            for (L = 0; L < nThermStates; ++L) {
+                if (-inf == _modifiedStateCountsLog(L, i)) continue;
+                scratchT[o++] =
+                        _modifiedStateCountsLog(L, i) - _biasMatrix(x, L);
+            }
+            log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
+            if (k == -1)
+                _sampleWeights(x) = log_divisor;
+            else
+                _sampleWeights(x) = _biasMatrix(x, k) + log_divisor - _thermStateEnergies(k);
+        }
+        return sampleWeights;
+    }
+
 };
 }

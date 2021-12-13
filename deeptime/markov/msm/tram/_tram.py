@@ -135,6 +135,15 @@ class TRAM(_MSMBaseEstimator):
         if self._tram_estimator is not None:
             return self._tram_estimator.biased_conf_energies()
 
+    def get_sample_weights(self, markov_state=-1):
+        """ Get the sample weight :math:`\mu(x)` for all samples :math:`x`. If the Markov state is given, this will be
+        the weight of the sample in that Markov state, i.e. :math:`\mu^k(x)`. Otherwise, this gives the unbiased sample
+        weights.
+        The sample weights are the probability distibution over all samples, and the sum over all sample weights equals
+        one.
+        """
+        return self._tram_estimator.get_sample_weights(markov_state)
+
     def fetch_model(self) -> Optional[MarkovStateModelCollection]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
         Can be None if fit was not called.
