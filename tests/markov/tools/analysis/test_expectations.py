@@ -80,7 +80,7 @@ def to_sparse_setting(setting, output_dim):
 @pytest.mark.parametrize("N", [20, 50, 0], ids=lambda x: f"nsteps={x}")
 def test_expected_counts(setting, sparse_mode, N):
     if sparse_mode:
-        setting = to_sparse_setting(setting, 100)
+        setting = to_sparse_setting(setting, 500)
     T, mu, v, L, R = setting
     EC_n = expected_counts(T, mu, N)
     D_mu = diags(mu, 0)
