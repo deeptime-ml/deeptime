@@ -297,50 +297,11 @@ class TRAM(_MSMBaseEstimator):
 
         # get all trajectory fragments without any negative state indices
         dtraj_fragments = self._get_trajectory_fragments(dtrajs, ttrajs)
+
         # ... and convert those into count matrices.
         state_counts, transition_counts = self._make_count_models(dtraj_fragments)
 
         return dtrajs, state_counts, transition_counts
-
-    def _get_trajectory_fragments(self, dtrajs, ttrajs):
-        if ttrajs is None or len(ttrajs) == 0:
-            # No ttrajs were given. We assume each trajectory in dtrajs was sampled in a distinct thermodynamic state.
-            # The thermodynamic state index equals the trajectory index, and the dtrajs are unchanged.
-            return [dtrajs[k][dtrajs[k] >= 0] for k in range(self.n_therm_states)]
-
-        # replica exchange data means that the trajectories to not correspond 1:1 to thermodynamic states.
-        # get a mapping from trajectory segments to thermodynamic states
-        fragment_indices = self._get_trajectory_fragment_mapping(ttrajs)
-
-        fragments = []
-        # for each them. state k, gather all trajectory fragments that were sampled at that state.
-        for k in range(self.n_therm_states):
-            # take the fragments based on the list of indices. Exclude all values that are less than zero. They don't
-            # belong in the connected set.
-            fragments.append(np.asarray([dtrajs[traj_idx][start:stop][dtrajs[traj_idx][start:stop] >= 0]
-                                         for (traj_idx, start, stop) in fragment_indices[k]]))
-        return fragments
-
-    def _get_trajectory_fragment_mapping(self, ttrajs):
-        """ define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
-            At every RE swap point, the trajectory is sliced, so that swap point occurs as a trajectory start.
-
-        Parameters
-        ----------
-        ttrajs: ndarray
-            the thermodynamic state sequences.
-
-        Returns
-        -------
-        fragment_indices: List(List(Tuple(Int)))
-            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
-            that thermodynamic state.
-            fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k. The tuple consists of
-            (traj_idx, start, stop) where traj_index is the index of the trajectory the fragment can be found at, start
-            is the start index of the trajectory, and stop the end index (exclusive) of the fragment.
-
-        """
-        return tram.find_trajectory_fragment_indices(ttrajs, self.n_therm_states)
 
     def _find_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
@@ -430,6 +391,46 @@ class TRAM(_MSMBaseEstimator):
             dtrajs_connected.append(restricted_dtraj)
 
         return dtrajs_connected
+
+    def _get_trajectory_fragments(self, dtrajs, ttrajs):
+        if ttrajs is None or len(ttrajs) == 0:
+            # No ttrajs were given. We assume each trajectory in dtrajs was sampled in a distinct thermodynamic state.
+            # The thermodynamic state index equals the trajectory index, and the dtrajs are unchanged.
+            return [dtrajs[k][dtrajs[k] >= 0] for k in range(self.n_therm_states)]
+
+        # replica exchange data means that the trajectories to not correspond 1:1 to thermodynamic states.
+        # get a mapping from trajectory segments to thermodynamic states
+        fragment_indices = self._get_trajectory_fragment_mapping(ttrajs)
+
+        fragments = []
+        # for each them. state k, gather all trajectory fragments that were sampled at that state.
+        for k in range(self.n_therm_states):
+            # take the fragments based on the list of indices. Exclude all values that are less than zero. They don't
+            # belong in the connected set.
+            fragments.append(np.asarray([dtrajs[traj_idx][start:stop][dtrajs[traj_idx][start:stop] >= 0]
+                                         for (traj_idx, start, stop) in fragment_indices[k]]))
+        return fragments
+
+    def _get_trajectory_fragment_mapping(self, ttrajs):
+        """ define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
+            At every RE swap point, the trajectory is sliced, so that swap point occurs as a trajectory start.
+
+        Parameters
+        ----------
+        ttrajs: ndarray
+            the thermodynamic state sequences.
+
+        Returns
+        -------
+        fragment_indices: List(List(Tuple(Int)))
+            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
+            that thermodynamic state.
+            fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k. The tuple consists of
+            (traj_idx, start, stop) where traj_index is the index of the trajectory the fragment can be found at, start
+            is the start index of the trajectory, and stop the end index (exclusive) of the fragment.
+
+        """
+        return tram.find_trajectory_fragment_indices(ttrajs, self.n_therm_states)
 
     def _make_count_models(self, dtraj_fragments):
         """ Construct a TransitionCountModel for each thermodynamic state based on the dtrajs, and store in
