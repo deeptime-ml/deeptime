@@ -30,7 +30,6 @@ def pcca(P, m, stationary_distribution=None):
     if m <= 0 or m > P.shape[0]:
         raise ValueError("Number of metastable sets must be larger than 0 and can be at most as large as the number "
                          "of states.")
-    assert 0 < m <= P.shape[0]
     from scipy.sparse import issparse
     if issparse(P):
         warnings.warn('PCCA is only implemented for dense matrices, '

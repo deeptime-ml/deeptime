@@ -113,7 +113,7 @@ def confidence_interval(data, conf=0.95):
 
         for i in np.ndindex(data[0].shape):
             col = _column(data, i)
-            mean, lower[i], upper[i] = _confidence_interval_1d(col)
+            _, lower[i], upper[i] = _confidence_interval_1d(col)
 
         return lower, upper
 

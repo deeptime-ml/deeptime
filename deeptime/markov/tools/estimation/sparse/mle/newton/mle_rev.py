@@ -195,15 +195,10 @@ def primal_dual_solve(func, x0, Dfunc, A, b, G, h, args=(), tol=1e-10,
     """Number of iterations"""
     n = 0
 
-    """Dummy variable for step type"""
-    step_type = " "
-
     """MAIN LOOP"""
     z = z0
     x = z0[0:N]
     KKTval = KKTval0
-    dual = dual0
-    prim = prim0
     mu = mu0
     Dfunc_val = Dfunc(x)
     LU = factor(z, Dfunc_val, G, A)

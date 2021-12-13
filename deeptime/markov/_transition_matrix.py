@@ -131,14 +131,14 @@ def transition_matrix_partial_rev(C, P, S, maxiter=1000000, maxerr=1e-8):
 
 def enforce_reversible_on_closed(P):
     """ Enforces transition matrix P to be reversible on its closed sets. """
-    import deeptime.markov.tools.analysis as msmana
+    from deeptime.markov.tools.analysis import stationary_distribution
     Prev = P.copy()
     # treat each weakly connected set separately
     sets = closed_sets(P)
     for s in sets:
         indices = np.ix_(s, s)
         # compute stationary probability
-        pi_s = msmana.stationary_distribution(P[indices])
+        pi_s = stationary_distribution(P[indices])
         # symmetrize
         X_s = pi_s[:, None] * P[indices]
         X_s = 0.5 * (X_s + X_s.T)
@@ -149,14 +149,14 @@ def enforce_reversible_on_closed(P):
 
 def is_reversible(P):
     """ Returns if P is reversible on its weakly connected sets """
-    import deeptime.markov.tools.analysis as msmana
+    from deeptime.markov.tools.analysis import stationary_distribution, is_transition_matrix
     # treat each weakly connected set separately
     sets = compute_connected_sets(P, directed=False)
     for s in sets:
         Ps = P[s, :][:, s]
-        if not msmana.is_transition_matrix(Ps):
+        if not is_transition_matrix(Ps):
             return False  # isn't even a transition matrix!
-        pi = msmana.stationary_distribution(Ps)
+        pi = stationary_distribution(Ps)
         X = pi[:, None] * Ps
         if not np.allclose(X, X.T):
             return False

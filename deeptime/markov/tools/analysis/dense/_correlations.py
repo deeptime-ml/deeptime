@@ -95,7 +95,7 @@ def time_correlation_direct_by_mtx_vec_prod(P, mu, obs1, obs2=None, time=1, star
             P_i_obs = obs2
             r = range(0)
 
-    for k in r:  # since we already substituted started with 0
+    for _ in r:  # since we already substituted started with 0
         P_i_obs = np.dot(P, P_i_obs)
     corr = np.dot(l, P_i_obs)
     if return_P_k_obs:
@@ -104,7 +104,7 @@ def time_correlation_direct_by_mtx_vec_prod(P, mu, obs1, obs2=None, time=1, star
         return corr
 
 
-def time_correlations_direct(P, pi, obs1, obs2=None, times=[1]):
+def time_correlations_direct(P, pi, obs1, obs2=None, times=(1,)):
     r"""Compute time-correlations of obs1, or time-cross-correlation with obs2.
 
     The time-correlation at time=k is computed by the matrix-vector expression:
@@ -145,6 +145,8 @@ def time_correlations_direct(P, pi, obs1, obs2=None, times=[1]):
         if not np.any(np.iscomplex(L)):
             L = np.real(L)
         rdl = (R, D, L)
+    else:
+        use_diagonalization = False
 
     if use_diagonalization:
         for i in range(n_t):
@@ -206,7 +208,7 @@ def time_relaxation_direct_by_mtx_vec_prod(P, p0, obs, time=1, start_values=None
             pk_i = p0
             r = range(0)
 
-    for k in r:  # perform the rest of the propagations p0 P^t_diff
+    for _ in r:  # perform the rest of the propagations p0 P^t_diff
         pk_i = np.dot(pk_i, P)
 
     # result

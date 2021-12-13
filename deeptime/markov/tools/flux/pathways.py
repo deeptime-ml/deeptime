@@ -56,7 +56,6 @@ def find_bottleneck(F, A, B):
         """Bisection of flux-value array"""
         r = val.size
         l = 0
-        N = 0
         while r - l > 1:
             m = np.int64(np.floor(0.5 * (r + l)))
             valtmp = val[m:]

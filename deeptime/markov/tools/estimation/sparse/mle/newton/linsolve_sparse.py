@@ -112,15 +112,6 @@ def solve_factorized_aug(z, Fval, LU, G, A):
     M, N=G.shape
     P, N=A.shape
 
-    """Total number of inequality constraints"""
-    m=M
-
-    """Primal variable"""
-    x=z[0:N]
-
-    """Multiplier for equality constraints"""
-    nu=z[N:N+P]
-
     """Multiplier for inequality constraints"""
     l=z[N+P:N+P+M]
 
