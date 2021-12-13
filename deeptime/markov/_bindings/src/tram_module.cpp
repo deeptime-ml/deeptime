@@ -1,6 +1,7 @@
 //  author: maaike
 #include "deeptime/markov/tram/tram.h"
 #include "deeptime/markov/tram/connected_set.h"
+#include "deeptime/markov/tram/trajectory_mapping.h"
 
 PYBIND11_MODULE(_tram_bindings, m) {
     using namespace pybind11::literals;
@@ -29,5 +30,7 @@ PYBIND11_MODULE(_tram_bindings, m) {
 
         tramMod.def("bar_variance", &hasOverlapBarVariance<double>);
         tramMod.def("post_hoc_RE", &hasOverlapPostHocReplicaExchange<double>);
+
+        tramMod.def("find_trajectory_fragment_indices", &getTrajectoryFragmentIndices, "ttrajs"_a, "n_therm_states"_a);
     }
 }

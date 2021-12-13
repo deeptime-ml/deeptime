@@ -5,6 +5,7 @@ from deeptime.markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
+# from _tram_bindings import tram
 from deeptime.markov._tram_bindings import tram
 
 import numpy as np
@@ -194,7 +195,7 @@ class TRAM(_MSMBaseEstimator):
         ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
 
         if ttrajs is not None and len(ttrajs) > 0:
-            self._handle_replica_exchange_data(ttrajs, dtrajs, bias_matrices)
+            self._handle_replica_exchange_data(ttrajs)
 
         return ttrajs, dtrajs, bias_matrices
 
@@ -216,6 +217,8 @@ class TRAM(_MSMBaseEstimator):
             the third element from the data tuple, or None.
         """
         dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
+        if ttrajs is not None:
+            ttrajs = ttrajs[0]
         return dtrajs, bias_matrices, ttrajs
 
     def _validate_input(self, ttrajs, dtrajs, bias_matrices):
@@ -287,7 +290,7 @@ class TRAM(_MSMBaseEstimator):
 
         return ttrajs, dtrajs, bias_matrices
 
-    def _handle_replica_exchange_data(self, ttrajs, dtrajs, bias_matrices):
+    def _handle_replica_exchange_data(self, ttrajs):
         # TODO:
         #  1. handle RE case:
         #     define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
@@ -299,7 +302,8 @@ class TRAM(_MSMBaseEstimator):
         #                               for mapping_therm in trajectory_fragment_mapping]
 
         # want to know: for each trajectory --> start and end of fragments ++++ what therm state do the fragments belong to?
-        pass
+        trajectory_fragments = tram.find_trajectory_fragment_indices(ttrajs, self.n_therm_states)
+        return trajectory_fragments
 
     def _get_counts_from_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
         # count all transitions and state counts, without restricting to connected sets

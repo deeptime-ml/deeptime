@@ -153,3 +153,14 @@ def test_to_markov_model():
     assert model.n_connected_msms == tram.n_therm_states
     model.select(1)
     assert (model.transition_matrix == tram._transition_matrices[1]).all()
+
+
+@pytest.mark.parametrize(
+    "test_input,expected",
+    [([[0, 0, 0, 1, 1, 0, 0], [1, 0, 1, 0, 1, 1]], [[(0, 0, 3), (0, 5, 7)], [(0, 3, 5), (1, 4, 6)]])]
+)
+def test_trajectory_fragments_mapping(test_input, expected):
+    tram = TRAM()
+    tram.n_therm_states = np.max(np.concatenate(test_input)) + 1
+    mapping = tram._handle_replica_exchange_data([np.asarray(inp) for inp in test_input])
+    assert mapping == expected
