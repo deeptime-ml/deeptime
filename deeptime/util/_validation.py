@@ -213,7 +213,7 @@ class LaggedModelValidator(Estimator):
             args = [(i, fun, (self.test_estimator, self._test_model, data, lag))
                     for i, lag in enumerate(lags_for_estimation)]
             estimated_models = [None for _ in range(len(args))]
-            with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
+            with joining(get_context("forkserver").Pool(processes=n_jobs)) as pool:
                 for result in progress(pool.imap_unordered(_imap_wrapper, args),
                                        total=len(lags_for_estimation), leave=False):
                     estimated_models[result[0]] = result[1]

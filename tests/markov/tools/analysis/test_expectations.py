@@ -95,7 +95,7 @@ def test_expected_counts(setting, sparse_mode, N):
 @pytest.mark.parametrize("statdist", [False, True], ids=lambda x: f"statdist={x}")
 def test_expected_counts_stationary(setting, sparse_mode, statdist):
     if sparse_mode:
-        setting = to_sparse_setting(setting, 100)
+        setting = to_sparse_setting(setting, 500)
     T, mu, v, L, R = setting
     N = 20
     D_mu = diags(mu, 0)

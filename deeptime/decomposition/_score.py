@@ -294,7 +294,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
 
     if n_jobs > 1:
         from multiprocessing import get_context
-        with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
+        with joining(get_context("forkserver").Pool(processes=n_jobs)) as pool:
             for result in pool.imap_unordered(_worker, args):
                 fold, score = result
                 scores[fold] = score
