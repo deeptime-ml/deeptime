@@ -71,7 +71,7 @@ def test_score(fixed_seed, method, mode):
 @pytest.mark.xfail(reason="May spuriously fail because of nondeterministic optimization of the NN", strict=False)
 def test_estimator(fixed_seed):
     data = deeptime.data.ellipsoids()
-    obs = data.observations(60000, n_dim=10).astype(np.float32)
+    obs = data.observations(6000, n_dim=10).astype(np.float32)
 
     # set up the lobe
     lobe = nn.Sequential(nn.Linear(10, 1), nn.Tanh())
