@@ -179,7 +179,7 @@ def test_trajectory_fragments_mapping(test_input, expected):
     "dtrajs, ttrajs,expected",
     [([[1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14]],
       [[0, 0, 0, 1, 0, 0, 1], [0, 0, 1, 1, 0, 1, 1]],
-      [[[1, 2, 3], [4, 5, 6], [8, 9]], [[10, 11], [12, 13, 14]]] )]
+      [[[1, 2, 3], [4, 5, 6], [8, 9]], [[10, 11], [12, 13, 14]]])]
 )
 def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
     tram = TRAM()
@@ -189,3 +189,15 @@ def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
     for k in range(tram.n_therm_states):
         assert len(mapping[k]) == len(expected[k])
         assert np.all([np.array_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))])
+
+
+def test_unpack_input():
+    tram = TRAM()
+    arr = np.zeros(10)
+    try:
+        dtrajs, biases, ttrajs = tram._unpack_input((arr, arr, arr))
+        assert np.array_equal(dtrajs, arr) and np.array_equal(biases, arr) and np.array_equal(ttrajs, arr)
+        dtrajs, biases, ttrajs = tram._unpack_input((arr, arr))
+        assert np.array_equal(dtrajs, arr) and np.array_equal(biases, arr) and len(ttrajs) == 0
+    except IndexError:
+        pytest.fail("IndexError while unpacking input!")

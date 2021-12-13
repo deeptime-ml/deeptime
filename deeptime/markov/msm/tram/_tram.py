@@ -215,7 +215,7 @@ class TRAM(_MSMBaseEstimator):
             the third element from the data tuple, or None.
         """
         dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
-        if ttrajs is not None:
+        if ttrajs is not None and len(ttrajs) > 0:
             ttrajs = ttrajs[0]
         return dtrajs, bias_matrices, ttrajs
 
@@ -407,8 +407,8 @@ class TRAM(_MSMBaseEstimator):
         for k in range(self.n_therm_states):
             # take the fragments based on the list of indices. Exclude all values that are less than zero. They don't
             # belong in the connected set.
-            fragments.append(np.asarray([dtrajs[traj_idx][start:stop][dtrajs[traj_idx][start:stop] >= 0]
-                                         for (traj_idx, start, stop) in fragment_indices[k]]))
+            fragments.append([dtrajs[traj_idx][start:stop][dtrajs[traj_idx][start:stop] >= 0]
+                                         for (traj_idx, start, stop) in fragment_indices[k]])
         return fragments
 
     def _get_trajectory_fragment_mapping(self, ttrajs):
