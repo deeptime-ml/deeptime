@@ -4,12 +4,9 @@
 #pragma once
 
 #include <deeptime/common.h>
+#include "typedef.h"
 
-namespace deeptime::tram {
-
-// todo use typedef header
-using TTraj = np_array<std::int32_t>;
-using TTrajs = std::vector<TTraj>;
+namespace deeptime::markov::tram {
 
 // a trajectory fragment consists of three indices. Fragment[0] is the trajectory index, fragment[1] the start index of
 // the fragment within a trajectory, and fragment[2] the end index of the fragment (exclusive).
@@ -17,7 +14,7 @@ using Fragment = std::tuple<std::int32_t, std::int32_t, std::int32_t>;
 using Fragments = std::vector<Fragment>;
 
 // todo not a getter
-std::vector<Fragments> getTrajectoryFragmentIndices(const TTrajs &ttrajs, std::int32_t nThermStates) {
+std::vector<Fragments> getTrajectoryFragmentIndices(const DTrajs &ttrajs, std::int32_t nThermStates) {
 
     std::vector<Fragments> fragments(nThermStates);
 

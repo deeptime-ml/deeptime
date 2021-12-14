@@ -8,7 +8,7 @@
 using namespace deeptime;
 
 TEST_CASE("TRAMInput", "[tram]") {
-    using Input = deeptime::tram::TRAMInput<double>;
+    using Input = deeptime::markov::tram::TRAMInput<double>;
 
     GIVEN("Input") {
         py::scoped_interpreter guard;
@@ -20,8 +20,8 @@ TEST_CASE("TRAMInput", "[tram]") {
         auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
         auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
 
-        Input::DTrajs dtrajs;
-        Input::BiasMatrices biasMatrices;
+        deeptime::markov::tram::DTrajs dtrajs;
+        deeptime::markov::tram::BiasMatrices<double> biasMatrices;
 
         for (int i = 0; i < nThermStates; ++i) {
             int length = i + 10;
@@ -32,8 +32,8 @@ TEST_CASE("TRAMInput", "[tram]") {
 
         WHEN("TRAMInput is constructed") {
 
-            auto input = deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                           biasMatrices);
+            auto input = deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                   dtrajs, biasMatrices);
 
             THEN("TRAMInput contains the correct input") {
                 for (int K = 0; K < nThermStates; ++K) {
@@ -50,30 +50,31 @@ TEST_CASE("TRAMInput", "[tram]") {
             stateCounts = np_array_nfc<int>({nThermStates + 1, nMarkovStates});
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
-                        deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                          biasMatrices), std::runtime_error);
+                        deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                  dtrajs, biasMatrices), std::runtime_error);
             }
         } WHEN("statecounts don't match transition counts at second index should throw") {
             transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates + 1, nMarkovStates});
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
-                        deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                          biasMatrices), std::runtime_error);
+                        deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                  dtrajs, biasMatrices), std::runtime_error);
             }
         } WHEN("transitioncounts matrices are not squarew") {
             transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates + 1});
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
-                        deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                          biasMatrices), std::runtime_error);
+                        deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                  dtrajs, biasMatrices), std::runtime_error);
             }
         } WHEN("dtrajs and bias matrices lengths don't match") {
             dtrajs.push_back(np_array_nfc<int>(std::vector<int>{10}));
 
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
-                        deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                          biasMatrices), std::runtime_error);
+                        deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                  dtrajs,
+                                                                  biasMatrices), std::runtime_error);
             }
         } WHEN("dtraj size neq size of bias matrix") {
             // lengthen the last dtraj by one
@@ -81,8 +82,9 @@ TEST_CASE("TRAMInput", "[tram]") {
             dtrajs[nThermStates - 1] = np_array_nfc<int>(std::vector<int>{length + 1});
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
-                        deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                          biasMatrices), std::runtime_error);
+                        deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                  dtrajs,
+                                                                  biasMatrices), std::runtime_error);
             }
         }WHEN("bias matrix dimensions neq transition counts dimensions") {
             // lengthen last biasMatrix by 1
@@ -90,16 +92,16 @@ TEST_CASE("TRAMInput", "[tram]") {
             biasMatrices[nThermStates - 1] = np_array_nfc<double>({length + 1, nThermStates});
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
-                        deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                          biasMatrices), std::runtime_error);
+                        deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                  dtrajs, biasMatrices), std::runtime_error);
             }
         }WHEN("dtraj has dimension not equal to 1 should throw") {
             // change dimensions of last dtraj
             dtrajs[nThermStates - 1] = np_array_nfc<int>({trajlengths[nThermStates - 1], 1});
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
-                        deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                          biasMatrices), std::runtime_error);
+                        deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                  dtrajs, biasMatrices), std::runtime_error);
             }
         }WHEN("bias matrix dimension not equal to 2") {
             // change length of last biasMatrix
@@ -107,8 +109,8 @@ TEST_CASE("TRAMInput", "[tram]") {
 
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
-                        deeptime::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                                                          biasMatrices), std::runtime_error);
+                        deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
+                                                                  dtrajs, biasMatrices), std::runtime_error);
             }
         }
     }

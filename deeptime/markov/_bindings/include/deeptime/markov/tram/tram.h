@@ -8,19 +8,12 @@
 #include <cassert>
 #include <utility>
 #include <pybind11/stl.h>
-#include <deeptime/common.h>
 #include "kahan_summation.h"
+#include "traminput.h"
 
-
-namespace deeptime::tram {
+namespace deeptime::markov::tram {
 
 namespace detail {
-constexpr void throwIfInvalid(bool isValid, const std::string &message) {
-    if (!isValid) {
-        throw std::runtime_error(message);
-    }
-}
-
 template<typename dtype>
 np_array_nfc<dtype> generateFilledArray(const std::vector<py::ssize_t> &dims, dtype fillValue) {
     np_array_nfc<dtype> array(dims);
@@ -99,104 +92,9 @@ private:
 
 
 template<typename dtype>
-class TRAMInput {
-public:
-    using DTraj = np_array<std::int32_t>;
-    using DTrajs = std::vector<DTraj>;
-
-    using BiasMatrix = np_array_nfc<dtype>;
-    using BiasMatrices = std::vector<BiasMatrix>;
-
-    TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
-              DTrajs dtrajs, BiasMatrices biasMatrices)
-            : stateCounts_(std::move(stateCounts)),
-              transitionCounts_(std::move(transitionCounts)),
-              dtrajs_(std::move(dtrajs)),
-              biasMatrices_(std::move(biasMatrices)) {
-        validateInput();
-    }
-
-    TRAMInput() = default;
-
-    TRAMInput(const TRAMInput &) = delete;
-
-    TRAMInput &operator=(const TRAMInput &) = delete;
-
-    TRAMInput(TRAMInput &&) noexcept = default;
-
-    TRAMInput &operator=(TRAMInput &&) noexcept = default;
-
-    ~TRAMInput() = default;
-
-    void validateInput() const {
-
-        if (dtrajs_.size() != biasMatrices_.size()) {
-            std::stringstream ss;
-            ss << "Input invalid. Number of trajectories should be equal to the size of the first dimension "
-                  "of the bias matrix.";
-            ss << "\nNumber of trajectories: " << dtrajs_.size() << "\nNumber of bias matrices: "
-               << biasMatrices_.size();
-            throw std::runtime_error(ss.str());
-        }
-        detail::throwIfInvalid(stateCounts_.shape(0) == transitionCounts_.shape(0),
-                               "stateCounts.shape(0) should equal transitionCounts.shape(0)");
-        detail::throwIfInvalid(stateCounts_.shape(1) == transitionCounts_.shape(1),
-                               "stateCounts.shape(1) should equal transitionCounts.shape(1)");
-        detail::throwIfInvalid(transitionCounts_.shape(1) == transitionCounts_.shape(2),
-                               "transitionCounts.shape(1) should equal transitionCounts.shape(2)");
-
-        for (std::size_t i = 0; i < dtrajs_.size(); ++i) {
-            const auto &dtraj = dtrajs_.at(i);
-            const auto &biasMatrix = biasMatrices_.at(i);
-
-            detail::throwIfInvalid(dtraj.ndim() == 1,
-                                   "dtraj at index {i} has an incorrect number of dimension. ndims should be 1.");
-            detail::throwIfInvalid(biasMatrix.ndim() == 2,
-                                   "biasMatrix at index {i} has an incorrect number of dimension. ndims should be 2.");
-            detail::throwIfInvalid(dtraj.shape(0) == biasMatrix.shape(0),
-                                   "dtraj and biasMatrix at index {i} should be of equal length.");
-            detail::throwIfInvalid(biasMatrix.shape(1) == transitionCounts_.shape(0),
-                                   "biasMatrix{i}.shape[1] should be equal to transitionCounts.shape[0].");
-        }
-    }
-
-    auto biasMatrix(std::size_t i) const {
-        return biasMatrices_.at(i).template unchecked<2>();
-    }
-
-    auto dtraj(std::size_t i) const {
-        return dtrajs_[i].template unchecked<1>();
-    }
-
-    auto transitionCounts() const {
-        return transitionCounts_.template unchecked<3>();
-    }
-
-    auto stateCounts() const {
-        return stateCounts_.template unchecked<2>();
-    }
-
-    auto sequenceLength(std::size_t i) const {
-        return dtrajs_[i].size();
-    }
-
-    auto nTrajectories() const {
-        return dtrajs_.size();
-    };
-
-private:
-    np_array_nfc<std::int32_t> stateCounts_;
-    np_array_nfc<std::int32_t> transitionCounts_;
-    DTrajs dtrajs_;
-    BiasMatrices biasMatrices_;
-};
-
-
-template<typename dtype>
 struct TRAM {
 public:
 
-    using StateIndex = py::ssize_t;
     TRAM(std::shared_ptr<TRAMInput<dtype>> tramInput, std::size_t callbackInterval)
             : input_(tramInput),
               nThermStates_(tramInput->stateCounts().shape(0)),
@@ -350,11 +248,14 @@ private:
         auto transitionCountsBuf = input_->transitionCounts();
         auto lagrangianMultLogBuf = lagrangianMultLog_.firstBuf();
 
-        #pragma omp parallel for default(none) firstprivate(nThermStates_, nMarkovStates_, transitionCountsBuf, lagrangianMultLogBuf)
-        for (StateIndex k = 0; k < nThermStates_; ++k) {
-            for (StateIndex i = 0; i < nMarkovStates_; ++i) {
+        auto nThermStates = nThermStates_;
+        auto nMarkovStates = nMarkovStates_;
+
+        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCountsBuf, lagrangianMultLogBuf)
+        for (StateIndex k = 0; k < nThermStates; ++k) {
+            for (StateIndex i = 0; i < nMarkovStates; ++i) {
                 dtype sum = 0.0;
-                for (StateIndex j = 0; j < nMarkovStates_; ++j) {
+                for (StateIndex j = 0; j < nMarkovStates; ++j) {
                     sum += (transitionCountsBuf(k, i, j) + transitionCountsBuf(k, j, i));
                 }
                 lagrangianMultLogBuf(k, i) = std::log(sum / 2);
@@ -500,12 +401,15 @@ private:
         auto oldStatVectorsBuf = statVectors.secondBuf();
 
         dtype maxError = 0;
-        #pragma omp parallel for default(none) shared(maxError) firstprivate(nThermStates_, nMarkovStates_, thermEnergiesBuf, oldThermEnergiesBuf, statVectorsBuf, oldStatVectorsBuf)
-        for (StateIndex k = 0; k < nThermStates_; ++k) {
+        auto nThermStates = nThermStates_;
+        auto nMarkovStates = nMarkovStates_;
+
+        #pragma omp parallel for default(none) shared(maxError) firstprivate(nThermStates, nMarkovStates, thermEnergiesBuf, oldThermEnergiesBuf, statVectorsBuf, oldStatVectorsBuf)
+        for (StateIndex k = 0; k < nThermStates; ++k) {
             auto energyDelta = std::abs(thermEnergiesBuf(k) - oldThermEnergiesBuf(k));
             maxError = std::max(maxError, energyDelta);
 
-            for (StateIndex i = 0; i < nMarkovStates_; ++i) {
+            for (StateIndex i = 0; i < nMarkovStates; ++i) {
                 energyDelta = std::abs(statVectorsBuf(k, i) - oldStatVectorsBuf(k, i));
                 maxError = std::max(maxError, energyDelta);
             }
@@ -587,11 +491,10 @@ private:
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template mutable_unchecked<2>();
         auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
 
-        auto ptr = biasedConfEnergies_.template data();
+        auto ptr = biasedConfEnergies_.data();
         auto shift = std::accumulate(ptr, ptr + biasedConfEnergies_.size(), static_cast<dtype>(0), [](dtype curr, dtype energy) {
             return std::min(curr, energy);
         });
-
         // todo maybe parallelize?
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             thermStateEnergiesBuf(k) -= shift;
@@ -666,13 +569,16 @@ private:
         // \sum_{i,j,k}c_{ij}^{(k)}\log p_{ij}^{(k)} + \sum_{i,k}N_{i}^{(k)}f_{i}^{(k)}
         dtype a = 0;
 
-        #pragma omp parallel for default(none) firstprivate(nThermStates_, nMarkovStates_, transitionCountsBuf, transitionMatricesBuf, stateCountsBuf, biasedConfEnergiesBuf) reduction(+:a) collapse(2)
-        for (StateIndex k = 0; k < nThermStates_; ++k) {
-            for (StateIndex i = 0; i < nMarkovStates_; ++i) {
+        auto nThermStates = nThermStates_;
+        auto nMarkovStates = nMarkovStates_;
+
+        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCountsBuf, transitionMatricesBuf, stateCountsBuf, biasedConfEnergiesBuf) reduction(+:a) collapse(2)
+        for (StateIndex k = 0; k < nThermStates; ++k) {
+            for (StateIndex i = 0; i < nMarkovStates; ++i) {
                 if (stateCountsBuf(k, i) > 0) {
                     a += (stateCountsBuf(k, i) + prior()) * biasedConfEnergiesBuf(k, i);
                 }
-                for (StateIndex j = 0; j < nMarkovStates_; ++j) {
+                for (StateIndex j = 0; j < nMarkovStates; ++j) {
                     auto CKij = transitionCountsBuf(k, i, j);
                     if (CKij > 0) {
                         if (i == j) {
@@ -704,11 +610,13 @@ private:
         auto transitionCountsBuf = input_->transitionCounts();
         auto transitionMatricesBuf = transitionMatrices_.template mutable_unchecked<3>();
 
-        #pragma omp parallel for default(none) firstprivate(nThermStates_, nMarkovStates_, biasedConfEnergiesBuf, lagrangianMultLogBuf, transitionCountsBuf, transitionMatricesBuf)
-        for (StateIndex k = 0; k < nThermStates_; ++k) {
-            std::vector<dtype> scratch (nMarkovStates_, 0);
-            for (StateIndex i = 0; i < nMarkovStates_; ++i) {
-                for (StateIndex j = 0; j < nMarkovStates_; ++j) {
+        auto nThermStates = nThermStates_;
+        auto nMarkovStates = nMarkovStates_;
+        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, biasedConfEnergiesBuf, lagrangianMultLogBuf, transitionCountsBuf, transitionMatricesBuf)
+        for (StateIndex k = 0; k < nThermStates; ++k) {
+            std::vector<dtype> scratch (nMarkovStates, 0);
+            for (StateIndex i = 0; i < nMarkovStates; ++i) {
+                for (StateIndex j = 0; j < nMarkovStates; ++j) {
                     transitionMatricesBuf(k, i, j) = 0.0;
                     auto C = transitionCountsBuf(k, i, j) + transitionCountsBuf(k, j, i);
 
@@ -729,12 +637,7 @@ private:
             }
             // normalize transition matrix
             auto maxSumIt = std::max_element(std::begin(scratch), std::end(scratch));
-            /*dtype maxSum = 0;
-            for (StateIndex i = 0; i < nMarkovStates_; ++i) {
-                if (scratchM_[i] > maxSum) {
-                    maxSum = scratchM_[i];
-                }
-            }*/
+
             dtype maxSum;
             if (maxSumIt == std::end(scratch) || *maxSumIt == 0){
                 maxSum = 1.0; // completely empty T matrix -> generate Id matrix
@@ -742,8 +645,8 @@ private:
                 maxSum = *maxSumIt;
             }
 
-            for (StateIndex i = 0; i < nMarkovStates_; ++i) {
-                for (StateIndex j = 0; j < nMarkovStates_; ++j) {
+            for (StateIndex i = 0; i < nMarkovStates; ++i) {
+                for (StateIndex j = 0; j < nMarkovStates; ++j) {
                     if (i == j) {
                         transitionMatricesBuf(k, i, i) = (transitionMatricesBuf(k, i, i) + maxSum - scratch[i]) / maxSum;
                         if (0 == transitionMatricesBuf(k, i, i) && 0 < transitionCountsBuf(k, i, i)) {

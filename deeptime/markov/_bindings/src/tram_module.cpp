@@ -5,7 +5,7 @@
 
 PYBIND11_MODULE(_tram_bindings, m) {
     using namespace pybind11::literals;
-    using namespace deeptime::tram;
+    using namespace deeptime::markov::tram;
     {
         auto tramMod = m.def_submodule("tram");
 
@@ -20,17 +20,19 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 .def("markov_state_energies", &TRAM<double>::energiesPerMarkovState)
                 .def("get_sample_weights", &TRAM<double>::sampleWeights, "therm_state_index"_a = -1);
 
-        using Input = TRAMInput<double>;
-        py::class_<Input, std::shared_ptr<Input>>(tramMod, "TRAM_input").def(
-                py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, Input::DTrajs, Input::BiasMatrices>(),
+        py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(tramMod, "TRAM_input").def(
+                py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, DTrajs, BiasMatrices<double>>(),
                 "state_counts"_a, "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a);
 
-        tramMod.def("get_state_transitions", &getStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
+        tramMod.def("get_state_transitions_post_hoc_RE",
+                    &getStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a);
 
-        tramMod.def("bar_variance", &hasOverlapBarVariance<double>);
-        tramMod.def("post_hoc_RE", &hasOverlapPostHocReplicaExchange<double>);
+        tramMod.def("get_state_transitions_BAR_variance", &getStateTransitions<double, OverlapBarVariance<double>>,
+                    "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
+                    "connectivity_factor"_a);
+
 
         tramMod.def("find_trajectory_fragment_indices", &getTrajectoryFragmentIndices, "ttrajs"_a, "n_therm_states"_a);
     }

@@ -30,7 +30,7 @@ auto generateDtraj(int nMarkovStates, int length, float shift) {
 }
 
 auto generateDtrajs(int nThermsStates, int nMarkovStates, int *trajLengths) {
-    deeptime::tram::TRAMInput<double>::DTrajs dtrajs;
+    deeptime::markov::tram::DTrajs dtrajs;
 
     for (int K = 0; K < nThermsStates; ++K) {
         dtrajs.push_back(generateDtraj(nMarkovStates, trajLengths[K], 0.1 * K));
@@ -118,13 +118,13 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
         auto [stateCounts, transitionCounts] = countStates(nThermStates, nMarkovStates, dtrajs);
 
-        auto inputPtr = std::make_shared<deeptime::tram::TRAMInput<TestType>>(
+        auto inputPtr = std::make_shared<deeptime::markov::tram::TRAMInput<TestType>>(
                 std::move(stateCounts), std::move(transitionCounts), dtrajs,
                 biasMatrices);
 
 
         WHEN("TRAM is constructed") {
-            auto tram = deeptime::tram::TRAM<TestType>(inputPtr, 0);
+            auto tram = deeptime::markov::tram::TRAM<TestType>(inputPtr, 0);
 
             THEN("Result matrices are initialized") {
                 REQUIRE(tram.energiesPerThermodynamicState().size() == nThermStates);

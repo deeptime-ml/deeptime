@@ -4,7 +4,7 @@
 #include "deeptime/markov/tram/tram.h"
 
 TEST_CASE("TRAM Swap", "[tram]") {
-    using namespace deeptime::tram;
+    using namespace deeptime::markov::tram;
 
     pybind11::scoped_interpreter interpreterGuard;
 
