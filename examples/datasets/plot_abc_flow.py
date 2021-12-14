@@ -9,7 +9,6 @@ import numpy as np
 from matplotlib import animation
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 from deeptime.data import abc_flow
 
@@ -29,7 +28,6 @@ for _ in range(50):
 scatters = np.array(scatters)
 
 f = plt.figure(figsize=(18, 18))
-
 ax = f.add_subplot(1, 1, 1, projection='3d')
 ax.set_title('Evolution of test points in the ABC flowfield')
 graph, = ax.plot(*scatters[0].T, linestyle="", marker="o")

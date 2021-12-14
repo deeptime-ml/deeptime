@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 
 from deeptime.util.exceptions import NotConvergedWarning
-from .. import _mle_sparse_bindings as _bindings
+from . import _mle_sparse_bindings as _bindings
 
 
 def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),

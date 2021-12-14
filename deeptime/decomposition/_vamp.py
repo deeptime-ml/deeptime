@@ -403,6 +403,20 @@ class VAMP(EstimatorTransformer):
         -------
         self : VAMP
             Reference to self.
+
+        Notes
+        -----
+        If you are running into memory problems for potentially multiple trajectories you can decrease memory load
+        by using :meth:`partial_fit` on individual trajectories or in conjunction with
+        :meth:`timeshifted_split <deeptime.util.data.timeshifted_split>`:
+
+        >>> import numpy as np
+        >>> from deeptime.decomposition import TICA
+        >>> from deeptime.util.data import timeshifted_split
+        >>> estimator = TICA(dim=1)
+        >>> for X, Y in timeshifted_split(np.ones(shape=(100, 5)), lagtime=1, chunksize=40):
+        ...     estimator.partial_fit((X, Y))
+        >>> joint_model = estimator.fetch_model()
         """
         if isinstance(data, (Covariance, CovarianceModel)):
             self.fit_from_covariances(data)

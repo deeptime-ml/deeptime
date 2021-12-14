@@ -232,6 +232,8 @@ def metastable_from_msm(msm, n_hidden_states: int,
                          np.eye(n_meta))
     else:
         pcca = nonseparate_msm.pcca(n_meta)
+
+    separate_states = None
     if separate_symbols is not None:
         separate_states = msm.count_model.symbols_to_states(separate_symbols)
         memberships = np.zeros((msm.n_states, n_hidden_states))
@@ -239,7 +241,6 @@ def metastable_from_msm(msm, n_hidden_states: int,
         memberships[separate_states, -1] = 1
     else:
         memberships = pcca.memberships
-        separate_states = None
 
     hidden_transition_matrix = _coarse_grain_transition_matrix(msm.transition_matrix, memberships)
     if reversible:

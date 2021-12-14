@@ -6,7 +6,6 @@ import logging
 import warnings
 import numpy as np
 import scipy as sp
-import scipy.sparse
 
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.special import exprel

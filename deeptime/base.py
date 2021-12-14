@@ -253,7 +253,7 @@ class Estimator(_BaseMethodsMixin):
             fit = super(Estimator, self).__getattribute__(item)
             return _ImmutableInputData(fit)
 
-        return super(_BaseMethodsMixin, self).__getattribute__(item)
+        return super().__getattribute__(item)
 
 
 class _ImmutableInputData:

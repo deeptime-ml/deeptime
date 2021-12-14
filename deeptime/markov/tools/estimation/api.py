@@ -703,8 +703,7 @@ def prior_rev(C, alpha=-1.0):
 
 def transition_matrix(C, reversible=False, mu=None, method='auto',
                       maxiter: int = 1000000, maxerr: float = 1e-8,
-                      rev_pisym: bool = False, return_statdist: bool = False, warn_not_converged: bool = True,
-                      sparse_newton: bool = False):
+                      rev_pisym: bool = False, return_statdist: bool = False, warn_not_converged: bool = True):
     r"""Estimate the transition matrix from the given countmatrix. :footcite:`prinz2011markov`
     :footcite:`bowman2009progress` :footcite:`trendelkamp2015estimation`
 
@@ -729,9 +728,6 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
         matrix is less then one third, select sparse. Else select dense.
         The type of the T matrix returned always matches the type of the
         C matrix, irrespective of the method that was used to compute it.
-
-    Other Parameters
-    ----------------
     maxiter : int, optional, default=1000000
         Optional parameter with reversible = True.
         maximum number of iterations before the method exits
@@ -755,8 +751,6 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
         If set to true, the likelihood history and the pi_change history is returned.
     warn_not_converged : bool, optional, default=True
         Prints a warning if not converged.
-    sparse_newton : bool, optional, default=False
-        If True, use the experimental primal-dual interior-point solver for sparse input/computation method.
 
     Returns
     -------
@@ -846,9 +840,6 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
                     result = sparse.transition_matrix.transition_matrix_reversible_pisym(
                         C, return_statdist=return_statdist
                     )
-                elif sparse_newton:
-                    from .sparse.mle.newton.mle_rev import solve_mle_rev
-                    result = solve_mle_rev(C, tol=maxerr, maxiter=maxiter, return_statdist=return_statdist)
                 else:
                     result = sparse.mle.mle_trev(C, maxerr=maxerr, maxiter=maxiter,
                                                  warn_not_converged=warn_not_converged,

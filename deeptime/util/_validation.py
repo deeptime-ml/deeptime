@@ -5,7 +5,7 @@ import numpy as np
 from threadpoolctl import threadpool_limits
 
 from ..base import Estimator, Model
-from .parallel import handle_n_jobs, joining
+from .parallel import handle_n_jobs, joining, multiprocessing_context
 from .platform import handle_progress_bar
 
 
@@ -208,12 +208,11 @@ class LaggedModelValidator(Estimator):
             for lag in progress(lags_for_estimation, total=len(lags_for_estimation), leave=False):
                 estimated_models.append(estimate_model_for_lag(self.test_estimator, self._test_model, data, lag))
         else:
-            from multiprocessing import get_context
             fun = estimate_model_for_lag
             args = [(i, fun, (self.test_estimator, self._test_model, data, lag))
                     for i, lag in enumerate(lags_for_estimation)]
             estimated_models = [None for _ in range(len(args))]
-            with joining(get_context("spawn").Pool(processes=n_jobs)) as pool:
+            with joining(multiprocessing_context().Pool(processes=n_jobs)) as pool:
                 for result in progress(pool.imap_unordered(_imap_wrapper, args),
                                        total=len(lags_for_estimation), leave=False):
                     estimated_models[result[0]] = result[1]

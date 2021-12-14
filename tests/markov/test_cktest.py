@@ -13,7 +13,7 @@ def test_invalid_mlags():
 
 
 @pytest.mark.parametrize("n_jobs", [1, 2], ids=lambda x: f"n_jobs={x}")
-@pytest.mark.parametrize("mlags", [2, [0, 1, 10], [1, 10]], ids=lambda x: f"mlags={x}")
+@pytest.mark.parametrize("mlags", [2, [0, 1, 10]], ids=lambda x: f"mlags={x}")
 @pytest.mark.parametrize("estimator_type", ["MLMSM", "BMSM", "HMM", "BHMM"])
 def test_cktest_double_well(estimator_type, n_jobs, mlags):
     # maximum-likelihood estimates

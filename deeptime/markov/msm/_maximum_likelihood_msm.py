@@ -186,6 +186,24 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
     def _needs_strongly_connected_sets(self):
         return self.reversible and self.stationary_distribution_constraint is None
 
+    @staticmethod
+    def _to_transition_count_model(counts) -> TransitionCountModel:
+        r""" Transforms counts to a TransitionCountModel or raises if it couldn't. """
+        if isinstance(counts, TransitionCountEstimator):
+            if counts.has_model:
+                counts = counts.fetch_model()
+            else:
+                raise ValueError("Can only fit on transition count estimator if the estimator "
+                                 "has been fit to data previously.")
+        elif isinstance(counts, np.ndarray):
+            counts = TransitionCountModel(counts)
+        elif isinstance(counts, TransitionCountModel):
+            pass  # we don't have to do anything
+        else:
+            raise ValueError(f"Unknown type of counts argument, can only be one of TransitionCountModel, "
+                             f"TransitionCountEstimator, (N, N) ndarray. But was: {type(counts)}.")
+        return counts
+
     def fit_from_counts(self, counts: Union[np.ndarray, TransitionCountEstimator, TransitionCountModel]):
         r""" Fits a model from counts in form of a (n, n) count matrix, a :class:`TransitionCountModel` or an instance
         of `TransitionCountEstimator`, which has been fit on data previously.
@@ -199,19 +217,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self : MaximumLikelihoodMSM
             Reference to self.
         """
-        if isinstance(counts, TransitionCountEstimator):
-            if counts.has_model:
-                counts = counts.fetch_model()
-            else:
-                raise ValueError("Can only fit on transition count estimator if the estimator "
-                                 "has been fit to data previously.")
-        elif isinstance(counts, np.ndarray):
-            counts = TransitionCountModel(counts)
-        elif isinstance(counts, TransitionCountModel):
-            counts = counts
-        else:
-            raise ValueError("Unknown type of counts argument, can only be one of TransitionCountModel, "
-                             "TransitionCountEstimator, (N, N) ndarray. But was: {}".format(type(counts)))
+        counts = MaximumLikelihoodMSM._to_transition_count_model(counts)
         needs_strong_connectivity = self._needs_strongly_connected_sets()
         if not self.allow_disconnected:
             sets = counts.connected_sets(connectivity_threshold=self.connectivity_threshold,

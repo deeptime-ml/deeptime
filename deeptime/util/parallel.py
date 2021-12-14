@@ -1,3 +1,5 @@
+import multiprocessing as mp
+
 from contextlib import AbstractContextManager
 from typing import Optional
 
@@ -49,3 +51,11 @@ class joining(AbstractContextManager):
     def __exit__(self, *info):
         self.thing.close()
         self.thing.join()
+
+
+def multiprocessing_context() -> mp.context.BaseContext:
+    r""" Yields a multiprocessing context. Forkserver if available, otherwise spawn. """
+    try:
+        return mp.get_context('forkserver')
+    except ValueError:  # forkserver currently not available on win32
+        return mp.get_context('spawn')
