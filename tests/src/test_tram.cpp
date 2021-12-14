@@ -30,7 +30,7 @@ auto generateDtraj(int nMarkovStates, int length, float shift) {
 }
 
 auto generateDtrajs(int nThermsStates, int nMarkovStates, int *trajLengths) {
-    std::vector<np_array_nfc<int>> dtrajs;
+    deeptime::tram::TRAMInput<double>::DTrajs dtrajs;
 
     for (int K = 0; K < nThermsStates; ++K) {
         dtrajs.push_back(generateDtraj(nMarkovStates, trajLengths[K], 0.1 * K));
@@ -60,8 +60,8 @@ auto generateBiasMatrix(int nThermStates, np_array_nfc<int> dtraj) {
     return biasMatrix;
 }
 
-template<typename dtype>
-auto generateBiasMatrices(int nThermsStates, std::vector<np_array_nfc<int>> dtrajs) {
+template<typename dtype, typename Dtrajs>
+auto generateBiasMatrices(int nThermsStates, const Dtrajs &dtrajs) {
     std::vector<np_array_nfc<dtype>> matrices;
 
     for (int K = 0; K < nThermsStates; ++K) {
@@ -70,7 +70,8 @@ auto generateBiasMatrices(int nThermsStates, std::vector<np_array_nfc<int>> dtra
     return matrices;
 }
 
-auto countStates(int nThermStates, int nMarkovStates, std::vector<np_array_nfc<int>> dtrajs) {
+template<typename Dtrajs>
+auto countStates(int nThermStates, int nMarkovStates, const Dtrajs &dtrajs) {
     auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
     auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
     std::fill(stateCounts.mutable_data(), stateCounts.mutable_data() + stateCounts.size(), 0);

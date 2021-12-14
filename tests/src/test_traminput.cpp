@@ -8,6 +8,8 @@
 using namespace deeptime;
 
 TEST_CASE("TRAMInput", "[tram]") {
+    using Input = deeptime::tram::TRAMInput<double>;
+
     GIVEN("Input") {
         py::scoped_interpreter guard;
 
@@ -18,8 +20,8 @@ TEST_CASE("TRAMInput", "[tram]") {
         auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
         auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
 
-        std::vector<np_array_nfc<int>> dtrajs;
-        std::vector<np_array_nfc<double>> biasMatrices;
+        Input::DTrajs dtrajs;
+        Input::BiasMatrices biasMatrices;
 
         for (int i = 0; i < nThermStates; ++i) {
             int length = i + 10;
