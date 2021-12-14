@@ -18,7 +18,7 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 .def("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
                 .def("therm_state_energies", &TRAM<double>::energiesPerThermodynamicState)
                 .def("markov_state_energies", &TRAM<double>::energiesPerMarkovState)
-                .def("get_sample_weights", &TRAM<double>::getSampleWeights, "therm_state_index"_a = -1);
+                .def("get_sample_weights", &TRAM<double>::sampleWeights, "therm_state_index"_a = -1);
 
         using Input = TRAMInput<double>;
         py::class_<Input, std::shared_ptr<Input>>(tramMod, "TRAM_input").def(
