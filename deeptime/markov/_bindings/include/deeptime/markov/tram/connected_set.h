@@ -15,56 +15,27 @@ using TransitionPair = std::tuple<StateIndex, StateIndex>;
 using IndexList = std::vector<std::vector<TransitionPair>>;
 
 
-// todo not really a getter
-IndexList getIndexOfSamplesInMarkovState(std::size_t i, const DTrajs &dtrajs, std::int32_t nThermStates) {
-    IndexList indices (nThermStates);
-
-    for (std::size_t j = 0; j < dtrajs.size(); ++j) {
-        std::size_t trajLength = dtrajs[j].size();
-
-        auto dtraj = dtrajs[j].template unchecked<1>();
-
-        for (std::size_t n = 0; n < trajLength; ++n) {
-            if (dtraj[n] == i) {
-                // markov state i sampled in therm state j can be found at bias matrix index (j, n)
-                indices[j].push_back(std::make_tuple(j, n));
-            }
-        }
-    }
-    return indices;
-}
-
-// todo not really a getter
-IndexList getIndexOfSamplesInMarkovState(std::size_t i, const DTrajs &ttrajs, const DTrajs &dtrajs,
+IndexList findIndexOfSamplesInMarkovState(std::size_t i, const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
                                          std::int32_t nThermStates) {
     IndexList indices (nThermStates);
 
     for (std::size_t j = 0; j < dtrajs.size(); ++j) {
         std::size_t trajLength = dtrajs[j].size();
 
-        auto dtraj = dtrajs[j].template unchecked<1>();
-        auto ttraj = ttrajs[j].template unchecked<1>();
+        auto dtrajBuf = dtrajs[j].template unchecked<1>();
+        auto ttrajBuf = ttrajs ? (*ttrajs)[j].data() : nullptr;
 
-        // todo no c&p code
         for (std::size_t n = 0; n < trajLength; ++n) {
-            if (dtraj[n] == i) {
-                auto k = ttrajs[j].at(n);
+
+            if (dtrajBuf[n] == i) {
+                auto k = ttrajs ? ttrajBuf[n] : j;
+
                 // markov state i sampled in therm state k can be found at bias matrix index (j, n,)
-                indices[k].push_back({j, n});
+                indices[k].push_back(std::make_tuple(j, n));
             }
         }
     }
     return indices;
-}
-
-IndexList getIndexOfSamplesInMarkovState (std::size_t i, const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
-                                          std::int32_t nThermStates) {
-    if (ttrajs) {
-        return getIndexOfSamplesInMarkovState(i, *ttrajs, dtrajs, nThermStates);
-    }
-    else {
-        return getIndexOfSamplesInMarkovState(i, dtrajs, nThermStates);
-    }
 }
 
 
@@ -145,7 +116,7 @@ struct OverlapBarVariance{
 };
 
 template<typename dtype, typename OverlapMode>
-TransitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
+TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
                                      const BiasMatrices<dtype> &biasMatrices,
                                      const np_array<std::int32_t> &stateCounts,
                                      StateIndex nThermStates,
@@ -169,7 +140,7 @@ TransitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const 
     for (StateIndex i = 0; i < nMarkovStates; ++i) {
 
         // Get all indices in all trajectories of all samples that were binned in markov state i.
-        IndexList sampleIndicesIn_i = getIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
+        IndexList sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
 
         for (StateIndex k = 0; k < nThermStates; ++k) {
             // therm state must have counts in markov state i

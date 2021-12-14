@@ -336,11 +336,13 @@ class TRAM(_MSMBaseEstimator):
             # get list of all possible transitions between thermodynamic states. A transition is only possible when two
             # thermodynamic states have an overlapping markov state. Whether the markov state overlaps depends on the
             # sampled data and the connectivity settings and is computed in get_state_transitions:
-            connectivity_fn = tram.post_hoc_RE if self.connectivity == 'post_hoc_RE' else tram.bar_variance
-            (i_s, j_s) = tram.get_state_transitions(ttrajs, dtrajs, bias_matrices,
-                                                    all_state_counts,
-                                                    self.n_therm_states, self.n_markov_states,
-                                                    self.connectivity_factor, connectivity_fn)
+            if self.connectivity == 'post_hoc_RE':
+                connectivity_fn = tram.get_state_transitions_post_hoc_RE
+            else:
+                connectivity_fn = tram.get_state_transitions_BAR_variance
+
+            (i_s, j_s) = connectivity_fn(ttrajs, dtrajs, bias_matrices, all_state_counts, self.n_therm_states,
+                                         self.n_markov_states, self.connectivity_factor)
 
             # add transitions that occurred within each thermodynamic state. These are simply the connected sets:
             for k in range(self.n_therm_states):
@@ -441,7 +443,7 @@ class TRAM(_MSMBaseEstimator):
             # take the fragments based on the list of indices. Exclude all values that are less than zero. They don't
             # belong in the connected set.
             fragments.append([dtrajs[traj_idx][start:stop][dtrajs[traj_idx][start:stop] >= 0]
-                                         for (traj_idx, start, stop) in fragment_indices[k]])
+                              for (traj_idx, start, stop) in fragment_indices[k]])
         return fragments
 
     def _get_trajectory_fragment_mapping(self, ttrajs):

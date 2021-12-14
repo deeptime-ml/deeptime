@@ -13,8 +13,7 @@ namespace deeptime::markov::tram {
 using Fragment = std::tuple<std::int32_t, std::int32_t, std::int32_t>;
 using Fragments = std::vector<Fragment>;
 
-// todo not a getter
-std::vector<Fragments> getTrajectoryFragmentIndices(const DTrajs &ttrajs, std::int32_t nThermStates) {
+std::vector<Fragments> findTrajectoryFragmentIndices(const DTrajs &ttrajs, std::int32_t nThermStates) {
 
     std::vector<Fragments> fragments(nThermStates);
 
