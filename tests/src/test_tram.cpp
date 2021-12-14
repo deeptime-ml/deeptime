@@ -129,9 +129,9 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
             THEN("Result matrices are initialized") {
                 REQUIRE(tram.energiesPerThermodynamicState().size() == nThermStates);
-                REQUIRE(tram.getBiasedConfEnergies().ndim() == 2);
-                REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
-                REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
+                REQUIRE(tram.biasedConfEnergies().ndim() == 2);
+                REQUIRE(tram.energiesPerMarkovState().size() == nMarkovStates);
+                REQUIRE(tram.biasedConfEnergies().data()[0] == 0);
             }
 
             AND_WHEN("estimate() is called") {
@@ -141,13 +141,13 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
                 THEN("Energies are finite") {
                     auto thermStateEnergies = tram.energiesPerThermodynamicState();
-                    auto markovStateEnergies = tram.getEnergiesPerMarkovState();
+                    auto markovStateEnergies = tram.energiesPerMarkovState();
 
                     REQUIRE(areFinite<TestType>(thermStateEnergies));
                     REQUIRE(areFinite<TestType>(markovStateEnergies));
 
                 }AND_THEN("Transition matrices are transition matrices") {
-                    auto transitionMatrices = tram.getTransitionMatrices();
+                    auto transitionMatrices = tram.transitionMatrices();
 
                     REQUIRE(areFinite<TestType>(transitionMatrices));
                     auto matrixSize = nMarkovStates * nMarkovStates;

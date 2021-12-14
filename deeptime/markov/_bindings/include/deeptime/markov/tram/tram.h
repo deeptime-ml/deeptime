@@ -110,9 +110,9 @@ public:
 
     TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
               DTrajs dtrajs, BiasMatrices biasMatrices)
-            : _stateCounts(std::move(stateCounts)),
-              _transitionCounts(std::move(transitionCounts)),
-              _dtrajs(std::move(dtrajs)),
+            : stateCounts_(std::move(stateCounts)),
+              transitionCounts_(std::move(transitionCounts)),
+              dtrajs_(std::move(dtrajs)),
               _biasMatrices(std::move(biasMatrices)) {
         validateInput();
     }
@@ -120,71 +120,75 @@ public:
     TRAMInput() = default;
 
     TRAMInput(const TRAMInput &) = delete;
+
     TRAMInput &operator=(const TRAMInput &) = delete;
+
     TRAMInput(TRAMInput &&) noexcept = default;
+
     TRAMInput &operator=(TRAMInput &&) noexcept = default;
+
     ~TRAMInput() = default;
 
     void validateInput() const {
 
-        if (_dtrajs.size() != _biasMatrices.size()) {
+        if (dtrajs_.size() != _biasMatrices.size()) {
             std::stringstream ss;
             ss << "Input invalid. Number of trajectories should be equal to the size of the first dimension "
                   "of the bias matrix.";
-            ss << "\nNumber of trajectories: " << _dtrajs.size() << "\nNumber of bias matrices: "
+            ss << "\nNumber of trajectories: " << dtrajs_.size() << "\nNumber of bias matrices: "
                << _biasMatrices.size();
             throw std::runtime_error(ss.str());
         }
-        detail::throwIfInvalid(_stateCounts.shape(0) == _transitionCounts.shape(0),
+        detail::throwIfInvalid(stateCounts_.shape(0) == transitionCounts_.shape(0),
                                "stateCounts.shape(0) should equal transitionCounts.shape(0)");
-        detail::throwIfInvalid(_stateCounts.shape(1) == _transitionCounts.shape(1),
+        detail::throwIfInvalid(stateCounts_.shape(1) == transitionCounts_.shape(1),
                                "stateCounts.shape(1) should equal transitionCounts.shape(1)");
-        detail::throwIfInvalid(_transitionCounts.shape(1) == _transitionCounts.shape(2),
+        detail::throwIfInvalid(transitionCounts_.shape(1) == transitionCounts_.shape(2),
                                "transitionCounts.shape(1) should equal transitionCounts.shape(2)");
 
-        for (std::size_t k = 0; k < _dtrajs.size(); ++k) {
-            const auto &dtrajsK = _dtrajs.at(k);
-            const auto &biasMatrixK = _biasMatrices.at(k);
+        for (std::size_t i = 0; i < dtrajs_.size(); ++i) {
+            const auto &dtraj = dtrajs_.at(i);
+            const auto &biasMatrix = _biasMatrices.at(i);
 
-            detail::throwIfInvalid(dtrajsK.ndim() == 1,
+            detail::throwIfInvalid(dtraj.ndim() == 1,
                                    "dtraj at index {i} has an incorrect number of dimension. ndims should be 1.");
-            detail::throwIfInvalid(biasMatrixK.ndim() == 2,
+            detail::throwIfInvalid(biasMatrix.ndim() == 2,
                                    "biasMatrix at index {i} has an incorrect number of dimension. ndims should be 2.");
-            detail::throwIfInvalid(dtrajsK.shape(0) == biasMatrixK.shape(0),
+            detail::throwIfInvalid(dtraj.shape(0) == biasMatrix.shape(0),
                                    "dtraj and biasMatrix at index {i} should be of equal length.");
-            detail::throwIfInvalid(biasMatrixK.shape(1) == _transitionCounts.shape(0),
+            detail::throwIfInvalid(biasMatrix.shape(1) == transitionCounts_.shape(0),
                                    "biasMatrix{i}.shape[1] should be equal to transitionCounts.shape[0].");
         }
     }
 
-    auto biasMatrix(std::size_t k) const {
-        return _biasMatrices.at(k).template unchecked<2>();
+    auto biasMatrix(std::size_t i) const {
+        return _biasMatrices.at(i).template unchecked<2>();
     }
 
-    auto dtraj(std::size_t k) const {
-        return _dtrajs[k].template unchecked<1>();
+    auto dtraj(std::size_t i) const {
+        return dtrajs_[i].template unchecked<1>();
     }
 
     auto transitionCounts() const {
-        return _transitionCounts.template unchecked<3>();
+        return transitionCounts_.template unchecked<3>();
     }
 
     auto stateCounts() const {
-        return _stateCounts.template unchecked<2>();
+        return stateCounts_.template unchecked<2>();
     }
 
-    auto sequenceLength(std::size_t k) const {
-        return _dtrajs[k].size();
+    auto sequenceLength(std::size_t i) const {
+        return dtrajs_[i].size();
     }
 
     auto nTrajectories() const {
-        return _dtrajs.size();
+        return dtrajs_.size();
     };
 
 private:
-    np_array_nfc<std::int32_t> _stateCounts;
-    np_array_nfc<std::int32_t> _transitionCounts;
-    DTrajs _dtrajs;
+    np_array_nfc<std::int32_t> stateCounts_;
+    np_array_nfc<std::int32_t> transitionCounts_;
+    DTrajs dtrajs_;
     BiasMatrices _biasMatrices;
 };
 
@@ -194,45 +198,45 @@ struct TRAM {
 public:
 
     TRAM(std::shared_ptr<TRAMInput<dtype>> tramInput, std::size_t callbackInterval)
-            : input(tramInput),
-              nThermStates(tramInput->stateCounts().shape(0)),
-              nMarkovStates(tramInput->stateCounts().shape(1)),
-              callbackInterval(callbackInterval),
-              biasedConfEnergies(detail::generateFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
-              lagrangianMultLog(ExchangeableArray<dtype, 2>({nThermStates, nMarkovStates}, 0.)),
-              modifiedStateCountsLog(detail::generateFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
-              thermStateEnergies(ExchangeableArray<dtype, 1>(std::vector<decltype(nThermStates)>{nThermStates}, 0)),
-              markovStateEnergies(np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nMarkovStates})),
-              transitionMatrices(np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates})),
-              scratchM(std::unique_ptr<dtype[]>(new dtype[nMarkovStates])),
-              scratchT(std::unique_ptr<dtype[]>(new dtype[nThermStates])) {
+            : input_(tramInput),
+              nThermStates_(tramInput->stateCounts().shape(0)),
+              nMarkovStates_(tramInput->stateCounts().shape(1)),
+              callbackInterval_(callbackInterval),
+              biasedConfEnergies_(detail::generateFilledArray<dtype>({nThermStates_, nMarkovStates_}, 0.)),
+              lagrangianMultLog_(ExchangeableArray<dtype, 2>({nThermStates_, nMarkovStates_}, 0.)),
+              modifiedStateCountsLog_(detail::generateFilledArray<dtype>({nThermStates_, nMarkovStates_}, 0.)),
+              thermStateEnergies_(ExchangeableArray<dtype, 1>(std::vector<decltype(nThermStates_)>{nThermStates_}, 0)),
+              markovStateEnergies_(np_array_nfc<dtype>(std::vector<decltype(nMarkovStates_)>{nMarkovStates_})),
+              transitionMatrices_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_, nMarkovStates_})),
+              scratchM_(std::unique_ptr<dtype[]>(new dtype[nMarkovStates_])),
+              scratchT_(std::unique_ptr<dtype[]>(new dtype[nThermStates_])) {
         initLagrangianMult();
     }
 
     auto energiesPerThermodynamicState() const {
-        return *thermStateEnergies.first();
+        return *thermStateEnergies_.first();
     }
 
-    auto getEnergiesPerMarkovState() const {
-        return markovStateEnergies;
+    auto energiesPerMarkovState() const {
+        return markovStateEnergies_;
     }
 
-    auto getBiasedConfEnergies() const {
-        return biasedConfEnergies;
+    auto biasedConfEnergies() const {
+        return biasedConfEnergies_;
     }
 
-    auto getTransitionMatrices() {
-        return transitionMatrices;
+    auto transitionMatrices() {
+        return transitionMatrices_;
     }
 
     // compute the log-likelihood of observing the input data under the current
-    // biasedConfEnergies.
+    // biasedConfEnergies_.
     dtype computeLogLikelihood() {
 
         dtype logLikelihood = 0.;
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            logLikelihood += computeSampleLikelihood(K, input->sequenceLength(K));
+        for (auto i = 0; i < input_->nTrajectories(); ++i) {
+            logLikelihood += computeSampleLikelihood(i);
         }
         logLikelihood += computeTransitionLikelihood();
 
@@ -247,11 +251,10 @@ public:
     void estimate(std::size_t maxIter, dtype maxErr, bool trackLogLikelihoods = false,
                   const py::object *callback = nullptr) {
 
-        dtype iterationError = 0.;
-        dtype logLikelihood = 0.;
         // Array to keep track of _statVectors(K, i) = exp(_thermStateEnergies(K) - _biasedConfEnergies(K, i))
         // difference between previous and current statvectors is used for calculting the iteration error.
-        auto statVectors = ExchangeableArray<dtype, 2>(std::vector({nThermStates, nMarkovStates}), 0.);
+        auto statVectors = ExchangeableArray<dtype, 2>(std::vector({nThermStates_, nMarkovStates_}), 0.);
+        auto iterationError = 0.;
 
         for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
 
@@ -264,15 +267,13 @@ public:
             updateThermStateEnergies();
             updateStatVectors(statVectors);
 
-            // compare new thermStateEnergies and statVectors with old to get the
+            // compare new thermStateEnergies_ and statVectors with old to get the
             // iteration error (= how much the energies changed).
             iterationError = getError(statVectors);
 
-            if (trackLogLikelihoods) {
-                logLikelihood = computeLogLikelihood();
-            }
+            auto logLikelihood = trackLogLikelihoods ? computeLogLikelihood() : 0.;
 
-            if (callback != nullptr && iterationCount % callbackInterval == 0) {
+            if (callback != nullptr && iterationCount % callbackInterval_ == 0) {
                 // TODO: callback doesn't work in release???
                 py::gil_scoped_acquire guard;
                 (*callback)(iterationCount, iterationError, logLikelihood);
@@ -301,34 +302,34 @@ public:
         }
     }
 
-    std::vector<np_array_nfc<dtype>> getSampleWeights(std::int32_t K) {
-        std::vector<np_array_nfc<dtype>> sampleWeights(nThermStates);
+    std::vector<np_array_nfc<dtype>> getSampleWeights(std::int32_t thermState) {
+        std::vector<np_array_nfc<dtype>> sampleWeights(nThermStates_);
 
-        for (std::size_t i = 0; i < input->nTrajectories(); ++i) {
-            sampleWeights.push_back(getSampleWeightsForTrajectory(i, K));
+        for (std::size_t i = 0; i < input_->nTrajectories(); ++i) {
+            sampleWeights.push_back(getSampleWeightsForTrajectory(i, thermState));
         }
         return sampleWeights;
     }
 
 private:
-    std::shared_ptr<TRAMInput<dtype>> input;
+    std::shared_ptr<TRAMInput<dtype>> input_;
 
-    py::ssize_t nThermStates;
-    py::ssize_t nMarkovStates;
+    py::ssize_t nThermStates_;
+    py::ssize_t nMarkovStates_;
 
-    std::size_t callbackInterval;
+    std::size_t callbackInterval_;
 
-    np_array_nfc<dtype> biasedConfEnergies;
-    ExchangeableArray<dtype, 2> lagrangianMultLog;
-    np_array_nfc<dtype> modifiedStateCountsLog;
+    np_array_nfc<dtype> biasedConfEnergies_;
+    ExchangeableArray<dtype, 2> lagrangianMultLog_;
+    np_array_nfc<dtype> modifiedStateCountsLog_;
 
-    ExchangeableArray<dtype, 1> thermStateEnergies;
-    np_array_nfc<dtype> markovStateEnergies;
-    np_array_nfc<dtype> transitionMatrices;
+    ExchangeableArray<dtype, 1> thermStateEnergies_;
+    np_array_nfc<dtype> markovStateEnergies_;
+    np_array_nfc<dtype> transitionMatrices_;
 
     // scratch matrices used to facilitate calculation of logsumexp
-    std::unique_ptr<dtype[]> scratchM;
-    std::unique_ptr<dtype[]> scratchT;
+    std::unique_ptr<dtype[]> scratchM_;
+    std::unique_ptr<dtype[]> scratchT_;
 
 
     dtype inf = std::numeric_limits<dtype>::infinity();
@@ -339,197 +340,163 @@ private:
     constexpr static dtype logPrior() { return 1.0; }
 
     void initLagrangianMult() {
-        auto _transitionCounts = input->transitionCounts();
-        auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
+        auto transitionCountsBuf = input_->transitionCounts();
+        auto lagrangianMultLogBuf = lagrangianMultLog_.firstBuf();
 
-        for (decltype(nThermStates) k = 0; k < nThermStates; ++k) {
-            for (std::size_t i = 0; i < nMarkovStates; ++i) {
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (std::size_t i = 0; i < nMarkovStates_; ++i) {
                 dtype sum = 0.0;
-                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    sum += (_transitionCounts(k, i, j) + _transitionCounts(k, j, i));
+                for (decltype(nMarkovStates_) j = 0; j < nMarkovStates_; ++j) {
+                    sum += (transitionCountsBuf(k, i, j) + transitionCountsBuf(k, j, i));
                 }
-                _lagrangianMultLog(k, i) = std::log(sum / 2);
+                lagrangianMultLogBuf(k, i) = std::log(sum / 2);
             }
         }
     }
 
     void updateLagrangianMult() {
-        lagrangianMultLog.exchange();
-        auto _oldLagrangianMultLog = lagrangianMultLog.secondBuf();
-        auto _newLagrangianMultLog = lagrangianMultLog.firstBuf();
+        lagrangianMultLog_.exchange();
+        auto oldLagrangianMultLogBuf = lagrangianMultLog_.secondBuf();
+        auto newLagrangianMultLogBuf = lagrangianMultLog_.firstBuf();
 
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
+        auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
 
-        auto _transitionCounts = input->transitionCounts();
-        auto _stateCounts = input->stateCounts();
+        auto transitionCountsBuf = input_->transitionCounts();
+        auto stateCountsBuf = input_->stateCounts();
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                if (0 == _stateCounts(K, i)) {
-                    _newLagrangianMultLog(K, i) = -inf;
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                if (0 == stateCountsBuf(k, i)) {
+                    newLagrangianMultLogBuf(k, i) = -inf;
                     continue;
                 }
                 std::size_t o = 0;
-                
-                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    auto CKij = _transitionCounts(K, i, j);
+
+                for (decltype(nMarkovStates_) j = 0; j < nMarkovStates_; ++j) {
+                    auto CKij = transitionCountsBuf(k, i, j);
                     // special case: most variables cancel out, here
                     if (i == j) {
-                        scratchM[o++] = (0 == CKij) ?
-                                        logPrior() : std::log(prior() + (dtype) CKij);
+                        scratchM_[o++] = (0 == CKij) ?
+                                         logPrior() : std::log(prior() + (dtype) CKij);
                     } else {
-                        auto CK = CKij + _transitionCounts(K, j, i);
+                        auto CK = CKij + transitionCountsBuf(k, j, i);
                         // todo why?
                         if (0 != CK) {
                             auto divisor = numeric::kahan::logsumexp_pair<dtype>(
-                                    _oldLagrangianMultLog(K, j) - _biasedConfEnergies(K, i)
-                                    - _oldLagrangianMultLog(K, i) + _biasedConfEnergies(K, j), 0.0);
-                            scratchM[o++] = std::log((dtype) CK) - divisor;
+                                    oldLagrangianMultLogBuf(k, j) - biasedConfEnergiesBuf(k, i)
+                                    - oldLagrangianMultLogBuf(k, i) + biasedConfEnergiesBuf(k, j), 0.0);
+                            scratchM_[o++] = std::log((dtype) CK) - divisor;
                         }
                     }
                 }
-                _newLagrangianMultLog(K, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), o);
+                newLagrangianMultLogBuf(k, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratchM_.get(), o);
             }
         }
     }
 
     // update all biased confirmation energies by looping over all trajectories.
     void updateBiasedConfEnergies() {
+        std::fill(biasedConfEnergies_.mutable_data(), biasedConfEnergies_.mutable_data() +
+                                                      nMarkovStates_ * nThermStates_, inf);
 
-        std::fill(biasedConfEnergies.mutable_data(), biasedConfEnergies.mutable_data() + nMarkovStates * nThermStates,
-                  inf);
-
-        for (std::size_t i = 0; i < input->nTrajectories(); ++i) {
-            updateBiasedConfEnergies(i, input->sequenceLength(i));
+        for (std::size_t i = 0; i < input_->nTrajectories(); ++i) {
+            updateBiasedConfEnergies(i, input_->sequenceLength(i));
         }
     }
 
     // update conformation energies based on one observed trajectory
     void updateBiasedConfEnergies(std::size_t thermState, std::size_t trajLength) {
-        auto _biasMatrix = input->biasMatrix(thermState);
-        auto _dtraj = input->dtraj(thermState);
+        auto biasMatrixBuf = input_->biasMatrix(thermState);
+        auto dtrajBuf = input_->dtraj(thermState);
 
-        auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
-        auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
+        auto biasedConfEnergiesBuf = biasedConfEnergies_.template mutable_unchecked<2>();
+        auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
-        dtype divisor {};
+        dtype divisor{};
 
-        auto* scratch = scratchT.get();
+        auto *scratch = scratchT_.get();
 
-        /* assume that new_biased_conf_energies have been set to INF by the caller in the first call */
+        // assume that biasedConfEnergies_ have been set to INF by the caller in the first call
         for (std::size_t x = 0; x < trajLength; ++x) {
-            std::int32_t i = _dtraj(x);
-            if (i < 0) continue; /* skip frames that have negative Markov state indices */
-            std::size_t o = 0;
-            for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
+            auto i = dtrajBuf(x);
+            if (i >= 0) { // skip frames that have negative Markov state indices
+                std::size_t o = 0;
+                for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+                    if (modifiedStateCountsLogBuf(k, i) > -inf) {
+                        scratch[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixBuf(x, k);
+                    }
+                }
+                divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch, o);
 
-                /* applying Hao's speed-up recomendation */
-                if (-inf == _modifiedStateCountsLog(K, i)) continue;
-                scratch[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
+                for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+                    biasedConfEnergiesBuf(k, i) = -numeric::kahan::logsumexp_pair(
+                            -biasedConfEnergiesBuf(k, i), -(divisor + biasMatrixBuf(x, k)));
+                }
             }
-            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch, o);
-
-            for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-                _biasedConfEnergies(K, i) = -numeric::kahan::logsumexp_pair(
-                        -_biasedConfEnergies(K, i), -(divisor + _biasMatrix(x, K)));
-            }
-
         }
     }
 
 
 //    template<typename dtype, bool trammbar = false>
     void updateStateCounts() {
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
-        auto _modifiedStateCountsLog = modifiedStateCountsLog.template mutable_unchecked<2>();
+        auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
+        auto lagrangianMultLogBuf = lagrangianMultLog_.firstBuf();
+        auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template mutable_unchecked<2>();
 
-        auto _stateCounts = input->stateCounts();
-        auto _transitionCounts = input->transitionCounts();
+        auto stateCountsBuf = input_->stateCounts();
+        auto transitionCountsBuf = input_->transitionCounts();
 
-        std::size_t o;
-        std::int32_t Ci, CK, CKij, CKji, NC;
-        dtype divisor, extraStateCounts;
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                if (0 == stateCountsBuf(k, i)) {
+                    modifiedStateCountsLogBuf(k, i) = -inf;
+                } else {
+                    auto Ci = 0;
+                    auto o = 0;
+                    for (decltype(nMarkovStates_) j = 0; j < nMarkovStates_; ++j) {
+                        auto CKij = transitionCountsBuf(k, i, j);
+                        auto CKji = transitionCountsBuf(k, j, i);
+                        Ci += CKji;
+                        // special case: most variables cancel out, here
+                        if (i == j) {
+                            scratchM_[o] = (0 == CKij) ? logPrior() : std::log(
+                                    prior() + (dtype) CKij);
+                            scratchM_[o++] += biasedConfEnergiesBuf(k, i);
+                        } else {
+                            auto CK = CKij + CKji;
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                if (0 == _stateCounts(K, i)) /* applying Hao's speed-up recomendation */
-                {
-                    _modifiedStateCountsLog(K, i) = -inf;
-                    continue;
-                }
-                Ci = 0;
-                o = 0;
-                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    CKij = _transitionCounts(K, i, j);
-                    CKji = _transitionCounts(K, j, i);
-                    Ci += CKji;
-                    /* special case: most variables cancel out, here */
-                    if (i == j) {
-                        scratchM[o] = (0 == CKij) ? logPrior() : std::log(
-                                prior() + (dtype) CKij);
-                        scratchM[o++] += _biasedConfEnergies(K, i);
-                        continue;
+                            if (CK > 0) {
+                                auto divisor = numeric::kahan::logsumexp_pair(
+                                        lagrangianMultLogBuf(k, j) - biasedConfEnergiesBuf(k, i),
+                                        lagrangianMultLogBuf(k, i) - biasedConfEnergiesBuf(k, j));
+                                scratchM_[o++] = std::log((dtype) CK) + lagrangianMultLogBuf(k, j) - divisor;
+                            }
+                        }
                     }
-                    CK = CKij + CKji;
-                    /* special case */
-                    if (0 == CK) continue;
-                    /* regular case */
-                    divisor = numeric::kahan::logsumexp_pair(
-                            _lagrangianMultLog(K, j) - _biasedConfEnergies(K, i),
-                            _lagrangianMultLog(K, i) - _biasedConfEnergies(K, j));
-                    scratchM[o++] = std::log((dtype) CK) + _lagrangianMultLog(K, j) - divisor;
+                    auto NC = stateCountsBuf(k, i) - Ci;
+                    auto extraStateCounts = (0 < NC) ? std::log((dtype) NC) + biasedConfEnergiesBuf(k, i) : -inf;
+                    modifiedStateCountsLogBuf(k, i) = numeric::kahan::logsumexp_pair(
+                            numeric::kahan::logsumexp_sort_kahan_inplace(scratchM_.get(), o), extraStateCounts);
                 }
-                NC = _stateCounts(K, i) - Ci;
-                extraStateCounts = (0 < NC) ? std::log((dtype) NC) + _biasedConfEnergies(K, i) : -inf; /* IGNORE PRIOR */
-                _modifiedStateCountsLog(K, i) = numeric::kahan::logsumexp_pair(
-                        numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), o), extraStateCounts);
             }
         }
-
-//        if constexpr(trammbar) {
-        // todo
-        /*if(equilibrium_therm_state_counts && thermStateEnergies)
-        {
-            for(K=0; K<nThermStates; ++K)
-            {
-                KM = K * n_conf_states;
-                for(i=0; i<n_conf_states; ++i)
-                    log_R_K_i[KM + i] += std::log(overcounting_factor);
-            }
-            for(K=0; K<nThermStates; ++K)
-            {
-                if(0 < equilibrium_therm_state_counts[K])
-                {
-                    KM = K * n_conf_states;
-                    for(i=0; i<n_conf_states; ++i)
-                    {
-                        Ki = KM + i;
-                        log_R_K_i[Ki] = logsumexp_pair(log_R_K_i[Ki], std::log(equilibrium_therm_state_counts[K]) + thermStateEnergies[K]);
-                    }
-                }
-            }
-        } */
-//        }
-
     }
 
     // Get the error in the energies between this iteration and the previous one.
     dtype getError(ExchangeableArray<dtype, 2> &statVectors) {
-        auto _thermEnergies = thermStateEnergies.firstBuf();
-        auto _oldThermEnergies = thermStateEnergies.secondBuf();
-        auto _statVectors = statVectors.firstBuf();
-        auto _oldStatVectors = statVectors.secondBuf();
+        auto thermEnergiesBuf = thermStateEnergies_.firstBuf();
+        auto oldThermEnergiesBuf = thermStateEnergies_.secondBuf();
+        auto statVectorsBuf = statVectors.firstBuf();
+        auto oldStatVectorsBuf = statVectors.secondBuf();
 
         dtype maxError = 0;
-        dtype energyDelta;
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            energyDelta = std::abs(_thermEnergies(K) - _oldThermEnergies(K));
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            auto energyDelta = std::abs(thermEnergiesBuf(k) - oldThermEnergiesBuf(k));
             if (energyDelta > maxError) maxError = energyDelta;
 
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                energyDelta = std::abs(_statVectors(K, i) - _oldStatVectors(K, i));
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                energyDelta = std::abs(statVectorsBuf(k, i) - oldStatVectorsBuf(k, i));
                 if (energyDelta > maxError) maxError = energyDelta;
             }
         }
@@ -541,116 +508,110 @@ private:
         statVectors.exchange();
 
         // compute new values
-        auto _statVectors = statVectors.firstBuf();
-        auto _thermStateEnergies = thermStateEnergies.firstBuf();
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
+        auto statVectorsBuf = statVectors.firstBuf();
+        auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
+        auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                _statVectors(K, i) = std::exp(_thermStateEnergies(K) - _biasedConfEnergies(K, i));
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                statVectorsBuf(k, i) = std::exp(thermStateEnergiesBuf(k) - biasedConfEnergiesBuf(k, i));
             }
         }
     }
 
     void computeMarkovStateEnergies() {
-        auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
-
         // first reset all confirmation energies to infinity
-        for (decltype(nMarkovStates) i = 0; i < nMarkovStates; i++) {
-            _markovStateEnergies(i) = inf;
-        }
+        std::fill(markovStateEnergies_.mutable_data(), markovStateEnergies_.mutable_data() + nMarkovStates_, inf);
 
-        for (std::size_t i = 0; i < input->nTrajectories(); ++i) {
-            auto _dtraj_K = input->dtraj(i);
-            auto _biasMatrix_K = input->biasMatrix(i);
-            auto trajLength = input->sequenceLength(i);
+        for (std::size_t i = 0; i < input_->nTrajectories(); ++i) {
+            auto dtraj = input_->dtraj(i);
+            auto biasMatrix = input_->biasMatrix(i);
 
-            computeMarkovStateEnergiesForSingleTrajectory(_biasMatrix_K, _dtraj_K, trajLength);
+            computeMarkovStateEnergiesForSingleTrajectory(biasMatrix, dtraj);
         }
     }
 
-    template<typename BiasMatrixK, typename Dtraj>
-    void
-    computeMarkovStateEnergiesForSingleTrajectory(const BiasMatrixK &_biasMatrix_K,
-                                                  const Dtraj &_dtraj,
-                                                  std::size_t trajlength /*todo this is just dtraj length*/) {
-        auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
-        auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
+    template<typename BiasMatrix, typename Dtraj>
+    void computeMarkovStateEnergiesForSingleTrajectory(const BiasMatrix &biasMatrix, const Dtraj &dtraj) {
+        auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
+        auto markovStateEnergiesBuf = markovStateEnergies_.template mutable_unchecked<1>();
 
         dtype divisor;
-        /* assume that markovStateEnergies was set to INF by the caller on the first call */
-        for (decltype(trajlength) x = 0; x < trajlength; ++x) {
-            std::int32_t i = _dtraj(x);
-            if (i < 0) continue;
-            std::size_t o = 0;
-            for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-                if (-inf == _modifiedStateCountsLog(K, i)) continue;
-                scratchT[o++] =
-                        _modifiedStateCountsLog(K, i) - _biasMatrix_K(x, K);
+        // assume that markovStateEnergies_ were set to INF by the caller on the first call
+        for (auto x = 0; x < dtraj.size(); ++x) {
+            std::int32_t i = dtraj(x);
+            if (i >= 0) { // skip negative state indices
+                std::size_t o = 0;
+                for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+                    if (modifiedStateCountsLogBuf(k, i) > -inf) {
+                        scratchT_[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k);
+                    }
+                }
+                divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT_.get(), o);
+                markovStateEnergiesBuf(i) = -numeric::kahan::logsumexp_pair(-markovStateEnergiesBuf(i), -divisor);
             }
-            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
-            _markovStateEnergies(i) = -numeric::kahan::logsumexp_pair(-_markovStateEnergies(i), -divisor);
         }
     }
 
     void updateThermStateEnergies() {
         // move current values to old
-        thermStateEnergies.exchange();
+        thermStateEnergies_.exchange();
 
         // compute new
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _thermStateEnergies = thermStateEnergies.firstBuf();
+        auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
+        auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
+        auto scratch = scratchM_.get();
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                scratchM[i] = -_biasedConfEnergies(K, i);
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                scratch[i] = -biasedConfEnergiesBuf(k, i);
             }
-            _thermStateEnergies(K) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), nMarkovStates);
+            thermStateEnergiesBuf(k) = -numeric::kahan::logsumexp_sort_kahan_inplace(scratch, nMarkovStates_);
         }
     }
 
-    // Shift all energies by min(biasedConfEnergies) so the energies don't drift to
+    // Shift all energies by min(biasedConfEnergies_) so the energies don't drift to
     // very large values.
     void shiftEnergiesToHaveZeroMinimum() {
-        auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
-        auto _thermStateEnergies = thermStateEnergies.firstBuf();
+        auto biasedConfEnergiesBuf = biasedConfEnergies_.template mutable_unchecked<2>();
+        auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
 
         dtype shift = 0;
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                if (_biasedConfEnergies(K, i) < shift) {
-                    shift = _biasedConfEnergies(K, i);
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                if (biasedConfEnergiesBuf(k, i) < shift) {
+                    shift = biasedConfEnergiesBuf(k, i);
                 }
             }
         }
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            _thermStateEnergies(K) -= shift;
+        for (decltype(nThermStates_) K = 0; K < nThermStates_; ++K) {
+            thermStateEnergiesBuf(K) -= shift;
 
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                _biasedConfEnergies(K, i) -= shift;
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                biasedConfEnergiesBuf(K, i) -= shift;
             }
         }
     }
 
     void normalize() {
-        auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
-        auto _markovStateEnergies = markovStateEnergies.template mutable_unchecked<1>();
-        auto _thermStateEnergies = thermStateEnergies.firstBuf();
+        auto biasedConfEnergiesBuf = biasedConfEnergies_.template mutable_unchecked<2>();
+        auto markovStateEnergiesBuf = markovStateEnergies_.template mutable_unchecked<1>();
+        auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
 
-        for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-            scratchM[i] = -_markovStateEnergies(i);
+        for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+            scratchM_[i] = -markovStateEnergiesBuf(i);
         }
-        dtype f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), nMarkovStates);
+        dtype f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM_.get(), nMarkovStates_);
 
-        for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-            _markovStateEnergies(i) -= f0;
-            for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-                _biasedConfEnergies(K, i) -= f0;
+        for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+            markovStateEnergiesBuf(i) -= f0;
+            for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+                biasedConfEnergiesBuf(k, i) -= f0;
             }
         }
-        for (decltype(nThermStates) k = 0; k < nThermStates; ++k) {
-            _thermStateEnergies(k) -= f0;
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            thermStateEnergiesBuf(k) -= f0;
         }
 
         // update the state counts because they also include biased conf energies.
@@ -660,149 +621,153 @@ private:
     }
 
 // log likelihood of observing a sampled trajectory from the local equilibrium.
-// i.e. the sum over all sample likelihoods from one trajectory within on
-// thermodynamic state.
-dtype computeSampleLikelihood(std::size_t thermState, std::size_t trajLength) {
-        auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
-        auto _biasMatrix = input->biasMatrix(thermState);
-        auto _dtraj = input->dtraj(thermState);
+// i.e. the sum over all sample likelihoods from one trajectory.
+// -\sum_{x}\log\sum_{l}R_{i(x)}^{(l)}e^{-b^{(l)}(x)+f_{i(x)}^{(l)}}
+    dtype computeSampleLikelihood(std::size_t trajIndex) {
+        auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
+        auto biasMatrix = input_->biasMatrix(trajIndex);
+        auto dtraj = input_->dtraj(trajIndex);
 
-/* -\sum_{x}\log\sum_{l}R_{i(x)}^{(l)}e^{-b^{(l)}(x)+f_{i(x)}^{(l)}} */
+        auto scratch = scratchT_.get();
+
         dtype logLikelihood = 0;
-        for (std::size_t x = 0; x < trajLength; ++x) {
-            std::int32_t o = 0;
-            std::int32_t i = _dtraj(x);
-            if (i < 0) continue;
-            for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-                if (_modifiedStateCountsLog(K, i) > 0)
-                    scratchT[o++] =_modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
+        for (std::size_t x = 0; x < dtraj.size(); ++x) {
+            auto o = 0;
+            auto i = dtraj(x);
+
+            if (i < 0) continue; // skip negative markov state indices
+
+            for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+                if (modifiedStateCountsLogBuf(k, i) > 0)
+                    scratch[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k);
             }
-            logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
+            logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(scratch, o);
         }
         return logLikelihood;
     }
 
 
-/* TRAM log-likelihood that comes from the terms containing discrete quantities.
- * i.e. the likelihood of observing the observed transitions. */
+// TRAM log-likelihood that comes from the terms containing discrete quantities.
+// i.e. the likelihood of observing the observed transitions.
     dtype computeTransitionLikelihood() {
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _transitionCounts = input->transitionCounts();
-        auto _stateCounts = input->stateCounts();
-        auto _transitionMatrices = transitionMatrices.template unchecked<3>();
+        auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
+        auto transitionCountsBuf = input_->transitionCounts();
+        auto stateCountsBuf = input_->stateCounts();
+        auto transitionMatricesBuf = transitionMatrices_.template unchecked<3>();
 
-        std::int32_t CKij;
-
-        /* \sum_{i,j,k}c_{ij}^{(k)}\log p_{ij}^{(k)} */
+        // \sum_{i,j,k}c_{ij}^{(k)}\log p_{ij}^{(k)}
         dtype a = 0;
         computeTransitionMatrices();
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    CKij = _transitionCounts(K, i, j);
-                    if (0 == CKij) continue;
-                    if (i == j) {
-                        a += ((dtype) CKij + prior()) * std::log(_transitionMatrices(K, i, j));
-                    } else {
-                        a += CKij * std::log(_transitionMatrices(K, i, j));
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                for (decltype(nMarkovStates_) j = 0; j < nMarkovStates_; ++j) {
+                    auto CKij = transitionCountsBuf(k, i, j);
+                    if (CKij > 0) {
+                        if (i == j) {
+                            a += ((dtype) CKij + prior()) * std::log(transitionMatricesBuf(k, i, j));
+                        } else {
+                            a += CKij * std::log(transitionMatricesBuf(k, i, j));
+                        }
                     }
                 }
             }
         }
         /* \sum_{i,k}N_{i}^{(k)}f_{i}^{(k)} */
         dtype b = 0;
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                if (_stateCounts(K, i) > 0)
-                    b += (_stateCounts(K, i) + prior()) * _biasedConfEnergies(K, i);
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                if (stateCountsBuf(k, i) > 0)
+                    b += (stateCountsBuf(k, i) + prior()) * biasedConfEnergiesBuf(k, i);
             }
         }
         return a + b;
     }
 
     void computeTransitionMatrices() {
+        auto biasedConfEnergiesbuf = biasedConfEnergies_.template unchecked<2>();
+        auto lagrangianMultLogBuf = lagrangianMultLog_.firstBuf();
 
-        auto _biasedConfEnergies = biasedConfEnergies.template unchecked<2>();
-        auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
+        auto transitionCountsBuf = input_->transitionCounts();
+        auto transitionMatricesBuf = transitionMatrices_.template mutable_unchecked<3>();
 
-        auto _transitionCounts = input->transitionCounts();
-        auto _transitionMatrices = transitionMatrices.template mutable_unchecked<3>();
+        for (decltype(nThermStates_) k = 0; k < nThermStates_; ++k) {
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                scratchM_[i] = 0.0;
+                for (decltype(nMarkovStates_) j = 0; j < nMarkovStates_; ++j) {
+                    transitionMatricesBuf(k, i, j) = 0.0;
+                    auto C = transitionCountsBuf(k, i, j) + transitionCountsBuf(k, j, i);
 
-        std::int32_t C;
-        dtype divisor, maxSum;
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                scratchM[i] = 0.0;
-                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    _transitionMatrices(K, i, j) = 0.0;
-                    C = _transitionCounts(K, i, j) + _transitionCounts(K, j, i);
-                    /* special case: this element is zero */
-                    if (0 == C) continue;
-                    if (i == j) {
-                        /* special case: diagonal element */
-                        _transitionMatrices(K, i, j) = 0.5 * C * exp(-_lagrangianMultLog(K, i));
-                    } else {
-                        /* regular case */
-                        divisor = numeric::kahan::logsumexp_pair(
-                                _lagrangianMultLog(K, j) - _biasedConfEnergies(K, i),
-                                _lagrangianMultLog(K, i) - _biasedConfEnergies(K, j));
-                        _transitionMatrices(K, i, j) = C * exp(-(_biasedConfEnergies(K, j) + divisor));
+                    if (C > 0) { // skip if there were no transitions
+                        if (i == j) {
+                            // special case: diagonal element
+                            transitionMatricesBuf(k, i, j) = 0.5 * C * exp(-lagrangianMultLogBuf(k, i));
+                        } else {
+                            // regular case
+                            auto divisor = numeric::kahan::logsumexp_pair(
+                                    lagrangianMultLogBuf(k, j) - biasedConfEnergiesbuf(k, i),
+                                    lagrangianMultLogBuf(k, i) - biasedConfEnergiesbuf(k, j));
+                            transitionMatricesBuf(k, i, j) = C * exp(-(biasedConfEnergiesbuf(k, j) + divisor));
+                        }
+                        scratchM_[i] += transitionMatricesBuf(k, i, j);
                     }
-                    scratchM[i] += _transitionMatrices(K, i, j);
                 }
             }
-            /* normalize T matrix */ /* TODO: unify with util._renormalize_transition_matrix? */
-            maxSum = 0;
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) if (scratchM[i] > maxSum) maxSum = scratchM[i];
-            if (maxSum == 0) maxSum = 1.0; /* completely empty T matrix -> generate Id matrix */
-            for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
-                for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
+            // normalize transition matrix
+            dtype maxSum = 0;
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                if (scratchM_[i] > maxSum) {
+                    maxSum = scratchM_[i];
+                }
+            }
+            if (maxSum == 0) maxSum = 1.0; // completely empty T matrix -> generate Id matrix
+
+            for (decltype(nMarkovStates_) i = 0; i < nMarkovStates_; ++i) {
+                for (decltype(nMarkovStates_) j = 0; j < nMarkovStates_; ++j) {
                     if (i == j) {
-                        _transitionMatrices(K, i, i) =
-                                (_transitionMatrices(K, i, i) + maxSum - scratchM[i]) / maxSum;
-                        if (0 == _transitionMatrices(K, i, i) && 0 < _transitionCounts(K, i, i))
+                        transitionMatricesBuf(k, i, i) = (transitionMatricesBuf(k, i, i) + maxSum - scratchM_[i]) / maxSum;
+                        if (0 == transitionMatricesBuf(k, i, i) && 0 < transitionCountsBuf(k, i, i))
                             fprintf(stderr, "# Warning: zero diagonal element T[%d,%d] with non-zero counts.\n",
                                     static_cast<int>(i),
                                     static_cast<int>(i));
                     } else {
-                        _transitionMatrices(K, i, j) = _transitionMatrices(K, i, j) / maxSum;
+                        transitionMatricesBuf(k, i, j) = transitionMatricesBuf(k, i, j) / maxSum;
                     }
                 }
             }
         }
     }
 
-    np_array_nfc<dtype> getSampleWeightsForTrajectory(std::size_t trajectoryIndex, std::int32_t K) {
+    np_array_nfc<dtype> getSampleWeightsForTrajectory(std::size_t trajectoryIndex, std::int32_t thermStateIndex) {
         // k = -1 for unbiased sample weigths.
-        auto sampleWeights = np_array_nfc<dtype>(std::vector{input->dtraj(trajectoryIndex).size()});
-        auto _sampleWeights = sampleWeights.template mutable_unchecked<1>();
+        auto sampleWeights = np_array_nfc<dtype>(std::vector{input_->dtraj(trajectoryIndex).size()});
+        auto sampleWeightsBuf = sampleWeights.template mutable_unchecked<1>();
 
-        auto _dtraj = input->dtraj(trajectoryIndex);
-        auto _biasMatrix = input->biasMatrix(trajectoryIndex);
+        auto dtrajBuf = input_->dtraj(trajectoryIndex);
+        auto biasMatrixBuf = input_->biasMatrix(trajectoryIndex);
 
-        auto _thermStateEnergies = thermStateEnergies.firstBuf();
-        auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
+        auto thermStateEnergiesBuf= thermStateEnergies_.firstBuf();
+        auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
-        int L, o, i;
-        dtype log_divisor;
-
-        for (auto x = 0; x < input->sequenceLength(trajectoryIndex); ++x) {
-            i = _dtraj(x);
+        for (auto x = 0; x < input_->sequenceLength(trajectoryIndex); ++x) {
+            auto i = dtrajBuf(x);
             if (i < 0) {
-                _sampleWeights(x) = inf;
+                sampleWeightsBuf(x) = inf;
                 continue;
             }
-            o = 0;
-            for (L = 0; L < nThermStates; ++L) {
-                if (-inf == _modifiedStateCountsLog(L, i)) continue;
-                scratchT[o++] = _modifiedStateCountsLog(L, i) - _biasMatrix(x, L);
+            auto o = 0;
+            for (decltype(nThermStates_) l = 0; l < nThermStates_; ++l) {
+                if (modifiedStateCountsLogBuf(l, i) > -inf) {
+                    scratchT_[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf(x, l);
+                }
             }
-            log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
-            if (K == -1)
-                _sampleWeights(x) = log_divisor;
-            else
-                _sampleWeights(x) = _biasMatrix(x, K) + log_divisor - _thermStateEnergies(K);
+            auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT_.get(), o);
+            if (thermStateIndex == -1) {// get unbiased sample weight
+                sampleWeightsBuf(x) = log_divisor;
+            } else { // get biased sample weight for given thermState index
+                sampleWeightsBuf(x) = biasMatrixBuf(x, thermStateIndex) + log_divisor
+                                      - thermStateEnergiesBuf(thermStateIndex);
+            }
         }
         return sampleWeights;
     }

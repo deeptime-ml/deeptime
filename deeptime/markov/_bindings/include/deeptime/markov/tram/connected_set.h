@@ -163,7 +163,7 @@ transitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const 
 
     // i_s and j_s will hold all possible transition pairs: (i_s[n], j_s[n]) is one possible transition.
     // The therm./Markov state index in unraveled to one dimension, i.e. markov state i in therm state k is represented
-    // in these stateVectors as k * nMarkovStates + i
+    // in these stateVectors as k * nMarkovStates_ + i
     stateVector i_s;
     stateVector j_s;
 

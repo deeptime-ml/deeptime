@@ -14,10 +14,10 @@ PYBIND11_MODULE(_tram_bindings, m) {
                      "callback_interval"_a = 1)
                 .def("estimate", &TRAM<double>::estimate, "max_iter"_a = 1000, "max_err"_a = 1e-8,
                      "track_log_likelihoods"_a = false, "callback"_a = nullptr)
-                .def("transition_matrices", &TRAM<double>::getTransitionMatrices)
-                .def("biased_conf_energies", &TRAM<double>::getBiasedConfEnergies)
+                .def("transition_matrices", &TRAM<double>::transitionMatrices)
+                .def("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
                 .def("therm_state_energies", &TRAM<double>::energiesPerThermodynamicState)
-                .def("markov_state_energies", &TRAM<double>::getEnergiesPerMarkovState)
+                .def("markov_state_energies", &TRAM<double>::energiesPerMarkovState)
                 .def("get_sample_weights", &TRAM<double>::getSampleWeights, "therm_state_index"_a = -1);
 
         using Input = TRAMInput<double>;
