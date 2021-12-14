@@ -128,7 +128,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
             auto tram = deeptime::tram::TRAM<TestType>(inputPtr, 0);
 
             THEN("Result matrices are initialized") {
-                REQUIRE(tram.getEnergiesPerThermodynamicState().size() == nThermStates);
+                REQUIRE(tram.energiesPerThermodynamicState().size() == nThermStates);
                 REQUIRE(tram.getBiasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.getEnergiesPerMarkovState().size() == nMarkovStates);
                 REQUIRE(tram.getBiasedConfEnergies().data()[0] == 0);
@@ -140,7 +140,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 TestType LL = tram.computeLogLikelihood();
 
                 THEN("Energies are finite") {
-                    auto thermStateEnergies = tram.getEnergiesPerThermodynamicState();
+                    auto thermStateEnergies = tram.energiesPerThermodynamicState();
                     auto markovStateEnergies = tram.getEnergiesPerMarkovState();
 
                     REQUIRE(areFinite<TestType>(thermStateEnergies));

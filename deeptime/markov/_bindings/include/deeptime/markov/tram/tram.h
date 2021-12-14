@@ -22,26 +22,23 @@ constexpr void throwIfInvalid(bool isValid, const std::string &message) {
 }
 
 template<typename dtype>
-np_array_nfc<dtype> getFilledArray(std::vector<std::size_t> dims, dtype fillValue) {
-    auto array = np_array_nfc<dtype>(dims);
-
-    auto totalSize = std::accumulate(begin(dims), end(dims), 1, std::multiplies<dtype>());
-    std::fill(array.mutable_data(), array.mutable_data() + totalSize, fillValue);
-
+np_array_nfc<dtype> generateFilledArray(const std::vector<py::ssize_t> &dims, dtype fillValue) {
+    np_array_nfc<dtype> array(dims);
+    std::fill(array.mutable_data(), array.mutable_data() + array.size(), fillValue);
     return array;
 }
 
 template<py::ssize_t Dims, typename Array>
-auto getMutableBuf(Array &&array) {
+auto mutableBuf(Array &&array) {
     return array.template mutable_unchecked<Dims>();
 }
 }
 
 template<typename dtype, py::ssize_t Dims>
 class ExchangeableArray {
-    using MutableBufferType = decltype(detail::getMutableBuf<Dims>(std::declval<np_array<dtype>>()));
+    using MutableBufferType = decltype(detail::mutableBuf<Dims>(std::declval<np_array<dtype>>()));
 public:
-    template<typename Shape>
+    template<typename Shape = std::vector<py::ssize_t>>
     ExchangeableArray(Shape shape, dtype fillValue) : arrays(
             std::make_tuple(np_array<dtype>(shape), np_array<dtype>(shape))) {
         std::fill(std::get<0>(arrays).mutable_data(), std::get<0>(arrays).mutable_data() + std::get<0>(arrays).size(),
@@ -66,7 +63,15 @@ public:
         return current ? &std::get<0>(arrays) : &std::get<1>(arrays);
     }
 
+    const auto *first() const {
+        return current ? &std::get<0>(arrays) : &std::get<1>(arrays);
+    }
+
     auto *second() {
+        return current ? &std::get<1>(arrays) : &std::get<0>(arrays);
+    }
+
+    const auto *second() const {
         return current ? &std::get<1>(arrays) : &std::get<0>(arrays);
     }
 
@@ -74,7 +79,15 @@ public:
         return current ? *std::get<0>(buffers) : *std::get<1>(buffers);
     }
 
+    const auto &firstBuf() const {
+        return current ? *std::get<0>(buffers) : *std::get<1>(buffers);
+    }
+
     auto &secondBuf() {
+        return current ? *std::get<1>(buffers) : *std::get<0>(buffers);
+    }
+
+    const auto &secondBuf() const {
         return current ? *std::get<1>(buffers) : *std::get<0>(buffers);
     }
 
@@ -96,19 +109,21 @@ public:
     using BiasMatrices = std::vector<BiasMatrix>;
 
     TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
-              const DTrajs &dtrajs, const BiasMatrices &biasMatrix)
+              DTrajs dtrajs, BiasMatrices biasMatrices)
             : _stateCounts(std::move(stateCounts)),
               _transitionCounts(std::move(transitionCounts)),
-              _dtrajs(dtrajs),
-              _biasMatrices(biasMatrix) {
+              _dtrajs(std::move(dtrajs)),
+              _biasMatrices(std::move(biasMatrices)) {
         validateInput();
     }
 
     TRAMInput() = default;
 
     TRAMInput(const TRAMInput &) = delete;
-
     TRAMInput &operator=(const TRAMInput &) = delete;
+    TRAMInput(TRAMInput &&) noexcept = default;
+    TRAMInput &operator=(TRAMInput &&) noexcept = default;
+    ~TRAMInput() = default;
 
     void validateInput() const {
 
@@ -127,27 +142,27 @@ public:
         detail::throwIfInvalid(_transitionCounts.shape(1) == _transitionCounts.shape(2),
                                "transitionCounts.shape(1) should equal transitionCounts.shape(2)");
 
-        for (std::size_t K = 0; K < _dtrajs.size(); ++K) {
-            const auto &dtrajs_K = _dtrajs.at(K);
-            const auto &biasMatrix_K = _biasMatrices.at(K);
+        for (std::size_t k = 0; k < _dtrajs.size(); ++k) {
+            const auto &dtrajsK = _dtrajs.at(k);
+            const auto &biasMatrixK = _biasMatrices.at(k);
 
-            detail::throwIfInvalid(dtrajs_K.ndim() == 1,
+            detail::throwIfInvalid(dtrajsK.ndim() == 1,
                                    "dtraj at index {i} has an incorrect number of dimension. ndims should be 1.");
-            detail::throwIfInvalid(biasMatrix_K.ndim() == 2,
+            detail::throwIfInvalid(biasMatrixK.ndim() == 2,
                                    "biasMatrix at index {i} has an incorrect number of dimension. ndims should be 2.");
-            detail::throwIfInvalid(dtrajs_K.shape(0) == biasMatrix_K.shape(0),
+            detail::throwIfInvalid(dtrajsK.shape(0) == biasMatrixK.shape(0),
                                    "dtraj and biasMatrix at index {i} should be of equal length.");
-            detail::throwIfInvalid(biasMatrix_K.shape(1) == _transitionCounts.shape(0),
+            detail::throwIfInvalid(biasMatrixK.shape(1) == _transitionCounts.shape(0),
                                    "biasMatrix{i}.shape[1] should be equal to transitionCounts.shape[0].");
         }
     }
 
-    auto biasMatrix(std::size_t K) const {
-        return _biasMatrices.at(K).template unchecked<2>();
+    auto biasMatrix(std::size_t k) const {
+        return _biasMatrices.at(k).template unchecked<2>();
     }
 
-    auto dtraj(std::size_t K) const {
-        return _dtrajs.at(K).template unchecked<1>();
+    auto dtraj(std::size_t k) const {
+        return _dtrajs[k].template unchecked<1>();
     }
 
     auto transitionCounts() const {
@@ -158,8 +173,8 @@ public:
         return _stateCounts.template unchecked<2>();
     }
 
-    auto sequenceLength(std::size_t K) const {
-        return _dtrajs.at(K).size();
+    auto sequenceLength(std::size_t k) const {
+        return _dtrajs[k].size();
     }
 
     auto nTrajectories() const {
@@ -178,24 +193,23 @@ template<typename dtype>
 struct TRAM {
 public:
 
-    TRAM(std::shared_ptr<TRAMInput<dtype>> &tramInput, std::size_t callbackInterval)
-            : input(std::shared_ptr(tramInput)),
+    TRAM(std::shared_ptr<TRAMInput<dtype>> tramInput, std::size_t callbackInterval)
+            : input(tramInput),
               nThermStates(tramInput->stateCounts().shape(0)),
               nMarkovStates(tramInput->stateCounts().shape(1)),
               callbackInterval(callbackInterval),
-              biasedConfEnergies(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
-              lagrangianMultLog(ExchangeableArray<dtype, 2>(std::vector({nThermStates, nMarkovStates}), 0.)),
-              modifiedStateCountsLog(detail::getFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
+              biasedConfEnergies(detail::generateFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
+              lagrangianMultLog(ExchangeableArray<dtype, 2>({nThermStates, nMarkovStates}, 0.)),
+              modifiedStateCountsLog(detail::generateFilledArray<dtype>({nThermStates, nMarkovStates}, 0.)),
               thermStateEnergies(ExchangeableArray<dtype, 1>(std::vector<decltype(nThermStates)>{nThermStates}, 0)),
               markovStateEnergies(np_array_nfc<dtype>(std::vector<decltype(nMarkovStates)>{nMarkovStates})),
               transitionMatrices(np_array_nfc<dtype>({nThermStates, nMarkovStates, nMarkovStates})),
               scratchM(std::unique_ptr<dtype[]>(new dtype[nMarkovStates])),
               scratchT(std::unique_ptr<dtype[]>(new dtype[nThermStates])) {
-
         initLagrangianMult();
     }
 
-    auto getEnergiesPerThermodynamicState() {
+    auto energiesPerThermodynamicState() const {
         return *thermStateEnergies.first();
     }
 
@@ -260,6 +274,7 @@ public:
 
             if (callback != nullptr && iterationCount % callbackInterval == 0) {
                 // TODO: callback doesn't work in release???
+                py::gil_scoped_acquire guard;
                 (*callback)(iterationCount, iterationError, logLikelihood);
             }
 
@@ -298,8 +313,8 @@ public:
 private:
     std::shared_ptr<TRAMInput<dtype>> input;
 
-    std::size_t nThermStates;
-    std::size_t nMarkovStates;
+    py::ssize_t nThermStates;
+    py::ssize_t nMarkovStates;
 
     std::size_t callbackInterval;
 
@@ -319,24 +334,21 @@ private:
     dtype inf = std::numeric_limits<dtype>::infinity();
 
 
-// TODO: WTF to do with this????
-    dtype TRAM_PRIOR() { return 0.0; }
+    constexpr static dtype prior() { return 0.0; }
 
-    dtype TRAM_LOG_PRIOR() { return 1.0; }
+    constexpr static dtype logPrior() { return 1.0; }
 
     void initLagrangianMult() {
         auto _transitionCounts = input->transitionCounts();
         auto _lagrangianMultLog = lagrangianMultLog.firstBuf();
 
-        for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
+        for (decltype(nThermStates) k = 0; k < nThermStates; ++k) {
             for (std::size_t i = 0; i < nMarkovStates; ++i) {
                 dtype sum = 0.0;
-
                 for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    sum += (_transitionCounts(K, i, j) +
-                            _transitionCounts(K, j, i));
+                    sum += (_transitionCounts(k, i, j) + _transitionCounts(k, j, i));
                 }
-                _lagrangianMultLog(K, i) = std::log(sum / 2);
+                _lagrangianMultLog(k, i) = std::log(sum / 2);
             }
         }
     }
@@ -351,9 +363,6 @@ private:
         auto _transitionCounts = input->transitionCounts();
         auto _stateCounts = input->stateCounts();
 
-        std::int32_t CK, CKij;
-        dtype divisor;
-
         for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
             for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
                 if (0 == _stateCounts(K, i)) {
@@ -361,25 +370,25 @@ private:
                     continue;
                 }
                 std::size_t o = 0;
+                
                 for (decltype(nMarkovStates) j = 0; j < nMarkovStates; ++j) {
-                    CKij = _transitionCounts(K, i, j);
-                    /* special case: most variables cancel out, here */
+                    auto CKij = _transitionCounts(K, i, j);
+                    // special case: most variables cancel out, here
                     if (i == j) {
                         scratchM[o++] = (0 == CKij) ?
-                                        TRAM_LOG_PRIOR() : log(TRAM_PRIOR() + (dtype) CKij);
-                        continue;
+                                        logPrior() : std::log(prior() + (dtype) CKij);
+                    } else {
+                        auto CK = CKij + _transitionCounts(K, j, i);
+                        // todo why?
+                        if (0 != CK) {
+                            auto divisor = numeric::kahan::logsumexp_pair<dtype>(
+                                    _oldLagrangianMultLog(K, j) - _biasedConfEnergies(K, i)
+                                    - _oldLagrangianMultLog(K, i) + _biasedConfEnergies(K, j), 0.0);
+                            scratchM[o++] = std::log((dtype) CK) - divisor;
+                        }
                     }
-                    CK = CKij + _transitionCounts(K, j, i);
-                    /* special case */
-                    if (0 == CK) continue;
-                    /* regular case */
-                    divisor = numeric::kahan::logsumexp_pair<dtype>(
-                            _oldLagrangianMultLog(K, j) - _biasedConfEnergies(K, i)
-                            - _oldLagrangianMultLog(K, i) + _biasedConfEnergies(K, j), 0.0);
-                    scratchM[o++] = log((dtype) CK) - divisor;
                 }
-                _newLagrangianMultLog(K, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(),
-                                                                                           scratchM.get() + o);
+                _newLagrangianMultLog(K, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), o);
             }
         }
     }
@@ -403,7 +412,9 @@ private:
         auto _biasedConfEnergies = biasedConfEnergies.template mutable_unchecked<2>();
         auto _modifiedStateCountsLog = modifiedStateCountsLog.template unchecked<2>();
 
-        dtype divisor = 0;
+        dtype divisor {};
+
+        auto* scratch = scratchT.get();
 
         /* assume that new_biased_conf_energies have been set to INF by the caller in the first call */
         for (std::size_t x = 0; x < trajLength; ++x) {
@@ -414,9 +425,9 @@ private:
 
                 /* applying Hao's speed-up recomendation */
                 if (-inf == _modifiedStateCountsLog(K, i)) continue;
-                scratchT[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
+                scratch[o++] = _modifiedStateCountsLog(K, i) - _biasMatrix(x, K);
             }
-            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT.get(), o);
+            divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch, o);
 
             for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
                 _biasedConfEnergies(K, i) = -numeric::kahan::logsumexp_pair(
@@ -455,8 +466,8 @@ private:
                     Ci += CKji;
                     /* special case: most variables cancel out, here */
                     if (i == j) {
-                        scratchM[o] = (0 == CKij) ? TRAM_LOG_PRIOR() : std::log(
-                                TRAM_PRIOR() + (dtype) CKij);
+                        scratchM[o] = (0 == CKij) ? logPrior() : std::log(
+                                prior() + (dtype) CKij);
                         scratchM[o++] += _biasedConfEnergies(K, i);
                         continue;
                     }
@@ -467,10 +478,10 @@ private:
                     divisor = numeric::kahan::logsumexp_pair(
                             _lagrangianMultLog(K, j) - _biasedConfEnergies(K, i),
                             _lagrangianMultLog(K, i) - _biasedConfEnergies(K, j));
-                    scratchM[o++] = log((dtype) CK) + _lagrangianMultLog(K, j) - divisor;
+                    scratchM[o++] = std::log((dtype) CK) + _lagrangianMultLog(K, j) - divisor;
                 }
                 NC = _stateCounts(K, i) - Ci;
-                extraStateCounts = (0 < NC) ? log((dtype) NC) + _biasedConfEnergies(K, i) : -inf; /* IGNORE PRIOR */
+                extraStateCounts = (0 < NC) ? std::log((dtype) NC) + _biasedConfEnergies(K, i) : -inf; /* IGNORE PRIOR */
                 _modifiedStateCountsLog(K, i) = numeric::kahan::logsumexp_pair(
                         numeric::kahan::logsumexp_sort_kahan_inplace(scratchM.get(), o), extraStateCounts);
             }
@@ -484,7 +495,7 @@ private:
             {
                 KM = K * n_conf_states;
                 for(i=0; i<n_conf_states; ++i)
-                    log_R_K_i[KM + i] += log(overcounting_factor);
+                    log_R_K_i[KM + i] += std::log(overcounting_factor);
             }
             for(K=0; K<nThermStates; ++K)
             {
@@ -494,7 +505,7 @@ private:
                     for(i=0; i<n_conf_states; ++i)
                     {
                         Ki = KM + i;
-                        log_R_K_i[Ki] = logsumexp_pair(log_R_K_i[Ki], log(equilibrium_therm_state_counts[K]) + thermStateEnergies[K]);
+                        log_R_K_i[Ki] = logsumexp_pair(log_R_K_i[Ki], std::log(equilibrium_therm_state_counts[K]) + thermStateEnergies[K]);
                     }
                 }
             }
@@ -692,9 +703,9 @@ dtype computeSampleLikelihood(std::size_t thermState, std::size_t trajLength) {
                     CKij = _transitionCounts(K, i, j);
                     if (0 == CKij) continue;
                     if (i == j) {
-                        a += ((dtype) CKij + TRAM_PRIOR()) * log(_transitionMatrices(K, i, j));
+                        a += ((dtype) CKij + prior()) * std::log(_transitionMatrices(K, i, j));
                     } else {
-                        a += CKij * log(_transitionMatrices(K, i, j));
+                        a += CKij * std::log(_transitionMatrices(K, i, j));
                     }
                 }
             }
@@ -704,7 +715,7 @@ dtype computeSampleLikelihood(std::size_t thermState, std::size_t trajLength) {
         for (decltype(nThermStates) K = 0; K < nThermStates; ++K) {
             for (decltype(nMarkovStates) i = 0; i < nMarkovStates; ++i) {
                 if (_stateCounts(K, i) > 0)
-                    b += (_stateCounts(K, i) + TRAM_PRIOR()) * _biasedConfEnergies(K, i);
+                    b += (_stateCounts(K, i) + prior()) * _biasedConfEnergies(K, i);
             }
         }
         return a + b;
