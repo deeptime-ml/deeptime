@@ -7,6 +7,7 @@
 
 namespace deeptime::tram {
 
+// todo use typedef header
 using TTraj = np_array<std::int32_t>;
 using TTrajs = std::vector<TTraj>;
 
@@ -15,6 +16,7 @@ using TTrajs = std::vector<TTraj>;
 using Fragment = std::tuple<std::int32_t, std::int32_t, std::int32_t>;
 using Fragments = std::vector<Fragment>;
 
+// todo not a getter
 std::vector<Fragments> getTrajectoryFragmentIndices(const TTrajs &ttrajs, std::int32_t nThermStates) {
 
     std::vector<Fragments> fragments(nThermStates);
@@ -46,8 +48,7 @@ std::vector<Fragments> getTrajectoryFragmentIndices(const TTrajs &ttrajs, std::i
             }
 
             // save the indices as a trajectory fragment.
-            Fragment fragment = std::make_tuple(i, first - begin, last - begin);
-            fragments[thermState].push_back(fragment);
+            fragments[thermState].emplace_back(i, first - begin, last - begin);
 
             // start next search from end of this fragment
             first = last;

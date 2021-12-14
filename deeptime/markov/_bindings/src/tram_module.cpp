@@ -25,9 +25,9 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, Input::DTrajs, Input::BiasMatrices>(),
                 "state_counts"_a, "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a);
 
-        tramMod.def("get_state_transitions", &getStateTransitions<double>,
+        tramMod.def("get_state_transitions", &getStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
-                    "connectivity_factor"_a, "overlap_function"_a);
+                    "connectivity_factor"_a);
 
         tramMod.def("bar_variance", &hasOverlapBarVariance<double>);
         tramMod.def("post_hoc_RE", &hasOverlapPostHocReplicaExchange<double>);

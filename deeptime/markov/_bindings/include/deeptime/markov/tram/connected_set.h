@@ -8,20 +8,21 @@
 
 namespace deeptime::tram {
 
-
+// todo create separate header with typedefs and use here as well as in tram.h
 using DTraj = np_array<std::int32_t>;
 using DTrajs = std::vector<DTraj>;
-
+// todo subtypes
 using IndexList = std::vector<std::vector<std::tuple<std::int32_t, std::int32_t>>>;
 
-template<typename dtype>
+/*template<typename dtype>
 using OverlapFunction = std::function<bool(std::size_t, std::size_t, IndexList &,
-        const std::vector<np_array_nfc<dtype>> &, dtype connectivityFactor)>;
+        const std::vector<np_array_nfc<dtype>> &, dtype connectivityFactor)>;*/
 
-using stateVector = std::vector<std::size_t>;
-using transitionVector = std::tuple<stateVector, stateVector>;
+using StateVector = std::vector<std::size_t>;
+using TransitionVector = std::tuple<StateVector, StateVector>;
 
-IndexList getIndexOfSamplesInMarkovState(size_t i, const DTrajs &dtrajs, int32_t nThermStates) {
+// todo not really a getter
+IndexList getIndexOfSamplesInMarkovState(std::size_t i, const DTrajs &dtrajs, std::int32_t nThermStates) {
     IndexList indices (nThermStates);
 
     for (std::size_t j = 0; j < dtrajs.size(); ++j) {
@@ -32,13 +33,14 @@ IndexList getIndexOfSamplesInMarkovState(size_t i, const DTrajs &dtrajs, int32_t
         for (std::size_t n = 0; n < trajLength; ++n) {
             if (dtraj[n] == i) {
                 // markov state i sampled in therm state j can be found at bias matrix index (j, n)
-                indices[j].push_back({j, n});
+                indices[j].push_back(std::make_tuple(j, n));
             }
         }
     }
     return indices;
 }
 
+// todo not really a getter
 IndexList getIndexOfSamplesInMarkovState(std::size_t i, const DTrajs &ttrajs, const DTrajs &dtrajs,
                                          std::int32_t nThermStates) {
     IndexList indices (nThermStates);
@@ -49,6 +51,7 @@ IndexList getIndexOfSamplesInMarkovState(std::size_t i, const DTrajs &ttrajs, co
         auto dtraj = dtrajs[j].template unchecked<1>();
         auto ttraj = ttrajs[j].template unchecked<1>();
 
+        // todo no c&p code
         for (std::size_t n = 0; n < trajLength; ++n) {
             if (dtraj[n] == i) {
                 auto k = ttrajs[j].at(n);
@@ -70,6 +73,29 @@ IndexList getIndexOfSamplesInMarkovState (std::size_t i, const std::optional<DTr
     }
 }
 
+
+template<typename dtype>
+struct OverlapPostHocReplicaExchange{
+    static bool hasOverlap(std::size_t k, std::size_t l, IndexList &sampleIndicesIn_i,
+                           const std::vector<np_array_nfc<dtype>> &biasMatrices, dtype connectivity_factor) {
+        dtype delta = 0;
+        dtype n_sum = 0;
+
+        // now compute the overlap between the samples in both vectors
+        for (auto &[k_j, k_n] : sampleIndicesIn_i[k]) {
+            for (auto &[l_j, l_n]: sampleIndicesIn_i[l]) {
+                delta = biasMatrices[k_j].at(k_n, k) + biasMatrices[l_j].at(l_n, l)
+                        - biasMatrices[k_j].at(k_n, l) - biasMatrices[l_j].at(l_n, k);
+                n_sum += std::min(std::exp(delta), 1.0);
+            }
+        }
+        auto n = sampleIndicesIn_i[k].size();
+        auto m = sampleIndicesIn_i[l].size();
+
+        dtype n_avg = n_sum / (n * m);
+        return (n + m) * n_avg * connectivity_factor >= 1.0;
+    }
+};
 
 template<typename dtype>
 bool hasOverlapPostHocReplicaExchange(std::size_t k, std::size_t l, IndexList &sampleIndicesIn_i,
@@ -95,10 +121,8 @@ bool hasOverlapPostHocReplicaExchange(std::size_t k, std::size_t l, IndexList &s
 
 
 template<typename dtype>
-extern dtype
-_bar_df(dtype db_IJ[], std::size_t L1, dtype db_JI[], std::size_t L2,
-        np_array_nfc<dtype> scratch) {
-
+dtype _bar_df(dtype db_IJ[], std::size_t L1, dtype db_JI[], std::size_t L2, np_array_nfc<dtype> scratch) {
+    // todo refactor
     py::buffer_info scratch_buf = scratch.request();
     auto *scratch_ptr = (dtype *) scratch_buf.ptr;
 
@@ -122,6 +146,7 @@ bool hasOverlapBarVariance(std::size_t k, std::size_t l, IndexList &sampleIndice
                             dtype connectivity_factor) {
     auto n = sampleIndicesIn_i[k].size();
     auto m = sampleIndicesIn_i[l].size();
+    // todo get rid of new and use unique_ptr instead
     dtype *db_IJ = new dtype[n];
     dtype *db_JI = new dtype[m];
     dtype *du = new dtype[n + m];
@@ -143,17 +168,16 @@ bool hasOverlapBarVariance(std::size_t k, std::size_t l, IndexList &sampleIndice
     for(std::size_t i = 0; i < n + m; ++i) {
         b += (1.0 / (2.0 + 2.0 * std::cosh(df - du[i] - std::log(1.0 * static_cast<dtype>(n/m)))));
     }
-    return 1 / b - ( n + m ) / static_cast<dtype>(n * m) < connectivity_factor;
-}
+    return (1 / b - ( n + m ) / static_cast<dtype>(n * m)) < connectivity_factor;
+};
 
-template<typename dtype>
-transitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
+template<typename dtype, typename OverlapMode>
+TransitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
                                      const std::vector<np_array_nfc<dtype>> &biasMatrices,
                                      const np_array<std::int32_t> &stateCounts,
                                      std::int32_t nThermStates,
                                      std::int32_t nMarkovStates,
-                                     dtype connectivityFactor,
-                                     OverlapFunction<dtype> overlapFunction) {
+                                     dtype connectivityFactor) {
     // Find all possible transition paths between thermodynamic states. A possible path between thermodynamic states
     // occurs when a transition is possible from [k, i] to [l, i], i.e. we are looking for thermodynamic state pairs
     // that overlap within Markov state i.
@@ -164,9 +188,10 @@ transitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const 
     // i_s and j_s will hold all possible transition pairs: (i_s[n], j_s[n]) is one possible transition.
     // The therm./Markov state index in unraveled to one dimension, i.e. markov state i in therm state k is represented
     // in these stateVectors as k * nMarkovStates_ + i
-    stateVector i_s;
-    stateVector j_s;
+    StateVector i_s;
+    StateVector j_s;
 
+    // todo can this be parallelized?
     // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
     for (std::size_t i = 0; i < nMarkovStates; ++i) {
 
@@ -180,7 +205,7 @@ transitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const 
                     // therm state must have counts in markov state i
                     if (k != l && stateCounts.at(l, i) > 0)  {
                         // check if states k and l overlap at Markov state i.
-                        if (overlapFunction(k, l, sampleIndicesIn_i, biasMatrices, connectivityFactor)) {
+                        if (OverlapMode::hasOverlap(k, l, sampleIndicesIn_i, biasMatrices, connectivityFactor)) {
                             // push the unraveled index of the therm state transition to the transition list.
                             auto x = i + k * nMarkovStates;
                             auto y = i + l * nMarkovStates;
@@ -192,7 +217,7 @@ transitionVector getStateTransitions(const std::optional<DTrajs> &ttrajs, const 
             }
         }
     }
-    return std::tuple(i_s, j_s);
+    return std::make_tuple(i_s, j_s);
 }
 
 }

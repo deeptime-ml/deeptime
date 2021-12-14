@@ -116,8 +116,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
         auto dtrajs = generateDtrajs(nThermStates, nMarkovStates, trajLengths);
         auto biasMatrices = generateBiasMatrices<TestType>(nThermStates, dtrajs);
 
-        np_array_nfc<int> stateCounts, transitionCounts;
-        std::tie(stateCounts, transitionCounts) = countStates(nThermStates, nMarkovStates, dtrajs);
+        auto [stateCounts, transitionCounts] = countStates(nThermStates, nMarkovStates, dtrajs);
 
         auto inputPtr = std::make_shared<deeptime::tram::TRAMInput<TestType>>(
                 std::move(stateCounts), std::move(transitionCounts), dtrajs,
