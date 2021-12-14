@@ -67,7 +67,7 @@ def main():
 
 
     estimator = KMeans(
-        n_clusters=5,  # place 100 cluster centers
+        n_clusters=2,  # place 100 cluster centers
         init_strategy='uniform',  # uniform initialization strategy
         max_iter=0,  # don't actually perform the optimization, just place centers
         fixed_seed=13,
@@ -78,7 +78,7 @@ def main():
     dtrajs = clustering.transform(trajectories.flatten()).reshape(
         (len(bias_matrix), n_samples))
 
-    tram = TRAM(lagtime=1, connectivity="post_hoc_RE", connectivity_factor=1, maxiter=100)
+    tram = TRAM(lagtime=10, connectivity="summed_count_matrix", connectivity_factor=1, maxiter=100)
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
@@ -87,7 +87,19 @@ def main():
 
     plot_contour_with_colourbar(tram._biased_conf_energies)
 
-    plt.plot(tram.therm_state_energies)
+    # plt.plot(tram.therm_state_energies)
+
+    sampleweights = np.concatenate(tram.get_sample_weights())
+    sampleweights /= sampleweights.sum()
+
+    def is_in_bin(x):
+        return round(100 * (x + 1.5) / 3)
+
+    probabilities = np.zeros(100)
+    for i, sample in enumerate(np.concatenate(trajectories)):
+        probabilities[is_in_bin(sample)] += sampleweights[i]
+
+    plt.plot(xs, -np.log(probabilities))
     plt.show()
 
 
