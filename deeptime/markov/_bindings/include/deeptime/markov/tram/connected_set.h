@@ -138,12 +138,12 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs, const
 
     // todo can this be parallelized?
     // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
-    #pragma omp parallel for default(none) firstprivate(i_s, j_s)
+    #pragma omp parallel for default(none) firstprivate(i_s, j_s, nMarkovStates, nThermStates)
     for (StateIndex i = 0; i < nMarkovStates; ++i) {
         std::cout << "Markov state: " << i << std::endl;
 
         // Get all indices in all trajectories of all samples that were binned in markov state i.
-        IndexList sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
+        IndexList sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, biasMatrices, dtrajs, stateCounts, nThermStates, connectivityFactor);
 
         for (StateIndex k = 0; k < nThermStates; ++k) {
             // therm state must have counts in markov state i
