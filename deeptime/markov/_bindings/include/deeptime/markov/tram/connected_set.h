@@ -90,7 +90,7 @@ struct OverlapBarVariance{
         auto n = sampleIndicesIn_i[k].size();
         auto m = sampleIndicesIn_i[l].size();
 
-        std::vector<dtype> db_IJ;
+        std::vector<dtype> db_IJ(n);
         std::vector<dtype> db_JI(m);
         std::vector<dtype> du(n + m);
 
