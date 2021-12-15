@@ -146,6 +146,24 @@ def test_make_count_models(lagtime):
         assert state_counts[k].sum() == len(input[k])
 
 
+@pytest.mark.parametrize(
+    "input", [[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
+               [1, 0, 0, 1, 1, 1, 1, 1, 1, 0],
+               [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]]
+)
+def test_transposed_count_matrices_bug(input):
+    tram = TRAM(connectivity='summed_count_matrix')
+    input = np.asarray(input)
+    tram.n_therm_states = len(input)
+    tram.n_markov_states = np.max(np.concatenate(input)) + 1
+    state_counts, transition_counts = tram._make_count_models(input)
+    assert np.array_equal(state_counts, [[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]])
+    assert np.array_equal(transition_counts,
+                          [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]])
+
+
 def test_to_markov_model():
     tram = TRAM()
     tram.n_markov_states = 3

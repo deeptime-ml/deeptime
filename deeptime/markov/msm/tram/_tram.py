@@ -511,7 +511,7 @@ class TRAM(_MSMBaseEstimator):
                 i_s, j_s = np.meshgrid(traj_counts_model.state_symbols, traj_counts_model.state_symbols)
 
                 # place submodel counts in our full-sized count matrices
-                transition_counts[k, i_s, j_s] = traj_counts_model.count_matrix
+                transition_counts[k, i_s, j_s] = traj_counts_model.count_matrix.T
                 state_counts[k, traj_counts_model.state_symbols] = traj_counts_model.state_histogram
 
                 self.count_models.append(traj_counts_model)
