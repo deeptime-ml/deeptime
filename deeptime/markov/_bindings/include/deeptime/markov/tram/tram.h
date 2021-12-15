@@ -237,12 +237,11 @@ private:
     std::unique_ptr<dtype[]> scratchT_;
 
 
-    dtype inf = std::numeric_limits<dtype>::infinity();
-
+    constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
 
     constexpr static dtype prior() { return 0.0; }
 
-    constexpr static dtype logPrior() { return 1.0; }
+    constexpr static dtype logPrior() { return -inf; }
 
     void initLagrangianMult() {
         auto transitionCountsBuf = input_->transitionCounts();

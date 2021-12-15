@@ -161,16 +161,6 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                             REQUIRE(Catch::Detail::Approx(rowSum) == 1.0);
                         }
                     }
-                }AND_WHEN("estimate() is called again") {
-                    tram.estimate(1, (TestType) 1e-8, true);
-
-                    THEN("loglikelihood increases") {
-                        TestType newLL = tram.computeLogLikelihood();
-                        REQUIRE(std::isfinite(LL));
-                        REQUIRE(std::isfinite(newLL));
-                        REQUIRE(newLL > LL);
-                        REQUIRE(newLL < 0);
-                    }
                 }
             }
         }

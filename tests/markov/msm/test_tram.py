@@ -237,3 +237,36 @@ def test_unpack_input():
         assert np.array_equal(dtrajs, arr) and np.array_equal(biases, arr) and len(ttrajs) == 0
     except IndexError:
         pytest.fail("IndexError while unpacking input!")
+
+
+def test_tram_fit_fetch():
+    trajs = np.asarray([[0, 1, 1, 1, 1, 2, 2, 1, 0, 0], [1, 2, 3, 2, 2, 1, 0, 1, 2, 2], [2, 1, 2, 3, 2, 3, 3, 4, 3, 3],
+                        [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
+    trajs = trajs / 5 * 3 - 1.5
+
+    dtrajs = np.asarray([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
+                         [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]])
+
+    bias_centers = [-1, -0.5, 0.0, 0.5, 1]
+
+    def harmonic(x0, x):
+        return 0.1 * (x - x0) ** 2
+
+    # construct bias matric using harmonic potentials
+    bias_matrices = np.zeros((len(bias_centers), 10, len(bias_centers)))
+    for i, traj in enumerate(trajs):
+        for j, bias_center in enumerate(bias_centers):
+            bias = lambda x, x0=bias_center: harmonic(x0, x)
+            bias_matrices[i, :, j] = bias(traj)
+
+    tram = TRAM(maxiter=100, connectivity='summed_count_matrix')
+    tram.fit((dtrajs, bias_matrices))
+    assert np.allclose(tram.therm_state_energies, [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
+    assert np.allclose(tram.markov_state_energies, [1.0550639, 0.42797176])
+
+    model = tram.fetch_model()
+    assert np.allclose(model.stationary_distribution, [1.])
+    model.select(1)
+    assert np.allclose(tram.fetch_model().stationary_distribution, [0.3678024695571382, 0.6321975304428619])
+    model.select(2)
+    assert np.allclose(tram.fetch_model().transition_matrix, [[0.53558684, 0.46441316], [0.2403782,  0.7596218 ]])
