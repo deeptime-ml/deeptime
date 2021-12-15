@@ -66,9 +66,9 @@ struct OverlapPostHocReplicaExchange{
 template<typename dtype>
 struct OverlapBarVariance{
 
-    static dtype _bar_df(std::vector<dtype> &db_IJ, std::size_t L1, std::vector<dtype> &db_JI, std::size_t L2, np_array_nfc<dtype> &scratch) {
-        py::buffer_info scratch_buf = scratch.request();
-        auto *scratch_ptr = (dtype *) scratch_buf.ptr;
+    static dtype _bar_df(std::vector<dtype> &db_IJ, std::size_t L1, std::vector<dtype> &db_JI, std::size_t L2) {
+        std::vector<dtype> scratch(L1+L2);
+        auto scratch_ptr = scratch.begin();
 
         dtype ln_avg1;
         dtype ln_avg2;
@@ -104,8 +104,7 @@ struct OverlapBarVariance{
             db_JI[i] = biasMatrices[l_j].at(l_n, k) - biasMatrices[l_j].at(l_n, l);
             du[n + i] = -db_JI[i];
         }
-        auto scratch = np_array_nfc<dtype>(std::vector<std::size_t>{m+n});
-        auto df = _bar_df(db_IJ, n, db_JI, m, scratch);
+        auto df = _bar_df(db_IJ, n, db_JI, m);
 
         dtype b = 0;
         for(std::size_t i = 0; i < n + m; ++i) {
