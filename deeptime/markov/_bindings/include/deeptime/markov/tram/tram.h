@@ -213,7 +213,7 @@ public:
         std::vector<np_array_nfc<dtype>> sampleWeights(nThermStates_);
 
         auto nTrajs = input_->nTrajectories();
-        #pragma omp parallel for default(none) firstprivate(sampleWeights)
+        #pragma omp parallel for default(none) firstprivate(nTrajs, sampleWeights)
         for (auto i = 0; i < nTrajs; ++i) {
             sampleWeights[i] = sampleWeightsForTrajectory(i, thermState);
         }
