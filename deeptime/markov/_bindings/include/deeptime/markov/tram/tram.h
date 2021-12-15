@@ -280,6 +280,8 @@ private:
 
         #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, oldLagrangianMultLogBuf, newLagrangianMultLogBuf, biasedConfEnergiesBuf, transitionCountsBuf, stateCountsBuf)
         for (StateIndex k = 0; k < nThermStates; ++k) {
+            std::vector<dtype> scratch (nThermStates);
+
             for (StateIndex i = 0; i < nMarkovStates; ++i) {
                 if (0 == stateCountsBuf(k, i)) {
                     newLagrangianMultLogBuf(k, i) = -inf;
@@ -291,7 +293,7 @@ private:
                     auto CKij = transitionCountsBuf(k, i, j);
                     // special case: most variables cancel out, here
                     if (i == j) {
-                        scratchM_[o++] = (0 == CKij) ?
+                        scratch[o++] = (0 == CKij) ?
                                          logPrior() : std::log(prior() + (dtype) CKij);
                     } else {
                         auto CK = CKij + transitionCountsBuf(k, j, i);
@@ -299,11 +301,11 @@ private:
                             auto divisor = numeric::kahan::logsumexp_pair<dtype>(
                                     oldLagrangianMultLogBuf(k, j) - biasedConfEnergiesBuf(k, i)
                                     - oldLagrangianMultLogBuf(k, i) + biasedConfEnergiesBuf(k, j), 0.0);
-                            scratchM_[o++] = std::log((dtype) CK) - divisor;
+                            scratch[o++] = std::log((dtype) CK) - divisor;
                         }
                     }
                 }
-                newLagrangianMultLogBuf(k, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratchM_.get(), o);
+                newLagrangianMultLogBuf(k, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.get(), o);
             }
         }
     }
