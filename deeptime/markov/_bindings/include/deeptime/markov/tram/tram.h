@@ -280,7 +280,7 @@ private:
 
         #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, oldLagrangianMultLogBuf, newLagrangianMultLogBuf, biasedConfEnergiesBuf, transitionCountsBuf, stateCountsBuf)
         for (StateIndex k = 0; k < nThermStates; ++k) {
-            std::vector<dtype> scratch (nThermStates);
+            std::vector<dtype> scratch (nMarkovStates);
 
             for (StateIndex i = 0; i < nMarkovStates; ++i) {
                 if (0 == stateCountsBuf(k, i)) {
