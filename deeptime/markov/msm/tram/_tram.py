@@ -144,6 +144,12 @@ class TRAM(_MSMBaseEstimator):
         """
         return self._tram_estimator.get_sample_weights(markov_state)
 
+    @property
+    def log_likelihood(self):
+        # todo test this
+        return self._tram_estimator.log_likelihood()
+
+
     def fetch_model(self) -> Optional[MarkovStateModelCollection]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
         Can be None if fit was not called.

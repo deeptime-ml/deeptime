@@ -67,19 +67,19 @@ template<typename dtype>
 struct OverlapBarVariance{
 
     static dtype _bar_df(std::vector<dtype> &db_IJ, std::size_t L1, std::vector<dtype> &db_JI, std::size_t L2) {
-        std::vector<dtype> scratch(L1+L2);
-        auto scratch_ptr = scratch.begin();
+        std::vector<dtype> scratch;
+        scratch.reserve(L1+L2);
 
         dtype ln_avg1;
         dtype ln_avg2;
         for (std::size_t i = 0; i < L1; i++) {
-            scratch_ptr[i] = db_IJ[i] > 0 ? 0 : db_IJ[i];
+            scratch.push_back(db_IJ[i] > 0 ? 0 : db_IJ[i]);
         }
-        ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L1);
+        ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), L1);
         for (std::size_t i = 0; i < L1; i++) {
-            scratch_ptr[i] = db_JI[i] > 0 ? 0 : db_JI[i];
+            scratch[i] = db_JI[i] > 0 ? 0 : db_JI[i];
         }
-        ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_ptr, scratch_ptr + L2);
+        ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), L2);
         return ln_avg2 - ln_avg1;
     }
 
@@ -90,7 +90,7 @@ struct OverlapBarVariance{
         auto n = sampleIndicesIn_i[k].size();
         auto m = sampleIndicesIn_i[l].size();
 
-        std::vector<dtype> db_IJ(n);
+        std::vector<dtype> db_IJ;
         std::vector<dtype> db_JI(m);
         std::vector<dtype> du(n + m);
 
@@ -128,6 +128,8 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs, const
     // were binned into Markov state i, according to some overlap criterion defined by the overlapFunction and
     // connectivityFactor.
 
+    std::cout << "Finding connected sets..." << std::endl;
+
     // i_s and j_s will hold all possible transition pairs: (i_s[n], j_s[n]) is one possible transition.
     // The therm./Markov state index in unraveled to one dimension, i.e. markov state i in therm state k is represented
     // in these stateVectors as k * nMarkovStates_ + i
@@ -136,7 +138,9 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs, const
 
     // todo can this be parallelized?
     // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
+    #pragma omp parallel for default(none) firstprivate(i_s, j_s)
     for (StateIndex i = 0; i < nMarkovStates; ++i) {
+        std::cout << "Markov state: " << i << std::endl;
 
         // Get all indices in all trajectories of all samples that were binned in markov state i.
         IndexList sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);

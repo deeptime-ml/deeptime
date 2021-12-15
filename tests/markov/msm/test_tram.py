@@ -259,7 +259,7 @@ def test_tram_fit_fetch():
             bias = lambda x, x0=bias_center: harmonic(x0, x)
             bias_matrices[i, :, j] = bias(traj)
 
-    tram = TRAM(maxiter=100, connectivity='summed_count_matrix')
+    tram = TRAM(maxiter=100, connectivity='summed_count_matrix', save_convergence_info=True)
     tram.fit((dtrajs, bias_matrices))
     assert np.allclose(tram.therm_state_energies, [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
     assert np.allclose(tram.markov_state_energies, [1.0550639, 0.42797176])
@@ -269,4 +269,4 @@ def test_tram_fit_fetch():
     model.select(1)
     assert np.allclose(tram.fetch_model().stationary_distribution, [0.3678024695571382, 0.6321975304428619])
     model.select(2)
-    assert np.allclose(tram.fetch_model().transition_matrix, [[0.53558684, 0.46441316], [0.2403782,  0.7596218 ]])
+    assert np.allclose(tram.fetch_model().transition_matrix, [[0.53558684, 0.46441316], [0.2403782,  0.7596218]])
