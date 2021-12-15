@@ -305,7 +305,7 @@ private:
                         }
                     }
                 }
-                newLagrangianMultLogBuf(k, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.get(), o);
+                newLagrangianMultLogBuf(k, i) = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
             }
         }
     }

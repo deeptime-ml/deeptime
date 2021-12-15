@@ -41,7 +41,7 @@ IndexList findIndexOfSamplesInMarkovState(std::size_t i, const std::optional<DTr
 
 template<typename dtype>
 struct OverlapPostHocReplicaExchange{
-    static bool hasOverlap(std::size_t k, std::size_t l, IndexList &sampleIndicesIn_i,
+    static bool hasOverlap(std::size_t k, std::size_t l, const IndexList &sampleIndicesIn_i,
                            const BiasMatrices<dtype> &biasMatrices, dtype connectivity_factor) {
         dtype delta = 0;
         dtype n_sum = 0;
@@ -66,7 +66,7 @@ struct OverlapPostHocReplicaExchange{
 template<typename dtype>
 struct OverlapBarVariance{
 
-    static dtype _bar_df(std::vector<dtype> &db_IJ, std::size_t L1, std::vector<dtype> &db_JI, std::size_t L2) {
+    static dtype _bar_df(const std::vector<dtype> &db_IJ, std::size_t L1, const std::vector<dtype> &db_JI, std::size_t L2) {
         std::vector<dtype> scratch;
         scratch.reserve(L1+L2);
 
@@ -84,7 +84,7 @@ struct OverlapBarVariance{
     }
 
 
-    static bool hasOverlap(StateIndex k, StateIndex l, IndexList &sampleIndicesIn_i,
+    static bool hasOverlap(StateIndex k, StateIndex l, const IndexList &sampleIndicesIn_i,
                                const BiasMatrices<dtype> &biasMatrices,
                                dtype connectivity_factor) {
         auto n = sampleIndicesIn_i[k].size();
@@ -115,7 +115,8 @@ struct OverlapBarVariance{
 };
 
 template<typename dtype, typename OverlapMode>
-TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
+TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
+                                      const DTrajs &dtrajs,
                                      const BiasMatrices<dtype> &biasMatrices,
                                      const np_array<std::int32_t> &stateCounts,
                                      StateIndex nThermStates,
