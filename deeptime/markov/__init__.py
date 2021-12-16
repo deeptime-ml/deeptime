@@ -28,6 +28,8 @@ Utilities
     :toctree: generated/
     :template: class_nomodule.rst
 
+    map_dtrajs_to_symbols
+
     number_of_states
     count_states
     compute_connected_sets
@@ -39,10 +41,13 @@ Utilities
     sample.compute_index_states
     sample.indices_by_sequence
     sample.indices_by_state
+
+    DiscreteStatesManager
 """
 
 from ._util import number_of_states, count_states, compute_connected_sets, \
     compute_dtrajs_effective, compute_effective_stride
+from ._discrete_states import map_dtrajs_to_symbols, DiscreteStatesManager
 from . import sample
 from . import tools  # former msmtools
 

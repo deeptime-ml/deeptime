@@ -5,6 +5,7 @@ import numpy as np
 import scipy
 from scipy.sparse import issparse
 
+from . import map_dtrajs_to_symbols, DiscreteStatesManager
 from .tools import estimation as msmest
 from .tools.analysis import is_connected
 from ..base import Model, EstimatorTransformer
@@ -65,7 +66,7 @@ class TransitionCountModel(Model):
         The time offset which was used to count transitions in state.
     state_histogram : array_like, optional, default=None
         Histogram over the visited states in discretized trajectories.
-    state_symbols : array_like, optional, default=None
+    state_symbols : array_like or DiscreteStatesManager, optional, default=None
         Symbols of the original discrete trajectory that are represented in the counting model. If None, the
         symbols are assumed to represent the data, i.e., a iota range over the number of states. Subselection
         of the model also subselects the symbols.
@@ -99,20 +100,20 @@ class TransitionCountModel(Model):
 
         if state_symbols is None:
             # if symbols is not set, assume that the count matrix represents all states in the data
-            state_symbols = np.arange(self.n_states)
+            state_symbols = np.arange(self.count_matrix.shape[0])
 
-        if len(state_symbols) != self.n_states:
+        if len(state_symbols) != self.count_matrix.shape[0]:
             raise ValueError("Number of symbols in counting model must coincide with the number of states in the "
                              "count matrix! (#symbols = {}, #states = {})".format(len(state_symbols), self.n_states))
-        self._state_symbols_with_blank = np.concatenate((state_symbols, (-1,)))
         if count_matrix_full is None:
             count_matrix_full = count_matrix
         self._count_matrix_full = count_matrix_full
-        if self.n_states_full < self.n_states:
-            # full number of states must be at least as large as n_states
-            raise ValueError("Number of states was bigger than full number of "
-                             "states. (#states = {}, #states_full = {}), likely a wrong "
-                             "full count matrix.".format(self.n_states, self.n_states_full))
+
+        if not isinstance(state_symbols, DiscreteStatesManager):
+            self._states_manager = DiscreteStatesManager(state_symbols, self.n_states_full, blank_state=-1)
+        else:
+            self._states_manager = state_symbols
+
         if state_histogram_full is None:
             state_histogram_full = state_histogram
         if state_histogram_full is not None and self.n_states_full != len(state_histogram_full):
@@ -141,13 +142,13 @@ class TransitionCountModel(Model):
     @property
     def state_symbols(self) -> np.ndarray:
         r""" Symbols for states that are represented in this count model. """
-        return self._state_symbols_with_blank[:-1]
+        return self._states_manager.state_symbols
 
     @property
     def state_symbols_with_blank(self):
         r""" Symbols for states that are represented in this count model plus a state `-1` for states which are
         not represented in this count model. """
-        return self._state_symbols_with_blank
+        return self._states_manager.state_symbols_with_blank
 
     @property
     def counting_mode(self) -> Optional[str]:
@@ -170,7 +171,7 @@ class TransitionCountModel(Model):
         is_full_model : bool
             Whether this counting model represents all states of the data.
         """
-        return self.n_states == self.n_states_full
+        return self._states_manager.is_full
 
     def transform_discrete_trajectories_to_submodel(self, dtrajs):
         r"""A list of integer arrays with the discrete trajectories mapped to the currently used set of symbols.
@@ -187,15 +188,7 @@ class TransitionCountModel(Model):
         array_like or list of array_like
             Curated discretized trajectories so that unconsidered symbols are mapped to -1.
         """
-
-        if self.is_full_model:
-            # no-op
-            return dtrajs
-        else:
-            dtrajs = ensure_dtraj_list(dtrajs)
-            mapping = -1 * np.ones(self.n_states_full, dtype=np.int32)
-            mapping[self.state_symbols] = np.arange(self.n_states)
-            return [mapping[dtraj] for dtraj in dtrajs]
+        return self._states_manager.project(dtrajs, check=True)
 
     @property
     def count_matrix(self):
@@ -218,7 +211,7 @@ class TransitionCountModel(Model):
     @property
     def selected_state_fraction(self) -> float:
         """The fraction of states represented in this count model."""
-        return float(self.n_states) / float(self.n_states_full)
+        return self._states_manager.selected_state_fraction
 
     @property
     @requires_state_histogram
@@ -229,7 +222,7 @@ class TransitionCountModel(Model):
     @property
     def n_states(self) -> int:
         """Number of states """
-        return self.count_matrix.shape[0]
+        return self._states_manager.n_states
 
     @property
     @requires_state_histogram
@@ -317,7 +310,7 @@ class TransitionCountModel(Model):
         symbols : (N,) ndarray
             Array of symbols.
         """
-        return self.state_symbols_with_blank[states]
+        return self._states_manager.states_to_symbols(states)
 
     def symbols_to_states(self, symbols):
         r"""
@@ -335,11 +328,7 @@ class TransitionCountModel(Model):
         states : ndarray
             An array of states.
         """
-        # only take symbols which are still present in this model
-        if isinstance(symbols, set):
-            symbols = list(symbols)
-        symbols = np.intersect1d(np.asarray(symbols), self.state_symbols)
-        return np.argwhere(np.isin(self.state_symbols, symbols)).flatten()
+        return self._states_manager.symbols_to_states(symbols)
 
     def submodel(self, states: np.ndarray):
         r"""This returns a count model that is restricted to a selection of states.
@@ -363,16 +352,13 @@ class TransitionCountModel(Model):
             raise ValueError("Tried restricting model to states that are not represented! "
                              "States range from 0 to {}.".format(np.max(states)))
         sub_count_matrix = submatrix(self.count_matrix, states)
-        if self.state_symbols is not None:
-            sub_symbols = self.state_symbols[states]
-        else:
-            sub_symbols = None
         if self.state_histogram is not None:
             sub_state_histogram = self.state_histogram[states]
         else:
             sub_state_histogram = None
+        sub_states_manager = self._states_manager.subselect_states(states)
         return TransitionCountModel(sub_count_matrix, self.counting_mode, self.lagtime, sub_state_histogram,
-                                    state_symbols=sub_symbols, count_matrix_full=self.count_matrix_full,
+                                    state_symbols=sub_states_manager, count_matrix_full=self.count_matrix_full,
                                     state_histogram_full=self.state_histogram_full)
 
     def submodel_largest(self, connectivity_threshold: Union[str, float] = 0., directed: Optional[bool] = None,

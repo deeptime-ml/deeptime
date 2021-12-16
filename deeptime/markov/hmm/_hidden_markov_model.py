@@ -413,7 +413,7 @@ class HiddenMarkovModel(Model):
         """
         return -self.transition_model.lagtime / np.log(np.diag(self.transition_model.transition_matrix))
 
-    def compute_viterbi_paths(self, observations) -> List[np.ndarray]:
+    def compute_viterbi_paths(self, observations, map_observations_to_submodel: bool = False) -> List[np.ndarray]:
         r"""
         Computes the Viterbi paths using the current HMM model.
 
@@ -428,6 +428,8 @@ class HiddenMarkovModel(Model):
             the computed viterbi paths
         """
         observations = ensure_dtraj_list(observations)
+        if map_observations_to_submodel and isinstance(self.output_model, DiscreteOutputModel):
+            observations = self.output_model.map_observations_to_submodel(observations)
         A = self.transition_model.transition_matrix
         pi = self.initial_distribution
         state_probabilities = [
