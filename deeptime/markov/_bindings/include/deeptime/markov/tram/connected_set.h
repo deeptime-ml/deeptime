@@ -151,15 +151,14 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
                                       const np_array <std::int32_t> &stateCounts,
                                       StateIndex nThermStates,
                                       StateIndex nMarkovStates,
-                                      dtype connectivityFactor) {
+                                      dtype connectivityFactor,
+                                      const py::object *callback = nullptr) {
     // Find all possible transition paths between thermodynamic states. A possible path between thermodynamic states
     // occurs when a transition is possible from [k, i] to [l, i], i.e. we are looking for thermodynamic state pairs
     // that overlap within Markov state i.
     // Whether two thermodynamic states k and l overlap in Markov state i is determined by the samples from k and l that
     // were binned into Markov state i, according to some overlap criterion defined by the overlapFunction and
     // connectivityFactor.
-
-    std::cout << "Finding connected sets..." << std::endl;
 
     // i_s and j_s will hold all possible transition pairs: (i_s[n], j_s[n]) is one possible transition.
     // The therm./Markov state index in unraveled to one dimension, i.e. markov state i in therm state k is represented
@@ -171,13 +170,13 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
     //  #pragma omp parallel for default(none) firstprivate(i_s, j_s, nMarkovStates, nThermStates, ttrajs, dtrajs, biasMatrices, stateCounts, connectivityFactor)
     for (StateIndex i = 0; i < nMarkovStates; ++i) {
-        std::cout << "Markov state: " << i << std::endl;
 
         // Get all indices in all trajectories of all samples that were binned in markov state i.
         IndexList sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
-
         for (StateIndex k = 0; k < nThermStates; ++k) {
-            std::cout << "Find overlap of all states with therm. state: " << k << std::endl;
+            if (callback != nullptr) {
+                (*callback)();
+            }
             // therm state must have counts in markov state i
             if (stateCounts.at(k, i) > 0) {
                 for (StateIndex l = 0; l < nThermStates; ++l) {

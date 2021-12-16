@@ -181,7 +181,7 @@ public:
 
             if (callback != nullptr && iterationCount % callbackInterval_ == 0) {
                 py::gil_scoped_acquire guard;
-                (*callback)(iterationCount, iterationError, logLikelihood);
+                (*callback)(iterationError, logLikelihood);
             }
 
             if (iterationError < maxErr) {
@@ -200,11 +200,6 @@ public:
 
         // And update final transition matrices
         updateTransitionMatrices();
-
-        if (iterationError >= maxErr) {
-            // We exceeded maxIter but we did not converge.
-            std::cout << "TRAM did not converge. Last increment = " << iterationError << std::endl;
-        }
     }
 
     // statistical weight per sample, \mu^k(x).

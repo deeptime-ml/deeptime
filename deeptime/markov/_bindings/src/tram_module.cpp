@@ -28,12 +28,11 @@ PYBIND11_MODULE(_tram_bindings, m) {
         tramMod.def("get_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
-                    "connectivity_factor"_a);
+                    "connectivity_factor"_a, "callback"_a);
 
         tramMod.def("get_state_transitions_BAR_variance", &findStateTransitions<double, OverlapBarVariance<double>>,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
-                    "connectivity_factor"_a);
-
+                    "connectivity_factor"_a, "callback"_a);
 
         tramMod.def("find_trajectory_fragment_indices", &findTrajectoryFragmentIndices, "ttrajs"_a, "n_therm_states"_a);
     }

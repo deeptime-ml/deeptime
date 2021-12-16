@@ -8,6 +8,8 @@ from deeptime.util import types
 # from _tram_bindings import tram
 from deeptime.markov._tram_bindings import tram
 
+from tqdm import tqdm
+
 import numpy as np
 import scipy as sp
 
@@ -107,6 +109,7 @@ class TRAM(_MSMBaseEstimator):
         self.save_convergence_info = save_convergence_info
         self._largest_connected_set = None
         self._tram_estimator = None
+        self.log_likelihoods = []
 
     @property
     def therm_state_energies(self) -> Optional:
@@ -190,20 +193,33 @@ class TRAM(_MSMBaseEstimator):
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
+
         dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set(ttrajs, dtrajs,
                                                                                               bias_matrices)
 
-        # TODO: make progress bar
-        def callback(iteration, error, log_likelihood):
-            print(f"Iteration {iteration}: error {error}. log_L: {log_likelihood}")
-
         tram_input = tram.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
         self._tram_estimator = tram.TRAM(tram_input)
-        self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
+
+        self._run_estimation()
 
         self._to_markov_model()
 
         return self
+
+    def _run_estimation(self):
+        progress_bar = tqdm(total=self.maxiter, desc="Running TRAM estimate")
+
+        def callback(error, log_likelihood):
+            if (self.save_convergence_info):
+                self.log_likelihoods.append(log_likelihood)
+            callback.last_error = error
+            progress_bar.update(1)
+
+        self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
+        progress_bar.close()
+
+        if callback.last_error > self.maxerr:
+            print(f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_error}")
 
     def _preprocess(self, data):
         dtrajs, bias_matrices, ttrajs = self._unpack_input(data)
@@ -304,6 +320,7 @@ class TRAM(_MSMBaseEstimator):
         return ttrajs, dtrajs, bias_matrices
 
     def _get_counts_from_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
+
         # count all transitions and state counts, without restricting to connected sets
         self._largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
 
@@ -333,6 +350,12 @@ class TRAM(_MSMBaseEstimator):
                 directed=True)
 
         if self.connectivity in ['post_hoc_RE', 'BAR_variance']:
+            # this can take a while so keep track of progress
+            progress_bar = tqdm(total=self.n_therm_states * self.n_markov_states, desc="Finding connected sets")
+
+            def callback():
+                progress_bar.update(1)
+
             # get state counts for each trajectory (=for each therm. state)
             all_state_counts = np.asarray([estimator.fit_fetch(dtraj).state_histogram for dtraj in dtrajs],
                                           dtype=object)
@@ -348,7 +371,7 @@ class TRAM(_MSMBaseEstimator):
                 connectivity_fn = tram.get_state_transitions_BAR_variance
 
             (i_s, j_s) = connectivity_fn(ttrajs, dtrajs, bias_matrices, all_state_counts, self.n_therm_states,
-                                         self.n_markov_states, self.connectivity_factor)
+                                         self.n_markov_states, self.connectivity_factor, callback)
 
             # add transitions that occurred within each thermodynamic state. These are simply the connected sets:
             for k in range(self.n_therm_states):
@@ -368,6 +391,8 @@ class TRAM(_MSMBaseEstimator):
             # unravel the index and combine all separate csets to one cset
             connected_states = np.unravel_index(connected_states_ravelled, (self.n_therm_states, self.n_markov_states),
                                                 order='C')
+
+            progress_bar.close()
             return full_counts_model.submodel(np.unique(connected_states[1]))
 
         warnings.warn(

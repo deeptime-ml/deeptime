@@ -5,8 +5,10 @@ from deeptime.data import tmatrix_metropolis1d
 from deeptime.markov.msm import TRAM, MarkovStateModel
 from deeptime.clustering import KMeans
 
+from timeit import default_timer as timer
+
 xs = np.linspace(-1.5, 1.5, num=100)
-n_samples = 100000
+n_samples = 10000
 bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
 
@@ -60,10 +62,10 @@ def main():
     # move from trajectory over 100 bins back to the space of the xs: (-1.5, 1.5)
     trajectories = trajectories / 100 * 3 - 1.5
 
-    bias_matrix = np.zeros((len(bias_centers), n_samples, len(bias_centers)))
+    bias_matrices = np.zeros((len(bias_centers), n_samples, len(bias_centers)))
     for i, traj in enumerate(trajectories):
         for j, bias_function in enumerate(bias_functions):
-            bias_matrix[i, :, j] = bias_function(traj)
+            bias_matrices[i, :, j] = bias_function(traj)
 
 
     estimator = KMeans(
@@ -76,18 +78,27 @@ def main():
 
     clustering = estimator.fit_fetch(trajectories.flatten())
     dtrajs = clustering.transform(trajectories.flatten()).reshape(
-        (len(bias_matrix), n_samples))
+        (len(bias_matrices), n_samples))
 
-    tram = TRAM(lagtime=10, connectivity="post_hoc_RE", connectivity_factor=1, maxiter=100)
+    tram = TRAM(lagtime=1, connectivity="BAR_variance", connectivity_factor=1, maxiter=100)
+
+
+    # dtrajs = np.asarray([np.asarray([1, 2, 1, 3, 2, 7, 7, 6]), np.asarray([3, 4, 3, 3, 4, 5, 6, 5, 4]), np.asarray([3,4,5,6])])
+    # bias_matrices = np.asarray([np.ones((len(dtrajs[i]), 3)) for i in range(len(dtrajs))])
+
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
     # Umbrella/Hamiltonian/temperature).
-    model = tram.fit_fetch((dtrajs, bias_matrix))
+    t0 = timer()
+    model = tram.fit_fetch((dtrajs, bias_matrices))
+    t1 = timer()
+    print(t1 - t0)
 
     plot_contour_with_colourbar(tram._biased_conf_energies)
 
     # plt.plot(tram.therm_state_energies)
+
 
     sampleweights = np.concatenate(tram.get_sample_weights())
     sampleweights /= sampleweights.sum()
