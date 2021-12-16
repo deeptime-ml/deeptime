@@ -76,16 +76,15 @@ struct OverlapBarVariance {
 
     static dtype
     _bar_df(const std::vector<dtype> &db_IJ, std::size_t L1, const std::vector<dtype> &db_JI, std::size_t L2) {
-        std::vector<dtype> scratch;
-        scratch.reserve(L1 + L2);
+        std::vector<dtype> scratch(L1 + L2, 0);
 
         dtype ln_avg1;
         dtype ln_avg2;
         for (std::size_t i = 0; i < L1; i++) {
-            scratch.push_back(db_IJ[i] > 0 ? 0 : db_IJ[i]);
+            scratch[i] = db_IJ[i] > 0 ? 0 : db_IJ[i];
         }
         ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), L1);
-        for (std::size_t i = 0; i < L1; i++) {
+        for (std::size_t i = 0; i < L2; i++) {
             scratch[i] = db_JI[i] > 0 ? 0 : db_JI[i];
         }
         ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), L2);
@@ -97,8 +96,8 @@ struct OverlapBarVariance {
         auto biasPairsBufK = biasesSampledAtK.template unchecked<2>();
         auto biasPairsBufL = biasesSampledAtL.template unchecked<2>();
 
-        auto n = biasesSampledAtK.size();
-        auto m = biasesSampledAtL.size();
+        auto n = biasesSampledAtK.shape(0);
+        auto m = biasesSampledAtL.shape(0);
 
         std::vector<dtype> db_IJ(n);
         std::vector<dtype> db_JI(m);
