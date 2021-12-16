@@ -14,10 +14,16 @@ using TransitionVector = std::tuple<StateVector, StateVector>;
 using TransitionPair = std::tuple<StateIndex, StateIndex>;
 using IndexList = std::vector<std::vector<TransitionPair>>;
 
+template<typename dtype>
+using BiasPairs = np_array<dtype>;
+
+template<typename dtype>
+using PairOfBiasPairs = std::tuple<BiasPairs<dtype>, BiasPairs<dtype>>;
+
 
 IndexList findIndexOfSamplesInMarkovState(std::size_t i, const std::optional<DTrajs> &ttrajs, const DTrajs &dtrajs,
-                                         StateIndex nThermStates) {
-    IndexList indices (nThermStates);
+                                          StateIndex nThermStates) {
+    IndexList indices(nThermStates);
 
     for (std::size_t j = 0; j < dtrajs.size(); ++j) {
         std::size_t trajLength = dtrajs[j].size();
@@ -31,7 +37,7 @@ IndexList findIndexOfSamplesInMarkovState(std::size_t i, const std::optional<DTr
                 auto k = ttrajs ? ttrajBuf[n] : j;
 
                 // markov state i sampled in therm state k can be found at bias matrix index (j, n,)
-                indices[k].push_back(std::make_tuple(j, n));
+                indices[k].emplace_back(j, n);
             }
         }
     }
@@ -40,22 +46,24 @@ IndexList findIndexOfSamplesInMarkovState(std::size_t i, const std::optional<DTr
 
 
 template<typename dtype>
-struct OverlapPostHocReplicaExchange{
-    static bool hasOverlap(std::size_t k, std::size_t l, const IndexList &sampleIndicesIn_i,
-                           const BiasMatrices<dtype> &biasMatrices, dtype connectivity_factor) {
-        dtype delta = 0;
-        dtype n_sum = 0;
+struct OverlapPostHocReplicaExchange {
+    static bool hasOverlap(const PairOfBiasPairs<dtype> &biasPairs, dtype connectivity_factor) {
+        auto &[biasesSampledAtK, biasesSampledAtL] = biasPairs;
+        auto biasPairsBufK = biasesSampledAtK.template unchecked<2>();
+        auto biasPairsBufL = biasesSampledAtL.template unchecked<2>();
+        auto n = biasesSampledAtK.shape(0);
+        auto m = biasesSampledAtL.shape(0);
+
+        auto delta = 0;
+        auto n_sum = 0;
 
         // now compute the overlap between the samples in both vectors
-        for (auto &[k_j, k_n] : sampleIndicesIn_i[k]) {
-            for (auto &[l_j, l_n]: sampleIndicesIn_i[l]) {
-                delta = biasMatrices[k_j].at(k_n, k) + biasMatrices[l_j].at(l_n, l)
-                        - biasMatrices[k_j].at(k_n, l) - biasMatrices[l_j].at(l_n, k);
+        for (auto i = 0; i < n; ++i) {
+            for (auto j = 0; j < m; ++j) {
+                delta = biasPairsBufK(i,0) + biasPairsBufL(j,1) - biasPairsBufK(i,1) - biasPairsBufL(j,0);
                 n_sum += std::min(std::exp(delta), 1.0);
             }
         }
-        auto n = sampleIndicesIn_i[k].size();
-        auto m = sampleIndicesIn_i[l].size();
 
         dtype n_avg = n_sum / (n * m);
         return (n + m) * n_avg * connectivity_factor >= 1.0;
@@ -64,11 +72,12 @@ struct OverlapPostHocReplicaExchange{
 
 
 template<typename dtype>
-struct OverlapBarVariance{
+struct OverlapBarVariance {
 
-    static dtype _bar_df(const std::vector<dtype> &db_IJ, std::size_t L1, const std::vector<dtype> &db_JI, std::size_t L2) {
+    static dtype
+    _bar_df(const std::vector<dtype> &db_IJ, std::size_t L1, const std::vector<dtype> &db_JI, std::size_t L2) {
         std::vector<dtype> scratch;
-        scratch.reserve(L1+L2);
+        scratch.reserve(L1 + L2);
 
         dtype ln_avg1;
         dtype ln_avg2;
@@ -83,45 +92,68 @@ struct OverlapBarVariance{
         return ln_avg2 - ln_avg1;
     }
 
+    static bool hasOverlap(const PairOfBiasPairs<dtype> &biasPairs, dtype connectivity_factor) {
+        auto &[biasesSampledAtK, biasesSampledAtL] = biasPairs;
+        auto biasPairsBufK = biasesSampledAtK.template unchecked<2>();
+        auto biasPairsBufL = biasesSampledAtL.template unchecked<2>();
 
-    static bool hasOverlap(StateIndex k, StateIndex l, const IndexList &sampleIndicesIn_i,
-                               const BiasMatrices<dtype> &biasMatrices,
-                               dtype connectivity_factor) {
-        auto n = sampleIndicesIn_i[k].size();
-        auto m = sampleIndicesIn_i[l].size();
+        auto n = biasesSampledAtK.size();
+        auto m = biasesSampledAtL.size();
 
         std::vector<dtype> db_IJ(n);
         std::vector<dtype> db_JI(m);
         std::vector<dtype> du(n + m);
 
-        for (std::size_t i =0; i < n; ++i) {
-            auto &[k_j, k_n] = sampleIndicesIn_i[k][i];
-            db_IJ[i] = biasMatrices[k_j].at(k_n, l) - biasMatrices[k_j].at(k_n, k);
+        for (std::size_t i = 0; i < n; ++i) {
+            db_IJ[i] = biasPairsBufK(i, 1) - biasPairsBufK(i, 0);
             du[i] = db_IJ[i];
         }
         for (std::size_t i = 0; i < m; ++i) {
-            auto &[l_j, l_n] = sampleIndicesIn_i[l][i];
-            db_JI[i] = biasMatrices[l_j].at(l_n, k) - biasMatrices[l_j].at(l_n, l);
+            db_JI[i] = biasPairsBufL(i, 0) - biasPairsBufL(i, 1);
             du[n + i] = -db_JI[i];
         }
         auto df = _bar_df(db_IJ, n, db_JI, m);
 
         dtype b = 0;
-        for(std::size_t i = 0; i < n + m; ++i) {
-            b += (1.0 / (2.0 + 2.0 * std::cosh(df - du[i] - std::log(1.0 * static_cast<dtype>(n/m)))));
+        for (std::size_t i = 0; i < n + m; ++i) {
+            b += (1.0 / (2.0 + 2.0 * std::cosh(df - du[i] - std::log(1.0 * static_cast<dtype>(n / m)))));
         }
-        return (1 / b - ( n + m ) / static_cast<dtype>(n * m)) < connectivity_factor;
+        return (1 / b - (n + m) / static_cast<dtype>(n * m)) < connectivity_factor;
     }
 };
+
+template<typename dtype>
+BiasPairs<dtype> getBiasPairs(const std::vector<TransitionPair> &sampleIndices, StateIndex k, StateIndex l,
+                              const BiasMatrices <dtype> &biasMatrices) {
+    BiasPairs<dtype> biasPairs (std::vector<std::size_t>{sampleIndices.size(), 2});
+
+    auto biasPairsBuf = biasPairs.template mutable_unchecked<2>();
+
+    for (auto i =0; i < sampleIndices.size(); ++i) {
+        auto [j, n] =  sampleIndices[i];
+        biasPairsBuf(i, 0) = biasMatrices[j].unchecked()(n, k);
+        biasPairsBuf(i, 1) = biasMatrices[j].unchecked()(n, l);
+    }
+    return biasPairs;
+}
+
+template<typename dtype>
+PairOfBiasPairs<dtype> getPairOfBiasPairs(const IndexList &sampleIndicesIn_i, StateIndex k, StateIndex l,
+                                                const BiasMatrices <dtype> &biasMatrices) {
+    auto biasPairsK = getBiasPairs(sampleIndicesIn_i[k], k, l, biasMatrices);
+    auto biasPairsL = getBiasPairs(sampleIndicesIn_i[l], k, l, biasMatrices);
+
+    return std::make_tuple(biasPairsK, biasPairsL);
+}
 
 template<typename dtype, typename OverlapMode>
 TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
                                       const DTrajs &dtrajs,
-                                     const BiasMatrices<dtype> &biasMatrices,
-                                     const np_array<std::int32_t> &stateCounts,
-                                     StateIndex nThermStates,
-                                     StateIndex nMarkovStates,
-                                     dtype connectivityFactor) {
+                                      const BiasMatrices <dtype> &biasMatrices,
+                                      const np_array <std::int32_t> &stateCounts,
+                                      StateIndex nThermStates,
+                                      StateIndex nMarkovStates,
+                                      dtype connectivityFactor) {
     // Find all possible transition paths between thermodynamic states. A possible path between thermodynamic states
     // occurs when a transition is possible from [k, i] to [l, i], i.e. we are looking for thermodynamic state pairs
     // that overlap within Markov state i.
@@ -139,7 +171,7 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
 
     // todo can this be parallelized?
     // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
-  //  #pragma omp parallel for default(none) firstprivate(i_s, j_s, nMarkovStates, nThermStates, ttrajs, dtrajs, biasMatrices, stateCounts, connectivityFactor)
+    //  #pragma omp parallel for default(none) firstprivate(i_s, j_s, nMarkovStates, nThermStates, ttrajs, dtrajs, biasMatrices, stateCounts, connectivityFactor)
     for (StateIndex i = 0; i < nMarkovStates; ++i) {
         std::cout << "Markov state: " << i << std::endl;
 
@@ -147,13 +179,16 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
         IndexList sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajs, dtrajs, nThermStates);
 
         for (StateIndex k = 0; k < nThermStates; ++k) {
+            std::cout << "Find overlap of all states with therm. state: " << k << std::endl;
             // therm state must have counts in markov state i
             if (stateCounts.at(k, i) > 0) {
                 for (StateIndex l = 0; l < nThermStates; ++l) {
                     // therm state must have counts in markov state i
-                    if (k != l && stateCounts.at(l, i) > 0)  {
+                    if (k != l && stateCounts.at(l, i) > 0) {
+                        auto biasPairs = getPairOfBiasPairs(sampleIndicesIn_i, k, l, biasMatrices);
+
                         // check if states k and l overlap at Markov state i.
-                        if (OverlapMode::hasOverlap(k, l, sampleIndicesIn_i, biasMatrices, connectivityFactor)) {
+                        if (OverlapMode::hasOverlap(biasPairs, connectivityFactor)) {
                             // push the unraveled index of the therm state transition to the transition list.
                             auto x = i + k * nMarkovStates;
                             auto y = i + l * nMarkovStates;
