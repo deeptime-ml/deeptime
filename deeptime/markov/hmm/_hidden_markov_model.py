@@ -417,10 +417,17 @@ class HiddenMarkovModel(Model):
         r"""
         Computes the Viterbi paths using the current HMM model.
 
+        Note:
+        In  case of sub-modeling a discrete state HMM, the observation sequence must be mapped to the active states of
+        that sub-model. This can either be done by hand beforehand or by activating the map_observations_to_submodel
+        flag.
+
         Parameters
         ----------
         observations : list of array_like or array_like
             observations
+        map_observations_to_submodel : bool, optional, default = False
+            If True and in case of a discrete output model, activates automatic mapping to the active sub-model states
 
         Returns
         -------

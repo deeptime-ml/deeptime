@@ -177,6 +177,7 @@ class DiscreteOutputModel(OutputModel):
         to :math:`a_{ij} = 0`. This option ensures coincidence between sample mean an MLE.
     ignore_outliers : bool, optional, default=False
         Whether to ignore outliers, see :attr:`ignore_outliers`.
+    discrete_states_manager : DiscreteStatesManager, optional, default=None
     """
     def __init__(self, output_probabilities: np.ndarray, prior: Optional[np.ndarray] = None,
                  ignore_outliers: bool = False, discrete_states_manager=None):
@@ -201,6 +202,19 @@ class DiscreteOutputModel(OutputModel):
         self._discrete_states_manager = discrete_states_manager
 
     def map_observations_to_submodel(self, observations: np.ndarray):
+        r"""
+        Map a sequence of observations to the reduced state space of a sub-model.
+
+        Parameters
+        ----------
+        observations : ndarray
+            sequence of observations
+
+        Returns
+        ----------
+        mapped_observations : ndarray
+            array containing mapped observation sequence
+        """
         return self._discrete_states_manager.project(observations, check=True)
 
     @property
