@@ -54,13 +54,12 @@ struct OverlapPostHocReplicaExchange {
         auto n = biasesSampledAtK.shape(0);
         auto m = biasesSampledAtL.shape(0);
 
-        auto delta = 0;
-        auto n_sum = 0;
+        dtype n_sum = 0;
 
         // now compute the overlap between the samples in both vectors
         for (auto i = 0; i < n; ++i) {
             for (auto j = 0; j < m; ++j) {
-                delta = biasPairsBufK(i,0) + biasPairsBufL(j,1) - biasPairsBufK(i,1) - biasPairsBufL(j,0);
+                dtype delta = biasPairsBufK(i,0) + biasPairsBufL(j,1) - biasPairsBufK(i,1) - biasPairsBufL(j,0);
                 n_sum += std::min(std::exp(delta), 1.0);
             }
         }
