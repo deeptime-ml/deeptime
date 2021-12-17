@@ -1,6 +1,8 @@
 from copy import deepcopy
 
 import pytest
+from flaky import flaky
+
 pytest.importorskip("torch")
 
 from numpy.testing import assert_, assert_almost_equal
@@ -68,7 +70,7 @@ def test_score(fixed_seed, method, mode):
             assert_almost_equal(score_value.numpy(), score_value_ref)
 
 
-@pytest.mark.xfail(reason="May spuriously fail because of nondeterministic optimization of the NN", strict=False)
+@flaky(max_runs=3, min_passes=1)
 def test_estimator(fixed_seed):
     data = deeptime.data.ellipsoids()
     obs = data.observations(6000, n_dim=10).astype(np.float32)
