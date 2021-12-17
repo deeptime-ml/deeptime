@@ -210,7 +210,7 @@ public:
 
         auto * tram = this;
 
-        #pragma omp parallel for default(none) firstprivate(nTrajs, sampleWeights, thermState, tram)
+        #pragma omp parallel for default(none) firstprivate(nTrajs, thermState, tram) shared(sampleWeights)
         for (auto i = 0; i < nTrajs; ++i) {
             sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
         }

@@ -73,21 +73,17 @@ struct OverlapPostHocReplicaExchange {
 template<typename dtype>
 struct OverlapBarVariance {
 
-    static dtype
-    _bar_df(const std::vector<dtype> &db_IJ, std::size_t L1, const std::vector<dtype> &db_JI, std::size_t L2) {
-        std::vector<dtype> scratch(L1 + L2, 0);
+    static dtype _barDf(const std::vector<dtype> &db_IJ, const std::vector<dtype> &db_JI) {
+        std::vector<dtype> scratch(std::max(db_IJ.size(), db_JI.size()), 0);
+        std::transform(std::begin(db_IJ), std::end(db_IJ), std::begin(scratch),
+                       [](const auto &x) { return std::min(static_cast<dtype>(0), x); });
+        auto lnAvg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), scratch.begin() + db_IJ.size());
 
-        dtype ln_avg1;
-        dtype ln_avg2;
-        for (std::size_t i = 0; i < L1; i++) {
-            scratch[i] = db_IJ[i] > 0 ? 0 : db_IJ[i];
-        }
-        ln_avg1 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), L1);
-        for (std::size_t i = 0; i < L2; i++) {
-            scratch[i] = db_JI[i] > 0 ? 0 : db_JI[i];
-        }
-        ln_avg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), L2);
-        return ln_avg2 - ln_avg1;
+        std::transform(std::begin(db_JI), std::end(db_JI), std::begin(scratch),
+                       [](const auto &x) { return std::min(static_cast<dtype>(0), x); });
+        auto lnAvg2 = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), scratch.begin() + db_JI.size());
+
+        return lnAvg2 - lnAvg1;
     }
 
     static bool hasOverlap(const PairOfBiasPairs<dtype> &biasPairs, dtype connectivity_factor) {
@@ -110,12 +106,11 @@ struct OverlapBarVariance {
             db_JI[i] = biasPairsBufL(i, 0) - biasPairsBufL(i, 1);
             du[n + i] = -db_JI[i];
         }
-        auto df = _bar_df(db_IJ, n, db_JI, m);
+        auto df = _barDf(db_IJ, db_JI);
 
-        dtype b = 0;
-        for (std::size_t i = 0; i < n + m; ++i) {
-            b += (1.0 / (2.0 + 2.0 * std::cosh(df - du[i] - std::log(1.0 * static_cast<dtype>(n / m)))));
-        }
+        auto b = std::accumulate(std::begin(du), std::end(du), static_cast<dtype>(0), [df, n, m](auto x, auto y) {
+            return x + (1.0 / (2.0 + 2.0 * std::cosh(df - y - std::log(1.0 * static_cast<dtype>(n / m)))));
+        });
         return (1 / b - (n + m) / static_cast<dtype>(n * m)) < connectivity_factor;
     }
 };
