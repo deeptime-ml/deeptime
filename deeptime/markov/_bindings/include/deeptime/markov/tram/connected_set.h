@@ -182,7 +182,6 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
 	        #pragma omp master
 	        nThreads = omp_get_num_threads();
     }
-
     #endif
     
     // save results in one vector per thread. Concatenate them at the end.
@@ -216,7 +215,11 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
             for (StateIndex k = 0; k < nThermStates; ++k) {
                 // callback for incrementing a progress bar
                 if (callback != nullptr) {
-                    (*callback)();
+                #pragma omp critical
+                    {
+                        py::gil_scoped_acquire guard;
+                        (*callback)();
+                    }
             	}
                 // ... states can only overlap if they both have counts in markov state i
                 if (stateCountsBuf(k, i) > 0) {
