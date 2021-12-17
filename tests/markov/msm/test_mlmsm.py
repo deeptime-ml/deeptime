@@ -235,9 +235,9 @@ def test_score_cv(double_well_msm_all, n_jobs):
     with assert_raises(ValueError):
         vamp_score_cv(fit_fetch, trajs=data)  # uses blocksplit but no lagtime
     s1 = vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r=1, dim=2, n_jobs=n_jobs).mean()
-    assert 1.0 <= s1 <= 2.0
+    assert 0 <= s1 <= 2.0
     s2 = vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r=2, dim=2, n_jobs=n_jobs).mean()
-    assert 1.0 <= s2 <= 2.0
+    assert 0 <= s2 <= 2.0
     se = vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r="E", dim=2, n_jobs=n_jobs).mean()
     se_inf = vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r="E", dim=None, n_jobs=n_jobs).mean()
 
