@@ -205,11 +205,11 @@ public:
     // statistical weight per sample, \mu^k(x).
     // If thermState =-1, this is the unbiased statistical sample weight, \mu(x).
     std::vector<np_array_nfc<dtype>> sampleWeights(std::int32_t thermState) {
-        std::vector<np_array_nfc<dtype>> sampleWeights(nThermStates_);
-
         auto nTrajs = input_->nTrajectories();
+        std::vector<np_array_nfc<dtype>> sampleWeights(nTrajs);
+
         auto * tram = this;
-// solution for seg fault? Pass tram to sampleWeight fn?
+
         #pragma omp parallel for default(none) firstprivate(nTrajs, sampleWeights, thermState, tram)
         for (auto i = 0; i < nTrajs; ++i) {
             sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
