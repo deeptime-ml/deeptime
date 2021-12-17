@@ -2,7 +2,6 @@ import unittest
 
 from deeptime.markov import DiscreteStatesManager
 import numpy as np
-import pytest
 
 from numpy.testing import assert_equal, assert_array_equal, assert_
 
@@ -89,4 +88,3 @@ class TestDiscreteStateManager(unittest.TestCase):
         assert_array_equal(self.sel_dsm.states_to_symbols(self.states), np.array([0, 5, -1]))
         # function discards states that are not in selection
         assert_array_equal(self.sel_dsm.symbols_to_states(self.state_symbols), [0, 1])
-
