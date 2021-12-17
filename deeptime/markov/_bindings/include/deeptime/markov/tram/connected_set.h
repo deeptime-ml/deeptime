@@ -198,14 +198,11 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
         #if defined(USE_OPENMP)
             threadNumber = omp_get_thread_num();
         #endif
+            std::cout << threadNumber << std::endl;
 
         // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
 #pragma omp for
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
-            // callback for incrementing a progress bar
-            if (callback != nullptr) {
-                (*callback)();
-            }
             // Get all indices in all trajectories of all samples that were binned in markov state i.
             // We use these to determine whether two states overlap in Markov state i.
             Indices2D sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajsPtr, dtrajsPtr, nThermStates);
@@ -235,10 +232,14 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
                     }
                 }
             }
-            // save indices this thread found to the global list of indices
-            thermStateIndicesFromPerThread[threadNumber] = thermStateIndicesFrom;
-            thermStateIndicesToPerThread[threadNumber] = thermStateIndicesTo;
+            // callback for incrementing a progress bar
+            if (callback != nullptr) {
+                (*callback)();
+            }
         }
+        // save indices this thread found to the global list of indices
+        thermStateIndicesFromPerThread[threadNumber] = thermStateIndicesFrom;
+        thermStateIndicesToPerThread[threadNumber] = thermStateIndicesTo;
     }
 
     // now concatenate all indices to one big list
