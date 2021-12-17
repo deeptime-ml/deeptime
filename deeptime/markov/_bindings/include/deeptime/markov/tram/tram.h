@@ -204,9 +204,9 @@ public:
 
     // statistical weight per sample, \mu^k(x).
     // If thermState =-1, this is the unbiased statistical sample weight, \mu(x).
-    std::vector<np_array_nfc<dtype>> sampleWeights(std::int32_t thermState) {
+    std::vector<std::vector<dtype>> sampleWeights(std::int32_t thermState) {
         auto nTrajs = input_->nTrajectories();
-        std::vector<np_array_nfc<dtype>> sampleWeights(nTrajs);
+        std::vector<std::vector<dtype>> sampleWeights(nTrajs);
 
         auto * tram = this;
 
@@ -214,6 +214,7 @@ public:
         for (auto i = 0; i < nTrajs; ++i) {
             sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
         }
+
         return sampleWeights;
     }
 
@@ -662,11 +663,10 @@ private:
         }
     }
 
-    np_array_nfc<dtype> sampleWeightsForTrajectory(std::size_t trajectoryIndex, std::int32_t thermStateIndex,
+    auto sampleWeightsForTrajectory(std::size_t trajectoryIndex, std::int32_t thermStateIndex,
                                                    TRAM<dtype> *tram) const {
         // k = -1 for unbiased sample weigths.
-        auto sampleWeights = np_array_nfc<dtype>(std::vector{tram->input_->dtraj(trajectoryIndex).size()});
-        auto sampleWeightsBuf  = sampleWeights.template mutable_unchecked<1>();
+        std::vector<dtype> sampleWeights (tram->input_->dtraj(trajectoryIndex).size());
 
         auto dtrajBuf = tram->input_->dtraj(trajectoryIndex);
         auto biasMatrixBuf = tram->input_->biasMatrix(trajectoryIndex);
@@ -679,7 +679,7 @@ private:
         for (auto x = 0; x < tram->input_->sequenceLength(trajectoryIndex); ++x) {
             auto i = dtrajBuf(x);
             if (i < 0) {
-                sampleWeightsBuf(x) = inf;
+                sampleWeights[x] = inf;
                 continue;
             }
             auto o = 0;
@@ -690,9 +690,9 @@ private:
             }
             auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
             if (thermStateIndex == -1) {// get unbiased sample weight
-                sampleWeightsBuf(x) = log_divisor;
+                sampleWeights[x] = log_divisor;
             } else { // get biased sample weight for given thermState index
-                sampleWeightsBuf(x) = biasMatrixBuf(x, thermStateIndex) + log_divisor
+                sampleWeights[x] = biasMatrixBuf(x, thermStateIndex) + log_divisor
                                       - thermStateEnergiesBuf(thermStateIndex);
             }
         }
