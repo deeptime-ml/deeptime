@@ -210,7 +210,7 @@ public:
         auto nTrajs = input_->nTrajectories();
         auto * tram = this;
 // solution for seg fault? Pass tram to sampleWeight fn?
-        #pragma omp parallel for default(none) firstprivate(nTrajs, sampleWeights, thermState)
+        #pragma omp parallel for default(none) firstprivate(nTrajs, sampleWeights, thermState, tram)
         for (auto i = 0; i < nTrajs; ++i) {
             sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
         }
