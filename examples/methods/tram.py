@@ -74,7 +74,9 @@ def main():
     dtrajs = clustering.transform(trajectories.flatten()).reshape(
         (len(bias_matrices), n_samples))
 
-    tram = TRAM(lagtime=1, connectivity="BAR_variance", connectivity_factor=1, maxiter=100)
+    # from tqdm import tqdm
+    # progress_bar = tqdm()
+    tram = TRAM(lagtime=1, connectivity="BAR_variance", connectivity_factor=1, maxiter=100) #, progress_bar=progress_bar)
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
@@ -93,7 +95,8 @@ def main():
     for i, sample in enumerate(np.concatenate(trajectories)):
         probabilities[is_in_bin(sample)] += sampleweights[i]
 
-    plt.plot(xs, -np.log(probabilities))
+    with np.errstate(divide="ignore"):
+        plt.plot(xs, -np.log(probabilities))
     plt.show()
 
 
