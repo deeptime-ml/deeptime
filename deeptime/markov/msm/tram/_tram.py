@@ -1,3 +1,4 @@
+import copy
 import warnings
 from typing import Optional
 
@@ -7,8 +8,6 @@ from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types
 # from _tram_bindings import tram
 from deeptime.markov._tram_bindings import tram
-
-from tqdm import tqdm
 
 import numpy as np
 import scipy as sp
@@ -34,7 +33,8 @@ class TRAM(_MSMBaseEstimator):
             self, lagtime=1, count_mode='sliding',
             connectivity='summed_counts_matrix',
             maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
-            connectivity_factor: float = 1.0):
+            connectivity_factor: float = 1.0,
+            progress_bar=None):
         r"""Transition(-based) Reweighting Analysis Method
         Parameters
         ----------
@@ -107,9 +107,12 @@ class TRAM(_MSMBaseEstimator):
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.save_convergence_info = save_convergence_info
+        self.tram_progress_bar = progress_bar
+        self.cset_progress_bar = copy.copy(progress_bar)
         self._largest_connected_set = None
         self._tram_estimator = None
         self.log_likelihoods = []
+        self.increments = []
 
     @property
     def therm_state_energies(self) -> Optional:
@@ -193,30 +196,35 @@ class TRAM(_MSMBaseEstimator):
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
-
         dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set(ttrajs, dtrajs,
                                                                                               bias_matrices)
 
         tram_input = tram.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
+
         self._tram_estimator = tram.TRAM(tram_input)
-
         self._run_estimation()
-
         self._to_markov_model()
 
         return self
 
     def _run_estimation(self):
-        progress_bar = tqdm(total=self.maxiter, desc="Running TRAM estimate")
+        if self.tram_progress_bar is not None:
+            self.tram_progress_bar.desc = "Running TRAM estimate"
+            self.tram_progress_bar.total = self.maxiter
 
         def callback(error, log_likelihood):
             if (self.save_convergence_info):
                 self.log_likelihoods.append(log_likelihood)
+                self.increments.append(error)
             callback.last_error = error
-            progress_bar.update(1)
+
+            if self.tram_progress_bar is not None:
+                self.tram_progress_bar.update(1)
 
         self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
-        progress_bar.close()
+
+        if self.tram_progress_bar is not None:
+            self.tram_progress_bar.close()
 
         if callback.last_error > self.maxerr:
             print(f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_error}")
@@ -350,11 +358,13 @@ class TRAM(_MSMBaseEstimator):
                 directed=True)
 
         if self.connectivity in ['post_hoc_RE', 'BAR_variance']:
-            # this can take a while so keep track of progress
-            progress_bar = tqdm(total=self.n_therm_states * self.n_markov_states, desc="Finding connected sets")
+            if self.cset_progress_bar is not None:
+                self.cset_progress_bar.total = self.n_therm_states * self.n_markov_states
+                self.cset_progress_bar.desc="Finding connected sets"
 
             def callback():
-                progress_bar.update(1)
+                if self.cset_progress_bar is not None:
+                    self.cset_progress_bar.update(1)
 
             # get state counts for each trajectory (=for each therm. state)
             all_state_counts = np.asarray([estimator.fit_fetch(dtraj).state_histogram for dtraj in dtrajs],
@@ -392,7 +402,9 @@ class TRAM(_MSMBaseEstimator):
             connected_states = np.unravel_index(connected_states_ravelled, (self.n_therm_states, self.n_markov_states),
                                                 order='C')
 
-            progress_bar.close()
+            if self.cset_progress_bar is not None:
+                self.cset_progress_bar.close()
+
             return full_counts_model.submodel(np.unique(connected_states[1]))
 
         warnings.warn(

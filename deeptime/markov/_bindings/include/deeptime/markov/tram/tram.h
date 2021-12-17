@@ -208,9 +208,11 @@ public:
         std::vector<np_array_nfc<dtype>> sampleWeights(nThermStates_);
 
         auto nTrajs = input_->nTrajectories();
+        auto * tram = this;
+// solution for seg fault? Pass tram to sampleWeight fn?
         #pragma omp parallel for default(none) firstprivate(nTrajs, sampleWeights, thermState)
         for (auto i = 0; i < nTrajs; ++i) {
-            sampleWeights[i] = sampleWeightsForTrajectory(i, thermState);
+            sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
         }
         return sampleWeights;
     }
@@ -660,30 +662,33 @@ private:
         }
     }
 
-    np_array_nfc<dtype> sampleWeightsForTrajectory(std::size_t trajectoryIndex, std::int32_t thermStateIndex) const {
+    np_array_nfc<dtype> sampleWeightsForTrajectory(std::size_t trajectoryIndex, std::int32_t thermStateIndex,
+                                                   TRAM<dtype> *tram) const {
         // k = -1 for unbiased sample weigths.
-        auto sampleWeights = np_array_nfc<dtype>(std::vector{input_->dtraj(trajectoryIndex).size()});
-        auto sampleWeightsBuf = sampleWeights.template mutable_unchecked<1>();
+        auto sampleWeights = np_array_nfc<dtype>(std::vector{tram->input_->dtraj(trajectoryIndex).size()});
+        auto sampleWeightsBuf  = sampleWeights.template mutable_unchecked<1>();
 
-        auto dtrajBuf = input_->dtraj(trajectoryIndex);
-        auto biasMatrixBuf = input_->biasMatrix(trajectoryIndex);
+        auto dtrajBuf = tram->input_->dtraj(trajectoryIndex);
+        auto biasMatrixBuf = tram->input_->biasMatrix(trajectoryIndex);
 
-        auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
-        auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
+        auto thermStateEnergiesBuf = tram->thermStateEnergies_.firstBuf();
+        auto modifiedStateCountsLogBuf = tram->modifiedStateCountsLog_.template unchecked<2>();
 
-        for (auto x = 0; x < input_->sequenceLength(trajectoryIndex); ++x) {
+        std::vector<dtype> scratch(tram->nThermStates_);
+
+        for (auto x = 0; x < tram->input_->sequenceLength(trajectoryIndex); ++x) {
             auto i = dtrajBuf(x);
             if (i < 0) {
                 sampleWeightsBuf(x) = inf;
                 continue;
             }
             auto o = 0;
-            for (StateIndex l = 0; l < nThermStates_; ++l) {
+            for (StateIndex l = 0; l < tram->nThermStates_; ++l) {
                 if (modifiedStateCountsLogBuf(l, i) > -inf) {
-                    scratchT_[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf(x, l);
+                    scratch[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf(x, l);
                 }
             }
-            auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT_.get(), o);
+            auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
             if (thermStateIndex == -1) {// get unbiased sample weight
                 sampleWeightsBuf(x) = log_divisor;
             } else { // get biased sample weight for given thermState index
