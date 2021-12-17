@@ -138,7 +138,7 @@ public:
         auto nTraj = input_->nTrajectories();
         // then for each trajectory, compute log of all sample weights, and add to log likelihood.
         #pragma omp parallel for default(none) firstprivate(nTraj) reduction(+:logLikelihood)
-        for (auto i = 0; i < nTraj; ++i) {
+        for (std::size_t i = 0; i < nTraj; ++i) {
             logLikelihood += computeSampleLikelihood(i);
         }
 
@@ -211,7 +211,7 @@ public:
         auto * tram = this;
 
         #pragma omp parallel for default(none) firstprivate(nTrajs, thermState, tram) shared(sampleWeights)
-        for (auto i = 0; i < nTrajs; ++i) {
+        for (std::size_t i = 0; i < nTrajs; ++i) {
             sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
         }
 
@@ -548,7 +548,7 @@ private:
         scratch.reserve(nThermStates_);
 
         dtype logLikelihood = 0;
-        for (std::size_t x = 0; x < dtraj.size(); ++x) {
+        for (auto x = 0; x < dtraj.size(); ++x) {
             auto i = dtraj(x);
             if (i < 0) continue; // skip negative markov state indices
 
