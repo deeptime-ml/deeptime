@@ -3,6 +3,7 @@ from typing import Optional, List
 
 import numpy as np
 from ._hmm_bindings import output_models as _bindings
+from .. import map_dtrajs_to_symbols, DiscreteStatesManager
 
 from ...base import Model
 
@@ -176,9 +177,10 @@ class DiscreteOutputModel(OutputModel):
         to :math:`a_{ij} = 0`. This option ensures coincidence between sample mean an MLE.
     ignore_outliers : bool, optional, default=False
         Whether to ignore outliers, see :attr:`ignore_outliers`.
+    discrete_states_manager : DiscreteStatesManager, optional, default=None
     """
     def __init__(self, output_probabilities: np.ndarray, prior: Optional[np.ndarray] = None,
-                 ignore_outliers: bool = False):
+                 ignore_outliers: bool = False, discrete_states_manager=None):
         if output_probabilities.ndim != 2:
             raise ValueError("Discrete output model requires two-dimensional output probability matrix!")
         if np.any(output_probabilities < 0) or not np.allclose(output_probabilities.sum(axis=-1), 1.):
@@ -194,6 +196,26 @@ class DiscreteOutputModel(OutputModel):
                              f"!= {output_probabilities.shape}.")
         self._output_probabilities = output_probabilities
         self._prior = prior
+        if discrete_states_manager is None:
+            discrete_states_manager = DiscreteStatesManager(np.arange(self.n_observable_states),
+                                                            self.n_observable_states)
+        self._discrete_states_manager = discrete_states_manager
+
+    def map_observations_to_submodel(self, observations: np.ndarray):
+        r"""
+        Map a sequence of observations to the reduced state space of a sub-model.
+
+        Parameters
+        ----------
+        observations : ndarray
+            sequence of observations
+
+        Returns
+        ----------
+        mapped_observations : ndarray
+            array containing mapped observation sequence
+        """
+        return self._discrete_states_manager.project(observations, check=True)
 
     @property
     def prior(self) -> np.ndarray:
@@ -253,7 +275,8 @@ class DiscreteOutputModel(OutputModel):
             prior = np.copy(self.prior[np.ix_(states, obs)])
         else:
             prior = None
-        return DiscreteOutputModel(B, prior, self.ignore_outliers)
+        return DiscreteOutputModel(B, prior, self.ignore_outliers,
+                                   self._discrete_states_manager.subselect_states(obs))
 
     def sample(self, observations_per_state: List[np.ndarray]) -> None:
         r"""

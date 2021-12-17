@@ -90,6 +90,15 @@ np_array<dtype> toOutputProbabilityTrajectory(const np_array_nfc<State> &observa
     const auto* P = outputProbabilities.data();
     const auto* obs = observations.data();
 
+    if(std::any_of(obs, obs + observations.size(), [nObs](const auto &o) {
+        return o < 0 || o >= static_cast<State>(nObs);
+    })) {
+        std::stringstream ss;
+        ss << "At least one observation in the provided dtrajs contains an observation state which is not present "
+              "in the HMM observable set (0 through " << nObs - 1 << ").";
+        throw std::runtime_error(ss.str());
+    }
+
     np_array<dtype> output(std::vector<std::size_t>{static_cast<std::size_t>(observations.shape(0)), nHidden});
     auto* outputPtr = output.mutable_data();
     auto T = observations.shape(0);

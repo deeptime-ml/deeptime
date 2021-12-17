@@ -6,7 +6,7 @@ from deeptime.util.types import ensure_dtraj_list
 
 
 def compute_index_states(dtrajs, subset=None) -> List[np.ndarray]:
-    """Generates a trajectory/time indices for the given list of states
+    """Generates trajectory/time indices for the given list of states
 
     Parameters
     ----------
