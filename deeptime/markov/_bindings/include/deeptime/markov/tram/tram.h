@@ -135,10 +135,10 @@ public:
         // first get likelihood of all discrete quantities (transition likelihood and free energies times state counts)
         logLikelihood += computeDiscreteLikelihood();
 
-        auto nTraj = input_->nTrajectories();
+        auto nTraj = static_cast<std::int32_t>(input_->nTrajectories());
         // then for each trajectory, compute log of all sample weights, and add to log likelihood.
         #pragma omp parallel for default(none) firstprivate(nTraj) reduction(+:logLikelihood)
-        for (std::size_t i = 0; i < nTraj; ++i) {
+        for (std::int32_t i = 0; i < nTraj; ++i) {
             logLikelihood += computeSampleLikelihood(i);
         }
 

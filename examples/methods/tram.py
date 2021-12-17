@@ -8,7 +8,7 @@ from deeptime.clustering import KMeans
 from timeit import default_timer as timer
 
 xs = np.linspace(-1.5, 1.5, num=100)
-n_samples = 10000
+n_samples = 100000
 bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
 
@@ -81,7 +81,10 @@ def main():
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
     # Umbrella/Hamiltonian/temperature).
+    t0 = timer()
     model = tram.fit_fetch((dtrajs, bias_matrices))
+    t1 = timer()
+    print(t1-t0)
 
     plot_contour_with_colourbar(tram._biased_conf_energies)
 
