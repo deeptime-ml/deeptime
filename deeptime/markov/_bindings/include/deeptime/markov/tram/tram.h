@@ -130,15 +130,13 @@ public:
     // compute the log-likelihood of observing the input data under the current
     // biasedConfEnergies_.
     dtype computeLogLikelihood() const {
-        dtype logLikelihood = 0.;
-
         // first get likelihood of all discrete quantities (transition likelihood and free energies times state counts)
-        logLikelihood += computeDiscreteLikelihood();
+        auto logLikelihood = computeDiscreteLikelihood();
 
         auto nTraj = input_->nTrajectories();
         // then for each trajectory, compute log of all sample weights, and add to log likelihood.
         #pragma omp parallel for default(none) firstprivate(nTraj) reduction(+:logLikelihood)
-        for (std::size_t i = 0; i < nTraj; ++i) {
+        for (std::int32_t i = 0; i < nTraj; ++i) {
             logLikelihood += computeSampleLikelihood(i);
         }
 
@@ -154,7 +152,7 @@ public:
                   const py::object *callback = nullptr) {
 
         // Array to keep track of _statVectors(K, i) = exp(_thermStateEnergies(K) - _biasedConfEnergies(K, i))
-        // difference between previous and current statvectors is used for calculting the iteration error.
+        // difference between previous and current statvectors is used for calculating the iteration error.
         auto statVectors = ExchangeableArray<dtype, 2>(std::vector({nThermStates_, nMarkovStates_}), 0.);
         auto iterationError = 0.;
 
@@ -211,7 +209,7 @@ public:
         auto * tram = this;
 
         #pragma omp parallel for default(none) firstprivate(nTrajs, thermState, tram) shared(sampleWeights)
-        for (std::size_t i = 0; i < nTrajs; ++i) {
+        for (std::int32_t i = 0; i < nTrajs; ++i) {
             sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
         }
 
@@ -351,7 +349,6 @@ private:
     }
 
 
-//    template<typename dtype, bool trammbar = false>
     void updateStateCounts() {
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
         auto lagrangianMultLogBuf = lagrangianMultLog_.firstBuf();
@@ -360,7 +357,7 @@ private:
         auto stateCountsBuf = input_->stateCounts();
         auto transitionCountsBuf = input_->transitionCounts();
 
-        // todo parallelize over k and i
+#pragma omp parallel for default(none) firstprivate(biasedConfEnergiesBuf, lagrangianMultLogBuf, modifiedStateCountsLogBuf, stateCountsBuf, transitionCountsBuf) collapse(2)
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             for (StateIndex i = 0; i < nMarkovStates_; ++i) {
                 if (0 == stateCountsBuf(k, i)) {
@@ -430,7 +427,7 @@ private:
         auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
 
-        // todo parallelize
+#pragma omp parallel for default(none) firstprivate(statVectorsBuf, thermStateEnergiesBuf, biasedConfEnergiesBuf)
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             for (StateIndex i = 0; i < nMarkovStates_; ++i) {
                 statVectorsBuf(k, i) = std::exp(thermStateEnergiesBuf(k) - biasedConfEnergiesBuf(k, i));
@@ -500,7 +497,7 @@ private:
                                      [](dtype curr, dtype energy) {
                                          return std::min(curr, energy);
                                      });
-        // todo maybe parallelize?
+#pragma omp parallel for default(none) firstprivate(biasedConfEnergiesBuf, thermStateEnergiesBuf, shift)
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             thermStateEnergiesBuf(k) -= shift;
 
@@ -558,6 +555,7 @@ private:
                     scratch.push_back(modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k));
                 }
             }
+
             logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(begin(scratch), end(scratch));
         }
         return logLikelihood;
@@ -610,7 +608,7 @@ private:
 
         auto nThermStates = nThermStates_;
         auto nMarkovStates = nMarkovStates_;
-#pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, biasedConfEnergiesBuf, lagrangianMultLogBuf, transitionCountsBuf, transitionMatricesBuf)
+        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, biasedConfEnergiesBuf, lagrangianMultLogBuf, transitionCountsBuf, transitionMatricesBuf)
         for (StateIndex k = 0; k < nThermStates; ++k) {
             std::vector<dtype> scratch(nMarkovStates, 0);
             for (StateIndex i = 0; i < nMarkovStates; ++i) {
@@ -690,10 +688,10 @@ private:
             }
             auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
             if (thermStateIndex == -1) {// get unbiased sample weight
-                sampleWeights[x] = log_divisor;
+                sampleWeights[x] = std::exp(-log_divisor);
             } else { // get biased sample weight for given thermState index
-                sampleWeights[x] = biasMatrixBuf(x, thermStateIndex) + log_divisor
-                                      - thermStateEnergiesBuf(thermStateIndex);
+                sampleWeights[x] = std::exp( -biasMatrixBuf(x, thermStateIndex) - log_divisor
+                                      + thermStateEnergiesBuf(thermStateIndex));
             }
         }
         return sampleWeights;

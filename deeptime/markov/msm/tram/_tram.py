@@ -13,9 +13,26 @@ import numpy as np
 import scipy as sp
 
 
-def to_zero_padded_array(array, desired_shape):
-    new_array = np.zeros((len(array), desired_shape))
-    for i, array in enumerate(array):
+def to_zero_padded_array(arrays, desired_shape):
+    """Pad a list of numpy arrays with zeros to desired shape. Desired shape should be at least the size of the
+    largest np array in the list.
+    Example: arrays=[np.array([1,2]), np.array([3,4,5]), np.array([6])], desired_shape=(4)
+    Returns: np.array([[1, 2, 0, 0], [3, 4, 5, 0], [6, 0, 0, 0]])
+
+    Parameters
+    ----------
+    arrays: array-like(np.array)
+        The list/array of numpy arrays of different shapes. All arrays should have the same number of dimensions.
+    desired_shape: tuple
+        The shape each array should be passed to, having the same number of dimensions as the arrays.
+
+    Returns
+    -------
+    arrays: np.array
+        The passed arrays as one numpy array.
+    """
+    new_array = np.zeros((len(arrays), desired_shape))
+    for i, array in enumerate(arrays):
         pad_amount = [(0, diff) for diff in np.asarray(desired_shape) - np.asarray(array.shape)]
         new_array[i] = np.pad(array, pad_amount, 'constant')
     return np.ascontiguousarray(new_array)
@@ -80,7 +97,7 @@ class TRAM(_MSMBaseEstimator):
         save_convergence_info : int, optional, default=0
             Every saveConvergenceInfo iteration steps, store the actual increment and the actual log-likelihood; 0
             means no storage.
-        connectivity_threshold : float, optional, default=1.0
+        connectivity_factor : float, optional, default=1.0
             Only needed if connectivity='post_hoc_RE' or 'BAR_variance'. Values greater than 1.0 weaken the connectivity
             conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
             'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
@@ -107,8 +124,7 @@ class TRAM(_MSMBaseEstimator):
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.save_convergence_info = save_convergence_info
-        self.tram_progress_bar = progress_bar
-        self.cset_progress_bar = copy.copy(progress_bar)
+        self.progress_bar = progress_bar
         self._largest_connected_set = None
         self._tram_estimator = None
         self.log_likelihoods = []
@@ -145,8 +161,9 @@ class TRAM(_MSMBaseEstimator):
         """ Get the sample weight :math:`\mu(x)` for all samples :math:`x`. If the Markov state is given, this will be
         the weight of the sample in that Markov state, i.e. :math:`\mu^k(x)`. Otherwise, this gives the unbiased sample
         weights.
-        The sample weights are the probability distibution over all samples, and the sum over all sample weights equals
+        The sample weights are the probability distribution over all samples, and the sum over all sample weights equals
         one.
+        :math:`\mu(x) = (\sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] )^{-1}`
         """
         return self._tram_estimator.get_sample_weights(markov_state)
 
@@ -154,7 +171,6 @@ class TRAM(_MSMBaseEstimator):
     def log_likelihood(self):
         # todo test this
         return self._tram_estimator.log_likelihood()
-
 
     def fetch_model(self) -> Optional[MarkovStateModelCollection]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -169,6 +185,8 @@ class TRAM(_MSMBaseEstimator):
 
     def fit(self, data, *args, **kw):
         r"""Fit a MarkovStateModelCollection to the given input data, using TRAM.
+        For each thermodynamic state, there is one Markov Model in the collection at the respective thermodynamic state
+        index.
 
         Parameters
         ----------
@@ -186,19 +204,12 @@ class TRAM(_MSMBaseEstimator):
               ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
               sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
               trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
-
-        Returns
-        -------
-        model: MarkovStateModelCollection
-            The model fitted to the TRAM output. For each thermodynamic state, there is one Markov Model in the
-            collection at the respective thermodynamic state index.
         """
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
         dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set(ttrajs, dtrajs,
                                                                                               bias_matrices)
-
         tram_input = tram.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
 
         self._tram_estimator = tram.TRAM(tram_input)
@@ -208,28 +219,32 @@ class TRAM(_MSMBaseEstimator):
         return self
 
     def _run_estimation(self):
-        if self.tram_progress_bar is not None:
-            self.tram_progress_bar.desc = "Running TRAM estimate"
-            self.tram_progress_bar.total = self.maxiter
+        """ Estimate the free energies using self-consistent iteration as described in the TRAM paper.
+        """
+        with TRAMCallback(self.progress_bar, self.maxiter, self.log_likelihoods, self.increments, True) as callback:
+            self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
 
-        def callback(error, log_likelihood):
-            if (self.save_convergence_info):
-                self.log_likelihoods.append(log_likelihood)
-                self.increments.append(error)
-            callback.last_error = error
-
-            if self.tram_progress_bar is not None:
-                self.tram_progress_bar.update(1)
-
-        self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
-
-        if self.tram_progress_bar is not None:
-            self.tram_progress_bar.close()
-
-        if callback.last_error > self.maxerr:
-            print(f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_error}")
+            if callback.last_increment > self.maxerr:
+                print(
+                    f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_increment}")
 
     def _preprocess(self, data):
+        """Unpack the data tuple and validate the containing elements.
+
+        Parameters
+        ----------
+        data: tuple(2) or tuple(3)
+            data[0] contains the dtrajs. data[1] the bias matrix, and data[2] may or may not contain the ttrajs.
+
+        Returns
+        -------
+        ttrajs: list(ndarray(n)), int32, or None
+            The validated ttrajs converted to a list of contiguous numpy arrays.
+        dtrajs: list(ndarray(n)), int32
+            The validated dtrajs converted to a list of contiguous numpy arrays.
+        bias_matrices: List(ndarray(n,m)), float64
+            The validated bias matrices converted to a list of contiguous numpy arrays.
+        """
         dtrajs, bias_matrices, ttrajs = self._unpack_input(data)
 
         ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
@@ -302,13 +317,13 @@ class TRAM(_MSMBaseEstimator):
             ttrajs = None
             self.n_therm_states = len(dtrajs)
 
-        # dimensionality checks
-        for d, b, in zip(dtrajs, bias_matrices):
-            assert d.shape[0] == b.shape[0]
-
         # cast types and change axis order if needed
         dtrajs = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs]
         bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in bias_matrices]
+
+        # dimensionality checks
+        for d, b, in zip(dtrajs, bias_matrices):
+            assert d.shape[0] == b.shape[0]
 
         # If we were given ttrajs, do the same checks for those.
         if ttrajs is not None and len(ttrajs) > 0:
@@ -319,31 +334,91 @@ class TRAM(_MSMBaseEstimator):
             for t in ttrajs:
                 types.ensure_integer_array(t, ndim=1)
 
+            ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
+
             for t, b in zip(ttrajs, bias_matrices):
                 assert t.shape[0] == b.shape[0]
                 assert b.shape[1] == self.n_therm_states
 
-            ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
-
         return ttrajs, dtrajs, bias_matrices
 
     def _get_counts_from_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
+        """Find the largest connected set of Markov states over all thermodynamic states, given the input data and
+         connectivity settings. Restrict the input data to the connected set and return state counts and transition
+         counts for the restricted input data.
 
+         Parameters
+         ----------
+         dtrajs: ndarray
+            The discrete trajectories in the form an 2-d integer ndarray. dtrajs[i] contains one trajectory.
+            dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
+            into. Each of the dtrajs can be of variable length.
+         bias_matrices: ndarray
+            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
+            trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
+            dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
+            sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
+         ttrajs: ndarray, optional
+            ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
+            sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
+            trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
+
+        Returns
+        -------
+        dtrajs: ndarray
+            The dtrajs restricted to the largest connected set. All sample indices that do not belong to the largest
+            connected set are set to -1.
+        state_counts: ndarray
+            The state counts for the dtrajs, restricted to the connected set. state_counts[k,i] is the number of samples
+            sampled at thermodynamic state k that are in Markov state i.
+        transition_counts: ndarray
+            The transition counts for the dtrajs, restricted to the connected set. transition_counts[k,i,j] is the
+            number of observed transitions from Markov state i to Markov state j, in thermodynamic state k under the
+            chosen lagtime.
+        """
         # count all transitions and state counts, without restricting to connected sets
         self._largest_connected_set = self._find_largest_connected_set(ttrajs, dtrajs, bias_matrices)
 
         # get rid of any state indices that do not belong to the largest connected set
         dtrajs = self._restrict_to_connected_set(dtrajs)
 
-        # get all trajectory fragments without any negative state indices
+        # In the case of replica exchange: get all trajectory fragments (also removing any negative state indices).
+        # the dtraj_fragments[k] contain all trajectories within thermodynamic state k, starting a new trajectory at
+        # each replica exchange swap. If there was no replica exchange, dtraj_fragments == dtrajs.
         dtraj_fragments = self._get_trajectory_fragments(dtrajs, ttrajs)
 
-        # ... and convert those into count matrices.
+        # ... convert those into count matrices.
         state_counts, transition_counts = self._make_count_models(dtraj_fragments)
 
         return dtrajs, state_counts, transition_counts
 
     def _find_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
+        """ Find the largest connected set of Markov states based on the connectivity settings and the input data.
+        A full counts model is first calculated from all dtrajs. Then, the connected set is computed based on
+        self.connectivity and self.connectivity_factor. The full counts model is then reduces to the connected set and
+        returned. If the connectivity setting is unknown, the full counts model is returned.
+
+        Parameters
+         ----------
+         dtrajs: ndarray
+            The discrete trajectories in the form an 2-d integer ndarray. dtrajs[i] contains one trajectory.
+            dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
+            into. Each of the dtrajs can be of variable length.
+         bias_matrices: ndarray
+            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
+            trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
+            dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
+            sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
+         ttrajs: ndarray, optional
+            ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
+            sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
+            trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
+
+        Returns
+        -------
+        counts_model: MarkovStateModel
+            The counts model pertaining to the largest connected set.
+        """
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
 
         # make a counts model over all observed samples.
@@ -358,14 +433,6 @@ class TRAM(_MSMBaseEstimator):
                 directed=True)
 
         if self.connectivity in ['post_hoc_RE', 'BAR_variance']:
-            if self.cset_progress_bar is not None:
-                self.cset_progress_bar.total = self.n_therm_states * self.n_markov_states
-                self.cset_progress_bar.desc="Finding connected sets"
-
-            def callback():
-                if self.cset_progress_bar is not None:
-                    self.cset_progress_bar.update(1)
-
             # get state counts for each trajectory (=for each therm. state)
             all_state_counts = np.asarray([estimator.fit_fetch(dtraj).state_histogram for dtraj in dtrajs],
                                           dtype=object)
@@ -380,8 +447,9 @@ class TRAM(_MSMBaseEstimator):
             else:
                 connectivity_fn = tram.get_state_transitions_BAR_variance
 
-            (i_s, j_s) = connectivity_fn(ttrajs, dtrajs, bias_matrices, all_state_counts, self.n_therm_states,
-                                         self.n_markov_states, self.connectivity_factor, callback)
+            with CsetCallback(self.progress_bar, self.n_therm_states * self.n_markov_states) as callback:
+                (i_s, j_s) = connectivity_fn(ttrajs, dtrajs, bias_matrices, all_state_counts, self.n_therm_states,
+                                             self.n_markov_states, self.connectivity_factor, callback)
 
             # add transitions that occurred within each thermodynamic state. These are simply the connected sets:
             for k in range(self.n_therm_states):
@@ -401,9 +469,6 @@ class TRAM(_MSMBaseEstimator):
             # unravel the index and combine all separate csets to one cset
             connected_states = np.unravel_index(connected_states_ravelled, (self.n_therm_states, self.n_markov_states),
                                                 order='C')
-
-            if self.cset_progress_bar is not None:
-                self.cset_progress_bar.close()
 
             return full_counts_model.submodel(np.unique(connected_states[1]))
 
@@ -561,6 +626,12 @@ class TRAM(_MSMBaseEstimator):
         return state_counts, transition_counts
 
     def _to_markov_model(self):
+        """ Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
+        For each of the thermodynamic states, one MarkovStateModel is added to the MarkovStateModelCollection. The
+        corresponding count models are previously calculated and are restricted to the largest connected set.
+
+        see: self._make_count_models
+        """
         transition_matrices_connected = []
         stationary_distributions = []
 
@@ -574,3 +645,65 @@ class TRAM(_MSMBaseEstimator):
         self._model = MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
                                                  reversible=True, count_models=self.count_models,
                                                  transition_matrix_tolerance=1e-8)
+
+
+class Callback:
+    """Base callback function for the c++ bindings to indicate progress by incrementing a progress bar."""
+    def __init__(self, progress_bar, n_iter, display_text):
+        """Initialize the progress bar.
+
+        Parameters
+        ----------
+        progress_bar : object
+            Tested for a tqdm progress bar. Should implement update() and close() and have .total and .desc properties.
+        n_iter : int
+            Number of iterations to completion.
+        display_text : string
+            text to display in front of the progress bar.
+        """
+        self.progress_bar = None
+        if progress_bar is not None:
+            self.progress_bar = copy.copy(progress_bar)
+            self.progress_bar.desc = display_text
+            self.progress_bar.total = n_iter
+
+    def __call__(self):
+        """Callback method for the c++ bindings."""
+        if self.progress_bar is not None:
+            self.progress_bar.update(1)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.progress_bar is not None:
+            self.progress_bar.close()
+
+
+class CsetCallback(Callback):
+    """Callback for the connected sets process. see: Callback"""
+    def __init__(self, progress_bar, n_iter):
+        super().__init__(progress_bar, n_iter, "Finding connected sets")
+
+
+class TRAMCallback(Callback):
+    """Callback for the TRAM estimate process. Increments a progress bar and optionally saves iteration increments and
+    log likelihoods to a list."""
+    def __init__(self, progress_bar, n_iter, log_likelihoods_list=None, increments=None,
+                 save_convergence_info=False):
+        super().__init__(progress_bar, n_iter, "Running TRAM estimate")
+        self.log_likelihoods = log_likelihoods_list
+        self.increments = increments
+        self.save_convergence_info = save_convergence_info
+        self.last_increment = 0
+
+    def __call__(self, increment, log_likelihood):
+        super().__call__()
+
+        if self.save_convergence_info:
+            if self.log_likelihoods is not None:
+                self.log_likelihoods.append(log_likelihood)
+            if self.increments is not None:
+                self.increments.append(increment)
+
+        self.last_increment = increment
