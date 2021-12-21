@@ -8,7 +8,7 @@ from deeptime.clustering import KMeans
 from timeit import default_timer as timer
 
 xs = np.linspace(-1.5, 1.5, num=100)
-n_samples = 100000
+n_samples = 10000
 bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
 
@@ -87,20 +87,6 @@ def main():
     print(t1-t0)
 
     plot_contour_with_colourbar(tram._biased_conf_energies)
-
-    sampleweights = np.concatenate(tram.get_sample_weights())
-    sampleweights /= sampleweights.sum()
-
-    def is_in_bin(x):
-        return round(100 * (x + 1.5) / 3)
-
-    probabilities = np.zeros(100)
-    for i, sample in enumerate(np.concatenate(trajectories)):
-        probabilities[is_in_bin(sample)] += sampleweights[i]
-
-    with np.errstate(divide="ignore"):
-        plt.plot(xs, -np.log(probabilities))
-    plt.show()
 
 
 if __name__ == "__main__":

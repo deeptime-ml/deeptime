@@ -33,8 +33,7 @@ def to_zero_padded_array(arrays, desired_shape):
     """
     new_array = np.zeros((len(arrays), desired_shape))
     for i, array in enumerate(arrays):
-        pad_amount = [(0, diff) for diff in np.asarray(desired_shape) - np.asarray(array.shape)]
-        new_array[i] = np.pad(array, pad_amount, 'constant')
+        new_array[i, :len(array)] = array
     return np.ascontiguousarray(new_array)
 
 
