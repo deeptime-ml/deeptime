@@ -12,13 +12,14 @@ PYBIND11_MODULE(_tram_bindings, m) {
         py::class_<TRAM<double>>(tramMod, "TRAM")
                 .def(py::init<std::shared_ptr<TRAMInput<double>> &, std::size_t>(), "tram_input"_a,
                      "callback_interval"_a = 1)
-                .def("estimate", &TRAM<double>::estimate, "max_iter"_a = 1000, "max_err"_a = 1e-8,
+                .def("estimate", &TRAM<double>::estimate, py::call_guard<py::gil_scoped_release>(),
+                     "max_iter"_a = 1000, "max_err"_a = 1e-8,
                      "track_log_likelihoods"_a = false, "callback"_a = nullptr)
                 .def("transition_matrices", &TRAM<double>::transitionMatrices)
                 .def("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
                 .def("therm_state_energies", &TRAM<double>::energiesPerThermodynamicState)
                 .def("markov_state_energies", &TRAM<double>::energiesPerMarkovState)
-                .def("log_likelihood", &TRAM<double>::computeLogLikelihood)
+                .def("log_likelihood", &TRAM<double>::computeLogLikelihood, py::call_guard<py::gil_scoped_release>())
                 .def("get_sample_weights", &TRAM<double>::sampleWeights, "therm_state_index"_a = -1);
 
         py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(tramMod, "TRAM_input").def(
