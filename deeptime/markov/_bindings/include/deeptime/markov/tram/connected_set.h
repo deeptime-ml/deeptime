@@ -193,7 +193,7 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     auto ttrajsPtr = ttrajs ? &(*ttrajs) : nullptr;
     auto biasMatricesPtr = &biasMatrices;
     auto stateCountsBuf = stateCounts.template unchecked<2>();
-    
+
 #pragma omp parallel default(none) firstprivate(nMarkovStates, nThermStates, ttrajsPtr, dtrajsPtr, biasMatricesPtr, stateCountsBuf, connectivityFactor, callback) shared(thermStateIndicesFromPerThread, thermStateIndicesToPerThread)
     {
         IndexList thermStateIndicesFrom;
@@ -207,7 +207,8 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
 	// At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
         #pragma omp for
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
-            // Get all indices in all trajectories of all samples that were binned in markov state i.
+        
+	    // Get all indices in all trajectories of all samples that were binned in markov state i.
             // We use these to determine whether two states overlap in Markov state i.
             Indices2D sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajsPtr, dtrajsPtr, nThermStates);
 
@@ -219,12 +220,12 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
                     {
                         py::gil_scoped_acquire guard;
                         (*callback)();
-                    }
+    		    }
             	}
                 // ... states can only overlap if they both have counts in markov state i
                 if (stateCountsBuf(k, i) > 0) {
                     for (StateIndex l = 0; l < nThermStates; ++l) {
-                        // ... other state also needs to have counts in markov state i.
+		      	    // ... other state also needs to have counts in markov state i.
                         if (k != l && stateCountsBuf(l, i) > 0) {
                             // They both have counts! We check if they *really* overlap using the overlap function.
                             // First get all bias energy values that belong to the samples we found.

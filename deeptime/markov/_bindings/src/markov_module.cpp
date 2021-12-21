@@ -1,4 +1,4 @@
-// author: clonker
+ // author: clonker
 
 #include <deeptime/markov/discrete_trajectories.h>
 #include <deeptime/markov/simulation.h>

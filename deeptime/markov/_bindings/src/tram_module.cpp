@@ -2,7 +2,7 @@
 #include "deeptime/markov/tram/tram.h"
 #include "deeptime/markov/tram/connected_set.h"
 #include "deeptime/markov/tram/trajectory_mapping.h"
-
+ 
 PYBIND11_MODULE(_tram_bindings, m) {
     using namespace pybind11::literals;
     using namespace deeptime::markov::tram;
@@ -27,10 +27,12 @@ PYBIND11_MODULE(_tram_bindings, m) {
 
         tramMod.def("get_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
+		    py::call_guard<py::gil_scoped_release>(),
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a, "callback"_a);
 
         tramMod.def("get_state_transitions_BAR_variance", &findStateTransitions<double, OverlapBarVariance<double>>,
+		    py::call_guard<py::gil_scoped_release>(),
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a, "callback"_a);
 
