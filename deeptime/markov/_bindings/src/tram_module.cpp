@@ -1,4 +1,4 @@
-//  author: maaike
+ //  author: maaike
 #include "deeptime/markov/tram/tram.h"
 #include "deeptime/markov/tram/connected_set.h"
 #include "deeptime/markov/tram/trajectory_mapping.h"
