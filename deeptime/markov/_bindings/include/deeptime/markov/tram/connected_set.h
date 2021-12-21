@@ -34,7 +34,7 @@ void flatten (InIter start, InIter end, OutIter dest) {
     }
 }
 
-Indices2D findIndexOfSamplesInMarkovState(StateIndex i, const DTrajs *ttrajs, const DTrajs *dtrajs,
+Indices2D findIndexOfSamplesInMarkovState(StateIndex i, const std::optional<DTrajs> *ttrajs, const DTrajs *dtrajs,
                                           StateIndex nThermStates) {
     Indices2D indices(nThermStates);
 
@@ -42,12 +42,12 @@ Indices2D findIndexOfSamplesInMarkovState(StateIndex i, const DTrajs *ttrajs, co
         std::size_t trajLength = (*dtrajs)[j].size();
 
         auto dtrajBuf = (*dtrajs)[j].template unchecked<1>();
-        auto ttrajBuf = ttrajs == nullptr ? nullptr : (*ttrajs)[j].data();
+        auto ttrajBuf = ttrajs ? (**ttrajs)[j].data() : nullptr;
 
         for (std::size_t n = 0; n < trajLength; ++n) {
 
             if (dtrajBuf[n] == i) {
-                auto k = ttrajs == nullptr ? j : ttrajBuf[n];
+                auto k = ttrajs ? ttrajBuf[n] : j;
 
                 // markov state i sampled in therm state k can be found at bias matrix index (j, n,)
                 indices[k].emplace_back(j, n);
@@ -190,7 +190,8 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
 
     // threads don't like references
     auto dtrajsPtr = &dtrajs;
-    auto ttrajsPtr = ttrajs ? &(*ttrajs) : nullptr;
+    auto ttrajsPtr = &ttrajs;
+//    auto ttrajsPtr = ttrajs ? &(*ttrajs) : nullptr;
     auto biasMatricesPtr = &biasMatrices;
     auto stateCountsBuf = stateCounts.template unchecked<2>();
 
@@ -204,11 +205,11 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
 	    threadNumber = omp_get_thread_num();
         #endif
         
-	// At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
+	    // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
         #pragma omp for
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
         
-	    // Get all indices in all trajectories of all samples that were binned in markov state i.
+	        // Get all indices in all trajectories of all samples that were binned in markov state i.
             // We use these to determine whether two states overlap in Markov state i.
             Indices2D sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajsPtr, dtrajsPtr, nThermStates);
 
