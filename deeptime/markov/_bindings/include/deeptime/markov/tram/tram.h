@@ -360,7 +360,11 @@ private:
 #pragma omp parallel for default(none) firstprivate(biasedConfEnergiesBuf, lagrangianMultLogBuf, modifiedStateCountsLogBuf, stateCountsBuf, transitionCountsBuf) collapse(2)
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             for (StateIndex i = 0; i < nMarkovStates_; ++i) {
-                if (0 == stateCountsBuf(k, i)) {
+		
+		std::vector<dtype> scratch;
+	        scratch.reserve(nMarkovStates_);	
+                
+		if (0 == stateCountsBuf(k, i)) {
                     modifiedStateCountsLogBuf(k, i) = -inf;
                 } else {
                     auto Ci = 0;
@@ -371,9 +375,9 @@ private:
                         Ci += CKji;
                         // special case: most variables cancel out, here
                         if (i == j) {
-                            scratchM_[o] = (0 == CKij) ? logPrior() : std::log(
+                            scratch[o] = (0 == CKij) ? logPrior() : std::log(
                                     prior() + (dtype) CKij);
-                            scratchM_[o++] += biasedConfEnergiesBuf(k, i);
+                            scratch[o++] += biasedConfEnergiesBuf(k, i);
                         } else {
                             auto CK = CKij + CKji;
 
@@ -381,14 +385,14 @@ private:
                                 auto divisor = numeric::kahan::logsumexp_pair(
                                         lagrangianMultLogBuf(k, j) - biasedConfEnergiesBuf(k, i),
                                         lagrangianMultLogBuf(k, i) - biasedConfEnergiesBuf(k, j));
-                                scratchM_[o++] = std::log((dtype) CK) + lagrangianMultLogBuf(k, j) - divisor;
+                                scratch[o++] = std::log((dtype) CK) + lagrangianMultLogBuf(k, j) - divisor;
                             }
                         }
                     }
                     auto NC = stateCountsBuf(k, i) - Ci;
                     auto extraStateCounts = (0 < NC) ? std::log((dtype) NC) + biasedConfEnergiesBuf(k, i) : -inf;
                     modifiedStateCountsLogBuf(k, i) = numeric::kahan::logsumexp_pair(
-                            numeric::kahan::logsumexp_sort_kahan_inplace(scratchM_.get(), o), extraStateCounts);
+                            numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o), extraStateCounts);
                 }
             }
         }
