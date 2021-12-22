@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAM
+from deeptime.markov._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
-
 
 class tram_estimator_mock():
     def __init__(self, n_therm_states, n_markov_states):
@@ -237,6 +237,36 @@ def test_unpack_input():
         assert np.array_equal(dtrajs, arr) and np.array_equal(biases, arr) and len(ttrajs) == 0
     except IndexError:
         pytest.fail("IndexError while unpacking input!")
+
+
+def test_tram_estimate():
+    trajs = np.asarray([[0, 1, 1, 1, 1, 2, 2, 1, 0, 0], [1, 2, 3, 2, 2, 1, 0, 1, 2, 2], [2, 1, 2, 3, 2, 3, 3, 4, 3, 3],
+                        [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
+    trajs = trajs / 5 * 3 - 1.5
+
+    dtrajs = np.asarray([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
+                         [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]])
+
+    bias_centers = [-1, -0.5, 0.0, 0.5, 1]
+
+    def harmonic(x0, x):
+        return 0.1 * (x - x0) ** 2
+
+    # construct bias matric using harmonic potentials
+    bias_matrices = np.zeros((len(bias_centers), 10, len(bias_centers)))
+    for i, traj in enumerate(trajs):
+        for j, bias_center in enumerate(bias_centers):
+            bias = lambda x, x0=bias_center: harmonic(x0, x)
+            bias_matrices[i, :, j] = bias(traj)
+
+    tram = TRAM(maxiter=100, save_convergence_info=True)
+    state_counts = np.asarray([[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]])
+    transition_counts = np.asarray(
+        [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]])
+    tram_input = bindings.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
+
+    tram._tram_estimator = bindings.TRAM(tram_input)
+    tram._run_estimation()
 
 
 def test_tram_fit_fetch():
