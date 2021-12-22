@@ -20,7 +20,10 @@ using Index2D = std::tuple<StateIndex, StateIndex>;
 using Indices2D = std::vector<std::vector<Index2D>>;
 
 template<typename dtype>
-using BiasPairs = np_array<dtype>;
+using BiasPair = std::tuple<dtype, dtype>;
+
+template<typename dtype>
+using BiasPairs = std::vector<BiasPair<dtype>>;
 
 template<typename dtype>
 using PairOfBiasPairs = std::tuple<BiasPairs<dtype>, BiasPairs<dtype>>;
@@ -42,12 +45,12 @@ Indices2D findIndexOfSamplesInMarkovState(StateIndex i, const std::optional<DTra
         std::size_t trajLength = (*dtrajs)[j].size();
 
         auto dtrajBuf = (*dtrajs)[j].template unchecked<1>();
-        auto ttrajBuf = ttrajs ? (**ttrajs)[j].data() : nullptr;
+        auto ttrajBuf = (*ttrajs) ? (**ttrajs)[j].data() : nullptr;
 
         for (std::size_t n = 0; n < trajLength; ++n) {
 
             if (dtrajBuf[n] == i) {
-                auto k = ttrajs ? ttrajBuf[n] : j;
+                auto k = (*ttrajs) ? ttrajBuf[n] : j;
 
                 // markov state i sampled in therm state k can be found at bias matrix index (j, n,)
                 indices[k].emplace_back(j, n);
@@ -62,17 +65,15 @@ template<typename dtype>
 struct OverlapPostHocReplicaExchange {
     static bool hasOverlap(const PairOfBiasPairs<dtype> &biasPairs, dtype connectivity_factor) {
         auto &[biasesSampledAtK, biasesSampledAtL] = biasPairs;
-        auto biasPairsBufK = biasesSampledAtK.template unchecked<2>();
-        auto biasPairsBufL = biasesSampledAtL.template unchecked<2>();
-        auto n = biasesSampledAtK.shape(0);
-        auto m = biasesSampledAtL.shape(0);
+        auto n = biasesSampledAtK.size();
+        auto m = biasesSampledAtL.size();
 
         dtype n_sum = 0;
 
         // now compute the overlap between the samples in both vectors
-        for (auto i = 0; i < n; ++i) {
-            for (auto j = 0; j < m; ++j) {
-                dtype delta = biasPairsBufK(i,0) + biasPairsBufL(j,1) - biasPairsBufK(i,1) - biasPairsBufL(j,0);
+        for (auto [a_k, a_l]: biasesSampledAtK) {
+            for (auto [b_k, b_l]: biasesSampledAtL) {
+                dtype delta = a_k + b_l - a_l - b_k;
                 n_sum += std::min(std::exp(delta), 1.0);
             }
         }
@@ -100,23 +101,23 @@ struct OverlapBarVariance {
     }
 
     static bool hasOverlap(const PairOfBiasPairs<dtype> &biasPairs, dtype connectivity_factor) {
-        auto &[biasesSampledAtK, biasesSampledAtL] = biasPairs;
-        auto biasPairsBufK = biasesSampledAtK.template unchecked<2>();
-        auto biasPairsBufL = biasesSampledAtL.template unchecked<2>();
+        auto [biasesSampledAtK, biasesSampledAtL] = biasPairs;
 
-        auto n = biasesSampledAtK.shape(0);
-        auto m = biasesSampledAtL.shape(0);
+        auto n = biasesSampledAtK.size();
+        auto m = biasesSampledAtL.size();
 
         std::vector<dtype> db_IJ(n);
         std::vector<dtype> db_JI(m);
         std::vector<dtype> du(n + m);
 
         for (decltype(n) i = 0; i < n; ++i) {
-            db_IJ[i] = biasPairsBufK(i, 1) - biasPairsBufK(i, 0);
+            auto [a_k, a_l] = biasesSampledAtK[i];
+            db_IJ[i] = a_l - a_k;
             du[i] = db_IJ[i];
         }
         for (decltype(m) i = 0; i < m; ++i) {
-            db_JI[i] = biasPairsBufL(i, 0) - biasPairsBufL(i, 1);
+            auto [b_k, b_l] = biasesSampledAtL[i];
+            db_JI[i] = b_k - b_l;
             du[n + i] = -db_JI[i];
         }
         auto df = _barDf(db_IJ, db_JI);
@@ -131,14 +132,12 @@ struct OverlapBarVariance {
 template<typename dtype>
 BiasPairs<dtype> getBiasPairs(const std::vector<Index2D> &sampleIndices, StateIndex k, StateIndex l,
                               const BiasMatrices <dtype> *biasMatrices) {
-    BiasPairs<dtype> biasPairs (std::vector<std::size_t>{sampleIndices.size(), 2});
-
-    auto biasPairsBuf = biasPairs.template mutable_unchecked<2>();
+    BiasPairs<dtype> biasPairs;
+    biasPairs.reserve(sampleIndices.size());
 
     for (std::size_t i =0; i < sampleIndices.size(); ++i) {
         auto [j, n] =  sampleIndices[i];
-        biasPairsBuf(i, 0) = (*biasMatrices)[j].unchecked()(n, k);
-        biasPairsBuf(i, 1) = (*biasMatrices)[j].unchecked()(n, l);
+        biasPairs.emplace_back((*biasMatrices)[j].unchecked()(n, k), (*biasMatrices)[j].unchecked()(n, l));
     }
     return biasPairs;
 }
@@ -191,7 +190,6 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     // threads don't like references
     auto dtrajsPtr = &dtrajs;
     auto ttrajsPtr = &ttrajs;
-//    auto ttrajsPtr = ttrajs ? &(*ttrajs) : nullptr;
     auto biasMatricesPtr = &biasMatrices;
     auto stateCountsBuf = stateCounts.template unchecked<2>();
 
