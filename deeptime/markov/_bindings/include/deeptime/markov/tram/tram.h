@@ -135,7 +135,7 @@ public:
 
         auto nTraj = static_cast<std::int32_t>(input_->nTrajectories());
         // then for each trajectory, compute log of all sample weights, and add to log likelihood.
-        #pragma omp parallel for default(none) firstprivate(nTraj) reduction(+:logLikelihood)
+#pragma omp parallel for default(none) firstprivate(nTraj) reduction(+:logLikelihood)
         for (std::int32_t i = 0; i < nTraj; ++i) {
             logLikelihood += computeSampleLikelihood(i);
         }
@@ -206,9 +206,9 @@ public:
         auto nTrajs = input_->nTrajectories();
         std::vector<std::vector<dtype>> sampleWeights(nTrajs);
 
-        auto * tram = this;
+        auto *tram = this;
 
-        #pragma omp parallel for default(none) firstprivate(nTrajs, thermState, tram) shared(sampleWeights)
+#pragma omp parallel for default(none) firstprivate(nTrajs, thermState, tram) shared(sampleWeights)
         for (std::int32_t i = 0; i < nTrajs; ++i) {
             sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
         }
@@ -250,7 +250,7 @@ private:
         auto nThermStates = nThermStates_;
         auto nMarkovStates = nMarkovStates_;
 
-        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCountsBuf, lagrangianMultLogBuf)
+#pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCountsBuf, lagrangianMultLogBuf)
         for (StateIndex k = 0; k < nThermStates; ++k) {
             for (StateIndex i = 0; i < nMarkovStates; ++i) {
                 dtype sum = 0.0;
@@ -274,9 +274,9 @@ private:
 
         auto nThermStates = nThermStates_, nMarkovStates = nMarkovStates_;
 
-        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, oldLagrangianMultLogBuf, newLagrangianMultLogBuf, biasedConfEnergiesBuf, transitionCountsBuf, stateCountsBuf)
+#pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, oldLagrangianMultLogBuf, newLagrangianMultLogBuf, biasedConfEnergiesBuf, transitionCountsBuf, stateCountsBuf)
         for (StateIndex k = 0; k < nThermStates; ++k) {
-            std::vector<dtype> scratch (nMarkovStates);
+            std::vector<dtype> scratch(nMarkovStates);
 
             for (StateIndex i = 0; i < nMarkovStates; ++i) {
                 if (0 == stateCountsBuf(k, i)) {
@@ -290,7 +290,7 @@ private:
                     // special case: most variables cancel out, here
                     if (i == j) {
                         scratch[o++] = (0 == CKij) ?
-                                         logPrior() : std::log(prior() + (dtype) CKij);
+                                       logPrior() : std::log(prior() + (dtype) CKij);
                     } else {
                         auto CK = CKij + transitionCountsBuf(k, j, i);
                         if (0 != CK) {
@@ -360,24 +360,22 @@ private:
 #pragma omp parallel for default(none) firstprivate(biasedConfEnergiesBuf, lagrangianMultLogBuf, modifiedStateCountsLogBuf, stateCountsBuf, transitionCountsBuf) collapse(2)
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             for (StateIndex i = 0; i < nMarkovStates_; ++i) {
-		
-		std::vector<dtype> scratch;
-	        scratch.reserve(nMarkovStates_);	
-                
-		if (0 == stateCountsBuf(k, i)) {
+
+                std::vector<dtype> scratch;
+                scratch.reserve(nMarkovStates_);
+
+                if (0 == stateCountsBuf(k, i)) {
                     modifiedStateCountsLogBuf(k, i) = -inf;
                 } else {
                     auto Ci = 0;
-                    auto o = 0;
                     for (StateIndex j = 0; j < nMarkovStates_; ++j) {
                         auto CKij = transitionCountsBuf(k, i, j);
                         auto CKji = transitionCountsBuf(k, j, i);
                         Ci += CKji;
                         // special case: most variables cancel out, here
                         if (i == j) {
-                            scratch[o] = (0 == CKij) ? logPrior() : std::log(
-                                    prior() + (dtype) CKij);
-                            scratch[o++] += biasedConfEnergiesBuf(k, i);
+                            auto CKijLog = (0 == CKij) ? logPrior() : std::log(prior() + (dtype) CKij);
+                            scratch.push_back(CKijLog + biasedConfEnergiesBuf(k, i));
                         } else {
                             auto CK = CKij + CKji;
 
@@ -385,14 +383,15 @@ private:
                                 auto divisor = numeric::kahan::logsumexp_pair(
                                         lagrangianMultLogBuf(k, j) - biasedConfEnergiesBuf(k, i),
                                         lagrangianMultLogBuf(k, i) - biasedConfEnergiesBuf(k, j));
-                                scratch[o++] = std::log((dtype) CK) + lagrangianMultLogBuf(k, j) - divisor;
+                                scratch.push_back(std::log((dtype) CK) + lagrangianMultLogBuf(k, j) - divisor);
                             }
                         }
                     }
                     auto NC = stateCountsBuf(k, i) - Ci;
                     auto extraStateCounts = (0 < NC) ? std::log((dtype) NC) + biasedConfEnergiesBuf(k, i) : -inf;
                     modifiedStateCountsLogBuf(k, i) = numeric::kahan::logsumexp_pair(
-                            numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o), extraStateCounts);
+                            numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), scratch.end()),
+                            extraStateCounts);
                 }
             }
         }
@@ -409,7 +408,7 @@ private:
         auto nThermStates = nThermStates_;
         auto nMarkovStates = nMarkovStates_;
 
-        #pragma omp parallel for default(none) shared(maxError) firstprivate(nThermStates, nMarkovStates, thermEnergiesBuf, oldThermEnergiesBuf, statVectorsBuf, oldStatVectorsBuf)
+#pragma omp parallel for default(none) shared(maxError) firstprivate(nThermStates, nMarkovStates, thermEnergiesBuf, oldThermEnergiesBuf, statVectorsBuf, oldStatVectorsBuf)
         for (StateIndex k = 0; k < nThermStates; ++k) {
             auto energyDelta = std::abs(thermEnergiesBuf(k) - oldThermEnergiesBuf(k));
             maxError = std::max(maxError, energyDelta);
@@ -580,7 +579,7 @@ private:
         auto nThermStates = nThermStates_;
         auto nMarkovStates = nMarkovStates_;
 
-        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCountsBuf, transitionMatricesBuf, stateCountsBuf, biasedConfEnergiesBuf) reduction(+:LL) collapse(2)
+#pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCountsBuf, transitionMatricesBuf, stateCountsBuf, biasedConfEnergiesBuf) reduction(+:LL) collapse(2)
         for (StateIndex k = 0; k < nThermStates; ++k) {
             for (StateIndex i = 0; i < nMarkovStates; ++i) {
                 // discrete sample log-likelihood \sum_{k=1}^K \sum_{i=1}^m N_i^k * f_i^k
@@ -612,7 +611,7 @@ private:
 
         auto nThermStates = nThermStates_;
         auto nMarkovStates = nMarkovStates_;
-        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, biasedConfEnergiesBuf, lagrangianMultLogBuf, transitionCountsBuf, transitionMatricesBuf)
+#pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, biasedConfEnergiesBuf, lagrangianMultLogBuf, transitionCountsBuf, transitionMatricesBuf)
         for (StateIndex k = 0; k < nThermStates; ++k) {
             std::vector<dtype> scratch(nMarkovStates, 0);
             for (StateIndex i = 0; i < nMarkovStates; ++i) {
@@ -666,9 +665,9 @@ private:
     }
 
     auto sampleWeightsForTrajectory(std::size_t trajectoryIndex, std::int32_t thermStateIndex,
-                                                   TRAM<dtype> *tram) const {
+                                    TRAM<dtype> *tram) const {
         // k = -1 for unbiased sample weigths.
-        std::vector<dtype> sampleWeights (tram->input_->dtraj(trajectoryIndex).size());
+        std::vector<dtype> sampleWeights(tram->input_->dtraj(trajectoryIndex).size());
 
         auto dtrajBuf = tram->input_->dtraj(trajectoryIndex);
         auto biasMatrixBuf = tram->input_->biasMatrix(trajectoryIndex);
@@ -694,8 +693,8 @@ private:
             if (thermStateIndex == -1) {// get unbiased sample weight
                 sampleWeights[x] = std::exp(-log_divisor);
             } else { // get biased sample weight for given thermState index
-                sampleWeights[x] = std::exp( -biasMatrixBuf(x, thermStateIndex) - log_divisor
-                                      + thermStateEnergiesBuf(thermStateIndex));
+                sampleWeights[x] = std::exp(-biasMatrixBuf(x, thermStateIndex) - log_divisor
+                                            + thermStateEnergiesBuf(thermStateIndex));
             }
         }
         return sampleWeights;
