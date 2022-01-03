@@ -5,7 +5,7 @@ from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
 
-class tram_estimator_mock():
+class TramEstimatorMock:
     def __init__(self, n_therm_states, n_markov_states):
         self.therm_state_energies = lambda: np.zeros(n_therm_states)
         self.biased_conf_energies = lambda: np.zeros((n_therm_states, n_markov_states))
@@ -168,7 +168,7 @@ def test_to_markov_model():
     tram = TRAM()
     tram.n_markov_states = 3
     tram.n_therm_states = 2
-    tram._tram_estimator = tram_estimator_mock(tram.n_therm_states, tram.n_markov_states)
+    tram._tram_estimator = TramEstimatorMock(tram.n_therm_states, tram.n_markov_states)
     transition_counts = np.zeros((2, 3, 3))
     tram.count_models = [TransitionCountModel(counts) for counts in transition_counts]
     model = tram._construct_markov_model()

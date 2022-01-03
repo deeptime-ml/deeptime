@@ -33,7 +33,3 @@ class NotConvergedWarning(RuntimeWarning):
 
 class NotConvergedError(RuntimeError):
     pass
-
-
-class EmptyStateWarning(RuntimeWarning):
-    pass

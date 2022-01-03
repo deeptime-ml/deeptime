@@ -3,7 +3,7 @@
 
 #include "../../deeptime/markov/msm/tram/_bindings/include/tram.h"
 
-TEST_CASE("TRAM Swap", "[tram]") {
+TEST_CASE("ExchangeableArray", "[tram]") {
     using namespace deeptime::markov::tram;
 
     pybind11::scoped_interpreter interpreterGuard;

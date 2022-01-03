@@ -158,7 +158,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                                                           transitionMatrices.data() + K * matrixSize +
                                                           (i + 1) * rowSize,
                                                           0.0, std::plus<TestType>());
-                            REQUIRE(Catch::Detail::Approx(rowSum) == 1.0);
+                            REQUIRE(Approx(rowSum) == 1.0);
                         }
                     }
                 }

@@ -105,8 +105,7 @@ public:
               thermStateEnergies_(ExchangeableArray<dtype, 1>(std::vector<StateIndex>{nThermStates_}, 0)),
               markovStateEnergies_(np_array_nfc<dtype>(std::vector<StateIndex>{nMarkovStates_})),
               transitionMatrices_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_, nMarkovStates_})),
-              scratchM_(std::unique_ptr<dtype[]>(new dtype[nMarkovStates_])),
-              scratchT_(std::unique_ptr<dtype[]>(new dtype[nThermStates_])) {
+              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])) {
         initLagrangianMult();
     }
 
@@ -232,8 +231,7 @@ private:
     np_array_nfc<dtype> transitionMatrices_;
 
     // scratch matrices used to facilitate calculation of logsumexp
-    std::unique_ptr<dtype[]> scratchM_;
-    std::unique_ptr<dtype[]> scratchT_;
+    std::unique_ptr<dtype[]> scratch_;
 
 
     constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
@@ -325,7 +323,7 @@ private:
 
         dtype divisor{};
 
-        auto *scratch = scratchT_.get();
+        auto *scratch = scratch_.get();
 
         // assume that biasedConfEnergies_ have been set to INF by the caller in the first call
         for (std::size_t x = 0; x < trajLength; ++x) {
@@ -461,14 +459,15 @@ private:
                 std::size_t o = 0;
                 for (StateIndex k = 0; k < nThermStates_; ++k) {
                     if (modifiedStateCountsLogBuf(k, i) > -inf) {
-                        scratchT_[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k);
+                        scratch_[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k);
                     }
                 }
-                dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT_.get(), o);
+                dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_.get(), o);
                 markovStateEnergiesBuf(i) = -numeric::kahan::logsumexp_pair(-markovStateEnergiesBuf(i), -divisor);
             }
         }
     }
+
 
     void updateThermStateEnergies() {
         // move current values to old
@@ -477,7 +476,7 @@ private:
         // compute new
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
         auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
-        auto scratch = scratchM_.get();
+        auto scratch = scratch_.get();
 
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             for (StateIndex i = 0; i < nMarkovStates_; ++i) {
@@ -512,9 +511,9 @@ private:
         auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
 
         for (StateIndex i = 0; i < nMarkovStates_; ++i) {
-            scratchM_[i] = -markovStateEnergiesBuf(i);
+            scratch_[i] = -markovStateEnergiesBuf(i);
         }
-        auto f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM_.get(), nMarkovStates_);
+        auto f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratch_.get(), nMarkovStates_);
 
         for (StateIndex i = 0; i < nMarkovStates_; ++i) {
             markovStateEnergiesBuf(i) -= f0;
