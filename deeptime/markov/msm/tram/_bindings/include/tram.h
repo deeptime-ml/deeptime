@@ -663,8 +663,8 @@ private:
         }
     }
 
-    auto computeSampleWeightsForTrajectory(std::size_t trajectoryIndex, StateIndex thermStateIndex,
-                                           TRAM<dtype> *tram) const {
+    static auto computeSampleWeightsForTrajectory(std::size_t trajectoryIndex, StateIndex thermStateIndex,
+                                           TRAM<dtype> *tram) {
         // k = -1 for unbiased sample weights.
         std::vector<dtype> sampleWeights(tram->input_->dtraj(trajectoryIndex).size());
 
