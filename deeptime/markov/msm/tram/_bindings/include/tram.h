@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <cassert>
 #include <utility>
-#include "kahan_summation.h"
+#include "../../../../../numeric/_bindings/include/kahan_summation.h"
 #include "tram_input.h"
 
 namespace deeptime::markov::tram {

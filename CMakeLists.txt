@@ -29,6 +29,7 @@ add_subdirectory(deeptime/clustering)
 add_subdirectory(deeptime/basis)
 add_subdirectory(deeptime/markov/_bindings)
 add_subdirectory(deeptime/markov/hmm/_bindings)
+add_subdirectory(deeptime/markov/msm/tram/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/dense/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/sparse/_bindings)
 

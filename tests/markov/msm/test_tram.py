@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAM
-from deeptime.markov._tram_bindings import tram as bindings
+from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
 
@@ -134,7 +134,7 @@ def test_make_count_models(lagtime):
     input = [np.asarray([1, 1, 2, 3, 1, 1, 1]), np.asarray([2, 0, 0, 1, 3, 1, 4]), np.asarray([2, 2, 2, 2])]
     tram.n_therm_states = len(input)
     tram.n_markov_states = np.max(np.concatenate(input)) + 1
-    state_counts, transition_counts = tram._make_count_models(input)
+    state_counts, transition_counts = tram._construct_count_models(input)
     assert len(tram.count_models) == tram.n_therm_states
     assert state_counts.shape == (tram.n_therm_states, tram.n_markov_states)
     assert transition_counts.shape == (tram.n_therm_states, tram.n_markov_states, tram.n_markov_states)
@@ -158,7 +158,7 @@ def test_transposed_count_matrices_bug(input):
     input = np.asarray(input)
     tram.n_therm_states = len(input)
     tram.n_markov_states = np.max(np.concatenate(input)) + 1
-    state_counts, transition_counts = tram._make_count_models(input)
+    state_counts, transition_counts = tram._construct_count_models(input)
     assert np.array_equal(state_counts, [[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]])
     assert np.array_equal(transition_counts,
                           [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]])
@@ -171,8 +171,7 @@ def test_to_markov_model():
     tram._tram_estimator = tram_estimator_mock(tram.n_therm_states, tram.n_markov_states)
     transition_counts = np.zeros((2, 3, 3))
     tram.count_models = [TransitionCountModel(counts) for counts in transition_counts]
-    tram._to_markov_model()
-    model = tram.fetch_model()
+    model = tram._construct_markov_model()
     assert isinstance(model, MarkovStateModelCollection)
     assert (model.transition_matrix == tram._transition_matrices[0]).all()
     assert model.n_connected_msms == tram.n_therm_states
@@ -189,7 +188,7 @@ def test_to_markov_model():
 def test_trajectory_fragments_mapping(test_input, expected):
     tram = TRAM()
     tram.n_therm_states = np.max(np.concatenate(test_input)) + 1
-    mapping = tram._get_trajectory_fragment_mapping([np.asarray(inp) for inp in test_input])
+    mapping = tram._find_trajectory_fragment_mapping([np.asarray(inp) for inp in test_input])
     assert mapping == expected
 
 
@@ -202,8 +201,8 @@ def test_trajectory_fragments_mapping(test_input, expected):
 def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
     tram = TRAM()
     tram.n_therm_states = 2
-    mapping = tram._get_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
-                                             [np.asarray(ttraj) for ttraj in ttrajs])
+    mapping = tram._find_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
+                                              [np.asarray(ttraj) for ttraj in ttrajs])
     for k in range(tram.n_therm_states):
         assert len(mapping[k]) == len(expected[k])
         assert np.all([np.array_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))])
@@ -220,8 +219,8 @@ def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
 def test_get_trajectory_fragments_no_ttrajs(dtrajs, ttrajs, expected):
     tram = TRAM()
     tram.n_therm_states = 2
-    mapping = tram._get_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
-                                             ttrajs)
+    mapping = tram._find_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
+                                              ttrajs)
     for k in range(tram.n_therm_states):
         assert len(mapping[k]) == len(expected[k])
         assert np.all([np.array_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))])

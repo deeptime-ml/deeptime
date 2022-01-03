@@ -1,7 +1,7 @@
 //  author: maaike
-#include "deeptime/markov/tram/tram.h"
-#include "deeptime/markov/tram/connected_set.h"
-#include "deeptime/markov/tram/trajectory_mapping.h"
+#include "../include/tram.h"
+#include "../include/connected_set.h"
+#include "../include/trajectory_mapping.h"
  
 PYBIND11_MODULE(_tram_bindings, m) {
     using namespace pybind11::literals;

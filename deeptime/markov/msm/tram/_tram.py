@@ -6,10 +6,12 @@ from deeptime.markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types, callbacks
-from deeptime.markov._tram_bindings import tram
+from deeptime.markov.msm.tram._tram_bindings import tram
 
 import numpy as np
 import scipy as sp
+
+connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix"]
 
 
 def to_zero_padded_array(arrays, desired_shape):
@@ -108,6 +110,11 @@ class TRAM(_MSMBaseEstimator):
 
         self.lagtime = lagtime
         self.count_mode = count_mode
+
+        if connectivity not in connectivity_options:
+            warnings.warn(
+                f"connectivity type unknown. Data wil not be restricted to the largest connected set."
+                f"To find the largest connected set, choose one of the following connectivity types: {connectivity_options}")
         self.connectivity = connectivity
         self.connectivity_factor = connectivity_factor
         self.n_markov_states = None
@@ -211,13 +218,13 @@ class TRAM(_MSMBaseEstimator):
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
-        dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set(ttrajs, dtrajs,
-                                                                                              bias_matrices)
+        dtrajs, state_counts, transition_counts = self._compute_counts_from_largest_connected_set(ttrajs, dtrajs,
+                                                                                                  bias_matrices)
         tram_input = tram.TRAMInput(state_counts, transition_counts, dtrajs, bias_matrices)
 
         self._tram_estimator = tram.TRAM(tram_input)
         self._run_estimation()
-        self._to_markov_model()
+        self._model = self._construct_markov_model()
 
         return self
 
@@ -357,7 +364,7 @@ class TRAM(_MSMBaseEstimator):
 
         return ttrajs, dtrajs, bias_matrices
 
-    def _get_counts_from_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
+    def _compute_counts_from_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
         """Find the largest connected set of Markov states over all thermodynamic states, given the input data and
          connectivity settings. Restrict the input data to the connected set and return state counts and transition
          counts for the restricted input data.
@@ -400,10 +407,10 @@ class TRAM(_MSMBaseEstimator):
         # In the case of replica exchange: get all trajectory fragments (also removing any negative state indices).
         # the dtraj_fragments[k] contain all trajectories within thermodynamic state k, starting a new trajectory at
         # each replica exchange swap. If there was no replica exchange, dtraj_fragments == dtrajs.
-        dtraj_fragments = self._get_trajectory_fragments(dtrajs, ttrajs)
+        dtraj_fragments = self._find_trajectory_fragments(dtrajs, ttrajs)
 
         # ... convert those into count matrices.
-        state_counts, transition_counts = self._make_count_models(dtraj_fragments)
+        state_counts, transition_counts = self._construct_count_models(dtraj_fragments)
 
         return dtrajs, state_counts, transition_counts
 
@@ -438,6 +445,11 @@ class TRAM(_MSMBaseEstimator):
 
         # make a counts model over all observed samples.
         full_counts_model = estimator.fit_fetch(dtrajs)
+
+        if self.connectivity not in connectivity_options:
+            warnings.warn(f"connectivity type unknown. Data has not been restricted to the largest connected set."
+                          f"The full counts model has been returned.")
+            return full_counts_model
 
         if self.connectivity == 'summed_count_matrix':
             # We assume the thermodynamic states have overlap when they contain counts from the same markov state.
@@ -474,7 +486,7 @@ class TRAM(_MSMBaseEstimator):
                     j_s.extend(list(cset[1:] + k * self.n_markov_states))
 
             # turn the list of transitions into a boolean matrix that has a one whenever a transition has occurred
-            data = np.ones(len(i_s), dtype=int)
+            data = np.ones(len(i_s), dtype=np.int32)
             dim = self.n_therm_states * self.n_markov_states
             sparse_transition_counts = sp.sparse.coo_matrix((data, (i_s, j_s)), shape=(dim, dim))
 
@@ -487,11 +499,6 @@ class TRAM(_MSMBaseEstimator):
                                                 order='C')
 
             return full_counts_model.submodel(np.unique(connected_states[1]))
-
-        warnings.warn(
-            "connectivity type unknown. Data has not been restricted to the largest connected set."
-            "To find the largest connected set, choose one of 'summed_state_counts', 'post_hoc_RE', or 'BAR_variance'")
-        return full_counts_model
 
     def _restrict_to_connected_set(self, dtrajs):
         """
@@ -527,7 +534,7 @@ class TRAM(_MSMBaseEstimator):
 
         return dtrajs_connected
 
-    def _get_trajectory_fragments(self, dtrajs, ttrajs):
+    def _find_trajectory_fragments(self, dtrajs, ttrajs):
         """ Find all trajectory fragments given the discrete trajectories and the thermodynamic state indices of each
         sample. Get rid of any negative state indices.
         If no replica exchange was done, this will simply return all positive values from dtrajs. If ttrajs are
@@ -559,7 +566,7 @@ class TRAM(_MSMBaseEstimator):
 
         # replica exchange data means that the trajectories to not correspond 1:1 to thermodynamic states.
         # get a mapping from trajectory segments to thermodynamic states
-        fragment_indices = self._get_trajectory_fragment_mapping(ttrajs)
+        fragment_indices = self._find_trajectory_fragment_mapping(ttrajs)
 
         fragments = []
         # for each them. state k, gather all trajectory fragments that were sampled at that state.
@@ -570,7 +577,7 @@ class TRAM(_MSMBaseEstimator):
                               for (traj_idx, start, stop) in fragment_indices[k]])
         return fragments
 
-    def _get_trajectory_fragment_mapping(self, ttrajs):
+    def _find_trajectory_fragment_mapping(self, ttrajs):
         """ define mapping that gives for each trajectory the slices that make up a trajectory inbetween RE swaps.
             At every RE swap point, the trajectory is sliced, so that swap point occurs as a trajectory start.
 
@@ -591,7 +598,7 @@ class TRAM(_MSMBaseEstimator):
         """
         return tram.find_trajectory_fragment_indices(ttrajs, self.n_therm_states)
 
-    def _make_count_models(self, dtraj_fragments):
+    def _construct_count_models(self, dtraj_fragments):
         """ Construct a TransitionCountModel for each thermodynamic state based on the dtraj_fragments, and store in
         self.count_models.
         Based on each TransitionCountModel, construct state_count and transition_count matrices that contain the counts
@@ -641,7 +648,7 @@ class TRAM(_MSMBaseEstimator):
                 self.count_models.append(traj_counts_model)
         return state_counts, transition_counts
 
-    def _to_markov_model(self):
+    def _construct_markov_model(self):
         """ Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
         For each of the thermodynamic states, one MarkovStateModel is added to the MarkovStateModelCollection. The
         corresponding count models are previously calculated and are restricted to the largest connected set.
@@ -658,6 +665,6 @@ class TRAM(_MSMBaseEstimator):
             pi = pi / pi.sum()
             stationary_distributions.append(pi)
 
-        self._model = MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
+        return MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
                                                  reversible=True, count_models=self.count_models,
                                                  transition_matrix_tolerance=1e-8)
