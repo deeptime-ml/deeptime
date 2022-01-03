@@ -7,7 +7,6 @@
 #include <cstdio>
 #include <cassert>
 #include <utility>
-#include <pybind11/stl.h>
 #include "kahan_summation.h"
 #include "traminput.h"
 
@@ -111,19 +110,19 @@ public:
         initLagrangianMult();
     }
 
-    auto energiesPerThermodynamicState() const {
+    const auto &energiesPerThermodynamicState() const {
         return *thermStateEnergies_.first();
     }
 
-    auto energiesPerMarkovState() const {
+    const auto &energiesPerMarkovState() const {
         return markovStateEnergies_;
     }
 
-    auto biasedConfEnergies() const {
+    const auto &biasedConfEnergies() const {
         return biasedConfEnergies_;
     }
 
-    auto transitionMatrices() {
+    const auto &transitionMatrices() {
         return transitionMatrices_;
     }
 
@@ -309,7 +308,7 @@ private:
     // update all biased confirmation energies by looping over all trajectories.
     void updateBiasedConfEnergies() {
         std::fill(biasedConfEnergies_.mutable_data(), biasedConfEnergies_.mutable_data() +
-                                                      nMarkovStates_ * nThermStates_, inf);
+                                                      biasedConfEnergies_.size(), inf);
 
         for (std::size_t i = 0; i < input_->nTrajectories(); ++i) {
             updateBiasedConfEnergies(i, input_->sequenceLength(i));
@@ -398,7 +397,7 @@ private:
     }
 
     // Get the error in the energies between this iteration and the previous one.
-    dtype computeError(ExchangeableArray<dtype, 2> &statVectors) const {
+    dtype computeError(const ExchangeableArray<dtype, 2> &statVectors) const {
         auto thermEnergiesBuf = thermStateEnergies_.firstBuf();
         auto oldThermEnergiesBuf = thermStateEnergies_.secondBuf();
         auto statVectorsBuf = statVectors.firstBuf();
@@ -455,7 +454,6 @@ private:
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
         auto markovStateEnergiesBuf = markovStateEnergies_.template mutable_unchecked<1>();
 
-        dtype divisor;
         // assume that markovStateEnergies_ were set to INF by the caller on the first call
         for (auto x = 0; x < dtraj.size(); ++x) {
             std::int32_t i = dtraj(x);
@@ -466,7 +464,7 @@ private:
                         scratchT_[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k);
                     }
                 }
-                divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT_.get(), o);
+                dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratchT_.get(), o);
                 markovStateEnergiesBuf(i) = -numeric::kahan::logsumexp_pair(-markovStateEnergiesBuf(i), -divisor);
             }
         }
@@ -496,10 +494,8 @@ private:
         auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
 
         auto ptr = biasedConfEnergies_.data();
-        auto shift = std::accumulate(ptr, ptr + biasedConfEnergies_.size(), static_cast<dtype>(0),
-                                     [](dtype curr, dtype energy) {
-                                         return std::min(curr, energy);
-                                     });
+        auto shift = *std::min_element(ptr, ptr + biasedConfEnergies_.size());
+
 #pragma omp parallel for default(none) firstprivate(biasedConfEnergiesBuf, thermStateEnergiesBuf, shift)
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             thermStateEnergiesBuf(k) -= shift;

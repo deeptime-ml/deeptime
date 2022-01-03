@@ -4,7 +4,9 @@
 #pragma once
 
 #if defined(USE_OPENMP)
-    #include <omp.h>
+
+#include <omp.h>
+
 #endif
 
 #include <iterator>
@@ -29,8 +31,8 @@ template<typename dtype>
 using PairOfBiasPairs = std::tuple<BiasPairs<dtype>, BiasPairs<dtype>>;
 
 
-template <typename InIter, typename OutIter>
-void flatten (InIter start, InIter end, OutIter dest) {
+template<typename InIter, typename OutIter>
+void flatten(InIter start, InIter end, OutIter dest) {
     while (start != end) {
         dest = std::copy(start->begin(), start->end(), dest);
         ++start;
@@ -63,7 +65,7 @@ Indices2D findIndexOfSamplesInMarkovState(StateIndex i, const std::optional<DTra
 
 template<typename dtype>
 struct OverlapPostHocReplicaExchange {
-    static bool hasOverlap(const PairOfBiasPairs<dtype> &biasPairs, dtype connectivity_factor) {
+    static bool hasOverlap(const PairOfBiasPairs<dtype> &biasPairs, dtype connectivityFactor) {
         auto &[biasesSampledAtK, biasesSampledAtL] = biasPairs;
         auto n = biasesSampledAtK.size();
         auto m = biasesSampledAtL.size();
@@ -71,15 +73,15 @@ struct OverlapPostHocReplicaExchange {
         dtype n_sum = 0;
 
         // now compute the overlap between the samples in both vectors
-        for (auto [a_k, a_l]: biasesSampledAtK) {
-            for (auto [b_k, b_l]: biasesSampledAtL) {
+        for (auto[a_k, a_l]: biasesSampledAtK) {
+            for (auto[b_k, b_l]: biasesSampledAtL) {
                 dtype delta = a_k + b_l - a_l - b_k;
                 n_sum += std::min(std::exp(delta), 1.0);
             }
         }
 
         dtype n_avg = n_sum / (n * m);
-        return (n + m) * n_avg * connectivity_factor >= 1.0;
+        return (n + m) * n_avg * connectivityFactor >= 1.0;
     }
 };
 
@@ -101,7 +103,7 @@ struct OverlapBarVariance {
     }
 
     static bool hasOverlap(const PairOfBiasPairs<dtype> &biasPairs, dtype connectivity_factor) {
-        auto [biasesSampledAtK, biasesSampledAtL] = biasPairs;
+        const auto &[biasesSampledAtK, biasesSampledAtL] = biasPairs;
 
         auto n = biasesSampledAtK.size();
         auto m = biasesSampledAtL.size();
@@ -111,12 +113,12 @@ struct OverlapBarVariance {
         std::vector<dtype> du(n + m);
 
         for (decltype(n) i = 0; i < n; ++i) {
-            auto [a_k, a_l] = biasesSampledAtK[i];
+            auto[a_k, a_l] = biasesSampledAtK[i];
             db_IJ[i] = a_l - a_k;
             du[i] = db_IJ[i];
         }
         for (decltype(m) i = 0; i < m; ++i) {
-            auto [b_k, b_l] = biasesSampledAtL[i];
+            auto[b_k, b_l] = biasesSampledAtL[i];
             db_JI[i] = b_k - b_l;
             du[n + i] = -db_JI[i];
         }
@@ -135,8 +137,8 @@ BiasPairs<dtype> getBiasPairs(const std::vector<Index2D> &sampleIndices, StateIn
     BiasPairs<dtype> biasPairs;
     biasPairs.reserve(sampleIndices.size());
 
-    for (std::size_t i =0; i < sampleIndices.size(); ++i) {
-        auto [j, n] =  sampleIndices[i];
+    for (std::size_t i = 0; i < sampleIndices.size(); ++i) {
+        auto[j, n] =  sampleIndices[i];
         biasPairs.emplace_back((*biasMatrices)[j].unchecked()(n, k), (*biasMatrices)[j].unchecked()(n, l));
     }
     return biasPairs;
@@ -148,7 +150,7 @@ PairOfBiasPairs<dtype> getPairOfBiasPairs(const Indices2D &sampleIndicesIn_i, St
     auto biasPairsK = getBiasPairs(sampleIndicesIn_i[k], k, l, biasMatrices);
     auto biasPairsL = getBiasPairs(sampleIndicesIn_i[l], k, l, biasMatrices);
 
-    return std::make_tuple(biasPairsK, biasPairsL);
+    return std::make_tuple(std::move(biasPairsK), std::move(biasPairsL));
 }
 
 template<typename dtype, typename OverlapMode>
@@ -175,14 +177,13 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     // get the number of threads (if multithreading)
     int nThreads = 1;
     #if defined(USE_OPENMP)
-    
-    #pragma omp parallel default(none) shared(nThreads)
-    {
-	        #pragma omp master
-	        nThreads = omp_get_num_threads();
-    }
+        #pragma omp parallel default(none) shared(nThreads)
+        {
+            #pragma omp master
+            nThreads = omp_get_num_threads();
+        }
     #endif
-    
+
     // save results in one vector per thread. Concatenate them at the end.
     std::vector<IndexList> thermStateIndicesFromPerThread(nThreads);
     std::vector<IndexList> thermStateIndicesToPerThread(nThreads);
@@ -193,21 +194,21 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     auto biasMatricesPtr = &biasMatrices;
     auto stateCountsBuf = stateCounts.template unchecked<2>();
 
-#pragma omp parallel default(none) firstprivate(nMarkovStates, nThermStates, ttrajsPtr, dtrajsPtr, biasMatricesPtr, stateCountsBuf, connectivityFactor, callback) shared(thermStateIndicesFromPerThread, thermStateIndicesToPerThread)
+    #pragma omp parallel default(none) firstprivate(nMarkovStates, nThermStates, ttrajsPtr, dtrajsPtr, biasMatricesPtr, stateCountsBuf, connectivityFactor, callback) shared(thermStateIndicesFromPerThread, thermStateIndicesToPerThread)
     {
         IndexList thermStateIndicesFrom;
         IndexList thermStateIndicesTo;
 
-        auto threadNumber = 0;
+        int threadNumber = 0;
         #if defined(USE_OPENMP)
-	    threadNumber = omp_get_thread_num();
+            threadNumber = omp_get_thread_num();
         #endif
-        
-	    // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
+
+        // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
         #pragma omp for
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
-        
-	        // Get all indices in all trajectories of all samples that were binned in markov state i.
+
+            // Get all indices in all trajectories of all samples that were binned in markov state i.
             // We use these to determine whether two states overlap in Markov state i.
             Indices2D sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, ttrajsPtr, dtrajsPtr, nThermStates);
 
@@ -215,16 +216,16 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
             for (StateIndex k = 0; k < nThermStates; ++k) {
                 // callback for incrementing a progress bar
                 if (callback != nullptr) {
-                #pragma omp critical
+                    #pragma omp critical
                     {
                         py::gil_scoped_acquire guard;
                         (*callback)();
-    		    }
-            	}
+                    }
+                }
                 // ... states can only overlap if they both have counts in markov state i
                 if (stateCountsBuf(k, i) > 0) {
                     for (StateIndex l = 0; l < nThermStates; ++l) {
-		      	    // ... other state also needs to have counts in markov state i.
+                        // ... other state also needs to have counts in markov state i.
                         if (k != l && stateCountsBuf(l, i) > 0) {
                             // They both have counts! We check if they *really* overlap using the overlap function.
                             // First get all bias energy values that belong to the samples we found.
@@ -254,11 +255,12 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     IndexList allThermStateIndicesFrom;
     IndexList allThermStateIndicesTo;
 
-    flatten(thermStateIndicesFromPerThread.begin(), thermStateIndicesFromPerThread.end(), std::back_inserter(allThermStateIndicesFrom));
-    flatten(thermStateIndicesToPerThread.begin(), thermStateIndicesToPerThread.end(), std::back_inserter(allThermStateIndicesTo));
+    flatten(thermStateIndicesFromPerThread.begin(), thermStateIndicesFromPerThread.end(),
+            std::back_inserter(allThermStateIndicesFrom));
+    flatten(thermStateIndicesToPerThread.begin(), thermStateIndicesToPerThread.end(),
+            std::back_inserter(allThermStateIndicesTo));
 
     return std::make_tuple(allThermStateIndicesFrom, allThermStateIndicesTo);
 }
 
 }
-

@@ -15,16 +15,12 @@ if(OpenMP_FOUND)
 endif()
 
 if(MSVC)
-    add_compile_options(/W3 /EHsc /std:c++17)
-else()
-    #add_compile_options(-Wall -Wextra -pedantic -Werror)
+    add_compile_options(/W3 /EHsc /bigobj /permissive- /std:c++17)
 endif()
 
 find_package(pybind11 REQUIRED)
 
 add_subdirectory(deeptime/src)
-set(common_includes "${CMAKE_CURRENT_LIST_DIR}/deeptime/src/include")
-set(numeric_includes "${CMAKE_CURRENT_LIST_DIR}/deeptime/numeric/_bindings/include")
 
 add_subdirectory(deeptime/numeric/_bindings)
 add_subdirectory(deeptime/data)
