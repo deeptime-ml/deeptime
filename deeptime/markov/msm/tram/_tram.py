@@ -1,11 +1,10 @@
-import copy
 import warnings
 from typing import Optional
 
 from deeptime.markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
-from deeptime.util import types
+from deeptime.util import types, callbacks
 # from _tram_bindings import tram
 from deeptime.markov._tram_bindings import tram
 
@@ -148,6 +147,9 @@ class TRAM(_MSMBaseEstimator):
 
     @property
     def _transition_matrices(self):
+        """The transition matrices returned by the TRAM estimator.
+        This property is private because the transition matrices should be passed to the MEMM from which they will be
+        accessible to the user."""
         if self._tram_estimator is not None:
             return self._tram_estimator.transition_matrices()
 
@@ -220,7 +222,8 @@ class TRAM(_MSMBaseEstimator):
     def _run_estimation(self):
         """ Estimate the free energies using self-consistent iteration as described in the TRAM paper.
         """
-        with TRAMCallback(self.progress_bar, self.maxiter, self.log_likelihoods, self.increments, True) as callback:
+        with callbacks.TRAMCallback(self.progress_bar, self.maxiter, self.log_likelihoods, self.increments,
+                                    True) as callback:
             self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
 
             if callback.last_increment > self.maxerr:
@@ -446,7 +449,8 @@ class TRAM(_MSMBaseEstimator):
             else:
                 connectivity_fn = tram.get_state_transitions_BAR_variance
 
-            with CsetCallback(self.progress_bar, self.n_therm_states * self.n_markov_states) as callback:
+            with callbacks.Callback(self.progress_bar, self.n_therm_states * self.n_markov_states,
+                                    "Finding connected sets") as callback:
                 (i_s, j_s) = connectivity_fn(ttrajs, dtrajs, bias_matrices, all_state_counts, self.n_therm_states,
                                              self.n_markov_states, self.connectivity_factor, callback)
 
@@ -644,65 +648,3 @@ class TRAM(_MSMBaseEstimator):
         self._model = MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
                                                  reversible=True, count_models=self.count_models,
                                                  transition_matrix_tolerance=1e-8)
-
-
-class Callback:
-    """Base callback function for the c++ bindings to indicate progress by incrementing a progress bar."""
-    def __init__(self, progress_bar, n_iter, display_text):
-        """Initialize the progress bar.
-
-        Parameters
-        ----------
-        progress_bar : object
-            Tested for a tqdm progress bar. Should implement update() and close() and have .total and .desc properties.
-        n_iter : int
-            Number of iterations to completion.
-        display_text : string
-            text to display in front of the progress bar.
-        """
-        self.progress_bar = None
-        if progress_bar is not None:
-            self.progress_bar = copy.copy(progress_bar)
-            self.progress_bar.desc = display_text
-            self.progress_bar.total = n_iter
-
-    def __call__(self):
-        """Callback method for the c++ bindings."""
-        if self.progress_bar is not None:
-            self.progress_bar.update(1)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.progress_bar is not None:
-            self.progress_bar.close()
-
-
-class CsetCallback(Callback):
-    """Callback for the connected sets process. see: Callback"""
-    def __init__(self, progress_bar, n_iter):
-        super().__init__(progress_bar, n_iter, "Finding connected sets")
-
-
-class TRAMCallback(Callback):
-    """Callback for the TRAM estimate process. Increments a progress bar and optionally saves iteration increments and
-    log likelihoods to a list."""
-    def __init__(self, progress_bar, n_iter, log_likelihoods_list=None, increments=None,
-                 save_convergence_info=False):
-        super().__init__(progress_bar, n_iter, "Running TRAM estimate")
-        self.log_likelihoods = log_likelihoods_list
-        self.increments = increments
-        self.save_convergence_info = save_convergence_info
-        self.last_increment = 0
-
-    def __call__(self, increment, log_likelihood):
-        super().__call__()
-
-        if self.save_convergence_info:
-            if self.log_likelihoods is not None:
-                self.log_likelihoods.append(log_likelihood)
-            if self.increments is not None:
-                self.increments.append(increment)
-
-        self.last_increment = increment
