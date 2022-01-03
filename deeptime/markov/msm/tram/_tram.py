@@ -1,11 +1,11 @@
 import warnings
 from typing import Optional
+from sklearn.exceptions import ConvergenceWarning
 
 from deeptime.markov.msm import MarkovStateModelCollection
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types, callbacks
-# from _tram_bindings import tram
 from deeptime.markov._tram_bindings import tram
 
 import numpy as np
@@ -33,15 +33,68 @@ def to_zero_padded_array(arrays, desired_shape):
     new_array = np.zeros((len(arrays), desired_shape))
     for i, array in enumerate(arrays):
         new_array[i, :len(array)] = array
-    return np.ascontiguousarray(new_array)
+    return new_array
 
 
 class TRAM(_MSMBaseEstimator):
-    r"""
+    r"""Transition(-based) Reweighting Analysis Method.
+    TRAM is described in :footcite:`wu2016multiensemble`.
+
     Parameters
     ----------
+    lagtime : int
+        Integer lag time at which transitions are counted.
+    count_mode : str
+        One of "sample", "sliding", "sliding-effective", and "effective".
+        * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
+        * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
+          large by a factor of :math:`\tau`; in uncertainty estimation this yields wrong uncertainties.
+        * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
+          likelihood that is the geometrical average over shifted subsamples of the trajectory,
+          :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to
+          the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
+        * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
+          Recommended when estimating Bayesian MSMs.
+    connectivity : str, optional, default='post_hoc_RE'
+        One of 'post_hoc_RE', 'BAR_variance', or 'summed_count_matrix'.
+        Defines what should be considered a connected set in the joint (product) space
+        of conformations and thermodynamic ensembles.
+        * 'post_hoc_RE' : It is required that every state in the connected set can be reached by following a
+          pathway of reversible transitions or jumping between overlapping thermodynamic states while staying in
+          the same Markov state. A reversible transition between two Markov states (within the same thermodynamic
+          state k) is a pair of Markov states that belong to the same strongly connected component of the count
+          matrix (from thermodynamic state k). Two thermodynamic states k and l are defined to overlap at Markov
+          state n if a replica exchange simulation [2]_ restricted to state n would show at least one transition
+          from k to l or one transition from from l to k. The expected number of replica exchanges is estimated from
+          the simulation data. The minimal number required of replica exchanges per Markov state can be increased by
+          decreasing `connectivity_factor`.
+        * 'BAR_variance' : like 'post_hoc_RE' but with a different condition to define the thermodynamic overlap
+          based on the variance of the BAR estimator [3]_. Two thermodynamic states k and l are defined to overlap
+          at Markov state n if the variance of the free energy difference Delta f_{kl} computed with BAR (and
+          restricted to conformations form Markov state n) is less or equal than one. The minimally required variance
+          can be controlled with `connectivity_factor`.
+        * 'summed_count_matrix' : all thermodynamic states are assumed to overlap. The connected set is then
+          computed by summing the count matrices over all thermodynamic states and taking it's largest strongly
+          connected set. Not recommended!
+    maxiter : int, optional, default=10000
+        The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
+    maxerr : float, optional, default=1E-15
+        Convergence criterion based on the maximal free energy change in a self-consistent
+        iteration step.
+    save_convergence_info : int, optional, default=0
+        Every saveConvergenceInfo iteration steps, store the actual increment and the actual log-likelihood; 0
+        means no storage.
+    connectivity_factor : float, optional, default=1.0
+        Only needed if connectivity='post_hoc_RE' or 'BAR_variance'. Values greater than 1.0 weaken the connectivity
+        conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
+        'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
+    progress_bar : object
+        Progress bar object that TRAM will call to indicate progress to the user.
+        Tested for a tqdm progress bar. Should implement update() and close() and have .total and .desc properties.
+
     References
     ----------
+    :footcite:`wu2016multiensemble`.
     """
 
     def __init__(
@@ -50,70 +103,10 @@ class TRAM(_MSMBaseEstimator):
             maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
             connectivity_factor: float = 1.0,
             progress_bar=None):
-        r"""Transition(-based) Reweighting Analysis Method
-        Parameters
-        ----------
-        lagtime : int
-            Integer lag time at which transitions are counted.
-        count_mode : str
-            One of "sample", "sliding", "sliding-effective", and "effective".
-            * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
-            * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
-              large by a factor of :math:`\tau`; in uncertainty estimation this yields wrong uncertainties.
-            * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
-              likelihood that is the geometrical average over shifted subsamples of the trajectory,
-              :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to
-              the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
-            * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
-              Recommended when estimating Bayesian MSMs.
-        connectivity : str, optional, default='post_hoc_RE'
-            One of 'post_hoc_RE', 'BAR_variance', or 'summed_count_matrix'.
-            Defines what should be considered a connected set in the joint (product) space
-            of conformations and thermodynamic ensembles.
-            * 'post_hoc_RE' : It is required that every state in the connected set can be reached by following a
-              pathway of reversible transitions or jumping between overlapping thermodynamic states while staying in
-              the same Markov state. A reversible transition between two Markov states (within the same thermodynamic
-              state k) is a pair of Markov states that belong to the same strongly connected component of the count
-              matrix (from thermodynamic state k). Two thermodynamic states k and l are defined to overlap at Markov
-              state n if a replica exchange simulation [2]_ restricted to state n would show at least one transition
-              from k to l or one transition from from l to k. The expected number of replica exchanges is estimated from
-              the simulation data. The minimal number required of replica exchanges per Markov state can be increased by
-              decreasing `connectivity_factor`.
-            * 'BAR_variance' : like 'post_hoc_RE' but with a different condition to define the thermodynamic overlap
-              based on the variance of the BAR estimator [3]_. Two thermodynamic states k and l are defined to overlap
-              at Markov state n if the variance of the free energy difference Delta f_{kl} computed with BAR (and
-              restricted to conformations form Markov state n) is less or equal than one. The minimally required variance
-              can be controlled with `connectivity_factor`.
-            * 'summed_count_matrix' : all thermodynamic states are assumed to overlap. The connected set is then
-              computed by summing the count matrices over all thermodynamic states and taking it's largest strongly
-              connected set. Not recommended!
-        maxiter : int, optional, default=10000
-            The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
-        maxerr : float, optional, default=1E-15
-            Convergence criterion based on the maximal free energy change in a self-consistent
-            iteration step.
-        save_convergence_info : int, optional, default=0
-            Every saveConvergenceInfo iteration steps, store the actual increment and the actual log-likelihood; 0
-            means no storage.
-        connectivity_factor : float, optional, default=1.0
-            Only needed if connectivity='post_hoc_RE' or 'BAR_variance'. Values greater than 1.0 weaken the connectivity
-            conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
-            'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
 
-        References
-        ----------
-        .. [1] Wu, H. et al 2016
-            Multiensemble Markov models of molecular thermodynamics and kinetics
-            Proc. Natl. Acad. Sci. USA 113 E3221--E3230
-        .. [2]_ Hukushima et al, Exchange Monte Carlo method and application to spin
-            glass simulations, J. Phys. Soc. Jan. 65, 1604 (1996)
-        .. [3]_ Shirts and Chodera, Statistically optimal analysis of samples
-            from multiple equilibrium states, J. Chem. Phys. 129, 124105 (2008)
-        """
         super(TRAM, self).__init__()
 
         self.lagtime = lagtime
-        assert count_mode == 'sliding', 'Currently the only implemented count_mode is \'sliding\''
         self.count_mode = count_mode
         self.connectivity = connectivity
         self.connectivity_factor = connectivity_factor
@@ -129,16 +122,15 @@ class TRAM(_MSMBaseEstimator):
         self.increments = []
 
     @property
-    def therm_state_energies(self) -> Optional:
+    def therm_state_energies(self) -> Optional[np.ndarray]:
         """ The estimated free energy per thermodynamic state, :math:`f_k`, where :math:`k` is the thermodynamic state
         index.
         """
         if self._tram_estimator is not None:
             return self._tram_estimator.therm_state_energies()
-        return None
 
     @property
-    def markov_state_energies(self):
+    def markov_state_energies(self) -> Optional[np.ndarray]:
         """ The estimated free energy for each Markov state, summed over all thermodynamic states, :math:`f^i`, where
         :math:`i` is the Markov state index.
         """
@@ -146,7 +138,7 @@ class TRAM(_MSMBaseEstimator):
             return self._tram_estimator.markov_state_energies()
 
     @property
-    def _transition_matrices(self):
+    def _transition_matrices(self) -> Optional[np.ndarray]:
         """The transition matrices returned by the TRAM estimator.
         This property is private because the transition matrices should be passed to the MEMM from which they will be
         accessible to the user."""
@@ -154,19 +146,29 @@ class TRAM(_MSMBaseEstimator):
             return self._tram_estimator.transition_matrices()
 
     @property
-    def _biased_conf_energies(self):
+    def _biased_conf_energies(self) -> Optional[np.ndarray]:
         if self._tram_estimator is not None:
             return self._tram_estimator.biased_conf_energies()
 
-    def get_sample_weights(self, markov_state=-1):
-        """ Get the sample weight :math:`\mu(x)` for all samples :math:`x`. If the Markov state is given, this will be
-        the weight of the sample in that Markov state, i.e. :math:`\mu^k(x)`. Otherwise, this gives the unbiased sample
-        weights.
-        The sample weights are the probability distribution over all samples, and the sum over all sample weights equals
-        one.
-        :math:`\mu(x) = (\sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] )^{-1}`
+    def compute_sample_weights(self, therm_state=-1):
+        """ Get the sample weight :math:`\mu(x)` for all samples :math:`x`. If the thermodynamic state index is >=0,
+        the sample weights for that thermodynamic state will be computed, i.e. :math:`\mu^k(x)`. Otherwise, this gives
+        the unbiased sample weights.
+
+        Parameters
+        ----------
+        therm_state: int, optional
+            The index of the thermodynamic state in which the sample weights need to be computed. If therm_state=-1,
+            the unbiased sample weights are computed.
+
+        Returns
+        -------
+        sample_weights: np.ndarray
+            The statistical weight of each sample (=the probability distribution over all samples. The sum over all
+            sample weights equals one.)
+            :math:`\mu(x) = (\sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] )^{-1}`
         """
-        return self._tram_estimator.get_sample_weights(markov_state)
+        return self._tram_estimator.get_sample_weights(therm_state)
 
     @property
     def log_likelihood(self):
@@ -211,7 +213,7 @@ class TRAM(_MSMBaseEstimator):
 
         dtrajs, state_counts, transition_counts = self._get_counts_from_largest_connected_set(ttrajs, dtrajs,
                                                                                               bias_matrices)
-        tram_input = tram.TRAM_input(state_counts, transition_counts, dtrajs, bias_matrices)
+        tram_input = tram.TRAMInput(state_counts, transition_counts, dtrajs, bias_matrices)
 
         self._tram_estimator = tram.TRAM(tram_input)
         self._run_estimation()
@@ -227,8 +229,9 @@ class TRAM(_MSMBaseEstimator):
             self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
 
             if callback.last_increment > self.maxerr:
-                print(
-                    f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_increment}")
+                warnings.warn(
+                    f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_increment}",
+                    ConvergenceWarning)
 
     def _preprocess(self, data):
         """Unpack the data tuple and validate the containing elements.
@@ -263,16 +266,19 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         ---------
-        dtrajs: object
+        dtrajs: list(ndarray(n)), int32
             the first element from the data tuple.
-        bias_matrices: object
+        bias_matrices: List(ndarray(n,m)), float64
             the second element from the data tuple.
-        ttrajs: object, optional
-            the third element from the data tuple, or None.
+        ttrajs: list(ndarray(n)), int32, or None
+            the third element from the data tuple, if present.
         """
         dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
         if ttrajs is not None and len(ttrajs) > 0:
+            if len(ttrajs) > 1:
+                raise ValueError("Unexpected number of arguments in data tuple.")
             ttrajs = ttrajs[0]
+
         return dtrajs, bias_matrices, ttrajs
 
     def _validate_input(self, ttrajs, dtrajs, bias_matrices):
@@ -305,7 +311,8 @@ class TRAM(_MSMBaseEstimator):
             The validated bias matrices converted to a list of contiguous numpy arrays.
         """
         # shape and type checks
-        assert len(dtrajs) == len(bias_matrices)
+        if len(dtrajs) != len(bias_matrices):
+            raise ValueError("Number of trajectories is not equal to the number of bias matrices.")
         for d in dtrajs:
             types.ensure_integer_array(d, ndim=1)
         for b in bias_matrices:
@@ -315,32 +322,38 @@ class TRAM(_MSMBaseEstimator):
         self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
 
         if ttrajs is None or len(ttrajs) == 0:
-            # ensure it's None. empty tuple will break the call to _tram_bindings
+            # ensure it's None. Leaving it an empty tuple will break the call to _tram_bindings
             ttrajs = None
             self.n_therm_states = len(dtrajs)
+        else:
+            self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
 
         # cast types and change axis order if needed
-        dtrajs = [np.require(d, dtype=np.intc, requirements='C') for d in dtrajs]
+        dtrajs = [np.require(d, dtype=np.int32, requirements='C') for d in dtrajs]
         bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in bias_matrices]
 
         # dimensionality checks
-        for d, b, in zip(dtrajs, bias_matrices):
-            assert d.shape[0] == b.shape[0]
+        for i, (d, b) in enumerate(zip(dtrajs, bias_matrices)):
+            if d.shape[0] != b.shape[0]:
+                raise ValueError(f"discrete trajectory {i} and bias matrix {i} should be of equal length.")
+
+            if b.shape[1] != self.n_therm_states:
+                raise ValueError(
+                    f"Second dimension of bias matrix {i} should be of size n_therm_states (={self.n_therm_states})")
 
         # If we were given ttrajs, do the same checks for those.
-        if ttrajs is not None and len(ttrajs) > 0:
-            self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
-
-            assert len(ttrajs) == len(dtrajs)
+        if ttrajs is not None:
+            if len(ttrajs) != len(dtrajs):
+                raise ValueError("number of ttrajs is not equal to number of dtrajs.")
 
             for t in ttrajs:
                 types.ensure_integer_array(t, ndim=1)
 
-            ttrajs = [np.require(t, dtype=np.intc, requirements='C') for t in ttrajs]
+            ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
 
-            for t, b in zip(ttrajs, bias_matrices):
-                assert t.shape[0] == b.shape[0]
-                assert b.shape[1] == self.n_therm_states
+            for i, (t, d) in enumerate(zip(ttrajs, dtrajs)):
+                if t.shape[0] != d.shape[0]:
+                    raise ValueError(f"ttraj {i} and dtraj {i} should be of equal length.")
 
         return ttrajs, dtrajs, bias_matrices
 
@@ -443,11 +456,11 @@ class TRAM(_MSMBaseEstimator):
 
             # get list of all possible transitions between thermodynamic states. A transition is only possible when two
             # thermodynamic states have an overlapping markov state. Whether the markov state overlaps depends on the
-            # sampled data and the connectivity settings and is computed in get_state_transitions:
+            # sampled data and the connectivity settings and is computed in find_state_transitions:
             if self.connectivity == 'post_hoc_RE':
-                connectivity_fn = tram.get_state_transitions_post_hoc_RE
+                connectivity_fn = tram.find_state_transitions_post_hoc_RE
             else:
-                connectivity_fn = tram.get_state_transitions_BAR_variance
+                connectivity_fn = tram.find_state_transitions_BAR_variance
 
             with callbacks.Callback(self.progress_bar, self.n_therm_states * self.n_markov_states,
                                     "Finding connected sets") as callback:

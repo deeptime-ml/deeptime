@@ -10,14 +10,14 @@ namespace deeptime::markov::tram {
 
 // a trajectory fragment consists of three indices. Fragment[0] is the trajectory index, fragment[1] the start index of
 // the fragment within a trajectory, and fragment[2] the end index of the fragment (exclusive).
-using Fragment = std::tuple<std::int32_t, std::int32_t, std::int32_t>;
+using Fragment = std::tuple<StateIndex, std::int32_t, std::int32_t>;
 using Fragments = std::vector<Fragment>;
 
 std::vector<Fragments> findTrajectoryFragmentIndices(const DTrajs &ttrajs, std::int32_t nThermStates) {
 
     std::vector<Fragments> fragments(nThermStates);
 
-    for (std::size_t i = 0; i < ttrajs.size(); ++i) {
+    for (StateIndex i = 0; i < ttrajs.size(); ++i) {
         // final index of the trajectory
         auto * begin = ttrajs[i].data();
         auto * end = begin + ttrajs[i].size();
@@ -28,7 +28,7 @@ std::vector<Fragments> findTrajectoryFragmentIndices(const DTrajs &ttrajs, std::
         // replica-exchange swap point
         auto * last = end;
 
-        std::int32_t thermState;
+        StateIndex thermState;
 
         while(first < end - 1) {
             thermState = *first;

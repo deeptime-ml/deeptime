@@ -8,7 +8,7 @@
 #include <cassert>
 #include <utility>
 #include "kahan_summation.h"
-#include "traminput.h"
+#include "tram_input.h"
 
 namespace deeptime::markov::tram {
 
@@ -122,7 +122,7 @@ public:
         return biasedConfEnergies_;
     }
 
-    const auto &transitionMatrices() {
+    const auto &transitionMatrices() const {
         return transitionMatrices_;
     }
 
@@ -201,7 +201,7 @@ public:
 
     // statistical weight per sample, \mu^k(x).
     // If thermState =-1, this is the unbiased statistical sample weight, \mu(x).
-    std::vector<std::vector<dtype>> sampleWeights(std::int32_t thermState) {
+    std::vector<std::vector<dtype>> computeSampleWeights(StateIndex thermState) {
         auto nTrajs = input_->nTrajectories();
         std::vector<std::vector<dtype>> sampleWeights(nTrajs);
 
@@ -209,7 +209,7 @@ public:
 
 #pragma omp parallel for default(none) firstprivate(nTrajs, thermState, tram) shared(sampleWeights)
         for (std::int32_t i = 0; i < nTrajs; ++i) {
-            sampleWeights[i] = sampleWeightsForTrajectory(i, thermState, tram);
+            sampleWeights[i] = computeSampleWeightsForTrajectory(i, thermState, tram);
         }
 
         return sampleWeights;
@@ -514,7 +514,7 @@ private:
         for (StateIndex i = 0; i < nMarkovStates_; ++i) {
             scratchM_[i] = -markovStateEnergiesBuf(i);
         }
-        dtype f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM_.get(), nMarkovStates_);
+        auto f0 = -numeric::kahan::logsumexp_sort_kahan_inplace(scratchM_.get(), nMarkovStates_);
 
         for (StateIndex i = 0; i < nMarkovStates_; ++i) {
             markovStateEnergiesBuf(i) -= f0;
@@ -535,13 +535,14 @@ private:
     // log likelihood of observing a sampled trajectory from the local equilibrium.
     // i.e. the sum over all sample weights from one trajectory.
     // -\sum_x \log{ \sum_l R_{i(x)}^l e^{-b^l(x)}}
+    // TODO find a better name for this
     dtype computeSampleLikelihood(std::size_t trajIndex) const {
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
         auto biasMatrix = input_->biasMatrix(trajIndex);
         auto dtraj = input_->dtraj(trajIndex);
 
-        std::vector<dtype> scratch;
-        scratch.reserve(nThermStates_);
+        std::vector<dtype> sampleLikelihoods;
+        sampleLikelihoods.reserve(nThermStates_);
 
         dtype logLikelihood = 0;
         for (auto x = 0; x < dtraj.size(); ++x) {
@@ -551,11 +552,12 @@ private:
             // compute the sample weight, mu(x)
             for (StateIndex k = 0; k < nThermStates_; ++k) {
                 if (modifiedStateCountsLogBuf(k, i) > 0) {
-                    scratch.push_back(modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k));
+                    sampleLikelihoods.push_back(modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k));
                 }
             }
 
-            logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(begin(scratch), end(scratch));
+            logLikelihood -= numeric::kahan::logsumexp_sort_kahan_inplace(begin(sampleLikelihoods),
+                                                                          end(sampleLikelihoods));
         }
         return logLikelihood;
     }
@@ -646,12 +648,14 @@ private:
                         transitionMatricesBuf(k, i, i) =
                                 (transitionMatricesBuf(k, i, i) + maxSum - scratch[i]) / maxSum;
                         if (0 == transitionMatricesBuf(k, i, i) && 0 < transitionCountsBuf(k, i, i)) {
-                            py::gil_scoped_acquire gil;
                             std::stringstream ss;
                             ss << "# Warning: zero diagonal element T[" << i << "," << i << "] with non-zero counts.";
-                            py::print(ss.str());
+                            #pragma omp critical
+                            {
+                                py::gil_scoped_acquire gil;
+                                py::print(ss.str());
+                            }
                         }
-
                     } else {
                         transitionMatricesBuf(k, i, j) = transitionMatricesBuf(k, i, j) / maxSum;
                     }
@@ -660,8 +664,8 @@ private:
         }
     }
 
-    auto sampleWeightsForTrajectory(std::size_t trajectoryIndex, std::int32_t thermStateIndex,
-                                    TRAM<dtype> *tram) const {
+    auto computeSampleWeightsForTrajectory(std::size_t trajectoryIndex, StateIndex thermStateIndex,
+                                           TRAM<dtype> *tram) const {
         // k = -1 for unbiased sample weights.
         std::vector<dtype> sampleWeights(tram->input_->dtraj(trajectoryIndex).size());
 

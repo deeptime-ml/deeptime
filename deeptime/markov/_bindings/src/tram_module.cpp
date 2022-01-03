@@ -20,21 +20,21 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 .def("therm_state_energies", &TRAM<double>::energiesPerThermodynamicState)
                 .def("markov_state_energies", &TRAM<double>::energiesPerMarkovState)
                 .def("log_likelihood", &TRAM<double>::computeLogLikelihood, py::call_guard<py::gil_scoped_release>())
-                .def("get_sample_weights", &TRAM<double>::sampleWeights, py::call_guard<py::gil_scoped_release>(),
+                .def("compute_sample_weights", &TRAM<double>::computeSampleWeights, py::call_guard<py::gil_scoped_release>(),
 			       	"therm_state_index"_a = -1);
 
-        py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(tramMod, "TRAM_input").def(
+        py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(tramMod, "TRAMInput").def(
                 py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, DTrajs, BiasMatrices<double>>(),
                 "state_counts"_a, "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a);
 
-        tramMod.def("get_state_transitions_post_hoc_RE",
+        tramMod.def("find_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
 		    py::call_guard<py::gil_scoped_release>(),
 		    py::return_value_policy::move,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a, "callback"_a);
 
-        tramMod.def("get_state_transitions_BAR_variance", &findStateTransitions<double, OverlapBarVariance<double>>,
+        tramMod.def("find_state_transitions_BAR_variance", &findStateTransitions<double, OverlapBarVariance<double>>,
 		    py::call_guard<py::gil_scoped_release>(),
 		    py::return_value_policy::move,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
