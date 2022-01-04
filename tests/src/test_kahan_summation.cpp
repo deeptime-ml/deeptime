@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include "kahan_summation.h"
+#include "deeptime/numeric/kahan_summation.h"
 
 using namespace deeptime;
 
