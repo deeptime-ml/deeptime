@@ -166,14 +166,17 @@ def compute_dtrajs_effective(dtrajs, lagtime: int, n_states: int, stride: Union[
 
 
 def compute_connected_sets(count_matrix, connectivity_threshold: float = 0, directed=True):
-    """ Computes the connected sets of a count matrix C.
+    r""" Computes the connected sets of a count matrix C.
 
-    C : (N, N) np.ndarray
+    Parameters
+    ----------
+    count_matrix : (N, N) np.ndarray
         count matrix
-    mincount_connectivity : float
+    connectivity_threshold : float, optional, default=0
         Minimum count required to be included in the connected set computation.
     directed : boolean
         True: Seek connected sets in the directed graph. False: Seek connected sets in the undirected graph.
+
     Returns
     -------
     A list of arrays, each array representing a connected set by enumerating the respective states. The list is in
