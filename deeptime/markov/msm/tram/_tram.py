@@ -129,7 +129,7 @@ class TRAM(_MSMBaseEstimator):
 
     def __init__(
             self, lagtime=1, count_mode='sliding',
-            connectivity='summed_counts_matrix',
+            connectivity='summed_count_matrix',
             maxiter=10000, maxerr: float = 1e-8, save_convergence_info=0,
             connectivity_factor: float = 1.0,
             progress_bar=None):

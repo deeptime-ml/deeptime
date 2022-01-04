@@ -282,14 +282,17 @@ class _ImmutableInputData:
             else:
                 raise InputFormatError(f'No input at all for fit(). Input was {args}, kw={kwargs}')
         value = args[0]
+
         if hasattr(value, 'setflags'):
             self._data.append(value)
         elif isinstance(value, (list, tuple)):
-            for i, x in enumerate(value):
+            from deeptime.util.types import deep_flatten
+            flat_data = deep_flatten(value)
+            for x in flat_data:
                 if isinstance(x, np.ndarray):
                     self._data.append(x)
                 else:
-                    raise InputFormatError(f'Invalid input element in position {i}, only numpy.ndarrays allowed.')
+                    raise InputFormatError(f'Invalid input element, only numpy.ndarrays allowed. Got: {x}')
         elif isinstance(value, (Model, Estimator)):
             self._data.append(value)
         else:

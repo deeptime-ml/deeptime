@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
-from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
 
@@ -249,9 +248,9 @@ def test_tram_estimate():
                         [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
     trajs = trajs / 5 * 3 - 1.5
 
-    dtrajs = [np.asarray(i, dtype=np.intc) for i in
-              [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
-               [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]]
+    dtrajs = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
+               [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]
+    dtrajs = [np.array(x, dtype=int) for x in dtrajs]
 
     bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
