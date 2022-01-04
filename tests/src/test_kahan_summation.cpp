@@ -109,12 +109,6 @@ TEST_CASE("logsumexp_sort_kahan_inplace", "[kahan_summation]") {
 }
 
 
-//struct mock_np_array : np_array_nfc<int> {
-//
-//};
-
-// TODO: create np_array mock object and test with that
-
 TEST_CASE("kdot") {
     SECTION("shape mismatch") {
         auto a = np_array_nfc<double>({3, 2});
@@ -176,7 +170,7 @@ TEST_CASE("kdot") {
         b.mutable_at(3, 0) = 1000000.;
 
         auto res = deeptime::numeric::kahan::kdot(a, b);
-        REQUIRE(Approx(res.at(0, 0)) == 1000000 * aBuf(0, 3) + 100 * aBuf(0, 2) + aBuf(0, 1));
-        REQUIRE(Approx(res.at(1, 0)) == aBuf(1, 1) + 100 * aBuf(1, 2) + 1000000 * aBuf(1, 3));
+        REQUIRE(res.at(0, 0) == 1000000 * aBuf(0, 3) + 100 * aBuf(0, 2) + aBuf(0, 1));
+        REQUIRE(res.at(1, 0) == aBuf(1, 1) + 100 * aBuf(1, 2) + 1000000 * aBuf(1, 3));
     }
 }

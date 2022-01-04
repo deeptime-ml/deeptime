@@ -303,3 +303,11 @@ def test_tram_fit_fetch():
                        [[0.7777777777777777, 0.22222222222222224], [0.12928535495314722, 0.8707146450468528]])
     model.select(2)
     assert np.allclose(tram.fetch_model().transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
+
+
+def test_unknown_connectivity():
+    tram = TRAM(connectivity='this_is_some_unknown_connectivity')
+    assert tram._connectivity_unknown()
+    dummy_data = np.zeros(10)
+    # fit should abort straightaway with a warning, and model will be None.
+    assert tram.fit_fetch(dummy_data) is None

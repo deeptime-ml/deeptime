@@ -11,8 +11,6 @@ from deeptime.markov.msm.tram._tram_bindings import tram
 import numpy as np
 import scipy as sp
 
-connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix"]
-
 
 def to_zero_padded_array(arrays, desired_shape):
     """Pad a list of numpy arrays with zeros to desired shape. Desired shape should be at least the size of the
@@ -111,11 +109,11 @@ class TRAM(_MSMBaseEstimator):
         self.lagtime = lagtime
         self.count_mode = count_mode
 
-        if connectivity not in connectivity_options:
-            warnings.warn(
-                f"connectivity type unknown. Data wil not be restricted to the largest connected set."
-                f"To find the largest connected set, choose one of the following connectivity types: {connectivity_options}")
         self.connectivity = connectivity
+        if self._connectivity_unknown():
+            warnings.warn(
+                f"connectivity type unknown. Connectivity must be one of {TRAM.connectivity_options} or None.")
+
         self.connectivity_factor = connectivity_factor
         self.n_markov_states = None
         self.n_therm_states = None
@@ -127,6 +125,8 @@ class TRAM(_MSMBaseEstimator):
         self._tram_estimator = None
         self.log_likelihoods = []
         self.increments = []
+
+    connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix"]
 
     @property
     def therm_state_energies(self) -> Optional[np.ndarray]:
@@ -179,6 +179,15 @@ class TRAM(_MSMBaseEstimator):
 
     @property
     def log_likelihood(self):
+        """The parameter-dependent part of the TRAM likelihood (eq. [9] in :footcite:`wu2016multiensemble`).
+
+        Returns
+        -------
+        log_likelihood : float
+            The parameter-dependent part of the log-likelihood:
+            :math:`\mathrm{log}\; \prod_{k=1}^K \left(\prod_{i,j} (p_{ij}^k)^{c_{ij}^k}\right) \left(\prod_{i} \prod_{x \in X_i^k} \mu(x) e^{f_i^k} \right)`
+            The factor :math:`\prod_{x \in X} e^{-b^{k(x)}(x)}` is left out since it is constant.
+        """
         # todo test this
         return self._tram_estimator.log_likelihood()
 
@@ -215,6 +224,13 @@ class TRAM(_MSMBaseEstimator):
               sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
               trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
         """
+        if self._connectivity_unknown():
+            warnings.warn(
+                f"connectivity type unknown. Connectivity must be one of {TRAM.connectivity_options} or None."
+                f"TRAM Estimation aborted."
+            )
+            return self
+
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
@@ -446,8 +462,8 @@ class TRAM(_MSMBaseEstimator):
         # make a counts model over all observed samples.
         full_counts_model = estimator.fit_fetch(dtrajs)
 
-        if self.connectivity not in connectivity_options:
-            warnings.warn(f"connectivity type unknown. Data has not been restricted to the largest connected set."
+        if self.connectivity is None:
+            warnings.warn(f"connectivity type is None. Data has not been restricted to the largest connected set."
                           f"The full counts model has been returned.")
             return full_counts_model
 
@@ -666,5 +682,8 @@ class TRAM(_MSMBaseEstimator):
             stationary_distributions.append(pi)
 
         return MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
-                                                 reversible=True, count_models=self.count_models,
-                                                 transition_matrix_tolerance=1e-8)
+                                          reversible=True, count_models=self.count_models,
+                                          transition_matrix_tolerance=1e-8)
+
+    def _connectivity_unknown(self):
+        return self.connectivity is not None and self.connectivity not in TRAM.connectivity_options
