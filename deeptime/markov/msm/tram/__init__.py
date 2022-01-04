@@ -1,2 +1,1 @@
-from ._tram import TRAM
-
+from ._tram import TRAM, unpack_input_tuple

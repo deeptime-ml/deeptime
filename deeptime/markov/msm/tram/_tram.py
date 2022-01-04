@@ -12,6 +12,32 @@ import numpy as np
 import scipy as sp
 
 
+def unpack_input_tuple(data):
+    """Get input from the data tuple. Data is of variable size.
+
+    Parameters
+    ----------
+    data: tuple(2) or tuple(3)
+        data[0] contains the dtrajs. data[1] the bias matrix, and data[2] may or may not contain the ttrajs.
+
+    Returns
+    ---------
+    dtrajs: list(ndarray(n)), int32
+        the first element from the data tuple.
+    bias_matrices: List(ndarray(n,m)), float64
+        the second element from the data tuple.
+    ttrajs: list(ndarray(n)), int32, or None
+        the third element from the data tuple, if present.
+    """
+    dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
+    if ttrajs is not None and len(ttrajs) > 0:
+        if len(ttrajs) > 1:
+            raise ValueError("Unexpected number of arguments in data tuple.")
+        ttrajs = ttrajs[0]
+
+    return dtrajs, bias_matrices, ttrajs
+
+
 def to_zero_padded_array(arrays, desired_shape):
     """Pad a list of numpy arrays with zeros to desired shape. Desired shape should be at least the size of the
     largest np array in the list.
@@ -273,36 +299,11 @@ class TRAM(_MSMBaseEstimator):
         bias_matrices: List(ndarray(n,m)), float64
             The validated bias matrices converted to a list of contiguous numpy arrays.
         """
-        dtrajs, bias_matrices, ttrajs = self._unpack_input(data)
+        dtrajs, bias_matrices, ttrajs = unpack_input_tuple(data)
 
         ttrajs, dtrajs, bias_matrices = self._validate_input(ttrajs, dtrajs, bias_matrices)
 
         return ttrajs, dtrajs, bias_matrices
-
-    def _unpack_input(self, data):
-        """ Get input from the data tuple. Data is of variable size.
-
-        Parameters
-        ----------
-        data: tuple(2) or tuple(3)
-            data[0] contains the dtrajs. data[1] the bias matrix, and data[2] may or may not contain the ttrajs.
-
-        Returns
-        ---------
-        dtrajs: list(ndarray(n)), int32
-            the first element from the data tuple.
-        bias_matrices: List(ndarray(n,m)), float64
-            the second element from the data tuple.
-        ttrajs: list(ndarray(n)), int32, or None
-            the third element from the data tuple, if present.
-        """
-        dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
-        if ttrajs is not None and len(ttrajs) > 0:
-            if len(ttrajs) > 1:
-                raise ValueError("Unexpected number of arguments in data tuple.")
-            ttrajs = ttrajs[0]
-
-        return dtrajs, bias_matrices, ttrajs
 
     def _validate_input(self, ttrajs, dtrajs, bias_matrices):
         """ Check type and shape of input to ensure it can be handled by the _tram_bindings module.

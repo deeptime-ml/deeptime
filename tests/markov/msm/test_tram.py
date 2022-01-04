@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from deeptime.markov.msm.tram import TRAM
+from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
 from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
@@ -227,22 +227,20 @@ def test_get_trajectory_fragments_no_ttrajs(dtrajs, ttrajs, expected):
 
 
 def test_unpack_input():
-    tram = TRAM()
     arr = np.zeros(10)
     try:
-        dtrajs, biases, ttrajs = tram._unpack_input((arr, arr, arr))
+        dtrajs, biases, ttrajs = unpack_input_tuple((arr, arr, arr))
         assert np.array_equal(dtrajs, arr) and np.array_equal(biases, arr) and np.array_equal(ttrajs, arr)
-        dtrajs, biases, ttrajs = tram._unpack_input((arr, arr))
+        dtrajs, biases, ttrajs = unpack_input_tuple((arr, arr))
         assert np.array_equal(dtrajs, arr) and np.array_equal(biases, arr) and len(ttrajs) == 0
     except IndexError:
         pytest.fail("IndexError while unpacking input!")
 
 
 def test_unpack_input():
-    tram = TRAM()
     arr = np.zeros(10)
     with pytest.raises(ValueError) as exinfo:
-        tram._unpack_input((arr, arr, arr, arr))
+        unpack_input_tuple((arr, arr, arr, arr))
         assert 'Unexpected number of arguments' in exinfo.value
 
 
