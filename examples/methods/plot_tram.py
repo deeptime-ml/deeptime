@@ -1,11 +1,18 @@
+"""
+TRAM on a 1D double well
+=============================
+This example shows how to use the transition-based reweighting analysis method (TRAM) to estimate the free energies
+and Markov model of a simple double-well potential, sampled using umbrella sampling.
+
+For more information see the `TRAM tutorial <../notebooks/tram.ipynb>`__.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 from deeptime.data import tmatrix_metropolis1d
 from deeptime.markov.msm import TRAM, MarkovStateModel
-from deeptime.clustering import KMeans
-
-from timeit import default_timer as timer
+from deeptime.clustering import KMeansModel
 
 xs = np.linspace(-1.5, 1.5, num=100)
 n_samples = 10000
@@ -13,7 +20,7 @@ bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
 
 def harmonic(x0, x):
-    return 0.1 * (x - x0) ** 2
+    return 2 * (x - x0) ** 4
 
 
 def plot_contour_with_colourbar(data, vmin=None, vmax=None):
@@ -39,7 +46,7 @@ def sample_trajectories(bias_functions):
     trajs = np.zeros((len(bias_centers), n_samples), dtype=np.int32)
 
     for i, bias in enumerate(bias_functions):
-        biased_energies = 1 / 8 * (xs - 1) ** 6 * (xs + 1) ** 6 + bias(xs)
+        biased_energies = (xs - 1) ** 4 * (xs + 1) ** 4 - 0.1 * xs + bias(xs)
 
         biased_energies /= np.max(biased_energies)
         transition_matrix = tmatrix_metropolis1d(biased_energies)
@@ -49,7 +56,7 @@ def sample_trajectories(bias_functions):
     return trajs
 
 
-def main():
+if __name__ == "__main__":
     bias_functions = get_bias_functions()
     trajectories = sample_trajectories(bias_functions)
 
@@ -61,33 +68,17 @@ def main():
         for j, bias_function in enumerate(bias_functions):
             bias_matrices[i, :, j] = bias_function(traj)
 
+    # discretize the trajectories into two Markov states (centered around the two wells)
+    clustering = KMeansModel(cluster_centers=np.asarray([-0.75, 0.75]), metric='euclidean')
 
-    estimator = KMeans(
-        n_clusters=2,  # place 100 cluster centers
-        init_strategy='uniform',  # uniform initialization strategy
-        max_iter=0,  # don't actually perform the optimization, just place centers
-        fixed_seed=13,
-        n_jobs=8
-    )
-
-    clustering = estimator.fit_fetch(trajectories.flatten())
     dtrajs = clustering.transform(trajectories.flatten()).reshape(
         (len(bias_matrices), n_samples))
 
-    from tqdm import tqdm
-    progress_bar = tqdm()
-    tram = TRAM(lagtime=1, connectivity="post_hoc_RE", connectivity_factor=1, maxiter=100, progress_bar=progress_bar)
+    tram = TRAM(lagtime=1, connectivity="post_hoc_RE", connectivity_factor=1, maxiter=100)
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
     # Umbrella/Hamiltonian/temperature).
-    t0 = timer()
     model = tram.fit_fetch((dtrajs, bias_matrices))
-    t1 = timer()
-    print(t1-t0)
 
     plot_contour_with_colourbar(tram._biased_conf_energies)
-
-
-if __name__ == "__main__":
-    main()
