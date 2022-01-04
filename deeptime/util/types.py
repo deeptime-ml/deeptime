@@ -8,16 +8,6 @@ from scipy.sparse import spmatrix, issparse
 from .data import TimeLaggedDataset, TrajectoryDataset, TrajectoriesDataset
 
 
-def deep_flatten(collection):
-    """Yield items from any nested iterable; see `https://stackoverflow.com/a/40857703/2871028`."""
-    for x in collection:
-        if isinstance(x, (list, tuple)):
-            for sub_x in deep_flatten(x):
-                yield sub_x
-        else:
-            yield x
-
-
 def atleast_nd(ary, ndim, pos=0):
     r"""View input as array with at least `ndim` dimensions.
     New unit dimensions are inserted at the index given by `pos` if

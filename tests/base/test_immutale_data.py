@@ -55,7 +55,7 @@ class TestImmutableData(unittest.TestCase):
             self.est.fit(data)
 
     def test_illegal_input_element(self):
-        data = [np.ones(1), np.ones(1), (np.arange(2), )]
+        data = [np.ones(1), np.ones(1), (np.arange(2), -1)]
         with self.assertRaises(InputFormatError):
             self.est.fit(data)
 
