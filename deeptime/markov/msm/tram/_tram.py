@@ -210,7 +210,7 @@ class TRAM(_MSMBaseEstimator):
 
         .. math:: \mu(x) = \left( \sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] \right)^{-1}
         """
-        return self._tram_estimator.get_sample_weights(therm_state)
+        return self._tram_estimator.compute_sample_weights(therm_state)
 
     @property
     def log_likelihood(self):
