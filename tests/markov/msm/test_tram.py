@@ -238,6 +238,14 @@ def test_unpack_input():
         pytest.fail("IndexError while unpacking input!")
 
 
+def test_unpack_input():
+    tram = TRAM()
+    arr = np.zeros(10)
+    with pytest.raises(ValueError) as exinfo:
+        tram._unpack_input((arr, arr, arr, arr))
+        assert 'Unexpected number of arguments' in exinfo.value
+
+
 def test_tram_estimate():
     trajs = np.asarray([[0, 1, 1, 1, 1, 2, 2, 1, 0, 0], [1, 2, 3, 2, 2, 1, 0, 1, 2, 2], [2, 1, 2, 3, 2, 3, 3, 4, 3, 3],
                         [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
