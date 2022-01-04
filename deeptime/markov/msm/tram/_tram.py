@@ -201,7 +201,7 @@ class TRAM(_MSMBaseEstimator):
             sample weights equals one.)
             :math:`\mu(x) = (\sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] )^{-1}`
         """
-        return self._tram_estimator.get_sample_weights(therm_state)
+        return self._tram_estimator.compute_sample_weights(therm_state)
 
     @property
     def log_likelihood(self):

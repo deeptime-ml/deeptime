@@ -54,6 +54,7 @@ over the encountered state transitions. This is covered in `transition counting 
     notebooks/mlmsm
     notebooks/pcca
     notebooks/tpt
+    notebooks/tram
 
 Furthermore, deeptime implements :class:`Augmented Markov models <deeptime.markov.msm.AugmentedMSMEstimator>`
 :footcite:`olsson2017combining` which can be used when experimental data is available, as well as
