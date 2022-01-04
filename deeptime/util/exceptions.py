@@ -33,5 +33,3 @@ class NotConvergedWarning(RuntimeWarning):
 
 class NotConvergedError(RuntimeError):
     pass
-
-

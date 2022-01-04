@@ -11,7 +11,7 @@ from scipy.optimize import fmin_l_bfgs_b
 from scipy.special import exprel
 
 from deeptime.util.exceptions import NotConvergedWarning, NotConvergedError
-from ...kahandot import kdot, ksum
+from deeptime.numeric import kdot, ksum
 from ...estimation import transition_matrix
 from ...analysis import stationary_distribution
 

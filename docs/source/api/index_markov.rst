@@ -16,6 +16,7 @@ Estimators
 
     msm.MaximumLikelihoodMSM
     msm.BayesianMSM
+    msm.TRAM
 
 
 Models

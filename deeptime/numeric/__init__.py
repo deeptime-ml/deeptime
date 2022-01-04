@@ -36,3 +36,5 @@ from ._utils import drop_nan_rows, is_diagonal_matrix, is_square_matrix, is_sort
 from ._eigen import eigs, eig_corr, sort_eigs, spd_eig, spd_truncated_svd, \
     spd_inv, spd_inv_split, spd_inv_sqrt, ZeroRankError
 from ._norm import schatten_norm
+
+from ._numeric_bindings import kdot, ksum, logsumexp_pair #, logsumexp_kahan_inplace, logsumexp_sort_kahan_inplace

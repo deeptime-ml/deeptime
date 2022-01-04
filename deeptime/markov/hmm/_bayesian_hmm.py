@@ -504,7 +504,7 @@ class BayesianHMM(Estimator):
 
         Returns
         -------
-        n : ndarray(nstates)
+        n : ndarray(n_hidden_states)
             n[i] is the number of trajectories starting in state i
 
         """

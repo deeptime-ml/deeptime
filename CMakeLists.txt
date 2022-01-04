@@ -15,19 +15,21 @@ if(OpenMP_FOUND)
 endif()
 
 if(MSVC)
-    add_compile_options(/EHsc /bigobj /permissive-)
+    add_compile_options(/W3 /EHsc /bigobj /permissive- /std:c++17)
 endif()
 
 find_package(pybind11 REQUIRED)
 
 add_subdirectory(deeptime/src)
+
+add_subdirectory(deeptime/numeric/_bindings)
 add_subdirectory(deeptime/data)
 add_subdirectory(deeptime/covariance/util/covar_c)
 add_subdirectory(deeptime/clustering)
 add_subdirectory(deeptime/basis)
 add_subdirectory(deeptime/markov/_bindings)
 add_subdirectory(deeptime/markov/hmm/_bindings)
-add_subdirectory(deeptime/markov/tools/kahandot)
+add_subdirectory(deeptime/markov/msm/tram/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/dense/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/sparse/_bindings)
 

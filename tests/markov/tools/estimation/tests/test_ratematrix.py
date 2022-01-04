@@ -2,7 +2,7 @@ import deeptime.markov.tools.estimation
 import deeptime.markov.tools.estimation.dense.ratematrix
 import numpy as np
 import scipy as sp
-from deeptime.markov.tools import kahandot
+from deeptime.numeric import kdot
 import unittest
 import deeptime.markov.tools
 import warnings
@@ -15,7 +15,7 @@ class TestLowlevelNumerics(unittest.TestCase):
         d2 = np.random.randint(1, high=100)
         a = np.random.randn(d0, d1)
         b = np.random.randn(d1, d2)
-        kab = kahandot.kdot(a, b)
+        kab = kdot(a, b)
         np.testing.assert_allclose(kab, a.dot(b))
 
 
