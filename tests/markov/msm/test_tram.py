@@ -266,13 +266,7 @@ def test_tram_estimate():
             bias_matrices[i][:, j] = bias(traj)
 
     tram = TRAM(maxiter=100, save_convergence_info=True)
-    state_counts = np.asarray([[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]], dtype=np.intc)
-    transition_counts = np.asarray(
-        [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]], dtype=np.intc)
-    tram_input = bindings.TRAMInput(state_counts, transition_counts, dtrajs, bias_matrices)
-
-    tram._tram_estimator = bindings.TRAM(tram_input)
-    tram._run_estimation()
+    tram.fit((dtrajs, bias_matrices))
 
 
 def test_tram_fit_fetch():
