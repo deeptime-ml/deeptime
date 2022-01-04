@@ -137,18 +137,15 @@ BiasPairs<dtype> getBiasPairs(const std::vector<Index2D> &sampleIndices, StateIn
     BiasPairs<dtype> biasPairs;
     biasPairs.reserve(sampleIndices.size());
 
-//    TODO: try to fix this???? ask mho
-using BiasMatrixBuffer = decltype((*biasMatrices)[0].template unchecked<2>());
-std::vector<std::unique_ptr<BiasMatrixBuffer>> biasMatrixBuffers;
-biasMatrixBuffers.reserve(biasMatrices->size());
+    using BiasMatrixBuffer = decltype((*biasMatrices)[0].template unchecked<2>());
+    std::vector<std::unique_ptr<BiasMatrixBuffer>> biasMatrixBuffers;
+    biasMatrixBuffers.reserve(biasMatrices->size());
 
     std::transform(biasMatrices->begin(), biasMatrices->end(), std::back_inserter(biasMatrixBuffers),
                    [](const auto &biasMatrix) { return std::make_unique<BiasMatrixBuffer>(biasMatrix.template unchecked<2>()); });
 
     for (std::size_t i = 0; i < sampleIndices.size(); ++i) {
         auto[j, n] =  sampleIndices[i];
-//        biasPairs.emplace_back((*biasMatrices)[j].template unchecked<2>()(n, k),
-//                               (*biasMatrices)[j].template unchecked<2>()(n, l));
         biasPairs.emplace_back((*biasMatrixBuffers[j])(n, k), (*biasMatrixBuffers[j])(n, l));
 
     }

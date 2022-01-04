@@ -201,7 +201,7 @@ public:
     // statistical weight per sample, \mu^k(x).
     // If thermState =-1, this is the unbiased statistical sample weight, \mu(x).
     std::vector<std::vector<dtype>> computeSampleWeights(StateIndex thermState) {
-        auto nTrajs = input_->nTrajectories();
+        auto nTrajs = static_cast<std::int32_t>(input_->nTrajectories());
         std::vector<std::vector<dtype>> sampleWeights(nTrajs);
 
         auto *tram = this;
@@ -663,7 +663,8 @@ private:
         }
     }
 
-    static auto computeSampleWeightsForTrajectory(std::size_t trajectoryIndex, StateIndex thermStateIndex,
+    template <typename TrajectoryIndex>
+    static auto computeSampleWeightsForTrajectory(TrajectoryIndex trajectoryIndex, StateIndex thermStateIndex,
                                            TRAM<dtype> *tram) {
         // k = -1 for unbiased sample weights.
         std::vector<dtype> sampleWeights(tram->input_->dtraj(trajectoryIndex).size());

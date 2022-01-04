@@ -17,7 +17,7 @@ std::vector<Fragments> findTrajectoryFragmentIndices(const DTrajs &ttrajs, std::
 
     std::vector<Fragments> fragments(nThermStates);
 
-    for (StateIndex i = 0; i < ttrajs.size(); ++i) {
+    for (std::size_t i = 0; i < ttrajs.size(); ++i) {
         // final index of the trajectory
         auto * begin = ttrajs[i].data();
         auto * end = begin + ttrajs[i].size();
