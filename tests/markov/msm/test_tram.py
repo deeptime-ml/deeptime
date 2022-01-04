@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
-from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
+
 
 class TramEstimatorMock:
     def __init__(self, n_therm_states, n_markov_states):
@@ -237,11 +237,10 @@ def test_unpack_input():
         pytest.fail("IndexError while unpacking input!")
 
 
-def test_unpack_input():
+def test_unpack_input_too_many_values():
     arr = np.zeros(10)
-    with pytest.raises(ValueError) as exinfo:
+    with np.testing.assert_raises(ValueError):
         unpack_input_tuple((arr, arr, arr, arr))
-        assert 'Unexpected number of arguments' in exinfo.value
 
 
 def test_tram_estimate():
@@ -249,14 +248,15 @@ def test_tram_estimate():
                         [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
     trajs = trajs / 5 * 3 - 1.5
 
-    dtrajs = [np.asarray(i, dtype=np.intc) for i in [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
-                         [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]]
+    dtrajs = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
+               [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]
+    dtrajs = [np.array(x, dtype=int) for x in dtrajs]
 
     bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
     def harmonic(x0, x):
         return 0.1 * (x - x0) ** 2
-    
+
     # construct bias matric using harmonic potentials
     bias_matrices = [np.zeros((len(traj), len(bias_centers)), dtype=np.float64) for traj in dtrajs]
     for i, traj in enumerate(trajs):
@@ -265,13 +265,7 @@ def test_tram_estimate():
             bias_matrices[i][:, j] = bias(traj)
 
     tram = TRAM(maxiter=100, save_convergence_info=True)
-    state_counts = np.asarray([[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]], dtype=np.intc)
-    transition_counts = np.asarray(
-        [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]], dtype=np.intc)
-    tram_input = bindings.TRAMInput(state_counts, transition_counts, dtrajs, bias_matrices)
-
-    tram._tram_estimator = bindings.TRAM(tram_input)
-    tram._run_estimation()
+    tram.fit((dtrajs, bias_matrices))
 
 
 def test_tram_fit_fetch():
@@ -312,8 +306,5 @@ def test_tram_fit_fetch():
 
 
 def test_unknown_connectivity():
-    tram = TRAM(connectivity='this_is_some_unknown_connectivity')
-    assert tram._connectivity_unknown()
-    dummy_data = np.zeros(10)
-    # fit should abort straightaway with a warning, and model will be None.
-    assert tram.fit_fetch(dummy_data) is None
+    with np.testing.assert_raises(ValueError):
+        TRAM(connectivity='this_is_some_unknown_connectivity')
