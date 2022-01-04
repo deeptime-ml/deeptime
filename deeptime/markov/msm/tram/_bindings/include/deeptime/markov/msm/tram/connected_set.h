@@ -137,9 +137,20 @@ BiasPairs<dtype> getBiasPairs(const std::vector<Index2D> &sampleIndices, StateIn
     BiasPairs<dtype> biasPairs;
     biasPairs.reserve(sampleIndices.size());
 
+//    TODO: try to fix this???? ask mho
+using BiasMatrixBuffer = decltype((*biasMatrices)[0].template unchecked<2>());
+std::vector<std::unique_ptr<BiasMatrixBuffer>> biasMatrixBuffers;
+biasMatrixBuffers.reserve(biasMatrices->size());
+
+    std::transform(biasMatrices->begin(), biasMatrices->end(), std::back_inserter(biasMatrixBuffers),
+                   [](const auto &biasMatrix) { return std::make_unique<BiasMatrixBuffer>(biasMatrix.template unchecked<2>()); });
+
     for (std::size_t i = 0; i < sampleIndices.size(); ++i) {
         auto[j, n] =  sampleIndices[i];
-        biasPairs.emplace_back((*biasMatrices)[j].unchecked()(n, k), (*biasMatrices)[j].unchecked()(n, l));
+//        biasPairs.emplace_back((*biasMatrices)[j].template unchecked<2>()(n, k),
+//                               (*biasMatrices)[j].template unchecked<2>()(n, l));
+        biasPairs.emplace_back((*biasMatrixBuffers[j])(n, k), (*biasMatrixBuffers[j])(n, l));
+
     }
     return biasPairs;
 }
@@ -176,13 +187,13 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
 
     // get the number of threads (if multithreading)
     int nThreads = 1;
-    #if defined(USE_OPENMP)
-        #pragma omp parallel default(none) shared(nThreads)
-        {
-            #pragma omp master
-            nThreads = omp_get_num_threads();
-        }
-    #endif
+#if defined(USE_OPENMP)
+#pragma omp parallel default(none) shared(nThreads)
+    {
+#pragma omp master
+        nThreads = omp_get_num_threads();
+    }
+#endif
 
     // save results in one vector per thread. Concatenate them at the end.
     std::vector<IndexList> thermStateIndicesFromPerThread(nThreads);
@@ -194,18 +205,18 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     auto biasMatricesPtr = &biasMatrices;
     auto stateCountsBuf = stateCounts.template unchecked<2>();
 
-    #pragma omp parallel default(none) firstprivate(nMarkovStates, nThermStates, ttrajsPtr, dtrajsPtr, biasMatricesPtr, stateCountsBuf, connectivityFactor, callback) shared(thermStateIndicesFromPerThread, thermStateIndicesToPerThread)
+#pragma omp parallel default(none) firstprivate(nMarkovStates, nThermStates, ttrajsPtr, dtrajsPtr, biasMatricesPtr, stateCountsBuf, connectivityFactor, callback) shared(thermStateIndicesFromPerThread, thermStateIndicesToPerThread)
     {
         IndexList thermStateIndicesFrom;
         IndexList thermStateIndicesTo;
 
         int threadNumber = 0;
-        #if defined(USE_OPENMP)
-            threadNumber = omp_get_thread_num();
-        #endif
+#if defined(USE_OPENMP)
+        threadNumber = omp_get_thread_num();
+#endif
 
         // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
-        #pragma omp for
+#pragma omp for
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
 
             // Get all indices in all trajectories of all samples that were binned in markov state i.
@@ -216,7 +227,7 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
             for (StateIndex k = 0; k < nThermStates; ++k) {
                 // callback for incrementing a progress bar
                 if (callback != nullptr) {
-                    #pragma omp critical
+#pragma omp critical
                     {
                         py::gil_scoped_acquire guard;
                         (*callback)();

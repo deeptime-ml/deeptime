@@ -1,7 +1,7 @@
 #include <pybind11/embed.h>
 #include <catch2/catch.hpp>
 
-#include "../../deeptime/markov/msm/tram/_bindings/include/tram.h"
+#include "deeptime/markov/msm/tram/tram.h"
 
 TEST_CASE("ExchangeableArray", "[tram]") {
     using namespace deeptime::markov::tram;
