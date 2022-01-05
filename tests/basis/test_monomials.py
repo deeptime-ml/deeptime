@@ -18,7 +18,7 @@ def ncr(n, r):
 @pytest.mark.parametrize('input_features', [None, ['y']])
 def test_feature_names(input_features):
     mon = Monomials(3, 1)
-    feature_names = mon.get_feature_names_out(input_features=input_features)
+    feature_names = mon.get_feature_names(input_features=input_features)
     feat = 'x0' if input_features is None else input_features[0]
     assert_('' in feature_names)
     assert_(f'{feat}' in feature_names)

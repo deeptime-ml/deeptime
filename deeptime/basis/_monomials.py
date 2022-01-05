@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
@@ -73,7 +73,11 @@ class Monomials(Observable):
             raise ValueError(f"Input had the wrong dimension {x.shape[1]}, this basis requires {self.d}.")
         return _eval(self.p, x.T, self._power_matrix).T
 
-    def get_feature_names_out(self, input_features=None) -> List[str]:
+    def get_feature_names(self, input_features: Optional[List[str]] = None) -> List[str]:
+        r""" See :meth:`get_feature_names_out`. """
+        return self.get_feature_names_out(input_features=input_features)
+
+    def get_feature_names_out(self, input_features: Optional[List[str]] = None) -> List[str]:
         r""" Yields a list of feature names, optionally given input feature names.
 
         Parameters
