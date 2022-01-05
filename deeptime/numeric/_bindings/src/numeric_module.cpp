@@ -1,5 +1,5 @@
 
-#include "deeptime/numeric/kahan_summation.h"
+#include <deeptime/numeric/kahan_summation.h>
 
 PYBIND11_MODULE(_numeric_bindings, m) {
     using namespace deeptime::numeric;

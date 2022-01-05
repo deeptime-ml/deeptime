@@ -26,8 +26,8 @@ def test_feature_names(input_features):
     assert_(f'{feat}^3' in feature_names)
 
     identity = Identity()
-    assert_("z" in identity.get_feature_names(["z"]))
-    assert_("x" in identity.get_feature_names())
+    assert_("z" in identity.get_feature_names_out(["z"]))
+    assert_("x" in identity.get_feature_names_out())
 
 
 @pytest.mark.parametrize("degree", [2, 4, 5], ids=lambda x: f"degree={x}")

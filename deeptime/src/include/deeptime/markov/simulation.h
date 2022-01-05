@@ -14,11 +14,18 @@ namespace deeptime::markov {
 
 template<typename dtype>
 np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, const py::object& stop, long seed) {
-    std::unique_ptr<py::gil_scoped_release> gil;
+    np_array<int> result (static_cast<py::ssize_t>(N));
     auto nStates = P.shape(0);
-
-    np_array<int> result (N);
     auto* data = result.mutable_data(0);
+
+    std::vector<int> stopState;
+    bool hasStop = false;
+    if(!stop.is_none()) {
+        stopState = py::cast<std::vector<int>>(stop);
+        hasStop = true;
+    }
+
+    py::gil_scoped_release gilRelease;
 
     data[0] = start;
     if (seed == -1) {
@@ -29,13 +36,6 @@ np_array<int> trajectory(std::size_t N, int start, const np_array<dtype> &P, con
     std::discrete_distribution<> ddist;
 
     const dtype* pPtr = P.data();
-
-    std::vector<int> stopState;
-    bool hasStop = false;
-    if(!stop.is_none()) {
-        stopState = py::cast<std::vector<int>>(stop);
-        hasStop = true;
-    }
 
     if(!hasStop) {
         for (std::size_t t = 1; t < N; ++t) {
