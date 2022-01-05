@@ -3,7 +3,6 @@ import pytest
 from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
 from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
-from deeptime.markov.msm import MarkovStateModelCollection
 
 
 class TramEstimatorMock:
@@ -165,21 +164,6 @@ def test_transposed_count_matrices_bug(input):
                           [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]])
 
 
-def test_to_markov_model():
-    tram = TRAM()
-    tram.n_markov_states = 3
-    tram.n_therm_states = 2
-    tram._tram_estimator = TramEstimatorMock(tram.n_therm_states, tram.n_markov_states)
-    transition_counts = np.zeros((2, 3, 3))
-    tram.count_models = [TransitionCountModel(counts) for counts in transition_counts]
-    model = tram._construct_markov_model()
-    assert isinstance(model, MarkovStateModelCollection)
-    assert (model.transition_matrix == tram._transition_matrices[0]).all()
-    assert model.n_connected_msms == tram.n_therm_states
-    model.select(1)
-    assert (model.transition_matrix == tram._transition_matrices[1]).all()
-
-
 @pytest.mark.parametrize(
     "test_input,expected",
     [([[0, 0, 0, 1, 0, 0, 0], [1, 0, 1, 1, 1, 1]], [[(0, 0, 3), (0, 3, 7), (1, 0, 2)], [(1, 2, 6)]]),
@@ -269,13 +253,13 @@ def test_tram_fit():
 
     tram = TRAM(maxiter=100, save_convergence_info=True)
 
-    therm_energies_1 = tram.fit((dtrajs, bias_matrices)).therm_state_energies
-    therm_energies_2 = tram.fit((dtrajs, bias_matrices, ttrajs)).therm_state_energies
+    therm_energies_1 = tram.fit_fetch((dtrajs, bias_matrices)).therm_state_energies
+    therm_energies_2 = tram.fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_1 == therm_energies_2).all()
 
     # changing one ttrajs element should result in a change of the output
     ttrajs[0][2] = 1
-    therm_energies_3 = tram.fit((dtrajs, bias_matrices, ttrajs)).therm_state_energies
+    therm_energies_3 = tram.fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_3 != therm_energies_1).any()
 
 
@@ -302,22 +286,22 @@ def test_tram_integration():
     tram = TRAM(maxiter=100, connectivity='summed_count_matrix', save_convergence_info=True)
     assert tram.log_likelihood is None
 
-    tram.fit((dtrajs, bias_matrices))
+    model = tram.fit_fetch((dtrajs, bias_matrices))
 
     # energies are identical. so are count matrices. and transition matrices
-    assert np.allclose(tram.therm_state_energies, [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
-    assert np.allclose(tram.markov_state_energies, [1.0550639, 0.42797176])
+    assert np.allclose(model.therm_state_energies, [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
+    assert np.allclose(model.markov_state_energies, [1.0550639, 0.42797176])
 
-    model = tram.fetch_model()
-    assert np.allclose(model.stationary_distribution, [1.])
-    model.select(1)
-    assert np.allclose(tram.fetch_model().stationary_distribution, [0.3678024695571382, 0.6321975304428619])
-    assert np.allclose(tram.fetch_model().transition_matrix,
+    MEMM = model.markov_state_model_collection()
+    assert np.allclose(MEMM.stationary_distribution, [1.])
+    MEMM.select(1)
+    assert np.allclose(MEMM.stationary_distribution, [0.3678024695571382, 0.6321975304428619])
+    assert np.allclose(MEMM.transition_matrix,
                        [[0.7777777777777777, 0.22222222222222224], [0.12928535495314722, 0.8707146450468528]])
-    model.select(2)
-    assert np.allclose(tram.fetch_model().transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
+    MEMM.select(2)
+    assert np.allclose(MEMM.transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
 
-    weights = tram.compute_sample_weights()
+    weights = model.compute_sample_weights()
     assert np.allclose(np.sum(weights), 1)
     assert tram.log_likelihood < 0
 
