@@ -19,13 +19,16 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 .def("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
                 .def("therm_state_energies", &TRAM<double>::energiesPerThermodynamicState)
                 .def("markov_state_energies", &TRAM<double>::energiesPerMarkovState)
-                .def("log_likelihood", &TRAM<double>::computeLogLikelihood, py::call_guard<py::gil_scoped_release>())
-                .def("compute_sample_weights", &TRAM<double>::computeSampleWeights, py::call_guard<py::gil_scoped_release>(),
-			       	"therm_state_index"_a = -1);
+                .def("log_likelihood", &TRAM<double>::computeLogLikelihood, py::call_guard<py::gil_scoped_release>());
+
 
         py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(tramMod, "TRAMInput").def(
                 py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, DTrajs, BiasMatrices<double>>(),
                 "state_counts"_a, "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a);
+
+        tramMod.def("compute_sample_weights", &computeSampleWeights<double>, py::call_guard<py::gil_scoped_release>(),
+                    "therm_state_index"_a = -1, "dtrajs"_a, "biasMatrices"_a, "thermStateEnergies"_a,
+                    "modifiedStateCountsLog"_a);
 
         tramMod.def("find_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,

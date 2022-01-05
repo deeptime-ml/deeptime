@@ -2,7 +2,7 @@ import warnings
 from typing import Optional
 from sklearn.exceptions import ConvergenceWarning
 
-from deeptime.markov.msm import MarkovStateModelCollection
+from deeptime.markov.msm import TRAMModel
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types, callbacks
@@ -158,21 +158,6 @@ class TRAM(_MSMBaseEstimator):
     #: All possible connectivity modes
     connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
 
-    @property
-    def therm_state_energies(self) -> Optional[np.ndarray]:
-        """ The estimated free energy per thermodynamic state, :math:`f_k`, where :math:`k` is the thermodynamic state
-        index.
-        """
-        if self._tram_estimator is not None:
-            return self._tram_estimator.therm_state_energies()
-
-    @property
-    def markov_state_energies(self) -> Optional[np.ndarray]:
-        """ The estimated free energy for each Markov state, summed over all thermodynamic states, :math:`f^i`, where
-        :math:`i` is the Markov state index.
-        """
-        if self._tram_estimator is not None:
-            return self._tram_estimator.markov_state_energies()
 
     @property
     def _transition_matrices(self) -> Optional[np.ndarray]:
@@ -186,31 +171,6 @@ class TRAM(_MSMBaseEstimator):
     def _biased_conf_energies(self) -> Optional[np.ndarray]:
         if self._tram_estimator is not None:
             return self._tram_estimator.biased_conf_energies()
-
-    def compute_sample_weights(self, therm_state: int = -1):
-        r""" Get the sample weight :math:`\mu(x)` for all samples :math:`x`. If the thermodynamic state index is >=0,
-        the sample weights for that thermodynamic state will be computed, i.e. :math:`\mu^k(x)`. Otherwise, this gives
-        the unbiased sample weights.
-
-        Parameters
-        ----------
-        therm_state : int, optional
-            The index of the thermodynamic state in which the sample weights need to be computed. If therm_state=-1,
-            the unbiased sample weights are computed.
-
-        Returns
-        -------
-        sample_weights : np.ndarray
-            The statistical weight :math:`\mu(x)` of each sample (i.e., the probability distribution over all samples:
-            the sum over all sample weights equals one.)
-
-        Notes
-        -----
-        The statistical distribution is given by
-
-        .. math:: \mu(x) = \left( \sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] \right)^{-1}
-        """
-        return self._tram_estimator.compute_sample_weights(therm_state)
 
     @property
     def log_likelihood(self):
@@ -237,7 +197,7 @@ class TRAM(_MSMBaseEstimator):
         # todo test this
         return self._tram_estimator.log_likelihood()
 
-    def fetch_model(self) -> Optional[MarkovStateModelCollection]:
+    def fetch_model(self) -> Optional[TRAMModel]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
         Can be None if fit was not called.
 
@@ -279,7 +239,7 @@ class TRAM(_MSMBaseEstimator):
 
         self._tram_estimator = tram.TRAM(tram_input)
         self._run_estimation()
-        self._model = self._construct_markov_model()
+        self._model = TRAMModel(self.count_models, self._tram_estimator.biased_conf_energies(), )
 
         return self
 
@@ -678,25 +638,3 @@ class TRAM(_MSMBaseEstimator):
                 self.count_models.append(traj_counts_model)
         return state_counts, transition_counts
 
-    def _construct_markov_model(self):
-        r""" Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
-        For each of the thermodynamic states, one MarkovStateModel is added to the MarkovStateModelCollection. The
-        corresponding count models are previously calculated and are restricted to the largest connected set.
-
-        See Also
-        --------
-        _make_count_models
-        """
-        transition_matrices_connected = []
-        stationary_distributions = []
-
-        for i, msm in enumerate(self._transition_matrices):
-            states = self.count_models[i].states
-            transition_matrices_connected.append(self._transition_matrices[i][states][:, states])
-            pi = np.exp(self.therm_state_energies[i] - self._biased_conf_energies[i, :])[states]
-            pi = pi / pi.sum()
-            stationary_distributions.append(pi)
-
-        return MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
-                                          reversible=True, count_models=self.count_models,
-                                          transition_matrix_tolerance=1e-8)

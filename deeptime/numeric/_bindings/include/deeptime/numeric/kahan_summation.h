@@ -87,6 +87,7 @@ auto logsumexp_kahan_inplace(Iterator begin, Iterator end, dtype array_max) {
     return array_max + std::log(ksum(begin, end));
 }
 
+
 template<typename Iterator>
 auto logsumexp_sort_kahan_inplace(Iterator begin, Iterator end) {
     using dtype = typename std::iterator_traits<Iterator>::value_type;
@@ -98,6 +99,11 @@ auto logsumexp_sort_kahan_inplace(Iterator begin, Iterator end) {
 template<typename Iterator>
 auto logsumexp_sort_kahan_inplace(Iterator begin, std::size_t size) {
     return logsumexp_sort_kahan_inplace(begin, std::next(begin, size));
+}
+
+template <typename dtype>
+auto logsumexp(np_array_nfc<dtype> arr) {
+    return logsumexp_sort_kahan_inplace(arr.begin(), arr.end());
 }
 
 template<typename dtype>

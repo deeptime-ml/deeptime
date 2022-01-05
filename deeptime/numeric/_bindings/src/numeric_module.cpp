@@ -13,4 +13,7 @@ PYBIND11_MODULE(_numeric_bindings, m) {
     m.def("logsumexp_pair", &kahan::logsumexp_pair<float>);
     m.def("logsumexp_pair", &kahan::logsumexp_pair<double>);
     m.def("logsumexp_pair", &kahan::logsumexp_pair<long double>);
+    m.def("logsumexp", &kahan::logsumexp<double>);
+    m.def("logsumexp", &kahan::logsumexp<float>);
+    m.def("logsumexp", &kahan::logsumexp<long double>);
 }

@@ -198,22 +198,6 @@ public:
         updateTransitionMatrices();
     }
 
-    // statistical weight per sample, \mu^k(x).
-    // If thermState =-1, this is the unbiased statistical sample weight, \mu(x).
-    std::vector<std::vector<dtype>> computeSampleWeights(StateIndex thermState) {
-        auto nTrajs = static_cast<std::int32_t>(input_->nTrajectories());
-        std::vector<std::vector<dtype>> sampleWeights(nTrajs);
-
-        auto *tram = this;
-
-#pragma omp parallel for default(none) firstprivate(nTrajs, thermState, tram) shared(sampleWeights)
-        for (std::int32_t i = 0; i < nTrajs; ++i) {
-            sampleWeights[i] = computeSampleWeightsForTrajectory(i, thermState, tram);
-        }
-
-        return sampleWeights;
-    }
-
 private:
     std::shared_ptr<TRAMInput<dtype>> input_;
 
@@ -649,7 +633,7 @@ private:
                         if (0 == transitionMatricesBuf(k, i, i) && 0 < transitionCountsBuf(k, i, i)) {
                             std::stringstream ss;
                             ss << "# Warning: zero diagonal element T[" << i << "," << i << "] with non-zero counts.";
-                            #pragma omp critical
+#pragma omp critical
                             {
                                 py::gil_scoped_acquire gil;
                                 py::print(ss.str());
@@ -662,43 +646,67 @@ private:
             }
         }
     }
+};
 
-    template <typename TrajectoryIndex>
-    static auto computeSampleWeightsForTrajectory(TrajectoryIndex trajectoryIndex, StateIndex thermStateIndex,
-                                           TRAM<dtype> *tram) {
-        // k = -1 for unbiased sample weights.
-        std::vector<dtype> sampleWeights(tram->input_->dtraj(trajectoryIndex).size());
+template<typename dtype>
+static auto computeSampleWeightsForTrajectory(StateIndex thermStateIndex, DTraj dtraj, BiasMatrix<dtype> biasMatrix,
+                                              np_array_nfc<dtype> thermStateEnergies,
+                                              np_array_nfc<dtype> modifiedStateCountsLog) {
+    // k = -1 for unbiased sample weights.
+    std::vector<dtype> sampleWeights(dtraj.size());
 
-        auto dtrajBuf = tram->input_->dtraj(trajectoryIndex);
-        auto biasMatrixBuf = tram->input_->biasMatrix(trajectoryIndex);
+    auto dtrajBuf = dtraj.template unchecked<1>();
+    auto biasMatrixBuf = biasMatrix.template unchecked<2>();
 
-        auto thermStateEnergiesBuf = tram->thermStateEnergies_.firstBuf();
-        auto modifiedStateCountsLogBuf = tram->modifiedStateCountsLog_.template unchecked<2>();
+    auto thermStateEnergiesBuf = thermStateEnergies.template unchecked<1>();
+    auto modifiedStateCountsLogBuf = modifiedStateCountsLog.template unchecked<2>();
 
-        std::vector<dtype> scratch(tram->nThermStates_);
+    std::vector<dtype> scratch(thermStateEnergies.size());
 
-        for (auto x = 0; x < tram->input_->sequenceLength(trajectoryIndex); ++x) {
-            auto i = dtrajBuf(x);
-            if (i < 0) {
-                sampleWeights[x] = inf;
-                continue;
-            }
-            auto o = 0;
-            for (StateIndex l = 0; l < tram->nThermStates_; ++l) {
-                if (modifiedStateCountsLogBuf(l, i) > -inf) {
-                    scratch[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf(x, l);
-                }
-            }
-            auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
-            if (thermStateIndex == -1) {// get unbiased sample weight
-                sampleWeights[x] = std::exp(-log_divisor);
-            } else { // get biased sample weight for given thermState index
-                sampleWeights[x] = std::exp(-biasMatrixBuf(x, thermStateIndex) - log_divisor
-                                            + thermStateEnergiesBuf(thermStateIndex));
+    for (auto x = 0; x < dtraj.size(); ++x) {
+        auto i = dtrajBuf(x);
+        if (i < 0) {
+            sampleWeights[x] = std::numeric_limits<dtype>::infinity();
+            continue;
+        }
+        auto o = 0;
+        for (StateIndex l = 0; l < thermStateEnergies.size(); ++l) {
+            if (modifiedStateCountsLogBuf(l, i) > -std::numeric_limits<dtype>::infinity()) {
+                scratch[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf(x, l);
             }
         }
-        return sampleWeights;
+        auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
+        if (thermStateIndex == -1) {// get unbiased sample weight
+            sampleWeights[x] = std::exp(-log_divisor);
+        } else { // get biased sample weight for given thermState index
+            sampleWeights[x] = std::exp(-biasMatrixBuf(x, thermStateIndex) - log_divisor
+                                        + thermStateEnergiesBuf(thermStateIndex));
+        }
+    }
+    return sampleWeights;
+}
+
+// statistical weight per sample, \mu^k(x).
+// If thermState =-1, this is the unbiased statistical sample weight, \mu(x).
+template<typename dtype>
+std::vector<std::vector<dtype>>
+computeSampleWeights(StateIndex thermState, DTrajs &dtrajs, BiasMatrices<dtype> &biasMatrices,
+                     np_array_nfc<dtype> &thermStateEnergies, np_array_nfc<dtype> &modifiedStateCountsLog) {
+    auto nTrajs = static_cast<std::int32_t>(dtrajs.size());
+    std::vector<std::vector<dtype>> sampleWeights(nTrajs);
+
+    auto dtrajsPtr = &dtrajs;
+    auto biasMatricesPtr = &biasMatrices;
+    auto thermStateEnergiesPtr = &thermStateEnergies;
+    auto modifiedStateCountsLogPtr = &modifiedStateCountsLog;
+
+#pragma omp parallel for default(none) firstprivate(nTrajs, thermState, thermStateEnergiesPtr, modifiedStateCountsLogPtr, dtrajsPtr, biasMatricesPtr) shared(sampleWeights)
+    for (std::int32_t i = 0; i < nTrajs; ++i) {
+        sampleWeights[i] = computeSampleWeightsForTrajectory(thermState, (*dtrajsPtr)[i], (*biasMatricesPtr)[i],
+                                                             *thermStateEnergiesPtr, *modifiedStateCountsLogPtr);
     }
 
-};
+    return sampleWeights;
+}
+
 }
