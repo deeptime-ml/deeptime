@@ -13,7 +13,7 @@ class Identity(Observable):
         return x
 
     @staticmethod
-    def get_feature_names(input_features=None):
+    def get_feature_names_out(input_features=None):
         if input_features is None:
             return ['x']
         else:
@@ -73,7 +73,7 @@ class Monomials(Observable):
             raise ValueError(f"Input had the wrong dimension {x.shape[1]}, this basis requires {self.d}.")
         return _eval(self.p, x.T, self._power_matrix).T
 
-    def get_feature_names(self, input_features=None) -> List[str]:
+    def get_feature_names_out(self, input_features=None) -> List[str]:
         r""" Yields a list of feature names, optionally given input feature names.
 
         Parameters

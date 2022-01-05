@@ -34,7 +34,7 @@ class SINDyModel(Model):
         The feature library, :math:`\Theta`.
         It is assumed that this object has already been fit to the input data.
         The object should implement  :meth:`transform`
-        and :meth:`get_feature_names` methods.
+        and :meth:`get_feature_names_out` methods.
 
     coefficients : np.ndarray, shape (n_input_features, n_output_features)
         Coefficients giving the linear combination of basis functions to
@@ -198,7 +198,7 @@ class SINDyModel(Model):
         equations : list of strings, length (n_input_features)
             List of model equations, with one for each input variable.
         """
-        feature_names = self.library.get_feature_names(
+        feature_names = self.library.get_feature_names_out(
             input_features=self.input_features
         )
         equation_list = [None] * len(self.coef_)
@@ -260,7 +260,7 @@ class SINDy(Estimator):
     library : library object, optional, default=None
         The candidate feature library, :math:`\Theta`.
         The object should implement a :meth:`fit`, :meth:`transform`,
-        and :meth:`get_feature_names` methods. It should also have
+        and :meth:`get_feature_names_out` methods. It should also have
         :attr:`n_input_features_` and :attr:`n_output_features_` attributes.
         By default a polynomial library of degree 2 is used.
 
