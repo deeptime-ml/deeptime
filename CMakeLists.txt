@@ -21,7 +21,6 @@ endif()
 find_package(pybind11 REQUIRED)
 
 add_subdirectory(deeptime/src)
-
 add_subdirectory(deeptime/numeric/_bindings)
 add_subdirectory(deeptime/data)
 add_subdirectory(deeptime/covariance/util/covar_c)

@@ -12,7 +12,7 @@ PYBIND11_MODULE(_tram_bindings, m) {
         py::class_<TRAM<double>>(tramMod, "TRAM")
                 .def(py::init<std::shared_ptr<TRAMInput<double>> &, std::size_t>(), "tram_input"_a,
                      "callback_interval"_a = 1)
-                .def("estimate", &TRAM<double>::estimate, py::call_guard<py::gil_scoped_release>(),
+                .def("estimate", &TRAM<double>::estimate,
                      "max_iter"_a = 1000, "max_err"_a = 1e-8,
                      "track_log_likelihoods"_a = false, "callback"_a = nullptr)
                 .def("transition_matrices", &TRAM<double>::transitionMatrices)
