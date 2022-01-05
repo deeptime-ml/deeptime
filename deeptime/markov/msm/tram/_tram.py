@@ -187,7 +187,7 @@ class TRAM(_MSMBaseEstimator):
         if self._tram_estimator is not None:
             return self._tram_estimator.biased_conf_energies()
 
-    def compute_sample_weights(self, therm_state: int = -1):
+    def compute_sample_weights(self, therm_state: int = -1) -> Optional[list]:
         r""" Get the sample weight :math:`\mu(x)` for all samples :math:`x`. If the thermodynamic state index is >=0,
         the sample weights for that thermodynamic state will be computed, i.e. :math:`\mu^k(x)`. Otherwise, this gives
         the unbiased sample weights.
@@ -200,9 +200,9 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        sample_weights : np.ndarray
+        sample_weights : list(list(float))
             The statistical weight :math:`\mu(x)` of each sample (i.e., the probability distribution over all samples:
-            the sum over all sample weights equals one.)
+            the sum over all sample weights equals one) listed for each trajectory.
 
         Notes
         -----
@@ -210,10 +210,11 @@ class TRAM(_MSMBaseEstimator):
 
         .. math:: \mu(x) = \left( \sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] \right)^{-1}
         """
-        return self._tram_estimator.compute_sample_weights(therm_state)
+        if self._tram_estimator is not None:
+            return self._tram_estimator.compute_sample_weights(therm_state)
 
     @property
-    def log_likelihood(self):
+    def log_likelihood(self) -> Optional[float]:
         r"""The parameter-dependent part of the TRAM likelihood.
 
         The definition can be found in :footcite:`wu2016multiensemble`, Equation (9).
@@ -234,8 +235,8 @@ class TRAM(_MSMBaseEstimator):
 
         .. math:: \log \prod_{k=1}^K \left(\prod_{i,j} (p_{ij}^k)^{c_{ij}^k}\right) \left(\prod_{i} \prod_{x \in X_i^k} \mu(x) e^{f_i^k} \right)
         """
-        # todo test this
-        return self._tram_estimator.log_likelihood()
+        if self._tram_estimator is not None:
+            return self._tram_estimator.log_likelihood()
 
     def fetch_model(self) -> Optional[MarkovStateModelCollection]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -363,6 +364,11 @@ class TRAM(_MSMBaseEstimator):
             ttrajs = None
             self.n_therm_states = len(dtrajs)
         else:
+            # find the number of therm states as the highest index in ttrajs
+            for t in ttrajs:
+                types.ensure_integer_array(t, ndim=1)
+            ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
+
             self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
 
         # cast types and change axis order if needed
@@ -382,11 +388,6 @@ class TRAM(_MSMBaseEstimator):
         if ttrajs is not None:
             if len(ttrajs) != len(dtrajs):
                 raise ValueError("number of ttrajs is not equal to number of dtrajs.")
-
-            for t in ttrajs:
-                types.ensure_integer_array(t, ndim=1)
-
-            ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
 
             for i, (t, d) in enumerate(zip(ttrajs, dtrajs)):
                 if t.shape[0] != d.shape[0]:

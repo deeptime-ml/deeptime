@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
+from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
 
@@ -237,20 +238,22 @@ def test_unpack_input():
         pytest.fail("IndexError while unpacking input!")
 
 
-def test_unpack_input_too_many_values():
+def test_unpack_input():
     arr = np.zeros(10)
-    with np.testing.assert_raises(ValueError):
+    with pytest.raises(ValueError) as exinfo:
         unpack_input_tuple((arr, arr, arr, arr))
+        assert 'Unexpected number of arguments' in exinfo.value
 
 
-def test_tram_estimate():
+def test_tram_fit():
     trajs = np.asarray([[0, 1, 1, 1, 1, 2, 2, 1, 0, 0], [1, 2, 3, 2, 2, 1, 0, 1, 2, 2], [2, 1, 2, 3, 2, 3, 3, 4, 3, 3],
                         [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
     trajs = trajs / 5 * 3 - 1.5
 
-    dtrajs = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
-               [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]
-    dtrajs = [np.array(x, dtype=int) for x in dtrajs]
+    dtrajs = [np.asarray(i, dtype=np.int) for i in
+              [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
+               [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]]
+    ttrajs = [np.ones((len(dtrajs[i])), dtype=np.int) * i for i in range(len(dtrajs))]
 
     bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
@@ -265,10 +268,18 @@ def test_tram_estimate():
             bias_matrices[i][:, j] = bias(traj)
 
     tram = TRAM(maxiter=100, save_convergence_info=True)
-    tram.fit((dtrajs, bias_matrices))
+
+    therm_energies_1 = tram.fit((dtrajs, bias_matrices)).therm_state_energies
+    therm_energies_2 = tram.fit((dtrajs, bias_matrices, ttrajs)).therm_state_energies
+    assert (therm_energies_1 == therm_energies_2).all()
+
+    # changing one ttrajs element should result in a change of the output
+    ttrajs[0][2] = 1
+    therm_energies_3 = tram.fit((dtrajs, bias_matrices, ttrajs)).therm_state_energies
+    assert (therm_energies_3 != therm_energies_1).any()
 
 
-def test_tram_fit_fetch():
+def test_tram_integration():
     trajs = np.asarray([[0, 1, 1, 1, 1, 2, 2, 1, 0, 0], [1, 2, 3, 2, 2, 1, 0, 1, 2, 2], [2, 1, 2, 3, 2, 3, 3, 4, 3, 3],
                         [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
     trajs = trajs / 5 * 3 - 1.5
@@ -289,6 +300,8 @@ def test_tram_fit_fetch():
             bias_matrices[i, :, j] = bias(traj)
 
     tram = TRAM(maxiter=100, connectivity='summed_count_matrix', save_convergence_info=True)
+    assert tram.log_likelihood is None
+
     tram.fit((dtrajs, bias_matrices))
 
     # energies are identical. so are count matrices. and transition matrices
@@ -304,7 +317,42 @@ def test_tram_fit_fetch():
     model.select(2)
     assert np.allclose(tram.fetch_model().transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
 
+    weights = tram.compute_sample_weights()
+    assert np.allclose(np.sum(weights), 1)
+    assert tram.log_likelihood < 0
+
 
 def test_unknown_connectivity():
     with np.testing.assert_raises(ValueError):
         TRAM(connectivity='this_is_some_unknown_connectivity')
+
+
+@pytest.mark.parametrize(
+    "dtrajs, bias_matrices, ttrajs",
+    [
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 3)), None),
+        ([[0, 0, 0], [0, 0]], np.zeros((2, 3, 2)), None),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 2, 2)), None),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((3, 2, 2)), None),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((1, 2, 2)), None),
+        ([[0, 0, 0], [0, 0]], [[[0, 0], [0, 0], [0, 0]], [[0, 0], [0, 0, 0]]], None),
+        ([[0, 0, 0], [0, 'x', 0]], np.zeros((2, 3, 3)), None),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0, 0], [0, 0, 0]]),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0, 0], [0, 1, 2]]),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0], [1, 1, 1]]),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0, 'x'], [1, 1, 1]]),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0, 0], [0, 1]])
+    ]
+)
+def test_invalid_input(dtrajs, bias_matrices, ttrajs):
+    dtrajs = [np.asarray(traj) for traj in dtrajs]
+
+    if ttrajs is not None:
+        ttrajs = [np.asarray(traj) for traj in ttrajs]
+
+    if not isinstance(bias_matrices, np.ndarray):
+        bias_matrices = [np.asarray(M) for M in bias_matrices]
+
+    tram = TRAM()
+    with np.testing.assert_raises(ValueError):
+        tram._validate_input(ttrajs, dtrajs, bias_matrices)
