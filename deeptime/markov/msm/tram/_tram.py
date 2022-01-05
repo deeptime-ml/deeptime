@@ -363,6 +363,11 @@ class TRAM(_MSMBaseEstimator):
             ttrajs = None
             self.n_therm_states = len(dtrajs)
         else:
+            # find the number of therm states as the highest index in ttrajs
+            for t in ttrajs:
+                types.ensure_integer_array(t, ndim=1)
+            ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
+
             self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
 
         # cast types and change axis order if needed
@@ -382,11 +387,6 @@ class TRAM(_MSMBaseEstimator):
         if ttrajs is not None:
             if len(ttrajs) != len(dtrajs):
                 raise ValueError("number of ttrajs is not equal to number of dtrajs.")
-
-            for t in ttrajs:
-                types.ensure_integer_array(t, ndim=1)
-
-            ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
 
             for i, (t, d) in enumerate(zip(ttrajs, dtrajs)):
                 if t.shape[0] != d.shape[0]:

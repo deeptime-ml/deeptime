@@ -322,3 +322,37 @@ def test_tram_fit_fetch():
 def test_unknown_connectivity():
     with np.testing.assert_raises(ValueError):
         TRAM(connectivity='this_is_some_unknown_connectivity')
+
+
+@pytest.mark.parametrize(
+    "dtrajs, bias_matrices, ttrajs",
+    [
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 3)), None),
+        ([[0, 0, 0], [0, 0]], np.zeros((2, 3, 2)), None),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 2, 2)), None),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((3, 2, 2)), None),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((1, 2, 2)), None),
+        ([[0, 0, 0], [0, 0]], [[[0, 0], [0, 0], [0, 0]], [[0, 0], [0, 0, 0]]], None),
+        ([[0, 0, 0], [0, 'x', 0]], np.zeros((2, 3, 3)), None),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0, 0], [0, 0, 0]]),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0, 0], [0, 1, 2]]),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0], [1, 1, 1]]),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0, 'x'], [1, 1, 1]]),
+        ([[0, 0, 0], [0, 0, 0]], np.zeros((2, 3, 2)), [[0, 0, 0], [0, 1]])
+    ]
+)
+def test_invalid_input(dtrajs, bias_matrices, ttrajs):
+    dtrajs = [np.asarray(traj) for traj in dtrajs]
+
+    if ttrajs is not None:
+        ttrajs = [np.asarray(traj) for traj in ttrajs]
+
+    if not isinstance(bias_matrices, np.ndarray):
+        bias_matrices = [np.asarray(M) for M in bias_matrices]
+
+    tram = TRAM()
+    with np.testing.assert_raises(ValueError):
+        if ttrajs is None:
+            tram.fit((dtrajs, bias_matrices))
+        else:
+            tram.fit((dtrajs, bias_matrices, ttrajs))
