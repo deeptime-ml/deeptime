@@ -17,16 +17,16 @@ def unpack_input_tuple(data):
 
     Parameters
     ----------
-    data: tuple(2) or tuple(3)
+    data : tuple(2) or tuple(3)
         data[0] contains the dtrajs. data[1] the bias matrix, and data[2] may or may not contain the ttrajs.
 
     Returns
-    ---------
-    dtrajs: list(ndarray(n)), int32
+    -------
+    dtrajs : list(ndarray(n)), int32
         the first element from the data tuple.
-    bias_matrices: List(ndarray(n,m)), float64
+    bias_matrices : List(ndarray(n,m)), float64
         the second element from the data tuple.
-    ttrajs: list(ndarray(n)), int32, or None
+    ttrajs : list(ndarray(n)), int32, or None
         the third element from the data tuple, if present.
     """
     dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
@@ -53,7 +53,7 @@ def to_zero_padded_array(arrays, desired_shape):
 
     Returns
     -------
-    arrays: np.array
+    arrays : np.ndarray
         The passed arrays as one numpy array.
     """
     new_array = np.zeros((len(arrays), desired_shape))
@@ -72,6 +72,7 @@ class TRAM(_MSMBaseEstimator):
         Integer lag time at which transitions are counted.
     count_mode : str
         One of "sample", "sliding", "sliding-effective", and "effective".
+
         * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
         * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
           large by a factor of :math:`\tau`; in uncertainty estimation this yields wrong uncertainties.
@@ -85,22 +86,25 @@ class TRAM(_MSMBaseEstimator):
         One of 'post_hoc_RE', 'BAR_variance', or 'summed_count_matrix'.
         Defines what should be considered a connected set in the joint (product) space
         of conformations and thermodynamic ensembles.
+
         * 'post_hoc_RE' : It is required that every state in the connected set can be reached by following a
           pathway of reversible transitions or jumping between overlapping thermodynamic states while staying in
           the same Markov state. A reversible transition between two Markov states (within the same thermodynamic
           state k) is a pair of Markov states that belong to the same strongly connected component of the count
           matrix (from thermodynamic state k). Two thermodynamic states k and l are defined to overlap at Markov
-          state n if a replica exchange simulation [2]_ restricted to state n would show at least one transition
-          from k to l or one transition from from l to k. The expected number of replica exchanges is estimated from
+          state n if a replica exchange simulation :footcite:`hukushima1996exchange` restricted to state n would
+          show at least one transition from k to l or one transition from from l to k.
+          The expected number of replica exchanges is estimated from
           the simulation data. The minimal number required of replica exchanges per Markov state can be increased by
           decreasing `connectivity_factor`.
         * 'BAR_variance' : like 'post_hoc_RE' but with a different condition to define the thermodynamic overlap
-          based on the variance of the BAR estimator [3]_. Two thermodynamic states k and l are defined to overlap
-          at Markov state n if the variance of the free energy difference Delta f_{kl} computed with BAR (and
+          based on the variance of the BAR estimator :footcite:`shirts2008statistically`.
+          Two thermodynamic states k and l are defined to overlap
+          at Markov state n if the variance of the free energy difference Delta :math:`f_{kl}` computed with BAR (and
           restricted to conformations form Markov state n) is less or equal than one. The minimally required variance
           can be controlled with `connectivity_factor`.
         * 'summed_count_matrix' : all thermodynamic states are assumed to overlap. The connected set is then
-          computed by summing the count matrices over all thermodynamic states and taking it's largest strongly
+          computed by summing the count matrices over all thermodynamic states and taking its largest strongly
           connected set. Not recommended!
     maxiter : int, optional, default=10000
         The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
@@ -120,13 +124,13 @@ class TRAM(_MSMBaseEstimator):
 
     References
     ----------
-    :footcite:`wu2016multiensemble`.
+    .. footbibliography::
     """
 
     def __init__(
             self, lagtime=1, count_mode='sliding',
-            connectivity='summed_counts_matrix',
-            maxiter=10000, maxerr: float = 1.0E-15, save_convergence_info=0,
+            connectivity='summed_count_matrix',
+            maxiter=10000, maxerr: float = 1e-8, save_convergence_info=0,
             connectivity_factor: float = 1.0,
             progress_bar=None):
 
@@ -135,10 +139,9 @@ class TRAM(_MSMBaseEstimator):
         self.lagtime = lagtime
         self.count_mode = count_mode
 
+        if connectivity not in TRAM.connectivity_options:
+            raise ValueError(f"Connectivity type unsupported. Connectivity must be one of {TRAM.connectivity_options}.")
         self.connectivity = connectivity
-        if self._connectivity_unknown():
-            warnings.warn(
-                f"connectivity type unknown. Connectivity must be one of {TRAM.connectivity_options} or None.")
 
         self.connectivity_factor = connectivity_factor
         self.n_markov_states = None
@@ -152,7 +155,8 @@ class TRAM(_MSMBaseEstimator):
         self.log_likelihoods = []
         self.increments = []
 
-    connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix"]
+    #: All possible connectivity modes
+    connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
 
     @property
     def therm_state_energies(self) -> Optional[np.ndarray]:
@@ -183,36 +187,52 @@ class TRAM(_MSMBaseEstimator):
         if self._tram_estimator is not None:
             return self._tram_estimator.biased_conf_energies()
 
-    def compute_sample_weights(self, therm_state=-1):
-        """ Get the sample weight :math:`\mu(x)` for all samples :math:`x`. If the thermodynamic state index is >=0,
+    def compute_sample_weights(self, therm_state: int = -1):
+        r""" Get the sample weight :math:`\mu(x)` for all samples :math:`x`. If the thermodynamic state index is >=0,
         the sample weights for that thermodynamic state will be computed, i.e. :math:`\mu^k(x)`. Otherwise, this gives
         the unbiased sample weights.
 
         Parameters
         ----------
-        therm_state: int, optional
+        therm_state : int, optional
             The index of the thermodynamic state in which the sample weights need to be computed. If therm_state=-1,
             the unbiased sample weights are computed.
 
         Returns
         -------
-        sample_weights: np.ndarray
-            The statistical weight of each sample (=the probability distribution over all samples. The sum over all
-            sample weights equals one.)
-            :math:`\mu(x) = (\sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] )^{-1}`
+        sample_weights : np.ndarray
+            The statistical weight :math:`\mu(x)` of each sample (i.e., the probability distribution over all samples:
+            the sum over all sample weights equals one.)
+
+        Notes
+        -----
+        The statistical distribution is given by
+
+        .. math:: \mu(x) = \left( \sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] \right)^{-1}
         """
         return self._tram_estimator.compute_sample_weights(therm_state)
 
     @property
     def log_likelihood(self):
-        """The parameter-dependent part of the TRAM likelihood (eq. [9] in :footcite:`wu2016multiensemble`).
+        r"""The parameter-dependent part of the TRAM likelihood.
+
+        The definition can be found in :footcite:`wu2016multiensemble`, Equation (9).
 
         Returns
         -------
         log_likelihood : float
-            The parameter-dependent part of the log-likelihood:
-            :math:`\mathrm{log}\; \prod_{k=1}^K \left(\prod_{i,j} (p_{ij}^k)^{c_{ij}^k}\right) \left(\prod_{i} \prod_{x \in X_i^k} \mu(x) e^{f_i^k} \right)`
-            The factor :math:`\prod_{x \in X} e^{-b^{k(x)}(x)}` is left out since it is constant.
+            The parameter-dependent part of the log-likelihood.
+
+
+        Notes
+        -----
+        Parameter-dependent, i.e., the factor
+
+        .. math:: \prod_{x \in X} e^{-b^{k(x)}(x)}
+
+        does not occur in the log-likelihood as it is constant with respect to the parameters, leading to
+
+        .. math:: \log \prod_{k=1}^K \left(\prod_{i,j} (p_{ij}^k)^{c_{ij}^k}\right) \left(\prod_{i} \prod_{x \in X_i^k} \mu(x) e^{f_i^k} \right)
         """
         # todo test this
         return self._tram_estimator.log_likelihood()
@@ -250,13 +270,6 @@ class TRAM(_MSMBaseEstimator):
               sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
               trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
         """
-        if self._connectivity_unknown():
-            warnings.warn(
-                f"connectivity type unknown. Connectivity must be one of {TRAM.connectivity_options} or None."
-                f"TRAM Estimation aborted."
-            )
-            return self
-
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
@@ -292,11 +305,11 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        ttrajs: list(ndarray(n)), int32, or None
+        ttrajs : list(ndarray(n)), int32, or None
             The validated ttrajs converted to a list of contiguous numpy arrays.
-        dtrajs: list(ndarray(n)), int32
+        dtrajs : list(ndarray(n)), int32
             The validated dtrajs converted to a list of contiguous numpy arrays.
-        bias_matrices: List(ndarray(n,m)), float64
+        bias_matrices : List(ndarray(n,m)), float64
             The validated bias matrices converted to a list of contiguous numpy arrays.
         """
         dtrajs, bias_matrices, ttrajs = unpack_input_tuple(data)
@@ -327,11 +340,11 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        ttrajs: list(ndarray(n)), int32
+        ttrajs : list(ndarray(n)), int32
             The validated ttrajs converted to a list of contiguous numpy arrays.
-        dtrajs: list(ndarray(n)), int32
+        dtrajs : list(ndarray(n)), int32
             The validated dtrajs converted to a list of contiguous numpy arrays.
-        bias_matrices: List(ndarray(n,m)), float64
+        bias_matrices : List(ndarray(n,m)), float64
             The validated bias matrices converted to a list of contiguous numpy arrays.
         """
         # shape and type checks
@@ -404,13 +417,13 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        dtrajs: ndarray
+        dtrajs : ndarray
             The dtrajs restricted to the largest connected set. All sample indices that do not belong to the largest
             connected set are set to -1.
-        state_counts: ndarray
+        state_counts : ndarray
             The state counts for the dtrajs, restricted to the connected set. state_counts[k,i] is the number of samples
             sampled at thermodynamic state k that are in Markov state i.
-        transition_counts: ndarray
+        transition_counts : ndarray
             The transition counts for the dtrajs, restricted to the connected set. transition_counts[k,i,j] is the
             number of observed transitions from Markov state i to Markov state j, in thermodynamic state k under the
             chosen lagtime.
@@ -455,7 +468,7 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        counts_model: MarkovStateModel
+        counts_model : MarkovStateModel
             The counts model pertaining to the largest connected set.
         """
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
@@ -524,14 +537,14 @@ class TRAM(_MSMBaseEstimator):
 
         Parameters
         ----------
-        dtrajs: list(ndarray(n))
+        dtrajs : list(ndarray(n))
             the discrete trajectories. dtrajs[i] is a numpy array containing the trajectories sampled in the i-th
             thermodynamic state. dtrajs[i][n] is the Markov state that the n-th sample sampled at thermodynamic state i
             falls in.
 
         Returns
-        ----------
-        dtrajs_connected: list(ndarray(n))
+        -------
+        dtrajs_connected : list(ndarray(n))
             The list of discrete trajectories. Identical to the input dtrajs, except that all samples that do not belong
             in the largest connected set are set to -1.
 
@@ -571,7 +584,7 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        dtraj_fragments: list(List(Int))
+        dtraj_fragments : list(List(Int))
            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
            that thermodynamic state. fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k.
            The fragments are be restricted to the largest connected set and negative state indices are excluded.
@@ -605,7 +618,7 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        fragment_indices: List(List(Tuple(Int)))
+        fragment_indices : List(List(Tuple(Int)))
             A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
             that thermodynamic state.
             fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k. The tuple consists of
@@ -633,10 +646,10 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        transition_counts: ndarray(n, m, m)
+        transition_counts : ndarray(n, m, m)
             The transition counts matrices. transition_counts[k] contains the transition counts for thermodynamic state
             k, restricted to the largest connected set of state k.
-        state_counts: ndarray(n, m)
+        state_counts : ndarray(n, m)
             The state counts histogram. state_counts[k] contains the state histogram for thermodynamic state k,
             restricted to the largest connected set of state k.
         """
@@ -666,11 +679,13 @@ class TRAM(_MSMBaseEstimator):
         return state_counts, transition_counts
 
     def _construct_markov_model(self):
-        """ Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
+        r""" Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
         For each of the thermodynamic states, one MarkovStateModel is added to the MarkovStateModelCollection. The
         corresponding count models are previously calculated and are restricted to the largest connected set.
 
-        see: self._make_count_models
+        See Also
+        --------
+        _make_count_models
         """
         transition_matrices_connected = []
         stationary_distributions = []
@@ -685,6 +700,3 @@ class TRAM(_MSMBaseEstimator):
         return MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
                                           reversible=True, count_models=self.count_models,
                                           transition_matrix_tolerance=1e-8)
-
-    def _connectivity_unknown(self):
-        return self.connectivity is not None and self.connectivity not in TRAM.connectivity_options

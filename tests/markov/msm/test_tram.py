@@ -269,12 +269,13 @@ def test_tram_fit():
 
     tram = TRAM(maxiter=100, save_convergence_info=True)
 
-    therm_energies_1 = tram.fit((dtrajs, bias_matrices)).them_state_energies()
-    therm_energies_2 = tram.fit((dtrajs, bias_matrices, ttrajs)).therm_state_energies()
+    therm_energies_1 = tram.fit((dtrajs, bias_matrices)).therm_state_energies
+    therm_energies_2 = tram.fit((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_1 == therm_energies_2).all()
 
+    # changing one ttrajs element should result in a change of the output
     ttrajs[0][2] = 1
-    therm_energies_3 = tram.fit((dtrajs, bias_matrices, ttrajs))
+    therm_energies_3 = tram.fit((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_3 != therm_energies_1).any()
 
 
@@ -319,8 +320,5 @@ def test_tram_fit_fetch():
 
 
 def test_unknown_connectivity():
-    tram = TRAM(connectivity='this_is_some_unknown_connectivity')
-    assert tram._connectivity_unknown()
-    dummy_data = np.zeros(10)
-    # fit should abort straightaway with a warning, and model will be None.
-    assert tram.fit_fetch(dummy_data) is None
+    with np.testing.assert_raises(ValueError):
+        TRAM(connectivity='this_is_some_unknown_connectivity')
