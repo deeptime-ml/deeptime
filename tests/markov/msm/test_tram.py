@@ -5,6 +5,7 @@ from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
 
+
 class TramEstimatorMock:
     def __init__(self, n_therm_states, n_markov_states):
         self.therm_state_energies = lambda: np.zeros(n_therm_states)
@@ -244,19 +245,21 @@ def test_unpack_input():
         assert 'Unexpected number of arguments' in exinfo.value
 
 
-def test_tram_estimate():
+def test_tram_fit():
     trajs = np.asarray([[0, 1, 1, 1, 1, 2, 2, 1, 0, 0], [1, 2, 3, 2, 2, 1, 0, 1, 2, 2], [2, 1, 2, 3, 2, 3, 3, 4, 3, 3],
                         [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
     trajs = trajs / 5 * 3 - 1.5
 
-    dtrajs = [np.asarray(i, dtype=np.intc) for i in [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
-                         [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]]
+    dtrajs = [np.asarray(i, dtype=np.int) for i in
+              [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
+               [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]]
+    ttrajs = [np.ones((len(dtrajs[i])), dtype=np.int) * i for i in range(len(dtrajs))]
 
     bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
     def harmonic(x0, x):
         return 0.1 * (x - x0) ** 2
-    
+
     # construct bias matric using harmonic potentials
     bias_matrices = [np.zeros((len(traj), len(bias_centers)), dtype=np.float64) for traj in dtrajs]
     for i, traj in enumerate(trajs):
@@ -265,13 +268,14 @@ def test_tram_estimate():
             bias_matrices[i][:, j] = bias(traj)
 
     tram = TRAM(maxiter=100, save_convergence_info=True)
-    state_counts = np.asarray([[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]], dtype=np.intc)
-    transition_counts = np.asarray(
-        [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]], dtype=np.intc)
-    tram_input = bindings.TRAMInput(state_counts, transition_counts, dtrajs, bias_matrices)
 
-    tram._tram_estimator = bindings.TRAM(tram_input)
-    tram._run_estimation()
+    therm_energies_1 = tram.fit((dtrajs, bias_matrices)).them_state_energies()
+    therm_energies_2 = tram.fit((dtrajs, bias_matrices, ttrajs)).therm_state_energies()
+    assert (therm_energies_1 == therm_energies_2).all()
+
+    ttrajs[0][2] = 1
+    therm_energies_3 = tram.fit((dtrajs, bias_matrices, ttrajs))
+    assert (therm_energies_3 != therm_energies_1).any()
 
 
 def test_tram_fit_fetch():
@@ -309,6 +313,9 @@ def test_tram_fit_fetch():
                        [[0.7777777777777777, 0.22222222222222224], [0.12928535495314722, 0.8707146450468528]])
     model.select(2)
     assert np.allclose(tram.fetch_model().transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
+
+    weights = tram.compute_sample_weights()
+    assert np.allclose(np.sum(weights), 1)
 
 
 def test_unknown_connectivity():
