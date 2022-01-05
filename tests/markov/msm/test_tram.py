@@ -279,7 +279,7 @@ def test_tram_fit():
     assert (therm_energies_3 != therm_energies_1).any()
 
 
-def test_tram_fit_fetch():
+def test_tram_integration():
     trajs = np.asarray([[0, 1, 1, 1, 1, 2, 2, 1, 0, 0], [1, 2, 3, 2, 2, 1, 0, 1, 2, 2], [2, 1, 2, 3, 2, 3, 3, 4, 3, 3],
                         [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
     trajs = trajs / 5 * 3 - 1.5
@@ -300,6 +300,8 @@ def test_tram_fit_fetch():
             bias_matrices[i, :, j] = bias(traj)
 
     tram = TRAM(maxiter=100, connectivity='summed_count_matrix', save_convergence_info=True)
+    assert tram.log_likelihood is None
+
     tram.fit((dtrajs, bias_matrices))
 
     # energies are identical. so are count matrices. and transition matrices
@@ -317,6 +319,7 @@ def test_tram_fit_fetch():
 
     weights = tram.compute_sample_weights()
     assert np.allclose(np.sum(weights), 1)
+    assert tram.log_likelihood < 0
 
 
 def test_unknown_connectivity():
