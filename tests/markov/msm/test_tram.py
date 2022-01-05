@@ -352,7 +352,4 @@ def test_invalid_input(dtrajs, bias_matrices, ttrajs):
 
     tram = TRAM()
     with np.testing.assert_raises(ValueError):
-        if ttrajs is None:
-            tram.fit((dtrajs, bias_matrices))
-        else:
-            tram.fit((dtrajs, bias_matrices, ttrajs))
+        tram._validate_input(ttrajs, dtrajs, bias_matrices)
