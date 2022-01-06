@@ -2,11 +2,11 @@ import warnings
 from typing import Optional
 from sklearn.exceptions import ConvergenceWarning
 
+from deeptime.markov.msm import TRAMModel
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types, callbacks
 from deeptime.markov.msm.tram._tram_bindings import tram
-from ._tram_model import TRAMModel
 
 import numpy as np
 import scipy as sp
@@ -239,9 +239,7 @@ class TRAM(_MSMBaseEstimator):
 
         self._tram_estimator = tram.TRAM(tram_input)
         self._run_estimation()
-        self._model = TRAMModel(self.count_models, biased_conf_energies=self._biased_conf_energies,
-                                lagrangian_mult_log=self._lagrangian_mult_log(),
-                                modified_state_counts_log=self._tram_estimator.modified_state_counts_log())
+        self._model = TRAMModel(self.count_models, self._tram_estimator.biased_conf_energies(), )
 
         return self
 

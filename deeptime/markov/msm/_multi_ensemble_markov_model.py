@@ -1,27 +1,31 @@
 import numpy as np
 
-from deeptime.numeric import logsumexp
-from base import Model
-from deeptime.markov.msm import MarkovStateModelCollection
-from ._tram_bindings import tram
+from numeric import logsumexp_sort_kahan_inplace
+from ...base import Model
+from ._markov_state_model import MarkovStateModelCollection
+from deeptime.markov.msm.tram._tram_bindings import tram
 
 
 class TRAMModel(Model):
-    def __init__(self, count_models, biased_conf_energies, modified_state_counts_log, lagrangian_mult_log):
+    def __init__(self, count_models, transition_matrices, biased_conf_energies=None, therm_state_energies=None,
+                 modified_state_counts_log=None):
 
         self._biased_conf_energies = biased_conf_energies
         self._modified_state_counts_log = modified_state_counts_log
-        self._lagrangian_mult_log = lagrangian_mult_log
+        if therm_state_energies is None:
+            self._therm_state_energies = np.asarray([logsumexp_sort_kahan_inplace(row) for row in biased_conf_energies])
+        else:
+            self._therm_state_energies = therm_state_energies
 
-        self._therm_state_energies = np.asarray([-logsumexp(-row) for row in biased_conf_energies])
-        self._markov_state_model_collection = self._construct_markov_model_collection(count_models)
+        self._markov_state_model_collection = self._construct_markov_model_collection(
+            count_models, transition_matrices)
 
     @property
     def therm_state_energies(self) -> np.ndarray:
         """ The estimated free energy per thermodynamic state, :math:`f_k`, where :math:`k` is the thermodynamic state
         index.
         """
-        return self._therm_state_energies
+        return self.therm_state_energies()
 
     @property
     def markov_state_model_collection(self):
@@ -34,9 +38,6 @@ class TRAMModel(Model):
             the collection of markov state models containing one model for each thermodynamic state.
         """
         return self._markov_state_model_collection
-
-    def compute_markov_state_energies(self, dtrajs, bias_matrices):
-        pass
 
     def compute_sample_weights(self, dtrajs, bias_matrices, therm_state=-1):
         r""" Compute the sample weight :math:`\mu(x)` for all samples :math:`x`. If the thermodynamic state index is >=0,
@@ -73,7 +74,7 @@ class TRAMModel(Model):
 
         return np.dot(sample_weights, observable_values)
 
-    def compute_pmf(self, dtrajs, bias_matrices, binned_samples, therm_state=-1, n_bins=None):
+    def compute_PMF(self, dtrajs, bias_matrices, binned_samples, therm_state=-1, n_bins=None):
         # TODO: account for variable bin widths
         sample_weights = np.reshape(self.compute_sample_weights(dtrajs, bias_matrices, therm_state), -1)
         binned_samples = np.reshape(binned_samples, -1)
@@ -91,7 +92,7 @@ class TRAMModel(Model):
         pmf -= pmf.min()
         return pmf
 
-    def _construct_markov_model_collection(self, count_models):
+def _construct_markov_model_collection(self, count_models, transition_matrices):
         r""" Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
         For each of the thermodynamic states, one MarkovStateModel is added to the MarkovStateModelCollection. The
         corresponding count models are previously calculated and are restricted to the largest connected set.
@@ -101,7 +102,6 @@ class TRAMModel(Model):
         markov_state_model_collection : MarkovStateModelCollection
             the collection of markov state models containing one model for each thermodynamic state.
         """
-        transition_matrices = tram.compute_transition_matrices()
         transition_matrices_connected = []
         stationary_distributions = []
 
