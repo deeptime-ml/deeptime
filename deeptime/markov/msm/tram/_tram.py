@@ -600,7 +600,7 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        fragment_indices : lst(list(tuple(int)))
+        fragment_indices : list(list(tuple(int)))
             A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
             that thermodynamic state.
             fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k. The tuple consists of
