@@ -98,7 +98,7 @@ class TRAMModel(Model):
         binned_samples = np.reshape(binned_samples, -1)
 
         if n_bins is None:
-            n_bins = binned_samples.max()
+            n_bins = binned_samples.max() + 1
 
         pmf = np.zeros(n_bins)
 
