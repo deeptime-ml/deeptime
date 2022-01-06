@@ -22,11 +22,11 @@ def unpack_input_tuple(data):
 
     Returns
     -------
-    dtrajs : list(ndarray(n)), int32
+    dtrajs : array-like(ndarray(n)), int32
         the first element from the data tuple.
-    bias_matrices : List(ndarray(n,m)), float64
+    bias_matrices : array-like(ndarray(n,m)), float64
         the second element from the data tuple.
-    ttrajs : list(ndarray(n)), int32, or None
+    ttrajs : array-like(ndarray(n)), int32, or None
         the third element from the data tuple, if present.
     """
     dtrajs, bias_matrices, ttrajs = data[0], data[1], data[2:]
@@ -46,14 +46,14 @@ def to_zero_padded_array(arrays, desired_shape):
 
     Parameters
     ----------
-    arrays: array-like(np.array)
+    arrays: array-like(ndarray)
         The list/array of numpy arrays of different shapes. All arrays should have the same number of dimensions.
     desired_shape: tuple
         The shape each array should be passed to, having the same number of dimensions as the arrays.
 
     Returns
     -------
-    arrays : np.ndarray
+    arrays : ndarray
         The passed arrays as one numpy array.
     """
     new_array = np.zeros((len(arrays), desired_shape))
@@ -202,17 +202,16 @@ class TRAM(_MSMBaseEstimator):
         Parameters
         ----------
         data: tuple consisting of (dtrajs, bias_matrices) or (dtrajs, bias_matrices, ttrajs).
-        # TODO check the docs! dtrajs and bias_matrices are lists!
-            * dtrajs: ndarray
-              The discrete trajectories in the form an 2-d integer ndarray. dtrajs[i] contains one trajectory.
+            * dtrajs: array-like(ndarray(n)), int32
+              The discrete trajectories in the form of a list or array of numpy arrays. dtrajs[i] contains one trajectory.
               dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
               into. Each of the dtrajs can be of variable length.
-            * bias_matrices: ndarray
+            * bias_matrices: ndarray-like(ndarray), float64
               The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
               trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
               dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
               sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
-            * ttrajs: ndarray, optional
+            * ttrajs: array-like(ndarray], int32, optional
               ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
               sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
               trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
@@ -258,11 +257,11 @@ class TRAM(_MSMBaseEstimator):
 
         Returns
         -------
-        ttrajs : list(ndarray(n)), int32, or None
+        ttrajs : array-like(ndarray(n)), int32, or None
             The validated ttrajs converted to a list of contiguous numpy arrays.
-        dtrajs : list(ndarray(n)), int32
+        dtrajs : array-like(ndarray(n)), int32
             The validated dtrajs converted to a list of contiguous numpy arrays.
-        bias_matrices : List(ndarray(n,m)), float64
+        bias_matrices : array-like(ndarray(n,m)), float64
             The validated bias matrices converted to a list of contiguous numpy arrays.
         """
         dtrajs, bias_matrices, ttrajs = unpack_input_tuple(data)
@@ -276,18 +275,19 @@ class TRAM(_MSMBaseEstimator):
         The ttrajs, dtrajs and bias matrices should all contain the same number of trajectories (i.e. shape(0) should be
         equal for all input arrays).
         Trajectories can vary in length, but for each trajectory the corresponding arrays in dtrajs, ttrajs and
-        bias_matrices should be of the same length (i.e. array[i].shape(0) for any i should be equal in all input arrays).
+        bias_matrices should be of the same length (i.e. array[i].shape(0) for any i should be equal in all input
+        arrays).
 
         Parameters
         ----------
-        ttrajs: array-like, optional
+        ttrajs: array-like(ndarray(n)), int32, optional
             ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was sampled
             at. If ttrajs is None, we assume no replica exchange was done. We then assume each trajectory corresponds to
             a unique thermodynamic state, and assign that trajectory index to the thermodynamic state index.
-        dtrajs: array-like
+        dtrajs: array-like(ndarray(n)), int32
             The discrete trajectories. dtrajs[i, n] contains the Markov state index for the n-th sample in the i-th
             trajectory.
-        bias_matrices: array-like
+        bias_matrices: array-like(ndarray(n,m)), float64
             The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i'th
             trajectory, evaluated at thermodynamic state k.
 
@@ -354,29 +354,29 @@ class TRAM(_MSMBaseEstimator):
 
          Parameters
          ----------
-         dtrajs: ndarray
+         dtrajs: array-like(ndarray(n)), int32
             The discrete trajectories in the form an 2-d integer ndarray. dtrajs[i] contains one trajectory.
             dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
             into. Each of the dtrajs can be of variable length.
-         bias_matrices: ndarray
+         bias_matrices: array-like(ndarray(n,m)), float64
             The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
             trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
             dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
             sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
-         ttrajs: ndarray, optional
+         ttrajs: array-like(ndarray(n)), int32, optional
             ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
             sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
             trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
 
         Returns
         -------
-        dtrajs : ndarray
+        dtrajs : list(ndarray), int32
             The dtrajs restricted to the largest connected set. All sample indices that do not belong to the largest
             connected set are set to -1.
-        state_counts : ndarray
+        state_counts : ndarray(n,m), int32
             The state counts for the dtrajs, restricted to the connected set. state_counts[k,i] is the number of samples
             sampled at thermodynamic state k that are in Markov state i.
-        transition_counts : ndarray
+        transition_counts : ndarray(n,m,m), int32
             The transition counts for the dtrajs, restricted to the connected set. transition_counts[k,i,j] is the
             number of observed transitions from Markov state i to Markov state j, in thermodynamic state k under the
             chosen lagtime.
@@ -405,16 +405,16 @@ class TRAM(_MSMBaseEstimator):
 
         Parameters
          ----------
-         dtrajs: ndarray
+         dtrajs: array-like(ndarray(n)), int32
             The discrete trajectories in the form an 2-d integer ndarray. dtrajs[i] contains one trajectory.
             dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
             into. Each of the dtrajs can be of variable length.
-         bias_matrices: ndarray
+         bias_matrices: array-like(ndarray(n,m)), float64
             The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
             trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
             dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
             sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
-         ttrajs: ndarray, optional
+         ttrajs: array-like(ndarray(n)), int32, optional
             ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
             sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
             trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
@@ -484,20 +484,19 @@ class TRAM(_MSMBaseEstimator):
             return full_counts_model.submodel(np.unique(connected_states[1]))
 
     def _restrict_to_connected_set(self, dtrajs):
-        """
-        Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the largest connected set
-        will be set to -1.
+        """         Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the largest
+        connected set will be set to -1.
 
         Parameters
         ----------
-        dtrajs : list(ndarray(n))
+        dtrajs : array-like(ndarray(n)), int32
             the discrete trajectories. dtrajs[i] is a numpy array containing the trajectories sampled in the i-th
             thermodynamic state. dtrajs[i][n] is the Markov state that the n-th sample sampled at thermodynamic state i
             falls in.
 
         Returns
         -------
-        dtrajs_connected : list(ndarray(n))
+        dtrajs_connected : list(ndarray(n)), int32
             The list of discrete trajectories. Identical to the input dtrajs, except that all samples that do not belong
             in the largest connected set are set to -1.
 
@@ -526,18 +525,18 @@ class TRAM(_MSMBaseEstimator):
 
         Parameters
         ----------
-        dtrajs: list(ndarray(n))
+        dtrajs: array-like(ndarray(n)), int32
             the discrete trajectories. dtrajs[i] is a numpy array containing the trajectories sampled in the i-th
             thermodynamic state. dtrajs[i][n] is the Markov state that the n-th sample sampled at thermodynamic state i
             falls in. May contain negative state indices.
 
-        ttrajs: list(ndarray(n)), optional
+        ttrajs: list(ndarray(n)), int32, optional
             ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was sampled
             at.
 
         Returns
         -------
-        dtraj_fragments : list(List(Int))
+        dtraj_fragments : list(List(int32))
            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
            that thermodynamic state. fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k.
            The fragments are be restricted to the largest connected set and negative state indices are excluded.
@@ -566,12 +565,12 @@ class TRAM(_MSMBaseEstimator):
 
         Parameters
         ----------
-        ttrajs: ndarray
+        ttrajs: array-like(ndarray(n)), int32
             the thermodynamic state sequences.
 
         Returns
         -------
-        fragment_indices : List(List(Tuple(Int)))
+        fragment_indices : lst(list(tuple(int)))
             A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
             that thermodynamic state.
             fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k. The tuple consists of
@@ -592,7 +591,7 @@ class TRAM(_MSMBaseEstimator):
 
         Parameters
         ----------
-        dtraj_fragments: list(List(Int))
+        dtraj_fragments: list(list(int32))
            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
            that thermodynamic state. fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k.
            The fragments should be restricted to the largest connected set and not contain any negative state indices.
