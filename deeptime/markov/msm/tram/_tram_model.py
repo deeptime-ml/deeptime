@@ -59,6 +59,27 @@ class TRAMModel(Model):
             count_models, transition_matrices)
 
     @property
+    def biased_conf_energies(self) -> np.ndarray:
+        r""" The estimated free energy per thermodynamic state and Markov state, :math:`f_k^i`, where :math:`k` is the
+        thermodynamic state index, and :math:`i` the Markov state index.
+        """
+        return self._biased_conf_energies
+
+    @property
+    def lagrangian_mult_log(self) -> np.ndarray:
+        r""" The estimated logarithm of the lagrange multipliers :math:`v_i^k` of each Markov state for all thermodynamic
+            states. lagrangian_mult_log[k,i] contains the lagrange multiplier of Markov state i in thermodynamic state k.
+        """
+        return self._lagrangian_mult_log
+
+    @property
+    def modified_state_counts_log (self):
+        r"""The logarithm of the modified state counts :math:`R_i^k` of each Markov state for all thermodynamic
+        states. modified_state_counts_log[k,i] contains the state counts of Markov state i in thermodynamic state k.
+        """
+        return self._modified_state_counts_log
+
+    @property
     def therm_state_energies(self) -> np.ndarray:
         r""" The estimated free energy per thermodynamic state, :math:`f_k`, where :math:`k` is the thermodynamic state
         index.

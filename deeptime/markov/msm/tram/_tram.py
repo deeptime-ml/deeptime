@@ -147,13 +147,13 @@ class TRAM(_MSMBaseEstimator):
         if connectivity not in TRAM.connectivity_options:
             raise ValueError(f"Connectivity type unsupported. Connectivity must be one of {TRAM.connectivity_options}.")
         self.connectivity = connectivity
-
-        if model is not None:
-            self._tram_estimator = self._construct_estimator_from_model(model)
-
-        self.connectivity_factor = connectivity_factor
         self.n_markov_states = None
         self.n_therm_states = None
+
+        if model is not None:
+            self._tram_estimator = self._load_model(model)
+
+        self.connectivity_factor = connectivity_factor
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.track_log_likelihoods = track_log_likelihoods
@@ -321,20 +321,37 @@ class TRAM(_MSMBaseEstimator):
         for b in bias_matrices:
             types.ensure_floating_array(b, ndim=2)
 
-        # find dimensions
-        self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
+        if self.n_markov_states is None:
+            # No model was previously loaded. Find the number of Markov states.
+            self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
+        else:
+            # a model was already loaded. check that new dtrajs do not exceed of the number of markov states.
+            if max(np.max(d) for d in dtrajs) >= self.n_markov_states:
+                raise ValueError(
+                    "dtrajs out of bounds. Largest state number in dtrajs is larger than the number of Markov states.")
 
         if ttrajs is None or len(ttrajs) == 0:
-            # ensure it's None. Leaving it an empty tuple will break the call to _tram_bindings
+            # ensure ttrajs is None. Leaving it an empty tuple will break the call to _tram_bindings
             ttrajs = None
-            self.n_therm_states = len(dtrajs)
         else:
             # find the number of therm states as the highest index in ttrajs
             for t in ttrajs:
                 types.ensure_integer_array(t, ndim=1)
+
             ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
 
-            self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
+        if self.n_therm_states is None:
+            # No model was previously loaded. Find the number of thermodynamic states.
+            if ttrajs is None:
+                self.n_therm_states = len(dtrajs)
+            else:
+                self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
+
+        else:
+            # A model was already loaded. check that new ttrajs (if any) do not exceed of the number of thermodynamic states.
+            if ttrajs is not None and max(np.max(t) for t in ttrajs) >= self.n_therm_states:
+                raise ValueError(
+                    "ttrajs out of bounds. Largest state number in ttrajs is larger than the number of thermodynamic states.")
 
         # cast types and change axis order if needed
         dtrajs = [np.require(d, dtype=np.int32, requirements='C') for d in dtrajs]
@@ -646,6 +663,13 @@ class TRAM(_MSMBaseEstimator):
                 self.count_models.append(traj_counts_model)
         return state_counts, transition_counts
 
+    def _load_model(self, model):
+        self._model = model
+        self.n_therm_states = model.n_therm_states
+        self.n_markov_states = model.n_markov_states
+        self._tram_estimator = tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log,
+                                         model.modified_state_counts_log)
+
 
 class TRAMCallback(callbacks.Callback):
     """Callback for the TRAM estimate process. Increments a progress bar and optionally saves iteration increments and
@@ -668,6 +692,3 @@ class TRAMCallback(callbacks.Callback):
                 self.increments.append(increment)
 
         self.last_increment = increment
-
-    def _construct_estimator_from_model(self, model):
-        return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
