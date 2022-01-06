@@ -17,8 +17,8 @@ PYBIND11_MODULE(_tram_bindings, m) {
                      "track_log_likelihoods"_a = false, "callback"_a = nullptr)
                 .def("transition_matrices", &TRAM<double>::transitionMatrices)
                 .def("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
-                .def("therm_state_energies", &TRAM<double>::energiesPerThermodynamicState)
-                .def("markov_state_energies", &TRAM<double>::energiesPerMarkovState)
+                .def("modified_state_counts_log", &TRAM<double>::modifiedStateCountsLog)
+                .def("lagrangian_mult_log", &TRAM<double>::lagrangianMultLog)
                 .def("log_likelihood", &TRAM<double>::computeLogLikelihood, py::call_guard<py::gil_scoped_release>());
 
 

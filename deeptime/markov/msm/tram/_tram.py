@@ -2,7 +2,7 @@ import warnings
 from typing import Optional
 from sklearn.exceptions import ConvergenceWarning
 
-from deeptime.markov.msm import TRAMModel
+from ._tram_model import TRAMModel
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types, callbacks
@@ -158,7 +158,6 @@ class TRAM(_MSMBaseEstimator):
     #: All possible connectivity modes
     connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
 
-
     @property
     def _transition_matrices(self) -> Optional[np.ndarray]:
         """The transition matrices returned by the TRAM estimator.
@@ -239,7 +238,10 @@ class TRAM(_MSMBaseEstimator):
 
         self._tram_estimator = tram.TRAM(tram_input)
         self._run_estimation()
-        self._model = TRAMModel(self.count_models, self._tram_estimator.biased_conf_energies(), )
+        self._model = TRAMModel(self.count_models, self._transition_matrices,
+                                self._tram_estimator.biased_conf_energies(),
+                                self._tram_estimator.lagrangian_mult_log(),
+                                self._tram_estimator.modified_state_counts_log())
 
         return self
 
@@ -637,4 +639,3 @@ class TRAM(_MSMBaseEstimator):
 
                 self.count_models.append(traj_counts_model)
         return state_counts, transition_counts
-

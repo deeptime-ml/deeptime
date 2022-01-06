@@ -1,21 +1,20 @@
 import numpy as np
 
-from numeric import logsumexp_sort_kahan_inplace
-from ...base import Model
-from ._markov_state_model import MarkovStateModelCollection
-from deeptime.markov.msm.tram._tram_bindings import tram
+from deeptime.numeric._numeric_bindings import logsumexp
+from deeptime.markov.msm import MarkovStateModelCollection
+from deeptime.base import Model
+from ._tram_bindings import tram
 
 
 class TRAMModel(Model):
-    def __init__(self, count_models, transition_matrices, biased_conf_energies=None, therm_state_energies=None,
+    def __init__(self, count_models, transition_matrices, biased_conf_energies=None, lagrangian_mult_log=None,
                  modified_state_counts_log=None):
 
         self._biased_conf_energies = biased_conf_energies
         self._modified_state_counts_log = modified_state_counts_log
-        if therm_state_energies is None:
-            self._therm_state_energies = np.asarray([logsumexp_sort_kahan_inplace(row) for row in biased_conf_energies])
-        else:
-            self._therm_state_energies = therm_state_energies
+        self._lagrangian_mult_log = lagrangian_mult_log
+
+        self._therm_state_energies = np.asarray([-logsumexp(-row) for row in biased_conf_energies])
 
         self._markov_state_model_collection = self._construct_markov_model_collection(
             count_models, transition_matrices)
@@ -25,7 +24,7 @@ class TRAMModel(Model):
         """ The estimated free energy per thermodynamic state, :math:`f_k`, where :math:`k` is the thermodynamic state
         index.
         """
-        return self.therm_state_energies()
+        return self._therm_state_energies
 
     @property
     def markov_state_model_collection(self):
@@ -92,7 +91,7 @@ class TRAMModel(Model):
         pmf -= pmf.min()
         return pmf
 
-def _construct_markov_model_collection(self, count_models, transition_matrices):
+    def _construct_markov_model_collection(self, count_models, transition_matrices):
         r""" Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
         For each of the thermodynamic states, one MarkovStateModel is added to the MarkovStateModelCollection. The
         corresponding count models are previously calculated and are restricted to the largest connected set.

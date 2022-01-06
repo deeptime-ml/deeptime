@@ -109,16 +109,16 @@ public:
         initLagrangianMult();
     }
 
-    const auto &energiesPerThermodynamicState() const {
-        return *thermStateEnergies_.first();
-    }
-
-    const auto &energiesPerMarkovState() const {
-        return markovStateEnergies_;
-    }
-
     const auto &biasedConfEnergies() const {
         return biasedConfEnergies_;
+    }
+
+    const auto &lagrangianMultLog() const {
+        return *lagrangianMultLog_.first();
+    }
+
+    const auto &modifiedStateCountsLog() const {
+        return modifiedStateCountsLog_;
     }
 
     const auto &transitionMatrices() const {
@@ -190,13 +190,13 @@ public:
                 shiftEnergiesToHaveZeroMinimum();
             }
         }
-        // Done iterating. Compute all energies for the thermodynamic states and markov states.
-        updateMarkovStateEnergies();
-        updateThermStateEnergies();
-        normalize();
-
-        // And update final transition matrices
-        updateTransitionMatrices();
+//        // Done iterating. Compute all energies for the thermodynamic states and markov states.
+//        updateMarkovStateEnergies();
+//        updateThermStateEnergies();
+//        normalize();
+//
+//        // And update final transition matrices
+//        updateTransitionMatrices();
     }
 
 private:
