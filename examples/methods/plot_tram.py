@@ -18,7 +18,7 @@ from deeptime.markov.msm.tram import TRAM
 from deeptime.clustering import KMeansModel
 
 xs = np.linspace(-1.5, 1.5, num=100)
-n_samples = 100
+n_samples = 10000
 bias_centers = [-1, -0.5, 0.0, 0.5, 1]
 
 
