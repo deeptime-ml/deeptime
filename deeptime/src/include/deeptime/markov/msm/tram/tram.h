@@ -121,6 +121,14 @@ public:
         return modifiedStateCountsLog_;
     }
 
+    const auto &thermStateEnergies() const {
+        return *thermStateEnergies_.first();
+    }
+
+    const auto &markovStateEnergies() const {
+        return markovStateEnergies_;
+    }
+
     const auto &transitionMatrices() const {
         return transitionMatrices_;
     }
@@ -190,13 +198,13 @@ public:
                 shiftEnergiesToHaveZeroMinimum();
             }
         }
-//        // Done iterating. Compute all energies for the thermodynamic states and markov states.
-//        updateMarkovStateEnergies();
-//        updateThermStateEnergies();
-//        normalize();
-//
-//        // And update final transition matrices
-//        updateTransitionMatrices();
+        // Done iterating. Compute all energies for the thermodynamic states and markov states.
+        updateMarkovStateEnergies();
+        updateThermStateEnergies();
+        normalize();
+
+        // And update final transition matrices
+        updateTransitionMatrices();
     }
 
 private:

@@ -294,7 +294,7 @@ def test_tram_integration():
     assert np.allclose(model.therm_state_energies, [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
     assert np.allclose(model.markov_state_energies, [1.0550639, 0.42797176])
 
-    MEMM = model.markov_state_model_collection()
+    MEMM = model.markov_state_model_collection
     assert np.allclose(MEMM.stationary_distribution, [1.])
     MEMM.select(1)
     assert np.allclose(MEMM.stationary_distribution, [0.3678024695571382, 0.6321975304428619])
@@ -303,7 +303,7 @@ def test_tram_integration():
     MEMM.select(2)
     assert np.allclose(MEMM.transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
 
-    weights = model.compute_sample_weights()
+    weights = model.compute_sample_weights(dtrajs, bias_matrices)
     assert np.allclose(np.sum(weights), 1)
     assert tram.log_likelihood < 0
 

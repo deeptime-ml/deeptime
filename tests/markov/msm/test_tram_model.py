@@ -25,3 +25,6 @@ def test_init_tram_model():
     assert MEMM.n_connected_msms == n_therm_states
     MEMM.select(1)
     assert (MEMM.transition_matrix == transition_matrices[1]).all()
+
+    assert model.n_markov_states == n_markov_states
+    assert model.n_therm_states == n_therm_states

@@ -2,7 +2,7 @@
 #include "deeptime/markov/msm/tram/tram.h"
 #include "deeptime/markov/msm/tram/connected_set.h"
 #include "deeptime/markov/msm/tram/trajectory_mapping.h"
- 
+
 PYBIND11_MODULE(_tram_bindings, m) {
     using namespace pybind11::literals;
     using namespace deeptime::markov::tram;
@@ -19,6 +19,8 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 .def("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
                 .def("modified_state_counts_log", &TRAM<double>::modifiedStateCountsLog)
                 .def("lagrangian_mult_log", &TRAM<double>::lagrangianMultLog)
+                .def("therm_state_energies", &TRAM<double>::thermStateEnergies)
+                .def("markov_state_energies", &TRAM<double>::markovStateEnergies)
                 .def("log_likelihood", &TRAM<double>::computeLogLikelihood, py::call_guard<py::gil_scoped_release>());
 
 
@@ -32,14 +34,14 @@ PYBIND11_MODULE(_tram_bindings, m) {
 
         tramMod.def("find_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
-		    py::call_guard<py::gil_scoped_release>(),
-		    py::return_value_policy::move,
+		            py::call_guard<py::gil_scoped_release>(),
+                    py::return_value_policy::move,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a, "callback"_a);
 
         tramMod.def("find_state_transitions_BAR_variance", &findStateTransitions<double, OverlapBarVariance<double>>,
-		    py::call_guard<py::gil_scoped_release>(),
-		    py::return_value_policy::move,
+                    py::call_guard<py::gil_scoped_release>(),
+                    py::return_value_policy::move,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a, "callback"_a);
 

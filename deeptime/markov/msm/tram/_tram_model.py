@@ -7,24 +7,43 @@ from ._tram_bindings import tram
 
 
 class TRAMModel(Model):
-    def __init__(self, count_models, transition_matrices, biased_conf_energies=None, lagrangian_mult_log=None,
-                 modified_state_counts_log=None):
+    def __init__(self, count_models, transition_matrices,
+                 biased_conf_energies,
+                 lagrangian_mult_log,
+                 modified_state_counts_log,
+                 therm_state_energies=None,
+                 markov_state_energies=None,
+                 ):
+        self.n_therm_states = biased_conf_energies.shape[0]
+        self.n_markov_states = biased_conf_energies.shape[1]
 
         self._biased_conf_energies = biased_conf_energies
         self._modified_state_counts_log = modified_state_counts_log
         self._lagrangian_mult_log = lagrangian_mult_log
+        self._markov_state_energies = markov_state_energies
 
-        self._therm_state_energies = np.asarray([-logsumexp(-row) for row in biased_conf_energies])
+        if therm_state_energies is None:
+            self._therm_state_energies = np.asarray([-logsumexp(-row) for row in biased_conf_energies])
+        else:
+            self._therm_state_energies = therm_state_energies
 
         self._markov_state_model_collection = self._construct_markov_model_collection(
             count_models, transition_matrices)
 
     @property
     def therm_state_energies(self) -> np.ndarray:
-        """ The estimated free energy per thermodynamic state, :math:`f_k`, where :math:`k` is the thermodynamic state
+        r""" The estimated free energy per thermodynamic state, :math:`f_k`, where :math:`k` is the thermodynamic state
         index.
         """
         return self._therm_state_energies
+
+
+    @property
+    def markov_state_energies(self) -> np.ndarray:
+        r""" The estimated free energy per Markov state, :math:`f^i`, where :math:`i` is the Markov state
+        index.
+        """
+        return self._markov_state_energies
 
     @property
     def markov_state_model_collection(self):

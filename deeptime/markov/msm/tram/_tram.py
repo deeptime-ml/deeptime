@@ -159,19 +159,6 @@ class TRAM(_MSMBaseEstimator):
     connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
 
     @property
-    def _transition_matrices(self) -> Optional[np.ndarray]:
-        """The transition matrices returned by the TRAM estimator.
-        This property is private because the transition matrices should be passed to the MEMM from which they will be
-        accessible to the user."""
-        if self._tram_estimator is not None:
-            return self._tram_estimator.transition_matrices()
-
-    @property
-    def _biased_conf_energies(self) -> Optional[np.ndarray]:
-        if self._tram_estimator is not None:
-            return self._tram_estimator.biased_conf_energies()
-
-    @property
     def log_likelihood(self) -> Optional[float]:
         r"""The parameter-dependent part of the TRAM likelihood.
 
@@ -238,10 +225,13 @@ class TRAM(_MSMBaseEstimator):
 
         self._tram_estimator = tram.TRAM(tram_input)
         self._run_estimation()
-        self._model = TRAMModel(self.count_models, self._transition_matrices,
-                                self._tram_estimator.biased_conf_energies(),
-                                self._tram_estimator.lagrangian_mult_log(),
-                                self._tram_estimator.modified_state_counts_log())
+        self._model = TRAMModel(count_models=self.count_models,
+                                transition_matrices=self._tram_estimator.transition_matrices(),
+                                biased_conf_energies=self._tram_estimator.biased_conf_energies(),
+                                lagrangian_mult_log=self._tram_estimator.lagrangian_mult_log(),
+                                modified_state_counts_log=self._tram_estimator.modified_state_counts_log(),
+                                therm_state_energies=self._tram_estimator.therm_state_energies(),
+                                markov_state_energies=self._tram_estimator.markov_state_energies())
 
         return self
 
