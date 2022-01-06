@@ -84,6 +84,26 @@ class TRAMModel(Model):
                                            self._modified_state_counts_log)
 
     def compute_observable(self, dtrajs, bias_matrices, observable_values, therm_state=-1):
+        r""" Compute an observable value.
+
+        Parameters
+        ----------
+        dtrajs : list(np.ndarray)
+            The list of discrete trajectories. dtrajs[i][n] contains the Markov state index of the n-th sample in the
+            i-th trajectory.
+        bias_matrices : list(np.ndarray)
+            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
+            trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
+            dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
+            sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
+        observable_values : list(np.ndarray)
+            The list of observable values. observable_values[i][n] contains the observable value for the n-th sample in
+            the i-th trajectory.
+
+        The observed values, bias matrices and dtrajs are associated, i.e. they all pertain to the same samples:
+        for the n-th sample in the i-the trajectory, its observable, bias values and Markov state can be found
+        at index n, i of observable_values, bias_matrices and dtrajs respectively.
+        """
         sample_weights = self.compute_sample_weights(dtrajs, bias_matrices, therm_state)
 
         # flatten both
@@ -92,10 +112,30 @@ class TRAMModel(Model):
 
         return np.dot(sample_weights, observable_values)
 
-    def compute_PMF(self, dtrajs, bias_matrices, binned_samples, therm_state=-1, n_bins=None):
+    def compute_PMF(self, dtrajs, bias_matrices, bin_indices, therm_state=-1, n_bins=None):
+        r""" Compute an observable value.
+
+        Parameters
+        ----------
+        dtrajs : list(np.ndarray)
+            The list of discrete trajectories. dtrajs[i][n] contains the Markov state index of the n-th sample in the
+            i-th trajectory.
+        bias_matrices : list(np.ndarray)
+            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
+            trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
+            dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
+            sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
+        bin_indices : list(np.ndarray)
+            The list of bin indices that the samples are binned into. The PMF is calculated as a distribution over these
+            bins. binnes_samples[i][n] contains the bin index for the n-th sample in the i-th trajectory.
+
+        The bin indices, bias matrices and dtrajs are associated, i.e. they all pertain to the same samples:
+        for the n-th sample in the i-the trajectory, its bin index, bias values and Markov state can be found
+        at index n, i of bin_indices, bias_matrices and dtrajs respectively.
+        """
         # TODO: account for variable bin widths
         sample_weights = np.reshape(self.compute_sample_weights(dtrajs, bias_matrices, therm_state), -1)
-        binned_samples = np.reshape(binned_samples, -1)
+        binned_samples = np.reshape(bin_indices, -1)
 
         if n_bins is None:
             n_bins = binned_samples.max() + 1

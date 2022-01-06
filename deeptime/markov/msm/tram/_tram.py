@@ -202,6 +202,7 @@ class TRAM(_MSMBaseEstimator):
         Parameters
         ----------
         data: tuple consisting of (dtrajs, bias_matrices) or (dtrajs, bias_matrices, ttrajs).
+        # TODO check the docs! dtrajs and bias_matrices are lists!
             * dtrajs: ndarray
               The discrete trajectories in the form an 2-d integer ndarray. dtrajs[i] contains one trajectory.
               dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
@@ -544,7 +545,7 @@ class TRAM(_MSMBaseEstimator):
         if ttrajs is None or len(ttrajs) == 0:
             # No ttrajs were given. We assume each trajectory in dtrajs was sampled in a distinct thermodynamic state.
             # The thermodynamic state index equals the trajectory index, and the dtrajs are unchanged.
-            return [dtrajs[k][dtrajs[k] >= 0] for k in range(self.n_therm_states)]
+            return [[dtrajs[k][dtrajs[k] >= 0]] for k in range(self.n_therm_states)]
 
         # replica exchange data means that the trajectories to not correspond 1:1 to thermodynamic states.
         # get a mapping from trajectory segments to thermodynamic states
@@ -614,7 +615,10 @@ class TRAM(_MSMBaseEstimator):
         self.count_models = []
         for k in range(self.n_therm_states):
 
-            if len(dtraj_fragments[k]) == 0:
+            if len(dtraj_fragments[k]) == 0 or np.all([len(frag) <= self.lagtime for frag in dtraj_fragments[k]]):
+                warnings.warn(f"No transitions for thermodynamic state {k} after cutting the trajectories into "
+                              f"fragments that start at each replica exchange swap. Replica exchanges possibly occur"
+                              f"within the span of the lag time.")
                 # there are no samples from this state that belong to the connected set. Make an empty count model.
                 self.count_models.append(TransitionCountModel(np.zeros(self.n_markov_states, self.n_markov_states)))
             else:

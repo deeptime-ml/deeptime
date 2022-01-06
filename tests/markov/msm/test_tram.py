@@ -132,10 +132,10 @@ def test_restrict_to_connected_set(test_input, expected):
 )
 def test_make_count_models(lagtime):
     tram = TRAM(lagtime=lagtime)
-    input = [np.asarray([1, 1, 2, 3, 1, 1, 1]), np.asarray([2, 0, 0, 1, 3, 1, 4]), np.asarray([2, 2, 2, 2])]
-    tram.n_therm_states = len(input)
-    tram.n_markov_states = np.max(np.concatenate(input)) + 1
-    state_counts, transition_counts = tram._construct_count_models(input)
+    traj_fragments = [np.asarray([1, 1, 2, 3, 1, 1, 1]), np.asarray([2, 0, 0, 1, 3, 1, 4]), np.asarray([2, 2, 2, 2])]
+    tram.n_therm_states = len(traj_fragments)
+    tram.n_markov_states = np.max(np.concatenate(traj_fragments)) + 1
+    state_counts, transition_counts = tram._construct_count_models([[fragments] for fragments in traj_fragments])
     assert len(tram.count_models) == tram.n_therm_states
     assert state_counts.shape == (tram.n_therm_states, tram.n_markov_states)
     assert transition_counts.shape == (tram.n_therm_states, tram.n_markov_states, tram.n_markov_states)
@@ -143,8 +143,8 @@ def test_make_count_models(lagtime):
     assert np.array_equal(tram.count_models[1].state_symbols, [0, 1, 2, 3, 4])
     assert np.array_equal(tram.count_models[2].state_symbols, [0, 1, 2])
     for k in range(tram.n_therm_states):
-        assert transition_counts[k].sum() == len(input[k]) - lagtime
-        assert state_counts[k].sum() == len(input[k])
+        assert transition_counts[k].sum() == len(traj_fragments[k]) - lagtime
+        assert state_counts[k].sum() == len(traj_fragments[k])
 
 
 @pytest.mark.parametrize(
@@ -159,7 +159,7 @@ def test_transposed_count_matrices_bug(input):
     input = np.asarray(input)
     tram.n_therm_states = len(input)
     tram.n_markov_states = np.max(np.concatenate(input)) + 1
-    state_counts, transition_counts = tram._construct_count_models(input)
+    state_counts, transition_counts = tram._construct_count_models([[frag] for frag in input])
     assert np.array_equal(state_counts, [[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]])
     assert np.array_equal(transition_counts,
                           [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]])
@@ -208,8 +208,8 @@ def test_get_trajectory_fragments_no_ttrajs(dtrajs, ttrajs, expected):
     mapping = tram._find_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
                                               ttrajs)
     for k in range(tram.n_therm_states):
-        assert len(mapping[k]) == len(expected[k])
-        assert np.all([np.array_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))])
+        assert len(mapping[k][0]) == len(expected[k])
+        assert np.all([np.array_equal(mapping[k][0][i], expected[k][i]) for i in range(len(mapping[k]))])
 
 
 def test_unpack_input():
@@ -228,6 +228,37 @@ def test_unpack_input():
     with pytest.raises(ValueError) as exinfo:
         unpack_input_tuple((arr, arr, arr, arr))
         assert 'Unexpected number of arguments' in exinfo.value
+
+
+@pytest.mark.parametrize(
+    "ttrajs", [np.asarray([[0, 0, 0], [1, 1, 1]]),
+              [np.asarray(traj) for traj in [[0, 0, 0], [1, 1, 1]]],
+               None]
+)
+@pytest.mark.parametrize(
+    "dtrajs", [np.asarray([[0, 1, 0], [0, 1, 2]]),
+               [np.asarray(traj) for traj in [[0, 1, 0], [0, 1, 2]]]]
+)
+@pytest.mark.parametrize(
+    "bias_matrix_as_ndarray", [True, False]
+)
+def test_tram_different_input_data_types(dtrajs, ttrajs, bias_matrix_as_ndarray):
+    bias_matrices = [np.random.rand(len(traj), 2) for traj in dtrajs]
+    if bias_matrix_as_ndarray:
+        bias_matrices = np.asarray(bias_matrices)
+
+    tram = TRAM(maxiter=100, save_convergence_info=True)
+    if ttrajs is None:
+        tram.fit((dtrajs, bias_matrices))
+    else:
+        tram.fit((dtrajs, bias_matrices, ttrajs))
+
+
+def test_lagtime_too_long():
+    dtrajs = np.asarray([[0, 1, 0], [0, 1, 2, 1], [2, 3]])
+    bias_matrices = [np.random.rand(len(traj), 3) for traj in dtrajs]
+    tram = TRAM(maxiter=100, lagtime=2)
+    tram.fit((dtrajs, bias_matrices))
 
 
 def test_tram_fit():
