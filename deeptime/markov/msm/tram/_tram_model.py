@@ -7,6 +7,34 @@ from ._tram_bindings import tram
 
 
 class TRAMModel(Model):
+    r""" The TRAM model containing the estimated parameters, free energies, and the underlying Markov models for each
+    thermodynamic state. TRAM is described in :footcite:`wu2016multiensemble`.
+
+    Parameters
+    ----------
+    count_models : list(TransitionCountModel)
+        The transition count models for all thermodynamic states. Have been restricted to the largest connected set.
+    transition_matrices : ndarray(n, m, m), float64
+        The estimated transition matrices for each thermodynamic state. The transition matrices and count models are
+        combined into a MarkovStateModelCollection that holds the Markov models for each thermodynamic state.
+    biased_conf_energies : ndarray(n, m), float64
+        The estimated free energies :math:`f_i^k` of each Markov state for all thermodynamic states.
+        biased_conf_energies[k,i] contains the bias energy of Markov state i in thermodynamic state k.
+    lagrangian_mult_log : ndarray(n, m), float64
+        The estimated logarithm of the lagrange multipliers :math:`v_i^k` of each Markov state for all thermodynamic
+        states. lagrangian_mult_log[k,i] contains the lagrange multiplier of Markov state i in thermodynamic state k.
+    modified_state_counts_log : ndarray(n, m), float64
+        The logarithm of the modified state counts :math:`R_i^k` of each Markov state for all thermodynamic
+        states. modified_state_counts_log[k,i] contains the state counts of Markov state i in thermodynamic state k.
+    therm_state_energies : ndarray(n), float64
+        The estimated free energy of each thermodynamic state, :math:`f^k`.
+    markov_state_energies : ndarray(m), float64
+        The estimated free energy of each Markov state, :math: `f_i`.
+
+    References
+    ----------
+    .. footbibliography::
+    """
     def __init__(self, count_models, transition_matrices,
                  biased_conf_energies,
                  lagrangian_mult_log,
