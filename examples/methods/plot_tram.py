@@ -84,4 +84,4 @@ if __name__ == "__main__":
     # Umbrella/Hamiltonian/temperature).
     model = tram.fit_fetch((dtrajs, bias_matrices))
 
-    plot_contour_with_colourbar(tram._biased_conf_energies)
+    plot_contour_with_colourbar(model.biased_conf_energies)

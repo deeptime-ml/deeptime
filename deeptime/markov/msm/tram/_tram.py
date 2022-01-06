@@ -2,11 +2,11 @@ import warnings
 from typing import Optional
 from sklearn.exceptions import ConvergenceWarning
 
-from ._tram_model import TRAMModel
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types, callbacks
 from ._tram_bindings import tram
+from ._tram_model import TRAMModel
 
 import numpy as np
 import scipy as sp

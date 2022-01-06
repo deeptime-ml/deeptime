@@ -1,9 +1,7 @@
 import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
-from deeptime.markov.msm.tram._tram_bindings import tram as bindings
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
-from deeptime.markov.msm import MarkovStateModelCollection
 
 
 def get_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs = True):
