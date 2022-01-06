@@ -94,19 +94,28 @@ template<typename dtype>
 struct TRAM {
 public:
 
-    TRAM(std::shared_ptr<TRAMInput<dtype>> tramInput, std::size_t callbackInterval)
-            : input_(tramInput),
-              nThermStates_(tramInput->stateCounts().shape(0)),
-              nMarkovStates_(tramInput->stateCounts().shape(1)),
-              callbackInterval_(callbackInterval),
+    TRAM(std::size_t nThermStates, std::size_t nMarkovStates)
+            : nThermStates_(nThermStates),
+              nMarkovStates_(nMarkovStates),
               biasedConfEnergies_(detail::generateFilledArray<dtype>({nThermStates_, nMarkovStates_}, 0.)),
               lagrangianMultLog_(ExchangeableArray<dtype, 2>({nThermStates_, nMarkovStates_}, 0.)),
               modifiedStateCountsLog_(detail::generateFilledArray<dtype>({nThermStates_, nMarkovStates_}, 0.)),
               thermStateEnergies_(ExchangeableArray<dtype, 1>(std::vector<StateIndex>{nThermStates_}, 0)),
               markovStateEnergies_(np_array_nfc<dtype>(std::vector<StateIndex>{nMarkovStates_})),
               transitionMatrices_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_, nMarkovStates_})),
-              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])) {
-        initLagrangianMult();
+              statVectors_(ExchangeableArray<dtype, 2>(std::vector({nThermStates_, nMarkovStates_}), 0.)),
+              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])),
+              initializeParametersOnEstimationStart_(true) {}
+
+    TRAM(np_array_nfc<dtype> &biasedConfEnergies, np_array_nfc<dtype> &lagrangianMultLog,
+         np_array_nfc<dtype> &modifiedStateCountsLog) : TRAM(biasedConfEnergies.shape(0), biasedConfEnergies.shape(1)) {
+        std::copy(lagrangianMultLog.data(), lagrangianMultLog.data() + lagrangianMultLog.size(),
+                  lagrangianMultLog_.first()->mutable_data());
+        std::copy(biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size(),
+                  biasedConfEnergies_.mutable_data());
+        std::copy(modifiedStateCountsLog.data(), modifiedStateCountsLog.data() + modifiedStateCountsLog.size(),
+                  modifiedStateCountsLog_.mutable_data());
+        initializeParametersOnEstimationStart_ = false;
     }
 
     const auto &biasedConfEnergies() const {
@@ -154,13 +163,16 @@ public:
     // returned through the callback function if it is provided. log-likelihoods are returned if
     // trackLogLikelihoods = true. By default, this is false, since calculating the log-likelihood required
     // an estimation of the transition matrices, which slows down estimation.
-    void estimate(std::size_t maxIter, dtype maxErr, bool trackLogLikelihoods = false,
+    void estimate(std::shared_ptr<TRAMInput<dtype>> &tramInput, std::size_t maxIter, dtype maxErr,
+                  std::size_t callbackInterval = 1, bool trackLogLikelihoods = false,
                   const py::object *callback = nullptr) {
 
-        // Array to keep track of _statVectors(K, i) = exp(_thermStateEnergies(K) - _biasedConfEnergies(K, i))
-        // difference between previous and current statvectors is used for calculating the iteration error.
-        auto statVectors = ExchangeableArray<dtype, 2>(std::vector({nThermStates_, nMarkovStates_}), 0.);
-        py::gil_scoped_release gilRelease;
+        input_ = tramInput;
+
+        if (initializeParametersOnEstimationStart_) {
+            initLagrangianMult();
+        }
+
         double iterationError{0};
 
         for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
@@ -172,11 +184,11 @@ public:
 
             // Tracking of energy vectors for error calculation.
             updateThermStateEnergies();
-            updateStatVectors(statVectors);
+            updateStatVectors(statVectors_);
 
             // compare new thermStateEnergies_ and statVectors with old to get the
             // iteration error (= how much the energies changed).
-            iterationError = computeError(statVectors);
+            iterationError = computeError(statVectors_);
 
             dtype logLikelihood{0};
             if (trackLogLikelihoods) {
@@ -184,7 +196,7 @@ public:
                 logLikelihood = computeLogLikelihood();
             }
 
-            if (callback != nullptr && iterationCount % callbackInterval_ == 0) {
+            if (callback != nullptr && callbackInterval > 0 && iterationCount % callbackInterval == 0) {
                 py::gil_scoped_acquire guard;
                 (*callback)(iterationError, logLikelihood);
             }
@@ -213,8 +225,6 @@ private:
     StateIndex nThermStates_;
     StateIndex nMarkovStates_;
 
-    std::size_t callbackInterval_;
-
     np_array_nfc<dtype> biasedConfEnergies_;
     ExchangeableArray<dtype, 2> lagrangianMultLog_;
     np_array_nfc<dtype> modifiedStateCountsLog_;
@@ -223,9 +233,17 @@ private:
     np_array_nfc<dtype> markovStateEnergies_;
     np_array_nfc<dtype> transitionMatrices_;
 
+    // Array to keep track of statVectors_(K, i) = exp(thermStateEnergies_(K) - biasedConfEnergies_(K, i))
+    // difference between previous and current statvectors is used for calculating the iteration error to check whether
+    // convergence is achieved.
+    ExchangeableArray<dtype, 2> statVectors_;
+
     // scratch matrices used to facilitate calculation of logsumexp
     std::unique_ptr<dtype[]> scratch_;
 
+    // True if this is the first time we are estimating parameters. In this case, Lagrangians will be initialized
+    // If False, estimation is done without re-initializing parameters.
+    bool initializeParametersOnEstimationStart_;
 
     constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
 

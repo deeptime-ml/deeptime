@@ -10,10 +10,12 @@ PYBIND11_MODULE(_tram_bindings, m) {
         auto tramMod = m.def_submodule("tram");
 
         py::class_<TRAM<double>>(tramMod, "TRAM")
-                .def(py::init<std::shared_ptr<TRAMInput<double>> &, std::size_t>(), "tram_input"_a,
-                     "callback_interval"_a = 1)
+                .def(py::init<std::size_t, std::size_t>(), "n_therm_states"_a, "n_markov_states"_a)
+                .def(py::init<deeptime::np_array_nfc<double> &,
+                                deeptime::np_array_nfc<double> &, deeptime::np_array_nfc<double> &>(),
+                                "biased_conf_energies"_a, "lagrangian_mult_log"_a, "modified_state_counts_log"_a)
                 .def("estimate", &TRAM<double>::estimate,
-                     "max_iter"_a = 1000, "max_err"_a = 1e-8,
+                     "input"_a, "max_iter"_a = 1000, "max_err"_a = 1e-8, "callback_interval"_a = 1,
                      "track_log_likelihoods"_a = false, "callback"_a = nullptr)
                 .def("transition_matrices", &TRAM<double>::transitionMatrices)
                 .def("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
@@ -34,7 +36,7 @@ PYBIND11_MODULE(_tram_bindings, m) {
 
         tramMod.def("find_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
-		            py::call_guard<py::gil_scoped_release>(),
+                    py::call_guard<py::gil_scoped_release>(),
                     py::return_value_policy::move,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a, "callback"_a);

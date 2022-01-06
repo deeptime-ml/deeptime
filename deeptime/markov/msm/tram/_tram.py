@@ -6,7 +6,7 @@ from ._tram_model import TRAMModel
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import types, callbacks
-from deeptime.markov.msm.tram._tram_bindings import tram
+from ._tram_bindings import tram
 
 import numpy as np
 import scipy as sp
@@ -111,9 +111,13 @@ class TRAM(_MSMBaseEstimator):
     maxerr : float, optional, default=1E-15
         Convergence criterion based on the maximal free energy change in a self-consistent
         iteration step.
-    save_convergence_info : int, optional, default=0
-        Every saveConvergenceInfo iteration steps, store the actual increment and the actual log-likelihood; 0
-        means no storage.
+    track_log_likelihoods : bool, optional, default=False
+        If True, the log-likelihood is stored every callback_interval steps. For calculation of the log-likelihood the
+        transition matrix needs to be constructed, which will slow down computation. By default, log-likelihoods are
+        not computed.
+    callback_interval : int, optional, default=0
+        Every callback_interval iteration steps, the callback function is calles and error increments are stored. If
+        track_log_likelihoods=true, the log-likelihood are also stored. If 0, no call to the callback function is done.
     connectivity_factor : float, optional, default=1.0
         Only needed if connectivity='post_hoc_RE' or 'BAR_variance'. Values greater than 1.0 weaken the connectivity
         conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
@@ -128,9 +132,10 @@ class TRAM(_MSMBaseEstimator):
     """
 
     def __init__(
-            self, lagtime=1, count_mode='sliding',
+            self, model=None, lagtime=1, count_mode='sliding',
             connectivity='summed_count_matrix',
-            maxiter=10000, maxerr: float = 1e-8, save_convergence_info=0,
+            maxiter=10000, maxerr: float = 1e-8, track_log_likelihoods=False,
+            callback_interval=0,
             connectivity_factor: float = 1.0,
             progress_bar=None):
 
@@ -143,12 +148,16 @@ class TRAM(_MSMBaseEstimator):
             raise ValueError(f"Connectivity type unsupported. Connectivity must be one of {TRAM.connectivity_options}.")
         self.connectivity = connectivity
 
+        if model is not None:
+            self._tram_estimator = self._construct_estimator_from_model(model)
+
         self.connectivity_factor = connectivity_factor
         self.n_markov_states = None
         self.n_therm_states = None
         self.maxiter = maxiter
         self.maxerr = maxerr
-        self.save_convergence_info = save_convergence_info
+        self.track_log_likelihoods = track_log_likelihoods
+        self.callback_interval = callback_interval
         self.progress_bar = progress_bar
         self._largest_connected_set = None
         self._tram_estimator = None
@@ -223,8 +232,10 @@ class TRAM(_MSMBaseEstimator):
                                                                                                   bias_matrices)
         tram_input = tram.TRAMInput(state_counts, transition_counts, dtrajs, bias_matrices)
 
-        self._tram_estimator = tram.TRAM(tram_input)
-        self._run_estimation()
+        if self._tram_estimator is None:
+            self._tram_estimator = tram.TRAM(self.n_therm_states, self.n_markov_states)
+
+        self._run_estimation(tram_input)
         self._model = TRAMModel(count_models=self.count_models,
                                 transition_matrices=self._tram_estimator.transition_matrices(),
                                 biased_conf_energies=self._tram_estimator.biased_conf_energies(),
@@ -235,12 +246,14 @@ class TRAM(_MSMBaseEstimator):
 
         return self
 
-    def _run_estimation(self):
+    def _run_estimation(self, tram_input):
         """ Estimate the free energies using self-consistent iteration as described in the TRAM paper.
         """
         with TRAMCallback(self.progress_bar, self.maxiter, self.log_likelihoods, self.increments,
-                                    True) as callback:
-            self._tram_estimator.estimate(self.maxiter, self.maxerr, self.save_convergence_info, callback)
+                          self.callback_interval > 0) as callback:
+            self._tram_estimator.estimate(tram_input, self.maxiter, self.maxerr,
+                                          track_log_likelihoods=self.track_log_likelihoods,
+                                          callback_interval=self.callback_interval, callback=callback)
 
             if callback.last_increment > self.maxerr:
                 warnings.warn(
@@ -637,21 +650,24 @@ class TRAM(_MSMBaseEstimator):
 class TRAMCallback(callbacks.Callback):
     """Callback for the TRAM estimate process. Increments a progress bar and optionally saves iteration increments and
     log likelihoods to a list."""
-    def __init__(self, progress_bar, n_iter, log_likelihoods_list=None, increments=None,
-                 save_convergence_info=False):
+
+    def __init__(self, progress_bar, n_iter, log_likelihoods_list=None, increments=None, store_convergence_info=False):
         super().__init__(progress_bar, n_iter, "Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
-        self.save_convergence_info = save_convergence_info
+        self.save_convergence_info = store_convergence_info
         self.last_increment = 0
 
     def __call__(self, increment, log_likelihood):
         super().__call__()
 
-        if self.save_convergence_info:
+        if self.store_convergence_info:
             if self.log_likelihoods is not None:
                 self.log_likelihoods.append(log_likelihood)
             if self.increments is not None:
                 self.increments.append(increment)
 
         self.last_increment = increment
+
+    def _construct_estimator_from_model(self, model):
+        return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)

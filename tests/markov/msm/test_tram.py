@@ -247,7 +247,7 @@ def test_tram_different_input_data_types(dtrajs, ttrajs, bias_matrix_as_ndarray)
     if bias_matrix_as_ndarray:
         bias_matrices = np.asarray(bias_matrices)
 
-    tram = TRAM(maxiter=100, save_convergence_info=True)
+    tram = TRAM(maxiter=100)
     if ttrajs is None:
         tram.fit((dtrajs, bias_matrices))
     else:
@@ -283,17 +283,14 @@ def test_tram_fit():
             bias = lambda x, x0=bias_center: harmonic(x0, x)
             bias_matrices[i][:, j] = bias(traj)
 
-    tram = TRAM(maxiter=100, save_convergence_info=True)
-
-    therm_energies_1 = tram.fit_fetch((dtrajs, bias_matrices)).therm_state_energies
-    therm_energies_2 = tram.fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
+    therm_energies_1 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices)).therm_state_energies
+    therm_energies_2 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_1 == therm_energies_2).all()
 
     # changing one ttrajs element should result in a change of the output
     ttrajs[0][2] = 1
-    therm_energies_3 = tram.fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
+    therm_energies_3 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_3 != therm_energies_1).any()
-
 
 
 def test_tram_integration():
