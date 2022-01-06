@@ -6,6 +6,17 @@ from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
 
 
+def get_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs = True):
+    dtrajs = [np.random.randint(0, n_markov_states, size=n_samples) for _ in range(n_therm_states)]
+    bias_matrices = [np.random.rand(n_samples, n_therm_states) for _ in range(n_therm_states)]
+
+    if make_ttrajs:
+        ttrajs = [np.random.randint(0, n_therm_states, size=n_samples) for _ in range(n_therm_states)]
+        return dtrajs, bias_matrices, ttrajs
+
+    return dtrajs, bias_matrices
+
+
 def get_connected_set_from_dtrajs_input(dtrajs, tram, has_ttrajs=True):
     tram.n_markov_states = np.max(np.concatenate(dtrajs)) + 1
     tram.n_therm_states = len(dtrajs)
@@ -253,33 +264,16 @@ def test_lagtime_too_long():
 
 
 def test_tram_fit():
-    trajs = np.asarray([[0, 1, 1, 1, 1, 2, 2, 1, 0, 0], [1, 2, 3, 2, 2, 1, 0, 1, 2, 2], [2, 1, 2, 3, 2, 3, 3, 4, 3, 3],
-                        [3, 2, 2, 3, 4, 4, 3, 4, 3, 2], [3, 2, 3, 3, 4, 4, 3, 4, 4, 3]])
-    trajs = trajs / 5 * 3 - 1.5
+    dtrajs, bias_matrices = get_random_input_data(5, 10, make_ttrajs=False)
 
-    dtrajs = [np.asarray(i, dtype=np.int) for i in
-              [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 1, 1, 1, 1],
-               [1, 0, 0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]]
     ttrajs = [np.ones((len(dtrajs[i])), dtype=np.int) * i for i in range(len(dtrajs))]
-
-    bias_centers = [-1, -0.5, 0.0, 0.5, 1]
-
-    def harmonic(x0, x):
-        return 0.1 * (x - x0) ** 2
-
-    # construct bias matric using harmonic potentials
-    bias_matrices = [np.zeros((len(traj), len(bias_centers)), dtype=np.float64) for traj in dtrajs]
-    for i, traj in enumerate(trajs):
-        for j, bias_center in enumerate(bias_centers):
-            bias = lambda x, x0=bias_center: harmonic(x0, x)
-            bias_matrices[i][:, j] = bias(traj)
 
     therm_energies_1 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices)).therm_state_energies
     therm_energies_2 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_1 == therm_energies_2).all()
 
     # changing one ttrajs element should result in a change of the output
-    ttrajs[0][2] = 1
+    ttrajs[0][2] += 1
     therm_energies_3 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_3 != therm_energies_1).any()
 
@@ -290,6 +284,17 @@ def test_tram_initialize_from_model():
     tram = TRAM(model=model)
     assert tram.n_markov_states == model.n_markov_states
     assert tram.n_therm_states == model.n_therm_states
+
+def test_tram_continue_estimation():
+    from .test_tram_model import random_model
+    model = random_model(5, 8, transition_matrices=None)
+    dtrajs, bias_matrices = get_random_input_data(5, 8, make_ttrajs=False)
+
+    weights_1 = model.compute_sample_weights(dtrajs, bias_matrices)
+
+    tram = TRAM(model=model)
+    model = tram.fit_fetch((dtrajs, bias_matrices))
+    assert np.array_equal(weights_1, model.compute_sample_weights(dtrajs, bias_matrices)) == False
 
 
 def test_tram_integration():

@@ -143,26 +143,26 @@ class TRAM(_MSMBaseEstimator):
 
         self.lagtime = lagtime
         self.count_mode = count_mode
+        self._tram_estimator = None
 
         if connectivity not in TRAM.connectivity_options:
             raise ValueError(f"Connectivity type unsupported. Connectivity must be one of {TRAM.connectivity_options}.")
         self.connectivity = connectivity
+        self.connectivity_factor = connectivity_factor
         self.n_markov_states = None
         self.n_therm_states = None
-
-        if model is not None:
-            self._tram_estimator = self._load_model(model)
-
-        self.connectivity_factor = connectivity_factor
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.track_log_likelihoods = track_log_likelihoods
         self.callback_interval = callback_interval
         self.progress_bar = progress_bar
         self._largest_connected_set = None
-        self._tram_estimator = None
         self.log_likelihoods = []
         self.increments = []
+
+        if model is not None:
+            self._load_model(model)
+
 
     #: All possible connectivity modes
     connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
