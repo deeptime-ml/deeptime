@@ -121,7 +121,7 @@ class TRAM(_MSMBaseEstimator):
         iteration step.
     track_log_likelihoods : bool, optional, default=False
         If True, the log-likelihood is stored every callback_interval steps. For calculation of the log-likelihood the
-        transition matrix needs to be constructed, which will slow down computation. By default, log-likelihoods are
+        transition matrix needs to be constructed, which will slow down estimation. By default, log-likelihoods are
         not computed.
     callback_interval : int, optional, default=0
         Every callback_interval iteration steps, the callback function is calles and error increments are stored. If
