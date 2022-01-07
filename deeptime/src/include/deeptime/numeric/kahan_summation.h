@@ -105,7 +105,8 @@ template <typename dtype>
 auto logsumexp(const np_array_nfc<dtype> &arr) {
     std::unique_ptr<dtype> vec {new dtype[arr.size()]};
     std::copy(arr.data(), arr.data() + arr.size(), vec.get());
-    return logsumexp_sort_kahan_inplace(vec.get(), vec.get() + arr.size());
+    using iterType = decltype(vec.get());
+    return logsumexp_sort_kahan_inplace<iterType>(vec.get(), vec.get() + arr.size());
 }
 
 
