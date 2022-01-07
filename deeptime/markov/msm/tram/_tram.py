@@ -522,7 +522,7 @@ class TRAM(_MSMBaseEstimator):
             return full_counts_model.submodel(np.unique(connected_states[1]))
 
     def _restrict_to_connected_set(self, dtrajs):
-        """         Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the largest
+        """Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the largest
         connected set will be set to -1.
 
         Parameters
