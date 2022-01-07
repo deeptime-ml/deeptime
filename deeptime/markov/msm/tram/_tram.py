@@ -140,7 +140,7 @@ class TRAM(_MSMBaseEstimator):
     """
 
     def __init__(
-            self, model=None, lagtime=1, count_mode='sliding',
+            self, lagtime=1, count_mode='sliding',
             connectivity='summed_count_matrix',
             maxiter=10000, maxerr: float = 1e-8, track_log_likelihoods=False,
             callback_interval=0,
@@ -167,10 +167,6 @@ class TRAM(_MSMBaseEstimator):
         self._largest_connected_set = None
         self.log_likelihoods = []
         self.increments = []
-
-        if model is not None:
-            self._load_model(model)
-
 
     #: All possible connectivity modes
     connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
@@ -233,6 +229,10 @@ class TRAM(_MSMBaseEstimator):
               sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
               trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
         """
+        # Load model first if given. We need the number of therm/Markov states to validate the input data by.
+        if 'model' in kw:
+            self._load_model(kw.get("model"))
+
         # unpack the data tuple, do input validation and check for any replica exchanges.
         ttrajs, dtrajs, bias_matrices = self._preprocess(data)
 
@@ -240,6 +240,7 @@ class TRAM(_MSMBaseEstimator):
                                                                                                   bias_matrices)
         tram_input = tram.TRAMInput(state_counts, transition_counts, dtrajs, bias_matrices)
 
+        # only construct estimator if it hasn't been loaded from the model yet
         if self._tram_estimator is None:
             self._tram_estimator = tram.TRAM(self.n_therm_states, self.n_markov_states)
 

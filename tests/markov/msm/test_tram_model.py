@@ -70,4 +70,4 @@ def test_compute_observable():
     # observable should change linearly with observed values
     obs *= -2
     res2 = model.compute_observable(dtrajs, bias_matrices, observable_values=obs)
-    assert res2 == res1 *-2
+    assert res2 == res1 * -2

@@ -275,14 +275,6 @@ def test_tram_fit():
     therm_energies_3 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
     assert (therm_energies_3 != therm_energies_1).any()
 
-def test_tram_initialize_from_model():
-    from .test_tram_model import random_model
-    model = random_model(5, 3, transition_matrices=None)
-
-    tram = TRAM(model=model)
-    assert tram.n_markov_states == model.n_markov_states
-    assert tram.n_therm_states == model.n_therm_states
-
 def test_tram_continue_estimation():
     from .test_tram_model import random_model
     model = random_model(5, 8, transition_matrices=None)
@@ -290,8 +282,8 @@ def test_tram_continue_estimation():
 
     weights_1 = model.compute_sample_weights(dtrajs, bias_matrices)
 
-    tram = TRAM(model=model)
-    model = tram.fit_fetch((dtrajs, bias_matrices))
+    tram = TRAM()
+    model = tram.fit_fetch((dtrajs, bias_matrices), model=model)
     assert np.array_equal(weights_1, model.compute_sample_weights(dtrajs, bias_matrices)) == False
 
 
