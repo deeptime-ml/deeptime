@@ -118,8 +118,8 @@ class TRAMModel(Model):
         Returns
         -------
         sample_weights : np.ndarray
-        The statistical weight :math:`\mu(x)` of each sample (i.e., the probability distribution over all samples:
-        the sum over all sample weights equals one.)
+            The statistical weight :math:`\mu(x)` of each sample (i.e., the probability distribution over all samples:
+            the sum over all sample weights equals one.)
 
         Notes
         -----
