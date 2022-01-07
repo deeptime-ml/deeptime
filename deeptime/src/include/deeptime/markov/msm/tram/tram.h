@@ -739,7 +739,7 @@ computeSampleWeights(StateIndex thermState, DTrajs &dtrajs, BiasMatrices<dtype> 
     auto thermStateEnergiesPtr = &thermStateEnergies;
     auto modifiedStateCountsLogPtr = &modifiedStateCountsLog;
 
-#pragma omp parallel for default(none) firstprivate(nTrajs, thermState, thermStateEnergiesPtr, modifiedStateCountsLogPtr, dtrajsPtr, biasMatricesPtr) shared(sampleWeights)
+    #pragma omp parallel for default(none) firstprivate(nTrajs, thermState, thermStateEnergiesPtr, modifiedStateCountsLogPtr, dtrajsPtr, biasMatricesPtr) shared(sampleWeights)
     for (std::int32_t i = 0; i < nTrajs; ++i) {
         sampleWeights[i] = computeSampleWeightsForTrajectory(thermState, (*dtrajsPtr)[i], (*biasMatricesPtr)[i],
                                                              *thermStateEnergiesPtr, *modifiedStateCountsLogPtr);
