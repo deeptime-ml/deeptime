@@ -17,13 +17,13 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 .def("estimate", &TRAM<double>::estimate,
                      "input"_a, "max_iter"_a = 1000, "max_err"_a = 1e-8, "callback_interval"_a = 1,
                      "track_log_likelihoods"_a = false, "callback"_a = nullptr)
-                .def("transition_matrices", &TRAM<double>::transitionMatrices)
-                .def("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
-                .def("modified_state_counts_log", &TRAM<double>::modifiedStateCountsLog)
-                .def("lagrangian_mult_log", &TRAM<double>::lagrangianMultLog)
-                .def("therm_state_energies", &TRAM<double>::thermStateEnergies)
-                .def("markov_state_energies", &TRAM<double>::markovStateEnergies)
-                .def("log_likelihood", &TRAM<double>::computeLogLikelihood, py::call_guard<py::gil_scoped_release>());
+                .def_property_readonly("transition_matrices", &TRAM<double>::transitionMatrices)
+                .def_property_readonly("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
+                .def_property_readonly("modified_state_counts_log", &TRAM<double>::modifiedStateCountsLog)
+                .def_property_readonly("lagrangian_mult_log", &TRAM<double>::lagrangianMultLog)
+                .def_property_readonly("therm_state_energies", &TRAM<double>::thermStateEnergies)
+                .def_property_readonly("markov_state_energies", &TRAM<double>::markovStateEnergies)
+                .def("compute_log_likelihood", &TRAM<double>::computeLogLikelihood, py::call_guard<py::gil_scoped_release>());
 
 
         py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(tramMod, "TRAMInput").def(
@@ -37,13 +37,11 @@ PYBIND11_MODULE(_tram_bindings, m) {
         tramMod.def("find_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
                     py::call_guard<py::gil_scoped_release>(),
-                    py::return_value_policy::move,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a, "callback"_a);
 
         tramMod.def("find_state_transitions_BAR_variance", &findStateTransitions<double, OverlapBarVariance<double>>,
                     py::call_guard<py::gil_scoped_release>(),
-                    py::return_value_policy::move,
                     "ttrajs"_a, "dtrajs"_a, "bias_matrices"_a, "stateCounts"_a, "n_therm_states"_a, "n_conf_states"_a,
                     "connectivity_factor"_a, "callback"_a);
 

@@ -316,7 +316,7 @@ def test_tram_integration():
             bias_matrices[i, :, j] = bias(traj)
 
     tram = TRAM(maxiter=100, connectivity='summed_count_matrix')
-    assert tram.log_likelihood is None
+    assert tram.compute_log_likelihood is None
 
     model = tram.fit_fetch((dtrajs, bias_matrices))
 
@@ -335,7 +335,7 @@ def test_tram_integration():
 
     weights = model.compute_sample_weights(dtrajs, bias_matrices)
     assert np.allclose(np.sum(weights), 1)
-    assert tram.log_likelihood < 0
+    assert tram.compute_log_likelihood < 0
 
 
 def test_unknown_connectivity():

@@ -176,7 +176,7 @@ class TRAM(_MSMBaseEstimator):
     connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
 
     @property
-    def log_likelihood(self) -> Optional[float]:
+    def compute_log_likelihood(self) -> Optional[float]:
         r"""The parameter-dependent part of the TRAM likelihood.
 
         The definition can be found in :footcite:`wu2016multiensemble`, Equation (9).
@@ -198,7 +198,7 @@ class TRAM(_MSMBaseEstimator):
         .. math:: \log \prod_{k=1}^K \left(\prod_{i,j} (p_{ij}^k)^{c_{ij}^k}\right) \left(\prod_{i} \prod_{x \in X_i^k} \mu(x) e^{f_i^k} \right)
         """
         if self._tram_estimator is not None:
-            return self._tram_estimator.log_likelihood()
+            return self._tram_estimator.compute_log_likelihood()
 
     def fetch_model(self) -> Optional[TRAMModel]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -245,12 +245,12 @@ class TRAM(_MSMBaseEstimator):
 
         self._run_estimation(tram_input)
         self._model = TRAMModel(count_models=self.count_models,
-                                transition_matrices=self._tram_estimator.transition_matrices(),
-                                biased_conf_energies=self._tram_estimator.biased_conf_energies(),
-                                lagrangian_mult_log=self._tram_estimator.lagrangian_mult_log(),
-                                modified_state_counts_log=self._tram_estimator.modified_state_counts_log(),
-                                therm_state_energies=self._tram_estimator.therm_state_energies(),
-                                markov_state_energies=self._tram_estimator.markov_state_energies())
+                                transition_matrices=self._tram_estimator.transition_matrices,
+                                biased_conf_energies=self._tram_estimator.biased_conf_energies,
+                                lagrangian_mult_log=self._tram_estimator.lagrangian_mult_log,
+                                modified_state_counts_log=self._tram_estimator.modified_state_counts_log,
+                                therm_state_energies=self._tram_estimator.therm_state_energies,
+                                markov_state_energies=self._tram_estimator.markov_state_energies)
 
         return self
 
