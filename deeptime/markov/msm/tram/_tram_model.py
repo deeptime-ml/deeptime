@@ -112,8 +112,8 @@ class TRAMModel(Model):
         Parameters
         ----------
         therm_state : int, optional
-        The index of the thermodynamic state in which the sample weights need to be computed. If therm_state=-1,
-        the unbiased sample weights are computed.
+            The index of the thermodynamic state in which the sample weights need to be computed. If therm_state=-1,
+            the unbiased sample weights are computed.
 
         Returns
         -------
