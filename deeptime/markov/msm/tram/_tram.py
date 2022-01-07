@@ -322,32 +322,15 @@ class TRAM(_MSMBaseEstimator):
         bias_matrices : List(ndarray(n,m)), float64
             The validated bias matrices converted to a list of contiguous numpy arrays.
         """
-        # shape and type checks
-        if len(dtrajs) != len(bias_matrices):
-            raise ValueError("Number of trajectories is not equal to the number of bias matrices.")
-        for d in dtrajs:
-            types.ensure_integer_array(d, ndim=1)
-        for b in bias_matrices:
-            types.ensure_floating_array(b, ndim=2)
+        ttrajs, dtrajs, bias_matrices = self._ensure_correct_data_types(ttrajs, dtrajs, bias_matrices)
+        self._determine_n_states(ttrajs, dtrajs)
+        self._check_dimensions(ttrajs, dtrajs, bias_matrices)
+        return ttrajs, dtrajs, bias_matrices
 
+    def _determine_n_states(self, ttrajs, dtrajs):
         if self.n_markov_states is None:
             # No model was previously loaded. Find the number of Markov states.
             self.n_markov_states = max(np.max(d) for d in dtrajs) + 1
-        else:
-            # a model was already loaded. check that new dtrajs do not exceed of the number of markov states.
-            if max(np.max(d) for d in dtrajs) >= self.n_markov_states:
-                raise ValueError(
-                    "dtrajs out of bounds. Largest state number in dtrajs is larger than the number of Markov states.")
-
-        if ttrajs is None or len(ttrajs) == 0:
-            # ensure ttrajs is None. Leaving it an empty tuple will break the call to _tram_bindings
-            ttrajs = None
-        else:
-            # find the number of therm states as the highest index in ttrajs
-            for t in ttrajs:
-                types.ensure_integer_array(t, ndim=1)
-
-            ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
 
         if self.n_therm_states is None:
             # No model was previously loaded. Find the number of thermodynamic states.
@@ -356,15 +339,36 @@ class TRAM(_MSMBaseEstimator):
             else:
                 self.n_therm_states = max(np.max(t) for t in ttrajs) + 1
 
-        else:
-            # A model was already loaded. check that new ttrajs (if any) do not exceed of the number of thermodynamic states.
-            if ttrajs is not None and max(np.max(t) for t in ttrajs) >= self.n_therm_states:
-                raise ValueError(
-                    "ttrajs out of bounds. Largest state number in ttrajs is larger than the number of thermodynamic states.")
+    def _ensure_correct_data_types(self, ttrajs, dtrajs, bias_matrices):
+        # shape and type checks
+        if len(dtrajs) != len(bias_matrices):
+            raise ValueError("Number of trajectories is not equal to the number of bias matrices.")
+        for d in dtrajs:
+            types.ensure_integer_array(d, ndim=1)
+        for b in bias_matrices:
+            types.ensure_floating_array(b, ndim=2)
 
         # cast types and change axis order if needed
         dtrajs = [np.require(d, dtype=np.int32, requirements='C') for d in dtrajs]
         bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in bias_matrices]
+
+        # do the same for ttrajs if it exists
+        if ttrajs is None or len(ttrajs) == 0:
+            # ensure ttrajs is None. Leaving it an empty tuple will break the call to _tram_bindings
+            ttrajs = None
+        else:
+            # find the number of therm states as the highest index in ttrajs
+            for t in ttrajs:
+                types.ensure_integer_array(t, ndim=1)
+            ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
+
+        return ttrajs, dtrajs, bias_matrices
+
+    def _check_dimensions(self, ttrajs, dtrajs, bias_matrices):
+        # a model was already loaded. check that new dtrajs do not exceed of the number of markov states.
+        if max(np.max(d) for d in dtrajs) >= self.n_markov_states:
+            raise ValueError(
+                "dtrajs out of bounds. Largest state number in dtrajs is larger than the number of Markov states.")
 
         # dimensionality checks
         for i, (d, b) in enumerate(zip(dtrajs, bias_matrices)):
@@ -375,16 +379,18 @@ class TRAM(_MSMBaseEstimator):
                 raise ValueError(
                     f"Second dimension of bias matrix {i} should be of size n_therm_states (={self.n_therm_states})")
 
-        # If we were given ttrajs, do the same checks for those.
+            # If we were given ttrajs, do the same checks for those.
         if ttrajs is not None:
+            if max(np.max(t) for t in ttrajs) >= self.n_therm_states:
+                raise ValueError(
+                    "ttrajs out of bounds. Largest state number in ttrajs is larger than the number of thermodynamic states.")
+
             if len(ttrajs) != len(dtrajs):
                 raise ValueError("number of ttrajs is not equal to number of dtrajs.")
 
             for i, (t, d) in enumerate(zip(ttrajs, dtrajs)):
                 if t.shape[0] != d.shape[0]:
                     raise ValueError(f"ttraj {i} and dtraj {i} should be of equal length.")
-
-        return ttrajs, dtrajs, bias_matrices
 
     def _compute_counts_from_largest_connected_set(self, ttrajs, dtrajs, bias_matrices):
         """Find the largest connected set of Markov states over all thermodynamic states, given the input data and
