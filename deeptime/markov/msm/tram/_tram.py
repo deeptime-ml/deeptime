@@ -654,7 +654,7 @@ class TRAM(_MSMBaseEstimator):
 
             if len(dtraj_fragments[k]) == 0 or np.all([len(frag) <= self.lagtime for frag in dtraj_fragments[k]]):
                 warnings.warn(f"No transitions for thermodynamic state {k} after cutting the trajectories into "
-                              f"fragments that start at each replica exchange swap. Replica exchanges possibly occur"
+                              f"fragments that start at each replica exchange swap. Replica exchanges possibly occur "
                               f"within the span of the lag time.")
                 # there are no samples from this state that belong to the connected set. Make an empty count model.
                 self.count_models.append(TransitionCountModel(np.zeros(self.n_markov_states, self.n_markov_states)))
