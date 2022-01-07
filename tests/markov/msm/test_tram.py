@@ -143,8 +143,8 @@ def test_make_count_models(lagtime):
     assert np.array_equal(tram.count_models[1].state_symbols, [0, 1, 2, 3, 4])
     assert np.array_equal(tram.count_models[2].state_symbols, [0, 1, 2])
     for k in range(tram.n_therm_states):
-        assert transition_counts[k].sum() == len(traj_fragments[k]) - lagtime
-        assert state_counts[k].sum() == len(traj_fragments[k])
+        np.testing.assert_equal(transition_counts[k].sum(), len(traj_fragments[k]) - lagtime)
+        np.testing.assert_equal(state_counts[k].sum(), len(traj_fragments[k]))
 
 
 @pytest.mark.parametrize(
