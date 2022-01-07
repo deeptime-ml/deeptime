@@ -121,7 +121,7 @@ class TRAM(_MSMBaseEstimator):
         iteration step.
     track_log_likelihoods : bool, optional, default=False
         If True, the log-likelihood is stored every callback_interval steps. For calculation of the log-likelihood the
-        transition matrix needs to be constructed, which will slow down computation. By default, log-likelihoods are
+        transition matrix needs to be constructed, which will slow down estimation. By default, log-likelihoods are
         not computed.
     callback_interval : int, optional, default=0
         Every callback_interval iteration steps, the callback function is calles and error increments are stored. If
@@ -529,7 +529,7 @@ class TRAM(_MSMBaseEstimator):
             return full_counts_model.submodel(np.unique(connected_states[1]))
 
     def _restrict_to_connected_set(self, dtrajs):
-        """         Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the largest
+        """Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the largest
         connected set will be set to -1.
 
         Parameters
@@ -661,7 +661,7 @@ class TRAM(_MSMBaseEstimator):
 
             if len(dtraj_fragments[k]) == 0 or np.all([len(frag) <= self.lagtime for frag in dtraj_fragments[k]]):
                 warnings.warn(f"No transitions for thermodynamic state {k} after cutting the trajectories into "
-                              f"fragments that start at each replica exchange swap. Replica exchanges possibly occur"
+                              f"fragments that start at each replica exchange swap. Replica exchanges possibly occur "
                               f"within the span of the lag time.")
                 # there are no samples from this state that belong to the connected set. Make an empty count model.
                 self.count_models.append(TransitionCountModel(np.zeros(self.n_markov_states, self.n_markov_states)))
