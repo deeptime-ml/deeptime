@@ -68,9 +68,17 @@ class TRAM(_MSMBaseEstimator):
 
     Parameters
     ----------
-    lagtime : int
+    model : TRAMModel, or None
+        If TRAM is initialized with a TRAMModel, the parameters from the TRAMModel are loaded into the estimator, and
+        estimation continues from the loaded parameters as a starting point. Input data may differ from the input data
+        used to estimate the input model, but the input data should lie within bounds of the number of thermodynamic
+        states and Markov states given by the model.
+        If no model is given, estimation starts from zero-initialized arrays for the free energies and modified state
+        counts. The lagrangian multipliers are initialized with values
+            :math:`v_i^{k, 0} = \mathrm{log} (c_{ij}^k + c_{ji}^k)/2`
+    lagtime : int, default=1
         Integer lag time at which transitions are counted.
-    count_mode : str
+    count_mode : str, default="sliding"
         One of "sample", "sliding", "sliding-effective", and "effective".
 
         * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
@@ -82,12 +90,12 @@ class TRAM(_MSMBaseEstimator):
           the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
         * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
           Recommended when estimating Bayesian MSMs.
-    connectivity : str, optional, default='post_hoc_RE'
-        One of 'post_hoc_RE', 'BAR_variance', or 'summed_count_matrix'.
+    connectivity : str, optional, default="post_hoc_RE"
+        One of "post_hoc_RE", "BAR_variance", or "summed_count_matrix".
         Defines what should be considered a connected set in the joint (product) space
         of conformations and thermodynamic ensembles.
 
-        * 'post_hoc_RE' : It is required that every state in the connected set can be reached by following a
+        * "post_hoc_RE" : It is required that every state in the connected set can be reached by following a
           pathway of reversible transitions or jumping between overlapping thermodynamic states while staying in
           the same Markov state. A reversible transition between two Markov states (within the same thermodynamic
           state k) is a pair of Markov states that belong to the same strongly connected component of the count
@@ -97,13 +105,13 @@ class TRAM(_MSMBaseEstimator):
           The expected number of replica exchanges is estimated from
           the simulation data. The minimal number required of replica exchanges per Markov state can be increased by
           decreasing `connectivity_factor`.
-        * 'BAR_variance' : like 'post_hoc_RE' but with a different condition to define the thermodynamic overlap
+        * "BAR_variance" : like 'post_hoc_RE' but with a different condition to define the thermodynamic overlap
           based on the variance of the BAR estimator :footcite:`shirts2008statistically`.
           Two thermodynamic states k and l are defined to overlap
           at Markov state n if the variance of the free energy difference Delta :math:`f_{kl}` computed with BAR (and
           restricted to conformations form Markov state n) is less or equal than one. The minimally required variance
           can be controlled with `connectivity_factor`.
-        * 'summed_count_matrix' : all thermodynamic states are assumed to overlap. The connected set is then
+        * "summed_count_matrix" : all thermodynamic states are assumed to overlap. The connected set is then
           computed by summing the count matrices over all thermodynamic states and taking its largest strongly
           connected set. Not recommended!
     maxiter : int, optional, default=10000
@@ -119,7 +127,7 @@ class TRAM(_MSMBaseEstimator):
         Every callback_interval iteration steps, the callback function is calles and error increments are stored. If
         track_log_likelihoods=true, the log-likelihood are also stored. If 0, no call to the callback function is done.
     connectivity_factor : float, optional, default=1.0
-        Only needed if connectivity='post_hoc_RE' or 'BAR_variance'. Values greater than 1.0 weaken the connectivity
+        Only needed if connectivity="post_hoc_RE" or "BAR_variance". Values greater than 1.0 weaken the connectivity
         conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
         'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
     progress_bar : object
