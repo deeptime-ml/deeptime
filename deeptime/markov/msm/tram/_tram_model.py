@@ -99,10 +99,8 @@ class TRAMModel(Model):
         r""" The underlying MarkovStateModelCollection. Contains one Markov state model for each sampled thermodynamic
         state.
 
-        Returns
-        -------
-        markov_state_model_collection : MarkovStateModelCollection
-            the collection of markov state models containing one model for each thermodynamic state.
+        :getter: The collection of markov state models containing one model for each thermodynamic state.
+        :type: MarkovStateModelCollection
         """
         return self._markov_state_model_collection
 
