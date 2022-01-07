@@ -4,7 +4,7 @@ from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 
 
-def get_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs = True):
+def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs = True):
     dtrajs = [np.random.randint(0, n_markov_states, size=n_samples) for _ in range(n_therm_states)]
     bias_matrices = [np.random.rand(n_samples, n_therm_states) for _ in range(n_therm_states)]
 
@@ -262,7 +262,7 @@ def test_lagtime_too_long():
 
 
 def test_tram_fit():
-    dtrajs, bias_matrices = get_random_input_data(5, 10, make_ttrajs=False)
+    dtrajs, bias_matrices = make_random_input_data(5, 10, make_ttrajs=False)
 
     ttrajs = [np.ones((len(dtrajs[i])), dtype=np.int) * i for i in range(len(dtrajs))]
 
@@ -286,7 +286,7 @@ def test_tram_initialize_from_model():
 def test_tram_continue_estimation():
     from .test_tram_model import random_model
     model = random_model(5, 8, transition_matrices=None)
-    dtrajs, bias_matrices = get_random_input_data(5, 8, make_ttrajs=False)
+    dtrajs, bias_matrices = make_random_input_data(5, 8, make_ttrajs=False)
 
     weights_1 = model.compute_sample_weights(dtrajs, bias_matrices)
 
@@ -421,3 +421,15 @@ def test_valid_input_initialized_from_model(dtrajs, bias_matrices, ttrajs):
     dtrajs, bias_matrices, ttrajs = to_numpy_arrays(dtrajs, bias_matrices, ttrajs)
 
     tram._validate_input(ttrajs, dtrajs, bias_matrices)
+
+@pytest.mark.parametrize(
+    "track_log_likelihoods", [True, False]
+)
+def test_callback_called(track_log_likelihoods):
+    tram = TRAM(track_log_likelihoods=track_log_likelihoods, callback_interval=2, maxiter=10)
+    input = make_random_input_data(5, 5)
+    tram.fit(input)
+    assert len(tram.log_likelihoods) == 5
+    assert len(tram.increments) == 5
+    assert (np.asarray(tram.increments) > 0).all()
+    assert (np.asarray(tram.log_likelihoods) < 0).all() == track_log_likelihoods

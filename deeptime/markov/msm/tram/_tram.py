@@ -687,7 +687,7 @@ class TRAMCallback(callbacks.Callback):
         super().__init__(progress_bar, n_iter, "Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
-        self.save_convergence_info = store_convergence_info
+        self.store_convergence_info = store_convergence_info
         self.last_increment = 0
 
     def __call__(self, increment, log_likelihood):
