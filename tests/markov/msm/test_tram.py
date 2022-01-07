@@ -368,7 +368,7 @@ def test_invalid_input(dtrajs, bias_matrices, ttrajs):
     tram = TRAM()
 
     with np.testing.assert_raises(ValueError):
-        tram._validate_input(ttrajs, dtrajs, bias_matrices)
+        tram.fit((ttrajs, dtrajs, bias_matrices))
 
 
 @pytest.mark.parametrize(
@@ -389,7 +389,7 @@ def test_invalid_input(dtrajs, bias_matrices, ttrajs):
         ([[0, 0, 0], [0, 1, 0]], np.zeros((2, 3, 2)), [[0, 2, 0], [0, 0, 0]]),
     ]
 )
-def test_invalid_input_initialized_from_model(dtrajs, bias_matrices, ttrajs):
+def test_invalid_input_initialized_states(dtrajs, bias_matrices, ttrajs):
     tram = TRAM()
     tram.n_therm_states = 2
     tram.n_markov_states = 1
@@ -397,7 +397,7 @@ def test_invalid_input_initialized_from_model(dtrajs, bias_matrices, ttrajs):
     dtrajs, bias_matrices, ttrajs = to_numpy_arrays(dtrajs, bias_matrices, ttrajs)
 
     with np.testing.assert_raises(ValueError):
-        tram._validate_input(ttrajs, dtrajs, bias_matrices)
+        tram.fit((ttrajs, dtrajs, bias_matrices))
 
 @pytest.mark.parametrize(
     "dtrajs, bias_matrices, ttrajs",
