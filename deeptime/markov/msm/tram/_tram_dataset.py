@@ -48,16 +48,20 @@ class TRAMDataset:
                  count_mode='sliding'):
         self.lagtime = lagtime
         self.count_mode = count_mode
+        self.dtrajs = dtrajs
+        self.ttrajs = ttrajs
+        self.bias_matrices = bias_matrices
+        self.count_models = []
 
-        self._ensure_correct_data_types(ttrajs, dtrajs, bias_matrices)
+        self._ensure_correct_data_types()
 
         if n_therm_states is None:
-            self._n_therm_states = _determine_n_therm_states(dtrajs, ttrajs)
+            self._n_therm_states = _determine_n_therm_states(self.dtrajs, self.ttrajs)
         else:
             self._n_therm_states = n_therm_states
 
         if n_markov_states is None:
-            self._n_markov_states = _determine_n_states(dtrajs)
+            self._n_markov_states = _determine_n_states(self.dtrajs)
         else:
             self._n_markov_states = n_markov_states
 
@@ -156,28 +160,28 @@ class TRAMDataset:
         self.dtrajs = dtrajs_connected
         self.compute_counts()
 
-    def _ensure_correct_data_types(self, ttrajs, dtrajs, bias_matrices):
+    def _ensure_correct_data_types(self):
         # shape and type checks
-        if len(dtrajs) != len(bias_matrices):
+        if len(self.dtrajs) != len(self.bias_matrices):
             raise ValueError("Number of trajectories is not equal to the number of bias matrices.")
-        for d in dtrajs:
+        for d in self.dtrajs:
             types.ensure_integer_array(d, ndim=1)
-        for b in bias_matrices:
+        for b in self.bias_matrices:
             types.ensure_floating_array(b, ndim=2)
 
         # cast types and change axis order if needed
-        self.dtrajs = [np.require(d, dtype=np.int32, requirements='C') for d in dtrajs]
-        self.bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in bias_matrices]
+        self.dtrajs = [np.require(d, dtype=np.int32, requirements='C') for d in self.dtrajs]
+        self.bias_matrices = [np.require(b, dtype=np.float64, requirements='C') for b in self.bias_matrices]
 
         # do the same for ttrajs if it exists
-        if ttrajs is None or len(ttrajs) == 0:
+        if self.ttrajs is None or len(self.ttrajs) == 0:
             # ensure ttrajs is None. Leaving it an empty tuple will break the call to _tram_bindings
             self.ttrajs = None
         else:
             # find the number of therm states as the highest index in ttrajs
-            for t in ttrajs:
+            for t in self.ttrajs:
                 types.ensure_integer_array(t, ndim=1)
-            self.ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in ttrajs]
+            self.ttrajs = [np.require(t, dtype=np.int32, requirements='C') for t in self.ttrajs]
 
     def _check_dimensions(self):
         # dimensionality checks

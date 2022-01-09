@@ -2,9 +2,10 @@ import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
+from .test_tram_model import random_model
 
 
-def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs = True):
+def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs=True):
     dtrajs = [np.random.randint(0, n_markov_states, size=n_samples) for _ in range(n_therm_states)]
     bias_matrices = [np.random.rand(n_samples, n_therm_states) for _ in range(n_therm_states)]
 
@@ -16,12 +17,16 @@ def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_t
 
 
 def test_unpack_input():
-    arr = np.zeros(10)
+    arr = np.random.rand(10)
     try:
         dtrajs, biases, ttrajs = unpack_input_tuple((arr, arr, arr))
-        assert np.array_equal(dtrajs, arr) and np.array_equal(biases, arr) and np.array_equal(ttrajs, arr)
+        np.testing.assert_array_equal(dtrajs, arr)
+        np.testing.assert_array_equal(biases, arr)
+        np.testing.assert_array_equal(ttrajs, arr)
         dtrajs, biases, ttrajs = unpack_input_tuple((arr, arr))
-        assert np.array_equal(dtrajs, arr) and np.array_equal(biases, arr) and len(ttrajs) == 0
+        np.testing.assert_array_equal(dtrajs, arr)
+        np.testing.assert_array_equal(biases, arr)
+        np.testing.assert_equal(len(ttrajs), 0)
     except IndexError:
         pytest.fail("IndexError while unpacking input!")
 
@@ -35,7 +40,7 @@ def test_unpack_input():
 
 @pytest.mark.parametrize(
     "ttrajs", [np.asarray([[0, 0, 0], [1, 1, 1]]),
-              [np.asarray(traj) for traj in [[0, 0, 0], [1, 1, 1]]],
+               [np.asarray(traj) for traj in [[0, 0, 0], [1, 1, 1]]],
                None]
 )
 @pytest.mark.parametrize(
@@ -71,12 +76,15 @@ def test_tram_fit():
 
     therm_energies_1 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices)).therm_state_energies
     therm_energies_2 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
-    assert (therm_energies_1 == therm_energies_2).all()
+    np.testing.assert_equal(therm_energies_1, therm_energies_2)
 
     # changing one ttrajs element should result in a change of the output
     ttrajs[0][2] += 1
     therm_energies_3 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies
-    assert (therm_energies_3 != therm_energies_1).any()
+
+    with np.testing.assert_raises(AssertionError):
+        np.testing.assert_equal(therm_energies_3, therm_energies_1)
+
 
 def test_tram_continue_estimation():
     from .test_tram_model import random_model
@@ -87,7 +95,8 @@ def test_tram_continue_estimation():
 
     tram = TRAM()
     model = tram.fit_fetch((dtrajs, bias_matrices), model=model)
-    assert np.array_equal(weights_1, model.compute_sample_weights(dtrajs, bias_matrices)) == False
+    with np.testing.assert_raises(AssertionError):
+        np.testing.assert_array_equal(weights_1, model.compute_sample_weights(dtrajs, bias_matrices))
 
 
 def test_tram_integration():
@@ -111,26 +120,28 @@ def test_tram_integration():
             bias_matrices[i, :, j] = bias(traj)
 
     tram = TRAM(maxiter=100, connectivity='summed_count_matrix')
-    assert tram.compute_log_likelihood is None
+    np.testing.assert_equal(tram.compute_log_likelihood, None)
 
     model = tram.fit_fetch((dtrajs, bias_matrices))
 
     # energies are identical. so are count matrices. and transition matrices
-    assert np.allclose(model.therm_state_energies, [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
-    assert np.allclose(model.markov_state_energies, [1.0550639, 0.42797176])
+    np.testing.assert_almost_equal(model.therm_state_energies,
+                                   [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
+    np.testing.assert_almost_equal(model.markov_state_energies, [1.0550639, 0.42797176])
 
     MEMM = model.markov_state_model_collection
-    assert np.allclose(MEMM.stationary_distribution, [1.])
+    np.testing.assert_almost_equal(MEMM.stationary_distribution, [1.])
     MEMM.select(1)
-    assert np.allclose(MEMM.stationary_distribution, [0.3678024695571382, 0.6321975304428619])
-    assert np.allclose(MEMM.transition_matrix,
-                       [[0.7777777777777777, 0.22222222222222224], [0.12928535495314722, 0.8707146450468528]])
+    np.testing.assert_almost_equal(MEMM.stationary_distribution, [0.3678024695571382, 0.6321975304428619])
+    np.testing.assert_almost_equal(MEMM.transition_matrix,
+                                   [[0.7777777777777777, 0.22222222222222224],
+                                    [0.12928535495314722, 0.8707146450468528]])
     MEMM.select(2)
-    assert np.allclose(MEMM.transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
+    np.testing.assert_almost_equal(MEMM.transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
 
     weights = model.compute_sample_weights(dtrajs, bias_matrices)
-    assert np.allclose(np.sum(weights), 1)
-    assert tram.compute_log_likelihood < 0
+    np.testing.assert_almost_equal(np.sum(weights), 1)
+    np.testing.assert_(tram.compute_log_likelihood < 0)
 
 
 def test_unknown_connectivity():
@@ -148,6 +159,7 @@ def to_numpy_arrays(dtrajs, bias_matrices, ttrajs):
         bias_matrices = [np.asarray(M) for M in bias_matrices]
 
     return dtrajs, bias_matrices, ttrajs
+
 
 @pytest.mark.parametrize(
     "dtrajs, bias_matrices, ttrajs",
@@ -192,30 +204,28 @@ def test_invalid_input(dtrajs, bias_matrices, ttrajs):
         ([[0, 0, 0], [0, 1, 0]], np.zeros((2, 3, 2)), [[0, 2, 0], [0, 0, 0]]),
     ]
 )
-def test_invalid_input_initialized_states(dtrajs, bias_matrices, ttrajs):
+def test_invalid_input_with_model(dtrajs, bias_matrices, ttrajs):
     tram = TRAM()
-    tram.n_therm_states = 2
-    tram.n_markov_states = 1
+    model = random_model(2, 1)
 
     dtrajs, bias_matrices, ttrajs = to_numpy_arrays(dtrajs, bias_matrices, ttrajs)
 
     with np.testing.assert_raises(ValueError):
-        tram.fit((ttrajs, dtrajs, bias_matrices))
+        tram.fit((ttrajs, dtrajs, bias_matrices), model)
+
 
 @pytest.mark.parametrize(
     "dtrajs, bias_matrices, ttrajs",
     [
-        ([[0, 0, 1], [0, 1, 0]], np.zeros((2, 3, 2)), [[0, 0, 0], [0, 0, 0]])
+        ([[0, 0, 1], [0, 1, 0]], np.zeros((2, 3, 2)), [[0, 0, 0], [1, 1, 1]])
     ]
 )
-def test_valid_input_initialized_from_model(dtrajs, bias_matrices, ttrajs):
+def test_valid_input_with_model(dtrajs, bias_matrices, ttrajs):
     tram = TRAM()
-    tram.n_therm_states = 2
-    tram.n_markov_states = 2
-
+    model = random_model(2, 2)
     dtrajs, bias_matrices, ttrajs = to_numpy_arrays(dtrajs, bias_matrices, ttrajs)
+    tram.fit((dtrajs, bias_matrices, ttrajs), model)
 
-    tram._validate_input(ttrajs, dtrajs, bias_matrices)
 
 @pytest.mark.parametrize(
     "track_log_likelihoods", [True, False]
@@ -224,7 +234,10 @@ def test_callback_called(track_log_likelihoods):
     tram = TRAM(track_log_likelihoods=track_log_likelihoods, callback_interval=2, maxiter=10)
     input = make_random_input_data(5, 5)
     tram.fit(input)
-    assert len(tram.log_likelihoods) == 5
-    assert len(tram.increments) == 5
-    assert (np.asarray(tram.increments) > 0).all()
-    assert (np.asarray(tram.log_likelihoods) < 0).all() == track_log_likelihoods
+    np.testing.assert_equal(len(tram.log_likelihoods), 5)
+    np.testing.assert_equal(len(tram.increments), 5)
+    np.testing.assert_(np.min(tram.increments) > 0)
+    if track_log_likelihoods:
+        np.testing.assert_((np.asarray(tram.log_likelihoods) < 0).all())
+    else:
+        np.testing.assert_((np.asarray(tram.log_likelihoods) == 0).all())

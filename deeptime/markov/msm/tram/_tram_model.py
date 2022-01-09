@@ -50,10 +50,10 @@ class TRAMModel(Model):
         self._lagrangian_mult_log = lagrangian_mult_log
         self._markov_state_energies = markov_state_energies
 
-        # if therm_state_energies is None:
-        self._therm_state_energies = np.asarray([-logsumexp(-row) for row in biased_conf_energies])
-        # else:
-        #     self._therm_state_energies = therm_state_energies
+        if therm_state_energies is None:
+            self._therm_state_energies = np.asarray([-logsumexp(-row) for row in biased_conf_energies])
+        else:
+            self._therm_state_energies = therm_state_energies
 
         self._markov_state_model_collection = self._construct_markov_model_collection(
             count_models, transition_matrices)

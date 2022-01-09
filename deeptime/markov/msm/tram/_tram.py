@@ -215,7 +215,7 @@ class TRAM(_MSMBaseEstimator):
             dataset.n_therm_states = self._model.n_therm_states
 
         # only construct estimator if it hasn't been loaded from the model yet
-        self._tram_estimator = self._make_tram_estimator(dataset.n_markov_states, dataset.n_therm_states)
+        self._tram_estimator = self._make_tram_estimator(dataset.n_therm_states, dataset.n_markov_states)
 
         self._run_estimation(dataset.tram_input)
         self._model = TRAMModel(count_models=dataset.count_models,
