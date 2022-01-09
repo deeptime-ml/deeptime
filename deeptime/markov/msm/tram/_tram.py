@@ -218,7 +218,7 @@ class TRAM(_MSMBaseEstimator):
         self._tram_estimator = self._make_tram_estimator(dataset.n_markov_states, dataset.n_therm_states)
 
         self._run_estimation(dataset.tram_input)
-        self._model = TRAMModel(count_models=self.count_models,
+        self._model = TRAMModel(count_models=dataset.count_models,
                                 transition_matrices=self._tram_estimator.transition_matrices,
                                 biased_conf_energies=self._tram_estimator.biased_conf_energies,
                                 lagrangian_mult_log=self._tram_estimator.lagrangian_mult_log,

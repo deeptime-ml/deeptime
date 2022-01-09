@@ -32,14 +32,14 @@ def test_init_tram_model():
     model = random_model(n_therm_states, n_markov_states, transition_matrices=transition_matrices)
 
     MEMM = model.markov_state_model_collection
-    assert isinstance(MEMM, MarkovStateModelCollection)
-    assert (MEMM.transition_matrix == transition_matrices[0]).all()
-    assert MEMM.n_connected_msms == n_therm_states
+    np.testing.assert_(isinstance(MEMM, MarkovStateModelCollection))
+    np.testing.assert_equal(MEMM.transition_matrix, transition_matrices[0])
+    np.testing.assert_equal(MEMM.n_connected_msms, n_therm_states)
     MEMM.select(1)
-    assert (MEMM.transition_matrix == transition_matrices[1]).all()
+    np.testing.assert_equal(MEMM.transition_matrix, transition_matrices[1])
 
-    assert model.n_markov_states == n_markov_states
-    assert model.n_therm_states == n_therm_states
+    np.testing.assert_equal(model.n_markov_states, n_markov_states)
+    np.testing.assert_equal(model.n_therm_states, n_therm_states)
 
 
 def test_compute_pmf():
@@ -53,8 +53,8 @@ def test_compute_pmf():
 
     pmf = model.compute_PMF(dtrajs, bias_matrices, binned_trajs)
 
-    assert len(pmf) == 10
-    assert (pmf >= 0).all()
+    np.testing.assert_equal(len(pmf), 10)
+    np.testing.assert_(np.min(pmf >= 0))
 
 def test_compute_observable():
     model = random_model(5, 5)
@@ -65,9 +65,9 @@ def test_compute_observable():
     obs = np.ones_like(dtrajs)
 
     res1 = model.compute_observable(dtrajs, bias_matrices, observable_values=obs)
-    assert res1 > 0
+    np.testing.assert_(res1 > 0)
 
     # observable should change linearly with observed values
     obs *= -2
     res2 = model.compute_observable(dtrajs, bias_matrices, observable_values=obs)
-    assert res2 == res1 * -2
+    np.testing.assert_equal(res2, res1 * -2)
