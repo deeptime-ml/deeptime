@@ -63,7 +63,7 @@ class TRAMDataset:
 
         # validate all dimensions
         self._check_dimensions()
-        self._compute_counts()
+        self.compute_counts()
 
     @property
     def tram_input(self):
@@ -119,6 +119,15 @@ class TRAMDataset:
 
         return state_counts
 
+    def compute_counts(self):
+        # In the case of replica exchange: get all trajectory fragments (also removing any negative state indices).
+        # the dtraj_fragments[k] contain all trajectories within thermodynamic state k, starting a new trajectory at
+        # each replica exchange swap. If there was no replica exchange, dtraj_fragments == dtrajs.
+        dtraj_fragments = self._find_trajectory_fragments()
+
+        # ... convert those into count matrices.
+        self.count_models = self._construct_count_models(dtraj_fragments)
+
     def restrict_to_largest_connected_set(self, connectivity='post_hoc_RE', connectivity_factor=1.0, progress_bar=None):
         lcc = self._find_largest_connected_set(connectivity, connectivity_factor, progress_bar)
         self.restrict_to_connected_set(lcc)
@@ -145,7 +154,7 @@ class TRAMDataset:
             dtrajs_connected.append(restricted_dtraj)
 
         self.dtrajs = dtrajs_connected
-        self._compute_counts()
+        self.compute_counts()
 
     def _ensure_correct_data_types(self, ttrajs, dtrajs, bias_matrices):
         # shape and type checks
@@ -259,15 +268,6 @@ class TRAMDataset:
                                                 order='C')
 
             return full_counts_model.submodel(np.unique(connected_states[1]))
-
-    def _compute_counts(self):
-        # In the case of replica exchange: get all trajectory fragments (also removing any negative state indices).
-        # the dtraj_fragments[k] contain all trajectories within thermodynamic state k, starting a new trajectory at
-        # each replica exchange swap. If there was no replica exchange, dtraj_fragments == dtrajs.
-        dtraj_fragments = self._find_trajectory_fragments()
-
-        # ... convert those into count matrices.
-        self.count_models = self._construct_count_models(dtraj_fragments)
 
     def _find_trajectory_fragments(self):
         """ Find all trajectory fragments given the discrete trajectories and the thermodynamic state indices of each

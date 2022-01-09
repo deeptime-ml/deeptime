@@ -2,11 +2,17 @@ import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAMDataset
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
+from deeptime.markov.msm.tram._tram_bindings import tram as tram_bindings
+
+def make_matching_bias_matrix(dtrajs, n_therm_states = None):
+    if n_therm_states is None:
+        n_therm_states = len(dtrajs)
+    return [np.random.rand(len(traj), n_therm_states) for traj in dtrajs]
 
 
-def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs = True):
+def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs=True):
     dtrajs = [np.random.randint(0, n_markov_states, size=n_samples) for _ in range(n_therm_states)]
-    bias_matrices = [np.random.rand(n_samples, n_therm_states) for _ in range(n_therm_states)]
+    bias_matrices = make_matching_bias_matrix(dtrajs, n_therm_states)
 
     if make_ttrajs:
         ttrajs = [np.random.randint(0, n_therm_states, size=n_samples) for _ in range(n_therm_states)]
@@ -24,7 +30,7 @@ def get_connected_set_from_dtrajs_input(dtrajs, connectivity, has_ttrajs=True, c
     else:
         ttrajs = None
 
-    bias_matrices = [np.ones((len(dtrajs[i]), len(dtrajs))) for i in range(len(dtrajs))]
+    bias_matrices = make_matching_bias_matrix(dtrajs)
     tramdata = TRAMDataset(dtrajs=dtrajs, ttrajs=ttrajs, bias_matrices=bias_matrices, n_markov_states=n_markov_states,
                            n_therm_states=n_therm_states, lagtime=1, count_mode='sliding')
 
@@ -127,20 +133,24 @@ def test_restrict_to_connected_set(test_input, expected):
     "lagtime", [1, 3]
 )
 def test_make_count_models(lagtime):
-    tram = TRAM(lagtime=lagtime)
-    traj_fragments = [np.asarray([1, 1, 2, 3, 1, 1, 1]), np.asarray([2, 0, 0, 1, 3, 1, 4]), np.asarray([2, 2, 2, 2])]
-    tram.n_therm_states = len(traj_fragments)
-    tram.n_markov_states = np.max(np.concatenate(traj_fragments)) + 1
-    state_counts, transition_counts = tram._construct_count_models([[fragments] for fragments in traj_fragments])
-    assert len(tram.count_models) == tram.n_therm_states
-    assert state_counts.shape == (tram.n_therm_states, tram.n_markov_states)
-    assert transition_counts.shape == (tram.n_therm_states, tram.n_markov_states, tram.n_markov_states)
-    assert np.array_equal(tram.count_models[0].state_symbols, [0, 1, 2, 3])
-    assert np.array_equal(tram.count_models[1].state_symbols, [0, 1, 2, 3, 4])
-    assert np.array_equal(tram.count_models[2].state_symbols, [0, 1, 2])
-    for k in range(tram.n_therm_states):
-        np.testing.assert_equal(transition_counts[k].sum(), len(traj_fragments[k]) - lagtime)
-        np.testing.assert_equal(state_counts[k].sum(), len(traj_fragments[k]))
+    dtrajs = [np.asarray([1,1,2,3,1,1,1,2,0,0,1,3,1,4,2,2,2,2])]
+    ttrajs = [np.asarray([0,0,0,0,0,0,0,1,1,1,1,1,1,1,2,2,2,2])]
+    bias_matrices = make_matching_bias_matrix(dtrajs, 3)
+    dataset = TRAMDataset(dtrajs=dtrajs, ttrajs=ttrajs, bias_matrices = bias_matrices, lagtime=lagtime)
+
+    # traj_fragments = [np.asarray([1, 1, 2, 3, 1, 1, 1]), np.asarray([2, 0, 0, 1, 3, 1, 4]), np.asarray([2, 2, 2, 2])]
+    # dataset._n_therm_states = len(traj_fragments)
+    dataset.compute_counts()
+    # dataset._n_markov_states = np.max(np.concatenate(traj_fragments)) + 1
+    assert len(dataset.count_models) == dataset.n_therm_states
+    assert dataset.state_counts.shape == (dataset.n_therm_states, dataset.n_markov_states)
+    assert dataset.transition_counts.shape == (dataset.n_therm_states, dataset.n_markov_states, dataset.n_markov_states)
+    assert np.array_equal(dataset.count_models[0].state_symbols, [0, 1, 2, 3])
+    assert np.array_equal(dataset.count_models[1].state_symbols, [0, 1, 2, 3, 4])
+    assert np.array_equal(dataset.count_models[2].state_symbols, [0, 1, 2])
+    for k in range(dataset.n_therm_states):
+        np.testing.assert_equal(dataset.transition_counts[k].sum(), len(dataset._find_trajectory_fragments()[k][0]) - lagtime)
+        np.testing.assert_equal(dataset.state_counts[k].sum(), len(dataset._find_trajectory_fragments()[k][0]))
 
 
 @pytest.mark.parametrize(
@@ -151,13 +161,13 @@ def test_make_count_models(lagtime):
                [1, 0, 1, 1, 1, 1, 1, 1, 1, 1]]]
 )
 def test_transposed_count_matrices_bug(input):
-    tram = TRAM(connectivity='summed_count_matrix')
-    input = np.asarray(input)
-    tram.n_therm_states = len(input)
-    tram.n_markov_states = np.max(np.concatenate(input)) + 1
-    state_counts, transition_counts = tram._construct_count_models([[frag] for frag in input])
-    assert np.array_equal(state_counts, [[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]])
-    assert np.array_equal(transition_counts,
+    dtrajs = [np.asarray(traj) for traj in input]
+    bias_matrices = make_matching_bias_matrix(dtrajs)
+    dataset = TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices)
+    dataset.restrict_to_largest_connected_set(connectivity='summed_count_matrix')
+    dataset.compute_counts()
+    assert np.array_equal(dataset.state_counts, [[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]])
+    assert np.array_equal(dataset.transition_counts,
                           [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]])
 
 
@@ -168,11 +178,16 @@ def test_transposed_count_matrices_bug(input):
      ([[0, 0, 0, 1, 0, 0, 0], [1, 0, 0, 1, 0, 0]], [[(0, 0, 3), (0, 3, 7), (1, 0, 3), (1, 3, 6)], []])]
 )
 def test_trajectory_fragments_mapping(test_input, expected):
-    tram = TRAM()
-    tram.n_therm_states = np.max(np.concatenate(test_input)) + 1
-    mapping = tram._find_trajectory_fragment_mapping([np.asarray(inp) for inp in test_input])
-    assert mapping == expected
+    n_therm_states = np.max(np.concatenate(test_input)) + 1
+    mapping = tram_bindings.find_trajectory_fragment_indices([np.asarray(inp) for inp in test_input], n_therm_states)
+    np.testing.assert_equal(mapping, expected)
 
+
+def test_trajectory_fragments_mapping_no_ttrajs():
+    dtrajs, bias_matrices = make_random_input_data(5, 8, make_ttrajs=False)
+    dataset = TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices)
+
+    np.testing.assert_equal([[traj] for traj in dtrajs], dataset._find_trajectory_fragments())
 
 @pytest.mark.parametrize(
     "dtrajs, ttrajs, expected",
@@ -181,28 +196,12 @@ def test_trajectory_fragments_mapping(test_input, expected):
       [[[1, 3], [5, 6], [8, 9]], [[10, 11], [12, 13]]])]
 )
 def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
-    tram = TRAM()
-    tram.n_therm_states = 2
-    mapping = tram._find_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
-                                              [np.asarray(ttraj) for ttraj in ttrajs])
-    for k in range(tram.n_therm_states):
+    dtrajs=[np.asarray(d) for d in dtrajs]
+    ttrajs=[np.asarray(t) for t in ttrajs]
+    bias_matrices = make_matching_bias_matrix(dtrajs)
+    dataset = TRAMDataset(dtrajs=dtrajs, ttrajs=ttrajs, bias_matrices=bias_matrices)
+
+    mapping = dataset._find_trajectory_fragments()
+    for k in range(dataset.n_therm_states):
         assert len(mapping[k]) == len(expected[k])
         assert np.all([np.array_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))])
-
-
-@pytest.mark.parametrize(
-    "dtrajs, expected",
-    [([[1, 2, -1, -1, -1, 6, 7], [8, 9, 10, 11, 12, 13, 14]], [[1, 2, 6, 7], [8, 9, 10, 11, 12, 13, 14]]),
-     ([[1, 2, 3, 4], [5, -1, -1, 8], [-1, -1, -1]], [[1, 2, 3, 4], [5, 8], []])]
-)
-@pytest.mark.parametrize(
-    "ttrajs", [None, []]
-)
-def test_get_trajectory_fragments_no_ttrajs(dtrajs, ttrajs, expected):
-    tram = TRAM()
-    tram.n_therm_states = 2
-    mapping = tram._find_trajectory_fragments([np.asarray(dtraj) for dtraj in dtrajs],
-                                              ttrajs)
-    for k in range(tram.n_therm_states):
-        assert len(mapping[k][0]) == len(expected[k])
-        assert np.all([np.array_equal(mapping[k][0][i], expected[k][i]) for i in range(len(mapping[k]))])
