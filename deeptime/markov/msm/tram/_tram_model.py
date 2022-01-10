@@ -130,11 +130,14 @@ class TRAMModel(Model):
         return tram.compute_sample_weights(therm_state, dtrajs, bias_matrices, self._therm_state_energies,
                                            self._modified_state_counts_log)
 
-    def compute_observable(self, dtrajs, bias_matrices, observable_values, therm_state=-1):
+    def compute_observable(self, observable_values, dtrajs, bias_matrices, therm_state=-1):
         r""" Compute an observable value.
 
         Parameters
         ----------
+        observable_values : list(np.ndarray)
+            The list of observable values. observable_values[i][n] contains the observable value for the n-th sample in
+            the i-th trajectory.
         dtrajs : list(np.ndarray)
             The list of discrete trajectories. dtrajs[i][n] contains the Markov state index of the n-th sample in the
             i-th trajectory.
@@ -143,9 +146,6 @@ class TRAMModel(Model):
             trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
             dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
             sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
-        observable_values : list(np.ndarray)
-            The list of observable values. observable_values[i][n] contains the observable value for the n-th sample in
-            the i-th trajectory.
 
         The observed values, bias matrices and dtrajs are associated, i.e. they all pertain to the same samples:
         for the n-th sample in the i-the trajectory, its observable, bias values and Markov state can be found

@@ -66,10 +66,10 @@ def test_compute_observable():
     bias_matrices = np.random.uniform(0, 1, (5, n_samples, 5))
     obs = np.ones_like(dtrajs)
 
-    res1 = model.compute_observable(dtrajs, bias_matrices, observable_values=obs)
+    res1 = model.compute_observable(obs, dtrajs, bias_matrices)
     np.testing.assert_(res1 > 0)
 
     # observable should change linearly with observed values
     obs *= -2
-    res2 = model.compute_observable(dtrajs, bias_matrices, observable_values=obs)
+    res2 = model.compute_observable(obs, dtrajs, bias_matrices)
     np.testing.assert_equal(res2, res1 * -2)
