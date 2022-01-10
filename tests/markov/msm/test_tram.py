@@ -206,7 +206,10 @@ def test_invalid_input_with_model(dtrajs, bias_matrices, ttrajs):
     dtrajs, bias_matrices, ttrajs = to_numpy_arrays(dtrajs, bias_matrices, ttrajs)
 
     with np.testing.assert_raises(ValueError):
-        tram.fit((ttrajs, dtrajs, bias_matrices), model)
+        if ttrajs is None:
+            tram.fit((dtrajs, bias_matrices), model)
+        else:
+            tram.fit((dtrajs, bias_matrices, ttrajs), model)
 
 
 @pytest.mark.parametrize(
