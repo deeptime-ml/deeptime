@@ -168,10 +168,13 @@ public:
 
         input_ = tramInput;
 
+        // initialize the lagrange multipliers with a default value based on the transition counts, but only
+        // if all are zero.
         if (std::all_of(lagrangianMultLog().data(), lagrangianMultLog().data() + lagrangianMultLog().size(),
                         [](dtype x) { return x==static_cast<dtype>(0.); })) {
             initLagrangianMult();
         }
+
         double iterationError{0};
 
         for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
