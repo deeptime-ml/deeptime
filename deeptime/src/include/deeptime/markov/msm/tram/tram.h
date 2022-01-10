@@ -685,32 +685,6 @@ private:
     }
 };
 
-template<typename Array, std::size_t Dims>
-struct ArrayBuffer {
-    using value_type = typename Array::value_type;
-    using ArrayIndex = Index<Dims, std::array<py::ssize_t, Dims>>;
-
-    ArrayBuffer(const Array &array) : ptr(array.data()),
-        ix(ArrayIndex::make_index(array.shape(), array.shape() + Dims)) {}
-
-    ArrayBuffer() = default;
-    ~ArrayBuffer() = default;
-    ArrayBuffer(const ArrayBuffer &) = default;
-    ArrayBuffer &operator=(const ArrayBuffer &) = default;
-    ArrayBuffer(ArrayBuffer &&) = default;
-    ArrayBuffer &operator=(ArrayBuffer &&) = default;
-
-    template<typename... Ix>
-    const value_type &operator()(Ix&&... indices) const {
-        return ptr[ix(std::forward<Ix>(indices)...)];
-    }
-
-    auto size() const { return ix.size(); }
-
-    const value_type* ptr;
-    ArrayIndex ix;
-};
-
 template<typename DTraj, typename BiasMatrix, typename ThermStateEnergies, typename ModifiedStateCountsLog>
 static auto computeSampleWeightsForTrajectory(
         StateIndex thermStateIndex,
