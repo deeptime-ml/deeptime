@@ -116,7 +116,8 @@ def test_tram_integration():
     bias_matrices = np.zeros((len(bias_centers), 10, len(bias_centers)))
     for i, traj in enumerate(trajs):
         for j, bias_center in enumerate(bias_centers):
-            bias = lambda x, x0=bias_center: harmonic(x0, x)
+            def bias(x, x0=bias_center):
+                return harmonic(x0, x)
             bias_matrices[i, :, j] = bias(traj)
 
     tram = TRAM(maxiter=100)
@@ -129,15 +130,15 @@ def test_tram_integration():
                                    [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
     np.testing.assert_almost_equal(model.markov_state_energies, [1.0550639, 0.42797176])
 
-    MEMM = model.msm_collection
-    np.testing.assert_almost_equal(MEMM.stationary_distribution, [1.])
-    MEMM.select(1)
-    np.testing.assert_almost_equal(MEMM.stationary_distribution, [0.3678024695571382, 0.6321975304428619])
-    np.testing.assert_almost_equal(MEMM.transition_matrix,
+    memm = model.msm_collection
+    np.testing.assert_almost_equal(memm.stationary_distribution, [1.])
+    memm.select(1)
+    np.testing.assert_almost_equal(memm.stationary_distribution, [0.3678024695571382, 0.6321975304428619])
+    np.testing.assert_almost_equal(memm.transition_matrix,
                                    [[0.7777777777777777, 0.22222222222222224],
                                     [0.12928535495314722, 0.8707146450468528]])
-    MEMM.select(2)
-    np.testing.assert_almost_equal(MEMM.transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
+    memm.select(2)
+    np.testing.assert_almost_equal(memm.transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
 
     weights = model.compute_sample_weights(dtrajs, bias_matrices)
     np.testing.assert_almost_equal(np.sum(weights), 1)
@@ -230,8 +231,8 @@ def test_valid_input_with_model(dtrajs, bias_matrices, ttrajs):
 )
 def test_callback_called(track_log_likelihoods):
     tram = TRAM(track_log_likelihoods=track_log_likelihoods, callback_interval=2, maxiter=10)
-    input = make_random_input_data(5, 5)
-    tram.fit(input)
+    tram_input = make_random_input_data(5, 5)
+    tram.fit(tram_input)
     np.testing.assert_equal(len(tram.log_likelihoods), 5)
     np.testing.assert_equal(len(tram.increments), 5)
     np.testing.assert_(np.min(tram.increments) > 0)
