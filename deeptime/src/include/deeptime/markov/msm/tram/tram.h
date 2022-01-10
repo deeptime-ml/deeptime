@@ -94,7 +94,7 @@ template<typename dtype>
 struct TRAM {
 public:
 
-    TRAM(std::size_t nThermStates, std::size_t nMarkovStates)
+    TRAM(std::size_t nThermStates, std::size_t nMarkovStates, bool initialize_parameters = true)
             : nThermStates_(nThermStates),
               nMarkovStates_(nMarkovStates),
               biasedConfEnergies_(detail::generateFilledArray<dtype>({nThermStates_, nMarkovStates_}, 0.)),
@@ -104,18 +104,21 @@ public:
               markovStateEnergies_(np_array_nfc<dtype>(std::vector<StateIndex>{nMarkovStates_})),
               transitionMatrices_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_, nMarkovStates_})),
               statVectors_(ExchangeableArray<dtype, 2>(std::vector({nThermStates_, nMarkovStates_}), 0.)),
-              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])),
-              initializeParametersOnEstimationStart_(true) {}
+              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])) {
+        if (initialize_parameters) {
+            initLagrangianMult();
+        }
+    }
 
     TRAM(np_array_nfc<dtype> &biasedConfEnergies, np_array_nfc<dtype> &lagrangianMultLog,
-         np_array_nfc<dtype> &modifiedStateCountsLog) : TRAM(biasedConfEnergies.shape(0), biasedConfEnergies.shape(1)) {
+         np_array_nfc<dtype> &modifiedStateCountsLog) : TRAM(biasedConfEnergies.shape(0), biasedConfEnergies.shape(1),
+                                                             false) {
         std::copy(lagrangianMultLog.data(), lagrangianMultLog.data() + lagrangianMultLog.size(),
                   lagrangianMultLog_.first()->mutable_data());
         std::copy(biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size(),
                   biasedConfEnergies_.mutable_data());
         std::copy(modifiedStateCountsLog.data(), modifiedStateCountsLog.data() + modifiedStateCountsLog.size(),
                   modifiedStateCountsLog_.mutable_data());
-        initializeParametersOnEstimationStart_ = false;
     }
 
     const auto &biasedConfEnergies() const {
@@ -168,10 +171,6 @@ public:
                   const py::object *callback = nullptr) {
 
         input_ = tramInput;
-
-        if (initializeParametersOnEstimationStart_) {
-            initLagrangianMult();
-        }
 
         double iterationError{0};
 
@@ -240,10 +239,6 @@ private:
 
     // scratch matrices used to facilitate calculation of logsumexp
     std::unique_ptr<dtype[]> scratch_;
-
-    // True if this is the first time we are estimating parameters. In this case, Lagrangians will be initialized
-    // If False, estimation is done without re-initializing parameters.
-    bool initializeParametersOnEstimationStart_;
 
     constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
 
