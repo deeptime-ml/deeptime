@@ -44,7 +44,7 @@ struct ComputeIndex {
 
     template<typename Arr, std::size_t... I>
     static constexpr auto compute(const Arr &strides, const std::tuple<Ix...> &tup, std::index_sequence<I...>) {
-        return (0 + ... + (strides[I] * std::get<I>(tup)));;
+        return (0 + ... + (strides[I] * std::get<I>(tup)));
     }
 };
 
@@ -55,12 +55,16 @@ class Index {
     static_assert(Dims > 0, "Dims has to be > 0");
 public:
     using GridDims = T;
+    /**
+     * The value type, inherited from GridDims::value_type
+     */
+    using value_type = typename GridDims::value_type;
 
     template<typename It>
     static auto make_index(It shapeBegin, It shapeEnd) {
-        GridDims dims;
+        GridDims dims {};
         std::copy(shapeBegin, shapeEnd, begin(dims));
-        auto n_elems = std::accumulate(begin(dims), end(dims), 1u, std::multiplies<value_type>());
+        auto n_elems = std::accumulate(begin(dims), end(dims), static_cast<value_type>(1), std::multiplies<value_type>());
 
         GridDims strides;
         strides[0] = n_elems / dims[0];
@@ -77,17 +81,12 @@ public:
     }
 
     /**
-     * The value type, inherited from GridDims::value_type
-     */
-    using value_type = typename GridDims::value_type;
-
-    /**
      * Constructs an empty index object of specified dimensionality. Not of much use, really.
      */
     Index() : _size(), _cum_size(), n_elems(0) {}
 
     template<typename Shape>
-    Index(const Shape &size)
+    explicit Index(const Shape &size)
             : _size(), n_elems(std::accumulate(begin(size), end(size), 1u, std::multiplies<value_type>())) {
         std::copy(begin(size), end(size), begin(_size));
 
@@ -117,14 +116,6 @@ public:
     }
 
     /**
-     * the number of elements in this index
-     * @return the number of elements
-     */
-    value_type nElements() const {
-        return n_elems;
-    }
-
-    /**
      * Retrieve size of N-th axis
      * @tparam N the axis
      * @return size of N-th axis
@@ -150,7 +141,7 @@ public:
      * @param ix the d-dimensional index
      * @return the 1D index
      */
-    template<typename... Ix, typename Indices = std::make_index_sequence<Dims>>
+    template<typename... Ix>
     constexpr value_type operator()(Ix &&... ix) const {
         static_assert(std::size_t(sizeof...(ix)) == Dims, "wrong input dim");
         return detail::ComputeIndex<Ix...>::compute(_cum_size, std::forward<Ix>(ix)...);
@@ -192,6 +183,55 @@ private:
     GridDims _size;
     GridDims _cum_size;
     value_type n_elems;
+};
+
+template<typename Array, std::size_t Dims>
+class ArrayBuffer {
+public:
+    /**
+     * Return type upon access
+     */
+    using value_type = typename Array::value_type;
+    /**
+     * Type of index used. To avoid conversion errors with pybind/numpy, py::ssize_t is used for indexing
+     */
+    using ArrayIndex = Index<Dims, std::array<py::ssize_t, Dims>>;
+
+    /**
+     * Creates a new array buffer. This object is thread-safe and assumes that the data is contiguous in memory.
+     *
+     * @param array the array
+     */
+    explicit ArrayBuffer(const Array &array)
+        : ptr(array.data()), ix(ArrayIndex::make_index(array.shape(), array.shape() + Dims)) {}
+
+    ArrayBuffer() = default;
+    ~ArrayBuffer() = default;
+    ArrayBuffer(const ArrayBuffer &) = default;
+    ArrayBuffer &operator=(const ArrayBuffer &) = default;
+    ArrayBuffer(ArrayBuffer &&)  noexcept = default;
+    ArrayBuffer &operator=(ArrayBuffer &&)  noexcept = default;
+
+    /**
+     * Retrieves a value inside the array at a certain position.
+     * @tparam Ix multidimensional index type
+     * @param indices multidimensional index, length must match Dims
+     * @return value at index
+     */
+    template<typename... Ix>
+    const value_type &operator()(Ix&&... indices) const {
+        return ptr[ix(std::forward<Ix>(indices)...)];
+    }
+
+    /**
+     * Size of the underlying data (e.g., shape (10, 5) gives size 50 = 10 * 5).
+     * @return size
+     */
+    auto size() const { return ix.size(); }
+
+private:
+    const value_type* ptr;
+    ArrayIndex ix;
 };
 
 namespace util {
