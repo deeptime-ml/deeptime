@@ -72,7 +72,7 @@ def test_lagtime_too_long():
 def test_tram_fit():
     dtrajs, bias_matrices = make_random_input_data(5, 10, make_ttrajs=False)
 
-    ttrajs = [np.ones((len(dtrajs[i])), dtype=np.int) * i for i in range(len(dtrajs))]
+    ttrajs = [np.ones((len(dtrajs[i])), dtype=int) * i for i in range(len(dtrajs))]
 
     therm_energies_1 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices)).therm_state_energies
     therm_energies_2 = TRAM(maxiter=100).fit_fetch((dtrajs, bias_matrices, ttrajs)).therm_state_energies

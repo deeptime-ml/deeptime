@@ -94,7 +94,7 @@ template<typename dtype>
 struct TRAM {
 public:
 
-    TRAM(std::size_t nThermStates, std::size_t nMarkovStates, bool initialize_parameters = true)
+    TRAM(std::size_t nThermStates, std::size_t nMarkovStates)
             : nThermStates_(nThermStates),
               nMarkovStates_(nMarkovStates),
               biasedConfEnergies_(detail::generateFilledArray<dtype>({nThermStates_, nMarkovStates_}, 0.)),
@@ -104,15 +104,11 @@ public:
               markovStateEnergies_(np_array_nfc<dtype>(std::vector<StateIndex>{nMarkovStates_})),
               transitionMatrices_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_, nMarkovStates_})),
               statVectors_(ExchangeableArray<dtype, 2>(std::vector({nThermStates_, nMarkovStates_}), 0.)),
-              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])) {
-        if (initialize_parameters) {
-            initLagrangianMult();
-        }
-    }
+              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])) {}
+
 
     TRAM(np_array_nfc<dtype> &biasedConfEnergies, np_array_nfc<dtype> &lagrangianMultLog,
-         np_array_nfc<dtype> &modifiedStateCountsLog) : TRAM(biasedConfEnergies.shape(0), biasedConfEnergies.shape(1),
-                                                             false) {
+         np_array_nfc<dtype> &modifiedStateCountsLog) : TRAM(biasedConfEnergies.shape(0), biasedConfEnergies.shape(1)) {
         std::copy(lagrangianMultLog.data(), lagrangianMultLog.data() + lagrangianMultLog.size(),
                   lagrangianMultLog_.first()->mutable_data());
         std::copy(biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size(),
@@ -172,6 +168,10 @@ public:
 
         input_ = tramInput;
 
+        if (std::all_of(lagrangianMultLog().data(), lagrangianMultLog().data() + lagrangianMultLog().size(),
+                        [](dtype x) { return x==static_cast<dtype>(0.); })) {
+            initLagrangianMult();
+        }
         double iterationError{0};
 
         for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
