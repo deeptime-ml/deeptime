@@ -685,39 +685,63 @@ private:
     }
 };
 
-template<typename dtype>
-static auto computeSampleWeightsForTrajectory(StateIndex thermStateIndex, DTraj dtraj, BiasMatrix<dtype> biasMatrix,
-                                              np_array_nfc<dtype> thermStateEnergies,
-                                              np_array_nfc<dtype> modifiedStateCountsLog) {
+template<typename Array, std::size_t Dims>
+struct ArrayBuffer {
+    using value_type = typename Array::value_type;
+    using ArrayIndex = Index<Dims, std::array<py::ssize_t, Dims>>;
+
+    ArrayBuffer(const Array &array) : ptr(array.data()),
+        ix(ArrayIndex::make_index(array.shape(), array.shape() + Dims)) {}
+
+    ArrayBuffer() = default;
+    ~ArrayBuffer() = default;
+    ArrayBuffer(const ArrayBuffer &) = default;
+    ArrayBuffer &operator=(const ArrayBuffer &) = default;
+    ArrayBuffer(ArrayBuffer &&) = default;
+    ArrayBuffer &operator=(ArrayBuffer &&) = default;
+
+    template<typename... Ix>
+    const value_type &operator()(Ix&&... indices) const {
+        return ptr[ix(std::forward<Ix>(indices)...)];
+    }
+
+    auto size() const { return ix.size(); }
+
+    const value_type* ptr;
+    ArrayIndex ix;
+};
+
+template<typename DTraj, typename BiasMatrix, typename ThermStateEnergies, typename ModifiedStateCountsLog>
+static auto computeSampleWeightsForTrajectory(
+        StateIndex thermStateIndex,
+        const DTraj &dtraj,
+        const BiasMatrix &biasMatrix,
+        const ThermStateEnergies &thermStateEnergies,
+        const ModifiedStateCountsLog &modifiedStateCountsLog) {
+    using dtype = typename BiasMatrix::value_type;
     // k = -1 for unbiased sample weights.
     std::vector<dtype> sampleWeights(dtraj.size());
-
-    auto dtrajBuf = dtraj.template unchecked<1>();
-    auto biasMatrixBuf = biasMatrix.template unchecked<2>();
-
-    auto thermStateEnergiesBuf = thermStateEnergies.template unchecked<1>();
-    auto modifiedStateCountsLogBuf = modifiedStateCountsLog.template unchecked<2>();
 
     std::vector<dtype> scratch(thermStateEnergies.size());
 
     for (auto x = 0; x < dtraj.size(); ++x) {
-        auto i = dtrajBuf(x);
+        auto i = dtraj(x);
         if (i < 0) {
             sampleWeights[x] = std::numeric_limits<dtype>::infinity();
             continue;
         }
         int o = 0;
         for (StateIndex l = 0; l < thermStateEnergies.size(); ++l) {
-            if (modifiedStateCountsLogBuf(l, i) > -std::numeric_limits<dtype>::infinity()) {
-                scratch[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf(x, l);
+            if (modifiedStateCountsLog(l, i) > -std::numeric_limits<dtype>::infinity()) {
+                scratch[o++] = modifiedStateCountsLog(l, i) - biasMatrix(x, l);
             }
         }
         auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
         if (thermStateIndex == -1) {// get unbiased sample weight
             sampleWeights[x] = std::exp(-log_divisor);
         } else { // get biased sample weight for given thermState index
-            sampleWeights[x] = std::exp(-biasMatrixBuf(x, thermStateIndex) - log_divisor
-                                        + thermStateEnergiesBuf(thermStateIndex));
+            sampleWeights[x] = std::exp(-biasMatrix(x, thermStateIndex) - log_divisor
+                                        + thermStateEnergies(thermStateIndex));
         }
     }
     return sampleWeights;
@@ -732,14 +756,21 @@ computeSampleWeights(StateIndex thermState, DTrajs &dtrajs, BiasMatrices<dtype> 
     auto nTrajs = static_cast<std::int32_t>(dtrajs.size());
     std::vector<std::vector<dtype>> sampleWeights(nTrajs);
 
-    auto dtrajsPtr = &dtrajs;
-    auto biasMatricesPtr = &biasMatrices;
-    auto thermStateEnergiesPtr = &thermStateEnergies;
-    auto modifiedStateCountsLogPtr = &modifiedStateCountsLog;
+    std::vector<ArrayBuffer<DTraj, 1>> dtrajBuffers (dtrajs.begin(), dtrajs.end());
+    auto dtrajsPtr = dtrajBuffers.data();
+
+    std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuffers (biasMatrices.begin(), biasMatrices.end());
+    auto biasMatricesPtr = biasMatrixBuffers.data();
+
+    ArrayBuffer<np_array_nfc<dtype>, 1> thermStateEnergiesBuf {thermStateEnergies};
+    auto thermStateEnergiesPtr = &thermStateEnergiesBuf;
+
+    ArrayBuffer<np_array_nfc<dtype>, 2> modifiedStateCountsLogBuf {modifiedStateCountsLog};
+    auto modifiedStateCountsLogPtr = &modifiedStateCountsLogBuf;
 
     #pragma omp parallel for default(none) firstprivate(nTrajs, thermState, thermStateEnergiesPtr, modifiedStateCountsLogPtr, dtrajsPtr, biasMatricesPtr) shared(sampleWeights)
     for (std::int32_t i = 0; i < nTrajs; ++i) {
-        sampleWeights[i] = computeSampleWeightsForTrajectory(thermState, (*dtrajsPtr)[i], (*biasMatricesPtr)[i],
+        sampleWeights[i] = computeSampleWeightsForTrajectory(thermState, dtrajsPtr[i], biasMatricesPtr[i],
                                                              *thermStateEnergiesPtr, *modifiedStateCountsLogPtr);
     }
 
