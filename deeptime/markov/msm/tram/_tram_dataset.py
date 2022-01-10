@@ -141,8 +141,12 @@ class TRAMDataset:
 
     @property
     def tram_input(self):
-        r""" The TRAMInput object containing the data needed for estimation. """
-        return tram.TRAMInput(self.state_counts, self.transition_counts, self.dtrajs, self.bias_matrices)
+        r""" The TRAMInput object containing the data needed for estimation.
+        For estimation purposes, it does not matter which thermodynamic state each sample was sampled at. The dtrajs and
+        bias_matrices are therefore flattened along the first dimension, to speed up estimation. """
+        return tram.TRAMInput(self.state_counts, self.transition_counts,
+                              self.dtrajs.reshape(-1),
+                              self.bias_matrices.reshape(-1, self.bias_matrices.shape[-1]))
 
     @property
     def n_therm_states(self):

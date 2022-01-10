@@ -147,12 +147,8 @@ public:
         // first get likelihood of all discrete quantities (transition likelihood and free energies times state counts)
         auto logLikelihood = computeDiscreteLikelihood();
 
-        auto nTraj = static_cast<std::int32_t>(input_->nTrajectories());
-        // then for each trajectory, compute log of all sample weights, and add to log likelihood.
-        #pragma omp parallel for default(none) firstprivate(nTraj) reduction(+:logLikelihood)
-        for (std::int32_t i = 0; i < nTraj; ++i) {
-            logLikelihood += computeSampleLikelihood(i);
-        }
+        // then compute log of all sample weights, and add to log likelihood.
+        logLikelihood += computeSampleLikelihood();
 
         return logLikelihood;
     }
@@ -315,30 +311,21 @@ private:
         }
     }
 
-    // update all biased confirmation energies by looping over all trajectories.
+    // update conformation energies based on one observed trajectory
     void updateBiasedConfEnergies() {
         std::fill(biasedConfEnergies_.mutable_data(), biasedConfEnergies_.mutable_data() +
                                                       biasedConfEnergies_.size(), inf);
 
-        for (std::size_t i = 0; i < input_->nTrajectories(); ++i) {
-            updateBiasedConfEnergies(i, input_->sequenceLength(i));
-        }
-    }
-
-    // update conformation energies based on one observed trajectory
-    void updateBiasedConfEnergies(std::size_t trajectoryIndex, std::size_t trajLength) {
-        auto biasMatrixBuf = input_->biasMatrix(trajectoryIndex);
-        auto dtrajBuf = input_->dtraj(trajectoryIndex);
+        auto biasMatrixBuf = input_->biasMatrix();
+        auto dtrajBuf = input_->dtraj();
 
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template mutable_unchecked<2>();
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
-        dtype divisor{};
-
         auto *scratch = scratch_.get();
 
         // assume that biasedConfEnergies_ have been set to INF by the caller in the first call
-        for (std::size_t x = 0; x < trajLength; ++x) {
+        for (std::int32_t x = 0; x < input_->nSamples(); ++x) {
             auto i = dtrajBuf(x);
             if (i >= 0) { // skip frames that have negative Markov state indices
                 std::size_t o = 0;
@@ -347,7 +334,7 @@ private:
                         scratch[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixBuf(x, k);
                     }
                 }
-                divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch, o);
+                dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch, o);
 
                 for (StateIndex k = 0; k < nThermStates_; ++k) {
                     biasedConfEnergiesBuf(k, i) = -numeric::kahan::logsumexp_pair(
@@ -455,27 +442,20 @@ private:
         // first reset all confirmation energies to infinity
         std::fill(markovStateEnergies_.mutable_data(), markovStateEnergies_.mutable_data() + nMarkovStates_, inf);
 
-        for (std::size_t i = 0; i < input_->nTrajectories(); ++i) {
-            auto dtraj = input_->dtraj(i);
-            auto biasMatrix = input_->biasMatrix(i);
-
-            updateMarkovStateEnergiesForSingleTrajectory(biasMatrix, dtraj);
-        }
-    }
-
-    template<typename BiasMatrix, typename Dtraj>
-    void updateMarkovStateEnergiesForSingleTrajectory(const BiasMatrix &biasMatrix, const Dtraj &dtraj) {
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
         auto markovStateEnergiesBuf = markovStateEnergies_.template mutable_unchecked<1>();
 
+        auto dtrajBuf = input_->dtraj();
+        auto biasMatrixBuf = input_->biasMatrix();
+
         // assume that markovStateEnergies_ were set to INF by the caller on the first call
-        for (auto x = 0; x < dtraj.size(); ++x) {
-            std::int32_t i = dtraj(x);
+        for (auto x = 0; x < input_->nSamples(); ++x) {
+            std::int32_t i = dtrajBuf(x);
             if (i >= 0) { // skip negative state indices
                 std::size_t o = 0;
                 for (StateIndex k = 0; k < nThermStates_; ++k) {
                     if (modifiedStateCountsLogBuf(k, i) > -inf) {
-                        scratch_[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k);
+                        scratch_[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixBuf(x, k);
                     }
                 }
                 dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_.get(), o);
@@ -551,23 +531,23 @@ private:
     // i.e. the sum over all sample weights from one trajectory.
     // -\sum_x \log{ \sum_l R_{i(x)}^l e^{-b^l(x)}}
     // TODO find a better name for this
-    dtype computeSampleLikelihood(std::size_t trajIndex) const {
+    dtype computeSampleLikelihood() const {
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
-        auto biasMatrix = input_->biasMatrix(trajIndex);
-        auto dtraj = input_->dtraj(trajIndex);
+        auto biasMatrixBuf = input_->biasMatrix();
+        auto dtrajBuf = input_->dtraj();
 
         std::vector<dtype> sampleLikelihoods;
         sampleLikelihoods.reserve(nThermStates_);
 
         dtype logLikelihood = 0;
-        for (auto x = 0; x < dtraj.size(); ++x) {
-            auto i = dtraj(x);
+        for (auto x = 0; x < input_->nSamples(); ++x) {
+            auto i = dtrajBuf(x);
             if (i < 0) continue; // skip negative markov state indices
 
             // compute the sample weight, mu(x)
             for (StateIndex k = 0; k < nThermStates_; ++k) {
                 if (modifiedStateCountsLogBuf(k, i) > 0) {
-                    sampleLikelihoods.push_back(modifiedStateCountsLogBuf(k, i) - biasMatrix(x, k));
+                    sampleLikelihoods.push_back(modifiedStateCountsLogBuf(k, i) - biasMatrixBuf(x, k));
                 }
             }
 
