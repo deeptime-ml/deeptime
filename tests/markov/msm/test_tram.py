@@ -119,7 +119,7 @@ def test_tram_integration():
             bias = lambda x, x0=bias_center: harmonic(x0, x)
             bias_matrices[i, :, j] = bias(traj)
 
-    tram = TRAM(maxiter=100, connectivity='summed_count_matrix')
+    tram = TRAM(maxiter=100)
     np.testing.assert_equal(tram.compute_log_likelihood, None)
 
     model = tram.fit_fetch((dtrajs, bias_matrices))
@@ -129,7 +129,7 @@ def test_tram_integration():
                                    [0.15673362, 0.077853, 0.04456354, 0.05706922, 0.11557514])
     np.testing.assert_almost_equal(model.markov_state_energies, [1.0550639, 0.42797176])
 
-    MEMM = model.markov_state_model_collection
+    MEMM = model.msm_collection
     np.testing.assert_almost_equal(MEMM.stationary_distribution, [1.])
     MEMM.select(1)
     np.testing.assert_almost_equal(MEMM.stationary_distribution, [0.3678024695571382, 0.6321975304428619])
@@ -142,11 +142,6 @@ def test_tram_integration():
     weights = model.compute_sample_weights(dtrajs, bias_matrices)
     np.testing.assert_almost_equal(np.sum(weights), 1)
     np.testing.assert_(tram.compute_log_likelihood < 0)
-
-
-def test_unknown_connectivity():
-    with np.testing.assert_raises(ValueError):
-        TRAM(connectivity='this_is_some_unknown_connectivity')
 
 
 def to_numpy_arrays(dtrajs, bias_matrices, ttrajs):

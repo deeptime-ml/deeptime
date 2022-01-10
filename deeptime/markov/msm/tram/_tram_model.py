@@ -55,7 +55,7 @@ class TRAMModel(Model):
         else:
             self._therm_state_energies = therm_state_energies
 
-        self._markov_state_model_collection = self._construct_markov_model_collection(
+        self._msm_collection = self._construct_msm_collection(
             count_models, transition_matrices)
 
     @property
@@ -95,14 +95,14 @@ class TRAMModel(Model):
         return self._markov_state_energies
 
     @property
-    def markov_state_model_collection(self):
+    def msm_collection(self):
         r""" The underlying MarkovStateModelCollection. Contains one Markov state model for each sampled thermodynamic
         state.
 
         :getter: The collection of markov state models containing one model for each thermodynamic state.
         :type: MarkovStateModelCollection
         """
-        return self._markov_state_model_collection
+        return self._msm_collection
 
     def compute_sample_weights(self, dtrajs, bias_matrices, therm_state=-1):
         r""" Compute the sample weight :math:`\mu(x)` for all samples :math:`x`. If the thermodynamic state index is >=0,
@@ -197,14 +197,14 @@ class TRAMModel(Model):
         pmf -= pmf.min()
         return pmf
 
-    def _construct_markov_model_collection(self, count_models, transition_matrices):
+    def _construct_msm_collection(self, count_models, transition_matrices):
         r""" Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
         For each of the thermodynamic states, one MarkovStateModel is added to the MarkovStateModelCollection. The
         corresponding count models are previously calculated and are restricted to the largest connected set.
 
         Returns
         -------
-        markov_state_model_collection : MarkovStateModelCollection
+        msm_collection : MarkovStateModelCollection
             the collection of markov state models containing one model for each thermodynamic state.
         """
         transition_matrices_connected = []

@@ -4,6 +4,7 @@ from deeptime.markov.msm.tram import TRAMDataset
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm.tram._tram_bindings import tram as tram_bindings
 
+
 def make_matching_bias_matrix(dtrajs, n_therm_states = None):
     if n_therm_states is None:
         n_therm_states = len(dtrajs)
@@ -19,6 +20,7 @@ def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_t
         return dtrajs, bias_matrices, ttrajs
 
     return dtrajs, bias_matrices
+
 
 def get_connected_set_from_dtrajs_input(dtrajs, connectivity, has_ttrajs=True, connectivity_factor=1):
     dtrajs = [np.asarray(traj) for traj in dtrajs]
@@ -134,7 +136,7 @@ def test_make_count_models(lagtime):
     bias_matrices = make_matching_bias_matrix(dtrajs, 3)
 
     dataset = TRAMDataset(dtrajs=dtrajs, ttrajs=ttrajs, bias_matrices = bias_matrices, lagtime=lagtime)
-    dataset.compute_counts()
+    dataset._compute_counts()
 
     np.testing.assert_equal(len(dataset.count_models), dataset.n_therm_states)
     np.testing.assert_equal(dataset.state_counts.shape, (dataset.n_therm_states, dataset.n_markov_states))
@@ -159,7 +161,7 @@ def test_transposed_count_matrices_bug(input):
     bias_matrices = make_matching_bias_matrix(dtrajs)
     dataset = TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices)
     dataset.restrict_to_largest_connected_set(connectivity='summed_count_matrix')
-    dataset.compute_counts()
+    dataset._compute_counts()
     np.testing.assert_equal(dataset.state_counts, [[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]])
     np.testing.assert_equal(dataset.transition_counts,
                           [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]])
@@ -183,6 +185,7 @@ def test_trajectory_fragments_mapping_no_ttrajs():
 
     np.testing.assert_equal([[traj] for traj in dtrajs], dataset._find_trajectory_fragments())
 
+
 @pytest.mark.parametrize(
     "dtrajs, ttrajs, expected",
     [([[1, -1, 3, -1, 5, 6, 7], [8, 9, 10, 11, 12, 13, -1]],
@@ -199,3 +202,10 @@ def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
     for k in range(dataset.n_therm_states):
         np.testing.assert_equal(len(mapping[k]), len(expected[k]))
         [np.testing.assert_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))]
+
+
+def test_unknown_connectivity():
+    dtrajs, bias_matrices, ttrajs = make_random_input_data(2, 2)
+    dataset = TRAMDataset(dtrajs, bias_matrices, ttrajs)
+    with np.testing.assert_raises(ValueError):
+        dataset.restrict_to_largest_connected_set(connectivity='this_is_some_unknown_connectivity')

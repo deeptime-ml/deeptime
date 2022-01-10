@@ -31,7 +31,7 @@ def test_init_tram_model():
 
     model = random_model(n_therm_states, n_markov_states, transition_matrices=transition_matrices)
 
-    MEMM = model.markov_state_model_collection
+    MEMM = model.msm_collection
     np.testing.assert_(isinstance(MEMM, MarkovStateModelCollection))
     np.testing.assert_equal(MEMM.transition_matrix, transition_matrices[0])
     np.testing.assert_equal(MEMM.n_connected_msms, n_therm_states)

@@ -44,6 +44,61 @@ def to_zero_padded_array(arrays, desired_shape):
 
 
 class TRAMDataset:
+    r""" Dataset for organizing data and obtaining properties from data that are needed for running a TRAM estimate using
+    the TRAM estimator.
+    The minimum required parameters for constructing a TRAMDataset are the dtrajs and bias matrices. In this case,
+    ttrajs are inferred from the shape of the dtrajs, by assuming each trajectory in dtrajs corresponds to a unique
+    thermodynamic state, with the index corresponding to the index of occurance in dtrajs.
+
+    The values at identical indices in dtrajs, ttrajs and bias_matrices correspond to the sample. For example, at
+    indices [i][n] we find information about the n-th sample in trajectory i. dtrajs[i][n] gives us the Markov state
+    the sample falls into. ttrajs[i][n] gives us the thermodynamic state the sample was sampled at (which may be
+    different from other samples in the trajectory due to a replica exchange swap occuring at index n). Finally,
+    bias_matrices[i][n] gives us for each thermodynamic state, the energy of the sample evaluated at that thermodynamic
+    state. In other words: bias_matrices[i][n][k] gives us :math:`b^k(x_i^n)`, i.e. the bias energy as if the sample
+    were observed in thermodynamic state :math:`k`.
+
+    Parameters
+    ----------
+    dtrajs : array-like(ndarray(n)), int
+        The discrete trajectories in the form of a list or array of numpy arrays. dtrajs[i] contains one trajectory.
+        dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
+        into. Each of the dtrajs can be of variable length.
+    bias_matrices : ndarray-like(ndarray(n,m)), float
+        The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
+        trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
+        dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
+        sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
+    ttrajs : array-like(ndarray(n)), int, optional
+        ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
+        sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
+        trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
+    n_therm_states : int, optional
+        if n_therm_states is given, the indices in ttrajs are checked to lie within n_therm_states bound. Otherwise,
+        n_therm_states are inferred from the ttrajs.
+    n_markov_states : int, optional
+        if n_markov_states is given, the indices in dtrajs are checked to lie within n_therm_states bound. Otherwise,
+        n_markov_states are inferred from the dtrajs.
+    lagtime : int, optional, default=1
+        Integer lag time at which transitions are counted.
+    count_mode : str, optional, default='sliding'
+        One of "sample", "sliding", "sliding-effective", and "effective".
+
+        * "sample" strides the trajectory with lagtime :math:`\tau` and uses the strided counts as transitions.
+        * "sliding" uses a sliding window approach, yielding counts that are statistically correlated and too
+          large by a factor of :math:`\tau`; in uncertainty estimation this yields wrong uncertainties.
+        * "sliding-effective" takes "sliding" and divides it by :math:`\tau`, which can be shown to provide a
+          likelihood that is the geometrical average over shifted subsamples of the trajectory,
+          :math:`(s_1,\:s_{tau+1},\:...),\:(s_2,\:t_{tau+2},\:...),` etc. This geometrical average converges to
+          the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
+        * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
+          Recommended when estimating Bayesian MSMs.
+
+    See Also
+    --------
+    TransitionCountEstimator
+    """
+
     def __init__(self, dtrajs, bias_matrices, ttrajs=None, n_therm_states=None, n_markov_states=None, lagtime=1,
                  count_mode='sliding'):
         self.lagtime = lagtime
@@ -67,40 +122,39 @@ class TRAMDataset:
 
         # validate all dimensions
         self._check_dimensions()
-        self.compute_counts()
+        # compute the count models
+        self._compute_counts()
+
+    #: All possible connectivity modes
+    connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
 
     @property
     def tram_input(self):
+        r""" The TRAMInput object containing the data needed for estimation. """
         return tram.TRAMInput(self.state_counts, self.transition_counts, self.dtrajs, self.bias_matrices)
 
     @property
     def n_therm_states(self):
+        r""" The number of thermodynamic states. """
         return self._n_therm_states
-
-    @n_therm_states.setter
-    def n_therm_states(self, n_therm_states):
-        # number of thermodynamic states can be increased, but not decreased
-        if n_therm_states < self._n_therm_states:
-            if self.ttrajs is None:
-                msg = "dtrajs out of bounds. There are more dtrajs then there are thermodynamic states. Provide ttrajs " \
-                      "or increase the number of thermodynamic states."
-            else:
-                msg = "ttrajs out of bounds. Largest state number in dtrajs is larger than the number of Markov states."
-            raise ValueError(msg)
 
     @property
     def n_markov_states(self):
+        r""" The number of Markov states. """
         return self._n_markov_states
-
-    @n_markov_states.setter
-    def n_markov_states(self, n_markov_states):
-        # number of markov states can be increased, but not decreased
-        if n_markov_states < self._n_markov_states:
-            raise ValueError(
-                "dtrajs out of bounds. Largest state number in dtrajs is larger than the number of Markov states.")
 
     @property
     def transition_counts(self):
+        r""" ndarray(n, m, m)
+        The transition counts matrices. transition_counts[k] contains the transition counts for thermodynamic state
+        k, based on the TransitionCountModel of state k. transition_counts[k][i][j] equals the number of observed
+        transitions from Markov state :math:`i` to Markov state :math:`j`, in thermodynamic state :math:`k`.
+
+        The transition counts for every thermodynamic state are shaped to contain all possible markov states, even the
+        ones without counts in that thermodynamic state. This is done so that the _tram_bindings receives count matrices
+        that are all the same shape, which is easier to handle (matrices are padded with zeros for all empty states that
+        got  dropped by the TransitionCountModels).
+        """
         transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=np.intc)
 
         for k in range(self.n_therm_states):
@@ -114,6 +168,16 @@ class TRAMDataset:
 
     @property
     def state_counts(self):
+        r""" ndarray(n, m)
+        The state counts histogram. state_counts[k] contains the state histogram for thermodynamic state k,
+        based on the TransitionCountModel of state k. state_counts[k][i] equals the number of samples that fall into
+        Markov state :math:`i`, sampled at thermodynamic state :math:`k`.
+
+        The state counts for every thermodynamic state are shaped to contain all possible markov states, even the ones
+        without counts in that thermodynamic state. This is done so that the _tram_bindings receives count matrices that
+        are all the same shape, which is easier to handle (matrices are padded with zeros for all empty states that got
+        dropped by the TransitionCountModels).
+        """
         state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.intc)
 
         for k in range(self.n_therm_states):
@@ -123,26 +187,95 @@ class TRAMDataset:
 
         return state_counts
 
-    def compute_counts(self):
-        # In the case of replica exchange: get all trajectory fragments (also removing any negative state indices).
-        # the dtraj_fragments[k] contain all trajectories within thermodynamic state k, starting a new trajectory at
-        # each replica exchange swap. If there was no replica exchange, dtraj_fragments == dtrajs.
-        dtraj_fragments = self._find_trajectory_fragments()
+    def check_against_model(self, model):
+        r""" Check the number of thermodynamic states of the model against that of the dataset. The number of
+        thermodynamic states in the dataset have to be smaller than or equal to those of the model, otherwise the ttrajs
+        and/or dtrajs would be out of bounds.
 
-        # ... convert those into count matrices.
-        self.count_models = self._construct_count_models(dtraj_fragments)
+        Parameters
+        ----------
+        model : TRAMModel
+            The TRAMModel to check the data against.
+
+        Raises
+        ------
+        ValueError
+            If the data encompasses more Markov and/or thermodynamic states than the model.
+        """
+        if model.n_therm_states < self._n_therm_states:
+            if self.ttrajs is None:
+                msg = "dtrajs are out of bounds of the model. " \
+                      "There are more dtrajs then there are thermodynamic states. Provide ttrajs " \
+                      "or increase the number of thermodynamic states."
+            else:
+                msg = "ttrajs are out of bounds of the model. " \
+                      "Largest thermodynamic state index in ttrajs would be larger than the number of thermodynamic " \
+                      "states in the model."
+            raise ValueError(msg)
+        if model.n_markov_states < self._n_markov_states:
+            raise ValueError(
+                "dtrajs are out of bounds of the model."
+                "Largest Markov state index in dtrajs would be larger than the number of Markov states in the model.")
 
     def restrict_to_largest_connected_set(self, connectivity='post_hoc_RE', connectivity_factor=1.0, progress_bar=None):
+        r""" Find the largest connected set of Markov states based on the connectivity settings and the input data, and
+        restrict the input data to this connected set.
+        The largest connected set is computed based on the data, and self.connectivity and self.connectivity_factor.
+        The data is then restricted to the largest connected set.
+
+        Parameters
+        ----------
+        connectivity : str, optional, default="post_hoc_RE"
+            One of None, "post_hoc_RE", "BAR_variance", or "summed_count_matrix".
+            Defines what should be considered a connected set in the joint (product) space of conformations and
+            thermodynamic ensembles. If connectivity=None, the data is not restricted.
+
+            * "post_hoc_RE" : It is required that every state in the connected set can be reached by following a
+              pathway of reversible transitions or jumping between overlapping thermodynamic states while staying in
+              the same Markov state. A reversible transition between two Markov states (within the same thermodynamic
+              state k) is a pair of Markov states that belong to the same strongly connected component of the count
+              matrix (from thermodynamic state k). Two thermodynamic states k and l are defined to overlap at Markov
+              state n if a replica exchange simulation :footcite:`hukushima1996exchange` restricted to state n would
+              show at least one transition from k to l or one transition from from l to k.
+              The expected number of replica exchanges is estimated from
+              the simulation data. The minimal number required of replica exchanges per Markov state can be increased by
+              decreasing `connectivity_factor`.
+            * "BAR_variance" : like 'post_hoc_RE' but with a different condition to define the thermodynamic overlap
+              based on the variance of the BAR estimator :footcite:`shirts2008statistically`.
+              Two thermodynamic states k and l are defined to overlap
+              at Markov state n if the variance of the free energy difference Delta :math:`f_{kl}` computed with BAR (and
+              restricted to conformations form Markov state n) is less or equal than one. The minimally required variance
+              can be controlled with `connectivity_factor`.
+            * "summed_count_matrix" : all thermodynamic states are assumed to overlap. The connected set is then
+              computed by summing the count matrices over all thermodynamic states and taking its largest strongly
+              connected set. Not recommended!
+        connectivity_factor : float, optional, default=1.0
+            Only needed if connectivity="post_hoc_RE" or "BAR_variance". Values greater than 1.0 weaken the connectivity
+            conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
+            'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
+        progress_bar : object, default=None
+            Progress bar object that TRAMDataset will call to indicate progress to the user.
+            Tested for a tqdm progress bar. Should implement update() and close() and have .total and .desc properties.
+
+        Raises
+        ------
+        ValueError
+            If the connectivity type is unknown.
+        """
+        if connectivity not in TRAMDataset.connectivity_options:
+            raise ValueError(
+                f"Connectivity type unsupported. Connectivity must be one of {TRAMDataset.connectivity_options}.")
         lcc = self._find_largest_connected_set(connectivity, connectivity_factor, progress_bar)
         self.restrict_to_connected_set(lcc)
 
     def restrict_to_connected_set(self, cset):
-        """Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the largest
-        connected set will be set to -1.
+        """Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the connected set will
+        be set to -1. The count_models are recomputed after restricting the dtrajs to the connected set.
 
         Parameters
         ----------
-        cset
+        cset : TransitionCountModel
+            The TransitionCountModel of the connected set that the dataset needs to be restricted to.
         """
         dtrajs_connected = []
 
@@ -158,7 +291,7 @@ class TRAMDataset:
             dtrajs_connected.append(restricted_dtraj)
 
         self.dtrajs = dtrajs_connected
-        self.compute_counts()
+        self._compute_counts()
 
     def _ensure_correct_data_types(self):
         # shape and type checks
@@ -203,16 +336,6 @@ class TRAMDataset:
                     raise ValueError(f"ttraj {i} and dtraj {i} should be of equal length.")
 
     def _find_largest_connected_set(self, connectivity, connectivity_factor, progress_bar=None):
-        """ Find the largest connected set of Markov states based on the connectivity settings and the input data.
-        A full counts model is first calculated from all dtrajs. Then, the connected set is computed based on
-        self.connectivity and self.connectivity_factor. The full counts model is then reduces to the connected set and
-        returned. If the connectivity setting is unknown, the full counts model is returned.
-
-        Returns
-        -------
-        counts_model : MarkovStateModel
-            The counts model pertaining to the largest connected set.
-        """
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
 
         # make a counts model over all observed samples.
@@ -282,7 +405,7 @@ class TRAMDataset:
 
         Returns
         -------
-        dtraj_fragments : list(List(int32))
+        dtraj_fragments : list(List(int))
            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
            that thermodynamic state. fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k.
            The fragments are be restricted to the largest connected set and negative state indices are excluded.
@@ -321,30 +444,36 @@ class TRAMDataset:
         """
         return tram.find_trajectory_fragment_indices(self.ttrajs, self.n_therm_states)
 
+    def _compute_counts(self):
+        r""" Compute the count models from the dtrajs and ttrajs.
+
+        Returns
+        -------
+        count_models : list(TransitionCountModel)
+            A list of TransitionCountModels containing one TransitionCountModel per thermodynamic state.
+        """
+        # In the case of replica exchange: get all trajectory fragments (also removing any negative state indices).
+        # the dtraj_fragments[k] contain all trajectories within thermodynamic state k, starting a new trajectory at
+        # each replica exchange swap. If there was no replica exchange, dtraj_fragments == dtrajs.
+        dtraj_fragments = self._find_trajectory_fragments()
+
+        # ... convert those into count matrices.
+        self.count_models = self._construct_count_models(dtraj_fragments)
+
     def _construct_count_models(self, dtraj_fragments):
         """ Construct a TransitionCountModel for each thermodynamic state based on the dtraj_fragments, and store in
         self.count_models.
-        Based on each TransitionCountModel, construct state_count and transition_count matrices that contain the counts
-        for each thermodynamic state. These are reshaped to contain all possible markov states, even the once without
-        counts. This is done so that the _tram_bindings receives count matrices that are all the same shape, which is
-        easier to handle (matrices are padded with zeros for all empty states that got dropped by the
-        TransitionCountModels).
 
         Parameters
         ----------
-        dtraj_fragments: list(list(int32))
+        dtraj_fragments: list(list(int))
            A list that contains for each thermodynamic state the fragments from all trajectories that were sampled at
            that thermodynamic state. fragment_indices[k][i] defines the i-th fragment sampled at thermodynamic state k.
            The fragments should be restricted to the largest connected set and not contain any negative state indices.
 
         Returns
         -------
-        transition_counts : ndarray(n, m, m)
-            The transition counts matrices. transition_counts[k] contains the transition counts for thermodynamic state
-            k, restricted to the largest connected set of state k.
-        state_counts : ndarray(n, m)
-            The state counts histogram. state_counts[k] contains the state histogram for thermodynamic state k,
-            restricted to the largest connected set of state k.
+        count_models : list(TransitionCountModel)
         """
 
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)

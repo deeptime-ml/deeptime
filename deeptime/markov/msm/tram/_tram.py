@@ -37,20 +37,19 @@ def unpack_input_tuple(data):
     return dtrajs, bias_matrices, ttrajs
 
 
+def _make_tram_estimator(model, dataset):
+    if model is None:
+        return tram.TRAM(dataset.n_therm_states, dataset.n_markov_states)
+    else:
+        return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
+
+
 class TRAM(_MSMBaseEstimator):
     r"""Transition(-based) Reweighting Analysis Method.
     TRAM is described in :footcite:`wu2016multiensemble`.
 
     Parameters
     ----------
-    model : TRAMModel, or None
-        If TRAM is initialized with a TRAMModel, the parameters from the TRAMModel are loaded into the estimator, and
-        estimation continues from the loaded parameters as a starting point. Input data may differ from the input data
-        used to estimate the input model, but the input data should lie within bounds of the number of thermodynamic
-        states and Markov states given by the model.
-        If no model is given, estimation starts from zero-initialized arrays for the free energies and modified state
-        counts. The lagrangian multipliers are initialized with values
-            :math:`v_i^{k, 0} = \mathrm{log} (c_{ij}^k + c_{ji}^k)/2`
     lagtime : int, default=1
         Integer lag time at which transitions are counted.
     count_mode : str, default="sliding"
@@ -89,6 +88,10 @@ class TRAM(_MSMBaseEstimator):
         * "summed_count_matrix" : all thermodynamic states are assumed to overlap. The connected set is then
           computed by summing the count matrices over all thermodynamic states and taking its largest strongly
           connected set. Not recommended!
+    connectivity_factor : float, optional, default=1.0
+        Only needed if connectivity="post_hoc_RE" or "BAR_variance". Values greater than 1.0 weaken the connectivity
+        conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
+        'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
     maxiter : int, optional, default=10000
         The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
     maxerr : float, optional, default=1E-15
@@ -101,10 +104,6 @@ class TRAM(_MSMBaseEstimator):
     callback_interval : int, optional, default=0
         Every callback_interval iteration steps, the callback function is calles and error increments are stored. If
         track_log_likelihoods=true, the log-likelihood are also stored. If 0, no call to the callback function is done.
-    connectivity_factor : float, optional, default=1.0
-        Only needed if connectivity="post_hoc_RE" or "BAR_variance". Values greater than 1.0 weaken the connectivity
-        conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
-        'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
     progress_bar : object
         Progress bar object that TRAM will call to indicate progress to the user.
         Tested for a tqdm progress bar. Should implement update() and close() and have .total and .desc properties.
@@ -116,10 +115,8 @@ class TRAM(_MSMBaseEstimator):
 
     def __init__(
             self, lagtime=1, count_mode='sliding',
-            connectivity='summed_count_matrix',
-            maxiter=10000, maxerr: float = 1e-8, track_log_likelihoods=False,
-            callback_interval=0,
-            connectivity_factor: float = 1.0,
+            maxiter=10000, maxerr: float = 1e-8,
+            track_log_likelihoods=False, callback_interval=0,
             progress_bar=None):
 
         super(TRAM, self).__init__()
@@ -127,11 +124,6 @@ class TRAM(_MSMBaseEstimator):
         self.lagtime = lagtime
         self.count_mode = count_mode
         self._tram_estimator = None
-
-        if connectivity not in TRAM.connectivity_options:
-            raise ValueError(f"Connectivity type unsupported. Connectivity must be one of {TRAM.connectivity_options}.")
-        self.connectivity = connectivity
-        self.connectivity_factor = connectivity_factor
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.track_log_likelihoods = track_log_likelihoods
@@ -140,9 +132,6 @@ class TRAM(_MSMBaseEstimator):
         self._largest_connected_set = None
         self.log_likelihoods = []
         self.increments = []
-
-    #: All possible connectivity modes
-    connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
 
     @property
     def compute_log_likelihood(self) -> Optional[float]:
@@ -187,20 +176,29 @@ class TRAM(_MSMBaseEstimator):
 
         Parameters
         ----------
-        data: tuple consisting of (dtrajs, bias_matrices) or (dtrajs, bias_matrices, ttrajs).
-            * dtrajs: array-like(ndarray(n)), int32
+        data: TRAMDatatset or tuple consisting of (dtrajs, bias_matrices) or (dtrajs, bias_matrices, ttrajs).
+            * dtrajs: array-like(ndarray(n)), int
               The discrete trajectories in the form of a list or array of numpy arrays. dtrajs[i] contains one trajectory.
               dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
               into. Each of the dtrajs can be of variable length.
-            * bias_matrices: ndarray-like(ndarray), float64
+            * bias_matrices: ndarray-like(ndarray(n,m)), float
               The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
               trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
               dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
               sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
-            * ttrajs: array-like(ndarray], int32, optional
+            * ttrajs: array-like(ndarray(n)), int, optional
               ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
               sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
               trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
+        model : TRAMModel, optional, default=None
+            If a TRAMModel is given, the parameters from the TRAMModel are loaded into the estimator, and estimation
+            continues from the loaded parameters as a starting point. Input data may differ from the input data used to
+            estimate the input model, but the input data should lie within bounds of the number of thermodynamic states
+            and Markov states given by the model, meaning the highest occuring state indices in ttrajs and dtrajs may be
+            model.n_therm_states - 1 and model.n_markov_states - 1 respectively,
+            If no model is given, estimation starts from zero-initialized arrays for the free energies and modified
+            state counts. The lagrangian multipliers are initialized with values
+            :math:`v_i^{k, 0} = \mathrm{log} (c_{ij}^k + c_{ji}^k)/2`
         """
 
         if isinstance(data, tuple):
@@ -210,12 +208,11 @@ class TRAM(_MSMBaseEstimator):
             dataset = data
 
         if model is not None:
-            self._model = model
-            dataset.n_markov_states = self._model.n_markov_states
-            dataset.n_therm_states = self._model.n_therm_states
+            # check whether the data lies within state bounds of the model
+            dataset.check_against_model(model)
 
         # only construct estimator if it hasn't been loaded from the model yet
-        self._tram_estimator = self._make_tram_estimator(dataset.n_therm_states, dataset.n_markov_states)
+        self._tram_estimator = _make_tram_estimator(model, dataset)
 
         self._run_estimation(dataset.tram_input)
         self._model = TRAMModel(count_models=dataset.count_models,
@@ -242,18 +239,21 @@ class TRAM(_MSMBaseEstimator):
                     f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_increment}",
                     ConvergenceWarning)
 
-    def _make_tram_estimator(self, n_therm_states, n_markov_states):
-        if self._model is None:
-            return tram.TRAM(n_therm_states, n_markov_states)
-        else:
-            return tram.TRAM(self._model.biased_conf_energies, self._model.lagrangian_mult_log,
-                                         self._model.modified_state_counts_log)
-
 
 class TRAMCallback(callbacks.Callback):
     """Callback for the TRAM estimate process. Increments a progress bar and optionally saves iteration increments and
-    log likelihoods to a list."""
+    log likelihoods to a list.
 
+    Parameters
+    ----------
+    log_likelihoods : list, optional
+        A list to append the log-likelilihoods to that are passed to the callback.__call__() method.
+    increments : list, optional
+        A list to append the increments to that are passed to the callback.__call__() method.
+    store_convergence_info : bool, default=False
+        If True, log_likelihoods and increments are appended to their respective lists each time callback.__call__() is
+        called. If false, no values are appended, only the last increment is stored.
+    """
     def __init__(self, progress_bar, n_iter, log_likelihoods_list=None, increments=None, store_convergence_info=False):
         super().__init__(progress_bar, n_iter, "Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
