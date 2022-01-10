@@ -22,6 +22,7 @@ def random_model(n_therm_states, n_markov_states, transition_matrices=None):
                      lagrangian_mult_log=lagrangians,
                      modified_state_counts_log=modified_state_counts_log)
 
+
 def test_init_tram_model():
     n_therm_states = 2
     n_markov_states = 3
@@ -55,6 +56,7 @@ def test_compute_pmf():
 
     np.testing.assert_equal(len(pmf), 10)
     np.testing.assert_(np.min(pmf >= 0))
+
 
 def test_compute_observable():
     model = random_model(5, 5)
