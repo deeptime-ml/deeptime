@@ -136,8 +136,6 @@ def test_make_count_models(lagtime):
     bias_matrices = make_matching_bias_matrix(dtrajs, 3)
 
     dataset = TRAMDataset(dtrajs=dtrajs, ttrajs=ttrajs, bias_matrices = bias_matrices, lagtime=lagtime)
-    dataset._compute_counts()
-
     np.testing.assert_equal(len(dataset.count_models), dataset.n_therm_states)
     np.testing.assert_equal(dataset.state_counts.shape, (dataset.n_therm_states, dataset.n_markov_states))
     np.testing.assert_equal(dataset.transition_counts.shape, (dataset.n_therm_states, dataset.n_markov_states, dataset.n_markov_states))
@@ -161,7 +159,6 @@ def test_transposed_count_matrices_bug(input):
     bias_matrices = make_matching_bias_matrix(dtrajs)
     dataset = TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices)
     dataset.restrict_to_largest_connected_set(connectivity='summed_count_matrix')
-    dataset._compute_counts()
     np.testing.assert_equal(dataset.state_counts, [[10, 0], [9, 1], [4, 6], [3, 7], [1, 9]])
     np.testing.assert_equal(dataset.transition_counts,
                           [[[9, 0], [0, 0]], [[7, 1], [1, 0]], [[2, 2], [1, 4]], [[1, 1], [2, 5]], [[0, 1], [1, 7]]])
@@ -179,30 +176,31 @@ def test_trajectory_fragments_mapping(test_input, expected):
     np.testing.assert_equal(mapping, expected)
 
 
-def test_trajectory_fragments_mapping_no_ttrajs():
+def test_dataset_counts_no_ttrajs():
     dtrajs, bias_matrices = make_random_input_data(5, 8, make_ttrajs=False)
     dataset = TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices)
 
-    np.testing.assert_equal([[traj] for traj in dtrajs], dataset._find_trajectory_fragments())
-
+    np.testing.assert_equal(dtrajs, dataset.dtrajs)
+    np.testing.assert_equal(bias_matrices, dataset.bias_matrices)
+    np.testing.assert_equal(dataset.state_counts.sum(), np.sum([len(traj) for traj in dtrajs]))
+    np.testing.assert_equal(dataset.transition_counts.sum(), np.sum([len(traj) - dataset.lagtime for traj in dtrajs]))
 
 @pytest.mark.parametrize(
-    "dtrajs, ttrajs, expected",
+    "dtrajs, ttrajs",
     [([[1, -1, 3, -1, 5, 6, 7], [8, 9, 10, 11, 12, 13, -1]],
-      [[0, 0, 0, 1, 0, 0, 1], [0, 0, 1, 1, 0, 1, 1]],
-      [[[1, 3], [5, 6], [8, 9]], [[10, 11], [12, 13]]])]
+      [[0, 0, 0, 1, 0, 0, 1], [0, 0, 1, 1, 0, 1, 1]]
+      )]
 )
-def test_get_trajectory_fragments(dtrajs, ttrajs, expected):
+def test_get_trajectory_fragments(dtrajs, ttrajs):
     dtrajs=[np.asarray(d) for d in dtrajs]
     ttrajs=[np.asarray(t) for t in ttrajs]
     bias_matrices = make_matching_bias_matrix(dtrajs)
     dataset = TRAMDataset(dtrajs=dtrajs, ttrajs=ttrajs, bias_matrices=bias_matrices)
 
-    mapping = dataset._find_trajectory_fragments()
-    for k in range(dataset.n_therm_states):
-        np.testing.assert_equal(len(mapping[k]), len(expected[k]))
-        [np.testing.assert_equal(mapping[k][i], expected[k][i]) for i in range(len(mapping[k]))]
-
+    # dtraj should be split into fragments [[[1, 3], [5, 6], [8, 9]], [[10, 11], [12, 13]]] due to replica exchanges
+    # found in ttrajs. This should lead having only 5 transitions in transition counts:
+    np.testing.assert_equal(dataset.state_counts.sum(), 10)
+    np.testing.assert_equal(dataset.transition_counts.sum(), 5)
 
 def test_unknown_connectivity():
     dtrajs, bias_matrices, ttrajs = make_random_input_data(2, 2)
