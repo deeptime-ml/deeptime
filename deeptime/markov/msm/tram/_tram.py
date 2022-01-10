@@ -8,8 +8,6 @@ from ._tram_bindings import tram
 from ._tram_model import TRAMModel
 from ._tram_dataset import TRAMDataset
 
-import numpy as np
-
 
 def unpack_input_tuple(data):
     """Get input from the data tuple. Data is of variable size.
@@ -44,6 +42,16 @@ def _make_tram_estimator(model, dataset):
         return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
 
 
+def _get_dataset_from_input(data):
+    if isinstance(data, tuple):
+        dtrajs, bias_matrices, ttrajs = unpack_input_tuple(data)
+        return TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices, ttrajs=ttrajs)
+    if isinstance(data, TRAMDataset):
+        return data
+
+    raise ValueError("Input data invalid. Input data type should be of tuple or TRAMDataset.")
+
+
 class TRAM(_MSMBaseEstimator):
     r"""Transition(-based) Reweighting Analysis Method.
     TRAM is described in :footcite:`wu2016multiensemble`.
@@ -64,34 +72,6 @@ class TRAM(_MSMBaseEstimator):
           the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
         * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
           Recommended when estimating Bayesian MSMs.
-    connectivity : str, optional, default="post_hoc_RE"
-        One of "post_hoc_RE", "BAR_variance", or "summed_count_matrix".
-        Defines what should be considered a connected set in the joint (product) space
-        of conformations and thermodynamic ensembles.
-
-        * "post_hoc_RE" : It is required that every state in the connected set can be reached by following a
-          pathway of reversible transitions or jumping between overlapping thermodynamic states while staying in
-          the same Markov state. A reversible transition between two Markov states (within the same thermodynamic
-          state k) is a pair of Markov states that belong to the same strongly connected component of the count
-          matrix (from thermodynamic state k). Two thermodynamic states k and l are defined to overlap at Markov
-          state n if a replica exchange simulation :footcite:`hukushima1996exchange` restricted to state n would
-          show at least one transition from k to l or one transition from from l to k.
-          The expected number of replica exchanges is estimated from
-          the simulation data. The minimal number required of replica exchanges per Markov state can be increased by
-          decreasing `connectivity_factor`.
-        * "BAR_variance" : like 'post_hoc_RE' but with a different condition to define the thermodynamic overlap
-          based on the variance of the BAR estimator :footcite:`shirts2008statistically`.
-          Two thermodynamic states k and l are defined to overlap
-          at Markov state n if the variance of the free energy difference Delta :math:`f_{kl}` computed with BAR (and
-          restricted to conformations form Markov state n) is less or equal than one. The minimally required variance
-          can be controlled with `connectivity_factor`.
-        * "summed_count_matrix" : all thermodynamic states are assumed to overlap. The connected set is then
-          computed by summing the count matrices over all thermodynamic states and taking its largest strongly
-          connected set. Not recommended!
-    connectivity_factor : float, optional, default=1.0
-        Only needed if connectivity="post_hoc_RE" or "BAR_variance". Values greater than 1.0 weaken the connectivity
-        conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
-        'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
     maxiter : int, optional, default=10000
         The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
     maxerr : float, optional, default=1E-15
@@ -178,9 +158,9 @@ class TRAM(_MSMBaseEstimator):
         ----------
         data: TRAMDatatset or tuple consisting of (dtrajs, bias_matrices) or (dtrajs, bias_matrices, ttrajs).
             * dtrajs: array-like(ndarray(n)), int
-              The discrete trajectories in the form of a list or array of numpy arrays. dtrajs[i] contains one trajectory.
-              dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
-              into. Each of the dtrajs can be of variable length.
+              The discrete trajectories in the form of a list or array of numpy arrays. dtrajs[i] contains one
+              trajectory. dtrajs[i][n] equals the Markov state index that the n-th sample from the i-th trajectory was
+              binned into. Each of the dtrajs can be of variable length.
             * bias_matrices: ndarray-like(ndarray(n,m)), float
               The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
               trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
@@ -200,12 +180,7 @@ class TRAM(_MSMBaseEstimator):
             state counts. The lagrangian multipliers are initialized with values
             :math:`v_i^{k, 0} = \mathrm{log} (c_{ij}^k + c_{ji}^k)/2`
         """
-
-        if isinstance(data, tuple):
-            dtrajs, bias_matrices, ttrajs = unpack_input_tuple(data)
-            dataset = TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices, ttrajs=ttrajs)
-        if isinstance(data, TRAMDataset):
-            dataset = data
+        dataset = _get_dataset_from_input(data)
 
         if model is not None:
             # check whether the data lies within state bounds of the model
@@ -246,7 +221,7 @@ class TRAMCallback(callbacks.Callback):
 
     Parameters
     ----------
-    log_likelihoods : list, optional
+    log_likelihoods_list : list, optional
         A list to append the log-likelilihoods to that are passed to the callback.__call__() method.
     increments : list, optional
         A list to append the increments to that are passed to the callback.__call__() method.
@@ -262,6 +237,15 @@ class TRAMCallback(callbacks.Callback):
         self.last_increment = 0
 
     def __call__(self, increment, log_likelihood):
+        """Call the callback. Increment a progress bar (if available) and store convergence information.
+
+        Parameters
+        ----------
+        increment : float
+            The increment in the free energies after the last iteration.
+        log_likelihood : float
+            The current log-likelihood
+        """
         super().__call__()
 
         if self.store_convergence_info:
