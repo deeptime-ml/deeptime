@@ -239,7 +239,7 @@ def test_unknown_connectivity():
         dataset.restrict_to_largest_connected_set(connectivity='this_is_some_unknown_connectivity')
 
 
-def test_property_caching():
+def test_property_caching_state_counts():
     dtrajs, bias_matrices, ttrajs = make_random_input_data(2, 5)
     # make sure at least one count will be deleted after restricting to submodel, and that the submodel still contains
     # some more counts
@@ -253,6 +253,22 @@ def test_property_caching():
     state_counts_2 = dataset.state_counts
     with np.testing.assert_raises(AssertionError):
         np.testing.assert_array_equal(state_counts_1, state_counts_2)
+
+
+def test_property_caching_transition_counts():
+    dtrajs, bias_matrices, ttrajs = make_random_input_data(2, 5)
+    # make sure at least one count will be deleted after restricting to submodel, and that the submodel still contains
+    # some more counts
+    dtrajs[0][:5] = [0, 1, 2, 3, 4]
+
+    dataset = TRAMDataset(dtrajs, bias_matrices, ttrajs)
+    transition_counts_1 = dataset.transition_counts
+
+    dataset.restrict_to_submodel([0, 1, 2, 3])
+
+    transition_counts_2 = dataset.transition_counts
+    with np.testing.assert_raises(AssertionError):
+        np.testing.assert_array_equal(transition_counts_1, transition_counts_2)
 
 
 @pytest.mark.parametrize(
