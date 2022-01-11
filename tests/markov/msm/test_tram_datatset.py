@@ -17,7 +17,7 @@ def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_t
     bias_matrices = make_matching_bias_matrix(dtrajs, n_therm_states)
 
     if make_ttrajs:
-        ttrajs = [np.random.randint(0, n_therm_states, size=n_samples) for _ in range(n_therm_states)]
+        ttrajs = [np.asarray([i] * n_samples) for i in range(n_therm_states)]
         return dtrajs, bias_matrices, ttrajs
 
     return dtrajs, bias_matrices
