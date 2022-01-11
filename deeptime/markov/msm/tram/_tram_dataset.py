@@ -229,7 +229,7 @@ class TRAMDataset:
                 "dtrajs are out of bounds of the model."
                 "Largest Markov state index in dtrajs would be larger than the number of Markov states in the model.")
 
-    def restrict_to_largest_connected_set(self, connectivity='post_hoc_RE', connectivity_factor=1.0, progress_bar=None):
+    def restrict_to_largest_connected_set(self, connectivity='post_hoc_RE', connectivity_factor=1.0, progress=None):
         r""" Find the largest connected set of Markov states based on the connectivity settings and the input data, and
         restrict the input data to this connected set.
         The largest connected set is computed based on the data, and self.connectivity and self.connectivity_factor.
@@ -265,7 +265,7 @@ class TRAMDataset:
             Only needed if connectivity="post_hoc_RE" or "BAR_variance". Values greater than 1.0 weaken the connectivity
             conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
             'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
-        progress_bar : object, default=None
+        progress : object, default=None
             Progress bar object that TRAMDataset will call to indicate progress to the user.
             Tested for a tqdm progress bar. Should implement update() and close() and have .total and .desc properties.
 
@@ -277,7 +277,7 @@ class TRAMDataset:
         if connectivity not in TRAMDataset.connectivity_options:
             raise ValueError(
                 f"Connectivity type unsupported. Connectivity must be one of {TRAMDataset.connectivity_options}.")
-        lcc = self._find_largest_connected_set(connectivity, connectivity_factor, progress_bar)
+        lcc = self._find_largest_connected_set(connectivity, connectivity_factor, progress)
         self.restrict_to_submodel(lcc)
 
     def restrict_to_submodel(self, submodel):

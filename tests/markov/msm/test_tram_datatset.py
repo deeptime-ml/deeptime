@@ -239,10 +239,12 @@ def test_unknown_connectivity():
         dataset.restrict_to_largest_connected_set(connectivity='this_is_some_unknown_connectivity')
 
 
-def test_property_cashing():
+def test_property_caching():
     dtrajs, bias_matrices, ttrajs = make_random_input_data(2, 5)
     # make sure at least one count will be deleted after restricting to submodel
     dtrajs[1][1] = 3
+    # ... and that the submodel still contains some more counts
+    dtrajs[0] = [1 for _ in dtrajs[0]]
     dataset = TRAMDataset(dtrajs, bias_matrices, ttrajs)
     state_counts_1 = dataset.state_counts
 
