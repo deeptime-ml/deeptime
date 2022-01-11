@@ -167,7 +167,7 @@ class TRAMDataset:
         :getter: the transition counts
         :type: ndarray(n, m, m)
         """
-        transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=int)
+        transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=np.int32)
 
         for k in range(self.n_therm_states):
             model_k = self.count_models[k]
@@ -190,7 +190,7 @@ class TRAMDataset:
         are all the same shape, which is easier to handle (matrices are padded with zeros for all empty states that got
         dropped by the TransitionCountModels).
         """
-        state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=int)
+        state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.int32)
 
         for k in range(self.n_therm_states):
             model_k = self.count_models[k]
