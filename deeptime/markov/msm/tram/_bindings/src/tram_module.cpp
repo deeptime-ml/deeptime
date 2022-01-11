@@ -31,8 +31,8 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 "state_counts"_a, "transition_counts"_a, "dtrajs"_a, "bias_matrices"_a);
 
         tramMod.def("compute_sample_weights", &computeSampleWeights<double>, py::call_guard<py::gil_scoped_release>(),
-                    "therm_state_index"_a = -1, "dtrajs"_a, "biasMatrices"_a, "thermStateEnergies"_a,
-                    "modifiedStateCountsLog"_a);
+                    "therm_state_index"_a = -1, "dtrajs"_a, "bias_matrices"_a, "therm_state_energies"_a,
+                    "modified_state_counts_log"_a);
 
         tramMod.def("find_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
