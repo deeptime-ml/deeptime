@@ -4,9 +4,7 @@ import warnings
 
 from deeptime.util import types, callbacks
 from deeptime.util.decorators import cached_property
-
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
-
 from ._tram_bindings import tram
 
 
@@ -19,6 +17,30 @@ def _determine_n_therm_states(dtrajs, ttrajs):
         return len(dtrajs)
     else:
         return _determine_n_states(ttrajs)
+
+
+def transition_counts_from_count_models(n_therm_states, n_markov_states, count_models):
+    transition_counts = np.zeros((n_therm_states, n_markov_states, n_markov_states), dtype=np.int32)
+
+    for k in range(n_therm_states):
+        model_k = count_models[k]
+        if model_k.count_matrix.sum() > 0:
+            i_s, j_s = np.meshgrid(model_k.state_symbols, model_k.state_symbols)
+            # place submodel counts in our full-sized count matrices
+            transition_counts[k, i_s, j_s] = model_k.count_matrix.T
+
+    return transition_counts
+
+
+def state_counts_from_count_models(n_therm_states, n_markov_states, count_models):
+    state_counts = np.zeros((n_therm_states, n_markov_states), dtype=np.int32)
+
+    for k in range(n_therm_states):
+        model_k = count_models[k]
+        if model_k.count_matrix.sum() > 0:
+            state_counts[k, model_k.state_symbols] = model_k.state_histogram
+
+    return state_counts
 
 
 def to_zero_padded_array(arrays, desired_shape):
@@ -55,8 +77,8 @@ def _invalidate_caches():
 class TRAMDataset:
     r""" Dataset for organizing data and obtaining properties from data that are needed for TRAM.
     The minimum required parameters for constructing a TRAMDataset are the `dtrajs` and `bias_matrices`. In this case,
-    `ttrajs` are inferred from the shape of the `dtrajs`, by assuming each trajectory in `dtrajs` corresponds to a unique
-    thermodynamic state, with the index corresponding to the index of occurrence in `dtrajs`.
+    `ttrajs` are inferred from the shape of the `dtrajs`, by assuming each trajectory in `dtrajs` corresponds to a
+    unique thermodynamic state, with the index corresponding to the index of occurrence in `dtrajs`.
 
     The values at identical indices in `dtrajs`, `ttrajs` and `bias_matrices` correspond to the sample. For example, at
     indices `(i, n)` we find information about the :math:`n`-th sample in trajectory :math:`i`. `dtrajs[i][n]` gives us
@@ -145,8 +167,7 @@ class TRAMDataset:
         For estimation purposes, it does not matter which thermodynamic state each sample was sampled at. The dtrajs and
         bias_matrices are therefore flattened along the first dimension, to speed up estimation. """
         return tram.TRAMInput(self.state_counts, self.transition_counts,
-                              self.dtrajs.reshape(-1),
-                              self.bias_matrices.reshape(-1, self.bias_matrices.shape[-1]))
+                              np.concatenate(self.dtrajs), np.concatenate(self.bias_matrices))
 
     @property
     def n_therm_states(self):
@@ -173,16 +194,7 @@ class TRAMDataset:
         :getter: the transition counts
         :type: ndarray(n, m, m)
         """
-        transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=np.int32)
-
-        for k in range(self.n_therm_states):
-            model_k = self.count_models[k]
-            if model_k.count_matrix.sum() > 0:
-                i_s, j_s = np.meshgrid(model_k.state_symbols, model_k.state_symbols)
-                # place submodel counts in our full-sized count matrices
-                transition_counts[k, i_s, j_s] = model_k.count_matrix.T
-
-        return transition_counts
+        return transition_counts_from_count_models(self.n_therm_states, self.n_markov_states, self.count_models)
 
     @cached_property
     def state_counts(self):
@@ -196,14 +208,7 @@ class TRAMDataset:
         matrices that are all the same shape, which is easier to handle (matrices are padded with zeros for all empty
         states that got dropped by the TransitionCountModels).
         """
-        state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.int32)
-
-        for k in range(self.n_therm_states):
-            model_k = self.count_models[k]
-            if model_k.count_matrix.sum() > 0:
-                state_counts[k, model_k.state_symbols] = model_k.state_histogram
-
-        return state_counts
+        return state_counts_from_count_models(self.n_therm_states, self.n_markov_states, self.count_models)
 
     def check_against_model(self, model):
         r""" Check the number of thermodynamic states of the model against that of the dataset. The number of

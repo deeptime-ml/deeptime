@@ -119,31 +119,6 @@ class TRAM(_MSMBaseEstimator):
         self.log_likelihoods = []
         self.increments = []
 
-    @property
-    def compute_log_likelihood(self) -> Optional[float]:
-        r"""The parameter-dependent part of the TRAM likelihood.
-
-        The definition can be found in :footcite:`wu2016multiensemble`, Equation (9).
-
-        Returns
-        -------
-        log_likelihood : float
-            The parameter-dependent part of the log-likelihood.
-
-
-        Notes
-        -----
-        Parameter-dependent, i.e., the factor
-
-        .. math:: \prod_{x \in X} e^{-b^{k(x)}(x)}
-
-        does not occur in the log-likelihood as it is constant with respect to the parameters, leading to
-
-        .. math:: \log \prod_{k=1}^K \left(\prod_{i,j} (p_{ij}^k)^{c_{ij}^k}\right) \left(\prod_{i} \prod_{x \in X_i^k} \mu(x) e^{f_i^k} \right)
-        """
-        if self._tram_estimator is not None:
-            return self._tram_estimator.compute_log_likelihood()
-
     def fetch_model(self) -> Optional[TRAMModel]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
         Can be None if fit was not called.

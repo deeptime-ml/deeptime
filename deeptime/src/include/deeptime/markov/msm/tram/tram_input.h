@@ -59,26 +59,42 @@ public:
                                "transitionCounts.shape(1) should equal transitionCounts.shape(2)");
 
         detail::throwIfInvalid(dtraj_.ndim() == 1,
-                               "dtraj at index {i} has an incorrect number of dimension. ndims should be 1.");
+                               "dtraj has an incorrect number of dimension. ndims should be 1.");
         detail::throwIfInvalid(biasMatrix_.ndim() == 2,
-                               "biasMatrix at index {i} has an incorrect number of dimension. ndims should be 2.");
+                               "biasMatrix has an incorrect number of dimension. ndims should be 2.");
         detail::throwIfInvalid(biasMatrix_.shape(1) == transitionCounts_.shape(0),
-                               "biasMatrix{i}.shape[1] should be equal to transitionCounts.shape[0].");
+                               "biasMatrix.shape[1] should be equal to transitionCounts.shape[0].");
     }
 
-    auto biasMatrix() const {
+    auto & biasMatrix() const {
+        return biasMatrix_;
+    }
+
+    auto biasMatrixBuf() const {
         return biasMatrix_.template unchecked<2>();
     }
 
-    auto dtraj() const {
+    auto & dtraj() const {
+        return dtraj_;
+    }
+
+    auto dtrajBuf() const {
         return dtraj_.template unchecked<1>();
     }
 
-    auto transitionCounts() const {
+    auto & transitionCounts() const {
+        return transitionCounts_;
+    }
+
+    auto transitionCountsBuf() const {
         return transitionCounts_.template unchecked<3>();
     }
 
-    auto stateCounts() const {
+    auto & stateCounts() const {
+        return stateCounts_;
+    }
+
+    auto stateCountsBuf() const {
         return stateCounts_.template unchecked<2>();
     }
 
