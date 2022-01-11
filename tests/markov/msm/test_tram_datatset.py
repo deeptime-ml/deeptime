@@ -241,14 +241,14 @@ def test_unknown_connectivity():
 
 def test_property_caching():
     dtrajs, bias_matrices, ttrajs = make_random_input_data(2, 5)
-    # make sure at least one count will be deleted after restricting to submodel
-    dtrajs[1][1] = 3
-    # ... and that the submodel still contains some more counts
-    dtrajs[0] = [1 for _ in dtrajs[0]]
+    # make sure at least one count will be deleted after restricting to submodel, and that the submodel still contains
+    # some more counts
+    dtrajs[0][:5] = [0, 1, 2, 3, 4]
+
     dataset = TRAMDataset(dtrajs, bias_matrices, ttrajs)
     state_counts_1 = dataset.state_counts
 
-    dataset.restrict_to_submodel([0, 1, 2])
+    dataset.restrict_to_submodel([0, 1, 2, 3])
 
     state_counts_2 = dataset.state_counts
     with np.testing.assert_raises(AssertionError):
