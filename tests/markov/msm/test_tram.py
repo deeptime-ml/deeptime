@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
-from .test_tram_model import random_model
+from .test_tram_model import make_random_model
 
 
 def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs=True):
@@ -87,8 +87,8 @@ def test_tram_fit():
 
 
 def test_tram_continue_estimation():
-    from .test_tram_model import random_model
-    model = random_model(5, 8, transition_matrices=None)
+    from .test_tram_model import make_random_model
+    model = make_random_model(5, 8, transition_matrices=None)
     dtrajs, bias_matrices = make_random_input_data(5, 8, make_ttrajs=False)
 
     weights_1 = model.compute_sample_weights(dtrajs, bias_matrices)
@@ -202,7 +202,7 @@ def test_invalid_input(dtrajs, bias_matrices, ttrajs):
 )
 def test_invalid_input_with_model(dtrajs, bias_matrices, ttrajs):
     tram = TRAM()
-    model = random_model(2, 1)
+    model = make_random_model(2, 1)
 
     dtrajs, bias_matrices, ttrajs = to_numpy_arrays(dtrajs, bias_matrices, ttrajs)
 
@@ -221,7 +221,7 @@ def test_invalid_input_with_model(dtrajs, bias_matrices, ttrajs):
 )
 def test_valid_input_with_model(dtrajs, bias_matrices, ttrajs):
     tram = TRAM()
-    model = random_model(2, 2)
+    model = make_random_model(2, 2)
     dtrajs, bias_matrices, ttrajs = to_numpy_arrays(dtrajs, bias_matrices, ttrajs)
     tram.fit((dtrajs, bias_matrices, ttrajs), model)
 

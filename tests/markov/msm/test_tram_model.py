@@ -4,7 +4,7 @@ from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection
 
 
-def random_model(n_therm_states, n_markov_states, transition_matrices=None):
+def make_random_model(n_therm_states, n_markov_states, transition_matrices=None):
     transition_counts = np.zeros((n_therm_states, n_markov_states, n_markov_states))
 
     if transition_matrices is None:
@@ -29,7 +29,7 @@ def test_init_tram_model():
     transition_matrices = np.random.rand(n_therm_states, n_markov_states, n_markov_states)
     transition_matrices /= np.sum(transition_matrices, axis=-1, keepdims=True)
 
-    model = random_model(n_therm_states, n_markov_states, transition_matrices=transition_matrices)
+    model = make_random_model(n_therm_states, n_markov_states, transition_matrices=transition_matrices)
 
     memm = model.msm_collection
     np.testing.assert_(isinstance(memm, MarkovStateModelCollection))
@@ -43,7 +43,7 @@ def test_init_tram_model():
 
 
 def test_compute_pmf():
-    model = random_model(5, 5)
+    model = make_random_model(5, 5)
     n_samples = 100
 
     trajs = np.random.uniform(0, 1, (5, n_samples))
@@ -58,7 +58,7 @@ def test_compute_pmf():
 
 
 def test_compute_observable():
-    model = random_model(5, 5)
+    model = make_random_model(5, 5)
     n_samples = 100
 
     dtrajs = np.random.uniform(0, 5, (5, n_samples))

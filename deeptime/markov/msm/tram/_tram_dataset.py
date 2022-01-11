@@ -3,6 +3,8 @@ import scipy as sp
 import warnings
 
 from deeptime.util import types, callbacks
+from deeptime.util.decorators import cached_property
+
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 
 from ._tram_bindings import tram
@@ -41,6 +43,13 @@ def to_zero_padded_array(arrays, desired_shape):
     for i, array in enumerate(arrays):
         new_array[i, :len(array)] = array
     return new_array
+
+
+def _invalidate_caches():
+    r""" Invalidates all cached properties and causes them to be re-evaluated """
+    for member in TRAMDataset.__dict__.values():
+        if isinstance(member, cached_property):
+            member.invalidate()
 
 
 class TRAMDataset:
@@ -143,7 +152,7 @@ class TRAMDataset:
         r""" The number of Markov states. """
         return self._n_markov_states
 
-    @property
+    @cached_property
     def transition_counts(self):
         r"""
         The transition counts matrices. transition_counts[k] contains the transition counts for thermodynamic state
@@ -154,11 +163,11 @@ class TRAMDataset:
         ones without counts in that thermodynamic state. This is done so that the _tram_bindings receives count matrices
         that are all the same shape, which is easier to handle (matrices are padded with zeros for all empty states that
         got  dropped by the TransitionCountModels).
-        
+
         :getter: the transition counts
         :type: ndarray(n, m, m)
         """
-        transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=np.intc)
+        transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=int)
 
         for k in range(self.n_therm_states):
             model_k = self.count_models[k]
@@ -169,7 +178,7 @@ class TRAMDataset:
 
         return transition_counts
 
-    @property
+    @cached_property
     def state_counts(self):
         r""" ndarray(n, m)
         The state counts histogram. state_counts[k] contains the state histogram for thermodynamic state k,
@@ -181,7 +190,7 @@ class TRAMDataset:
         are all the same shape, which is easier to handle (matrices are padded with zeros for all empty states that got
         dropped by the TransitionCountModels).
         """
-        state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.intc)
+        state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=int)
 
         for k in range(self.n_therm_states):
             model_k = self.count_models[k]
@@ -269,32 +278,43 @@ class TRAMDataset:
             raise ValueError(
                 f"Connectivity type unsupported. Connectivity must be one of {TRAMDataset.connectivity_options}.")
         lcc = self._find_largest_connected_set(connectivity, connectivity_factor, progress_bar)
-        self.restrict_to_connected_set(lcc)
+        self.restrict_to_submodel(lcc)
 
-    def restrict_to_connected_set(self, cset):
+    def restrict_to_submodel(self, submodel):
         """Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the connected set will
         be set to -1. The count_models are recomputed after restricting the dtrajs to the connected set.
 
         Parameters
         ----------
-        cset : TransitionCountModel
-            The TransitionCountModel of the connected set that the dataset needs to be restricted to.
+        submodel : TransitionCountModel or list(int) or ndarray(int)
+            The TransitionCountModel, or the Markov states indices that the dataset needs to be restricted to, .
         """
         dtrajs_connected = []
+        if isinstance(submodel, list) or isinstance(submodel, np.ndarray):
+            submodel = self._submodel_from_states(submodel)
 
         for k in range(self.n_therm_states):
             # Get largest connected set
             # Assign -1 to all indices not in the submodel.
-            restricted_dtraj = cset.transform_discrete_trajectories_to_submodel(self.dtrajs[k])
+            restricted_dtraj = submodel.transform_discrete_trajectories_to_submodel(self.dtrajs[k])
 
             # The transformation has converted all indices to the state indices of the submodel. We want the original
             # indices. Convert the newly assigned indices back to the original state symbols
-            restricted_dtraj = cset.states_to_symbols(restricted_dtraj)
+            restricted_dtraj = submodel.states_to_symbols(restricted_dtraj)
 
             dtrajs_connected.append(restricted_dtraj)
 
         self.dtrajs = dtrajs_connected
         self._compute_counts()
+        _invalidate_caches()
+
+    def _submodel_from_states(self, indices):
+        estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
+
+        # make a counts model over all observed samples.
+        full_counts_model = estimator.fit_fetch(self.dtrajs)
+        cset = full_counts_model.submodel(indices)
+        return cset
 
     def _ensure_correct_data_types(self):
         # shape and type checks
