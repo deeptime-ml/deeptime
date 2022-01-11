@@ -145,7 +145,7 @@ class TRAMDataset:
 
     @property
     def transition_counts(self):
-        r""" ndarray(n, m, m)
+        r"""
         The transition counts matrices. transition_counts[k] contains the transition counts for thermodynamic state
         k, based on the TransitionCountModel of state k. transition_counts[k][i][j] equals the number of observed
         transitions from Markov state :math:`i` to Markov state :math:`j`, in thermodynamic state :math:`k`.
@@ -154,6 +154,9 @@ class TRAMDataset:
         ones without counts in that thermodynamic state. This is done so that the _tram_bindings receives count matrices
         that are all the same shape, which is easier to handle (matrices are padded with zeros for all empty states that
         got  dropped by the TransitionCountModels).
+        
+        :getter: the transition counts
+        :type: ndarray(n, m, m)
         """
         transition_counts = np.zeros((self.n_therm_states, self.n_markov_states, self.n_markov_states), dtype=np.intc)
 
