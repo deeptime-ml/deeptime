@@ -5,14 +5,24 @@ TRAM on a 1D double well
 This example shows how to use the transition-based reweighting analysis method (TRAM) to estimate the free energies
 and Markov model of a simple double-well potential, sampled using umbrella sampling.
 
+<<<<<<< HEAD
 For more information see the `TRAM tutorial <../notebooks/tram.ipynb>`__.
+=======
+For more information see the :class:`TRAM <deeptime.markov.msm.TRAM>` estimator and
+its respective `TRAM tutorial <../notebooks/tram.ipynb>`__.
+>>>>>>> upstream/main
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from deeptime.data import tmatrix_metropolis1d
+<<<<<<< HEAD
 from deeptime.markov.msm import TRAM, MarkovStateModel
+=======
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.msm.tram import TRAM
+>>>>>>> upstream/main
 from deeptime.clustering import KMeansModel
 
 xs = np.linspace(-1.5, 1.5, num=100)
@@ -75,11 +85,19 @@ if __name__ == "__main__":
     dtrajs = clustering.transform(trajectories.flatten()).reshape(
         (len(bias_matrices), n_samples))
 
+<<<<<<< HEAD
     tram = TRAM(lagtime=1, connectivity="post_hoc_RE", connectivity_factor=1, maxiter=100)
+=======
+    tram = TRAM(lagtime=1, maxiter=100)
+>>>>>>> upstream/main
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th
     # Umbrella/Hamiltonian/temperature).
     model = tram.fit_fetch((dtrajs, bias_matrices))
 
+<<<<<<< HEAD
     plot_contour_with_colourbar(tram._biased_conf_energies)
+=======
+    plot_contour_with_colourbar(model.biased_conf_energies)
+>>>>>>> upstream/main

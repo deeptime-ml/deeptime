@@ -1,5 +1,5 @@
-numpy==1.19.3; python_version=="3.6"
-numpy==1.21.4; python_version>="3.7"
+numpy==1.21.4; python_version=="3.7"
+numpy==1.22.0; python_version>="3.8"
 importlib_metadata; python_version<"3.8"
 typing_extensions; python_version<"3.8"
 scipy==1.7.2
@@ -12,3 +12,4 @@ pytest==6.2.5
 pytest-cov
 pytest-faulthandler==2.0.1
 pytest-sugar==0.9.4
+flaky

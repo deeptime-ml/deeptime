@@ -1,6 +1,9 @@
 import unittest
 
 import numpy as np
+import pytest
+from flaky import flaky
+
 import deeptime
 from deeptime.markov.hmm import DiscreteOutputModel, GaussianOutputModel
 
@@ -130,6 +133,7 @@ class TestGaussian(unittest.TestCase):
         np.testing.assert_array_almost_equal(m.means, means, decimal=2)
         np.testing.assert_array_almost_equal(m.sigmas, sigmas, decimal=2)
 
+    @flaky(max_runs=3, min_passes=1)
     def test_fit(self):
         expected_means = np.array([-55., 0., 7.])
         expected_stds = np.array([3., .5, 1.])

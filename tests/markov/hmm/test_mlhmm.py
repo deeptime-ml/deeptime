@@ -3,14 +3,14 @@ import unittest
 import deeptime.markov.hmm._hmm_bindings as _bindings
 import numpy as np
 import pytest
-from numpy.testing import assert_raises, assert_equal, assert_array_almost_equal, assert_
+from numpy.testing import assert_raises, assert_equal, assert_array_almost_equal, assert_, assert_array_equal
 
 import deeptime.markov.tools
 from deeptime.data import DoubleWellDiscrete
 from deeptime.markov import count_states
 from deeptime.data import prinz_potential
 from deeptime.markov.hmm import DiscreteOutputModel, MaximumLikelihoodHMM, init, BayesianHMM, viterbi, HiddenMarkovModel
-from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM
+from deeptime.markov.msm import MarkovStateModel
 from tests.markov.msm.test_mlmsm import estimate_markov_model
 from tests.testing_utilities import assert_array_not_equal
 
@@ -600,6 +600,26 @@ class TestMLHMM(unittest.TestCase):
         self.assertEqual(hmm_sub.transition_model.timescales().shape[0], 1)
         self.assertEqual(hmm_sub.transition_model.stationary_distribution.shape[0], 2)
         self.assertEqual(hmm_sub.transition_model.transition_matrix.shape, (2, 2))
+
+    def test_submodel_empty_state_mapping(self):
+        dtrajs = [np.array([2, 0, 2, 0, 0, 2, 0, 0, 0, 2, 0, 2, 0, 0, 0, 0, 2, 2, 2, 2, 2, 0, 2, 2, 2])]
+        dtrajs_mapped = [(dtrajs[0]/2).astype(int)]
+
+        n_states, lagtime = 2, 1
+        init_hmm = init.discrete.metastable_from_data(dtrajs, n_states, lagtime)
+        estimator = MaximumLikelihoodHMM(init_hmm, lagtime=lagtime)
+
+        fullmm = estimator.fit_fetch(dtrajs)
+        viterbi_from_full = fullmm.compute_viterbi_paths(dtrajs)
+        submm = fullmm.submodel_populous(dtrajs=dtrajs)
+        viterbi_from_sub = submm.compute_viterbi_paths(dtrajs, map_observations_to_submodel=True)
+
+        msg = 'Viterbi path from trajectory that contains empty states is incorrect'
+        assert_array_equal(viterbi_from_full[0], dtrajs_mapped[0], msg)
+        assert_array_equal(viterbi_from_sub[0], dtrajs_mapped[0], msg + ' with submodeled HMM.')
+
+        with assert_raises(RuntimeError):
+            submm.compute_viterbi_paths(dtrajs, map_observations_to_submodel=False)
 
     def test_separate_states(self):
         dtrajs = [np.array([0, 1, 1, 1, 1, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1]),

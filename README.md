@@ -14,19 +14,16 @@ Documentation: [deeptime-ml.github.io](https://deeptime-ml.github.io/).
 
 ## Building the latest trunk version of the package:
 
-Using conda for dependency management and python `setup.py`:
+Using pip with a local clone and pulling dependencies:
 ```
 git clone https://github.com/deeptime-ml/deeptime.git
 
 cd deeptime
-git submodule update --init
-
-conda install numpy scipy cython scikit-learn pybind11
-
-python setup.py install
+pip install -r tests/requirements.txt
+pip install -e .
 ```
 
-Or using pip:
+Or using pip directly on the remote:
 ```
 pip install git+https://github.com/deeptime-ml/deeptime.git@main
 ```

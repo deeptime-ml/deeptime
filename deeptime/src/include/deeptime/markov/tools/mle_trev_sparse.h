@@ -15,7 +15,6 @@ int mle_trev_sparse(np_array_nfc<dtype> &TArr, const np_array_nfc<dtype> &CCtArr
                     const dtype maxerr, const std::size_t maxiter,
                     np_array_nfc<dtype> &mu, dtype muEps) {
     py::gil_scoped_release gil;
-
     std::unique_ptr<dtype[]> sum_x{new dtype[dim]};
     std::unique_ptr<dtype[]> sum_x_new{new dtype[dim]};
 

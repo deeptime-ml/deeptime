@@ -130,23 +130,23 @@ auto exportSystem(py::module& m, const std::string &name) {
     if constexpr(deeptime::data::is_time_dependent<System>::value) {
         clazz.def("trajectory", [](System &self, const np_array_nfc<double> &t, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads) {
             return trajectory(self, t, x, length, seed, nThreads);
-        }, py::call_guard<py::gil_scoped_release>(), "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        }, "time"_a, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, double t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
             return evaluateSystem(self, t, x, seed, nThreads);
-        }, py::call_guard<py::gil_scoped_release>(), "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, const np_array_nfc<double>& t, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
             return evaluateSystem(self, t, x, seed, nThreads);
-        }, py::call_guard<py::gil_scoped_release>(), "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
+        }, "time"_a, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
     } else {
         clazz.def("trajectory", [](System &self, const np_array_nfc<npDtype> &x, std::size_t length, std::int64_t seed, int nThreads){
             return deeptime::data::trajectory(self, 0., x, length, seed, nThreads);
-        }, py::call_guard<py::gil_scoped_release>(), "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        }, "x0"_a, "n_evaluations"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
             return deeptime::data::evaluateSystem(self, 0., x, seed, nThreads);
-        }, py::call_guard<py::gil_scoped_release>(), "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
+        }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1)
         .def("__call__", [](System &self, const np_array_nfc<npDtype> &x, std::int64_t seed, int nThreads) -> np_array_nfc<npDtype> {
             return deeptime::data::evaluateSystem(self, 0., x, seed, nThreads);
-        }, py::call_guard<py::gil_scoped_release>(), "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
+        }, "test_points"_a, "seed"_a = -1, "n_jobs"_a = 1);
     }
     if constexpr(deeptime::data::system_has_potential_v<System>) {
         if constexpr(deeptime::data::is_time_dependent<System>::value) {

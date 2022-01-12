@@ -1,4 +1,8 @@
 #include <catch2/catch.hpp>
+<<<<<<< HEAD
+=======
+#include <pybind11/embed.h>
+>>>>>>> upstream/main
 #include "deeptime/numeric/kahan_summation.h"
 
 using namespace deeptime;
@@ -110,6 +114,10 @@ TEST_CASE("logsumexp_sort_kahan_inplace", "[kahan_summation]") {
 
 
 TEST_CASE("kdot") {
+<<<<<<< HEAD
+=======
+    py::scoped_interpreter guard;
+>>>>>>> upstream/main
     SECTION("shape mismatch") {
         auto a = np_array_nfc<double>({3, 2});
         auto b = np_array_nfc<double>({2, 3});

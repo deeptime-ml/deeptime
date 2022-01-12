@@ -1,1 +1,1 @@
-This directory contains common utility functionality for the c++ extensions contained in deeptime.
+This directory contains implementations for the c++ extensions contained in deeptime.

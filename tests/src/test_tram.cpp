@@ -124,23 +124,41 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
 
 
         WHEN("TRAM is constructed") {
+<<<<<<< HEAD
             auto tram = deeptime::markov::tram::TRAM<TestType>(inputPtr, 0);
 
             THEN("Result matrices are initialized") {
                 REQUIRE(tram.energiesPerThermodynamicState().size() == nThermStates);
                 REQUIRE(tram.biasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.energiesPerMarkovState().size() == nMarkovStates);
+=======
+            auto tram = deeptime::markov::tram::TRAM<TestType>(nThermStates, nMarkovStates);
+
+            THEN("Result matrices are initialized") {
+                REQUIRE(tram.thermStateEnergies().size() == nThermStates);
+                REQUIRE(tram.biasedConfEnergies().ndim() == 2);
+                REQUIRE(tram.markovStateEnergies().size() == nMarkovStates);
+>>>>>>> upstream/main
                 REQUIRE(tram.biasedConfEnergies().data()[0] == 0);
             }
 
             AND_WHEN("estimate() is called") {
+<<<<<<< HEAD
                 tram.estimate(1, 1e-8, true);
+=======
+                tram.estimate(inputPtr, 1, 1e-8, true);
+>>>>>>> upstream/main
 
                 TestType LL = tram.computeLogLikelihood();
 
                 THEN("Energies are finite") {
+<<<<<<< HEAD
                     auto thermStateEnergies = tram.energiesPerThermodynamicState();
                     auto markovStateEnergies = tram.energiesPerMarkovState();
+=======
+                    auto thermStateEnergies = tram.thermStateEnergies();
+                    auto markovStateEnergies = tram.markovStateEnergies();
+>>>>>>> upstream/main
 
                     REQUIRE(areFinite<TestType>(thermStateEnergies));
                     REQUIRE(areFinite<TestType>(markovStateEnergies));

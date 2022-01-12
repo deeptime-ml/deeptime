@@ -31,6 +31,7 @@ class Callback:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.progress_bar is not None:
             self.progress_bar.close()
+<<<<<<< HEAD
 
 
 class TRAMCallback(Callback):
@@ -54,3 +55,5 @@ class TRAMCallback(Callback):
                 self.increments.append(increment)
 
         self.last_increment = increment
+=======
+>>>>>>> upstream/main

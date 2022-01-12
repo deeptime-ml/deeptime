@@ -282,14 +282,27 @@ class _ImmutableInputData:
             else:
                 raise InputFormatError(f'No input at all for fit(). Input was {args}, kw={kwargs}')
         value = args[0]
+
         if hasattr(value, 'setflags'):
             self._data.append(value)
         elif isinstance(value, (list, tuple)):
-            for i, x in enumerate(value):
-                if isinstance(x, np.ndarray):
-                    self._data.append(x)
+
+            def typecheck(x, valid_types=None):
+                if valid_types is None or isinstance(x, valid_types):
+                    return x
                 else:
-                    raise InputFormatError(f'Invalid input element in position {i}, only numpy.ndarrays allowed.')
+                    raise InputFormatError(f'Invalid input element, only numpy.ndarrays allowed. Got: {x}')
+
+            def deep_typecheck(collection, valid_types=None):
+                for x in collection:
+                    if isinstance(x, (list, tuple)):
+                        for sub_x in deep_typecheck(x):
+                            yield typecheck(sub_x, valid_types=valid_types)
+                    else:
+                        yield typecheck(x, valid_types=valid_types)
+
+            flat_data = deep_typecheck(value, np.ndarray)
+            self._data += flat_data
         elif isinstance(value, (Model, Estimator)):
             self._data.append(value)
         else:
