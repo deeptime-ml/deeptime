@@ -240,3 +240,30 @@ def test_callback_called(track_log_likelihoods):
         np.testing.assert_((np.asarray(tram.log_likelihoods) < 0).all())
     else:
         np.testing.assert_((np.asarray(tram.log_likelihoods) == 0).all())
+
+
+def test_progress_bar_update_called():
+    class ProgressMock:
+        def __init__(self, tracking_ints):
+            self.total = 1
+            self.desc = 0
+
+            self.tracking_ints = tracking_ints
+
+        def update(self, _):
+            self.tracking_ints[0] += 1
+
+        def close(self):
+            self.tracking_ints[1] += 1
+
+    # workaround to track function calls because the progress bar is copied internally
+    tracking_ints = [0, 0]
+
+    progress_mock = ProgressMock(tracking_ints)
+    tram = TRAM(callback_interval=2, maxiter=10, progress=progress_mock)
+    tram.fit(make_random_input_data(5, 5))
+
+    # update() should be called 5 times
+    np.testing.assert_equal(tracking_ints[0], 5)
+    # and close() one time
+    np.testing.assert_equal(tracking_ints[1], 1)
