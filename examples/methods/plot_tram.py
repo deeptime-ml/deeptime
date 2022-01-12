@@ -5,7 +5,7 @@ TRAM on a 1D double well
 This example shows how to use the transition-based reweighting analysis method (TRAM) to estimate the free energies
 and Markov model of a simple double-well potential, sampled using umbrella sampling.
 
-For more information see the :class:`TRAM <deeptime.markov.msm.TRAM>` estimator and
+For more information see the :class:`TRAM <deeptime.markov.msm.tram.TRAM>` estimator and
 its respective `TRAM tutorial <../notebooks/tram.ipynb>`__.
 """
 

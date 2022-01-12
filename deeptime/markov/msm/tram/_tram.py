@@ -88,6 +88,10 @@ class TRAM(_MSMBaseEstimator):
         Progress bar object that TRAM will call to indicate progress to the user.
         Tested for a tqdm progress bar. Should implement update() and close() and have .total and .desc properties.
 
+    See also
+    --------
+    :class:`TRAMDataset <deeptime.markov.msm.tram.TRAMDataset>`, :class:`TRAMModel <deeptime.markov.msm.tram.TRAMModel>`
+
     References
     ----------
     .. footbibliography::
@@ -156,7 +160,7 @@ class TRAM(_MSMBaseEstimator):
 
         Parameters
         ----------
-        data: TRAMDatatset or tuple consisting of (dtrajs, bias_matrices) or (dtrajs, bias_matrices, ttrajs).
+        data: TRAMDataset or tuple consisting of (dtrajs, bias_matrices) or (dtrajs, bias_matrices, ttrajs).
             * dtrajs: array-like(ndarray(n)), int
               The discrete trajectories in the form of a list or array of numpy arrays. dtrajs[i] contains one
               trajectory. dtrajs[i][n] equals the Markov state index that the n-th sample from the i-th trajectory was
@@ -179,6 +183,10 @@ class TRAM(_MSMBaseEstimator):
             If no model is given, estimation starts from zero-initialized arrays for the free energies and modified
             state counts. The lagrangian multipliers are initialized with values
             :math:`v_i^{k, 0} = \mathrm{log} (c_{ij}^k + c_{ji}^k)/2`
+
+        See also
+        --------
+        :class:`TRAMDataset <deeptime.markov.msm.tram.TRAMDataset>`
         """
         dataset = _get_dataset_from_input(data)
 

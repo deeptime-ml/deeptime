@@ -8,7 +8,8 @@ from ._tram_bindings import tram
 
 class TRAMModel(Model):
     r""" The TRAM model containing the estimated parameters, free energies, and the underlying Markov models for each
-    thermodynamic state. TRAM is described in :footcite:`wu2016multiensemble`.
+    thermodynamic state.
+    TRAM is described in :footcite:`wu2016multiensemble`.
 
     Parameters
     ----------
@@ -30,6 +31,10 @@ class TRAMModel(Model):
         The estimated free energy of each thermodynamic state, :math:`f^k`.
     markov_state_energies : ndarray(m), float64
         The estimated free energy of each Markov state, :math: `f_i`.
+
+    See also
+    --------
+    :class:`TRAM <deeptime.markov.msm.tram.TRAM>`, :class:`TRAMDataset <deeptime.markov.msm.tram.TRAMDataset>`
 
     References
     ----------

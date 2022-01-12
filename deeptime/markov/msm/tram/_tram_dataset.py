@@ -53,8 +53,7 @@ def _invalidate_caches():
 
 
 class TRAMDataset:
-    r""" Dataset for organizing data and obtaining properties from data that are needed for running a TRAM estimate using
-    the TRAM estimator.
+    r""" Dataset for organizing data and obtaining properties from data that are needed for TRAM.
     The minimum required parameters for constructing a TRAMDataset are the dtrajs and bias matrices. In this case,
     ttrajs are inferred from the shape of the dtrajs, by assuming each trajectory in dtrajs corresponds to a unique
     thermodynamic state, with the index corresponding to the index of occurance in dtrajs.
@@ -105,7 +104,9 @@ class TRAMDataset:
 
     See Also
     --------
-    TransitionCountEstimator
+    :class:`TransitionCountEstimator <deeptime.markov.TransitionCountEstimator>`,
+    :class:`TRAM <deeptime.markov.msm.tram.TRAM>`, :class:`TRAMModel <deeptime.markov.msm.tram.TRAMModel>`
+
     """
 
     def __init__(self, dtrajs, bias_matrices, ttrajs=None, n_therm_states=None, n_markov_states=None, lagtime=1,
