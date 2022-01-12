@@ -321,6 +321,7 @@ class TestKmeans(unittest.TestCase):
         X = np.random.rand(100, 3)
         kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centers, max_iter=0, n_jobs=1)
 
+        np.testing.assert_(model.converged)
         np.testing.assert_array_equal(initial_centers, model.cluster_centers)
 
 
