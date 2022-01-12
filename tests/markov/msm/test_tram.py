@@ -244,7 +244,7 @@ def test_callback_called(track_log_likelihoods):
 
 def test_progress_bar_update_called():
     class ProgressMock:
-        def __init__(self, tracking_ints):
+        def __init__(self, _tracking_ints):
             self.total = 1
             self.desc = 0
 
