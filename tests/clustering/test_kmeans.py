@@ -316,6 +316,13 @@ class TestKmeans(unittest.TestCase):
         assert init == 3
         assert iter <= 2
 
+    def test_noiter(self):
+        initial_centers = np.array([[0, 0, 0], [1, 1, 1]]).astype(np.float32)
+        X = np.random.rand(100, 3)
+        kmeans, model = cluster_kmeans(X, k=2, cluster_centers=initial_centers, max_iter=0, n_jobs=1)
+
+        np.testing.assert_array_equal(initial_centers, model.cluster_centers)
+
 
 class TestKmeansResume(unittest.TestCase):
 
