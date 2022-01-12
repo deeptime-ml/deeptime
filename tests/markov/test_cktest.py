@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 import deeptime as dt
+from flaky import flaky
 from numpy.testing import assert_allclose, assert_equal, assert_raises
 
 
@@ -12,6 +13,7 @@ def test_invalid_mlags():
         est.chapman_kolmogorov_validator(2, mlags=[0, 1, -10])
 
 
+@flaky(max_runs=3, min_passes=1)
 @pytest.mark.parametrize("n_jobs", [1, 2], ids=lambda x: f"n_jobs={x}")
 @pytest.mark.parametrize("mlags", [2, [0, 1, 10]], ids=lambda x: f"mlags={x}")
 @pytest.mark.parametrize("estimator_type", ["MLMSM", "BMSM", "HMM", "BHMM"])

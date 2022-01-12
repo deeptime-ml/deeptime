@@ -84,7 +84,7 @@ class TRAM(_MSMBaseEstimator):
     callback_interval : int, optional, default=0
         Every callback_interval iteration steps, the callback function is calles and error increments are stored. If
         track_log_likelihoods=true, the log-likelihood are also stored. If 0, no call to the callback function is done.
-    progress_bar : object
+    progress : object
         Progress bar object that TRAM will call to indicate progress to the user.
         Tested for a tqdm progress bar. Should implement update() and close() and have .total and .desc properties.
 
@@ -96,8 +96,8 @@ class TRAM(_MSMBaseEstimator):
     def __init__(
             self, lagtime=1, count_mode='sliding',
             maxiter=10000, maxerr: float = 1e-8,
-            track_log_likelihoods=False, callback_interval=0,
-            progress_bar=None):
+            track_log_likelihoods=False, callback_interval=1,
+            progress=None):
 
         super(TRAM, self).__init__()
 
@@ -108,7 +108,7 @@ class TRAM(_MSMBaseEstimator):
         self.maxerr = maxerr
         self.track_log_likelihoods = track_log_likelihoods
         self.callback_interval = callback_interval
-        self.progress_bar = progress_bar
+        self.progress = progress
         self._largest_connected_set = None
         self.log_likelihoods = []
         self.increments = []
@@ -203,7 +203,7 @@ class TRAM(_MSMBaseEstimator):
     def _run_estimation(self, tram_input):
         """ Estimate the free energies using self-consistent iteration as described in the TRAM paper.
         """
-        with TRAMCallback(self.progress_bar, self.maxiter, self.log_likelihoods, self.increments,
+        with TRAMCallback(self.progress, self.maxiter, self.log_likelihoods, self.increments,
                           self.callback_interval > 0) as callback:
             self._tram_estimator.estimate(tram_input, self.maxiter, self.maxerr,
                                           track_log_likelihoods=self.track_log_likelihoods,
@@ -229,8 +229,8 @@ class TRAMCallback(callbacks.Callback):
         If True, log_likelihoods and increments are appended to their respective lists each time callback.__call__() is
         called. If false, no values are appended, only the last increment is stored.
     """
-    def __init__(self, progress_bar, n_iter, log_likelihoods_list=None, increments=None, store_convergence_info=False):
-        super().__init__(progress_bar, n_iter, "Running TRAM estimate")
+    def __init__(self, progress, n_iter, log_likelihoods_list=None, increments=None, store_convergence_info=False):
+        super().__init__(progress, n_iter, "Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
         self.store_convergence_info = store_convergence_info

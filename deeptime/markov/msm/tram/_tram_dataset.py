@@ -397,7 +397,7 @@ class TRAMDataset:
                 (i_s, j_s) = connectivity_fn(self.ttrajs, self.dtrajs, self.bias_matrices, all_state_counts,
                                              self.n_therm_states, self.n_markov_states, connectivity_factor,
                                              callback)
-            print((i_s, j_s))
+
             # add transitions that occurred within each thermodynamic state. These are simply the connected sets:
             for k in range(self.n_therm_states):
                 for cset in estimator.fit_fetch(self.dtrajs[k]).connected_sets():
