@@ -153,29 +153,31 @@ inline std::tuple<np_array_nfc<T>, int, int, np_array<T>> cluster_loop(
     auto currentCenters = np_centers;
 
     std::vector<T> inertias;
-    inertias.reserve(max_iter);
+    if (max_iter > 0) {
+        inertias.reserve(max_iter);
 
-    do {
-        auto clusterResult = cluster<Metric>(np_chunk, currentCenters, n_threads);
-        currentCenters = std::get<0>(clusterResult);
-        const auto &assignments = std::get<1>(clusterResult);
-        auto cost = costFunction<Metric>(np_chunk, currentCenters, assignments, n_threads);
-        inertias.push_back(cost);
-        rel_change = (cost != 0.0) ? std::abs(cost - prev_cost) / cost : 0;
-        prev_cost = cost;
-        if (rel_change <= tolerance) {
-            converged = true;
-        } else {
-            if (!callback.is_none()) {
-                /* Acquire GIL before calling Python code */
-                py::gil_scoped_acquire acquire;
-                callback();
+        do {
+            auto clusterResult = cluster<Metric>(np_chunk, currentCenters, n_threads);
+            currentCenters = std::get<0>(clusterResult);
+            const auto &assignments = std::get<1>(clusterResult);
+            auto cost = costFunction<Metric>(np_chunk, currentCenters, assignments, n_threads);
+            inertias.push_back(cost);
+            rel_change = (cost != 0.0) ? std::abs(cost - prev_cost) / cost : 0;
+            prev_cost = cost;
+            if (rel_change <= tolerance) {
+                converged = true;
+            } else {
+                if (!callback.is_none()) {
+                    /* Acquire GIL before calling Python code */
+                    py::gil_scoped_acquire acquire;
+                    callback();
+                }
             }
-        }
 
-        it += 1;
-    } while (it < max_iter && !converged);
-    int res = converged ? 0 : 1;
+            it += 1;
+        } while (it < max_iter && !converged);
+    }
+    int res = max_iter <= 0 || converged ? 0 : 1;
     np_array<T> npInertias({static_cast<py::ssize_t>(inertias.size())});
     std::copy(inertias.begin(), inertias.end(), npInertias.mutable_data());
     return std::make_tuple(currentCenters, res, it, npInertias);
