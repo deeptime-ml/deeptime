@@ -1,5 +1,6 @@
 import copy
 
+
 class Callback:
     """Base callback function for the c++ bindings to indicate progress by incrementing a progress bar.
 

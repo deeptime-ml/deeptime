@@ -1,40 +1,51 @@
 import numpy as np
 
+from deeptime.base import Model
 from deeptime.numeric import logsumexp
 from deeptime.markov.msm import MarkovStateModelCollection
-from deeptime.base import Model
+
 from ._tram_bindings import tram
 
 
 class TRAMModel(Model):
     r""" The TRAM model containing the estimated parameters, free energies, and the underlying Markov models for each
-    thermodynamic state. TRAM is described in :footcite:`wu2016multiensemble`.
+    thermodynamic state.
+    The TRAM Model is the result of a TRAM estimation and can be used to calculate observables and recover an (unbiased)
+    potential of mean force (PMF). TRAM is described in :footcite:`wu2016multiensemble`.
 
     Parameters
     ----------
     count_models : list(TransitionCountModel)
-        The transition count models for all thermodynamic states. Have been restricted to the largest connected set.
+        The transition count models for all thermodynamic states.
     transition_matrices : ndarray(n, m, m), float64
         The estimated transition matrices for each thermodynamic state. The transition matrices and count models are
         combined into a MarkovStateModelCollection that holds the Markov models for each thermodynamic state.
     biased_conf_energies : ndarray(n, m), float64
         The estimated free energies :math:`f_i^k` of each Markov state for all thermodynamic states.
-        biased_conf_energies[k,i] contains the bias energy of Markov state i in thermodynamic state k.
+        `biased_conf_energies[k,i]` contains the bias energy of Markov state :math:`i` in thermodynamic state :math:`k`.
     lagrangian_mult_log : ndarray(n, m), float64
         The estimated logarithm of the lagrange multipliers :math:`v_i^k` of each Markov state for all thermodynamic
-        states. lagrangian_mult_log[k,i] contains the lagrange multiplier of Markov state i in thermodynamic state k.
+        states. `lagrangian_mult_log[k,i]` contains the lagrange multiplier of Markov state :math:`i` in thermodynamic
+        state :math:`k`.
     modified_state_counts_log : ndarray(n, m), float64
         The logarithm of the modified state counts :math:`R_i^k` of each Markov state for all thermodynamic
-        states. modified_state_counts_log[k,i] contains the state counts of Markov state i in thermodynamic state k.
+        states. `modified_state_counts_log[k,i]` contains the state counts of Markov state :math:`i` in thermodynamic
+        state :math:`k`.
     therm_state_energies : ndarray(n), float64
         The estimated free energy of each thermodynamic state, :math:`f^k`.
     markov_state_energies : ndarray(m), float64
-        The estimated free energy of each Markov state, :math: `f_i`.
+        The estimated free energy of each Markov state, :math:`f_i`.
+
+    See also
+    --------
+    :class:`MarkovStateModelCollection <deeptime.markov.msm.MarkovStateModelCollection>`,
+    :class:`TRAM <deeptime.markov.msm.TRAM>`, :class:`TRAMDataset <deeptime.markov.msm.TRAMDataset>`
 
     References
     ----------
     .. footbibliography::
     """
+
     def __init__(self, count_models, transition_matrices,
                  biased_conf_energies,
                  lagrangian_mult_log,
@@ -67,15 +78,17 @@ class TRAMModel(Model):
 
     @property
     def lagrangian_mult_log(self) -> np.ndarray:
-        r""" The estimated logarithm of the lagrange multipliers :math:`v_i^k` of each Markov state for all thermodynamic
-            states. lagrangian_mult_log[k,i] contains the lagrange multiplier of Markov state i in thermodynamic state k.
+        r""" The estimated logarithm of the lagrange multipliers :math:`v_i^k` of each Markov state for all
+        thermodynamic states. `lagrangian_mult_log[k,i]` contains the lagrange multiplier of Markov state :math:`i` in
+        thermodynamic state :math:`k`.
         """
         return self._lagrangian_mult_log
 
     @property
-    def modified_state_counts_log (self):
+    def modified_state_counts_log(self):
         r"""The logarithm of the modified state counts :math:`R_i^k` of each Markov state for all thermodynamic
-        states. modified_state_counts_log[k,i] contains the state counts of Markov state i in thermodynamic state k.
+        states. `modified_state_counts_log[k,i]` contains the state counts of Markov state :math:`i` in thermodynamic
+        state :math:`k`.
         """
         return self._modified_state_counts_log
 
@@ -86,7 +99,6 @@ class TRAMModel(Model):
         """
         return self._therm_state_energies
 
-
     @property
     def markov_state_energies(self) -> np.ndarray:
         r""" The estimated free energy per Markov state, :math:`f^i`, where :math:`i` is the Markov state
@@ -96,8 +108,8 @@ class TRAMModel(Model):
 
     @property
     def msm_collection(self):
-        r""" The underlying MarkovStateModelCollection. Contains one Markov state model for each sampled thermodynamic
-        state.
+        r""" The underlying :class:`MarkovStateModelCollection <deeptime.markov.msm.MarkovStateModelCollection>`.
+        Contains one Markov state model for each sampled thermodynamic state.
 
         :getter: The collection of markov state models containing one model for each thermodynamic state.
         :type: MarkovStateModelCollection
@@ -105,14 +117,20 @@ class TRAMModel(Model):
         return self._msm_collection
 
     def compute_sample_weights(self, dtrajs, bias_matrices, therm_state=-1):
-        r""" Compute the sample weight :math:`\mu(x)` for all samples :math:`x`. If the thermodynamic state index is >=0,
-        the sample weights for that thermodynamic state will be computed, i.e. :math:`\mu^k(x)`. Otherwise, this gives
-        the unbiased sample weights.
+        r""" Compute the sample weight :math:`\mu(x)` for all samples :math:`x`.
+        If the thermodynamic state index is >= 0, the sample weights for that thermodynamic state will be computed,
+        i.e. :math:`\mu^k(x)`. Otherwise, this gives the unbiased sample weights :math:`\mu(x)`.
 
         Parameters
         ----------
+        dtrajs : list(np.ndarray)
+            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the :math:`n`-th sample
+            in the :math:`i`-th trajectory. Sample weights are computed for each of the samples in the `dtrajs`.
+        bias_matrices : list(np.ndarray)
+            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the :math:`n`-th sample from
+            the :math:`i`-th trajectory, evaluated at thermodynamic state :math:`k`, i.e. :math:`b^k(x_{i,n})`.
         therm_state : int, optional
-            The index of the thermodynamic state in which the sample weights need to be computed. If therm_state=-1,
+            The index of the thermodynamic state in which the sample weights need to be computed. If `therm_state=-1`,
             the unbiased sample weights are computed.
 
         Returns
@@ -136,20 +154,20 @@ class TRAMModel(Model):
         Parameters
         ----------
         observable_values : list(np.ndarray)
-            The list of observable values. observable_values[i][n] contains the observable value for the n-th sample in
-            the i-th trajectory.
+            The list of observable values. `observable_values[i][n]` contains the observable value for the :math:`n`-th
+            sample in the :math:`i`-th trajectory.
         dtrajs : list(np.ndarray)
-            The list of discrete trajectories. dtrajs[i][n] contains the Markov state index of the n-th sample in the
-            i-th trajectory.
+            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the :math:`n`-th sample
+            in the :math:`i`-th trajectory.
         bias_matrices : list(np.ndarray)
-            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
-            trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
-            dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
-            sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
-
-        The observed values, bias matrices and dtrajs are associated, i.e. they all pertain to the same samples:
-        for the n-th sample in the i-the trajectory, its observable, bias values and Markov state can be found
-        at index n, i of observable_values, bias_matrices and dtrajs respectively.
+            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the :math:`n`-th sample from
+            the :math:`i`-th trajectory, evaluated at thermodynamic state :math:`k`, :math:`b^k(x_{i,n})`. The bias
+            energy matrices should have the same size as `dtrajs` in both the first and second dimension. The third
+            dimension is of size `n_therm_state`, i.e. for each sample, the bias energy in every thermodynamic state is
+            calculated and stored in the `bias_matrices`.
+        therm_state : int, optional, default=-1
+            The index of the thermodynamic state in which the observable need to be computed. If `therm_state=-1`, the
+            observable is computed for the unbiased (reference) state.
         """
         sample_weights = self.compute_sample_weights(dtrajs, bias_matrices, therm_state)
 
@@ -159,34 +177,33 @@ class TRAMModel(Model):
 
         return np.dot(sample_weights, observable_values)
 
-    def compute_PMF(self, dtrajs, bias_matrices, bin_indices, therm_state=-1, n_bins=None):
+    def compute_PMF(self, dtrajs, bias_matrices, bin_indices, therm_state=-1):
         r""" Compute an observable value.
 
         Parameters
         ----------
         dtrajs : list(np.ndarray)
-            The list of discrete trajectories. dtrajs[i][n] contains the Markov state index of the n-th sample in the
-            i-th trajectory.
+            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the :math:`n`-th sample
+            in the :math:`i`-th trajectory.
         bias_matrices : list(np.ndarray)
-            The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
-            trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
-            dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
-            sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
+            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the :math:`n`-th sample from
+            the :math:`i`-th trajectory, evaluated at thermodynamic state :math:`k`, :math:`b^k(x_{i,n})`. The bias
+            energy matrices should have the same size as `dtrajs` in both the first and second dimension. The third
+            dimension is of size `n_therm_state`, i.e. for each sample, the bias energy in every thermodynamic state is
+            calculated and stored in the `bias_matrices`.
         bin_indices : list(np.ndarray)
             The list of bin indices that the samples are binned into. The PMF is calculated as a distribution over these
-            bins. binnes_samples[i][n] contains the bin index for the n-th sample in the i-th trajectory.
-
-        The bin indices, bias matrices and dtrajs are associated, i.e. they all pertain to the same samples:
-        for the n-th sample in the i-the trajectory, its bin index, bias values and Markov state can be found
-        at index n, i of bin_indices, bias_matrices and dtrajs respectively.
+            bins. `binned_samples[i][n]` contains the bin index for the :math:`n`-th sample in the :math:`i`-th
+            trajectory.
+        therm_state : int, optional, default=-1
+            The index of the thermodynamic state in which the PMF need to be computed. If `therm_state=-1`, the PMF is
+            computed for the unbiased (reference) state.
         """
         # TODO: account for variable bin widths
         sample_weights = np.reshape(self.compute_sample_weights(dtrajs, bias_matrices, therm_state), -1)
         binned_samples = np.reshape(bin_indices, -1)
 
-        if n_bins is None:
-            n_bins = binned_samples.max() + 1
-
+        n_bins = binned_samples.max() + 1
         pmf = np.zeros(n_bins)
 
         for i in range(len(pmf)):

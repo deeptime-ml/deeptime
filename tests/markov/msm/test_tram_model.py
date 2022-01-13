@@ -1,7 +1,6 @@
 import numpy as np
-from deeptime.markov.msm.tram import TRAMModel
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
-from deeptime.markov.msm import MarkovStateModelCollection
+from deeptime.markov.msm import MarkovStateModelCollection, TRAM, TRAMModel
 
 
 def make_random_model(n_therm_states, n_markov_states, transition_matrices=None):

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from deeptime.markov.msm.tram import TRAMDataset
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
+from deeptime.markov.msm import TRAMDataset
 from deeptime.markov.msm.tram._tram_bindings import tram as tram_bindings
 from .test_tram_model import make_random_model
 
@@ -282,6 +282,7 @@ def test_check_against_model_is_invalid(n_therm_states, n_markov_states, make_tt
     dataset = make_random_dataset(n_therm_states, n_markov_states, make_ttrajs=make_ttrajs)
     with np.testing.assert_raises(ValueError):
         dataset.check_against_model(model)
+
 
 @pytest.mark.parametrize(
     "make_ttrajs", [True, False]

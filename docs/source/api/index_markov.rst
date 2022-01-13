@@ -28,6 +28,8 @@ Models
     msm.MarkovStateModel
     msm.MarkovStateModelCollection
     msm.BayesianPosterior
+    msm.TRAMModel
+
 
 Analysis tools
 ==============
@@ -69,6 +71,8 @@ Utilities and alternatives
     sample.compute_index_states
     sample.indices_by_sequence
     sample.indices_by_state
+
+    msm.TRAMDataset
 
 Transition counting
 -------------------

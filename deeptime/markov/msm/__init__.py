@@ -40,6 +40,7 @@ from ._maximum_likelihood_msm import MaximumLikelihoodMSM
 from ._bayesian_msm import BayesianMSM, BayesianPosterior
 from ._koopman_reweighted_msm import KoopmanReweightedMSM, OOMReweightedMSM
 from ._augmented_msm import AugmentedMSMEstimator, AugmentedMSM, AMMOptimizerState
+from .tram import TRAM, TRAMDataset, TRAMModel
 
 # set up null handler
 logging.getLogger(__name__).addHandler(logging.NullHandler())
