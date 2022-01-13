@@ -228,26 +228,23 @@ def test_callback_called(track_log_likelihoods):
 
 def test_progress_bar_update_called():
     class ProgressMock:
-        def __init__(self, _tracking_ints):
+        def __init__(self):
             self.total = 1
             self.desc = 0
 
-            self.tracking_ints = tracking_ints
-
-        def update(self, _):
+        def update(self):
             self.tracking_ints[0] += 1
 
         def close(self):
             self.tracking_ints[1] += 1
 
     # workaround to track function calls because the progress bar is copied internally
-    tracking_ints = [0, 0]
+    ProgressMock.tracking_ints = [0, 0]
 
-    progress_mock = ProgressMock(tracking_ints)
-    tram = TRAM(callback_interval=2, maxiter=10, progress=progress_mock)
+    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressMock)
     tram.fit(make_random_input_data(5, 5))
 
     # update() should be called 5 times
-    np.testing.assert_equal(tracking_ints[0], 5)
+    np.testing.assert_equal(ProgressMock.tracking_ints[0], 5)
     # and close() one time
-    np.testing.assert_equal(tracking_ints[1], 1)
+    np.testing.assert_equal(ProgressMock.tracking_ints[1], 1)

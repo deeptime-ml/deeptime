@@ -268,9 +268,8 @@ class TRAMDataset:
             conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
             'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
         progress : object, default=None
-            Progress bar object that TRAMDataset will call to indicate progress to the user.
-            Tested for a tqdm progress bar. Should implement `update()` and `close()` and have `total` and `desc`
-            properties.
+            Progress bar that TRAMDataset will call to indicate progress to the user.
+            Tested for a tqdm progress bar. Should implement `update()` and `close()`.
 
         Raises
         ------
@@ -362,7 +361,7 @@ class TRAMDataset:
                 if t.shape[0] != d.shape[0]:
                     raise ValueError(f"ttraj {i} and dtraj {i} should be of equal length.")
 
-    def _find_largest_connected_set(self, connectivity, connectivity_factor, progress_bar=None):
+    def _find_largest_connected_set(self, connectivity, connectivity_factor, progress=None):
         estimator = TransitionCountEstimator(lagtime=self.lagtime, count_mode=self.count_mode)
 
         # make a counts model over all observed samples.
@@ -396,7 +395,7 @@ class TRAMDataset:
             else:
                 connectivity_fn = tram.find_state_transitions_BAR_variance
 
-            with callbacks.Callback(progress_bar, self.n_therm_states * self.n_markov_states,
+            with callbacks.Callback(progress, self.n_therm_states * self.n_markov_states,
                                     "Finding connected sets") as callback:
                 (i_s, j_s) = connectivity_fn(self.ttrajs, self.dtrajs, self.bias_matrices, all_state_counts,
                                              self.n_therm_states, self.n_markov_states, connectivity_factor,

@@ -246,7 +246,7 @@ class TRAMCallback(callbacks.Callback):
         called. If false, no values are appended, only the last increment is stored.
     """
     def __init__(self, progress, n_iter, log_likelihoods_list=None, increments=None, store_convergence_info=False):
-        super().__init__(progress, n_iter, "Running TRAM estimate")
+        super().__init__(progress, n_iter=n_iter, display_text="Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
         self.store_convergence_info = store_convergence_info
