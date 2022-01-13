@@ -124,11 +124,11 @@ class TRAMModel(Model):
         Parameters
         ----------
         dtrajs : list(np.ndarray)
-            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the n-th sample in the
-            i-th trajectory. Sample weights are computed for each of the samples in the dtrajs.
+            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the :math:`n`-th sample
+            in the :math:`i`-th trajectory. Sample weights are computed for each of the samples in the `dtrajs`.
         bias_matrices : list(np.ndarray)
-            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the n-th sample from the i-th
-            trajectory, evaluated at thermodynamic state :math:`k`.
+            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the :math:`n`-th sample from
+            the :math:`i`-th trajectory, evaluated at thermodynamic state :math:`k`, i.e. :math:`b^k(x_{i,n})`.
         therm_state : int, optional
             The index of the thermodynamic state in which the sample weights need to be computed. If `therm_state=-1`,
             the unbiased sample weights are computed.
@@ -154,16 +154,17 @@ class TRAMModel(Model):
         Parameters
         ----------
         observable_values : list(np.ndarray)
-            The list of observable values. `observable_values[i][n]` contains the observable value for the n-th sample
-            in the i-th trajectory.
+            The list of observable values. `observable_values[i][n]` contains the observable value for the :math:`n`-th
+            sample in the :math:`i`-th trajectory.
         dtrajs : list(np.ndarray)
-            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the n-th sample in the
-            i-th trajectory.
+            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the :math:`n`-th sample
+            in the :math:`i`-th trajectory.
         bias_matrices : list(np.ndarray)
-            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the n-th sample from the i-th
-            trajectory, evaluated at thermodynamic state :math:`k`. The bias energy matrices should have the same size
-            as dtrajs in both the first and second dimension. The third dimension is of size `n_therm_state`, i.e. for
-            each sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
+            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the :math:`n`-th sample from
+            the :math:`i`-th trajectory, evaluated at thermodynamic state :math:`k`, :math:`b^k(x_{i,n})`. The bias
+            energy matrices should have the same size as `dtrajs` in both the first and second dimension. The third
+            dimension is of size `n_therm_state`, i.e. for each sample, the bias energy in every thermodynamic state is
+            calculated and stored in the `bias_matrices`.
         therm_state : int, optional, default=-1
             The index of the thermodynamic state in which the observable need to be computed. If `therm_state=-1`, the
             observable is computed for the unbiased (reference) state.
@@ -182,16 +183,18 @@ class TRAMModel(Model):
         Parameters
         ----------
         dtrajs : list(np.ndarray)
-            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the n-th sample in the
-            i-th trajectory.
+            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the :math:`n`-th sample
+            in the :math:`i`-th trajectory.
         bias_matrices : list(np.ndarray)
-            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the n-th sample from the i-th
-            trajectory, evaluated at thermodynamic state :math:`k`. The bias energy matrices should have the same size as
-            dtrajs in both the first and second dimension. The thirst dimension is of size n_therm_state, i.e. for each
-            sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
+            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the :math:`n`-th sample from
+            the :math:`i`-th trajectory, evaluated at thermodynamic state :math:`k`, :math:`b^k(x_{i,n})`. The bias
+            energy matrices should have the same size as `dtrajs` in both the first and second dimension. The third
+            dimension is of size `n_therm_state`, i.e. for each sample, the bias energy in every thermodynamic state is
+            calculated and stored in the `bias_matrices`.
         bin_indices : list(np.ndarray)
             The list of bin indices that the samples are binned into. The PMF is calculated as a distribution over these
-            bins. `binned_samples[i][n]` contains the bin index for the n-th sample in the i-th trajectory.
+            bins. `binned_samples[i][n]` contains the bin index for the :math:`n`-th sample in the :math:`i`-th
+            trajectory.
         therm_state : int, optional, default=-1
             The index of the thermodynamic state in which the PMF need to be computed. If `therm_state=-1`, the PMF is
             computed for the unbiased (reference) state.

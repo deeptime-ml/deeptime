@@ -78,16 +78,17 @@ class TRAM(_MSMBaseEstimator):
         Convergence criterion based on the maximal free energy change in a self-consistent
         iteration step.
     track_log_likelihoods : bool, optional, default=False
-        If True, the log-likelihood is stored every callback_interval steps. For calculation of the log-likelihood the
+        If `True`, the log-likelihood is stored every callback_interval steps. For calculation of the log-likelihood the
         transition matrix needs to be constructed, which will slow down estimation. By default, log-likelihoods are
         not computed.
     callback_interval : int, optional, default=0
-        Every callback_interval iteration steps, the callback function is called and error increments are stored. If
+        Every `callback_interval` iteration steps, the callback function is called and error increments are stored. If
         `track_log_likelihoods=true`, the log-likelihood are also stored. If `callback_interval=0`, no call to the
         callback function is done.
     progress : object
         Progress bar object that `TRAM` will call to indicate progress to the user.
-        Tested for a tqdm progress bar. Should implement `update()` and `close()` and have `tota` and `desc` properties.
+        Tested for a tqdm progress bar. Should implement `update()` and `close()` and have `total` and `desc`
+        properties.
 
     See also
     --------
@@ -163,28 +164,30 @@ class TRAM(_MSMBaseEstimator):
         ----------
         data: TRAMDataset or tuple
             If data is supplied in form of a data tuple, a TRAMDataset is constructed from the data tuple inside
-            `fit()`. The data tuple is of shape (dtrajs, bias_matrices) or (dtrajs, bias_matrices, ttrajs), with the
+            `fit()`. The data tuple is of shape `(dtrajs, bias_matrices)` or `(dtrajs, bias_matrices, ttrajs)`, with the
             inner values given by:
+
             * dtrajs: array-like(ndarray(n)), int
-               The discrete trajectories in the form of a list or array of numpy arrays. dtrajs[i] contains one
-               trajectory. dtrajs[i][n] equals the Markov state index that the n-th sample from the i-th trajectory was
-               binned into. Each of the dtrajs can be of variable length.
+               The discrete trajectories in the form of a list or array of numpy arrays. `dtrajs[i]` contains one
+               trajectory. `dtrajs[i][n]` equals the Markov state index that the :math:`n`-th sample from the
+               :math:`i`-th trajectory was binned into. Each of the `dtrajs` can be of variable length.
             * bias_matrices: ndarray-like(ndarray(n,m)), float
-               The bias energy matrices. `bias_matrices[i, n, l]` equals the bias energy of the n-th sample from the
-               i-th trajectory, evaluated at thermodynamic state :math:`k`. The bias energy matrices should have the
-               same size as dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state,
-               i.e. for each sample, the bias energy in every thermodynamic state is calculated and stored in the
-               bias_matrices.
+               The bias energy matrices. `bias_matrices[i][n, k]` equals the bias energy of the :math:`n`-th sample from
+               the :math:`i`-th trajectory, evaluated at thermodynamic state :math:`k`, :math:`b^k(x_{i,n})`. The bias
+               energy matrices should have the same size as `dtrajs` in both the first and second dimensions. The third
+               dimension is of size `n_therm_states`, i.e. for each sample, the bias energy in every thermodynamic state
+               is calculated and stored in the `bias_matrices`.
             * ttrajs: array-like(ndarray(n)), int, optional
-               `ttrajs[i]` indicates for each sample in the i-th trajectory what thermodynamic state that sample was
-               sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
-               trajectory  corresponds to a unique thermodynamic state, and `n_therm_states` equals the size of dtrajs.
+               `ttrajs[i]` indicates for each sample in the :math:`i`-th trajectory what thermodynamic state that sample
+               was sampled at. If `ttrajs = None`, we assume no replica exchange was done. In this case we assume each
+               trajectory  corresponds to a unique thermodynamic state, and `n_therm_states` equals the size of
+               `dtrajs`.
         model : TRAMModel, optional, default=None
             If a TRAMModel is given, the parameters from the TRAMModel are loaded into the estimator, and estimation
             continues from the loaded parameters as a starting point. Input data may differ from the input data used to
             estimate the input model, but the input data should lie within bounds of the number of thermodynamic states
-            and Markov states given by the model, meaning the highest occurring state indices in ttrajs and dtrajs may
-            be `model.n_therm_states - 1` and `model.n_markov_states - 1` respectively,
+            and Markov states given by the model, meaning the highest occurring state indices in `ttrajs` and `dtrajs`
+            may be `model.n_therm_states - 1` and `model.n_markov_states - 1` respectively,
             If no model is given, estimation starts from zero-initialized arrays for the free energies and modified
             state counts. The lagrangian multipliers are initialized with values
             :math:`v_i^{k, 0} = \mathrm{log} (c_{ij}^k + c_{ji}^k)/2`
@@ -235,7 +238,7 @@ class TRAMCallback(callbacks.Callback):
     Parameters
     ----------
     log_likelihoods_list : list, optional
-        A list to append the log-likelilihoods to that are passed to the callback.__call__() method.
+        A list to append the log-likelihoods to that are passed to the callback.__call__() method.
     increments : list, optional
         A list to append the increments to that are passed to the callback.__call__() method.
     store_convergence_info : bool, default=False
