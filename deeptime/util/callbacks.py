@@ -1,4 +1,5 @@
 import copy
+from .platform import handle_progress_bar
 
 
 class Callback:
@@ -13,22 +14,19 @@ class Callback:
        display_text : string
            text to display in front of the progress bar.
        """
-    def __init__(self, progress_bar, n_iter, display_text):
 
-        self.progress_bar = None
-        if progress_bar is not None:
-            self.progress_bar = copy.copy(progress_bar)
+    def __init__(self, progress, n_iter=None, display_text=None):
+        self.progress_bar = handle_progress_bar(progress)()
+        if display_text is not None:
             self.progress_bar.desc = display_text
+        if n_iter is not None:
             self.progress_bar.total = n_iter
 
     def __call__(self):
-        """Callback method for the c++ bindings."""
-        if self.progress_bar is not None:
-            self.progress_bar.update(1)
+        self.progress_bar.update()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.progress_bar is not None:
-            self.progress_bar.close()
+        self.progress_bar.close()

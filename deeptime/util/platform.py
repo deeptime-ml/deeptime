@@ -49,4 +49,6 @@ def handle_progress_bar(progress):
 
             def update(self): pass
 
+            def close(self): pass
+
     return progress
