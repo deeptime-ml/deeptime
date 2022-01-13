@@ -44,7 +44,7 @@ def _make_tram_estimator(model, dataset):
 
 def _get_dataset_from_input(data):
     if isinstance(data, tuple):
-        dtrajs, bias_matrices, ttrajs = unpack_input_tuple(data)
+        dtrajs, bias_matrices, ttrajs = _unpack_input_tuple(data)
         return TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices, ttrajs=ttrajs)
     if isinstance(data, TRAMDataset):
         return data
