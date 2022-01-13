@@ -16,7 +16,7 @@ Estimators
 
     msm.MaximumLikelihoodMSM
     msm.BayesianMSM
-    msm.tram.TRAM
+    msm.TRAM
 
 
 Models
@@ -28,7 +28,7 @@ Models
     msm.MarkovStateModel
     msm.MarkovStateModelCollection
     msm.BayesianPosterior
-    msm.tram.TRAMModel
+    msm.TRAMModel
 
 
 Analysis tools
@@ -72,7 +72,7 @@ Utilities and alternatives
     sample.indices_by_sequence
     sample.indices_by_state
 
-    msm.tram.TRAMDataset
+    msm.TRAMDataset
 
 Transition counting
 -------------------

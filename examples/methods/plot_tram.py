@@ -13,8 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from deeptime.data import tmatrix_metropolis1d
-from deeptime.markov.msm import MarkovStateModel
-from deeptime.markov.msm.tram import TRAM
+from deeptime.markov.msm import MarkovStateModel, TRAM
 from deeptime.clustering import KMeansModel
 
 xs = np.linspace(-1.5, 1.5, num=100)

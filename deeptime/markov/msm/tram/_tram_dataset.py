@@ -59,33 +59,33 @@ class TRAMDataset:
     thermodynamic state, with the index corresponding to the index of occurance in dtrajs.
 
     The values at identical indices in dtrajs, ttrajs and bias_matrices correspond to the sample. For example, at
-    indices [i][n] we find information about the n-th sample in trajectory i. dtrajs[i][n] gives us the Markov state
-    the sample falls into. ttrajs[i][n] gives us the thermodynamic state the sample was sampled at (which may be
-    different from other samples in the trajectory due to a replica exchange swap occuring at index n). Finally,
-    bias_matrices[i][n] gives us for each thermodynamic state, the energy of the sample evaluated at that thermodynamic
-    state. In other words: bias_matrices[i][n][k] gives us :math:`b^k(x_i^n)`, i.e. the bias energy as if the sample
-    were observed in thermodynamic state :math:`k`.
+    indices `(i, n)` we find information about the n-th sample in trajectory i. `dtrajs[i][n]` gives us the Markov state
+    the sample falls into. `ttrajs[i][n]` gives us the thermodynamic state the sample was sampled at (which may be
+    different from other samples in the trajectory due to a replica exchange swap occurring at index n). Finally,
+    `bias_matrices[i][n]` gives us for each thermodynamic state, the energy of the sample evaluated at that
+    thermodynamic state. In other words: `bias_matrices[i][n][k]` gives us :math:`b^k(x_i^n)`, i.e. the bias energy as
+    if the sample were observed in thermodynamic state :math:`k`.
 
     Parameters
     ----------
     dtrajs : array-like(ndarray(n)), int
-        The discrete trajectories in the form of a list or array of numpy arrays. dtrajs[i] contains one trajectory.
-        dtrajs[i][n] contains the Markov state index that the n-th sample from the i-th trajectory was binned
+        The discrete trajectories in the form of a list or array of numpy arrays. `dtrajs[i]` contains one trajectory.
+        `dtrajs[i][n]` contains the Markov state index that the n-th sample from the i-th trajectory was binned
         into. Each of the dtrajs can be of variable length.
-    bias_matrices : ndarray-like(ndarray(n,m)), float
-        The bias energy matrices. bias_matrices[i, n, l] contains the bias energy of the n-th sample from the i-th
-        trajectory, evaluated at thermodynamic state k. The bias energy matrices should have the same size as
-        dtrajs in both the 0-th and 1-st dimension. The seconds dimension of of size n_therm_state, i.e. for each
+    bias_matrices : array-like(ndarray(n,m)), float
+        The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the n-th sample from the i-th
+        trajectory, evaluated at thermodynamic state :math:`k`. The bias energy matrices should have the same size as
+        dtrajs in both the first and second dimension. The third dimension is of size n_therm_state, i.e. for each
         sample, the bias energy in every thermodynamic state is calculated and stored in the bias_matrices.
     ttrajs : array-like(ndarray(n)), int, optional
-        ttrajs[i] indicates for each sample in the i-th trajectory what thermodynamic state that sample was
+        `ttrajs[i]` contains for each sample in the i-th trajectory the index of the thermodynamic state that sample was
         sampled at. If ttrajs is None, we assume no replica exchange was done. In this case we assume each
         trajectory  corresponds to a unique thermodynamic state, and n_therm_states equals the size of dtrajs.
     n_therm_states : int, optional
         if n_therm_states is given, the indices in ttrajs are checked to lie within n_therm_states bound. Otherwise,
         n_therm_states are inferred from the ttrajs.
     n_markov_states : int, optional
-        if n_markov_states is given, the indices in dtrajs are checked to lie within n_therm_states bound. Otherwise,
+        if n_markov_states is given, the indices in dtrajs are checked to lie within n_markov_states bound. Otherwise,
         n_markov_states are inferred from the dtrajs.
     lagtime : int, optional, default=1
         Integer lag time at which transitions are counted.
@@ -105,7 +105,7 @@ class TRAMDataset:
     See Also
     --------
     :class:`TransitionCountEstimator <deeptime.markov.TransitionCountEstimator>`,
-    :class:`TRAM <deeptime.markov.msm.tram.TRAM>`, :class:`TRAMModel <deeptime.markov.msm.tram.TRAMModel>`
+    :class:`TRAM <deeptime.markov.msm.TRAM>`, :class:`TRAMModel <deeptime.markov.msm.TRAMModel>`
 
     """
 
@@ -156,14 +156,14 @@ class TRAMDataset:
     @cached_property
     def transition_counts(self):
         r"""
-        The transition counts matrices. transition_counts[k] contains the transition counts for thermodynamic state
-        k, based on the TransitionCountModel of state k. transition_counts[k][i][j] equals the number of observed
-        transitions from Markov state :math:`i` to Markov state :math:`j`, in thermodynamic state :math:`k`.
+        The transition counts matrices. `transition_counts[k]` contains the transition counts for thermodynamic state
+        :math:`k`, based on the TransitionCountModel of state :math:`k`. `transition_counts[k][i][j]` equals the number
+        of observed transitions from Markov state :math:`i` to Markov state :math:`j`, in thermodynamic state :math:`k`.
 
         The transition counts for every thermodynamic state are shaped to contain all possible markov states, even the
-        ones without counts in that thermodynamic state. This is done so that the _tram_bindings receives count matrices
-        that are all the same shape, which is easier to handle (matrices are padded with zeros for all empty states that
-        got  dropped by the TransitionCountModels).
+        ones without counts in that thermodynamic state. This is done so that the underlying c++ estimator receives
+        count matrices that are all the same shape, which is easier to handle (matrices are padded with zeros for all
+        empty states that got  dropped by the TransitionCountModels).
 
         :getter: the transition counts
         :type: ndarray(n, m, m)
@@ -182,14 +182,14 @@ class TRAMDataset:
     @cached_property
     def state_counts(self):
         r""" ndarray(n, m)
-        The state counts histogram. state_counts[k] contains the state histogram for thermodynamic state k,
-        based on the TransitionCountModel of state k. state_counts[k][i] equals the number of samples that fall into
-        Markov state :math:`i`, sampled at thermodynamic state :math:`k`.
+        The state counts histogram. `state_counts[k]` contains the state histogram for thermodynamic state :math:`k`,
+        based on the TransitionCountModel of state :math:`k`. `state_counts[k][i]``  equals the number of samples that
+        fall into Markov state :math:`i`, sampled at thermodynamic state :math:`k`.
 
         The state counts for every thermodynamic state are shaped to contain all possible markov states, even the ones
-        without counts in that thermodynamic state. This is done so that the _tram_bindings receives count matrices that
-        are all the same shape, which is easier to handle (matrices are padded with zeros for all empty states that got
-        dropped by the TransitionCountModels).
+        without counts in that thermodynamic state. This is done so that the underlying c++ estimator receives count
+        matrices that are all the same shape, which is easier to handle (matrices are padded with zeros for all empty
+        states that got dropped by the TransitionCountModels).
         """
         state_counts = np.zeros((self.n_therm_states, self.n_markov_states), dtype=np.int32)
 
@@ -256,9 +256,9 @@ class TRAMDataset:
             * "BAR_variance" : like 'post_hoc_RE' but with a different condition to define the thermodynamic overlap
               based on the variance of the BAR estimator :footcite:`shirts2008statistically`.
               Two thermodynamic states k and l are defined to overlap
-              at Markov state n if the variance of the free energy difference Delta :math:`f_{kl}` computed with BAR (and
-              restricted to conformations form Markov state n) is less or equal than one. The minimally required variance
-              can be controlled with `connectivity_factor`.
+              at Markov state n if the variance of the free energy difference Delta :math:`f_{kl}` computed with BAR
+              (and restricted to conformations form Markov state n) is less or equal than one. The minimally required
+              variance can be controlled with `connectivity_factor`.
             * "summed_count_matrix" : all thermodynamic states are assumed to overlap. The connected set is then
               computed by summing the count matrices over all thermodynamic states and taking its largest strongly
               connected set. Not recommended!
@@ -282,8 +282,9 @@ class TRAMDataset:
         self.restrict_to_submodel(lcc)
 
     def restrict_to_submodel(self, submodel):
-        """Restrict the count matrices and dtrajs to the connected set. All dtraj samples not in the connected set will
-        be set to -1. The count_models are recomputed after restricting the dtrajs to the connected set.
+        """Restrict the count matrices and dtrajs to the given submodel. The submodel is either given in form of a list
+        of Markov state indices, or as a TransitionCountModel. All dtraj samples not in the submodel will be set to -1.
+        The count_models are recomputed after restricting the dtrajs to the submodel.
 
         Parameters
         ----------

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from deeptime.markov.msm.tram import TRAM, unpack_input_tuple
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
+from deeptime.markov.msm import TRAM
 from .test_tram_model import make_random_model
 
 
@@ -17,24 +17,9 @@ def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_t
 
 
 def test_unpack_input():
-    arr = np.random.rand(10)
-    try:
-        dtrajs, biases, ttrajs = unpack_input_tuple((arr, arr, arr))
-        np.testing.assert_array_equal(dtrajs, arr)
-        np.testing.assert_array_equal(biases, arr)
-        np.testing.assert_array_equal(ttrajs, arr)
-        dtrajs, biases, ttrajs = unpack_input_tuple((arr, arr))
-        np.testing.assert_array_equal(dtrajs, arr)
-        np.testing.assert_array_equal(biases, arr)
-        np.testing.assert_equal(len(ttrajs), 0)
-    except IndexError:
-        pytest.fail("IndexError while unpacking input!")
-
-
-def test_unpack_input():
     arr = np.zeros(10)
     with pytest.raises(ValueError) as exinfo:
-        unpack_input_tuple((arr, arr, arr, arr))
+        TRAM().fit((arr, arr, arr, arr))
         assert 'Unexpected number of arguments' in exinfo.value
 
 
