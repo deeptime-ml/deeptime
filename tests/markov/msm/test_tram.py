@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import TRAM
 from .test_tram_model import make_random_model
 
