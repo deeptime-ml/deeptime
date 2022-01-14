@@ -20,7 +20,6 @@ constexpr static dtype prior() { return 0.0; }
 template<typename dtype>
 constexpr static dtype logPrior() { return -std::numeric_limits<dtype>::infinity(); }
 
-
 template<typename dtype>
 np_array_nfc<dtype> generateFilledArray(const std::vector<py::ssize_t> &dims, dtype fillValue) {
     np_array_nfc<dtype> array(dims);
@@ -308,8 +307,8 @@ public:
 
             dtype logLikelihood{0};
             if (trackLogLikelihoods) {
+                // log likelihood depends on transition matrices. Compute them first.
                 computeTransitionMatrices();
-
                 logLikelihood = computeLogLikelihood(input_->dtraj(), input_->biasMatrix(),
                                                      biasedConfEnergies_, modifiedStateCountsLog_,
                                                      *thermStateEnergies_.first(), input_->stateCounts(),

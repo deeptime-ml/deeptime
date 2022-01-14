@@ -242,7 +242,7 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
                     }
                 }
                 // ... states can only overlap if they both have counts in markov state i
-                if (stateCountsBuf(k, i) > 0) {
+                if ((*stateCountsBufPtr)(k, i) > 0) {
                     for (StateIndex l = 0; l < nThermStates; ++l) {
                         // ... other state also needs to have counts in markov state i.
                         if (k != l && (*stateCountsBufPtr)(l, i) > 0) {
