@@ -105,7 +105,7 @@ private:
 // natural logarithm of the statistical weight per sample, log \mu^k(x).
 // If thermState =-1, this is the unbiased statistical sample weight, log \mu(x).
 template<typename dtype>
-static auto computeSampleWeightsLog(StateIndex thermStateIndex,
+static const auto computeSampleWeightsLog(StateIndex thermStateIndex,
                                     const DTraj & dtraj,
                                     const BiasMatrix<dtype> & biasMatrix,
                                     const np_array<dtype> & thermStateEnergies,
@@ -192,7 +192,7 @@ computeDiscreteLikelihood(StateIndex nThermStates, StateIndex nMarkovStates, Ene
 // biasedConfEnergies_. This computes the parameter-dependent part of the likelihood, i.e. the factor -b^k(x) is
 // omitted as it is constant.
 template<typename dtype>
-static const dtype computeLogLikelihood (const DTraj &dtraj,
+static const auto computeLogLikelihood (const DTraj &dtraj,
                                   const BiasMatrix<dtype> &biasMatrix,
                                   const np_array_nfc<dtype> &biasedConfEnergies,
                                   const np_array_nfc<dtype> &modifiedStateCountsLog,
