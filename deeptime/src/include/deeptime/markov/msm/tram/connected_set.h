@@ -210,7 +210,7 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuffers (biasMatrices.begin(), biasMatrices.end());
     auto biasMatricesPtr = biasMatrixBuffers.data();
 
-    ArrayBuffer<np_array_nfc<std::int32_t>, 2> stateCountsBuf {stateCounts};
+    ArrayBuffer<CountsMatrix, 2> stateCountsBuf {stateCounts};
     auto stateCountsBufPtr = &stateCountsBuf;
 
 #pragma omp parallel default(none) firstprivate(nMarkovStates, nThermStates, nTrajs, ttrajsPtr, dtrajsPtr, biasMatricesPtr, stateCountsBufPtr, connectivityFactor, callback) shared(thermStateIndicesFromPerThread, thermStateIndicesToPerThread)

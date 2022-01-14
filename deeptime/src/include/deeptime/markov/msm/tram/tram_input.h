@@ -20,7 +20,7 @@ constexpr void throwIfInvalid(bool isValid, const std::string &message) {
 template<typename dtype>
 class TRAMInput {
 public:
-    TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
+    TRAMInput(CountsMatrix &&stateCounts, CountsMatrix &&transitionCounts,
               DTraj dtraj, BiasMatrix<dtype> biasMatrix)
             : stateCounts_(std::move(stateCounts)),
               transitionCounts_(std::move(transitionCounts)),
@@ -104,8 +104,8 @@ public:
 
 
 private:
-    np_array_nfc<std::int32_t> stateCounts_;
-    np_array_nfc<std::int32_t> transitionCounts_;
+    CountsMatrix stateCounts_;
+    CountsMatrix transitionCounts_;
     DTraj dtraj_;
     BiasMatrix<dtype> biasMatrix_;
 };

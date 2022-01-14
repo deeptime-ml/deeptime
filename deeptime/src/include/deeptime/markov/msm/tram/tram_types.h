@@ -19,4 +19,6 @@ template<typename dtype>
 using BiasMatrices = std::vector<BiasMatrix<dtype>>;
 
 using StateIndex = py::ssize_t;
+
+using CountsMatrix = np_array_nfc<std::int32_t>;
 }

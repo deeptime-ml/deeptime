@@ -197,16 +197,16 @@ static const auto computeLogLikelihood (const DTraj &dtraj,
                                   const np_array_nfc<dtype> &biasedConfEnergies,
                                   const np_array_nfc<dtype> &modifiedStateCountsLog,
                                   const np_array<dtype> &thermStateEnergies,
-                                  const np_array_nfc<std::int32_t> &stateCounts,
-                                  const np_array_nfc<std::int32_t> &transitionCounts,
+                                  const CountsMatrix &stateCounts,
+                                  const CountsMatrix &transitionCounts,
                                   const np_array_nfc<dtype> &transitionMatrices) {
     auto nThermStates = static_cast<StateIndex>(biasedConfEnergies.shape(0));
     auto nMarkovStates = static_cast<StateIndex>(biasedConfEnergies.shape(1));
 
     // use threadsafe arraybuffers
     ArrayBuffer<np_array_nfc<dtype>, 2> biasedConfEnergiesBuf{biasedConfEnergies};
-    ArrayBuffer<np_array_nfc<std::int32_t>, 3> transitionCountsBuf{transitionCounts};
-    ArrayBuffer<np_array_nfc<std::int32_t>, 2> stateCountsBuf{stateCounts};
+    ArrayBuffer<CountsMatrix, 3> transitionCountsBuf{transitionCounts};
+    ArrayBuffer<CountsMatrix, 2> stateCountsBuf{stateCounts};
     ArrayBuffer<np_array_nfc<dtype>, 3> transitionMatricesBuf{transitionMatrices};
 
     // first get likelihood of all discrete quantities (transition likelihood and free energies times state counts)
