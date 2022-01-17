@@ -28,7 +28,7 @@ auto generateDtraj(int nMarkovStates, int length) {
 
     // ensure all Markov states sampled at least once
     for (int i = 0; i < nMarkovStates; ++i) {
-        traj[K].mutable_at(1 + i) = i;
+        traj.mutable_at(1 + i) = i;
     }
 
     return traj;
