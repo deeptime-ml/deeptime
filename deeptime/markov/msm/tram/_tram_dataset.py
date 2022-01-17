@@ -25,9 +25,9 @@ def transition_counts_from_count_models(n_therm_states, n_markov_states, count_m
     for k in range(n_therm_states):
         model_k = count_models[k]
         if model_k.count_matrix.sum() > 0:
-            i_s, j_s = np.meshgrid(model_k.state_symbols, model_k.state_symbols)
+            i_s, j_s = np.meshgrid(model_k.state_symbols, model_k.state_symbols, indexing='ij')
             # place submodel counts in our full-sized count matrices
-            transition_counts[k, i_s, j_s] = model_k.count_matrix.T
+            transition_counts[k, i_s, j_s] = model_k.count_matrix
 
     return transition_counts
 
