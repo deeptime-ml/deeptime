@@ -26,6 +26,11 @@ auto generateDtraj(int nMarkovStates, int length) {
     np_array_nfc<int> traj(std::vector<int>{length});
     std::generate(traj.mutable_data(), traj.mutable_data() + length, generator);
 
+    // ensure all Markov states sampled at least once
+    for (int i = 0; i < nMarkovStates; ++i) {
+        traj[K].mutable_at(1 + i) = i;
+    }
+
     return traj;
 }
 
@@ -109,7 +114,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
             }
 
             AND_WHEN("estimate() is called") {
-                tram.estimate(inputPtr, 3, 1e-8, true);
+                tram.estimate(inputPtr, 3, 1e-8, 0);
 
                 TestType LL = deeptime::markov::tram::computeLogLikelihood(
                         inputPtr->dtraj(), inputPtr->biasMatrix(), tram.biasedConfEnergies(),
