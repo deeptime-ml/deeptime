@@ -838,6 +838,14 @@ class HiddenMarkovModel(Model):
                                   observation_symbols_full=self.observation_symbols_full)
         return model
 
+    def _check_connectivity_threshold(self, connectivity_threshold: Union[float, str]) -> float:
+        if str(connectivity_threshold) == '1/n':
+            connectivity_threshold = 1.0 / float(self.transition_model.n_states)
+        elif isinstance(connectivity_threshold, str):
+            raise RuntimeError('Connectivity threshold must be a float or 1/n.')
+
+        return connectivity_threshold
+
     def _select_states(self, connectivity_threshold, states) -> np.ndarray:
         r"""
         Retrieves a selection of states based on the arguments provided.
@@ -853,8 +861,9 @@ class HiddenMarkovModel(Model):
         -------
         A ndarray containing a subselection of states.
         """
-        if str(connectivity_threshold) == '1/n':
-            connectivity_threshold = 1.0 / float(self.transition_model.n_states)
+
+        connectivity_threshold = self._check_connectivity_threshold(connectivity_threshold)
+
         if isinstance(states, str):
             strong = 'strong' in states
             largest = 'largest' in states
@@ -998,6 +1007,7 @@ class HiddenMarkovModel(Model):
         hmm : HiddenMarkovModel
             The restricted HMM.
         """
+        connectivity_threshold = self._check_connectivity_threshold(connectivity_threshold)
         lcc = self.transition_model.count_model.connected_sets(connectivity_threshold=connectivity_threshold)[0]
         return self.submodel(lcc)
 
