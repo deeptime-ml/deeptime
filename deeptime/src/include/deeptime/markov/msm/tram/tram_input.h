@@ -74,15 +74,15 @@ public:
         return biasMatrix_.template unchecked<2>();
     }
 
-    auto & dtraj() const {
+    const auto & dtraj() const {
         return dtraj_;
     }
 
-    auto dtrajBuf() const {
+    const auto dtrajBuf() const {
         return dtraj_.template unchecked<1>();
     }
 
-    auto & transitionCounts() const {
+    const auto& transitionCounts() const {
         return transitionCounts_;
     }
 
@@ -90,7 +90,7 @@ public:
         return transitionCounts_.template unchecked<3>();
     }
 
-    auto & stateCounts() const {
+    const auto& stateCounts() const {
         return stateCounts_;
     }
 
