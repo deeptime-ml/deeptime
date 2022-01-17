@@ -82,7 +82,7 @@ public:
         return dtraj_.template unchecked<1>();
     }
 
-    auto & transitionCounts() const {
+    const auto& transitionCounts() const {
         return transitionCounts_;
     }
 
