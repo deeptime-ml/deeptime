@@ -90,7 +90,7 @@ public:
         return transitionCounts_.template unchecked<3>();
     }
 
-    auto & stateCounts() const {
+    const auto& stateCounts() const {
         return stateCounts_;
     }
 
