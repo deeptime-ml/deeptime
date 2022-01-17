@@ -104,11 +104,11 @@ private:
 // natural logarithm of the statistical weight per sample, log \mu^k(x).
 // If thermState =-1, this is the unbiased statistical sample weight, log \mu(x).
 template<typename dtype>
-static const std::vector<dtype> computeSampleWeightsLog(StateIndex thermStateIndex,
-                                    const DTraj & dtraj,
-                                    const BiasMatrix<dtype> & biasMatrix,
-                                    const np_array<dtype> & thermStateEnergies,
-                                    const np_array_nfc<dtype> & modifiedStateCountsLog) {
+static const std::vector<dtype> computeSampleWeightsLog(const DTraj &dtraj,
+                                                        const BiasMatrix<dtype> &biasMatrix,
+                                                        const np_array<dtype> &thermStateEnergies,
+                                                        const np_array_nfc<dtype> &modifiedStateCountsLog,
+                                                        StateIndex thermStateIndex) {
     std::size_t nThermStates = static_cast<StateIndex>(thermStateEnergies.size());
 
     std::vector<dtype> sampleWeights(dtraj.size());
@@ -125,20 +125,20 @@ static const std::vector<dtype> computeSampleWeightsLog(StateIndex thermStateInd
             // The sample weight has no meaning, as it does not exist in the connected set. The value is set to -inf
             // so that the weight is zero and the sample does not contribute to the output when computing observables.
             sampleWeights[x] = -std::numeric_limits<dtype>::infinity();
-            continue;
-        }
-        int o = 0;
-        for (StateIndex l = 0; l < nThermStates; ++l) {
-            if (modifiedStateCountsLogBuf(l, i) > -std::numeric_limits<dtype>::infinity()) {
-                scratch[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf(x, l);
+        } else {
+            int o = 0;
+            for (StateIndex l = 0; l < nThermStates; ++l) {
+                if (modifiedStateCountsLogBuf(l, i) > -std::numeric_limits<dtype>::infinity()) {
+                    scratch[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf(x, l);
+                }
             }
-        }
-        auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
-        if (thermStateIndex == -1) {// get unbiased sample weight
-            sampleWeights[x] = -log_divisor;
-        } else { // get biased sample weight for given thermState index
-            sampleWeights[x] = -biasMatrixBuf(x, thermStateIndex) - log_divisor
-                                        + thermStateEnergiesBuf(thermStateIndex);
+            auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
+            if (thermStateIndex == -1) {// get unbiased sample weight
+                sampleWeights[x] = -log_divisor;
+            } else { // get biased sample weight for given thermState index
+                sampleWeights[x] = -biasMatrixBuf(x, thermStateIndex) - log_divisor
+                                   + thermStateEnergiesBuf(thermStateIndex);
+            }
         }
     }
     return sampleWeights;
@@ -161,7 +161,7 @@ computeDiscreteLikelihood(StateIndex nThermStates, StateIndex nMarkovStates, Ene
     #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCounts, \
                                                             transitionMatrices, stateCounts, \
                                                             biasedConfEnergies) reduction(+:LL) collapse(2)
-    for (StateIndex  k = 0; k < nThermStates; ++k) {
+    for (StateIndex k = 0; k < nThermStates; ++k) {
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
             // discrete sample log-likelihood \sum_{k=1}^K \sum_{i=1}^m N_i^k * f_i^k
             if ((*stateCounts)(k, i) > 0) {
@@ -189,14 +189,14 @@ computeDiscreteLikelihood(StateIndex nThermStates, StateIndex nMarkovStates, Ene
 // biasedConfEnergies_. This computes the parameter-dependent part of the likelihood, i.e. the factor -b^k(x) is
 // omitted as it is constant.
 template<typename dtype>
-static const dtype computeLogLikelihood (const DTraj &dtraj,
-                                  const BiasMatrix<dtype> &biasMatrix,
-                                  const np_array_nfc<dtype> &biasedConfEnergies,
-                                  const np_array_nfc<dtype> &modifiedStateCountsLog,
-                                  const np_array<dtype> &thermStateEnergies,
-                                  const CountsMatrix &stateCounts,
-                                  const CountsMatrix &transitionCounts,
-                                  const np_array_nfc<dtype> &transitionMatrices) {
+static const dtype computeLogLikelihood(const DTraj &dtraj,
+                                        const BiasMatrix<dtype> &biasMatrix,
+                                        const np_array_nfc<dtype> &biasedConfEnergies,
+                                        const np_array_nfc<dtype> &modifiedStateCountsLog,
+                                        const np_array<dtype> &thermStateEnergies,
+                                        const CountsMatrix &stateCounts,
+                                        const CountsMatrix &transitionCounts,
+                                        const np_array_nfc<dtype> &transitionMatrices) {
     auto nThermStates = static_cast<StateIndex>(biasedConfEnergies.shape(0));
     auto nMarkovStates = static_cast<StateIndex>(biasedConfEnergies.shape(1));
 
@@ -211,7 +211,7 @@ static const dtype computeLogLikelihood (const DTraj &dtraj,
                                                    &stateCountsBuf, &transitionCountsBuf, &transitionMatricesBuf);
 
     // then compute log of all sample weights, and add to log likelihood.
-    auto sampleWeights = computeSampleWeightsLog(-1, dtraj, biasMatrix, thermStateEnergies, modifiedStateCountsLog);
+    auto sampleWeights = computeSampleWeightsLog(dtraj, biasMatrix, thermStateEnergies, modifiedStateCountsLog, -1);
     logLikelihood += numeric::kahan::logsumexp_sort_kahan_inplace(sampleWeights.begin(), sampleWeights.end());
 
     return logLikelihood;
@@ -360,11 +360,6 @@ private:
 
     constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
 
-    constexpr static dtype prior() { return tram::detail::prior<dtype>(); }
-
-    constexpr static dtype logPrior() { return tram::detail::logPrior<dtype>(); }
-
-
     void initLagrangianMult() {
         auto transitionCountsBuf = input_->transitionCountsBuf();
         auto lagrangianMultLogBuf = lagrangianMultLog_.firstBuf();
@@ -415,7 +410,8 @@ private:
                     // special case: most variables cancel out, here
                     if (i == j) {
                         scratch[o++] = (0 == CKij) ?
-                                       logPrior() : std::log(prior() + (dtype) CKij);
+                                       tram::detail::logPrior<dtype>() : std::log(
+                                        tram::detail::prior<dtype>() + (dtype) CKij);
                     } else {
                         auto CK = CKij + transitionCountsBuf(k, j, i);
                         if (0 != CK) {
@@ -492,7 +488,8 @@ private:
                         Ci += CKji;
                         // special case: most variables cancel out, here
                         if (i == j) {
-                            auto CKijLog = (0 == CKij) ? logPrior() : std::log(prior() + (dtype) CKij);
+                            auto CKijLog = (0 == CKij) ? tram::detail::logPrior<dtype>() : std::log(
+                                    tram::detail::prior<dtype>() + (dtype) CKij);
                             scratch.push_back(CKijLog + biasedConfEnergiesBuf(k, i));
                         } else {
                             auto CK = CKij + CKji;

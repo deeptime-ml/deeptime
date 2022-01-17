@@ -40,7 +40,7 @@ void flatten(InIter start, InIter end, OutIter dest) {
 }
 
 template<typename DTrajs>
-Indices2D findIndexOfSamplesInMarkovState(StateIndex i, std::size_t nTrajs, const DTrajs * ttrajs, const DTrajs * dtrajs,
+Indices2D findIndexOfSamplesInMarkovState(StateIndex i, std::size_t nTrajs, const DTrajs *ttrajs, const DTrajs *dtrajs,
                                           StateIndex nThermStates) {
     Indices2D indices(nThermStates);
 
@@ -48,10 +48,10 @@ Indices2D findIndexOfSamplesInMarkovState(StateIndex i, std::size_t nTrajs, cons
         std::size_t trajLength = dtrajs[j].size();
 
         for (std::size_t n = 0; n < trajLength; ++n) {
-	   // cast i because dtraj can contain negative state indices
+            // cast i because dtraj can contain negative state indices
             if (dtrajs[j](n) == static_cast<std::int32_t>(i)) {
                 auto k = ttrajs ? ttrajs[j](n) : j;
-		
+
                 // markov state i sampled in therm state k can be found at bias matrix index (j, n,)
                 indices[k].emplace_back(j, n);
             }
@@ -129,15 +129,9 @@ struct OverlapBarVariance {
     }
 };
 
-
-template <typename T>
-struct id {
-    typedef T type;
-};
-
 template<typename BiasMatrices>
 const auto getBiasPairs(const std::vector<Index2D> &sampleIndices, StateIndex k, StateIndex l,
-                        const BiasMatrices * biasMatrices) {
+                        const BiasMatrices *biasMatrices) {
 
     using dtype = typename BiasMatrices::value_type;
 
@@ -153,7 +147,7 @@ const auto getBiasPairs(const std::vector<Index2D> &sampleIndices, StateIndex k,
 
 template<typename BiasMatrices>
 const auto getPairOfBiasPairs(const Indices2D &sampleIndicesIn_i, StateIndex k, StateIndex l,
-                              const BiasMatrices * biasMatrices) {
+                              const BiasMatrices *biasMatrices) {
 
     auto biasPairsK = getBiasPairs(sampleIndicesIn_i[k], k, l, biasMatrices);
     auto biasPairsL = getBiasPairs(sampleIndicesIn_i[l], k, l, biasMatrices);
@@ -199,46 +193,49 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     auto nTrajs = dtrajs.size();
 
     // threads don't like references
-    std::vector<ArrayBuffer<DTraj, 1>> dtrajBuffers (dtrajs.begin(), dtrajs.end());
+    std::vector<ArrayBuffer<DTraj, 1>> dtrajBuffers(dtrajs.begin(), dtrajs.end());
     auto dtrajsPtr = dtrajBuffers.data();
 
     ArrayBuffer<DTraj, 1> *ttrajsPtr = nullptr;
     std::vector<ArrayBuffer<DTraj, 1>> ttrajBuffers;
 
     if (ttrajs) {
-        ttrajBuffers = std::vector<ArrayBuffer<DTraj, 1>> ((*ttrajs).begin(), (*ttrajs).end());
+        ttrajBuffers = std::vector<ArrayBuffer<DTraj, 1>>((*ttrajs).begin(), (*ttrajs).end());
         ttrajsPtr = ttrajBuffers.data();
     }
 
-    std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuffers (biasMatrices.begin(), biasMatrices.end());
+    std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuffers(biasMatrices.begin(), biasMatrices.end());
     auto biasMatricesPtr = biasMatrixBuffers.data();
 
-    ArrayBuffer<CountsMatrix, 2> stateCountsBuf {stateCounts};
+    ArrayBuffer<CountsMatrix, 2> stateCountsBuf{stateCounts};
     auto stateCountsBufPtr = &stateCountsBuf;
 
-#pragma omp parallel default(none) firstprivate(nMarkovStates, nThermStates, nTrajs, ttrajsPtr, dtrajsPtr, biasMatricesPtr, stateCountsBufPtr, connectivityFactor, callback) shared(thermStateIndicesFromPerThread, thermStateIndicesToPerThread)
+    #pragma omp parallel default(none) firstprivate(nMarkovStates, nThermStates, nTrajs, ttrajsPtr, dtrajsPtr, \
+    biasMatricesPtr, stateCountsBufPtr, connectivityFactor, callback) shared(thermStateIndicesFromPerThread, \
+    thermStateIndicesToPerThread)
     {
         IndexList thermStateIndicesFrom;
         IndexList thermStateIndicesTo;
 
         int threadNumber = 0;
-#if defined(USE_OPENMP)
-        threadNumber = omp_get_thread_num();
-#endif
+        #if defined(USE_OPENMP)
+            threadNumber = omp_get_thread_num();
+        #endif
 
         // At each markov state i, compute overlap for each combination of two thermodynamic states k and l.
-#pragma omp for
+        #pragma omp for
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
 
             // Get all indices in all trajectories of all samples that were binned in markov state i.
             // We use these to determine whether two states overlap in Markov state i.
-            Indices2D sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, nTrajs, ttrajsPtr, dtrajsPtr, nThermStates);
+            Indices2D sampleIndicesIn_i = findIndexOfSamplesInMarkovState(i, nTrajs, ttrajsPtr, dtrajsPtr,
+                                                                          nThermStates);
 
             // Now loop through all thermodynamic state pairs
             for (StateIndex k = 0; k < nThermStates; ++k) {
                 // callback for incrementing a progress bar
                 if (callback != nullptr) {
-#pragma omp critical
+                    #pragma omp critical
                     {
                         py::gil_scoped_acquire guard;
                         (*callback)();

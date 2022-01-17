@@ -28,9 +28,9 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, DTraj, BiasMatrix<double>>(),
                 "state_counts"_a, "transition_counts"_a, "dtraj"_a, "bias_matrix"_a);
 
-        tramMod.def("compute_sample_weights", &computeSampleWeightsLog<double>, py::call_guard<py::gil_scoped_release>(),
-                    "therm_state_index"_a = -1, "dtraj"_a, "bias_matrix"_a, "therm_state_energies"_a,
-                    "modified_state_counts_log"_a);
+        tramMod.def("compute_sample_weights_log", &computeSampleWeightsLog<double>, py::call_guard<py::gil_scoped_release>(),
+                    "dtraj"_a, "bias_matrix"_a, "therm_state_energies"_a,
+                    "modified_state_counts_log"_a, "therm_state_index"_a = -1);
 
         tramMod.def("find_state_transitions_post_hoc_RE",
                     &findStateTransitions<double, OverlapPostHocReplicaExchange<double>>,
