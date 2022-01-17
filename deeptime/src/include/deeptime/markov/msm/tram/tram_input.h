@@ -78,7 +78,7 @@ public:
         return dtraj_;
     }
 
-    auto dtrajBuf() const {
+    const auto dtrajBuf() const {
         return dtraj_.template unchecked<1>();
     }
 
