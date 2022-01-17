@@ -196,13 +196,11 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     std::vector<ArrayBuffer<DTraj, 1>> dtrajBuffers(dtrajs.begin(), dtrajs.end());
     auto dtrajsPtr = dtrajBuffers.data();
 
-    ArrayBuffer<DTraj, 1> *ttrajsPtr = nullptr;
     std::vector<ArrayBuffer<DTraj, 1>> ttrajBuffers;
-
     if (ttrajs) {
         ttrajBuffers = std::vector<ArrayBuffer<DTraj, 1>>((*ttrajs).begin(), (*ttrajs).end());
-        ttrajsPtr = ttrajBuffers.data();
     }
+    const auto* ttrajsPtr = ttrajBuffers.data();
 
     std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuffers(biasMatrices.begin(), biasMatrices.end());
     auto biasMatricesPtr = biasMatrixBuffers.data();
