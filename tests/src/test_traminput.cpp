@@ -15,7 +15,6 @@ TEST_CASE("TRAMInput", "[tram]") {
 
         const int nThermStates = 3;
         const int nMarkovStates = 5;
-        int trajlengths[nThermStates];
 
         auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
         auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
@@ -31,7 +30,7 @@ TEST_CASE("TRAMInput", "[tram]") {
 
             THEN("TRAMInput contains the correct input") {
                 for (int K = 0; K < nThermStates; ++K) {
-                    REQUIRE(input.nSamples() == trajlengths[K]);
+                    REQUIRE(input.nSamples() == length);
                     REQUIRE(input.biasMatrix().ndim() == 2);
                     REQUIRE(input.dtraj().ndim() == 1);
                 }
@@ -54,7 +53,7 @@ TEST_CASE("TRAMInput", "[tram]") {
                         deeptime::markov::tram::TRAMInput<double>(std::move(stateCounts), std::move(transitionCounts),
                                                                   dtraj, biasMatrix), std::runtime_error);
             }
-        } WHEN("transitioncounts matrices are not squarew") {
+        } WHEN("transitioncounts matrices are not square") {
             transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates + 1});
             THEN("construction should throw runtime error") {
                 REQUIRE_THROWS_AS(
