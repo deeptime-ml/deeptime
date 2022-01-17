@@ -74,7 +74,7 @@ public:
         return biasMatrix_.template unchecked<2>();
     }
 
-    auto & dtraj() const {
+    const auto & dtraj() const {
         return dtraj_;
     }
 
