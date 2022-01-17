@@ -109,7 +109,7 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
             }
 
             AND_WHEN("estimate() is called") {
-                tram.estimate(inputPtr, 1, 1e-8, true);
+                tram.estimate(inputPtr, 3, 1e-8, true);
 
                 TestType LL = deeptime::markov::tram::computeLogLikelihood(
                         inputPtr->dtraj(), inputPtr->biasMatrix(), tram.biasedConfEnergies(),
