@@ -39,8 +39,8 @@ void flatten(InIter start, InIter end, OutIter dest) {
     }
 }
 
-template<typename TTrajs, typename DTrajs>
-Indices2D findIndexOfSamplesInMarkovState(StateIndex i, std::size_t nTrajs, const TTrajs * ttrajs, const DTrajs * dtrajs,
+template<typename DTrajs>
+Indices2D findIndexOfSamplesInMarkovState(StateIndex i, std::size_t nTrajs, const DTrajs * ttrajs, const DTrajs * dtrajs,
                                           StateIndex nThermStates) {
     Indices2D indices(nThermStates);
 
@@ -48,9 +48,10 @@ Indices2D findIndexOfSamplesInMarkovState(StateIndex i, std::size_t nTrajs, cons
         std::size_t trajLength = dtrajs[j].size();
 
         for (std::size_t n = 0; n < trajLength; ++n) {
-            if (dtrajs[j](n) == i) {
+	   // cast i because dtraj can contain negative state indices
+            if (dtrajs[j](n) == static_cast<std::int32_t>(i)) {
                 auto k = ttrajs ? ttrajs[j](n) : j;
-
+		
                 // markov state i sampled in therm state k can be found at bias matrix index (j, n,)
                 indices[k].emplace_back(j, n);
             }
@@ -164,7 +165,7 @@ template<typename dtype, typename OverlapMode>
 TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
                                       const DTrajs &dtrajs,
                                       const BiasMatrices <dtype> &biasMatrices,
-                                      const np_array<std::int32_t> &stateCounts,
+                                      const CountsMatrix &stateCounts,
                                       StateIndex nThermStates,
                                       StateIndex nMarkovStates,
                                       dtype connectivityFactor,
@@ -202,8 +203,10 @@ TransitionVector findStateTransitions(const std::optional<DTrajs> &ttrajs,
     auto dtrajsPtr = dtrajBuffers.data();
 
     ArrayBuffer<DTraj, 1> *ttrajsPtr = nullptr;
+    std::vector<ArrayBuffer<DTraj, 1>> ttrajBuffers;
+
     if (ttrajs) {
-        std::vector<ArrayBuffer<DTraj, 1>> ttrajBuffers((*ttrajs).begin(), (*ttrajs).end());
+        ttrajBuffers = std::vector<ArrayBuffer<DTraj, 1>> ((*ttrajs).begin(), (*ttrajs).end());
         ttrajsPtr = ttrajBuffers.data();
     }
 

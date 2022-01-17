@@ -104,16 +104,14 @@ private:
 // natural logarithm of the statistical weight per sample, log \mu^k(x).
 // If thermState =-1, this is the unbiased statistical sample weight, log \mu(x).
 template<typename dtype>
-static const auto computeSampleWeightsLog(StateIndex thermStateIndex,
+static const std::vector<dtype> computeSampleWeightsLog(StateIndex thermStateIndex,
                                     const DTraj & dtraj,
                                     const BiasMatrix<dtype> & biasMatrix,
                                     const np_array<dtype> & thermStateEnergies,
                                     const np_array_nfc<dtype> & modifiedStateCountsLog) {
     std::size_t nThermStates = static_cast<StateIndex>(thermStateEnergies.size());
-    std::size_t nMarkovStates = static_cast<StateIndex>(modifiedStateCountsLog.shape(1));
 
     std::vector<dtype> sampleWeights(dtraj.size());
-
     std::vector<dtype> scratch(nThermStates);
 
     ArrayBuffer<DTraj, 1> dtrajBuf{dtraj};
@@ -191,7 +189,7 @@ computeDiscreteLikelihood(StateIndex nThermStates, StateIndex nMarkovStates, Ene
 // biasedConfEnergies_. This computes the parameter-dependent part of the likelihood, i.e. the factor -b^k(x) is
 // omitted as it is constant.
 template<typename dtype>
-static const auto computeLogLikelihood (const DTraj &dtraj,
+static const dtype computeLogLikelihood (const DTraj &dtraj,
                                   const BiasMatrix<dtype> &biasMatrix,
                                   const np_array_nfc<dtype> &biasedConfEnergies,
                                   const np_array_nfc<dtype> &modifiedStateCountsLog,

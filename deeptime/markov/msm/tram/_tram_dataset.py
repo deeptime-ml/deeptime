@@ -394,7 +394,7 @@ class TRAMDataset:
             all_state_counts = np.asarray([estimator.fit_fetch(dtraj).state_histogram for dtraj in self.dtrajs],
                                           dtype=object)
             # pad with zero's so they are all the same size and easier for the cpp module to handle
-            all_state_counts = to_zero_padded_array(all_state_counts, self.n_markov_states)
+            all_state_counts = to_zero_padded_array(all_state_counts, self.n_markov_states).astype(np.int32)
 
             # get list of all possible transitions between thermodynamic states. A transition is only possible when two
             # thermodynamic states have an overlapping markov state. Whether the markov state overlaps depends on the
