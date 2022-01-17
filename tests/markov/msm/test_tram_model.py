@@ -45,12 +45,13 @@ def test_compute_pmf():
     model = make_random_model(5, 5)
     n_samples = 100
 
-    trajs = np.random.uniform(0, 1, (5, n_samples))
-    dtrajs = np.digitize(trajs, np.linspace(0, 1, 5, endpoint=False)) - 1
-    binned_trajs = np.digitize(trajs, np.linspace(0, 1, 10, endpoint=False)) - 1
+    dtrajs = [np.random.randint(0, 5, size=n_samples) for _ in range(5)]
     bias_matrices = np.random.uniform(0, 1, (5, n_samples, 5))
 
-    pmf = model.compute_PMF(dtrajs, bias_matrices, binned_trajs)
+    bin_indices = [traj + 1 for traj in dtrajs]
+    bin_indices[0][0] = 9
+
+    pmf = model.compute_PMF(dtrajs, bias_matrices, bin_indices)
 
     np.testing.assert_equal(len(pmf), 10)
     np.testing.assert_(np.min(pmf >= 0))

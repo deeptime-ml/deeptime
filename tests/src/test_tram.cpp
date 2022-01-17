@@ -7,11 +7,11 @@
 //
 using namespace deeptime;
 
-auto generateDtraj(int nMarkovStates, int length, float shift) {
+auto generateDtraj(int nMarkovStates, int length) {
     std::vector<float> weights(nMarkovStates, 0.);
     std::iota(begin(weights), end(weights), 0.);
-    std::transform(begin(weights), end(weights), begin(weights), [nMarkovStates, shift](auto weight) {
-        return weight + shift - nMarkovStates / 2.;
+    std::transform(begin(weights), end(weights), begin(weights), [nMarkovStates](auto weight) {
+        return weight - nMarkovStates / 2.;
     });
     std::transform(begin(weights), end(weights), begin(weights), [](auto x) {
         return std::exp(-x * x);
@@ -26,21 +26,12 @@ auto generateDtraj(int nMarkovStates, int length, float shift) {
     np_array_nfc<int> traj(std::vector<int>{length});
     std::generate(traj.mutable_data(), traj.mutable_data() + length, generator);
 
-    return traj;
-}
-
-auto generateDtrajs(int nThermsStates, int nMarkovStates, int *trajLengths) {
-    deeptime::markov::tram::DTrajs dtrajs;
-
-    for (int K = 0; K < nThermsStates; ++K) {
-        dtrajs.push_back(generateDtraj(nMarkovStates, trajLengths[K], 0.1 * K));
-        // a very ugly way to ensure all markovstates are samples at least once.
-        for (int i = 0; i < nMarkovStates; ++i) {
-            dtrajs[K].mutable_at(1 + i) = i;
-        }
+    // ensure all Markov states sampled at least once
+    for (int i = 0; i < nMarkovStates; ++i) {
+        traj.mutable_at(1 + i) = i;
     }
-    return dtrajs;
 
+    return traj;
 }
 
 template<typename dtype>
@@ -60,18 +51,8 @@ auto generateBiasMatrix(int nThermStates, np_array_nfc<int> dtraj) {
     return biasMatrix;
 }
 
-template<typename dtype, typename Dtrajs>
-auto generateBiasMatrices(int nThermsStates, const Dtrajs &dtrajs) {
-    std::vector<np_array_nfc<dtype>> matrices;
-
-    for (int K = 0; K < nThermsStates; ++K) {
-        matrices.push_back(generateBiasMatrix<dtype>(nThermsStates, dtrajs[K]));
-    }
-    return matrices;
-}
-
-template<typename Dtrajs>
-auto countStates(int nThermStates, int nMarkovStates, const Dtrajs &dtrajs) {
+template<typename DTraj>
+auto countStates(int nThermStates, int nMarkovStates, const DTraj &dtraj) {
     auto stateCounts = np_array_nfc<int>({nThermStates, nMarkovStates});
     auto transitionCounts = np_array_nfc<int>({nThermStates, nMarkovStates, nMarkovStates});
     std::fill(stateCounts.mutable_data(), stateCounts.mutable_data() + stateCounts.size(), 0);
@@ -80,15 +61,16 @@ auto countStates(int nThermStates, int nMarkovStates, const Dtrajs &dtrajs) {
     int state = -1;
     int prevstate = -1;
 
-    for (int K = 0; K < nThermStates; ++K) {
-        for (int i = 0; i < dtrajs[K].size(); ++i) {
-            prevstate = state;
-            state = dtrajs[K].at(i);
+    for (int i = 0; i < dtraj.size(); ++i) {
+        // get therm state from whatever section in the traj we're in. First few samples get 0, the 1, etc.
+        int K = (i * nThermStates) / dtraj.size();
 
-            stateCounts.mutable_at(K, state)++;
-            if (prevstate != -1) {
-                transitionCounts.mutable_at(K, prevstate, state)++;
-            }
+        prevstate = state;
+        state = dtraj.at(i);
+
+        stateCounts.mutable_at(K, state)++;
+        if (prevstate != -1) {
+            transitionCounts.mutable_at(K, prevstate, state)++;
         }
     }
     return std::tuple(stateCounts, transitionCounts);
@@ -111,16 +93,14 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
         int nThermStates = 3;
         int nMarkovStates = 5;
 
-        int trajLengths[] = {100, 100, 100};
+        auto dtraj = generateDtraj(nMarkovStates, 100);
+        auto biasMatrix = generateBiasMatrix<TestType>(nThermStates, dtraj);
 
-        auto dtrajs = generateDtrajs(nThermStates, nMarkovStates, trajLengths);
-        auto biasMatrices = generateBiasMatrices<TestType>(nThermStates, dtrajs);
-
-        auto [stateCounts, transitionCounts] = countStates(nThermStates, nMarkovStates, dtrajs);
+        auto [stateCounts, transitionCounts] = countStates(nThermStates, nMarkovStates, dtraj);
 
         auto inputPtr = std::make_shared<deeptime::markov::tram::TRAMInput<TestType>>(
-                std::move(stateCounts), std::move(transitionCounts), dtrajs,
-                biasMatrices);
+                std::move(stateCounts), std::move(transitionCounts), dtraj,
+                biasMatrix);
 
 
         WHEN("TRAM is constructed") {
@@ -134,9 +114,12 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
             }
 
             AND_WHEN("estimate() is called") {
-                tram.estimate(inputPtr, 1, 1e-8, true);
+                tram.estimate(inputPtr, 3, 1e-8, 0);
 
-                TestType LL = tram.computeLogLikelihood();
+                TestType LL = deeptime::markov::tram::computeLogLikelihood(
+                        inputPtr->dtraj(), inputPtr->biasMatrix(), tram.biasedConfEnergies(),
+                        tram.modifiedStateCountsLog(), tram.thermStateEnergies(), inputPtr->stateCounts(),
+                        inputPtr->transitionCounts(), tram.transitionMatrices());
 
                 THEN("Energies are finite") {
                     auto thermStateEnergies = tram.thermStateEnergies();

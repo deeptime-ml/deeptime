@@ -20,12 +20,12 @@ constexpr void throwIfInvalid(bool isValid, const std::string &message) {
 template<typename dtype>
 class TRAMInput {
 public:
-    TRAMInput(np_array_nfc<std::int32_t> &&stateCounts, np_array_nfc<std::int32_t> &&transitionCounts,
-              DTrajs dtrajs, BiasMatrices<dtype> biasMatrices)
+    TRAMInput(CountsMatrix &&stateCounts, CountsMatrix &&transitionCounts,
+              DTraj dtraj, BiasMatrix<dtype> biasMatrix)
             : stateCounts_(std::move(stateCounts)),
               transitionCounts_(std::move(transitionCounts)),
-              dtrajs_(std::move(dtrajs)),
-              biasMatrices_(std::move(biasMatrices)) {
+              dtraj_(std::move(dtraj)),
+              biasMatrix_(std::move(biasMatrix)) {
         validateInput();
     }
 
@@ -43,12 +43,12 @@ public:
 
     void validateInput() const {
 
-        if (dtrajs_.size() != biasMatrices_.size()) {
+        if (dtraj_.shape(0) != biasMatrix_.shape(0)) {
             std::stringstream ss;
-            ss << "Input invalid. Number of trajectories should be equal to the size of the first dimension "
+            ss << "Input invalid. Number of samples in dtrajs be equal to the size of the first dimension "
                   "of the bias matrix.";
-            ss << "\nNumber of trajectories: " << dtrajs_.size() << "\nNumber of bias matrices: "
-               << biasMatrices_.size();
+            ss << "\nNumber of samples: " << dtraj_.shape(0) << "\nNumber of samples in bias matrix: "
+               << biasMatrix_.shape(0);
             throw std::runtime_error(ss.str());
         }
         detail::throwIfInvalid(stateCounts_.shape(0) == transitionCounts_.shape(0),
@@ -58,50 +58,56 @@ public:
         detail::throwIfInvalid(transitionCounts_.shape(1) == transitionCounts_.shape(2),
                                "transitionCounts.shape(1) should equal transitionCounts.shape(2)");
 
-        for (std::size_t i = 0; i < dtrajs_.size(); ++i) {
-            const auto &dtraj = dtrajs_.at(i);
-            const auto &biasMatrix = biasMatrices_.at(i);
-
-            detail::throwIfInvalid(dtraj.ndim() == 1,
-                                   "dtraj at index {i} has an incorrect number of dimension. ndims should be 1.");
-            detail::throwIfInvalid(biasMatrix.ndim() == 2,
-                                   "biasMatrix at index {i} has an incorrect number of dimension. ndims should be 2.");
-            detail::throwIfInvalid(dtraj.shape(0) == biasMatrix.shape(0),
-                                   "dtraj and biasMatrix at index {i} should be of equal length.");
-            detail::throwIfInvalid(biasMatrix.shape(1) == transitionCounts_.shape(0),
-                                   "biasMatrix{i}.shape[1] should be equal to transitionCounts.shape[0].");
-        }
+        detail::throwIfInvalid(dtraj_.ndim() == 1,
+                               "dtraj has an incorrect number of dimension. ndims should be 1.");
+        detail::throwIfInvalid(biasMatrix_.ndim() == 2,
+                               "biasMatrix has an incorrect number of dimension. ndims should be 2.");
+        detail::throwIfInvalid(biasMatrix_.shape(1) == transitionCounts_.shape(0),
+                               "biasMatrix.shape[1] should be equal to transitionCounts.shape[0].");
     }
 
-    auto biasMatrix(std::size_t i) const {
-        return biasMatrices_.at(i).template unchecked<2>();
+    auto & biasMatrix() const {
+        return biasMatrix_;
     }
 
-    auto dtraj(std::size_t i) const {
-        return dtrajs_[i].template unchecked<1>();
+    auto biasMatrixBuf() const {
+        return biasMatrix_.template unchecked<2>();
     }
 
-    auto transitionCounts() const {
+    const auto & dtraj() const {
+        return dtraj_;
+    }
+
+    const auto dtrajBuf() const {
+        return dtraj_.template unchecked<1>();
+    }
+
+    const auto& transitionCounts() const {
+        return transitionCounts_;
+    }
+
+    auto transitionCountsBuf() const {
         return transitionCounts_.template unchecked<3>();
     }
 
-    auto stateCounts() const {
+    const auto& stateCounts() const {
+        return stateCounts_;
+    }
+
+    auto stateCountsBuf() const {
         return stateCounts_.template unchecked<2>();
     }
 
-    auto sequenceLength(std::size_t i) const {
-        return dtrajs_[i].size();
+    auto nSamples() const {
+        return dtraj_.size();
     }
 
-    auto nTrajectories() const {
-        return dtrajs_.size();
-    };
 
 private:
-    np_array_nfc<std::int32_t> stateCounts_;
-    np_array_nfc<std::int32_t> transitionCounts_;
-    DTrajs dtrajs_;
-    BiasMatrices<dtype> biasMatrices_;
+    CountsMatrix stateCounts_;
+    CountsMatrix transitionCounts_;
+    DTraj dtraj_;
+    BiasMatrix<dtype> biasMatrix_;
 };
 
 }

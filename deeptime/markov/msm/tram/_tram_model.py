@@ -4,6 +4,7 @@ from deeptime.base import Model
 from deeptime.numeric import logsumexp
 from deeptime.markov.msm import MarkovStateModelCollection
 
+from ._tram_dataset import transition_counts_from_count_models, state_counts_from_count_models
 from ._tram_bindings import tram
 
 
@@ -51,7 +52,7 @@ class TRAMModel(Model):
                  lagrangian_mult_log,
                  modified_state_counts_log,
                  therm_state_energies=None,
-                 markov_state_energies=None,
+                 markov_state_energies=None
                  ):
         self.n_therm_states = biased_conf_energies.shape[0]
         self.n_markov_states = biased_conf_energies.shape[1]
@@ -65,6 +66,9 @@ class TRAMModel(Model):
             self._therm_state_energies = np.asarray([-logsumexp(-row) for row in biased_conf_energies])
         else:
             self._therm_state_energies = therm_state_energies
+
+        self._transition_matrices = transition_matrices
+        self._count_models = count_models
 
         self._msm_collection = self._construct_msm_collection(
             count_models, transition_matrices)
@@ -145,8 +149,15 @@ class TRAMModel(Model):
 
         .. math:: \mu(x) = \left( \sum_k R^k_{i(x)} \mathrm{exp}[f^k_{i(k)}-b^k(x)] \right)^{-1}
         """
-        return tram.compute_sample_weights(therm_state, dtrajs, bias_matrices, self._therm_state_energies,
-                                           self._modified_state_counts_log)
+        # flatten input data
+        dtraj = np.concatenate(dtrajs)
+        bias_matrix = np.concatenate(bias_matrices)
+
+        sample_weights = self._compute_sample_weights(dtraj, bias_matrix, therm_state)
+
+        # return in the original list shape
+        traj_start_stops = np.concatenate(([0], np.cumsum([len(traj) for traj in dtrajs])))
+        return [sample_weights[traj_start_stops[i - 1]:traj_start_stops[i]] for i in range(1, len(traj_start_stops))]
 
     def compute_observable(self, observable_values, dtrajs, bias_matrices, therm_state=-1):
         r""" Compute an observable value.
@@ -169,11 +180,11 @@ class TRAMModel(Model):
             The index of the thermodynamic state in which the observable need to be computed. If `therm_state=-1`, the
             observable is computed for the unbiased (reference) state.
         """
-        sample_weights = self.compute_sample_weights(dtrajs, bias_matrices, therm_state)
+        # flatten input data
+        observable_values = np.concatenate(observable_values)
 
-        # flatten both
-        sample_weights = np.reshape(sample_weights, -1)
-        observable_values = np.reshape(observable_values, -1)
+        sample_weights = self._compute_sample_weights(np.concatenate(dtrajs), np.concatenate(bias_matrices),
+                                                      therm_state)
 
         return np.dot(sample_weights, observable_values)
 
@@ -200,19 +211,67 @@ class TRAMModel(Model):
             computed for the unbiased (reference) state.
         """
         # TODO: account for variable bin widths
-        sample_weights = np.reshape(self.compute_sample_weights(dtrajs, bias_matrices, therm_state), -1)
-        binned_samples = np.reshape(bin_indices, -1)
+        sample_weights = self._compute_sample_weights(np.concatenate(dtrajs), np.concatenate(bias_matrices),
+                                                      therm_state)
+
+        binned_samples = np.concatenate(bin_indices)
 
         n_bins = binned_samples.max() + 1
         pmf = np.zeros(n_bins)
 
         for i in range(len(pmf)):
             indices = np.where(binned_samples == i)
-            pmf[i] = -np.log(np.sum(sample_weights[indices]))
+            if len(indices[0]) > 0:
+                pmf[i] = -np.log(np.sum(sample_weights[indices]))
 
         # shift minimum to zero
         pmf -= pmf.min()
         return pmf
+
+    def compute_log_likelihood(self, dtrajs, bias_matrices):
+        r"""The (parameter-dependent part of the) likelihood to observe the given data.
+
+        The definition can be found in :footcite:`wu2016multiensemble`, Equation (9).
+
+        Parameters
+        ----------
+        dtrajs : list(np.ndarray)
+            The list of discrete trajectories. `dtrajs[i][n]` contains the Markov state index of the :math:`n`-th sample
+            in the :math:`i`-th trajectory.
+        bias_matrices : list(np.ndarray)
+            The bias energy matrices. `bias_matrices[i][n, k]` contains the bias energy of the :math:`n`-th sample from
+            the :math:`i`-th trajectory, evaluated at thermodynamic state :math:`k`, :math:`b^k(x_{i,n})`. The bias
+            energy matrices should have the same size as `dtrajs` in both the first and second dimension. The third
+            dimension is of size `n_therm_state`, i.e. for each sample, the bias energy in every thermodynamic state is
+            calculated and stored in the `bias_matrices`.
+
+        Returns
+        -------
+        log_likelihood : float
+            The parameter-dependent part of the log-likelihood.
+
+
+        Notes
+        -----
+        Parameter-dependent, i.e., the factor
+
+        .. math:: \prod_{x \in X} e^{-b^{k(x)}(x)}
+
+        does not occur in the log-likelihood as it is constant with respect to the parameters, leading to
+
+        .. math:: \log \prod_{k=1}^K \left(\prod_{i,j} (p_{ij}^k)^{c_{ij}^k}\right) \left(\prod_{i} \prod_{x \in X_i^k} \mu(x) e^{f_i^k} \right)
+        """
+        dtraj = np.concatenate(dtrajs)
+        bias_matrix = np.concatenate(bias_matrices)
+
+        transition_counts = transition_counts_from_count_models(self.n_therm_states, self.n_markov_states,
+                                                                self._count_models)
+
+        state_counts = state_counts_from_count_models(self.n_therm_states, self.n_markov_states, self._count_models)
+
+        return tram.compute_log_likelihood(dtraj, bias_matrix, self._biased_conf_energies,
+                                           self._modified_state_counts_log, self._therm_state_energies, state_counts,
+                                           transition_counts, self._transition_matrices)
 
     def _construct_msm_collection(self, count_models, transition_matrices):
         r""" Construct a MarkovStateModelCollection from the transition matrices and energy estimates.
@@ -237,3 +296,8 @@ class TRAMModel(Model):
         return MarkovStateModelCollection(transition_matrices_connected, stationary_distributions,
                                           reversible=True, count_models=count_models,
                                           transition_matrix_tolerance=1e-8)
+
+    def _compute_sample_weights(self, dtraj, bias_matrix, therm_state=-1):
+        sample_weights = tram.compute_sample_weights_log(dtraj, bias_matrix, self._therm_state_energies,
+                                                     self._modified_state_counts_log, therm_state)
+        return np.exp(np.asarray(sample_weights))

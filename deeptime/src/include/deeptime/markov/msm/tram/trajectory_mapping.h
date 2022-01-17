@@ -13,7 +13,7 @@ namespace deeptime::markov::tram {
 using Fragment = std::tuple<StateIndex, std::int32_t, std::int32_t>;
 using Fragments = std::vector<Fragment>;
 
-std::vector<Fragments> findTrajectoryFragmentIndices(const DTrajs &ttrajs, std::int32_t nThermStates) {
+std::vector<Fragments> findTrajectoryFragmentIndices(const TTrajs &ttrajs, std::int32_t nThermStates) {
 
     std::vector<Fragments> fragments(nThermStates);
 

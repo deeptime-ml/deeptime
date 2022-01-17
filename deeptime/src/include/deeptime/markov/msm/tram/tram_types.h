@@ -10,6 +10,8 @@ namespace deeptime::markov::tram{
 using DTraj = np_array<std::int32_t>;
 using DTrajs = std::vector<DTraj>;
 
+using TTrajs = DTrajs;
+
 template<typename dtype>
 using BiasMatrix = np_array_nfc<dtype>;
 
@@ -17,4 +19,6 @@ template<typename dtype>
 using BiasMatrices = std::vector<BiasMatrix<dtype>>;
 
 using StateIndex = py::ssize_t;
+
+using CountsMatrix = np_array_nfc<std::int32_t>;
 }

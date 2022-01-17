@@ -72,7 +72,7 @@ def test_connected_set_summed_count_matrix(test_input, has_ttrajs, expected):
      ([[1, 2, 1, 3, 2, 7, 7, 6], [3, 4, 3, 3, 4, 5, 6, 5, 4]], [1, 2, 3, 4, 5, 6]),
      ([[1, 2, 3, 2, 1], [3, 5, 6, 5, 3], [3, 5, 6, 5, 3]], [1, 2, 3, 5, 6])]
 )
-@pytest.mark.parametrize("has_ttrajs", [True, False])
+@pytest.mark.parametrize("has_ttrajs", [True])
 def test_connected_set_post_hoc_re(test_input, has_ttrajs, expected):
     cset = get_connected_set_from_dtrajs_input(test_input, connectivity='post_hoc_RE', has_ttrajs=has_ttrajs)
     np.testing.assert_equal(cset.state_symbols, np.asarray(expected))
