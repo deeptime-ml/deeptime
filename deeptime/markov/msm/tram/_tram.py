@@ -4,7 +4,6 @@ from sklearn.exceptions import ConvergenceWarning
 
 from deeptime.markov._base import _MSMBaseEstimator
 from deeptime.util import callbacks
-from deeptime.util.callbacks import supports_progress_interface
 from ._tram_bindings import tram
 from ._tram_model import TRAMModel
 from ._tram_dataset import TRAMDataset
