@@ -1,8 +1,12 @@
 import numpy as np
 import pytest
-from deeptime.markov.msm import TRAM
-from .test_tram_model import make_random_model
+from tqdm import tqdm
 from flaky import flaky
+
+from deeptime.markov.msm import TRAM
+from tests.testing_utilities import ProgressMock
+
+from .test_tram_model import make_random_model
 
 
 def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs=True):
@@ -240,24 +244,20 @@ def test_callback_called(track_log_likelihoods):
 
 
 def test_progress_bar_update_called():
-    class ProgressMock:
-        def __init__(self):
-            self.total = 1
-            self.desc = 0
+    progress = ProgressMock()
 
-        def update(self):
-            self.tracking_ints[0] += 1
+    class ProgressFactory:
+        def __new__(cls, *args, **kwargs): return progress
 
-        def close(self):
-            self.tracking_ints[1] += 1
-
-    # workaround to track function calls because the progress bar is copied internally
-    ProgressMock.tracking_ints = [0, 0]
-
-    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressMock)
+    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressFactory)
     tram.fit(make_random_input_data(5, 5))
 
     # update() should be called 5 times
-    np.testing.assert_equal(ProgressMock.tracking_ints[0], 5)
+    np.testing.assert_equal(progress.n_update_calls, 5)
     # and close() one time
-    np.testing.assert_equal(ProgressMock.tracking_ints[1], 1)
+    np.testing.assert_equal(progress.n_close_calls, 1)
+
+
+def test_tqdm_progress_bar():
+    tram = TRAM(callback_interval=2, maxiter=10, progress=tqdm)
+    tram.fit(make_random_input_data(5, 5))

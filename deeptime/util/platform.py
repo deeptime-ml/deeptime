@@ -36,19 +36,17 @@ def handle_progress_bar(progress):
         class progress:
             def __init__(self, x=None, **_):
                 self._x = x
+                self.total = None
 
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc_val, exc_tb):
-                return False
+            def __enter__(self): return self
+            def __exit__(self, exc_type, exc_val, exc_tb): return False
 
             def __iter__(self):
                 for x in self._x:
                     yield x
 
             def update(self): pass
-
             def close(self): pass
+            def set_description(self, *_): pass
 
     return progress

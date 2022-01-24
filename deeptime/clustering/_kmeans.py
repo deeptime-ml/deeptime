@@ -1,5 +1,6 @@
 import random
 import warnings
+from contextlib import nullcontext
 from typing import Optional
 
 import numpy as np
@@ -7,6 +8,7 @@ import numpy as np
 from ..base import EstimatorTransformer
 from ._cluster_model import ClusterModel
 from . import metrics
+from ..util.callbacks import ProgressCallback
 
 from ..util.parallel import handle_n_jobs
 
@@ -173,6 +175,10 @@ class KMeans(EstimatorTransformer):
     initial_centers: None or np.ndarray[k, dim], default=None
         This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
         the centers are directly passed to the kmeans iteration algorithm.
+    progress : object
+        Progress bar object that `KMeans` will call to indicate progress to the user. Tested for a tqdm progress bar.
+        The interface is checked
+        via :meth:`supports_progress_interface <deeptime.util.callbacks.supports_progress_interface>`.
 
     References
     ----------
@@ -186,7 +192,7 @@ class KMeans(EstimatorTransformer):
 
     def __init__(self, n_clusters: int, max_iter: int = 500, metric='euclidean',
                  tolerance=1e-5, init_strategy: str = 'kmeans++', fixed_seed=False,
-                 n_jobs=None, initial_centers=None):
+                 n_jobs=None, initial_centers=None, progress=None):
         super(KMeans, self).__init__()
 
         self.n_clusters = n_clusters
@@ -198,6 +204,7 @@ class KMeans(EstimatorTransformer):
         self.random_state = np.random.RandomState(self.fixed_seed)
         self.n_jobs = handle_n_jobs(n_jobs)
         self.initial_centers = initial_centers
+        self.progress = progress
 
     @property
     def initial_centers(self) -> Optional[np.ndarray]:
@@ -421,14 +428,30 @@ class KMeans(EstimatorTransformer):
         if initial_centers is not None:
             self.initial_centers = initial_centers
         if self.initial_centers is None:
-            self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback_init_centers)
+            if self.progress is not None:
+                callback = KMeansCallback(self.progress, "KMeans++ initialization", self.n_clusters,
+                                          callback_init_centers)
+                context = callback
+            else:
+                callback = callback_init_centers
+                context = nullcontext()
+            with context:
+                self.initial_centers = self._pick_initial_centers(data, self.init_strategy, n_jobs, callback)
 
         # run k-means with all the data
         converged = False
         impl = metrics[self.metric]
-        cluster_centers, code, iterations, cost = impl.kmeans.cluster_loop(
-            data, self.initial_centers.copy(), n_jobs, self.max_iter,
-            self.tolerance, callback_loop)
+
+        if self.progress is not None:
+            callback = KMeansCallback(self.progress, "KMeans iterations", self.max_iter, callback_loop)
+            context = callback
+        else:
+            callback = callback_loop
+            context = nullcontext()
+        with context:
+            cluster_centers, code, iterations, cost = impl.kmeans.cluster_loop(
+                data, self.initial_centers.copy(), n_jobs, self.max_iter,
+                self.tolerance, callback)
         if code == 0:
             converged = True
         else:
@@ -526,3 +549,15 @@ class MiniBatchKMeans(KMeans):
             self._model._converged = True
 
         return self
+
+
+class KMeansCallback(ProgressCallback):
+
+    def __init__(self, progress, description, total, parent_callback=None):
+        super().__init__(progress, description=description, total=total)
+        self._parent_callback = parent_callback
+
+    def __call__(self, *args, **kw):
+        super().__call__(*args, **kw)
+        if self._parent_callback is not None:
+            self._parent_callback(*args, **kw)

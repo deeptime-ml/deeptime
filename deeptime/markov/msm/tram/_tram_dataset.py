@@ -288,9 +288,10 @@ class TRAMDataset:
             Only needed if connectivity="post_hoc_RE" or "BAR_variance". Values greater than 1.0 weaken the connectivity
             conditions. For 'post_hoc_RE' this multiplies the number of hypothetically observed transitions. For
             'BAR_variance' this scales the threshold for the minimal allowed variance of free energy differences.
-        progress : object, default=None
-            Progress bar that TRAMDataset will call to indicate progress to the user.
-            Tested for a tqdm progress bar. Should implement `update()` and `close()`.
+        progress : object
+            Progress bar object that `TRAMDataset` will call to indicate progress to the user.
+            Tested for a tqdm progress bar. The interface is checked
+            via :meth:`supports_progress_interface <deeptime.util.callbacks.supports_progress_interface>`.
 
         Raises
         ------
@@ -416,8 +417,8 @@ class TRAMDataset:
             else:
                 connectivity_fn = tram.find_state_transitions_BAR_variance
 
-            with callbacks.Callback(progress, self.n_therm_states * self.n_markov_states,
-                                    "Finding connected sets") as callback:
+            with callbacks.ProgressCallback(progress, "Finding connected sets",
+                                            self.n_therm_states * self.n_markov_states) as callback:
                 (i_s, j_s) = connectivity_fn(self.ttrajs, self.dtrajs, self.bias_matrices, all_state_counts,
                                              self.n_therm_states, self.n_markov_states, connectivity_factor,
                                              callback)
