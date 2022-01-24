@@ -53,7 +53,7 @@ Other utilities
     decorators.plotting_function
 
     callbacks.supports_progress_interface
-    callbacks.Callback
+    callbacks.ProgressCallback
 
     platform.module_available
     platform.handle_progress_bar
