@@ -32,6 +32,8 @@ add_subdirectory(deeptime/markov/msm/tram/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/dense/_bindings)
 add_subdirectory(deeptime/markov/tools/estimation/sparse/_bindings)
 
+add_subdirectory(examples/clustering_custom_metric)
+
 if(DEEPTIME_BUILD_CPP_TESTS)
     add_subdirectory(tests)
 endif()
