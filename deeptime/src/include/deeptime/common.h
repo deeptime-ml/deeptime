@@ -46,6 +46,11 @@ struct ComputeIndex {
     static constexpr auto compute(const Arr &strides, const std::tuple<Ix...> &tup, std::index_sequence<I...>) {
         return (0 + ... + (strides[I] * std::get<I>(tup)));
     }
+
+    template<typename Arr, typename Arr2, std::size_t... I>
+    static constexpr auto computeContainer(const Arr &strides, const Arr2 &tup, std::index_sequence<I...>) {
+        return (0 + ... + (strides[I] * std::get<I>(tup)));
+    }
 };
 
 }
@@ -152,13 +157,9 @@ public:
      * @param indices the Dims-dimensional index
      * @return the 1D index
      */
-    template<typename Arr>
-    value_type index(const Arr &indices) const {
-        std::size_t result{0};
-        for (std::size_t i = 0; i < Dims; ++i) {
-            result += _cum_size[i] * indices[i];
-        }
-        return result;
+    template<typename Arr, typename Indices = std::make_index_sequence<Dims>>
+    constexpr value_type index(const Arr &indices) const {
+        return detail::ComputeIndex<>::computeContainer(_cum_size, indices, Indices{});
     }
 
     /**
