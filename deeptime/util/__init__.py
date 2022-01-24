@@ -51,6 +51,12 @@ Other utilities
     parallel.handle_n_jobs
     decorators.cached_property
     decorators.plotting_function
+
+    callbacks.supports_progress_interface
+    callbacks.Callback
+
+    platform.module_available
+    platform.handle_progress_bar
 """
 
 from .stats import QuantityStatistics, confidence_interval
@@ -58,3 +64,5 @@ from ._validation import LaggedModelValidator
 
 from . import data
 from . import types
+from . import callbacks
+from . import platform

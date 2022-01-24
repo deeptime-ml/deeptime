@@ -416,8 +416,8 @@ class TRAMDataset:
             else:
                 connectivity_fn = tram.find_state_transitions_BAR_variance
 
-            with callbacks.Callback(progress, self.n_therm_states * self.n_markov_states,
-                                    "Finding connected sets") as callback:
+            with callbacks.ProgressCallback(progress, self.n_therm_states * self.n_markov_states,
+                                            "Finding connected sets") as callback:
                 (i_s, j_s) = connectivity_fn(self.ttrajs, self.dtrajs, self.bias_matrices, all_state_counts,
                                              self.n_therm_states, self.n_markov_states, connectivity_factor,
                                              callback)
