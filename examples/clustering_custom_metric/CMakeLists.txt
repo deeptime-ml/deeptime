@@ -1,0 +1,6 @@
+set(SRC bindings.cpp)
+pybind11_add_module(custom_metric ${SRC})
+target_link_libraries(custom_metric PUBLIC deeptime::deeptime)
+if(OpenMP_FOUND)
+    target_link_libraries(custom_metric PUBLIC OpenMP::OpenMP_CXX)
+endif()
