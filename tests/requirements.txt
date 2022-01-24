@@ -13,3 +13,4 @@ pytest-cov
 pytest-faulthandler==2.0.1
 pytest-sugar==0.9.4
 flaky
+tqdm

@@ -86,9 +86,9 @@ class TRAM(_MSMBaseEstimator):
         `track_log_likelihoods=true`, the log-likelihood are also stored. If `callback_interval=0`, no call to the
         callback function is done.
     progress : object
-        Progress bar object that `TRAM` will call to indicate progress to the user.
-        Tested for a tqdm progress bar. Should implement `update()` and `close()` and have `total` and `desc`
-        properties.
+        Progress bar object that `TRAM` will call to indicate progress to the user. Tested for a tqdm progress bar.
+        The interface is checked
+        via :meth:`supports_progress_interface <deeptime.util.callbacks.supports_progress_interface>`.
 
     See also
     --------

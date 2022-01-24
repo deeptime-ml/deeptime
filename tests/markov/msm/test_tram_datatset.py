@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
-from deeptime.markov import TransitionCountEstimator, TransitionCountModel
+from tqdm import tqdm
+from deeptime.markov import TransitionCountEstimator
 from deeptime.markov.msm import TRAMDataset
 from deeptime.markov.msm.tram._tram_bindings import tram as tram_bindings
 from .test_tram_model import make_random_model
@@ -291,3 +292,8 @@ def test_check_against_model_is_valid(make_ttrajs):
     model = make_random_model(3, 5)
     dataset = make_random_dataset(3, 5, make_ttrajs=make_ttrajs)
     dataset.check_against_model(model)
+
+
+def test_progres_bar():
+    dataset = make_random_dataset(3, 5)
+    dataset.restrict_to_largest_connected_set(progress=tqdm)

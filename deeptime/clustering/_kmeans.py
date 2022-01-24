@@ -176,8 +176,8 @@ class KMeans(EstimatorTransformer):
         This is used to resume the kmeans iteration. Note, that if this is set, the init_strategy is ignored and
         the centers are directly passed to the kmeans iteration algorithm.
     progress : object
-        Progress bar object that `TRAM` will call to indicate progress to the user.
-        Tested for a tqdm progress bar. The interface is checked
+        Progress bar object that `KMeans` will call to indicate progress to the user. Tested for a tqdm progress bar.
+        The interface is checked
         via :meth:`supports_progress_interface <deeptime.util.callbacks.supports_progress_interface>`.
 
     References

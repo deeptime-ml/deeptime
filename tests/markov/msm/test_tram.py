@@ -1,10 +1,12 @@
 import numpy as np
 import pytest
-from deeptime.markov.msm import TRAM
-from .test_tram_model import make_random_model
+from tqdm import tqdm
 from flaky import flaky
 
-from ...testing_utilities import ProgressMock
+from deeptime.markov.msm import TRAM
+from tests.testing_utilities import ProgressMock
+
+from .test_tram_model import make_random_model
 
 
 def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs=True):
@@ -254,3 +256,8 @@ def test_progress_bar_update_called():
     np.testing.assert_equal(progress.n_update_calls, 5)
     # and close() one time
     np.testing.assert_equal(progress.n_close_calls, 1)
+
+
+def test_tqdm_progress_bar():
+    tram = TRAM(callback_interval=2, maxiter=10, progress=tqdm)
+    tram.fit(make_random_input_data(5, 5))

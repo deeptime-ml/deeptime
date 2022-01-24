@@ -20,12 +20,10 @@ def supports_progress_interface(bar):
     ProgressCallback
     """
     has_methods = all(callable(getattr(bar, method, None)) for method in supports_progress_interface.required_methods)
-    has_attrs = all(hasattr(bar, attribute) for attribute in supports_progress_interface.required_attributes)
-    return has_methods and has_attrs
+    return has_methods
 
 
 supports_progress_interface.required_methods = ['update', 'close', 'set_description']
-supports_progress_interface.required_attributes = ['total']
 
 
 class ProgressCallback:
@@ -35,7 +33,7 @@ class ProgressCallback:
     ----------
     progress : object
        Tested for a tqdm progress bar. Should implement `update()`, `set_description()`, and `close()`. Should
-       also possess a `total` attribute or property (with setter).
+       also possess a `total` constructor keyword argument.
     total : int
        Number of iterations to completion.
     description : string
@@ -47,15 +45,12 @@ class ProgressCallback:
     """
 
     def __init__(self, progress, description=None, total=None):
-        self.progress_bar = handle_progress_bar(progress)()
+        self.progress_bar = handle_progress_bar(progress)(total=total)
         assert supports_progress_interface(self.progress_bar), \
             f"Progress bar did not satisfy interface! It should at least have " \
-            f"the attribute(s) {supports_progress_interface.required_attributes} and " \
-            f"the method(s) {supports_progress_interface.required_methods}"
+            f"the method(s) {supports_progress_interface.required_methods}."
         if description is not None:
             self.progress_bar.set_description(description)
-        if total is not None:
-            self.progress_bar.total = total
 
     def __call__(self, *args, **kw):
         self.progress_bar.update()
