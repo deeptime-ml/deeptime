@@ -227,10 +227,10 @@ def test_get_trajectory_fragments(dtrajs, ttrajs):
     bias_matrices = make_matching_bias_matrix(dtrajs)
     dataset = TRAMDataset(dtrajs=dtrajs, ttrajs=ttrajs, bias_matrices=bias_matrices)
 
-    # dtraj should be split into fragments [[[1, 3], [5, 6], [8, 9]], [[10, 11], [12, 13]]] due to replica exchanges
+    # dtraj should be split into fragments [[[1], [3], [5, 6], [8, 9]], [[10, 11], [12, 13]]] due to replica exchanges
     # found in ttrajs. This should lead having only 5 transitions in transition counts:
     np.testing.assert_equal(dataset.state_counts.sum(), 10)
-    np.testing.assert_equal(dataset.transition_counts.sum(), 5)
+    np.testing.assert_equal(dataset.transition_counts.sum(), 4)
 
 
 def test_unknown_connectivity():
