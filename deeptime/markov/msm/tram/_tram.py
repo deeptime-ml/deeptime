@@ -202,7 +202,7 @@ class TRAM(_MSMBaseEstimator):
 
             if callback.last_increment > self.maxerr:
                 warnings.warn(
-                    f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_increment}",
+                    f"TRAM did not converge after {self.maxiter} iterations. Last increment: {callback.last_increment}",
                     ConvergenceWarning)
 
 

@@ -22,7 +22,7 @@ class Callback:
         if n_iter is not None:
             self.progress_bar.total = n_iter
 
-    def __call__(self):
+    def __call__(self, *args, **kw):
         self.progress_bar.update()
 
     def __enter__(self):
