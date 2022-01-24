@@ -19,6 +19,18 @@ def _determine_n_therm_states(dtrajs, ttrajs):
         return _determine_n_states(ttrajs)
 
 
+def _split_at_negative_state_indices(trajectory_fragment, negative_state_indices):
+    split_fragments = np.split(trajectory_fragment, negative_state_indices)
+    sub_fragments = []
+    # now get rid of the negative state indices.
+    for frag in split_fragments:
+        frag = frag[frag >= 0]
+        # Only add to the list if there are any samples left in the fragments
+        if len(frag) > 0:
+            sub_fragments.append(frag)
+    return sub_fragments
+
+
 def transition_counts_from_count_models(n_therm_states, n_markov_states, count_models):
     transition_counts = np.zeros((n_therm_states, n_markov_states, n_markov_states), dtype=np.int32)
 
@@ -454,13 +466,24 @@ class TRAMDataset:
         # get a mapping from trajectory segments to thermodynamic states
         fragment_indices = self._find_trajectory_fragment_mapping()
 
-        fragments = []
+        fragments = [[] for _ in range(self.n_therm_states)]
         # for each them. state k, gather all trajectory fragments that were sampled at that state.
         for k in range(self.n_therm_states):
-            # take the fragments based on the list of indices. Exclude all values that are less than zero. They don't
-            # belong in the connected set.
-            fragments.append([self.dtrajs[traj_idx][start:stop][self.dtrajs[traj_idx][start:stop] >= 0]
-                              for (traj_idx, start, stop) in fragment_indices[k]])
+            # Select the fragments using the list of indices.
+            for (traj_idx, start, stop) in fragment_indices[k]:
+                fragment = self.dtrajs[traj_idx][start:stop]
+
+                # Whenever state values are negative, those samples do not belong in the connected set and need to be
+                # excluded. We split trajectories where negative state indices occur.
+                # Example: [0, 0, 2, -1, 2, 1, 0], we want to exclude the sample with state index -1.
+                # Simply filtering out negative state indices would lead to [0, 0, 2, 2, 1, 0] which gives a transition
+                # 2 -> 2 which doesn't exist.  Instead, split the trajectory at negative state indices to get
+                # [0, 0, 2], [2, 1, 0]
+                negative_state_indices = np.where(fragment < 0)[0]
+                if len(negative_state_indices) > 0:
+                    fragments[k].extend(_split_at_negative_state_indices(fragment, negative_state_indices))
+                else:
+                    fragments[k].append(fragment)
         return fragments
 
     def _find_trajectory_fragment_mapping(self):
