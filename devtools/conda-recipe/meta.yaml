@@ -22,7 +22,7 @@ requirements:
     - numpy
     - scipy
     - pybind11
-    - pybind11-abi
+    - toml
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
 
