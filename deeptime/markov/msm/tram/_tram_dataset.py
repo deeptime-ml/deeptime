@@ -1,7 +1,10 @@
+from abc import ABC
+
 import numpy as np
 import scipy as sp
 import warnings
 
+from deeptime.base import Dataset
 from deeptime.util import types, callbacks
 from deeptime.util.decorators import cached_property
 from deeptime.markov import TransitionCountEstimator, TransitionCountModel
@@ -86,7 +89,7 @@ def _invalidate_caches():
             member.invalidate()
 
 
-class TRAMDataset:
+class TRAMDataset(Dataset):
     r""" Dataset for organizing data and obtaining properties from data that are needed for TRAM.
     The minimum required parameters for constructing a TRAMDataset are the `dtrajs` and `bias_matrices`. In this case,
     `ttrajs` are inferred from the shape of the `dtrajs`, by assuming each trajectory in `dtrajs` corresponds to a
@@ -143,7 +146,6 @@ class TRAMDataset:
     :class:`TRAM <deeptime.markov.msm.TRAM>`, :class:`TRAMModel <deeptime.markov.msm.TRAMModel>`
 
     """
-
     def __init__(self, dtrajs, bias_matrices, ttrajs=None, n_therm_states=None, n_markov_states=None, lagtime=1,
                  count_mode='sliding'):
         self.lagtime = lagtime
@@ -172,6 +174,16 @@ class TRAMDataset:
 
     #: All possible connectivity modes
     connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
+
+    def __len__(self):
+        return len(np.concatenate(self.dtrajs))
+
+    def __getitem__(self, indices):
+        traj, n = indices
+        return self.dtrajs[traj][n], self.bias_matrices[traj][n]
+
+    def setflags(self, write=True):
+        pass
 
     @property
     def tram_input(self):

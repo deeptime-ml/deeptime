@@ -3,7 +3,7 @@ import pytest
 from tqdm import tqdm
 from flaky import flaky
 
-from deeptime.markov.msm import TRAM
+from deeptime.markov.msm.tram import TRAM, TRAMDataset
 from tests.testing_utilities import ProgressMock
 
 from .test_tram_model import make_random_model
@@ -108,6 +108,7 @@ def test_tram_integration():
         for j, bias_center in enumerate(bias_centers):
             def bias(x, x0=bias_center):
                 return harmonic(x0, x)
+
             bias_matrices[i, :, j] = bias(traj)
 
     tram = TRAM(maxiter=100)
@@ -139,12 +140,14 @@ def test_tram_likelihood_increases():
     tram = TRAM(maxiter=10)
     model1 = tram.fit_fetch((dtrajs, bias_matrices))
     # check that between iterations the LL increases
-    np.testing.assert_([tram.log_likelihoods[i] < tram.log_likelihoods[i+1] for i in range(len(tram.log_likelihoods) - 1)])
+    np.testing.assert_(
+        [tram.log_likelihoods[i] < tram.log_likelihoods[i + 1] for i in range(len(tram.log_likelihoods) - 1)])
 
     tram2 = TRAM(maxiter=100)
     model2 = tram2.fit_fetch((dtrajs, bias_matrices))
     # also check that model produced after more iterations had higher LL
-    np.testing.assert_(model1.compute_log_likelihood(dtrajs, bias_matrices) < model2.compute_log_likelihood(dtrajs, bias_matrices))
+    np.testing.assert_(
+        model1.compute_log_likelihood(dtrajs, bias_matrices) < model2.compute_log_likelihood(dtrajs, bias_matrices))
 
 
 def to_numpy_arrays(dtrajs, bias_matrices, ttrajs):
@@ -262,3 +265,9 @@ def test_progress_bar_update_called():
 def test_tqdm_progress_bar():
     tram = TRAM(callback_interval=2, maxiter=10, progress=tqdm)
     tram.fit(make_random_input_data(5, 5))
+
+
+def test_fit_with_dataset():
+    dataset = TRAMDataset(dtrajs=[np.asarray([0, 1, 2])], bias_matrices=[np.asarray([[1.], [2.], [3.]])])
+    tram = TRAM()
+    tram.fit(dataset)
