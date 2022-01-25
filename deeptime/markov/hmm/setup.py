@@ -4,11 +4,6 @@ def configuration(parent_package='', top_path=None):
 
     config.add_subpackage("init")
 
-    config.add_extension('_hmm_bindings',
-                         sources=['_bindings/src/hmm_module.cpp'],
-                         include_dirs=['_bindings/include'],
-                         language='c++',
-                         extra_compile_args=['-fvisibility=hidden']
-                         )
+    config.add_extension('_hmm_bindings', sources=['_bindings/src/hmm_module.cpp'], language='c++')
 
     return config
