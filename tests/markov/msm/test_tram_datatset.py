@@ -306,7 +306,7 @@ def test_len():
 
 def test_getitem():
     dataset = make_random_dataset(3, 5)
-    state, bias = dataset[2, 50]
+    state, bias = dataset[2, 8]
     np.testing.assert_equal(bias.shape, (3,))
     np.testing.assert_(isinstance(state, np.int32))
 
