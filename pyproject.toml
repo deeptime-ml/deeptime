@@ -1,5 +1,26 @@
+[project]
+name = "deeptime"
+readme = "README.md"
+description = "Python library for analysis of time series data including dimensionality reduction, clustering, and Markov model estimation."
+keywords = [
+    "markov-model", "hidden-markov-model", "time-series-analysis", "covariance-estimation",
+    "koopman-operator", "coherent-set-detection"
+]
+requires-python = ">= 3.7"
+dependencies = ['numpy', 'scipy', 'scikit-learn', 'threadpoolctl']
+
+[project.urls]
+homepage = "https://deeptime-ml.github.io"
+repository = "https://github.com/deeptime-ml/deeptime"
+documentation = "https://deeptime-ml.github.io"
+download = "https://pypi.org/project/deeptime/#files"
+
+[project.optional-dependencies]
+deep-learning = ['pytorch']
+plotting = ['matplotlib', 'networkx']
+
 [build-system]
-requires = ["setuptools", "wheel", "numpy>=1.14", "scipy", "Cython", "pybind11"]
+requires = ["toml", "setuptools", "wheel", "numpy>=1.14", "scipy", "Cython", "pybind11"]
 
 [tool.pytest.ini_options]
 filterwarnings = ["once", "ignore::UserWarning"]

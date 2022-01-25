@@ -2,23 +2,25 @@ import sys
 from pathlib import Path
 
 import setuptools  # noqa # pylint: disable=unused-import
+import toml
 
 from numpy.distutils.command.build_ext import build_ext
 
 import versioneer
 import pybind11
 
-CCODE_TEMPLATE = """{includes}
-int main(void) {{
-    {code}
-    return 0;
-}}"""
-
+pyproject = toml.load("pyproject.toml")
 
 def _gen_ccode(includes, code):
+    template = """{includes}
+    int main(void) {{
+        {code}
+        return 0;
+    }}"""
+
     if not isinstance(includes, (list, tuple)):
         includes = [includes]
-    return CCODE_TEMPLATE.format(includes="\n".join(["#include <{}>".format(inc) for inc in includes]), code=code)
+    return template.format(includes="\n".join(["#include <{}>".format(inc) for inc in includes]), code=code)
 
 
 def supports_omp(cc):
@@ -98,39 +100,35 @@ class Build(build_ext):
             define_macros += [('USE_OPENMP', None)]
 
 
+def load_long_description():
+    with open(pyproject["project"]["readme"], mode='r', encoding="utf-8") as f:
+        return f.read()
+
+
 cmdclass = versioneer.get_cmdclass()
 cmdclass['build_ext'] = Build
 
 metadata = \
     dict(
-        name='deeptime',
+        name=pyproject["project"]["name"],
         version=versioneer.get_version(),
         author='Moritz Hoffmann',
         author_email='moritz.hoffmann@fu-berlin.de',
-        url='http://github.com/deeptime-ml/deeptime',
-        description='Python library for analysis of time series data including dimensionality reduction, '
-                    'clustering, and Markov model estimation.',
-        long_description='Deeptime is a Python library for analysis for time series data. '
-                         'In particular, methods for dimensionality reduction, clustering, and Markov '
-                         'model estimation are implemented. It is available for Python 3.6+.',
+        url=pyproject["project"]["urls"]["repository"],
+        description=pyproject["project"]["description"],
+        long_description=load_long_description(),
+        long_description_content_type='text/markdown',
         cmdclass=cmdclass,
         zip_safe=False,
-        setup_requires=['cython'],
-        install_requires=['numpy', 'scipy', 'scikit-learn', 'threadpoolctl'],
-        extras_require={
-            'deep-learning': ['pytorch'],
-            'plotting': ['matplotlib', 'networkx']
-        },
+        setup_requires=pyproject["build-system"]["requires"],
+        install_requires=pyproject["project"]["dependencies"],
+        extras_require=pyproject["project"]["optional-dependencies"],
         package_data={
             'deeptime.data': ['data/*.npz'],
             'deeptime.src.include': ['*.h'],
-            'deeptime.clustering.include': ['*.h'],
-            'deeptime.markov._bindings.include': ['*.h'],
-            'deeptime.markov.hmm._bindings.include': ['*.h'],
-            'deeptime.data.include': ['*.h']
         },
         include_package_data=True,
-        python_requires='>= 3.6',
+        python_requires=pyproject["project"]["requires-python"],
     )
 
 
@@ -146,5 +144,6 @@ def configuration(parent_package='', top_path=None):
 
 if __name__ == '__main__':
     from numpy.distutils.core import setup
+
     metadata['configuration'] = configuration
     setup(**metadata)
