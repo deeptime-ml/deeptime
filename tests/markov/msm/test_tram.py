@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
 from tqdm import tqdm
-from flaky import flaky
 
-from deeptime.markov.msm.tram import TRAM, TRAMDataset
+from deeptime.markov.msm import TRAM, TRAMDataset
 from tests.testing_utilities import ProgressMock
 
 from .test_tram_model import make_random_model
