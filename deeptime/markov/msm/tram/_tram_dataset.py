@@ -181,8 +181,8 @@ class TRAMDataset(Dataset):
         return self.dtrajs[traj][n], self.bias_matrices[traj][n]
 
     def setflags(self, write=True):
-        self.dtrajs.setflags(write=write)
-        self.bias_matrices.setflags(write=write)
+        [traj.setflags(write=write) for traj in self.dtrajs]
+        [bias_matrix.setflags(write=write) for bias_matrix in self.bias_matrices]
 
     @property
     def tram_input(self):

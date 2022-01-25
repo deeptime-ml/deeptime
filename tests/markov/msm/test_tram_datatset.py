@@ -297,3 +297,24 @@ def test_check_against_model_is_valid(make_ttrajs):
 def test_progres_bar():
     dataset = make_random_dataset(3, 5)
     dataset.restrict_to_largest_connected_set(progress=tqdm)
+
+
+def test_len():
+    dataset = make_random_dataset(3, 5, n_samples=100)
+    np.testing.assert_equal(len(dataset), 300)
+
+
+def test_getitem():
+    dataset = make_random_dataset(3, 5)
+    state, bias = dataset[2, 50]
+    np.testing.assert_equal(bias.shape, (3,))
+    np.testing.assert_(isinstance(state, np.int32))
+
+
+def test_setflags():
+    dataset = make_random_dataset(3, 5)
+    dataset.setflags(False)
+    with np.testing.assert_raises(ValueError):
+        dataset.dtrajs[0][0] = 0
+    with np.testing.assert_raises(ValueError):
+        dataset.bias_matrices[0][0, 0] = 0
