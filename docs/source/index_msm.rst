@@ -54,13 +54,23 @@ over the encountered state transitions. This is covered in `transition counting 
     notebooks/mlmsm
     notebooks/pcca
     notebooks/tpt
-    notebooks/tram
 
 Furthermore, deeptime implements :class:`Augmented Markov models <deeptime.markov.msm.AugmentedMSMEstimator>`
 :footcite:`olsson2017combining` which can be used when experimental data is available, as well as
 :class:`Observable Operator Model MSMs <deeptime.markov.msm.OOMReweightedMSM>` :footcite:`nuske2017markov` which is
 an unbiased estimator for the MSM transition matrix that corrects for the effect of starting out of equilibrium,
 even when short lag times are used.
+
+.. rubric:: Multiensemble MSMs
+
+Deeptime offers the TRAM method :footcite:`wu2016multiensemble` for estimating multiensemble MSMs. These are collections
+of MSMs based on simulations that are governed by biased dynamics (i.e., replica exchange simulations
+and umbrella sampling).
+
+.. toctree::
+    :maxdepth: 1
+
+    notebooks/tram
 
 .. rubric:: References
 

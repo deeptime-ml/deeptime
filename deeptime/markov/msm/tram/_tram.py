@@ -86,9 +86,9 @@ class TRAM(_MSMBaseEstimator):
         `track_log_likelihoods=true`, the log-likelihood are also stored. If `callback_interval=0`, no call to the
         callback function is done.
     progress : object
-        Progress bar object that `TRAM` will call to indicate progress to the user.
-        Tested for a tqdm progress bar. Should implement `update()` and `close()` and have `total` and `desc`
-        properties.
+        Progress bar object that `TRAM` will call to indicate progress to the user. Tested for a tqdm progress bar.
+        The interface is checked
+        via :meth:`supports_progress_interface <deeptime.util.callbacks.supports_progress_interface>`.
 
     See also
     --------
@@ -192,8 +192,7 @@ class TRAM(_MSMBaseEstimator):
         return self
 
     def _run_estimation(self, tram_input):
-        """ Estimate the free energies using self-consistent iteration as described in the TRAM paper.
-        """
+        """ Estimate the free energies using self-consistent iteration as described in the TRAM paper. """
         with TRAMCallback(self.progress, self.maxiter, self.log_likelihoods, self.increments,
                           self.callback_interval > 0) as callback:
             self._tram_estimator.estimate(tram_input, self.maxiter, self.maxerr,
@@ -202,11 +201,11 @@ class TRAM(_MSMBaseEstimator):
 
             if callback.last_increment > self.maxerr:
                 warnings.warn(
-                    f"TRAM did not converge after {self.maxiter} iteration. Last increment: {callback.last_increment}",
-                    ConvergenceWarning)
+                    f"TRAM did not converge after {self.maxiter} iteration(s). "
+                    f"Last increment: {callback.last_increment}", ConvergenceWarning)
 
 
-class TRAMCallback(callbacks.Callback):
+class TRAMCallback(callbacks.ProgressCallback):
     """Callback for the TRAM estimate process. Increments a progress bar and optionally saves iteration increments and
     log likelihoods to a list.
 
@@ -214,14 +213,16 @@ class TRAMCallback(callbacks.Callback):
     ----------
     log_likelihoods_list : list, optional
         A list to append the log-likelihoods to that are passed to the callback.__call__() method.
+    total : int
+        Maximum number of callbacks.
     increments : list, optional
         A list to append the increments to that are passed to the callback.__call__() method.
     store_convergence_info : bool, default=False
         If True, log_likelihoods and increments are appended to their respective lists each time callback.__call__() is
         called. If false, no values are appended, only the last increment is stored.
     """
-    def __init__(self, progress, n_iter, log_likelihoods_list=None, increments=None, store_convergence_info=False):
-        super().__init__(progress, n_iter=n_iter, display_text="Running TRAM estimate")
+    def __init__(self, progress, total, log_likelihoods_list=None, increments=None, store_convergence_info=False):
+        super().__init__(progress, total=total, description="Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
         self.store_convergence_info = store_convergence_info

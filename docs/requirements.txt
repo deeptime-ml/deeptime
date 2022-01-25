@@ -14,3 +14,4 @@ memory_profiler
 mdshare
 nbconvert
 jupyter
+tqdm

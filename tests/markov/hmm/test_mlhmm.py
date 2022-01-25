@@ -630,6 +630,13 @@ class TestMLHMM(unittest.TestCase):
         pobs_zeros = ((0, 1, 2, 2, 2), (0, 0, 1, 2, 3))
         assert np.allclose(hmm.output_probabilities[pobs_zeros], 0)
 
+    def test_submodel_disconnect(self):
+        dtraj = np.array([0, 1, 1, 0, 1, 1, 0, 1, 2, 2, 2, 2, 1, 1, 1, 2, 1, 3, 3, 3, 3, 3, 3])
+        init_hmm = init.discrete.metastable_from_data(dtraj, n_hidden_states=4, lagtime=1)
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=1).fit_fetch(dtraj)
+        sub_hmm = hmm.submodel_disconnect(1)
+        np.testing.assert_equal(sub_hmm.transition_model.transition_matrix.shape[0], 3)
+
 
 class TestMLHMMPathologicalCases(unittest.TestCase):
 

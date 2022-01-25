@@ -1,4 +1,4 @@
-#include "register_clustering.h"
+#include <deeptime/clustering/register_clustering.h>
 
 struct MaximumMetric {
 

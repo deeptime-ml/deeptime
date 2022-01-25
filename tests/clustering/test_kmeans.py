@@ -4,16 +4,18 @@ import warnings
 
 import numpy as np
 import pytest
-from numpy.testing import assert_equal
+from numpy.testing import assert_equal, assert_
 from sklearn.datasets import make_blobs
 from sklearn.utils.extmath import row_norms
 
 import deeptime as dt
 import deeptime.clustering
+from tests.testing_utilities import ProgressMock
 
 
 def cluster_kmeans(data, k, max_iter=5, init_strategy='kmeans++', fixed_seed=False, n_jobs=None, cluster_centers=None,
-                   callback_init_centers=None, callback_loop=None) -> (dt.clustering.KMeans, dt.clustering.ClusterModel):
+                   callback_init_centers=None, callback_loop=None) -> (
+dt.clustering.KMeans, dt.clustering.ClusterModel):
     est = dt.clustering.KMeans(n_clusters=k, max_iter=max_iter, init_strategy=init_strategy,
                                fixed_seed=fixed_seed, n_jobs=n_jobs,
                                initial_centers=np.array(cluster_centers) if cluster_centers is not None else None)
@@ -372,3 +374,41 @@ class TestKmeansResume(unittest.TestCase):
                     found[i] = True
 
         assert np.all(found)
+
+
+@pytest.mark.parametrize("with_progress_bar", [True, False])
+def test_kmeans_progress(with_progress_bar):
+    progress_instances = []
+
+    class ProgressFactory:
+        def __new__(cls, *args, **kwargs):
+            progress = ProgressMock()
+            progress_instances.append(progress)
+            return progress
+
+    n_init_callbacks = 0
+    n_loop_callbacks = 0
+
+    def init_callback(*_):
+        nonlocal n_init_callbacks
+        n_init_callbacks += 1
+
+    def loop_callback(*_):
+        nonlocal n_loop_callbacks
+        n_loop_callbacks += 1
+
+    data = np.random.uniform(-10, 10, size=(100, 5))
+    kmeans = dt.clustering.KMeans(2, max_iter=5)
+    if with_progress_bar:
+        kmeans.progress = ProgressFactory
+    kmeans.fit(data, callback_init_centers=init_callback, callback_loop=loop_callback)
+
+    assert_equal(n_init_callbacks, 2)
+    assert_(0 < n_loop_callbacks <= 10)
+
+    if with_progress_bar:
+        assert_equal(len(progress_instances), 2)
+        assert_equal(progress_instances[0].n_update_calls, 2)
+        assert_equal(progress_instances[0].n_close_calls, 1)
+        assert_equal(progress_instances[1].n_update_calls, n_loop_callbacks)
+        assert_equal(progress_instances[1].n_close_calls, 1)
