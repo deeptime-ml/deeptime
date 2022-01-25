@@ -5,3 +5,8 @@ include pyproject.toml
 
 # sources of extensions (incl. cython)
 recursive-include deeptime *.pyx *.h *.hpp *.c *.cpp
+
+prune tests
+prune docs
+prune *.egg-info
+prune .github

@@ -241,7 +241,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
     fit_fetch : callable or estimator
         Can be provided as callable for a custom fit and fetch method. Should be a function pointer or lambda which
         takes a list of discrete trajectories as input and yields a
-        :class:`CovarianceKoomanModel <deeptime.decomposition.CovarianceKoopmanModel>`. Or an estimator which
+        :class:`CovarianceKoopmanModel <deeptime.decomposition.CovarianceKoopmanModel>`. Or an estimator which
         yields this kind of model.
     trajs : list of array_like
         Input data.

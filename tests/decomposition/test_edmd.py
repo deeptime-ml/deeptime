@@ -1,16 +1,22 @@
 import numpy as np
+import pytest
 from numpy.testing import assert_almost_equal
 
 import deeptime as dt
+from deeptime.util.data import TimeLaggedDataset
 
 
-def test_linearly_evolved_data():
+@pytest.mark.parametrize("from_dataset", [True, False])
+def test_linearly_evolved_data(from_dataset):
     data = np.random.uniform(-1, 1, size=(1000, 4))
     eigs = np.arange(4).astype(np.float64)
     eig_l = np.linalg.qr(np.random.normal(size=(4, 4)))[0]
     Kt = eig_l @ np.diag(eigs) @ eig_l.T
     est = dt.decomposition.EDMD(dt.basis.Identity())
-    model = est.fit((data, data @ Kt)).fetch_model()
+    dataset = (data, data @ Kt)
+    if from_dataset:
+        dataset = TimeLaggedDataset(*dataset)
+    model = est.fit(dataset).fetch_model()
 
     assert_almost_equal(model.forward(data), data @ Kt)
     assert_almost_equal(model.forward(data @ Kt), data @ Kt @ Kt)

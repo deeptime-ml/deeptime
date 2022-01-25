@@ -109,7 +109,7 @@ static const std::vector<dtype> computeSampleWeightsLog(const DTraj &dtraj,
                                                         const np_array<dtype> &thermStateEnergies,
                                                         const np_array_nfc<dtype> &modifiedStateCountsLog,
                                                         StateIndex thermStateIndex) {
-    std::size_t nThermStates = static_cast<StateIndex>(thermStateEnergies.size());
+    auto nThermStates = static_cast<StateIndex>(thermStateEnergies.size());
 
     std::vector<dtype> sampleWeights(dtraj.size());
     std::vector<dtype> scratch(nThermStates);
