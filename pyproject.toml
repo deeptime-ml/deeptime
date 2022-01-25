@@ -1,5 +1,5 @@
 [project]
-name = "deeptime-test"
+name = "deeptime"
 readme = "README.md"
 description = "Python library for analysis of time series data including dimensionality reduction, clustering, and Markov model estimation."
 keywords = [
