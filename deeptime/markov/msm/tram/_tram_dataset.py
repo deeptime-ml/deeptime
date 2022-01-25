@@ -174,7 +174,7 @@ class TRAMDataset(Dataset):
     connectivity_options = ["post_hoc_RE", "BAR_variance", "summed_count_matrix", None]
 
     def __len__(self):
-        return len(np.concatenate(self.dtrajs))
+        return np.sum([len(traj) for traj in self.dtrajs])
 
     def __getitem__(self, indices):
         traj, n = indices
