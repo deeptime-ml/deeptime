@@ -7,11 +7,16 @@ import numpy as np
 class ProgressMock:
     def __init__(self):
         self.total = 1
-        self.n_update_calls = 0
+        self.n = 0
         self.n_close_calls = 0
+        self.n_update_calls = 0
 
     def set_description(self, *_): ...
-    def update(self): self.n_update_calls += 1
+
+    def update(self, n=1):
+        self.n += n
+        self.n_update_calls += 1
+
     def close(self): self.n_close_calls += 1
 
 

@@ -117,7 +117,7 @@ class TRAM(_MSMBaseEstimator):
         self.progress = progress
         self._largest_connected_set = None
         self.log_likelihoods = []
-        self.increments = []
+        self.energy_increments = []
 
     def fetch_model(self) -> Optional[TRAMModel]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -193,11 +193,11 @@ class TRAM(_MSMBaseEstimator):
 
     def _run_estimation(self, tram_input):
         """ Estimate the free energies using self-consistent iteration as described in the TRAM paper. """
-        with TRAMCallback(self.progress, self.maxiter, self.log_likelihoods, self.increments,
-                          self.callback_interval > 0) as callback:
+        with TRAMCallback(self.progress, self.maxiter, self.log_likelihoods, self.energy_increments) as callback:
             self._tram_estimator.estimate(tram_input, self.maxiter, self.maxerr,
                                           track_log_likelihoods=self.track_log_likelihoods,
-                                          callback_interval=self.callback_interval, callback=callback)
+                                          callback_interval=self.callback_interval,
+                                          callback=callback)
 
             if callback.last_increment > self.maxerr:
                 warnings.warn(
@@ -206,8 +206,8 @@ class TRAM(_MSMBaseEstimator):
 
 
 class TRAMCallback(callbacks.ProgressCallback):
-    """Callback for the TRAM estimate process. Increments a progress bar and optionally saves iteration increments and
-    log likelihoods to a list.
+    """Callback for the TRAM estimate process. Increments a progress bar and saves iteration increments in the free
+    energies and log-likelihoods to a list.
 
     Parameters
     ----------
@@ -217,33 +217,31 @@ class TRAMCallback(callbacks.ProgressCallback):
         Maximum number of callbacks.
     increments : list, optional
         A list to append the increments to that are passed to the callback.__call__() method.
-    store_convergence_info : bool, default=False
-        If True, log_likelihoods and increments are appended to their respective lists each time callback.__call__() is
-        called. If false, no values are appended, only the last increment is stored.
     """
-    def __init__(self, progress, total, log_likelihoods_list=None, increments=None, store_convergence_info=False):
+    def __init__(self, progress, total, log_likelihoods_list=None, increments=None):
         super().__init__(progress, total=total, description="Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
-        self.store_convergence_info = store_convergence_info
         self.last_increment = 0
 
-    def __call__(self, increment, log_likelihood):
+    def __call__(self, n_iterations,  increment, log_likelihood):
         """Call the callback. Increment a progress bar (if available) and store convergence information.
 
         Parameters
         ----------
+        n_iterations : int
+            Number of iterations to increment the progress bar with
         increment : float
             The increment in the free energies after the last iteration.
         log_likelihood : float
-            The current log-likelihood
+            The current log-likelihood, or 0. when the tram estimator is not configured to calculate log-likelihoods.
         """
-        super().__call__()
+        super().__call__(n_iterations)
 
-        if self.store_convergence_info:
-            if self.log_likelihoods is not None:
-                self.log_likelihoods.append(log_likelihood)
-            if self.increments is not None:
-                self.increments.append(increment)
+        if self.log_likelihoods is not None:
+            self.log_likelihoods.append(log_likelihood)
+
+        if self.increments is not None:
+            self.increments.append(increment)
 
         self.last_increment = increment

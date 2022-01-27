@@ -20,10 +20,12 @@ def supports_progress_interface(bar):
     ProgressCallback
     """
     has_methods = all(callable(getattr(bar, method, None)) for method in supports_progress_interface.required_methods)
-    return has_methods
+    has_attributes = all(hasattr(bar, attribute) for attribute in supports_progress_interface.required_attributes)
+    return has_methods and has_attributes
 
 
 supports_progress_interface.required_methods = ['update', 'close', 'set_description']
+supports_progress_interface.required_attributes = ['n']
 
 
 class ProgressCallback:
@@ -46,17 +48,23 @@ class ProgressCallback:
 
     def __init__(self, progress, description=None, total=None):
         self.progress_bar = handle_progress_bar(progress)(total=total)
+        self.total = total
         assert supports_progress_interface(self.progress_bar), \
             f"Progress bar did not satisfy interface! It should at least have " \
-            f"the method(s) {supports_progress_interface.required_methods}."
+            f"the method(s) {supports_progress_interface.required_methods} and " \
+            f"the attribute(s) {supports_progress_interface.required_attributes}."
         if description is not None:
             self.progress_bar.set_description(description)
 
-    def __call__(self, *args, **kw):
-        self.progress_bar.update()
+    def __call__(self, inc=1, *args, **kw):
+        self.progress_bar.update(inc)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.total and not exc_type:
+            inc = self.total - self.progress_bar.n
+            if inc > 0:
+                self.progress_bar.update(inc)
         self.progress_bar.close()

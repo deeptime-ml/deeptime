@@ -132,23 +132,6 @@ def test_tram_integration():
     np.testing.assert_almost_equal(np.sum(weights), 1)
 
 
-@flaky(max_runs=3, min_passes=1)
-def test_tram_likelihood_increases():
-    dtrajs, bias_matrices = make_random_input_data(5, 8, make_ttrajs=False)
-
-    tram = TRAM(maxiter=10)
-    model1 = tram.fit_fetch((dtrajs, bias_matrices))
-    # check that between iterations the LL increases
-    np.testing.assert_(
-        [tram.log_likelihoods[i] < tram.log_likelihoods[i + 1] for i in range(len(tram.log_likelihoods) - 1)])
-
-    tram2 = TRAM(maxiter=100)
-    model2 = tram2.fit_fetch((dtrajs, bias_matrices))
-    # also check that model produced after more iterations had higher LL
-    np.testing.assert_(
-        model1.compute_log_likelihood(dtrajs, bias_matrices) < model2.compute_log_likelihood(dtrajs, bias_matrices))
-
-
 def to_numpy_arrays(dtrajs, bias_matrices, ttrajs):
     dtrajs = [np.asarray(traj) for traj in dtrajs]
 
@@ -238,8 +221,8 @@ def test_callback_called(track_log_likelihoods):
     tram_input = make_random_input_data(5, 5)
     tram.fit(tram_input)
     np.testing.assert_equal(len(tram.log_likelihoods), 5)
-    np.testing.assert_equal(len(tram.increments), 5)
-    np.testing.assert_(np.min(tram.increments) > 0)
+    np.testing.assert_equal(len(tram.energy_increments), 5)
+    np.testing.assert_(np.min(tram.energy_increments) > 0)
     if track_log_likelihoods:
         np.testing.assert_((np.asarray(tram.log_likelihoods) != 0).all())
     else:
@@ -257,6 +240,7 @@ def test_progress_bar_update_called():
 
     # update() should be called 5 times
     np.testing.assert_equal(progress.n_update_calls, 5)
+    np.testing.assert_equal(progress.n, 10)
     # and close() one time
     np.testing.assert_equal(progress.n_close_calls, 1)
 
