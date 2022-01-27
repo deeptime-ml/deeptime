@@ -257,6 +257,7 @@ def test_progress_bar_update_called():
 
     # update() should be called 5 times
     np.testing.assert_equal(progress.n_update_calls, 5)
+    np.testing.assert_equal(progress.n, 10)
     # and close() one time
     np.testing.assert_equal(progress.n_close_calls, 1)
 

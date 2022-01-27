@@ -408,7 +408,9 @@ def test_kmeans_progress(with_progress_bar):
 
     if with_progress_bar:
         assert_equal(len(progress_instances), 2)
+        assert_equal(progress_instances[0].n, 2)
         assert_equal(progress_instances[0].n_update_calls, 2)
         assert_equal(progress_instances[0].n_close_calls, 1)
         assert_equal(progress_instances[1].n_update_calls, n_loop_callbacks)
+        assert_equal(progress_instances[1].n, 5)
         assert_equal(progress_instances[1].n_close_calls, 1)
