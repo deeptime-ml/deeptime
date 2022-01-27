@@ -56,8 +56,8 @@ class ProgressCallback:
         if description is not None:
             self.progress_bar.set_description(description)
 
-    def __call__(self, *args, **kw):
-        self.progress_bar.update()
+    def __call__(self, inc=1, *args, **kw):
+        self.progress_bar.update(inc)
 
     def __enter__(self):
         return self

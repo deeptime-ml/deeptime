@@ -238,8 +238,8 @@ def test_callback_called(track_log_likelihoods):
     tram_input = make_random_input_data(5, 5)
     tram.fit(tram_input)
     np.testing.assert_equal(len(tram.log_likelihoods), 5)
-    np.testing.assert_equal(len(tram.increments), 5)
-    np.testing.assert_(np.min(tram.increments) > 0)
+    np.testing.assert_equal(len(tram.energy_increments), 5)
+    np.testing.assert_(np.min(tram.energy_increments) > 0)
     if track_log_likelihoods:
         np.testing.assert_((np.asarray(tram.log_likelihoods) != 0).all())
     else:

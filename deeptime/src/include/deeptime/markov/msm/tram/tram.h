@@ -315,7 +315,7 @@ public:
 
             if (callback != nullptr && callbackInterval > 0 && iterationCount % callbackInterval == 0) {
                 py::gil_scoped_acquire guard;
-                (*callback)(iterationError, logLikelihood);
+                (*callback)(callbackInterval, iterationError, logLikelihood);
             }
 
             if (iterationError < maxErr) {
