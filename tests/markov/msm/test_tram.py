@@ -132,23 +132,6 @@ def test_tram_integration():
     np.testing.assert_almost_equal(np.sum(weights), 1)
 
 
-@flaky(max_runs=3, min_passes=1)
-def test_tram_likelihood_increases():
-    dtrajs, bias_matrices = make_random_input_data(5, 8, make_ttrajs=False)
-
-    tram = TRAM(maxiter=10)
-    model1 = tram.fit_fetch((dtrajs, bias_matrices))
-    # check that between iterations the LL increases
-    np.testing.assert_(
-        [tram.log_likelihoods[i] < tram.log_likelihoods[i + 1] for i in range(len(tram.log_likelihoods) - 1)])
-
-    tram2 = TRAM(maxiter=100)
-    model2 = tram2.fit_fetch((dtrajs, bias_matrices))
-    # also check that model produced after more iterations had higher LL
-    np.testing.assert_(
-        model1.compute_log_likelihood(dtrajs, bias_matrices) < model2.compute_log_likelihood(dtrajs, bias_matrices))
-
-
 def to_numpy_arrays(dtrajs, bias_matrices, ttrajs):
     dtrajs = [np.asarray(traj) for traj in dtrajs]
 
