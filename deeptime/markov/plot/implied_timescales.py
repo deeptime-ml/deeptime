@@ -5,6 +5,7 @@ import numpy as np
 from deeptime.markov import BayesianPosterior
 from deeptime.markov.hmm import HiddenMarkovModel, BayesianHMMPosterior
 from deeptime.markov.msm import MarkovStateModel
+from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function
 
 
@@ -98,7 +99,9 @@ def to_its_data(data, n_its=None) -> ImpliedTimescalesData:
 
 @plotting_function
 def implied_timescales(ax, data, n_its: Optional[int] = None, process: Optional[int] = None,
-                       show_mle: bool = True, show_samples: bool = True, show_cutoff: bool = True,
+                       show_mle: bool = True, show_samples: bool = True, show_sample_mean: bool = True,
+                       show_sample_confidence: bool = True, show_cutoff: bool = True,
+                       sample_confidence: float = .95,
                        colors=None, **kwargs):
     if n_its is not None and process is not None:
         raise ValueError("n_its and process are mutually exclusive.")
@@ -114,7 +117,12 @@ def implied_timescales(ax, data, n_its: Optional[int] = None, process: Optional[
         if show_mle:
             ax.plot(data.lagtimes, data.its[:, it_index], color=color, **kwargs)
         if data.n_samples > 0 and show_samples:
-            pass
+            if show_sample_mean:
+                sample_mean = np.mean(data.its_stats[:, it_index], axis=0)
+                ax.plot(data.lagtimes, sample_mean, marker='o', linestyle='dashed', color=color)
+            if show_sample_confidence:
+                l_conf, r_conf = confidence_interval(data.its_stats[:, it_index], conf=sample_confidence)
+                ax.fill_between(data.lagtimes, l_conf, r_conf, alpha=0.2, color=color)
 
     if show_cutoff:
         ax.plot(data.lagtimes, data.lagtimes, linewidth=2, color='black')
