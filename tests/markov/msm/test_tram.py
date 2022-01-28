@@ -129,7 +129,7 @@ def test_tram_integration():
     np.testing.assert_almost_equal(memm.transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
 
     weights = model.compute_sample_weights_log(dtrajs, bias_matrices)
-    np.testing.assert_almost_equal(np.sum(weights), 1)
+    np.testing.assert_almost_equal(np.sum(np.exp(weights)), 1)
 
 
 def to_numpy_arrays(dtrajs, bias_matrices, ttrajs):
