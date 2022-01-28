@@ -54,7 +54,7 @@ allowed_types = [MarkovStateModel, BayesianPosterior,
                  HiddenMarkovModel, BayesianHMMPosterior]
 
 
-def _to_data(data, n_its) -> ImpliedTimescalesData:
+def to_its_data(data, n_its=None) -> ImpliedTimescalesData:
     if isinstance(data, ImpliedTimescalesData):
         return data
     elif isinstance(data, (list, tuple)):
@@ -94,5 +94,5 @@ def _to_data(data, n_its) -> ImpliedTimescalesData:
 
 @plotting_function
 def implied_timescales(ax, data, n_its: Optional[int] = None):
-    data = _to_data(data, n_its)
+    data = to_its_data(data, n_its)
 
