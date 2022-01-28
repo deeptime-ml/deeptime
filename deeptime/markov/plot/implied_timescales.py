@@ -24,6 +24,10 @@ class ImpliedTimescalesData:
                                                                 "shape (lagtimes, timescales, samples)"
         else:
             self._its_stats = None
+        ix = np.argsort(self.lagtimes)
+        self._lagtimes = self._lagtimes[ix]
+        self._its = self._its[ix]
+        self._its_stats = None if self._its_stats is None else self._its_stats[ix]
 
     @property
     def lagtimes(self) -> np.ndarray:
@@ -93,6 +97,27 @@ def to_its_data(data, n_its=None) -> ImpliedTimescalesData:
 
 
 @plotting_function
-def implied_timescales(ax, data, n_its: Optional[int] = None):
+def implied_timescales(ax, data, n_its: Optional[int] = None, process: Optional[int] = None,
+                       show_mle: bool = True, show_samples: bool = True, show_cutoff: bool = True,
+                       colors=None, **kwargs):
+    if n_its is not None and process is not None:
+        raise ValueError("n_its and process are mutually exclusive.")
     data = to_its_data(data, n_its)
+    if process is not None and process >= data.n_processes:
+        raise ValueError(f"Requested process {process} when only {data.n_processes} are available.")
+
+    it_indices = [process] if process is not None else np.arange(n_its)
+    if colors is None:
+        colors = [f"C{i}" for i in range(len(it_indices))]
+    for it_index in it_indices:
+        color = colors[it_index % len(colors)]
+        if show_mle:
+            ax.plot(data.lagtimes, data.its[:, it_index], color=color, **kwargs)
+        if data.n_samples > 0 and show_samples:
+            pass
+
+    if show_cutoff:
+        ax.plot(data.lagtimes, data.lagtimes, linewidth=2, color='black')
+        ax.fill_between(data.lagtimes, ax.get_ylim()[0]*np.ones(data.n_lagtimes), data.lagtimes,
+                        alpha=0.5, color='grey')
 
