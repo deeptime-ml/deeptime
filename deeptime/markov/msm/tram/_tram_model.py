@@ -179,6 +179,11 @@ class TRAMModel(Model):
         therm_state : int, optional, default=-1
             The index of the thermodynamic state in which the observable need to be computed. If `therm_state=-1`, the
             observable is computed for the unbiased (reference) state.
+
+        Returns
+        -------
+        observable : float
+            The expected value of the observable in the selected thermodynamic state `therm_state`.
         """
         # flatten input data
         observable_values = np.concatenate(observable_values)
