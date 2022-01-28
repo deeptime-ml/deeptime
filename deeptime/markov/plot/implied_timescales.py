@@ -19,11 +19,11 @@ class ImpliedTimescalesData:
 
         if its_stats is not None:
             self._its_stats = np.asarray(its_stats).transpose(0, 2, 1)
-            assert self.its_stats.ndim == 3 and \
-                   self.its_stats.shape[0] == self.n_lagtimes and \
-                   self.its_stats.shape[1] == self.n_processes, f"its_stats should be of " \
-                                                                f"shape (lagtimes, timescales, samples) " \
-                                                                f"but was {self.its_stats.shape}"
+            if not (self.its_stats.ndim == 3 and self.its_stats.shape[0] == self.n_lagtimes and
+                    self.its_stats.shape[1] == self.n_processes):
+                raise ValueError(f"its_stats should be of shape (lagtimes={self.n_lagtimes}, "
+                                 f"processes={self.n_processes}, samples={self.n_processes}) but was "
+                                 f"{self.its_stats.shape}")
         else:
             self._its_stats = None
         ix = np.argsort(self.lagtimes)
