@@ -3,7 +3,7 @@ import pytest
 from numpy.testing import assert_raises, assert_equal, assert_array_equal
 
 from deeptime.data import double_well_2d, double_well_discrete
-from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel
+from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel, MaximumLikelihoodHMM, init, BayesianHMM
 from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
 from deeptime.markov.plot import implied_timescales
 from deeptime.markov.plot.implied_timescales import to_its_data
@@ -49,9 +49,15 @@ def test_plot_its(figure):
     lagtimes = [1, 2, 5, 10, 15, 100]
 
     models = []
-    for lagtime in lagtimes:
-        msm = MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(data)
-        models.append(BayesianMSM().fit_fetch(msm))
+    #for lagtime in lagtimes:
+        #msm = MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(data)
+        #models.append(BayesianMSM().fit_fetch(msm))
+    from tqdm import tqdm
+    for lagtime in tqdm(lagtimes):
+        init_hmm = init.discrete.metastable_from_data(data, n_hidden_states=4, lagtime=lagtime)
+        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=lagtime, maxit=10, maxit_reversible=100).fit_fetch(data)
+        # bhmm = BayesianHMM.default(data, n_hidden_states=4, lagtime=lagtime).fit_fetch(data)
+        models.append(hmm)
 
     ax.set_xscale('log')
     ax.set_yscale('log')
