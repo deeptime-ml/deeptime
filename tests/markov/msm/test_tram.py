@@ -80,12 +80,12 @@ def test_tram_continue_estimation():
     model = make_random_model(5, 8, transition_matrices=None)
     dtrajs, bias_matrices = make_random_input_data(5, 8, make_ttrajs=False)
 
-    weights_1 = model.compute_sample_weights(dtrajs, bias_matrices)
+    weights_1 = model.compute_sample_weights_log(dtrajs, bias_matrices)
 
     tram = TRAM()
     model = tram.fit_fetch((dtrajs, bias_matrices), model=model)
     with np.testing.assert_raises(AssertionError):
-        np.testing.assert_array_equal(weights_1, model.compute_sample_weights(dtrajs, bias_matrices))
+        np.testing.assert_array_equal(weights_1, model.compute_sample_weights_log(dtrajs, bias_matrices))
 
 
 def test_tram_integration():
@@ -128,8 +128,8 @@ def test_tram_integration():
     memm.select(2)
     np.testing.assert_almost_equal(memm.transition_matrix, [[0.53558684, 0.46441316], [0.2403782, 0.7596218]])
 
-    weights = model.compute_sample_weights(dtrajs, bias_matrices)
-    np.testing.assert_almost_equal(np.sum(weights), 1)
+    weights = model.compute_sample_weights_log(dtrajs, bias_matrices)
+    np.testing.assert_almost_equal(np.sum(np.exp(weights)), 1)
 
 
 def to_numpy_arrays(dtrajs, bias_matrices, ttrajs):
