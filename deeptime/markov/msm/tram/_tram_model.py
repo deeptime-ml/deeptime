@@ -120,8 +120,8 @@ class TRAMModel(Model):
         """
         return self._msm_collection
 
-    def compute_sample_weights(self, dtrajs, bias_matrices, therm_state=-1):
-        r""" Compute the sample weight :math:`\mu(x)` for all samples :math:`x`.
+    def compute_sample_weights_log(self, dtrajs, bias_matrices, therm_state=-1):
+        r""" Compute the log of the sample weight :math:`\mathrm{log}\;\mu(x)` for all samples :math:`x`.
         If the thermodynamic state index is >= 0, the sample weights for that thermodynamic state will be computed,
         i.e. :math:`\mu^k(x)`. Otherwise, this gives the unbiased sample weights :math:`\mu(x)`.
 
@@ -139,9 +139,9 @@ class TRAMModel(Model):
 
         Returns
         -------
-        sample_weights : np.ndarray
-            The statistical weight :math:`\mu(x)` of each sample (i.e., the probability distribution over all samples:
-            the sum over all sample weights equals one.)
+        sample_weights_log : np.ndarray
+            The log of the statistical weight :math:`\mu(x)` of each sample (i.e., the probability distribution over all
+            samples: the sum over all sample weights equals one.)
 
         Notes
         -----
@@ -153,7 +153,7 @@ class TRAMModel(Model):
         dtraj = np.concatenate(dtrajs)
         bias_matrix = np.concatenate(bias_matrices)
 
-        sample_weights = self._compute_sample_weights(dtraj, bias_matrix, therm_state)
+        sample_weights = self._compute_sample_weights_log(dtraj, bias_matrix, therm_state)
 
         # return in the original list shape
         traj_start_stops = np.concatenate(([0], np.cumsum([len(traj) for traj in dtrajs])))
@@ -183,12 +183,12 @@ class TRAMModel(Model):
         # flatten input data
         observable_values = np.concatenate(observable_values)
 
-        sample_weights = self._compute_sample_weights(np.concatenate(dtrajs), np.concatenate(bias_matrices),
-                                                      therm_state)
+        sample_weights = self._compute_sample_weights_log(np.concatenate(dtrajs), np.concatenate(bias_matrices),
+                                                          therm_state)
 
-        return np.dot(sample_weights, observable_values)
+        return np.dot(np.exp(sample_weights), observable_values)
 
-    def compute_PMF(self, dtrajs, bias_matrices, bin_indices, therm_state=-1):
+    def compute_PMF(self, dtrajs, bias_matrices, bin_indices, n_bins=None, therm_state=-1):
         r""" Compute an observable value.
 
         Parameters
@@ -206,23 +206,32 @@ class TRAMModel(Model):
             The list of bin indices that the samples are binned into. The PMF is calculated as a distribution over these
             bins. `binned_samples[i][n]` contains the bin index for the :math:`n`-th sample in the :math:`i`-th
             trajectory.
+        n_bins : int, optional
+            The number of bins. If None, n_bins is inferred from the maximum bin index. The PMF array
         therm_state : int, optional, default=-1
             The index of the thermodynamic state in which the PMF need to be computed. If `therm_state=-1`, the PMF is
             computed for the unbiased (reference) state.
+
+        Returns
+        -------
+        PMF : np.ndarray
+            A ndarray of size n_bins containing the estimated PMF from the data. Is n_bins was None, the PMF is of size
+            max(bin_indices) + 1.
         """
         # TODO: account for variable bin widths
-        sample_weights = self._compute_sample_weights(np.concatenate(dtrajs), np.concatenate(bias_matrices),
-                                                      therm_state)
+        sample_weights = self._compute_sample_weights_log(np.concatenate(dtrajs), np.concatenate(bias_matrices),
+                                                          therm_state)
 
         binned_samples = np.concatenate(bin_indices)
 
-        n_bins = binned_samples.max() + 1
+        if n_bins is None:
+            n_bins = binned_samples.max() + 1
         pmf = np.zeros(n_bins)
 
         for i in range(len(pmf)):
             indices = np.where(binned_samples == i)
             if len(indices[0]) > 0:
-                pmf[i] = -np.log(np.sum(sample_weights[indices]))
+                pmf[i] = -logsumexp(-sample_weights[indices])
 
         # shift minimum to zero
         pmf -= pmf.min()
@@ -297,7 +306,7 @@ class TRAMModel(Model):
                                           reversible=True, count_models=count_models,
                                           transition_matrix_tolerance=1e-8)
 
-    def _compute_sample_weights(self, dtraj, bias_matrix, therm_state=-1):
+    def _compute_sample_weights_log(self, dtraj, bias_matrix, therm_state=-1):
         sample_weights = tram.compute_sample_weights_log(dtraj, bias_matrix, self._therm_state_energies,
-                                                     self._modified_state_counts_log, therm_state)
-        return np.exp(np.asarray(sample_weights))
+                                                         self._modified_state_counts_log, therm_state)
+        return np.asarray(sample_weights)
