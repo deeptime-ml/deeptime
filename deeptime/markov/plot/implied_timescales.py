@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from deeptime.markov import BayesianPosterior
-from deeptime.markov.hmm import HiddenMarkovModel
+from deeptime.markov.hmm import HiddenMarkovModel, BayesianHMMPosterior
 from deeptime.markov.msm import MarkovStateModel
 from deeptime.util.decorators import plotting_function
 
@@ -26,7 +26,7 @@ class ImpliedTimescalesData:
             self._its_stats = None
 
     @property
-    def lagtimes(self) -> np.ndarray[int]:
+    def lagtimes(self) -> np.ndarray:
         return self._lagtimes
 
     @property
@@ -50,18 +50,16 @@ class ImpliedTimescalesData:
         return 0 if self.its_stats is None else self.its_stats.shape[2]
 
 
-allowed_types = [MarkovStateModel, BayesianPosterior, HiddenMarkovModel]
-
-
-def _compute_timescales(model):
-    ...
+allowed_types = [MarkovStateModel, BayesianPosterior,
+                 HiddenMarkovModel, BayesianHMMPosterior]
 
 
 def _to_data(data, n_its) -> ImpliedTimescalesData:
     if isinstance(data, ImpliedTimescalesData):
         return data
     elif isinstance(data, (list, tuple)):
-        assert len(data) > 0, "data cannot be empty"
+        if len(data) == 0:
+            raise ValueError("Data cannot be empty.")
         ix = -1
         for i, allowed_type in enumerate(allowed_types):
             if isinstance(data[0], allowed_type):
@@ -69,17 +67,26 @@ def _to_data(data, n_its) -> ImpliedTimescalesData:
                 break
         if ix == -1:
             raise ValueError(f"If provided as a list of models, the contained elements must all "
-                             f"be of type {allowed_types}.")
+                             f"be of type {[x.__name__ for x in allowed_types]}.")
         selected_type = allowed_types[ix]
         if not all(isinstance(x, selected_type) for x in data):
             raise ValueError(f"If provided as a list of models, the contained elements must all be of the same type. "
-                             f"The first element was a {selected_type}, which does not agree with the rest.")
+                             f"The first element was a {selected_type.__name__}, which does not agree with the rest.")
         # now we have made sure, that all models are of the same type...
+        is_bayesian = isinstance(data[0], BayesianPosterior)
         lagtimes = []
         its = []
-        its_stats = None
+        its_stats = [] if is_bayesian else None
 
-
+        for model in data:
+            lagtimes.append(model.lagtime)
+            if is_bayesian:
+                result = model.timescales(k=n_its)
+                its.append(result[0])
+                its_stats.append(result[1])
+            else:
+                its.append(model.timescales(k=n_its))
+        return ImpliedTimescalesData(lagtimes, its, its_stats)
     else:
         raise ValueError(f"Unknown type of data. ImpliedTimescalesData or list/tuple of MSM objects is allowed, "
                          f"got {data} instead.")
@@ -88,3 +95,4 @@ def _to_data(data, n_its) -> ImpliedTimescalesData:
 @plotting_function
 def implied_timescales(ax, data, n_its: Optional[int] = None):
     data = _to_data(data, n_its)
+

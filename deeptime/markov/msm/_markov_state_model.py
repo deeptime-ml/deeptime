@@ -474,20 +474,19 @@ class MarkovStateModel(Model):
 
     def timescales(self, k=None):
         r"""
-        The relaxation timescales corresponding to the eigenvalues
+        Relaxation timescales corresponding to the eigenvalues.
 
         Parameters
         ----------
-        k : int
-            number of timescales to be returned. By default all available
-            eigenvalues, minus 1.
+        k : int, optional, default=None
+            Number of timescales to be returned. By default, this uses all available eigenvalues except for the
+            first (stationary) eigenvalue.
 
         Returns
         -------
         ts : ndarray(m)
-            relaxation timescales in units of the input trajectory time step,
-            defined by :math:`-\tau / ln | \lambda_i |, i = 2,...,k+1`.
-
+            Relaxation timescales in units of the input trajectory time step,
+            defined by :math:`-\tau / \mathrm{ln} | \lambda_i |, i = 2,...,k+1`.
         """
         if k is None:
             self._ensure_eigenvalues()

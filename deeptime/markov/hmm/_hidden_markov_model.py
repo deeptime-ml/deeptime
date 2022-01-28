@@ -303,6 +303,12 @@ class HiddenMarkovModel(Model):
         """
         return self.transition_model.count_model.count_matrix if self.transition_model.count_model is not None else None
 
+    def timescales(self, k=None):
+        r""" Yields the timescales of the hidden transition model.
+        See :meth:`MarkovStateModel.timescales <deeptime.markov.msm.MarkovStateModel.timescales>`.
+        """
+        return self.transition_model.timescales(k=k)
+
     @property
     def hidden_state_trajectories(self) -> Optional[List[np.ndarray]]:
         r"""
