@@ -109,6 +109,8 @@ def implied_timescales(ax, data, n_its: Optional[int] = None, process: Optional[
     if process is not None and process >= data.n_processes:
         raise ValueError(f"Requested process {process} when only {data.n_processes} are available.")
 
+    if process is None and n_its is None:
+        n_its = data.n_processes
     it_indices = [process] if process is not None else np.arange(n_its)
     if colors is None:
         colors = [f"C{i}" for i in range(len(it_indices))]

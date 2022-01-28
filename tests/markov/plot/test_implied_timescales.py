@@ -10,9 +10,9 @@ from deeptime.markov.plot.implied_timescales import to_its_data
 
 
 @pytest.fixture
-def axis():
+def figure():
     f, ax = plt.subplots(1, 1)
-    yield ax
+    yield f, ax
 
 
 def test_to_its_data_wrong_args():
@@ -42,12 +42,19 @@ def test_to_its_data(model):
     assert_array_equal(data.its[0], data.its[1])
 
 
-def test_plot_its(axis):
-    data = double_well_2d().trajectory([[0, 0]], length=150)
+def test_plot_its(figure):
+    import matplotlib.pyplot as plt
+    f, ax = figure
+    # data = double_well_2d().trajectory([[0, 0]], length=150)
     lagtimes = [1, 2, 5, 10, 15]
 
     models = []
     for lagtime in lagtimes:
         models.append(MarkovStateModel([[.9, .1], [.1, .9]], lagtime=lagtime))
 
-    implied_timescales(axis, models)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    implied_timescales(ax, models)
+
+    f.show()
+    plt.show()
