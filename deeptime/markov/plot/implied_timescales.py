@@ -18,11 +18,12 @@ class ImpliedTimescalesData:
             "its should be of shape (lagtimes, timescales)."
 
         if its_stats is not None:
-            self._its_stats = np.asarray(its_stats)
+            self._its_stats = np.asarray(its_stats).transpose(0, 2, 1)
             assert self.its_stats.ndim == 3 and \
                    self.its_stats.shape[0] == self.n_lagtimes and \
-                   self.its_stats.shape[1] == self.n_processes, "its_stats should be of " \
-                                                                "shape (lagtimes, timescales, samples)"
+                   self.its_stats.shape[1] == self.n_processes, f"its_stats should be of " \
+                                                                f"shape (lagtimes, timescales, samples) " \
+                                                                f"but was {self.its_stats.shape}"
         else:
             self._its_stats = None
         ix = np.argsort(self.lagtimes)
@@ -120,10 +121,10 @@ def implied_timescales(ax, data, n_its: Optional[int] = None, process: Optional[
             ax.plot(data.lagtimes, data.its[:, it_index], color=color, **kwargs)
         if data.n_samples > 0 and show_samples:
             if show_sample_mean:
-                sample_mean = np.mean(data.its_stats[:, it_index], axis=0)
+                sample_mean = np.mean(data.its_stats[:, it_index], axis=1)
                 ax.plot(data.lagtimes, sample_mean, marker='o', linestyle='dashed', color=color)
             if show_sample_confidence:
-                l_conf, r_conf = confidence_interval(data.its_stats[:, it_index], conf=sample_confidence)
+                l_conf, r_conf = confidence_interval(data.its_stats[:, it_index].T, conf=sample_confidence)
                 ax.fill_between(data.lagtimes, l_conf, r_conf, alpha=0.2, color=color)
 
     if show_cutoff:

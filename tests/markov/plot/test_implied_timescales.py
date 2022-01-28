@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 import pytest
 from numpy.testing import assert_raises, assert_equal, assert_array_equal
 
-from deeptime.data import double_well_2d
+from deeptime.data import double_well_2d, double_well_discrete
 from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel
-from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
 from deeptime.markov.plot import implied_timescales
 from deeptime.markov.plot.implied_timescales import to_its_data
 
@@ -45,12 +45,13 @@ def test_to_its_data(model):
 def test_plot_its(figure):
     import matplotlib.pyplot as plt
     f, ax = figure
-    # data = double_well_2d().trajectory([[0, 0]], length=150)
-    lagtimes = [1, 2, 5, 10, 15]
+    data = double_well_discrete().dtraj_n6good
+    lagtimes = [1, 2, 5, 10, 15, 100]
 
     models = []
     for lagtime in lagtimes:
-        models.append(MarkovStateModel([[.9, .1], [.1, .9]], lagtime=lagtime))
+        msm = MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(data)
+        models.append(BayesianMSM().fit_fetch(msm))
 
     ax.set_xscale('log')
     ax.set_yscale('log')
