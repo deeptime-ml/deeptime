@@ -100,7 +100,8 @@ def plot_implied_timescales(ax, data, n_its: Optional[int] = None, process: Opti
         n_its = data.n_processes
     it_indices = [process] if process is not None else np.arange(n_its)
     if colors is None:
-        colors = [f"C{i}" for i in range(len(it_indices))]
+        from matplotlib import rcParams
+        colors = rcParams['axes.prop_cycle'].by_key()['color']
     for it_index in it_indices:
         color = colors[it_index % len(colors)]
         if show_mle:
@@ -117,4 +118,3 @@ def plot_implied_timescales(ax, data, n_its: Optional[int] = None, process: Opti
         ax.plot(data.lagtimes, data.lagtimes, linewidth=2, color='black')
         ax.fill_between(data.lagtimes, ax.get_ylim()[0]*np.ones(data.n_lagtimes), data.lagtimes,
                         alpha=0.5, color='grey')
-
