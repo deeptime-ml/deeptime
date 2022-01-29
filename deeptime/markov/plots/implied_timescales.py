@@ -56,30 +56,16 @@ class ImpliedTimescalesData:
         return 0 if self.its_stats is None else self.its_stats.shape[2]
 
 
-allowed_types = [MarkovStateModel, BayesianPosterior,
-                 HiddenMarkovModel, BayesianHMMPosterior]
-
-
 def to_its_data(data, n_its=None) -> ImpliedTimescalesData:
     if isinstance(data, ImpliedTimescalesData):
         return data
     elif isinstance(data, (list, tuple)):
         if len(data) == 0:
             raise ValueError("Data cannot be empty.")
-        ix = -1
-        for i, allowed_type in enumerate(allowed_types):
-            if isinstance(data[0], allowed_type):
-                ix = i
-                break
-        if ix == -1:
-            raise ValueError(f"If provided as a list of models, the contained elements must all "
-                             f"be of type {[x.__name__ for x in allowed_types]}.")
-        selected_type = allowed_types[ix]
-        if not all(isinstance(x, selected_type) for x in data):
-            raise ValueError(f"If provided as a list of models, the contained elements must all be of the same type. "
-                             f"The first element was a {selected_type.__name__}, which does not agree with the rest.")
-        # now we have made sure, that all models are of the same type...
-        is_bayesian = isinstance(data[0], BayesianPosterior)
+        assert all(callable(getattr(model, 'timescales', None)) for model in data), \
+            "all models need to have a timescales method"
+
+        is_bayesian = hasattr(data[0], 'prior') and hasattr(data[0], 'samples')
         lagtimes = []
         its = []
         its_stats = [] if is_bayesian else None
