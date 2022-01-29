@@ -63,8 +63,4 @@ class ProgressCallback:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.total and not exc_type:
-            inc = self.total - self.progress_bar.n
-            if inc > 0:
-                self.progress_bar.update(inc)
         self.progress_bar.close()

@@ -5,8 +5,8 @@ from numpy.testing import assert_raises, assert_equal, assert_array_equal
 from deeptime.data import double_well_2d, double_well_discrete
 from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel, MaximumLikelihoodHMM, init, BayesianHMM
 from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
-from deeptime.markov.plot import implied_timescales
-from deeptime.markov.plot.implied_timescales import to_its_data
+from deeptime.markov.plots import plot_implied_timescales
+from deeptime.markov.plots.implied_timescales import to_its_data
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def test_plot_its(figure):
 
     ax.set_xscale('log')
     ax.set_yscale('log')
-    implied_timescales(ax, models)
+    plot_implied_timescales(ax, models)
 
     f.show()
     plt.show()
