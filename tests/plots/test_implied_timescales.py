@@ -2,11 +2,11 @@ import matplotlib.pyplot as plt
 import pytest
 from numpy.testing import assert_raises, assert_equal, assert_array_equal
 
-from deeptime.data import double_well_2d, double_well_discrete
+from deeptime.data import double_well_discrete
 from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel, MaximumLikelihoodHMM, init, BayesianHMM
 from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
-from deeptime.markov.plots import plot_implied_timescales
-from deeptime.markov.plots.implied_timescales import to_its_data
+from deeptime.plots import plot_implied_timescales
+from deeptime.plots.implied_timescales import to_its_data
 
 
 @pytest.fixture
@@ -19,14 +19,8 @@ def test_to_its_data_wrong_args():
     with assert_raises(ValueError):
         to_its_data([])
 
-    with assert_raises(ValueError):
+    with assert_raises(AssertionError):
         to_its_data([object])
-
-    msm = MarkovStateModel([[.9, .1], [.1, .9]])
-    hmm = HiddenMarkovModel(msm, GaussianOutputModel(2, [0, 1], [1, 1]))
-
-    with assert_raises(ValueError):
-        to_its_data([msm, hmm])
 
 
 @pytest.mark.parametrize("model", [MarkovStateModel([[.9, .1], [.1, .9]]),
@@ -42,26 +36,33 @@ def test_to_its_data(model):
     assert_array_equal(data.its[0], data.its[1])
 
 
-def test_plot_its(figure):
-    import matplotlib.pyplot as plt
+def _generate_mlmsm(data):
+    return lambda lagtime: MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(data)
+
+
+def _generate_bmsm(data):
+    return lambda lagtime: BayesianMSM().fit_fetch(_generate_mlmsm(data)(lagtime))
+
+
+def _generate_hmm(data):
+    return lambda lagtime: MaximumLikelihoodHMM(
+        init.discrete.metastable_from_data(data, n_hidden_states=4, lagtime=lagtime),
+        lagtime=lagtime, maxit=10, maxit_reversible=100
+    ).fit_fetch(data)
+
+
+def _generate_bhmm(data):
+    return lambda lagtime: BayesianHMM.default(data, n_hidden_states=4, lagtime=lagtime, n_samples=10).fit_fetch(data)
+
+
+@pytest.mark.parametrize("dw_model", [_generate_mlmsm, _generate_bmsm, _generate_hmm, _generate_bhmm])
+def test_plot_its(figure, dw_model):
     f, ax = figure
     data = double_well_discrete().dtraj_n6good
     lagtimes = [1, 2, 5, 10, 15, 100]
 
     models = []
-    #for lagtime in lagtimes:
-        #msm = MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(data)
-        #models.append(BayesianMSM().fit_fetch(msm))
-    from tqdm import tqdm
-    for lagtime in tqdm(lagtimes):
-        init_hmm = init.discrete.metastable_from_data(data, n_hidden_states=4, lagtime=lagtime)
-        hmm = MaximumLikelihoodHMM(init_hmm, lagtime=lagtime, maxit=10, maxit_reversible=100).fit_fetch(data)
-        # bhmm = BayesianHMM.default(data, n_hidden_states=4, lagtime=lagtime).fit_fetch(data)
-        models.append(hmm)
+    for lagtime in lagtimes:
+        models.append(dw_model(data)(lagtime))
 
-    ax.set_xscale('log')
-    ax.set_yscale('log')
     plot_implied_timescales(ax, models)
-
-    f.show()
-    plt.show()

@@ -13,6 +13,7 @@ def configuration(parent_package='', top_path=None):
     config.add_subpackage('basis')
     config.add_subpackage('util')
     config.add_subpackage('sindy')
+    config.add_subpackage('plots')
 
     from Cython.Build import cythonize
     config.ext_modules = cythonize(
