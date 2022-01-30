@@ -63,4 +63,6 @@ class ProgressCallback:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.progress_bar.total = self.progress_bar.n  # force finish
         self.progress_bar.close()

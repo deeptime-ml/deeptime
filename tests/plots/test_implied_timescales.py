@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import pytest
 from numpy.testing import assert_raises, assert_equal, assert_array_equal
 
-from deeptime.data import double_well_discrete
+from deeptime.data import double_well_discrete, double_well_2d
+from deeptime.decomposition import TICA
 from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel, MaximumLikelihoodHMM, init, BayesianHMM
 from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
 from deeptime.plots import plot_implied_timescales
@@ -36,33 +37,40 @@ def test_to_its_data(model):
     assert_array_equal(data.its[0], data.its[1])
 
 
-def _generate_mlmsm(data):
-    return lambda lagtime: MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(data)
+def doublewell_mlmsm(lagtime, count_mode='sliding'):
+    return MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(double_well_discrete().dtraj_n6good, count_mode=count_mode)
 
 
-def _generate_bmsm(data):
-    return lambda lagtime: BayesianMSM().fit_fetch(_generate_mlmsm(data)(lagtime))
+def doublewell_bmsm(lagtime):
+    return BayesianMSM().fit_fetch(doublewell_mlmsm(lagtime, count_mode='effective'))
 
 
-def _generate_hmm(data):
-    return lambda lagtime: MaximumLikelihoodHMM(
-        init.discrete.metastable_from_data(data, n_hidden_states=4, lagtime=lagtime),
+def doublewell_hmm(lagtime):
+    return MaximumLikelihoodHMM(
+        init.discrete.metastable_from_data(double_well_discrete().dtraj_n6good, n_hidden_states=4, lagtime=lagtime),
         lagtime=lagtime, maxit=10, maxit_reversible=100
-    ).fit_fetch(data)
+    ).fit_fetch(double_well_discrete().dtraj_n6good)
 
 
-def _generate_bhmm(data):
-    return lambda lagtime: BayesianHMM.default(data, n_hidden_states=4, lagtime=lagtime, n_samples=10).fit_fetch(data)
+def doublewell_bhmm(lagtime):
+    return BayesianHMM.default(double_well_discrete().dtraj_n6good, n_hidden_states=4, lagtime=lagtime, n_samples=10) \
+        .fit_fetch(double_well_discrete().dtraj_n6good)
 
 
-@pytest.mark.parametrize("dw_model", [_generate_mlmsm, _generate_bmsm, _generate_hmm, _generate_bhmm])
+def doublewell_tica(lagtime):
+    return TICA(lagtime=lagtime).fit_fetch(double_well_2d().trajectory([[0, 0]], length=1500))
+
+
+models = [doublewell_mlmsm, doublewell_bmsm, doublewell_bhmm, doublewell_hmm, doublewell_tica]
+
+
+@pytest.mark.parametrize("dw_model", models, ids=lambda x: x.__name__)
 def test_plot_its(figure, dw_model):
     f, ax = figure
-    data = double_well_discrete().dtraj_n6good
     lagtimes = [1, 2, 5, 10, 15, 100]
 
     models = []
     for lagtime in lagtimes:
-        models.append(dw_model(data)(lagtime))
+        models.append(dw_model(lagtime))
 
     plot_implied_timescales(ax, models)

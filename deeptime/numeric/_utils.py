@@ -46,13 +46,13 @@ def is_diagonal_matrix(matrix: _np.ndarray) -> bool:
     return _np.all(matrix == _np.diag(_np.diagonal(matrix)))
 
 
-def is_square_matrix(arr: _np.ndarray) -> bool:
+def is_square_matrix(arr) -> bool:
     r""" Determines whether an array is a square matrix. This means that ndim must be 2 and shape[0] must be equal
     to shape[1].
 
     Parameters
     ----------
-    arr : ndarray or sparse array
+    arr : object
         The array to check.
 
     Returns

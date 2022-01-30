@@ -173,7 +173,7 @@ class BayesianMSM(_MSMBaseEstimator):
         """
         return self._model
 
-    def fit(self, data, callback: Callable = None):
+    def fit(self, data, callback: Callable = None, **kw):
         """
         Performs the estimation on either a count matrix or a previously estimated TransitionCountModel.
 
@@ -185,23 +185,23 @@ class BayesianMSM(_MSMBaseEstimator):
         callback: callable, optional, default=None
             Function to be called to indicate progress of sampling.
 
+        Other Parameters
+        ----------------
+        ignore_counting_mode : bool, optional, default=False
+            Method does not raise if counting mode isn't of the "effective" family. Use with caution.
+
         Returns
         -------
         self : BayesianMSM
             Reference to self.
         """
-        from deeptime.markov import TransitionCountModel
-        if isinstance(data, TransitionCountModel) and data.counting_mode is not None \
-                and "effective" not in data.counting_mode:
-            raise ValueError("The transition count model was not estimated using an effective counting method, "
-                             "therefore counts are likely to be strongly correlated yielding wrong confidences.")
-
         if isinstance(data, Estimator):
             if data.has_model:
                 data = data.fetch_model()
             else:
                 raise ValueError("Can only use estimators as input if they have been fit previously.")
 
+        from deeptime.markov import TransitionCountModel
         if isinstance(data, TransitionCountModel) or is_square_matrix(data):
             msm = MaximumLikelihoodMSM(
                 reversible=self.reversible, stationary_distribution_constraint=self.stationary_distribution_constraint,
@@ -214,7 +214,7 @@ class BayesianMSM(_MSMBaseEstimator):
                              "TransitionCountEstimator) or a MarkovStateModel instance or an estimator producing "
                              "Markov state models.")
 
-        return self.fit_from_msm(msm, callback=callback)
+        return self.fit_from_msm(msm, callback=callback, **kw)
 
     def sample(self, prior: MarkovStateModel, n_samples: int, n_steps: Optional[int] = None, callback=None):
         r""" Performs sampling based on a prior.
@@ -275,7 +275,7 @@ class BayesianMSM(_MSMBaseEstimator):
         ]
         return samples
 
-    def fit_from_msm(self, msm: MarkovStateModel, callback=None):
+    def fit_from_msm(self, msm: MarkovStateModel, callback=None, **kw):
         r""" Fits a bayesian posterior from a given Markov state model. The MSM must contain a count model to be able
         to produce confidences. Note that the count model should be produced using effective counting, otherwise
         counts are correlated and computed confidences are wrong.
@@ -287,6 +287,11 @@ class BayesianMSM(_MSMBaseEstimator):
         callback : callable, optional, default=None
             Function to be called to indicate progress of sampling.
 
+        Other Parameters
+        ----------------
+        ignore_counting_mode : bool, optional, default=False
+            Method does not raise if counting mode isn't of the "effective" family. Use with caution.
+
         Returns
         -------
         self : BayesianMSM
@@ -295,6 +300,11 @@ class BayesianMSM(_MSMBaseEstimator):
         if not msm.has_count_model:
             raise ValueError("Can only sample confidences with a count model. The counting mode should be 'effective'"
                              " to avoid correlations between counts and therefore wrong confidences.")
+        if not kw.get("ignore_counting_mode", False) \
+                and msm.count_model.counting_mode is not None and "effective" not in msm.count_model.counting_mode:
+            raise ValueError("The transition count model was not estimated using an effective counting method, "
+                             "therefore counts are likely to be strongly correlated yielding wrong confidences. "
+                             "To ignore this, set `ignore_counting_mode` to True in the call to `fit`.")
         # use the same count matrix as the MLE. This is why we have effective as a default
         samples = self.sample(msm, self.n_samples, self.n_steps, callback)
         self._model = BayesianPosterior(prior=msm, samples=samples)
