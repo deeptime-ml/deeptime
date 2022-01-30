@@ -55,22 +55,37 @@ class ImpliedTimescalesData:
     def n_samples(self) -> int:
         return 0 if self.its_stats is None else self.its_stats.shape[2]
 
+    @staticmethod
+    def from_models(models, n_its=None):
+        r""" Converts a list of models to a :class:`ImpliedTimescalesData` object.
 
-def to_its_data(data, n_its=None) -> ImpliedTimescalesData:
-    if isinstance(data, ImpliedTimescalesData):
-        return data
-    elif isinstance(data, (list, tuple)):
-        if len(data) == 0:
+        Parameters
+        ----------
+        data : list of models
+            The input data. Models with and without samples to compute confidences should not be mixed.
+        n_its : int or None, optional
+            Number of timescales to compute.
+
+        Returns
+        -------
+        its_data : ImpliedTimescalesData
+            The data object.
+        """
+        if not isinstance(models, (list, tuple)):
+            models = [models]
+
+        if len(models) == 0:
             raise ValueError("Data cannot be empty.")
-        assert all(callable(getattr(model, 'timescales', None)) for model in data), \
+        assert all(callable(getattr(model, 'timescales', None)) for model in models), \
             "all models need to have a timescales method"
+        assert all(hasattr(model, 'lagtime') for model in models), "all models need a lagtime attribute or property"
 
-        is_bayesian = hasattr(data[0], 'prior') and hasattr(data[0], 'samples')
+        is_bayesian = hasattr(models[0], 'prior') and hasattr(models[0], 'samples')
         lagtimes = []
         its = []
         its_stats = [] if is_bayesian else None
 
-        for model in data:
+        for model in models:
             lagtimes.append(model.lagtime)
             if is_bayesian:
                 result = model.timescales(k=n_its)
@@ -79,9 +94,6 @@ def to_its_data(data, n_its=None) -> ImpliedTimescalesData:
             else:
                 its.append(model.timescales(k=n_its))
         return ImpliedTimescalesData(lagtimes, its, its_stats)
-    else:
-        raise ValueError(f"Unknown type of data. ImpliedTimescalesData or list/tuple of MSM objects is allowed, "
-                         f"got {data} instead.")
 
 
 @plotting_function
@@ -90,9 +102,40 @@ def plot_implied_timescales(ax, data, n_its: Optional[int] = None, process: Opti
                             show_sample_confidence: bool = True, show_cutoff: bool = True,
                             sample_confidence: float = .95,
                             colors=None, **kwargs):
+    r"""Creates an implied timescales plot inside exising matplotlib axes.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The matplotlib axes to use for plotting.
+    data : ImpliedTimescalesData
+        A timescales data container object, can be obtained, e.g., via :meth:`ImpliedTimescalesData.from_models`.
+    n_its : int, optional, default=None
+        Maximum number of timescales to plot.
+    process : int, optional, default=None
+        A particular process to plot. This is mutually exclusive with n_its.
+    show_mle : bool, default=True
+        Whether to show the timescale of the maximum-likelihood estimate.
+    show_samples : bool, default=True
+        Whether to show sample means and/or confidences.
+    show_sample_mean : bool, default=True
+        Whether to show the sample mean. Only has an effect if show_samples is True and there are samples in the data.
+    show_sample_confidence : bool, default=True
+        Whether to show the sample confidence. Only has an effect if show_samples is True and there are samples
+        in the data.
+    show_cutoff : bool, default=True
+        Whether to show the model resolution cutoff as grey filled area.
+    sample_confidence : float, default=0.95
+        The confidence to plot. The default amounts to a shaded area containing 95% of the sampled values.
+    colors : list of colors, optional, default=None
+        The colors that should be used for timescales. By default uses the matplotlib default colors as per
+        rc-config value "axes.prop_cycle".
+    **kwargs
+        Keyword arguments which are forwarded into the matplotlib plotting function for timescales.
+    """
+
     if n_its is not None and process is not None:
         raise ValueError("n_its and process are mutually exclusive.")
-    data = to_its_data(data, n_its)
     if process is not None and process >= data.n_processes:
         raise ValueError(f"Requested process {process} when only {data.n_processes} are available.")
 

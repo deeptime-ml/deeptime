@@ -6,8 +6,7 @@ from deeptime.data import double_well_discrete, double_well_2d
 from deeptime.decomposition import TICA
 from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel, MaximumLikelihoodHMM, init, BayesianHMM
 from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
-from deeptime.plots import plot_implied_timescales
-from deeptime.plots.implied_timescales import to_its_data
+from deeptime.plots import plot_implied_timescales, ImpliedTimescalesData
 
 
 @pytest.fixture
@@ -18,10 +17,10 @@ def figure():
 
 def test_to_its_data_wrong_args():
     with assert_raises(ValueError):
-        to_its_data([])
+        ImpliedTimescalesData.from_models([])
 
     with assert_raises(AssertionError):
-        to_its_data([object])
+        ImpliedTimescalesData.from_models([object])
 
 
 @pytest.mark.parametrize("model", [MarkovStateModel([[.9, .1], [.1, .9]]),
@@ -29,7 +28,7 @@ def test_to_its_data_wrong_args():
                                                      GaussianOutputModel(2, [0, 1], [1, 1]))],
                          ids=lambda x: x.__class__.__name__)
 def test_to_its_data(model):
-    data = to_its_data([model, model])
+    data = ImpliedTimescalesData.from_models([model, model])
     assert_equal(data.lagtimes, [1, 1])
     assert_equal(data.n_lagtimes, 2)
     assert_equal(data.n_samples, 0)
@@ -58,7 +57,7 @@ def doublewell_bhmm(lagtime):
 
 
 def doublewell_tica(lagtime):
-    return TICA(lagtime=lagtime).fit_fetch(double_well_2d().trajectory([[0, 0]], length=1500))
+    return TICA(lagtime=lagtime).fit_fetch(double_well_2d().trajectory([[0, 0]], length=200))
 
 
 models = [doublewell_mlmsm, doublewell_bmsm, doublewell_bhmm, doublewell_hmm, doublewell_tica]
@@ -73,4 +72,4 @@ def test_plot_its(figure, dw_model):
     for lagtime in lagtimes:
         models.append(dw_model(lagtime))
 
-    plot_implied_timescales(ax, models)
+    plot_implied_timescales(ax, ImpliedTimescalesData.from_models(models))
