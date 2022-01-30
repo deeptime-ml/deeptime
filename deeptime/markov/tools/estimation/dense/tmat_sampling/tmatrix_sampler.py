@@ -55,8 +55,7 @@ class TransitionMatrixSampler:
         else:
             n = self.count_matrix.shape[0]
             P_samples = np.zeros((nsamples, n, n))
-            if return_statdist:
-                pi_samples = np.zeros((nsamples, n))
+            pi_samples = np.zeros((nsamples, n)) if return_statdist else None
             for i in range(nsamples):
                 out = self.sampler.sample(N=self.n_steps, return_statdist=return_statdist)
                 if return_statdist:
