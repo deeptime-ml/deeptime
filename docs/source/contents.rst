@@ -34,6 +34,7 @@ Table Of Contents
    api/index_basis
    api/index_kernels
    api/index_data
+   api/index_plots
    api/index_numeric
    api/index_util
 

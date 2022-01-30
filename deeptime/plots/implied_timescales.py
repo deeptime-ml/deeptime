@@ -104,6 +104,8 @@ def plot_implied_timescales(ax, data, n_its: Optional[int] = None, process: Opti
                             colors=None, **kwargs):
     r"""Creates an implied timescales plot inside exising matplotlib axes.
 
+    .. plot:: methods/plot_implied_timescales.py
+
     Parameters
     ----------
     ax : matplotlib.axes.Axes
