@@ -64,4 +64,4 @@ class TransitionMatrixSampler:
                     P_samples[i, :, :] = out
                 if callback is not None:
                     callback()
-            return P_samples if not return_statdist else P_samples, pi_samples
+            return P_samples if not return_statdist else (P_samples, pi_samples)
