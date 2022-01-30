@@ -3,7 +3,7 @@ from typing import Tuple, List, Optional
 
 import numpy as np
 
-from deeptime.util.decorators import plotting_function
+from deeptime.util.decorators import plotting_function_with_networkx
 
 Coordinate = Tuple[int, int]
 
@@ -245,7 +245,7 @@ class DrunkardsWalk:
             return states
 
     @staticmethod
-    @plotting_function(requires_networkx=True)
+    @plotting_function_with_networkx
     def plot_path(ax, path, intermediates: bool = True, color_lerp: bool = True, **plot_kw):  # pragma: no cover
         r""" Plots a path onto a drunkard's walk map. The path is interpolated with splines and, if desired, has a
         linearly interpolated color along its path.
@@ -286,7 +286,7 @@ class DrunkardsWalk:
         else:
             ax.plot(xint, yint, **plot_kw)
 
-    @plotting_function(requires_networkx=True)
+    @plotting_function_with_networkx
     def plot_network(self, ax, F, cmap=None, connection_threshold: float = 0.):  # pragma: no cover
         r""" Plots a flux network onto a matplotlib axis assuming that the states are ordered according to a iota
         range (i.e., {0, 1, ..., n_states-1}) on the grid.
@@ -335,7 +335,7 @@ class DrunkardsWalk:
                                connectionstyle='arc3, rad=0.1')
         return edge_colors
 
-    @plotting_function(requires_networkx=True)
+    @plotting_function_with_networkx
     def plot_2d_map(self, ax, barriers: bool = True, barrier_mode: str = 'filled'):  # pragma: no cover
         r""" Plots the drunkard's map onto an already existing matplotlib axis. One can select whether to draw barriers
         and if barriers should be drawn, whether they have a 'filled' face or be 'hollow' with just the border

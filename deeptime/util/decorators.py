@@ -43,7 +43,7 @@ class cached_property(property):
         self.cache.clear()
 
 
-def plotting_function(fn, requires_networkx=False):  # pragma: no cover
+def _plotting_function(fn, requires_networkx):  # pragma: no cover
     r""" Decorator marking a function that is a plotting utility. This will exclude it from coverage and test
     whether dependencies are installed. """
 
@@ -55,3 +55,7 @@ def plotting_function(fn, requires_networkx=False):  # pragma: no cover
         return fn(*args, **kw)
 
     return wrapper
+
+
+plotting_function = functools.partial(_plotting_function, requires_networkx=False)
+plotting_function_with_networkx = functools.partial(_plotting_function, requires_networkx=True)
