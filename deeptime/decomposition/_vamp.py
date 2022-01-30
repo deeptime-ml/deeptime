@@ -513,7 +513,7 @@ class VAMP(EstimatorTransformer):
         The Champan-Kolmogorov test is to compare the predictions to the estimates.
         """
         test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
+        assert test_model is not None, "We need a test model via argument or an estimator which was already " \
                                        "fit to data."
         lagtime = self.lagtime
         if n_observables is not None:

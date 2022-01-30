@@ -12,10 +12,29 @@ from deeptime.util.decorators import plotting_function
 class ImpliedTimescalesData:
 
     def __init__(self, lagtimes, its, its_stats=None):
+        r""" Instances of this class hold a sequence of lagtimes and corresponding process timescales (potentially
+        with process timescales of sampled models in a Bayesian setting). Objects can be
+        used with :meth:`plot_implied_timescales`.
+
+        In case models over a range of lagtimes are available, the static method :meth:`from_models` can be used.
+
+        Parameters
+        ----------
+        lagtimes : iterable of int
+            Lagtimes corresponding to processes and their timescales.
+        its : ndarray (n_lagtimes, n_processes)
+            The timescales for each process.
+        its_stats : ndarray (n_lagtimes, n_processes, n_samples), optional, default=None
+            Sampled timescales.
+
+        See Also
+        --------
+        plot_implied_timescales
+        """
         self._lagtimes = np.asarray(lagtimes, dtype=int)
         self._its = np.asarray(its)
         assert self.its.ndim == 2 and self.its.shape[0] == self.n_lagtimes, \
-            "its should be of shape (lagtimes, timescales)."
+            "its should be of shape (lagtimes, processes)."
 
         if its_stats is not None:
             self._its_stats = np.asarray(its_stats).transpose(0, 2, 1)
@@ -33,26 +52,33 @@ class ImpliedTimescalesData:
 
     @property
     def lagtimes(self) -> np.ndarray:
+        r""" Yields the lagtimes corresponding to an instance of this class. """
         return self._lagtimes
 
     @property
     def its(self) -> np.ndarray:
+        r""" An ndarray of shape (`n_lagtimes`, `n_processes`) containing the timescales of each process. """
         return self._its
 
     @property
     def its_stats(self) -> Optional[np.ndarray]:
+        r""" An ndarray of shape (`n_lagtimes`, `n_processes`, `n_samples`) or representing the timescales
+        of each process in each sample or `None` if no samples are available. """
         return self._its_stats
 
     @property
     def n_lagtimes(self) -> int:
+        r""" Number of lagtimes. """
         return len(self.lagtimes)
 
     @property
     def n_processes(self) -> int:
+        r""" Number of processes. """
         return self.its.shape[1]
 
     @property
     def n_samples(self) -> int:
+        r""" Number of samples. """
         return 0 if self.its_stats is None else self.its_stats.shape[2]
 
     @staticmethod
@@ -161,5 +187,5 @@ def plot_implied_timescales(ax, data, n_its: Optional[int] = None, process: Opti
 
     if show_cutoff:
         ax.plot(data.lagtimes, data.lagtimes, linewidth=2, color='black')
-        ax.fill_between(data.lagtimes, ax.get_ylim()[0]*np.ones(data.n_lagtimes), data.lagtimes,
+        ax.fill_between(data.lagtimes, np.full((data.n_lagtimes,), fill_value=ax.get_ylim()[0]), data.lagtimes,
                         alpha=0.5, color='grey')

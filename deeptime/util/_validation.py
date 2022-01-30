@@ -122,8 +122,7 @@ class LaggedModelValidator(Estimator):
     mlags : int or int-array, default=10
         multiples of lag times for testing the Model, e.g. range(10).
         A single int will trigger a range, i.e. mlags=10 maps to
-        mlags=range(1, 10). The setting None will choose mlags automatically
-        according to the longest available trajectory
+        mlags=range(1, 10).
 
     conf : float, default = 0.95
         confidence interval for errors
