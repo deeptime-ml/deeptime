@@ -6,7 +6,7 @@ from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function
 
 
-class ImpliedTimescalesData:
+class ImpliedTimescales:
     r""" Instances of this class hold a sequence of lagtimes and corresponding process timescales (potentially
     with process timescales of sampled models in a Bayesian setting). Objects can be
     used with :meth:`plot_implied_timescales`.
@@ -139,9 +139,14 @@ class ImpliedTimescalesData:
         data = self.samples_for_process(process_index)[lagtime_index]
         return np.count_nonzero(~np.isnan(data))
 
+    @plotting_function
+    def plot(self, *args, **kw):
+        r""" Dispatches to :meth:`plot_implied_timescales`. """
+        plot_implied_timescales(self, *args, **kw)
+
     @staticmethod
     def from_models(models, n_its=None):
-        r""" Converts a list of models to a :class:`ImpliedTimescalesData` object.
+        r""" Converts a list of models to a :class:`ImpliedTimescales` object.
 
         Parameters
         ----------
@@ -152,7 +157,7 @@ class ImpliedTimescalesData:
 
         Returns
         -------
-        its_data : ImpliedTimescalesData
+        its_data : ImpliedTimescales
             The data object.
         """
         if not isinstance(models, (list, tuple)):
@@ -178,11 +183,11 @@ class ImpliedTimescalesData:
             else:
                 its.append(model.timescales(k=n_its))
                 its_stats.append(None)
-        return ImpliedTimescalesData(lagtimes, its, its_stats)
+        return ImpliedTimescales(lagtimes, its, its_stats)
 
 
 @plotting_function
-def plot_implied_timescales(data: ImpliedTimescalesData, n_its: Optional[int] = None, process: Optional[int] = None,
+def plot_implied_timescales(data: ImpliedTimescales, n_its: Optional[int] = None, process: Optional[int] = None,
                             show_mle: bool = True, show_samples: bool = True, show_sample_mean: bool = True,
                             show_sample_confidence: bool = True, show_cutoff: bool = True,
                             sample_confidence: float = .95,
@@ -195,8 +200,8 @@ def plot_implied_timescales(data: ImpliedTimescalesData, n_its: Optional[int] = 
     ----------
     ax : matplotlib.axes.Axes
         The matplotlib axes to use for plotting.
-    data : ImpliedTimescalesData
-        A timescales data container object, can be obtained, e.g., via :meth:`ImpliedTimescalesData.from_models`.
+    data : ImpliedTimescales
+        A timescales data container object, can be obtained, e.g., via :meth:`ImpliedTimescales.from_models`.
     n_its : int, optional, default=None
         Maximum number of timescales to plot.
     process : int, optional, default=None
@@ -222,7 +227,7 @@ def plot_implied_timescales(data: ImpliedTimescalesData, n_its: Optional[int] = 
 
     See Also
     --------
-    ImpliedTimescalesData
+    ImpliedTimescales
     """
     if ax is None:
         import matplotlib.pyplot as plt

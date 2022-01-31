@@ -5,8 +5,8 @@ r"""
     :toctree: generated/
     :template: class_nomodule.rst
 
-    ImpliedTimescalesData
+    ImpliedTimescales
     plot_implied_timescales
 """
 
-from .implied_timescales import plot_implied_timescales, ImpliedTimescalesData
+from .implied_timescales import plot_implied_timescales, ImpliedTimescales
