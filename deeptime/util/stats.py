@@ -6,7 +6,7 @@ import numpy as np
 from deeptime.util.types import ensure_array
 
 
-def confidence_interval(data, conf=0.95):
+def confidence_interval(data, conf=0.95, remove_nans=False):
     r""" Computes element-wise confidence intervals from a sample of ndarrays
 
     Given a sample of arbitrarily shaped ndarrays, computes element-wise
@@ -19,6 +19,9 @@ def confidence_interval(data, conf=0.95):
         index, the remaining indexes are specific to the array of interest
     conf : float, optional, default = 0.95
         confidence interval
+    remove_nans : bool, optional, default=False
+        The default leads to a `np.nan` result if there are any `nan` values in `data`. If set to `True`, the
+        `np.nan` values are ignored.
 
     Return
     ------
@@ -49,8 +52,14 @@ def confidence_interval(data, conf=0.95):
         """
         assert x.ndim == 1, x.ndim
 
-        if np.any(np.isnan(x)):
-            return np.nan, np.nan, np.nan
+        nan = np.isnan(x)
+        if remove_nans:
+            x = x[np.where(~nan)]
+            if len(x) == 0:
+                return np.nan, np.nan, np.nan
+        else:
+            if np.any(nan):
+                return np.nan, np.nan, np.nan
 
         d_min, d_max = np.min(x), np.max(x)
 
