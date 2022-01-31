@@ -182,11 +182,11 @@ class ImpliedTimescalesData:
 
 
 @plotting_function
-def plot_implied_timescales(ax, data: ImpliedTimescalesData, n_its: Optional[int] = None, process: Optional[int] = None,
+def plot_implied_timescales(data: ImpliedTimescalesData, n_its: Optional[int] = None, process: Optional[int] = None,
                             show_mle: bool = True, show_samples: bool = True, show_sample_mean: bool = True,
                             show_sample_confidence: bool = True, show_cutoff: bool = True,
                             sample_confidence: float = .95,
-                            colors=None, **kwargs):
+                            colors=None, ax=None, **kwargs):
     r"""Creates an implied timescales plot inside exising matplotlib axes.
 
     .. plot:: examples/plot_implied_timescales.py
@@ -224,7 +224,9 @@ def plot_implied_timescales(ax, data: ImpliedTimescalesData, n_its: Optional[int
     --------
     ImpliedTimescalesData
     """
-
+    if ax is None:
+        import matplotlib.pyplot as plt
+        ax = plt.gca()
     if n_its is not None and process is not None:
         raise ValueError("n_its and process are mutually exclusive.")
     if process is not None and process >= data.max_n_processes:

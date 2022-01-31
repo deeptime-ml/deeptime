@@ -97,7 +97,7 @@ def test_plot_its(figure, dw_model):
         assert_equal(data.n_samples(3, 0), n_samples[3])
         assert_equal(data.n_samples(4, 0), n_samples[4])
         assert_equal(data.n_samples(5, 0), n_samples[5])
-    plot_implied_timescales(ax, data)
+    plot_implied_timescales(data, ax=ax)
 
 
 def test_its_mixed_est_sort(figure):
@@ -127,7 +127,7 @@ def test_its_mixed_est_sort(figure):
     assert_equal(data.n_samples(3, 0), 25)
     assert_equal(data.n_samples(4, 0), 13)
     assert_equal(data.n_samples(5, 0), 0)
-    plot_implied_timescales(ax, data)
+    plot_implied_timescales(data, ax=ax)
 
 
 @pytest.mark.parametrize("bayesian", [False, True])
