@@ -55,16 +55,13 @@ class TransitionMatrixSampler:
         else:
             n = self.count_matrix.shape[0]
             P_samples = np.zeros((nsamples, n, n))
-            if return_statdist:
-                pi_samples = np.zeros((nsamples, n))
-                for i in range(nsamples):
-                    P_samples[i, :, :], pi_samples[i, :] = self.sampler.sample(N=self.n_steps, return_statdist=True)
-                    if callback is not None:
-                        callback()
-                return P_samples, pi_samples
-            else:
-                for i in range(nsamples):
-                    P_samples[i, :, :] = self.sampler.sample(N=self.n_steps, return_statdist=False)
-                    if callback is not None:
-                        callback()
-                return P_samples
+            pi_samples = np.zeros((nsamples, n)) if return_statdist else None
+            for i in range(nsamples):
+                out = self.sampler.sample(N=self.n_steps, return_statdist=return_statdist)
+                if return_statdist:
+                    P_samples[i, :, :], pi_samples[i, :] = out
+                else:
+                    P_samples[i, :, :] = out
+                if callback is not None:
+                    callback()
+            return P_samples if not return_statdist else (P_samples, pi_samples)

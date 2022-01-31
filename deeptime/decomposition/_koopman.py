@@ -643,6 +643,12 @@ class CovarianceKoopmanModel(TransferOperatorModel):
         return - lagtime / np.log(np.abs(self.singular_values[:k]))
 
     @property
+    def lagtime(self):
+        r""" The lagtime corresponding to this model. See also
+        :meth:`CovarianceModel.lagtime <deeptime.covariance.CovarianceModel.lagtime>`. """
+        return self._cov.lagtime
+
+    @property
     def feature_component_correlation(self):
         r"""Instantaneous correlation matrix between mean-free input features and projection components.
 

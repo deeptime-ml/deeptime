@@ -48,6 +48,10 @@ class MarkovStateModel(Model):
     transition_matrix_tolerance : float, default=1e-8
         The tolerance under which a matrix is still considered a transition matrix (only non-negative elements and
         row sums of 1).
+    lagtime : int, optional, default=None
+        The lagtime of this MSM. If there is a count model, the MSM assumes the lagtime of the count model, otherwise
+        falls back to the lagtime set via this constructor argument or a lagtime of `1` if no lagtime is provided
+        at all.
 
     See Also
     --------
@@ -64,11 +68,12 @@ class MarkovStateModel(Model):
     """
 
     def __init__(self, transition_matrix, stationary_distribution=None, reversible=None,
-                 n_eigenvalues=None, ncv=None, count_model=None, transition_matrix_tolerance=1e-8):
+                 n_eigenvalues=None, ncv=None, count_model=None, transition_matrix_tolerance=1e-8, lagtime=None):
         super().__init__()
         self._is_reversible = reversible
         self._ncv = ncv
         self._transition_matrix_tolerance = transition_matrix_tolerance
+        self._lagtime = lagtime
 
         self.update_transition_matrix(transition_matrix)
 
@@ -204,7 +209,7 @@ class MarkovStateModel(Model):
     @property
     def lagtime(self) -> int:
         r""" The lagtime this model was estimated at. In case no count model was provided, this property defaults
-        to a lagtime of `1`.
+        to the lagtime set in the constructor or a lagtime of :math:`\tau = 1` if it was left `None`.
 
         Returns
         -------
@@ -213,7 +218,7 @@ class MarkovStateModel(Model):
         """
         if self.count_model is not None:
             return self.count_model.lagtime
-        return 1
+        return 1 if self._lagtime is None else self._lagtime
 
     @property
     def transition_matrix(self):
@@ -474,20 +479,19 @@ class MarkovStateModel(Model):
 
     def timescales(self, k=None):
         r"""
-        The relaxation timescales corresponding to the eigenvalues
+        Relaxation timescales corresponding to the eigenvalues.
 
         Parameters
         ----------
-        k : int
-            number of timescales to be returned. By default all available
-            eigenvalues, minus 1.
+        k : int, optional, default=None
+            Number of timescales to be returned. By default, this uses all available eigenvalues except for the
+            first (stationary) eigenvalue.
 
         Returns
         -------
         ts : ndarray(m)
-            relaxation timescales in units of the input trajectory time step,
-            defined by :math:`-\tau / ln | \lambda_i |, i = 2,...,k+1`.
-
+            Relaxation timescales in units of the input trajectory time step,
+            defined by :math:`-\tau / \mathrm{ln} | \lambda_i |, i = 2,...,k+1`.
         """
         if k is None:
             self._ensure_eigenvalues()

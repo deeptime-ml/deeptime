@@ -9,7 +9,7 @@ if(DEFINED PROJECT_NAME)
 endif()
 project(deeptime LANGUAGES C CXX VERSION 0.0.0)
 
-find_package(OpenMP)
+find_package(OpenMP 4)
 if(OpenMP_FOUND)
     add_definitions(-DUSE_OPENMP)
 endif()

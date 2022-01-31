@@ -43,14 +43,19 @@ class cached_property(property):
         self.cache.clear()
 
 
-def plotting_function(fn):  # pragma: no cover
+def _plotting_function(fn, requires_networkx):  # pragma: no cover
     r""" Decorator marking a function that is a plotting utility. This will exclude it from coverage and test
     whether dependencies are installed. """
 
     @functools.wraps(fn)
     def wrapper(*args, **kw):
-        if not module_available("matplotlib") or not module_available("networkx"):
-            raise RuntimeError("Plotting functions require matplotlib and networkx to be installed.")
+        if not module_available("matplotlib") or (requires_networkx and not module_available("networkx")):
+            raise RuntimeError(f"Plotting function requires matplotlib {'and networkx ' if requires_networkx else ''}"
+                               f"to be installed.")
         return fn(*args, **kw)
 
     return wrapper
+
+
+plotting_function = functools.partial(_plotting_function, requires_networkx=False)
+plotting_function_with_networkx = functools.partial(_plotting_function, requires_networkx=True)

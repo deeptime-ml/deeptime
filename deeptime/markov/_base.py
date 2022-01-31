@@ -168,6 +168,26 @@ class BayesianPosterior(Model):
         from deeptime.util.stats import evaluate_samples as _eval
         return _eval(self.samples, quantity=quantity, delimiter=delimiter, *args, **kwargs)
 
+    def timescales(self, k=None):
+        r""" Relaxation timescales corresponding to the eigenvalues.
+
+        Parameters
+        ----------
+        k : int, optional, default=None
+            The number of timescales (excluding the stationary process).
+
+        Returns
+        -------
+        timescales : tuple(iterable, iterable)
+            Timescales of the prior and timescales of the samples.
+        """
+        return self.prior.timescales(k=k), self.evaluate_samples('timescales', k=k)
+
+    @property
+    def lagtime(self):
+        r"""Lagtime of the models."""
+        return self.prior.lagtime
+
 
 class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
     r""" Validates a model estimated at lag time tau by testing its predictions for longer lag times.

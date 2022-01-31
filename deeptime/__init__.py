@@ -14,6 +14,11 @@ from . import covariance
 from . import decomposition
 from . import markov
 
+from .util.platform import module_available
+if module_available("matplotlib"):
+    from . import plots
+del module_available
+
 
 def capi_includes(inc_clustering: bool = False, inc_markov: bool = False, inc_markov_hmm: bool = False,
                   inc_data: bool = False):
