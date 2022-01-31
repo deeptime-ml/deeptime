@@ -2,35 +2,32 @@ from typing import Optional
 
 import numpy as np
 
-from deeptime.markov import BayesianPosterior
-from deeptime.markov.hmm import HiddenMarkovModel, BayesianHMMPosterior
-from deeptime.markov.msm import MarkovStateModel
 from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function
 
 
 class ImpliedTimescalesData:
+    r""" Instances of this class hold a sequence of lagtimes and corresponding process timescales (potentially
+    with process timescales of sampled models in a Bayesian setting). Objects can be
+    used with :meth:`plot_implied_timescales`.
+
+    In case models over a range of lagtimes are available, the static method :meth:`from_models` can be used.
+
+    Parameters
+    ----------
+    lagtimes : iterable of int
+        Lagtimes corresponding to processes and their timescales.
+    its : ndarray (n_lagtimes, n_processes)
+        The timescales for each process.
+    its_stats : ndarray (n_lagtimes, n_processes, n_samples), optional, default=None
+        Sampled timescales.
+
+    See Also
+    --------
+    plot_implied_timescales
+    """
 
     def __init__(self, lagtimes, its, its_stats=None):
-        r""" Instances of this class hold a sequence of lagtimes and corresponding process timescales (potentially
-        with process timescales of sampled models in a Bayesian setting). Objects can be
-        used with :meth:`plot_implied_timescales`.
-
-        In case models over a range of lagtimes are available, the static method :meth:`from_models` can be used.
-
-        Parameters
-        ----------
-        lagtimes : iterable of int
-            Lagtimes corresponding to processes and their timescales.
-        its : ndarray (n_lagtimes, n_processes)
-            The timescales for each process.
-        its_stats : ndarray (n_lagtimes, n_processes, n_samples), optional, default=None
-            Sampled timescales.
-
-        See Also
-        --------
-        plot_implied_timescales
-        """
         self._lagtimes = np.asarray(lagtimes, dtype=int)
         self._its = np.asarray(its)
         assert self.its.ndim == 2 and self.its.shape[0] == self.n_lagtimes, \
@@ -130,7 +127,7 @@ def plot_implied_timescales(ax, data, n_its: Optional[int] = None, process: Opti
                             colors=None, **kwargs):
     r"""Creates an implied timescales plot inside exising matplotlib axes.
 
-    .. plot:: methods/plot_implied_timescales.py
+    .. plot:: examples/plot_implied_timescales.py
 
     Parameters
     ----------
@@ -160,6 +157,10 @@ def plot_implied_timescales(ax, data, n_its: Optional[int] = None, process: Opti
         rc-config value "axes.prop_cycle".
     **kwargs
         Keyword arguments which are forwarded into the matplotlib plotting function for timescales.
+
+    See Also
+    --------
+    ImpliedTimescalesData
     """
 
     if n_its is not None and process is not None:

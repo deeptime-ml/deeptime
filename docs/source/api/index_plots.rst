@@ -5,7 +5,7 @@ deeptime.plots
 
 The *plots* package contains some plotting convenience utilities.
 
-.. automodule:: deeptime.basis
+.. automodule:: deeptime.plots
 
 .. toctree::
    :maxdepth: 1
