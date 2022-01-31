@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import pytest
+import numpy as np
 from numpy.testing import assert_raises, assert_equal, assert_array_equal, assert_
 
 from deeptime.data import double_well_discrete, double_well_2d
@@ -67,7 +68,7 @@ def doublewell_tica(lagtime, n_samples):
     return TICA(lagtime=lagtime).fit_fetch(double_well_2d().trajectory([[0, 0]], length=200))
 
 
-models = [
+doublewell_models = [
     doublewell_mlmsm,
     doublewell_bmsm,
     doublewell_bhmm,
@@ -76,7 +77,7 @@ models = [
 ]
 
 
-@pytest.mark.parametrize("dw_model", models, ids=lambda x: x.__name__)
+@pytest.mark.parametrize("dw_model", doublewell_models, ids=lambda x: x.__name__)
 def test_plot_its(figure, dw_model):
     f, ax = figure
     lagtimes = [1, 2, 5, 10, 15, 100]
@@ -97,7 +98,6 @@ def test_plot_its(figure, dw_model):
         assert_equal(data.n_samples(4, 0), n_samples[4])
         assert_equal(data.n_samples(5, 0), n_samples[5])
     plot_implied_timescales(ax, data)
-    plt.show()
 
 
 def test_its_mixed_est_sort(figure):
@@ -128,3 +128,23 @@ def test_its_mixed_est_sort(figure):
     assert_equal(data.n_samples(4, 0), 13)
     assert_equal(data.n_samples(5, 0), 0)
     plot_implied_timescales(ax, data)
+
+
+@pytest.mark.parametrize("bayesian", [False, True])
+def test_decayed_process(bayesian):
+    dtraj = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 2, 1])  # state "2" is only visible with lagtime 1
+    msm1 = MaximumLikelihoodMSM(lagtime=1).fit_fetch(dtraj)
+    msm2 = MaximumLikelihoodMSM(lagtime=2).fit_fetch(dtraj)
+    msm3 = MaximumLikelihoodMSM(lagtime=3).fit_fetch(dtraj)
+    models = [msm1, msm2, msm3]
+    if bayesian:
+        models = [BayesianMSM(n_samples=15).fit_fetch(msm, ignore_counting_mode=True) for msm in models]
+    data = ImpliedTimescalesData.from_models(models)
+    assert_equal(data.max_n_processes, 2)
+    assert_equal(data.max_n_samples, 0 if not bayesian else 15)
+    assert_equal(data.n_lagtimes, 3)
+    assert_equal(np.count_nonzero(np.isnan(data.timescales_for_process(0))), 0)  # 0 nans
+    assert_equal(np.count_nonzero(np.isnan(data.timescales_for_process(1))), 2)  # 2 nans
+    if bayesian:
+        assert_equal(np.count_nonzero(np.isnan(data.samples_for_process(0))), 0)  # 0 nans
+        assert_equal(np.count_nonzero(np.isnan(data.samples_for_process(1))), 2 * 15)  # 0 nans
