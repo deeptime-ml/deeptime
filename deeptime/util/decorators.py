@@ -1,4 +1,5 @@
 import functools
+import typing
 import warnings
 from weakref import WeakKeyDictionary
 
@@ -74,6 +75,9 @@ def handle_deprecated_args(argument_name, replaced_by, msg, **kw):
     return kw.get(replaced_by, None)
 
 
+CallableType = typing.TypeVar("T", bound=typing.Callable)
+
+
 def deprecated_argument(argument_name, replaced_by, msg):
     r""" Marks an argument of a function as deprecated. Only works for keyword arguments.
 
@@ -88,9 +92,10 @@ def deprecated_argument(argument_name, replaced_by, msg):
 
     Returns
     -------
-
+    factory : callable
+        decorator factory parametrized by arguments
     """
-    def factory(fn):
+    def factory(fn: CallableType) -> CallableType:
         @functools.wraps(fn)
         def call(*args, **kw):
             handle_deprecated_args(argument_name, replaced_by, msg, **kw)

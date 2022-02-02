@@ -6,7 +6,7 @@ from threadpoolctl import threadpool_limits
 
 from ..base import Estimator
 from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
-from ..util.decorators import handle_deprecated_args
+from ..util.decorators import deprecated_argument
 from ..util.parallel import joining, multiprocessing_context
 
 
@@ -221,6 +221,8 @@ def cvsplit_trajs(trajs, random_state=None):
     return train_set, test_set
 
 
+@deprecated_argument("lagtime", "blocksize", "Lagtime is deprecated in favor of blocksize, will "
+                                             "be removed in version 0.5.0.")
 def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, blocksize: Optional[int] = None, n=10,
                   splitting_mode="sliding", r=2, dim: Optional[int] = None, blocksplit: bool = True,
                   random_state=None, n_jobs=1, lagtime=None):
@@ -282,10 +284,8 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, blocksize: Optio
     from deeptime.util.parallel import handle_n_jobs
     from deeptime.util.types import ensure_timeseries_data
 
-    blocksize = handle_deprecated_args("lagtime", "blocksize", "Lagtime is deprecated in favor of blocksize, will "
-                                                               "be removed in version 0.5.0.",
-                                       lagtime=lagtime, blocksize=blocksize)
-
+    if lagtime is not None:
+        blocksize = lagtime
     if blocksplit and blocksize is None:
         raise ValueError("In case blocksplit is used, please provide a lagtime.")
 
