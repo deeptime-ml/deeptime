@@ -222,7 +222,7 @@ def cvsplit_trajs(trajs, random_state=None):
 
 
 @deprecated_argument("lagtime", "blocksize", "Lagtime is deprecated in favor of blocksize, will "
-                                             "be removed in version 0.5.0.")
+                                             "be removed in an upcoming version (deprecated in 0.4.1).")
 def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, blocksize: Optional[int] = None, n=10,
                   splitting_mode="sliding", r=2, dim: Optional[int] = None, blocksplit: bool = True,
                   random_state=None, n_jobs=1, lagtime=None):
