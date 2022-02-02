@@ -17,26 +17,26 @@ def _imap_wrapper(args):
 
 
 class LaggedModelValidation(Model):
-    def __init__(self, estimates=None, estimates_conf=None, predictions=None, predictions_conf=None, lagtimes=None):
+    def __init__(self, estimates=None, estimates_samples=None, predictions=None, predictions_samples=None, lagtimes=None):
         r""" Result of a lagged model validator.
 
         Parameters
         ----------
         estimates : list, optional, default=None
             Estimated values for each lagtime.
-        estimates_conf : list, optional, default=None
+        estimates_samples : list, optional, default=None
             Samples around estimated values for each lagtime.
         predictions : list, optional, default=None
             Predicted values based on model propagation.
-        predictions_conf : list, optional, default=None
+        predictions_samples : list, optional, default=None
             Samples around predicted values.
         lagtimes : list, optional, default=None
             The lagtimes.
         """
         self._estimates = estimates
-        self._estimates_conf = estimates_conf
+        self._estimates_samples = estimates_samples
         self._predictions = predictions
-        self._predictions_conf = predictions_conf
+        self._predictions_samples = predictions_samples
         self._lagtimes = lagtimes
 
     @property
@@ -55,7 +55,7 @@ class LaggedModelValidation(Model):
         return self._estimates
 
     @property
-    def estimates_conf(self):
+    def estimates_samples(self):
         """ Returns the confidence intervals of the estimates at different
         lagtimes (if available).
 
@@ -63,12 +63,12 @@ class LaggedModelValidation(Model):
 
         Returns
         -------
-        estimates_conf : ndarray(T, n, k)
+        estimates_samples : ndarray(T, n, k)
             each row contains the lower confidence bound of n observables
             computed at one of the T lag times.
 
         """
-        return self._estimates_conf
+        return self._estimates_samples
 
     @property
     def predictions(self):
@@ -84,7 +84,7 @@ class LaggedModelValidation(Model):
         return self._predictions
 
     @property
-    def predictions_conf(self):
+    def predictions_samples(self):
         """ Returns the confidence intervals of the estimates at different
         lagtimes (if available)
 
@@ -101,7 +101,7 @@ class LaggedModelValidation(Model):
             computed at one of the T lag times.
 
         """
-        return self._predictions_conf
+        return self._predictions_samples
 
     @property
     def nsets(self):
@@ -109,11 +109,11 @@ class LaggedModelValidation(Model):
 
     @property
     def has_errors(self):
-        return self.predictions_conf is not None
+        return self.predictions_samples is not None
 
     @property
     def err_est(self):
-        return self.estimates_conf is not None
+        return self.estimates_samples is not None
 
 
 class LaggedModelValidator(Estimator):
@@ -242,8 +242,8 @@ class LaggedModelValidator(Estimator):
                     estimates_samples.append(self._compute_observables(sample, mlag=1))
 
         self._model = LaggedModelValidation(
-            estimates=estimates, estimates_conf=estimates_samples,
-            predictions=predictions, predictions_conf=predictions_samples, lagtimes=lags)
+            estimates=estimates, estimates_samples=estimates_samples,
+            predictions=predictions, predictions_samples=predictions_samples, lagtimes=lags)
 
         return self
 

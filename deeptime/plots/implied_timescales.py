@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 
+from deeptime.plots.util import default_colors
 from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function
 
@@ -241,8 +242,7 @@ def plot_implied_timescales(data: ImpliedTimescales, n_its: Optional[int] = None
         n_its = data.max_n_processes
     it_indices = [process] if process is not None else np.arange(n_its)
     if colors is None:
-        from matplotlib import rcParams
-        colors = rcParams['axes.prop_cycle'].by_key()['color']
+        colors = default_colors()
     for it_index in it_indices:
         color = colors[it_index % len(colors)]
         if show_mle:

@@ -2,7 +2,7 @@ import abc
 
 import numpy as np
 
-from ..util import confidence_interval, LaggedModelValidator
+from ..util import LaggedModelValidator
 from ..util.types import ensure_array
 from ..base import Estimator, Model
 
@@ -291,31 +291,3 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
             for j in range(self.nsets):
                 pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
         return pk_on_set
-
-    def _compute_observables_conf(self, model, mlag):
-        # otherwise compute or predict them by model.propagate
-        if mlag == 0 or model is None:
-            return np.eye(self.nsets), np.eye(self.nsets)
-        prior = model.prior
-        if hasattr(prior, 'transition_model'):
-            symbols = prior.transition_model.count_model.state_symbols
-        else:
-            symbols = prior.count_model.state_symbols
-        subset = self._full2active[symbols]  # find subset we are now working on
-        l = np.zeros((self.nsets, self.nsets))
-        r = np.zeros((self.nsets, self.nsets))
-        for i in range(self.nsets):
-            p0 = self.P0[:, i]  # starting distribution
-            p0sub = p0[subset]  # map distribution to new active set
-            p0sub /= p0sub.sum()  # renormalize
-            pksub_samples = []
-            for m in model.samples:
-                if hasattr(m, 'transition_model'):
-                    m = m.transition_model
-                pksub_samples.append(m.propagate(p0sub, mlag))
-            for j in range(self.nsets):
-                pk_on_set_samples = np.fromiter((np.dot(pksub, self.memberships[subset, j])
-                                                 for pksub in pksub_samples), dtype=np.float32,
-                                                count=len(pksub_samples))
-                l[i, j], r[i, j] = confidence_interval(pk_on_set_samples, conf=self.conf)
-        return l, r

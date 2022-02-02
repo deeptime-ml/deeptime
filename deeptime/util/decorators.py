@@ -44,7 +44,7 @@ class cached_property(property):
     def invalidate(self):
         self.cache.clear()
 
-
+# todo do it like in deprecated argument with arguments and static typecheck
 def _plotting_function(fn, requires_networkx):  # pragma: no cover
     r""" Decorator marking a function that is a plotting utility. This will exclude it from coverage and test
     whether dependencies are installed. """
