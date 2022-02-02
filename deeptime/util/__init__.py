@@ -27,6 +27,7 @@ Statistics utilities
     QuantityStatistics
     confidence_interval
     LaggedModelValidator
+    LaggedModelValidation
 
 ===============================================================================
 Type utilities
@@ -60,7 +61,7 @@ Other utilities
 """
 
 from .stats import QuantityStatistics, confidence_interval
-from ._validation import LaggedModelValidator
+from .validation import LaggedModelValidator, LaggedModelValidation
 
 from . import data
 from . import types

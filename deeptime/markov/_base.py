@@ -168,7 +168,7 @@ class BayesianPosterior(Model):
         from deeptime.util.stats import evaluate_samples as _eval
         return _eval(self.samples, quantity=quantity, delimiter=delimiter, *args, **kwargs)
 
-    def timescales(self, k=None):
+    def timescales(self, k=None, conf: float = .95):
         r""" Relaxation timescales corresponding to the eigenvalues.
 
         Parameters
@@ -292,7 +292,7 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
                 pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
         return pk_on_set
 
-    def _compute_observables_conf(self, model, mlag, conf=0.95):
+    def _compute_observables_conf(self, model, mlag):
         # otherwise compute or predict them by model.propagate
         if mlag == 0 or model is None:
             return np.eye(self.nsets), np.eye(self.nsets)

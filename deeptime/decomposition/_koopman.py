@@ -705,6 +705,3 @@ class KoopmanChapmanKolmogorovValidator(LaggedModelValidator):
             return model.expectation(statistics=self.statistics, observables=self.observables, lag_multiple=mlag,
                                      statistics_mean_free=self.statistics_mean_free,
                                      observables_mean_free=self.observables_mean_free)
-
-    def _compute_observables_conf(self, model, mlag, conf=0.95):
-        raise NotImplementedError('estimation of confidence intervals not yet implemented for Koopman models')

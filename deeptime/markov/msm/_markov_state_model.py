@@ -6,7 +6,8 @@ from typing import Optional, List, Union
 
 import numpy as np
 import scipy
-from scipy.sparse import issparse
+from scipy.sparse import issparse, identity
+from scipy.sparse import linalg as spla
 
 from ...base import Model
 from ...covariance import CovarianceModel
@@ -505,6 +506,22 @@ class MarkovStateModel(Model):
         else:
             return ts[1:k + 1]  # exclude the stationary process
 
+    def _transition_matrix_power(self, power):
+        r""" Power of transition matrix, leveraging eigenvalue decomposition if matrix is dense. """
+        assert power >= 0, "Negative powers not supported."
+        if power == 1:
+            return self.transition_matrix
+        if power == 0:
+            transition_matrix = np.eye(self.n_states) if not self.sparse else identity(self.n_states)
+        else:
+            if self.sparse:
+                transition_matrix = self.transition_matrix ** power
+            else:
+                transition_matrix = np.linalg.multi_dot([self.eigenvectors_right(),
+                                                         np.diag(np.power(self.eigenvalues(), power)),
+                                                         self.eigenvectors_left()])
+        return transition_matrix
+
     def propagate(self, p0, k: int):
         r""" Propagates the initial distribution p0 k times
 
@@ -537,18 +554,24 @@ class MarkovStateModel(Model):
         if k == 0:  # simply return p0 normalized
             return p0 / p0.sum()
 
-        # sparse: we most likely don't have a full eigenvalue set, so just propagate
-        if self.sparse:
-            pk = np.array(p0)
-            for i in range(k):
-                pk = self.transition_matrix.T.dot(pk)
-        else:  # dense: employ eigenvalue decomposition
-            self._ensure_eigendecomposition(self.n_states)
-            pk = np.linalg.multi_dot([
-                p0.T, self.eigenvectors_right(), np.diag(np.power(self.eigenvalues(), k)),
-                self.eigenvectors_left()
-            ]).real
+        T = self._transition_matrix_power(k)
+        pk = T.T.dot(np.array(p0))
         return pk / pk.sum()
+
+    def __pow__(self, power):
+        r"""
+
+        Parameters
+        ----------
+        power : int
+            The power to raise to.
+
+        Returns
+        -------
+        propagated_msm : MarkovStateModel
+            A Markov state model with a transition matrix :math:`T^k`, where :math:`k` is the power.
+        """
+        return MarkovStateModel(self._transition_matrix_power(power))
 
     ################################################################################
     # Hitting problems

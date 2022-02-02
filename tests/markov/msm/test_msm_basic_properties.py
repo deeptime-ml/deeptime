@@ -33,8 +33,10 @@ class TestMSMBasicProperties(object):
 
     def test_propagate(self, setting):
         scenario = make_double_well(setting)
+        prop_msm = scenario.msm ** 10
         sd = scenario.msm.propagate(scenario.msm.stationary_distribution, 10)
         assert_array_almost_equal(sd, scenario.msm.stationary_distribution)
+        assert_array_almost_equal(prop_msm.propagate(scenario.msm.stationary_distribution, 1), sd)
 
     def test_compute_state_indices(self, setting):
         scenario = make_double_well(setting)
