@@ -28,7 +28,7 @@ for lagtime in lagtimes:
 its_data = ImpliedTimescales.from_models(models)
 
 fig, ax = plt.subplots(1, 1)
-plot_implied_timescales(ax, its_data, n_its=2)
+plot_implied_timescales(its_data, n_its=2, ax=ax)
 ax.set_yscale('log')
 ax.set_title('Implied timescales')
 ax.set_xlabel('lag time (steps)')

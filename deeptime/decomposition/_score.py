@@ -6,6 +6,7 @@ from threadpoolctl import threadpool_limits
 
 from ..base import Estimator
 from ..numeric import is_sorted, spd_inv_sqrt, schatten_norm
+from ..util.decorators import handle_deprecated_args
 from ..util.parallel import joining, multiprocessing_context
 
 
@@ -152,7 +153,7 @@ def vamp_score_data(data, data_lagged, transformation=None, r=2, epsilon=1e-6, d
     return model.score(r=r, dim=dim, epsilon=epsilon)
 
 
-def blocksplit_trajs(trajs, lag=1, sliding=True, shift=None, random_state=None):
+def blocksplit_trajs(trajs, blocksize=1, sliding=True, shift=None, random_state=None):
     """ Splits trajectories into approximately uncorrelated fragments.
 
     Will split trajectories into fragments of lengths lag or longer. These fragments
@@ -165,8 +166,8 @@ def blocksplit_trajs(trajs, lag=1, sliding=True, shift=None, random_state=None):
     ----------
     trajs : list of ndarray(int)
         Trajectories
-    lag : int
-        Lag time at which counting will be done.
+    blocksize : int
+        The minimum block size.
     sliding : bool
         True for splitting trajectories for sliding count, False if lag-sampling will be applied
     shift : None or int
@@ -183,20 +184,20 @@ def blocksplit_trajs(trajs, lag=1, sliding=True, shift=None, random_state=None):
     random_state = check_random_state(random_state)
     blocks = []
     for traj in trajs:
-        if len(traj) <= lag:
+        if len(traj) <= blocksize:
             continue
         if shift is None:
-            s = random_state.randint(min(lag, traj.size - lag))
+            s = random_state.randint(min(blocksize, traj.size - blocksize))
         else:
             s = shift
         if sliding:
             if s > 0:
-                blocks.append(traj[:lag + s])
-            for t0 in range(s, len(traj) - lag, lag):
-                blocks.append(traj[t0:t0 + 2 * lag])
+                blocks.append(traj[:blocksize + s])
+            for t0 in range(s, len(traj) - blocksize, blocksize):
+                blocks.append(traj[t0:t0 + 2 * blocksize])
         else:
-            for t0 in range(s, len(traj) - lag, lag):
-                blocks.append(traj[t0:t0 + lag + 1])
+            for t0 in range(s, len(traj) - blocksize, blocksize):
+                blocks.append(traj[t0:t0 + blocksize + 1])
     return blocks
 
 
@@ -220,8 +221,9 @@ def cvsplit_trajs(trajs, random_state=None):
     return train_set, test_set
 
 
-def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=10, splitting_mode="sliding", r=2,
-                  dim: Optional[int] = None, blocksplit: bool = True, random_state=None, n_jobs=1):
+def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, blocksize: Optional[int] = None, n=10,
+                  splitting_mode="sliding", r=2, dim: Optional[int] = None, blocksplit: bool = True,
+                  random_state=None, n_jobs=1, lagtime=None):
     r""" Scores the MSM using the variational approach for Markov processes and cross-validation.
 
     Implementation and ideas following :footcite:`noe2013variational` :footcite:`wu2020variational` and
@@ -240,13 +242,14 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
     ----------
     fit_fetch : callable or estimator
         Can be provided as callable for a custom fit and fetch method. Should be a function pointer or lambda which
-        takes a list of discrete trajectories as input and yields a
+        takes a list of trajectories as input and yields a
         :class:`CovarianceKoopmanModel <deeptime.decomposition.CovarianceKoopmanModel>`. Or an estimator which
         yields this kind of model.
     trajs : list of array_like
         Input data.
-    lagtime : int, optional, default=None
-        lag time, must be provided if blocksplitting is used, otherwise can be left None
+    blocksize : int, optional, default=None
+        lagtime must be provided if blocksplitting is used, otherwise can be left None. Specifies the minimum length of
+        temporally consecutive blocks to split the data into.
     splitting_mode : str, optional, default="sliding"
         Can be one of "sliding" and "sample". In former case the blocks may overlap, otherwise not.
     n : number of samples
@@ -265,6 +268,12 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
         Random seed to use.
     n_jobs : int, optional, default=1
         Number of jobs for folds. In case n_jobs is 1, no parallelization.
+    lagtime : int, optional, default=None
+        Same as blocksize.
+
+        .. deprecated:: 0.4.0
+            Use blocksize instead. Will be removed in 0.5.0
+
 
     References
     ----------
@@ -273,7 +282,11 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
     from deeptime.util.parallel import handle_n_jobs
     from deeptime.util.types import ensure_timeseries_data
 
-    if blocksplit and lagtime is None:
+    blocksize = handle_deprecated_args("lagtime", "blocksize", "Lagtime is deprecated in favor of blocksize, will"
+                                                               "be removed in version 0.5.0.",
+                                       lagtime=lagtime, blocksize=blocksize)
+
+    if blocksplit and blocksize is None:
         raise ValueError("In case blocksplit is used, please provide a lagtime.")
 
     n_jobs = handle_n_jobs(n_jobs)
@@ -290,7 +303,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, lagtime=None, n=
         random_state = np.random.RandomState(random_state)
     assert isinstance(random_state, np.random.RandomState)
 
-    args = [(i, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state, n_jobs) for i in range(n)]
+    args = [(i, fit_fetch, ttrajs, r, dim, blocksize, blocksplit, sliding, random_state, n_jobs) for i in range(n)]
 
     if n_jobs > 1:
         with joining(multiprocessing_context().Pool(processes=n_jobs)) as pool:
@@ -315,11 +328,11 @@ class _FitFetch:
 
 def _worker(args):
     from deeptime.markov.msm import MarkovStateModel
-    fold, fit_fetch, ttrajs, r, dim, lagtime, blocksplit, sliding, random_state, n_jobs = args
+    fold, fit_fetch, ttrajs, r, dim, blocksize, blocksplit, sliding, random_state, n_jobs = args
 
     with threadpool_limits(limits=1 if n_jobs > 1 else None, user_api='blas'):
         if blocksplit:
-            trajs_split = blocksplit_trajs(ttrajs, lag=lagtime, sliding=sliding,
+            trajs_split = blocksplit_trajs(ttrajs, blocksize=blocksize, sliding=sliding,
                                            random_state=random_state)
         else:
             trajs_split = ttrajs

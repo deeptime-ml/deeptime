@@ -1,4 +1,5 @@
 import functools
+import warnings
 from weakref import WeakKeyDictionary
 
 from deeptime.util.platform import module_available
@@ -59,3 +60,40 @@ def _plotting_function(fn, requires_networkx):  # pragma: no cover
 
 plotting_function = functools.partial(_plotting_function, requires_networkx=False)
 plotting_function_with_networkx = functools.partial(_plotting_function, requires_networkx=True)
+
+
+def handle_deprecated_args(argument_name, replaced_by, msg, **kw):
+    r""" See :meth:`deprecated_argument` decorator. """
+    if kw.get(argument_name, None) is not None and kw.get(replaced_by, None) is not None:
+        raise ValueError(f"The argument {argument_name} is deprecated and replaced by {replaced_by}. Please "
+                         f"only use {replaced_by}.")
+    if kw.get(argument_name, None) is not None and kw.get(replaced_by, None) is None:
+        warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
+        deprecated_arg = kw.pop(argument_name)
+        kw[replaced_by] = deprecated_arg
+    return kw.get(replaced_by, None)
+
+
+def deprecated_argument(argument_name, replaced_by, msg):
+    r""" Marks an argument of a function as deprecated. Only works for keyword arguments.
+
+    Parameters
+    ----------
+    argument_name : str
+        The deprecated argument.
+    replaced_by : str
+        The replacement.
+    msg : str
+        Warning message.
+
+    Returns
+    -------
+
+    """
+    def factory(fn):
+        @functools.wraps(fn)
+        def call(*args, **kw):
+            handle_deprecated_args(argument_name, replaced_by, msg, **kw)
+            return fn(*args, **kw)
+        return call
+    return factory
