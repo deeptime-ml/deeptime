@@ -282,7 +282,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, blocksize: Optio
     from deeptime.util.parallel import handle_n_jobs
     from deeptime.util.types import ensure_timeseries_data
 
-    blocksize = handle_deprecated_args("lagtime", "blocksize", "Lagtime is deprecated in favor of blocksize, will"
+    blocksize = handle_deprecated_args("lagtime", "blocksize", "Lagtime is deprecated in favor of blocksize, will "
                                                                "be removed in version 0.5.0.",
                                        lagtime=lagtime, blocksize=blocksize)
 
