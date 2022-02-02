@@ -312,6 +312,7 @@ class TRAMModel(Model):
                                           transition_matrix_tolerance=1e-8)
 
     def _compute_sample_weights_log(self, dtraj, bias_matrix, therm_state=-1):
-        sample_weights = tram.compute_sample_weights_log(dtraj, bias_matrix, self._therm_state_energies,
-                                                         self._modified_state_counts_log, therm_state)
-        return np.asarray(sample_weights)
+        sample_weights = np.asarray(tram.compute_sample_weights_log(dtraj, bias_matrix, self._therm_state_energies,
+                                                         self._modified_state_counts_log, therm_state))
+        # normalize (sum over sample weigths should equal one)
+        return sample_weights - logsumexp(sample_weights)
