@@ -44,23 +44,19 @@ class cached_property(property):
     def invalidate(self):
         self.cache.clear()
 
-# todo do it like in deprecated argument with arguments and static typecheck
-def _plotting_function(fn, requires_networkx):  # pragma: no cover
-    r""" Decorator marking a function that is a plotting utility. This will exclude it from coverage and test
-    whether dependencies are installed. """
 
-    @functools.wraps(fn)
-    def wrapper(*args, **kw):
-        if not module_available("matplotlib") or (requires_networkx and not module_available("networkx")):
-            raise RuntimeError(f"Plotting function requires matplotlib {'and networkx ' if requires_networkx else ''}"
-                               f"to be installed.")
-        return fn(*args, **kw)
+def plotting_function(requires_networkx=False):
+    r""" Decorator marking a function that is a plotting utility. This will test whether dependencies are installed. """
 
-    return wrapper
-
-
-plotting_function = functools.partial(_plotting_function, requires_networkx=False)
-plotting_function_with_networkx = functools.partial(_plotting_function, requires_networkx=True)
+    def factory(fn: typing.Callable) -> typing.Callable:
+        @functools.wraps(fn)
+        def call(*args, **kw):
+            if not module_available("matplotlib") or (requires_networkx and not module_available("networkx")):
+                raise RuntimeError(f"Plotting function requires matplotlib {'and networkx ' if requires_networkx else ''}"
+                                   f"to be installed.")
+            return fn(*args, **kw)
+        return call
+    return factory
 
 
 def handle_deprecated_args(argument_name, replaced_by, msg, **kw):

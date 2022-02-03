@@ -3,10 +3,11 @@ import numpy as np
 import scipy
 from numpy.testing import assert_equal, assert_, assert_array_almost_equal, assert_raises, assert_almost_equal, \
     assert_allclose
+from scipy import sparse
 from scipy.sparse import issparse
 
 from tests.markov.msm.util import MLMSM_PARAMS, AMM_PARAMS, MLMSM_IDS, AMM_IDS, make_double_well
-from deeptime.markov.msm import MaximumLikelihoodMSM, AugmentedMSM
+from deeptime.markov.msm import MaximumLikelihoodMSM, AugmentedMSM, MarkovStateModel
 
 
 @pytest.mark.parametrize("setting", MLMSM_PARAMS + AMM_PARAMS, ids=MLMSM_IDS + AMM_IDS)
@@ -501,3 +502,26 @@ class TestMSMBasicProperties(object):
         ksum = 1.0 / t12 + 1.0 / t21
         k2 = 1.0 / t2
         assert_almost_equal(k2, ksum, decimal=3)
+
+
+@pytest.mark.parametrize("k", [0, 1, 2, 5, 10])
+def test_msm_power(sparse_mode, k):
+    transition_matrix = np.random.uniform(size=(50, 50))
+    transition_matrix /= np.sum(transition_matrix, axis=1)[..., None]
+    if sparse_mode:
+        transition_matrix = sparse.csr_matrix(transition_matrix)
+    msm = MarkovStateModel(transition_matrix, lagtime=3)
+    assert_equal(sparse_mode, msm.sparse)
+    msm_pow = msm ** k
+    assert_equal(msm_pow.lagtime, msm.lagtime * k)
+
+    vec = np.random.uniform(size=(50,))
+    vec /= vec.sum()
+
+    assert_array_almost_equal(msm.propagate(vec, k), msm_pow.propagate(vec, 1))
+
+    vec_prop = vec
+    for _ in range(k):
+        vec_prop = msm.transition_matrix.T.dot(vec_prop)
+    assert_array_almost_equal(msm.propagate(vec, k), vec_prop)
+

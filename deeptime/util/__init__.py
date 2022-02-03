@@ -52,6 +52,7 @@ Other utilities
     parallel.handle_n_jobs
     decorators.cached_property
     decorators.plotting_function
+    decorators.deprecated_argument
 
     callbacks.supports_progress_interface
     callbacks.ProgressCallback

@@ -140,7 +140,7 @@ class ImpliedTimescales:
         data = self.samples_for_process(process_index)[lagtime_index]
         return np.count_nonzero(~np.isnan(data))
 
-    @plotting_function
+    @plotting_function()
     def plot(self, *args, **kw):
         r""" Dispatches to :meth:`plot_implied_timescales`. """
         plot_implied_timescales(self, *args, **kw)
@@ -187,7 +187,7 @@ class ImpliedTimescales:
         return ImpliedTimescales(lagtimes, its, its_stats)
 
 
-@plotting_function
+@plotting_function()
 def plot_implied_timescales(data: ImpliedTimescales, n_its: Optional[int] = None, process: Optional[int] = None,
                             show_mle: bool = True, show_samples: bool = True, show_sample_mean: bool = True,
                             show_sample_confidence: bool = True, show_cutoff: bool = True,

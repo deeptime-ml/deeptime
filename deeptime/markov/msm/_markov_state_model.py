@@ -571,7 +571,7 @@ class MarkovStateModel(Model):
         propagated_msm : MarkovStateModel
             A Markov state model with a transition matrix :math:`T^k`, where :math:`k` is the power.
         """
-        return MarkovStateModel(self._transition_matrix_power(power))
+        return MarkovStateModel(self._transition_matrix_power(power), lagtime=self.lagtime*power)
 
     ################################################################################
     # Hitting problems
