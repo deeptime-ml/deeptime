@@ -2,7 +2,7 @@ import abc
 
 import numpy as np
 
-from ..util import LaggedModelValidator
+from ..util import LaggedModelValidator, LaggedModelValidation
 from ..util.types import ensure_array
 from ..base import Estimator, Model
 
@@ -213,8 +213,6 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
         Note that you need to be able to do a model prediction for each
         of these lag time multiples, e.g. the value 0 only make sense
         if _predict_observables(0) will work.
-    conf : float, default = 0.95
-        confidence interval for errors
 
     Notes
     -----
@@ -226,9 +224,8 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
     .. footbibliography::
     """
 
-    def __init__(self, test_model, test_estimator, memberships, test_model_lagtime,
-                 mlags, conf=0.95):
-        super().__init__(test_model, test_estimator, test_model_lagtime=test_model_lagtime, conf=conf, mlags=mlags)
+    def __init__(self, test_model, test_estimator, memberships, test_model_lagtime, mlags):
+        super().__init__(test_model, test_estimator, test_model_lagtime=test_model_lagtime, mlags=mlags)
         self.memberships = memberships
         self.test_model = test_model
 
@@ -291,3 +288,28 @@ class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
             for j in range(self.nsets):
                 pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
         return pk_on_set
+
+    def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
+        models = self.compute_models(data, n_jobs, progress, estimate_model_for_lag)
+        self._model = MembershipsLaggedModelValidation(models, self.memberships)
+        return super().fit(data, n_jobs, progress, estimate_model_for_lag, **kw)
+
+
+class MembershipsLaggedModelValidation(LaggedModelValidation):
+    def __init__(self, models: LaggedModelValidation, memberships: np.ndarray):
+        super().__init__(estimates=models.estimates, estimates_samples=models.estimates_samples,
+                         predictions=models.predictions, predictions_samples=models.predictions_samples,
+                         lagtimes=models.lagtimes)
+        self._memberships = memberships
+
+    @property
+    def memberships(self):
+        return self._memberships
+
+    @property
+    def n_states(self):
+        return self.memberships.shape[0]
+
+    @property
+    def n_sets(self):
+        return self.memberships.shape[1]

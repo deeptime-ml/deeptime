@@ -226,6 +226,11 @@ def plot_implied_timescales(data: ImpliedTimescales, n_its: Optional[int] = None
     **kwargs
         Keyword arguments which are forwarded into the matplotlib plotting function for timescales.
 
+    Returns
+    -------
+    ax : matplotlib.axes.Axes
+        The matplotlib axes that were used to plot the timescales.
+
     See Also
     --------
     ImpliedTimescales
@@ -260,3 +265,4 @@ def plot_implied_timescales(data: ImpliedTimescales, n_its: Optional[int] = None
         ax.plot(data.lagtimes, data.lagtimes, linewidth=2, color='black')
         ax.fill_between(data.lagtimes, np.full((data.n_lagtimes,), fill_value=ax.get_ylim()[0]), data.lagtimes,
                         alpha=0.5, color='grey')
+    return ax

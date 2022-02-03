@@ -17,7 +17,8 @@ def _imap_wrapper(args):
 
 
 class LaggedModelValidation(Model):
-    def __init__(self, estimates=None, estimates_samples=None, predictions=None, predictions_samples=None, lagtimes=None):
+    def __init__(self, estimates=None, estimates_samples=None, predictions=None, predictions_samples=None,
+                 lagtimes=None):
         r""" Result of a lagged model validator.
 
         Parameters
@@ -38,6 +39,10 @@ class LaggedModelValidation(Model):
         self._predictions = predictions
         self._predictions_samples = predictions_samples
         self._lagtimes = lagtimes
+
+    @property
+    def n_components(self):
+        return len(self.estimates[0]) if self.estimates is not None and len(self.estimates) > 0 else 0
 
     @property
     def lagtimes(self):
@@ -104,12 +109,8 @@ class LaggedModelValidation(Model):
         return self._predictions_samples
 
     @property
-    def nsets(self):
-        return self._predictions.shape[1]
-
-    @property
     def has_errors(self):
-        return self.predictions_samples is not None
+        return self.predictions_samples is not None and len(self.predictions_samples) > 0
 
     @property
     def err_est(self):
@@ -124,27 +125,19 @@ class LaggedModelValidator(Estimator):
     ----------
     test_model : Model
         Model to be tested
-
     test_estimator : Estimator
         Parametrized Estimator that has produced the model
-
     mlags : int or int-array, default=10
         multiples of lag times for testing the Model, e.g. range(10).
         A single int will trigger a range, i.e. mlags=10 maps to
         mlags=range(1, 10).
-
-    conf : float, default = 0.95
-        confidence interval for errors
-
     err_est : bool, default=False
         if the Estimator is capable of error calculation, will compute
         errors for each tau estimate. This option can be computationally
         expensive.
-
     """
 
-    def __init__(self, test_model: Model, test_estimator: Estimator, test_model_lagtime: int,
-                 mlags, err_est=False):
+    def __init__(self, test_model: Model, test_estimator: Estimator, test_model_lagtime: int, mlags, err_est=False):
         # set model and estimator
         self._test_model = test_model
         import copy
@@ -187,7 +180,7 @@ class LaggedModelValidator(Estimator):
 
         return mlags
 
-    def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
+    def compute_models(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None):
         assert estimate_model_for_lag is not None
         n_jobs = handle_n_jobs(n_jobs)
         progress = handle_progress_bar(progress)
@@ -237,14 +230,17 @@ class LaggedModelValidator(Estimator):
         for model in estimated_models:
             # evaluate the estimate at lagtime*mlag
             estimates.append(self._compute_observables(model, 1))
-            if self.has_errors and self.err_est:
+            if self.has_errors and self.err_est and model is not None:
                 for sample in model.samples:
                     estimates_samples.append(self._compute_observables(sample, mlag=1))
 
-        self._model = LaggedModelValidation(
+        return LaggedModelValidation(
             estimates=estimates, estimates_samples=estimates_samples,
             predictions=predictions, predictions_samples=predictions_samples, lagtimes=lags)
 
+    def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
+        self._model = self.compute_models(data, n_jobs=n_jobs, progress=progress,
+                                          estimate_model_for_lag=estimate_model_for_lag)
         return self
 
     def _compute_observables(self, model, mlag):
