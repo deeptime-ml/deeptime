@@ -1,7 +1,5 @@
 from typing import Union, List
 
-import numpy as np
-
 from deeptime.plots.util import default_colors
 from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function
@@ -107,8 +105,9 @@ def plot_ck_test(data: Union[LaggedModelValidation, List[LaggedModelValidation]]
     confidences = []
     for lagged_model_validation in data:
         if lagged_model_validation.has_errors:
-            l_pred, r_pred = confidence_interval(lagged_model_validation.predictions_samples, conf=conf)
-            l_est, r_est = confidence_interval(lagged_model_validation.estimates_samples, conf=conf)
+            l_pred, r_pred = confidence_interval(lagged_model_validation.predictions_samples, conf=conf,
+                                                 remove_nans=True)
+            l_est, r_est = confidence_interval(lagged_model_validation.estimates_samples, conf=conf, remove_nans=True)
             confidences.append(((l_est, r_est), (l_pred, r_pred)))
         else:
             confidences.append(((None, None), (None, None)))

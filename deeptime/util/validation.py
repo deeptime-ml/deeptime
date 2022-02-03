@@ -34,10 +34,10 @@ class LaggedModelValidation(Model):
         lagtimes : list, optional, default=None
             The lagtimes.
         """
-        self._estimates = estimates
-        self._estimates_samples = estimates_samples
-        self._predictions = predictions
-        self._predictions_samples = predictions_samples
+        self._estimates = np.array(estimates)
+        self._estimates_samples = np.array(estimates_samples) if estimates_samples is not None else None
+        self._predictions = np.array(predictions)
+        self._predictions_samples = np.array(predictions_samples) if predictions_samples is not None else None
         self._lagtimes = lagtimes
 
     @property
@@ -46,33 +46,21 @@ class LaggedModelValidation(Model):
 
     @property
     def lagtimes(self):
+        r""" Lagtimes at which estimations and predictions were performed. """
         return self._lagtimes
 
     @property
     def estimates(self):
-        """ Returns estimates at different lagtimes
+        """ Estimates at different lagtimes.
 
-        Returns
-        -------
-        Y : ndarray(T, n)
-            each row contains the n observables computed at one of the T lagtimes.
+        :getter: each row contains the n observables computed at one of the T lagtimes.
+        :type: ndarray(T, n, n)
         """
         return self._estimates
 
     @property
     def estimates_samples(self):
-        """ Returns the confidence intervals of the estimates at different
-        lagtimes (if available).
-
-        If not available, returns None.
-
-        Returns
-        -------
-        estimates_samples : ndarray(T, n, k)
-            each row contains the lower confidence bound of n observables
-            computed at one of the T lag times.
-
-        """
+        r""" Returns the sampled estimates, i.e., a list of arrays as described in :attr:`estimates`. Can be `None`. """
         return self._estimates_samples
 
     @property
