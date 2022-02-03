@@ -1,5 +1,7 @@
 from typing import Union, List
 
+import numpy as np
+
 from deeptime.plots.util import default_colors
 from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function

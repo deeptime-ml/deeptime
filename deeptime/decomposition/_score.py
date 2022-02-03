@@ -287,7 +287,7 @@ def vamp_score_cv(fit_fetch: Union[Estimator, Callable], trajs, blocksize: Optio
     if lagtime is not None:
         blocksize = lagtime
     if blocksplit and blocksize is None:
-        raise ValueError("In case blocksplit is used, please provide a lagtime.")
+        raise ValueError("In case blocksplit is used, please provide a blocksize.")
 
     n_jobs = handle_n_jobs(n_jobs)
     if isinstance(fit_fetch, Estimator):
