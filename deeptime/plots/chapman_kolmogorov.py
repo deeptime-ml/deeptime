@@ -1,14 +1,14 @@
-from typing import Union, List
+from typing import Union
 
 import numpy as np
 
 from deeptime.base import BayesianModel
+from deeptime.markov import PCCAModel
 from deeptime.markov.msm import MarkovStateModel
 from deeptime.plots.util import default_colors
 from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function
 from deeptime.util.platform import handle_progress_bar
-from deeptime.util.validation import LaggedModelValidation
 
 
 class Observable:
@@ -27,9 +27,9 @@ class MembershipsObservable(Observable):
         assert isinstance(model, MarkovStateModel), f"This should be a Markov state model but was {type(model)}."
         return model
 
-    def __init__(self, test_model, memberships: np.ndarray,
+    def __init__(self, test_model, memberships: Union[np.ndarray, PCCAModel],
                  initial_distribution: Union[str, np.ndarray] = 'stationary_distribution'):
-        self.memberships = memberships
+        self.memberships = memberships if not isinstance(memberships, PCCAModel) else memberships.memberships
         self.n_states, self.n_sets = self.memberships.shape
 
         msm = MembershipsObservable._to_markov_model(test_model)
@@ -83,9 +83,9 @@ class ChapmanKolmogorovTest:
     def __init__(self, lagtimes, predictions, predictions_samples, estimates, estimates_samples, observable):
         self._lagtimes = np.array(lagtimes)
         self._predictions = np.asfarray(predictions)
-        self._predictions_samples = np.asfarray(predictions_samples)
+        self._predictions_samples = predictions_samples
         self._estimates = np.asfarray(estimates)
-        self._estimates_samples = np.asfarray(estimates_samples)
+        self._estimates_samples = estimates_samples
         self._observable = observable
 
     @property
@@ -153,7 +153,8 @@ class ChapmanKolmogorovTest:
         return self.estimates_samples is not None
 
     @staticmethod
-    def from_models(models, observable: Observable, test_model=None, include_lag0=True, progress=None):
+    def from_models(models, observable: Observable, test_model=None, include_lag0=True, progress=None,
+                    err_est=False):
         assert all(hasattr(m, 'lagtime') for m in models) and (test_model is None or hasattr(test_model, 'lagtime')), \
             "All models and the test model need to have a lagtime property."
         progress = handle_progress_bar(progress)
@@ -173,8 +174,10 @@ class ChapmanKolmogorovTest:
         for lagtime in progress(lagtimes):
             predictions.append(observable(test_model, mlag=lagtime / reference_lagtime))
             if is_bayesian:
+                obs = []
                 for sample in test_model.samples:
-                    predictions_samples.append(observable(sample, mlag=lagtime / reference_lagtime))
+                    obs.append(observable(sample, mlag=lagtime / reference_lagtime))
+                predictions_samples.append(obs)
 
         if include_lag0:
             models = [None] + models
@@ -182,12 +185,16 @@ class ChapmanKolmogorovTest:
         estimates_samples = []
         for model in progress(models):
             estimates.append(observable(model, mlag=1))
-            if is_bayesian:
+            if is_bayesian and err_est:
                 if model is not None:
+                    obs = []
                     for sample in model.samples:
-                        estimates_samples.append(observable(sample, mlag=1))
+                        obs.append(observable(sample, mlag=1))
                     else:
-                        estimates_samples.append(observable(model, mlag=0))
+                        obs.append(observable(model, mlag=0))
+                    estimates_samples.append(obs)
+                else:
+                    estimates_samples.append([observable(model, mlag=0)])
 
         return ChapmanKolmogorovTest(lagtimes, predictions, predictions_samples, estimates, estimates_samples,
                                      observable)
@@ -209,6 +216,9 @@ class CKTestGrid:
         self._figure = fig
         self._axes = axes
         self._sharey = sharey
+        self._lest_handles = []
+        self._lpred_handles = []
+        self._tests = []
 
     @property
     def n_cells_x(self):
@@ -229,11 +239,20 @@ class CKTestGrid:
     def get_axis(self, i, j):
         return self.axes[i][j]
 
-    def plot_panel(self, i, j, data: LaggedModelValidation, color, l_est=None, r_est=None, l_pred=None, r_pred=None,
-                   **plot_kwargs):
+    def plot_cktest(self, data, color, confidences, **plot_kwargs):
+        self._tests.append(data)
+        lest, lpred = None, None  # line objects
+        for i in range(self.n_cells_x):
+            for j in range(self.n_cells_y):
+                lest, lpred = self._plot_panel(i, j, data, color, *confidences, **plot_kwargs)
+        self._lest_handles.append(lest[0])
+        self._lpred_handles.append(lpred[0])
+
+    def _plot_panel(self, i, j, data: ChapmanKolmogorovTest, color, l_est=None, r_est=None, l_pred=None, r_pred=None,
+                    **plot_kwargs):
         ax = self.get_axis(i, j)
         lest = ax.plot(data.lagtimes, data.estimates[:, i, j], color='black', **plot_kwargs)
-        if l_est is not None and r_est is not None:
+        if l_est is not None and len(lest) > 0 and r_est is not None and len(r_est) > 0:
             ax.fill_between(data.lagtimes, l_est[:, i, j], r_est[:, i, j], color='black', alpha=0.2)
         lpred = ax.plot(data.lagtimes, data.predictions[:, i, j], color=color, linestyle='dashed', **plot_kwargs)
         if l_pred is not None and r_pred is not None:
@@ -244,72 +263,64 @@ class CKTestGrid:
 
         return lest, lpred
 
+    def set_axes_labels(self, i, j, xlabel, ylabel):
+        if xlabel is not None:
+            self.get_axis(i, j).set_xlabel(xlabel)
+        if ylabel is not None:
+            self.get_axis(i, j).set_ylabel(ylabel)
 
-def _add_ck_subplot(cktest, test_index, ax, i, j, ipos=None, jpos=None, y01=True, units='steps', dt=1., **plot_kwargs):
-    # plot estimates
-    for default in ['color', 'linestyle']:
-        if default in plot_kwargs.keys():
-            # print("ignoring plot_kwarg %s: %s"%(default, plot_kwargs[default]))
-            plot_kwargs.pop(default)
-    color = 'C{}'.format(test_index)
-
-    lest = ax.plot(dt * cktest.lagtimes, cktest.estimates[:, i, j], color='black', **plot_kwargs)
-    # plot error of estimates if available
-    if cktest.has_errors and cktest.err_est:
-        ax.fill_between(dt * cktest.lagtimes, cktest.estimates_conf[0][:, i, j], cktest.estimates_conf[1][:, i, j],
-                        color='black', alpha=0.2)
-    # plot predictions
-    lpred = ax.plot(dt * cktest.lagtimes, cktest.predictions[:, i, j], color=color, linestyle='dashed', **plot_kwargs)
-    # plot error of predictions if available
-    if cktest.has_errors:
-        ax.fill_between(dt * cktest.lagtimes, cktest.predictions_conf[0][:, i, j], cktest.predictions_conf[1][:, i, j],
-                        color=color, alpha=0.2)
-    # add label
-    ax.text(0.05, 0.05, str(i + 1) + ' -> ' + str(j + 1), transform=ax.transAxes, weight='bold')
-    if y01:
-        ax.set_ylim(0, 1)
-    # Axes labels
-    if ipos is None:
-        ipos = i
-    if jpos is None:
-        jpos = j
-    if (jpos == 0):
-        ax.set_ylabel('probability')
-    if (ipos == cktest.nsets - 1):
-        ax.set_xlabel('lag time (' + units + ')')
-    # return line objects
-    return lest, lpred
+    def legend(self, conf=None):
+        handles = []
+        labels = []
+        for ix, test in enumerate(self._tests):
+            predlabel = 'predict {}'.format(ix) if len(self._tests) > 1 else 'predict'
+            estlabel = 'estimate {}'.format(ix) if len(self._tests) > 1 else 'estimate'
+            if test.has_errors and conf is not None:
+                predlabel += '     conf. {:3.1f}%'.format(100.0*conf)
+            handles.append(self._lest_handles[ix])
+            handles.append(self._lpred_handles[ix])
+            labels.append(predlabel)
+            labels.append(estlabel)
+        self.figure.legend(handles, labels, 'upper center', ncol=2, frameon=False)
 
 
-def plot_ck_test(data: Union[LaggedModelValidation, List[LaggedModelValidation]], height=2.5, aspect=1.,
-                 conf: float = 0.95, colors=None, grid: CKTestGrid = None, **plot_kwargs):
-    colors = default_colors() if colors is None else colors
+def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
+                 conf: float = 0.95, color=None, grid: CKTestGrid = None, legend=True, **plot_kwargs):
+    color = default_colors()[0] if color is None else color
+    n_components = data.n_components
 
-    if not isinstance(data, list):
-        data = [data]
-    assert all(x.n_components == data[0].n_components for x in data), "All validations must have the same " \
-                                                                      "number of components"
-
-    confidences = []
-    for lagged_model_validation in data:
-        if lagged_model_validation.has_errors:
-            l_pred, r_pred = confidence_interval(lagged_model_validation.predictions_samples, conf=conf,
-                                                 remove_nans=True)
-            l_est, r_est = confidence_interval(lagged_model_validation.estimates_samples, conf=conf, remove_nans=True)
-            confidences.append(((l_est, r_est), (l_pred, r_pred)))
-        else:
-            confidences.append(((None, None), (None, None)))
-
-    n_components = data[0].n_components
     if grid is not None:
         assert grid.n_cells_x == grid.n_cells_y == n_components
     else:
         grid = CKTestGrid(n_components, n_components, height=height, aspect=aspect)
-    for val_ix, val in enumerate(data):
-        color = colors[val_ix]
-        conf = confidences[val_ix]
-        for i in range(grid.n_cells_x):
-            for j in range(grid.n_cells_y):
-                grid.plot_panel(i, j, val, color, conf[0][0], conf[0][1], conf[1][0], conf[1][1], **plot_kwargs)
+
+    confidences_est_l = []
+    confidences_est_r = []
+    confidences_pred_l = []
+    confidences_pred_r = []
+    if data.has_errors:
+        samples = data.predictions_samples
+        for lag_samples in samples:
+            l_pred, r_pred = confidence_interval(lag_samples, conf=conf, remove_nans=True)
+            confidences_pred_l.append(l_pred)
+            confidences_pred_r.append(r_pred)
+
+        samples = data.estimates_samples
+        for lag_samples in samples:
+            l_est, r_est = confidence_interval(lag_samples, conf=conf, remove_nans=True)
+            confidences_est_l.append(l_est)
+            confidences_est_r.append(r_est)
+    else:
+        confidences_pred_l.append(None)
+        confidences_pred_r.append(None)
+        confidences_est_l.append(None)
+        confidences_est_r.append(None)
+
+    confidences = [confidences_est_l, confidences_est_r, confidences_pred_l, confidences_pred_r]
+    confidences = [np.array(conf) for conf in confidences]
+    grid.plot_cktest(data, color, confidences, **plot_kwargs)
+
+    if legend:
+        grid.legend(conf)
 
     return grid
