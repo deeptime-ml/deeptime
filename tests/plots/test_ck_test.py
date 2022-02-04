@@ -3,6 +3,7 @@ import pytest
 
 from deeptime.clustering import KMeans
 from deeptime.data import ellipsoids
+from deeptime.decomposition import VAMP
 from deeptime.plots.chapman_kolmogorov import plot_ck_test
 from tests.testing_utilities import estimate_markov_model
 
@@ -22,3 +23,14 @@ def test_sanity_msm(hidden, bayesian):
     else:
         cktest = test_model.ck_test(models)
     plot_ck_test(cktest, conf=1)
+
+
+def test_sanity_vamp():
+    traj = ellipsoids().observations(20000)
+    models = []
+    lags = [2, 3, 4, 5]
+    for lag in lags:
+        models.append(VAMP(lag, dim=2).fit_fetch(traj))
+
+    ck_test = models[0].ck_test(models)
+    plot_ck_test(ck_test)
