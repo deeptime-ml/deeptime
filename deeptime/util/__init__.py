@@ -2,6 +2,29 @@ r"""
 .. currentmodule: deeptime.util
 
 ===============================================================================
+Model validation utils
+===============================================================================
+
+We currently offer an implied timescales check and a test of the Chapman-Kolmogorov equation:
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    validation.implied_timescales
+    validation.ck_test
+
+
+with corresponding result objects
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    validation.ImpliedTimescales
+    validation.ChapmanKolmogorovTest
+
+===============================================================================
 Data utilities
 ===============================================================================
 
@@ -26,8 +49,6 @@ Statistics utilities
 
     QuantityStatistics
     confidence_interval
-    LaggedModelValidator
-    LaggedModelValidation
 
 ===============================================================================
 Type utilities
@@ -67,3 +88,4 @@ from . import data
 from . import types
 from . import callbacks
 from . import platform
+from . import validation

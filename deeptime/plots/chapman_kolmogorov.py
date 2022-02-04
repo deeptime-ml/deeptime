@@ -93,6 +93,32 @@ class CKTestGrid:
 def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
                  conf: float = 0.95, color=None, grid: CKTestGrid = None, legend=True,
                  xlabel='lagtime (steps)', ylabel='probability', **plot_kwargs):
+    r""" Plot the Chapman Kolmogorov test.
+
+    .. plot:: examples/plot_ck_test.py
+
+    Parameters
+    ----------
+    data
+    height
+    aspect
+    conf
+    color
+    grid
+    legend
+    xlabel
+    ylabel
+    plot_kwargs
+
+    Returns
+    -------
+    grid
+        Object containing the CK test grid view.
+
+    See Also
+    --------
+    deeptime.util.ck_test
+    """
     color = default_colors()[0] if color is None else color
     n_components = data.n_components
 

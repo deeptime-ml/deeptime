@@ -39,8 +39,6 @@ Analysis tools
 
     pcca
     reactive_flux
-    MembershipsChapmanKolmogorovValidator
-
 
 
 With output models

@@ -18,8 +18,6 @@ Transition counting and analysis tools
     ReactiveFlux
     reactive_flux
 
-    MembershipsChapmanKolmogorovValidator
-
 ===============================================================================
 Utilities
 ===============================================================================

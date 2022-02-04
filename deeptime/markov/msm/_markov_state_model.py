@@ -518,9 +518,8 @@ class MarkovStateModel(Model):
             if self.sparse:
                 transition_matrix = self.transition_matrix ** power
             else:
-                transition_matrix = np.linalg.multi_dot([self.eigenvectors_right(),
-                                                         np.diag(np.power(self.eigenvalues(), power)),
-                                                         self.eigenvectors_left()])
+                diag = np.diag(np.sign(self.eigenvalues()) * (np.abs(self.eigenvalues())) ** power)
+                transition_matrix = np.linalg.multi_dot([self.eigenvectors_right(), diag, self.eigenvectors_left()])
         return transition_matrix
 
     def propagate(self, p0, k: int):

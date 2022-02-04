@@ -27,7 +27,7 @@ class MembershipsObservable(Observable):
         n_states = msm.n_states
         symbols = msm.count_model.state_symbols
         symbols_full = msm.count_model.n_states_full
-        if initial_distribution == 'stationary_distribution':
+        if isinstance(initial_distribution, str) and initial_distribution == 'stationary_distribution':
             init_dist = msm.stationary_distribution
         else:
             assert isinstance(initial_distribution, np.ndarray) and len(initial_distribution) == n_states, \
