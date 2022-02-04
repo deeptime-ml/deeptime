@@ -51,7 +51,7 @@ from ._discrete_states import map_dtrajs_to_symbols, DiscreteStatesManager
 from . import sample
 from . import tools  # former msmtools
 
-from ._base import BayesianMSMPosterior, _MSMBaseEstimator, MembershipsChapmanKolmogorovValidator
+from ._base import BayesianMSMPosterior, _MSMBaseEstimator
 from ._pcca import pcca, PCCAModel
 from ._transition_counting import TransitionCountEstimator, TransitionCountModel
 

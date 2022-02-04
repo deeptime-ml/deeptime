@@ -22,7 +22,7 @@ from ...numeric import is_square_matrix, spd_inv_sqrt
 from ...util.decorators import cached_property
 from ...util.matrix import submatrix
 from ...util.types import ensure_array
-from ...util.validation import ChapmanKolmogorovTest
+from ...util.validation import ChapmanKolmogorovTest, ck_test
 
 
 class MarkovStateModel(Model):
@@ -1043,12 +1043,38 @@ class MarkovStateModel(Model):
             stop = [stop]
         return sim.trajectory(N=n_steps, start=start, P=transition_matrix, stop=stop, seed=seed)
 
-    def cktest(self, models, n_metastable_sets, include_lag0=True, err_est=False, progress=None):
+    def ck_test(self, models, n_metastable_sets, include_lag0=True, err_est=False, progress=None):
+        r""" Validates a model estimated at lag time tau by testing its predictions for longer lag times.
+        This is known as the Chapman-Kolmogorov test as it is based on the Chapman-Kolmogorov equation.
+        The test is performed on metastable sets of states rather than the micro-states themselves.
+
+        Parameters
+        ----------
+        models : list of MarkovStateModel
+            A list of models which were estimated at different and in particular longer lagtimes.
+        n_metastable_sets : int
+            Number of metastable sets, estimated via :meth:`pcca`.
+        include_lag0 : bool, optional, default=True
+            Whether to include a lagtime 0 in the test, which corresponds to an identity transition matrix for MSMs.
+        err_est : bool, optional, default=False
+            Whether to compute errors on observable evaluations of the models in the models parameter.
+        progress : object, optional, default=None
+            Optional progress bar. Tested for tqdm.
+
+        Returns
+        -------
+        ck_test : ChapmanKolmogorovTest
+            A Chapman-Kolmogorov test object that can be used with :meth:`plot_ck_test <deeptime.plots.plot_ck_test>`.
+
+        See Also
+        --------
+        :meth:`ck_test <deeptime.validation.ck_test>`
+        """
         from .._base import MembershipsObservable
         clustering = self.pcca(n_metastable_sets)
         observable = MembershipsObservable(self, clustering, initial_distribution=self.stationary_distribution)
-        return ChapmanKolmogorovTest.from_models(models, observable, test_model=self, include_lag0=include_lag0,
-                                                 err_est=err_est, progress=progress)
+        return ck_test(models, observable, test_model=self, include_lag0=include_lag0, err_est=err_est,
+                       progress=progress)
 
     ################################################################################
     # For general statistics

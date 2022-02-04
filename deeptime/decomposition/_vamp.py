@@ -8,7 +8,7 @@ from typing import Optional, Union, Callable
 
 import numpy as np
 
-from ._koopman import CovarianceKoopmanModel, KoopmanChapmanKolmogorovValidator
+from ._koopman import CovarianceKoopmanModel
 from ..base import EstimatorTransformer
 from ..basis import Identity
 from ..covariance import Covariance, CovarianceModel
@@ -459,94 +459,3 @@ class VAMP(EstimatorTransformer):
             self._model = self._decompose(self._covariance_estimator.fetch_model())
             self._covariance_estimator = None
         return self._model
-
-    def chapman_kolmogorov_validator(self, mlags, test_model: CovarianceKoopmanModel = None,
-                                     n_observables=None, observables='phi', statistics='psi'):
-        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
-
-        Parameters
-        ----------
-        mlags : int or int-array
-            Multiple of lagtimes of the test_model to test against.
-        test_model : CovarianceKoopmanModel, optional, default=None
-            The model that is tested. If not provided, uses this estimator's encapsulated model.
-        n_observables : int, optional, default=None
-            Limit the number of default observables (and of default statistics) to this number.
-            Only used if `observables` are None or `statistics` are None.
-        observables : (input_dimension, n_observables) ndarray
-            Coefficients that express one or multiple observables in
-            the basis of the input features.
-        statistics : (input_dimension, n_statistics) ndarray
-            Coefficients that express one or multiple statistics in the basis of the input features.
-
-        Returns
-        -------
-        validator : KoopmanChapmanKolmogorovValidator
-            The validator.
-
-        Notes
-        -----
-        This method computes two sets of time-lagged covariance matrices
-
-        * estimates at higher lag times :
-
-          .. math::
-
-              \left\langle \mathbf{K}(n\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
-
-          where :math:`\rho_{0}` is the empirical distribution implicitly defined
-          by all data points from time steps 0 to T-tau in all trajectories,
-          :math:`\mathbf{K}(n\tau)` is a rank-reduced Koopman matrix estimated
-          at the lag-time n*tau and g and f are some functions of the data.
-          Rank-reduction of the Koopman matrix is controlled by the `dim`
-          parameter of :class:`VAMP <deeptime.decomposition.VAMP>`.
-
-        * predictions at higher lag times :
-
-          .. math::
-
-              \left\langle \mathbf{K}^{n}(\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
-
-          where :math:`\mathbf{K}^{n}` is the n'th power of the rank-reduced
-          Koopman matrix contained in self.
-
-        The Champan-Kolmogorov test is to compare the predictions to the estimates.
-        """
-        test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already " \
-                                       "fit to data."
-        lagtime = self.lagtime
-        if n_observables is not None:
-            if n_observables > test_model.dim:
-                import warnings
-                warnings.warn('Selected singular functions as observables but dimension '
-                              'is lower than requested number of observables.')
-                n_observables = test_model.dim
-        else:
-            n_observables = test_model.dim
-
-        if isinstance(observables, str) and observables == 'phi':
-            observables = test_model.singular_vectors_right[:, :n_observables]
-            observables_mean_free = True
-        else:
-            observables_mean_free = False
-
-        if isinstance(statistics, str) and statistics == 'psi':
-            statistics = test_model.singular_vectors_left[:, :n_observables]
-            statistics_mean_free = True
-        else:
-            statistics_mean_free = False
-        return VAMPKoopmanCKValidator(test_model, self, lagtime, mlags, observables, statistics,
-                                      observables_mean_free, statistics_mean_free)
-
-
-def _vamp_estimate_model_for_lag(estimator: VAMP, model, data, lagtime):
-    est = VAMP(lagtime=lagtime, dim=estimator.dim, var_cutoff=estimator.var_cutoff, scaling=estimator.scaling,
-               epsilon=estimator.epsilon, observable_transform=estimator.observable_transform)
-    return est.fit(data).fetch_model()
-
-
-class VAMPKoopmanCKValidator(KoopmanChapmanKolmogorovValidator):
-
-    def fit(self, data, n_jobs=None, progress=None, **kw):
-        return super().fit(data, n_jobs, progress, _vamp_estimate_model_for_lag, **kw)

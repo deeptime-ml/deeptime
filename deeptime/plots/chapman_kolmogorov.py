@@ -45,7 +45,7 @@ class CKTestGrid:
     def get_axis(self, i, j):
         return self.axes[i][j]
 
-    def plot_cktest(self, data, color, confidences, **plot_kwargs):
+    def plot_ck_test(self, data, color, confidences, **plot_kwargs):
         self._tests.append(data)
         lest, lpred = None, None  # line objects
         for i in range(self.n_cells_x):
@@ -120,7 +120,7 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
 
     confidences = [confidences_est_l, confidences_est_r, confidences_pred_l, confidences_pred_r]
     confidences = [np.array(conf) for conf in confidences]
-    grid.plot_cktest(data, color, confidences, **plot_kwargs)
+    grid.plot_ck_test(data, color, confidences, **plot_kwargs)
 
     for i in range(grid.n_cells_x):
         grid.set_axes_labels(i, 0, ylabel=ylabel)

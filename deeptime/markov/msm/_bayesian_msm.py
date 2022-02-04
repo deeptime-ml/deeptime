@@ -6,7 +6,7 @@ import numpy as np
 from ...base import Estimator
 from ...numeric import is_square_matrix
 from .. import TransitionCountEstimator
-from .._base import _MSMBaseEstimator, BayesianMSMPosterior, MembershipsChapmanKolmogorovValidator
+from .._base import _MSMBaseEstimator, BayesianMSMPosterior
 from . import MarkovStateModel, MaximumLikelihoodMSM
 
 __author__ = 'noe, marscher, clonker'
@@ -309,41 +309,3 @@ class BayesianMSM(_MSMBaseEstimator):
         samples = self.sample(msm, self.n_samples, self.n_steps, callback)
         self._model = BayesianMSMPosterior(prior=msm, samples=samples)
         return self
-
-    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model: BayesianMSMPosterior = None):
-        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
-
-        Parameters
-        ----------
-        n_metastable_sets : int
-            Number of metastable sets to project the state space down to.
-        mlags : int or range or list
-            Multiple of lagtimes of the test_model to test against.
-        test_model : BayesianMSMPosterior, optional, default=None
-            The model that is tested. If not provided, uses this estimator's encapsulated model.
-
-        Returns
-        -------
-        validator : markov.MembershipsChapmanKolmogorovValidator
-            The validator.
-        """
-        test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
-                                       "fit to data."
-        prior = test_model.prior
-        assert prior.has_count_model, "The test model needs to have a count model, i.e., be estimated from data."
-        pcca = prior.pcca(n_metastable_sets)
-        reference_lagtime = prior.count_model.lagtime
-        return BayesianMSMChapmanKolmogorovValidator(test_model, self, pcca.memberships, reference_lagtime, mlags)
-
-
-def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
-    counting_mode = model.prior.count_model.counting_mode
-    counts = TransitionCountEstimator(lagtime, counting_mode).fit(data, n_jobs=1).fetch_model().submodel_largest()
-    return estimator.fit(counts).fetch_model()
-
-
-class BayesianMSMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-
-    def fit(self, data, n_jobs=None, progress=None, **kw):
-        return super().fit(data, n_jobs, progress, estimate_model_for_lag=_ck_estimate_model_for_lag, **kw)

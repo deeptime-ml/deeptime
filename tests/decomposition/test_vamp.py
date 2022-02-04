@@ -249,10 +249,15 @@ def assert_allclose_ignore_phase(A, B, atol=1e-14, rtol=1e-5):
 
 def test_cktest():
     traj = ellipsoids().observations(n_steps=10000)
-    estimator = VAMP(1, dim=1).fit(traj)
-    validator = estimator.chapman_kolmogorov_validator(4)
-    cktest = validator.fit(traj).fetch_model()
-    np.testing.assert_almost_equal(cktest.predictions, cktest.estimates, decimal=1)
+    lagtimes = np.arange(1, 5)
+    models = []
+    for lag in lagtimes:
+        models.append(VAMP(lag, dim=1).fit_fetch(traj))
+    test_model = models[0]
+    ck_test = test_model.ck_test(models)
+    # validator = estimator.chapman_kolmogorov_validator(4)
+    # cktest = validator.fit(traj).fetch_model()
+    np.testing.assert_almost_equal(ck_test.predictions, ck_test.estimates, decimal=1)
 
 
 class TestVAMPModel(unittest.TestCase):

@@ -3,10 +3,8 @@ import pytest
 
 from deeptime.clustering import KMeans
 from deeptime.data import ellipsoids
-from deeptime.markov.hmm import MaximumLikelihoodHMM, BayesianHMM
-from deeptime.markov.hmm.init import discrete
-from deeptime.markov.msm import MaximumLikelihoodMSM, BayesianMSM
 from deeptime.plots.chapman_kolmogorov import plot_ck_test
+from tests.testing_utilities import estimate_markov_model
 
 
 @pytest.mark.parametrize("hidden", [False, True], ids=lambda x: f"hidden={x}")
@@ -17,22 +15,10 @@ def test_sanity_msm(hidden, bayesian):
     dtraj = KMeans(n_clusters=15).fit_transform(traj)
     models = []
     for lag in mlags:
-        if not hidden:
-            msm = MaximumLikelihoodMSM(lagtime=lag).fit_fetch(dtraj, count_mode='effective')
-            if bayesian:
-                msm = BayesianMSM().fit_fetch(msm)
-            models.append(msm)
-        else:
-            if not bayesian:
-                hmm_init = discrete.metastable_from_data(dtraj, n_hidden_states=2, lagtime=lag)
-                hmm = MaximumLikelihoodHMM(hmm_init, lagtime=lag).fit_fetch(dtraj)
-                models.append(hmm)
-            else:
-                bhmm = BayesianHMM.default(n_hidden_states=2, lagtime=lag, dtrajs=dtraj).fit_fetch(dtraj)
-                models.append(bhmm)
+        models.append(estimate_markov_model(lag, dtraj, hidden, bayesian))
     test_model = models[0]
     if not hidden:
-        cktest = test_model.cktest(models, n_metastable_sets=2)
+        cktest = test_model.ck_test(models, n_metastable_sets=2)
     else:
-        cktest = test_model.cktest(models)
+        cktest = test_model.ck_test(models)
     plot_ck_test(cktest, conf=1)

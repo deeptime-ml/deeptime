@@ -8,7 +8,7 @@ from deeptime.markov.tools.analysis import is_connected
 from deeptime.markov.tools.estimation import sample_tmatrix, transition_matrix
 
 from deeptime.base import Estimator
-from deeptime.markov._base import BayesianMSMPosterior, MembershipsChapmanKolmogorovValidator
+from deeptime.markov._base import BayesianMSMPosterior
 from deeptime.markov._transition_matrix import stationary_distribution
 from deeptime.markov.hmm import HiddenMarkovModel
 from ._output_model import DiscreteOutputModel
@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 from ...util.platform import handle_progress_bar
-from ...util.validation import ChapmanKolmogorovTest
+from ...util.validation import ChapmanKolmogorovTest, ck_test
 
 
 class BayesianHMMPosterior(BayesianMSMPosterior):
@@ -150,12 +150,12 @@ class BayesianHMMPosterior(BayesianMSMPosterior):
                       for sample in self]
         return BayesianHMMPosterior(sub_model, subsamples)
 
-    def cktest(self, models, include_lag0=True, err_est=False, progress=None, **kw):
+    def ck_test(self, models, include_lag0=True, err_est=False, progress=None, **kw):
         from .._base import MembershipsObservable
         observable = MembershipsObservable(self, np.eye(self.prior.n_hidden_states),
                                            initial_distribution=self.prior.transition_model.stationary_distribution)
-        return ChapmanKolmogorovTest.from_models(models, observable, test_model=self, include_lag0=include_lag0,
-                                                 err_est=err_est, progress=progress)
+        return ck_test(models, observable, test_model=self, include_lag0=include_lag0,
+                       err_est=err_est, progress=progress)
 
 
 class BayesianHMM(Estimator):
@@ -648,48 +648,3 @@ class BayesianHMM(Estimator):
                                               reversible=self.reversible, count_model=count_model),
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
-
-    def chapman_kolmogorov_validator(self, mlags, test_model: BayesianHMMPosterior = None):
-        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
-
-        Parameters
-        ----------
-        mlags : int or int-array
-            Multiple of lagtimes of the test_model to test against.
-        test_model : BayesianHMMPosterior, optional, default=None
-            The model that is tested. If not provided, uses this estimator's encapsulated model.
-
-        Returns
-        -------
-        validator : markov.MembershipsChapmanKolmogorovValidator
-            The validator.
-        """
-        test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
-                                       "fit to data."
-
-        from . import DiscreteOutputModel
-        assert isinstance(test_model.prior.output_model, DiscreteOutputModel), \
-            "Can only perform CKTest for discrete output models"
-        memberships = np.eye(test_model.prior.n_hidden_states)
-        lagtime = test_model.prior.lagtime
-        return BayesianHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
-
-
-def _ck_estimate_model_for_lag(estimator: BayesianHMM, model, data, lagtime):
-    estimator = BayesianHMM.default(dtrajs=data, n_hidden_states=estimator.initial_hmm.n_hidden_states,
-                                    lagtime=lagtime, n_samples=estimator.n_samples, stride=estimator.stride,
-                                    initial_distribution_prior=estimator.initial_distribution_prior,
-                                    transition_matrix_prior=estimator.transition_matrix_prior,
-                                    reversible=estimator.reversible, stationary=estimator.stationary)
-    return estimator.fit(data).fetch_model()
-
-
-class BayesianHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-
-    def fit(self, data, n_jobs=1, progress=None, **kw):
-        if n_jobs != 1:
-            import warnings
-            warnings.warn("ignoring n_jobs for HMM CKtest")
-
-        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, progress=progress, **kw)

@@ -62,7 +62,6 @@ Other utilities
 """
 
 from .stats import QuantityStatistics, confidence_interval
-from .validation import LaggedModelValidator, LaggedModelValidation
 
 from . import data
 from . import types

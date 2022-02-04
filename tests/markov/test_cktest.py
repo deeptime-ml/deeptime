@@ -4,6 +4,8 @@ import deeptime as dt
 from flaky import flaky
 from numpy.testing import assert_allclose, assert_equal, assert_raises
 
+from tests.testing_utilities import estimate_markov_model
+
 
 def test_invalid_mlags():
     data = dt.data.double_well_discrete().dtraj
@@ -14,10 +16,10 @@ def test_invalid_mlags():
 
 
 @flaky(max_runs=3, min_passes=1)
-@pytest.mark.parametrize("n_jobs", [1, 2], ids=lambda x: f"n_jobs={x}")
-@pytest.mark.parametrize("mlags", [2, [0, 1, 10]], ids=lambda x: f"mlags={x}")
-@pytest.mark.parametrize("estimator_type", ["MLMSM", "BMSM", "HMM", "BHMM"])
-def test_cktest_double_well(estimator_type, n_jobs, mlags):
+@pytest.mark.parametrize("lagtimes", [[1], [1, 10]], ids=lambda x: f"lagtimes={x}")
+@pytest.mark.parametrize("hidden", [False, True])
+@pytest.mark.parametrize("bayesian", [False, True])
+def test_cktest_double_well(hidden, bayesian, lagtimes):
     # maximum-likelihood estimates
     estref = np.array([[[1., 0.],
                         [0., 1.]],
@@ -32,33 +34,16 @@ def test_cktest_double_well(estimator_type, n_jobs, mlags):
                         [[0.62613723, 0.37386277],
                          [0.3669059, 0.6330941]]])
     dtraj = dt.data.double_well_discrete().dtraj_n6good
-    if estimator_type == "MLMSM":
-        est = dt.markov.msm.MaximumLikelihoodMSM()
-        est.fit(dtraj, lagtime=1)
-        validator = est.chapman_kolmogorov_validator(2, mlags=mlags)
-    elif estimator_type == "BMSM":
-        bmsm_est = dt.markov.msm.BayesianMSM()
-        counts = dt.markov.TransitionCountEstimator(1, "effective").fit(dtraj).fetch_model().submodel_largest()
-        bmsm_est.fit(counts)
-        validator = bmsm_est.chapman_kolmogorov_validator(2, mlags=mlags)
-    elif estimator_type == "HMM":
-        hmm_init = dt.markov.hmm.init.discrete.metastable_from_data(dtraj, 2, lagtime=1)
-        hmm_est = dt.markov.hmm.MaximumLikelihoodHMM(hmm_init, lagtime=1)
-        hmm_test = hmm_est.fit(dtraj).fetch_model()
-        validator = hmm_est.chapman_kolmogorov_validator(mlags, hmm_test.submodel_largest(dtrajs=dtraj))
-    elif estimator_type == "BHMM":
-        bhmm_est = dt.markov.hmm.BayesianHMM.default(dtraj, 2, lagtime=1)
-        bhmm = bhmm_est.fit(dtraj).fetch_model().submodel_largest(dtrajs=dtraj)
-        validator = bhmm_est.chapman_kolmogorov_validator(mlags, bhmm)
-    else:
-        pytest.fail()
 
-    validator.err_est = True
-    cktest = validator.fit(dtraj).fetch_model()
-    if not isinstance(mlags, list):
-        assert_equal(cktest.lagtimes, [0, 1])
+    models = []
+    for lag in lagtimes:
+        models.append(estimate_markov_model(lag, dtraj, hidden=hidden, bayesian=bayesian, n_hidden=2))
+
+    if hidden:
+        cktest = models[0].ck_test(models=models, err_est=True)
     else:
-        assert_equal(cktest.lagtimes, mlags)
+        cktest = models[0].ck_test(models=models, n_metastable_sets=2)
+    assert_equal(cktest.lagtimes, [0] + lagtimes)
 
     ix = []
     if 0 in cktest.lagtimes:

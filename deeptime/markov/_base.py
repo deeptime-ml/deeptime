@@ -1,11 +1,9 @@
 import abc
-from typing import Union
 
 import numpy as np
 
-from ..util import LaggedModelValidator, LaggedModelValidation
-from ..util.types import ensure_array
-from ..base import Estimator, Model, BayesianModel, Observable
+from ..base import Estimator, BayesianModel
+from ._observables import MembershipsObservable
 
 
 class _MSMBaseEstimator(Estimator, metaclass=abc.ABCMeta):
@@ -138,194 +136,12 @@ class BayesianMSMPosterior(BayesianModel):
         r"""Lagtime of the models."""
         return self.prior.lagtime
 
-    def cktest(self, models, n_metastable_sets, include_lag0=True, err_est=False, progress=None):
+    def ck_test(self, models, n_metastable_sets, include_lag0=True, err_est=False, progress=None):
+        r""" Performs a Chapman Kolmogorov test.
+        See :meth:`MarkovStateModel.ck_test <deeptime.markov.msm.MarkovStateModel.ck_test>` for more details """
         from deeptime.util.validation import ChapmanKolmogorovTest
         clustering = self.prior.pcca(n_metastable_sets)
         observable = MembershipsObservable(self, clustering, initial_distribution=self.prior.stationary_distribution)
-        return ChapmanKolmogorovTest.from_models(models, observable, test_model=self, include_lag0=include_lag0,
-                                                 err_est=err_est, progress=progress)
-
-
-class MembershipsObservable(Observable):
-
-    @staticmethod
-    def _to_markov_model(model):
-        if hasattr(model, 'prior'):
-            model = model.prior
-        if hasattr(model, 'transition_model'):
-            model = model.transition_model
-        from deeptime.markov.msm import MarkovStateModel
-        assert isinstance(model, MarkovStateModel), f"This should be a Markov state model but was {type(model)}."
-        return model
-
-    def __init__(self, test_model, memberships,
-                 initial_distribution: Union[str, np.ndarray] = 'stationary_distribution'):
-        from deeptime.markov import PCCAModel
-        self.memberships = memberships if not isinstance(memberships, PCCAModel) else memberships.memberships
-        self.n_states, self.n_sets = self.memberships.shape
-
-        msm = MembershipsObservable._to_markov_model(test_model)
-        n_states = msm.n_states
-        symbols = msm.count_model.state_symbols
-        symbols_full = msm.count_model.n_states_full
-        if initial_distribution == 'stationary_distribution':
-            init_dist = msm.stationary_distribution
-        else:
-            assert isinstance(initial_distribution, np.ndarray) and len(initial_distribution) == n_states, \
-                "The initial distribution, if given explicitly, has to be defined on the Markov states of the model."
-            init_dist = initial_distribution
-        assert self.memberships.shape[0] == n_states, 'provided memberships and test_model n_states mismatch'
-        self._test_model = test_model
-        # define starting distribution
-        P0 = self.memberships * init_dist[:, None]
-        P0 /= P0.sum(axis=0)  # column-normalize
-        self.P0 = P0
-
-        # map from the full set (here defined by the largest state index in active set) to active
-        self._full2active = np.zeros(np.max(symbols_full) + 1, dtype=int)
-        self._full2active[symbols] = np.arange(len(symbols))
-
-    def __call__(self, model, mlag=1, **kw):
-        if mlag == 0 or model is None:
-            return np.eye(self.n_sets)
-        model = MembershipsObservable._to_markov_model(model)
-        # otherwise compute or predict them by model.propagate
-        pk_on_set = np.zeros((self.n_sets, self.n_sets))
-        # compute observable on prior in case for Bayesian models.
-        symbols = model.count_model.state_symbols
-        subset = self._full2active[symbols]  # find subset we are now working on
-        for i in range(self.n_sets):
-            p0 = self.P0[:, i]  # starting distribution on reference active set
-            p0sub = p0[subset]  # map distribution to new active set
-            if subset is not None:
-                p0sub /= np.sum(p0)  # renormalize
-            pksub = model.propagate(p0sub, mlag)
-            for j in range(self.n_sets):
-                pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
-        return pk_on_set
-
-
-class MembershipsChapmanKolmogorovValidator(LaggedModelValidator):
-    r""" Validates a model estimated at lag time tau by testing its predictions for longer lag times.
-    This is known as the Chapman-Kolmogorov test as it is based on the Chapman-Kolmogorov equation.
-
-    The test is performed on metastable sets of states rather than the microstates themselves.
-
-    Parameters
-    ----------
-    memberships : ndarray(n, m)
-        Set memberships to calculate set probabilities. n must be equal to
-        the number of active states in model. m is the number of sets.
-        memberships must be a row-stochastic matrix (the rows must sum up to 1).
-    test_model : Model
-        Model to be tested
-    test_estimator : Estimator
-        Parametrized Estimator that has produced the model
-    mlags : int or int-array
-        Multiples of lag times for testing the Model, e.g. range(10).
-        A single int will trigger a range, i.e. `mlags=10` maps to
-        `mlags=range(10)`. The setting None will choose mlags automatically
-        according to the longest available trajectory.
-        Note that you need to be able to do a model prediction for each
-        of these lag time multiples, e.g. the value 0 only make sense
-        if _predict_observables(0) will work.
-
-    Notes
-    -----
-    This is an adaption of the Chapman-Kolmogorov Test described in detail
-    in :footcite:`prinz2011markov` to Hidden MSMs as described in :footcite:`noe2013projected`.
-
-    References
-    ----------
-    .. footbibliography::
-    """
-
-    def __init__(self, test_model, test_estimator, memberships, test_model_lagtime, mlags):
-        super().__init__(test_model, test_estimator, test_model_lagtime=test_model_lagtime, mlags=mlags)
-        self.memberships = memberships
-        self.test_model = test_model
-
-    @property
-    def test_model(self):
-        return self._test_model
-
-    @test_model.setter
-    def test_model(self, test_model):
-        assert self.memberships is not None
-        if hasattr(test_model, 'prior'):
-            m = test_model.prior
-        else:
-            m = test_model
-        if hasattr(m, 'transition_model'):
-            m = m.transition_model
-        n_states = m.n_states
-        statdist = m.stationary_distribution
-        symbols = m.count_model.state_symbols
-        symbols_full = m.count_model.n_states_full
-        assert self.memberships.shape[0] == n_states, 'provided memberships and test_model n_states mismatch'
-        self._test_model = test_model
-        # define starting distribution
-        P0 = self.memberships * statdist[:, None]
-        P0 /= P0.sum(axis=0)  # column-normalize
-        self.P0 = P0
-
-        # map from the full set (here defined by the largest state index in active set) to active
-        self._full2active = np.zeros(np.max(symbols_full) + 1, dtype=int)
-        self._full2active[symbols] = np.arange(len(symbols))
-
-    @property
-    def memberships(self):
-        return self._memberships
-
-    @memberships.setter
-    def memberships(self, value):
-        self._memberships = ensure_array(value, ndim=2, dtype=float)
-        self.nstates, self.nsets = self._memberships.shape
-        assert np.allclose(self._memberships.sum(axis=1), np.ones(self.nstates))  # stochastic matrix?
-
-    def _compute_observables(self, model, mlag):
-        if mlag == 0 or model is None:
-            return np.eye(self.nsets)
-        # otherwise compute or predict them by model.propagate
-        pk_on_set = np.zeros((self.nsets, self.nsets))
-        # compute observable on prior in case for Bayesian models.
-        if hasattr(model, 'prior'):
-            model = model.prior
-        if hasattr(model, 'transition_model'):
-            model = model.transition_model
-        symbols = model.count_model.state_symbols
-        subset = self._full2active[symbols]  # find subset we are now working on
-        for i in range(self.nsets):
-            p0 = self.P0[:, i]  # starting distribution on reference active set
-            p0sub = p0[subset]  # map distribution to new active set
-            if subset is not None:
-                p0sub /= p0sub.sum()  # renormalize
-            pksub = model.propagate(p0sub, mlag)
-            for j in range(self.nsets):
-                pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
-        return pk_on_set
-
-    def fit(self, data, n_jobs=None, progress=None, estimate_model_for_lag=None, **kw):
-        models = self.compute_models(data, n_jobs, progress, estimate_model_for_lag)
-        self._model = MembershipsLaggedModelValidation(models, self.memberships)
-        return super().fit(data, n_jobs, progress, estimate_model_for_lag, **kw)
-
-
-class MembershipsLaggedModelValidation(LaggedModelValidation):
-    def __init__(self, models: LaggedModelValidation, memberships: np.ndarray):
-        super().__init__(estimates=models.estimates, estimates_samples=models.estimates_samples,
-                         predictions=models.predictions, predictions_samples=models.predictions_samples,
-                         lagtimes=models.lagtimes)
-        self._memberships = memberships
-
-    @property
-    def memberships(self):
-        return self._memberships
-
-    @property
-    def n_states(self):
-        return self.memberships.shape[0]
-
-    @property
-    def n_sets(self):
-        return self.memberships.shape[1]
+        from deeptime.util.validation import ck_test
+        return ck_test(models, observable, test_model=self, include_lag0=include_lag0,
+                       err_est=err_est, progress=progress)

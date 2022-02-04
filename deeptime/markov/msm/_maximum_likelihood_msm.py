@@ -6,7 +6,7 @@ from scipy.sparse import issparse
 
 from deeptime.markov.tools import estimation as msmest
 from ._markov_state_model import MarkovStateModelCollection, MarkovStateModel
-from .._base import _MSMBaseEstimator, MembershipsChapmanKolmogorovValidator
+from .._base import _MSMBaseEstimator
 from .._transition_counting import TransitionCountModel, TransitionCountEstimator
 from ...numeric import is_square_matrix
 
@@ -356,47 +356,3 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
                 raise ValueError("To fit directly from a discrete timeseries, a lagtime must be provided!")
             return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime),
                                                      kw.pop("count_mode", "sliding"))
-
-    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags,
-                                     test_model: Optional[MarkovStateModel] = None):
-        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
-
-        Parameters
-        ----------
-        n_metastable_sets : int
-            Number of metastable sets to project the state space down to.
-        mlags : int or range or list
-            Multiple of lagtimes of the test_model to test against.
-        test_model : MarkovStateModel, optional, default=None
-            The model that is tested. If not provided, uses this estimator's encapsulated model.
-
-        Returns
-        -------
-        validator : markov.MembershipsChapmanKolmogorovValidator
-            The validator that can be fit on data.
-
-        Raises
-        ------
-        AssertionError
-            If test_model is None and this estimator has not been :meth:`fit` on data yet or the output model
-            was not a discrete output model.
-        """
-        test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
-                                       "fit to data."
-        assert test_model.has_count_model, "The test model needs to have a count model, i.e., be estimated from data."
-        pcca = test_model.pcca(n_metastable_sets)
-        reference_lagtime = test_model.count_model.lagtime
-        return MLMSMChapmanKolmogorovValidator(test_model, self, pcca.memberships, reference_lagtime, mlags)
-
-
-def _ck_estimate_model_for_lag(estimator, model, data, lag):
-    counting_mode = model.count_model.counting_mode
-    counts = TransitionCountEstimator(lag, counting_mode).fit(data).fetch_model().submodel_largest()
-    return estimator.fit(counts).fetch_model()
-
-
-class MLMSMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-
-    def fit(self, data, n_jobs=None, progress=None, **kw):
-        return super().fit(data, n_jobs, progress, estimate_model_for_lag=_ck_estimate_model_for_lag, **kw)

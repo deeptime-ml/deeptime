@@ -3,12 +3,12 @@ from typing import Optional, Union, List, Callable
 import numpy as np
 
 from . import vamp_score
-from ..base import Model, Transformer, Estimator
+from ..base import Model, Transformer, Observable
 from ..basis import Identity, Concatenation
 from ..covariance import CovarianceModel, WhiteningTransform
 from ..numeric import is_diagonal_matrix
-from ..util import LaggedModelValidator
 from ..util.decorators import cached_property
+from ..util.validation import ck_test
 
 
 class TransferOperatorModel(Model, Transformer):
@@ -581,7 +581,7 @@ class CovarianceKoopmanModel(TransferOperatorModel):
             p[0, 0] = 1.0
             p[1:, 0] = U.T.dot(m_t - m_0)
             p[1:, 1:] = U.T.dot(self.cov_tt).dot(V)
-            P = np.linalg.matrix_power(S.dot(p), lag_multiple - 1).dot(S)
+            P = (S.dot(p) ** (lag_multiple - 1)).dot(S)
 
         Q = np.zeros((observables.shape[1], dim + 1))
         if not observables_mean_free:
@@ -670,37 +670,106 @@ class CovarianceKoopmanModel(TransferOperatorModel):
         feature_sigma = np.sqrt(np.diag(self.cov_00))
         return np.dot(self.cov_00, self.singular_vectors_left[:, : self.output_dimension]) / feature_sigma[:, None]
 
+    def ck_test(self, models, test_model=None, include_lag0=True, n_observables=None,
+                observables='phi', statistics='psi', progress=None):
+        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
 
-class KoopmanChapmanKolmogorovValidator(LaggedModelValidator):
-    r""" Validates a Koopman model
+        Parameters
+        ----------
+        models : list of models
+            Multiple models with different lagtimes to test against.
+        test_model : CovarianceKoopmanModel, optional, default=None
+            The model that is tested. If not provided, uses this estimator's encapsulated model.
+        include_lag0 : bool, optional, default=True
+            Whether to include lagtime 0.
+        n_observables : int, optional, default=None
+            Limit the number of default observables (and of default statistics) to this number.
+            Only used if `observables` are None or `statistics` are None.
+        observables : (input_dimension, n_observables) ndarray
+            Coefficients that express one or multiple observables in
+            the basis of the input features.
+        statistics : (input_dimension, n_statistics) ndarray
+            Coefficients that express one or multiple statistics in the basis of the input features.
+        progress : ProgressBar, optional, default=None
+            Optional progress bar, tested for tqdm.
 
-    """
+        Returns
+        -------
+        validator : KoopmanChapmanKolmogorovValidator
+            The validator.
 
-    def __init__(self, test_model: Model, test_estimator: Estimator, test_model_lagtime: int, mlags,
-                 observables, statistics, observables_mean_free, statistics_mean_free):
-        super().__init__(test_model, test_estimator, test_model_lagtime, mlags)
+        See Also
+        --------
+        :meth:`ck_test <deeptime.validation.ck_test>`
+
+        Notes
+        -----
+        This method computes two sets of time-lagged covariance matrices
+
+        * estimates at higher lag times :
+
+          .. math::
+
+              \left\langle \mathbf{K}(n\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
+
+          where :math:`\rho_{0}` is the empirical distribution implicitly defined
+          by all data points from time steps 0 to T-tau in all trajectories,
+          :math:`\mathbf{K}(n\tau)` is a rank-reduced Koopman matrix estimated
+          at the lag-time n*tau and g and f are some functions of the data.
+          Rank-reduction of the Koopman matrix is controlled by the `dim`
+          parameter of :class:`VAMP <deeptime.decomposition.VAMP>`.
+
+        * predictions at higher lag times :
+
+          .. math::
+
+              \left\langle \mathbf{K}^{n}(\tau)g_{i},f_{j}\right\rangle_{\rho_{0}}
+
+          where :math:`\mathbf{K}^{n}` is the n'th power of the rank-reduced
+          Koopman matrix contained in self.
+
+        The Champan-Kolmogorov test is to compare the predictions to the estimates.
+        """
+        test_model = self if test_model is None else test_model
+        if n_observables is not None:
+            if n_observables > test_model.dim:
+                import warnings
+                warnings.warn('Selected singular functions as observables but dimension '
+                              'is lower than requested number of observables.')
+                n_observables = test_model.dim
+        else:
+            n_observables = test_model.dim
+
+        if isinstance(observables, str) and observables == 'phi':
+            observables = test_model.singular_vectors_right[:, :n_observables]
+            observables_mean_free = True
+        else:
+            observables_mean_free = False
+
+        if isinstance(statistics, str) and statistics == 'psi':
+            statistics = test_model.singular_vectors_left[:, :n_observables]
+            statistics_mean_free = True
+        else:
+            statistics_mean_free = False
+        observable = KoopmanObservable(observables, statistics, observables_mean_free, statistics_mean_free)
+        return ck_test(models, observable, test_model=test_model, include_lag0=include_lag0, err_est=False,
+                       progress=progress)
+
+
+class KoopmanObservable(Observable):
+    def __init__(self, observables, statistics, observables_mean_free, statistics_mean_free):
         self.observables = observables
         self.statistics = statistics
         self.observables_mean_free = observables_mean_free
         self.statistics_mean_free = statistics_mean_free
 
-    @property
-    def statistics(self):
-        return self._statistics
-
-    @statistics.setter
-    def statistics(self, value):
-        self._statistics = value
-        if self._statistics is not None:
-            self.nsets = min(self.observables.shape[1], self._statistics.shape[1])
-
-    def _compute_observables(self, model: CovarianceKoopmanModel, mlag):
-        # todo for lag time 0 we return a matrix of nan, until the correct solution is implemented
+    def __call__(self, model, mlag=1, **kw):
         if mlag == 0 or model is None:
+            # todo for lag time 0 we return a matrix of nan, until the correct solution is implemented
             if self.statistics is None:
-                return np.zeros(self.observables.shape[1]) + np.nan
+                return np.full((self.observables.shape[1],), fill_value=np.nan)
             else:
-                return np.zeros((self.observables.shape[1], self.statistics.shape[1])) + np.nan
+                return np.full((self.observables.shape[1], self.statistics.shape[1]), fill_value=np.nan)
         else:
             return model.expectation(statistics=self.statistics, observables=self.observables, lag_multiple=mlag,
                                      statistics_mean_free=self.statistics_mean_free,
