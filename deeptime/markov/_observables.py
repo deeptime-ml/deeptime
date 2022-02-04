@@ -59,6 +59,8 @@ class MembershipsObservable(Observable):
             if subset is not None:
                 p0sub /= np.sum(p0)  # renormalize
             pksub = model.propagate(p0sub, mlag)
+            if np.any(np.iscomplex(pksub)):  # ignore complex stuff because of fractional powers
+                pksub = pksub.real
             for j in range(self.n_sets):
                 pk_on_set[i, j] = np.dot(pksub, self.memberships[subset, j])  # map onto set
         return pk_on_set

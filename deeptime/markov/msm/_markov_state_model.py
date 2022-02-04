@@ -518,7 +518,10 @@ class MarkovStateModel(Model):
             if self.sparse:
                 transition_matrix = self.transition_matrix ** power
             else:
-                diag = np.diag(np.sign(self.eigenvalues()) * (np.abs(self.eigenvalues())) ** power)
+                ev_pow = np.real_if_close(self.eigenvalues().astype(complex) ** power)
+                if np.all(~np.iscomplex(ev_pow)):
+                    ev_pow = ev_pow.astype(self.transition_matrix.dtype)
+                diag = np.diag(ev_pow)
                 transition_matrix = np.linalg.multi_dot([self.eigenvectors_right(), diag, self.eigenvectors_left()])
         return transition_matrix
 
