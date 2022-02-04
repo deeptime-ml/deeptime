@@ -99,16 +99,26 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
 
     Parameters
     ----------
-    data
-    height
-    aspect
-    conf
-    color
-    grid
-    legend
-    xlabel
-    ylabel
-    plot_kwargs
+    data : ChapmanKolmogorovTest
+        Result of :meth:`ck_test <deeptime.util.validation.ck_test>`.
+    height : float, default=2.5
+        Figure height.
+    aspect : float, default=1.
+        Aspect of individual plots.
+    conf : float, default=0.95
+        Confidence interval probability.
+    color : color, optional, default=None
+        The color to use for predictions. Per default uses default colors.
+    grid : CKTestGrid, optional, default=None
+        An already existing grid view of a ck-test to overlay.
+    legend : bool, optional, default=True
+        Whether to plot a legend.
+    xlabel : str, default='lagtime (steps)'
+        The x label.
+    ylabel : str, default='probability'
+        The y label.
+    **plot_kwargs
+        Further optional keyword arguments that go into `ax.plot`.
 
     Returns
     -------
@@ -117,7 +127,7 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
 
     See Also
     --------
-    deeptime.util.ck_test
+    deeptime.util.validation.ck_test, deeptime.plots.plot_ck_test
     """
     color = default_colors()[0] if color is None else color
     n_components = data.n_components

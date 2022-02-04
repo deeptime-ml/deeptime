@@ -361,5 +361,4 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     @removed_method("Replaced in favor of MarkovStateModel.ck_test.")
     def chapman_kolmogorov_validator(self):
-        r""" Removed in favor of
-        :meth:`MarkovStateModel.ck_test <deeptime.markov.msm.MarkovStateModel.ck_test>. """
+        r""" Removed and replaced by `deeptime.markov.msm.MarkovStateModel.ck_test`. """

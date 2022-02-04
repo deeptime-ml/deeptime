@@ -426,5 +426,4 @@ class MaximumLikelihoodHMM(Estimator):
 
     @removed_method("Replaced in favor of MaximumLikelihoodHMM.ck_test.")
     def chapman_kolmogorov_validator(self):
-        r""" Removed in favor of
-        :meth:`MaximumLikelihoodHMM.ck_test <deeptime.markov.hmm.MaximumLikelihoodHMM.ck_test>. """
+        r""" Removed and replaced by `deeptime.markov.hmm.MaximumLikelihoodHMM.ck_test`. """

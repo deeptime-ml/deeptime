@@ -700,7 +700,7 @@ class CovarianceKoopmanModel(TransferOperatorModel):
 
         See Also
         --------
-        :meth:`ck_test <deeptime.validation.ck_test>`
+        :meth:`ck_test <deeptime.util.validation.ck_test>`
 
         Notes
         -----
@@ -716,8 +716,6 @@ class CovarianceKoopmanModel(TransferOperatorModel):
           by all data points from time steps 0 to T-tau in all trajectories,
           :math:`\mathbf{K}(n\tau)` is a rank-reduced Koopman matrix estimated
           at the lag-time n*tau and g and f are some functions of the data.
-          Rank-reduction of the Koopman matrix is controlled by the `dim`
-          parameter of :class:`VAMP <deeptime.decomposition.VAMP>`.
 
         * predictions at higher lag times :
 

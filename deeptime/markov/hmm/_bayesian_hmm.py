@@ -653,5 +653,4 @@ class BayesianHMM(Estimator):
 
     @removed_method("Replaced in favor of BayesianHMMPosterior.ck_test.")
     def chapman_kolmogorov_validator(self):
-        r""" Removed in favor of
-        :meth:`BayesianHMMPosterior.ck_test <deeptime.markov.hmm.BayesianHMMPosterior.ck_test>. """
+        r""" Removed and replaced by `deeptime.markov.hmm.BayesianHMMPosterior.ck_test`. """

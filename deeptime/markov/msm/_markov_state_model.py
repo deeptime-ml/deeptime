@@ -1067,7 +1067,7 @@ class MarkovStateModel(Model):
 
         See Also
         --------
-        :meth:`ck_test <deeptime.validation.ck_test>`
+        deeptime.util.validation.ck_test
         """
         from .._base import MembershipsObservable
         clustering = self.pcca(n_metastable_sets)

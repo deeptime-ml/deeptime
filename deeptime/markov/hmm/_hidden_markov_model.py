@@ -311,11 +311,33 @@ class HiddenMarkovModel(Model):
         return self.transition_model.timescales(k=k)
 
     def ck_test(self, models, include_lag0=True, err_est=False, progress=None):
+        r""" Performs a Chapman-Kolmogorov test on a list of HMMs.
+
+        Parameters
+        ----------
+        models : list of HiddenMarkovModel
+            list of models to test against
+        include_lag0 : bool, optional, default=True
+            Whether to include lagtime :math:`\tau = 0`.
+        err_est : bool, optional, default=False
+            Whether to include observable evaluations on estimate samples.
+        progress
+            Optional progress bar, tested for tqdm.
+
+        Returns
+        -------
+        ck_test : ChapmanKolmogorovTest
+            Test results.
+
+        See Also
+        --------
+        deeptime.util.validation.ck_test
+        """
         from .._base import MembershipsObservable
         observable = MembershipsObservable(self, np.eye(self.n_hidden_states),
                                            initial_distribution=self.transition_model.stationary_distribution)
         return ck_test(models, observable, test_model=self, include_lag0=include_lag0,
-                                                 err_est=err_est, progress=progress)
+                       err_est=err_est, progress=progress)
 
     @property
     def hidden_state_trajectories(self) -> Optional[List[np.ndarray]]:

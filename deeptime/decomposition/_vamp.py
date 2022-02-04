@@ -463,5 +463,4 @@ class VAMP(EstimatorTransformer):
 
     @removed_method("Replaced in favor of model.ck_test.")
     def chapman_kolmogorov_validator(self):
-        r""" Removed in favor of
-        :meth:`CovarianceKoopmanModel.ck_test <deeptime.decomposition.CovarianceKoopmanModel.ck_test>. """
+        r""" Removed and replaced by `deeptime.decomposition.CovarianceKoopmanModel.ck_test`. """

@@ -8,6 +8,8 @@ from ..base import Observable, BayesianModel
 def implied_timescales(models, n_its=None):
     r""" Converts a list of models to a :class:`ImpliedTimescales` object.
 
+    .. plot:: examples/plot_implied_timescales.py
+
     Parameters
     ----------
     models : list
@@ -19,6 +21,10 @@ def implied_timescales(models, n_its=None):
     -------
     its_data : ImpliedTimescales
         The data object.
+
+    See Also
+    --------
+    deeptime.plots.plot_implied_timescales
     """
     if not isinstance(models, (list, tuple)):
         models = [models]
@@ -49,7 +55,7 @@ def implied_timescales(models, n_its=None):
 class ImpliedTimescales:
     r""" Instances of this class hold a sequence of lagtimes and corresponding process timescales (potentially
     with process timescales of sampled models in a Bayesian setting). Objects can be
-    used with :meth:`plot_implied_timescales`.
+    used with :meth:`plot_implied_timescales <deeptime.plots.plot_implied_timescales>`.
 
     In case models over a range of lagtimes are available, the static method :meth:`from_models` can be used.
 
@@ -64,7 +70,7 @@ class ImpliedTimescales:
 
     See Also
     --------
-    plot_implied_timescales
+    deeptime.plots.plot_implied_timescales
     """
     def __init__(self, lagtimes, its, its_stats=None):
         self._lagtimes = np.asarray(lagtimes, dtype=int)
@@ -202,6 +208,8 @@ def ck_test(models, observable: Observable, test_model=None, include_lag0=True, 
 
     such that :math:`k\tau = \tilde{\tau}`.
 
+    .. plot:: examples/plot_ck_test.py
+
     Parameters
     ----------
     models : list of models
@@ -222,6 +230,10 @@ def ck_test(models, observable: Observable, test_model=None, include_lag0=True, 
     -------
     ck_test : ChapmanKolmogorovTest
         The results. Can be used with `plot_ck_test <deeptime.plots.plot_ck_test>`.
+
+    See Also
+    --------
+    deeptime.plots.plot_ck_test
     """
     assert all(hasattr(m, 'lagtime') for m in models) and (test_model is None or hasattr(test_model, 'lagtime')), \
         "All models and the test model need to have a lagtime property."
