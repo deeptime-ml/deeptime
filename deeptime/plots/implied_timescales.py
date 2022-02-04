@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 
+from deeptime.markov import BayesianMSMPosterior
 from deeptime.plots.util import default_colors
 from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function
@@ -175,7 +176,7 @@ class ImpliedTimescales:
         its_stats = []
 
         for model in models:
-            is_bayesian = hasattr(model, 'prior') and hasattr(model, 'samples')
+            is_bayesian = isinstance(model, BayesianMSMPosterior)
             lagtimes.append(model.lagtime)
             if is_bayesian:
                 result = model.timescales(k=n_its)

@@ -4,7 +4,7 @@ import numpy as np
 
 from ..util import LaggedModelValidator, LaggedModelValidation
 from ..util.types import ensure_array
-from ..base import Estimator, Model
+from ..base import Estimator, Model, BayesianModel
 
 
 class _MSMBaseEstimator(Estimator, metaclass=abc.ABCMeta):
