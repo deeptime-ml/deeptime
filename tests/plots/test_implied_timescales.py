@@ -7,7 +7,7 @@ from deeptime.data import double_well_discrete, double_well_2d
 from deeptime.decomposition import TICA
 from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel, MaximumLikelihoodHMM, init, BayesianHMM
 from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
-from deeptime.markov import BayesianPosterior
+from deeptime.markov import BayesianMSMPosterior
 from deeptime.plots import plot_implied_timescales, ImpliedTimescales
 
 
@@ -88,7 +88,7 @@ def test_plot_its(figure, dw_model):
         models.append(dw_model(lagtime, n))
     data = ImpliedTimescales.from_models(models)
     assert_(data.max_n_processes >= 2)
-    assert_equal(data.has_samples, isinstance(models[0], BayesianPosterior))
+    assert_equal(data.has_samples, isinstance(models[0], BayesianMSMPosterior))
     assert_equal(data.max_n_samples, 100 if data.has_samples else 0)
     if data.has_samples:
         assert_equal(data.n_samples(0, 0), n_samples[0])

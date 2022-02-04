@@ -8,7 +8,7 @@ from deeptime.markov.tools.analysis import is_connected
 from deeptime.markov.tools.estimation import sample_tmatrix, transition_matrix
 
 from deeptime.base import Estimator
-from deeptime.markov._base import BayesianPosterior, MembershipsChapmanKolmogorovValidator
+from deeptime.markov._base import BayesianMSMPosterior, MembershipsChapmanKolmogorovValidator
 from deeptime.markov._transition_matrix import stationary_distribution
 from deeptime.markov.hmm import HiddenMarkovModel
 from ._output_model import DiscreteOutputModel
@@ -28,7 +28,7 @@ __all__ = [
 from ...util.platform import handle_progress_bar
 
 
-class BayesianHMMPosterior(BayesianPosterior):
+class BayesianHMMPosterior(BayesianMSMPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior.
 
     Parameters

@@ -27,7 +27,7 @@ Models
 
     msm.MarkovStateModel
     msm.MarkovStateModelCollection
-    msm.BayesianPosterior
+    msm.BayesianMSMPosterior
     msm.TRAMModel
 
 

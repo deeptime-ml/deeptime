@@ -3,7 +3,44 @@ from typing import Union, List
 from deeptime.plots.util import default_colors
 from deeptime.util import confidence_interval
 from deeptime.util.decorators import plotting_function
+from deeptime.util.platform import handle_progress_bar
 from deeptime.util.validation import LaggedModelValidation
+
+
+class Observable:
+    def __call__(self, model, mlag=1):
+        raise NotImplementedError()
+
+
+class MembershipsObservable:
+    pass
+
+
+class KoopmanObservable:
+    pass
+
+
+class ChapmanKolmogorovTest:
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def from_models(models, observable: Observable, test_model=None, progress=None):
+        assert all(hasattr(m, 'lagtime') for m in models) and (test_model is None or hasattr(test_model, 'lagtime')), \
+            "All models and the test model need to have a lagtime property."
+        progress = handle_progress_bar(progress)
+        models = sorted(models, key=lambda x: x.lagtime)
+        if test_model is None:
+            test_model = models[0]
+        lagtimes = [m.lagtime for m in models]
+
+        predictions = []
+        predictions_samples = []
+        reference_lagtime = test_model.lagtime
+        for lagtime in progress(lagtimes):
+            predictions.append(observable(test_model, mlag=lagtime / reference_lagtime))
+
 
 
 class CKTestGrid:
@@ -56,6 +93,7 @@ class CKTestGrid:
             ax.set_ylim(0, 1)
 
         return lest, lpred
+
 
 def _add_ck_subplot(cktest, test_index, ax, i, j, ipos=None, jpos=None, y01=True, units='steps', dt=1., **plot_kwargs):
     # plot estimates

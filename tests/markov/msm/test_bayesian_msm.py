@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from deeptime.markov import TransitionCountEstimator
-from deeptime.markov.msm import MarkovStateModel, BayesianPosterior, BayesianMSM
+from deeptime.markov.msm import MarkovStateModel, BayesianMSMPosterior, BayesianMSM
 from deeptime.util.stats import confidence_interval
 from tests.markov.factory import bmsm_double_well
 
@@ -61,8 +61,8 @@ class TestBMSM(unittest.TestCase):
         cls.bmsm_revpi = bmsm_double_well(lagtime=cls.lag, reversible=True, constrain_to_coarse_pi=True,
                                           nsamples=cls.nsamples).fetch_model()
 
-        assert isinstance(cls.bmsm_rev, BayesianPosterior)
-        assert isinstance(cls.bmsm_revpi, BayesianPosterior)
+        assert isinstance(cls.bmsm_rev, BayesianMSMPosterior)
+        assert isinstance(cls.bmsm_revpi, BayesianMSMPosterior)
 
     def test_class_hierarchy(self):
         """ensure that the composite model has the right types """

@@ -52,7 +52,7 @@ class _MSMBaseEstimator(Estimator, metaclass=abc.ABCMeta):
         self._sparse = value
 
 
-class BayesianPosterior(Model):
+class BayesianMSMPosterior(BayesianModel):
     r""" Bayesian posterior from bayesian MSM sampling.
 
     Parameters
@@ -74,8 +74,7 @@ class BayesianPosterior(Model):
 
     @property
     def samples(self):
-        r"""
-        The sampled models
+        r""" The sampled models
 
         Returns
         -------
@@ -110,65 +109,15 @@ class BayesianPosterior(Model):
 
         Returns
         -------
-        submodel : BayesianPosterior
+        submodel : BayesianMSMPosterior
             A posterior with prior and samples restricted to specified states.
         """
-        return BayesianPosterior(
+        return BayesianMSMPosterior(
             prior=self.prior.submodel(states),
             samples=[sample.submodel(states) for sample in self.samples]
         )
 
-    def gather_stats(self, quantity, store_samples=False, delimiter='/', confidence=0.95, *args, **kwargs):
-        """ Obtain statistics about a sampled quantity. Can also be a chained call, separated by the delimiter.
-
-        Parameters
-        ----------
-        quantity: str
-            name of attribute, which will be evaluated on samples
-        store_samples: bool, optional, default=False
-            whether to store the samples (array).
-        delimiter : str, optional, default='/'
-            separator to call members of members
-        confidence : float, optional, default=0.95
-            Size of the confidence intervals.
-        *args
-            pass-through
-        **kwargs
-            pass-through
-
-        Returns
-        -------
-        statistics : deeptime.util.QuantityStatistics
-            The statistics
-        """
-        from deeptime.util import QuantityStatistics
-        return QuantityStatistics.gather(self.samples, quantity=quantity, store_samples=store_samples,
-                                         delimiter=delimiter, confidence=confidence, *args, **kwargs)
-
-    def evaluate_samples(self, quantity, delimiter='/', *args, **kwargs):
-        r""" Obtains a quantity (like an attribute or result of a method or a property) from each of the samples.
-        Returns as list.
-
-        Parameters
-        ----------
-        quantity : str
-            The quantity. Can be also deeper in the instance hierarchy, indicated by the delimiter.
-        delimiter : str, default='/'
-            The delimiter.
-        *args
-            Arguments passed to the evaluation point of the quantity.
-        **kwargs
-            Keyword arguments passed to the evaluation point of the quantity.
-
-        Returns
-        -------
-        result : list of any or ndarray
-            A list of the quantity evaluated on each of the samples. If can be converted to float ndarray then ndarray.
-        """
-        from deeptime.util.stats import evaluate_samples as _eval
-        return _eval(self.samples, quantity=quantity, delimiter=delimiter, *args, **kwargs)
-
-    def timescales(self, k=None, conf: float = .95):
+    def timescales(self, k=None):
         r""" Relaxation timescales corresponding to the eigenvalues.
 
         Parameters

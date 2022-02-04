@@ -6,7 +6,7 @@ import numpy as np
 from ...base import Estimator
 from ...numeric import is_square_matrix
 from .. import TransitionCountEstimator
-from .._base import _MSMBaseEstimator, BayesianPosterior, MembershipsChapmanKolmogorovValidator
+from .._base import _MSMBaseEstimator, BayesianMSMPosterior, MembershipsChapmanKolmogorovValidator
 from . import MarkovStateModel, MaximumLikelihoodMSM
 
 __author__ = 'noe, marscher, clonker'
@@ -76,9 +76,9 @@ class BayesianMSM(_MSMBaseEstimator):
      [ 0.38169055  0.          0.61830945]
      [ 0.12023989  0.23690297  0.64285714]]
 
-    Furthermore the bayesian MSM posterior returned by :meth:`fetch_model` is able to
+    Furthermore, the bayesian MSM posterior returned by :meth:`fetch_model` is able to
     compute the probability distribution and statistical models of all methods
-    that are offered by the MSM object. This works as follows. The :meth:`BayesianPosterior.gather_stats` method
+    that are offered by the MSM object. This works as follows. The :meth:`BayesianMSMPosterior.gather_stats` method
     takes as argument the method you want to evaluate and then returns a statistics summary over requested quantity:
 
     >>> print(mm.gather_stats('transition_matrix').mean)  # doctest: +SKIP
@@ -162,13 +162,13 @@ class BayesianMSM(_MSMBaseEstimator):
             value = np.copy(value) / np.sum(value)
         self._stationary_distribution_constraint = value
 
-    def fetch_model(self) -> Optional[BayesianPosterior]:
+    def fetch_model(self) -> Optional[BayesianMSMPosterior]:
         r"""
         Yields the model that was estimated the most recent.
 
         Returns
         -------
-        model : BayesianPosterior or None
+        model : BayesianMSMPosterior or None
             The estimated model or None if fit was not called.
         """
         return self._model
@@ -307,10 +307,10 @@ class BayesianMSM(_MSMBaseEstimator):
                              "To ignore this, set `ignore_counting_mode` to True in the call to `fit`.")
         # use the same count matrix as the MLE. This is why we have effective as a default
         samples = self.sample(msm, self.n_samples, self.n_steps, callback)
-        self._model = BayesianPosterior(prior=msm, samples=samples)
+        self._model = BayesianMSMPosterior(prior=msm, samples=samples)
         return self
 
-    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model: BayesianPosterior = None):
+    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model: BayesianMSMPosterior = None):
         r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
 
         Parameters
@@ -319,7 +319,7 @@ class BayesianMSM(_MSMBaseEstimator):
             Number of metastable sets to project the state space down to.
         mlags : int or range or list
             Multiple of lagtimes of the test_model to test against.
-        test_model : BayesianPosterior, optional, default=None
+        test_model : BayesianMSMPosterior, optional, default=None
             The model that is tested. If not provided, uses this estimator's encapsulated model.
 
         Returns
