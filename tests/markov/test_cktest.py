@@ -7,14 +7,6 @@ from numpy.testing import assert_allclose, assert_equal, assert_raises
 from tests.testing_utilities import estimate_markov_model
 
 
-def test_invalid_mlags():
-    data = dt.data.double_well_discrete().dtraj
-    est = dt.markov.msm.MaximumLikelihoodMSM()
-    est.fit(data, lagtime=1)
-    with assert_raises(ValueError):
-        est.chapman_kolmogorov_validator(2, mlags=[0, 1, -10])
-
-
 @flaky(max_runs=3, min_passes=1)
 @pytest.mark.parametrize("lagtimes", [[1], [1, 10]], ids=lambda x: f"lagtimes={x}")
 @pytest.mark.parametrize("hidden", [False, True])
