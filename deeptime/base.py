@@ -236,6 +236,13 @@ class BayesianModel(Model):
         from deeptime.util.stats import evaluate_samples as _eval
         return _eval(self.samples, quantity=quantity, delimiter=delimiter, *args, **kwargs)
 
+
+class Observable:
+    r""" Interface class of an observable that can be evaluated on a model. """
+    def __call__(self, model, *args, **kw):
+        raise NotImplementedError()
+
+
 class Estimator(_BaseMethodsMixin):
     r""" Base class of all estimators
 

@@ -26,6 +26,7 @@ __all__ = [
 ]
 
 from ...util.platform import handle_progress_bar
+from ...util.validation import ChapmanKolmogorovTest
 
 
 class BayesianHMMPosterior(BayesianMSMPosterior):
@@ -148,6 +149,13 @@ class BayesianHMMPosterior(BayesianMSMPosterior):
         subsamples = [sample.submodel(states=states, obs=obs)
                       for sample in self]
         return BayesianHMMPosterior(sub_model, subsamples)
+
+    def cktest(self, models, include_lag0=True, err_est=False, progress=None, **kw):
+        from .._base import MembershipsObservable
+        observable = MembershipsObservable(self, np.eye(self.prior.n_hidden_states),
+                                           initial_distribution=self.prior.transition_model.stationary_distribution)
+        return ChapmanKolmogorovTest.from_models(models, observable, test_model=self, include_lag0=include_lag0,
+                                                 err_est=err_est, progress=progress)
 
 
 class BayesianHMM(Estimator):

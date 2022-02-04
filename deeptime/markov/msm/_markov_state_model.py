@@ -22,6 +22,7 @@ from ...numeric import is_square_matrix, spd_inv_sqrt
 from ...util.decorators import cached_property
 from ...util.matrix import submatrix
 from ...util.types import ensure_array
+from ...util.validation import ChapmanKolmogorovTest
 
 
 class MarkovStateModel(Model):
@@ -1041,6 +1042,13 @@ class MarkovStateModel(Model):
         if stop is not None and not isinstance(stop, (list, tuple, np.ndarray)):
             stop = [stop]
         return sim.trajectory(N=n_steps, start=start, P=transition_matrix, stop=stop, seed=seed)
+
+    def cktest(self, models, n_metastable_sets, include_lag0=True, err_est=False, progress=None):
+        from .._base import MembershipsObservable
+        clustering = self.pcca(n_metastable_sets)
+        observable = MembershipsObservable(self, clustering, initial_distribution=self.stationary_distribution)
+        return ChapmanKolmogorovTest.from_models(models, observable, test_model=self, include_lag0=include_lag0,
+                                                 err_est=err_est, progress=progress)
 
     ################################################################################
     # For general statistics

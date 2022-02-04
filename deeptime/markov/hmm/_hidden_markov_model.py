@@ -8,6 +8,7 @@ from ._output_model import OutputModel, DiscreteOutputModel
 from deeptime.markov import sample
 from ._hmm_bindings.util import viterbi as viterbi_impl, forward as forward_impl
 from ...util.types import ensure_dtraj_list, ensure_array
+from ...util.validation import ChapmanKolmogorovTest
 
 
 class HiddenMarkovModel(Model):
@@ -308,6 +309,13 @@ class HiddenMarkovModel(Model):
         See :meth:`MarkovStateModel.timescales <deeptime.markov.msm.MarkovStateModel.timescales>`.
         """
         return self.transition_model.timescales(k=k)
+
+    def cktest(self, models, include_lag0=True, err_est=False, progress=None):
+        from .._base import MembershipsObservable
+        observable = MembershipsObservable(self, np.eye(self.n_hidden_states),
+                                           initial_distribution=self.transition_model.stationary_distribution)
+        return ChapmanKolmogorovTest.from_models(models, observable, test_model=self, include_lag0=include_lag0,
+                                                 err_est=err_est, progress=progress)
 
     @property
     def hidden_state_trajectories(self) -> Optional[List[np.ndarray]]:
