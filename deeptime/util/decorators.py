@@ -59,6 +59,15 @@ def plotting_function(requires_networkx=False):
     return factory
 
 
+def removed_method(msg):
+    def factory(fn: typing.Callable) -> typing.Callable:
+        @functools.wraps(fn)
+        def call(*_, **__):
+            raise RuntimeError(msg)
+        return call
+    return factory
+
+
 def handle_deprecated_args(argument_name, replaced_by, msg, **kw):
     r""" See :meth:`deprecated_argument` decorator. """
     if kw.get(argument_name, None) is not None and kw.get(replaced_by, None) is not None:

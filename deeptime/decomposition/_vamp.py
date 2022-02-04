@@ -13,6 +13,7 @@ from ..base import EstimatorTransformer
 from ..basis import Identity
 from ..covariance import Covariance, CovarianceModel
 from ..numeric import spd_inv_split
+from ..util.decorators import removed_method
 from ..util.types import to_dataset
 
 
@@ -459,3 +460,8 @@ class VAMP(EstimatorTransformer):
             self._model = self._decompose(self._covariance_estimator.fetch_model())
             self._covariance_estimator = None
         return self._model
+
+    @removed_method("Replaced in favor of model.ck_test.")
+    def chapman_kolmogorov_validator(self):
+        r""" Removed in favor of
+        :meth:`CovarianceKoopmanModel.ck_test <deeptime.decomposition.CovarianceKoopmanModel.ck_test>. """

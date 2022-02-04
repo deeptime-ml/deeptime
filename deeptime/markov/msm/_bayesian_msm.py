@@ -11,6 +11,8 @@ from . import MarkovStateModel, MaximumLikelihoodMSM
 
 __author__ = 'noe, marscher, clonker'
 
+from ...util.decorators import removed_method
+
 
 class BayesianMSM(_MSMBaseEstimator):
     r""" Bayesian estimator for MSMs given discrete trajectory statistics.
@@ -309,3 +311,8 @@ class BayesianMSM(_MSMBaseEstimator):
         samples = self.sample(msm, self.n_samples, self.n_steps, callback)
         self._model = BayesianMSMPosterior(prior=msm, samples=samples)
         return self
+
+    @removed_method("Replaced in favor of BayesianMSMPosterior.ck_test.")
+    def chapman_kolmogorov_validator(self):
+        r""" Removed in favor of
+        :meth:`BayesianMSMPosterior.ck_test <deeptime.markov.msm.BayesianMSMPosterior.ck_test>. """

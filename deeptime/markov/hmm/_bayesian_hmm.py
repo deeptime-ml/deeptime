@@ -25,6 +25,8 @@ __all__ = [
     'BayesianHMM',
 ]
 
+from ...util.decorators import removed_method
+
 from ...util.platform import handle_progress_bar
 from ...util.validation import ChapmanKolmogorovTest, ck_test
 
@@ -648,3 +650,8 @@ class BayesianHMM(Estimator):
                                               reversible=self.reversible, count_model=count_model),
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
+
+    @removed_method("Replaced in favor of BayesianHMMPosterior.ck_test.")
+    def chapman_kolmogorov_validator(self):
+        r""" Removed in favor of
+        :meth:`BayesianHMMPosterior.ck_test <deeptime.markov.hmm.BayesianHMMPosterior.ck_test>. """

@@ -12,6 +12,8 @@ from ...numeric import is_square_matrix
 
 __all__ = ['MaximumLikelihoodMSM']
 
+from ...util.decorators import removed_method
+
 log = logging.getLogger(__file__)
 
 
@@ -356,3 +358,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
                 raise ValueError("To fit directly from a discrete timeseries, a lagtime must be provided!")
             return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime),
                                                      kw.pop("count_mode", "sliding"))
+
+    @removed_method("Replaced in favor of MarkovStateModel.ck_test.")
+    def chapman_kolmogorov_validator(self):
+        r""" Removed in favor of
+        :meth:`MarkovStateModel.ck_test <deeptime.markov.msm.MarkovStateModel.ck_test>. """

@@ -10,6 +10,7 @@ from ._hidden_markov_model import HiddenMarkovModel, viterbi
 from ..msm import MarkovStateModel
 from .. import TransitionCountModel, compute_dtrajs_effective
 from ._hmm_bindings import util as _util
+from ...util.decorators import removed_method
 from ...util.types import ensure_timeseries_data
 
 
@@ -422,3 +423,8 @@ class MaximumLikelihoodHMM(Estimator):
         model.initial_distribution[:] = pi
         model.transition_matrix[:] = T
         model.output_model.fit(observations, gammas)
+
+    @removed_method("Replaced in favor of MaximumLikelihoodHMM.ck_test.")
+    def chapman_kolmogorov_validator(self):
+        r""" Removed in favor of
+        :meth:`MaximumLikelihoodHMM.ck_test <deeptime.markov.hmm.MaximumLikelihoodHMM.ck_test>. """
