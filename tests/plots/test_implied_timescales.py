@@ -8,7 +8,7 @@ from deeptime.decomposition import TICA
 from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel, MaximumLikelihoodHMM, init, BayesianHMM
 from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
 from deeptime.markov import BayesianMSMPosterior
-from deeptime.plots import plot_implied_timescales, ImpliedTimescales
+from deeptime.plots import plot_implied_timescales
 from deeptime.util.validation import implied_timescales
 
 
