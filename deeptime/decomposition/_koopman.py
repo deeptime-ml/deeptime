@@ -700,8 +700,8 @@ class CovarianceKoopmanModel(TransferOperatorModel):
 
         Returns
         -------
-        validator : KoopmanChapmanKolmogorovValidator
-            The validator.
+        test : deeptime.util.validation.ChapmanKolmogorovTest
+            The test results
 
         See Also
         --------
