@@ -12,7 +12,7 @@ Maximum-likelihood MSMs (ML-MSM) and Bayesian sampling
     MarkovStateModelCollection
 
     BayesianMSM
-    BayesianPosterior
+    BayesianMSMPosterior
 
 Observable operator model MSMs (OOMs)
 -------------------------------------
@@ -37,7 +37,7 @@ import logging
 
 from ._markov_state_model import MarkovStateModel, MarkovStateModelCollection
 from ._maximum_likelihood_msm import MaximumLikelihoodMSM
-from ._bayesian_msm import BayesianMSM, BayesianPosterior
+from ._bayesian_msm import BayesianMSM, BayesianMSMPosterior
 from ._koopman_reweighted_msm import KoopmanReweightedMSM, OOMReweightedMSM
 from ._augmented_msm import AugmentedMSMEstimator, AugmentedMSM, AMMOptimizerState
 from .tram import TRAM, TRAMDataset, TRAMModel

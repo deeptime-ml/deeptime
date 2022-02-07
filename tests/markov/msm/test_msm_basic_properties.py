@@ -1,12 +1,16 @@
-import pytest
+import warnings
+
 import numpy as np
+import pytest
 import scipy
 from numpy.testing import assert_equal, assert_, assert_array_almost_equal, assert_raises, assert_almost_equal, \
     assert_allclose
-from scipy.sparse import issparse
+from scipy import sparse
 
+from deeptime.data import BirthDeathChain
+from deeptime.markov.msm import MaximumLikelihoodMSM, AugmentedMSM, MarkovStateModel
+from deeptime.util.exceptions import ImaginaryEigenValueWarning
 from tests.markov.msm.util import MLMSM_PARAMS, AMM_PARAMS, MLMSM_IDS, AMM_IDS, make_double_well
-from deeptime.markov.msm import MaximumLikelihoodMSM, AugmentedMSM
 
 
 @pytest.mark.parametrize("setting", MLMSM_PARAMS + AMM_PARAMS, ids=MLMSM_IDS + AMM_IDS)
@@ -33,8 +37,10 @@ class TestMSMBasicProperties(object):
 
     def test_propagate(self, setting):
         scenario = make_double_well(setting)
+        prop_msm = scenario.msm ** 10
         sd = scenario.msm.propagate(scenario.msm.stationary_distribution, 10)
         assert_array_almost_equal(sd, scenario.msm.stationary_distribution)
+        assert_array_almost_equal(prop_msm.propagate(scenario.msm.stationary_distribution, 1), sd)
 
     def test_compute_state_indices(self, setting):
         scenario = make_double_well(setting)
@@ -201,7 +207,10 @@ class TestMSMBasicProperties(object):
             pytest.skip("timescales reference values only valid without constrained stationary distribution")
         msm = scenario.msm
         if not msm.sparse:
-            ts = msm.timescales()
+            with warnings.catch_warnings():
+                if not msm.reversible:
+                    warnings.filterwarnings("ignore", category=ImaginaryEigenValueWarning)
+                ts = msm.timescales()
         else:
             k = 4
             ts = msm.timescales(k)
@@ -499,3 +508,38 @@ class TestMSMBasicProperties(object):
         ksum = 1.0 / t12 + 1.0 / t21
         k2 = 1.0 / t2
         assert_almost_equal(k2, ksum, decimal=3)
+
+
+@pytest.mark.parametrize("k", [0, 1, 2, 4, 6, 10])  #
+@pytest.mark.parametrize("real_eigenvalues", [False, True])  # 0, 1, 2, 5
+def test_msm_power(sparse_mode, k, real_eigenvalues):
+    dim = 50
+    if real_eigenvalues:
+        q = [.5] * dim
+        p = [.5] * dim
+        q[0] = 0
+        p[-1] = 0
+        bdc = BirthDeathChain(q, p, sparse=sparse_mode)
+        transition_matrix = bdc.transition_matrix
+    else:
+        transition_matrix = np.random.uniform(size=(dim, dim))
+        transition_matrix /= np.sum(transition_matrix, axis=1)[..., None]
+        if sparse_mode:
+            transition_matrix = sparse.csr_matrix(transition_matrix)
+    msm = MarkovStateModel(transition_matrix, lagtime=2)
+    assert_(np.all(np.isreal(msm.eigenvalues())) == real_eigenvalues)
+    assert_equal(sparse_mode, msm.sparse)
+    msm_pow = msm ** k
+    assert_equal(msm_pow.lagtime, msm.lagtime * k)
+
+    vec = np.random.uniform(size=(dim,))
+    vec /= vec.sum()
+
+    v = msm.propagate(vec, k)
+    assert_array_almost_equal(v, msm_pow.propagate(vec, 1))
+    if k % msm.lagtime == 0 and real_eigenvalues:
+        assert_equal(v.dtype, msm.transition_matrix.dtype)
+    vec_prop = vec
+    for _ in range(k):
+        vec_prop = msm.transition_matrix.T.dot(vec_prop)
+    assert_array_almost_equal(msm.propagate(vec, k), vec_prop)

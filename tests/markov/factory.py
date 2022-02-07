@@ -4,7 +4,7 @@ import numpy as np
 
 import deeptime.data as datasets
 from deeptime.markov import TransitionCountEstimator
-from deeptime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, BayesianPosterior
+from deeptime.markov.msm import BayesianMSM, MaximumLikelihoodMSM, BayesianMSMPosterior
 
 __all__ = ['msm_double_well', 'bmsm_double_well']
 

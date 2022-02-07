@@ -231,15 +231,15 @@ def test_score_cv(double_well_msm_all, n_jobs):
     fit_fetch = FF(est)
 
     with assert_raises(ValueError):
-        vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r=1, dim=2, n_jobs=1, splitting_mode="noop")
+        vamp_score_cv(fit_fetch, trajs=data, blocksize=1000, n=2, r=1, dim=2, n_jobs=1, splitting_mode="noop")
     with assert_raises(ValueError):
-        vamp_score_cv(fit_fetch, trajs=data)  # uses blocksplit but no lagtime
-    s1 = vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r=1, dim=2, n_jobs=n_jobs).mean()
+        vamp_score_cv(fit_fetch, trajs=data)  # uses blocksplit but no blocksize
+    s1 = vamp_score_cv(fit_fetch, trajs=data, blocksize=1000, n=2, r=1, dim=2, n_jobs=n_jobs).mean()
     assert 0 <= s1 <= 2.0
-    s2 = vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r=2, dim=2, n_jobs=n_jobs).mean()
+    s2 = vamp_score_cv(fit_fetch, trajs=data, blocksize=1000, n=2, r=2, dim=2, n_jobs=n_jobs).mean()
     assert 0 <= s2 <= 2.0
-    se = vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r="E", dim=2, n_jobs=n_jobs).mean()
-    se_inf = vamp_score_cv(fit_fetch, trajs=data, lagtime=10, n=5, r="E", dim=None, n_jobs=n_jobs).mean()
+    vamp_score_cv(fit_fetch, trajs=data, blocksize=1000, n=2, r="E", dim=2, n_jobs=n_jobs).mean()
+    vamp_score_cv(fit_fetch, trajs=data, blocksize=1000, n=2, r="E", dim=None, n_jobs=n_jobs).mean()
 
 
 class TestMSMMinCountConnectivity(unittest.TestCase):
@@ -298,9 +298,9 @@ def disconnected_states():
     weakly_connected_sets = [[0, 1, 2, 3], [4, 5, 7], [6]]
     cmat_set1 = np.array([[3, 7, 2],
                           [6, 3, 2],
-                          [2, 2, 3]], dtype=np.int)
+                          [2, 2, 3]], dtype=int)
     cmat_set2 = np.array([[6, 9],
-                          [8, 6]], dtype=np.int)
+                          [8, 6]], dtype=int)
     count_matrices = [cmat_set1, cmat_set2, None, None, None]
     return DisconnectedStatesScenario(dtrajs=dtrajs, connected_sets=connected_sets,
                                       weakly_connected_sets=weakly_connected_sets, count_matrices=count_matrices)

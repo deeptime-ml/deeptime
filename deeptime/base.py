@@ -1,7 +1,7 @@
 import abc
 from collections import defaultdict
 from inspect import signature
-from typing import Optional
+from typing import Optional, List
 
 from sklearn.base import _pprint as pprint_sklearn
 
@@ -169,6 +169,78 @@ class Model(_BaseMethodsMixin):
         """
         import copy
         return copy.deepcopy(self)
+
+
+class BayesianModel(Model):
+    r""" Bayesian posterior from bayesian sampling."""
+
+    @property
+    def samples(self) -> List[Model]:
+        raise NotImplementedError()
+
+    @property
+    def prior(self) -> Model:
+        raise NotImplementedError()
+
+    def __iter__(self):
+        for s in self.samples:
+            yield s
+
+    def gather_stats(self, quantity, store_samples=False, delimiter='/', confidence=0.95, *args, **kwargs):
+        """ Obtain statistics about a sampled quantity. Can also be a chained call, separated by the delimiter.
+
+        Parameters
+        ----------
+        quantity: str
+            name of attribute, which will be evaluated on samples
+        store_samples: bool, optional, default=False
+            whether to store the samples (array).
+        delimiter : str, optional, default='/'
+            separator to call members of members
+        confidence : float, optional, default=0.95
+            Size of the confidence intervals.
+        *args
+            pass-through
+        **kwargs
+            pass-through
+
+        Returns
+        -------
+        statistics : deeptime.util.QuantityStatistics
+            The statistics
+        """
+        from deeptime.util import QuantityStatistics
+        return QuantityStatistics.gather(self.samples, quantity=quantity, store_samples=store_samples,
+                                         delimiter=delimiter, confidence=confidence, *args, **kwargs)
+
+    def evaluate_samples(self, quantity, delimiter='/', *args, **kwargs):
+        r""" Obtains a quantity (like an attribute or result of a method or a property) from each of the samples.
+        Returns as list.
+
+        Parameters
+        ----------
+        quantity : str
+            The quantity. Can be also deeper in the instance hierarchy, indicated by the delimiter.
+        delimiter : str, default='/'
+            The delimiter.
+        *args
+            Arguments passed to the evaluation point of the quantity.
+        **kwargs
+            Keyword arguments passed to the evaluation point of the quantity.
+
+        Returns
+        -------
+        result : list of any or ndarray
+            A list of the quantity evaluated on each of the samples. If can be converted to float ndarray then ndarray.
+        """
+        from deeptime.util.stats import evaluate_samples as _eval
+        return _eval(self.samples, quantity=quantity, delimiter=delimiter, *args, **kwargs)
+
+
+class Observable:
+    r""" Interface class of an observable that can be evaluated on a model. """
+    def __call__(self, model, *args, **kw):
+        raise NotImplementedError()
 
 
 class Estimator(_BaseMethodsMixin):

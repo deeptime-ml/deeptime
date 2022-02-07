@@ -27,7 +27,7 @@ Models
 
     msm.MarkovStateModel
     msm.MarkovStateModelCollection
-    msm.BayesianPosterior
+    msm.BayesianMSMPosterior
     msm.TRAMModel
 
 
@@ -39,8 +39,6 @@ Analysis tools
 
     pcca
     reactive_flux
-    MembershipsChapmanKolmogorovValidator
-
 
 
 With output models

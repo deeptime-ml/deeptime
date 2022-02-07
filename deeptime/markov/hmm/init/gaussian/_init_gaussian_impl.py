@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def from_data(trajs, n_hidden_states, reversible):
+def from_data(trajs, n_hidden_states, reversible, transition_matrix_kwargs=None):
     r""" Makes an initial guess :class:`HMM <HiddenMarkovModel>` with Gaussian output model.
 
     To this end, a Gaussian mixture model is estimated using `scikit-learn <https://scikit-learn.org/>`_.
@@ -14,6 +14,9 @@ def from_data(trajs, n_hidden_states, reversible):
         Number of hidden states.
     reversible : bool
         Whether the hidden transition matrix is estimated so that it is reversible.
+    transition_matrix_kwargs : dict, optional, default=None
+        Optional keyword arguments that are
+        passed to :meth:`transition_matrix <deeptime.markov.tools.estimation.transition_matrix>`.
 
     Returns
     -------
@@ -26,6 +29,8 @@ def from_data(trajs, n_hidden_states, reversible):
     deeptime.markov.hmm.init.discrete.metastable_from_data
     deeptime.markov.hmm.init.discrete.metastable_from_msm
     """
+    if transition_matrix_kwargs is None:
+        transition_matrix_kwargs = {}
     from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel
     from sklearn.mixture import GaussianMixture
     import deeptime.markov.tools.estimation as msmest
@@ -54,7 +59,7 @@ def from_data(trajs, n_hidden_states, reversible):
             Nij += np.outer(pobs[t, :], pobs[t + 1, :])
 
     # Compute transition matrix maximum likelihood estimate.
-    transition_matrix = msmest.transition_matrix(Nij, reversible=reversible)
+    transition_matrix = msmest.transition_matrix(Nij, reversible=reversible, **transition_matrix_kwargs)
     initial_distribution = msmana.stationary_distribution(transition_matrix)
     return HiddenMarkovModel(transition_model=transition_matrix, output_model=output_model,
                              initial_distribution=initial_distribution)

@@ -364,6 +364,8 @@ class TrajectoriesDataset(TimeLaggedConcatDataset):
             If data is empty, lagtime is not positive,
             the shapes do not match, or lagtime is too long for any of the trajectories.
         """
+        assert isinstance(data, list), "Input must be a list of trajectories. If you only have one trajectory, use " \
+                                       "TrajectoryDataset or wrap it into a list like [trajectory]."
         assert len(data) > 0 and all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"
         return TrajectoriesDataset([TrajectoryDataset(lagtime, traj) for traj in data])
 

@@ -5,8 +5,9 @@ r"""
     :toctree: generated/
     :template: class_nomodule.rst
 
-    ImpliedTimescalesData
     plot_implied_timescales
+    plot_ck_test
 """
 
-from .implied_timescales import plot_implied_timescales, ImpliedTimescalesData
+from .implied_timescales import plot_implied_timescales
+from .chapman_kolmogorov import plot_ck_test

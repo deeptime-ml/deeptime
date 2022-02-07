@@ -2,7 +2,6 @@ import collections
 from typing import List, Union, Optional
 
 import numpy as np
-from deeptime.markov._base import MembershipsChapmanKolmogorovValidator
 from scipy.sparse import issparse
 
 from ...base import Estimator
@@ -11,6 +10,7 @@ from ._hidden_markov_model import HiddenMarkovModel, viterbi
 from ..msm import MarkovStateModel
 from .. import TransitionCountModel, compute_dtrajs_effective
 from ._hmm_bindings import util as _util
+from ...util.decorators import deprecated_method
 from ...util.types import ensure_timeseries_data
 
 
@@ -424,56 +424,29 @@ class MaximumLikelihoodHMM(Estimator):
         model.transition_matrix[:] = T
         model.output_model.fit(observations, gammas)
 
-    def chapman_kolmogorov_validator(self, mlags, test_model: HiddenMarkovModel = None):
-        r""" Creates a validator instance which can be used to perform a Chapman-Kolmogorov test.
-
-        Parameters
-        ----------
-        mlags : int or int-array
-            Multiples of lag times for testing the Model, e.g. range(10).
-            A single int will trigger a range, i.e. mlags=10 maps to
-            mlags=range(1, 10). The setting None will choose mlags automatically
-            according to the longest available trajectory.
-        test_model : HiddenMarkovModel, optional, default=None
-            The model that is tested. If not provided, uses this estimator's encapsulated model.
-
-        Returns
-        -------
-        validator : MembershipsChapmanKolmogorovValidator
-            The validator.
-
-        Raises
-        ------
-        AssertionError
-            If test_model is None and this estimator has not been :meth:`fit` on data yet or the output model
-            was not a discrete output model.
-        """
+    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
+    def chapman_kolmogorov_validator(self,  mlags, test_model: HiddenMarkovModel = None):
+        r""" Replaced by `deeptime.markov.hmm.MaximumLikelihoodHMM.ck_test`. """
         test_model = self.fetch_model() if test_model is None else test_model
         assert test_model is not None, "We need a test model via argument or an estimator which was already" \
                                        "fit to data."
         from . import DiscreteOutputModel
         assert isinstance(test_model.output_model, DiscreteOutputModel), \
             "Can only perform CKTest for discrete output models"
-        lagtime = test_model.lagtime
-        return MLHMMChapmanKolmogorovValidator(test_model, self, np.eye(test_model.n_hidden_states), lagtime, mlags)
 
+        from deeptime.markov._observables import MembershipsObservable
+        obs = MembershipsObservable(test_model, np.eye(test_model.n_hidden_states))
+        from deeptime.util.validation import DeprecatedCKValidator
 
-def _ck_estimate_model_for_lag(estimator: MaximumLikelihoodHMM, model: HiddenMarkovModel, data, lagtime):
-    from .init.discrete import metastable_from_data
-    initial_model = metastable_from_data(data, n_hidden_states=model.n_hidden_states, lagtime=lagtime,
-                                         stride=estimator.stride, reversible=estimator.reversible,
-                                         stationary=estimator.stationary)
-    estimator = MaximumLikelihoodHMM(initial_model, lagtime=lagtime, reversible=estimator.reversible,
-                                     stationary=estimator.stationary, accuracy=estimator.accuracy,
-                                     maxit=estimator.maxit, maxit_reversible=estimator.maxit_reversible)
-    hmm = estimator.fit(data).fetch_model()
-    return hmm.submodel_largest(dtrajs=data)
+        def fit_for_lag(data, lag):
+            from .init.discrete import metastable_from_data
+            initial_model = metastable_from_data(data, n_hidden_states=test_model.n_hidden_states, lagtime=lag,
+                                                 stride=self.stride, reversible=self.reversible,
+                                                 stationary=self.stationary)
+            estimator = MaximumLikelihoodHMM(initial_model, lagtime=lag, reversible=self.reversible,
+                                             stationary=self.stationary, accuracy=self.accuracy,
+                                             maxit=self.maxit, maxit_reversible=self.maxit_reversible)
+            hmm = estimator.fit(data).fetch_model()
+            return hmm.submodel_largest(dtrajs=data)
 
-
-class MLHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-
-    def fit(self, data, n_jobs=1, progress=None, estimate_model_for_lag=None, **kw):
-        if n_jobs != 1:
-            import warnings
-            warnings.warn("Ignoring n_jobs for hmm cktest")
-        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, progress=progress, **kw)
+        return DeprecatedCKValidator(self, fit_for_lag, mlags, obs, test_model)

@@ -7,8 +7,9 @@ from deeptime.data import double_well_discrete, double_well_2d
 from deeptime.decomposition import TICA
 from deeptime.markov.hmm import HiddenMarkovModel, GaussianOutputModel, MaximumLikelihoodHMM, init, BayesianHMM
 from deeptime.markov.msm import MarkovStateModel, MaximumLikelihoodMSM, BayesianMSM
-from deeptime.markov import BayesianPosterior
-from deeptime.plots import plot_implied_timescales, ImpliedTimescalesData
+from deeptime.markov import BayesianMSMPosterior
+from deeptime.plots import plot_implied_timescales
+from deeptime.util.validation import implied_timescales
 
 
 @pytest.fixture
@@ -19,10 +20,10 @@ def figure():
 
 def test_to_its_data_wrong_args():
     with assert_raises(ValueError):
-        ImpliedTimescalesData.from_models([])
+        implied_timescales([])
 
     with assert_raises(AssertionError):
-        ImpliedTimescalesData.from_models([object])
+        implied_timescales([object])
 
 
 @pytest.mark.parametrize("model", [MarkovStateModel([[.9, .1], [.1, .9]]),
@@ -30,7 +31,7 @@ def test_to_its_data_wrong_args():
                                                      GaussianOutputModel(2, [0, 1], [1, 1]))],
                          ids=lambda x: x.__class__.__name__)
 def test_to_its_data(model):
-    data = ImpliedTimescalesData.from_models([model, model])
+    data = implied_timescales([model, model])
     assert_equal(data.lagtimes, [1, 1])
     assert_equal(data.n_lagtimes, 2)
     assert_equal(data.max_n_samples, 0)
@@ -86,9 +87,9 @@ def test_plot_its(figure, dw_model):
     models = []
     for lagtime, n in zip(lagtimes, n_samples):
         models.append(dw_model(lagtime, n))
-    data = ImpliedTimescalesData.from_models(models)
+    data = implied_timescales(models)
     assert_(data.max_n_processes >= 2)
-    assert_equal(data.has_samples, isinstance(models[0], BayesianPosterior))
+    assert_equal(data.has_samples, isinstance(models[0], BayesianMSMPosterior))
     assert_equal(data.max_n_samples, 100 if data.has_samples else 0)
     if data.has_samples:
         assert_equal(data.n_samples(0, 0), n_samples[0])
@@ -97,7 +98,7 @@ def test_plot_its(figure, dw_model):
         assert_equal(data.n_samples(3, 0), n_samples[3])
         assert_equal(data.n_samples(4, 0), n_samples[4])
         assert_equal(data.n_samples(5, 0), n_samples[5])
-    plot_implied_timescales(ax, data)
+    plot_implied_timescales(data, ax=ax)
 
 
 def test_its_mixed_est_sort(figure):
@@ -117,7 +118,7 @@ def test_its_mixed_est_sort(figure):
         mlmsm7,
         BayesianMSM(n_samples=13).fit_fetch(mlmsm9)
     ]
-    data = ImpliedTimescalesData.from_models(models)
+    data = implied_timescales(models)
     assert_equal(data.n_lagtimes, len(models))
     assert_equal(data.lagtimes, [5, 6, 7, 8, 9, 10])
     assert_equal(data.max_n_samples, 25)
@@ -127,7 +128,7 @@ def test_its_mixed_est_sort(figure):
     assert_equal(data.n_samples(3, 0), 25)
     assert_equal(data.n_samples(4, 0), 13)
     assert_equal(data.n_samples(5, 0), 0)
-    plot_implied_timescales(ax, data)
+    data.plot(ax=ax)
 
 
 @pytest.mark.parametrize("bayesian", [False, True])
@@ -139,7 +140,7 @@ def test_decayed_process(bayesian):
     models = [msm1, msm2, msm3]
     if bayesian:
         models = [BayesianMSM(n_samples=15).fit_fetch(msm, ignore_counting_mode=True) for msm in models]
-    data = ImpliedTimescalesData.from_models(models)
+    data = implied_timescales(models)
     assert_equal(data.max_n_processes, 2)
     assert_equal(data.max_n_samples, 0 if not bayesian else 15)
     assert_equal(data.n_lagtimes, 3)

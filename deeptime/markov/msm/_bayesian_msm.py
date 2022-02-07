@@ -5,9 +5,9 @@ import numpy as np
 
 from ...base import Estimator
 from ...numeric import is_square_matrix
-from .. import TransitionCountEstimator
-from .._base import _MSMBaseEstimator, BayesianPosterior, MembershipsChapmanKolmogorovValidator
+from .._base import _MSMBaseEstimator, BayesianMSMPosterior
 from . import MarkovStateModel, MaximumLikelihoodMSM
+from ...util.decorators import deprecated_method
 
 __author__ = 'noe, marscher, clonker'
 
@@ -76,9 +76,9 @@ class BayesianMSM(_MSMBaseEstimator):
      [ 0.38169055  0.          0.61830945]
      [ 0.12023989  0.23690297  0.64285714]]
 
-    Furthermore the bayesian MSM posterior returned by :meth:`fetch_model` is able to
+    Furthermore, the bayesian MSM posterior returned by :meth:`fetch_model` is able to
     compute the probability distribution and statistical models of all methods
-    that are offered by the MSM object. This works as follows. The :meth:`BayesianPosterior.gather_stats` method
+    that are offered by the MSM object. This works as follows. The :meth:`BayesianMSMPosterior.gather_stats` method
     takes as argument the method you want to evaluate and then returns a statistics summary over requested quantity:
 
     >>> print(mm.gather_stats('transition_matrix').mean)  # doctest: +SKIP
@@ -162,13 +162,13 @@ class BayesianMSM(_MSMBaseEstimator):
             value = np.copy(value) / np.sum(value)
         self._stationary_distribution_constraint = value
 
-    def fetch_model(self) -> Optional[BayesianPosterior]:
+    def fetch_model(self) -> Optional[BayesianMSMPosterior]:
         r"""
         Yields the model that was estimated the most recent.
 
         Returns
         -------
-        model : BayesianPosterior or None
+        model : BayesianMSMPosterior or None
             The estimated model or None if fit was not called.
         """
         return self._model
@@ -307,43 +307,27 @@ class BayesianMSM(_MSMBaseEstimator):
                              "To ignore this, set `ignore_counting_mode` to True in the call to `fit`.")
         # use the same count matrix as the MLE. This is why we have effective as a default
         samples = self.sample(msm, self.n_samples, self.n_steps, callback)
-        self._model = BayesianPosterior(prior=msm, samples=samples)
+        self._model = BayesianMSMPosterior(prior=msm, samples=samples)
         return self
 
-    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model: BayesianPosterior = None):
-        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
-
-        Parameters
-        ----------
-        n_metastable_sets : int
-            Number of metastable sets to project the state space down to.
-        mlags : int or range or list
-            Multiple of lagtimes of the test_model to test against.
-        test_model : BayesianPosterior, optional, default=None
-            The model that is tested. If not provided, uses this estimator's encapsulated model.
-
-        Returns
-        -------
-        validator : markov.MembershipsChapmanKolmogorovValidator
-            The validator.
-        """
+    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
+    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model=None):
+        r""" Replaced by `deeptime.markov.msm.BayesianMSMPosterior.ck_test`. """
         test_model = self.fetch_model() if test_model is None else test_model
         assert test_model is not None, "We need a test model via argument or an estimator which was already" \
                                        "fit to data."
         prior = test_model.prior
         assert prior.has_count_model, "The test model needs to have a count model, i.e., be estimated from data."
         pcca = prior.pcca(n_metastable_sets)
-        reference_lagtime = prior.count_model.lagtime
-        return BayesianMSMChapmanKolmogorovValidator(test_model, self, pcca.memberships, reference_lagtime, mlags)
+        from deeptime.markov._observables import MembershipsObservable
+        obs = MembershipsObservable(test_model, pcca)
+        from deeptime.util.validation import DeprecatedCKValidator
 
+        def fit_for_lag(data, lag):
+            from deeptime.markov import TransitionCountEstimator
+            counting_mode = test_model.prior.count_model.counting_mode
+            counts = TransitionCountEstimator(lag, counting_mode).fit(data, n_jobs=1).fetch_model().submodel_largest()
+            return self.fit(counts).fetch_model()
 
-def _ck_estimate_model_for_lag(estimator, model, data, lagtime):
-    counting_mode = model.prior.count_model.counting_mode
-    counts = TransitionCountEstimator(lagtime, counting_mode).fit(data, n_jobs=1).fetch_model().submodel_largest()
-    return estimator.fit(counts).fetch_model()
+        return DeprecatedCKValidator(self, fit_for_lag, mlags, obs, test_model)
 
-
-class BayesianMSMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-
-    def fit(self, data, n_jobs=None, progress=None, **kw):
-        return super().fit(data, n_jobs, progress, estimate_model_for_lag=_ck_estimate_model_for_lag, **kw)

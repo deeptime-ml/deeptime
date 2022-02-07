@@ -1,4 +1,6 @@
 import functools
+import typing
+import warnings
 from weakref import WeakKeyDictionary
 
 from deeptime.util.platform import module_available
@@ -43,19 +45,63 @@ class cached_property(property):
         self.cache.clear()
 
 
-def _plotting_function(fn, requires_networkx):  # pragma: no cover
-    r""" Decorator marking a function that is a plotting utility. This will exclude it from coverage and test
-    whether dependencies are installed. """
+def plotting_function(requires_networkx=False):
+    r""" Decorator marking a function that is a plotting utility. This will test whether dependencies are installed. """
 
-    @functools.wraps(fn)
-    def wrapper(*args, **kw):
-        if not module_available("matplotlib") or (requires_networkx and not module_available("networkx")):
-            raise RuntimeError(f"Plotting function requires matplotlib {'and networkx ' if requires_networkx else ''}"
-                               f"to be installed.")
-        return fn(*args, **kw)
+    def factory(fn: typing.Callable) -> typing.Callable:
+        @functools.wraps(fn)
+        def call(*args, **kw):
+            if not module_available("matplotlib") or (requires_networkx and not module_available("networkx")):
+                raise RuntimeError(f"Plotting function requires matplotlib {'and networkx ' if requires_networkx else ''}"
+                                   f"to be installed.")
+            return fn(*args, **kw)
+        return call
+    return factory
 
-    return wrapper
+
+def deprecated_method(msg):
+    def factory(fn: typing.Callable) -> typing.Callable:
+        @functools.wraps(fn)
+        def call(*args, **kw):
+            warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
+            return fn(*args, **kw)
+        return call
+    return factory
 
 
-plotting_function = functools.partial(_plotting_function, requires_networkx=False)
-plotting_function_with_networkx = functools.partial(_plotting_function, requires_networkx=True)
+def handle_deprecated_args(argument_name, replaced_by, msg, **kw):
+    r""" See :meth:`deprecated_argument` decorator. """
+    if kw.get(argument_name, None) is not None and kw.get(replaced_by, None) is not None:
+        raise ValueError(f"The argument {argument_name} is deprecated and replaced by {replaced_by}. Please "
+                         f"only use {replaced_by}.")
+    if kw.get(argument_name, None) is not None and kw.get(replaced_by, None) is None:
+        warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
+        deprecated_arg = kw.pop(argument_name)
+        kw[replaced_by] = deprecated_arg
+    return kw.get(replaced_by, None)
+
+
+def deprecated_argument(argument_name, replaced_by, msg):
+    r""" Marks an argument of a function as deprecated. Only works for keyword arguments.
+
+    Parameters
+    ----------
+    argument_name : str
+        The deprecated argument.
+    replaced_by : str
+        The replacement.
+    msg : str
+        Warning message.
+
+    Returns
+    -------
+    factory : callable
+        decorator factory parametrized by arguments
+    """
+    def factory(fn: typing.Callable) -> typing.Callable:
+        @functools.wraps(fn)
+        def call(*args, **kw):
+            handle_deprecated_args(argument_name, replaced_by, msg, **kw)
+            return fn(*args, **kw)
+        return call
+    return factory

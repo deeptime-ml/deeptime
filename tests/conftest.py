@@ -39,4 +39,3 @@ def fixed_seed():
 @pytest.fixture(params=[False, True], ids=lambda x: f"{'sparse' if x else 'dense'}")
 def sparse_mode(request):
     yield request.param
-

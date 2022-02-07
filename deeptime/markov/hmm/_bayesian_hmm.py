@@ -8,7 +8,7 @@ from deeptime.markov.tools.analysis import is_connected
 from deeptime.markov.tools.estimation import sample_tmatrix, transition_matrix
 
 from deeptime.base import Estimator
-from deeptime.markov._base import BayesianPosterior, MembershipsChapmanKolmogorovValidator
+from deeptime.markov._base import BayesianMSMPosterior
 from deeptime.markov._transition_matrix import stationary_distribution
 from deeptime.markov.hmm import HiddenMarkovModel
 from ._output_model import DiscreteOutputModel
@@ -25,10 +25,13 @@ __all__ = [
     'BayesianHMM',
 ]
 
+from ...util.decorators import deprecated_method
+
 from ...util.platform import handle_progress_bar
+from ...util.validation import ck_test
 
 
-class BayesianHMMPosterior(BayesianPosterior):
+class BayesianHMMPosterior(BayesianMSMPosterior):
     r""" Bayesian Hidden Markov model with samples of posterior and prior.
 
     Parameters
@@ -148,6 +151,13 @@ class BayesianHMMPosterior(BayesianPosterior):
         subsamples = [sample.submodel(states=states, obs=obs)
                       for sample in self]
         return BayesianHMMPosterior(sub_model, subsamples)
+
+    def ck_test(self, models, include_lag0=True, err_est=False, progress=None, **kw):
+        from .._base import MembershipsObservable
+        observable = MembershipsObservable(self, np.eye(self.prior.n_hidden_states),
+                                           initial_distribution=self.prior.transition_model.stationary_distribution)
+        return ck_test(models, observable, test_model=self, include_lag0=include_lag0,
+                       err_est=err_est, progress=progress)
 
 
 class BayesianHMM(Estimator):
@@ -395,7 +405,8 @@ class BayesianHMM(Estimator):
         r"""
         Internal method that evaluates the prior to its ndarray realization.
         """
-        if self.initial_distribution_prior is None or self.initial_distribution_prior == 'sparse':
+        if self.initial_distribution_prior is None \
+                or (isinstance(self.initial_distribution_prior, str) and self.initial_distribution_prior == 'sparse'):
             prior = np.zeros(self.initial_hmm.n_hidden_states)
         elif isinstance(self.initial_distribution_prior, np.ndarray):
             if self.initial_distribution_prior.ndim == 1 \
@@ -420,7 +431,8 @@ class BayesianHMM(Estimator):
         Internal method that evaluates the prior to its ndarray realization.
         """
         n_states = self.initial_hmm.n_hidden_states
-        if self.transition_matrix_prior is None or self.transition_matrix_prior == 'sparse':
+        if self.transition_matrix_prior is None or \
+                (isinstance(self.transition_matrix_prior, str) and self.transition_matrix_prior == 'sparse'):
             prior = np.zeros((n_states, n_states))
         elif isinstance(self.transition_matrix_prior, np.ndarray):
             if np.array_equal(self.transition_matrix_prior.shape, (n_states, n_states)):
@@ -641,21 +653,9 @@ class BayesianHMM(Estimator):
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
 
+    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
     def chapman_kolmogorov_validator(self, mlags, test_model: BayesianHMMPosterior = None):
-        r"""Returns a Chapman-Kolmogorov validator based on this estimator and a test model.
-
-        Parameters
-        ----------
-        mlags : int or int-array
-            Multiple of lagtimes of the test_model to test against.
-        test_model : BayesianHMMPosterior, optional, default=None
-            The model that is tested. If not provided, uses this estimator's encapsulated model.
-
-        Returns
-        -------
-        validator : markov.MembershipsChapmanKolmogorovValidator
-            The validator.
-        """
+        r""" Replaced by `deeptime.markov.hmm.BayesianHMMPosterior.ck_test`. """
         test_model = self.fetch_model() if test_model is None else test_model
         assert test_model is not None, "We need a test model via argument or an estimator which was already" \
                                        "fit to data."
@@ -663,25 +663,17 @@ class BayesianHMM(Estimator):
         from . import DiscreteOutputModel
         assert isinstance(test_model.prior.output_model, DiscreteOutputModel), \
             "Can only perform CKTest for discrete output models"
-        memberships = np.eye(test_model.prior.n_hidden_states)
-        lagtime = test_model.prior.lagtime
-        return BayesianHMMChapmanKolmogorovValidator(test_model, self, memberships, lagtime, mlags)
 
+        from deeptime.markov._observables import MembershipsObservable
+        obs = MembershipsObservable(test_model, np.eye(test_model.prior.n_hidden_states))
+        from deeptime.util.validation import DeprecatedCKValidator
 
-def _ck_estimate_model_for_lag(estimator: BayesianHMM, model, data, lagtime):
-    estimator = BayesianHMM.default(dtrajs=data, n_hidden_states=estimator.initial_hmm.n_hidden_states,
-                                    lagtime=lagtime, n_samples=estimator.n_samples, stride=estimator.stride,
-                                    initial_distribution_prior=estimator.initial_distribution_prior,
-                                    transition_matrix_prior=estimator.transition_matrix_prior,
-                                    reversible=estimator.reversible, stationary=estimator.stationary)
-    return estimator.fit(data).fetch_model()
+        def fit_for_lag(data, lag):
+            estimator = BayesianHMM.default(dtrajs=data, n_hidden_states=self.initial_hmm.n_hidden_states,
+                                            lagtime=lag, n_samples=self.n_samples, stride=self.stride,
+                                            initial_distribution_prior=self.initial_distribution_prior,
+                                            transition_matrix_prior=self.transition_matrix_prior,
+                                            reversible=self.reversible, stationary=self.stationary)
+            return estimator.fit(data).fetch_model()
 
-
-class BayesianHMMChapmanKolmogorovValidator(MembershipsChapmanKolmogorovValidator):
-
-    def fit(self, data, n_jobs=1, progress=None, **kw):
-        if n_jobs != 1:
-            import warnings
-            warnings.warn("ignoring n_jobs for HMM CKtest")
-
-        return super().fit(data, n_jobs=1, estimate_model_for_lag=_ck_estimate_model_for_lag, progress=progress, **kw)
+        return DeprecatedCKValidator(self, fit_for_lag, mlags, obs, test_model)

@@ -209,9 +209,9 @@ def test_score(five_state_msm):
 @pytest.mark.parametrize("reversible,sparse", [(True, True), (True, False), (False, True), (False, False)])
 def test_score_cv(five_state_msm, reversible, sparse):
     msm = OOMReweightedMSM(lagtime=5, reversible=reversible, sparse=sparse)
-    s1 = vamp_score_cv(msm, trajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, r=1, dim=2, blocksplit=False).mean()
+    s1 = vamp_score_cv(msm, trajs=five_state_msm.dtrajs[:500], n=2, r=1, dim=2, blocksplit=False).mean()
     np.testing.assert_(1.0 <= s1 <= 2.0)
-    s2 = vamp_score_cv(msm, trajs=five_state_msm.dtrajs[:500], lagtime=5, n=2, r=2, dim=2, blocksplit=False).mean()
+    s2 = vamp_score_cv(msm, trajs=five_state_msm.dtrajs[:500], n=2, r=2, dim=2, blocksplit=False).mean()
     np.testing.assert_(1.0 <= s2 <= 2.0)
 
 
