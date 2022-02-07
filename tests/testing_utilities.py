@@ -125,7 +125,7 @@ else:
             pass
 
 
-def estimate_markov_model(lagtime, data, hidden, bayesian, n_hidden=2):
+def estimate_markov_model(lagtime, data, hidden, bayesian, n_hidden=2, return_estimator=False):
     from deeptime.markov.msm import MaximumLikelihoodMSM, BayesianMSM
     from deeptime.markov.hmm.init import discrete
     from deeptime.markov.hmm import MaximumLikelihoodHMM, BayesianHMM
@@ -133,13 +133,13 @@ def estimate_markov_model(lagtime, data, hidden, bayesian, n_hidden=2):
     if not hidden:
         if bayesian:
             msm = MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(data, count_mode='effective')
-            return BayesianMSM().fit_fetch(msm)
+            est = BayesianMSM().fit(msm)
         else:
-            return MaximumLikelihoodMSM(lagtime=lagtime).fit_fetch(data)
+            est = MaximumLikelihoodMSM(lagtime=lagtime).fit(data)
     else:
         if not bayesian:
             hmm_init = discrete.metastable_from_data(data, n_hidden_states=n_hidden, lagtime=lagtime)
-            return MaximumLikelihoodHMM(hmm_init, lagtime=lagtime).fit_fetch(data)
+            est = MaximumLikelihoodHMM(hmm_init, lagtime=lagtime).fit(data)
         else:
-            return BayesianHMM.default(n_hidden_states=n_hidden, lagtime=lagtime, dtrajs=data).fit_fetch(data)
-
+            est = BayesianHMM.default(n_hidden_states=n_hidden, lagtime=lagtime, dtrajs=data).fit(data)
+    return (est, est.fetch_model()) if return_estimator else est.fetch_model()

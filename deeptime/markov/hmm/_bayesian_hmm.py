@@ -25,10 +25,10 @@ __all__ = [
     'BayesianHMM',
 ]
 
-from ...util.decorators import removed_method
+from ...util.decorators import deprecated_method
 
 from ...util.platform import handle_progress_bar
-from ...util.validation import ChapmanKolmogorovTest, ck_test
+from ...util.validation import ck_test
 
 
 class BayesianHMMPosterior(BayesianMSMPosterior):
@@ -653,6 +653,27 @@ class BayesianHMM(Estimator):
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
 
-    @removed_method("Replaced in favor of BayesianHMMPosterior.ck_test.")
-    def chapman_kolmogorov_validator(self):
-        r""" Removed and replaced by `deeptime.markov.hmm.BayesianHMMPosterior.ck_test`. """
+    @deprecated_method("Deprecated in v0.4.0 and will be removed soon, please use model.ck_test.")
+    def chapman_kolmogorov_validator(self, mlags, test_model: BayesianHMMPosterior = None):
+        r""" Replaced by `deeptime.markov.hmm.BayesianHMMPosterior.ck_test`. """
+        test_model = self.fetch_model() if test_model is None else test_model
+        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
+                                       "fit to data."
+
+        from . import DiscreteOutputModel
+        assert isinstance(test_model.prior.output_model, DiscreteOutputModel), \
+            "Can only perform CKTest for discrete output models"
+
+        from deeptime.markov._observables import MembershipsObservable
+        obs = MembershipsObservable(test_model, np.eye(test_model.prior.n_hidden_states))
+        from deeptime.util.validation import DeprecatedCKValidator
+
+        def fit_for_lag(data, lag):
+            estimator = BayesianHMM.default(dtrajs=data, n_hidden_states=self.initial_hmm.n_hidden_states,
+                                            lagtime=lag, n_samples=self.n_samples, stride=self.stride,
+                                            initial_distribution_prior=self.initial_distribution_prior,
+                                            transition_matrix_prior=self.transition_matrix_prior,
+                                            reversible=self.reversible, stationary=self.stationary)
+            return estimator.fit(data).fetch_model()
+
+        return DeprecatedCKValidator(self, fit_for_lag, mlags, obs, test_model)

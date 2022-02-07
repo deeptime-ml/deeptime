@@ -5,14 +5,11 @@ import numpy as np
 from scipy.sparse import issparse
 
 from deeptime.markov.tools import estimation as msmest
-from ._markov_state_model import MarkovStateModelCollection, MarkovStateModel
+from ._markov_state_model import MarkovStateModelCollection
 from .._base import _MSMBaseEstimator
 from .._transition_counting import TransitionCountModel, TransitionCountEstimator
 from ...numeric import is_square_matrix
-
-__all__ = ['MaximumLikelihoodMSM']
-
-from ...util.decorators import removed_method
+from ...util.decorators import deprecated_method
 
 log = logging.getLogger(__file__)
 
@@ -359,6 +356,21 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime),
                                                      kw.pop("count_mode", "sliding"))
 
-    @removed_method("Replaced in favor of MarkovStateModel.ck_test.")
-    def chapman_kolmogorov_validator(self):
+    @deprecated_method("Deprecated in v0.4.0 and will be removed soon, please use model.ck_test.")
+    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model=None):
         r""" Removed and replaced by `deeptime.markov.msm.MarkovStateModel.ck_test`. """
+        from deeptime.markov._observables import MembershipsObservable
+        test_model = self.fetch_model() if test_model is None else test_model
+        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
+                                       "fit to data."
+        assert test_model.has_count_model, "The test model needs to have a count model, i.e., be estimated from data."
+        pcca = test_model.pcca(n_metastable_sets)
+        obs = MembershipsObservable(test_model, pcca)
+        from deeptime.util.validation import DeprecatedCKValidator
+
+        def fit_for_lag(data, lag):
+            counting_mode = test_model.count_model.counting_mode
+            counts = TransitionCountEstimator(lag, counting_mode).fit(data).fetch_model().submodel_largest()
+            return self.fit(counts).fetch_model()
+
+        return DeprecatedCKValidator(self, fit_for_lag, mlags, obs, test_model)

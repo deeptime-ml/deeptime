@@ -59,11 +59,12 @@ def plotting_function(requires_networkx=False):
     return factory
 
 
-def removed_method(msg):
+def deprecated_method(msg):
     def factory(fn: typing.Callable) -> typing.Callable:
         @functools.wraps(fn)
-        def call(*_, **__):
-            raise RuntimeError(msg)
+        def call(*args, **kw):
+            warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
+            return fn(*args, **kw)
         return call
     return factory
 
