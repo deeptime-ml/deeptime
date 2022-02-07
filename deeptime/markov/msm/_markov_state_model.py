@@ -520,7 +520,7 @@ class MarkovStateModel(Model):
             else:
                 integer_power = np.issubdtype(type(power), np.integer)
                 if integer_power:
-                    ev_pow = np.linalg.matrix_power(self.eigenvalues(), power)
+                    ev_pow = np.power(self.eigenvalues(), power)
                 else:
                     ev_pow = np.real_if_close(self.eigenvalues().astype(complex) ** power)
                     if np.all(~np.iscomplex(ev_pow)):
