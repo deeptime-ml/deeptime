@@ -586,7 +586,8 @@ class CovarianceKoopmanModel(TransferOperatorModel):
             if integer_multiple:
                 P = np.linalg.matrix_power(S.dot(p), lag_multiple - 1).dot(S)
             else:
-                P = (S.dot(p) ** (lag_multiple - 1)).dot(S)
+                from scipy.linalg import fractional_matrix_power
+                P = fractional_matrix_power(S.dot(p), lag_multiple - 1).dot(S)
 
         Q = np.zeros((observables.shape[1], dim + 1), dtype=dtype)
         if not observables_mean_free:

@@ -286,9 +286,9 @@ class ChapmanKolmogorovTest:
 
     def __init__(self, lagtimes, predictions, predictions_samples, estimates, estimates_samples, observable):
         self._lagtimes = np.array(lagtimes)
-        self._predictions = np.asfarray(predictions)
+        self._predictions = np.asarray(predictions)
         self._predictions_samples = predictions_samples
-        self._estimates = np.asfarray(estimates)
+        self._estimates = np.asarray(estimates)
         self._estimates_samples = estimates_samples
         self._observable = observable
 

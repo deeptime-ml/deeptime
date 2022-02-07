@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 
 from deeptime.plots.util import default_colors
@@ -57,12 +59,12 @@ class CKTestGrid:
     def _plot_panel(self, i, j, data: ChapmanKolmogorovTest, color, l_est=None, r_est=None, l_pred=None, r_pred=None,
                     **plot_kwargs):
         ax = self.get_axis(i, j)
-        lest = ax.plot(data.lagtimes, data.estimates[:, i, j], color='black', **plot_kwargs)
+        lest = ax.plot(data.lagtimes, data.estimates[:, i, j].real, color='black', **plot_kwargs)
         if l_est is not None and len(l_est) > 0 and r_est is not None and len(r_est) > 0:
-            ax.fill_between(data.lagtimes, l_est[:, i, j], r_est[:, i, j], color='black', alpha=0.2)
-        lpred = ax.plot(data.lagtimes, data.predictions[:, i, j], color=color, linestyle='dashed', **plot_kwargs)
+            ax.fill_between(data.lagtimes, l_est[:, i, j].real, r_est[:, i, j].real, color='black', alpha=0.2)
+        lpred = ax.plot(data.lagtimes, data.predictions[:, i, j].real, color=color, linestyle='dashed', **plot_kwargs)
         if l_pred is not None and len(l_pred) > 0 and r_pred is not None and len(r_pred) > 0:
-            ax.fill_between(data.lagtimes, l_pred[:, i, j], r_pred[:, i, j], color=color, alpha=0.2)
+            ax.fill_between(data.lagtimes, l_pred[:, i, j].real, r_pred[:, i, j].real, color=color, alpha=0.2)
         ax.text(0.05, 0.05, str(i + 1) + ' -> ' + str(j + 1), transform=ax.transAxes, weight='bold')
         if self._sharey:
             ax.set_ylim(0, 1)
@@ -88,6 +90,10 @@ class CKTestGrid:
             labels.append(predlabel)
             labels.append(estlabel)
         self.figure.legend(handles, labels, 'upper center', ncol=2, frameon=False)
+
+    @property
+    def n_tests(self):
+        return len(self._tests)
 
 
 def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
@@ -129,13 +135,15 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
     --------
     deeptime.util.validation.ck_test, deeptime.plots.plot_ck_test
     """
-    color = default_colors()[0] if color is None else color
     n_components = data.n_components
 
     if grid is not None:
         assert grid.n_cells_x == grid.n_cells_y == n_components
     else:
         grid = CKTestGrid(n_components, n_components, height=height, aspect=aspect)
+    color = default_colors()[grid.n_tests] if color is None else color
+
+    any_complex = np.any(~np.isreal(data.estimates)) or np.any(~np.isreal(data.predictions))
 
     confidences_est_l = []
     confidences_est_r = []
@@ -144,15 +152,23 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
     if data.has_errors:
         samples = data.predictions_samples
         for lag_samples in samples:
-            l_pred, r_pred = confidence_interval(lag_samples, conf=conf, remove_nans=True)
+            any_complex |= np.any(~np.isreal(lag_samples))
+            l_pred, r_pred = confidence_interval(lag_samples if not any_complex else [x.real for x in lag_samples],
+                                                 conf=conf, remove_nans=True)
             confidences_pred_l.append(l_pred)
             confidences_pred_r.append(r_pred)
 
         samples = data.estimates_samples
         for lag_samples in samples:
-            l_est, r_est = confidence_interval(lag_samples, conf=conf, remove_nans=True)
+            any_complex |= np.any(~np.isreal(lag_samples))
+            l_est, r_est = confidence_interval(lag_samples if not any_complex else [x.real for x in lag_samples],
+                                               conf=conf, remove_nans=True)
             confidences_est_l.append(l_est)
             confidences_est_r.append(r_est)
+
+    if any_complex:
+        warnings.warn("Your CKtest contains imaginary components which are ignored during plotting.",
+                      category=np.ComplexWarning)
 
     confidences = [confidences_est_l, confidences_est_r, confidences_pred_l, confidences_pred_r]
     confidences = [np.array(conf) for conf in confidences]

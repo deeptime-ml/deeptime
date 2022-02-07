@@ -26,8 +26,8 @@ for lag in [2, 3, 5, 13]:
 
 test_model = models[0]
 ck_test = test_model.ck_test(models, n_metastable_sets=2)
-grid = plot_ck_test(ck_test, color='C0', legend=False)
+grid = plot_ck_test(ck_test, legend=False)
 
 test_model2 = models2[0]
 ck_test = test_model2.ck_test(models2, n_metastable_sets=2)
-plot_ck_test(ck_test, color='C1', legend=True, grid=grid)
+plot_ck_test(ck_test, legend=True, grid=grid)
