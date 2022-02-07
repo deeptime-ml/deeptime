@@ -461,7 +461,7 @@ class VAMP(EstimatorTransformer):
             self._covariance_estimator = None
         return self._model
 
-    @deprecated_method("Deprecated in v0.4.0 and will be removed soon, please use model.ck_test.")
+    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
     def chapman_kolmogorov_validator(self, mlags, test_model: CovarianceKoopmanModel = None,
                                      n_observables=None, observables='phi', statistics='psi'):
         r""" Replaced by `deeptime.decomposition.CovarianceKoopmanModel.ck_test`. """

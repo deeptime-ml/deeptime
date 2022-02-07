@@ -356,7 +356,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime),
                                                      kw.pop("count_mode", "sliding"))
 
-    @deprecated_method("Deprecated in v0.4.0 and will be removed soon, please use model.ck_test.")
+    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
     def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model=None):
         r""" Removed and replaced by `deeptime.markov.msm.MarkovStateModel.ck_test`. """
         from deeptime.markov._observables import MembershipsObservable

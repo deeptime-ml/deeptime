@@ -653,7 +653,7 @@ class BayesianHMM(Estimator):
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
 
-    @deprecated_method("Deprecated in v0.4.0 and will be removed soon, please use model.ck_test.")
+    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
     def chapman_kolmogorov_validator(self, mlags, test_model: BayesianHMMPosterior = None):
         r""" Replaced by `deeptime.markov.hmm.BayesianHMMPosterior.ck_test`. """
         test_model = self.fetch_model() if test_model is None else test_model

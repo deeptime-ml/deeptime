@@ -310,7 +310,7 @@ class BayesianMSM(_MSMBaseEstimator):
         self._model = BayesianMSMPosterior(prior=msm, samples=samples)
         return self
 
-    @deprecated_method("Deprecated in v0.4.0 and will be removed soon, please use model.ck_test.")
+    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
     def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model=None):
         r""" Replaced by `deeptime.markov.msm.BayesianMSMPosterior.ck_test`. """
         test_model = self.fetch_model() if test_model is None else test_model

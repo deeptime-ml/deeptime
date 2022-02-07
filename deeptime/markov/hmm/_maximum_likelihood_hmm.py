@@ -424,7 +424,7 @@ class MaximumLikelihoodHMM(Estimator):
         model.transition_matrix[:] = T
         model.output_model.fit(observations, gammas)
 
-    @deprecated_method("Deprecated in v0.4.0 and will be removed soon, please use model.ck_test.")
+    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
     def chapman_kolmogorov_validator(self,  mlags, test_model: HiddenMarkovModel = None):
         r""" Replaced by `deeptime.markov.hmm.MaximumLikelihoodHMM.ck_test`. """
         test_model = self.fetch_model() if test_model is None else test_model
