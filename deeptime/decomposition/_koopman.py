@@ -574,23 +574,28 @@ class CovarianceKoopmanModel(TransferOperatorModel):
         m_0 = self.mean_0
         m_t = self.mean_t
 
+        integer_multiple = np.issubdtype(type(lag_multiple), np.integer)
+        dtype = float if integer_multiple else complex
         if lag_multiple == 1:
             P = S
         else:
-            p = np.zeros((dim + 1, dim + 1))
+            p = np.zeros((dim + 1, dim + 1), dtype=dtype)
             p[0, 0] = 1.0
             p[1:, 0] = U.T.dot(m_t - m_0)
             p[1:, 1:] = U.T.dot(self.cov_tt).dot(V)
-            P = (S.dot(p) ** (lag_multiple - 1)).dot(S)
+            if integer_multiple:
+                P = np.linalg.matrix_power(S.dot(p), lag_multiple - 1).dot(S)
+            else:
+                P = (S.dot(p) ** (lag_multiple - 1)).dot(S)
 
-        Q = np.zeros((observables.shape[1], dim + 1))
+        Q = np.zeros((observables.shape[1], dim + 1), dtype=dtype)
         if not observables_mean_free:
             Q[:, 0] = observables.T.dot(m_t)
         Q[:, 1:] = observables.T.dot(self.cov_tt).dot(V)
 
         if statistics is not None:
             # compute covariance
-            R = np.zeros((statistics.shape[1], dim + 1))
+            R = np.zeros((statistics.shape[1], dim + 1), dtype=dtype)
             if not statistics_mean_free:
                 R[:, 0] = statistics.T.dot(m_0)
             R[:, 1:] = statistics.T.dot(self.cov_00).dot(U)

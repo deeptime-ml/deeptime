@@ -405,7 +405,8 @@ class BayesianHMM(Estimator):
         r"""
         Internal method that evaluates the prior to its ndarray realization.
         """
-        if self.initial_distribution_prior is None or self.initial_distribution_prior == 'sparse':
+        if self.initial_distribution_prior is None \
+                or (isinstance(self.initial_distribution_prior, str) and self.initial_distribution_prior == 'sparse'):
             prior = np.zeros(self.initial_hmm.n_hidden_states)
         elif isinstance(self.initial_distribution_prior, np.ndarray):
             if self.initial_distribution_prior.ndim == 1 \
@@ -430,7 +431,8 @@ class BayesianHMM(Estimator):
         Internal method that evaluates the prior to its ndarray realization.
         """
         n_states = self.initial_hmm.n_hidden_states
-        if self.transition_matrix_prior is None or self.transition_matrix_prior == 'sparse':
+        if self.transition_matrix_prior is None or \
+                (isinstance(self.transition_matrix_prior, str) and self.transition_matrix_prior == 'sparse'):
             prior = np.zeros((n_states, n_states))
         elif isinstance(self.transition_matrix_prior, np.ndarray):
             if np.array_equal(self.transition_matrix_prior.shape, (n_states, n_states)):

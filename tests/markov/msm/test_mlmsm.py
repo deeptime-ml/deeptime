@@ -298,9 +298,9 @@ def disconnected_states():
     weakly_connected_sets = [[0, 1, 2, 3], [4, 5, 7], [6]]
     cmat_set1 = np.array([[3, 7, 2],
                           [6, 3, 2],
-                          [2, 2, 3]], dtype=np.int)
+                          [2, 2, 3]], dtype=int)
     cmat_set2 = np.array([[6, 9],
-                          [8, 6]], dtype=np.int)
+                          [8, 6]], dtype=int)
     count_matrices = [cmat_set1, cmat_set2, None, None, None]
     return DisconnectedStatesScenario(dtrajs=dtrajs, connected_sets=connected_sets,
                                       weakly_connected_sets=weakly_connected_sets, count_matrices=count_matrices)

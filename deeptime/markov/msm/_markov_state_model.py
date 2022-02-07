@@ -518,11 +518,16 @@ class MarkovStateModel(Model):
             if self.sparse:
                 transition_matrix = self.transition_matrix ** power
             else:
-                ev_pow = np.real_if_close(self.eigenvalues().astype(complex) ** power)
-                if np.all(~np.iscomplex(ev_pow)):
-                    ev_pow = ev_pow.astype(self.transition_matrix.dtype)
-                diag = np.diag(ev_pow)
-                transition_matrix = np.linalg.multi_dot([self.eigenvectors_right(), diag, self.eigenvectors_left()])
+                integer_power = np.issubdtype(type(power), np.integer)
+                if integer_power:
+                    ev_pow = np.linalg.matrix_power(self.eigenvalues(), power)
+                else:
+                    ev_pow = np.real_if_close(self.eigenvalues().astype(complex) ** power)
+                    if np.all(~np.iscomplex(ev_pow)):
+                        ev_pow = ev_pow.astype(self.transition_matrix.dtype)
+                transition_matrix = np.linalg.multi_dot([
+                    self.eigenvectors_right(), np.diag(ev_pow), self.eigenvectors_left()
+                ])
         return transition_matrix
 
     def propagate(self, p0, k: int):

@@ -281,8 +281,7 @@ class VAMP(EstimatorTransformer):
         self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
         x, y = dataset[:]
         transformed = (self.observable_transform(x), self.observable_transform(y))
-        covariances = self._covariance_estimator.partial_fit(transformed, weights=weights)\
-            .fetch_model()
+        covariances = self._covariance_estimator.partial_fit(transformed, weights=weights).fetch_model()
         return self.fit_from_covariances(covariances)
 
     @property

@@ -103,7 +103,7 @@ def bootstrapping_count_matrix(Ct, nbs=10000):
     T = Ct.sum()
     # Reshape and normalize the count matrix:
     p = Ct.toarray()
-    p = np.reshape(p, (N * N,)).astype(np.float)
+    p = np.reshape(p, (N * N,)).astype(float)
     p = p / T
     # Perform the bootstrapping:
     svals = np.zeros((nbs, N))

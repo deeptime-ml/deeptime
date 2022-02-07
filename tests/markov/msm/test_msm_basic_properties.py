@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 import scipy
@@ -7,6 +9,7 @@ from scipy import sparse
 
 from deeptime.data import BirthDeathChain
 from deeptime.markov.msm import MaximumLikelihoodMSM, AugmentedMSM, MarkovStateModel
+from deeptime.util.exceptions import ImaginaryEigenValueWarning
 from tests.markov.msm.util import MLMSM_PARAMS, AMM_PARAMS, MLMSM_IDS, AMM_IDS, make_double_well
 
 
@@ -204,7 +207,10 @@ class TestMSMBasicProperties(object):
             pytest.skip("timescales reference values only valid without constrained stationary distribution")
         msm = scenario.msm
         if not msm.sparse:
-            ts = msm.timescales()
+            with warnings.catch_warnings():
+                if not msm.reversible:
+                    warnings.filterwarnings("ignore", category=ImaginaryEigenValueWarning)
+                ts = msm.timescales()
         else:
             k = 4
             ts = msm.timescales(k)

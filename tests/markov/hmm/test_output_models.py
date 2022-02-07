@@ -146,7 +146,8 @@ class TestGaussian(unittest.TestCase):
 
         obs = gmm.sample(100000 + np.random.randint(-3, 3))[0].squeeze()
 
-        init = deeptime.markov.hmm.init.gaussian.from_data(obs, n_hidden_states=3, reversible=True)
+        init = deeptime.markov.hmm.init.gaussian.from_data(obs, n_hidden_states=3, reversible=True,
+                                                           transition_matrix_kwargs=dict(maxerr=1e-5))
         hmm_est = deeptime.markov.hmm.MaximumLikelihoodHMM(init, lagtime=1)
         hmm = hmm_est.fit(obs).fetch_model()
 
