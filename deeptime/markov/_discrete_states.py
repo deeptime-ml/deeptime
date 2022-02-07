@@ -1,11 +1,11 @@
 import numpy as np
 
-from deeptime.util.types import ensure_dtraj_list
+from deeptime.util.types import ensure_dtraj_list, ensure_integer_array
 
 
 def map_dtrajs_to_symbols(dtrajs, state_symbols: np.ndarray, n_states_full: int,
                           empty_symbol: np.int32 = -1, check=False):
-    r"""A list of integer arrays with the discrete trajectories mapped to the currently used set of symbols.
+    r"""A (list of) integer array(s) with the discrete trajectories mapped to the currently used set of symbols.
 
     Parameters
     ----------
@@ -22,13 +22,15 @@ def map_dtrajs_to_symbols(dtrajs, state_symbols: np.ndarray, n_states_full: int,
 
     Returns
     -------
-    transformed_dtrajs : List[np.ndarray]
-        Mapped dtrajs.
+    transformed_dtrajs : List[np.ndarray] or np.ndarray
+        Mapped dtraj(s).
     """
-    if check:
-        dtrajs = ensure_dtraj_list(dtrajs)
     mapping = np.full(n_states_full, empty_symbol, dtype=np.int32)
     mapping[state_symbols] = np.arange(len(state_symbols))
+    if check:
+        if isinstance(dtrajs, np.ndarray):
+            return mapping[ensure_integer_array(dtrajs)]
+        dtrajs = ensure_dtraj_list(dtrajs)
     return [mapping[dtraj] for dtraj in dtrajs]
 
 
@@ -125,7 +127,7 @@ class DiscreteStatesManager:
         return float(self.n_states) / float(self.n_states_full)
 
     def project(self, dtrajs, check=False):
-        r"""A list of integer arrays with the discrete trajectories mapped to the currently used set of symbols.
+        r"""A (list of) integer arrays with the discrete trajectories mapped to the currently used set of symbols.
         For example, if there has been a subselection of the model for connectivity='largest', the indices will be
         given within the connected set, frames that do not correspond to a considered symbol are set to -1.
 

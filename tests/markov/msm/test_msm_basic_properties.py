@@ -89,9 +89,9 @@ class TestMSMBasicProperties(object):
     def test_discrete_trajectories_active(self, setting):
         scenario = make_double_well(setting)
         dta = scenario.msm.count_model.transform_discrete_trajectories_to_submodel(scenario.data.dtraj)
-        assert_equal(len(dta), 1)
+        assert_equal(len(dta), len(scenario.data.dtraj))
         # HERE: states are shifted down from the beginning, because early states are missing
-        assert_(dta[0][0] < scenario.data.dtraj[0])
+        assert_(dta[0] < scenario.data.dtraj[0])
 
     def test_transition_matrix(self, setting):
         scenario = make_double_well(setting)
