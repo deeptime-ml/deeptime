@@ -194,7 +194,7 @@ class TRAMModel(Model):
         return np.dot(np.exp(sample_weights), observable_values)
 
     def compute_PMF(self, dtrajs, bias_matrices, bin_indices, n_bins=None, therm_state=-1):
-        r""" Compute an observable value.
+        r""" Compute the potential of mean force over a number of bins.
 
         Parameters
         ----------
