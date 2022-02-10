@@ -188,7 +188,7 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
 
                 with torch.no_grad():
                     lval = []
-                    for batch_0, batch_t in data_loader:
+                    for batch_0, batch_t in validation_loader:
                         batch_0 = batch_0.to(device=self.device)
                         batch_t = batch_t.to(device=self.device)
 
