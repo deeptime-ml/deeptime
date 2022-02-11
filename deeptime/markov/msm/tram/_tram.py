@@ -1,4 +1,5 @@
 import warnings
+import numpy as np
 from typing import Optional
 from sklearn.exceptions import ConvergenceWarning
 
@@ -35,11 +36,21 @@ def _unpack_input_tuple(data):
     return dtrajs, bias_matrices, ttrajs
 
 
-def _make_tram_estimator(model, dataset):
-    if model is None:
-        return tram.TRAM(dataset.n_therm_states, dataset.n_markov_states)
-    else:
+def _make_tram_estimator(model, dataset, MBAR_maxiter=1000, MBAR_maxerr=1e-6):
+    if model is not None:
         return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
+    else:
+        if MBAR_maxiter > 0:
+            # initialize free energies using MBAR.
+            free_energies = tram.initialize_MBAR(dataset.bias_matrices, [len(traj) for traj in dataset.dtrajs],
+                                                 MBAR_maxiter, MBAR_maxerr)
+            biased_conf_enegries = np.repeat(free_energies[:, None], dataset.n_markov_states, axis=1)
+
+        else:
+            free_energies = None
+
+    lagrangian_mult_log = tram.initialize_lagrangians(dataset)
+    return tram.TRAM(dataset.n_therm_states, dataset.n_markov_states, free_energies, lagrangian_mult_log)
 
 
 def _get_dataset_from_input(data):
@@ -218,13 +229,14 @@ class TRAMCallback(callbacks.ProgressCallback):
     increments : list, optional
         A list to append the increments to that are passed to the callback.__call__() method.
     """
+
     def __init__(self, progress, total, log_likelihoods_list=None, increments=None):
         super().__init__(progress, total=total, description="Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
         self.last_increment = 0
 
-    def __call__(self, n_iterations,  increment, log_likelihood):
+    def __call__(self, n_iterations, increment, log_likelihood):
         """Call the callback. Increment a progress bar (if available) and store convergence information.
 
         Parameters
