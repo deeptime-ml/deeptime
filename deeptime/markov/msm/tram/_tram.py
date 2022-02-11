@@ -196,7 +196,7 @@ class TRAM(_MSMBaseEstimator):
         return self
 
     def _make_tram_estimator(self, model, dataset):
-        """ Construct the underlying c++ TRAM estimator. If a model is given, the estimator is initialized with the
+        r""" Construct the underlying c++ TRAM estimator. If a model is given, the estimator is initialized with the
         model parameters. Otherwise, the free energies are initialized with the MBAR estimate for the free energies. The
         lagrangian multipliers are initialized with values v_i^k = log( 1/2 * \sum_j (c_ij^k + c_ji^k)), and
         modified state counts are initialized with zeros.

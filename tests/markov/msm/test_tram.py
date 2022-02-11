@@ -272,11 +272,11 @@ def test_fit_with_dataset():
 
 
 def test_mbar_initalization():
-    input = make_random_input_data(5, 5)
+    (dtrajs, bias_matrices) = make_random_input_data(5, 5, make_ttrajs=False)
     tram = TRAM(callback_interval=2, maxiter=0, progress=tqdm, mbar_init_maxiter=100)
-    LL1 = tram.fit_fetch(input).compute_log_likelihood(input[0], input[1])
+    ll1 = tram.fit_fetch((dtrajs, bias_matrices)).compute_log_likelihood(dtrajs, bias_matrices)
 
     tram = TRAM(callback_interval=2, maxiter=0, progress=tqdm, mbar_init_maxiter=0)
-    LL2 = tram.fit_fetch(input).compute_log_likelihood(input[0], input[1])
+    ll2 = tram.fit_fetch((dtrajs, bias_matrices)).compute_log_likelihood(dtrajs, bias_matrices)
 
-    np.testing.assert_(LL1 > LL2)
+    np.testing.assert_(ll1 > ll2)
