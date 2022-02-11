@@ -3,7 +3,7 @@ from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection, TRAM, TRAMModel
 
 
-def make_random_model(n_therm_states, n_markov_states, transition_matrices=None, biased_conf_energies=None):
+def make_random_model(n_therm_states, n_markov_states, transition_matrices=None):
     transition_counts = np.zeros((n_therm_states, n_markov_states, n_markov_states))
 
     if transition_matrices is None:
@@ -11,8 +11,7 @@ def make_random_model(n_therm_states, n_markov_states, transition_matrices=None,
         transition_matrices = np.random.rand(n_therm_states, n_markov_states, n_markov_states)
         transition_matrices /= np.sum(transition_matrices, axis=-1, keepdims=True)
 
-    if biased_conf_energies is None:
-        biased_conf_energies = np.random.rand(n_therm_states, n_markov_states)
+    biased_conf_energies = np.random.rand(n_therm_states, n_markov_states)
     lagrangians = np.random.rand(n_therm_states, n_markov_states)
     modified_state_counts_log = np.log(np.random.rand(n_therm_states, n_markov_states))
     count_models = [TransitionCountModel(counts) for counts in transition_counts]
