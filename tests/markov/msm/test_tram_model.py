@@ -54,7 +54,16 @@ def test_compute_pmf():
     pmf = model.compute_PMF(dtrajs, bias_matrices, bin_indices)
 
     np.testing.assert_equal(len(pmf), 10)
-    np.testing.assert_(np.min(pmf >= 0))
+    np.testing.assert_almost_equal(np.exp(-pmf).sum(), 1.)
+
+
+def test_compute_pmf_empty_bins():
+    model = make_random_model(5, 5)
+    n_samples = 10
+    dtrajs = [np.random.randint(0, 5, size=n_samples) for _ in range(5)]
+    bias_matrices = np.random.uniform(0, 1, (5, n_samples, 5))
+    pmf = model.compute_PMF(dtrajs, bias_matrices, bin_indices=dtrajs, n_bins=10)
+    np.testing.assert_equal(len(pmf), 10)
 
 
 def test_compute_observable():
