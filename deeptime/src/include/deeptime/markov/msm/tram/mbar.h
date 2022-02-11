@@ -5,7 +5,7 @@
 #pragma once
 
 #include <deeptime/numeric/kahan_summation.h>
-#include "tram_types.h"
+#include "shared_methods.h"
 
 
 namespace deeptime::markov::tram {
@@ -22,21 +22,6 @@ void shiftEnergiesToHaveZeroMinimum(ExchangeableArray<dtype, 1> &thermStateEnerg
     for (StateIndex k = 0; k < nThermStates; ++k) {
         thermStateEnergiesBuf(k) -= shift;
     }
-}
-
-// Get the error in the energies between this iteration and the previous one.
-template<typename dtype>
-dtype computeError(const ExchangeableArray<dtype, 1> &thermStateEnergies, StateIndex nThermStates) {
-    auto thermEnergiesBuf = thermStateEnergies.firstBuf();
-    auto oldThermEnergiesBuf = thermStateEnergies.secondBuf();
-
-    dtype maxError = 0;
-
-    for (StateIndex k = 0; k < nThermStates; ++k) {
-        auto energyDelta = std::abs(thermEnergiesBuf(k) - oldThermEnergiesBuf(k));
-        maxError = std::max(maxError, energyDelta);
-    }
-    return maxError;
 }
 
 template<typename dtype>
@@ -73,25 +58,36 @@ void selfConsistentUpdate(ExchangeableArray<dtype, 1> &thermStateEnergies,
 template<typename dtype>
 np_array <dtype>
 initialize_MBAR(BiasMatrix <dtype> biasMatrix, CountsMatrix stateCounts, std::size_t maxIter = 1000,
-                double maxErr = 1e-6) {
-
+                double maxErr = 1e-6, std::size_t callbackInterval = 1, const py::object *callback = nullptr) {
+    // get dimensions...
     auto nThermStates = stateCounts.shape(0);
-    auto stateCountsLog = std::vector<dtype>(nThermStates);
+    auto nSamples = biasMatrix.shape(1);
 
+    // work in log space so compute the log of the statecounts beforehand
+    auto stateCountsLog = std::vector<dtype>(nThermStates);
     std::transform(stateCounts.data(), stateCounts.data() + nThermStates, stateCountsLog.begin(),
                    [](const auto counts) { return std::log(counts); }
     );
 
-    std::size_t nSamples = biasMatrix.shape(1);
-
+    // energies get computed here. We need the old ones to compute the new ones, and both to compute an iteration
+    // error, so store them in an exchangable buffer
     ExchangeableArray<dtype, 1> thermStateEnergies(std::vector<StateIndex>{nThermStates}, 0.);
+
+    // Get buffer for the bias energies
     ArrayBuffer<BiasMatrix<dtype>, 2> biasMatrixBuf{biasMatrix};
 
     for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
 
+        // The magic happens here
         selfConsistentUpdate(thermStateEnergies, biasMatrixBuf, stateCountsLog, nThermStates, nSamples);
 
         auto iterationError = computeError(thermStateEnergies, nThermStates);
+
+        // keep the python user up to date on the progress by a callback
+        if (callback && callbackInterval > 0 && iterationCount % callbackInterval == 0) {
+            py::gil_scoped_acquire guard;
+            (*callback)(callbackInterval, iterationError);
+        }
 
         if (iterationError < maxErr) {
             // We have converged!

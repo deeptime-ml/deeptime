@@ -33,8 +33,8 @@ PYBIND11_MODULE(_tram_bindings, m) {
                     "transition_counts"_a);
 
         tramMod.def("initialize_free_energies_mbar", &initialize_MBAR<double>, py::call_guard<py::gil_scoped_release>(),
-                    "bias_matrix"_a, "state_counts"_a, "max_iter"_a,
-                    "max_err"_a);
+                    "bias_matrix"_a, "state_counts"_a, "max_iter"_a = 1000,"max_err"_a = 1e-6,
+                    "callback_interval"_a = 1, "callback"_a = nullptr);
 
         tramMod.def("compute_sample_weights_log", &computeSampleWeightsLog<double>,
                     py::call_guard<py::gil_scoped_release>(),

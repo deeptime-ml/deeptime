@@ -36,24 +36,6 @@ def _unpack_input_tuple(data):
     return dtrajs, bias_matrices, ttrajs
 
 
-def _make_tram_estimator(model, dataset, MBAR_maxiter=1000, MBAR_maxerr=1e-6):
-    if model is not None:
-        return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
-    else:
-        if MBAR_maxiter > 0:
-            # initialize free energies using MBAR.
-            free_energies = tram.initialize_free_energies_mbar(np.concatenate(dataset.bias_matrices),
-                                                               dataset.state_counts.sum(axis=1),
-                                                               MBAR_maxiter, MBAR_maxerr)
-            biased_conf_energies = np.repeat(free_energies[:, None], dataset.n_markov_states, axis=1)
-        else:
-            biased_conf_energies = np.zeros((dataset.n_markov_states, dataset.n_therm_states))
-
-    lagrangian_mult_log = tram.initialize_lagrangians(dataset.transition_counts)
-    modified_state_counts = np.zeros_like(lagrangian_mult_log)  # intialize this as the dataset state counts???
-    return tram.TRAM(biased_conf_energies, lagrangian_mult_log, modified_state_counts)
-
-
 def _get_dataset_from_input(data):
     if isinstance(data, tuple):
         dtrajs, bias_matrices, ttrajs = _unpack_input_tuple(data)
@@ -84,11 +66,18 @@ class TRAM(_MSMBaseEstimator):
           the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
         * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
           Recommended when estimating Bayesian MSMs.
-    maxiter : int, optional, default=10000
+    maxiter : int, optional, default=1000
         The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
-    maxerr : float, optional, default=1E-15
+    maxerr : float, optional, default=1E-8
         Convergence criterion based on the maximal free energy change in a self-consistent
         iteration step.
+    mbar_init_maxiter : int, optional, default=1000
+        The maximum number of MBAR iterations. These MBAR iterations are executed before TRAM, to initialize the free
+        energies with the MBAR estimate, which is a good initial estimate for the TRAM free energies and will
+        significantly speed up the convergence of TRAM.
+    mbar_init_maxerr : float, optional, default = 1eE-8
+        Convergence criterion for the MBAR initialization routine, based on the maximum energy change in a self-
+        consistent MBAR iteration step.
     track_log_likelihoods : bool, optional, default=False
         If `True`, the log-likelihood is stored every callback_interval steps. For calculation of the log-likelihood the
         transition matrix needs to be constructed, which will slow down estimation. By default, log-likelihoods are
@@ -193,7 +182,7 @@ class TRAM(_MSMBaseEstimator):
             dataset.check_against_model(model)
 
         # only construct estimator if it hasn't been loaded from the model yet
-        self._tram_estimator = _make_tram_estimator(model, dataset, self.mbar_init_maxiter, self.mbar_init_maxerr)
+        self._tram_estimator = self._make_tram_estimator(model, dataset)
 
         self._run_estimation(dataset.tram_input)
         self._model = TRAMModel(count_models=dataset.count_models,
@@ -205,6 +194,34 @@ class TRAM(_MSMBaseEstimator):
                                 markov_state_energies=self._tram_estimator.markov_state_energies)
 
         return self
+
+    def _make_tram_estimator(self, model, dataset):
+        """ Construct the underlying c++ TRAM estimator. If a model is given, the estimator is initialized with the
+        model parameters. Otherwise, the free energies are initialized with the MBAR estimate for the free energies. The
+        lagrangian multipliers are initialized with values v_i^k = log( 1/2 * \sum_j (c_ij^k + c_ji^k)), and
+        modified state counts are initialized with zeros.
+        """
+        if model is not None:
+            return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
+        else:
+            if self.mbar_init_maxiter > 0:
+                # initialize free energies using MBAR.
+                print(tram.initialize_free_energies_mbar)
+                with callbacks.ProgressCallback(self.progress, "Initializing free energies using MBAR",
+                                                self.mbar_init_maxiter) as callback:
+                    free_energies = tram.initialize_free_energies_mbar(np.concatenate(dataset.bias_matrices),
+                                                                       dataset.state_counts.sum(axis=1),
+                                                                       self.mbar_init_maxiter, self.mbar_init_maxerr,
+                                                                       self.callback_interval, callback)
+
+                # copy free energies along the markoc state axis to get initial biased_conf_energies
+                biased_conf_energies = np.repeat(free_energies[:, None], dataset.n_markov_states, axis=1)
+            else:
+                biased_conf_energies = np.zeros((dataset.n_markov_states, dataset.n_therm_states))
+
+        lagrangian_mult_log = tram.initialize_lagrangians(dataset.transition_counts)
+        modified_state_counts = np.zeros_like(lagrangian_mult_log)  # intialize this as the dataset state counts???
+        return tram.TRAM(biased_conf_energies, lagrangian_mult_log, modified_state_counts)
 
     def _run_estimation(self, tram_input):
         """ Estimate the free energies using self-consistent iteration as described in the TRAM paper. """
@@ -240,7 +257,7 @@ class TRAMCallback(callbacks.ProgressCallback):
         self.increments = increments
         self.last_increment = 0
 
-    def __call__(self, n_iterations, increment, log_likelihood):
+    def __call__(self, n_iterations, increment, log_likelihood=0):
         """Call the callback. Increment a progress bar (if available) and store convergence information.
 
         Parameters

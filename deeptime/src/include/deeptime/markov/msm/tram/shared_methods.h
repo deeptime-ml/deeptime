@@ -95,5 +95,22 @@ private:
     std::tuple<np_array < dtype>, np_array <dtype>> arrays;
     std::tuple<std::unique_ptr<MutableBufferType>, std::unique_ptr<MutableBufferType>> buffers;
 };
+
+// Get the error in the energies between this iteration and the previous one.
+template<typename dtype, int ndims>
+dtype computeError(const ExchangeableArray<dtype, ndims> &exchangeableArray, std::size_t bufferSize) {
+    const auto* newBuf = exchangeableArray.first()->data();
+    const auto* oldBuf = exchangeableArray.second()->data();
+
+    dtype maxError = 0;
+
+    for (auto k = 0; k < bufferSize; ++k) {
+        auto energyDelta = std::abs(newBuf[k] - oldBuf[k]);
+        maxError = std::max(maxError, energyDelta);
+    }
+    return maxError;
+}
+
+
 }
 

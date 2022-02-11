@@ -210,11 +210,10 @@ public:
 
             // Tracking of energy vectors for error calculation.
             updateThermStateEnergies();
-            updateStatVectors(statVectors_);
 
             // compare new thermStateEnergies_ and statVectors with old to get the
             // iteration error (= how much the energies changed).
-            iterationError = computeError(statVectors_);
+            iterationError = computeIterationError();
 
             dtype logLikelihood{0};
             if (trackLogLikelihoods) {
@@ -407,36 +406,21 @@ private:
     }
 
     // Get the error in the energies between this iteration and the previous one.
-    dtype computeError(const ExchangeableArray<dtype, 2> &statVectors) const {
-        auto thermEnergiesBuf = thermStateEnergies_.firstBuf();
-        auto oldThermEnergiesBuf = thermStateEnergies_.secondBuf();
-        auto statVectorsBuf = statVectors.firstBuf();
-        auto oldStatVectorsBuf = statVectors.secondBuf();
+    dtype computeIterationError() {
+        updateStatVectors();
 
-        dtype maxError = 0;
-        auto nThermStates = nThermStates_;
-        auto nMarkovStates = nMarkovStates_;
+        dtype error1 = computeError(thermStateEnergies_, nThermStates_);
+        dtype error2 = computeError(statVectors_, nThermStates_ * nMarkovStates_);
 
-        #pragma omp parallel for default(none) shared(maxError) firstprivate(nThermStates, nMarkovStates, \
-                                    thermEnergiesBuf, oldThermEnergiesBuf, statVectorsBuf, oldStatVectorsBuf)
-        for (StateIndex k = 0; k < nThermStates; ++k) {
-            auto energyDelta = std::abs(thermEnergiesBuf(k) - oldThermEnergiesBuf(k));
-            maxError = std::max(maxError, energyDelta);
-
-            for (StateIndex i = 0; i < nMarkovStates; ++i) {
-                energyDelta = std::abs(statVectorsBuf(k, i) - oldStatVectorsBuf(k, i));
-                maxError = std::max(maxError, energyDelta);
-            }
-        }
-        return maxError;
+        return std::max(error1, error2);
     }
 
-    void updateStatVectors(ExchangeableArray<dtype, 2> &statVectors) {
+    void updateStatVectors() {
         // move current values to old
-        statVectors.exchange();
+        statVectors_.exchange();
 
         // compute new values
-        auto statVectorsBuf = statVectors.firstBuf();
+        auto statVectorsBuf = statVectors_.firstBuf();
         auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
 

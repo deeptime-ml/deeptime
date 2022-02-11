@@ -76,7 +76,7 @@ if __name__ == "__main__":
     dtrajs = clustering.transform(trajectories.flatten()).reshape((len(bias_matrices), n_samples))
 
     from tqdm import tqdm
-    tram = TRAM(lagtime=1, maxiter=100, maxerr=1e-2, progress=tqdm)
+    tram = TRAM(lagtime=1, maxiter=1000, maxerr=1e-3, progress=tqdm)
 
     # For every simulation frame seen in trajectory i and time step t, btrajs[i][t,k] is the
     # bias energy of that frame evaluated in the k'th thermodynamic state (i.e. at the k'th

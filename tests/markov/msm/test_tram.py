@@ -6,7 +6,6 @@ from deeptime.markov.msm import TRAM, TRAMDataset
 from tests.testing_utilities import ProgressMock
 
 from .test_tram_model import make_random_model
-from flaky import flaky
 
 
 def make_random_input_data(n_therm_states, n_markov_states, n_samples=10, make_ttrajs=True):
@@ -235,7 +234,7 @@ def test_progress_bar_update_called():
     class ProgressFactory:
         def __new__(cls, *args, **kwargs): return progress
 
-    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressFactory)
+    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressFactory, mbar_init_maxiter=0)
     tram.fit(make_random_input_data(5, 5))
 
     # update() should be called 5 times
@@ -243,6 +242,22 @@ def test_progress_bar_update_called():
     np.testing.assert_equal(progress.n, 10)
     # and close() one time
     np.testing.assert_equal(progress.n_close_calls, 1)
+
+
+def test_progress_bar_update_called_with_mbar():
+    progress = ProgressMock()
+
+    class ProgressFactory:
+        def __new__(cls, *args, **kwargs): return progress
+
+    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressFactory, mbar_init_maxiter=10)
+    tram.fit(make_random_input_data(5, 5))
+
+    # update() should be called 5 times
+    np.testing.assert_equal(progress.n_update_calls, 10)
+    np.testing.assert_equal(progress.n, 20)
+    # and close() one time
+    np.testing.assert_equal(progress.n_close_calls, 2)
 
 
 def test_tqdm_progress_bar():
@@ -254,3 +269,14 @@ def test_fit_with_dataset():
     dataset = TRAMDataset(dtrajs=[np.asarray([0, 1, 2])], bias_matrices=[np.asarray([[1.], [2.], [3.]])])
     tram = TRAM()
     tram.fit(dataset)
+
+
+def test_mbar_initalization():
+    input = make_random_input_data(5, 5)
+    tram = TRAM(callback_interval=2, maxiter=0, progress=tqdm, mbar_init_maxiter=100)
+    LL1 = tram.fit_fetch(input).compute_log_likelihood(input[0], input[1])
+
+    tram = TRAM(callback_interval=2, maxiter=0, progress=tqdm, mbar_init_maxiter=0)
+    LL2 = tram.fit_fetch(input).compute_log_likelihood(input[0], input[1])
+
+    np.testing.assert_(LL1 > LL2)
