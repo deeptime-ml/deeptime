@@ -42,15 +42,16 @@ def _make_tram_estimator(model, dataset, MBAR_maxiter=1000, MBAR_maxerr=1e-6):
     else:
         if MBAR_maxiter > 0:
             # initialize free energies using MBAR.
-            free_energies = tram.initialize_MBAR(dataset.bias_matrices, [len(traj) for traj in dataset.dtrajs],
-                                                 MBAR_maxiter, MBAR_maxerr)
-            biased_conf_enegries = np.repeat(free_energies[:, None], dataset.n_markov_states, axis=1)
-
+            free_energies = tram.initialize_free_energies_mbar(np.concatenate(dataset.bias_matrices),
+                                                               dataset.state_counts.sum(axis=1),
+                                                               MBAR_maxiter, MBAR_maxerr)
+            biased_conf_energies = np.repeat(free_energies[:, None], dataset.n_markov_states, axis=1)
         else:
-            free_energies = None
+            biased_conf_energies = np.zeros((dataset.n_markov_states, dataset.n_therm_states))
 
-    lagrangian_mult_log = tram.initialize_lagrangians(dataset)
-    return tram.TRAM(dataset.n_therm_states, dataset.n_markov_states, free_energies, lagrangian_mult_log)
+    lagrangian_mult_log = tram.initialize_lagrangians(dataset.transition_counts)
+    modified_state_counts = np.zeros_like(lagrangian_mult_log)  # intialize this as the dataset state counts???
+    return tram.TRAM(biased_conf_energies, lagrangian_mult_log, modified_state_counts)
 
 
 def _get_dataset_from_input(data):
@@ -112,7 +113,8 @@ class TRAM(_MSMBaseEstimator):
 
     def __init__(
             self, lagtime=1, count_mode='sliding',
-            maxiter=10000, maxerr: float = 1e-8,
+            maxiter=1000, maxerr: float = 1e-8,
+            mbar_init_maxiter=1000, mbar_init_maxerr=1e-8,
             track_log_likelihoods=False, callback_interval=1,
             progress=None):
 
@@ -123,6 +125,8 @@ class TRAM(_MSMBaseEstimator):
         self._tram_estimator = None
         self.maxiter = maxiter
         self.maxerr = maxerr
+        self.mbar_init_maxiter = mbar_init_maxiter
+        self.mbar_init_maxerr = mbar_init_maxerr
         self.track_log_likelihoods = track_log_likelihoods
         self.callback_interval = callback_interval
         self.progress = progress
@@ -189,7 +193,7 @@ class TRAM(_MSMBaseEstimator):
             dataset.check_against_model(model)
 
         # only construct estimator if it hasn't been loaded from the model yet
-        self._tram_estimator = _make_tram_estimator(model, dataset)
+        self._tram_estimator = _make_tram_estimator(model, dataset, self.mbar_init_maxiter, self.mbar_init_maxerr)
 
         self._run_estimation(dataset.tram_input)
         self._model = TRAMModel(count_models=dataset.count_models,
