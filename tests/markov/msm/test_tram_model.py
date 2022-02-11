@@ -3,7 +3,7 @@ from deeptime.markov import TransitionCountEstimator, TransitionCountModel
 from deeptime.markov.msm import MarkovStateModelCollection, TRAM, TRAMModel
 
 
-def make_random_model(n_therm_states, n_markov_states, transition_matrices=None):
+def make_random_model(n_therm_states, n_markov_states, transition_matrices=None, biased_conf_energies=None):
     transition_counts = np.zeros((n_therm_states, n_markov_states, n_markov_states))
 
     if transition_matrices is None:
@@ -11,7 +11,8 @@ def make_random_model(n_therm_states, n_markov_states, transition_matrices=None)
         transition_matrices = np.random.rand(n_therm_states, n_markov_states, n_markov_states)
         transition_matrices /= np.sum(transition_matrices, axis=-1, keepdims=True)
 
-    biased_conf_energies = np.random.rand(n_therm_states, n_markov_states)
+    if biased_conf_energies is None:
+        biased_conf_energies = np.random.rand(n_therm_states, n_markov_states)
     lagrangians = np.random.rand(n_therm_states, n_markov_states)
     modified_state_counts_log = np.log(np.random.rand(n_therm_states, n_markov_states))
     count_models = [TransitionCountModel(counts) for counts in transition_counts]
@@ -54,7 +55,16 @@ def test_compute_pmf():
     pmf = model.compute_PMF(dtrajs, bias_matrices, bin_indices)
 
     np.testing.assert_equal(len(pmf), 10)
-    np.testing.assert_(np.min(pmf >= 0))
+    np.testing.assert_almost_equal(np.exp(-pmf).sum(), 1.)
+
+
+def test_compute_pmf_empty_bins():
+    model = make_random_model(5, 5)
+    n_samples = 10
+    dtrajs = [np.random.randint(0, 5, size=n_samples) for _ in range(5)]
+    bias_matrices = np.random.uniform(0, 1, (5, n_samples, 5))
+    pmf = model.compute_PMF(dtrajs, bias_matrices, bin_indices=dtrajs, n_bins=10)
+    np.testing.assert_equal(len(pmf), 10)
 
 
 def test_compute_observable():
