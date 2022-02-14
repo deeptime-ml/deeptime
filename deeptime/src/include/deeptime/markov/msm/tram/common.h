@@ -98,7 +98,7 @@ private:
 };
 
 // Get the error in the energies between this iteration and the previous one.
-template<typename dtype, int ndims>
+template<typename dtype, auto ndims>
 dtype computeError(const ExchangeableArray<dtype, ndims> &exchangeableArray, StateIndex bufferSize) {
     const auto* newBuf = exchangeableArray.first()->data();
     const auto* oldBuf = exchangeableArray.second()->data();
