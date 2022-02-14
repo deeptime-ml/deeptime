@@ -485,8 +485,9 @@ def largest_connected_submatrix(C, directed=True, lcc=None):
            [ 0,  0,  4]]...)
 
     """
-    return sparse.connectivity.largest_connected_submatrix(C if issparse(C) else csr_matrix(C),
-                                                           directed=directed, lcc=lcc).toarray()
+    lcc = sparse.connectivity.largest_connected_submatrix(C if issparse(C) else csr_matrix(C),
+                                                          directed=directed, lcc=lcc)
+    return lcc if issparse(C) else lcc.toarray()
 
 
 def is_connected(C, directed=True):
