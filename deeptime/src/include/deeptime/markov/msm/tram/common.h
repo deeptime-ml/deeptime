@@ -4,6 +4,7 @@
 
 #pragma once
 #include "deeptime/common.h"
+#include <deeptime/numeric/kahan_summation.h>
 
 namespace deeptime::markov::tram{
 
@@ -98,7 +99,7 @@ private:
 
 // Get the error in the energies between this iteration and the previous one.
 template<typename dtype, int ndims>
-dtype computeError(const ExchangeableArray<dtype, ndims> &exchangeableArray, std::size_t bufferSize) {
+dtype computeError(const ExchangeableArray<dtype, ndims> &exchangeableArray, StateIndex bufferSize) {
     const auto* newBuf = exchangeableArray.first()->data();
     const auto* oldBuf = exchangeableArray.second()->data();
 
@@ -111,6 +112,4 @@ dtype computeError(const ExchangeableArray<dtype, ndims> &exchangeableArray, std
     return maxError;
 }
 
-
 }
-

@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <deeptime/numeric/kahan_summation.h>
 #include "common.h"
 
 
