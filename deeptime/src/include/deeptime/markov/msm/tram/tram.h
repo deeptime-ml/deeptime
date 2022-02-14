@@ -596,7 +596,7 @@ private:
 
 
 template <typename dtype>
-auto initLagrangianMult(const CountsMatrix &transitionCounts) {
+np_array_nfc<dtype> initLagrangianMult(const CountsMatrix &transitionCounts) {
     auto nThermStates = static_cast<StateIndex>(transitionCounts.shape(0));
     auto nMarkovStates = static_cast<StateIndex>(transitionCounts.shape(1));
 

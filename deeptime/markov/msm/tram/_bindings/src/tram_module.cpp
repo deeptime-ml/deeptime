@@ -29,10 +29,9 @@ PYBIND11_MODULE(_tram_bindings, m) {
                         BiasMatrix<double >>(),
                 "state_counts"_a, "transition_counts"_a, "dtraj"_a, "bias_matrix"_a);
 
-        tramMod.def("initialize_lagrangians", &initLagrangianMult<double>, py::call_guard<py::gil_scoped_release>(),
-                    "transition_counts"_a);
+        tramMod.def("initialize_lagrangians", &initLagrangianMult<double>, "transition_counts"_a);
 
-        tramMod.def("initialize_free_energies_mbar", &initialize_MBAR<double>, py::call_guard<py::gil_scoped_release>(),
+        tramMod.def("initialize_free_energies_mbar", &initialize_MBAR<double>,
                     "bias_matrix"_a, "state_counts"_a, "max_iter"_a = 1000,"max_err"_a = 1e-6,
                     "callback_interval"_a = 1, "callback"_a = nullptr);
 

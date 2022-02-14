@@ -26,10 +26,10 @@ void shiftEnergiesToHaveZeroMinimum(ExchangeableArray<dtype, 1> &thermStateEnerg
     }
 }
 
-template<typename dtype>
+template<typename dtype, typename Size>
 void selfConsistentUpdate(ExchangeableArray<dtype, 1> &thermStateEnergies,
                           const ArrayBuffer<BiasMatrix<dtype>, 2> &biasMatrixBuf,
-                          const std::vector<dtype> &stateCountsLog, StateIndex nThermStates, std::size_t nSamples) {
+                          const std::vector<dtype> &stateCountsLog, StateIndex nThermStates, Size nSamples) {
     thermStateEnergies.exchange();
     auto newThermStateEnergies = thermStateEnergies.first();
 
@@ -43,7 +43,7 @@ void selfConsistentUpdate(ExchangeableArray<dtype, 1> &thermStateEnergies,
     auto newThermEnergies = thermStateEnergies.firstBuf();
     auto oldThermEnergies = thermStateEnergies.secondBuf();
 
-    for (auto x = 0; x < nSamples; ++x) {
+    for (Size x = 0; x < nSamples; ++x) {
         for (auto l = 0; l < nThermStates; ++l) {
             scratch[l] = stateCountsLog[l] + oldThermEnergies[l] - biasMatrixBuf(x, l);
         }
