@@ -1,6 +1,5 @@
 import numpy as _np
-from scipy.sparse import csr_matrix
-from scipy.sparse.base import issparse
+from scipy.sparse import csr_matrix, issparse
 
 from deeptime.util.sparse import remove_negative_entries
 

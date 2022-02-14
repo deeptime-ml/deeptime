@@ -139,7 +139,6 @@ class BayesianMSMPosterior(BayesianModel):
     def ck_test(self, models, n_metastable_sets, include_lag0=True, err_est=False, progress=None):
         r""" Performs a Chapman Kolmogorov test.
         See :meth:`MarkovStateModel.ck_test <deeptime.markov.msm.MarkovStateModel.ck_test>` for more details """
-        from deeptime.util.validation import ChapmanKolmogorovTest
         clustering = self.prior.pcca(n_metastable_sets)
         observable = MembershipsObservable(self, clustering, initial_distribution=self.prior.stationary_distribution)
         from deeptime.util.validation import ck_test

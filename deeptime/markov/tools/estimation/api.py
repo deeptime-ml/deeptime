@@ -13,7 +13,6 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from scipy.sparse import csr_matrix
 from scipy.sparse import issparse
-from scipy.sparse.sputils import isdense
 
 from deeptime.util.types import ensure_dtraj_list
 from . import dense
@@ -378,10 +377,7 @@ def connected_sets(C, directed=True):
     [array([0, 1, 2])]
 
     """
-    if isdense(C):
-        return sparse.connectivity.connected_sets(csr_matrix(C), directed=directed)
-    else:
-        return sparse.connectivity.connected_sets(C, directed=directed)
+    return sparse.connectivity.connected_sets(C if issparse(C) else csr_matrix(C), directed=directed)
 
 
 def largest_connected_set(C, directed=True):
@@ -432,10 +428,7 @@ def largest_connected_set(C, directed=True):
     array([0, 1, 2])
 
     """
-    if isdense(C):
-        return sparse.connectivity.largest_connected_set(csr_matrix(C), directed=directed)
-    else:
-        return sparse.connectivity.largest_connected_set(C, directed=directed)
+    return sparse.connectivity.largest_connected_set(C if issparse(C) else csr_matrix(C), directed=directed)
 
 
 def largest_connected_submatrix(C, directed=True, lcc=None):
@@ -492,10 +485,8 @@ def largest_connected_submatrix(C, directed=True, lcc=None):
            [ 0,  0,  4]]...)
 
     """
-    if isdense(C):
-        return sparse.connectivity.largest_connected_submatrix(csr_matrix(C), directed=directed, lcc=lcc).toarray()
-    else:
-        return sparse.connectivity.largest_connected_submatrix(C, directed=directed, lcc=lcc)
+    return sparse.connectivity.largest_connected_submatrix(C if issparse(C) else csr_matrix(C),
+                                                           directed=directed, lcc=lcc).toarray()
 
 
 def is_connected(C, directed=True):
@@ -542,10 +533,7 @@ def is_connected(C, directed=True):
     True
 
     """
-    if isdense(C):
-        return sparse.connectivity.is_connected(csr_matrix(C), directed=directed)
-    else:
-        return sparse.connectivity.is_connected(C, directed=directed)
+    return sparse.connectivity.is_connected(C if issparse(C) else csr_matrix(C), directed=directed)
 
 
 ################################################################################
@@ -591,7 +579,7 @@ def prior_neighbor(C, alpha=0.001):
 
     """
 
-    if isdense(C):
+    if not issparse(C):
         B = sparse.prior.prior_neighbor(csr_matrix(C), alpha=alpha)
         return B.toarray()
     else:
@@ -633,7 +621,7 @@ def prior_const(C, alpha=0.001):
            [0.001, 0.001, 0.001]])
 
     """
-    if not isdense(C):
+    if issparse(C):
         warnings.warn("Prior will be a dense matrix for sparse input")
     return sparse.prior.prior_const(C, alpha=alpha)
 
@@ -690,11 +678,7 @@ def prior_rev(C, alpha=-1.0):
            [ 0.,  0., -1.]])
 
     """
-    if isdense(C):
-        return sparse.prior.prior_rev(C, alpha=alpha)
-    else:
-        # warnings.warn("Prior will be a dense matrix for sparse input")
-        return sparse.prior.prior_rev(C, alpha=alpha)
+    return sparse.prior.prior_rev(C, alpha=alpha)
 
 
 ################################################################################
@@ -803,7 +787,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
     """
     if issparse(C):
         sparse_input_type = True
-    elif isdense(C):
+    elif isinstance(C, np.ndarray):
         sparse_input_type = False
     else:
         raise NotImplementedError('C has an unknown type.')
