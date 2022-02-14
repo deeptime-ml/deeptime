@@ -1,3 +1,4 @@
+import numbers
 from typing import Union
 
 import numpy as np
@@ -53,7 +54,11 @@ class MembershipsObservable(Observable):
             return np.eye(self.n_sets)
         model = MembershipsObservable._to_markov_model(model)
         # otherwise compute or predict them by model.propagate
-        dtype = float if self.ignore_imaginary_parts or model.is_real else complex
+        integer_lag = isinstance(mlag, numbers.Integral)
+        if self.ignore_imaginary_parts or (model.is_real and integer_lag and np.all(np.isreal(self.P0))):
+            dtype = float
+        else:
+            dtype = complex
         pk_on_set = np.zeros((self.n_sets, self.n_sets), dtype=dtype)
         # compute observable on prior in case for Bayesian models.
         symbols = model.count_model.state_symbols
@@ -64,6 +69,8 @@ class MembershipsObservable(Observable):
             if subset is not None:
                 p0sub /= np.sum(p0)  # renormalize
             pksub = model.propagate(p0sub, mlag)
+            if dtype == float:
+                assert np.all(np.isreal(pksub)), f"wasnt real {pksub}"
             if self.ignore_imaginary_parts and np.any(np.iscomplex(pksub)):
                 # ignore complex stuff because of fractional powers
                 pksub = pksub.real
