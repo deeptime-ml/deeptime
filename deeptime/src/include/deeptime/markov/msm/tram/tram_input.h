@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "shared_methods.h"
+#include "common.h"
 
 namespace deeptime::markov::tram {
 

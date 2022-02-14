@@ -141,9 +141,9 @@ template<typename dtype>
 struct TRAM {
 public:
 
-    TRAM(np_array_nfc<dtype> &biasedConfEnergies,
-         np_array_nfc<dtype> &lagrangianMultLog,
-         np_array_nfc<dtype> &modifiedStateCountsLog)
+    TRAM(const np_array_nfc<dtype> &biasedConfEnergies,
+         const np_array_nfc<dtype> &lagrangianMultLog,
+         const np_array_nfc<dtype> &modifiedStateCountsLog)
             : nThermStates_(biasedConfEnergies.shape(0)),
               nMarkovStates_(biasedConfEnergies.shape(1)),
               biasedConfEnergies_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_})),
@@ -203,10 +203,11 @@ public:
         py::gil_scoped_release gil;
         for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
 
-            // Self-consistent update of the TRAM equations.
-            updateLagrangianMult();
-            updateStateCounts();
-            updateBiasedConfEnergies();
+            // Magic happens here...
+            selfConsistentUpdate();
+
+            // shift all energies by min(energies) so that the minimum energy equals zero.
+            shiftEnergiesToHaveZeroMinimum();
 
             // Tracking of energy vectors for error calculation.
             updateThermStateEnergies();
@@ -215,7 +216,7 @@ public:
             // iteration error (= how much the energies changed).
             iterationError = computeIterationError();
 
-            dtype logLikelihood{0};
+            dtype logLikelihood{-inf};
             if (trackLogLikelihoods) {
                 // log likelihood depends on transition matrices. Compute them first.
                 computeTransitionMatrices();
@@ -225,6 +226,7 @@ public:
                                                      input_->transitionCounts(), transitionMatrices_);
             }
 
+            // Send convergence info back to user by calling a python callback function
             if (callback != nullptr && callbackInterval > 0 && iterationCount % callbackInterval == 0) {
                 py::gil_scoped_acquire guard;
                 (*callback)(callbackInterval, iterationError, logLikelihood);
@@ -233,10 +235,6 @@ public:
             if (iterationError < maxErr) {
                 // We have converged!
                 break;
-            } else {
-                // We are not finished. But before the next iteration, we shift all energies by min(energies)
-                // so that the minimum energy equals zero (we are only interested in energy differences!).
-                shiftEnergiesToHaveZeroMinimum();
             }
         }
         // Done iterating. Compute all energies for the thermodynamic states and markov states.
@@ -272,6 +270,12 @@ private:
 
     constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
 
+    void selfConsistentUpdate() {
+        // Self-consistent update of the TRAM equations.
+        updateLagrangianMult();
+        updateStateCounts();
+        updateBiasedConfEnergies();
+    }
 
     void updateLagrangianMult() {
         lagrangianMultLog_.exchange();

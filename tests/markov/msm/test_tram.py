@@ -223,9 +223,9 @@ def test_callback_called(track_log_likelihoods):
     np.testing.assert_equal(len(tram.energy_increments), 5)
     np.testing.assert_(np.min(tram.energy_increments) > 0)
     if track_log_likelihoods:
-        np.testing.assert_((np.asarray(tram.log_likelihoods) != 0).all())
+        np.testing.assert_((np.asarray(tram.log_likelihoods) > -np.inf).all())
     else:
-        np.testing.assert_((np.asarray(tram.log_likelihoods) == 0).all())
+        np.testing.assert_((np.asarray(tram.log_likelihoods) == -np.inf).all())
 
 
 def test_progress_bar_update_called():
@@ -234,7 +234,7 @@ def test_progress_bar_update_called():
     class ProgressFactory:
         def __new__(cls, *args, **kwargs): return progress
 
-    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressFactory, mbar_init_maxiter=0)
+    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressFactory, init_strategy=None)
     tram.fit(make_random_input_data(5, 5))
 
     # update() should be called 5 times
@@ -250,10 +250,10 @@ def test_progress_bar_update_called_with_mbar():
     class ProgressFactory:
         def __new__(cls, *args, **kwargs): return progress
 
-    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressFactory, mbar_init_maxiter=10)
+    tram = TRAM(callback_interval=2, maxiter=10, progress=ProgressFactory, init_maxiter=10, init_maxerr=1e-15)
     tram.fit(make_random_input_data(5, 5))
 
-    # update() should be called 5 times
+    # update() should be called 10 times
     np.testing.assert_equal(progress.n_update_calls, 10)
     np.testing.assert_equal(progress.n, 20)
     # and close() one time
@@ -273,10 +273,26 @@ def test_fit_with_dataset():
 
 def test_mbar_initalization():
     (dtrajs, bias_matrices) = make_random_input_data(5, 5, make_ttrajs=False)
-    tram = TRAM(callback_interval=2, maxiter=0, progress=tqdm, mbar_init_maxiter=100)
+    tram = TRAM(callback_interval=2, maxiter=0, progress=tqdm, init_maxiter=100)
     ll1 = tram.fit_fetch((dtrajs, bias_matrices)).compute_log_likelihood(dtrajs, bias_matrices)
 
-    tram = TRAM(callback_interval=2, maxiter=0, progress=tqdm, mbar_init_maxiter=0)
+    tram = TRAM(callback_interval=2, maxiter=0, progress=tqdm, init_maxiter=0)
     ll2 = tram.fit_fetch((dtrajs, bias_matrices)).compute_log_likelihood(dtrajs, bias_matrices)
 
     np.testing.assert_(ll1 > ll2)
+
+
+def test_unknown_init_strategy():
+    tram = TRAM(init_strategy="this_is_not_an_init_strategy")
+    with np.testing.assert_raises(ValueError):
+        tram.fit(make_random_input_data(3, 3))
+
+
+def test_mbar_initialization_zero_iterations():
+    tram1 = TRAM(init_strategy="MBAR", init_maxiter=0, maxiter=3)
+    tram2 = TRAM(init_strategy=None, init_maxiter=0, maxiter=3)
+
+    input_data = make_random_input_data(5, 5)
+    model1 = tram1.fit_fetch(input_data)
+    model2 = tram2.fit_fetch(input_data)
+    np.testing.assert_equal(model1.biased_conf_energies, model2.biased_conf_energies)

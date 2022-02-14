@@ -5,7 +5,7 @@
 #pragma once
 
 #include <deeptime/numeric/kahan_summation.h>
-#include "shared_methods.h"
+#include "common.h"
 
 
 namespace deeptime::markov::tram {
@@ -17,10 +17,13 @@ template<typename dtype>
 void shiftEnergiesToHaveZeroMinimum(ExchangeableArray<dtype, 1> &thermStateEnergies, StateIndex nThermStates) {
     auto thermStateEnergiesBuf = thermStateEnergies.firstBuf();
     auto newThermStateEnergies = thermStateEnergies.first();
-    auto shift = *std::min_element(newThermStateEnergies->data(), newThermStateEnergies->data() + nThermStates);
 
-    for (StateIndex k = 0; k < nThermStates; ++k) {
-        thermStateEnergiesBuf(k) -= shift;
+    if (nThermStates > 0) {
+        auto shift = *std::min_element(newThermStateEnergies->data(), newThermStateEnergies->data() + nThermStates);
+
+        for (StateIndex k = 0; k < nThermStates; ++k) {
+            thermStateEnergiesBuf(k) -= shift;
+        }
     }
 }
 
@@ -81,6 +84,10 @@ initialize_MBAR(BiasMatrix <dtype> biasMatrix, CountsMatrix stateCounts, std::si
         // The magic happens here
         selfConsistentUpdate(thermStateEnergies, biasMatrixBuf, stateCountsLog, nThermStates, nSamples);
 
+        // Shift all energies by min(energies) so that the minimum energy equals zero (we are only interested in energy
+        // differences!).
+        shiftEnergiesToHaveZeroMinimum(thermStateEnergies, nThermStates);
+
         auto iterationError = computeError(thermStateEnergies, nThermStates);
 
         // keep the python user up to date on the progress by a callback
@@ -92,12 +99,7 @@ initialize_MBAR(BiasMatrix <dtype> biasMatrix, CountsMatrix stateCounts, std::si
         if (iterationError < maxErr) {
             // We have converged!
             break;
-        } else {
-            // We are not finished. But before the next iteration, we shift all energies by min(energies)
-            // so that the minimum energy equals zero (we are only interested in energy differences!).
-            shiftEnergiesToHaveZeroMinimum(thermStateEnergies, nThermStates);
         }
-
     }
     return *thermStateEnergies.first();
 }

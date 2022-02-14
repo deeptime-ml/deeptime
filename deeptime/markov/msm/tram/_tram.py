@@ -48,7 +48,14 @@ def _get_dataset_from_input(data):
 
 class TRAM(_MSMBaseEstimator):
     r"""Transition(-based) Reweighting Analysis Method.
-    TRAM is described in :footcite:`wu2016multiensemble`.
+    TRAM is described in :footcite:`wu2016multiensemble`. The parameters in this code correspond to variables in the
+    TRAM paper in the following way:
+     * `biased_conf_energies[k][i]` corresponds to :math:`f_i^k`, the free energy for  Markov state i in
+       thermodynamic state k.
+     * `lagrangian_mult_log[k][i]` corresponds to :math:`log\;v_i^k`, the logarithm of the lagrangian multiplier of
+       Markov state i in thermodynamic state k.
+     * `modified_state_counts_log[k][i]` corresponds to :math:`log\;R_i^k`, the logarithm of :math:`R_i^k`, the modified
+       state counts for Markov state i in thermodynamic state k.
 
     Parameters
     ----------
@@ -71,13 +78,22 @@ class TRAM(_MSMBaseEstimator):
     maxerr : float, optional, default=1E-8
         Convergence criterion based on the maximal free energy change in a self-consistent
         iteration step.
-    mbar_init_maxiter : int, optional, default=1000
-        The maximum number of MBAR iterations. These MBAR iterations are executed before TRAM, to initialize the free
-        energies with the MBAR estimate, which is a good initial estimate for the TRAM free energies and will
-        significantly speed up the convergence of TRAM.
-    mbar_init_maxerr : float, optional, default = 1eE-8
-        Convergence criterion for the MBAR initialization routine, based on the maximum energy change in a self-
-        consistent MBAR iteration step.
+    init_strategy : str, optional, default='MBAR'
+        Strategy of initialization of the free energies, lagrangian multipliers and state counts. Possible choices:
+        "MBAR" or None.
+         * "MBAR" : Initialize free energies using MBAR :footcite:`shirts2008statistically`. MBAR iterations are
+           executed before TRAM, to initialize the free energies with the MBAR estimate, which is a good initial
+           estimate for the TRAM free energies and will significantly speed up the convergence of TRAM. Lagrangian
+           multipliers are initialized to :math:`v_i^k = log( 1/2 * \sum_j (c_ij^k + c_ji^k))` and modified state counts
+           are zero-initialized.
+         * None : Free energies and modified state counts are zero-initialized. Lagrangian multipliers are initialized
+           to :math:`v_i^k = log( 1/2 * \sum_j (c_ij^k + c_ji^k))`
+    init_maxiter : int, optional, default=1000
+        The maximum number of iterations for parameter initialization, e.g. MBAR iterations. These initialization
+        iterations are executed before TRAM, to initialize the parameters with the chosen `init_strategy`.
+    init_maxerr : float, optional, default = 1eE-8
+        Convergence criterion for the initialization routine, based on the maximum energy change after one iteration
+        step.
     track_log_likelihoods : bool, optional, default=False
         If `True`, the log-likelihood is stored every callback_interval steps. For calculation of the log-likelihood the
         transition matrix needs to be constructed, which will slow down estimation. By default, log-likelihoods are
@@ -103,7 +119,8 @@ class TRAM(_MSMBaseEstimator):
     def __init__(
             self, lagtime=1, count_mode='sliding',
             maxiter=1000, maxerr: float = 1e-8,
-            mbar_init_maxiter=1000, mbar_init_maxerr=1e-8,
+            init_strategy='MBAR',
+            init_maxiter=1000, init_maxerr=1e-8,
             track_log_likelihoods=False, callback_interval=1,
             progress=None):
 
@@ -114,14 +131,17 @@ class TRAM(_MSMBaseEstimator):
         self._tram_estimator = None
         self.maxiter = maxiter
         self.maxerr = maxerr
-        self.mbar_init_maxiter = mbar_init_maxiter
-        self.mbar_init_maxerr = mbar_init_maxerr
+        self.init_strategy = init_strategy
+        self.init_maxiter = init_maxiter
+        self.init_maxerr = init_maxerr
         self.track_log_likelihoods = track_log_likelihoods
         self.callback_interval = callback_interval
         self.progress = progress
         self._largest_connected_set = None
         self.log_likelihoods = []
         self.energy_increments = []
+
+    init_strategy_options = ["MBAR", None]
 
     def fetch_model(self) -> Optional[TRAMModel]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -197,21 +217,22 @@ class TRAM(_MSMBaseEstimator):
 
     def _make_tram_estimator(self, model, dataset):
         r""" Construct the underlying c++ TRAM estimator. If a model is given, the estimator is initialized with the
-        model parameters. Otherwise, the free energies are initialized with the MBAR estimate for the free energies. The
-        lagrangian multipliers are initialized with values v_i^k = log( 1/2 * \sum_j (c_ij^k + c_ji^k)), and
-        modified state counts are initialized with zeros.
+        model parameters. Otherwise, the free energies are initialized with the chosen initialization strategy.
         """
+        if self.init_strategy not in TRAM.init_strategy_options:
+            raise ValueError(
+                f"Initialization strategy unsupported. init_strategy must be one of {TRAM.init_strategy_options}.")
+
         if model is not None:
             return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
         else:
-            if self.mbar_init_maxiter > 0:
+            if self.init_strategy == "MBAR":
                 # initialize free energies using MBAR.
-                print(tram.initialize_free_energies_mbar)
                 with callbacks.ProgressCallback(self.progress, "Initializing free energies using MBAR",
-                                                self.mbar_init_maxiter) as callback:
+                                                self.init_maxiter) as callback:
                     free_energies = tram.initialize_free_energies_mbar(np.concatenate(dataset.bias_matrices),
                                                                        dataset.state_counts.sum(axis=1),
-                                                                       self.mbar_init_maxiter, self.mbar_init_maxerr,
+                                                                       self.init_maxiter, self.init_maxerr,
                                                                        self.callback_interval, callback)
 
                 # copy free energies along the markoc state axis to get initial biased_conf_energies
