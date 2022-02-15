@@ -13,6 +13,14 @@ from ..util.callbacks import ProgressCallback
 from ..util.parallel import handle_n_jobs
 
 
+def to_single_nd_array(data):
+    if isinstance(data, list):
+        data = np.concatenate(data)
+    if data.ndim == 1:
+        data = data[:, np.newaxis]
+    return data
+
+
 def kmeans_plusplus(data, n_clusters: int, metric: str = 'euclidean', callback=None, seed: int = -1,
                     n_jobs: Optional[int] = None):
     r""" Performs kmeans++ initialization. :footcite:`arthur2006k`
@@ -405,9 +413,10 @@ class KMeans(EstimatorTransformer):
 
         Parameters
         ----------
-        data: np.ndarray
-            data to be clustered, shape should be (N, D), where N is the number of data points, D the dimension.
-            In case of one-dimensional data, a shape of (N,) also works.
+        data: np.ndarray or list(np.ndarray)
+            data to be clustered, shape of ndarray(s) should be (N, D), where N is the number of data points, D the
+            dimension. In case of one-dimensional data, a shape of (N,) also works. If data is in shape of a list of
+            ndarrays, the ndarrays will be concatenated to one ndarray.
         initial_centers: np.ndarray or None
             Optional cluster center initialization that supersedes the estimator's `initial_centers` attribute
         callback_init_centers: function or None
@@ -422,8 +431,7 @@ class KMeans(EstimatorTransformer):
         self : KMeans
             reference to self
         """
-        if data.ndim == 1:
-            data = data[:, np.newaxis]
+        data = to_single_nd_array(data)
         n_jobs = handle_n_jobs(self.n_jobs if n_jobs is None else n_jobs)
         if initial_centers is not None:
             self.initial_centers = initial_centers
@@ -488,8 +496,8 @@ class MiniBatchKMeans(KMeans):
     def fit(self, data, initial_centers=None, callback_init_centers=None, callback_loop=None, n_jobs=None):
         r""" Perform clustering on whole data. """
         n_jobs = handle_n_jobs(self.n_jobs if n_jobs is None else n_jobs)
-        if data.ndim == 1:
-            data = data[:, np.newaxis]
+        data = to_single_nd_array(data)
+
         if initial_centers is not None:
             self.initial_centers = initial_centers
         if self.initial_centers is None:
@@ -536,8 +544,7 @@ class MiniBatchKMeans(KMeans):
         if self._model is None:
             self._model = KMeansModel(cluster_centers=np.copy(self.initial_centers), metric=self.metric,
                                       tolerance=self.tolerance, inertias=np.array([float('inf')]))
-        if data.ndim == 1:
-            data = data[:, np.newaxis]
+        data = to_single_nd_array(data)
         impl = metrics[self.metric]
         self._model._cluster_centers = impl.kmeans.cluster(data, self._model.cluster_centers, n_jobs)[0]
         cost = impl.kmeans.cost_function(data, self._model.cluster_centers, n_jobs)
