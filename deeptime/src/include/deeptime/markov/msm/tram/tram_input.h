@@ -20,12 +20,18 @@ constexpr void throwIfInvalid(bool isValid, const std::string &message) {
 template<typename dtype>
 class TRAMInput {
 public:
-    TRAMInput(CountsMatrix &&stateCounts, CountsMatrix &&transitionCounts,
-              DTraj dtraj, BiasMatrix<dtype> biasMatrix)
+    using size_type = typename BiasMatrices<dtype>::size_type;
+
+    TRAMInput(CountsMatrix &&stateCounts, CountsMatrix &&transitionCounts, DTraj dtraj, BiasMatrices<dtype> biasMatrices)
             : stateCounts_(std::move(stateCounts)),
               transitionCounts_(std::move(transitionCounts)),
               dtraj_(std::move(dtraj)),
-              biasMatrix_(std::move(biasMatrix)) {
+              biasMatrices_(std::move(biasMatrices)),
+              cumNSamples_(){
+        cumNSamples_.resize(nMarkovStates());
+        for(std::size_t i = 1; i < cumNSamples_.size(); ++i) {
+            cumNSamples_[i] += cumNSamples_[i-1] + nSamples(i-1);
+        }
         validateInput();
     }
 
@@ -42,44 +48,33 @@ public:
     ~TRAMInput() = default;
 
     void validateInput() const {
-
-        if (dtraj_.shape(0) != biasMatrix_.shape(0)) {
-            std::stringstream ss;
-            ss << "Input invalid. Number of samples in dtrajs be equal to the size of the first dimension "
-                  "of the bias matrix.";
-            ss << "\nNumber of samples: " << dtraj_.shape(0) << "\nNumber of samples in bias matrix: "
-               << biasMatrix_.shape(0);
-            throw std::runtime_error(ss.str());
-        }
         detail::throwIfInvalid(stateCounts_.shape(0) == transitionCounts_.shape(0),
                                "stateCounts.shape(0) should equal transitionCounts.shape(0)");
         detail::throwIfInvalid(stateCounts_.shape(1) == transitionCounts_.shape(1),
                                "stateCounts.shape(1) should equal transitionCounts.shape(1)");
         detail::throwIfInvalid(transitionCounts_.shape(1) == transitionCounts_.shape(2),
                                "transitionCounts.shape(1) should equal transitionCounts.shape(2)");
-
         detail::throwIfInvalid(dtraj_.ndim() == 1,
                                "dtraj has an incorrect number of dimension. ndims should be 1.");
-        detail::throwIfInvalid(biasMatrix_.ndim() == 2,
-                               "biasMatrix has an incorrect number of dimension. ndims should be 2.");
-        detail::throwIfInvalid(biasMatrix_.shape(1) == transitionCounts_.shape(0),
-                               "biasMatrix.shape[1] should be equal to transitionCounts.shape[0].");
+        detail::throwIfInvalid(biasMatrices_.empty(), "We need bias matrices.");
+        std::for_each(begin(biasMatrices_), end(biasMatrices_), [nThermStates = stateCounts_.shape(0)](const auto &biasMatrix) {
+            detail::throwIfInvalid(biasMatrix.ndim() == 2,
+                                   "biasMatrix has an incorrect number of dimension. ndims should be 2.");
+            detail::throwIfInvalid(biasMatrix.shape(1) == nThermStates,
+                                   "biasMatrix.shape[1] should be equal to transitionCounts.shape[0].");
+        });
     }
 
-    auto & biasMatrix() const {
-        return biasMatrix_;
+    const auto& biasMatrix(size_type i) const {
+        return biasMatrices_[i];
     }
 
-    auto biasMatrixBuf() const {
-        return biasMatrix_.template unchecked<2>();
+    const auto &biasMatrices() const {
+        return biasMatrices_;
     }
 
-    const auto & dtraj() const {
-        return dtraj_;
-    }
-
-    const auto dtrajBuf() const {
-        return dtraj_.template unchecked<1>();
+    auto biasMatrixBuf(size_type i) const {
+        return biasMatrices_[i].template unchecked<2>();
     }
 
     const auto& transitionCounts() const {
@@ -98,16 +93,37 @@ public:
         return stateCounts_.template unchecked<2>();
     }
 
+    auto nSamples(size_type i) const {
+        return biasMatrices_[i].shape(0);
+    }
+
     auto nSamples() const {
-        return dtraj_.size();
+        decltype(nSamples(0)) total {};
+        for(size_type i = 0; i < biasMatrices_.size(); ++i) {
+            total += nSamples(i);
+        }
+        return total;
+    }
+
+    const auto &cumNSamples() const {
+        return cumNSamples_;
+    }
+
+    auto nThermStates() const {
+        return transitionCounts_.shape(0);
+    }
+
+    auto nMarkovStates() const {
+        return stateCounts_.shape(1);
     }
 
 
 private:
     CountsMatrix stateCounts_;
     CountsMatrix transitionCounts_;
+    BiasMatrices<dtype> biasMatrices_;
     DTraj dtraj_;
-    BiasMatrix<dtype> biasMatrix_;
+    std::vector<size_type> cumNSamples_;
 };
 
 }

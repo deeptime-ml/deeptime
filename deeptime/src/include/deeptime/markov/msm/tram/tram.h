@@ -20,6 +20,33 @@ template<typename dtype>
 constexpr static dtype logPrior() { return -std::numeric_limits<dtype>::infinity(); }
 }
 
+template<typename dtype>
+static const dtype computeSampleLikelihood(const TRAMInput<dtype> &input,
+                                           const np_array_nfc<dtype> &modifiedStateCountsLog) {
+    auto nThermStates = input.nThermStates();
+    const auto &cumNSamples = input.cumNSamples();
+    std::vector<dtype> sampleWeights {input.nSamples()};
+
+    std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuf{begin(input.biasMatrices()),
+                                                                 end(input.biasMatrices())};
+    ArrayBuffer<np_array_nfc<dtype>, 2> modifiedStateCountsLogBuf{modifiedStateCountsLog};
+
+    for (std::size_t i = 0; i < input.nMarkovStates(); ++i) {
+        std::vector<dtype> scratch(nThermStates);
+        for (std::size_t x=0; x < input.nSamples(i); ++x){
+
+            int o = 0;
+            for (StateIndex l = 0; l < nThermStates; ++l) {
+                if (modifiedStateCountsLogBuf(l, i) > -std::numeric_limits<dtype>::infinity()) {
+                    scratch[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf[i](x, l);
+                }
+            }
+            auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
+            sampleWeights[cumNSamples[i] + x] = -log_divisor;
+        }
+    }
+    return numeric::kahan::logsumexp_sort_kahan_inplace(sampleWeights.begin(), sampleWeights.end());
+}
 
 // natural logarithm of the statistical weight per sample, log \mu^k(x).
 // If thermState =-1, this is the unbiased statistical sample weight, log \mu(x).
@@ -38,6 +65,7 @@ static const std::vector<dtype> computeSampleWeightsLog(const DTraj &dtraj,
     ArrayBuffer<BiasMatrix<dtype>, 2> biasMatrixBuf{biasMatrix};
     ArrayBuffer<np_array_nfc<dtype>, 2> modifiedStateCountsLogBuf{modifiedStateCountsLog};
     ArrayBuffer<np_array_nfc<dtype>, 1> thermStateEnergiesBuf{thermStateEnergies};
+
 
     for (auto x = 0; x < dtraj.size(); ++x) {
         auto i = dtrajBuf(x);
@@ -220,6 +248,7 @@ public:
             if (trackLogLikelihoods) {
                 // log likelihood depends on transition matrices. Compute them first.
                 computeTransitionMatrices();
+                computeSampleLikelihood(*input_, modifiedStateCountsLog_);
                 logLikelihood = computeLogLikelihood(input_->dtraj(), input_->biasMatrix(),
                                                      biasedConfEnergies_, modifiedStateCountsLog_,
                                                      *thermStateEnergies_.first(), input_->stateCounts(),
@@ -267,6 +296,7 @@ private:
 
     // scratch matrices used to facilitate calculation of logsumexp
     std::unique_ptr<dtype[]> scratch_;
+    std::map<DiscreteState, std::vector<std::size_t>> stateMapping_;
 
     constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
 

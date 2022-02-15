@@ -189,8 +189,14 @@ class TRAMDataset(Dataset):
         r""" The TRAMInput object containing the data needed for estimation.
         For estimation purposes, it does not matter which thermodynamic state each sample was sampled at. The dtrajs and
         bias_matrices are therefore flattened along the first dimension, to speed up estimation. """
-        return tram.TRAMInput(self.state_counts, self.transition_counts,
-                              np.concatenate(self.dtrajs), np.concatenate(self.bias_matrices))
+        bias_list = []
+        for markov_state in range(self.n_markov_states):
+            biases = []
+            for dtraj, bias_matrix in zip(self.dtrajs, self.bias_matrices):
+                indices = np.where(dtraj == markov_state)[0]
+                biases.append(bias_matrix[indices])
+            bias_list.append(np.concatenate(biases))
+        return tram.TRAMInput(self.state_counts, self.transition_counts, bias_list)
 
     @property
     def n_therm_states(self):
