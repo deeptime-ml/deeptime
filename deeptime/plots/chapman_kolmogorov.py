@@ -66,9 +66,6 @@ class CKTestGrid:
         if l_pred is not None and len(l_pred) > 0 and r_pred is not None and len(r_pred) > 0:
             ax.fill_between(data.lagtimes, l_pred[:, i, j].real, r_pred[:, i, j].real, color=color, alpha=0.2)
         ax.text(0.05, 0.05, str(i + 1) + ' -> ' + str(j + 1), transform=ax.transAxes, weight='bold')
-        if self._sharey:
-            ax.set_ylim(0, 1)
-
         return lest, lpred
 
     def set_axes_labels(self, i, j, xlabel=None, ylabel=None):
@@ -98,7 +95,7 @@ class CKTestGrid:
 
 def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
                  conf: float = 0.95, color=None, grid: CKTestGrid = None, legend=True,
-                 xlabel='lagtime (steps)', ylabel='probability', **plot_kwargs):
+                 xlabel='lagtime (steps)', ylabel='probability', y01=True, sharey=True, **plot_kwargs):
     r""" Plot the Chapman Kolmogorov test.
 
     .. plot:: examples/plot_ck_test.py
@@ -123,6 +120,10 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
         The x label.
     ylabel : str, default='probability'
         The y label.
+    y01 : bool, optional, default=True
+        Sets the limits of the y-axis to [0, 1].
+    sharey : bool, optional, default=True
+        Whether to share the y-axes in case a new grid is created.
     **plot_kwargs
         Further optional keyword arguments that go into `ax.plot`.
 
@@ -140,7 +141,7 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
     if grid is not None:
         assert grid.n_cells_x == grid.n_cells_y == n_components
     else:
-        grid = CKTestGrid(n_components, n_components, height=height, aspect=aspect)
+        grid = CKTestGrid(n_components, n_components, height=height, aspect=aspect, sharey=sharey)
     color = default_colors()[grid.n_tests] if color is None else color
 
     any_complex = np.any(~np.isreal(data.estimates)) or np.any(~np.isreal(data.predictions))
@@ -153,7 +154,8 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
         samples = data.predictions_samples
         for lag_samples in samples:
             any_complex |= np.any(~np.isreal(lag_samples))
-            l_pred, r_pred = confidence_interval(lag_samples if not any_complex else [x.real for x in lag_samples],
+            l_pred, r_pred = confidence_interval(np.real(lag_samples) if not any_complex
+                                                 else [x.real for x in lag_samples],
                                                  conf=conf, remove_nans=True)
             confidences_pred_l.append(l_pred)
             confidences_pred_r.append(r_pred)
@@ -161,7 +163,8 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
         samples = data.estimates_samples
         for lag_samples in samples:
             any_complex |= np.any(~np.isreal(lag_samples))
-            l_est, r_est = confidence_interval(lag_samples if not any_complex else [x.real for x in lag_samples],
+            l_est, r_est = confidence_interval(np.real(lag_samples) if not any_complex
+                                               else [x.real for x in lag_samples],
                                                conf=conf, remove_nans=True)
             confidences_est_l.append(l_est)
             confidences_est_r.append(r_est)
@@ -181,5 +184,8 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
 
     if legend:
         grid.legend(conf)
+
+    if y01:
+        [ax.set_ylim(0, 1) for ax in grid.axes.flatten()]
 
     return grid

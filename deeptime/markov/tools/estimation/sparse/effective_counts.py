@@ -6,7 +6,6 @@ r"""This module implements effective transition counts
 
 import numpy as np
 import scipy.sparse
-from scipy.sparse.csr import csr_matrix
 
 from threadpoolctl import threadpool_limits
 
@@ -215,7 +214,7 @@ def statistical_inefficiencies(dtrajs, lag, C=None, truncate_acf=True, mact=2.0,
                                                    truncate_acf=truncate_acf, mact=mact)
             if callback is not None:
                 callback(1)
-    res = csr_matrix((data, (I, J)), shape=C.shape)
+    res = scipy.sparse.csr_matrix((data, (I, J)), shape=C.shape)
     return res
 
 

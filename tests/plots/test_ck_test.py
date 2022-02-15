@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 
@@ -25,15 +27,23 @@ def test_sanity_msm(hidden, bayesian):
     plot_ck_test(cktest, conf=1)
 
 
-def test_sanity_vamp():
+@pytest.mark.parametrize("fractional", [False, True])
+def test_sanity_vamp(fractional):
     traj = ellipsoids().observations(20000)
     models = []
-    lags = [2, 3, 4, 5]
+    if fractional:
+        lags = [2, 3, 4, 5]
+    else:
+        lags = [2, 4, 6, 8]
     for lag in lags:
         models.append(VAMP(lag, dim=2).fit_fetch(traj))
 
-    ck_test = models[0].ck_test(models)
-    plot_ck_test(ck_test)
+    if fractional:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", np.ComplexWarning)
+            plot_ck_test(models[0].ck_test(models))
+    else:
+        plot_ck_test(models[0].ck_test(models))
 
 
 @pytest.mark.parametrize("hidden", [False, True], ids=lambda x: f"hidden={x}")
