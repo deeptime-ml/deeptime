@@ -232,7 +232,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         statdists = []
         count_models = []
         if self.use_lcc:
-            sets = sets[0]
+            sets = [sets[0]]
         for subset in sets:
             try:
                 sub_counts = counts.submodel(subset)
