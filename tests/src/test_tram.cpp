@@ -68,7 +68,7 @@ auto countStates(int nThermStates, int nMarkovStates, const DTraj &dtraj) {
     int state = -1;
     int prevstate = -1;
 
-    for int i = 0; i < dtraj.size(); ++i) {
+    for (int i = 0; i < dtraj.size(); ++i) {
         // get therm state from whatever section in the traj we're in. First few samples get 0, the 1, etc.
         int K = (i * nThermStates) / dtraj.size();
 
