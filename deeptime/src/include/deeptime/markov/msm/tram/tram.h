@@ -37,7 +37,7 @@ static const dtype computeSampleLikelihood(const TRAMInput<dtype> &input,
 
     auto inputPtr = &input;
     #pragma omp parallel for default(none) firstprivate(nThermStates, inputPtr, biasMatrixPtr, sampleWeights, \
-                                                        modifiedStateCountsLogPtr)
+                                                        modifiedStateCountsLogPtr, cumNSamples)
     for (auto i = 0; i < inputPtr->nMarkovStates(); ++i) {
         std::vector<dtype> scratch(nThermStates);
         for (auto x = 0; x < inputPtr->nSamples(i); ++x) {
@@ -379,14 +379,16 @@ private:
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template mutable_unchecked<2>();
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
-        #pragma omp parallel for default(none) firstprivate(nMarkovStates_, nThermStates, input_, biasMatrixPtr, \
+        auto nThermStates = nThermStates_, nMarkovStates = nMarkovStates_;
+	auto input = input_;
+        #pragma omp parallel for default(none) firstprivate(nMarkovStates, nThermStates, input, biasMatrixPtr, \
                                                             biasedConfEnergiesBuf, modifiedStateCountsLogBuf)
-        for (StateIndex i = 0; i < nMarkovStates_; ++i) {
-            std::vector<dtype> scratch(nThermStates_);
+        for (StateIndex i = 0; i < nMarkovStates; ++i) {
+            std::vector<dtype> scratch(nThermStates);
 
-            for (std::int32_t x = 0; x < input_->nSamples(i); ++x) {
+            for (std::int32_t x = 0; x < input->nSamples(i); ++x) {
                 std::size_t o = 0;
-                for (StateIndex k = 0; k < nThermStates_; ++k) {
+                for (StateIndex k = 0; k < nThermStates; ++k) {
                     if (modifiedStateCountsLogBuf(k, i) > -inf) {
                         scratch[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixPtr[i](x, k);
                     }
@@ -394,7 +396,7 @@ private:
                 dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
 
                 //TODO check this computation. Should just be a logsumexp of all the divisors in stead of pairwise.
-                for (StateIndex k = 0; k < nThermStates_; ++k) {
+                for (StateIndex k = 0; k < nThermStates; ++k) {
                     biasedConfEnergiesBuf(k, i) = -numeric::kahan::logsumexp_pair(
                             -biasedConfEnergiesBuf(k, i), -(divisor + biasMatrixPtr[i](x, k)));
                 }
@@ -493,15 +495,17 @@ private:
         auto markovStateEnergiesBuf = markovStateEnergies_.template mutable_unchecked<1>();
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
+        auto nThermStates = nThermStates_, nMarkovStates = nMarkovStates_;
+	auto input = input_;
         // assume that markovStateEnergies_ were set to INF by the caller on the first call
-        #pragma omp parallel for default(none) firstprivate(nMarkovStates_, nThermStates, input_, biasMatrixPtr, \
+        #pragma omp parallel for default(none) firstprivate(nMarkovStates, nThermStates, input, biasMatrixPtr, \
                                                             markovStateEnergiesBuf, modifiedStateCountsLogBuf)
-        for (StateIndex i = 0; i < nMarkovStates_; ++i) {
-            std::vector<dtype> scratch(nThermStates_);
+        for (StateIndex i = 0; i < nMarkovStates; ++i) {
+            std::vector<dtype> scratch(nThermStates);
 
-            for (auto x = 0; x < input_->nSamples(i); ++x) {
+            for (auto x = 0; x < input->nSamples(i); ++x) {
                 std::size_t o = 0;
-                for (StateIndex k = 0; k < nThermStates_; ++k) {
+                for (StateIndex k = 0; k < nThermStates; ++k) {
                     if (modifiedStateCountsLogBuf(k, i) > -inf) {
                         scratch[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixPtr[i](x, k);
                     }
@@ -540,7 +544,7 @@ private:
         auto ptr = biasedConfEnergies_.data();
         auto shift = *std::min_element(ptr, ptr + biasedConfEnergies_.size());
 
-        #pragma omp parallel for default(none) firstprivate(biasedConfEnergiesBuf, thermStateEnergiesBuf, shift)
+        #pragma omp parallel for default(none) firstprivate(nThermStates_, biasedConfEnergiesBuf, thermStateEnergiesBuf, shift)
         for (StateIndex k = 0; k < nThermStates_; ++k) {
             thermStateEnergiesBuf(k) -= shift;
 

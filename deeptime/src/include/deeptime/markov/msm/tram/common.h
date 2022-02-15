@@ -23,7 +23,7 @@ using BiasMatrices = std::vector<BiasMatrix<dtype>>;
 
 using StateIndex = py::ssize_t;
 
-using CountsMatrix = np_array_nfc<std::int32_t>;
+using CountsMatrix = np_array<std::int32_t>;
 
 namespace detail {
 template<py::ssize_t Dims, typename Array>
