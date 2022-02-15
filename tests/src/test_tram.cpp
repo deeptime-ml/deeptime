@@ -7,9 +7,16 @@
 //
 using namespace deeptime;
 
+template<typename dtype>
+np_array_nfc<dtype> createFilledArray(const std::vector<py::ssize_t> &dims, dtype fillValue) {
+    np_array_nfc<dtype> array(dims);
+    std::fill(array.mutable_data(), array.mutable_data() + array.size(), fillValue);
+    return array;
+}
+
 auto generateDtraj(int nMarkovStates, int length) {
     std::vector<float> weights(nMarkovStates, 0.);
-    std::iota(begin(weights), end(weights), 0.);
+    std::iota(begin(weights), end(weights), 0.f);
     std::transform(begin(weights), end(weights), begin(weights), [nMarkovStates](auto weight) {
         return weight - nMarkovStates / 2.;
     });
@@ -61,7 +68,7 @@ auto countStates(int nThermStates, int nMarkovStates, const DTraj &dtraj) {
     int state = -1;
     int prevstate = -1;
 
-    for (int i = 0; i < dtraj.size(); ++i) {
+    for int i = 0; i < dtraj.size(); ++i) {
         // get therm state from whatever section in the traj we're in. First few samples get 0, the 1, etc.
         int K = (i * nThermStates) / dtraj.size();
 
@@ -102,15 +109,18 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 std::move(stateCounts), std::move(transitionCounts), dtraj,
                 biasMatrix);
 
+        auto biasedConfEnergies = createFilledArray<TestType>({nThermStates, nMarkovStates}, 0.);
+        auto lagrangianMultLog = createFilledArray<TestType>({nThermStates, nMarkovStates}, 0.);
+        auto modifiedStateCountsLog= createFilledArray<TestType>({nThermStates, nMarkovStates}, 0.);
+
 
         WHEN("TRAM is constructed") {
-            auto tram = deeptime::markov::tram::TRAM<TestType>(nThermStates, nMarkovStates);
+            auto tram = deeptime::markov::tram::TRAM<TestType>(biasedConfEnergies, lagrangianMultLog, modifiedStateCountsLog);
 
             THEN("Result matrices are initialized") {
                 REQUIRE(tram.thermStateEnergies().size() == nThermStates);
                 REQUIRE(tram.biasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.markovStateEnergies().size() == nMarkovStates);
-                REQUIRE(tram.biasedConfEnergies().data()[0] == 0);
             }
 
             AND_WHEN("estimate() is called") {

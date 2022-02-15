@@ -78,6 +78,7 @@ initialize_MBAR(BiasMatrix <dtype> biasMatrix, CountsMatrix stateCounts, std::si
     // Get buffer for the bias energies
     ArrayBuffer<BiasMatrix<dtype>, 2> biasMatrixBuf{biasMatrix};
 
+    py::gil_scoped_release gil;
     for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
 
         // The magic happens here

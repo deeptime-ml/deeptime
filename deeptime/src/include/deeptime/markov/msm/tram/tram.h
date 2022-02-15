@@ -200,7 +200,6 @@ public:
 
         double iterationError{0};
 
-        py::gil_scoped_release gil;
         for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
 
             // Magic happens here...
