@@ -352,7 +352,7 @@ class BayesianMSM(_MSMBaseEstimator):
         msm = MaximumLikelihoodMSM(
             reversible=self.reversible, stationary_distribution_constraint=self.stationary_distribution_constraint,
             sparse=self.sparse, maxiter=self.maxiter, maxerr=self.maxerr
-        ).fit(counts.submodel_largest()).fetch_model()
+        ).fit(counts).fetch_model()
         return self.fit_from_msm(msm, callback=callback, **kw)
 
     @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
