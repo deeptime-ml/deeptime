@@ -56,6 +56,9 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         Number of counts required to consider two states connected.
     lagtime : int, optional, default=None
         Optional lagtime that can be provided at estimator level if fitting from timeseries directly.
+    use_lcc : bool, default=False
+        If set to true, this will restrict the resulting MSM collection to only contain the largest connected
+        state-space component.
 
     References
     ----------
@@ -64,7 +67,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
 
     def __init__(self, reversible: bool = True, stationary_distribution_constraint: Optional[np.ndarray] = None,
                  sparse: bool = False, allow_disconnected: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8,
-                 connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-6, lagtime=None):
+                 connectivity_threshold: float = 0, transition_matrix_tolerance: float = 1e-6, lagtime=None,
+                 use_lcc: bool=False):
         super(MaximumLikelihoodMSM, self).__init__(reversible=reversible, sparse=sparse)
 
         self.stationary_distribution_constraint = stationary_distribution_constraint
@@ -74,6 +78,7 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         self.connectivity_threshold = connectivity_threshold
         self.transition_matrix_tolerance = transition_matrix_tolerance
         self.lagtime = lagtime
+        self.use_lcc = use_lcc
 
     @property
     def allow_disconnected(self) -> bool:
@@ -226,6 +231,8 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
         transition_matrices = []
         statdists = []
         count_models = []
+        if self.use_lcc:
+            sets = sets[0]
         for subset in sets:
             try:
                 sub_counts = counts.submodel(subset)
