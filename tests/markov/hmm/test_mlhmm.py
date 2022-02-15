@@ -1,5 +1,7 @@
 import unittest
 
+from flaky import flaky
+
 import deeptime.markov.hmm._hmm_bindings as _bindings
 import numpy as np
 import pytest
@@ -692,6 +694,7 @@ class TestMLHMMPathologicalCases(unittest.TestCase):
                or np.allclose(hmm.output_probabilities, B_ref[[perm]], atol=1e-5)
 
 
+@flaky(max_runs=3)
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_gaussian_prinz(dtype):
     system = prinz_potential()
