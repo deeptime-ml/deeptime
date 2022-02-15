@@ -7,7 +7,6 @@
 #include <cstdio>
 #include <cassert>
 #include <utility>
-#include <deeptime/numeric/kahan_summation.h>
 #include "tram_input.h"
 
 namespace deeptime::markov::tram {
@@ -19,86 +18,7 @@ constexpr static dtype prior() { return 0.0; }
 
 template<typename dtype>
 constexpr static dtype logPrior() { return -std::numeric_limits<dtype>::infinity(); }
-
-template<typename dtype>
-np_array_nfc<dtype> generateFilledArray(const std::vector<py::ssize_t> &dims, dtype fillValue) {
-    np_array_nfc<dtype> array(dims);
-    std::fill(array.mutable_data(), array.mutable_data() + array.size(), fillValue);
-    return array;
 }
-
-template<py::ssize_t Dims, typename Array>
-auto mutableBuf(Array &&array) {
-    return array.template mutable_unchecked<Dims>();
-}
-}
-
-template<typename dtype, py::ssize_t Dims>
-class ExchangeableArray {
-    // This is used as a helper class in TRAM for the case where a value updated, and for each update, the current and
-    // previous values are stored. new values are generally computed in the first buffer, and to update the values,
-    // exchange() is called, so that the first buffer becomes the second, and the second buffer the first, which can
-    // subsequently be overwritten with the updated values. See e.g. use of thermStateEnergies_ in TRAM.
-    using MutableBufferType = decltype(detail::mutableBuf<Dims>(std::declval<np_array<dtype>>()));
-public:
-    template<typename Shape = std::vector<py::ssize_t>>
-    ExchangeableArray(Shape shape, dtype fillValue) : arrays(
-            std::make_tuple(np_array<dtype>(shape), np_array<dtype>(shape))) {
-        std::fill(std::get<0>(arrays).mutable_data(), std::get<0>(arrays).mutable_data() + std::get<0>(arrays).size(),
-                  fillValue);
-        std::fill(std::get<1>(arrays).mutable_data(), std::get<1>(arrays).mutable_data() + std::get<1>(arrays).size(),
-                  fillValue);
-        buffers = std::make_tuple(
-                std::make_unique<MutableBufferType>(std::get<0>(arrays).template mutable_unchecked<Dims>()),
-                std::make_unique<MutableBufferType>(std::get<1>(arrays).template mutable_unchecked<Dims>())
-        );
-    }
-
-    ExchangeableArray(const ExchangeableArray &) = delete;
-
-    ExchangeableArray &operator=(const ExchangeableArray &) = delete;
-
-    void exchange() {
-        current = !current;
-    }
-
-    auto *first() {
-        return current ? &std::get<0>(arrays) : &std::get<1>(arrays);
-    }
-
-    const auto *first() const {
-        return current ? &std::get<0>(arrays) : &std::get<1>(arrays);
-    }
-
-    auto *second() {
-        return current ? &std::get<1>(arrays) : &std::get<0>(arrays);
-    }
-
-    const auto *second() const {
-        return current ? &std::get<1>(arrays) : &std::get<0>(arrays);
-    }
-
-    auto &firstBuf() {
-        return current ? *std::get<0>(buffers) : *std::get<1>(buffers);
-    }
-
-    const auto &firstBuf() const {
-        return current ? *std::get<0>(buffers) : *std::get<1>(buffers);
-    }
-
-    auto &secondBuf() {
-        return current ? *std::get<1>(buffers) : *std::get<0>(buffers);
-    }
-
-    const auto &secondBuf() const {
-        return current ? *std::get<1>(buffers) : *std::get<0>(buffers);
-    }
-
-private:
-    char current = 0;
-    std::tuple<np_array<dtype>, np_array<dtype>> arrays;
-    std::tuple<std::unique_ptr<MutableBufferType>, std::unique_ptr<MutableBufferType>> buffers;
-};
 
 
 // natural logarithm of the statistical weight per sample, log \mu^k(x).
@@ -221,27 +141,26 @@ template<typename dtype>
 struct TRAM {
 public:
 
-    TRAM(std::size_t nThermStates, std::size_t nMarkovStates)
-            : nThermStates_(nThermStates),
-              nMarkovStates_(nMarkovStates),
-              biasedConfEnergies_(detail::generateFilledArray<dtype>({nThermStates_, nMarkovStates_}, 0.)),
+    TRAM(const np_array_nfc<dtype> &biasedConfEnergies,
+         const np_array_nfc<dtype> &lagrangianMultLog,
+         const np_array_nfc<dtype> &modifiedStateCountsLog)
+            : nThermStates_(biasedConfEnergies.shape(0)),
+              nMarkovStates_(biasedConfEnergies.shape(1)),
+              biasedConfEnergies_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_})),
               lagrangianMultLog_(ExchangeableArray<dtype, 2>({nThermStates_, nMarkovStates_}, 0.)),
-              modifiedStateCountsLog_(detail::generateFilledArray<dtype>({nThermStates_, nMarkovStates_}, 0.)),
-              thermStateEnergies_(ExchangeableArray<dtype, 1>(std::vector<StateIndex>{nThermStates_}, 0)),
+              modifiedStateCountsLog_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_})),
+              thermStateEnergies_(ExchangeableArray<dtype, 1>(std::vector<StateIndex>{nThermStates_}, 0.)),
               markovStateEnergies_(np_array_nfc<dtype>(std::vector<StateIndex>{nMarkovStates_})),
               transitionMatrices_(np_array_nfc<dtype>({nThermStates_, nMarkovStates_, nMarkovStates_})),
               statVectors_(ExchangeableArray<dtype, 2>(std::vector({nThermStates_, nMarkovStates_}), 0.)),
-              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])) {}
+              scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])) {
 
-
-    TRAM(np_array_nfc<dtype> &biasedConfEnergies, np_array_nfc<dtype> &lagrangianMultLog,
-         np_array_nfc<dtype> &modifiedStateCountsLog) : TRAM(biasedConfEnergies.shape(0), biasedConfEnergies.shape(1)) {
-        std::copy(lagrangianMultLog.data(), lagrangianMultLog.data() + lagrangianMultLog.size(),
+            std::copy(lagrangianMultLog.data(), lagrangianMultLog.data() + lagrangianMultLog.size(),
                   lagrangianMultLog_.first()->mutable_data());
-        std::copy(biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size(),
-                  biasedConfEnergies_.mutable_data());
-        std::copy(modifiedStateCountsLog.data(), modifiedStateCountsLog.data() + modifiedStateCountsLog.size(),
-                  modifiedStateCountsLog_.mutable_data());
+            std::copy(biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size(),
+                      biasedConfEnergies_.mutable_data());
+            std::copy(modifiedStateCountsLog.data(), modifiedStateCountsLog.data() + modifiedStateCountsLog.size(),
+                      modifiedStateCountsLog_.mutable_data());
     }
 
     const auto &biasedConfEnergies() const {
@@ -279,32 +198,24 @@ public:
 
         input_ = tramInput;
 
-        // initialize the lagrange multipliers with a default value based on the transition counts, but only
-        // if all are zero.
-        if (std::all_of(lagrangianMultLog().data(), lagrangianMultLog().data() + lagrangianMultLog().size(),
-                        [](dtype x) { return x == static_cast<dtype>(0.); })) {
-            initLagrangianMult();
-        }
-
         double iterationError{0};
 
-        py::gil_scoped_release gil;
         for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
 
-            // Self-consistent update of the TRAM equations.
-            updateLagrangianMult();
-            updateStateCounts();
-            updateBiasedConfEnergies();
+            // Magic happens here...
+            selfConsistentUpdate();
+
+            // shift all energies by min(energies) so that the minimum energy equals zero.
+            shiftEnergiesToHaveZeroMinimum();
 
             // Tracking of energy vectors for error calculation.
             updateThermStateEnergies();
-            updateStatVectors(statVectors_);
 
             // compare new thermStateEnergies_ and statVectors with old to get the
             // iteration error (= how much the energies changed).
-            iterationError = computeError(statVectors_);
+            iterationError = computeIterationError();
 
-            dtype logLikelihood{0};
+            dtype logLikelihood{-inf};
             if (trackLogLikelihoods) {
                 // log likelihood depends on transition matrices. Compute them first.
                 computeTransitionMatrices();
@@ -314,6 +225,7 @@ public:
                                                      input_->transitionCounts(), transitionMatrices_);
             }
 
+            // Send convergence info back to user by calling a python callback function
             if (callback != nullptr && callbackInterval > 0 && iterationCount % callbackInterval == 0) {
                 py::gil_scoped_acquire guard;
                 (*callback)(callbackInterval, iterationError, logLikelihood);
@@ -322,10 +234,6 @@ public:
             if (iterationError < maxErr) {
                 // We have converged!
                 break;
-            } else {
-                // We are not finished. But before the next iteration, we shift all energies by min(energies)
-                // so that the minimum energy equals zero (we are only interested in energy differences!).
-                shiftEnergiesToHaveZeroMinimum();
             }
         }
         // Done iterating. Compute all energies for the thermodynamic states and markov states.
@@ -361,24 +269,11 @@ private:
 
     constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
 
-    void initLagrangianMult() {
-        auto transitionCountsBuf = input_->transitionCountsBuf();
-        auto lagrangianMultLogBuf = lagrangianMultLog_.firstBuf();
-
-        auto nThermStates = nThermStates_;
-        auto nMarkovStates = nMarkovStates_;
-
-        #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, \
-                                                            transitionCountsBuf, lagrangianMultLogBuf)
-        for (StateIndex k = 0; k < nThermStates; ++k) {
-            for (StateIndex i = 0; i < nMarkovStates; ++i) {
-                dtype sum = 0.0;
-                for (StateIndex j = 0; j < nMarkovStates; ++j) {
-                    sum += (transitionCountsBuf(k, i, j) + transitionCountsBuf(k, j, i));
-                }
-                lagrangianMultLogBuf(k, i) = std::log(sum / 2);
-            }
-        }
+    void selfConsistentUpdate() {
+        // Self-consistent update of the TRAM equations.
+        updateLagrangianMult();
+        updateStateCounts();
+        updateBiasedConfEnergies();
     }
 
     void updateLagrangianMult() {
@@ -514,36 +409,21 @@ private:
     }
 
     // Get the error in the energies between this iteration and the previous one.
-    dtype computeError(const ExchangeableArray<dtype, 2> &statVectors) const {
-        auto thermEnergiesBuf = thermStateEnergies_.firstBuf();
-        auto oldThermEnergiesBuf = thermStateEnergies_.secondBuf();
-        auto statVectorsBuf = statVectors.firstBuf();
-        auto oldStatVectorsBuf = statVectors.secondBuf();
+    dtype computeIterationError() {
+        updateStatVectors();
 
-        dtype maxError = 0;
-        auto nThermStates = nThermStates_;
-        auto nMarkovStates = nMarkovStates_;
+        dtype error1 = computeError(thermStateEnergies_, nThermStates_);
+        dtype error2 = computeError(statVectors_, nThermStates_ * nMarkovStates_);
 
-        #pragma omp parallel for default(none) shared(maxError) firstprivate(nThermStates, nMarkovStates, \
-                                    thermEnergiesBuf, oldThermEnergiesBuf, statVectorsBuf, oldStatVectorsBuf)
-        for (StateIndex k = 0; k < nThermStates; ++k) {
-            auto energyDelta = std::abs(thermEnergiesBuf(k) - oldThermEnergiesBuf(k));
-            maxError = std::max(maxError, energyDelta);
-
-            for (StateIndex i = 0; i < nMarkovStates; ++i) {
-                energyDelta = std::abs(statVectorsBuf(k, i) - oldStatVectorsBuf(k, i));
-                maxError = std::max(maxError, energyDelta);
-            }
-        }
-        return maxError;
+        return std::max(error1, error2);
     }
 
-    void updateStatVectors(ExchangeableArray<dtype, 2> &statVectors) {
+    void updateStatVectors() {
         // move current values to old
-        statVectors.exchange();
+        statVectors_.exchange();
 
         // compute new values
-        auto statVectorsBuf = statVectors.firstBuf();
+        auto statVectorsBuf = statVectors_.firstBuf();
         auto thermStateEnergiesBuf = thermStateEnergies_.firstBuf();
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template unchecked<2>();
 
@@ -712,4 +592,27 @@ private:
         }
     }
 };
+
+
+template <typename dtype>
+np_array_nfc<dtype> initLagrangianMult(const CountsMatrix &transitionCounts) {
+    auto nThermStates = static_cast<StateIndex>(transitionCounts.shape(0));
+    auto nMarkovStates = static_cast<StateIndex>(transitionCounts.shape(1));
+
+    np_array_nfc<dtype> lagrangianMultLog({nThermStates, nMarkovStates});
+    auto lagrangianMultLogBuf = lagrangianMultLog.template mutable_unchecked<2>();
+
+    ArrayBuffer<CountsMatrix, 3> transitionCountsBuf{transitionCounts};
+
+    for (StateIndex k = 0; k < nThermStates; ++k) {
+        for (StateIndex i = 0; i < nMarkovStates; ++i) {
+            dtype sum = 0.0;
+            for (StateIndex j = 0; j < nMarkovStates; ++j) {
+                sum += (transitionCountsBuf(k, i, j) + transitionCountsBuf(k, j, i));
+            }
+            lagrangianMultLogBuf(k, i) = std::log(sum / 2);
+        }
+    }
+    return lagrangianMultLog;
+}
 }

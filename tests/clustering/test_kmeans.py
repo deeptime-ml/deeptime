@@ -413,3 +413,11 @@ def test_kmeans_progress(with_progress_bar):
         assert_equal(progress_instances[0].n_close_calls, 1)
         assert_equal(progress_instances[1].n, progress_instances[1].total)
         assert_equal(progress_instances[1].n_close_calls, 1)
+
+@pytest.mark.parametrize("est", [dt.clustering.KMeans, dt.clustering.MiniBatchKMeans])
+def test_list_data(est):
+    data = [np.ones((50,), dtype=np.float32) for _ in range(10)]
+    estimator = est(1)
+    clustering = estimator.fit(data, initial_centers=np.array([[.5]])).fetch_model()
+    assert_equal(clustering.n_clusters, 1)
+    assert_equal(clustering.cluster_centers[0], [1])

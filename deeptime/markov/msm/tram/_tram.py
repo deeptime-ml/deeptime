@@ -1,4 +1,5 @@
 import warnings
+import numpy as np
 from typing import Optional
 from sklearn.exceptions import ConvergenceWarning
 
@@ -35,13 +36,6 @@ def _unpack_input_tuple(data):
     return dtrajs, bias_matrices, ttrajs
 
 
-def _make_tram_estimator(model, dataset):
-    if model is None:
-        return tram.TRAM(dataset.n_therm_states, dataset.n_markov_states)
-    else:
-        return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
-
-
 def _get_dataset_from_input(data):
     if isinstance(data, tuple):
         dtrajs, bias_matrices, ttrajs = _unpack_input_tuple(data)
@@ -54,7 +48,14 @@ def _get_dataset_from_input(data):
 
 class TRAM(_MSMBaseEstimator):
     r"""Transition(-based) Reweighting Analysis Method.
-    TRAM is described in :footcite:`wu2016multiensemble`.
+    TRAM is described in :footcite:`wu2016multiensemble`. The parameters in this code correspond to variables in the
+    TRAM paper in the following way:
+     * `biased_conf_energies[k][i]` corresponds to :math:`f_i^k`, the free energy for  Markov state i in
+       thermodynamic state k.
+     * `lagrangian_mult_log[k][i]` corresponds to :math:`log\;v_i^k`, the logarithm of the lagrangian multiplier of
+       Markov state i in thermodynamic state k.
+     * `modified_state_counts_log[k][i]` corresponds to :math:`log\;R_i^k`, the logarithm of :math:`R_i^k`, the modified
+       state counts for Markov state i in thermodynamic state k.
 
     Parameters
     ----------
@@ -72,11 +73,27 @@ class TRAM(_MSMBaseEstimator):
           the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
         * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
           Recommended when estimating Bayesian MSMs.
-    maxiter : int, optional, default=10000
+    maxiter : int, optional, default=1000
         The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
-    maxerr : float, optional, default=1E-15
+    maxerr : float, optional, default=1E-8
         Convergence criterion based on the maximal free energy change in a self-consistent
         iteration step.
+    init_strategy : str, optional, default='MBAR'
+        Strategy of initialization of the free energies, lagrangian multipliers and state counts. Possible choices:
+        "MBAR" or None.
+         * "MBAR" : Initialize free energies using MBAR :footcite:`shirts2008statistically`. MBAR iterations are
+           executed before TRAM, to initialize the free energies with the MBAR estimate, which is a good initial
+           estimate for the TRAM free energies and will significantly speed up the convergence of TRAM. Lagrangian
+           multipliers are initialized to :math:`v_i^k = log( 1/2 * \sum_j (c_ij^k + c_ji^k))` and modified state counts
+           are zero-initialized.
+         * None : Free energies and modified state counts are zero-initialized. Lagrangian multipliers are initialized
+           to :math:`v_i^k = log( 1/2 * \sum_j (c_ij^k + c_ji^k))`
+    init_maxiter : int, optional, default=1000
+        The maximum number of iterations for parameter initialization, e.g. MBAR iterations. These initialization
+        iterations are executed before TRAM, to initialize the parameters with the chosen `init_strategy`.
+    init_maxerr : float, optional, default = 1eE-8
+        Convergence criterion for the initialization routine, based on the maximum energy change after one iteration
+        step.
     track_log_likelihoods : bool, optional, default=False
         If `True`, the log-likelihood is stored every callback_interval steps. For calculation of the log-likelihood the
         transition matrix needs to be constructed, which will slow down estimation. By default, log-likelihoods are
@@ -101,7 +118,9 @@ class TRAM(_MSMBaseEstimator):
 
     def __init__(
             self, lagtime=1, count_mode='sliding',
-            maxiter=10000, maxerr: float = 1e-8,
+            maxiter=1000, maxerr: float = 1e-8,
+            init_strategy='MBAR',
+            init_maxiter=1000, init_maxerr=1e-8,
             track_log_likelihoods=False, callback_interval=1,
             progress=None):
 
@@ -112,12 +131,17 @@ class TRAM(_MSMBaseEstimator):
         self._tram_estimator = None
         self.maxiter = maxiter
         self.maxerr = maxerr
+        self.init_strategy = init_strategy
+        self.init_maxiter = init_maxiter
+        self.init_maxerr = init_maxerr
         self.track_log_likelihoods = track_log_likelihoods
         self.callback_interval = callback_interval
         self.progress = progress
         self._largest_connected_set = None
         self.log_likelihoods = []
         self.energy_increments = []
+
+    init_strategy_options = ["MBAR", None]
 
     def fetch_model(self) -> Optional[TRAMModel]:
         r"""Yields the most recent :class:`MarkovStateModelCollection` that was estimated.
@@ -178,7 +202,7 @@ class TRAM(_MSMBaseEstimator):
             dataset.check_against_model(model)
 
         # only construct estimator if it hasn't been loaded from the model yet
-        self._tram_estimator = _make_tram_estimator(model, dataset)
+        self._tram_estimator = self._make_tram_estimator(model, dataset)
 
         self._run_estimation(dataset.tram_input)
         self._model = TRAMModel(count_models=dataset.count_models,
@@ -190,6 +214,35 @@ class TRAM(_MSMBaseEstimator):
                                 markov_state_energies=self._tram_estimator.markov_state_energies)
 
         return self
+
+    def _make_tram_estimator(self, model, dataset):
+        r""" Construct the underlying c++ TRAM estimator. If a model is given, the estimator is initialized with the
+        model parameters. Otherwise, the free energies are initialized with the chosen initialization strategy.
+        """
+        if self.init_strategy not in TRAM.init_strategy_options:
+            raise ValueError(
+                f"Initialization strategy unsupported. init_strategy must be one of {TRAM.init_strategy_options}.")
+
+        if model is not None:
+            return tram.TRAM(model.biased_conf_energies, model.lagrangian_mult_log, model.modified_state_counts_log)
+        else:
+            if self.init_strategy == "MBAR":
+                # initialize free energies using MBAR.
+                with callbacks.ProgressCallback(self.progress, "Initializing free energies using MBAR",
+                                                self.init_maxiter) as callback:
+                    free_energies = tram.initialize_free_energies_mbar(np.concatenate(dataset.bias_matrices),
+                                                                       dataset.state_counts.sum(axis=1),
+                                                                       self.init_maxiter, self.init_maxerr,
+                                                                       self.callback_interval, callback)
+
+                # copy free energies along the markoc state axis to get initial biased_conf_energies
+                biased_conf_energies = np.repeat(free_energies[:, None], dataset.n_markov_states, axis=1)
+            else:
+                biased_conf_energies = np.zeros((dataset.n_markov_states, dataset.n_therm_states))
+
+        lagrangian_mult_log = tram.initialize_lagrangians(dataset.transition_counts)
+        modified_state_counts = np.zeros_like(lagrangian_mult_log)  # intialize this as the dataset state counts???
+        return tram.TRAM(biased_conf_energies, lagrangian_mult_log, modified_state_counts)
 
     def _run_estimation(self, tram_input):
         """ Estimate the free energies using self-consistent iteration as described in the TRAM paper. """
@@ -218,13 +271,14 @@ class TRAMCallback(callbacks.ProgressCallback):
     increments : list, optional
         A list to append the increments to that are passed to the callback.__call__() method.
     """
+
     def __init__(self, progress, total, log_likelihoods_list=None, increments=None):
         super().__init__(progress, total=total, description="Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
         self.last_increment = 0
 
-    def __call__(self, n_iterations,  increment, log_likelihood):
+    def __call__(self, n_iterations, increment, log_likelihood=0):
         """Call the callback. Increment a progress bar (if available) and store convergence information.
 
         Parameters

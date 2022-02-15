@@ -238,7 +238,7 @@ class TRAMModel(Model):
             if len(indices[0]) > 0:
                 pmf[i] = -logsumexp(sample_weights[indices])
             else:
-                pmf[i] = np.infty
+                pmf[i] = np.inf
         return pmf
 
     def compute_log_likelihood(self, dtrajs, bias_matrices):

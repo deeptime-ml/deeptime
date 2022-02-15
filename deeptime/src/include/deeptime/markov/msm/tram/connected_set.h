@@ -11,7 +11,7 @@
 
 #include <iterator>
 #include <algorithm>
-#include "tram_types.h"
+#include "common.h"
 
 namespace deeptime::markov::tram {
 
