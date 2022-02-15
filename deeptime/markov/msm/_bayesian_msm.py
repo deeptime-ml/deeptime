@@ -1,8 +1,9 @@
 from math import sqrt
-from typing import Optional, Callable
+from typing import Optional, Callable, Union, List
 
 import numpy as np
 
+from .._transition_counting import TransitionCountEstimator
 from ...base import Estimator
 from ...numeric import is_square_matrix
 from .._base import _MSMBaseEstimator, BayesianMSMPosterior
@@ -37,17 +38,17 @@ class BayesianMSM(_MSMBaseEstimator):
         this case python sparse matrices will be returned by the corresponding functions instead of numpy arrays.
         This behavior is suggested for very large numbers of states (e.g. > 4000) because it is likely to be much
         more efficient.
-    confidence : float, optional, default=0.954
-        Confidence interval. By default two sigma (95.4%) is used. Use 68.3% for one sigma, 99.7% for three sigma.
     maxiter : int, optional, default=1000000
         Optional parameter with reversible = True, sets the maximum number of iterations before the transition
         matrix estimation method exits.
-    maxerr : float, optional, default = 1e-8
+    maxerr : float, optional, default=1e-8
         Optional parameter with reversible = True. Convergence tolerance for transition matrix estimation. This
         specifies the maximum change of the Euclidean norm of relative stationary probabilities
         (:math:`x_i = \sum_k x_{ik}`). The relative stationary probability changes
         :math:`e_i = (x_i^{(1)} - x_i^{(2)})/(x_i^{(1)} + x_i^{(2)})` are used in order to track changes in small
         probabilities. The Euclidean norm of the change vector, :math:`|e_i|_2`, is compared to maxerr.
+    lagtime : int, optional, default=None
+        The lagtime that is used when fitting directly from discrete trajectories.
 
     References
     ----------
@@ -130,14 +131,14 @@ class BayesianMSM(_MSMBaseEstimator):
 
     def __init__(self, n_samples: int = 100, n_steps: int = None, reversible: bool = True,
                  stationary_distribution_constraint: Optional[np.ndarray] = None,
-                 sparse: bool = False, confidence: float = 0.954, maxiter: int = int(1e6), maxerr: float = 1e-8):
+                 sparse: bool = False, maxiter: int = int(1e6), maxerr: float = 1e-8, lagtime: Optional[int] = None):
         super(BayesianMSM, self).__init__(reversible=reversible, sparse=sparse)
         self.stationary_distribution_constraint = stationary_distribution_constraint
         self.maxiter = maxiter
         self.maxerr = maxerr
         self.n_samples = n_samples
         self.n_steps = n_steps
-        self.confidence = confidence
+        self.lagtime = lagtime
 
     @property
     def stationary_distribution_constraint(self) -> Optional[np.ndarray]:
@@ -203,18 +204,13 @@ class BayesianMSM(_MSMBaseEstimator):
 
         from deeptime.markov import TransitionCountModel
         if isinstance(data, TransitionCountModel) or is_square_matrix(data):
-            msm = MaximumLikelihoodMSM(
-                reversible=self.reversible, stationary_distribution_constraint=self.stationary_distribution_constraint,
-                sparse=self.sparse, maxiter=self.maxiter, maxerr=self.maxerr
-            ).fit(data).fetch_model()
+            return self.fit_from_counts(data)
         elif isinstance(data, MarkovStateModel):
-            msm = data
+            return self.fit_from_msm(data, callback=callback, **kw)
         else:
-            raise ValueError("Unsupported input data, can only be count matrix (or TransitionCountModel, "
-                             "TransitionCountEstimator) or a MarkovStateModel instance or an estimator producing "
-                             "Markov state models.")
-
-        return self.fit_from_msm(msm, callback=callback, **kw)
+            if not self.lagtime and 'lagtime' not in kw.keys():
+                raise ValueError("To fit directly from a discrete timeseries, a lagtime must be provided!")
+            return self.fit_from_discrete_timeseries(data, kw.pop('lagtime', self.lagtime), callback=callback, **kw)
 
     def sample(self, prior: MarkovStateModel, n_samples: int, n_steps: Optional[int] = None, callback=None):
         r""" Performs sampling based on a prior.
@@ -309,6 +305,55 @@ class BayesianMSM(_MSMBaseEstimator):
         samples = self.sample(msm, self.n_samples, self.n_steps, callback)
         self._model = BayesianMSMPosterior(prior=msm, samples=samples)
         return self
+
+    def fit_from_discrete_timeseries(self, discrete_timeseries: Union[np.ndarray, List[np.ndarray]],
+                                     lagtime: int = None, count_mode: str = 'effective', callback=None, **kw):
+        r""" Fits a BayesianMSM directly on timeseries data.
+
+        Parameters
+        ----------
+        discrete_timeseries : list of ndarray
+            Discrete trajectories.
+        lagtime : int, optional, default=None
+            The lagtime that is used for estimation. If None, uses the instance's lagtime attribute.
+        count_mode : str, default='effective'
+            The counting mode. Should be of the `effective` kind, otherwise the results may be heavily biased.
+        callback : callable, optional, default=None
+            Function to be called to indicate progress of sampling.
+        **kw
+            Optional keyword parameters.
+
+        Returns
+        -------
+        self : BayesianMSM
+            Reference to self.
+        """
+        counts = TransitionCountEstimator(lagtime=lagtime, count_mode=count_mode,
+                                          sparse=self.sparse).fit_fetch(discrete_timeseries).submodel_largest()
+        return self.fit_from_counts(counts, callback=callback, **kw)
+
+    def fit_from_counts(self, counts, callback=None, **kw):
+        r"""Fits a bayesian MSM on a count model or a count matrix.
+
+        Parameters
+        ----------
+        counts : TransitionCountModel or (n, n) ndarray
+            The transition counts.
+        callback : callable, optional, default=None
+            Function that is called to indicate progress of sampling.
+        **kw
+            Optional keyword parameters.
+
+        Returns
+        -------
+        self : BayesianMSM
+            Reference to self.
+        """
+        msm = MaximumLikelihoodMSM(
+            reversible=self.reversible, stationary_distribution_constraint=self.stationary_distribution_constraint,
+            sparse=self.sparse, maxiter=self.maxiter, maxerr=self.maxerr
+        ).fit(counts.submodel_largest()).fetch_model()
+        return self.fit_from_msm(msm, callback=callback, **kw)
 
     @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
     def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model=None):

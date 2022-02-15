@@ -95,7 +95,7 @@ class CKTestGrid:
 
 def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
                  conf: float = 0.95, color=None, grid: CKTestGrid = None, legend=True,
-                 xlabel='lagtime (steps)', ylabel='probability', y01=False, sharey=False, **plot_kwargs):
+                 xlabel='lagtime (steps)', ylabel='probability', y01=True, sharey=True, **plot_kwargs):
     r""" Plot the Chapman Kolmogorov test.
 
     .. plot:: examples/plot_ck_test.py
@@ -120,9 +120,9 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
         The x label.
     ylabel : str, default='probability'
         The y label.
-    y01 : bool, optional, default=False
-        Sets the limits of the y axis to [0, 1].
-    sharey : bool, optional, default=False
+    y01 : bool, optional, default=True
+        Sets the limits of the y-axis to [0, 1].
+    sharey : bool, optional, default=True
         Whether to share the y-axes in case a new grid is created.
     **plot_kwargs
         Further optional keyword arguments that go into `ax.plot`.
