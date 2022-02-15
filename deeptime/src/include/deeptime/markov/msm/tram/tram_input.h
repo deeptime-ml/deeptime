@@ -22,12 +22,11 @@ class TRAMInput {
 public:
     using size_type = typename BiasMatrices<dtype>::size_type;
 
-    TRAMInput(CountsMatrix &&stateCounts, CountsMatrix &&transitionCounts, DTraj dtraj, BiasMatrices<dtype> biasMatrices)
+    TRAMInput(CountsMatrix &&stateCounts, CountsMatrix &&transitionCounts, BiasMatrices<dtype> biasMatrices)
             : stateCounts_(std::move(stateCounts)),
               transitionCounts_(std::move(transitionCounts)),
-              dtraj_(std::move(dtraj)),
               biasMatrices_(std::move(biasMatrices)),
-              cumNSamples_(){
+              cumNSamples_() {
         cumNSamples_.resize(nMarkovStates());
         for(std::size_t i = 1; i < cumNSamples_.size(); ++i) {
             cumNSamples_[i] += cumNSamples_[i-1] + nSamples(i-1);
@@ -54,9 +53,7 @@ public:
                                "stateCounts.shape(1) should equal transitionCounts.shape(1)");
         detail::throwIfInvalid(transitionCounts_.shape(1) == transitionCounts_.shape(2),
                                "transitionCounts.shape(1) should equal transitionCounts.shape(2)");
-        detail::throwIfInvalid(dtraj_.ndim() == 1,
-                               "dtraj has an incorrect number of dimension. ndims should be 1.");
-        detail::throwIfInvalid(biasMatrices_.empty(), "We need bias matrices.");
+        detail::throwIfInvalid(!biasMatrices_.empty(), "We need bias matrices.");
         std::for_each(begin(biasMatrices_), end(biasMatrices_), [nThermStates = stateCounts_.shape(0)](const auto &biasMatrix) {
             detail::throwIfInvalid(biasMatrix.ndim() == 2,
                                    "biasMatrix has an incorrect number of dimension. ndims should be 2.");
@@ -122,7 +119,7 @@ private:
     CountsMatrix stateCounts_;
     CountsMatrix transitionCounts_;
     BiasMatrices<dtype> biasMatrices_;
-    DTraj dtraj_;
+//    DTraj dtraj_;
     std::vector<size_type> cumNSamples_;
 };
 

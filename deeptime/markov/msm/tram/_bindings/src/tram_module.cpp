@@ -25,9 +25,8 @@ PYBIND11_MODULE(_tram_bindings, m) {
                 .def_property_readonly("markov_state_energies", &TRAM<double>::markovStateEnergies);
 
         py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(tramMod, "TRAMInput").def(
-                py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, DTraj,
-                        BiasMatrix<double >>(),
-                "state_counts"_a, "transition_counts"_a, "dtraj"_a, "bias_matrix"_a);
+                py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, BiasMatrices<double>>(),
+                "state_counts"_a, "transition_counts"_a,  "bias_matrix"_a);
 
         tramMod.def("initialize_lagrangians", &initLagrangianMult<double>, "transition_counts"_a);
 

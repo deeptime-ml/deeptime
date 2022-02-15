@@ -20,25 +20,31 @@ template<typename dtype>
 constexpr static dtype logPrior() { return -std::numeric_limits<dtype>::infinity(); }
 }
 
+// Compute the sample likelihood from the traminput. This method only gets called by the TRAM struct, not by pybind.
 template<typename dtype>
 static const dtype computeSampleLikelihood(const TRAMInput<dtype> &input,
                                            const np_array_nfc<dtype> &modifiedStateCountsLog) {
     auto nThermStates = input.nThermStates();
     const auto &cumNSamples = input.cumNSamples();
-    std::vector<dtype> sampleWeights {input.nSamples()};
+    std::vector<dtype> sampleWeights(input.nSamples());
 
     std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuf{begin(input.biasMatrices()),
                                                                  end(input.biasMatrices())};
+    auto biasMatrixPtr = biasMatrixBuf.data();
+
     ArrayBuffer<np_array_nfc<dtype>, 2> modifiedStateCountsLogBuf{modifiedStateCountsLog};
+    auto modifiedStateCountsLogPtr = &modifiedStateCountsLogBuf;
 
-    for (std::size_t i = 0; i < input.nMarkovStates(); ++i) {
+    auto inputPtr = &input;
+    #pragma omp parallel for default(none) firstprivate(nThermStates, inputPtr, biasMatrixPtr, sampleWeights, \
+                                                        modifiedStateCountsLogPtr)
+    for (auto i = 0; i < inputPtr->nMarkovStates(); ++i) {
         std::vector<dtype> scratch(nThermStates);
-        for (std::size_t x=0; x < input.nSamples(i); ++x){
-
+        for (auto x = 0; x < inputPtr->nSamples(i); ++x) {
             int o = 0;
             for (StateIndex l = 0; l < nThermStates; ++l) {
-                if (modifiedStateCountsLogBuf(l, i) > -std::numeric_limits<dtype>::infinity()) {
-                    scratch[o++] = modifiedStateCountsLogBuf(l, i) - biasMatrixBuf[i](x, l);
+                if ((*modifiedStateCountsLogPtr)(l, i) > -std::numeric_limits<dtype>::infinity()) {
+                    scratch[o++] = (*modifiedStateCountsLogPtr)(l, i) - biasMatrixPtr[i](x, l);
                 }
             }
             auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
@@ -50,6 +56,7 @@ static const dtype computeSampleLikelihood(const TRAMInput<dtype> &input,
 
 // natural logarithm of the statistical weight per sample, log \mu^k(x).
 // If thermState =-1, this is the unbiased statistical sample weight, log \mu(x).
+// This method gets called by pybind! Either directly or via the call to computeloglikelihood.
 template<typename dtype>
 static const std::vector<dtype> computeSampleWeightsLog(const DTraj &dtraj,
                                                         const BiasMatrix<dtype> &biasMatrix,
@@ -97,33 +104,48 @@ static const std::vector<dtype> computeSampleWeightsLog(const DTraj &dtraj,
 // i.e. the likelihood of observing the observed transitions plus for each thermodynamic state,
 // the free energy of that state times the state counts:
 // \sum_{i,j,k}c_{ij}^{(k)}\log p_{ij}^{(k)} + \sum_{i,k}N_{i}^{(k)}f_{i}^{(k)}
-template<typename EnergyBuffer, typename StateCountsBuffer, typename TransitionCountsBuffer, typename TransitionMatrixBuffer>
+template<typename dtype>
 static const auto
-computeDiscreteLikelihood(StateIndex nThermStates, StateIndex nMarkovStates, EnergyBuffer *biasedConfEnergies,
-                          StateCountsBuffer *stateCounts, TransitionCountsBuffer *transitionCounts,
-                          TransitionMatrixBuffer *transitionMatrices) {
-    using dtype = typename EnergyBuffer::value_type;
+computeDiscreteLikelihood(const np_array_nfc<dtype> &biasedConfEnergies,
+                          const CountsMatrix &stateCounts, const CountsMatrix &transitionCounts,
+                          const np_array_nfc<dtype> &transitionMatrices) {
+
+    auto nThermStates = static_cast<StateIndex>(biasedConfEnergies.shape(0));
+    auto nMarkovStates = static_cast<StateIndex>(biasedConfEnergies.shape(1));
+
+    // use threadsafe arraybuffers
+    ArrayBuffer<np_array_nfc<dtype>, 2> biasedConfEnergiesBuf{biasedConfEnergies};
+    auto biasedConfEnergiesPtr = &biasedConfEnergiesBuf;
+
+    ArrayBuffer<CountsMatrix, 3> transitionCountsBuf{transitionCounts};
+    auto transitionCountsPtr = &transitionCountsBuf;
+
+    ArrayBuffer<CountsMatrix, 2> stateCountsBuf{stateCounts};
+    auto stateCountsPtr = &stateCountsBuf;
+
+    ArrayBuffer<np_array_nfc<dtype>, 3> transitionMatricesBuf{transitionMatrices};
+    auto transitionMatricesPtr = &transitionMatricesBuf;
 
     dtype LL = 0;
 
-    #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCounts, \
-                                                            transitionMatrices, stateCounts, \
-                                                            biasedConfEnergies) reduction(+:LL) collapse(2)
+    #pragma omp parallel for default(none) firstprivate(nThermStates, nMarkovStates, transitionCountsPtr, \
+                                                            transitionMatricesPtr, stateCountsPtr, \
+                                                            biasedConfEnergiesPtr) reduction(+:LL) collapse(2)
     for (StateIndex k = 0; k < nThermStates; ++k) {
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
             // discrete sample log-likelihood \sum_{k=1}^K \sum_{i=1}^m N_i^k * f_i^k
-            if ((*stateCounts)(k, i) > 0) {
-                LL += ((*stateCounts)(k, i) + tram::detail::prior<dtype>()) * (*biasedConfEnergies)(k, i);
+            if ((*stateCountsPtr)(k, i) > 0) {
+                LL += ((*stateCountsPtr)(k, i) + tram::detail::prior<dtype>()) * (*biasedConfEnergiesPtr)(k, i);
             }
             // transition log-likelihood \sum_{k=1}^K \sum_{i,j=1}^m c_ij^k * log(p_ij^k)
             for (StateIndex j = 0; j < nMarkovStates; ++j) {
-                auto CKij = (*transitionCounts)(k, i, j);
+                auto CKij = (*transitionCountsPtr)(k, i, j);
                 if (CKij > 0) {
                     if (i == j) {
                         LL += (static_cast<dtype>(CKij) + tram::detail::prior<dtype>()) *
-                              std::log((*transitionMatrices)(k, i, j));
+                              std::log((*transitionMatricesPtr)(k, i, j));
                     } else {
-                        LL += CKij * std::log((*transitionMatrices)(k, i, j));
+                        LL += CKij * std::log((*transitionMatricesPtr)(k, i, j));
                     }
                 }
             }
@@ -136,6 +158,7 @@ computeDiscreteLikelihood(StateIndex nThermStates, StateIndex nMarkovStates, Ene
 // compute the log-likelihood of observing the input data under the current
 // biasedConfEnergies_. This computes the parameter-dependent part of the likelihood, i.e. the factor -b^k(x) is
 // omitted as it is constant.
+// This loglikelihood computation gets called py pybind! It expects only one (concatenated) trajectory.
 template<typename dtype>
 static const dtype computeLogLikelihood(const DTraj &dtraj,
                                         const BiasMatrix<dtype> &biasMatrix,
@@ -145,18 +168,10 @@ static const dtype computeLogLikelihood(const DTraj &dtraj,
                                         const CountsMatrix &stateCounts,
                                         const CountsMatrix &transitionCounts,
                                         const np_array_nfc<dtype> &transitionMatrices) {
-    auto nThermStates = static_cast<StateIndex>(biasedConfEnergies.shape(0));
-    auto nMarkovStates = static_cast<StateIndex>(biasedConfEnergies.shape(1));
-
-    // use threadsafe arraybuffers
-    ArrayBuffer<np_array_nfc<dtype>, 2> biasedConfEnergiesBuf{biasedConfEnergies};
-    ArrayBuffer<CountsMatrix, 3> transitionCountsBuf{transitionCounts};
-    ArrayBuffer<CountsMatrix, 2> stateCountsBuf{stateCounts};
-    ArrayBuffer<np_array_nfc<dtype>, 3> transitionMatricesBuf{transitionMatrices};
 
     // first get likelihood of all discrete quantities (transition likelihood and free energies times state counts)
-    auto logLikelihood = computeDiscreteLikelihood(nThermStates, nMarkovStates, &biasedConfEnergiesBuf,
-                                                   &stateCountsBuf, &transitionCountsBuf, &transitionMatricesBuf);
+    auto logLikelihood = computeDiscreteLikelihood(biasedConfEnergies, stateCounts, transitionCounts,
+                                                   transitionMatrices);
 
     // then compute log of all sample weights, and add to log likelihood.
     auto sampleWeights = computeSampleWeightsLog(dtraj, biasMatrix, thermStateEnergies, modifiedStateCountsLog, -1);
@@ -183,12 +198,12 @@ public:
               statVectors_(ExchangeableArray<dtype, 2>(std::vector({nThermStates_, nMarkovStates_}), 0.)),
               scratch_(std::unique_ptr<dtype[]>(new dtype[std::max(nMarkovStates_, nThermStates_)])) {
 
-            std::copy(lagrangianMultLog.data(), lagrangianMultLog.data() + lagrangianMultLog.size(),
+        std::copy(lagrangianMultLog.data(), lagrangianMultLog.data() + lagrangianMultLog.size(),
                   lagrangianMultLog_.first()->mutable_data());
-            std::copy(biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size(),
-                      biasedConfEnergies_.mutable_data());
-            std::copy(modifiedStateCountsLog.data(), modifiedStateCountsLog.data() + modifiedStateCountsLog.size(),
-                      modifiedStateCountsLog_.mutable_data());
+        std::copy(biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size(),
+                  biasedConfEnergies_.mutable_data());
+        std::copy(modifiedStateCountsLog.data(), modifiedStateCountsLog.data() + modifiedStateCountsLog.size(),
+                  modifiedStateCountsLog_.mutable_data());
     }
 
     const auto &biasedConfEnergies() const {
@@ -248,11 +263,9 @@ public:
             if (trackLogLikelihoods) {
                 // log likelihood depends on transition matrices. Compute them first.
                 computeTransitionMatrices();
-                computeSampleLikelihood(*input_, modifiedStateCountsLog_);
-                logLikelihood = computeLogLikelihood(input_->dtraj(), input_->biasMatrix(),
-                                                     biasedConfEnergies_, modifiedStateCountsLog_,
-                                                     *thermStateEnergies_.first(), input_->stateCounts(),
-                                                     input_->transitionCounts(), transitionMatrices_);
+                logLikelihood = computeDiscreteLikelihood(biasedConfEnergies_, input_->stateCounts(),
+                                                               input_->transitionCounts(), transitionMatrices_) +
+                                     computeSampleLikelihood(*input_, modifiedStateCountsLog_);
             }
 
             // Send convergence info back to user by calling a python callback function
@@ -359,29 +372,31 @@ private:
         std::fill(biasedConfEnergies_.mutable_data(), biasedConfEnergies_.mutable_data() +
                                                       biasedConfEnergies_.size(), inf);
 
-        auto biasMatrixBuf = input_->biasMatrixBuf();
-        auto dtrajBuf = input_->dtrajBuf();
+        std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuffers(input_->biasMatrices().begin(),
+                                                                         input_->biasMatrices().end());
+        auto biasMatrixPtr = biasMatrixBuffers.data();
 
         auto biasedConfEnergiesBuf = biasedConfEnergies_.template mutable_unchecked<2>();
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
-        auto *scratch = scratch_.get();
+        #pragma omp parallel for default(none) firstprivate(nMarkovStates_, nThermStates, input_, biasMatrixPtr, \
+                                                            biasedConfEnergiesBuf, modifiedStateCountsLogBuf)
+        for (StateIndex i = 0; i < nMarkovStates_; ++i) {
+            std::vector<dtype> scratch(nThermStates_);
 
-        // assume that biasedConfEnergies_ have been set to INF by the caller in the first call
-        for (std::int32_t x = 0; x < input_->nSamples(); ++x) {
-            auto i = dtrajBuf(x);
-            if (i >= 0) { // skip frames that have negative Markov state indices
+            for (std::int32_t x = 0; x < input_->nSamples(i); ++x) {
                 std::size_t o = 0;
                 for (StateIndex k = 0; k < nThermStates_; ++k) {
                     if (modifiedStateCountsLogBuf(k, i) > -inf) {
-                        scratch[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixBuf(x, k);
+                        scratch[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixPtr[i](x, k);
                     }
                 }
-                dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch, o);
+                dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
 
+                //TODO check this computation. Should just be a logsumexp of all the divisors in stead of pairwise.
                 for (StateIndex k = 0; k < nThermStates_; ++k) {
                     biasedConfEnergiesBuf(k, i) = -numeric::kahan::logsumexp_pair(
-                            -biasedConfEnergiesBuf(k, i), -(divisor + biasMatrixBuf(x, k)));
+                            -biasedConfEnergiesBuf(k, i), -(divisor + biasMatrixPtr[i](x, k)));
                 }
             }
         }
@@ -471,23 +486,28 @@ private:
         // first reset all confirmation energies to infinity
         std::fill(markovStateEnergies_.mutable_data(), markovStateEnergies_.mutable_data() + nMarkovStates_, inf);
 
-        auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
-        auto markovStateEnergiesBuf = markovStateEnergies_.template mutable_unchecked<1>();
+        std::vector<ArrayBuffer<BiasMatrix<dtype>, 2>> biasMatrixBuffers(input_->biasMatrices().begin(),
+                                                                         input_->biasMatrices().end());
+        auto biasMatrixPtr = biasMatrixBuffers.data();
 
-        auto dtrajBuf = input_->dtrajBuf();
-        auto biasMatrixBuf = input_->biasMatrixBuf();
+        auto markovStateEnergiesBuf = markovStateEnergies_.template mutable_unchecked<1>();
+        auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
         // assume that markovStateEnergies_ were set to INF by the caller on the first call
-        for (auto x = 0; x < input_->nSamples(); ++x) {
-            std::int32_t i = dtrajBuf(x);
-            if (i >= 0) { // skip negative state indices
+        #pragma omp parallel for default(none) firstprivate(nMarkovStates_, nThermStates, input_, biasMatrixPtr, \
+                                                            markovStateEnergiesBuf, modifiedStateCountsLogBuf)
+        for (StateIndex i = 0; i < nMarkovStates_; ++i) {
+            std::vector<dtype> scratch(nThermStates_);
+
+            for (auto x = 0; x < input_->nSamples(i); ++x) {
                 std::size_t o = 0;
                 for (StateIndex k = 0; k < nThermStates_; ++k) {
                     if (modifiedStateCountsLogBuf(k, i) > -inf) {
-                        scratch_[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixBuf(x, k);
+                        scratch[o++] = modifiedStateCountsLogBuf(k, i) - biasMatrixPtr[i](x, k);
                     }
                 }
-                dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch_.get(), o);
+                dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
+                //TODO check this computation. Should just be a logsumexp of all the divisors in stead of pairwise.
                 markovStateEnergiesBuf(i) = -numeric::kahan::logsumexp_pair(-markovStateEnergiesBuf(i), -divisor);
             }
         }
@@ -625,7 +645,7 @@ private:
 };
 
 
-template <typename dtype>
+template<typename dtype>
 np_array_nfc<dtype> initLagrangianMult(const CountsMatrix &transitionCounts) {
     auto nThermStates = static_cast<StateIndex>(transitionCounts.shape(0));
     auto nMarkovStates = static_cast<StateIndex>(transitionCounts.shape(1));
