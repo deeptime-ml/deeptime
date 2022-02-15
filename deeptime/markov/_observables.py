@@ -69,8 +69,6 @@ class MembershipsObservable(Observable):
             if subset is not None:
                 p0sub /= np.sum(p0)  # renormalize
             pksub = model.propagate(p0sub, mlag)
-            if dtype == float:
-                assert np.all(np.isreal(pksub)), f"wasnt real {pksub}"
             if self.ignore_imaginary_parts and np.any(np.iscomplex(pksub)):
                 # ignore complex stuff because of fractional powers
                 pksub = pksub.real
