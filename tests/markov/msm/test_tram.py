@@ -265,10 +265,22 @@ def test_tqdm_progress_bar():
     tram.fit(make_random_input_data(5, 5))
 
 
-def test_fit_with_dataset():
+@pytest.mark.parametrize(
+    "init_strategy", ["MBAR", None]
+)
+def test_fit_with_dataset(init_strategy):
     dataset = TRAMDataset(dtrajs=[np.asarray([0, 1, 2])], bias_matrices=[np.asarray([[1.], [2.], [3.]])])
-    tram = TRAM()
+    tram = TRAM(init_strategy=init_strategy)
     tram.fit(dataset)
+
+
+@pytest.mark.parametrize(
+    "init_strategy", ["MBAR", None]
+)
+def test_fit_with_dataset(init_strategy):
+    input_data = make_random_input_data(20, 2)
+    tram = TRAM(init_strategy=init_strategy)
+    tram.fit(input_data)
 
 
 def test_mbar_initalization():
@@ -296,3 +308,4 @@ def test_mbar_initialization_zero_iterations():
     model1 = tram1.fit_fetch(input_data)
     model2 = tram2.fit_fetch(input_data)
     np.testing.assert_equal(model1.biased_conf_energies, model2.biased_conf_energies)
+
