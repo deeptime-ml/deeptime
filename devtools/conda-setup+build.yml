@@ -5,6 +5,7 @@ steps:
     conda config --set quiet true
   displayName: Configure conda
 - bash: |
+    conda clean --all
     conda install mamba
     mamba update --all
     mamba install boa conda-build conda-verify pip
