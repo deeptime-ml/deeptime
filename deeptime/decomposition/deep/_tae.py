@@ -99,10 +99,11 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
     """
     _MUTABLE_INPUT_DATA = True
 
-    def __init__(self, encoder: nn.Module, decoder: nn.Module, optimizer='Adam', learning_rate=3e-4):
+    def __init__(self, encoder: nn.Module, decoder: nn.Module, optimizer='Adam', learning_rate=3e-4, device='cpu'):
         super().__init__()
-        self._encoder = encoder
-        self._decoder = decoder
+        self.device = device
+        self._encoder = encoder.to(self.device)
+        self._decoder = decoder.to(self.device)
         self.learning_rate = learning_rate
         self.setup_optimizer(optimizer, list(encoder.parameters()) + list(decoder.parameters()))
         self._mse_loss = nn.MSELoss(reduction='sum')
