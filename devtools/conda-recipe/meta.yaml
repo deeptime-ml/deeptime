@@ -24,7 +24,7 @@ requirements:
     - toml
     - scikit-build
     - cmake
-    - ninja  # [not win]
+    - ninja
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
 
