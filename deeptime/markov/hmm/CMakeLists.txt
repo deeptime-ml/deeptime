@@ -1,4 +1,4 @@
-project(deeptime_hmm CXX)
+project(_hmm_bindings CXX)
 
 set(SRC src/hmm_module.cpp)
 pybind11_add_module(_hmm_bindings ${SRC})
@@ -6,3 +6,5 @@ target_link_libraries(_hmm_bindings PUBLIC deeptime::deeptime)
 if(OpenMP_FOUND)
     target_link_libraries(_hmm_bindings PUBLIC OpenMP::OpenMP_CXX)
 endif()
+file(RELATIVE_PATH REL_PATH "${DEEPTIME_ROOT_DIRECTORY}/deeptime" "${CMAKE_CURRENT_SOURCE_DIR}")
+install(TARGETS ${PROJECT_NAME} DESTINATION ${REL_PATH})
