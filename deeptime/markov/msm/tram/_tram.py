@@ -238,7 +238,7 @@ class TRAM(_MSMBaseEstimator):
                 # copy free energies along the markoc state axis to get initial biased_conf_energies
                 biased_conf_energies = np.repeat(free_energies[:, None], dataset.n_markov_states, axis=1)
             else:
-                biased_conf_energies = np.zeros((dataset.n_markov_states, dataset.n_therm_states))
+                biased_conf_energies = np.zeros((dataset.n_therm_states, dataset.n_markov_states))
 
         lagrangian_mult_log = tram.initialize_lagrangians(dataset.transition_counts)
         modified_state_counts = np.zeros_like(lagrangian_mult_log)  # intialize this as the dataset state counts???
