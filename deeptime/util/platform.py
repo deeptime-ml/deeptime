@@ -15,7 +15,7 @@ def module_available(modname: str) -> bool:
     try:
         __import__(modname)
         return True
-    except ImportError:
+    except:
         return False
 
 
