@@ -7,7 +7,7 @@ source:
 
 build:
   script:
-    - "{{ PYTHON }} -m pip install . -vv"
+    - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir  -vv"
 
 requirements:
   build:
