@@ -3,7 +3,7 @@ package:
   version: 0
 
 source:
-  git_url: ../..
+  path: ../..
 
 build:
   script:
