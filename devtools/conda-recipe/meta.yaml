@@ -7,7 +7,7 @@ source:
 
 build:
   script:
-    - "{{ PYTHON }} -m pip install . -vv"
+    - "{{ PYTHON }} -m pip install . -vvv"
 
 requirements:
   build:
@@ -18,13 +18,13 @@ requirements:
     - python
     - cython
     - pip
-    - numpy
     - scipy
-    - pybind11
     - toml
-    - scikit-build
-    - cmake
     - ninja
+    - cmake >=3.22
+    - numpy >=1.14
+    - pybind11 >=2.9.0
+    - scikit-build >=0.14
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
 
