@@ -233,7 +233,7 @@ def time_relaxation_direct_by_diagonalization(P, p0, obs, time, rdl=None):
     return result
 
 
-def time_relaxations_direct(P, p0, obs, times=[1]):
+def time_relaxations_direct(P, p0, obs, times=(1,)):
     r"""Compute time-relaxations of obs with respect of given initial distribution.
 
     relaxation(k) = p0 P^k obs

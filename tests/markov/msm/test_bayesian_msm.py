@@ -12,14 +12,13 @@ class TestBMSMBasic(unittest.TestCase):
 
     def test_estimator_params(self):
         estimator = BayesianMSM(n_samples=13, n_steps=55, reversible=False,
-                                stationary_distribution_constraint=np.array([0.5, 0.5]), sparse=True, confidence=0.9,
+                                stationary_distribution_constraint=np.array([0.5, 0.5]), sparse=True,
                                 maxiter=5000, maxerr=1e-12)
         np.testing.assert_equal(estimator.n_samples, 13)
         np.testing.assert_equal(estimator.n_steps, 55)
         np.testing.assert_equal(estimator.reversible, False)
         np.testing.assert_equal(estimator.stationary_distribution_constraint, [0.5, 0.5])
         np.testing.assert_equal(estimator.sparse, True)
-        np.testing.assert_equal(estimator.confidence, 0.9)
         np.testing.assert_equal(estimator.maxiter, 5000)
         np.testing.assert_equal(estimator.maxerr, 1e-12)
         with self.assertRaises(ValueError):

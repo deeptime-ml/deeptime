@@ -360,7 +360,7 @@ class MarkovStateModel(Model):
             if m < neig:
                 # not enough eigenpairs present - recompute:
                 self._compute_eigenvalues(neig)
-        except (AttributeError, TypeError) as e:
+        except (AttributeError, TypeError):
             # no eigendecomposition yet - compute:
             self._compute_eigenvalues(neig)
 
@@ -529,6 +529,12 @@ class MarkovStateModel(Model):
                     self.eigenvectors_right(), np.diag(ev_pow), self.eigenvectors_left()
                 ])
         return transition_matrix
+
+    @cached_property
+    def is_real(self):
+        r""" Checks if all eigenvalues as well as eigenvectors/functions are real. """
+        return np.all(np.isreal(self.eigenvalues())) and \
+               np.all(np.isreal(self.eigenvectors_left()) & np.isreal(self.eigenvectors_right()))
 
     def propagate(self, p0, k: int):
         r""" Propagates the initial distribution p0 k times

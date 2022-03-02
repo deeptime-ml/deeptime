@@ -379,3 +379,4 @@ class DeprecatedCKValidator(Estimator):
             lagtime = factor * test_lag
             models.append(self.fit_for_lag(data, lagtime))
         self._model = ck_test(models, observable=self.observable, test_model=self.test_model)
+        return self

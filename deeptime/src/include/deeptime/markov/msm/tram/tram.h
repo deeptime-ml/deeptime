@@ -73,7 +73,6 @@ static const std::vector<dtype> computeSampleWeightsLog(const DTraj &dtraj,
     ArrayBuffer<np_array_nfc<dtype>, 2> modifiedStateCountsLogBuf{modifiedStateCountsLog};
     ArrayBuffer<np_array_nfc<dtype>, 1> thermStateEnergiesBuf{thermStateEnergies};
 
-
     for (auto x = 0; x < dtraj.size(); ++x) {
         auto i = dtrajBuf(x);
         if (i < 0) {
@@ -380,7 +379,7 @@ private:
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
         auto nThermStates = nThermStates_, nMarkovStates = nMarkovStates_;
-	auto input = input_;
+	    auto input = input_;
         #pragma omp parallel for default(none) firstprivate(nMarkovStates, nThermStates, input, biasMatrixPtr, \
                                                             biasedConfEnergiesBuf, modifiedStateCountsLogBuf)
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
@@ -395,7 +394,6 @@ private:
                 }
                 dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
 
-                //TODO check this computation. Should just be a logsumexp of all the divisors in stead of pairwise.
                 for (StateIndex k = 0; k < nThermStates; ++k) {
                     biasedConfEnergiesBuf(k, i) = -numeric::kahan::logsumexp_pair(
                             -biasedConfEnergiesBuf(k, i), -(divisor + biasMatrixPtr[i](x, k)));
@@ -496,7 +494,7 @@ private:
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
         auto nThermStates = nThermStates_, nMarkovStates = nMarkovStates_;
-	auto input = input_;
+	    auto input = input_;
         // assume that markovStateEnergies_ were set to INF by the caller on the first call
         #pragma omp parallel for default(none) firstprivate(nMarkovStates, nThermStates, input, biasMatrixPtr, \
                                                             markovStateEnergiesBuf, modifiedStateCountsLogBuf)
@@ -511,7 +509,6 @@ private:
                     }
                 }
                 dtype divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
-                //TODO check this computation. Should just be a logsumexp of all the divisors in stead of pairwise.
                 markovStateEnergiesBuf(i) = -numeric::kahan::logsumexp_pair(-markovStateEnergiesBuf(i), -divisor);
             }
         }

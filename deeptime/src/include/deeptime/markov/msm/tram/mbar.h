@@ -63,7 +63,7 @@ initialize_MBAR(BiasMatrix <dtype> biasMatrix, CountsMatrix stateCounts, std::si
                 double maxErr = 1e-6, std::size_t callbackInterval = 1, const py::object *callback = nullptr) {
     // get dimensions...
     auto nThermStates = stateCounts.shape(0);
-    auto nSamples = biasMatrix.shape(1);
+    auto nSamples = biasMatrix.shape(0);
 
     // work in log space so compute the log of the statecounts beforehand
     auto stateCountsLog = std::vector<dtype>(nThermStates);
@@ -78,6 +78,7 @@ initialize_MBAR(BiasMatrix <dtype> biasMatrix, CountsMatrix stateCounts, std::si
     // Get buffer for the bias energies
     ArrayBuffer<BiasMatrix<dtype>, 2> biasMatrixBuf{biasMatrix};
 
+    py::gil_scoped_release gil;
     for (decltype(maxIter) iterationCount = 0; iterationCount < maxIter; ++iterationCount) {
 
         // The magic happens here
