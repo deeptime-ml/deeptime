@@ -1,12 +1,14 @@
 # based on https://github.com/pybind/scikit_build_example/blob/master/setup.py
 
+import os
 import sys
 import toml
 
-import versioneer
 from setuptools import find_packages, Extension
 from Cython.Build import cythonize
 
+sys.path.insert(0, os.path.dirname(__file__))
+import versioneer
 try:
     from skbuild import setup
 except ImportError:

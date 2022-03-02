@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(DEEPTIME_VERSION "0.0.0" CACHE STRING "The version without commit offset. Defaults to 0.0.0")
 set(DEEPTIME_VERSION_INFO "0.0.0" CACHE STRING "The full version. Defaults to 0.0.0")
