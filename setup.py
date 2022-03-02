@@ -23,7 +23,8 @@ pyproject = toml.load("pyproject.toml")
 def eig_qr_extension():
     module_name = 'deeptime.numeric.eig_qr'
     sources = ["/".join(module_name.split(".")) + '.pyx']
-    return cythonize([Extension(module_name, sources=sources, extra_compile_args=['-std=c99'])])[0]
+    return cythonize([Extension(module_name, sources=sources, extra_compile_args=['-std=c99'])],
+                     compiler_directives={'language_level': '3'})[0]
 
 
 def load_long_description():
