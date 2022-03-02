@@ -3,7 +3,7 @@ package:
   version: 0
 
 source:
-  path: ../..
+  git_url: ../..
 
 build:
   script:
@@ -24,7 +24,7 @@ requirements:
     - cmake >=3.22
     - numpy >=1.14
     - pybind11 >=2.9.0
-    - scikit-build >=0.14
+    - scikit-build >=0.13
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
 
