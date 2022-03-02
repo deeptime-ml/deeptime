@@ -23,6 +23,7 @@ requirements:
     - pybind11
     - toml
     - scikit-build
+    - cmake >=3.15
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
 
