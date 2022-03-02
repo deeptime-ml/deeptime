@@ -1,6 +1,9 @@
 # based on https://github.com/pybind/scikit_build_example/blob/master/setup.py
 
 import os
+import re
+from pathlib import Path
+
 import sys
 import toml
 
@@ -63,4 +66,6 @@ metadata = \
     )
 
 if __name__ == '__main__':
+    for i in (Path(__file__).resolve().parent / "_skbuild").rglob("CMakeCache.txt"):
+        i.write_text(re.sub("^//.*$\n^[^#].*pip-build-env.*$", "", i.read_text(), flags=re.M))
     setup(**metadata)
