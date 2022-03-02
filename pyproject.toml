@@ -23,7 +23,7 @@ plotting = ['matplotlib', 'networkx']
 requires = [
     "setuptools>=42",
     "wheel",
-    "scikit-build>=0.14",
+    "scikit-build>=0.13",
     "cython",
     "pybind11>=2.9.0",
     "numpy>=1.14",
