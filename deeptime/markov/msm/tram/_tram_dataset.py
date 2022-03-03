@@ -199,12 +199,8 @@ class TRAMDataset(Dataset):
             for dtraj, bias_matrix in zip(self.dtrajs, self.bias_matrices):
                 indices = np.where(dtraj == markov_state)[0]
                 biases.append(bias_matrix[indices])
-            biases = np.concatenate(biases)
 
-            # if there are no samples for a Markov state, append a bias matrix of length 0 so nothing breaks.
-            if len(biases) == 0:
-                biases = np.zeros((0, self.n_therm_states))
-            bias_list.append(biases)
+            bias_list.append(np.concatenate(biases))
         return tram.TRAMInput(self.state_counts, self.transition_counts, bias_list)
 
     @property
