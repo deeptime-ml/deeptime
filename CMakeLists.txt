@@ -39,6 +39,17 @@ find_package(Python COMPONENTS Interpreter Development)
 # now find pybind
 find_package(pybind11 REQUIRED CONFIG)
 
+function(register_pybind_module name)
+    cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "")
+    pybind11_add_module(${name} ${ARG_UNPARSED_ARGUMENTS})
+    target_link_libraries(${name} PUBLIC deeptime::deeptime)
+    if (OpenMP_FOUND)
+        target_link_libraries(${name} PUBLIC OpenMP::OpenMP_CXX)
+    endif()
+    file(RELATIVE_PATH REL_PATH "${DEEPTIME_ROOT_DIRECTORY}/deeptime" "${CMAKE_CURRENT_LIST_DIR}")
+    install(TARGETS ${name} DESTINATION ${REL_PATH})
+endfunction()
+
 add_subdirectory(deeptime/src)
 add_subdirectory(deeptime/numeric)
 add_subdirectory(deeptime/data)

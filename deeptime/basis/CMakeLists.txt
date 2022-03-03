@@ -1,10 +1,4 @@
 project(_basis_bindings CXX)
 
 set(SRC src/basis_bindings.cpp)
-pybind11_add_module(_basis_bindings ${SRC})
-target_link_libraries(_basis_bindings PUBLIC deeptime::deeptime)
-if(OpenMP_FOUND)
-    target_link_libraries(_basis_bindings PUBLIC OpenMP::OpenMP_CXX)
-endif()
-file(RELATIVE_PATH REL_PATH "${DEEPTIME_ROOT_DIRECTORY}/deeptime" "${CMAKE_CURRENT_SOURCE_DIR}")
-install(TARGETS ${PROJECT_NAME} DESTINATION ${REL_PATH})
+register_pybind_module(${PROJECT_NAME} ${SRC})

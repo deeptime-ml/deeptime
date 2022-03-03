@@ -1,9 +1,3 @@
 project(_mle_sparse_bindings CXX)
 
-pybind11_add_module(_mle_sparse_bindings src/mle_sparse_module.cpp)
-target_link_libraries(_mle_sparse_bindings PUBLIC deeptime::deeptime)
-if(OpenMP_FOUND)
-    target_link_libraries(_mle_sparse_bindings PUBLIC OpenMP::OpenMP_CXX)
-endif()
-file(RELATIVE_PATH REL_PATH "${DEEPTIME_ROOT_DIRECTORY}/deeptime" "${CMAKE_CURRENT_SOURCE_DIR}")
-install(TARGETS ${PROJECT_NAME} DESTINATION ${REL_PATH})
+register_pybind_module(${PROJECT_NAME} src/mle_sparse_module.cpp)
