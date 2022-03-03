@@ -307,7 +307,6 @@ private:
 
     // scratch matrices used to facilitate calculation of logsumexp
     std::unique_ptr<dtype[]> scratch_;
-    std::map<DiscreteState, std::vector<std::size_t>> stateMapping_;
 
     constexpr static dtype inf = std::numeric_limits<dtype>::infinity();
 
