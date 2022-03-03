@@ -71,7 +71,7 @@ public:
         std::copy(shapeBegin, shapeEnd, begin(dims));
         auto n_elems = std::accumulate(begin(dims), end(dims), static_cast<value_type>(1), std::multiplies<value_type>());
 
-        GridDims strides;
+        GridDims strides {};
         if (n_elems > 0) {
             strides[0] = n_elems / dims[0];
             for (std::size_t d = 0; d < Dims - 1; ++d) {
@@ -96,7 +96,7 @@ public:
             : _size(), n_elems(std::accumulate(begin(size), end(size), 1u, std::multiplies<value_type>())) {
         std::copy(begin(size), end(size), begin(_size));
 
-        GridDims strides;
+        GridDims strides {};
         if (n_elems > 0) {
             strides[0] = n_elems / size[0];
             for (std::size_t d = 0; d < Dims - 1; ++d) {
@@ -171,7 +171,7 @@ public:
      * @return
      */
     GridDims inverse(std::size_t idx) const {
-        GridDims result;
+        GridDims result {};
         if (n_elems > 0) {
             auto prefactor = n_elems / _size[0];
             for (std::size_t d = 0; d < Dims - 1; ++d) {
