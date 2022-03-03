@@ -4,7 +4,7 @@ steps:
 - script: pip install nox
   displayName: 'Install nox'
 
-- script: nox -s "tests-$(python.version)" -- cov
+- script: nox -s "tests-$(python.version)" -- cov numprocesses=2
   displayName: 'Run tests'
 
 - script: nox -s "tests-$(python.version)" --reuse-existing-virtualenvs -- cpp

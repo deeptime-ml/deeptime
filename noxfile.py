@@ -24,6 +24,12 @@ def tests(session: nox.Session) -> None:
                     "-Dpybind11_DIR={}".format(pybind11_module_dir), '-DCMAKE_BUILD_TYPE=Release', silent=True)
         session.run("cmake", "--build", tmpdir, "--target", "run_tests")
     else:
+        pytest_args = []
+        for arg in session.posargs:
+            if arg.startswith('numprocesses'):
+                n_processes = arg.split('=')[1]
+                session.log(f"Running tests with n={n_processes} jobs.")
+                pytest_args.append(f'--numprocesses={n_processes}')
         session.install("-r", "tests/requirements.txt")
         session.install("-e", ".", '-v', silent=False)
         if 'cov' in session.posargs:
@@ -34,11 +40,10 @@ def tests(session: nox.Session) -> None:
             junit_xml = os.path.join(xml_results_dest, 'junit.xml')
             cov_xml = os.path.join(xml_results_dest, 'coverage.xml')
 
-            cov_args = [f'--cov={cover_pkg}', f"--cov-report=xml:{cov_xml}", f"--junit-xml={junit_xml}",
-                        "--cov-config=.coveragerc"]
+            pytest_args += [f'--cov={cover_pkg}', f"--cov-report=xml:{cov_xml}", f"--junit-xml={junit_xml}",
+                            "--cov-config=.coveragerc"]
         else:
             session.log("Running without coverage")
-            cov_args = []
 
         test_dirs = ["tests/"]
         try:
@@ -48,7 +53,7 @@ def tests(session: nox.Session) -> None:
         except ImportError:
             pass
 
-        session.run("pytest", '-vv', '--doctest-modules', '--durations=20', *cov_args, '--pyargs', *test_dirs)
+        session.run("pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args, '--pyargs', *test_dirs)
 
 
 @nox.session(reuse_venv=True)
