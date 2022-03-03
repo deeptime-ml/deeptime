@@ -1,8 +1,4 @@
-project(deeptime_data CXX)
+project(_data_bindings CXX)
 
 set(SRC src/data_module.cpp)
-pybind11_add_module(_data_bindings ${SRC})
-target_link_libraries(_data_bindings PUBLIC deeptime::deeptime)
-if(OpenMP_FOUND)
-    target_link_libraries(_data_bindings PUBLIC OpenMP::OpenMP_CXX)
-endif()
+register_pybind_module(${PROJECT_NAME} ${SRC})

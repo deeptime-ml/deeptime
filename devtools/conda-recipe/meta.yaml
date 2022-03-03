@@ -6,9 +6,8 @@ source:
   path: ../..
 
 build:
-  skip: true  # [win and vc<14]
   script:
-    - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -v"
+    - "{{ PYTHON }} -m pip install . -vvv"
 
 requirements:
   build:
@@ -19,10 +18,13 @@ requirements:
     - python
     - cython
     - pip
-    - numpy
     - scipy
-    - pybind11
     - toml
+    - ninja
+    - cmake >=3.18
+    - numpy >=1.14
+    - pybind11 >=2.9.0
+    - scikit-build
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
 

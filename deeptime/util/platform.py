@@ -1,3 +1,5 @@
+import warnings
+
 
 def module_available(modname: str) -> bool:
     r"""Checks whether a module is installed and available for import by the current interpreter.
@@ -16,6 +18,10 @@ def module_available(modname: str) -> bool:
         __import__(modname)
         return True
     except ImportError:
+        return False
+    except BaseException as e:
+        warnings.warn(f"There was a problem importing {modname}, treating it as unavailable. Stacktrace: {e}",
+                      RuntimeWarning)
         return False
 
 
