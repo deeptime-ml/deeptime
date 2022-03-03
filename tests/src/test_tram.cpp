@@ -45,12 +45,16 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 REQUIRE(tram.biasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.markovStateEnergies().size() == nMarkovStates);
 
-                REQUIRE(std::equal(tram.biasedConfEnergies().data(), tram.biasedConfEnergies().data() + tram.biasedConfEnergies().size(),
+                REQUIRE(std::equal(tram.biasedConfEnergies().data(),
+                                   tram.biasedConfEnergies().data() + tram.biasedConfEnergies().size(),
                                    biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size()));
-                REQUIRE(std::equal(tram.lagrangianMultLog().begin(), tram.lagrangianMultLog().end(),
-                                   lagrangianMultLog.begin(), lagrangianMultLog.end()));
-                REQUIRE(std::equal(tram.modifiedStateCountsLog().begin(), tram.modifiedStateCountsLog().end(),
-                                   modifiedStateCountsLog.begin(), modifiedStateCountsLog.end()));
+                REQUIRE(std::equal(tram.lagrangianMultLog().data(),
+                                   tram.lagrangianMultLog().data() + tram.lagrangianMultLog().size(),
+                                   lagrangianMultLog.data(), lagrangianMultLog.data() + lagrangianMultLog.size()));
+                REQUIRE(std::equal(tram.modifiedStateCountsLog().data(),
+                                   tram.modifiedStateCountsLog().data() + tram.modifiedStateCountsLog().size(),
+                                   modifiedStateCountsLog.data(),
+                                   modifiedStateCountsLog.data() + modifiedStateCountsLog.size()));
             }
         }
     }
