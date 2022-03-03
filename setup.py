@@ -64,6 +64,8 @@ metadata = \
     )
 
 if __name__ == '__main__':
+    # see issue https://github.com/scikit-build/scikit-build/issues/521
+    # invalidates _skbuild cache
     for i in (Path(__file__).resolve().parent / "_skbuild").rglob("CMakeCache.txt"):
         i.write_text(re.sub("^//.*$\n^[^#].*pip-build-env.*$", "", i.read_text(), flags=re.M))
     setup(**metadata)
