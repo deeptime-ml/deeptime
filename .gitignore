@@ -1,5 +1,6 @@
 .idea
 build
+_skbuild
 *.so
 *.egg-info
 cmake-build-*

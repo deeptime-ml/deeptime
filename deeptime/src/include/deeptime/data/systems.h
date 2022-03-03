@@ -95,13 +95,13 @@ struct BickleyJet {
     }
 
     constexpr State f(double t, const State &xVec) const {
-        using namespace std::complex_literals;
         auto[x, y] = Boundary::apply(xVec);
+        std::complex<dtype> im(0, 1);
         std::complex<T> fc{0};
         std::complex<T> df_dx_c{0};
         for (int j = 0; j < 3; ++j) {
-            fc += eps[j] * std::exp(-1i * k[j] * c[j] * t) * std::exp(1i * k[j] * x);
-            df_dx_c += eps[j] * std::exp(-1i * k[j] * c[j] * t) * 1i * k[j] * std::exp(1i * k[j] * x);
+            fc += eps[j] * std::exp(-im * k[j] * c[j] * t) * std::exp(im * k[j] * x);
+            df_dx_c += eps[j] * std::exp(-im * k[j] * c[j] * t) * im * k[j] * std::exp(im * k[j] * x);
         }
         auto f = fc.real();
         auto df_dx = df_dx_c.real();
