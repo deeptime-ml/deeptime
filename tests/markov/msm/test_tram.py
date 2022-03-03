@@ -38,12 +38,15 @@ def test_unpack_input():
 @pytest.mark.parametrize(
     "bias_matrix_as_ndarray", [True, False]
 )
-def test_tram_different_input_data_types(dtrajs, ttrajs, bias_matrix_as_ndarray):
+@pytest.mark.parametrize(
+    "init_strategy", ["MBAR", None]
+)
+def test_tram_different_input_data_types(dtrajs, ttrajs, bias_matrix_as_ndarray, init_strategy):
     bias_matrices = [np.random.rand(len(traj), 2) for traj in dtrajs]
     if bias_matrix_as_ndarray:
         bias_matrices = np.asarray(bias_matrices)
 
-    tram = TRAM(maxiter=100)
+    tram = TRAM(maxiter=100, init_strategy=init_strategy)
     if ttrajs is None:
         tram.fit((dtrajs, bias_matrices))
     else:
@@ -55,6 +58,12 @@ def test_lagtime_too_long():
     bias_matrices = [np.random.rand(len(traj), 3) for traj in dtrajs]
     tram = TRAM(maxiter=100, lagtime=2)
     tram.fit((dtrajs, bias_matrices))
+
+
+def test_fit_empty_markov_state():
+    dtrajs = [np.asarray(arr) for arr in [[0, 1, 0], [0, 1, 0, 3], [3, 3]]]
+    bias_matrices = [np.random.rand(len(traj), 3) for traj in dtrajs]
+    TRAM().fit((dtrajs, bias_matrices))
 
 
 def test_tram_fit():

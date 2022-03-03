@@ -10,6 +10,8 @@ namespace deeptime::markov::tram{
 
 using DTraj = np_array<std::int32_t>;
 using DTrajs = std::vector<DTraj>;
+using DiscreteState = DTraj::value_type;
+using StateMap = std::map<DiscreteState, std::vector<std::size_t>>;
 
 using TTrajs = DTrajs;
 

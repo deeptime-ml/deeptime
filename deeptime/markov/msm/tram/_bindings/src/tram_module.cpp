@@ -11,24 +11,23 @@ PYBIND11_MODULE(_tram_bindings, m) {
         auto tramMod = m.def_submodule("tram");
 
         py::class_<TRAM<double >>(tramMod, "TRAM")
-                .def(py::init<deeptime::np_array_nfc<double> &,
-                             deeptime::np_array_nfc<double> &, deeptime::np_array_nfc<double> &>(),
-                     "biased_conf_energies"_a, "lagrangian_mult_log"_a, "modified_state_counts_log"_a)
-                .def("estimate", &TRAM<double>::estimate,
-                     py::call_guard<py::gil_scoped_release>(),
-                     "input"_a, "max_iter"_a = 1000, "max_err"_a = 1e-8, "callback_interval"_a = 1,
-                     "track_log_likelihoods"_a = false, "callback"_a = nullptr)
-                .def_property_readonly("transition_matrices", &TRAM<double>::transitionMatrices)
-                .def_property_readonly("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
-                .def_property_readonly("modified_state_counts_log", &TRAM<double>::modifiedStateCountsLog)
-                .def_property_readonly("lagrangian_mult_log", &TRAM<double>::lagrangianMultLog)
-                .def_property_readonly("therm_state_energies", &TRAM<double>::thermStateEnergies)
-                .def_property_readonly("markov_state_energies", &TRAM<double>::markovStateEnergies);
+            .def(py::init<deeptime::np_array_nfc<double> &,
+                         deeptime::np_array_nfc<double> &, deeptime::np_array_nfc<double> &>(),
+                 "biased_conf_energies"_a, "lagrangian_mult_log"_a, "modified_state_counts_log"_a)
+            .def("estimate", &TRAM<double>::estimate,
+                 py::call_guard<py::gil_scoped_release>(),
+                 "input"_a, "max_iter"_a = 1000, "max_err"_a = 1e-8, "callback_interval"_a = 1,
+                 "track_log_likelihoods"_a = false, "callback"_a = nullptr)
+            .def_property_readonly("transition_matrices", &TRAM<double>::transitionMatrices)
+            .def_property_readonly("biased_conf_energies", &TRAM<double>::biasedConfEnergies)
+            .def_property_readonly("modified_state_counts_log", &TRAM<double>::modifiedStateCountsLog)
+            .def_property_readonly("lagrangian_mult_log", &TRAM<double>::lagrangianMultLog)
+            .def_property_readonly("therm_state_energies", &TRAM<double>::thermStateEnergies)
+            .def_property_readonly("markov_state_energies", &TRAM<double>::markovStateEnergies);
 
         py::class_<TRAMInput<double>, std::shared_ptr<TRAMInput<double>>>(tramMod, "TRAMInput").def(
-                py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, DTraj,
-                        BiasMatrix<double >>(),
-                "state_counts"_a, "transition_counts"_a, "dtraj"_a, "bias_matrix"_a);
+                py::init<deeptime::np_array_nfc<int> &&, deeptime::np_array_nfc<int> &&, BiasMatrices<double>>(),
+                "state_counts"_a, "transition_counts"_a,  "bias_matrix"_a);
 
         tramMod.def("initialize_lagrangians", &initLagrangianMult<double>, "transition_counts"_a);
 
