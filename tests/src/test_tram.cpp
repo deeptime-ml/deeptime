@@ -45,8 +45,8 @@ TEMPLATE_TEST_CASE("TRAM", "[tram]", double, float) {
                 REQUIRE(tram.biasedConfEnergies().ndim() == 2);
                 REQUIRE(tram.markovStateEnergies().size() == nMarkovStates);
 
-                REQUIRE(std::equal(tram.biasedConfEnergies().begin(), tram.biasedConfEnergies().end(),
-                                   biasedConfEnergies.begin(), biasedConfEnergies.end()));
+                REQUIRE(std::equal(tram.biasedConfEnergies().data(), tram.biasedConfEnergies().data() + tram.biasedConfEnergies().size(),
+                                   biasedConfEnergies.data(), biasedConfEnergies.data() + biasedConfEnergies.size()));
                 REQUIRE(std::equal(tram.lagrangianMultLog().begin(), tram.lagrangianMultLog().end(),
                                    lagrangianMultLog.begin(), lagrangianMultLog.end()));
                 REQUIRE(std::equal(tram.modifiedStateCountsLog().begin(), tram.modifiedStateCountsLog().end(),
