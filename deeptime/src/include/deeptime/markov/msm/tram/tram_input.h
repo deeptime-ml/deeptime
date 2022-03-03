@@ -115,7 +115,6 @@ private:
     CountsMatrix stateCounts_;
     CountsMatrix transitionCounts_;
     BiasMatrices<dtype> biasMatrices_;
-//    DTraj dtraj_;
     std::vector<size_type> cumNSamples_;
 };
 
