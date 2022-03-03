@@ -70,10 +70,6 @@ public:
         return biasMatrices_;
     }
 
-    auto biasMatrixBuf(size_type i) const {
-        return biasMatrices_[i].template unchecked<2>();
-    }
-
     const auto& transitionCounts() const {
         return transitionCounts_;
     }

@@ -72,11 +72,12 @@ public:
         auto n_elems = std::accumulate(begin(dims), end(dims), static_cast<value_type>(1), std::multiplies<value_type>());
 
         GridDims strides;
-        strides[0] = n_elems / dims[0];
-        for (std::size_t d = 0; d < Dims - 1; ++d) {
-            strides[d + 1] = strides[d] / dims[d + 1];
+        if (n_elems > 0) {
+            strides[0] = n_elems / dims[0];
+            for (std::size_t d = 0; d < Dims - 1; ++d) {
+                strides[d + 1] = strides[d] / dims[d + 1];
+            }
         }
-
         return Index<Dims, GridDims>{dims, strides, n_elems};
     }
 
@@ -96,9 +97,11 @@ public:
         std::copy(begin(size), end(size), begin(_size));
 
         GridDims strides;
-        strides[0] = n_elems / size[0];
-        for (std::size_t d = 0; d < Dims - 1; ++d) {
-            strides[d + 1] = strides[d] / size[d + 1];
+        if (n_elems > 0) {
+            strides[0] = n_elems / size[0];
+            for (std::size_t d = 0; d < Dims - 1; ++d) {
+                strides[d + 1] = strides[d] / size[d + 1];
+            }
         }
         _cum_size = std::move(strides);
     }
@@ -169,14 +172,16 @@ public:
      */
     GridDims inverse(std::size_t idx) const {
         GridDims result;
-        auto prefactor = n_elems / _size[0];
-        for (std::size_t d = 0; d < Dims - 1; ++d) {
-            auto x = std::floor(idx / prefactor);
-            result[d] = x;
-            idx -= x * prefactor;
-            prefactor /= _size[d + 1];
+        if (n_elems > 0) {
+            auto prefactor = n_elems / _size[0];
+            for (std::size_t d = 0; d < Dims - 1; ++d) {
+                auto x = std::floor(idx / prefactor);
+                result[d] = x;
+                idx -= x * prefactor;
+                prefactor /= _size[d + 1];
+            }
+            result[Dims - 1] = idx;
         }
-        result[Dims - 1] = idx;
         return result;
     }
 

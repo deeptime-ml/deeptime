@@ -60,6 +60,12 @@ def test_lagtime_too_long():
     tram.fit((dtrajs, bias_matrices))
 
 
+def test_fit_empty_markov_state():
+    dtrajs = [np.asarray(arr) for arr in [[0, 1, 0], [0, 1, 0, 3], [3, 3]]]
+    bias_matrices = [np.random.rand(len(traj), 3) for traj in dtrajs]
+    TRAM().fit((dtrajs, bias_matrices))
+
+
 def test_tram_fit():
     dtrajs, bias_matrices = make_random_input_data(5, 10, make_ttrajs=False)
 

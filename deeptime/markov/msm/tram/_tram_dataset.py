@@ -187,15 +187,24 @@ class TRAMDataset(Dataset):
     @property
     def tram_input(self):
         r""" The TRAMInput object containing the data needed for estimation.
-        For estimation purposes, it does not matter which thermodynamic state each sample was sampled at. The dtrajs and
-        bias_matrices are therefore flattened along the first dimension, to speed up estimation. """
+        The data is restructured to allow parallelization over Markov states. The dtrajs are only used to see
+        which Markov state the sample biases belong to. Ordering of the data doesn't matter (transition information is
+        already stored in the count matrices) so we can restructure the data.
+        After restructuring, each bias matrix in the bias_list corresponds to all sample biases for samples that fell
+        into the Markov state of which the index corresponds to the index of the bias matrix in the list.
+        Or: bias_list[i] contains biases for all samples that fell in Markov state i. """
         bias_list = []
         for markov_state in range(self.n_markov_states):
             biases = []
             for dtraj, bias_matrix in zip(self.dtrajs, self.bias_matrices):
                 indices = np.where(dtraj == markov_state)[0]
                 biases.append(bias_matrix[indices])
-            bias_list.append(np.concatenate(biases))
+            biases = np.concatenate(biases)
+
+            # if there are no samples for a Markov state, append a bias matrix of length 0 so nothing breaks.
+            if len(biases) == 0:
+                biases = np.zeros((0, self.n_therm_states))
+            bias_list.append(biases)
         return tram.TRAMInput(self.state_counts, self.transition_counts, bias_list)
 
     @property
