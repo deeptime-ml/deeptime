@@ -35,7 +35,7 @@ if(MSVC)
 endif()
 
 # use cmake 3.12+ FindPython
-find_package(Python COMPONENTS Interpreter Development)
+# find_package(Python COMPONENTS Interpreter Development)  # this doesn't work with conda, picks up the wrong python interpreter on OSX
 # now find pybind
 find_package(pybind11 REQUIRED CONFIG)
 
