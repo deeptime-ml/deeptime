@@ -10,8 +10,10 @@ class ProgressMock:
         self.n = 0
         self.n_close_calls = 0
         self.n_update_calls = 0
+        self.n_description_updates = 0
 
-    def set_description(self, *_): ...
+    def set_description(self, *_):
+        self.n_description_updates += 1
 
     def update(self, n=1):
         self.n += n

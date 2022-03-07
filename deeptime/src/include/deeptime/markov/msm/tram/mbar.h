@@ -6,7 +6,7 @@
 
 #include "common.h"
 
-
+using namespace pybind11::literals;
 namespace deeptime::markov::tram {
 
 
@@ -60,7 +60,7 @@ void selfConsistentUpdate(ExchangeableArray<dtype, 1> &thermStateEnergies,
 template<typename dtype>
 np_array <dtype>
 initialize_MBAR(BiasMatrix <dtype> biasMatrix, CountsMatrix stateCounts, std::size_t maxIter = 1000,
-                double maxErr = 1e-6, std::size_t callbackInterval = 1, const py::object *callback = nullptr) {
+                double maxErr = 1e-6, std::size_t callbackInterval = 1, const py::function *callback = nullptr) {
     // get dimensions...
     auto nThermStates = stateCounts.shape(0);
     auto nSamples = biasMatrix.shape(0);
@@ -93,7 +93,7 @@ initialize_MBAR(BiasMatrix <dtype> biasMatrix, CountsMatrix stateCounts, std::si
         // keep the python user up to date on the progress by a callback
         if (callback && callbackInterval > 0 && iterationCount % callbackInterval == 0) {
             py::gil_scoped_acquire guard;
-            (*callback)(callbackInterval, iterationError);
+            (*callback)("inc"_a=callbackInterval, "error"_a=iterationError);
         }
 
         if (iterationError < maxErr) {

@@ -273,12 +273,13 @@ class TRAMCallback(callbacks.ProgressCallback):
     """
 
     def __init__(self, progress, total, log_likelihoods_list=None, increments=None):
-        super().__init__(progress, total=total, description="Running TRAM estimate")
+        self.description = "Running TRAM estimate"
+        super().__init__(progress, total=total, description=self.description)
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
         self.last_increment = 0
 
-    def __call__(self, n_iterations, increment, log_likelihood=0):
+    def __call__(self, inc, error, log_likelihood=0):
         """Call the callback. Increment a progress bar (if available) and store convergence information.
 
         Parameters
@@ -290,12 +291,12 @@ class TRAMCallback(callbacks.ProgressCallback):
         log_likelihood : float
             The current log-likelihood, or 0. when the tram estimator is not configured to calculate log-likelihoods.
         """
-        super().__call__(n_iterations)
+        super().__call__(inc, error=error)
 
         if self.log_likelihoods is not None:
             self.log_likelihoods.append(log_likelihood)
 
         if self.increments is not None:
-            self.increments.append(increment)
+            self.increments.append(error)
 
-        self.last_increment = increment
+        self.last_increment = error

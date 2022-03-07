@@ -49,6 +49,7 @@ class ProgressCallback:
     def __init__(self, progress, description=None, total=None):
         self.progress_bar = handle_progress_bar(progress)(total=total)
         self.total = total
+        self.description = description
         assert supports_progress_interface(self.progress_bar), \
             f"Progress bar did not satisfy interface! It should at least have " \
             f"the method(s) {supports_progress_interface.required_methods} and " \
@@ -58,6 +59,8 @@ class ProgressCallback:
 
     def __call__(self, inc=1, *args, **kw):
         self.progress_bar.update(inc)
+        if 'error' in kw:
+            self.progress_bar.set_description("{} - [inc: {:.1e}]".format(self.description, kw.get('error')))
 
     def __enter__(self):
         return self
@@ -66,3 +69,7 @@ class ProgressCallback:
         if exc_type is None:
             self.progress_bar.total = self.progress_bar.n  # force finish
         self.progress_bar.close()
+
+    def update_description(self, description):
+        if self.progress_bar is not None:
+            self.progress_bar.set_description(description)
