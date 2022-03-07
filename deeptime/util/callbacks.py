@@ -69,7 +69,3 @@ class ProgressCallback:
         if exc_type is None:
             self.progress_bar.total = self.progress_bar.n  # force finish
         self.progress_bar.close()
-
-    def update_description(self, description):
-        if self.progress_bar is not None:
-            self.progress_bar.set_description(description)
