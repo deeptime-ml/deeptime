@@ -184,7 +184,7 @@ def test_birth_death_chain(fixed_seed, sparse):
     assert_array_almost_equal(reference_count_matrix.toarray(), count_matrix)
     assert_array_almost_equal(reference_msm.toarray(), transition_matrix)
     assert_array_almost_equal(reference_statdist, msm.stationary_distribution)
-    assert_array_almost_equal(reference_timescales[1:], msm.timescales(k - 1))
+    assert_array_almost_equal(reference_timescales[1:], msm.timescales(k - 1), decimal=5)
 
 
 class TestMSMRevPi(unittest.TestCase):

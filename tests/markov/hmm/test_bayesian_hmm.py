@@ -9,7 +9,7 @@ from deeptime.data import double_well_discrete
 from deeptime.markov.hmm import MaximumLikelihoodHMM, BayesianHMM, BayesianHMMPosterior
 from deeptime.util.stats import confidence_interval
 from deeptime.util.types import ensure_dtraj_list
-from numpy.testing import assert_, assert_equal
+from numpy.testing import assert_, assert_equal, assert_allclose
 
 
 class BHMMScenario:
@@ -208,11 +208,11 @@ def test_eigenvectors_right_samples(bhmm_fixture):
 def test_stationary_distribution_samples(bhmm_fixture):
     samples = np.array([m.transition_model.stationary_distribution for m in bhmm_fixture.bhmm])
     # shape
-    assert np.array_equal(np.shape(samples), (bhmm_fixture.n_samples, bhmm_fixture.n_states))
+    assert_equal(np.shape(samples), (bhmm_fixture.n_samples, bhmm_fixture.n_states))
     # consistency
     for mu in samples:
-        assert np.isclose(mu.sum(), 1.0)
-        assert np.all(mu > 0.0)
+        assert_allclose(mu.sum(), 1.)
+        assert_(np.all(mu > 0))
 
 
 def test_stationary_distribution_stats(bhmm_fixture):
