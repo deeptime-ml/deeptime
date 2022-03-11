@@ -331,11 +331,11 @@ class MarkovStateModel(Model):
 
     def update_stationary_distribution(self, value: Optional[np.ndarray]):
         r""" Explicitly sets the stationary distribution, re-normalizes """
+        self._invalidate_caches()
         if value is not None:
             self._stationary_distribution = np.copy(value) / np.sum(value)
         else:
             self._stationary_distribution = None
-        self._invalidate_caches()
 
     def _compute_eigenvalues(self, neig):
         """ Conducts the eigenvalue decomposition and stores k eigenvalues """

@@ -648,7 +648,6 @@ class BayesianHMM(Estimator):
         count_model = TransitionCountModel(model_copy.counts, lagtime=prior.lagtime)
         models.append(HiddenMarkovModel(
             transition_model=MarkovStateModel(model_copy.transition_matrix,
-                                              stationary_distribution=model_copy.stationary_distribution,
                                               reversible=self.reversible, count_model=count_model),
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
