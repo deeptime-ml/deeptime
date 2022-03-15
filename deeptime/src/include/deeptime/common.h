@@ -71,13 +71,8 @@ public:
         std::copy(shapeBegin, shapeEnd, begin(dims));
         auto n_elems = std::accumulate(begin(dims), end(dims), static_cast<value_type>(1), std::multiplies<value_type>());
 
-        GridDims strides {};
-        if (n_elems > 0) {
-            strides[0] = n_elems / dims[0];
-            for (std::size_t d = 0; d < Dims - 1; ++d) {
-                strides[d + 1] = strides[d] / dims[d + 1];
-            }
-        }
+        GridDims strides = computeStrides(dims, n_elems);
+
         return Index<Dims, GridDims>{dims, strides, n_elems};
     }
 
@@ -96,13 +91,7 @@ public:
             : _size(), n_elems(std::accumulate(begin(size), end(size), 1u, std::multiplies<value_type>())) {
         std::copy(begin(size), end(size), begin(_size));
 
-        GridDims strides {};
-        if (n_elems > 0) {
-            strides[0] = n_elems / size[0];
-            for (std::size_t d = 0; d < Dims - 1; ++d) {
-                strides[d + 1] = strides[d] / size[d + 1];
-            }
-        }
+        GridDims strides = computeStrides(size, n_elems);
         _cum_size = std::move(strides);
     }
 
@@ -183,6 +172,24 @@ public:
             result[Dims - 1] = idx;
         }
         return result;
+    }
+
+    /**
+     * compute strides for each dim
+     * @param size size of each dimension
+     * @param n_elems total number of elements
+     * @return the strides
+     */
+    template<typename Shape>
+    static GridDims computeStrides(const Shape &size, value_type n_elems) {
+        GridDims strides {};
+        if (n_elems > 0) {
+            strides[0] = n_elems / size[0];
+            for (std::size_t d = 0; d < Dims - 1; ++d) {
+                strides[d + 1] = strides[d] / size[d + 1];
+            }
+        }
+        return strides;
     }
 
 private:
