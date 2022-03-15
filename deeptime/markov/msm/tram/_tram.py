@@ -228,7 +228,7 @@ class TRAM(_MSMBaseEstimator):
         else:
             if self.init_strategy == "MBAR":
                 # initialize free energies using MBAR.
-                with callbacks.ProgressCallback(self.progress, "Initializing free energies using MBAR",
+                with callbacks.IterationErrorProgressCallback(self.progress, "Initializing free energies using MBAR",
                                                 self.init_maxiter) as callback:
                     free_energies = tram.initialize_free_energies_mbar(np.concatenate(dataset.bias_matrices),
                                                                        dataset.state_counts.sum(axis=1),
@@ -258,7 +258,7 @@ class TRAM(_MSMBaseEstimator):
                     f"Last increment: {callback.last_increment}", ConvergenceWarning)
 
 
-class TRAMCallback(callbacks.ProgressCallback):
+class TRAMCallback(callbacks.IterationErrorProgressCallback):
     """Callback for the TRAM estimate process. Increments a progress bar and saves iteration increments in the free
     energies and log-likelihoods to a list.
 
