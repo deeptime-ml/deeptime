@@ -36,8 +36,8 @@ static const dtype computeSampleLikelihood(const TRAMInput<dtype> &input,
     auto modifiedStateCountsLogPtr = &modifiedStateCountsLogBuf;
 
     auto inputPtr = &input;
-    #pragma omp parallel for default(none) firstprivate(nThermStates, inputPtr, biasMatrixPtr, sampleWeights, \
-                                                        modifiedStateCountsLogPtr, cumNSamples)
+    #pragma omp parallel for default(none) firstprivate(nThermStates, inputPtr, biasMatrixPtr, \
+                                                        modifiedStateCountsLogPtr, cumNSamples) shared(sampleWeights)
     for (auto i = 0; i < inputPtr->nMarkovStates(); ++i) {
         std::vector<dtype> scratch(nThermStates);
         for (auto x = 0; x < inputPtr->nSamples(i); ++x) {
@@ -47,8 +47,8 @@ static const dtype computeSampleLikelihood(const TRAMInput<dtype> &input,
                     scratch[o++] = (*modifiedStateCountsLogPtr)(l, i) - biasMatrixPtr[i](x, l);
                 }
             }
-            auto log_divisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
-            sampleWeights[cumNSamples[i] + x] = -log_divisor;
+            auto logDivisor = numeric::kahan::logsumexp_sort_kahan_inplace(scratch.begin(), o);
+            sampleWeights[cumNSamples[i] + x] = -logDivisor;
         }
     }
     return numeric::kahan::logsumexp_sort_kahan_inplace(sampleWeights.begin(), sampleWeights.end());
