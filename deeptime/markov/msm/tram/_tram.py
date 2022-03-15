@@ -228,7 +228,7 @@ class TRAM(_MSMBaseEstimator):
         else:
             if self.init_strategy == "MBAR":
                 # initialize free energies using MBAR.
-                with callbacks.ProgressCallback(self.progress, "Initializing free energies using MBAR",
+                with callbacks.IterationErrorProgressCallback(self.progress, "Initializing free energies using MBAR",
                                                 self.init_maxiter) as callback:
                     free_energies = tram.initialize_free_energies_mbar(np.concatenate(dataset.bias_matrices),
                                                                        dataset.state_counts.sum(axis=1),
@@ -258,7 +258,7 @@ class TRAM(_MSMBaseEstimator):
                     f"Last increment: {callback.last_increment}", ConvergenceWarning)
 
 
-class TRAMCallback(callbacks.ProgressCallback):
+class TRAMCallback(callbacks.IterationErrorProgressCallback):
     """Callback for the TRAM estimate process. Increments a progress bar and saves iteration increments in the free
     energies and log-likelihoods to a list.
 
@@ -278,7 +278,7 @@ class TRAMCallback(callbacks.ProgressCallback):
         self.increments = increments
         self.last_increment = 0
 
-    def __call__(self, n_iterations, increment, log_likelihood=0):
+    def __call__(self, inc, error, log_likelihood=0):
         """Call the callback. Increment a progress bar (if available) and store convergence information.
 
         Parameters
@@ -290,12 +290,12 @@ class TRAMCallback(callbacks.ProgressCallback):
         log_likelihood : float
             The current log-likelihood, or 0. when the tram estimator is not configured to calculate log-likelihoods.
         """
-        super().__call__(n_iterations)
+        super().__call__(inc, error=error)
 
         if self.log_likelihoods is not None:
             self.log_likelihoods.append(log_likelihood)
 
         if self.increments is not None:
-            self.increments.append(increment)
+            self.increments.append(error)
 
-        self.last_increment = increment
+        self.last_increment = error

@@ -248,6 +248,8 @@ def test_progress_bar_update_called():
 
     # update() should be called 5 times
     np.testing.assert_equal(progress.n_update_calls, 5)
+    # description should be set once initially and on each update call
+    np.testing.assert_equal(progress.n_description_updates, progress.n_update_calls + 1)
     np.testing.assert_equal(progress.n, 10)
     # and close() one time
     np.testing.assert_equal(progress.n_close_calls, 1)
@@ -264,6 +266,8 @@ def test_progress_bar_update_called_with_mbar():
 
     # update() should be called 10 times
     np.testing.assert_equal(progress.n_update_calls, 10)
+    # description should be set once initially for both MBAR and TRAM (=2) plus once on each update call
+    np.testing.assert_equal(progress.n_description_updates, progress.n_update_calls + 2)
     np.testing.assert_equal(progress.n, 20)
     # and close() one time
     np.testing.assert_equal(progress.n_close_calls, 2)
