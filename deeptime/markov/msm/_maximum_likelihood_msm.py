@@ -170,13 +170,9 @@ class MaximumLikelihoodMSM(_MSMBaseEstimator):
             P = tmat.estimate_P(count_matrix, reversible=self.reversible, fixed_statdist=statdist,
                                 maxiter=self.maxiter, maxerr=self.maxerr)
         else:
-            opt_args = {}
-            # TODO: non-rev estimate of msmtools does not comply with its own api...
-            if statdist is None and self.reversible:
-                opt_args['return_statdist'] = True
             P = msmest.transition_matrix(count_matrix, reversible=self.reversible,
                                          mu=statdist, maxiter=self.maxiter,
-                                         maxerr=self.maxerr, **opt_args)
+                                         maxerr=self.maxerr, return_statdist=True)
         # msmtools returns a tuple for statdist_active=None.
         if isinstance(P, tuple):
             P, statdist = P
