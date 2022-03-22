@@ -40,7 +40,7 @@ class TransferOperatorModel(Model, Transformer):
 
     @property
     def operator(self) -> np.ndarray:
-        r""" The operator :math:`K` so that :math:`\mathbb{E}[g(x_{t+\tau}] = K^\top \mathbb{E}[f(x_t)]` in transformed
+        r""" The operator :math:`K` so that :math:`\mathbb{E}[g(x_{t+\tau})] = K^\top \mathbb{E}[f(x_t)]` in transformed
         bases.
         """
         return self._koopman_matrix
@@ -169,9 +169,9 @@ class CovarianceKoopmanModel(TransferOperatorModel):
         with norms <= epsilon were cut off. The remaining number of eigenvalues together with the value of `dim`
         define the effective output dimension.
     instantaneous_obs : Callable, optional, default=identity
-        Transforms the current state :math:`x_t` to :math:`\chi_0(x_t)`. Defaults to `\chi_0(x) = x`.
+        Transforms the current state :math:`x_t` to :math:`\chi_0(x_t)`. Defaults to :math:`\chi_0(x) = x`.
     timelagged_obs : Callable, optional, default=identity
-        Transforms the future state :math:`x_{t+\tau}` to :math:`\chi_1(x_{t+\tau})`. Defaults to `\chi_1(x) = x`.
+        Transforms the future state :math:`x_{t+\tau}` to :math:`\chi_1(x_{t+\tau})`. Defaults to :math:`\chi_1(x) = x`.
     """
 
     def __init__(self, instantaneous_coefficients, singular_values, timelagged_coefficients, cov,
