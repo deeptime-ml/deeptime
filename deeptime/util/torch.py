@@ -7,7 +7,6 @@ import numpy as np
 
 from pathlib import Path
 from typing import List, Dict, Optional
-from contextlib import ContextDecorator
 
 import torch
 import torch.nn as nn
@@ -292,13 +291,15 @@ class Stats:
         self._stats.clear()
 
 
-class disableTF32(ContextDecorator):
-    r"""Disable computing matmul with tensor cores. It is needed for an accurate vamp score with Ampere GPUs.
-    Related issue: #220. """
-    def  __enter__(self):
+class disableTF32(object):
+    r"""Disable computing matmul with tensor cores which is needed for training with Ampere GPUs.
+    Related issue: #220 """
+    def __init__(self):
+        self.orig_tf32_setting = torch.backends.cuda.matmul.allow_tf32
+    def __enter__(self):
         torch.backends.cuda.matmul.allow_tf32 = False
     def __exit__(self, *exc):
-        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cuda.matmul.allow_tf32 = self.orig_tf32_setting
 
 
 # wrappers for older pytorch versions that lack linalg module

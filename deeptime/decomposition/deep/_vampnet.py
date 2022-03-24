@@ -177,7 +177,6 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
 
 valid_score_methods = ('VAMP1', 'VAMP2', 'VAMPE')
 
-@disableTF32()
 def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode='trunc'):
     r"""Computes the VAMP score based on data and corresponding time-shifted data.
 
@@ -542,14 +541,15 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         score : torch.Tensor
             The value of the score.
         """
-        self.lobe.eval()
-        self.lobe_timelagged.eval()
+        with disableTF32():
+            self.lobe.eval()
+            self.lobe_timelagged.eval()
 
-        with torch.no_grad():
-            val = self.lobe(validation_data[0])
-            val_t = self.lobe_timelagged(validation_data[1])
-            score_value = vamp_score(val, val_t, method=self.score_method, mode=self.score_mode, epsilon=self.epsilon)
-            return score_value
+            with torch.no_grad():
+                val = self.lobe(validation_data[0])
+                val_t = self.lobe_timelagged(validation_data[1])
+                score_value = vamp_score(val, val_t, method=self.score_method, mode=self.score_mode, epsilon=self.epsilon)
+                return score_value
 
     def fit(self, data_loader: torch.utils.data.DataLoader, n_epochs=1, validation_loader=None,
             train_score_callback: Callable[[int, torch.Tensor], None] = None,
@@ -588,21 +588,22 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         self._step = 0
 
         # and train
-        for _ in progress(range(n_epochs), desc="VAMPNet epoch", total=n_epochs, leave=False):
-            for batch_0, batch_t in data_loader:
-                self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)),
-                                 train_score_callback=train_score_callback)
-            if validation_loader is not None:
-                with torch.no_grad():
-                    scores = []
-                    for val_batch in validation_loader:
-                        scores.append(
-                            self.validate((val_batch[0].to(device=self.device), val_batch[1].to(device=self.device)))
-                        )
-                    mean_score = torch.mean(torch.stack(scores))
-                    self._validation_scores.append((self._step, mean_score.item()))
-                    if validation_score_callback is not None:
-                        validation_score_callback(self._step, mean_score)
+        with disableTF32():
+            for _ in progress(range(n_epochs), desc="VAMPNet epoch", total=n_epochs, leave=False):
+                for batch_0, batch_t in data_loader:
+                    self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)),
+                                     train_score_callback=train_score_callback)
+                if validation_loader is not None:
+                    with torch.no_grad():
+                        scores = []
+                        for val_batch in validation_loader:
+                            scores.append(
+                                self.validate((val_batch[0].to(device=self.device), val_batch[1].to(device=self.device)))
+                            )
+                        mean_score = torch.mean(torch.stack(scores))
+                        self._validation_scores.append((self._step, mean_score.item()))
+                        if validation_score_callback is not None:
+                            validation_score_callback(self._step, mean_score)
         return self
 
     def fetch_model(self) -> VAMPNetModel:
