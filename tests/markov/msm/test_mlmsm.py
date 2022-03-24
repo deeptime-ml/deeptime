@@ -6,6 +6,7 @@ r"""Unit test for the MSM module
 """
 import collections
 import unittest
+from flaky import flaky
 
 from numpy.testing import assert_equal, assert_raises, assert_, assert_array_almost_equal, assert_array_equal
 
@@ -143,6 +144,7 @@ def test_strongly_connected_count_matrix():
     assert_equal(msm.count_model.state_symbols, [4, 6])
 
 
+@flaky(max_runs=3)
 @pytest.mark.parametrize("sparse", [False, True], ids=["dense", "sparse"])
 def test_birth_death_chain(fixed_seed, sparse):
     """Meta-stable birth-death chain"""

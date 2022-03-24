@@ -3,6 +3,7 @@ import itertools
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_almost_equal
+from flaky import flaky
 
 import deeptime
 from deeptime.data import prinz_potential
@@ -96,6 +97,7 @@ def test_observation_probabilities(hmm_scenario):
     assert_almost_equal(minerr, 0, decimal=2)
 
 
+@flaky(max_runs=3)
 def test_stationary_distribution(hmm_scenario):
     model = hmm_scenario.hmm
     minerr = 1e6
