@@ -31,7 +31,7 @@ def tests(session: nox.Session) -> None:
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
         session.install("-r", "tests/requirements.txt")
-        session.install(".", '-v', silent=False)
+        session.install("-e", ".", '-v', silent=False)
         if 'cov' in session.posargs:
             session.log("Running with coverage")
             xml_results_dest = os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir())
@@ -61,7 +61,7 @@ def make_docs(session: nox.Session) -> None:
     if not session.posargs or 'noinstall' not in session.posargs:
         session.install("-r", "tests/requirements.txt")
         session.install("-r", "docs/requirements.txt")
-        session.install(".", '-v', silent=False)
+        session.install("-e", ".", '-v', silent=False)
     session.chdir("docs")
     if session.posargs and 'clean' in session.posargs:
         session.log("First run clean")
