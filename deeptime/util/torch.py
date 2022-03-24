@@ -7,6 +7,7 @@ import numpy as np
 
 from pathlib import Path
 from typing import List, Dict, Optional
+from contextlib import ContextDecorator
 
 import torch
 import torch.nn as nn
@@ -289,6 +290,13 @@ class Stats:
         r""" Empties the statistics. This is default behavior if statistics are written to a summary file, but
         sometimes it can be useful to track statistics for some more time and eventually clear it manually. """
         self._stats.clear()
+
+
+class disableTF32(ContextDecorator):
+    def  __enter__(self):
+        torch.backends.cuda.matmul.allow_tf32 = False
+    def __exit__(self, *exc):
+        torch.backends.cuda.matmul.allow_tf32 = True
 
 
 # wrappers for older pytorch versions that lack linalg module
