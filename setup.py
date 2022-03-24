@@ -53,6 +53,7 @@ metadata = \
         long_description=load_long_description(),
         long_description_content_type='text/markdown',
         zip_safe=False,
+        install_requires=pyproject["project"]["dependencies"],
         extras_require=pyproject["project"]["optional-dependencies"],
         packages=find_packages(where="."),
         package_dir={"deeptime": "deeptime", "versioneer": "."},
