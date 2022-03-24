@@ -42,6 +42,5 @@ Table Of Contents
    :caption: Other
    :maxdepth: 1
 
-   changelog
    imprint
    license

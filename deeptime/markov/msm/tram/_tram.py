@@ -48,14 +48,16 @@ def _get_dataset_from_input(data):
 
 class TRAM(_MSMBaseEstimator):
     r"""Transition(-based) Reweighting Analysis Method.
+
     TRAM is described in :footcite:`wu2016multiensemble`. The parameters in this code correspond to variables in the
     TRAM paper in the following way:
-     * `biased_conf_energies[k][i]` corresponds to :math:`f_i^k`, the free energy for  Markov state i in
-       thermodynamic state k.
-     * `lagrangian_mult_log[k][i]` corresponds to :math:`log\;v_i^k`, the logarithm of the lagrangian multiplier of
-       Markov state i in thermodynamic state k.
-     * `modified_state_counts_log[k][i]` corresponds to :math:`log\;R_i^k`, the logarithm of :math:`R_i^k`, the modified
-       state counts for Markov state i in thermodynamic state k.
+
+    * `biased_conf_energies[k][i]` corresponds to :math:`f_i^k`, the free energy for  Markov state i in
+      thermodynamic state k.
+    * `lagrangian_mult_log[k][i]` corresponds to :math:`log\;v_i^k`, the logarithm of the lagrangian multiplier of
+      Markov state i in thermodynamic state k.
+    * `modified_state_counts_log[k][i]` corresponds to :math:`log\;R_i^k`, the logarithm of :math:`R_i^k`, the modified
+      state counts for Markov state i in thermodynamic state k.
 
     Parameters
     ----------
@@ -73,6 +75,7 @@ class TRAM(_MSMBaseEstimator):
           the correct likelihood in the statistical limit :footcite:`trendelkamp2015estimation`.
         * "effective" uses an estimate of the transition counts that are statistically uncorrelated.
           Recommended when estimating Bayesian MSMs.
+
     maxiter : int, optional, default=1000
         The maximum number of self-consistent iterations before the estimator exits unsuccessfully.
     maxerr : float, optional, default=1E-8
@@ -81,6 +84,7 @@ class TRAM(_MSMBaseEstimator):
     init_strategy : str, optional, default='MBAR'
         Strategy of initialization of the free energies, lagrangian multipliers and state counts. Possible choices:
         "MBAR" or None.
+
          * "MBAR" : Initialize free energies using MBAR :footcite:`shirts2008statistically`. MBAR iterations are
            executed before TRAM, to initialize the free energies with the MBAR estimate, which is a good initial
            estimate for the TRAM free energies and will significantly speed up the convergence of TRAM. Lagrangian
@@ -88,6 +92,7 @@ class TRAM(_MSMBaseEstimator):
            are zero-initialized.
          * None : Free energies and modified state counts are zero-initialized. Lagrangian multipliers are initialized
            to :math:`v_i^k = log( 1/2 * \sum_j (c_ij^k + c_ji^k))`
+
     init_maxiter : int, optional, default=1000
         The maximum number of iterations for parameter initialization, e.g. MBAR iterations. These initialization
         iterations are executed before TRAM, to initialize the parameters with the chosen `init_strategy`.
