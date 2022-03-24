@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from ...base import Model, Transformer, EstimatorTransformer
 from ...base_torch import DLEstimatorMixin
-from ...util.torch import map_data, eigh, multi_dot, disableTF32
+from ...util.torch import map_data, eigh, multi_dot, disable_TF32
 
 
 def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True) \
@@ -541,7 +541,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         score : torch.Tensor
             The value of the score.
         """
-        with disableTF32():
+        with disable_TF32():
             self.lobe.eval()
             self.lobe_timelagged.eval()
 
@@ -588,7 +588,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         self._step = 0
 
         # and train
-        with disableTF32():
+        with disable_TF32():
             for _ in progress(range(n_epochs), desc="VAMPNet epoch", total=n_epochs, leave=False):
                 for batch_0, batch_t in data_loader:
                     self.partial_fit((batch_0.to(device=self.device), batch_t.to(device=self.device)),

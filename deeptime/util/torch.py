@@ -291,7 +291,7 @@ class Stats:
         self._stats.clear()
 
 
-class disableTF32(object):
+class disable_TF32(object):
     r"""Disable computing matmul with tensor cores which is needed for training with Ampere GPUs.
     Related issue: #220 """
     def __init__(self):
