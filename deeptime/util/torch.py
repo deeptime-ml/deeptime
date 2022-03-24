@@ -293,6 +293,8 @@ class Stats:
 
 
 class disableTF32(ContextDecorator):
+    r"""Disable computing matmul with tensor cores. It is needed for an accurate vamp score with Ampere GPUs.
+    Related issue: #220. """
     def  __enter__(self):
         torch.backends.cuda.matmul.allow_tf32 = False
     def __exit__(self, *exc):
