@@ -46,8 +46,8 @@ metadata = \
     dict(
         name=pyproject["project"]["name"],
         version=versioneer.get_version(),
-        author='Moritz Hoffmann',
-        author_email='moritz.hoffmann@fu-berlin.de',
+        author=pyproject["project"]["authors"][0]["name"],
+        author_email=pyproject["project"]["authors"][0]["email"],
         url=pyproject["project"]["urls"]["repository"],
         description=pyproject["project"]["description"],
         long_description=load_long_description(),
