@@ -1,14 +1,10 @@
 # based on https://github.com/pybind/scikit_build_example/blob/master/setup.py
 
 import os
-import re
-from pathlib import Path
-
 import sys
-import toml
 
-from setuptools import find_packages, Extension
-from Cython.Build import cythonize
+from setuptools import find_packages
+import toml
 
 sys.path.insert(0, os.path.dirname(__file__))
 import versioneer
@@ -23,13 +19,6 @@ except ImportError:
     raise
 
 pyproject = toml.load("pyproject.toml")
-
-
-def eig_qr_extension():
-    module_name = 'deeptime.numeric.eig_qr'
-    sources = ["/".join(module_name.split(".")) + '.pyx']
-    return cythonize([Extension(module_name, sources=sources, extra_compile_args=['-std=c99'])],
-                     compiler_directives={'language_level': '3'})[0]
 
 
 def load_long_description():
@@ -61,12 +50,9 @@ metadata = \
         cmake_args=cmake_args,
         include_package_data=True,
         python_requires=pyproject["project"]["requires-python"],
-        ext_modules=[eig_qr_extension()]
+        ext_modules=[],
+        cmdclass=versioneer.get_cmdclass()
     )
 
 if __name__ == '__main__':
-    # see issue https://github.com/scikit-build/scikit-build/issues/521
-    # invalidates _skbuild cache
-    for i in (Path(__file__).resolve().parent / "_skbuild").rglob("CMakeCache.txt"):
-        i.write_text(re.sub("^//.*$\n^[^#].*pip-build-env.*$", "", i.read_text(), flags=re.M))
     setup(**metadata)
