@@ -8,6 +8,17 @@ keywords = [
 ]
 authors = [
     {name = 'Moritz Hoffmann', email = 'moritz.hoffmann@fu-berlin.de'},
+    {name = 'Martin Scherer'},
+    {name = 'Tim Hempel'},
+    {name = 'Andreas Mardt'},
+    {name = 'Maaike Galama'},
+    {name = 'Brian de Silva'},
+    {name = 'Brooke Husic'},
+    {name = 'Stefan Klus'},
+    {name = 'Hao Wu'},
+    {name = 'Nathan Kutz'},
+    {name = 'Steven Brunton'},
+    {name = 'Frank Noé'}
 ]
 requires-python = ">= 3.7"
 dependencies = ['numpy', 'scipy', 'scikit-learn', 'threadpoolctl']
