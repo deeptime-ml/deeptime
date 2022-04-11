@@ -867,7 +867,7 @@ def triple_well_1d(h=1e-3, n_steps=500):
 
         \mathrm{d}X_t = \nabla V(X_t) \mathrm{d}t + \sigma(t, X_t)\mathrm{d}W_t
 
-    with :math:`W_t` being a Wiener process, :math:`\sigma = 1.09`, and the potential :math:`V` being given by
+    with :math:`W_t` being a Wiener process, :math:`\sigma = 0.75`, and the potential :math:`V` being given by
 
     .. math::
 
