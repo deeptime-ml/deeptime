@@ -61,7 +61,9 @@ add_subdirectory(deeptime/clustering)
 add_subdirectory(deeptime/basis)
 add_subdirectory(deeptime/markov)
 
-add_subdirectory(examples/clustering_custom_metric)
+if (NOT SKBUILD)
+    add_subdirectory(examples/clustering_custom_metric)
+endif()
 
 if(DEEPTIME_BUILD_CPP_TESTS)
     add_subdirectory(tests)
