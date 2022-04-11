@@ -4,9 +4,12 @@ include LICENSE.txt
 include pyproject.toml
 
 # sources of extensions (incl. cython)
-recursive-include deeptime *.pyx *.h *.hpp *.c *.cpp
+recursive-include deeptime *.pyx *.h *.hpp *.c *.cpp CMakeLists.txt
 
 prune tests
 prune docs
 prune *.egg-info
 prune .github
+prune _skbuild
+prune examples
+prune cmake-build-*
