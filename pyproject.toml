@@ -6,8 +6,12 @@ keywords = [
     "markov-model", "hidden-markov-model", "time-series-analysis", "covariance-estimation",
     "koopman-operator", "coherent-set-detection"
 ]
+authors = [
+    {name = 'Moritz Hoffmann', email = 'moritz.hoffmann@fu-berlin.de'},
+]
 requires-python = ">= 3.7"
 dependencies = ['numpy', 'scipy', 'scikit-learn', 'threadpoolctl']
+dynamic = ['version']
 
 [project.urls]
 homepage = "https://deeptime-ml.github.io"
