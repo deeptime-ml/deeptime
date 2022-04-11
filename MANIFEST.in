@@ -2,6 +2,7 @@ include versioneer.py
 include deeptime/_version.py
 include LICENSE.txt
 include pyproject.toml
+include CMakeLists.txt
 
 # sources of extensions (incl. cython)
 recursive-include deeptime *.pyx *.h *.hpp *.c *.cpp CMakeLists.txt
