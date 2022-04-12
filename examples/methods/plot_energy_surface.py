@@ -22,4 +22,4 @@ weights = msm.compute_trajectory_weights(np.concatenate(dtrajs))[0]
 
 energies = energy2d(*traj_concat.T, bins=(80, 20), kbt=1, weights=weights, shift_energy=True)
 plot = plot_energy2d(energies, contourf_kws=dict(cmap='nipy_spectral'))
-plot.colorbar.set_label('energy / kJ')
+plot.colorbar.set_label('energy / kT')
