@@ -5,7 +5,7 @@ include pyproject.toml
 include CMakeLists.txt
 
 # sources of extensions (incl. cython)
-recursive-include deeptime *.pyx *.h *.hpp *.c *.cpp CMakeLists.txt
+recursive-include deeptime *.pyx *.h *.hpp *.c *.cpp *.npz CMakeLists.txt
 
 prune tests
 prune docs
