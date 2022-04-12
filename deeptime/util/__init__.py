@@ -47,6 +47,8 @@ Statistics utilities
     :toctree: generated/
     :template: class_nomodule.rst
 
+    energy2d
+    EnergyLandscape2d
     QuantityStatistics
     confidence_interval
 
@@ -82,7 +84,7 @@ Other utilities
     platform.handle_progress_bar
 """
 
-from .stats import QuantityStatistics, confidence_interval
+from .stats import QuantityStatistics, confidence_interval, energy2d, EnergyLandscape2d
 
 from . import data
 from . import types
