@@ -397,7 +397,7 @@ def energy2d(x: np.ndarray, y: np.ndarray, bins=100, kbt: float = 1., weights=No
 
     which is a probability distribution over states :math:`x` of a system based on their energy :math:`E(x)`.
     Based on data we estimate :math:`p(x)` as a normalized histogram and subsequently compute
-    :math:`E(x)/k_BT \propto -\log p(x)`.
+    :math:`E(x)/k_BT = -\log p(x) + C` where :math:`C` is a constant depending on the partition function.
 
     If possible it is strongly encouraged to set the weights according to a stationary distribution
     (see :meth:`MSM.compute_trajectory_weights <deeptime.markov.msm.MarkovStateModel.compute_trajectory_weights>`).
