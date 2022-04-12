@@ -59,9 +59,9 @@ def tests(session: nox.Session) -> None:
 @nox.session(reuse_venv=True)
 def make_docs(session: nox.Session) -> None:
     if not session.posargs or 'noinstall' not in session.posargs:
+        session.install(".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt")
         session.install("-r", "docs/requirements.txt")
-        session.install("-e", ".", '-v', silent=False)
     session.chdir("docs")
     if session.posargs and 'clean' in session.posargs:
         session.log("First run clean")
