@@ -358,3 +358,86 @@ def statistical_inefficiency(X, truncate_acf=True, mact=1.0):
     corrtime = 0.5 + mact * corrsum / x2m
     # return statistical inefficiency
     return 1.0 / (2 * corrtime)
+
+
+class EnergyLandscape2d:
+    r""" Result of the :meth:`energy2d` method.
+
+    Parameters
+    ----------
+    x_meshgrid : ndarray
+        `(n_bins_x,)`-shaped array with `x` coordinates for the energy landscape.
+    y_meshgrid : ndarray
+        `(n_bins_y,)`-shaped array with `y` coordinates for the energy landscape.
+    energies : ndarray
+        `(n_bins_y, n_bins_x)`-shaped array with the estimated energies.
+    kbt : float
+        The value of :math:`k_BT` in the desired energy unit.
+
+    See Also
+    --------
+    energy2d, deeptime.plots.plot_energy2d
+    """
+    def __init__(self, x_meshgrid, y_meshgrid, energies, kbt):
+        self.x_meshgrid = x_meshgrid
+        self.y_meshgrid = y_meshgrid
+        self.energies = energies
+        self.kbt = kbt
+
+
+def energy2d(x: np.ndarray, y: np.ndarray, bins=100, kbt: float = 1., weights=None, shift_energy=True):
+    r""" Compute a two-dimensional energy landscape based on data arrays `x` and `y`.
+
+    .. plot:: examples/plot_energy_surface.py
+
+    This function assumes that the sampled data follows a Boltzmann distribution
+
+    .. math::
+        p(x) \propto e^{-E(x) / k_BT},
+
+    which is a probability distribution over states :math:`x` of a system based on their energy :math:`E(x)`.
+    Based on data we estimate :math:`p(x)` as a normalized histogram and subsequently compute
+    :math:`E(x)/k_BT = -\log p(x) + C` where :math:`C` is a constant depending on the partition function.
+
+    If possible it is strongly encouraged to set the weights according to a stationary distribution
+    (see :meth:`MSM.compute_trajectory_weights <deeptime.markov.msm.MarkovStateModel.compute_trajectory_weights>`).
+    Otherwise, the energy landscape may be biased due to finite sampling.
+
+    Parameters
+    ----------
+    x : ndarray
+        Sample x coordinates of shape `(N,)`.
+    y : ndarray
+        Sample y coordinates of shape `(N,)`.
+    bins : int or [int, int], optional, default=100
+        Number of histogram bins used in each dimension.
+    kbt : float, optional, default=1
+        The value of :math:`k_BT` in the desired energy unit. By default, energies are computed in :math:`k_BT`
+        (setting `kbt=1.0`). If you want to measure the energy in :math:`\mathrm{kJ}/\mathrm{mol}` at
+        :math:`298\;K`, use `kbt=2.479`.
+    weights : ndarray, optional, default=None
+        Sample weights of shape `(N,)`. By default, all samples have the same weight.
+    shift_energy : bool, optional, default=True
+        Whether to shift the minimum energy to zero. Defaults to `True`.
+
+    Returns
+    -------
+    energy_landscape : EnergyLandscape2d
+        The estimated energy landscape.
+
+    See Also
+    --------
+    deeptime.plots.plot_energy2d, EnergyLandscape2d
+    """
+    hist, x_edges, y_edges = np.histogram2d(x, y, bins=bins, weights=weights)
+    x_meshgrid = 0.5 * (x_edges[:-1] + x_edges[1:])
+    y_meshgrid = 0.5 * (y_edges[:-1] + y_edges[1:])
+
+    hist /= np.sum(hist)
+    energy = np.full_like(hist, fill_value=np.inf)
+    nonzero = hist.nonzero()
+    energy[nonzero] = -np.log(hist[nonzero])
+    if shift_energy:
+        energy[nonzero] -= np.min(energy[nonzero])
+    energy *= kbt
+    return EnergyLandscape2d(x_meshgrid, y_meshgrid, energy.T, kbt)
