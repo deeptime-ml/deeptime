@@ -21,7 +21,12 @@ authors = [
     {name = 'Frank Noé'}
 ]
 requires-python = ">= 3.7"
-dependencies = ['numpy', 'scipy', 'scikit-learn', 'threadpoolctl']
+dependencies = [
+    'numpy>=1.17.3',
+    'scipy>=1.1.0',
+    'scikit-learn>=0.14.1',
+    'threadpoolctl>=2.0.0'
+]
 dynamic = ['version']
 
 [project.urls]
