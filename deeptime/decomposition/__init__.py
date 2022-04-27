@@ -66,6 +66,7 @@ Utils
     vamp_score_cv
 
     cvsplit_trajs
+    blocksplit_trajs
 
     deep.TVAEEncoder
     deep.koopman_matrix
@@ -76,7 +77,7 @@ Utils
     deep.kvad_score
 """
 
-from ._score import vamp_score, vamp_score_data, vamp_score_cv, cvsplit_trajs
+from ._score import vamp_score, vamp_score_data, vamp_score_cv, cvsplit_trajs, blocksplit_trajs
 from ._tica import TICA
 from ._vamp import VAMP
 from ._koopman import TransferOperatorModel, CovarianceKoopmanModel
