@@ -93,6 +93,7 @@ class CKTestGrid:
         return len(self._tests)
 
 
+@plotting_function()
 def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
                  conf: float = 0.95, color=None, grid: CKTestGrid = None, legend=True,
                  xlabel='lagtime (steps)', ylabel='probability', y01=True, sharey=True, **plot_kwargs):
