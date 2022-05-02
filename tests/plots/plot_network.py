@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
-from deeptime.plots.network import NetworkPlot
+from deeptime.plots.network import Network
 from deeptime.markov.msm import MarkovStateModel
 
 def test_sanity():
@@ -14,12 +14,11 @@ def test_sanity():
     flux = MarkovStateModel(P).reactive_flux([2], [3])
 
     positions = nx.planar_layout(nx.from_numpy_array(flux.gross_flux))
-    pl = NetworkPlot(flux.gross_flux, positions)
+    pl = Network(flux.gross_flux, positions)
 
     f, (ax1, ax2) = plt.subplots(1, 2)
 
-    ax = pl.plot_network(state_colors=np.linspace(0, 1, num=flux.n_states),
-                         ax=ax1)
+    ax = pl.plot(state_colors=np.linspace(0, 1, num=flux.n_states), ax=ax1, arrow_curvature=2.)
     ax.set_aspect('equal')
 
     from pyemma.plots import plot_network

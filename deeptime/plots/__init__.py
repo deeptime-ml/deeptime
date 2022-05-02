@@ -9,8 +9,10 @@ r"""
     plot_ck_test
     plot_energy2d
     Energy2dPlot
+    Network
 """
 
 from .implied_timescales import plot_implied_timescales
 from .chapman_kolmogorov import plot_ck_test
 from .energy import plot_energy2d, Energy2dPlot
+from .network import Network
