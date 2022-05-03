@@ -29,13 +29,6 @@ def test_network():
     ax = pl.plot(ax=ax1)
     ax.set_aspect('equal')
 
-    from pyemma.plots import plot_network
-
-    flux = MarkovStateModel(P).reactive_flux([2], [3])
-    plot_network(flux.gross_flux, pos=np.array([positions[i] for i in range(flux.n_states)]), ax=ax2)
-
-    # test against seaborn cmap
-
 
 def test_msm():
     P = np.array([[0.8, 0.15, 0.05, 0.0, 0.0],
