@@ -1,8 +1,11 @@
+import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 from deeptime.plots.network import Network, plot_markov_model
 from deeptime.markov.msm import MarkovStateModel
+
+matplotlib.use('Agg')
 
 
 def test_network():
@@ -30,9 +33,7 @@ def test_network():
 
     flux = MarkovStateModel(P).reactive_flux([2], [3])
     plot_network(flux.gross_flux, pos=np.array([positions[i] for i in range(flux.n_states)]), ax=ax2)
-    plt.show()
 
-    # test with sparse matrix
     # test against seaborn cmap
 
 
@@ -51,4 +52,3 @@ def test_msm():
 
     plot_markov_model(Psparse, ax=ax1)
     plot_markov_model(P, ax=ax2)
-    plt.show()

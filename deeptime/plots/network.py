@@ -122,7 +122,7 @@ class Network:
         if len(value) < self.n_nodes:
             raise ValueError(f'Given less positions ({len(value)}) than states ({self.n_nodes})')
         if isinstance(value, dict):
-            value = np.stack((value[i] for i in range(len(value))))
+            value = np.stack([value[i] for i in range(len(value))])
         self._pos = value
 
     @property
@@ -302,7 +302,7 @@ class Network:
         if self.edge_labels is None:
             return ""
         else:
-            fmt = self.edge_label_format if self.edge_labels.dtype.type is np.string_ else "{}"
+            fmt = self.edge_label_format if self.edge_labels.dtype.type is not np.string_ else "{}"
             return fmt.format(self.edge_labels[i, j])
 
     def plot(self, ax=None, **textkwargs):
@@ -430,7 +430,7 @@ def plot_adjacency(adjacency_matrix, positions: Optional[np.ndarray] = None, lay
 def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_sizes=None, state_scale=1.0,
                       state_colors='#ff5500', state_labels='auto',
                       minflux=1e-6, edge_scale=1.0, edge_curvature=1.0, edge_labels='weights',
-                      edge_label_format='{2.e}', ax=None, **textkwargs):
+                      edge_label_format='{:.2e}', ax=None, **textkwargs):
     r"""Network representation of MSM transition matrix.
 
     This visualization is not optimized for large matrices. It is meant to be used for the visualization of small
