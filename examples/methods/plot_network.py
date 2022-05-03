@@ -26,7 +26,7 @@ P = np.array([[0.8, 0.15, 0.05, 0.0, 0.0],
               [0.0, 0.2, 0.0, 0.8, 0.0],
               [1e-7, 0.02 - 1e-7, 0.02, 0.0, 0.96]])
 
-f, axes = plt.subplots(1, 2)
+f, axes = plt.subplots(1, 2, figsize=(16, 12))
 for ax in axes.flatten():
     ax.set_aspect('equal')
 
