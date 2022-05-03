@@ -771,7 +771,7 @@ class MarkovStateModel(Model):
         >>> times, acf = M.correlation(a)
         >>>
         >>> import matplotlib.pylab as plt # doctest: +SKIP
-        >>> plt.plot(times, acf)  # doctest: +SKIP
+        >>> plt.plot(times,acf)  # doctest: +SKIP
         """
         # input checking is done in low-level API
         # compute number of tau steps

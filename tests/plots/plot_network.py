@@ -18,7 +18,7 @@ def test_sanity():
 
     f, (ax1, ax2) = plt.subplots(1, 2)
 
-    ax = pl.plot(state_colors=np.linspace(0, 1, num=flux.n_states), ax=ax1, arrow_curvature=2.)
+    ax = pl.plot(ax=ax1, state_colors=np.linspace(0, 1, num=flux.n_states), edge_curvature=2.)
     ax.set_aspect('equal')
 
     from pyemma.plots import plot_network

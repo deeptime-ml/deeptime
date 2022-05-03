@@ -116,8 +116,8 @@ class Network:
                 zorder=3, transform=ax.transData)
 
     def plot(self, ax=None, state_sizes=None, state_scale=1.0, state_colors='#ff5500', state_labels='auto',
-             arrow_scale=1.0, arrow_curvature=1.0, arrow_labels='weights', arrow_label_format='{:.1e}',
-             arrow_label_location=0.55, cmap=None, **textkwargs):
+             edge_scale=1.0, edge_curvature=1.0, edge_labels='weights', edge_label_format='{:.1e}',
+             edge_label_location=0.55, cmap=None, **textkwargs):
         r"""Draws a network using discs and curved arrows.
 
         The thicknesses and labels of the arrows are taken from the off-diagonal matrix elements
@@ -145,18 +145,18 @@ class Network:
         state_labels : None or 'auto' or list of str, default='auto'
             The state labels. If 'auto', just enumerates the states. In case of `None` no state labels are depicted,
             otherwise assigns each state its label based on the list.
-        arrow_scale : float, optional, default=1.
+        edge_scale : float, optional, default=1.
             Linear scaling coefficient for all arrow widths. Takes the default line width `rcParams['lines.linewidth']`
             into account.
-        arrow_curvature : float, optional, default=1.
+        edge_curvature : float, optional, default=1.
             Linear scaling coefficient for arrow curvature. Setting it to `0` produces straight arrows.
-        arrow_labels : 'weights' or ndarray or None, default='weights'
+        edge_labels : 'weights' or ndarray or None, default='weights'
             If 'weights', arrows obtain labels according to the weights in the adjacency matrix. If ndarray the dtype
             is expected to be object and the argument should be a `(n, n)` matrix with labels. If None, no labels are
             printed.
-        arrow_label_format : str, default='{:.1e}'
+        edge_label_format : str, default='{:.1e}'
             Format string for arrow labels. Only has an effect if arrow_labels is set to `weights`.
-        arrow_label_location : float, default=0.55
+        edge_label_location : float, default=0.55
             Location of the arrow labels on the curve. Should be between 0 (meaning on the source state) and 1 (meaning
             on the target state). Defaults to 0.55, i.e., slightly shifted toward the target state from the midpoint.
         cmap : matplotlib.colors.Colormap or str, default=None
@@ -187,7 +187,7 @@ class Network:
         # automatic arrow rescaling
         diag_mask = np.logical_not(np.eye(self.adjacency_matrix.shape[0], dtype=bool))
         default_lw = default_line_width()
-        arrow_scale *= 2 * default_lw / np.max(self.adjacency_matrix[diag_mask & (self.adjacency_matrix > 0)])
+        edge_scale *= 2 * default_lw / np.max(self.adjacency_matrix[diag_mask & (self.adjacency_matrix > 0)])
 
         # set node labels
         if state_labels is None:
@@ -211,17 +211,17 @@ class Network:
             raise ValueError(f"Mismatch between n_states and #state_colors ({self.n_nodes} vs {len(state_colors)}).")
 
         # set arrow labels
-        if isinstance(arrow_labels, np.ndarray):
-            label_matrix = arrow_labels
+        if isinstance(edge_labels, np.ndarray):
+            label_matrix = edge_labels
             assert label_matrix.shape == self.adjacency_matrix.shape, \
                 f"Arrow labels matrix has shape {label_matrix.shape} =/= {self.adjacency_matrix.shape}"
-            if isinstance(arrow_labels[0, 0], str):
-                arrow_label_format = '{}'
-        elif isinstance(arrow_labels, str) and arrow_labels.lower() == 'weights':
+            if isinstance(edge_labels[0, 0], str):
+                edge_label_format = '{}'
+        elif isinstance(edge_labels, str) and edge_labels.lower() == 'weights':
             label_matrix = np.copy(self.adjacency_matrix)
-        elif arrow_labels is None:
+        elif edge_labels is None:
             label_matrix = np.full(self.adjacency_matrix.shape, fill_value='', dtype=object)
-            arrow_label_format = '{}'
+            edge_label_format = '{}'
         else:
             raise ValueError("Invalid arrow labels, should be 'weights', ndarray of strings or None.")
 
@@ -243,26 +243,42 @@ class Network:
         # draw arrows
         for i, j in zip(*np.triu_indices(self.n_nodes, k=1)):  # upper triangular indices with 0 <= i < j < n_nodes
             if abs(self.adjacency_matrix[i, j]) > 0:
-                label = arrow_label_format.format(label_matrix[i, j])
-                width = arrow_scale * self.adjacency_matrix[i, j]
+                label = edge_label_format.format(label_matrix[i, j])
+                width = edge_scale * self.adjacency_matrix[i, j]
                 self._draw_arrow(ax, self.pos[i], self.pos[j], label=label, width=width,
-                                 arrow_curvature=arrow_curvature, patchA=circles[i], patchB=circles[j],
+                                 arrow_curvature=edge_curvature, patchA=circles[i], patchB=circles[j],
                                  shrinkA=3, shrinkB=0,
-                                 arrow_label_size=arrow_label_size, arrow_label_location=arrow_label_location)
+                                 arrow_label_size=arrow_label_size, arrow_label_location=edge_label_location)
             if abs(self.adjacency_matrix[j, i]) > 0:
-                label = arrow_label_format.format(label_matrix[j, i])
-                width = arrow_scale * self.adjacency_matrix[j, i]
+                label = edge_label_format.format(label_matrix[j, i])
+                width = edge_scale * self.adjacency_matrix[j, i]
                 self._draw_arrow(ax, self.pos[j], self.pos[i], label=label, width=width,
-                                 arrow_curvature=arrow_curvature, patchA=circles[j], patchB=circles[i],
+                                 arrow_curvature=edge_curvature, patchA=circles[j], patchB=circles[i],
                                  shrinkA=3, shrinkB=0,
-                                 arrow_label_size=arrow_label_size, arrow_label_location=arrow_label_location)
+                                 arrow_label_size=arrow_label_size, arrow_label_location=edge_label_location)
 
         ax.autoscale_view()
         return ax
 
 
 @plotting_function(requires_networkx=True)
-def plot_adjacency(adjacency_matrix, positions: Optional[np.ndarray] = None, layout=None, ax=None, node_size=None):
+def plot_adjacency(adjacency_matrix, positions: Optional[np.ndarray] = None, layout=None, ax=None, scale_nodes=True,
+                   scale_edges=True):
+    r"""Plot an adjacency matrix. The edges are
+
+    Parameters
+    ----------
+    adjacency_matrix
+    positions
+    layout
+    ax
+    scale_nodes
+    scale_edges
+
+    Returns
+    -------
+
+    """
     import networkx as nx
     if ax is None:
         import matplotlib.pyplot as plt
@@ -286,4 +302,4 @@ def plot_adjacency(adjacency_matrix, positions: Optional[np.ndarray] = None, lay
 
     plot = Network(adjacency_matrix, pos=pos)
     ax = plot.plot(ax=ax, state_sizes=node_size)
-    return ax, graph
+    return ax
