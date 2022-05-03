@@ -44,4 +44,3 @@ norm = mpl.colors.Normalize(vmin=np.min(flux.forward_committor), vmax=np.max(flu
 divider = make_axes_locatable(axes[1])
 cax = divider.append_axes("right", size="5%", pad=0.05)
 f.colorbar(mpl.cm.ScalarMappable(norm, cmap), cax=cax)
-plt.show()

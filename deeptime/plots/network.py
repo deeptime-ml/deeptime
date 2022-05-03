@@ -302,7 +302,7 @@ class Network:
         if self.edge_labels is None:
             return ""
         else:
-            fmt = self.edge_label_format if self.edge_labels.dtype.type is not np.string_ else "{}"
+            fmt = self.edge_label_format if np.issubdtype(self.edge_labels.dtype, np.number) else "{}"
             return fmt.format(self.edge_labels[i, j])
 
     def plot(self, ax=None, **textkwargs):
