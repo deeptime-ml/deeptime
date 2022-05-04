@@ -190,7 +190,7 @@ class ImpliedTimescales:
     def plot(self, *args, **kw):
         r""" Dispatches to :meth:`plot_implied_timescales`. """
         from deeptime.plots import plot_implied_timescales
-        plot_implied_timescales(self, *args, **kw)
+        return plot_implied_timescales(self, *args, **kw)
 
 
 def ck_test(models, observable: Observable, test_model=None, include_lag0=True, err_est=False, progress=None):
@@ -357,6 +357,13 @@ class ChapmanKolmogorovTest:
     def err_est(self):
         r""" Whether the estimated models contain samples """
         return self.estimates_samples is not None and len(self.estimates_samples) > 0
+
+    def plot(self, height=2.5, aspect=1., conf: float = 0.95, color=None, grid = None, legend=True,
+             xlabel='lagtime (steps)', ylabel='probability', y01=True, sharey=True, **plot_kwargs):
+        r""" Shortcut to :func:`deeptime.plots.plot_ck_test`. """
+        from deeptime.plots import plot_ck_test
+        return plot_ck_test(self, height=height, aspect=aspect, conf=conf, color=color, grid=grid, legend=legend,
+                            xlabel=xlabel, ylabel=ylabel, y01=y01, sharey=sharey, **plot_kwargs)
 
 
 class DeprecatedCKValidator(Estimator):

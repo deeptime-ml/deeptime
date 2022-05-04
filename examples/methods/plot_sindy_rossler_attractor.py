@@ -59,24 +59,10 @@ x_test = odeint(rossler, x0_test, t_test)
 # Plot test data
 fig = plt.figure(figsize=(8, 6))
 ax = fig.add_subplot(111, projection="3d")
-ax.plot(
-    x_test[:, 0],
-    x_test[:, 1],
-    x_test[:, 2],
-    label="True solution",
-    color="firebrick",
-    alpha=0.7,
-)
+ax.plot(x_test[:, 0], x_test[:, 1], x_test[:, 2], label="True solution", color="firebrick", alpha=0.7)
 ax.set(xlabel="x", ylabel="y", zlabel="z", title="Testing data (Rossler system)")
 
 # Simulate data with SINDy model and plot
 x_sim = model.simulate(x0_test, t_test)
-ax.plot(
-    x_sim[:, 0],
-    x_sim[:, 1],
-    x_sim[:, 2],
-    label="Model simulation",
-    color="royalblue",
-    linestyle="dashed",
-)
+ax.plot(x_sim[:, 0], x_sim[:, 1], x_sim[:, 2], label="Model simulation", color="royalblue", linestyle="dashed")
 ax.legend()

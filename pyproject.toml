@@ -21,7 +21,12 @@ authors = [
     {name = 'Frank Noé'}
 ]
 requires-python = ">= 3.7"
-dependencies = ['numpy', 'scipy', 'scikit-learn', 'threadpoolctl']
+dependencies = [
+    'numpy>=1.19.5',
+    'scipy>=1.1.0',
+    'scikit-learn>=0.14.1',
+    'threadpoolctl>=2.0.0'
+]
 dynamic = ['version']
 
 [project.urls]
@@ -33,6 +38,7 @@ download = "https://pypi.org/project/deeptime/#files"
 [project.optional-dependencies]
 deep-learning = ['pytorch']
 plotting = ['matplotlib', 'networkx']
+units = ['pint>=0.19.1']
 
 [build-system]
 requires = [

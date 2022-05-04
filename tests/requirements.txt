@@ -3,6 +3,8 @@ typing_extensions; python_version<"3.8"
 pybind11==2.9.1
 torch>=1.10.0; python_version<"3.10"
 matplotlib
+pint
+networkx
 
 pytest==7.1.1
 pytest-cov==3.0.0

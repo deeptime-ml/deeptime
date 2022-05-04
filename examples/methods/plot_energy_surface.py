@@ -11,7 +11,6 @@ from deeptime.data import triple_well_2d
 from deeptime.clustering import KMeans
 from deeptime.markov.msm import MaximumLikelihoodMSM
 from deeptime.util import energy2d
-from deeptime.plots import plot_energy2d
 
 trajs = triple_well_2d(h=1e-3, n_steps=100).trajectory(x0=[[-1, 0], [1, 0], [0, 0]], length=5000)
 traj_concat = np.concatenate(trajs, axis=0)
@@ -21,5 +20,5 @@ msm = MaximumLikelihoodMSM(lagtime=1).fit_fetch(dtrajs)
 weights = msm.compute_trajectory_weights(np.concatenate(dtrajs))[0]
 
 energies = energy2d(*traj_concat.T, bins=(80, 20), kbt=1, weights=weights, shift_energy=True)
-plot = plot_energy2d(energies, contourf_kws=dict(cmap='nipy_spectral'))
-plot.colorbar.set_label('energy / kT')
+ax, contour, cbar = energies.plot(contourf_kws=dict(cmap='nipy_spectral'))
+cbar.set_label('energy / kT')

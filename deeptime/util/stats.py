@@ -3,6 +3,7 @@ from typing import Union, Callable, List, Any, Iterable
 
 import numpy as np
 
+from deeptime.util.decorators import plotting_function
 from deeptime.util.types import ensure_array
 
 
@@ -383,6 +384,14 @@ class EnergyLandscape2d:
         self.y_meshgrid = y_meshgrid
         self.energies = energies
         self.kbt = kbt
+
+    @plotting_function()
+    def plot(self, ax=None, levels=100, contourf_kws=None, cbar=True,
+             cbar_kws=None, cbar_ax=None):
+        r""" Plot estimated energy landscape directly. See :func:`deeptime.plots.plot_energy2d`. """
+        from deeptime.plots import plot_energy2d
+        return plot_energy2d(self, ax=ax, levels=levels, contourf_kws=contourf_kws, cbar=cbar,
+                             cbar_kws=cbar_kws, cbar_ax=cbar_ax)
 
 
 def energy2d(x: np.ndarray, y: np.ndarray, bins=100, kbt: float = 1., weights=None, shift_energy=True):

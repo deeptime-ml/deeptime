@@ -27,7 +27,7 @@ def test_sanity_msm(hidden, bayesian):
         cktest = test_model.ck_test(models, n_metastable_sets=2)
     else:
         cktest = test_model.ck_test(models)
-    plot_ck_test(cktest, conf=1)
+    cktest.plot(conf=1)
 
 
 @pytest.mark.parametrize("fractional", [False, True])

@@ -3,7 +3,11 @@ from deeptime.util.decorators import plotting_function
 
 
 class Energy2dPlot:
-    r""" The result of a :meth:`plot_energy2d` call.
+    r""" The result of a :meth:`plot_energy2d` call. Instances of this class can be unpacked like a tuple:
+
+    >>> import numpy as np
+    >>> from deeptime.util import energy2d
+    >>> ax, contour, cbar = plot_energy2d(energy2d(*np.random.uniform(size=(100 ,2)).T))
 
     Parameters
     ----------
@@ -24,6 +28,14 @@ class Energy2dPlot:
         self.ax = ax
         self.contour = contour
         self.colorbar = colorbar
+
+    # makes object unpackable
+    def __len__(self):
+        return 3
+
+    # makes object unpackable
+    def __iter__(self):
+        return iter((self.ax, self.contour, self.colorbar))
 
 
 @plotting_function()

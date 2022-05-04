@@ -50,7 +50,7 @@ We have empirically found that:
       using the dot product on sliced arrays (option 2). Exceptions are when the
       data is extremely sparse, such that only a few columns are selected.
     * Copying and subselecting columns (option 3) is only faster than the full
-      dot product (option 1), if 50% or less columns are selected. This observation
+      dot product (option 1), if 50% or fewer columns are selected. This observation
       is roughly independent of N.
     * The observations above are valid for  matrices (T x N) that are sufficiently
       large. We assume that "sufficiently large" means that they don't fully fit
@@ -66,7 +66,7 @@ take the following actions:
        number of constant column candidates drops below the minimum number, to
        avoid wasting time on the decision.
     3. Subselect the desired columns and copy the data to a new array X0 (Y0).
-    4. Run operation on the new array X0 (Y0), including in-place substraction
+    4. Run operation on the new array X0 (Y0), including in-place subtraction
        of the mean if needed.
 
 """
