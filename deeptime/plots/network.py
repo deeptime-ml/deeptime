@@ -239,7 +239,7 @@ class Network:
         if value is not None and len(value) != self.n_nodes:
             raise ValueError(f"State sizes must correspond to states (# = {self.n_nodes}) but was of "
                              f"length {len(value)}")
-        self._state_sizes = value if value is not None else np.ones(self.n_nodes)
+        self._state_sizes = np.asfarray(value) if value is not None else np.ones(self.n_nodes)
 
     @property
     def node_sizes(self):
