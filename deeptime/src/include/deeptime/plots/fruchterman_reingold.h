@@ -22,6 +22,7 @@ deeptime::np_array<dtype> fruchtermanReingold(const deeptime::np_array<dtype> &a
                                               std::vector<std::size_t> updateDims) {
     static constexpr std::size_t DIM = 2;
     static constexpr std::array<dtype, DIM> ZERO{};
+    const auto* zeroPtr = ZERO.data();
 
     if (updateDims.empty()) {
         updateDims.resize(DIM);
@@ -65,15 +66,15 @@ deeptime::np_array<dtype> fruchtermanReingold(const deeptime::np_array<dtype> &a
 
         {
             // fill up differences (delta) and distances
-            #pragma omp parallel for collapse(2) default(none) firstprivate(nNodes) \
-                        shared(delta, deltaIx, positions, positionsIx, distances, distancesIx, ZERO)
+            #pragma omp parallel for collapse(2) default(none) firstprivate(nNodes, zeroPtr) \
+                        shared(delta, deltaIx, positions, positionsIx, distances, distancesIx)
             for (std::size_t i = 0; i < nNodes; ++i) {
                 for (std::size_t j = 0; j < nNodes; ++j) {
                     for (std::size_t d = 0; d < DIM; ++d) {
                         delta[deltaIx(i, j, d)] = positions[positionsIx(i, d)] - positions[positionsIx(j, d)];
                     }
                     const auto norm = deeptime::clustering::EuclideanMetric::compute(
-                            &delta[deltaIx(i, j, 0)], ZERO.data(), DIM
+                            &delta[deltaIx(i, j, 0)], zeroPtr, DIM
                     );
                     distances[distancesIx(i, j)] = std::max(static_cast<dtype>(0.1), norm);
                 }
@@ -95,11 +96,11 @@ deeptime::np_array<dtype> fruchtermanReingold(const deeptime::np_array<dtype> &a
                 }
             }
 
-            #pragma omp parallel for default(none) firstprivate(nNodes, ZERO, DIM) \
+            #pragma omp parallel for default(none) firstprivate(nNodes, zeroPtr, DIM) \
                 shared(displacement, positionsIx, length)
             for (std::size_t i = 0; i < nNodes; ++i) {
                 const auto d = deeptime::clustering::EuclideanMetric::compute(
-                        &displacement[positionsIx(i, 0)], ZERO.data(), DIM
+                        &displacement[positionsIx(i, 0)], zeroPtr, DIM
                 );
                 length[i] = d < .01 ? static_cast<dtype>(0.1) : d;
             }
