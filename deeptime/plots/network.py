@@ -4,6 +4,7 @@ import numpy as np
 import scipy
 from scipy.sparse import issparse
 
+from deeptime.markov import ReactiveFlux
 from deeptime.markov.msm import MarkovStateModel
 from deeptime.plots.util import default_image_cmap, default_line_width
 from deeptime.util.decorators import plotting_function
@@ -523,6 +524,43 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
     return network.plot(ax=ax, **textkwargs), pos
 
 
-def plot_flux(flux):
+def plot_flux(flux: ReactiveFlux, state_sizes=None, flux_scale=1.0, state_scale=1.0, state_colors='#ff5500',
+              state_labels='auto', minflux=1e-9, edge_scale=1.0, edge_curvature=1.0, edge_labels='weights',
+              edge_label_format='{:.2e}', attribute_to_plot='net_flux', show_committor=True, ax=None, **textkwargs):
     from . import _plots_bindings
-    return _plots_bindings.fruchterman_reingold(flux, 10*np.random.uniform(size=(flux.shape[0], 2)))
+
+    from matplotlib import pylab as plt
+    F = flux_scale * getattr(flux, attribute_to_plot)
+    c = flux.forward_committor
+    if state_sizes is None:
+        state_sizes = flux.stationary_distribution
+
+    # initial positions
+    pos = np.stack((flux.forward_committor,
+                    np.random.uniform(0, 1, size=len(flux.forward_committor)))).T
+    pos = _plots_bindings.fruchterman_reingold(flux.net_flux, pos, update_dims=[1])
+    # rescale so that y positions are between 0 and 1
+    pos[:, 1] -= np.min(pos[:, 1])
+    pos[:, 1] /= np.max(pos[:, 1])
+
+    if minflux > 0:
+        F[F < minflux] = 0.0
+
+    if isinstance(state_labels, str) and state_labels == 'auto':
+        # the first and last element correspond to A and B in ReactiveFlux
+        state_labels = np.array([str(i) for i in range(flux.n_states)])
+        state_labels[np.array(flux.source_states)] = "A"
+        state_labels[np.array(flux.target_states)] = "B"
+    elif isinstance(state_labels, (np.ndarray, list, tuple)):
+        if len(state_labels) != flux.n_states:
+            raise ValueError("length of state_labels({}) has to match length of states({})."
+                             .format(len(state_labels), flux.n_states))
+
+    plot = Network(F, pos=pos, state_labels=state_labels, state_sizes=state_sizes, state_colors=state_colors,
+                   state_scale=state_scale, edge_scale=edge_scale, edge_labels=edge_labels,
+                   edge_label_format=edge_label_format, edge_curvature=edge_curvature)
+
+    ax = plot.plot(ax=ax, **textkwargs)
+    if show_committor:
+        ax.set_xlabel('Committor probability')
+    return ax

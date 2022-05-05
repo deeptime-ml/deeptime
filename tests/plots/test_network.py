@@ -74,10 +74,10 @@ def test_msm():
 def test_flux():
     import numpy as np
     P = np.array([[0.8,  0.15, 0.05,  0.0,  0.0],
-                                     [0.1,  0.75, 0.05, 0.05, 0.05],
-                                     [0.05,  0.1,  0.8,  0.0,  0.05],
-                                     [0.0,  0.2, 0.0,  0.8,  0.0],
-                                     [0.0,  0.02, 0.02, 0.0,  0.96]])
+                  [0.1,  0.75, 0.05, 0.05, 0.05],
+                  [0.05,  0.1,  0.8,  0.0,  0.05],
+                  [0.0,  0.2, 0.0,  0.8,  0.0],
+                  [0.0,  0.02, 0.02, 0.0,  0.96]])
     from pyemma import msm
     F = msm.tpt(msm.markov_model(P), [2], [3])
     F.flux[:] *= 100
@@ -87,8 +87,8 @@ def test_flux():
 
     A = F.flux
     from deeptime.plots import plot_flux
-    pos = plot_flux(A)
-    Network(A, pos).plot()
+    ax = plot_flux(F)
+    ax.set_aspect('equal')
     plt.show()
 
     from pyemma.plots import plot_flux
