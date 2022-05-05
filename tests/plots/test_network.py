@@ -8,7 +8,7 @@ from numpy.testing import assert_raises
 from deeptime.plots.network import Network, plot_markov_model
 from deeptime.markov.msm import MarkovStateModel
 
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 
 @pytest.mark.parametrize("cmap", ["nipy_spectral", plt.cm.nipy_spectral, None])
@@ -70,3 +70,28 @@ def test_msm():
 
     plot_markov_model(Psparse, ax=ax1)
     plot_markov_model(P, ax=ax2)
+
+def test_flux():
+    import numpy as np
+    P = np.array([[0.8,  0.15, 0.05,  0.0,  0.0],
+                                     [0.1,  0.75, 0.05, 0.05, 0.05],
+                                     [0.05,  0.1,  0.8,  0.0,  0.05],
+                                     [0.0,  0.2, 0.0,  0.8,  0.0],
+                                     [0.0,  0.02, 0.02, 0.0,  0.96]])
+    from pyemma import msm
+    F = msm.tpt(msm.markov_model(P), [2], [3])
+    F.flux[:] *= 100
+
+    import scipy as sp
+    import scipy.sparse  # call as sp.sparse
+
+    A = F.flux
+    from deeptime.plots import plot_flux
+    pos = plot_flux(A)
+    Network(A, pos).plot()
+    plt.show()
+
+    from pyemma.plots import plot_flux
+    plot_flux(F)
+    plt.show()
+

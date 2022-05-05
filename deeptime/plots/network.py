@@ -521,3 +521,8 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
                       state_sizes=state_sizes, edge_scale=edge_scale, edge_curvature=edge_curvature,
                       edge_labels=edge_labels, edge_label_format=edge_label_format)
     return network.plot(ax=ax, **textkwargs), pos
+
+
+def plot_flux(flux):
+    from . import _plots_bindings
+    return _plots_bindings.fruchterman_reingold(flux, 10*np.random.uniform(size=(flux.shape[0], 2)))
