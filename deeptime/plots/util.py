@@ -9,7 +9,7 @@ def default_colors():
 
 
 @plotting_function()
-def default_image_cmap() -> "matplotlib.colors.Colormap":
+def default_image_cmap():
     r""" Yields the default image color map. """
     import matplotlib.pyplot as plt
     from matplotlib import rcParams

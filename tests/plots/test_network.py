@@ -37,7 +37,7 @@ def test_network_invalid_args():
         Network(msm.transition_matrix, pos=np.zeros((2, 2)))  # not enough positions
     network = Network(msm.transition_matrix, pos=np.zeros((3, 2)))
     with assert_raises(ValueError):
-        network.edge_labels = np.array([["hi"]*2]*2)  # not enough labels
+        network.edge_labels = np.array([["hi"] * 2] * 2)  # not enough labels
     with assert_raises(ValueError):
         network.edge_labels = 'bogus'  # may be 'weights'
     network.state_sizes = [1., 2., 3.]
@@ -70,3 +70,17 @@ def test_msm():
 
     plot_markov_model(Psparse, ax=ax1)
     plot_markov_model(P, ax=ax2)
+
+
+def test_flux():
+    import numpy as np
+    P = np.array([[0.8, 0.15, 0.05, 0.0, 0.0],
+                  [0.1, 0.75, 0.05, 0.05, 0.05],
+                  [0.05, 0.1, 0.8, 0.0, 0.05],
+                  [0.0, 0.2, 0.0, 0.8, 0.0],
+                  [0.0, 0.02, 0.02, 0.0, 0.96]])
+    msm = MarkovStateModel(P)
+    flux = msm.reactive_flux([2], [3])
+    from deeptime.plots import plot_flux
+    ax, _ = plot_flux(flux, flux_scale=100)
+    ax.set_aspect('equal')

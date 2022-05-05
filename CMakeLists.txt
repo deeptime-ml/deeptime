@@ -60,6 +60,7 @@ add_subdirectory(deeptime/covariance/util/covar_c)
 add_subdirectory(deeptime/clustering)
 add_subdirectory(deeptime/basis)
 add_subdirectory(deeptime/markov)
+add_subdirectory(deeptime/plots)
 
 if (NOT SKBUILD)
     add_subdirectory(examples/clustering_custom_metric)

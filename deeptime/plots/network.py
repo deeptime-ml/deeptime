@@ -4,6 +4,7 @@ import numpy as np
 import scipy
 from scipy.sparse import issparse
 
+from deeptime.markov import ReactiveFlux
 from deeptime.markov.msm import MarkovStateModel
 from deeptime.plots.util import default_image_cmap, default_line_width
 from deeptime.util.decorators import plotting_function
@@ -437,6 +438,19 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
     models with up to 10-20 states, e.g., obtained by a HMM coarse-graining. If used with large network, the automatic
     node positioning will be very slow and may still look ugly.
 
+    .. plot::
+
+        import numpy as np
+        P = np.array([[0.8, 0.15, 0.05, 0.0, 0.0],
+                      [0.1, 0.75, 0.05, 0.05, 0.05],
+                      [0.05, 0.1, 0.8, 0.0, 0.05],
+                      [0.0, 0.2, 0.0, 0.8, 0.0],
+                      [1e-7, 0.02 - 1e-7, 0.02, 0.0, 0.96]])
+
+        from deeptime.plots import plot_markov_model
+        ax, pos = plot_markov_model(P)
+        ax.set_aspect('equal')
+
     Parameters
     ----------
     msm : MarkovStateModel or ndarray
@@ -485,17 +499,6 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
     ax, pos : matplotlib.axes.Axes, ndarray(n,2)
         An axes object containing the plot and the positions of states.
         Can be used later to plot a different network representation (e.g. the flux)
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> P = np.array([[0.8,  0.15, 0.05,  0.0,  0.0],
-    ...              [0.1,  0.75, 0.05, 0.05, 0.05],
-    ...              [0.05,  0.1,  0.8,  0.0,  0.05],
-    ...              [0.0,  0.2, 0.0,  0.8,  0.0],
-    ...              [0.0,  0.02, 0.02, 0.0,  0.96]])
-    >>> plot_markov_model(P) # doctest:+ELLIPSIS
-    (<...Axes..., array...)
     """
     if not isinstance(msm, MarkovStateModel):
         msm = MarkovStateModel(msm)
@@ -521,3 +524,117 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
                       state_sizes=state_sizes, edge_scale=edge_scale, edge_curvature=edge_curvature,
                       edge_labels=edge_labels, edge_label_format=edge_label_format)
     return network.plot(ax=ax, **textkwargs), pos
+
+
+def plot_flux(flux: ReactiveFlux, state_sizes=None, flux_scale=1.0, state_scale=1.0, state_colors=None,
+              state_labels='auto', minflux=1e-9, edge_scale=1.0, edge_curvature=1.0, edge_labels='weights',
+              edge_label_format='{:.2e}', attribute_to_plot='net_flux', show_committor=True, cmap='coolwarm',
+              ax=None, **textkwargs):
+    r""" Network representation of a reactive flux.
+
+    This visualization is not optimized for large fluxes. It is meant to be used for the visualization of small models
+    with up to 10-20 states, e.g. obtained by a PCCA-based coarse-graining of the full flux. If used with large
+    network, the automatic node positioning will be very slow and may still look ugly.
+
+    .. plot::
+
+        import numpy as np
+        P = np.array([[0.8, 0.15, 0.05, 0.0, 0.0],
+                     [0.1, 0.75, 0.05, 0.05, 0.05],
+                     [0.05, 0.1, 0.8, 0.0, 0.05],
+                     [0.0, 0.2, 0.0, 0.8, 0.0],
+                     [0.0, 0.02, 0.02, 0.0, 0.96]])
+
+        from deeptime.markov.msm import MarkovStateModel
+        flux = MarkovStateModel(P).reactive_flux([2], [3])
+
+        from deeptime.plots import plot_flux
+        ax, pos = plot_flux(flux, flux_scale=100)
+        ax.set_aspect('equal')
+
+    Parameters
+    ----------
+    flux : ReactiveFlux
+        The flux to plot.
+    state_sizes : ndarray(n), optional, default=None
+        User-defined areas of the discs drawn for each state. If not given, the stationary probability will be used.
+    flux_scale : float, optional, default=1.0
+        Uniform scaling of the flux values.
+    state_scale : float, optional, default=1.0
+        Uniform scaling of state discs.
+    state_colors : string, ndarray(n), or list, optional, default=None
+        Per default colors according to `cmap` with respect to committor probability. Otherwise if given as:
+            string :
+                a Hex code for a single color used for all states
+            array :
+                n values in [0,1] which will result in a grayscale plot
+            list :
+                of len = nstates, with a color for each state. The list can mix strings, RGB values and
+                hex codes, e.g. :py:obj:`state_colors` = ['g', 'red', [.23, .34, .35], '#ff5500'] is
+                possible.
+    state_labels : list of strings, optional, default is 'auto'
+        A list with a label for each state, to be displayed at the center of each node/state. If left to 'auto',
+        the labels are automatically set to the state indices.
+    minflux : float, optional, default=1e-9
+        The minimal flux for a transition to be drawn
+    edge_scale : float, optional, default=1.0
+        Relative arrow scale. Set to a value different from 1 to increase or decrease the arrow width.
+    edge_curvature : float, optional, default=1.0
+        Relative arrow curvature. Set to a value different from 1 to make arrows more or less curved.
+    edge_labels : 'weights', None or a ndarray(n,n) with label strings. Optional, default='weights'
+        Strings to be placed upon arrows. If None, no labels will be used. If 'weights', the elements of P will be
+        used. If a matrix of strings is given by the user these will be used.
+    edge_label_format : str, optional, default='{:.2e}'
+        The numeric format to print the arrow labels.
+    attribute_to_plot : str, optional, default='net_flux'
+        specify the attribute of the flux object to plot.
+    show_committor: boolean (default=False)
+        Print the committor value on the x-axis.
+    ax : matplotlib.axes.Axes, optional, default=None
+        The axes to plot to. When set to None, `gca()` is used.
+    textkwargs : optional argument for the text of the state and arrow labels.
+        See https://matplotlib.org/stable/api/text_api.html for more info. The
+        parameter 'size' refers to the size of the state and arrow labels and overwrites the
+        matplotlib default. The parameter 'arrow_label_size' is only used for the arrow labels;
+        please note that 'arrow_label_size' is not part of matplotlib.text.Text's set of parameters
+        and will raise an exception when passed to matplotlib.text.Text directly.
+
+    Returns
+    -------
+    ax : matplotlib.axes.Axes
+        Axes object on which the flux was plotted.
+    pos : ndarray
+        The positions.
+    """
+    from . import _plots_bindings
+    F = flux_scale * getattr(flux, attribute_to_plot)
+    if state_sizes is None:
+        state_sizes = flux.stationary_distribution
+    if state_colors is None:
+        state_colors = flux.forward_committor
+
+    # initial positions
+    pos = np.stack((flux.forward_committor,
+                    np.random.uniform(0, 1, size=len(flux.forward_committor)))).T
+    pos = _plots_bindings.fruchterman_reingold(flux.net_flux, pos, update_dims=[1], iterations=150)
+    # rescale so that y positions are between 0 and 1
+    pos[:, 1] -= np.min(pos[:, 1])
+    pos[:, 1] /= np.max(pos[:, 1])
+
+    if minflux > 0:
+        F[F < minflux] = 0.0
+
+    if isinstance(state_labels, str) and state_labels == 'auto':
+        # the first and last element correspond to A and B in ReactiveFlux
+        state_labels = np.array([str(i) for i in range(flux.n_states)])
+        state_labels[np.array(flux.source_states)] = "A"
+        state_labels[np.array(flux.target_states)] = "B"
+
+    plot = Network(F, pos=pos, state_labels=state_labels, state_sizes=state_sizes, state_colors=state_colors,
+                   state_scale=state_scale, edge_scale=edge_scale, edge_labels=edge_labels,
+                   edge_label_format=edge_label_format, edge_curvature=edge_curvature, cmap=cmap)
+
+    ax = plot.plot(ax=ax, **textkwargs)
+    if show_committor:
+        ax.set_xlabel('Committor probability')
+    return ax, pos
