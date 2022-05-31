@@ -436,7 +436,8 @@ class STLSQ(LinearRegression):
         # Do some preprocessing before fitting
         x_, y = check_X_y(x_, y, accept_sparse=[], y_numeric=True, multi_output=True)
 
-        x, y, X_offset, y_offset, X_scale = self._preprocess_data(
+        from sklearn.linear_model._base import _preprocess_data
+        x, y, X_offset, y_offset, X_scale = _preprocess_data(
             x_,
             y,
             fit_intercept=self.fit_intercept,
