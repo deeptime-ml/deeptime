@@ -70,8 +70,9 @@ class TRAMModel(Model):
         self._transition_matrices = transition_matrices
         self._count_models = count_models
 
-        self._msm_collection = self._construct_msm_collection(
-            count_models, transition_matrices)
+        if len(count_models) > 0:
+            self._msm_collection = self._construct_msm_collection(
+                count_models, transition_matrices)
 
     @property
     def biased_conf_energies(self) -> np.ndarray:

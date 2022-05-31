@@ -318,3 +318,10 @@ def test_setflags():
         dataset.dtrajs[0][0] = 0
     with np.testing.assert_raises(ValueError):
         dataset.bias_matrices[0][0, 0] = 0
+
+
+def test_empty_trajectory_fragments():
+    dtrajs, bias_matrices, ttrajs = make_random_input_data(5, 3, n_samples=10, make_ttrajs=True)
+
+    dataset = TRAMDataset(dtrajs, bias_matrices, ttrajs, lagtime=10)
+    np.testing.assert_equal(dataset.count_models[0].count_matrix.shape, (3, 3))
