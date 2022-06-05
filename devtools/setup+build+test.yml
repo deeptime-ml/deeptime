@@ -1,6 +1,9 @@
 steps:
 - template: checkout.yml
 
+- script: python -m pip install --upgrade pip
+  displayName: 'Update pip'
+
 - script: pip install nox
   displayName: 'Install nox'
 

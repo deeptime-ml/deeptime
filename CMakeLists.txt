@@ -23,6 +23,14 @@ if(SKBUILD)
             OUTPUT_VARIABLE _tmp_dir
             OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ECHO STDOUT)
     list(APPEND CMAKE_PREFIX_PATH "${_tmp_dir}")
+else()
+    execute_process(
+            COMMAND "${PYTHON_EXECUTABLE}" -c
+            "import skbuild; from pathlib import Path; print(str((Path(skbuild.__file__).parents[0] / 'resources' / 'cmake').absolute()))"
+            OUTPUT_VARIABLE _tmp_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ECHO STDOUT
+    )
+    list(APPEND CMAKE_MODULE_PATH "${_tmp_dir}")
 endif()
 
 find_package(OpenMP 4)
@@ -37,13 +45,13 @@ endif()
 # use cmake 3.12+ FindPython
 # find_package(Python COMPONENTS Interpreter Development)  # this doesn't work with conda, picks up the wrong python interpreter on OSX
 # now find pybind
-find_package(Python REQUIRED COMPONENTS Development NumPy)
+find_package(PythonExtensions REQUIRED)
 find_package(pybind11 REQUIRED CONFIG)
 
 function(register_pybind_module name)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "")
     pybind11_add_module(${name} ${ARG_UNPARSED_ARGUMENTS})
-    target_link_libraries(${name} PUBLIC Python::NumPy deeptime::deeptime)
+    target_link_libraries(${name} PUBLIC deeptime::deeptime)
     if (OpenMP_FOUND)
         target_link_libraries(${name} PUBLIC OpenMP::OpenMP_CXX)
     endif()
