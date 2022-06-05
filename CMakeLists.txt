@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15...3.19)
+cmake_minimum_required(VERSION 3.18...3.22)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,12 +37,13 @@ endif()
 # use cmake 3.12+ FindPython
 # find_package(Python COMPONENTS Interpreter Development)  # this doesn't work with conda, picks up the wrong python interpreter on OSX
 # now find pybind
+find_package(Python REQUIRED COMPONENTS Development NumPy)
 find_package(pybind11 REQUIRED CONFIG)
 
 function(register_pybind_module name)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "")
     pybind11_add_module(${name} ${ARG_UNPARSED_ARGUMENTS})
-    target_link_libraries(${name} PUBLIC deeptime::deeptime)
+    target_link_libraries(${name} PUBLIC Python::NumPy deeptime::deeptime)
     if (OpenMP_FOUND)
         target_link_libraries(${name} PUBLIC OpenMP::OpenMP_CXX)
     endif()
