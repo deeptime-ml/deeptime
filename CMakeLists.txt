@@ -44,11 +44,7 @@ if(MSVC)
     add_compile_options(/W3 /EHsc /bigobj /permissive- /std:c++17)
 endif()
 
-# use cmake 3.12+ FindPython
-# find_package(Python COMPONENTS Interpreter Development)  # this doesn't work with conda, picks up the wrong python interpreter on OSX
-# now find pybind
-find_package(Python3 COMPONENTS Interpreter Development NumPy Python)
-# find_package(PythonExtensions REQUIRED)
+find_package(Python COMPONENTS Interpreter Development NumPy Python)
 find_package(pybind11 CONFIG REQUIRED)
 
 function(register_pybind_module name)
