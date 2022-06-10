@@ -13,6 +13,8 @@ endif()
 project(deeptime LANGUAGES C CXX VERSION ${DEEPTIME_VERSION})
 set(DEEPTIME_ROOT_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
 
+include(GNUInstallDirs)
+
 if(SKBUILD)
     # Scikit-Build does not add your site-packages to the search path
     # automatically, so we need to add it _or_ the pybind11 specific directory
@@ -45,8 +47,9 @@ endif()
 # use cmake 3.12+ FindPython
 # find_package(Python COMPONENTS Interpreter Development)  # this doesn't work with conda, picks up the wrong python interpreter on OSX
 # now find pybind
-find_package(PythonExtensions REQUIRED)
-find_package(pybind11 REQUIRED CONFIG)
+find_package(Python3 COMPONENTS Interpreter Development NumPy Python)
+# find_package(PythonExtensions REQUIRED)
+find_package(pybind11 CONFIG REQUIRED)
 
 function(register_pybind_module name)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "")
