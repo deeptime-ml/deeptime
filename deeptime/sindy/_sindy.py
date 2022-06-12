@@ -3,6 +3,7 @@ from warnings import warn
 
 import numpy as np
 from scipy.integrate import odeint
+
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LinearRegression, ridge_regression
 from sklearn.metrics import r2_score
