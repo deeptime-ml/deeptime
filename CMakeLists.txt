@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15...3.19)
+cmake_minimum_required(VERSION 3.18...3.22)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,8 @@ endif()
 project(deeptime LANGUAGES C CXX VERSION ${DEEPTIME_VERSION})
 set(DEEPTIME_ROOT_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
 
+include(GNUInstallDirs)
+
 if(SKBUILD)
     # Scikit-Build does not add your site-packages to the search path
     # automatically, so we need to add it _or_ the pybind11 specific directory
@@ -23,6 +25,14 @@ if(SKBUILD)
             OUTPUT_VARIABLE _tmp_dir
             OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ECHO STDOUT)
     list(APPEND CMAKE_PREFIX_PATH "${_tmp_dir}")
+else()
+    execute_process(
+            COMMAND "${PYTHON_EXECUTABLE}" -c
+            "import skbuild; from pathlib import Path; print(str((Path(skbuild.__file__).parents[0] / 'resources' / 'cmake').absolute()))"
+            OUTPUT_VARIABLE _tmp_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ECHO STDOUT
+    )
+    list(APPEND CMAKE_MODULE_PATH "${_tmp_dir}")
 endif()
 
 find_package(OpenMP 4)
@@ -34,10 +44,8 @@ if(MSVC)
     add_compile_options(/W3 /EHsc /bigobj /permissive- /std:c++17)
 endif()
 
-# use cmake 3.12+ FindPython
-# find_package(Python COMPONENTS Interpreter Development)  # this doesn't work with conda, picks up the wrong python interpreter on OSX
-# now find pybind
-find_package(pybind11 REQUIRED CONFIG)
+find_package(Python COMPONENTS Interpreter Development NumPy Python)
+find_package(pybind11 CONFIG REQUIRED)
 
 function(register_pybind_module name)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "")
