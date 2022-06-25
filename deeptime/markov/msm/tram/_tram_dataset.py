@@ -567,7 +567,7 @@ class TRAMDataset(Dataset):
                               f"fragments that start at each replica exchange swap. Replica exchanges possibly occur "
                               f"within the span of the lag time.")
                 # there are no samples from this state that belong to the connected set. Make an empty count model.
-                count_models.append(TransitionCountModel(np.zeros(self.n_markov_states, self.n_markov_states)))
+                count_models.append(TransitionCountModel(np.zeros([self.n_markov_states, self.n_markov_states])))
             else:
                 # make a counts model for the samples that belong to the connected set.
                 traj_counts_model = estimator.fit_fetch(dtraj_fragments[k])
