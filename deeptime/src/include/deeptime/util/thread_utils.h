@@ -5,6 +5,7 @@
 
 namespace deeptime::thread {
 
+template<bool CLEAR_PY_ERR=true>
 struct OpenMPTryCatch {
 
     template<typename F>
@@ -17,28 +18,29 @@ struct OpenMPTryCatch {
                 f();
             }
         } catch(py::error_already_set &e) {
+            #pragma omp atomic write
+            caughtException = true;
             #pragma omp critical
             {
-                #pragma omp atomic write
-                caughtException = true;
                 what = e.what() ? e.what() : "";
-                py::gil_scoped_acquire acquire;
-                e.restore();
-                PyErr_Clear();
+                if constexpr(CLEAR_PY_ERR) {
+                    py::gil_scoped_acquire acquire;
+                    e.restore();
+                    PyErr_Clear();
+                }
             }
         } catch(std::exception &e) {
+            #pragma omp atomic write
+            caughtException = true;
             #pragma omp critical
             {
-                #pragma omp atomic write
-                caughtException = true;
                 what = e.what() ? e.what() : "";
             }
         }
     }
 
-    bool caughtException {false};
-    std::string what {};
-
+    bool caughtException = false;
+    std::string what;
 };
 
 class scoped_thread {

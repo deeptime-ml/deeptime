@@ -213,7 +213,7 @@ inline auto trajectory(System &system, const Time &tArr, const np_array_nfc<dtyp
     auto tOutBuf = tOut.template mutable_unchecked<2>();
     auto tBufOuter = detail::toOuterBuf(tArr);
 
-    thread::OpenMPTryCatch threadException;
+    thread::OpenMPTryCatch<false> threadException {};
 
     #pragma omp parallel default(none) shared(threadException) firstprivate(system, nTestPoints, xBuf, yBuf, tOutBuf, tBufOuter, seed, length)
     {
