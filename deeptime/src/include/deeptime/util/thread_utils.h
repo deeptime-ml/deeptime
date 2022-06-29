@@ -5,6 +5,34 @@
 
 namespace deeptime::thread {
 
+struct OpenMPTryCatch {
+
+    template<typename F>
+    void operator()(F &&f) {
+        try {
+            f();
+        } catch(py::error_already_set &e) {
+            #pragma omp critical
+            {
+                caughtException = true;
+                what = e.what();
+                e.restore();
+                PyErr_Clear();
+            }
+        } catch(std::exception &e) {
+            #pragma omp critical
+            {
+                caughtException = true;
+                what = e.what();
+            }
+        }
+    }
+
+    bool caughtException {false};
+    std::string what {};
+
+};
+
 class scoped_thread {
     std::thread t;
 public:

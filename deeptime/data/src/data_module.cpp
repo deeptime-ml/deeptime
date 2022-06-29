@@ -47,14 +47,23 @@ struct PySDE {
     using dtype = T;
     using State = deeptime::data::Vector<T, DIM>;
     using Integrator = deeptime::data::EulerMaruyama<State, DIM, T>;
-    using Rhs = std::function<State(State)>;
+    using Rhs = std::function<py::object(State)>;
     using Sigma = deeptime::data::Matrix<T, DIM>;
 
-    PySDE(const Sigma &sigma, const Rhs &_rhs) : sigma(sigma), rhs(_rhs) {}
+    PySDE(const Sigma &sigma, Rhs _rhs) : sigma(sigma), rhs(std::move(_rhs)) {}
 
     [[nodiscard]] State f(const State &x) const {
         py::gil_scoped_acquire gil;
-        return rhs(x);
+        auto obj = rhs(x);
+        try {
+            return py::cast<State>(obj);
+        } catch(const py::cast_error &e) {
+            std::stringstream msg;
+            msg << "Could not cast result of right-hand side to array of dimension " << DIM <<".\n";
+            msg << "Original error message: \n";
+            msg << e.what();
+            throw std::runtime_error(msg.str());
+        }
     }
 
     Sigma sigma;
