@@ -2,9 +2,8 @@ import os
 import shutil
 import tempfile
 import nox
-from sys import platform
 
-PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9", "3.10"]
+PYTHON_VERSIONS = ["3.7", "3.8", "3.9", "3.10"]
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -28,7 +27,7 @@ def tests(session: nox.Session) -> None:
         pytest_args = []
         for arg in session.posargs:
             # do not parallelize on darwin
-            if platform != 'darwin' and arg.startswith('numprocesses'):
+            if arg.startswith('numprocesses'):
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
