@@ -10,15 +10,16 @@ struct OpenMPTryCatch {
     template<typename F>
     void operator()(F &&f) {
         try {
-            #pragma omp atomic
-            auto cond = caughtException;
+            bool cond;
+            #pragma omp atomic read
+            cond = caughtException;
             if(!cond) {
                 f();
             }
         } catch(py::error_already_set &e) {
             #pragma omp critical
             {
-                #pragma omp atomic
+                #pragma omp atomic write
                 caughtException = true;
                 what = e.what() ? e.what() : "";
                 py::gil_scoped_acquire acquire;
@@ -28,7 +29,7 @@ struct OpenMPTryCatch {
         } catch(std::exception &e) {
             #pragma omp critical
             {
-                #pragma omp atomic
+                #pragma omp atomic write
                 caughtException = true;
                 what = e.what() ? e.what() : "";
             }
