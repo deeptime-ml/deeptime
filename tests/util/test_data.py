@@ -1,6 +1,8 @@
 import pytest
 from numpy.testing import assert_equal, assert_raises, assert_, assert_array_almost_equal
 
+from deeptime.util.exceptions import TrajectoryTooShortError
+
 pytest.importorskip("torch")
 
 from deeptime.util.data import timeshifted_split, TrajectoryDataset, TimeLaggedDataset
@@ -126,8 +128,12 @@ def test_timelagged_dataset_multitraj(lagtime, ntraj, stride, start, stop):
     assert_(len(data) == ntraj)
     with assert_raises(AssertionError):
         TrajectoryDataset.from_trajectories(1, [])  # empty data
-    with assert_raises(AssertionError):
-        TrajectoryDataset.from_trajectories(lagtime=7, data=data)  # lagtime too long
+    if len(data) > 1:
+        with pytest.warns(UserWarning):
+            TrajectoryDataset.from_trajectories(lagtime=7, data=data)  # lagtime too long
+    else:
+        with assert_raises(TrajectoryTooShortError):
+            TrajectoryDataset.from_trajectories(lagtime=7, data=data)  # lagtime too long for all trajectories
     with assert_raises(AssertionError):
         TrajectoryDataset.from_trajectories(lagtime=1, data=data + [np.empty((55, 7))])  # shape mismatch
     ds = TrajectoryDataset.from_trajectories(lagtime=lagtime, data=data)

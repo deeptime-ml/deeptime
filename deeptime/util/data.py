@@ -1,7 +1,9 @@
+import warnings
 from typing import Optional, List
 
 import numpy as np
 
+from .exceptions import TrajectoryTooShortError
 from ..base import Dataset
 
 
@@ -284,8 +286,10 @@ class TrajectoryDataset(TimeLaggedDataset):
     """
 
     def __init__(self, lagtime, trajectory):
-        assert lagtime > 0, "Lagtime must be positive"
-        assert len(trajectory) > lagtime, "Not enough data to satisfy lagtime"
+        assert lagtime > 0, "Lagtime must be positive."
+        if len(trajectory) <= lagtime:
+            raise TrajectoryTooShortError(
+                f"Not enough data (length={len(trajectory)}) to satisfy lagtime={lagtime}.")
         super().__init__(trajectory[:-lagtime], trajectory[lagtime:])
         self._trajectory = trajectory
         self._lagtime = lagtime
@@ -318,7 +322,7 @@ class TrajectoryDataset(TimeLaggedDataset):
         ------
         AssertionError
             If data is empty, lagtime is not positive,
-            the shapes do not match, or lagtime is too long for any of the trajectories.
+            the shapes do not match, or lagtime is too long for all of the trajectories.
         """
         return TrajectoriesDataset.from_numpy(lagtime, data)
 
@@ -367,7 +371,16 @@ class TrajectoriesDataset(TimeLaggedConcatDataset):
         assert isinstance(data, list), "Input must be a list of trajectories. If you only have one trajectory, use " \
                                        "TrajectoryDataset or wrap it into a list like [trajectory]."
         assert len(data) > 0 and all(data[0].shape[1:] == x.shape[1:] for x in data), "Shape mismatch!"
-        return TrajectoriesDataset([TrajectoryDataset(lagtime, traj) for traj in data])
+        individual_datasets = []
+        for i, traj in enumerate(data):
+            try:
+                individual_datasets.append(TrajectoryDataset(lagtime, traj))
+            except TrajectoryTooShortError as e:
+                warnings.warn(f"Skipping trajectory {i}: {e}", UserWarning)
+        if len(individual_datasets) > 0:
+            return TrajectoriesDataset(individual_datasets)
+        raise TrajectoryTooShortError(f"All provided trajectories were too short "
+                                      f"for the provided lagtime of {lagtime}.")
 
     @property
     def lagtime(self):
