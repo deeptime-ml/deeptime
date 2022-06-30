@@ -33,3 +33,7 @@ class NotConvergedWarning(RuntimeWarning):
 
 class NotConvergedError(RuntimeError):
     pass
+
+
+class TrajectoryTooShortError(Exception):
+    pass
