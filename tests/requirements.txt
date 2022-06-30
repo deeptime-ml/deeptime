@@ -1,12 +1,12 @@
 importlib_metadata; python_version<"3.8"
 typing_extensions; python_version<"3.8"
-pybind11==2.9.1
-torch>=1.10.0; python_version<"3.10"
+pybind11==2.9.2
+torch>=1.12.0; python_version<"3.10"
 matplotlib
 pint
 networkx
 
-pytest==7.1.1
+pytest==7.1.2
 pytest-cov==3.0.0
 pytest-faulthandler==2.0.1
 pytest-sugar==0.9.4

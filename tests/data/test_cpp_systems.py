@@ -64,7 +64,7 @@ def test_interface(init, system, dim, integrator, has_potential):
 def test_ode_against_scipy(system, vectorized, ref_method):
     instance = system(h=1e-5, n_steps=1000)
     dim = instance.dimension
-    y0 = np.array([[.5] * dim]*10)
+    y0 = np.array([[.5] * dim] * 10)
     assert_(instance.vectorized_f)
     if instance.time_dependent:
         traj = instance.trajectory(0., y0, 2)
@@ -185,6 +185,22 @@ def test_custom_ode_wrong_dim(dim):
         dt.data.custom_ode(dim, lambda x: x, 1., 5)
 
 
+@pytest.mark.parametrize("ode", [False, True])
+@pytest.mark.parametrize("raises", [False, True])
+def test_custom_system_bad_rhs(ode, raises):
+    with assert_raises(RuntimeError):
+        def bad(_):
+            if raises:
+                raise ValueError("ups")
+            return [5]
+
+        if ode:
+            system = dt.data.custom_ode(dim=2, rhs=bad, h=1e-3, n_steps=100)
+        else:
+            system = dt.data.custom_sde(dim=2, rhs=bad, sigma=np.diag([1., 1.]), h=1e-3, n_steps=100)
+        system.trajectory(x0=[0, 0], length=100, seed=5)
+
+
 @pytest.mark.parametrize('vectorized_ivp', [True, False], ids=lambda x: f"vectorized={x}")
 @pytest.mark.parametrize('full_periodic', [True, False], ids=lambda x: f"full_periodic={x}")
 def test_bickley_integrate(vectorized_ivp, full_periodic):
@@ -209,7 +225,8 @@ def test_bickley_integrate(vectorized_ivp, full_periodic):
     assert_array_almost_equal(traj, np.flip(traj_back, axis=1))
     t_eval = np.linspace(0, 10, num=11, endpoint=True)
 
-    periodic_traj_back = traj_back if full_periodic else dt.data.BickleyJet.apply_periodic_boundary_conditions(traj_back)
+    periodic_traj_back = traj_back if full_periodic else dt.data.BickleyJet.apply_periodic_boundary_conditions(
+        traj_back)
 
     if not full_periodic:
         periodic_traj = dt.data.BickleyJet.apply_periodic_boundary_conditions(traj, inplace=False)

@@ -213,40 +213,49 @@ inline auto trajectory(System &system, const Time &tArr, const np_array_nfc<dtyp
     auto tOutBuf = tOut.template mutable_unchecked<2>();
     auto tBufOuter = detail::toOuterBuf(tArr);
 
-    #pragma omp parallel default(none) firstprivate(system, nTestPoints, xBuf, yBuf, tOutBuf, tBufOuter, seed, length)
+    thread::OpenMPTryCatch threadException {};
+
+    #pragma omp parallel default(none) shared(threadException) firstprivate(system, nTestPoints, xBuf, yBuf, tOutBuf, tBufOuter, seed, length)
     {
         auto integrator = createIntegrator<System>(seed, typename System::system_type());
 
         #pragma omp for
         for (std::size_t testPointIndex = 0; testPointIndex < nTestPoints; ++testPointIndex) {
-            auto tBuf = detail::toBuf(tBufOuter(testPointIndex), system);
-            for (size_t k = 0; k < System::DIM; ++k) {
-                // copy initial condition
-                yBuf(testPointIndex, 0, k) = xBuf(testPointIndex, k);
-            }
-
-            auto tEval = tBuf(0);
-            tOutBuf(testPointIndex, 0) = tEval;
-
-            typename System::State testPoint;
-            for (size_t i = 1; i < length; ++i) {
+            threadException([&]() {
+                auto tBuf = detail::toBuf(tBufOuter(testPointIndex), system);
                 for (size_t k = 0; k < System::DIM; ++k) {
-                    // copy new test point into x vector
-                    testPoint[k] = yBuf(testPointIndex, i - 1, k);
+                    // copy initial condition
+                    yBuf(testPointIndex, 0, k) = xBuf(testPointIndex, k);
                 }
 
-                // evaluate dynamical system
-                auto yi = evaluate(system, integrator, tEval, testPoint);
+                auto tEval = tBuf(0);
+                tOutBuf(testPointIndex, 0) = tEval;
 
-                // copy result into y vector
-                for (size_t k = 0; k < System::DIM; ++k) {
-                    yBuf(testPointIndex, i, k) = yi[k];
+                typename System::State testPoint;
+                for (size_t i = 1; i < length; ++i) {
+                    for (size_t k = 0; k < System::DIM; ++k) {
+                        // copy new test point into x vector
+                        testPoint[k] = yBuf(testPointIndex, i - 1, k);
+                    }
+
+                    // evaluate dynamical system
+                    auto yi = evaluate(system, integrator, tEval, testPoint);
+
+                    // copy result into y vector
+                    for (size_t k = 0; k < System::DIM; ++k) {
+                        yBuf(testPointIndex, i, k) = yi[k];
+                    }
+                    tEval = tBuf(i);
+                    tOutBuf(testPointIndex, i) = tEval;
                 }
-                tEval = tBuf(i);
-                tOutBuf(testPointIndex, i) = tEval;
-            }
+            });
+
         }
+    }
 
+
+    if (threadException.caughtException) {
+        throw std::runtime_error("Failed to simulate. " + threadException.what);
     }
 
     return std::make_tuple(tOut, y);

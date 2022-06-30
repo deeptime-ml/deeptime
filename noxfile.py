@@ -1,9 +1,10 @@
 import os
 import shutil
+import sys
 import tempfile
 import nox
 
-PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9", "3.10"]
+PYTHON_VERSIONS = ["3.7", "3.8", "3.9", "3.10"]
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -26,11 +27,12 @@ def tests(session: nox.Session) -> None:
     else:
         pytest_args = []
         for arg in session.posargs:
-            if arg.startswith('numprocesses'):
+            # do not parallelize on darwin
+            if sys.platform != 'darwin' and arg.startswith('numprocesses'):
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
-        session.install("-r", "tests/requirements.txt")
+        session.install("-r", "tests/requirements.txt", silent=False)
         session.install("-e", ".", '-v', silent=False)
         if 'cov' in session.posargs:
             session.log("Running with coverage")
