@@ -240,9 +240,8 @@ class BayesianMSM(_MSMBaseEstimator):
         >>> import deeptime as dt
         >>> dtrajs = [np.array([0,1,2,2,2,2,1,2,2,2,1,0,0,0,0,0,0,0]),
         ...           np.array([0,0,0,0,1,1,2,2,2,2,2,2,2,1,0,0])]
-        >>> prior = dt.markov.msm.MaximumLikelihoodMSM().fit(dtrajs, lagtime=1)
-        >>> estimator = dt.markov.msm.BayesianMSM()
-        >>> posterior = estimator.fit(prior).fetch_model()
+        >>> estimator = dt.markov.msm.BayesianMSM(lagtime=1)
+        >>> posterior = estimator.fit_fetch(dtrajs)
         >>> n_samples = len(posterior.samples)
         >>> posterior.samples.extend(estimator.sample(posterior.prior, n_samples=23))
         >>> assert len(posterior.samples) == n_samples + 23
