@@ -268,16 +268,16 @@ public:
 
             // Send convergence info back to user by calling a python callback function
             // Also if we have converged; in that case we want one last update of the final error to the user.
-            if ((callback != nullptr && callbackInterval > 0 && iterationCount % callbackInterval == 0) ||
-                iterationError < maxErr) {
+	    if ((callback != nullptr && callbackInterval > 0 && iterationCount % callbackInterval == 0) 
+			    || iterationError < maxErr) {
                 py::gil_scoped_acquire guard;
                 (*callback)(callbackInterval, iterationError, logLikelihood);
-
+	
                 if (iterationError < maxErr) {
                     // We have converged!
-                    break;
+ 		    break;
                 }
-            }
+	    }
         }
 
         // Done iterating. Compute all energies for the thermodynamic states and markov states.
