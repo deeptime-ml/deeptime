@@ -50,10 +50,10 @@ def tests(session: nox.Session) -> None:
 
         test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
         try:
-            session.run("python", "-c", "\"import torch\"")
+            session.run("python", "-c", "\"import torch\"", success_codes=[0])
             # only run doctests if torch is available
             test_dirs.append(str((Path.cwd() / "deeptime").absolute()))
-        except ImportError as e:
+        except:
             session.log("Could not import torch, therefore no doctests")
 
         session.env["PYTHONPATH"] = site.getsitepackages()[0]
