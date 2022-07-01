@@ -33,7 +33,7 @@ def tests(session: nox.Session) -> None:
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
         session.install("-r", "tests/requirements.txt", silent=False)
-        session.install("-e", ".", '-v', silent=False)
+        session.install(".", '-v', silent=False)
         if 'cov' in session.posargs:
             session.log("Running with coverage")
             xml_results_dest = os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir())
