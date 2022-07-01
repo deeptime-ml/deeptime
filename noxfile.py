@@ -2,14 +2,15 @@ import os
 import shutil
 import sys
 import tempfile
+import site
+from pathlib import Path
 import nox
 
-PYTHON_VERSIONS = ["3.7", "3.8", "3.9", "3.10"]
+PYTHON_VERSIONS = ["3.8", "3.9", "3.10"]
 
 
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.Session) -> None:
-
     if 'cpp' in session.posargs:
         session.install("cmake")
         session.install("conan")
@@ -32,30 +33,33 @@ def tests(session: nox.Session) -> None:
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
+        session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt", silent=False)
-        session.install(".", '-v', silent=False)
         if 'cov' in session.posargs:
             session.log("Running with coverage")
-            xml_results_dest = os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir())
-            assert os.path.isdir(xml_results_dest), 'no dest dir available'
+            xml_results_dest = Path(os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir()))
+            assert xml_results_dest.exists() and xml_results_dest.is_dir(), 'no dest dir available'
             cover_pkg = 'deeptime'
-            junit_xml = os.path.join(xml_results_dest, 'junit.xml')
-            cov_xml = os.path.join(xml_results_dest, 'coverage.xml')
+            junit_xml = str((xml_results_dest / 'junit.xml').absolute())
+            cov_xml = str((xml_results_dest / 'coverage.xml').absolute())
 
             pytest_args += [f'--cov={cover_pkg}', f"--cov-report=xml:{cov_xml}", f"--junit-xml={junit_xml}",
                             "--cov-config=.coveragerc"]
         else:
             session.log("Running without coverage")
 
-        test_dirs = ["tests/"]
+        test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
         try:
-            import torch
+            session.run("python", "-c", "\"import torch\"")
             # only run doctests if torch is available
-            test_dirs.append('deeptime')
-        except ImportError:
-            pass
+            test_dirs.append(str((Path.cwd() / "deeptime").absolute()))
+        except ImportError as e:
+            session.log("Could not import torch, therefore no doctests")
 
-        session.run("pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args, '--pyargs', *test_dirs)
+        session.env["PYTHONPATH"] = site.getsitepackages()[0]
+        with session.cd("tests"):
+            session.run("pytest", '-vv', '--doctest-modules',
+                        '--durations=20', *pytest_args, '--pyargs', *test_dirs, env={'PYTHONPATH': ''})
 
 
 @nox.session(reuse_venv=True)

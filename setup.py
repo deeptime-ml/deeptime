@@ -44,7 +44,7 @@ metadata = \
         zip_safe=False,
         install_requires=pyproject["project"]["dependencies"],
         extras_require=pyproject["project"]["optional-dependencies"],
-        packages=find_packages(where="."),
+        packages=find_packages(where=".", exclude=("tests", "tests.*")),
         package_dir={"deeptime": "deeptime", "versioneer": "."},
         cmake_install_dir="deeptime/",
         cmake_args=cmake_args,
