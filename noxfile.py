@@ -49,14 +49,7 @@ def tests(session: nox.Session) -> None:
             session.log("Running without coverage")
 
         test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
-        try:
-            session.run("python", "-c", "\"import torch\"", success_codes=[0])
-            # only run doctests if torch is available
-            test_dirs.append(str((Path.cwd() / "deeptime").absolute()))
-        except:
-            session.log("Could not import torch, therefore no doctests")
 
-        session.env["PYTHONPATH"] = site.getsitepackages()[0]
         with session.cd("tests"):
             session.run("pytest", '-vv', '--doctest-modules',
                         '--durations=20', *pytest_args, '--pyargs', *test_dirs, env={'PYTHONPATH': ''})
