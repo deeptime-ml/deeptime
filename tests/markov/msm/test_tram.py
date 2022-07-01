@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
+import warnings
 from tqdm import tqdm
+from sklearn.exceptions import ConvergenceWarning
 
 from deeptime.markov.msm import TRAM, TRAMDataset
 from tests.testing_utilities import ProgressMock
@@ -322,3 +324,13 @@ def test_mbar_initialization_zero_iterations():
     model2 = tram2.fit_fetch(input_data)
     np.testing.assert_equal(model1.biased_conf_energies, model2.biased_conf_energies)
 
+
+def test_converged_before_callback_called_does_not_produce_warning():
+    dtrajs = [np.zeros(size=10)]
+    bias_matrices = [np.ones(10, 1)]
+
+    tram = TRAM(callback_interval=1000000, maxiter=10000)
+    try:
+        tram.fit((dtrajs, bias_matrices))
+    except ConvergenceWarning:
+        assert False

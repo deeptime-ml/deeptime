@@ -262,21 +262,24 @@ public:
                 // log likelihood depends on transition matrices. Compute them first.
                 computeTransitionMatrices();
                 logLikelihood = computeDiscreteLikelihood(biasedConfEnergies_, input_->stateCounts(),
-                                                               input_->transitionCounts(), transitionMatrices_) +
-                                     computeSampleLikelihood(*input_, modifiedStateCountsLog_);
+                                                          input_->transitionCounts(), transitionMatrices_) +
+                                computeSampleLikelihood(*input_, modifiedStateCountsLog_);
             }
 
             // Send convergence info back to user by calling a python callback function
-            if (callback != nullptr && callbackInterval > 0 && iterationCount % callbackInterval == 0) {
+            // Also if we have converged; in that case we want one last update of the final error to the user.
+            if ((callback != nullptr && callbackInterval > 0 && iterationCount % callbackInterval == 0) ||
+                iterationError < maxErr) {
                 py::gil_scoped_acquire guard;
                 (*callback)(callbackInterval, iterationError, logLikelihood);
-            }
 
-            if (iterationError < maxErr) {
-                // We have converged!
-                break;
+                if (iterationError < maxErr) {
+                    // We have converged!
+                    break;
+                }
             }
         }
+
         // Done iterating. Compute all energies for the thermodynamic states and markov states.
         updateMarkovStateEnergies();
         updateThermStateEnergies();
@@ -377,7 +380,7 @@ private:
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
         auto nThermStates = nThermStates_, nMarkovStates = nMarkovStates_;
-	    auto input = input_;
+        auto input = input_;
         #pragma omp parallel for default(none) firstprivate(nMarkovStates, nThermStates, input, biasMatrixPtr, \
                                                             biasedConfEnergiesBuf, modifiedStateCountsLogBuf)
         for (StateIndex i = 0; i < nMarkovStates; ++i) {
@@ -492,7 +495,7 @@ private:
         auto modifiedStateCountsLogBuf = modifiedStateCountsLog_.template unchecked<2>();
 
         auto nThermStates = nThermStates_, nMarkovStates = nMarkovStates_;
-	    auto input = input_;
+        auto input = input_;
         // assume that markovStateEnergies_ were set to INF by the caller on the first call
         #pragma omp parallel for default(none) firstprivate(nMarkovStates, nThermStates, input, biasMatrixPtr, \
                                                             markovStateEnergiesBuf, modifiedStateCountsLogBuf)
