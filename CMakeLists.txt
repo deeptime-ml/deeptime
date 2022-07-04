@@ -44,7 +44,7 @@ if(MSVC)
     add_compile_options(/W3 /EHsc /bigobj /permissive- /std:c++17)
 endif()
 
-find_package(Python COMPONENTS Interpreter Development NumPy Python)
+find_package(Python COMPONENTS Development NumPy)
 find_package(pybind11 CONFIG REQUIRED)
 
 function(register_pybind_module name)

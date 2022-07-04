@@ -6,6 +6,8 @@ include CMakeLists.txt
 
 # sources of extensions (incl. cython)
 recursive-include deeptime *.pyx *.h *.hpp *.c *.cpp *.npz CMakeLists.txt
+# do not install test directory
+recursive-exclude tests *
 
 prune tests
 prune docs

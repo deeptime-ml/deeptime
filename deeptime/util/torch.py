@@ -1,4 +1,5 @@
 from deeptime.util.platform import module_available
+
 if not module_available("torch"):
     raise ValueError("Importing this module is only possible with a working installation of PyTorch.")
 del module_available
@@ -294,14 +295,18 @@ class Stats:
 class disable_TF32(object):
     r"""Disable computing matmul with tensor cores which is needed for training with Ampere GPUs.
     Related issue: #220 """
+
     def __init__(self):
         self.orig_tf32_setting = torch.backends.cuda.matmul.allow_tf32
+
     def __enter__(self):
         torch.backends.cuda.matmul.allow_tf32 = False
+
     def __exit__(self, *exc):
         torch.backends.cuda.matmul.allow_tf32 = self.orig_tf32_setting
 
 
 # wrappers for older pytorch versions that lack linalg module
 eigh = torch.linalg.eigh if hasattr(torch, 'linalg') else lambda x: torch.symeig(x, eigenvectors=True)
-multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else lambda args: torch.chain_matmul(*args)
+multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else \
+    lambda args: torch.chain_matmul(*args)
