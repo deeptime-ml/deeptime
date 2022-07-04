@@ -415,7 +415,7 @@ class VAMP(EstimatorTransformer):
         >>> from deeptime.decomposition import TICA
         >>> from deeptime.util.data import timeshifted_split
         >>> estimator = TICA(dim=1)
-        >>> for X, Y in timeshifted_split(np.ones(shape=(100, 5)), lagtime=1, chunksize=40):
+        >>> for X, Y in timeshifted_split(np.ones(shape=(100, 5)), lagtime=1, chunksize=40):  # doctest: +SKIP
         ...     estimator.partial_fit((X, Y))
         >>> joint_model = estimator.fetch_model()
         """
