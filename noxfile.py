@@ -28,8 +28,7 @@ def tests(session: nox.Session) -> None:
     else:
         pytest_args = []
         for arg in session.posargs:
-            # do not parallelize on darwin
-            if sys.platform != 'darwin' and arg.startswith('numprocesses'):
+            if arg.startswith('numprocesses'):
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
