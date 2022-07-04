@@ -288,15 +288,15 @@ class TRAMCallback(callbacks.IterationErrorProgressCallback):
 
         Parameters
         ----------
-        n_iterations : int
+        inc : int
             Number of iterations to increment the progress bar with
-        increment : float
-            The increment in the free energies after the last iteration.
+        error : float
+            The error, i.e. increment in the free energies after the last iteration.
         log_likelihood : float
             The current log-likelihood, or 0. when the tram estimator is not configured to calculate log-likelihoods.
         """
         super().__call__(inc, error=error)
-
+        print(error)
         if self.log_likelihoods is not None:
             self.log_likelihoods.append(log_likelihood)
 
@@ -304,3 +304,4 @@ class TRAMCallback(callbacks.IterationErrorProgressCallback):
             self.increments.append(error)
 
         self.last_increment = error
+
