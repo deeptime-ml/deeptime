@@ -1,14 +1,31 @@
 r"""
 .. currentmodule: deeptime.plots
 
+Diagnostic plots for Markovianity and resolving processes.
+
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
 
     plot_implied_timescales
     plot_ck_test
+
+
+Plotting two-dimensional energy landscapes.
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+    
     plot_energy2d
     Energy2dPlot
+
+
+Plots depicting networks.
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
 
     plot_adjacency
     plot_markov_model
