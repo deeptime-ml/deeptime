@@ -297,19 +297,16 @@ class disable_TF32(object):
     Related issue: #220 """
 
     def __init__(self):
-        if torch.backends.cuda.is_built():
-            self.orig_tf32_setting = torch.backends.cuda.matmul.allow_tf32
+        self.orig_tf32_setting = torch.backends.cuda.matmul.allow_tf32
 
     def __enter__(self):
-        if torch.backends.cuda.is_built():
-            torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cuda.matmul.allow_tf32 = False
 
     def __exit__(self, *exc):
-        if torch.backends.cuda.is_built():
-            torch.backends.cuda.matmul.allow_tf32 = self.orig_tf32_setting
+        torch.backends.cuda.matmul.allow_tf32 = self.orig_tf32_setting
 
 
 # wrappers for older pytorch versions that lack linalg module
 eigh = torch.linalg.eigh if hasattr(torch, 'linalg') else lambda x: torch.symeig(x, eigenvectors=True)
-multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else lambda \
-    args: torch.chain_matmul(*args)
+multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else \
+    lambda args: torch.chain_matmul(*args)
