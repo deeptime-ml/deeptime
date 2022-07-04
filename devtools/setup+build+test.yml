@@ -9,8 +9,6 @@ steps:
 
 - script: nox -s "tests-$(python.version)" -- cov numprocesses=2
   displayName: 'Run tests'
-  env:
-    PYTHONFAULTHANDLER: 1
 
 - script: nox -s "tests-$(python.version)" --reuse-existing-virtualenvs -- cpp
   displayName: 'Run C++ tests'
