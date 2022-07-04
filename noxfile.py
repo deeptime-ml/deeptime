@@ -49,6 +49,7 @@ def tests(session: nox.Session) -> None:
             session.log("Running without coverage")
 
         test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
+        test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
 
         with session.cd("tests"):
             session.run("pytest", '-vv', '--doctest-modules',
