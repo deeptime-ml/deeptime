@@ -1,3 +1,7 @@
+variables:
+- name: PYTHONFAULTHANDLER
+  value: 1
+
 steps:
 - template: checkout.yml
 
