@@ -36,10 +36,10 @@ def _unpack_input_tuple(data):
     return dtrajs, bias_matrices, ttrajs
 
 
-def _get_dataset_from_input(data):
+def _get_dataset_from_input(data, lagtime):
     if isinstance(data, tuple):
         dtrajs, bias_matrices, ttrajs = _unpack_input_tuple(data)
-        return TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices, ttrajs=ttrajs)
+        return TRAMDataset(dtrajs=dtrajs, bias_matrices=bias_matrices, ttrajs=ttrajs, lagtime=lagtime)
     if isinstance(data, TRAMDataset):
         return data
 
@@ -186,6 +186,8 @@ class TRAM(_MSMBaseEstimator):
                was sampled at. If `ttrajs = None`, we assume no replica exchange was done. In this case we assume each
                trajectory  corresponds to a unique thermodynamic state, and `n_therm_states` equals the size of
                `dtrajs`.
+            If the data is supplied in form of a TRAMDataset, the lagtime of the dataset overwrites the chosen lagtime
+            of the TRAM estimator.
         model : TRAMModel, optional, default=None
             If a TRAMModel is given, the parameters from the TRAMModel are loaded into the estimator, and estimation
             continues from the loaded parameters as a starting point. Input data may differ from the input data used to
@@ -200,7 +202,7 @@ class TRAM(_MSMBaseEstimator):
         --------
         :class:`TRAMDataset <deeptime.markov.msm.tram.TRAMDataset>`
         """
-        dataset = _get_dataset_from_input(data)
+        dataset = _get_dataset_from_input(data, self.lagtime)
 
         if model is not None:
             # check whether the data lies within state bounds of the model

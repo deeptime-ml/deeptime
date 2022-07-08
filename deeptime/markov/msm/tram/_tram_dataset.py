@@ -395,8 +395,12 @@ class TRAMDataset(Dataset):
             if b.shape[1] != self.n_therm_states:
                 raise ValueError(
                     f"Second dimension of bias matrix {i} should be of size n_therm_states (={self.n_therm_states})")
-
+            
+            if b.shape[0] <= self.lagtime:
+                raise ValueError(f"""Trajectory {i} is shorter than the chosen lagtime. 
+                        There are no usable samples for this trajectory""")
             # If we were given ttrajs, do the same checks for those.
+        
         if self.ttrajs is not None:
             if len(self.ttrajs) != len(self.dtrajs):
                 raise ValueError("number of ttrajs is not equal to number of dtrajs.")

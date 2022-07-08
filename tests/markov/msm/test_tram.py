@@ -338,3 +338,17 @@ def test_converged_before_callback_called_does_not_produce_warning():
         except ConvergenceWarning:
             assert False
 
+
+def test_fit_with_dataset_uses_correct_lagtime():
+    tram = TRAM()
+    dtrajs, biases = make_random_input_data(5, 5, n_samples=5, make_ttrajs=False)
+    with np.testing.assert_raises(ValueError):
+        dataset = TRAMDataset(dtrajs, biases, lagtime=100)
+
+
+def test_fit_without_dataset_uses_correct_lagtime():
+    tram = TRAM(lagtime=100)
+    input = make_random_input_data(5, 5, n_samples=5, make_ttrajs=False)
+    with np.testing.assert_raises(ValueError):
+        tram.fit(input)
+
