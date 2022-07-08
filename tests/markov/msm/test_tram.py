@@ -59,7 +59,8 @@ def test_lagtime_too_long():
     dtrajs = np.asarray([[0, 1, 0], [0, 1, 2, 1], [2, 3]])
     bias_matrices = [np.random.rand(len(traj), 3) for traj in dtrajs]
     tram = TRAM(maxiter=100, lagtime=2)
-    tram.fit((dtrajs, bias_matrices))
+    with np.testing.assert_raises(ValueError):
+        tram.fit((dtrajs, bias_matrices))
 
 
 def test_fit_empty_markov_state():
@@ -337,4 +338,18 @@ def test_converged_before_callback_called_does_not_produce_warning():
             tram.fit(input_data)
         except ConvergenceWarning:
             assert False
+
+
+def test_fit_with_dataset_uses_correct_lagtime():
+    tram = TRAM()
+    dtrajs, biases = make_random_input_data(5, 5, n_samples=5, make_ttrajs=False)
+    with np.testing.assert_raises(ValueError):
+        dataset = TRAMDataset(dtrajs, biases, lagtime=100)
+
+
+def test_fit_without_dataset_uses_correct_lagtime():
+    tram = TRAM(lagtime=100)
+    input = make_random_input_data(5, 5, n_samples=5, make_ttrajs=False)
+    with np.testing.assert_raises(ValueError):
+        tram.fit(input)
 

@@ -320,8 +320,17 @@ def test_setflags():
         dataset.bias_matrices[0][0, 0] = 0
 
 
-def test_empty_trajectory_fragments():
+def test_lagtime_too_long():
     dtrajs, bias_matrices, ttrajs = make_random_input_data(5, 3, n_samples=10, make_ttrajs=True)
 
-    dataset = TRAMDataset(dtrajs, bias_matrices, ttrajs, lagtime=10)
-    np.testing.assert_equal(dataset.count_models[0].count_matrix.shape, (3, 3))
+    with np.testing.assert_raises(ValueError):
+        dataset = TRAMDataset(dtrajs, bias_matrices, ttrajs, lagtime=10)
+
+def test_empty_trajectory_fragments():
+    dtrajs = [np.asarray([0,0,0,0,0,0,0]), np.asarray([0,0,0,0,0,0,0])]
+    ttrajs = [np.asarray([0,0,0,1,0,0,0]), np.asarray([1,1,1,0,1,1,1])]
+    bias_matrices = make_matching_bias_matrix(dtrajs)
+
+    dataset = TRAMDataset(dtrajs, bias_matrices, ttrajs, lagtime=5)
+    np.testing.assert_equal(dataset.transition_counts.sum(), 0)
+
