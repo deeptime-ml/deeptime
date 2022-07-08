@@ -59,7 +59,8 @@ def test_lagtime_too_long():
     dtrajs = np.asarray([[0, 1, 0], [0, 1, 2, 1], [2, 3]])
     bias_matrices = [np.random.rand(len(traj), 3) for traj in dtrajs]
     tram = TRAM(maxiter=100, lagtime=2)
-    tram.fit((dtrajs, bias_matrices))
+    with np.testing.assert_raises(ValueError):
+        tram.fit((dtrajs, bias_matrices))
 
 
 def test_fit_empty_markov_state():
