@@ -47,3 +47,8 @@ def plot_contour2d_from_xyz(x, y, z, n_bins=100, method='nearest', contourf_kws=
 
     mappable = ax.contourf(xgrid, ygrid, zgrid, **contourf_kws)
     return ax, mappable
+
+
+def plot_density():
+    # todo
+         ...
