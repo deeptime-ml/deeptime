@@ -33,8 +33,7 @@ def plot_contour2d_from_xyz(x, y, z, n_bins=100, method='nearest', contourf_kws=
     mappable
         Matplotlib mappable that can be used to create, e.g., colorbars.
     """
-    if contourf_kws is None:
-        contourf_kws = {}
+    contourf_kws = {} if contourf_kws is None else contourf_kws
     if ax is None:
         import matplotlib.pyplot as plt
         ax = plt.gca()
@@ -49,6 +48,21 @@ def plot_contour2d_from_xyz(x, y, z, n_bins=100, method='nearest', contourf_kws=
     return ax, mappable
 
 
-def plot_density():
-    # todo
-         ...
+@plotting_function()
+def plot_density(x, y, n_bins=100, weights=None, avoid_zero_count=False, contourf_kws=None, ax=None):
+    from deeptime.util.stats import histogram2d_from_xy
+
+    # initialize defaults
+    contourf_kws = {} if contourf_kws is None else contourf_kws
+    if ax is None:
+        from matplotlib.pyplot import gca
+        ax = gca()
+
+    # obtain histogram, normalize, potentially clamp
+    x_meshgrid, y_meshgrid, hist = histogram2d_from_xy(x, y, bins=n_bins, weights=weights, density=True)
+    if avoid_zero_count:
+        hist = np.maximum(hist, np.min(hist[hist.nonzero()]))
+
+    # plot
+    mappable = ax.contourf(x_meshgrid, y_meshgrid, hist.T, **contourf_kws)
+    return ax, mappable
