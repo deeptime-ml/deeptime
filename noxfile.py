@@ -4,17 +4,19 @@ import tempfile
 from pathlib import Path
 
 import nox
-import setuptools
 
 
 def setup_environment(session: nox.Session):
+    import setuptools
+    import skbuild
     if setuptools.__version__ != 'unknown' and int(setuptools.__version__.split('.')[0]) >= 64:
-        import skbuild
         skbuild_version = [int(x) for x in skbuild.__version__.split(".")]
         if skbuild_version[0] == 0 and skbuild_version[1] <= 15:
             # https://github.com/scikit-build/scikit-build/issues/740
-            session.debug("Enabling setuptools legacy features so that CMake may be invoked")
+            session.log("Enabling setuptools legacy features so that CMake may be invoked")
             session.env['SETUPTOOLS_ENABLE_FEATURES'] = "legacy-editable"
+    else:
+        session.log(f"Got setuptools {setuptools.__version__}, skbuild {skbuild.__version__}")
 
 
 
@@ -60,13 +62,12 @@ def tests(session: nox.Session) -> None:
         else:
             session.log("Running without coverage")
 
-        #test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
-        #test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
+        test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
+        test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
 
         with session.cd("tests"):
-            session.run("pwd")
-            session.run("python", "-c", "\"import deeptime\"")
-            session.run("python", "-m", "pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args)  # '--pyargs', *test_dirs
+            session.run("python", "-m", "pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args,
+                        '--pyargs', *test_dirs)
 
 
 @nox.session(reuse_venv=True)
