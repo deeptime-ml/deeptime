@@ -4,6 +4,7 @@ Plotting two-dimensional contours from xyz
 
 This example demonstrates how to plot unordered xyz data - in this case, particle positions (xy) and their energy (z) -
 as contour as well as a state map on the right-hand side depicting a decomposition into three coarse metastable states.
+See :meth:`deeptime.plot.plot_contour2d_from_xyz`.
 """
 
 import numpy as np

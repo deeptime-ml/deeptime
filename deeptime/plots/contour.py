@@ -5,7 +5,7 @@ from deeptime.util.decorators import plotting_function
 
 @plotting_function()
 def plot_contour2d_from_xyz(x, y, z, n_bins=100, method='nearest', contourf_kws=None, ax=None):
-    r"""Plot a two-dimensional contour map based on a histogram over unordered data triplets $(x, y)\mapsto z$.
+    r"""Plot a two-dimensional contour map based on an interpolation over unordered data triplets $(x, y)\mapsto z$.
 
     .. plot:: examples/plot_contour2d_from_xyz.py
 
@@ -50,6 +50,34 @@ def plot_contour2d_from_xyz(x, y, z, n_bins=100, method='nearest', contourf_kws=
 
 @plotting_function()
 def plot_density(x, y, n_bins=100, weights=None, avoid_zero_count=False, contourf_kws=None, ax=None):
+    r"""Plot a two-dimensional contour map based on a histogram over unordered data $(x, y)$.
+
+    .. plot:: examples/plot_density.py
+
+    Parameters
+    ----------
+    x : ndarray
+        Sample $x$ coordinates as array of shape (T,).
+    y : ndarray
+        Sample $y$ coordinates as array of shape (T,).
+    n_bins : int, optional, default=100
+        Resolution of the two-dimensional histogram.
+    weights : ndarray(T), optional, default=None
+        Sample weights. By default, all samples have the same weight.
+    avoid_zero_count : bool, optional, default=False
+        Whether to clamp the histogram to its lowest value whenever it is zero. Useful for log-scale plotting.
+    contourf_kws : dict, optional, default=None
+        dict of optional keyword arguments for matplotlib.contourf. Per default empty dict.
+    ax : matplotlib.Axes, optional, default=None
+        axes to plot onto. In case of no provided axes, grabs the `matplotlib.gca()`.
+
+    Returns
+    -------
+    ax : matplotlib.Axes
+        Axes onto which the contour was plotted.
+    mappable
+        Matplotlib mappable that can be used to create, e.g., colorbars.
+    """
     from deeptime.util.stats import histogram2d_from_xy
 
     # initialize defaults
