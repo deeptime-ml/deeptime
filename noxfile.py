@@ -8,16 +8,14 @@ import nox
 
 def setup_environment(session: nox.Session):
     import setuptools
-    import skbuild
     if setuptools.__version__ != 'unknown' and int(setuptools.__version__.split('.')[0]) >= 64:
+        session.install("scikit-build")
+        import skbuild
         skbuild_version = [int(x) for x in skbuild.__version__.split(".")]
         if skbuild_version[0] == 0 and skbuild_version[1] <= 15:
             # https://github.com/scikit-build/scikit-build/issues/740
             session.log("Enabling setuptools legacy features so that CMake may be invoked")
             session.env['SETUPTOOLS_ENABLE_FEATURES'] = "legacy-editable"
-    else:
-        session.log(f"Got setuptools {setuptools.__version__}, skbuild {skbuild.__version__}")
-
 
 
 PYTHON_VERSIONS = ["3.8", "3.9", "3.10"]
