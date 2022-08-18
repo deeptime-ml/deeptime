@@ -1,16 +1,29 @@
 import os
 import shutil
-import sys
 import tempfile
-import site
 from pathlib import Path
+
 import nox
+import setuptools
+
+
+def setup_environment(session: nox.Session):
+    if setuptools.__version__ != 'unknown' and int(setuptools.__version__.split('.')[0]) >= 64:
+        import skbuild
+        skbuild_version = [int(x) for x in skbuild.__version__.split(".")]
+        if skbuild_version[0] == 0 and skbuild_version[1] <= 15:
+            # https://github.com/scikit-build/scikit-build/issues/740
+            session.debug("Enabling setuptools legacy features so that CMake may be invoked")
+            session.env['SETUPTOOLS_ENABLE_FEATURES'] = "legacy-editable"
+
+
 
 PYTHON_VERSIONS = ["3.8", "3.9", "3.10"]
 
 
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.Session) -> None:
+    setup_environment(session)
     if 'cpp' in session.posargs:
         session.install("cmake")
         session.install("conan")
@@ -32,7 +45,7 @@ def tests(session: nox.Session) -> None:
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
-        session.install(".", '-v', silent=False)
+        session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt", silent=False)
         if 'cov' in session.posargs:
             session.log("Running with coverage")
@@ -47,18 +60,20 @@ def tests(session: nox.Session) -> None:
         else:
             session.log("Running without coverage")
 
-        test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
-        test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
+        #test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
+        #test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
 
         with session.cd("tests"):
-            session.run("pytest", '-vv', '--doctest-modules',
-                        '--durations=20', *pytest_args, '--pyargs', *test_dirs, env={'PYTHONPATH': ''})
+            session.run("pwd")
+            session.run("python", "-c", "\"import deeptime\"")
+            session.run("python", "-m", "pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args)  # '--pyargs', *test_dirs
 
 
 @nox.session(reuse_venv=True)
 def make_docs(session: nox.Session) -> None:
+    setup_environment(session)
     if not session.posargs or 'noinstall' not in session.posargs:
-        session.install(".", '-v', silent=False)
+        session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt")
         session.install("-r", "docs/requirements.txt")
     session.chdir("docs")
@@ -73,6 +88,7 @@ def make_docs(session: nox.Session) -> None:
 
 @nox.session(reuse_venv=True)
 def build(session: nox.Session) -> None:
+    setup_environment(session)
     session.install("build")
     session.log("Building normal files")
     session.run("python", "-m", "build")

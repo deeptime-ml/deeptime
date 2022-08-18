@@ -28,5 +28,3 @@ ax2.set_title('Log Density')
 contourf_kws = dict(locator=ticker.LogLocator(base=10, subs=range(1, 10)))
 ax2, mappable2 = plot_density(*traj_concat.T, n_bins=20, avoid_zero_count=True, contourf_kws=contourf_kws, ax=ax2)
 f.colorbar(mappable2, ax=ax2, format=ticker.FuncFormatter(lambda x, pos: f"{x:.0e}"))
-
-plt.show()
