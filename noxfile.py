@@ -32,7 +32,7 @@ def tests(session: nox.Session) -> None:
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
-        session.install("-e", ".", '-v', silent=False)
+        session.install(".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt", silent=False)
         if 'cov' in session.posargs:
             session.log("Running with coverage")
