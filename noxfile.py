@@ -7,6 +7,7 @@ import nox
 
 
 def setup_environment(session: nox.Session):
+    session.install("setuptools", "--upgrade")
     import setuptools
     if setuptools.__version__ != 'unknown' and int(setuptools.__version__.split('.')[0]) >= 64:
         session.install("scikit-build")
