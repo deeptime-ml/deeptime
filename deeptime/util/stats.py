@@ -476,7 +476,7 @@ def energy2d(x: np.ndarray, y: np.ndarray, bins=100, kbt: float = 1., weights=No
     energy = np.full_like(hist, fill_value=np.inf)
 
     nonzero = hist.nonzero()
-    energy[nonzero] = -np.log(energy[nonzero])
+    energy[nonzero] = -np.log(hist[nonzero])
     if shift_energy:
         energy[nonzero] -= np.min(energy[nonzero])
 
