@@ -1,3 +1,7 @@
+table.longtable {
+    width: 100%
+}
+
 div.sphinxsidebarwrapper p.logo {
     text-align: center;
 }

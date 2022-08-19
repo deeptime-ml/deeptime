@@ -33,3 +33,6 @@ def capi_includes(inc_clustering: bool = False, inc_markov: bool = False, inc_ma
     if inc_data:
         includes.append(os.path.join(includes[0], 'data'))
     return includes
+
+from . import _version
+__version__ = _version.get_versions()['version']

@@ -3,7 +3,7 @@
 import os
 import sys
 
-from setuptools import find_packages
+from setuptools import find_packages, find_namespace_packages
 import toml
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -44,7 +44,7 @@ metadata = \
         zip_safe=False,
         install_requires=pyproject["project"]["dependencies"],
         extras_require=pyproject["project"]["optional-dependencies"],
-        packages=find_packages(where=".", exclude=("tests", "tests.*")),
+        packages=find_namespace_packages(where=".", exclude=("tests", "tests.*")),
         package_dir={"deeptime": "deeptime", "versioneer": "."},
         cmake_install_dir="deeptime/",
         cmake_args=cmake_args,

@@ -379,6 +379,7 @@ class EnergyLandscape2d:
     --------
     energy2d, deeptime.plots.plot_energy2d
     """
+
     def __init__(self, x_meshgrid, y_meshgrid, energies, kbt):
         self.x_meshgrid = x_meshgrid
         self.y_meshgrid = y_meshgrid
@@ -392,6 +393,39 @@ class EnergyLandscape2d:
         from deeptime.plots import plot_energy2d
         return plot_energy2d(self, ax=ax, levels=levels, contourf_kws=contourf_kws, cbar=cbar,
                              cbar_kws=cbar_kws, cbar_ax=cbar_ax)
+
+
+def histogram2d_from_xy(x: np.ndarray, y: np.ndarray, bins=100, weights=None, density=True):
+    r"""Computes a histogram from unordered (x, y) pairs. Can optionally apply a
+    Parameters
+    ----------
+    x : ndarray
+        Sample x coordinates of shape `(N,)`.
+    y : ndarray
+        Sample y coordinates of shape `(N,)`.
+    bins : int or [int, int], optional, default=100
+        Number of histogram bins used in each dimension.
+    weights : ndarray, optional, default=None
+        Sample weights of shape `(N,)`. By default, all samples have the same weight.
+    density : bool, default=True
+        Whether to normalize the histogram, producing a discrete probability density.
+
+    Returns
+    -------
+    x_meshgrid : ndarray
+        `(n_bins_x,)`-shaped array with `x` coordinates for the histogram.
+    y_meshgrid : ndarray
+        `(n_bins_y,)`-shaped array with `y` coordinates for the histogram.
+    histogram : ndarray
+        `(n_bins_y, n_bins_x)`-shaped array with the estimated histogram values.
+    """
+    hist, x_edges, y_edges = np.histogram2d(x, y, bins=bins, weights=weights)
+    x_meshgrid = 0.5 * (x_edges[:-1] + x_edges[1:])
+    y_meshgrid = 0.5 * (y_edges[:-1] + y_edges[1:])
+
+    if density:
+        hist /= np.sum(hist)
+    return x_meshgrid, y_meshgrid, hist.T
 
 
 def energy2d(x: np.ndarray, y: np.ndarray, bins=100, kbt: float = 1., weights=None, shift_energy=True):
@@ -438,15 +472,13 @@ def energy2d(x: np.ndarray, y: np.ndarray, bins=100, kbt: float = 1., weights=No
     --------
     deeptime.plots.plot_energy2d, EnergyLandscape2d
     """
-    hist, x_edges, y_edges = np.histogram2d(x, y, bins=bins, weights=weights)
-    x_meshgrid = 0.5 * (x_edges[:-1] + x_edges[1:])
-    y_meshgrid = 0.5 * (y_edges[:-1] + y_edges[1:])
-
-    hist /= np.sum(hist)
+    x_meshgrid, y_meshgrid, hist = histogram2d_from_xy(x, y, bins=bins, weights=weights)
     energy = np.full_like(hist, fill_value=np.inf)
+
     nonzero = hist.nonzero()
     energy[nonzero] = -np.log(hist[nonzero])
     if shift_energy:
         energy[nonzero] -= np.min(energy[nonzero])
+
     energy *= kbt
-    return EnergyLandscape2d(x_meshgrid, y_meshgrid, energy.T, kbt)
+    return EnergyLandscape2d(x_meshgrid, y_meshgrid, energy, kbt)

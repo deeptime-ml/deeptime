@@ -1,16 +1,22 @@
 import os
 import shutil
-import sys
 import tempfile
-import site
 from pathlib import Path
+
 import nox
+
+
+def setup_environment(session: nox.Session):
+    # remove when https://github.com/scikit-build/scikit-build/issues/740 is fixed
+    session.env['SETUPTOOLS_ENABLE_FEATURES'] = "legacy-editable"
+
 
 PYTHON_VERSIONS = ["3.8", "3.9", "3.10"]
 
 
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.Session) -> None:
+    setup_environment(session)
     if 'cpp' in session.posargs:
         session.install("cmake")
         session.install("conan")
@@ -51,14 +57,15 @@ def tests(session: nox.Session) -> None:
         test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
 
         with session.cd("tests"):
-            session.run("pytest", '-vv', '--doctest-modules',
-                        '--durations=20', *pytest_args, '--pyargs', *test_dirs, env={'PYTHONPATH': ''})
+            session.run("python", "-m", "pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args,
+                        '--pyargs', *test_dirs)
 
 
 @nox.session(reuse_venv=True)
 def make_docs(session: nox.Session) -> None:
+    setup_environment(session)
     if not session.posargs or 'noinstall' not in session.posargs:
-        session.install(".", '-v', silent=False)
+        session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt")
         session.install("-r", "docs/requirements.txt")
     session.chdir("docs")
@@ -73,6 +80,7 @@ def make_docs(session: nox.Session) -> None:
 
 @nox.session(reuse_venv=True)
 def build(session: nox.Session) -> None:
+    setup_environment(session)
     session.install("build")
     session.log("Building normal files")
     session.run("python", "-m", "build")
