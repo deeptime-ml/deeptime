@@ -10,7 +10,7 @@ def setup_environment(session: nox.Session):
     session.install("setuptools")
 
     import setuptools
-    if setuptools.__version__ != 'unknown' and int(setuptools.__version__.split('.')[0]) >= 58:
+    if setuptools.__version__ != 'unknown' and int(setuptools.__version__.split('.')[0]) >= 56:
         session.install("scikit-build")
         import skbuild
         skbuild_version = [int(x) for x in skbuild.__version__.split(".")]
