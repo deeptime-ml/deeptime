@@ -42,7 +42,6 @@ def tests(session: nox.Session) -> None:
                 pytest_args.append(f'--numprocesses={n_processes}')
         session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt", silent=False)
-        session.conda_install("llvm-openmp", channel="conda-forge")
         session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
                     "tests/base/test_pytorch_setup.py")
 
