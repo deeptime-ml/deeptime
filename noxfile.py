@@ -43,6 +43,7 @@ def tests(session: nox.Session) -> None:
         session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt", silent=False)
         session.run("pytest", "tests/base/test_pytorch_setup.py")
+        session.run("pytest", "tests/decomposition/test_kvadnet.py::test_whiten")
 
         if 'cov' in session.posargs:
             session.log("Running with coverage")
