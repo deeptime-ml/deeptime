@@ -40,10 +40,10 @@ def tests(session: nox.Session) -> None:
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
-        session.install("pytest")
-        session.run("pytest", "tests/base/test_pytorch_setup.py")
         session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt", silent=False)
+        session.run("pytest", "tests/base/test_pytorch_setup.py")
+
         if 'cov' in session.posargs:
             session.log("Running with coverage")
             xml_results_dest = Path(os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir()))
