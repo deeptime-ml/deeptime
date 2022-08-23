@@ -177,6 +177,7 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
 
 valid_score_methods = ('VAMP1', 'VAMP2', 'VAMPE')
 
+
 def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode='trunc'):
     r"""Computes the VAMP score based on data and corresponding time-shifted data.
 
@@ -231,6 +232,7 @@ def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', ep
         )
     assert out is not None
     return 1 + out
+
 
 def vampnet_loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6,
                  mode: str = 'trunc'):
