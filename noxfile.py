@@ -44,7 +44,7 @@ def tests(session: nox.Session) -> None:
         if 'lldb_torch_setup' in session.posargs:
             session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
                         "tests/base/test_pytorch_setup.py")
-        session.run("pytest", "tests/base/test_pytorch_setup.py")
+            session.run("pytest", "tests/base/test_pytorch_setup.py")
         if 'cov' in session.posargs:
             session.log("Running with coverage")
             xml_results_dest = Path(os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir()))
