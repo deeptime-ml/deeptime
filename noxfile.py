@@ -9,7 +9,6 @@ import nox
 def setup_environment(session: nox.Session):
     # remove when https://github.com/scikit-build/scikit-build/issues/740 is fixed
     session.env['SETUPTOOLS_ENABLE_FEATURES'] = "legacy-editable"
-    session.env['KMP_DUPLICATE_LIB_OK'] = "True"
 
 
 PYTHON_VERSIONS = ["3.8", "3.9", "3.10"]
@@ -41,19 +40,11 @@ def tests(session: nox.Session) -> None:
                 pytest_args.append(f'--numprocesses={n_processes}')
         session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt", silent=False)
-        session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
-                    "tests/base/test_pytorch_setup.py")
 
-        session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
-                    "tests/decomposition/test_kvadnet.py::test_whiten")
-
+        if 'lldb_torch_setup' in session.posargs:
+            session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
+                        "tests/base/test_pytorch_setup.py")
         session.run("pytest", "tests/base/test_pytorch_setup.py")
-
-        session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
-                    "tests/base/test_pytorch_setup.py")
-
-        session.run("pytest", "tests/decomposition/test_kvadnet.py::test_whiten")
-
         if 'cov' in session.posargs:
             session.log("Running with coverage")
             xml_results_dest = Path(os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir()))
