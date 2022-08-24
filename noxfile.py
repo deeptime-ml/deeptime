@@ -9,8 +9,7 @@ import nox
 def setup_environment(session: nox.Session):
     # remove when https://github.com/scikit-build/scikit-build/issues/740 is fixed
     session.env['SETUPTOOLS_ENABLE_FEATURES'] = "legacy-editable"
-    # use/provide mkl
-    session.install("mkl")
+    session.env['KMP_DUPLICATE_LIB_OK'] = "True"
 
 
 PYTHON_VERSIONS = ["3.8", "3.9", "3.10"]
