@@ -22,4 +22,7 @@ jobs:
     inputs:
       versionSpec: '$(python.version)'
 
+  - script: 'brew install libomp'
+    displayName: 'Install OpenMP'
+
   - template: setup+build+test.yml

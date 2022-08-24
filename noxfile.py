@@ -2,6 +2,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from sys import platform
 
 import nox
 
@@ -40,6 +41,11 @@ def tests(session: nox.Session) -> None:
                 pytest_args.append(f'--numprocesses={n_processes}')
         session.install("-e", ".", '-v', silent=False)
         session.install("-r", "tests/requirements.txt", silent=False)
+
+        if 'lldb_torch_setup' in session.posargs:
+            session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
+                        "tests/base/test_pytorch_setup.py")
+            session.run("pytest", "tests/base/test_pytorch_setup.py")
         if 'cov' in session.posargs:
             session.log("Running with coverage")
             xml_results_dest = Path(os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir()))
@@ -54,7 +60,8 @@ def tests(session: nox.Session) -> None:
             session.log("Running without coverage")
 
         test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
-        test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
+        if session.python != "3.8" and platform != 'darwin':
+            test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
 
         with session.cd("tests"):
             session.run("python", "-m", "pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args,
