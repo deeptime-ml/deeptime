@@ -2,6 +2,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from sys import platform
 
 import nox
 
@@ -59,7 +60,8 @@ def tests(session: nox.Session) -> None:
             session.log("Running without coverage")
 
         test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
-        test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
+        if session.python != "3.8" and platform != 'darwin':
+            test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
 
         with session.cd("tests"):
             session.run("python", "-m", "pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args,
