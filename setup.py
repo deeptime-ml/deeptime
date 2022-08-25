@@ -31,6 +31,8 @@ cmake_args = [
     f"-DDEEPTIME_VERSION_INFO={versioneer.get_version()}"
 ]
 
+excludes = ("tests", "tests.*", "examples", "examples.*", "docs", "docs.*", "devtools", "devtools.*")
+
 metadata = \
     dict(
         name=pyproject["project"]["name"],
@@ -44,7 +46,7 @@ metadata = \
         zip_safe=False,
         install_requires=pyproject["project"]["dependencies"],
         extras_require=pyproject["project"]["optional-dependencies"],
-        packages=find_namespace_packages(where=".", exclude=("tests", "tests.*")),
+        packages=find_namespace_packages(where=".", exclude=excludes),
         package_dir={"deeptime": "deeptime", "versioneer": "."},
         cmake_install_dir="deeptime/",
         cmake_args=cmake_args,
