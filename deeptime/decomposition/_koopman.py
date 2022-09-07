@@ -344,15 +344,16 @@ class CovarianceKoopmanModel(TransferOperatorModel):
         precedence over the :meth:`dim` parameter.
 
         :getter: Yields the current variance cutoff.
-        :setter: Sets a new variance cutoff
+        :setter: Sets a new variance cutoff or disables variance cutoff by setting the value to `None`.
         :type: float or None
         """
         return self._var_cutoff
 
     @var_cutoff.setter
-    def var_cutoff(self, value):
-        assert 0 < value <= 1., "Invalid dimension parameter, if it is given in terms of a variance cutoff, " \
-                                "it can only be in the interval (0, 1]."
+    def var_cutoff(self, value: Optional[float]):
+        assert value is None or 0 < value <= 1., \
+            "Invalid dimension parameter, if it is given in terms of a variance cutoff, " \
+            "it can only be in the interval (0, 1]."
         self._var_cutoff = value
         self._update_output_dimension()
 
