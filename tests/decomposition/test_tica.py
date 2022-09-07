@@ -8,12 +8,29 @@ import unittest
 
 import numpy as np
 import pytest
+from numpy.testing import assert_, assert_equal
 
 from deeptime.covariance import Covariance
 from deeptime.data import ellipsoids
 from deeptime.decomposition import TICA, VAMP
 from deeptime.markov.msm import MarkovStateModel
 from deeptime.numeric import ZeroRankError
+
+
+def test_update_projection_dimension():
+    # tests for https://github.com/deeptime-ml/deeptime/issues/254
+    data = np.random.normal(size=(1000, 50))
+    model = TICA(lagtime=1, var_cutoff=.1).fit_fetch(data)
+    assert_equal(model.var_cutoff, .1)
+    assert_(model.transform(data).shape[1] <= 10)
+    model.var_cutoff = None
+    assert_equal(model.var_cutoff, None)
+    model.dim = 5
+    assert_equal(model.dim, 5)
+    assert_(model.transform(data).shape[1] <= 5)
+    model.dim = 1
+    assert_equal(model.dim, 1)
+    assert_equal(model.transform(data).shape[1], 1)
 
 
 def test_fit_reset():
