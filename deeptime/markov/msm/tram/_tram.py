@@ -298,7 +298,7 @@ class TRAMCallback(callbacks.IterationErrorProgressCallback):
             The current log-likelihood, or 0. when the tram estimator is not configured to calculate log-likelihoods.
         """
         super().__call__(inc, error=error)
-        print(error)
+       
         if self.log_likelihoods is not None:
             self.log_likelihoods.append(log_likelihood)
 
