@@ -2,7 +2,7 @@ import numpy as np
 
 from .decorators import plotting_function
 from .platform import handle_progress_bar
-from ..base import Observable, BayesianModel, Estimator
+from ..base import Observable, BayesianModel
 
 
 def implied_timescales(models, n_its=None):
@@ -364,26 +364,3 @@ class ChapmanKolmogorovTest:
         from deeptime.plots import plot_ck_test
         return plot_ck_test(self, height=height, aspect=aspect, conf=conf, color=color, grid=grid, legend=legend,
                             xlabel=xlabel, ylabel=ylabel, y01=y01, sharey=sharey, **plot_kwargs)
-
-
-class DeprecatedCKValidator(Estimator):
-
-    def __init__(self, estimator, fit_for_lag, mlags, observable, test_model):
-        super().__init__()
-        self.estimator = estimator
-        self.mlags = mlags
-        self.fit_for_lag = fit_for_lag
-        self.observable = observable
-        self.test_model = test_model
-
-    def fit(self, data, **kwargs):
-        if hasattr(self.test_model, 'prior'):
-            test_lag = self.test_model.prior.lagtime
-        else:
-            test_lag = self.test_model.lagtime
-        models = []
-        for factor in range(1, self.mlags):
-            lagtime = factor * test_lag
-            models.append(self.fit_for_lag(data, lagtime))
-        self._model = ck_test(models, observable=self.observable, test_model=self.test_model)
-        return self

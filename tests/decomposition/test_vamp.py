@@ -255,8 +255,6 @@ def test_cktest():
         models.append(VAMP(lag, dim=1).fit_fetch(traj))
     test_model = models[0]
     ck_test = test_model.ck_test(models)
-    # validator = estimator.chapman_kolmogorov_validator(4)
-    # cktest = validator.fit(traj).fetch_model()
     np.testing.assert_almost_equal(ck_test.predictions, ck_test.estimates, decimal=1)
 
 

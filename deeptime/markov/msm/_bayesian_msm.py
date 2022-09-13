@@ -3,12 +3,11 @@ from typing import Optional, Callable, Union, List
 
 import numpy as np
 
+from . import MarkovStateModel, MaximumLikelihoodMSM
+from .._base import _MSMBaseEstimator, BayesianMSMPosterior
 from .._transition_counting import TransitionCountEstimator
 from ...base import Estimator
 from ...numeric import is_square_matrix
-from .._base import _MSMBaseEstimator, BayesianMSMPosterior
-from . import MarkovStateModel, MaximumLikelihoodMSM
-from ...util.decorators import deprecated_method
 
 __author__ = 'noe, marscher, clonker'
 
@@ -353,25 +352,3 @@ class BayesianMSM(_MSMBaseEstimator):
             sparse=self.sparse, maxiter=self.maxiter, maxerr=self.maxerr
         ).fit(counts).fetch_model()
         return self.fit_from_msm(msm, callback=callback, **kw)
-
-    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
-    def chapman_kolmogorov_validator(self, n_metastable_sets: int, mlags, test_model=None):
-        r""" Replaced by `deeptime.markov.msm.BayesianMSMPosterior.ck_test`. """
-        test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
-                                       "fit to data."
-        prior = test_model.prior
-        assert prior.has_count_model, "The test model needs to have a count model, i.e., be estimated from data."
-        pcca = prior.pcca(n_metastable_sets)
-        from deeptime.markov._observables import MembershipsObservable
-        obs = MembershipsObservable(test_model, pcca)
-        from deeptime.util.validation import DeprecatedCKValidator
-
-        def fit_for_lag(data, lag):
-            from deeptime.markov import TransitionCountEstimator
-            counting_mode = test_model.prior.count_model.counting_mode
-            counts = TransitionCountEstimator(lag, counting_mode).fit(data, n_jobs=1).fetch_model().submodel_largest()
-            return self.fit(counts).fetch_model()
-
-        return DeprecatedCKValidator(self, fit_for_lag, mlags, obs, test_model)
-

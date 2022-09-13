@@ -8,14 +8,12 @@ from typing import Optional, Union, Callable
 
 import numpy as np
 
-from ._koopman import CovarianceKoopmanModel, KoopmanObservable
+from ._koopman import CovarianceKoopmanModel
 from ..base import EstimatorTransformer
 from ..basis import Identity
 from ..covariance import Covariance, CovarianceModel
 from ..numeric import spd_inv_split
-from ..util.decorators import deprecated_method
 from ..util.types import to_dataset
-from ..util.validation import DeprecatedCKValidator
 
 
 class VAMP(EstimatorTransformer):
@@ -460,31 +458,3 @@ class VAMP(EstimatorTransformer):
             self._model = self._decompose(self._covariance_estimator.fetch_model())
             self._covariance_estimator = None
         return self._model
-
-    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
-    def chapman_kolmogorov_validator(self, mlags, test_model: CovarianceKoopmanModel = None,
-                                     n_observables=None, observables='phi', statistics='psi'):
-        r""" Replaced by `deeptime.decomposition.CovarianceKoopmanModel.ck_test`. """
-        test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already " \
-                                       "fit to data."
-
-        def fit_for_lag(data, lagtime):
-            est = VAMP(lagtime=lagtime, dim=self.dim, var_cutoff=self.var_cutoff, scaling=self.scaling,
-                       epsilon=self.epsilon, observable_transform=self.observable_transform)
-            return est.fit(data).fetch_model()
-
-        if isinstance(observables, str) and observables == 'phi':
-            observables = test_model.singular_vectors_right[:, :n_observables]
-            observables_mean_free = True
-        else:
-            observables_mean_free = False
-
-        if isinstance(statistics, str) and statistics == 'psi':
-            statistics = test_model.singular_vectors_left[:, :n_observables]
-            statistics_mean_free = True
-        else:
-            statistics_mean_free = False
-
-        observable = KoopmanObservable(observables, statistics, observables_mean_free, statistics_mean_free)
-        return DeprecatedCKValidator(self, fit_for_lag, mlags, observable, test_model)

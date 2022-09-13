@@ -3,29 +3,19 @@ from copy import deepcopy
 from typing import Optional, Union, List
 
 import numpy as np
-
-from deeptime.markov.tools.analysis import is_connected
-from deeptime.markov.tools.estimation import sample_tmatrix, transition_matrix
+from deeptime.markov.hmm._hmm_bindings import util as _bd_util
 
 from deeptime.base import Estimator
+from deeptime.markov import TransitionCountModel, compute_dtrajs_effective, number_of_states
 from deeptime.markov._base import BayesianMSMPosterior
 from deeptime.markov._transition_matrix import stationary_distribution
 from deeptime.markov.hmm import HiddenMarkovModel
+from deeptime.markov.msm import MarkovStateModel
+from deeptime.markov.tools.analysis import is_connected
+from deeptime.markov.tools.estimation import sample_tmatrix, transition_matrix
+from deeptime.util.types import ensure_dtraj_list
 from ._output_model import DiscreteOutputModel
 from ._util import observations_in_state, sample_hidden_state_trajectory
-from deeptime.markov.msm import MarkovStateModel
-from deeptime.markov import TransitionCountModel, compute_dtrajs_effective, number_of_states
-from deeptime.markov.hmm._hmm_bindings import util as _bd_util
-from deeptime.util.types import ensure_dtraj_list
-
-__author__ = 'noe, clonker'
-
-__all__ = [
-    'BayesianHMMPosterior',
-    'BayesianHMM',
-]
-
-from ...util.decorators import deprecated_method
 
 from ...util.platform import handle_progress_bar
 from ...util.validation import ck_test
@@ -651,28 +641,3 @@ class BayesianHMM(Estimator):
                                               reversible=self.reversible, count_model=count_model),
             output_model=model_copy.output_model, initial_distribution=model_copy.initial_distribution,
             hidden_state_trajectories=model_copy.hidden_trajs))
-
-    @deprecated_method("Deprecated in v0.4.1 and will be removed soon, please use model.ck_test.")
-    def chapman_kolmogorov_validator(self, mlags, test_model: BayesianHMMPosterior = None):
-        r""" Replaced by `deeptime.markov.hmm.BayesianHMMPosterior.ck_test`. """
-        test_model = self.fetch_model() if test_model is None else test_model
-        assert test_model is not None, "We need a test model via argument or an estimator which was already" \
-                                       "fit to data."
-
-        from . import DiscreteOutputModel
-        assert isinstance(test_model.prior.output_model, DiscreteOutputModel), \
-            "Can only perform CKTest for discrete output models"
-
-        from deeptime.markov._observables import MembershipsObservable
-        obs = MembershipsObservable(test_model, np.eye(test_model.prior.n_hidden_states))
-        from deeptime.util.validation import DeprecatedCKValidator
-
-        def fit_for_lag(data, lag):
-            estimator = BayesianHMM.default(dtrajs=data, n_hidden_states=self.initial_hmm.n_hidden_states,
-                                            lagtime=lag, n_samples=self.n_samples, stride=self.stride,
-                                            initial_distribution_prior=self.initial_distribution_prior,
-                                            transition_matrix_prior=self.transition_matrix_prior,
-                                            reversible=self.reversible, stationary=self.stationary)
-            return estimator.fit(data).fetch_model()
-
-        return DeprecatedCKValidator(self, fit_for_lag, mlags, obs, test_model)
