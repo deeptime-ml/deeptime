@@ -167,4 +167,4 @@ def tv_derivative(data, xs, u0=None, alpha=10., maxit=1000, verbose=False, fd_wi
         if tol is not None and relative_change < tol:
             break
 
-    return u
+    return .5 * (u[1:] + u[:-1])  # project back onto grid points
