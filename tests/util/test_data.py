@@ -5,8 +5,29 @@ from deeptime.util.exceptions import TrajectoryTooShortError
 
 pytest.importorskip("torch")
 
-from deeptime.util.data import timeshifted_split, TrajectoryDataset, TimeLaggedDataset
+from deeptime.util.data import timeshifted_split, TrajectoryDataset, TimeLaggedDataset, sliding_window
 import numpy as np
+
+
+@pytest.mark.parametrize("fixed_width", [False, True])
+def test_sliding_window(fixed_width):
+    with assert_raises(ValueError):
+        for _ in sliding_window([0, 1, 2], radius=10, fixed_width=fixed_width):
+            ...  # sequence too short
+
+    n = 0
+    seq = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    r = 2
+    for ix in sliding_window(seq, radius=r, fixed_width=fixed_width):
+        if fixed_width:
+            assert_equal(len(ix), 2 * r + 1)
+        else:
+            assert_(len(ix) <= 2 * r + 1)
+        assert_(seq[n] >= np.min(ix))
+        assert_(seq[n] <= np.max(ix))
+        n += 1
+
+    assert_equal(n, len(seq), err_msg="need n={} == len(seq)=={}".format(n, len(seq)))
 
 
 def test_astype():

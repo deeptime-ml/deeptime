@@ -33,6 +33,7 @@ Data utilities
     :template: class_nomodule.rst
 
     data.timeshifted_split
+    data.sliding_window
     data.TimeLaggedDataset
     data.TimeLaggedConcatDataset
     data.TrajectoryDataset

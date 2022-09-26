@@ -1,10 +1,55 @@
 import warnings
 from typing import Optional, List
+from collections import deque
 
 import numpy as np
 
 from .exceptions import TrajectoryTooShortError
 from ..base import Dataset
+
+
+def sliding_window(seq, radius=1, fixed_width=False):
+    r""" Creates a generator that yields exactly `len(seq)` subsequences of length at most `2 * radius + 1` in a sliding
+    window manner along the given sequence. If `fixed_width=True`, the tuples will always have width 2*"width"+1.
+
+    Parameters
+    ----------
+    seq : iterable object
+        The sequence.
+    radius : int, default=1
+        The sliding window radius
+    fixed_width : bool, default=False
+        If set to `True`, this generator yields tuples that are guaranteed to have length `2 * radius + 1`
+
+    Returns
+    -------
+    sliding_window : generator
+        A generator object yielding sliding windows along the provided sequence.
+    """
+
+    if len(seq) < 2 * radius + 1:
+        raise ValueError(f"the sequence needs to have at least length 2*radius+1 but has length={len(seq)}.")
+    it = iter(seq)
+    iterable = (next(it, None) for _ in range(1 + radius if not fixed_width else 1 + 2 * radius))
+    window = deque(iterable, maxlen=2 * radius + 1)
+    if not fixed_width:
+        yield np.array(window)
+        append = window.append
+        for e in it:
+            append(e)
+            yield np.array(window)
+        while len(window) > radius + 1:
+            window.popleft()
+            yield np.array(window)
+    else:
+        for _ in range(radius + 1):
+            yield np.array(window)
+        append = window.append
+        for e in it:
+            append(e)
+            yield np.array(window)
+        for _ in range(radius):
+            yield np.array(window)
 
 
 def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int = 1, n_splits: Optional[int] = None,
