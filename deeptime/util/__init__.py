@@ -67,6 +67,17 @@ Type utilities
 
 
 ===============================================================================
+Differentiation utilities
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    diff.finite_difference_coefficients
+
+
+===============================================================================
 Other utilities
 ===============================================================================
 .. autosummary::
@@ -92,3 +103,4 @@ from . import types
 from . import callbacks
 from . import platform
 from . import validation
+from . import diff

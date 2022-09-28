@@ -5,18 +5,29 @@ from deeptime.util.data import sliding_window
 
 
 def finite_difference_coefficients(x_bar, xs, k=1):
-    """
-    Calculate finite difference coefficients, so that
+    r"""Calculates finite difference coefficients. The coefficients are computed so that
 
-    f^(k)(x_bar) \approx f(xs) * fd_coeff(xs, window_around(x_bar), k).
+    .. math::
+        f^{(k)}(\bar{x}) \approx f(x) * \mathrm{fd\_coeff}(x, \mathrm{window\_around}(\bar{x}), k).
 
-    It is required that len(x) > k.
+    It is required that `len(x) > k`.
 
-    See https://epubs.siam.org/doi/10.1137/S0036144596322507.
-    :param x_bar: the evaluation point of the derivative
-    :param xs: n values of f so that x_1 <= ... <= xbar <= ... <= x_n
-    :param k: k-th derivative
-    :return: a vector with weights w so that w.dot(f(xs)) \approx f^(k)(x_bar)
+    See `here <https://epubs.siam.org/doi/10.1137/S0036144596322507>`_ for details.
+
+    Parameters
+    ----------
+    x_bar : float
+        The evaluation point of the derivative.
+    xs : ndarray of float
+        :math:`n` grid points so that :math:`x_1 \leq\ldots\leq\bar{x}\leq\ldots\leq x_n`.
+    k : int, default=1
+        k-th derivative.
+
+    Returns
+    -------
+    weights : ndarray
+        An array `w` with weights so that the dot product :math:`w \cdot f(\mathrm{xs}) \approx f^{(k)}(\bar{x})`
+        is approximately the function's `k`-th derivative at :math:`\bar{x}`.
     """
     n = len(xs)
     if k >= n:
@@ -53,12 +64,18 @@ def finite_difference_coefficients(x_bar, xs, k=1):
 
 
 def finite_difference_operator_midpoints(xs, k=1, window_radius=2):
-    """
+    r""" Yields a finite difference operator on midpoints. The midpoints are derived from the `xs` grid, first and
+    last node are extrapolated.
 
-    :param xs:
-    :param k:
-    :param window_width:
-    :return:
+    Parameters
+    ----------
+    xs : ndarray
+        Grid points.
+    k
+    window_radius
+
+    Returns
+    -------
     """
     n_nodes = len(xs)
     indices = _np.arange(0, n_nodes, step=1, dtype=int)
