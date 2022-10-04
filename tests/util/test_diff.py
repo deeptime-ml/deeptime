@@ -16,7 +16,6 @@ def test_tv_derivative():
     plt.plot(x0, true_deriv, label='derivative f')
     plt.plot(x0, fd, label='finite differences')
     for alpha in [.001]:
-        tv_deriv0 = diff.tv_derivative(testf, x0, alpha=alpha, tol=1e-5, verbose=True, fd_window_radius=5)
-        tv_deriv0_back = .5 * (tv_deriv0[1:] + tv_deriv0[:-1])
-        plt.plot(x0, tv_deriv0_back, label=f'tv deriv, alpha={alpha:.4f}')
+        tv_deriv0 = diff.tv_derivative(x0, testf, alpha=alpha, tol=1e-6, verbose=True, fd_window_radius=3)
+        plt.plot(x0, tv_deriv0, label=f'tv deriv, alpha={alpha:.4f}')
     plt.show()

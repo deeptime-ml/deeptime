@@ -100,10 +100,18 @@ def finite_difference_operator_midpoints(xs, k=1, window_radius=2):
 
 
 def _cumtrapz_operator(xs):
-    """
-    Returns matrix representation of the cumulative trapezoidal rule, i.e. \int_0^x f
-    :param xs: grid
-    :return: (n-1, n)-matrix
+    r""" Returns matrix representation of the cumulative trapezoidal rule.
+    This means that it approximates :math:`\int_0^x f` for values of `f` in the provided grid points.
+
+    Parameters
+    ----------
+    xs : ndarray
+        The grid.
+
+    Returns
+    -------
+    operator : sparse matrix
+        A `(n-1, n)`-shaped matrix where `n` is the number of grid points.
     """
     n = len(xs)
     data = _np.zeros(shape=(int(.5 * (n ** 2 + n) - 1),))
@@ -126,8 +134,39 @@ def _cumtrapz_operator(xs):
     return _sparse.csc_matrix((data, (row_data, col_data)), shape=(n - 1, n))
 
 
-def tv_derivative(data, xs, u0=None, alpha=10., maxit=1000, verbose=False, fd_window_radius=5, tol=None):
-    data = _np.asarray(data, dtype=_np.float64).squeeze()
+def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_radius=5, verbose=False):
+    r""" Total-variation regularized derivative. Note that this is currently only implemented for one-dimensional
+    functions. See :footcite:`chartrand2011numerical` for theory and algorithmic details.
+
+    Parameters
+    ----------
+    xs : ndarray
+        Grid points.
+    ys : ndarray
+        Function values, must be of same length as `xs`.
+    u0 : ndarray, optional, default=None
+        Initial guess. May be left `None`, in which case the
+        `numpy.gradient <https://numpy.org/doc/stable/reference/generated/numpy.gradient.html>`_ with `edge_order=2`
+        is used.
+    alpha : float, default=10
+        Regularization parameter. Is required to be positive.
+    tol : float, optional, default=None
+        Tolerance on the relative change of the solution update. If given, the algorithm may return early.
+    maxit : int, default=1000
+        Maximum number of iterations before termination of the algorithm.
+    fd_window_radius : int, default=5
+        Radius in which the finite differences are computed. For example, a value of `2` means that the local gradient
+        at :math:`x_n` is approximated using grid nodes :math:`x_{n-2}, x_{n-1}, x_n, x_{n+1}, x_{n+2}`.
+    verbose : bool, default=False
+        Print convergence information.
+
+    Returns
+    -------
+    derivative : ndarray
+        The regularized derivative values on given grid nodes.
+    """
+    assert alpha > 0, "Regularization parameter may only be positive."
+    data = _np.asarray(ys, dtype=_np.float64).squeeze()
     xs = _np.asarray(xs, dtype=_np.float64).squeeze()
     n = data.shape[0]
     assert xs.shape[0] == n, "the grid must have the same dimension as data"
@@ -158,7 +197,9 @@ def tv_derivative(data, xs, u0=None, alpha=10., maxit=1000, verbose=False, fd_wi
     ATA = AT @ A
 
     if u0 is None:
-        u = _np.concatenate(([0], _np.diff(data), [0]))
+        df = _np.gradient(data, edge_order=2)
+        u = _np.concatenate(([0], .5 * (df[1:] + df[:-1]), [0]))
+        # u = _np.concatenate(([0], _np.diff(data), [0]))
     else:
         u = u0
     Aadj_offset = AT * (data[0] - data)
@@ -172,7 +213,7 @@ def tv_derivative(data, xs, u0=None, alpha=10., maxit=1000, verbose=False, fd_wi
         g = ATA.dot(u) + Aadj_offset + alpha * L * u
 
         # solve linear equation.
-        s = _np.linalg.solve((alpha * L + ATA).todense().astype(_np.float64), (-g).astype(_np.float64))
+        s = _np.linalg.solve((alpha * L + ATA).todense().astype(_np.float64), -g.astype(_np.float64))
 
         relative_change = _np.linalg.norm(s[0]) / _np.linalg.norm(u)
         if verbose:
