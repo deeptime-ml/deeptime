@@ -1,6 +1,6 @@
 """
-PCCA+ on the Drunkard's walk example
-====================================
+PCCA+ on the Drunkard's walk
+============================
 
 This example shows a decomposition into metastable sets (see :meth:`deeptime.markov.pcca`) of states
 in the :meth:`deeptime.data.drunkards_walk` example.

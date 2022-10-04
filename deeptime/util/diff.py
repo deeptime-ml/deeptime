@@ -138,6 +138,8 @@ def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_ra
     r""" Total-variation regularized derivative. Note that this is currently only implemented for one-dimensional
     functions. See :footcite:`chartrand2011numerical` for theory and algorithmic details.
 
+    .. plot:: examples/plot_tv_derivative.py
+
     Parameters
     ----------
     xs : ndarray
@@ -198,10 +200,10 @@ def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_ra
 
     if u0 is None:
         df = _np.gradient(data, edge_order=2)
-        u = _np.concatenate(([0], .5 * (df[1:] + df[:-1]), [0]))
-        # u = _np.concatenate(([0], _np.diff(data), [0]))
-    else:
-        u = u0
+        u0 = _np.concatenate(([0], .5 * (df[1:] + df[:-1]), [0]))
+    if len(u0) == n:
+        u0 = _np.concatenate(([0], .5 * (u0[1:] + u0[:-1]), [0]))
+    u = u0
     Aadj_offset = AT * (data[0] - data)
 
     E_n = _sparse.dia_matrix((n, n), dtype=xs.dtype)

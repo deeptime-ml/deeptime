@@ -74,7 +74,9 @@ Differentiation utilities
     :toctree: generated/
     :template: class_nomodule.rst
 
+    diff.tv_derivative
     diff.finite_difference_coefficients
+    diff.finite_difference_operator_midpoints
 
 
 ===============================================================================
