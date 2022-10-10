@@ -166,6 +166,10 @@ def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_ra
     -------
     derivative : ndarray
         The regularized derivative values on given grid nodes.
+
+    References
+    ----------
+    .. footbibliography::
     """
     assert alpha > 0, "Regularization parameter may only be positive."
     data = _np.asarray(ys, dtype=_np.float64).squeeze()
