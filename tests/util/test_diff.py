@@ -1,23 +1,19 @@
 import numpy as np
+from numpy.testing import assert_, assert_array_almost_equal
 
 import deeptime.util.diff as diff
 
 
-def test_tv_derivative():
-    import numpy as np
-    import deeptime.util.diff as diff
+def test_tv_derivative(capsys):
     noise_variance = .08 * .08
-    x0 = np.linspace(0, 2.0 * np.pi, 200)
+    x0 = np.linspace(0, 2.0 * np.pi, 400)
     testf = np.sin(x0) + np.random.normal(0.0, np.sqrt(noise_variance), x0.shape)
     true_deriv = np.cos(x0)
-
-    import matplotlib.pyplot as plt
-    plt.figure()
-    plt.plot(x0, np.sin(x0), label=r'$f(x) = \sin(x)$')
-    plt.plot(x0, testf, label=r'$f(x) + \mathcal{N}(0, \sigma)$', color='C0', alpha=.5)
-    plt.plot(x0, true_deriv, label=r'$\frac{df}{dx}(x) = \cos(x)$')
-    plt.plot(x0, np.gradient(testf, x0), label='finite differences', alpha=.5)
     df = diff.tv_derivative(x0, testf, alpha=0.01, tol=1e-5, verbose=True, fd_window_radius=5)
-    plt.plot(x0, df, label=r'$\mathrm{TV}(f(x) + \mathcal{N}(0, \sigma))$, $\alpha = 0.01$')
-    plt.legend()
-    plt.show()
+    captured = capsys.readouterr()
+    max_diff = np.max(np.abs(df - true_deriv))
+    assert_(max_diff < 0.5)
+    assert_("relative change" in captured.out)
+
+    df2 = diff.tv_derivative(x0, testf, u0=df, alpha=0.01, tol=1e-5, verbose=False, fd_window_radius=5)
+    assert_array_almost_equal(df, df2, decimal=1)
