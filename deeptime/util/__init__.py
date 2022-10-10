@@ -33,6 +33,7 @@ Data utilities
     :template: class_nomodule.rst
 
     data.timeshifted_split
+    data.sliding_window
     data.TimeLaggedDataset
     data.TimeLaggedConcatDataset
     data.TrajectoryDataset
@@ -66,6 +67,19 @@ Type utilities
 
 
 ===============================================================================
+Differentiation utilities
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    diff.tv_derivative
+    diff.finite_difference_coefficients
+    diff.finite_difference_operator_midpoints
+
+
+===============================================================================
 Other utilities
 ===============================================================================
 .. autosummary::
@@ -91,3 +105,4 @@ from . import types
 from . import callbacks
 from . import platform
 from . import validation
+from . import diff

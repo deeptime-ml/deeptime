@@ -61,6 +61,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.katex',
+    'nbsphinx',
     'sphinx_gallery.gen_gallery',
     'sphinx_gallery.load_style'
 ]

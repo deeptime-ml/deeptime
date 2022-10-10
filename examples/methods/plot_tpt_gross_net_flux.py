@@ -1,6 +1,6 @@
 """
-Gross and net flux on the Drunkard's walk example
-=================================================
+Gross and net flux on the Drunkard's walk
+=========================================
 
 This example shows how to compute and visualize gross and net reactive flux (see :class:`deeptime.markov.ReactiveFlux`)
 using the :meth:`deeptime.data.drunkards_walk`.

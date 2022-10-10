@@ -1,6 +1,6 @@
 """
-Kernel CCA on the Bickley jet to find coherent sets
-===================================================
+Coherent sets: Kernel CCA on the Bickley jet
+============================================
 
 This example shows an application of :class:`KernelCCA <deeptime.decomposition.KernelCCA>` on the
 :meth:`bickley jet <deeptime.data.bickley_jet>` dataset. One can cluster in the singular function space

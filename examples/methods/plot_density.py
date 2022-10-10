@@ -1,6 +1,6 @@
 """
-Plotting two-dimensional densities from xy
-==========================================
+2D densities from xy
+====================
 
 This example demonstrates how to plot unordered xy data - in this case, particle positions (xy) - as contour of their
 density in both linear and log scale. See :meth:`deeptime.plots.plot_density`.

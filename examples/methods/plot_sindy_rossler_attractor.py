@@ -1,6 +1,6 @@
 """
-Identification of the Rossler system with SINDy
-===============================================
+SINDy: Identification of the Rössler system
+===========================================
 
 This example shows how to use SINDy to discover the chaotic Rossler system from
 measurement data via the :class:`deeptime.sindy.SINDy` estimator and
