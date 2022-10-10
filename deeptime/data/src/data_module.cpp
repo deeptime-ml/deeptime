@@ -290,6 +290,7 @@ PYBIND11_MODULE(_data_bindings, m) {
                 .def_readonly_static("k", &System::k);
     }
     exportSystem<true, deeptime::data::QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
+    exportSystem<true, deeptime::data::Lorenz<double>>(m, "Lorenz");
 
     exportPyODE<1>(m, "PyODE1D");
     exportPyODE<2>(m, "PyODE2D");

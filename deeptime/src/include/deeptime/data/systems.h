@@ -76,6 +76,34 @@ private:
 };
 
 //------------------------------------------------------------------------------
+// Lorentz System
+//------------------------------------------------------------------------------
+template<typename T>
+struct Lorenz {
+    using system_type = ode_tag;
+
+    static constexpr std::size_t DIM = 3;
+    using dtype = T;
+    using State = Vector<T, DIM>;
+    using Integrator = RungeKutta<State, DIM>;
+
+    constexpr State f(const State &x) const {
+        return {{
+                        _sigma * (x[1] - x[0]),
+                        x[0] * (_rho - x[2]) - x[1],
+                        x[0] * x[1] - _beta * x[2]
+                }};
+    }
+
+    double h{1e-3};
+    std::size_t nSteps{1000};
+private:
+    static constexpr T _sigma = 10.;
+    static constexpr T _beta = 8./3.;
+    static constexpr T _rho = 28.;
+};
+
+//------------------------------------------------------------------------------
 // Bickley Jet
 //------------------------------------------------------------------------------
 template<typename T, bool PERIODIC = false>
