@@ -2,32 +2,43 @@ r"""
 .. currentmodule: deeptime.data
 
 ===============================================================================
-API
+Deterministic datasets
 ===============================================================================
 
 .. autosummary::
     :toctree: generated/
     :template: class_nomodule.rst
 
+    abc_flow
+    bickley_jet
+    lorenz_system
+    position_based_fluids
+
+
+===============================================================================
+Stochastic datasets
+===============================================================================
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_nomodule.rst
+
+    tmatrix_metropolis1d
+    birth_death_chain
+    ornstein_uhlenbeck
+    double_well_2d
     double_well_discrete
+    triple_well_1d
+    triple_well_2d
     quadruple_well
     quadruple_well_asymmetric
-    triple_well_2d
-    triple_well_1d
-    double_well_2d
     time_dependent_quintuple_well
-    abc_flow
-    lorenz_system
-    ornstein_uhlenbeck
     prinz_potential
     ellipsoids
     sqrt_model
     swissroll_model
-    position_based_fluids
     drunkards_walk
-    bickley_jet
-    birth_death_chain
-    tmatrix_metropolis1d
+
 
 ===============================================================================
 Custom systems
