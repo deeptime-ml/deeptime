@@ -95,12 +95,37 @@ struct Lorenz {
                 }};
     }
 
-    double h{1e-3};
+    T h{1e-3};
     std::size_t nSteps{1000};
 private:
     static constexpr T _sigma = 10.;
     static constexpr T _beta = 8./3.;
     static constexpr T _rho = 28.;
+};
+
+//------------------------------------------------------------------------------
+// Thomas attractor
+//------------------------------------------------------------------------------
+template<typename T>
+struct ThomasAttractor {
+    using system_type = ode_tag;
+
+    static constexpr std::size_t DIM = 3;
+    using dtype = T;
+    using State = Vector<T, DIM>;
+    using Integrator = RungeKutta<State, DIM>;
+
+    constexpr State f(const State &x) const {
+        return {{
+                        std::sin(x[1]) - b * x[0],
+                        std::sin(x[2]) - b * x[1],
+                        std::sin(x[0]) - b * x[2]
+                }};
+    }
+
+    T h{1e-3};
+    std::size_t nSteps{1000};
+    T b = 1.;
 };
 
 //------------------------------------------------------------------------------
