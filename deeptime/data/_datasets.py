@@ -1023,7 +1023,7 @@ def lorenz_system(h: float = 2e-5, n_steps: int = 100):
 
         \begin{aligned}
         \dot{x} &= \sigma (y - x)\\
-        \dot{y} &= x(\rho - z) \\
+        \dot{y} &= x(\rho - z) - y \\
         \dot{z} &= xy - \beta z
         \end{aligned}
 
