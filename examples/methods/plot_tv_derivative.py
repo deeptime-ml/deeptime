@@ -13,7 +13,7 @@ noise_variance = .08 * .08
 x0 = np.linspace(0, 2.0 * np.pi, 200)
 testf = np.sin(x0) + np.random.normal(0.0, np.sqrt(noise_variance), x0.shape)
 true_deriv = np.cos(x0)
-df_tv = diff.tv_derivative(x0, testf, alpha=0.01, tol=1e-5, verbose=True, fd_window_radius=5)
+df_tv = diff.tv_derivative(x0, testf, alpha=0.001, tol=1e-5, fd_window_radius=5, sparse=False)
 
 plt.figure()
 plt.plot(x0, np.sin(x0), label=r'$f(x) = \sin(x)$')
