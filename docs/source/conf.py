@@ -23,6 +23,7 @@ import sphinx.util
 import sphinxcontrib.bibtex
 from matplotlib import animation
 from sphinx.application import Sphinx
+from sphinx_gallery.sorting import ExplicitOrder, ExampleTitleSortKey
 
 import deeptime
 
@@ -109,8 +110,19 @@ autodoc_default_options = {
 
 # -- Gallery settings ---------------------------------------------------------
 sphinx_gallery_conf = {
-    'examples_dirs': ['../../examples/methods', '../../examples/datasets'],  # path to your example scripts
-    'gallery_dirs': ['examples', 'datasets'],  # path to where to save gallery generated output
+    'examples_dirs': [
+        '../../examples/methods',
+        '../../examples/datasets/odes',
+        '../../examples/datasets/sdes',
+        '../../examples/datasets/other',
+    ],
+    'within_subsection_order': ExampleTitleSortKey,
+    'gallery_dirs': [
+        'examples',
+        'datasets/odes',
+        'datasets/sdes',
+        'datasets/other'
+    ],  # path to where to save gallery generated output
     'line_numbers': True,
     'show_memory': True,
     'capture_repr': (),
@@ -143,15 +155,15 @@ html_theme_options = {
     'page_width': '65%',
     'sidebar_width': '250px',
     'body_max_width': 'auto',
-    'fixed_sidebar': 'true',
-    'github_button': 'false',  # explicitly added in templates
+    'fixed_sidebar': True,
+    'github_button': False,  # explicitly added in templates
     'github_user': 'deeptime-ml',
     'github_repo': 'deeptime',
     'github_type': 'star',
-    'sidebar_collapse': 'true',
+    'sidebar_collapse': True,
     'sidebar_header': '#96929c',
     'logo': 'logo/deeptime_romand_white.svg',
-    'logo_name': 'false',
+    'logo_name': False
 }
 html_sidebars = {
     '**': [
