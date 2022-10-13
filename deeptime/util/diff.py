@@ -1,4 +1,5 @@
 import numpy as _np
+import numpy as np
 from scipy import sparse as _sparse
 
 from deeptime.util.data import sliding_window
@@ -134,7 +135,8 @@ def _cumtrapz_operator(xs):
     return _sparse.csc_matrix((data, (row_data, col_data)), shape=(n - 1, n))
 
 
-def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_radius=5, verbose=False):
+def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_radius=5, epsilon=1e-6,
+                  sparse=True, progress=None):
     r""" Total-variation regularized derivative. Note that this is currently only implemented for one-dimensional
     functions. See :footcite:`chartrand2011numerical` for theory and algorithmic details.
 
@@ -159,8 +161,13 @@ def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_ra
     fd_window_radius : int, default=5
         Radius in which the finite differences are computed. For example, a value of `2` means that the local gradient
         at :math:`x_n` is approximated using grid nodes :math:`x_{n-2}, x_{n-1}, x_n, x_{n+1}, x_{n+2}`.
-    verbose : bool, default=False
-        Print convergence information.
+    epsilon : float, default=1e-6
+        Small constant that is added to the norm of the current iterate of the TV-regularized derivative so it can
+        safely be normalized.
+    sparse : bool, default=True
+        Whether to use sparse matrices for finite difference, integration, and normalization operators.
+    progress : ProgressBar, optional, default=None
+        Optional progress bar, tested for tqdm.
 
     Returns
     -------
@@ -171,13 +178,13 @@ def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_ra
     ----------
     .. footbibliography::
     """
+    from deeptime.util.platform import handle_progress_bar
     assert alpha > 0, "Regularization parameter may only be positive."
+    progress = handle_progress_bar(progress)
     data = _np.asarray(ys, dtype=_np.float64).squeeze()
     xs = _np.asarray(xs, dtype=_np.float64).squeeze()
     n = data.shape[0]
     assert xs.shape[0] == n, "the grid must have the same dimension as data"
-
-    epsilon = 1e-6
 
     # grid of midpoints between xs, extrapolating first and last node:
     #
@@ -191,14 +198,21 @@ def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_ra
     assert midpoints.shape[0] == n + 1
 
     diff = finite_difference_operator_midpoints(midpoints, k=1, window_radius=fd_window_radius)
+    if not sparse:
+        diff = diff.toarray()
     assert diff.shape[0] == n
     assert diff.shape[1] == n + 1
 
-    diff_t = diff.transpose().tocsc()
+    if sparse:
+        diff_t = diff.transpose().tocsc()
+    else:
+        diff_t = diff.T
     assert diff.shape[0] == n
     assert diff.shape[1] == n + 1
 
     A = _cumtrapz_operator(midpoints)
+    if not sparse:
+        A = A.toarray()
     AT = A.T
     ATA = AT @ A
 
@@ -208,23 +222,32 @@ def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_ra
     if len(u0) == n:
         u0 = _np.concatenate(([0], .5 * (u0[1:] + u0[:-1]), [0]))
     u = u0
-    Aadj_offset = AT * (data[0] - data)
+    Aadj_offset = AT @ (data[0] - data)
 
-    E_n = _sparse.dia_matrix((n, n), dtype=xs.dtype)
-    midpoints_diff = _np.diff(midpoints)
+    if sparse:
+        E_n = _sparse.dia_matrix((n, n), dtype=xs.dtype)
+    else:
+        E_n = np.zeros((n, n), dtype=xs.dtype)
+    midpoints_diff = _np.gradient(midpoints, edge_order=2)
 
-    for ii in range(1, maxit + 1):
-        E_n.setdiag(midpoints_diff * (1. / _np.sqrt(_np.diff(u) ** 2.0 + epsilon)))
-        L = diff_t * E_n * diff
-        g = ATA.dot(u) + Aadj_offset + alpha * L * u
+    for _ in progress(range(1, maxit + 1)):
+        diagonal = midpoints_diff * (1. / _np.sqrt(_np.gradient(u, edge_order=2) ** 2.0 + epsilon))
+        if sparse:
+            E_n.setdiag(diagonal)
+        else:
+            np.fill_diagonal(E_n, diagonal)
+        L = diff_t @ E_n @ diff
+        g = ATA @ u + Aadj_offset + alpha * L @ u
 
         # solve linear equation.
-        s = _np.linalg.solve((alpha * L + ATA).todense().astype(_np.float64), -g.astype(_np.float64))
+        lhs = alpha * L + ATA
+        if sparse:
+            lhs = lhs.toarray()
+        s = _np.linalg.solve(lhs.astype(_np.float64), -g.astype(_np.float64))
 
         relative_change = _np.linalg.norm(s[0]) / _np.linalg.norm(u)
-        if verbose:
-            print(f'iteration {ii:4d}: relative change = {relative_change:.3e},'
-                  f' gradient norm = {_np.linalg.norm(g):.3e}')
+        #print(f'iteration {ii:4d}: relative change = {relative_change:.3e},'
+        #      f' gradient norm = {_np.linalg.norm(g):.3e}')
 
         # Update current solution
         u = u + s

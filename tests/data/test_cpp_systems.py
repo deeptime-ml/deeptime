@@ -18,7 +18,9 @@ from tests.testing_utilities import nullcontext
     [dt.data.prinz_potential, 1, 'EulerMaruyama', True],
     [dt.data.time_dependent_quintuple_well, 2, 'EulerMaruyama', True],
     [dt.data.abc_flow, 3, 'RungeKutta', False],
-    [dt.data.BickleyJet, 2, 'RungeKutta', False]
+    [dt.data.BickleyJet, 2, 'RungeKutta', False],
+    [dt.data.lorenz_system, 3, 'RungeKutta', False],
+    [dt.data.thomas_attractor, 3, 'RungeKutta', False],
 ])
 def test_interface(init, system, dim, integrator, has_potential):
     instance = system(h=1e-5, n_steps=10)
@@ -59,10 +61,14 @@ def test_interface(init, system, dim, integrator, has_potential):
 
 
 @pytest.mark.parametrize("vectorized", [True, False])
-@pytest.mark.parametrize("system", [dt.data.abc_flow, dt.data.BickleyJet])
+@pytest.mark.parametrize("system", [
+    dt.data.abc_flow, dt.data.BickleyJet,
+    dt.data.lorenz_system,
+    dt.data.thomas_attractor
+])
 @pytest.mark.parametrize("ref_method", ['RK45', 'DOP853', 'LSODA'])
 def test_ode_against_scipy(system, vectorized, ref_method):
-    instance = system(h=1e-5, n_steps=1000)
+    instance = system(h=1e-6, n_steps=10000)
     dim = instance.dimension
     y0 = np.array([[.5] * dim] * 10)
     assert_(instance.vectorized_f)
@@ -77,7 +83,7 @@ def test_ode_against_scipy(system, vectorized, ref_method):
     for i in range(10):
         assert_allclose(soln[:, 0], y0[0])
         assert_allclose(traj[i, 0], y0[0])
-        assert_array_almost_equal(soln[:, 1], traj[i, 1], decimal=5)
+        assert_array_almost_equal(soln[:, 1], traj[i, 1], decimal=3)
 
 
 def test_quadruple_well_sanity():

@@ -15,7 +15,7 @@ Table Of Contents
         notebooks/hmm
         notebooks/clustering
         index_examples
-        datasets/index
+        index_datasets
         index_dev
 
 
