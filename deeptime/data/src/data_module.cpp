@@ -290,6 +290,12 @@ PYBIND11_MODULE(_data_bindings, m) {
                 .def_readonly_static("k", &System::k);
     }
     exportSystem<true, deeptime::data::QuadrupleWellAsymmetric2D<double>>(m, "QuadrupleWellAsymmetric2D");
+    exportSystem<true, deeptime::data::Lorenz<double>>(m, "Lorenz");
+    {
+        auto clazz = exportSystem<true, deeptime::data::ThomasAttractor<double>>(m, "ThomasAttractor");
+        clazz.def_property("b", [](const deeptime::data::ThomasAttractor<double> &self) { return self.b; },
+                           [](deeptime::data::ThomasAttractor<double> &self, double val) { self.b = val; });
+    }
 
     exportPyODE<1>(m, "PyODE1D");
     exportPyODE<2>(m, "PyODE2D");
