@@ -133,7 +133,7 @@ def stationary_distribution_from_eigenvector(T, ncv=None):
     return mu
 
 
-def stationary_distribution(T, ncv: Optional[int] = None, mode: str = 'fallback', check_inputs: bool = True):
+def stationary_distribution(T, ncv: Optional[int] = None, mode: str = 'fallback', check_inputs: bool = True, tol: float=1e-12):
     r"""Compute stationary distribution of stochastic matrix T.
 
     Parameters
@@ -148,6 +148,9 @@ def stationary_distribution(T, ncv: Optional[int] = None, mode: str = 'fallback'
         it uses backward iteration only (`'backward'`) or it uses eigenvector estimation only (`'eigenvector'`).
     check_inputs : bool, optional, default=True
         Whether to check for connectivity and if it is a transition matrix.
+    tol : float, optional, default=1e-12
+        the tolerance of the sum of each row/column of the input matrix to tell 
+        if P is a transition matrix.
 
     Returns
     -------
@@ -174,7 +177,7 @@ def stationary_distribution(T, ncv: Optional[int] = None, mode: str = 'fallback'
     """
     if check_inputs:
         from ._assessment import is_connected, is_transition_matrix
-        if not is_transition_matrix(T, tol=1e-12):
+        if not is_transition_matrix(T, tol=tol):
             raise ValueError("Input matrix is not a transition matrix. "
                              "Cannot compute stationary distribution")
         if not is_connected(T, directed=False):

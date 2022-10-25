@@ -102,7 +102,7 @@ def is_reversible(T, mu=None, tol=1e-15):
         T = T.tocsr()
 
     if mu is None:
-        mu = stationary_distribution(T)
+        mu = stationary_distribution(T, tol=tol)
 
     if sparse.issparse(T):
         prod = sparse.diags(mu) * T
