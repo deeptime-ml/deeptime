@@ -1,5 +1,6 @@
 pybind11==2.9.2
-torch>=1.12.0; platform_system!="Darwin" or python_version!="3.8"
+# remove 3.11 constraint once there are pypi packages available for darwin and windows
+torch>=1.12.0; python_version!="3.11" and (platform_system!="Darwin" or python_version!="3.8")
 matplotlib==3.5.2
 pint==0.19.2
 networkx==2.8.4
