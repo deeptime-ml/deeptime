@@ -20,12 +20,12 @@ authors = [
     {name = 'Steven Brunton'},
     {name = 'Frank Noé'}
 ]
-requires-python = ">= 3.7"
+requires-python = ">= 3.8"
 dependencies = [
-    'numpy>=1.19.5',
-    'scipy>=1.1.0',
-    'scikit-learn>=0.14.1',
-    'threadpoolctl>=2.0.0'
+    'numpy>=1.20',
+    'scipy>=1.9.0',
+    'scikit-learn>=1.1',
+    'threadpoolctl>=3.1.0'
 ]
 dynamic = ['version']
 
@@ -38,19 +38,19 @@ download = "https://pypi.org/project/deeptime/#files"
 [project.optional-dependencies]
 deep-learning = ['pytorch']
 plotting = ['matplotlib', 'networkx']
-units = ['pint>=0.19.1']
+units = ['pint>=0.20']
 
 [build-system]
 requires = [
     "setuptools>=42",
     "wheel",
-    "scikit-build>=0.13",
-    "cython",
-    "pybind11>=2.9.0",
-    "numpy>=1.14",
-    "cmake>=3.22",
-    "toml",
-    "scipy",
+    "scikit-build>=0.16",
+    "cython>=0.29.30",
+    "pybind11>=2.10.1",
+    "numpy>=1.20",
+    "cmake>=3.24",
+    "toml==0.10.2",
+    "scipy==1.9.3",
     "ninja; platform_system!='Windows'"
 ]
 build-backend = "setuptools.build_meta"
