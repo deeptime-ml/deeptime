@@ -48,6 +48,7 @@ def tests(session: nox.Session) -> None:
             session.run("pytest", "tests/base/test_pytorch_setup.py")
         if 'cov' in session.posargs:
             session.log("Running with coverage")
+            session.install('tomli')  # needed for coverage toml config parser
             xml_results_dest = Path(os.getenv('SYSTEM_DEFAULTWORKINGDIRECTORY', tempfile.gettempdir()))
             assert xml_results_dest.exists() and xml_results_dest.is_dir(), 'no dest dir available'
             cover_pkg = 'deeptime'
