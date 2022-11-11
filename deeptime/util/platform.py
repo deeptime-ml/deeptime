@@ -15,7 +15,8 @@ def module_available(modname: str) -> bool:
         Whether the module is available.
     """
     try:
-        __import__(modname)
+        import importlib
+        importlib.import_module(modname)
         return True
     except ImportError:
         return False
