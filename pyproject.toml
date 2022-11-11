@@ -7,7 +7,7 @@ keywords = [
     "koopman-operator", "coherent-set-detection"
 ]
 authors = [
-    {name = 'Moritz Hoffmann', email = 'moritz.hoffmann@fu-berlin.de'},
+    {name = 'Moritz Hoffmann'},
     {name = 'Martin Scherer'},
     {name = 'Tim Hempel'},
     {name = 'Andreas Mardt'},
@@ -20,12 +20,12 @@ authors = [
     {name = 'Steven Brunton'},
     {name = 'Frank Noé'}
 ]
-requires-python = ">= 3.7"
+requires-python = ">= 3.8"
 dependencies = [
-    'numpy>=1.19.5',
-    'scipy>=1.1.0',
-    'scikit-learn>=0.14.1',
-    'threadpoolctl>=2.0.0'
+    'numpy>=1.20',
+    'scipy>=1.9.0',
+    'scikit-learn>=1.1',
+    'threadpoolctl>=3.1.0'
 ]
 dynamic = ['version']
 
@@ -38,22 +38,41 @@ download = "https://pypi.org/project/deeptime/#files"
 [project.optional-dependencies]
 deep-learning = ['pytorch']
 plotting = ['matplotlib', 'networkx']
-units = ['pint>=0.19.1']
+units = ['pint>=0.20']
 
 [build-system]
 requires = [
     "setuptools>=42",
     "wheel",
-    "scikit-build>=0.13",
-    "cython",
-    "pybind11>=2.9.0",
-    "numpy>=1.14",
-    "cmake>=3.22",
-    "toml",
-    "scipy",
-    "ninja; platform_system!='Windows'"
+    "scikit-build>=0.16",
+    "cython>=0.29.30",
+    "pybind11>=2.10.1",
+    "numpy>=1.20",
+    "cmake>=3.24",
+    "toml==0.10.2",
+    "scipy==1.9.3",
+    "ninja; platform_system!='Windows'",
+    "versioneer[toml]"
 ]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 filterwarnings = ["once", "ignore::UserWarning"]
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "deeptime/_version.py"
+versionfile_build = "deeptime/_version.py"
+tag_prefix = "v"
+
+[tool.flake8]
+ignore = ['E24', 'E121', 'E123', 'E126', 'E226', 'E704', 'W503', 'W504']
+max-line-length = 120
+
+[tool.coverage.report]
+exclude_lines = ["@plotting_function", "pragma: no cover"]
+omit = ["*/**/setup.py", "tests/*", "deeptime/_version.py"]
+
+[tool.coverage.run]
+omit = ["*/**/setup.py", "tests/*", "*/**/*.pyx", "deeptime/_version.py"]

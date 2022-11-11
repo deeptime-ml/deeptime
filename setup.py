@@ -3,7 +3,7 @@
 import os
 import sys
 
-from setuptools import find_packages, find_namespace_packages
+from setuptools import find_namespace_packages
 import toml
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -35,24 +35,16 @@ excludes = ("tests", "tests.*", "examples", "examples.*", "docs", "docs.*", "dev
 
 metadata = \
     dict(
-        name=pyproject["project"]["name"],
-        version=versioneer.get_version(),
-        author=pyproject["project"]["authors"][0]["name"],
-        author_email=pyproject["project"]["authors"][0]["email"],
-        url=pyproject["project"]["urls"]["repository"],
-        description=pyproject["project"]["description"],
         long_description=load_long_description(),
         long_description_content_type='text/markdown',
         zip_safe=False,
-        install_requires=pyproject["project"]["dependencies"],
-        extras_require=pyproject["project"]["optional-dependencies"],
         packages=find_namespace_packages(where=".", exclude=excludes),
         package_dir={"deeptime": "deeptime", "versioneer": "."},
         cmake_install_dir="deeptime/",
         cmake_args=cmake_args,
         include_package_data=True,
-        python_requires=pyproject["project"]["requires-python"],
         ext_modules=[],
+        version=versioneer.get_version(),
         cmdclass=versioneer.get_cmdclass()
     )
 

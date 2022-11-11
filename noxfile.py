@@ -55,7 +55,7 @@ def tests(session: nox.Session) -> None:
             cov_xml = str((xml_results_dest / 'coverage.xml').absolute())
 
             pytest_args += [f'--cov={cover_pkg}', f"--cov-report=xml:{cov_xml}", f"--junit-xml={junit_xml}",
-                            "--cov-config=.coveragerc"]
+                            "--cov-config=pyproject.toml"]
         else:
             session.log("Running without coverage")
 
