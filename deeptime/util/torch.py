@@ -9,8 +9,11 @@ import numpy as np
 from pathlib import Path
 from typing import List, Dict, Optional
 
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+except ImportError:
+    pass
 
 
 def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:

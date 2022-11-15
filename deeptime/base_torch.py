@@ -1,7 +1,6 @@
 from typing import Callable, Union, List, Optional
 
 import numpy as np
-import torch
 
 
 class DLEstimatorMixin:
@@ -52,7 +51,7 @@ class DLEstimatorMixin:
         self._dtype = value
 
     @property
-    def optimizer(self) -> Optional[torch.optim.Optimizer]:
+    def optimizer(self) -> Optional["torch.optim.Optimizer"]:
         r""" The optimizer that is used.
 
         :getter: Gets the currently configured optimizer.
@@ -73,6 +72,7 @@ class DLEstimatorMixin:
         parameters : list of parameters
             The parameters
         """
+        import torch
         unique_params = list(set(parameters))
         if isinstance(kind, str):
             known_optimizers = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD, 'RMSprop': torch.optim.RMSprop}

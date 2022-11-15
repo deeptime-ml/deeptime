@@ -2,10 +2,6 @@ from typing import Optional, List
 
 import numpy as np
 
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-
 from ...base import Transformer, Model, EstimatorTransformer
 from ...base_torch import DLEstimatorMixin
 from ...util.torch import map_data, MLP
@@ -53,7 +49,7 @@ class TAEModel(Model, Transformer):
         """
         return self._decoder
 
-    def _encode(self, x: torch.Tensor):
+    def _encode(self, x: "torch.Tensor"):
         return self._encoder(x)
 
     def transform(self, data, **kwargs):
@@ -99,7 +95,10 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
     """
     _MUTABLE_INPUT_DATA = True
 
-    def __init__(self, encoder: nn.Module, decoder: nn.Module, optimizer='Adam', learning_rate=3e-4, device='cpu'):
+    def __init__(self, encoder: "torch.nn.Module", decoder: "torch.nn.Module",
+                 optimizer='Adam', learning_rate=3e-4, device='cpu'):
+        import torch.nn as nn
+
         super().__init__()
         self.device = device
         self._encoder = encoder.to(self.device)
@@ -110,7 +109,7 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
         self._train_losses = []
         self._val_losses = []
 
-    def evaluate_loss(self, x: torch.Tensor, y: torch.Tensor):
+    def evaluate_loss(self, x: "torch.Tensor", y: "torch.Tensor"):
         r""" Evaluates the loss based on input tensors.
 
         Parameters
@@ -144,7 +143,8 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
         """
         return np.array(self._val_losses)
 
-    def fit(self, data_loader: DataLoader, n_epochs: int = 5, validation_loader: Optional[DataLoader] = None, **kwargs):
+    def fit(self, data_loader: "torch.utils.data.DataLoader", n_epochs: int = 5,
+            validation_loader: Optional["torch.utils.data.DataLoader"] = None, **kwargs):
         r""" Fits the encoder and decoder based on data. Note that a call to fit does not reset the weights in the
         networks that are currently in :attr:`encoder` and :attr:`decoder`.
 
@@ -165,6 +165,7 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
         self : TAE
             Reference to self.
         """
+        import torch
         step = 0
         for epoch in range(n_epochs):
 
@@ -215,7 +216,8 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
         return TAEModel(deepcopy(self._encoder), deepcopy(self._decoder), device=self.device, dtype=self.dtype)
 
 
-def _reparameterize(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+def _reparameterize(mu, logvar):
+    import torch
     std = torch.exp(0.5 * logvar)
     eps = torch.randn_like(std)
     return eps * std + mu
@@ -229,7 +231,7 @@ class TVAEModel(TAEModel):
     --------
     TAEModel
     """
-    def _encode(self, x: torch.Tensor):
+    def _encode(self, x: "torch.Tensor"):
         return _reparameterize(*self.encoder(x))
 
 
@@ -245,7 +247,10 @@ class TVAEEncoder(MLP):
         The nonlinearity to use. Callable must produce a `torch.nn.Module` which implements the nonlinear operation.
     """
 
-    def __init__(self, units: List[int], nonlinearity=nn.ELU):
+    def __init__(self, units: List[int], nonlinearity=None):
+        import torch.nn as nn
+        if nonlinearity is None:
+            nonlinearity = nn.ELU
         super().__init__(units[:-1], nonlinearity=nonlinearity, initial_batchnorm=False,
                          output_nonlinearity=nonlinearity)
         lat_in = units[-2]
@@ -267,12 +272,12 @@ class TVAE(TAE):
     TAE
     TVAEModel
     """
-    def __init__(self, encoder: nn.Module, decoder: nn.Module, optimizer='Adam', learning_rate: float = 5e-4,
-                 beta: float = 1.):
+    def __init__(self, encoder: "torch.nn.Module", decoder: "torch.nn.Module", optimizer='Adam',
+                 learning_rate: float = 5e-4, beta: float = 1.):
         super().__init__(encoder, decoder, optimizer=optimizer, learning_rate=learning_rate)
         self._beta = beta
 
-    def evaluate_loss(self, x: torch.Tensor, y: torch.Tensor):
+    def evaluate_loss(self, x: "torch.Tensor", y: "torch.Tensor"):
         r""" Evaluates the reconstruction loss and latent regularization loss, returns the sum.
 
         Parameters
@@ -287,6 +292,7 @@ class TVAE(TAE):
         loss : torch.nn.Tensor
             The loss.
         """
+        import torch
         mu, logvar = self._encoder(x)
         z = _reparameterize(mu, logvar)
         y_hat = self._decoder(z)
