@@ -96,7 +96,7 @@ sym_inverse.valid_modes = ('trunc', 'regularize', 'clamp')
 
 
 def koopman_matrix(x: "torch.Tensor", y: "torch.Tensor", epsilon: float = 1e-6, mode: str = 'trunc',
-                   c_xx: Optional[Tuple["torch.Tensor", "torch.Tensor", "torch.Tensor"]] = None) -> "torch.Tensor"":
+                   c_xx: Optional[Tuple["torch.Tensor", "torch.Tensor", "torch.Tensor"]] = None) -> "torch.Tensor":
     r""" Computes the Koopman matrix
 
     .. math:: K = C_{00}^{-1/2}C_{0t}C_{tt}^{-1/2}
