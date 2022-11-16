@@ -141,7 +141,7 @@ class CheckpointManager:
         assert value in ('min', 'max'), f"Unknown mode {value}, supported are min and max."
         self._best_metric_mode = value
 
-    def step(self, step: int, metric_value: float, models: Dict[str, torch.nn.Module]):
+    def step(self, step: int, metric_value: float, models: Dict[str, "torch.nn.Module"]):
         r""" Records a step in the checkpoint manager. This automatically prunes old checkpoints according to
         :meth:`max_n_checkpoints`.
 
@@ -163,7 +163,7 @@ class CheckpointManager:
                 self._make_checkpoint(step, models, self._output_dir / f"best.ckpt")
 
     @staticmethod
-    def _make_checkpoint(step, models: Dict[str, torch.nn.Module], outfile: Path):
+    def _make_checkpoint(step, models: Dict[str, "torch.nn.Module"], outfile: Path):
         r""" Makes the actual checkpoint. """
         save_dict = {k: v.state_dict() for k, v in models.items()}
         save_dict['step'] = step
