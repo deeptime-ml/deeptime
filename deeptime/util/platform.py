@@ -1,6 +1,20 @@
 import warnings
 
 
+def try_import(modname: str):
+    r""" Tries to import given module and returns `None` if it is not available or could not be imported for another
+    reason. """
+    try:
+        import importlib
+        return importlib.import_module(modname)
+    except ImportError:
+        pass
+    except BaseException as e:
+        warnings.warn(f"There was a problem importing {modname}, treating it as unavailable. Stacktrace: {e}",
+                      RuntimeWarning)
+    return None
+
+
 def module_available(modname: str) -> bool:
     r"""Checks whether a module is installed and available for import by the current interpreter.
 
@@ -14,15 +28,7 @@ def module_available(modname: str) -> bool:
     available: bool
         Whether the module is available.
     """
-    try:
-        __import__(modname)
-        return True
-    except ImportError:
-        return False
-    except BaseException as e:
-        warnings.warn(f"There was a problem importing {modname}, treating it as unavailable. Stacktrace: {e}",
-                      RuntimeWarning)
-        return False
+    return try_import(modname) is not None
 
 
 def handle_progress_bar(progress):
@@ -46,6 +52,7 @@ def handle_progress_bar(progress):
                 self.n = 0
 
             def __enter__(self): return self
+
             def __exit__(self, exc_type, exc_val, exc_tb): return False
 
             def __iter__(self):
@@ -53,7 +60,9 @@ def handle_progress_bar(progress):
                     yield x
 
             def update(self, *_): pass
+
             def close(self): pass
+
             def set_description(self, *_): pass
 
     return progress

@@ -1,16 +1,18 @@
 from typing import Optional, Union, Callable, Tuple
 
 import numpy as np
-import torch
-import torch.nn as nn
 
 from ...base import Model, Transformer, EstimatorTransformer
+from ...util.platform import try_import
+
+torch = try_import('torch')
+
 from ...base_torch import DLEstimatorMixin
 from ...util.torch import map_data, eigh, multi_dot, disable_TF32
 
 
 def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True) \
-        -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        -> Tuple["torch.Tensor", Optional["torch.Tensor"]]:
     r""" Solves a eigenvector/eigenvalue decomposition for a hermetian matrix also if it is rank deficient.
 
     Parameters
@@ -95,8 +97,8 @@ def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'
 sym_inverse.valid_modes = ('trunc', 'regularize', 'clamp')
 
 
-def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode: str = 'trunc',
-                   c_xx: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = None) -> torch.Tensor:
+def koopman_matrix(x: "torch.Tensor", y: "torch.Tensor", epsilon: float = 1e-6, mode: str = 'trunc',
+                   c_xx: Optional[Tuple["torch.Tensor", "torch.Tensor", "torch.Tensor"]] = None) -> "torch.Tensor":
     r""" Computes the Koopman matrix
 
     .. math:: K = C_{00}^{-1/2}C_{0t}C_{tt}^{-1/2}
@@ -130,7 +132,7 @@ def koopman_matrix(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-6, mode
     return multi_dot([c00_sqrt_inv, c0t, ctt_sqrt_inv]).t()
 
 
-def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
+def covariances(x: "torch.Tensor", y: "torch.Tensor", remove_mean: bool = True):
     """Computes instantaneous and time-lagged covariances matrices.
 
     Parameters
@@ -156,7 +158,6 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
     deeptime.covariance.Covariance : Estimator yielding these kind of covariance matrices based on raw numpy arrays
                                      using an online estimation procedure.
     """
-
     assert x.shape == y.shape, "x and y must be of same shape"
     batch_size = x.shape[0]
 
@@ -178,7 +179,7 @@ def covariances(x: torch.Tensor, y: torch.Tensor, remove_mean: bool = True):
 valid_score_methods = ('VAMP1', 'VAMP2', 'VAMPE')
 
 
-def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6, mode='trunc'):
+def vamp_score(data: "torch.Tensor", data_lagged: "torch.Tensor", method='VAMP2', epsilon: float = 1e-6, mode='trunc'):
     r"""Computes the VAMP score based on data and corresponding time-shifted data.
 
     Parameters
@@ -234,7 +235,7 @@ def vamp_score(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', ep
     return 1 + out
 
 
-def vampnet_loss(data: torch.Tensor, data_lagged: torch.Tensor, method='VAMP2', epsilon: float = 1e-6,
+def vampnet_loss(data: "torch.Tensor", data_lagged: "torch.Tensor", method='VAMP2', epsilon: float = 1e-6,
                  mode: str = 'trunc'):
     r"""Loss function that can be used to train VAMPNets. It evaluates as :math:`-\mathrm{score}`. The score
     is implemented in :meth:`score`."""
@@ -262,7 +263,7 @@ class VAMPNetModel(Transformer, Model):
     VAMPNet : The corresponding estimator.
     """
 
-    def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
+    def __init__(self, lobe: "torch.nn.Module", lobe_timelagged: Optional["torch.nn.Module"] = None,
                  dtype=np.float32, device=None):
         super().__init__()
         self._lobe = lobe
@@ -278,7 +279,7 @@ class VAMPNetModel(Transformer, Model):
         self._device = device
 
     @property
-    def lobe(self) -> nn.Module:
+    def lobe(self) -> "torch.nn.Module":
         r""" The instantaneous lobe.
 
         Returns
@@ -288,7 +289,7 @@ class VAMPNetModel(Transformer, Model):
         return self._lobe
 
     @property
-    def lobe_timelagged(self) -> nn.Module:
+    def lobe_timelagged(self) -> "torch.nn.Module":
         r""" The timelagged lobe. Might be equal to :attr:`lobe`.
 
         Returns
@@ -370,7 +371,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
     """
     _MUTABLE_INPUT_DATA = True
 
-    def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
+    def __init__(self, lobe: "torch.nn.Module", lobe_timelagged: Optional["torch.nn.Module"] = None,
                  device=None, optimizer: Union[str, Callable] = 'Adam', learning_rate: float = 5e-4,
                  score_method: str = 'VAMP2', score_mode: str = 'regularize', epsilon: float = 1e-6,
                  dtype=np.float32):
@@ -437,7 +438,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         self._score_method = value
 
     @property
-    def lobe(self) -> nn.Module:
+    def lobe(self) -> "torch.nn.Module":
         r""" The instantaneous lobe of the VAMPNet.
 
         :getter: Gets the instantaneous lobe.
@@ -447,7 +448,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         return self._lobe
 
     @lobe.setter
-    def lobe(self, value: nn.Module):
+    def lobe(self, value: "torch.nn.Module"):
         self._lobe = value
         if self.dtype == np.float32:
             self._lobe = self._lobe.float()
@@ -456,7 +457,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         self._lobe = self._lobe.to(device=self.device)
 
     @property
-    def lobe_timelagged(self) -> nn.Module:
+    def lobe_timelagged(self) -> "torch.nn.Module":
         r""" The timelagged lobe of the VAMPNet.
 
         :getter: Gets the timelagged lobe. Can be the same a the instantaneous lobe.
@@ -466,7 +467,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         return self._lobe_timelagged
 
     @lobe_timelagged.setter
-    def lobe_timelagged(self, value: Optional[nn.Module]):
+    def lobe_timelagged(self, value: Optional["torch.nn.Module"]):
         if value is None:
             value = self.lobe
         else:
@@ -477,7 +478,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         self._lobe_timelagged = value
         self._lobe_timelagged = self._lobe_timelagged.to(device=self.device)
 
-    def partial_fit(self, data, train_score_callback: Callable[[int, torch.Tensor], None] = None):
+    def partial_fit(self, data, train_score_callback: Callable[[int, "torch.Tensor"], None] = None):
         r""" Performs a partial fit on data. This does not perform any batching.
 
         Parameters
@@ -530,7 +531,7 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
 
         return self
 
-    def validate(self, validation_data: Tuple[torch.Tensor]) -> torch.Tensor:
+    def validate(self, validation_data: Tuple["torch.Tensor"]) -> "torch.Tensor":
         r""" Evaluates the currently set lobe(s) on validation data and returns the value of the configured score.
 
         Parameters
@@ -553,9 +554,9 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
                 score_value = vamp_score(val, val_t, method=self.score_method, mode=self.score_mode, epsilon=self.epsilon)
                 return score_value
 
-    def fit(self, data_loader: torch.utils.data.DataLoader, n_epochs=1, validation_loader=None,
-            train_score_callback: Callable[[int, torch.Tensor], None] = None,
-            validation_score_callback: Callable[[int, torch.Tensor], None] = None,
+    def fit(self, data_loader: "torch.utils.data.DataLoader", n_epochs=1, validation_loader=None,
+            train_score_callback: Callable[[int, "torch.Tensor"], None] = None,
+            validation_score_callback: Callable[[int, "torch.Tensor"], None] = None,
             progress=None, **kwargs):
         r""" Fits a VampNet on data.
 

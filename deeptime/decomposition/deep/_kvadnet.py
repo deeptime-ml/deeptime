@@ -1,4 +1,3 @@
-import torch
 from . import _vampnet as vnet
 from ...kernels import Kernel, GaussianKernel, is_torch_kernel
 from ...util.torch import multi_dot
@@ -12,6 +11,8 @@ def whiten(data, epsilon=1e-6, mode='regularize'):
 
 
 def gramian(y, kernel):
+    import torch
+
     with torch.no_grad():
         if is_torch_kernel(kernel):
             g_yy = kernel.gram(y)
@@ -22,6 +23,8 @@ def gramian(y, kernel):
 
 
 def kvad_score(chi_x, y, kernel: Kernel = GaussianKernel(1.), epsilon=1e-6, mode='regularize'):
+    import torch
+
     G = gramian(y, kernel)
 
     N = y.shape[0]

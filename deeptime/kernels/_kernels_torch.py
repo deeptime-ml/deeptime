@@ -1,11 +1,12 @@
 from typing import Union
 
 import numpy as np
-import torch
-
 from . import GaussianKernel
+from ..util.platform import try_import
 
-TensorOrArray = Union[np.ndarray, torch.Tensor]
+torch = try_import("torch")
+
+TensorOrArray = Union[np.ndarray, "torch.Tensor"]
 
 
 class TorchGaussianKernel(GaussianKernel):
@@ -37,7 +38,7 @@ class TorchGaussianKernel(GaussianKernel):
         ).add_(x1_norm).clamp_min_(1e-16)
         return res
 
-    def apply_torch(self, data_1: torch.Tensor, data_2: torch.Tensor):
+    def apply_torch(self, data_1: "torch.Tensor", data_2: "torch.Tensor"):
         distance_matrix = TorchGaussianKernel.cdist(data_1, data_2)
         return torch.exp(-distance_matrix / (2. * self.sigma ** 2))
 
