@@ -3,6 +3,10 @@ from typing import Optional, Union, Callable, Tuple
 import numpy as np
 
 from ...base import Model, Transformer, EstimatorTransformer
+from ...util.platform import try_import
+
+torch = try_import('torch')
+
 from ...base_torch import DLEstimatorMixin
 from ...util.torch import map_data, eigh, multi_dot, disable_TF32
 
@@ -29,7 +33,6 @@ def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True)
     (eigval, eigvec) : Tuple[torch.Tensor, Optional[torch.Tensor]]
         Eigenvalues and -vectors.
     """
-    import torch
     assert mode in sym_inverse.valid_modes, f"Invalid mode {mode}, supported are {sym_inverse.valid_modes}"
 
     if mode == 'regularize':
@@ -79,7 +82,6 @@ def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'
     x_inv: numpy array with shape [m,m]
         inverse of the original matrix
     """
-    import torch
     eigval, eigvec = symeig_reg(mat, epsilon, mode)
 
     # Build the diagonal matrix with the filtered eigenvalues or square
@@ -156,7 +158,6 @@ def covariances(x: "torch.Tensor", y: "torch.Tensor", remove_mean: bool = True):
     deeptime.covariance.Covariance : Estimator yielding these kind of covariance matrices based on raw numpy arrays
                                      using an online estimation procedure.
     """
-    import torch
     assert x.shape == y.shape, "x and y must be of same shape"
     batch_size = x.shape[0]
 
@@ -200,7 +201,6 @@ def vamp_score(data: "torch.Tensor", data_lagged: "torch.Tensor", method='VAMP2'
         The score. It contains a contribution of :math:`+1` for the constant singular function since the
         internally estimated Koopman operator is defined on a decorrelated basis set.
     """
-    import torch
     assert method in valid_score_methods, f"Invalid method '{method}', supported are {valid_score_methods}"
     assert data.shape == data_lagged.shape, f"Data and data_lagged must be of same shape but were {data.shape} " \
                                             f"and {data_lagged.shape}."
@@ -263,7 +263,7 @@ class VAMPNetModel(Transformer, Model):
     VAMPNet : The corresponding estimator.
     """
 
-    def __init__(self, lobe: nn.Module, lobe_timelagged: Optional[nn.Module] = None,
+    def __init__(self, lobe: "torch.nn.Module", lobe_timelagged: Optional["torch.nn.Module"] = None,
                  dtype=np.float32, device=None):
         super().__init__()
         self._lobe = lobe
@@ -494,7 +494,6 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         self : VAMPNet
             Reference to self.
         """
-        import torch
 
         if self.dtype == np.float32:
             self._lobe = self._lobe.float()
@@ -545,7 +544,6 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         score : torch.Tensor
             The value of the score.
         """
-        import torch
         with disable_TF32():
             self.lobe.eval()
             self.lobe_timelagged.eval()
@@ -588,7 +586,6 @@ class VAMPNet(EstimatorTransformer, DLEstimatorMixin):
         self : VAMPNet
             Reference to self.
         """
-        import torch
         from deeptime.util.platform import handle_progress_bar
         progress = handle_progress_bar(progress)
         self._step = 0

@@ -4,8 +4,10 @@ import numpy as np
 
 from ...base import Transformer, Model, EstimatorTransformer
 from ...base_torch import DLEstimatorMixin
+from ...util.platform import try_import
 from ...util.torch import map_data, MLP
 
+torch = try_import("torch")
 
 class TAEModel(Model, Transformer):
     r""" Model produced by time-lagged autoencoders. Contains the encoder, decoder, and can transform data to
@@ -165,7 +167,6 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
         self : TAE
             Reference to self.
         """
-        import torch
         step = 0
         for epoch in range(n_epochs):
 
@@ -217,7 +218,6 @@ class TAE(EstimatorTransformer, DLEstimatorMixin):
 
 
 def _reparameterize(mu, logvar):
-    import torch
     std = torch.exp(0.5 * logvar)
     eps = torch.randn_like(std)
     return eps * std + mu
@@ -292,7 +292,6 @@ class TVAE(TAE):
         loss : torch.nn.Tensor
             The loss.
         """
-        import torch
         mu, logvar = self._encoder(x)
         z = _reparameterize(mu, logvar)
         y_hat = self._decoder(z)

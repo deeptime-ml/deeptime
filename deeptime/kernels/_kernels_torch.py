@@ -2,6 +2,9 @@ from typing import Union
 
 import numpy as np
 from . import GaussianKernel
+from ..util.platform import try_import
+
+torch = try_import("torch")
 
 TensorOrArray = Union[np.ndarray, "torch.Tensor"]
 
@@ -16,7 +19,6 @@ class TorchGaussianKernel(GaussianKernel):
     """
 
     def __init__(self, sigma):
-        import torch
         np_sigma = sigma
         if isinstance(np_sigma, torch.Tensor):
             np_sigma = sigma.detach().cpu().numpy()
@@ -26,7 +28,6 @@ class TorchGaussianKernel(GaussianKernel):
 
     @staticmethod
     def cdist(x1, x2):
-        import torch
         x1_norm = x1.pow(2).sum(dim=-1, keepdim=True)
         x2_norm = x2.pow(2).sum(dim=-1, keepdim=True)
         res = torch.addmm(
@@ -38,12 +39,10 @@ class TorchGaussianKernel(GaussianKernel):
         return res
 
     def apply_torch(self, data_1: "torch.Tensor", data_2: "torch.Tensor"):
-        import torch
         distance_matrix = TorchGaussianKernel.cdist(data_1, data_2)
         return torch.exp(-distance_matrix / (2. * self.sigma ** 2))
 
     def _evaluate(self, x, y) -> TensorOrArray:
-        import torch
         if isinstance(x, torch.Tensor) and isinstance(y, torch.Tensor):
             dxy_squared = torch.pow(x - y, 2).sum(-1).clamp_min_(0.)
             return torch.exp(-dxy_squared / (2. * self.sigma ** 2))
@@ -54,7 +53,6 @@ class TorchGaussianKernel(GaussianKernel):
             return np.array(out)
 
     def apply(self, data_1: TensorOrArray, data_2: TensorOrArray) -> TensorOrArray:
-        import torch
         if isinstance(data_1, np.ndarray) and isinstance(data_2, np.ndarray):
             return super().apply(data_1, data_2)
         elif isinstance(data_1, torch.Tensor) and isinstance(data_2, torch.Tensor):

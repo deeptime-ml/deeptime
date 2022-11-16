@@ -2,6 +2,9 @@ from typing import Callable, Union, List, Optional
 
 import numpy as np
 
+from deeptime.util.platform import try_import
+
+torch = try_import("torch")
 
 class DLEstimatorMixin:
     r""" Estimator subclass which offers some deep-learning estimators commonly used functionality.
@@ -72,7 +75,6 @@ class DLEstimatorMixin:
         parameters : list of parameters
             The parameters
         """
-        import torch
         unique_params = list(set(parameters))
         if isinstance(kind, str):
             known_optimizers = {'Adam': torch.optim.Adam, 'SGD': torch.optim.SGD, 'RMSprop': torch.optim.RMSprop}

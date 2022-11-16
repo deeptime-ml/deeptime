@@ -1,19 +1,12 @@
-from deeptime.util.platform import module_available
+from deeptime.util.platform import try_import
 
-if not module_available("torch"):
-    raise ValueError("Importing this module is only possible with a working installation of PyTorch.")
-del module_available
+torch = try_import("torch")
+nn = try_import("torch.nn")
 
 import numpy as np
 
 from pathlib import Path
 from typing import List, Dict, Optional
-
-try:
-    import torch
-    import torch.nn as nn
-except ImportError:
-    pass
 
 
 def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:
