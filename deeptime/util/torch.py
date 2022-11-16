@@ -222,7 +222,7 @@ class Stats:
         self._group = group
         self._items = items
 
-    def add(self, data: List[torch.Tensor]):
+    def add(self, data: List["torch.Tensor"]):
         r""" Adds data to the statistics.
 
         Parameters
@@ -306,6 +306,10 @@ class disable_TF32(object):
 
 
 # wrappers for older pytorch versions that lack linalg module
-eigh = torch.linalg.eigh if hasattr(torch, 'linalg') else lambda x: torch.symeig(x, eigenvectors=True)
-multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else \
-    lambda args: torch.chain_matmul(*args)
+if torch is not None:
+    eigh = torch.linalg.eigh if hasattr(torch, 'linalg') else lambda x: torch.symeig(x, eigenvectors=True)
+    multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else \
+        lambda args: torch.chain_matmul(*args)
+else:
+    eigh = None
+    multi_dot = None
