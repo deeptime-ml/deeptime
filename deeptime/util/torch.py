@@ -44,8 +44,9 @@ class MLP(nn.Module if nn is not None else object):
     ----------
     units : list of int
         The units of the fully connected layers.
-    nonlinearity : callable, default=torch.nn.ELU
+    nonlinearity : callable, default=None
         A callable (like a constructor) which yields an instance of a particular activation function.
+        Defaults to ELU.
     initial_batchnorm : bool, default=True
         Whether to use batch normalization before the data enters the rest of the network.
     output_nonlinearity : callable, default=None
@@ -54,9 +55,11 @@ class MLP(nn.Module if nn is not None else object):
         The callable should take no arguments and produce an object of type :code:`torch.nn.Module`.
     """
 
-    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = False,
+    def __init__(self, units: List[int], nonlinearity=None, initial_batchnorm: bool = False,
                  output_nonlinearity=None):
         super().__init__()
+        if nonlinearity is None:
+            nonlinearity = nn.ELU
         if len(units) > 1:
             layers = []
             if initial_batchnorm:
