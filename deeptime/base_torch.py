@@ -1,8 +1,10 @@
 from typing import Callable, Union, List, Optional
 
 import numpy as np
-import torch
 
+from deeptime.util.platform import try_import
+
+torch = try_import("torch")
 
 class DLEstimatorMixin:
     r""" Estimator subclass which offers some deep-learning estimators commonly used functionality.
@@ -52,7 +54,7 @@ class DLEstimatorMixin:
         self._dtype = value
 
     @property
-    def optimizer(self) -> Optional[torch.optim.Optimizer]:
+    def optimizer(self) -> Optional["torch.optim.Optimizer"]:
         r""" The optimizer that is used.
 
         :getter: Gets the currently configured optimizer.

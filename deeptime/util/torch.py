@@ -1,19 +1,15 @@
-from deeptime.util.platform import module_available
+from deeptime.util.platform import try_import, module_available
 
-if not module_available("torch"):
-    raise ValueError("Importing this module is only possible with a working installation of PyTorch.")
-del module_available
+torch = try_import("torch")
+nn = try_import("torch.nn")
 
 import numpy as np
 
 from pathlib import Path
 from typing import List, Dict, Optional
 
-import torch
-import torch.nn as nn
 
-
-def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:
+def map_data(data, device=None, dtype=np.float32) -> List["torch.Tensor"]:
     r""" Maps data (or list/tuple of data) to torch tensors of a specific dtype and device.
 
     Parameters
@@ -41,15 +37,16 @@ def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:
             yield x
 
 
-class MLP(nn.Module):
+class MLP(nn.Module if nn is not None else object):
     r""" A multilayer perceptron which can, e.g., be used as a neural network lobe for VAMPNets.
 
     Parameters
     ----------
     units : list of int
         The units of the fully connected layers.
-    nonlinearity : callable, default=torch.nn.ELU
+    nonlinearity : callable, default=None
         A callable (like a constructor) which yields an instance of a particular activation function.
+        Defaults to ELU.
     initial_batchnorm : bool, default=True
         Whether to use batch normalization before the data enters the rest of the network.
     output_nonlinearity : callable, default=None
@@ -58,9 +55,11 @@ class MLP(nn.Module):
         The callable should take no arguments and produce an object of type :code:`torch.nn.Module`.
     """
 
-    def __init__(self, units: List[int], nonlinearity=nn.ELU, initial_batchnorm: bool = False,
+    def __init__(self, units: List[int], nonlinearity=None, initial_batchnorm: bool = False,
                  output_nonlinearity=None):
         super().__init__()
+        if nonlinearity is None:
+            nonlinearity = nn.ELU
         if len(units) > 1:
             layers = []
             if initial_batchnorm:
@@ -142,7 +141,7 @@ class CheckpointManager:
         assert value in ('min', 'max'), f"Unknown mode {value}, supported are min and max."
         self._best_metric_mode = value
 
-    def step(self, step: int, metric_value: float, models: Dict[str, torch.nn.Module]):
+    def step(self, step: int, metric_value: float, models: Dict[str, "torch.nn.Module"]):
         r""" Records a step in the checkpoint manager. This automatically prunes old checkpoints according to
         :meth:`max_n_checkpoints`.
 
@@ -164,7 +163,7 @@ class CheckpointManager:
                 self._make_checkpoint(step, models, self._output_dir / f"best.ckpt")
 
     @staticmethod
-    def _make_checkpoint(step, models: Dict[str, torch.nn.Module], outfile: Path):
+    def _make_checkpoint(step, models: Dict[str, "torch.nn.Module"], outfile: Path):
         r""" Makes the actual checkpoint. """
         save_dict = {k: v.state_dict() for k, v in models.items()}
         save_dict['step'] = step
@@ -193,13 +192,15 @@ class Stats:
     r""" Object that collects training statistics in a certain group. This can be used to track, e.g., loss values
     and validation values.
 
-    >>> stats = Stats(group='train', items=['loss1', 'loss2'])
+    >>> if module_available("torch"):
+    ...     stats = Stats(group='train', items=['loss1', 'loss2'])
 
     Adding some artificial data (first list element belongs to loss1, second to loss2).
     This could be recording the loss during an epoch of training.
-    >>> stats.add([torch.tensor(1.), torch.tensor(1.)])
-    >>> stats.add([torch.tensor(2.), torch.tensor(2.)])
-    >>> stats.add([torch.tensor(3.), torch.tensor(3.)])
+    >>> if module_available("torch"):
+    ...     stats.add([torch.tensor(1.), torch.tensor(1.)])
+    ...     stats.add([torch.tensor(2.), torch.tensor(2.)])
+    ...     stats.add([torch.tensor(3.), torch.tensor(3.)])
 
     After the epoch, the mean value of the collected stats can be written using a tensorboard summary writer:
 
@@ -223,7 +224,7 @@ class Stats:
         self._group = group
         self._items = items
 
-    def add(self, data: List[torch.Tensor]):
+    def add(self, data: List["torch.Tensor"]):
         r""" Adds data to the statistics.
 
         Parameters
@@ -307,6 +308,10 @@ class disable_TF32(object):
 
 
 # wrappers for older pytorch versions that lack linalg module
-eigh = torch.linalg.eigh if hasattr(torch, 'linalg') else lambda x: torch.symeig(x, eigenvectors=True)
-multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else \
-    lambda args: torch.chain_matmul(*args)
+if torch is not None:
+    eigh = torch.linalg.eigh if hasattr(torch, 'linalg') else lambda x: torch.symeig(x, eigenvectors=True)
+    multi_dot = torch.linalg.multi_dot if hasattr(torch, 'linalg') and hasattr(torch.linalg, 'multi_dot') else \
+        lambda args: torch.chain_matmul(*args)
+else:
+    eigh = None
+    multi_dot = None
