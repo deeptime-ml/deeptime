@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 
-def map_data(data, device=None, dtype=np.float32) -> List[torch.Tensor]:
+def map_data(data, device=None, dtype=np.float32) -> List["torch.Tensor"]:
     r""" Maps data (or list/tuple of data) to torch tensors of a specific dtype and device.
 
     Parameters
