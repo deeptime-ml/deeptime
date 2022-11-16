@@ -37,7 +37,7 @@ def map_data(data, device=None, dtype=np.float32) -> List["torch.Tensor"]:
             yield x
 
 
-class MLP(nn.Module):
+class MLP(nn.Module if nn is not None else object):
     r""" A multilayer perceptron which can, e.g., be used as a neural network lobe for VAMPNets.
 
     Parameters

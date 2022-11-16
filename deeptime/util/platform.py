@@ -5,7 +5,8 @@ def try_import(modname: str):
     r""" Tries to import given module and returns `None` if it is not available or could not be imported for another
     reason. """
     try:
-        return __import__(modname)
+        import importlib
+        return importlib.import_module(modname)
     except ImportError:
         pass
     except BaseException as e:
