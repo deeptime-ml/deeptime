@@ -1,4 +1,4 @@
-from deeptime.util.platform import try_import
+from deeptime.util.platform import try_import, module_available
 
 torch = try_import("torch")
 nn = try_import("torch.nn")
@@ -192,13 +192,15 @@ class Stats:
     r""" Object that collects training statistics in a certain group. This can be used to track, e.g., loss values
     and validation values.
 
-    >>> stats = Stats(group='train', items=['loss1', 'loss2'])
+    >>> if module_available("torch"):
+    ...     stats = Stats(group='train', items=['loss1', 'loss2'])
 
     Adding some artificial data (first list element belongs to loss1, second to loss2).
     This could be recording the loss during an epoch of training.
-    >>> stats.add([torch.tensor(1.), torch.tensor(1.)])
-    >>> stats.add([torch.tensor(2.), torch.tensor(2.)])
-    >>> stats.add([torch.tensor(3.), torch.tensor(3.)])
+    >>> if module_available("torch"):
+    ...     stats.add([torch.tensor(1.), torch.tensor(1.)])
+    ...     stats.add([torch.tensor(2.), torch.tensor(2.)])
+    ...     stats.add([torch.tensor(3.), torch.tensor(3.)])
 
     After the epoch, the mean value of the collected stats can be written using a tensorboard summary writer:
 
