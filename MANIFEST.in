@@ -1,4 +1,3 @@
-include versioneer.py
 include deeptime/_version.py
 include LICENSE.txt
 include pyproject.toml

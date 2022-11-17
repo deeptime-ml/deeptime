@@ -80,7 +80,7 @@ requires = [
     "tomli; python_version < '3.11'",
     "scipy==1.9.3",
     "ninja; platform_system!='Windows'",
-    "versioneer[toml]"
+    "versioneer[toml]==0.28"
 ]
 build-backend = "setuptools.build_meta"
 
