@@ -36,11 +36,11 @@ documentation = "https://deeptime-ml.github.io"
 download = "https://pypi.org/project/deeptime/#files"
 
 [project.optional-dependencies]
-deep-learning = ['pytorch']
+deep-learning = ['torch']
 plotting = ['matplotlib', 'networkx']
 units = ['pint>=0.20']
 tests = [
-    'torch>=1.12.0; platform_system!="Darwin" or python_version!="3.11"',
+    'torch>=1.12.0; platform_system!="Darwin" and python_version<"3.11"',
     'pytest==7.1.2',
     'pytest-cov==3.0.0',
     'coverage[toml]',
