@@ -39,7 +39,7 @@ def tests(session: nox.Session) -> None:
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
-        session.install("-e", ".[tests]", '-v', silent=False)
+        session.install("-e", ".[tests,plotting,units]", '-v', silent=False)
 
         if 'lldb_torch_setup' in session.posargs:
             session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
@@ -71,8 +71,7 @@ def tests(session: nox.Session) -> None:
 def make_docs(session: nox.Session) -> None:
     setup_environment(session)
     if not session.posargs or 'noinstall' not in session.posargs:
-        session.install("-e", ".[tests]", '-v', silent=False)
-        session.install("-r", "docs/requirements.txt")
+        session.install("-e", ".[tests,docs]", '-v', silent=False)
     session.chdir("docs")
     if session.posargs and 'clean' in session.posargs:
         session.log("First run clean")
