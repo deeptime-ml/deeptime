@@ -77,7 +77,7 @@ requires = [
     "pybind11>=2.10.1",
     "numpy>=1.20",
     "cmake>=3.24",
-    "toml==0.10.2",
+    "tomli; python_version < '3.11'",
     "scipy==1.9.3",
     "ninja; platform_system!='Windows'",
     "versioneer[toml]"

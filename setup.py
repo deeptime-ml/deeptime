@@ -4,7 +4,7 @@ import os
 import sys
 
 from setuptools import find_namespace_packages
-import toml
+import tomli
 
 sys.path.insert(0, os.path.dirname(__file__))
 import versioneer
@@ -18,7 +18,8 @@ except ImportError:
     )
     raise
 
-pyproject = toml.load("pyproject.toml")
+with open('pyproject.toml', 'rb') as f:
+    pyproject = tomli.load(f)
 
 
 def load_long_description():
