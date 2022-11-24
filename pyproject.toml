@@ -7,7 +7,7 @@ keywords = [
     "koopman-operator", "coherent-set-detection"
 ]
 authors = [
-    {name = 'Moritz Hoffmann', email = 'moritz.hoffmann@fu-berlin.de'},
+    {name = 'Moritz Hoffmann'},
     {name = 'Martin Scherer'},
     {name = 'Tim Hempel'},
     {name = 'Andreas Mardt'},
@@ -36,9 +36,37 @@ documentation = "https://deeptime-ml.github.io"
 download = "https://pypi.org/project/deeptime/#files"
 
 [project.optional-dependencies]
-deep-learning = ['pytorch']
+deep-learning = ['torch']
 plotting = ['matplotlib', 'networkx']
 units = ['pint>=0.20']
+tests = [
+    'torch>=1.12.0; platform_system!="Darwin" and python_version<"3.11"',
+    'pytest==7.1.2',
+    'pytest-cov==3.0.0',
+    'coverage[toml]',
+    'pytest-xdist==2.5.0',
+    'flaky==3.7.0',
+    'tqdm==4.64.0',
+    "cython>=0.29.30",
+    "pybind11>=2.10.1",
+    "cmake>=3.24",
+    "ninja; platform_system!='Windows'"
+]
+docs = [
+    "sphinx",
+    "nbsphinx",
+    "sphinxcontrib-bibtex",
+    "matplotlib",
+    "networkx",
+    "sphinxcontrib-katex",
+    "sphinx-gallery",
+    "torch",
+    "memory_profiler",
+    "mdshare",
+    "nbconvert",
+    "jupyter",
+    "tqdm"
+]
 
 [build-system]
 requires = [
@@ -49,11 +77,30 @@ requires = [
     "pybind11>=2.10.1",
     "numpy>=1.20",
     "cmake>=3.24",
-    "toml==0.10.2",
+    "tomli; python_version < '3.11'",
     "scipy==1.9.3",
-    "ninja; platform_system!='Windows'"
+    "ninja; platform_system!='Windows'",
+    "versioneer[toml]==0.28"
 ]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 filterwarnings = ["once", "ignore::UserWarning"]
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "deeptime/_version.py"
+versionfile_build = "deeptime/_version.py"
+tag_prefix = "v"
+
+[tool.flake8]
+ignore = ['E24', 'E121', 'E123', 'E126', 'E226', 'E704', 'W503', 'W504']
+max-line-length = 120
+
+[tool.coverage.report]
+exclude_lines = ["@plotting_function", "pragma: no cover"]
+omit = ["*/**/setup.py", "tests/*", "deeptime/_version.py"]
+
+[tool.coverage.run]
+omit = ["*/**/setup.py", "tests/*", "*/**/*.pyx", "deeptime/_version.py"]

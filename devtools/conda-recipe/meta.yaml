@@ -13,6 +13,9 @@ requirements:
   build:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
+    - versioneer ==0.28
+    - cython
+    - scipy
 
   host:
     - python
@@ -25,6 +28,7 @@ requirements:
     - numpy >=1.14
     - pybind11 >=2.9.0
     - scikit-build
+    - versioneer ==0.28
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
 
