@@ -15,6 +15,7 @@ requirements:
     - {{ compiler('cxx') }}
     - versioneer ==0.28
     - cython
+    - scipy
 
   host:
     - python
