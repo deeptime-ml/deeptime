@@ -28,8 +28,7 @@ Using pip with a local clone and pulling dependencies:
 git clone https://github.com/deeptime-ml/deeptime.git
 
 cd deeptime
-pip install -r tests/requirements.txt
-pip install -e .
+pip install .
 ```
 
 Or using pip directly on the remote:
