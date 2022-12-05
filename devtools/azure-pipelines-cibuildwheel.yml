@@ -1,0 +1,77 @@
+trigger:
+  branches:
+    include:
+      - main
+
+jobs:
+  - job: linux
+    pool: { vmImage: 'Ubuntu-22.04' }
+    strategy:
+      matrix:
+        Python38:
+          python.version: '3.8'
+        Python39:
+          python.version: '3.9'
+        Python310:
+          python.version: '3.10'
+        Python311:
+          python.version: '3.11'
+    steps:
+      - task: UsePythonVersion@0
+      - bash: |
+          set -o errexit
+          python3 -m pip install --upgrade pip
+          pip3 install cibuildwheel
+        displayName: Install dependencies
+      - bash: cibuildwheel --output-dir wheelhouse .
+        displayName: Build wheels
+      - task: PublishBuildArtifacts@1
+        inputs: { pathtoPublish: 'wheelhouse' }
+
+  - job: macos
+    pool: { vmImage: 'macOS-12' }
+    strategy:
+      matrix:
+        Python38:
+          python.version: '3.8'
+        Python39:
+          python.version: '3.9'
+        Python310:
+          python.version: '3.10'
+        Python311:
+          python.version: '3.11'
+    steps:
+      - task: UsePythonVersion@0
+      - bash: |
+          set -o errexit
+          python3 -m pip install --upgrade pip
+          python3 -m pip install cibuildwheel
+        displayName: Install dependencies
+      - bash: cibuildwheel --output-dir wheelhouse .
+        displayName: Build wheels
+      - task: PublishBuildArtifacts@1
+        inputs: { pathtoPublish: wheelhouse }
+
+  - job: windows
+    pool: { vmImage: 'windows-2019' }
+    strategy:
+      matrix:
+        Python38:
+          python.version: '3.8'
+        Python39:
+          python.version: '3.9'
+        Python310:
+          python.version: '3.10'
+        Python311:
+          python.version: '3.11'
+    steps:
+      - task: UsePythonVersion@0
+      - bash: |
+          set -o errexit
+          python -m pip install --upgrade pip
+          pip install cibuildwheel
+        displayName: Install dependencies
+      - bash: cibuildwheel --output-dir wheelhouse .
+        displayName: Build wheels
+      - task: PublishBuildArtifacts@1
+        inputs: { pathtoPublish: 'wheelhouse' }
