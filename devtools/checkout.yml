@@ -2,3 +2,4 @@ steps:
 - checkout: self
   submodules: false
   displayName: 'checkout'
+  fetchTags: true

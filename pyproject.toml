@@ -104,3 +104,6 @@ omit = ["*/**/setup.py", "tests/*", "deeptime/_version.py"]
 
 [tool.coverage.run]
 omit = ["*/**/setup.py", "tests/*", "*/**/*.pyx", "deeptime/_version.py"]
+
+[tool.cibuildwheel]
+build-verbosity = 1
