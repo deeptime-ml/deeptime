@@ -9,12 +9,14 @@ trigger:
 jobs:
   - job: linux
     pool: { vmImage: 'Ubuntu-22.04' }
-    strategy:
-      matrix:
-        Python310:
-          python.version: '3.10'
+    variables:
+      CIBW_BUILD: cp3{8,9,10,11}-manylinux_x86_64
     steps:
       - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.8'
+          architecture: 'x64'
+        displayName: Use Python 3.8
       - bash: |
           set -o errexit
           python3 -m pip install --upgrade pip
@@ -27,12 +29,21 @@ jobs:
 
   - job: macos
     pool: { vmImage: 'macOS-12' }
+    variables:
+      CIBW_BUILD: cp3{8,9,10,11}-macosx_*
+      CIBW_ARCHS_MACOS: $(arch)
     strategy:
       matrix:
-        Python310:
-          python.version: '3.10'
+        x86_64:
+          arch: 'x86_64'
+        arm64:
+          arch: 'arm64'
     steps:
       - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.8'
+          architecture: 'x64'
+        displayName: Use Python 3.8
       - bash: |
           set -o errexit
           python3 -m pip install --upgrade pip
@@ -45,12 +56,14 @@ jobs:
 
   - job: windows
     pool: { vmImage: 'windows-2019' }
-    strategy:
-      matrix:
-        Python310:
-          python.version: '3.10'
+    variables:
+      CIBW_BUILD: cp3{8,9,10,11}-win_amd64
     steps:
       - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.8'
+          architecture: 'x64'
+        displayName: Use Python 3.8
       - bash: |
           set -o errexit
           python -m pip install --upgrade pip
