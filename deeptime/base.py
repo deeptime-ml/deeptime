@@ -3,19 +3,11 @@ from collections import defaultdict
 from inspect import signature
 from typing import Optional, List
 
-from sklearn.base import _pprint as pprint_sklearn
-
 
 class _BaseMethodsMixin(abc.ABC):
     """ Defines common methods used by both Estimator and Model classes. These are mostly static and low-level
     checking of conformity with respect to deeptime conventions.
     """
-
-    def __repr__(self):
-        name = '{cls}-{id}:'.format(id=id(self), cls=self.__class__.__name__)
-        return '{name}{params}]'.format(
-            name=name, params=pprint_sklearn(self.get_params(), offset=len(name), )
-        )
 
     def get_params(self, deep=False):
         r"""Get the parameters.
@@ -239,6 +231,7 @@ class BayesianModel(Model):
 
 class Observable:
     r""" Interface class of an observable that can be evaluated on a model. """
+
     def __call__(self, model, *args, **kw):
         raise NotImplementedError()
 
