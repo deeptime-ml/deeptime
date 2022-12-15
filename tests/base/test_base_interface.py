@@ -58,4 +58,9 @@ def test_mock_model():
     with assert_raises(ValueError):
         m.set_params(nope=33)
 
-    print(m)
+    representation = repr(m)
+    things_that_should_be_represented = [
+        "MockModel", "A", "a", "55", "p1", "1.0", "p2", "2.0", "p3", "3.0", "p4", "55"
+    ]
+    for s in things_that_should_be_represented:
+        assert_(s in representation)
