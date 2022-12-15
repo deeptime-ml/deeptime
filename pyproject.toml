@@ -49,6 +49,8 @@ tests = [
     'tqdm==4.64.0',
     "cython>=0.29.30",
     "pybind11>=2.10.1",
+    "networkx",
+    "matplotlib",
     "cmake>=3.24",
     "ninja; platform_system!='Windows'"
 ]

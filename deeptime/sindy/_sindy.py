@@ -409,7 +409,7 @@ class STLSQ(LinearRegression):
 
     def __init__(self, threshold=0.1, alpha=0.05, max_iter=20, ridge_kw=None, normalize=False, fit_intercept=False,
                  copy_X=True):
-        super().__init__(fit_intercept=fit_intercept, normalize=normalize, copy_X=copy_X)
+        super().__init__(fit_intercept=fit_intercept, copy_X=copy_X)
         self.threshold = threshold
         self.alpha = alpha
         self.max_iter = max_iter
