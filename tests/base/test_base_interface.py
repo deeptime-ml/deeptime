@@ -57,3 +57,5 @@ def test_mock_model():
 
     with assert_raises(ValueError):
         m.set_params(nope=33)
+
+    print(m)

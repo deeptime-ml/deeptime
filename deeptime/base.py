@@ -2,8 +2,7 @@ import abc
 from collections import defaultdict
 from inspect import signature
 from typing import Optional, List
-
-from sklearn.base import _pprint as pprint_sklearn
+from pprint import PrettyPrinter
 
 
 class _BaseMethodsMixin(abc.ABC):
@@ -12,10 +11,12 @@ class _BaseMethodsMixin(abc.ABC):
     """
 
     def __repr__(self):
+        pp = PrettyPrinter(indent=1, depth=2)
         name = '{cls}-{id}:'.format(id=id(self), cls=self.__class__.__name__)
-        return '{name}{params}]'.format(
-            name=name, params=pprint_sklearn(self.get_params(), offset=len(name), )
-        )
+        offset = "".join([' '] * len(name))
+        params = pp.pformat(self.get_params())
+        params = params.replace('\n', '\n' + offset)
+        return '{name}[{params}]'.format(name=name, params=params)
 
     def get_params(self, deep=False):
         r"""Get the parameters.
