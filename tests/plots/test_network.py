@@ -24,7 +24,7 @@ def test_network(labels, cmap):
 
     flux = MarkovStateModel(Psparse).reactive_flux([2], [3])
 
-    positions = nx.planar_layout(nx.from_scipy_sparse_matrix(flux.gross_flux))
+    positions = nx.planar_layout(nx.from_scipy_sparse_array(flux.gross_flux))
     pl = Network(flux.gross_flux, positions, edge_curvature=2., edge_labels=labels,
                  state_colors=np.linspace(0, 1, num=flux.n_states), cmap=cmap)
     ax = pl.plot()

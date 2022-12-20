@@ -56,7 +56,7 @@ def test_tram_different_input_data_types(dtrajs, ttrajs, bias_matrix_as_ndarray,
 
 
 def test_lagtime_too_long():
-    dtrajs = np.asarray([[0, 1, 0], [0, 1, 2, 1], [2, 3]])
+    dtrajs = np.asarray([[0, 1, 0], [0, 1, 2, 1], [2, 3]], dtype=object)
     bias_matrices = [np.random.rand(len(traj), 3) for traj in dtrajs]
     tram = TRAM(maxiter=100, lagtime=2)
     with np.testing.assert_raises(ValueError):
@@ -150,7 +150,7 @@ def to_numpy_arrays(dtrajs, bias_matrices, ttrajs):
         ttrajs = [np.asarray(traj) for traj in ttrajs]
 
     if not isinstance(bias_matrices, np.ndarray):
-        bias_matrices = [np.asarray(M) for M in bias_matrices]
+        bias_matrices = [np.asarray(M, dtype=object) for M in bias_matrices]
 
     return dtrajs, bias_matrices, ttrajs
 
