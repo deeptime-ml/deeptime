@@ -1,32 +1,10 @@
-trigger:
-  tags:
-    include:
-      - '*'
-  branches:
-    exclude:
-      - main
-
 jobs:
   - job: linux
     pool: { vmImage: 'Ubuntu-22.04' }
     variables:
       CIBW_BUILD: cp3{8,9,10,11}-manylinux_x86_64
     steps:
-      - template: devtools/checkout.yml
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.10'
-          architecture: 'x64'
-        displayName: Use Python 3.10
-      - bash: |
-          set -o errexit
-          python3 -m pip install --upgrade pip
-          pip3 install cibuildwheel
-        displayName: Install dependencies
-      - bash: cibuildwheel --output-dir wheelhouse .
-        displayName: Build wheels
-      - task: PublishBuildArtifacts@1
-        inputs: { pathtoPublish: 'wheelhouse' }
+      - template: devtools/cibuildwheel.yml
 
   - job: macos
     pool: { vmImage: 'macOS-12' }
@@ -40,39 +18,11 @@ jobs:
         arm64:
           arch: 'arm64'
     steps:
-      - template: devtools/checkout.yml
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.10'
-          architecture: 'x64'
-        displayName: Use Python 3.10
-      - bash: |
-          set -o errexit
-          python3 -m pip install --upgrade pip
-          python3 -m pip install cibuildwheel
-        displayName: Install dependencies
-      - bash: cibuildwheel --output-dir wheelhouse .
-        displayName: Build wheels
-      - task: PublishBuildArtifacts@1
-        inputs: { pathtoPublish: wheelhouse }
+      - template: devtools/cibuildwheel.yml
 
   - job: windows
     pool: { vmImage: 'windows-2019' }
     variables:
       CIBW_BUILD: cp3{8,9,10,11}-win_amd64
     steps:
-      - template: devtools/checkout.yml
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.10'
-          architecture: 'x64'
-        displayName: Use Python 3.10
-      - bash: |
-          set -o errexit
-          python -m pip install --upgrade pip
-          pip install cibuildwheel
-        displayName: Install dependencies
-      - bash: cibuildwheel --output-dir wheelhouse .
-        displayName: Build wheels
-      - task: PublishBuildArtifacts@1
-        inputs: { pathtoPublish: 'wheelhouse' }
+      - template: devtools/cibuildwheel.yml
