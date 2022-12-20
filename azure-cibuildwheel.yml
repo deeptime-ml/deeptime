@@ -12,7 +12,7 @@ jobs:
     variables:
       CIBW_BUILD: cp3{8,9,10,11}-manylinux_x86_64
     steps:
-      - template: checkout.yml
+      - template: devtools/checkout.yml
       - task: UsePythonVersion@0
         inputs:
           versionSpec: '3.10'
@@ -40,7 +40,7 @@ jobs:
         arm64:
           arch: 'arm64'
     steps:
-      - template: checkout.yml
+      - template: devtools/checkout.yml
       - task: UsePythonVersion@0
         inputs:
           versionSpec: '3.10'
@@ -61,7 +61,7 @@ jobs:
     variables:
       CIBW_BUILD: cp3{8,9,10,11}-win_amd64
     steps:
-      - template: checkout.yml
+      - template: devtools/checkout.yml
       - task: UsePythonVersion@0
         inputs:
           versionSpec: '3.10'
