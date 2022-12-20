@@ -1,0 +1,29 @@
+jobs:
+  - job: linux
+    pool: { vmImage: 'Ubuntu-22.04' }
+    variables:
+      CIBW_BUILD: cp3{8,9,10,11}-manylinux_x86_64
+      CIBW_BUILD_VERBOSITY: 2
+    steps:
+      - template: devtools/cibuildwheel.yml
+
+  - job: macos
+    pool: { vmImage: 'macOS-12' }
+    variables:
+      CIBW_BUILD: cp3{8,9,10,11}-macosx_*
+      CIBW_ARCHS_MACOS: $(arch)
+    strategy:
+      matrix:
+        x86_64:
+          arch: 'x86_64'
+        arm64:
+          arch: 'arm64'
+    steps:
+      - template: devtools/cibuildwheel.yml
+
+  - job: windows
+    pool: { vmImage: 'windows-2019' }
+    variables:
+      CIBW_BUILD: cp3{8,9,10,11}-win_amd64
+    steps:
+      - template: devtools/cibuildwheel.yml

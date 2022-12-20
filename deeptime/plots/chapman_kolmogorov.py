@@ -86,7 +86,7 @@ class CKTestGrid:
             handles.append(self._lpred_handles[ix])
             labels.append(predlabel)
             labels.append(estlabel)
-        self.figure.legend(handles, labels, 'upper center', ncol=2, frameon=False)
+        self.figure.legend(handles, labels, loc='upper center', ncol=2, frameon=False)
 
     @property
     def n_tests(self):

@@ -13,6 +13,10 @@ endif()
 project(deeptime LANGUAGES C CXX VERSION ${DEEPTIME_VERSION})
 set(DEEPTIME_ROOT_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
 
+message(STATUS "Got deeptime version ${DEEPTIME_VERSION}")
+message(STATUS "Got deeptime full version ${DEEPTIME_VERSION_INFO}")
+message(STATUS "Building tests: ${DEEPTIME_BUILD_CPP_TESTS}")
+
 include(GNUInstallDirs)
 
 if(SKBUILD)

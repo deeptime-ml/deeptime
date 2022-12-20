@@ -3,7 +3,7 @@ r"""Unit tests for the covariance module
 .. moduleauthor:: B.Trendelkamp-Schroer <benjamin DOT trendelkamp-schroer AT fu-berlin DOT de>
 
 """
-
+import flaky
 import numpy as np
 import pytest
 from deeptime.markov.tools.estimation import transition_matrix as tmatrix
@@ -60,7 +60,8 @@ def test_reversible(dtype):
 
 
 @pytest.mark.parametrize("dtype", (np.float32, np.float64, np.longdouble))
-def test_reversible_pi(fixed_seed, dtype):
+@flaky.flaky(3)
+def test_reversible_pi(dtype):
     C = np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]]).astype(dtype)
     pi = np.array([0.70532947, 0.00109989, 0.29357064])
     P_mle = tmatrix(C, reversible=True, mu=pi)

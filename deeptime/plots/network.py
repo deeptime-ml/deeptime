@@ -198,7 +198,7 @@ class Network:
     @property
     def edge_base_scale(self):
         r""" Base scale for edges depending on the matplotlib default line width and the maximum off-diagonal
-        element in the adjacency matrix """
+        element in the adjacency matrix. Returns default line width if all off-diagonal elements are zero. """
         if issparse(self.adjacency_matrix):
             mat = self.adjacency_matrix.tocoo()
             max_off_diag = 0
@@ -209,7 +209,7 @@ class Network:
             diag_mask = np.logical_not(np.eye(self.adjacency_matrix.shape[0], dtype=bool))
             max_off_diag = np.max(np.abs(self.adjacency_matrix[diag_mask]))
         default_lw = default_line_width()
-        return 2 * default_lw / max_off_diag
+        return 2 * default_lw / max_off_diag if max_off_diag > 0 else default_lw
 
     @property
     def edge_labels(self) -> Optional[np.ndarray]:
@@ -531,7 +531,7 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
             P[flux < minflux] = 0.0
     if pos is None:
         import networkx as nx
-        graph = nx.from_scipy_sparse_matrix(P) if msm.sparse else nx.from_numpy_matrix(P)
+        graph = nx.from_scipy_sparse_array(P) if msm.sparse else nx.from_numpy_array(P)
         pos = nx.spring_layout(graph)
     network = Network(P, pos=pos,  state_scale=state_scale, state_colors=state_colors, state_labels=state_labels,
                       state_sizes=state_sizes, edge_scale=edge_scale, edge_curvature=edge_curvature,

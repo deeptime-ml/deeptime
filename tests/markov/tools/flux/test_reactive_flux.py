@@ -198,7 +198,7 @@ def test_coarse_grain(sparse_mode):
     Csym = C + C.T
     P = Csym / np.sum(Csym, axis=1)[:, np.newaxis]
     if sparse_mode:
-        P = sparse.csr_matrix(P)
+        P = sparse.lil_matrix(P)
     msm = MarkovStateModel(P)
     tpt = msm.reactive_flux([0, 4], [11, 15])
     coarse_sets = [[2, 3, 6, 7], [10, 11, 14, 15], [0, 1, 4, 5], [8, 9, 12, 13], ]
