@@ -531,7 +531,7 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
             P[flux < minflux] = 0.0
     if pos is None:
         import networkx as nx
-        graph = nx.from_scipy_sparse_matrix(P) if msm.sparse else nx.from_numpy_matrix(P)
+        graph = nx.from_scipy_sparse_array(P) if msm.sparse else nx.from_numpy_array(P)
         pos = nx.spring_layout(graph)
     network = Network(P, pos=pos,  state_scale=state_scale, state_colors=state_colors, state_labels=state_labels,
                       state_sizes=state_sizes, edge_scale=edge_scale, edge_curvature=edge_curvature,
