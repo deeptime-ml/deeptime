@@ -24,21 +24,18 @@ def handle_n_jobs(value: Optional[int]) -> int:
     """
     if value is None:
         value = 1
-    elif value <= 0:
-        if value == -1:
-            try:
-                from os import sched_getaffinity
-                count = len(sched_getaffinity(0))
-            except ImportError:
-                from os import cpu_count
-                count = cpu_count()
-            if count is None:
-                raise ValueError("Could not determine number of cpus in system, please provide n_jobs manually.")
-            value = count
-        else:
-            raise ValueError(f"n_jobs can only be -1 (in which case it will be determined from hardware), "
-                         f"a positive number or -1, but was {value}.")
-    assert isinstance(value, int) and value > 0
+    elif value == -1:
+        try:
+            from os import sched_getaffinity
+            count = len(sched_getaffinity(0))
+        except ImportError:
+            from os import cpu_count
+            count = cpu_count()
+        if count is None:
+            raise ValueError("Could not determine number of cpus in system, please provide n_jobs manually.")
+        value = count
+    if not (isinstance(value, int) and value > 0):
+        raise ValueError(f"n_jobs can only be -1 (in which case it will be determined from hardware), None (in which case one will be used) or a positive number, but was {value}.")
     return value
 
 
