@@ -9,8 +9,8 @@ def handle_n_jobs(value: Optional[int]) -> int:
     In particular, if
 
       * value is None, use 1 job
-      * value is negative, use number cores available * 2
       * value is positive, use value
+      * value is -1, use all
 
     Parameters
     ----------
@@ -23,18 +23,21 @@ def handle_n_jobs(value: Optional[int]) -> int:
         A non-negative integer value describing how many threads can be started simultaneously.
     """
     if value is None:
-        try:
-            from os import sched_getaffinity
-            count = len(sched_getaffinity(0))
-        except ImportError:
-            from os import cpu_count
-            count = cpu_count()
-        if count is None:
-            raise ValueError("Could not determine number of cpus in system, please provide n_jobs manually.")
-        value = count
+        value = 1
     elif value <= 0:
-        raise ValueError(f"n_jobs can only be None (in which case it will be determined from hardware) "
-                         f"or a positive number, but was {value}.")
+        if value == -1:
+            try:
+                from os import sched_getaffinity
+                count = len(sched_getaffinity(0))
+            except ImportError:
+                from os import cpu_count
+                count = cpu_count()
+            if count is None:
+                raise ValueError("Could not determine number of cpus in system, please provide n_jobs manually.")
+            value = count
+        else:
+            raise ValueError(f"n_jobs can only be -1 (in which case it will be determined from hardware), "
+                         f"a positive number or -1, but was {value}.")
     assert isinstance(value, int) and value > 0
     return value
 
