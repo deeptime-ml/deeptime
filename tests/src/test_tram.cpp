@@ -1,6 +1,7 @@
 #include <random>
 #include <pybind11/embed.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 #include "deeptime/markov/msm/tram/tram.h"
 //
 // Created by Maaike on 01/12/2021.

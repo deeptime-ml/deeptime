@@ -1,4 +1,7 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
 #include <pybind11/embed.h>
 #include "deeptime/numeric/kahan_summation.h"
 
@@ -149,7 +152,7 @@ TEST_CASE("kdot") {
         b.mutable_at(1,0) = y;
 	auto correct = a.at(0,0) * b.at(0,0) + a.at(0, 1) * b.at(1,0);
         auto res = deeptime::numeric::kahan::kdot(a, b);
-        REQUIRE(Approx(res.at(0,0)) == correct);
+        REQUIRE_THAT(res.at(0, 0), Catch::Matchers::WithinRel(correct, 0.001));
     }
 
     SECTION("check correct output matrix") {

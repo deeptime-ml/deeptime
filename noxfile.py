@@ -20,7 +20,10 @@ def tests(session: nox.Session) -> None:
     setup_environment(session)
     if 'cpp' in session.posargs:
         session.install("cmake")
-        session.install("conan")
+        session.install("scikit-build")
+
+        cmake_module_path = session.run("python", "devtools/cmake/find_cmake_module_path.py", silent=True).strip()
+        session.log(f"Found cmake module path {cmake_module_path}")
 
         site_packages_dir = session.run("python", "devtools/cmake/find_site_packages.py", silent=True).strip()
         session.log(f"Found site-packages {site_packages_dir}, adding to PYTHONPATH")
@@ -29,7 +32,8 @@ def tests(session: nox.Session) -> None:
         pybind11_module_dir = session.run(*"python -m pybind11 --cmakedir".split(" "), silent=True).strip()
         session.log(f"Found pybind11 module dir: {pybind11_module_dir}")
         tmpdir = session.create_tmp()
-        session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON',
+        session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON', 
+                    '-DCMAKE_MODULE_PATH:PATH={}'.format(cmake_module_path),
                     "-Dpybind11_DIR={}".format(pybind11_module_dir), '-DCMAKE_BUILD_TYPE=Release', silent=True)
         session.run("cmake", "--build", tmpdir, "--target", "run_tests")
     else:
