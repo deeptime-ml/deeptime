@@ -1,4 +1,6 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
+
 #include <pybind11/embed.h>
 #include <deeptime/common.h>
 
@@ -7,7 +9,7 @@ TEST_CASE("Normalize yields discrete probability distributions", "[common]") {
     std::iota(begin(v), end(v), 1);
     deeptime::normalize(begin(v), end(v));
     auto sum = std::accumulate(begin(v), end(v), 0.);
-    REQUIRE(sum == Approx(1.f));
+    REQUIRE_THAT( sum, Catch::Matchers::WithinRel(1.f, 0.001f));
 }
 
 TEST_CASE("Index object", "[common]") {
