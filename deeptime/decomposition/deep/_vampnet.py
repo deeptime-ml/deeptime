@@ -216,7 +216,8 @@ def vamp_score(data: "torch.Tensor", data_lagged: "torch.Tensor", method='VAMP2'
         # in original paper of VAMPE, inv can be detached from gradient
         c00_sqrt_inv = sym_inverse(c00, epsilon=epsilon, return_sqrt=True, mode=mode).detach()
         ctt_sqrt_inv = sym_inverse(ctt, epsilon=epsilon, return_sqrt=True, mode=mode).detach()
-        koopman = multi_dot([c00_sqrt_inv, c0t, ctt_sqrt_inv]).t()
+        # detach koopman, so that VAMPE is only depedent on the trace
+        koopman = multi_dot([c00_sqrt_inv, c0t, ctt_sqrt_inv]).t().detach()
 
         u, s, v = torch.svd(koopman)
         mask = s > epsilon
