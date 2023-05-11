@@ -213,8 +213,9 @@ def vamp_score(data: "torch.Tensor", data_lagged: "torch.Tensor", method='VAMP2'
         out = torch.pow(torch.norm(koopman, p='fro'), 2)
     elif method == 'VAMPE':
         c00, c0t, ctt = covariances(data, data_lagged, remove_mean=True)
-        c00_sqrt_inv = sym_inverse(c00, epsilon=epsilon, return_sqrt=True, mode=mode)
-        ctt_sqrt_inv = sym_inverse(ctt, epsilon=epsilon, return_sqrt=True, mode=mode)
+        # in original paper of VAMPE, inv can be detached from gradient
+        c00_sqrt_inv = sym_inverse(c00, epsilon=epsilon, return_sqrt=True, mode=mode).detach()
+        ctt_sqrt_inv = sym_inverse(ctt, epsilon=epsilon, return_sqrt=True, mode=mode).detach()
         koopman = multi_dot([c00_sqrt_inv, c0t, ctt_sqrt_inv]).t()
 
         u, s, v = torch.svd(koopman)
