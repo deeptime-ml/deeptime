@@ -32,6 +32,7 @@ __all__ = ['bootstrap_trajectories',
            'connected_sets',
            'effective_count_matrix',
            'error_perturbation',
+           'girsanov_reweighted_count_matrix',
            'is_connected',
            'largest_connected_set',
            'largest_connected_submatrix',
@@ -213,7 +214,83 @@ def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=None, ca
     return sparse.effective_counts.effective_count_matrix(dtrajs, lag, average=average, mact=mact, n_jobs=n_jobs,
                                                           callback=callback)
 
+def girsanov_reweighted_count_matrix(dtraj, lag, reweighting_factors,
+                                     sliding=True, sparse_return=True, nstates=None):
+    r"""Generate a Girsanov reweighted count matrix from given microstate trajectory. :footcite:`donati2017girsanov`
 
+    Parameters
+    ----------
+    dtraj : array_like or list of array_like
+        Discretized trajectory or list of discretized trajectories.
+    lag : int
+        Lagtime in trajectory steps.
+    reweighting: tuple
+        Enforce a count-matrix with reweighting factors :code:`shape=(g,M)`. :code:`g` is the likelihood ratio between 
+        probability measures with :code:`dim=(len(dtraj)-lag)`, if :code:`eta.shape==dtraj.shape`. :code:`M` 
+        is the likelihood ratio between the path probabilitiy densities with :code:`dim=(len(dtraj)-lag)`,
+        if :code:`eta.shape==dtraj.shape`. 
+    sliding : bool
+        By default :code:`True`, the sliding window approach is used for transition counting.
+    sparse_return : bool, optional
+        Whether to return a dense or a sparse matrix.
+    nstates : int, optional
+        Enforce a count-matrix with :code:`shape=(nstates, nstates)`.
+
+    Returns
+    -------
+    C : scipy.sparse.coo_matrix
+        The Girsanov path reweighted count matrix at given lag in coordinate list format.
+
+    Notes
+    -----
+    Transition counts can be obtained from microstate trajectory using
+    the sliding approach. By sliding along the trajectory and counting all
+    transitions sperated by the lagtime :math:`\tau`.
+
+    Transition counts :math:`c_{ij}(\tau)` are reweighted according to
+
+    .. math:: c_{ij}(\tau)=\lim_{m\rightarrow\infty}\sum_{\nu_k\in S_{\tau,m}} g([\mathbf{x}_0]_k)\mathbf{1}_{B_i}([\mathbf{x}_0]_k) \cdot M_{\mathbf{x},\tau}(\nu_k)\mathbf{1}_{B_j}([\mathbf{x}_n]_k).
+
+    Where :math:`\mathbf{1}_{B_i}` is the indicator function for state :math:`B_i`.
+    References
+    ----------
+    .. footbibliography::
+
+    Example
+    --------
+
+    >>> import numpy as np
+    >>> from deeptime.markov.tools.estimation import girsanov_reweighted_count_matrix
+
+    >>> dtraj = np.array([0, 0, 1, 0, 1, 1, 0])
+    >>> tau = 2
+
+    In this example, the bias and target potential would be the same. 
+    Subtract the one to get the same length of the discrete trajectory :code:`len(eta+1)` and random number array :code:`eta`.
+    
+    >>> g = np.ones(len(dtraj)-tau-1) 
+    >>> M = np.ones(len(dtraj)-tau-1)
+    >>> reweighting_factors = (g,M)
+
+    Use the reweighting approach as
+
+    >>> C_sliding = girsanov_reweighted_count_matrix(dtraj[:-1], tau, reweighting_factors)
+    
+    The generated matrix is a sparse matrix in CSR-format. For
+    convenient printing we convert it to a dense ndarray.
+
+    >>> C_sliding.toarray()
+    array([[1., 2.],
+           [1., 1.]])
+
+    """
+    # convert dtraj input, if it contains out of nested python lists to
+    # a list of int ndarrays.
+    dtraj = ensure_dtraj_list(dtraj)
+    ## calles the new argument for girsanov reweighting 
+    return sparse.count_matrix.count_matrix_coo2_mult(dtraj, lag, reweighting_factors,
+                                                      sliding=sliding, sparse=sparse_return, nstates=nstates)
+                                      
 ################################################################################
 # Bootstrapping data
 ################################################################################
