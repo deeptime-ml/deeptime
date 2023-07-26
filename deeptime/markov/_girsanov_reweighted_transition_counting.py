@@ -1,5 +1,5 @@
 r"""This module implements an estimator for Girsanov path reweighting for Markov state models.
-.. moduleauthor:: J.-L.Schäfer <joana-lysiane DOT schaefer AT fu-berlin DOT de>
+.. moduleauthor:: J.-L.Schaefer <joana-lysiane DOT schaefer AT fu-berlin DOT de>
 """
 
 from typing import Optional, List
