@@ -64,7 +64,6 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     # feed into one COO matrix
     row = np.concatenate(rows)
     col = np.concatenate(cols)
-    data = np.ones(row.size)
     ## choose option for including reweighting factors g and M
     if reweighting_factors is None:
         data = np.ones(row.size)
