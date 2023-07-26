@@ -11,7 +11,8 @@ import scipy.sparse
 # count_matrix
 ################################################################################
 
-def count_matrix_coo2_mult(dtrajs, lag, sliding=True, sparse=True, nstates=None):
+def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None, 
+                           sliding=True, sparse=True, nstates=None):
     r"""Generate a count matrix from a given list discrete trajectories.
 
     The generated count matrix is a sparse matrix in compressed
