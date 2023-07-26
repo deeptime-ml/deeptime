@@ -25,8 +25,9 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     lag : int
         Lagtime in trajectory steps
     reweighting: tuple, optional
-        Enforce a count-matrix with reweighting factors shape=(g,M). g is the ... with dim=().
-        M is .. with dim=(). 
+        Enforce a count-matrix with reweighting factors shape=(g,M). g is the state-space probability 
+        density likelihood ratio with dim=().
+        M is the likelihood ratio between path probability densities with dim=(). 
     sliding : bool, optional
         If true the sliding window approach
         is used for transition counting
