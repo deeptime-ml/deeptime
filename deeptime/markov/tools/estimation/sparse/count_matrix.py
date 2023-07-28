@@ -25,9 +25,12 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     lag : int
         Lagtime in trajectory steps
     reweighting: tuple, optional
-        Enforce a count-matrix with reweighting factors shape=(g,M). g is the state-space probability 
-        density likelihood ratio with dim=().
-        M is the likelihood ratio between path probability densities with dim=(). 
+        Enforce a count-matrix with reweighting factors shape=(g,M). g is the 
+        state-space probability density likelihood ratio. M is the likelihood 
+        ratio between path probability densities.  The tuple gives two lists 
+        of ndarrays for g and M, which must have the shape of dtraj.
+        Attention: dtraj can be one time step longer than the g and M simulation 
+        output. In this case, delete the last step in dtraj.
     sliding : bool, optional
         If true the sliding window approach
         is used for transition counting
@@ -68,8 +71,16 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     if reweighting_factors is None:
         data = np.ones(row.size)
     elif type(reweighting_factors) is tuple:
-        g, M = reweighting_factors
-        data = g * M
+    	g_factors, M_factors = reweighting_factors
+    	factors=[]
+    	for g,M in zip(g_factors,M_factors):
+    		if g.size > lag:
+    			if sliding:
+    				factors.append(g[0:-lag]*M[0:-lag])
+    			else:
+    				factors.append(g[0:-lag:lag]*M[0:-lag:lag])
+    	factors = np.concatenate(factors)
+    	data = factors
     else:
         raise NotImplementedError('An input format other than a tuple (g,M) for the reweighting factors is not implemented.')
     C = scipy.sparse.coo_matrix((data, (row, col)), shape=(nstates, nstates))
