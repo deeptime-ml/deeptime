@@ -6,7 +6,7 @@ steps:
   displayName: Configure conda
 - bash: |
     conda update --all
-    mamba install conda-build conda-verify pip
+    conda install conda-build conda-verify pip
   displayName: 'Update and install dependencies'
   continueOnError: false
 - bash: |
