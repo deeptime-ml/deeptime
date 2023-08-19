@@ -52,11 +52,6 @@ jobs:
           mamba.exe config --set quiet true
         displayName: Configure conda
       - bash: |
-          mamba.exe update --all
-        displayName: 'Update and install dependencies'
-        continueOnError: false
-      - bash: |
-          conda mambabuild devtools --python 3.11 --numpy 1.21
+          conda.exe mambabuild devtools --python 3.11 --numpy 1.21
         displayName: 'Build and test'
         continueOnError: false
-
