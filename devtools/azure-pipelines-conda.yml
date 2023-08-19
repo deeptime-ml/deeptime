@@ -27,6 +27,8 @@ jobs:
     steps:
       - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
         displayName: Add conda to PATH
+      - bash: conda init cmd.exe
+        displayName: Run conda init
       - bash: conda install --yes --quiet libarchive -n base -c conda-forge
         displayName: Fix missing libarchive error
       - template: checkout.yml
