@@ -25,11 +25,38 @@ jobs:
     pool:
       vmImage: 'windows-latest'
     steps:
-      - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+      - task: PythonScript@0
+        displayName: 'Download Miniforge'
+        inputs:
+          scriptSource: inline
+          script: |
+            import urllib.request
+            url = 'https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Windows-x86_64.exe'
+            path = r"$(Build.ArtifactStagingDirectory)/Miniforge.exe"
+            urllib.request.urlretrieve(url, path)
+      - script: |
+          start /wait "" %BUILD_ARTIFACTSTAGINGDIRECTORY%\Miniforge.exe /InstallationType=JustMe /RegisterPython=0 /S /D=C:\Miniforge
+        displayName: Install Miniforge
+      - powershell: Write-Host "##vso[task.prependpath]C:\Miniforge\Scripts"
         displayName: Add conda to PATH
-      - bash: conda init cmd.exe
-        displayName: Run conda init
-      - bash: conda install --yes --quiet libarchive -n base -c conda-forge
-        displayName: Fix missing libarchive error
+      - script: |
+          call activate base
+          mamba.exe install "python=3.10" conda-build conda pip boa conda-forge-ci-setup=3 -c conda-forge --strict-channel-priority --yes
+        displayName: Install conda-build
+      - script: set PYTHONUNBUFFERED=1
+        displayName: Set PYTHONUNBUFFERED
       - template: checkout.yml
-      - template: conda-setup+build.yml
+      - bash: |
+          mamba.exe config --add channels conda-forge
+          mamba.exe config --set always_yes true
+          mamba.exe config --set quiet true
+        displayName: Configure conda
+      - bash: |
+          mamba.exe update --all
+        displayName: 'Update and install dependencies'
+        continueOnError: false
+      - bash: |
+          conda mambabuild devtools --python 3.11 --numpy 1.21
+        displayName: 'Build and test'
+        continueOnError: false
+
