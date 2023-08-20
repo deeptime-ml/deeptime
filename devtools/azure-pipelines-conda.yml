@@ -47,10 +47,10 @@ jobs:
         displayName: Set PYTHONUNBUFFERED
       - template: checkout.yml
       - bash: |
-          mamba.exe config --add channels conda-forge
-          mamba.exe config --set always_yes true
-          mamba.exe config --set quiet true
-          mamba.exe install libarchive
+          conda.exe config --add channels conda-forge
+          conda.exe config --set always_yes true
+          conda.exe config --set quiet true
+          mamba.exe install libarchive -c conda-forge --strict-channel-priority --yes
         displayName: Configure conda
       - bash: |
           conda.exe mambabuild devtools --python 3.11 --numpy 1.21
