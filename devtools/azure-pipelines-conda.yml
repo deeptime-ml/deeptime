@@ -50,6 +50,7 @@ jobs:
           mamba.exe config --add channels conda-forge
           mamba.exe config --set always_yes true
           mamba.exe config --set quiet true
+          mamba.exe install libarchive
         displayName: Configure conda
       - bash: |
           conda.exe mambabuild devtools --python 3.11 --numpy 1.21
