@@ -50,6 +50,8 @@ jobs:
           conda.exe config --add channels conda-forge
           conda.exe config --set always_yes true
           conda.exe config --set quiet true
+          conda.exe install python-libarchive-c
+          conda.exe install numpy
           mamba.exe install libarchive -c conda-forge --strict-channel-priority --yes
         displayName: Configure conda
       - bash: |
