@@ -41,7 +41,7 @@ jobs:
         displayName: Add conda to PATH
       - script: |
           call activate base
-          mamba.exe install "python=3.10" conda-build conda pip boa conda-forge-ci-setup=3 -c conda-forge --strict-channel-priority --yes
+          conda.exe install "python=3.10" conda-build conda pip boa -c conda-forge --strict-channel-priority --yes
         displayName: Install conda-build
       - script: set PYTHONUNBUFFERED=1
         displayName: Set PYTHONUNBUFFERED
@@ -52,9 +52,9 @@ jobs:
           conda.exe config --set quiet true
           conda.exe install python-libarchive-c
           conda.exe install numpy
-          mamba.exe install libarchive -c conda-forge --strict-channel-priority --yes
+          conda.exe install libarchive -c conda-forge --strict-channel-priority --yes
         displayName: Configure conda
       - bash: |
-          conda.exe mambabuild devtools --python 3.11 --numpy 1.21
+          conda.exe build devtools --python 3.10
         displayName: 'Build and test'
         continueOnError: false
