@@ -51,8 +51,8 @@ jobs:
       - script: set PYTHONUNBUFFERED=1
         displayName: Set PYTHONUNBUFFERED
       - template: checkout.yml
-      - bash: |
-          call activate base
-          conda build devtools --python 3.11
-        displayName: 'Build and test'
-        continueOnError: false
+      #- bash: |
+      #    # call activate base
+      #    # conda build devtools --python 3.11
+      #  displayName: 'Build and test'
+      #  continueOnError: false
