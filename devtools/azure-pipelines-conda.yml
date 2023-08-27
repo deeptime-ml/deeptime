@@ -46,11 +46,12 @@ jobs:
           conda.exe config --set quiet true
           conda.exe install conda-build libarchive conda pip
           conda.exe update --all
+          conda.bat update -n base conda
         displayName: Install conda-build
       - script: set PYTHONUNBUFFERED=1
         displayName: Set PYTHONUNBUFFERED
       - template: checkout.yml
       - bash: |
-          conda.exe build devtools --python 3.11
+          conda.bat build devtools --python 3.11
         displayName: 'Build and test'
         continueOnError: false
