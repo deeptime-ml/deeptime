@@ -280,7 +280,7 @@ class TRAMCallback(callbacks.IterationErrorProgressCallback):
     """
 
     def __init__(self, progress, total, log_likelihoods_list=None, increments=None):
-        super().__init__(progress, total=total, description="Running TRAM estimate")
+        super().__init__(progress, total=total, desc="Running TRAM estimate")
         self.log_likelihoods = log_likelihoods_list
         self.increments = increments
         self.last_increment = 0
