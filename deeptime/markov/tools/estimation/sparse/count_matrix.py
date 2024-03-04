@@ -25,12 +25,12 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     lag : int
         Lagtime in trajectory steps
     reweighting: tuple, optional
-        Enforce a count-matrix with reweighting factors shape=(g,M). g is the 
-        state-space probability density likelihood ratio. M is the likelihood 
-        ratio between path probability densities.  The tuple gives two lists 
-        of ndarrays for g and M, which must have the shape of dtraj.
-        Attention: dtraj can be one time step longer than the g and M simulation 
-        output. In this case, delete the last step in dtraj.
+        Enforce a count-matrix with reweighting factors shape=(g,logM). g is the state-space 
+        probability density ratio. logM is the pre-expression of the M reweighting factor, 
+        negative sign and exponent is realised in summation over the path of length lagtime.  
+        The tuple gives two lists of ndarrays for g and logM, which must have the shape of dtraj.
+        Note: dtraj can be one time step longer than the g and M simulation output. 
+        In this case, the last step in dtraj must be deleted.
     sliding : bool, optional
         If true the sliding window approach
         is used for transition counting
