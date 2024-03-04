@@ -75,10 +75,14 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     	factors=[]
     	for g,M in zip(g_factors,M_factors):
     		if g.size > lag:
-    			if sliding:
-    				factors.append(g[0:-lag]*M[0:-lag])
-    			else:
-    				factors.append(g[0:-lag:lag]*M[0:-lag:lag])
+                if sliding:
+                    m = M.cumsum()
+                    m[lag:] = m[lag:] - m[:len(m)-lag]
+                    m = m[(lag):]
+                    m = np.exp(-m)
+                    factors.append(g[0:-lag]*m)
+                else:
+                    raise NotImplementedError('Only the sliding scheme is implemented.')
     	factors = np.concatenate(factors)
     	data = factors
     else:
