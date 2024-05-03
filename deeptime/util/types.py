@@ -126,6 +126,11 @@ def ensure_dtraj_list(dtrajs):
         return [ensure_integer_array(dtrajs)]
     return [ensure_integer_array(t) for t in dtrajs]
 
+def ensure_factors_list(factors):
+    """Makes sure that g_factors and M_factors are a list of reweighting factors (array of int)"""
+    if len(factors) > 0 and isinstance(factors[0], numbers.Real):
+        return [ensure_integer_array(factors)]
+    return [ensure_integer_array(t) for t in factors]
 
 def ensure_timeseries_data(input_data) -> List[np.ndarray]:
     r""" Ensures that the input data is a time series. This means it must be an iterable of ndarrays or an ndarray

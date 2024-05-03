@@ -7,7 +7,7 @@ import numpy as np
 from scipy.sparse import issparse
 from .tools import estimation as msmest
 from ._transition_counting import TransitionCountModel, TransitionCountEstimator
-from ..util.types import ensure_dtraj_list
+from ..util.types import ensure_dtraj_list, ensure_factors_list
 
 
 class GirsanovReweightingEstimator(TransitionCountEstimator):
@@ -104,7 +104,12 @@ class GirsanovReweightingEstimator(TransitionCountEstimator):
         >>> np.testing.assert_equal(reweighted_counts.count_matrix, np.array([[1, 2], [1, 2]]))
         >>> print(reweighted_counts.count_matrix)
         """ 
-        count_matrix = msmest.girsanov_reweighted_count_matrix(dtrajs, lagtime, reweighting_factors, 
-                                                      sliding=True, sparse_return=sparse)
-
+        if count_mode == 'sliding':
+            reweighting_factors=(ensure_factors_list(reweighting_factors[0]),ensure_factors_list(reweighting_factors[1]))
+            count_matrix = msmest.girsanov_reweighted_count_matrix(dtrajs, lagtime, reweighting_factors, 
+                                                                   sliding=True, sparse_return=sparse)
+        elif count_mode in {'sample','effective','sliding-effective'}:
+            raise ValueError('Count mode {} is not compatible with the Girsanov reweighting estimator.'.format(count_mode))
+        else:
+            raise ValueError('Count mode {} is unknown.'.format(count_mode))
         return count_matrix
