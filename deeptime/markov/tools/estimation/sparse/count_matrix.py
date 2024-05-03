@@ -71,10 +71,10 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     if reweighting_factors is None:
         data = np.ones(row.size)
     elif type(reweighting_factors) is tuple:
-    	g_factors, M_factors = reweighting_factors
-    	factors=[]
-    	for g,M in zip(g_factors,M_factors):
-    		if g.size > lag:
+        g_factors, M_factors = reweighting_factors
+        factors=[]
+        for g,M in zip(g_factors,M_factors):
+            if g.size > lag:
                 if sliding:
                     m = M.cumsum()
                     m[lag:] = m[lag:] - m[:len(m)-lag]
@@ -83,8 +83,8 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
                     factors.append(g[0:-lag]*m)
                 else:
                     raise NotImplementedError('Only the sliding scheme is implemented.')
-    	factors = np.concatenate(factors)
-    	data = factors
+        factors = np.concatenate(factors)
+        data = factors
     else:
         raise NotImplementedError('An input format other than a tuple (g,M) for the reweighting factors is not implemented.')
     C = scipy.sparse.coo_matrix((data, (row, col)), shape=(nstates, nstates))
