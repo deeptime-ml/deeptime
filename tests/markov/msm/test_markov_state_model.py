@@ -100,3 +100,22 @@ def test_submodel(msm):
 
     with assert_raises(ValueError):
         msm.submodel([0, 5])  # state 5 does not exist
+
+
+def test_submodel_4_states():
+    # Demonstrates issue #275
+    count_matrix = np.array([
+        [0.9, .1, 0, 0],
+        [0.1, .8, .1, 0],
+        [0, .1, .8, .1],
+        [0, 0, .1, .9]
+    ])
+    count_model = TransitionCountModel(count_matrix)
+    msm = MarkovStateModel(count_matrix.copy(), count_model=count_model)
+    msm_without_0 = msm.submodel([1, 2, 3])
+    assert_equal(msm_without_0.transition_matrix.shape, (3, 3))
+    assert_equal(msm_without_0.n_states, 3)
+    assert_(1 in msm_without_0.count_model.state_symbols)
+    assert_(2 in msm_without_0.count_model.state_symbols)
+    assert_(3 in msm_without_0.count_model.state_symbols)
+    assert_(0 not in msm_without_0.count_model.state_symbols)

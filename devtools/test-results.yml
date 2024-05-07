@@ -7,13 +7,9 @@ steps:
     failTaskOnFailedTests: true # Optional
     publishRunAttachments: true # Optional
 
-- task: PublishCodeCoverageResults@1
+- task: PublishCodeCoverageResults@2
   inputs:
-    codeCoverageTool: 'cobertura' # Options: cobertura, jaCoCo
     summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
     pathToSources: '$(Build.SourcesDirectory)/deeptime' # Optional
-    #reportDirectory: # Optional
-    #additionalCodeCoverageFiles: # Optional
-    #failIfCoverageEmpty: false # Optional
 
 - bash: curl -s https://codecov.io/bash | bash

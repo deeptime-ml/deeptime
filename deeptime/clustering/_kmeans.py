@@ -560,8 +560,8 @@ class MiniBatchKMeans(KMeans):
 
 class KMeansCallback(ProgressCallback):
 
-    def __init__(self, progress, description, total, parent_callback=None):
-        super().__init__(progress, description=description, total=total)
+    def __init__(self, progress, desc, total, parent_callback=None):
+        super().__init__(progress, desc=desc, total=total)
         self._parent_callback = parent_callback
 
     def __call__(self, *args, **kw):

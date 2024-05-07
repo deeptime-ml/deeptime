@@ -38,7 +38,7 @@ class ProgressCallback:
        also possess a `total` constructor keyword argument.
     total : int
        Number of iterations to completion.
-    description : string
+    desc : string
        text to display in front of the progress bar.
 
     See Also
@@ -46,10 +46,10 @@ class ProgressCallback:
     supports_progress_interface
     """
 
-    def __init__(self, progress, description=None, total=None):
+    def __init__(self, progress, desc=None, total=None):
         self.progress_bar = handle_progress_bar(progress)(total=total)
         self.total = total
-        self.set_description(description)
+        self.set_description(desc)
 
         assert supports_progress_interface(self.progress_bar), \
             f"Progress bar did not satisfy interface! It should at least have " \
@@ -82,7 +82,7 @@ class IterationErrorProgressCallback(ProgressCallback):
        also possess a `total` constructor keyword argument.
     total : int
        Number of iterations to completion.
-    description : string
+    desc : string
        text to display in front of the progress bar.
 
     Notes
@@ -94,9 +94,9 @@ class IterationErrorProgressCallback(ProgressCallback):
     supports_progress_interface, ProgressCallback
     """
 
-    def __init__(self, progress, description=None, total=None):
-        super().__init__(progress, description, total)
-        self.description = description
+    def __init__(self, progress, desc=None, total=None):
+        super().__init__(progress, desc, total)
+        self.description = desc
 
     def __call__(self, inc=1, *args, **kw):
         super().__call__(inc)
