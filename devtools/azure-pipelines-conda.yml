@@ -16,8 +16,8 @@ jobs:
         displayName: Add conda to PATH
       - bash: sudo chown -R $USER $CONDA
         displayName: Take ownership of conda installation
-      - bash: conda install --yes --quiet libarchive -n base -c conda-forge
-        displayName: Fix missing libarchive error
+      - bash: conda install --yes --quiet libarchive sqlite -n base -c conda-forge
+        displayName: Fix missing sqlite and libarchive error
       - template: checkout.yml
       - template: conda-setup+build.yml
 
