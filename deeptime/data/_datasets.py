@@ -1184,7 +1184,7 @@ def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
     where the right-hand side :math:`F` should map an :code:`dim`-dimensional array-like object to an
     :code:`dim`-dimensional array-like object.
 
-    .. plot:: datasets/sdes/plot_custom_ode.py
+    .. plot:: datasets/odes/plot_custom_ode.py
 
     Parameters
     ----------
