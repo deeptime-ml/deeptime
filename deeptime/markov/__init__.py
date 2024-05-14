@@ -14,6 +14,7 @@ Transition counting and analysis tools
 
     TransitionCountEstimator
     TransitionCountModel
+    GirsanovReweightingEstimator
 
     ReactiveFlux
     reactive_flux
@@ -52,6 +53,7 @@ from . import tools  # former msmtools
 from ._base import BayesianMSMPosterior, _MSMBaseEstimator
 from ._pcca import pcca, PCCAModel
 from ._transition_counting import TransitionCountEstimator, TransitionCountModel
+from ._girsanov_reweighted_transition_counting import GirsanovReweightingEstimator
 
 from ._reactive_flux import ReactiveFlux, reactive_flux
 

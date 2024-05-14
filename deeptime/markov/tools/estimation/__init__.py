@@ -15,6 +15,7 @@ Countmatrix
    :toctree: generated/
 
    count_matrix - estimate count matrix from discrete trajectories
+   girsanov_reweighted_count_matrix - reweights the estimate of count matrix
 
 Connectivity
 ============
