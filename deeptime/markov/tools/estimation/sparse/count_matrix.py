@@ -25,12 +25,10 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     lag : int
         Lagtime in trajectory steps
     reweighting: tuple, optional
-        Enforce a count-matrix with reweighting factors shape=(g,logM). g is the state-space 
+        Enforce a count-matrix with reweighting factors shape=(g,logM), :footcite:`schaefer2024implementation`. g is the state-space 
         probability density ratio. logM is the pre-expression of the M reweighting factor, 
         negative sign and exponent is realised in summation over the path of length lagtime.  
         The tuple gives two lists of ndarrays for g and logM, which must have the shape of dtraj.
-        Note: dtraj can be one time step longer than the g and M simulation output. 
-        In this case, the last step in dtraj must be deleted.
     sliding : bool, optional
         If true the sliding window approach
         is used for transition counting
@@ -71,18 +69,18 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
     if reweighting_factors is None:
         data = np.ones(row.size)
     elif type(reweighting_factors) is tuple:
-        g_factors, M_factors = reweighting_factors
-        factors=[]
-        for g,M in zip(g_factors,M_factors):
-            if g.size > lag:
-                if sliding:
+        if sliding:
+            g_factors, M_factors = reweighting_factors
+            factors = []
+            for g,M in zip(g_factors, M_factors):
+                if g.size > lag:
                     m = M.cumsum()
                     m[lag:] = m[lag:] - m[:len(m)-lag]
                     m = m[(lag):]
                     m = np.exp(-m)
                     factors.append(g[0:-lag]*m)
-                else:
-                    raise NotImplementedError('Only the sliding scheme is implemented.')
+        else:
+            raise NotImplementedError('Only the sliding scheme is implemented.')
         factors = np.concatenate(factors)
         data = factors
     else:
@@ -93,3 +91,4 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
         return C.tocsr()
     else:
         return C.toarray()
+    
