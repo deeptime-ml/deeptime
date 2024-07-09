@@ -126,11 +126,18 @@ def ensure_dtraj_list(dtrajs):
         return [ensure_integer_array(dtrajs)]
     return [ensure_integer_array(t) for t in dtrajs]
 
-def ensure_factors_list(factors):
-    """Makes sure that g_factors and M_factors are a list of reweighting factors (array of int)"""
-    if len(factors) > 0 and isinstance(factors[0], numbers.Real):
-        return [ensure_integer_array(factors)]
-    return [ensure_integer_array(t) for t in factors]
+def ensure_reweighting_factors_tuple(reweighting_factors):
+    """Makes sure that g_factors and M_factors are a tuple of a list of reweighting factors (array of float)"""
+    if len(reweighting_factors) == 2 and isinstance(reweighting_factors, tuple) and isinstance(reweighting_factors[0], (list, np.ndarray)) and isinstance(reweighting_factors[0][0], (float, int)):
+        return tuple([[ensure_floating_array(factor_traj)] for factor_traj in reweighting_factors])
+    elif len(reweighting_factors) == 2 and isinstance(reweighting_factors, tuple) and isinstance(reweighting_factors[0], (list, np.ndarray)) and isinstance(reweighting_factors[0][0], (list, np.ndarray)):
+        return tuple([[ensure_floating_array(factor_traj) for factor_traj in factor_list] for factor_list in reweighting_factors])
+    elif len(reweighting_factors) == 2 and isinstance(reweighting_factors, (list, np.ndarray)) and isinstance(reweighting_factors[0], (list, np.ndarray)) and isinstance(reweighting_factors[0][0], (float, int)):
+        return tuple([[ensure_floating_array(factor_traj)] for factor_traj in reweighting_factors])
+    elif len(reweighting_factors) == 2 and isinstance(reweighting_factors, (list, np.ndarray)) and isinstance(reweighting_factors[0], (list, np.ndarray)) and isinstance(reweighting_factors[0][0], (list, np.ndarray)):
+        return tuple([[ensure_floating_array(factor_traj) for factor_traj in factor_list] for factor_list in reweighting_factors])
+    else:
+        raise ValueError("The reweighting_factors input must be a tuple of lists for arrays of g and M reweighting factor.")
 
 def ensure_timeseries_data(input_data) -> List[np.ndarray]:
     r""" Ensures that the input data is a time series. This means it must be an iterable of ndarrays or an ndarray

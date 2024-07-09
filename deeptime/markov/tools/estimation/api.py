@@ -14,7 +14,7 @@ from scipy.sparse import coo_matrix
 from scipy.sparse import csr_matrix
 from scipy.sparse import issparse
 
-from deeptime.util.types import ensure_dtraj_list
+from deeptime.util.types import ensure_dtraj_list, ensure_reweighting_factors_tuple
 from . import dense
 from . import sparse
 
@@ -216,7 +216,7 @@ def effective_count_matrix(dtrajs, lag, average='row', mact=1.0, n_jobs=None, ca
 
 def girsanov_reweighted_count_matrix(dtraj, lag, reweighting_factors,
                                      sliding=True, sparse_return=True, nstates=None):
-    r"""Generate a Girsanov reweighted count matrix from given microstate trajectory. :footcite:`donati2017girsanov`
+    r"""Generate a Girsanov reweighted count matrix from given microstate trajectory. :footcite:`schaefer2024implementation`
 
     Parameters
     ----------
@@ -262,14 +262,14 @@ def girsanov_reweighted_count_matrix(dtraj, lag, reweighting_factors,
     >>> import numpy as np
     >>> from deeptime.markov.tools.estimation import girsanov_reweighted_count_matrix
 
-    >>> dtraj = np.array([0, 0, 1, 0, 1, 1, 0])
+    >>> dtraj = np.array([0, 0, 1, 0, 1, 1, 0, 0])
     >>> tau = 2
 
     In this example, the bias and target potential would be the same. 
     Subtract the one to get the same length of the discrete trajectory :code:`len(eta+1)` and random number array :code:`eta`.
     
-    >>> g = np.ones(len(dtraj)-tau-1) 
-    >>> M = np.ones(len(dtraj)-tau-1)
+    >>> g = [np.ones(len(dtraj)-1)] 
+    >>> M = [np.zeros(len(dtraj)-1)]
     >>> reweighting_factors = (g,M)
 
     Use the reweighting approach as
@@ -281,12 +281,14 @@ def girsanov_reweighted_count_matrix(dtraj, lag, reweighting_factors,
 
     >>> C_sliding.toarray()
     array([[1., 2.],
-           [1., 1.]])
+           [0., 1.]])
 
     """
     # convert dtraj input, if it contains out of nested python lists to
     # a list of int ndarrays.
     dtraj = ensure_dtraj_list(dtraj)
+    # tuple of list of float ndarrays of shape dtraj
+    reweighting_factors = ensure_reweighting_factors_tuple(reweighting_factors)
     ## calles the new argument for girsanov reweighting 
     return sparse.count_matrix.count_matrix_coo2_mult(dtraj, lag, reweighting_factors,
                                                       sliding=sliding, sparse=sparse_return, nstates=nstates)
