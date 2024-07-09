@@ -569,11 +569,13 @@ class TransitionCountEstimator(EstimatorTransformer):
                                                       n_jobs=kw.pop('n_jobs', None))
         if self.n_states is not None and self.n_states > count_matrix.shape[0]:
             histogram = np.pad(histogram, pad_width=[(0, self.n_states - count_matrix.shape[0])])
+            n_pad = self.n_states - count_matrix.shape[0]
             if issparse(count_matrix):
-                count_matrix = scipy.sparse.csr_matrix((count_matrix.data, count_matrix.indices, count_matrix.indptr),
+                indptr = np.pad(count_matrix.indptr, pad_width=[(0, n_pad)], 
+                                constant_values=count_matrix.indptr[-1])
+                count_matrix = scipy.sparse.csr_matrix((count_matrix.data, count_matrix.indices, indptr),
                                                        shape=(self.n_states, self.n_states))
             else:
-                n_pad = self.n_states - count_matrix.shape[0]
                 count_matrix = np.pad(count_matrix, pad_width=[(0, n_pad), (0, n_pad)])
 
         # initially state symbols, full count matrix, and full histogram can be left None because they coincide

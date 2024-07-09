@@ -5,9 +5,10 @@ r"""This module implements an estimator for Girsanov path reweighting for Markov
 from typing import Optional, List
 import numpy as np
 from scipy.sparse import issparse
+from scipy.sparse import csr_matrix
 from .tools import estimation as msmest
 from ._transition_counting import TransitionCountModel, TransitionCountEstimator
-from ..util.types import ensure_dtraj_list, ensure_factors_list
+from ..util.types import ensure_dtraj_list
 
 
 class GirsanovReweightingEstimator(TransitionCountEstimator):
@@ -37,8 +38,8 @@ class GirsanovReweightingEstimator(TransitionCountEstimator):
             discrete trajectory and reweighting factors; note, most integrator give trajectories of length
         reweighting_factors: tuple 
             tuple of reweighting factors :code:`(g,M)`
-             :code:`g` is the likelihood ratio between probability measures with :code:`dim=(len(dtraj)-lag-1)`. 
-             :code:`M` is the likelihood ratio between the path probabilitiy densities with :code:`dim=(len(dtraj)-lag-1)`. 
+             :code:`g` is the likelihood ratio between probability measures with :code:`dim=len(dtraj)`. 
+             :code:`M` is the likelihood ratio between the path probabilitiy densities with :code:`dim=len(dtraj)`. 
         """
         dtrajs = ensure_dtraj_list(data)
 
@@ -54,16 +55,18 @@ class GirsanovReweightingEstimator(TransitionCountEstimator):
         
         if self.n_states is not None and self.n_states > count_matrix.shape[0]:
             histogram = np.pad(histogram, pad_width=[(0, self.n_states - count_matrix.shape[0])])
+            n_pad = self.n_states - count_matrix.shape[0]
             if issparse(count_matrix):
-                count_matrix = scipy.sparse.csr_matrix((count_matrix.data, count_matrix.indices, count_matrix.indptr),
+                indptr = np.pad(count_matrix.indptr, pad_width=[(0, n_pad)], 
+                                constant_values=count_matrix.indptr[-1])
+                count_matrix = csr_matrix((count_matrix.data, count_matrix.indices, indptr),
                                                        shape=(self.n_states, self.n_states))
             else:
-                n_pad = self.n_states - count_matrix.shape[0]
                 count_matrix = np.pad(count_matrix, pad_width=[(0, n_pad), (0, n_pad)])
 
         self._model = TransitionCountModel(
-            count_matrix=count_matrix, counting_mode=self.count_mode, lagtime=self.lagtime, 
-            state_histogram=histogram
+            count_matrix = count_matrix, counting_mode=self.count_mode, lagtime=self.lagtime, 
+            state_histogram = histogram
         )
         return self
 
@@ -72,7 +75,7 @@ class GirsanovReweightingEstimator(TransitionCountEstimator):
               sparse: bool = False):
         r""" Computes a reweighted count matrix according to Girsanov path reweighting for Markov state models 
         based on the sliding mode, discrete trajectories, a lagtime, the precomputed reweighting factors and
-        whether to use sparse matrices.
+        whether to use sparse matrices, :footcite:`schaefer2024implementation`.
         Parameters
         ----------
         count_mode : str
@@ -95,21 +98,21 @@ class GirsanovReweightingEstimator(TransitionCountEstimator):
         Example
         -------
         >>> from deeptime.markov import GirsanovReweightingEstimator
-        >>> dtrajs = np.array([0,0,1,1,0,1,0,1,1])
-        >>> _reweighting = (np.array([1,1,1,1,1,1]),np.array([1,1,1,1,1,1]))
-        >>> reweighted_counts_estimator = GirsanovReweightingEstimator(lagtime=1,
+        >>> dtrajs = np.array([0, 0, 1, 1, 0, 1, 0, 1, 1])
+        >>> _reweighting = (np.array([1., 1., 1., 1., 1., 1., 1., 1., 1.]),np.array([0., 0., 0., 0., 0., 0., 0., 0., 0.]))
+        >>> reweighted_counts_estimator = GirsanovReweightingEstimator(lagtime=2,
         ...                                                            count_mode='sliding')
-        >>> reweighted_counts = reweighted_counts_estimator.fit(dtrajs[:-1],
+        >>> reweighted_counts = reweighted_counts_estimator.fit(dtrajs,
         ...                                                     reweighting_factors=_reweighting).fetch_model()
-        >>> np.testing.assert_equal(reweighted_counts.count_matrix, np.array([[1, 2], [1, 2]]))
+        >>> np.testing.assert_equal(reweighted_counts.count_matrix, np.array([[1., 3.],[1., 2.]]))
         >>> print(reweighted_counts.count_matrix)
+        [[1. 3.]
+         [1. 2.]]
         """ 
         if count_mode == 'sliding':
-            reweighting_factors=(ensure_factors_list(reweighting_factors[0]),ensure_factors_list(reweighting_factors[1]))
             count_matrix = msmest.girsanov_reweighted_count_matrix(dtrajs, lagtime, reweighting_factors, 
                                                                    sliding=True, sparse_return=sparse)
-        elif count_mode in {'sample','effective','sliding-effective'}:
-            raise ValueError('Count mode {} is not compatible with the Girsanov reweighting estimator.'.format(count_mode))
         else:
-            raise ValueError('Count mode {} is unknown.'.format(count_mode))
+            raise ValueError('Count mode {} is not compatible with the Girsanov reweighting estimator, only "sliding" supported.'.format(count_mode))
         return count_matrix
+    
