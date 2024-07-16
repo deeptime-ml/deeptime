@@ -261,7 +261,7 @@ def _pcca_connected(P, n, pi=None):
     evecs[:, 0] = np.abs(evecs[:, 0])
 
     # Is there a significant complex component?
-    if not np.alltrue(np.isreal(evecs)):
+    if not np.all(np.isreal(evecs)):
         warnings.warn(
             "The given transition matrix has complex eigenvectors, so it doesn't exactly fulfill detailed balance. "
             "Forcing eigenvectors to be real and continuing. Be aware that this is not theoretically solid.")

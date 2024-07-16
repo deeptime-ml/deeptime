@@ -35,7 +35,7 @@ def test_onetraj():
     assert (len(res) == len(expected))
     for i in range(len(res)):
         assert (res[i].shape == expected[i].shape)
-        assert (np.alltrue(res[i] == expected[i]))
+        assert (np.all(res[i] == expected[i]))
 
 
 def test_onetraj_sub():
@@ -46,7 +46,7 @@ def test_onetraj_sub():
     assert (len(res) == len(expected))
     for i in range(len(res)):
         assert (res[i].shape == expected[i].shape)
-        assert (np.alltrue(res[i] == expected[i]))
+        assert (np.all(res[i] == expected[i]))
 
 
 def test_twotraj():
@@ -58,7 +58,7 @@ def test_twotraj():
     assert (len(res) == len(expected))
     for i in range(len(res)):
         assert (res[i].shape == expected[i].shape)
-        assert (np.alltrue(res[i] == expected[i]))
+        assert (np.all(res[i] == expected[i]))
 
 
 def test_sample_by_sequence():
@@ -66,7 +66,7 @@ def test_sample_by_sequence():
     idx = sample.compute_index_states(dtraj)
     seq = [0, 1, 1, 1, 0, 0, 0, 0, 1, 1]
     sidx = sample.indices_by_sequence(idx, seq)
-    assert (np.alltrue(sidx.shape == (len(seq), 2)))
+    assert (np.all(sidx.shape == (len(seq), 2)))
     for t in range(sidx.shape[0]):
         assert (sidx[t, 0] == 0)  # did we pick the right traj?
         assert (dtraj[sidx[t, 1]] == seq[t])  # did we pick the right states?

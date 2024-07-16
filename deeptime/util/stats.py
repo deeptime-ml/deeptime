@@ -188,7 +188,7 @@ def evaluate_samples(samples: Iterable[Any], quantity: str, delimiter: str = '/'
     if quantity is not None:
         samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
     try:
-        samples = np.asfarray(samples)
+        samples = np.asarray(samples, dtype=float)
     except:
         pass
     return samples
