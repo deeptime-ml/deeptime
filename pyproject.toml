@@ -24,7 +24,7 @@ requires-python = ">= 3.8"
 dependencies = [
     'numpy>=2',
     'scipy>=1.9.0',
-    'scikit-learn<=1.2.2',
+    'scikit-learn>=1.5.0',
     'threadpoolctl>=3.1.0'
 ]
 dynamic = ['version']
