@@ -40,7 +40,7 @@ deep-learning = ['torch']
 plotting = ['matplotlib', 'networkx']
 units = ['pint>=0.20']
 tests = [
-    'torch>=1.12.0; platform_system!="Darwin"',
+    'torch>=1.12.0; platform_system!="Darwin" and platform_system!="Windows"',
     'pytest>=7.1.2',
     'pytest-cov>=3.0.0',
     'coverage[toml]',
