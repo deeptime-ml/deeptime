@@ -10,7 +10,7 @@ jobs:
 
   - job: 'MacOS_with_conda'
     pool:
-      vmImage: 'macOS-latest'
+      vmImage: 'macOS-12'
     steps:
       - bash: echo "##vso[task.prependpath]$CONDA/bin"
         displayName: Add conda to PATH
