@@ -407,16 +407,18 @@ class STLSQ(LinearRegression):
     .. footbibliography::
     """
 
-    def __init__(self, threshold=0.1, alpha=0.05, max_iter=20, ridge_kw=None, normalize=False, fit_intercept=False,
-                 copy_X=True):
+    def __init__(self, threshold=0.1, alpha=0.05, max_iter=20, ridge_kw=None, fit_intercept=False,
+                 copy_X=True, **kw):
         super().__init__(fit_intercept=fit_intercept, copy_X=copy_X)
         self.threshold = threshold
         self.alpha = alpha
         self.max_iter = max_iter
         self.ridge_kw = ridge_kw
-        self.normalize = normalize
         self.fit_intercept = fit_intercept
         self.copy_X = copy_X
+        if "normalize" in kw.keys():
+            raise RuntimeError("`normalize` was removed in more recent versions of scikit-learn (>=1.2.2), "
+                               "please perform normalization a priori if desired.")
 
     def fit(self, x_, y):
         r"""Fit to the data.
@@ -442,7 +444,6 @@ class STLSQ(LinearRegression):
             x_,
             y,
             fit_intercept=self.fit_intercept,
-            normalize=self.normalize,
             copy=self.copy_X,
         )
 

@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from numpy.testing import assert_equal, assert_
+from numpy.testing import assert_equal, assert_, assert_raises
 from scipy.integrate import odeint
 from sklearn.preprocessing import PolynomialFeatures
 
@@ -52,6 +52,11 @@ def test_learned_coefficients(data_lorenz):
     model_coef = model.coefficients
 
     np.testing.assert_almost_equal(true_coef, model_coef, decimal=3)
+
+
+def test_removed_args_error():
+    with assert_raises(RuntimeError):
+        STLSQ(normalize=True)
 
 
 def test_score(data_lorenz):
