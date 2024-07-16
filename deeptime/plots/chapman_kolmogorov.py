@@ -172,7 +172,7 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
 
     if any_complex:
         warnings.warn("Your CKtest contains imaginary components which are ignored during plotting.",
-                      category=np.ComplexWarning)
+                      category=np.exceptions.ComplexWarning)
 
     confidences = [confidences_est_l, confidences_est_r, confidences_pred_l, confidences_pred_r]
     confidences = [np.array(conf) for conf in confidences]
