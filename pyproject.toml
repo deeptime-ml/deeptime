@@ -41,12 +41,12 @@ plotting = ['matplotlib', 'networkx']
 units = ['pint>=0.20']
 tests = [
     'torch>=1.12.0; platform_system!="Darwin" and python_version<"3.11"',
-    'pytest==7.1.2',
-    'pytest-cov==3.0.0',
+    'pytest>=7.1.2',
+    'pytest-cov>=3.0.0',
     'coverage[toml]',
-    'pytest-xdist==2.5.0',
-    'flaky==3.7.0',
-    'tqdm==4.64.0',
+    'pytest-xdist>=2.5.0',
+    'flaky>=3.7.0',
+    'tqdm>=4.64.0',
     "cython>=0.29.30",
     "pybind11>=2.10.1",
     "networkx",
@@ -80,7 +80,7 @@ requires = [
     "numpy>=2",
     "cmake>=3.24",
     "tomli; python_version < '3.11'",
-    "scipy==1.9.3",
+    "scipy>=1.9.3",
     "ninja; platform_system!='Windows'",
     "versioneer[toml]==0.28"
 ]
